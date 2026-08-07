@@ -102,7 +102,18 @@ test("selecionar cem cards mantém todos os prompts abaixo de 64 mil caracteres"
       requests.push(request);
       assert.ok(request.prompt.length <= 64000, request.phase);
       if (request.phase === "bottom_up_operation") {
+        assert.equal(Object.hasOwn(request.engineContext, "writableTargets"), false);
+        assert.equal(Object.hasOwn(request.engineContext, "readOnlyContext"), false);
+        assert.equal(request.prompt.includes("x".repeat(1800)), false);
+        return { value: { operation: "create_cards" } };
+      }
+      if (request.phase === "bottom_up_plan_cards") {
         assert.equal(request.engineContext.writableTargets.length, 100);
+        assert.equal(request.engineContext.readOnlyContext.itemOrder.length, 48);
+        assert.equal(
+          request.engineContext.readOnlyContext.itemOrder.at(-1).truncated,
+          true
+        );
         assert.deepEqual(
           request.engineContext.writableTargets
             .filter((target) => target.informationalContent)
@@ -118,9 +129,6 @@ test("selecionar cem cards mantém todos os prompts abaixo de 64 mil caracteres"
             "card-100"
           ]
         );
-        return { value: { operation: "create_cards" } };
-      }
-      if (request.phase === "bottom_up_plan_cards") {
         return {
           value: {
             cards: [{
@@ -174,6 +182,11 @@ test("o envelope preserva os textos dos dois cards selecionados", async () => {
     async generateStructured(request) {
       assert.ok(request.prompt.length <= 64000, request.phase);
       if (request.phase === "bottom_up_operation") {
+        assert.equal(Object.hasOwn(request.engineContext, "writableTargets"), false);
+        assert.equal(Object.hasOwn(request.engineContext, "readOnlyContext"), false);
+        return { value: { operation: "remove_cards" } };
+      }
+      if (request.phase === "bottom_up_targets") {
         const targets = new Map(
           request.engineContext.writableTargets.map((target) => [target.id, target])
         );
@@ -188,10 +201,9 @@ test("o envelope preserva os textos dos dois cards selecionados", async () => {
         assert.ok(request.prompt.includes(cards[0].text));
         assert.ok(request.prompt.includes(cards[2].text));
         inspectedEnvelope = true;
-        return { value: { operation: "remove_cards" } };
+        return { value: { targetIds: ["card-1"] } };
       }
-      assert.equal(request.phase, "bottom_up_targets");
-      return { value: { targetIds: ["card-1"] } };
+      assert.fail(`Fase inesperada: ${request.phase}`);
     }
   };
 

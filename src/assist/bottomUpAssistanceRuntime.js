@@ -44,6 +44,18 @@ const MAX_SELECTED_CARD_INFORMATION_ITEMS = 8;
 const MAX_SELECTED_CARD_INFORMATION_CHARACTERS = 12000;
 const MAX_SELECTED_CARD_INFORMATION_PER_CARD = 4000;
 const MICROSEQUENCE_ROLES = Object.freeze(["explain", "practice", "review", "support"]);
+const UNSUPPORTED_OPERATION = "unsupported";
+const DESTRUCTIVE_OPERATIONS = new Set([
+  BOTTOM_UP_ASSISTANCE_OPERATIONS.REMOVE_CARDS,
+  BOTTOM_UP_ASSISTANCE_OPERATIONS.MOVE_CARDS,
+  BOTTOM_UP_ASSISTANCE_OPERATIONS.REMOVE_MICROSEQUENCES,
+  BOTTOM_UP_ASSISTANCE_OPERATIONS.MOVE_MICROSEQUENCES
+]);
+const REMOVE_INTENT_PATTERN = /\b(?:remove_cards|remove_microsequences|remov(?:a|am|e|em|er|endo|ido|ida|idos|idas)?|exclu(?:a|am|i|ir|indo|ido|ida|idos|idas)?|apag(?:a|am|ue|uem|ar|ando|ado|ada|ados|adas)?|elimin(?:a|am|e|em|ar|ando|ado|ada|ados|adas)?|retir(?:a|am|e|em|ar|ando|ado|ada|ados|adas)?|tir(?:a|am|e|em|ar|ando|ado|ada|ados|adas)?|descart(?:a|am|e|em|ar|ando|ado|ada|ados|adas)?|delete|deletar)\b/gu;
+const MOVE_INTENT_PATTERN = /\b(?:move_cards|move_microsequences|mov(?:a|am|e|em|er|endo|ido|ida|idos|idas)?|reorden(?:a|am|e|em|ar|ando|ado|ada|ados|adas)?|reposicion(?:a|am|e|em|ar|ando|ado|ada|ados|adas)?|rearranj(?:a|am|e|em|ar|ando|ado|ada|ados|adas)?|reorder|rearrange|reposition|move)\b/gu;
+const MOVE_ORDER_INTENT_PATTERN = /\b(?:troc(?:a|am|ar|ando|ado|ada|ados|adas)|troqu(?:e|em)|invert(?:a|am|e|em|er|endo|ido|ida|idos|idas))\b[^.!?;]{0,24}\bordem\b/gu;
+const MOVE_RELATIONAL_INTENT_PATTERN = /\b(?:poe|poem|ponha|ponham|por|coloc(?:a|am|ar|ando|ado|ada|ados|adas)|coloqu(?:e|em))\b/gu;
+const INTENT_OBJECT_QUALIFIERS = "(?:o|a|os|as|um|uma|uns|umas|dois|duas|tres|quatro|cinco|seis|sete|oito|este|esta|estes|estas|esse|essa|esses|essas|aquele|aquela|aqueles|aquelas|outro|outra|outros|outras|primeiro|primeira|primeiros|primeiras|segundo|segunda|segundos|segundas|ultimo|ultima|ultimos|ultimas|somente|apenas|todo|toda|todos|todas|cada|the|this|that|these|those|another|other|selected|first|last|only|all)";
 
 function clone(value) {
   return value === undefined ? undefined : structuredClone(value);
@@ -51,6 +63,97 @@ function clone(value) {
 
 function text(value) {
   return typeof value === "string" ? value.trim() : "";
+}
+
+function normalizedIntentText(value) {
+  return text(value)
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/gu, "")
+    .toLocaleLowerCase("pt-BR");
+}
+
+function intentMatchIsNegated(source, matchIndex) {
+  const prefix = source.slice(0, matchIndex);
+  const punctuationIndex = Math.max(
+    prefix.lastIndexOf("."),
+    prefix.lastIndexOf(","),
+    prefix.lastIndexOf(";"),
+    prefix.lastIndexOf(":"),
+    prefix.lastIndexOf("!"),
+    prefix.lastIndexOf("?")
+  );
+  const contrastMatches = [...prefix.matchAll(/\b(?:mas|porem|contudo|entretanto)\b/gu)];
+  const contrastIndex = contrastMatches.length
+    ? contrastMatches.at(-1).index + contrastMatches.at(-1)[0].length - 1
+    : -1;
+  const clause = prefix.slice(Math.max(punctuationIndex, contrastIndex) + 1);
+  return /\b(?:nao|nunca|jamais|sem)\b(?:\s+[\p{L}\p{N}_-]+){0,5}\s*$/u.test(clause);
+}
+
+function entityIntentPattern(operation) {
+  if ([
+    BOTTOM_UP_ASSISTANCE_OPERATIONS.REMOVE_MICROSEQUENCES,
+    BOTTOM_UP_ASSISTANCE_OPERATIONS.MOVE_MICROSEQUENCES
+  ].includes(operation)) {
+    return "(?:microssequencia|microssequencias|microsequence|microsequences|item|itens|items|alvo|alvos|target|targets|selecionad[oa]s?|selected)";
+  }
+  return "(?:card|cards|item|itens|items|alvo|alvos|target|targets|selecionad[oa]s?|selected)";
+}
+
+function intentDirectlyTargetsEntity(source, match, operation) {
+  if (match[0].includes("_")) return true;
+  const suffix = source.slice(match.index + match[0].length, match.index + match[0].length + 180);
+  const entity = entityIntentPattern(operation);
+  const directObject = new RegExp(
+    `^(?:\\s+${INTENT_OBJECT_QUALIFIERS})*\\s+(?:${entity})\\b`,
+    "u"
+  );
+  return directObject.test(suffix);
+}
+
+function movementOrderTargetsEntity(source, match, operation) {
+  const suffix = source.slice(match.index + match[0].length, match.index + match[0].length + 120);
+  const entity = entityIntentPattern(operation);
+  return new RegExp(
+    `^\\s+(?:de|do|da|dos|das|entre|of|between)(?:\\s+${INTENT_OBJECT_QUALIFIERS})*\\s+(?:${entity})\\b`,
+    "u"
+  ).test(suffix);
+}
+
+function relationalMovementTargetsEntity(source, match, operation) {
+  if (!intentDirectlyTargetsEntity(source, match, operation)) return false;
+  const suffix = source.slice(match.index + match[0].length, match.index + match[0].length + 180);
+  return /\b(?:antes|depois|inicio|fim|before|after|start|end)\b/u.test(suffix);
+}
+
+function promptExplicitlyAuthorizesOperation(prompt, operation) {
+  if (!DESTRUCTIVE_OPERATIONS.has(operation)) return true;
+  const source = normalizedIntentText(prompt);
+  const removeOperation = operation === BOTTOM_UP_ASSISTANCE_OPERATIONS.REMOVE_CARDS ||
+    operation === BOTTOM_UP_ASSISTANCE_OPERATIONS.REMOVE_MICROSEQUENCES;
+  const patterns = removeOperation
+    ? [{ pattern: REMOVE_INTENT_PATTERN, targetsEntity: intentDirectlyTargetsEntity }]
+    : [
+        { pattern: MOVE_INTENT_PATTERN, targetsEntity: intentDirectlyTargetsEntity },
+        { pattern: MOVE_ORDER_INTENT_PATTERN, targetsEntity: movementOrderTargetsEntity },
+        { pattern: MOVE_RELATIONAL_INTENT_PATTERN, targetsEntity: relationalMovementTargetsEntity }
+      ];
+  for (const { pattern, targetsEntity } of patterns) {
+    pattern.lastIndex = 0;
+    for (const match of source.matchAll(pattern)) {
+      if (
+        !intentMatchIsNegated(source, match.index) &&
+        targetsEntity(source, match, operation)
+      ) return true;
+    }
+  }
+  return false;
+}
+
+function operationsAuthorizedByPrompt(scope, prompt) {
+  return (scope.writeScope.allowedOperations || []).filter((operation) =>
+    promptExplicitlyAuthorizesOperation(prompt, operation)
+  );
 }
 
 function fail(message, code = "INVALID_BOTTOM_UP_ASSISTANCE_RESULT", cause) {
@@ -287,6 +390,7 @@ function compactIndex(items = [], selectedIds = []) {
   if (source.length <= MAX_CONTEXT_INDEX_ITEMS) {
     return source.map(compactIndexItem).filter(Boolean);
   }
+  const visibleItemLimit = MAX_CONTEXT_INDEX_ITEMS - 1;
   const selected = new Set(selectedIds);
   const priority = new Set([
     ...source.slice(0, 6).map((_, index) => index),
@@ -299,12 +403,12 @@ function compactIndex(items = [], selectedIds = []) {
       if (candidate >= 0 && candidate < source.length) priority.add(candidate);
     }
   });
-  for (let index = 0; index < source.length && priority.size < MAX_CONTEXT_INDEX_ITEMS; index += 1) {
+  for (let index = 0; index < source.length && priority.size < visibleItemLimit; index += 1) {
     priority.add(index);
   }
   const kept = [...priority]
     .sort((left, right) => left - right)
-    .slice(0, MAX_CONTEXT_INDEX_ITEMS)
+    .slice(0, visibleItemLimit)
     .map((index) => compactIndexItem(source[index]))
     .filter(Boolean);
   kept.push({
@@ -468,6 +572,22 @@ function compactWritableMicrosequence(microsequence, index) {
   };
 }
 
+function compactCreateCardsDestination(scope, microsequence) {
+  if (scope.level !== "lesson") return null;
+  const cards = Array.isArray(microsequence?.cards) ? microsequence.cards : [];
+  return {
+    id: text(microsequence?.id),
+    title: text(microsequence?.title).slice(0, 300),
+    goal: text(microsequence?.goal).slice(0, 800),
+    role: text(microsequence?.role),
+    cardCount: cards.length,
+    cardIndex: compactIndex(
+      cards.map((card, index) => ({ ...card, index })),
+      []
+    )
+  };
+}
+
 function writableTargets(hierarchy, scope) {
   const selectedIds = new Set(scope.writeScope.selectedIds || []);
   if (scope.level === "card") {
@@ -612,10 +732,33 @@ function commonEnvelope({
   };
 }
 
-function validateOperation(value, allowedOperations) {
+function operationEnvelope(scope, prompt, allowedOperations) {
+  return {
+    contract: "aralearn.bottom-up-operation-request.v1",
+    userRequest: prompt,
+    writeScope: {
+      level: scope.writeScope.level,
+      kind: scope.writeScope.kind,
+      containerType: scope.writeScope.containerType,
+      containerId: scope.writeScope.containerId,
+      itemType: scope.writeScope.itemType,
+      selectedIds: clone(scope.writeScope.selectedIds || []),
+      selectedCount: (scope.writeScope.selectedIds || []).length,
+      emptyContainerSelected: scope.writeScope.emptyContainerSelected === true,
+      allowedOperations: clone(allowedOperations)
+    },
+    rules: [
+      "Classifique somente a intenção escrita pelo usuário.",
+      "Não infira remoção ou movimento sem autorização explícita no pedido.",
+      "Escolha uma única operação da lista fechada."
+    ]
+  };
+}
+
+function validateOperation(value, classificationOptions) {
   assertOnlyFields(value, ["operation"], "A classificação contém campos fora do contrato.");
   const operation = text(value.operation);
-  if (!allowedOperations.includes(operation)) {
+  if (!classificationOptions.includes(operation)) {
     fail(
       "A operação escolhida não foi autorizada pela seleção.",
       "OUT_OF_SCOPE_BOTTOM_UP_ASSISTANCE_CHANGE"
@@ -626,33 +769,15 @@ function validateOperation(value, allowedOperations) {
 
 async function classifyOperation({
   scope,
-  hierarchy,
   prompt,
-  didacticProfileId,
-  didacticPolicy,
   provider,
   modelId,
   assertCurrent,
   onProgress
 }) {
-  const allowedOperations = scope.writeScope.allowedOperations || [];
-  if (!allowedOperations.length) {
-    fail(
-      "A seleção atual não concede nenhuma operação bottom-up.",
-      "OUT_OF_SCOPE_BOTTOM_UP_ASSISTANCE_CHANGE"
-    );
-  }
-  if (allowedOperations.length === 1) {
-    const [operation] = allowedOperations;
-    onProgress?.({
-      phase: "bottom_up_operation",
-      status: "completed",
-      attempt: 0,
-      deterministic: true
-    });
-    return operation;
-  }
-  return generateValidated({
+  const allowedOperations = operationsAuthorizedByPrompt(scope, prompt);
+  const classificationOptions = [...allowedOperations, UNSUPPORTED_OPERATION];
+  const operation = await generateValidated({
     provider,
     modelId,
     assertCurrent,
@@ -666,28 +791,32 @@ async function classifyOperation({
         additionalProperties: false,
         required: ["operation"],
         properties: {
-          operation: { type: "string", enum: clone(allowedOperations) }
+          operation: { type: "string", enum: clone(classificationOptions) }
         }
       },
       envelope: {
-        ...commonEnvelope({
-          scope,
-          hierarchy,
-          prompt,
-          didacticProfileId,
-          didacticPolicy
-        }),
+        ...operationEnvelope(scope, prompt, allowedOperations),
         task: "classify_one_operation",
-        allowedOperations: clone(allowedOperations)
+        allowedOperations: clone(allowedOperations),
+        unsupportedOperation: UNSUPPORTED_OPERATION,
+        unsupportedRule:
+          "Escolha unsupported quando o pedido não corresponder exatamente a uma operação autorizada."
       },
       feedback,
       maxTokens: 180
     }),
-    validate: (value) => validateOperation(value, allowedOperations)
+    validate: (value) => validateOperation(value, classificationOptions)
   });
+  if (operation === UNSUPPORTED_OPERATION) {
+    fail(
+      "O pedido não corresponde a uma operação permitida pela seleção atual.",
+      "OUT_OF_SCOPE_BOTTOM_UP_ASSISTANCE_CHANGE"
+    );
+  }
+  return operation;
 }
 
-function targetIdsSchema(selectedIds) {
+function targetIdsSchema(selectedIds, maxItems = selectedIds.length) {
   return {
     type: "object",
     additionalProperties: false,
@@ -696,7 +825,7 @@ function targetIdsSchema(selectedIds) {
       targetIds: {
         type: "array",
         minItems: 1,
-        maxItems: selectedIds.length,
+        maxItems: Math.min(selectedIds.length, maxItems),
         uniqueItems: true,
         items: { type: "string", enum: clone(selectedIds) }
       }
@@ -704,7 +833,7 @@ function targetIdsSchema(selectedIds) {
   };
 }
 
-function normalizedTargetIds(value, selectedIds) {
+function normalizedTargetIds(value, selectedIds, maxItems = selectedIds.length) {
   assertOnlyFields(value, ["targetIds"], "O payload de alvos contém campos indevidos.");
   if (!Array.isArray(value.targetIds) || !value.targetIds.length) {
     fail("A operação exige ao menos um alvo gravável.");
@@ -720,11 +849,29 @@ function normalizedTargetIds(value, selectedIds) {
       "OUT_OF_SCOPE_BOTTOM_UP_ASSISTANCE_CHANGE"
     );
   }
+  if (normalized.length > maxItems) {
+    fail(
+      maxItems === MAX_UPDATED_CARDS && selectedIds.length > MAX_UPDATED_CARDS
+        ? `Cada envio pode atualizar no máximo ${MAX_UPDATED_CARDS} cards.`
+        : `A operação aceita no máximo ${maxItems} alvos por envio.`,
+      "INVALID_BOTTOM_UP_ASSISTANCE_REQUEST"
+    );
+  }
   return selectedIds.filter((targetId) => normalized.includes(targetId));
+}
+
+function validateSelectedTargetApplication(projectDocument, scope, operation, targetIds) {
+  if (operation === BOTTOM_UP_ASSISTANCE_OPERATIONS.REMOVE_CARDS) {
+    removeCards(projectDocument, scope, targetIds);
+  } else if (operation === BOTTOM_UP_ASSISTANCE_OPERATIONS.REMOVE_MICROSEQUENCES) {
+    removeMicrosequences(projectDocument, scope, targetIds);
+  }
+  return targetIds;
 }
 
 async function selectOperationTargets({
   scope,
+  projectDocument,
   hierarchy,
   prompt,
   operation,
@@ -736,6 +883,25 @@ async function selectOperationTargets({
   onProgress
 }) {
   const selectedIds = scope.writeScope.selectedIds || [];
+  const maxItems = operation === BOTTOM_UP_ASSISTANCE_OPERATIONS.UPDATE_CARDS
+    ? Math.min(MAX_UPDATED_CARDS, selectedIds.length)
+    : selectedIds.length;
+  if (selectedIds.length === 1) {
+    const targetIds = validateSelectedTargetApplication(
+      projectDocument,
+      scope,
+      operation,
+      clone(selectedIds)
+    );
+    assertBottomUpAssistanceOperationAuthorized(scope, { operation, targetIds });
+    onProgress?.({
+      phase: "bottom_up_targets",
+      status: "completed",
+      attempt: 0,
+      deterministic: true
+    });
+    return targetIds;
+  }
   const targetIds = await generateValidated({
     provider,
     modelId,
@@ -745,7 +911,7 @@ async function selectOperationTargets({
       phase: "bottom_up_targets",
       system: "Escolha somente os alvos necessários dentro da seleção autorizada.",
       schemaName: "aralearn_bottom_up_targets_v1",
-      schema: targetIdsSchema(selectedIds),
+      schema: targetIdsSchema(selectedIds, maxItems),
       envelope: {
         ...commonEnvelope({
           scope,
@@ -760,7 +926,12 @@ async function selectOperationTargets({
       feedback,
       maxTokens: 400
     }),
-    validate: (value) => normalizedTargetIds(value, selectedIds)
+    validate: (value) => validateSelectedTargetApplication(
+      projectDocument,
+      scope,
+      operation,
+      normalizedTargetIds(value, selectedIds, maxItems)
+    )
   });
   assertBottomUpAssistanceOperationAuthorized(scope, { operation, targetIds });
   return targetIds;
@@ -1023,6 +1194,7 @@ function normalizedMoves(value, selectedIds, itemCount) {
 
 async function requestMoves({
   scope,
+  projectDocument,
   hierarchy,
   prompt,
   operation,
@@ -1062,7 +1234,11 @@ async function requestMoves({
       feedback,
       maxTokens: 700
     }),
-    validate: (value) => normalizedMoves(value, selectedIds, itemCount)
+    validate: (value) => {
+      const moves = normalizedMoves(value, selectedIds, itemCount);
+      applyMoves(projectDocument, scope, moves);
+      return moves;
+    }
   });
   assertBottomUpAssistanceOperationAuthorized(scope, {
     operation,
@@ -1186,6 +1362,7 @@ function normalizedMicrosequenceUpdates(value, selectedIds) {
 
 async function requestMicrosequenceUpdates({
   scope,
+  projectDocument,
   hierarchy,
   prompt,
   operation,
@@ -1222,7 +1399,11 @@ async function requestMicrosequenceUpdates({
       maxTokens: 2200,
       temperature: 0.1
     }),
-    validate: (value) => normalizedMicrosequenceUpdates(value, selectedIds)
+    validate: (value) => {
+      const updates = normalizedMicrosequenceUpdates(value, selectedIds);
+      applyMicrosequenceUpdates(projectDocument, scope, updates);
+      return updates;
+    }
   });
   assertBottomUpAssistanceOperationAuthorized(scope, {
     operation,
@@ -1503,6 +1684,7 @@ async function buildNewCard({
 async function requestCardPlans({
   scope,
   hierarchy,
+  destination,
   prompt,
   operation,
   destinationId,
@@ -1535,6 +1717,9 @@ async function requestCardPlans({
         task: "plan_new_cards",
         operation,
         destinationId,
+        ...(scope.level === "lesson"
+          ? { readOnlyDestination: compactCreateCardsDestination(scope, destination) }
+          : {}),
         indexBase: 0,
         insertionRule:
           "insertIndex aponta uma fronteira da lista atual; cards com o mesmo índice preservam a ordem do payload.",
@@ -1578,6 +1763,7 @@ async function createCards({
   const plans = await requestCardPlans({
     scope,
     hierarchy,
+    destination,
     prompt,
     operation,
     destinationId,
@@ -1728,6 +1914,30 @@ function normalizedMicrosequenceCreation(value, itemCount) {
   };
 }
 
+function validateMicrosequenceCreationCandidate(projectDocument, scope, plan) {
+  const nextProject = clone(projectDocument);
+  const hierarchy = locateWritableContainer(nextProject, scope);
+  const candidateId = allocateId(
+    globalIds(nextProject, "microsequence"),
+    "microsequence",
+    "bottom-up-candidate"
+  );
+  hierarchy.lesson.microsequences.splice(plan.insertIndex, 0, {
+    id: candidateId,
+    title: plan.title,
+    goal: plan.goal,
+    role: plan.role,
+    status: "planned",
+    dependsOn: clone(plan.dependsOn),
+    covers: clone(plan.covers),
+    checks: clone(plan.checks),
+    errors: [],
+    cards: []
+  });
+  validateProject(nextProject);
+  return plan;
+}
+
 async function createMicrosequence({
   scope,
   projectDocument,
@@ -1773,7 +1983,11 @@ async function createMicrosequence({
       maxTokens: 2200,
       temperature: 0.1
     }),
-    validate: (value) => normalizedMicrosequenceCreation(value, itemCount)
+    validate: (value) => validateMicrosequenceCreationCandidate(
+      projectDocument,
+      scope,
+      normalizedMicrosequenceCreation(value, itemCount)
+    )
   });
   const usedMicrosequenceIds = globalIds(projectDocument, "microsequence");
   const usedCardIds = globalIds(projectDocument, "card");
@@ -1856,12 +2070,10 @@ export async function executeBottomUpAssistance({
   });
   await assertCurrent();
   const hierarchy = resolveHierarchy(projectDocument, scope);
+  compactReadOnlyContext(scope);
   const operation = await classifyOperation({
     scope,
-    hierarchy,
     prompt: normalizedPrompt,
-    didacticProfileId,
-    didacticPolicy,
     provider,
     modelId: selectedModelId,
     assertCurrent,
@@ -1925,6 +2137,7 @@ export async function executeBottomUpAssistance({
   ].includes(operation)) {
     const moves = await requestMoves({
       scope,
+      projectDocument,
       hierarchy,
       prompt: normalizedPrompt,
       operation,
@@ -1947,6 +2160,7 @@ export async function executeBottomUpAssistance({
   if (operation === BOTTOM_UP_ASSISTANCE_OPERATIONS.UPDATE_MICROSEQUENCES) {
     const updates = await requestMicrosequenceUpdates({
       scope,
+      projectDocument,
       hierarchy,
       prompt: normalizedPrompt,
       operation,
@@ -1968,6 +2182,7 @@ export async function executeBottomUpAssistance({
 
   const targetIds = await selectOperationTargets({
     scope,
+    projectDocument,
     hierarchy,
     prompt: normalizedPrompt,
     operation,
