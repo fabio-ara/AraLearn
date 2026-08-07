@@ -253,6 +253,36 @@ function clampFlowchartScale(value) {
   return Math.max(0.45, Math.min(2.4, Number(value || 1)));
 }
 
+export function claimContextualAuthoringSyncAttempt(syncState = {}) {
+  if (syncState.running === true) {
+    syncState.trailingAttemptRequested = true;
+    return false;
+  }
+  syncState.running = true;
+  syncState.trailingAttemptRequested = false;
+  return true;
+}
+
+export function settleContextualAuthoringSyncAttempt(
+  syncState = {},
+  pendingPaths = [],
+  scheduleTrailingAttempt = null
+) {
+  syncState.running = false;
+  const shouldScheduleTrailingAttempt =
+    syncState.trailingAttemptRequested === true &&
+    Array.isArray(pendingPaths) &&
+    pendingPaths.length > 0;
+  syncState.trailingAttemptRequested = false;
+  if (
+    shouldScheduleTrailingAttempt &&
+    typeof scheduleTrailingAttempt === "function"
+  ) {
+    queueMicrotask(scheduleTrailingAttempt);
+  }
+  return shouldScheduleTrailingAttempt;
+}
+
 export function createLessonEditorApp({
   root,
   storage,
@@ -312,7 +342,10 @@ export function createLessonEditorApp({
       assistance: createCardAssistanceUiState(),
       localState: normalizeCardAssistanceLocalState({}),
       localStateCourseKey: "",
-      syncingContextualAuthoring: false,
+      contextualAuthoringSync: {
+        running: false,
+        trailingAttemptRequested: false
+      },
       syncError: "",
       isSubmitting: false,
       errorMessage: "",
@@ -1424,19 +1457,20 @@ export function createLessonEditorApp({
   async function attemptContextualAuthoringSync() {
     if (
       !contextualAuthoringIsAvailable() ||
-      state.assistDraft.syncingContextualAuthoring ||
       globalThis.navigator?.onLine === false
     ) return;
-    const courseKey = state.selection?.courseKey;
-    if (!courseKey) return;
-    if (state.assistDraft.localStateCourseKey !== courseKey) {
-      await loadCardAssistanceLocalState(courseKey);
-    }
-    const pendingPaths = state.assistDraft.localState.sync.pendingPaths;
-    if (!pendingPaths.length) return;
-    state.assistDraft.syncingContextualAuthoring = true;
+    if (!claimContextualAuthoringSyncAttempt(
+      state.assistDraft.contextualAuthoringSync
+    )) return;
     state.assistDraft.syncError = "";
     try {
+      const courseKey = state.selection?.courseKey;
+      if (!courseKey) return;
+      if (state.assistDraft.localStateCourseKey !== courseKey) {
+        await loadCardAssistanceLocalState(courseKey);
+      }
+      const pendingPaths = state.assistDraft.localState.sync.pendingPaths;
+      if (!pendingPaths.length) return;
       const result = await materializeContextualCourseDraft({
         remoteCatalog: contextualAuthoring.remoteCatalog,
         storage,
@@ -1480,7 +1514,13 @@ export function createLessonEditorApp({
       state.assistDraft.syncError =
         "A alteração ficou salva neste dispositivo, mas ainda não foi sincronizada com o curso remoto.";
     } finally {
-      state.assistDraft.syncingContextualAuthoring = false;
+      settleContextualAuthoringSyncAttempt(
+        state.assistDraft.contextualAuthoringSync,
+        state.assistDraft.localState?.sync?.pendingPaths,
+        () => {
+          void attemptContextualAuthoringSync();
+        }
+      );
       render({ preserveState: true });
     }
   }

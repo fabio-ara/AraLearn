@@ -10,6 +10,10 @@ import {
 import {
   buildWorkspaceOutline
 } from "../../supabase/functions/_shared/aralearn-authoring/workspaceModel.js";
+import {
+  claimContextualAuthoringSyncAttempt,
+  settleContextualAuthoringSyncAttempt
+} from "../../src/ui/lessonEditorApp.js";
 
 const project = JSON.parse(fs.readFileSync(
   new URL("../fixtures/v4/project-minimal.json", import.meta.url),
@@ -67,6 +71,68 @@ function storage(courseOrigin = "private", { catalogAdmin = false, privateOwner 
     }
   };
 }
+
+test("edição concorrente agenda uma única sincronização posterior sem perder a fila", async () => {
+  const syncState = {
+    running: false,
+    trailingAttemptRequested: false
+  };
+  let scheduledAttempts = 0;
+
+  assert.equal(claimContextualAuthoringSyncAttempt(syncState), true, "R1 inicia");
+  assert.equal(claimContextualAuthoringSyncAttempt(syncState), false, "R2 espera R1");
+  assert.equal(claimContextualAuthoringSyncAttempt(syncState), false, "R3 compartilha a fila");
+  assert.deepEqual(syncState, {
+    running: true,
+    trailingAttemptRequested: true
+  });
+
+  assert.equal(
+    settleContextualAuthoringSyncAttempt(
+      syncState,
+      [pathFor("micro-r2")],
+      () => {
+        scheduledAttempts += 1;
+      }
+    ),
+    true,
+    "a fila pendente exige uma nova tentativa após R1"
+  );
+  assert.equal(scheduledAttempts, 0, "a nova tentativa espera o finally corrente terminar");
+  await Promise.resolve();
+  assert.equal(scheduledAttempts, 1, "R2 é reagendada automaticamente");
+  assert.equal(claimContextualAuthoringSyncAttempt(syncState), true, "a tentativa posterior inicia");
+  assert.equal(
+    settleContextualAuthoringSyncAttempt(syncState, []),
+    false,
+    "a fila consumida não produz um loop vazio"
+  );
+  assert.deepEqual(syncState, {
+    running: false,
+    trailingAttemptRequested: false
+  });
+});
+
+test("sinal concorrente sem trabalho remanescente não agenda sincronização vazia", async () => {
+  const syncState = {
+    running: false,
+    trailingAttemptRequested: false
+  };
+  let scheduledAttempts = 0;
+
+  assert.equal(claimContextualAuthoringSyncAttempt(syncState), true);
+  assert.equal(claimContextualAuthoringSyncAttempt(syncState), false);
+  assert.equal(settleContextualAuthoringSyncAttempt(
+    syncState,
+    [],
+    () => {
+      scheduledAttempts += 1;
+    }
+  ), false);
+  await Promise.resolve();
+  assert.equal(scheduledAttempts, 0);
+  assert.equal(claimContextualAuthoringSyncAttempt(syncState), true);
+});
 
 for (const denied of [
   { title: "curso de catálogo comum", origin: "catalog", options: {} },
