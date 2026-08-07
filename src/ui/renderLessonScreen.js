@@ -581,9 +581,10 @@ function renderHierarchyItemCard({
   title,
   description = "",
   supportingHtml = "",
-  metaHtml,
+  metaHtml = "",
   openAction = "",
   progressPercent = 0,
+  progressLabel = "",
   openTitle,
   leadingIconHtml = "",
   openDisabled = false,
@@ -645,7 +646,12 @@ function renderHierarchyItemCard({
     ">" +
     '<div class="card-progress-fill" style="width:' +
     progress +
-    '%"></div>' +
+    '%"' +
+    (progressLabel
+      ? ' role="progressbar" aria-label="Conclusão do card" aria-valuemin="0" aria-valuemax="100"' +
+        ' aria-valuenow="' + progress + '" aria-valuetext="' + escapeHtml(progressLabel) + '"'
+      : "") +
+    "></div>" +
     '<div class="lesson-copy structure-copy navigation-main">' +
     '<div class="structure-title-row navigation-title-row">' +
     '<h3 class="card-title">' +
@@ -1041,7 +1047,8 @@ function renderMicrosequenceOverview({
       cardIndex: index,
       title: card.title || cardKey,
       progressPercent: completed * 100,
-      metaHtml: renderMetaLine({ completed, total: 1 }),
+      progressLabel: completed ? "Card concluído" : "Card não concluído",
+      metaHtml: "",
       openAction: "open-microsequence-card",
       openTitle: "Abrir card",
       authoringMode: mode === "edit",

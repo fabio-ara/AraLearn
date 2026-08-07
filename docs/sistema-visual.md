@@ -141,6 +141,8 @@ coloridos por `currentColor`.
 - família de sistema, sem download obrigatório de fonte;
 - largura confortável para blocos extensos e alinhamento não justificado;
 - hierarquia por tamanho, peso e espaço antes de cor;
+- o resumo do nível atual e os cards filhos conservam a mesma escala de título
+  e corpo em curso, módulo, lição e microssequência;
 - escala curta de espaçamento baseada em múltiplos previsíveis;
 - cantos discretos e consistentes;
 - sombras reservadas a sobreposição e elevação funcional;
