@@ -164,29 +164,43 @@ function coordinatePairListSchema() {
   };
 }
 
-function flowStructureSchema() {
+function replaceEmbeddedFlowReferences(value) {
+  if (Array.isArray(value)) return value.map(replaceEmbeddedFlowReferences);
+  if (!value || typeof value !== "object") return value;
+  return Object.fromEntries(Object.entries(value).map(([key, child]) => {
+    if (key === "$ref" && child === "#/$defs/node") {
+      return [key, "#/$defs/flowNode"];
+    }
+    if (key === "$ref" && child === "#/$defs/practice") {
+      return [key, "#/$defs/flowPractice"];
+    }
+    return [key, replaceEmbeddedFlowReferences(child)];
+  }));
+}
+
+function embeddedFlowStructureContract() {
+  const source = replaceEmbeddedFlowReferences(
+    structuredClone(FLOWCHART_STRUCTURE_INPUT_SCHEMA)
+  );
+  const { $defs = {} } = source;
+  const root = { ...source };
+  delete root.$id;
+  delete root.$defs;
   return {
-    type: "object",
-    additionalProperties: true,
-    properties: {
-      id: { type: "string" },
-      kind: {
-        type: "string",
-        enum: ["sequence", "start", "end", "input", "output", "process", "if_then", "if_then_else", "while", "for", "do_while", "if_chain", "switch_case"]
-      },
-      text: { type: "string" },
-      condition: { type: "string" },
-      expression: { type: "string" },
-      init: { type: "string" },
-      update: { type: "string" },
-      items: { type: "array", items: { type: "object" } },
-      thenBranch: { type: "array", items: { type: "object" } },
-      elseBranch: { type: "array", items: { type: "object" } },
-      body: { type: "array", items: { type: "object" } },
-      cases: { type: "array", items: { type: "object" } },
-      defaultBranch: { type: "array", items: { type: "object" } }
+    root,
+    $defs: {
+      flowPractice: $defs.practice,
+      flowNode: $defs.node
     }
   };
+}
+
+function flowStructureSchema() {
+  return embeddedFlowStructureContract().root;
+}
+
+function flowStructureDefinitions() {
+  return embeddedFlowStructureContract().$defs;
 }
 
 function choiceOptionsSchema() {
@@ -301,6 +315,13 @@ function compositeBlockSchema() {
     type: "object",
     additionalProperties: false,
     required: ["id", "kind"],
+    allOf: [{
+      if: {
+        required: ["kind"],
+        properties: { kind: { const: "table" } }
+      },
+      then: { required: ["columns", "rows"] }
+    }],
     properties: {
       id: { type: "string", minLength: 1 },
       kind: {
@@ -325,7 +346,7 @@ function compositeBlockSchema() {
       layout: { type: "string" },
       columnMeta: { type: "array", items: { type: "object" } },
       columns: { type: "array", items: { type: "string" } },
-      rows: { type: "array", items: { type: "array", items: {} } },
+      rows: { type: "array", items: { type: "array", items: { type: "string" } } },
       structure: flowStructureSchema(),
       variant: { type: "string" },
       groups: { type: "array", items: systemMapGroupSchema() },
@@ -1118,100 +1139,90 @@ function relationEntrySchema() {
   };
 }
 
-function flowNodeLayerSchema(depth, maxDepth, maxNodes) {
-  const childItems = depth < maxDepth
-    ? { $ref: `#/$defs/flowNodeDepth${depth + 1}` }
-    : { type: "object", not: {} };
-  const childList = () => ({
-    type: "array",
-    maxItems: depth === 1 ? Math.max(0, maxNodes - 1) : maxNodes,
-    items: structuredClone(childItems)
-  });
-  const branchEntry = (fieldName) => ({
-    type: "object",
-    additionalProperties: true,
-    properties: {
-      [fieldName]: childList(),
-      practice: { type: "object" }
-    }
-  });
-  return {
-    type: "object",
-    additionalProperties: true,
-    properties: {
-      id: { type: "string" },
-      kind: {
-        type: "string",
-        enum: [
-          "sequence", "start", "end", "input", "output", "process",
-          "if_then", "if_then_else", "while", "for", "do_while",
-          "if_chain", "switch_case"
-        ]
-      },
-      text: { type: "string" },
-      condition: { type: "string" },
-      expression: { type: "string" },
-      init: { type: "string" },
-      update: { type: "string" },
-      iterator: { type: "string" },
-      iterable: { type: "string" },
-      items: childList(),
-      thenBranch: childList(),
-      elseBranch: childList(),
-      body: childList(),
-      cases: {
-        type: "array",
-        maxItems: maxNodes,
-        items: {
-          anyOf: [
-            branchEntry("thenBranch"),
-            branchEntry("body")
-          ]
+function replaceFlowNodeReferences(value, replacement) {
+  if (Array.isArray(value)) {
+    return value.map((item) => replaceFlowNodeReferences(item, replacement));
+  }
+  if (!value || typeof value !== "object") return value;
+  if (value.$ref === "#/$defs/flowNode") {
+    return structuredClone(replacement);
+  }
+  return Object.fromEntries(
+    Object.entries(value).map(([key, child]) => [
+      key,
+      replaceFlowNodeReferences(child, replacement)
+    ])
+  );
+}
+
+function capFlowChildLists(nodeSchema, maxNodes) {
+  (nodeSchema.oneOf || [nodeSchema]).forEach((branch) => {
+    const properties = branch?.properties || {};
+    ["items", "thenBranch", "elseBranch", "body", "defaultBranch"]
+      .forEach((fieldName) => {
+        if (properties[fieldName]?.type === "array") {
+          properties[fieldName].maxItems = maxNodes;
         }
-      },
-      branches: {
-        type: "array",
-        maxItems: maxNodes,
-        items: branchEntry("items")
-      },
-      defaultBranch: childList(),
-      practice: { type: "object" }
+      });
+    if (properties.cases?.type === "array") {
+      properties.cases.maxItems = maxNodes;
+      const caseProperties = properties.cases.items?.properties || {};
+      ["thenBranch", "body"].forEach((fieldName) => {
+        if (caseProperties[fieldName]?.type === "array") {
+          caseProperties[fieldName].maxItems = maxNodes;
+        }
+      });
     }
-  };
+  });
+  return nodeSchema;
 }
 
 function boundedFlowStructureSchema(limits = {}) {
-  const maxDepth = Math.max(1, Number(limits.maxDepth) || 1);
+  const maxDepth = Math.max(2, Number(limits.maxDepth) || 2);
   const maxNodes = Math.max(1, Number(limits.maxNodes) || 1);
+  const canonicalNode = flowStructureDefinitions().flowNode;
+  // `not: {}` mantém o ramo impossível para o validador canônico; a forma de
+  // objeto evita um item estruturalmente vazio quando o schema é projetado
+  // para o subconjunto strict dos providers (a resposta volta a ser validada
+  // pelo contrato canônico antes de qualquer aplicação).
+  const terminalChild = {
+    type: "object",
+    additionalProperties: false,
+    properties: {},
+    not: {}
+  };
   const $defs = {};
-  for (let depth = 1; depth <= maxDepth; depth += 1) {
-    $defs[`flowNodeDepth${depth}`] = flowNodeLayerSchema(
-      depth,
-      maxDepth,
+
+  // A raiz sequence já ocupa o primeiro nível. As definições finitas abaixo
+  // descrevem os níveis filhos sem cruzar dois schemas recursivos por allOf;
+  // isso mantém a projeção para providers linear, mesmo no limite de 6 níveis.
+  for (let index = 1; index < maxDepth; index += 1) {
+    const childReference = index < maxDepth - 1
+      ? { $ref: `#/$defs/flowBoundsDepth${index + 1}` }
+      : terminalChild;
+    $defs[`flowBoundsDepth${index}`] = capFlowChildLists(
+      replaceFlowNodeReferences(canonicalNode, childReference),
       maxNodes
     );
   }
+
+  const sequenceBranch = canonicalNode.oneOf.find(
+    (branch) => branch?.properties?.kind?.const === "sequence"
+  );
+  const root = capFlowChildLists(
+    replaceFlowNodeReferences(
+      sequenceBranch,
+      { $ref: "#/$defs/flowBoundsDepth1" }
+    ),
+    maxNodes
+  );
+  root.required = [...new Set([...(root.required || []), "items"])];
+  root.properties.items.minItems = 1;
+  root.properties.items.maxItems = Math.max(0, maxNodes - 1);
+  $defs.flowBoundsRoot = root;
+
   return {
-    root: {
-      allOf: [
-        { $ref: "#/$defs/flowNodeDepth1" },
-        {
-          type: "object",
-          required: ["kind", "items"],
-          properties: {
-            kind: { const: "sequence" },
-            items: {
-              type: "array",
-              minItems: 1,
-              maxItems: Math.max(0, maxNodes - 1),
-              items: maxDepth > 1
-                ? { $ref: "#/$defs/flowNodeDepth2" }
-                : { type: "object", not: {} }
-            }
-          }
-        }
-      ]
-    },
+    root: { $ref: "#/$defs/flowBoundsRoot" },
     $defs
   };
 }
@@ -1283,15 +1294,21 @@ function applySemanticLimitsToCardSchema(cardSchema, resource, limits = {}) {
     );
   }
   if (resource === "table") {
+    properties.columns.minItems = 1;
     properties.columns.maxItems = limits.maxColumns;
+    properties.rows.minItems = 1;
     properties.rows.maxItems = limits.maxRows;
+    properties.rows.items.minItems = 1;
     properties.rows.items.maxItems = limits.maxColumns;
     properties.columnMeta.maxItems = limits.maxColumns;
   }
   if (resource === "flow") {
     const bounded = boundedFlowStructureSchema(limits);
     properties.structure = bounded.root;
-    schema.$defs = { ...(schema.$defs || {}), ...bounded.$defs };
+    schema.$defs = {
+      ...(schema.$defs || {}),
+      ...bounded.$defs
+    };
   }
   if (resource === "tree") {
     properties.nodes.maxItems = limits.maxNodes;
@@ -1412,9 +1429,6 @@ function buildAuthoringCardSchema(cardSchema, authoring) {
       items: authoringGapDefinitionSchema()
     }
   };
-  if (source.properties?.resource?.const === "flow") {
-    properties.structure = structuredClone(FLOWCHART_STRUCTURE_INPUT_SCHEMA);
-  }
   const choiceFields = [
     "question",
     "selectionMode",
@@ -1497,6 +1511,10 @@ function buildCanonicalDefinition(schemaDefinition) {
     schemaDefinition.id,
     limits.semantic || {}
   );
+  cardSchema.$defs = {
+    ...flowStructureDefinitions(),
+    ...(cardSchema.$defs || {})
+  };
   const authoringSchema = buildAuthoringCardSchema(cardSchema, authoring);
   return Object.freeze({
     id: schemaDefinition.id,

@@ -12435,10 +12435,10 @@
                         "elseBranch": [
                           {
                             "kind": "if_chain",
-                            "branches": [
+                            "cases": [
                               {
                                 "condition": "Uma variável numérica",
-                                "items": [
+                                "thenBranch": [
                                   {
                                     "kind": "output",
                                     "text": "Histograma para distribuição"
@@ -12447,7 +12447,7 @@
                               },
                               {
                                 "condition": "Duas variáveis numéricas",
-                                "items": [
+                                "thenBranch": [
                                   {
                                     "kind": "output",
                                     "text": "Dispersão para associação visual"
@@ -12456,7 +12456,7 @@
                               },
                               {
                                 "condition": "Categoria + número",
-                                "items": [
+                                "thenBranch": [
                                   {
                                     "kind": "output",
                                     "text": "Boxplot para distribuição por grupo"

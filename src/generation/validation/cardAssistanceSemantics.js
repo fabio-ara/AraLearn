@@ -296,15 +296,6 @@ function maskCompiledFlowGaps(node, path, answers) {
       });
     });
   });
-  list(node.branches).forEach((branch, index) => {
-    list(branch?.items).forEach((child, childIndex) => {
-      maskCompiledFlowGaps(
-        child,
-        `${path}.branches[${index}].items[${childIndex}]`,
-        answers
-      );
-    });
-  });
 }
 
 function maskStructuredFlowGaps(card, answers) {

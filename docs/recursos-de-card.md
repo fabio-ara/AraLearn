@@ -183,8 +183,15 @@ possuem identidade estável e só usam direção quando ela muda o significado.
 `layout` é um preset semântico; o renderer calcula posição, rótulos e rotas.
 
 `flow` declara a estrutura do processo, condições e ramos. A geometria
-ortogonal, os pontos de junção e os rótulos são calculados localmente. A prática
-de forma ou rótulo usa `structure.practice`, não descrição em prosa.
+ortogonal, os pontos de junção e os rótulos padrão são calculados localmente.
+`branchLabels.yes/no` personaliza decisões e laços; `branchLabels.default`
+personaliza a saída padrão de `switch_case`, enquanto `cases[].match` nomeia
+cada caso. `if_chain` usa exclusivamente `cases[]`, com `condition` e
+`thenBranch` em cada caso; o campo antigo `branches` é rejeitado. A prática de
+forma ou rótulo usa `structure.practice`, não descrição em prosa, e deve ficar
+no nó ou caso que produz a aresta correspondente. No modo de edição,
+enunciado, nós, condições, casos e rótulos são alterados na própria
+representação, sem trocar sua moldura.
 
 `tree` declara nós e `parentId`. `variant` aceita exatamente `filesystem`,
 `hierarchy`, `taxonomy`, `phylogeny`, `syntax` ou `organization`, sem forçar a
@@ -192,11 +199,18 @@ metáfora pasta/arquivo. Pai inexistente, autorreferência e ciclo são rejeitad
 
 ### Table, relation_map, matrix, plane e formula
 
-`table` preserva dimensões e cabeçalhos. `relation_map` mantém conjuntos,
-ligações e pares auxiliares consistentes. `matrix` conserva linha, coluna,
-sequências e destaques. `plane` recebe apenas dados geométricos e deixa escala e
-desenho ao renderer. `formula` usa uma AST fechada e `accessibleText`; não
-aceita LaTeX, HTML ou MathML livre.
+`table` preserva dimensões e cabeçalhos. `columns` é uma lista plana de textos e
+`rows` é uma grade bidimensional de textos, sem arrays ou objetos aninhados nas
+células. Cada linha lógica ocupa um item de `rows` e cada coluna lógica ocupa um
+item de `columns`; dentro de uma célula, quebras de linha são preservadas e
+linhas iniciadas por `- `, `* `, `+ ` ou numeração viram listas semânticas.
+`topics` serve somente à indexação: todo conteúdo visível deve estar em
+`columns` e `rows`. Quando a largura mínima das colunas excede a tela, a rolagem
+horizontal fica contida no próprio resource, sem quebrar palavras
+arbitrariamente. `relation_map` mantém conjuntos, ligações e pares auxiliares
+consistentes. `matrix` conserva linha, coluna, sequências e destaques. `plane`
+recebe apenas dados geométricos e deixa escala e desenho ao renderer. `formula`
+usa uma AST fechada e `accessibleText`; não aceita LaTeX, HTML ou MathML livre.
 
 ### Chart
 

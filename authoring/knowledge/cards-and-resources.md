@@ -146,6 +146,14 @@ Campos que aceitam marcadores:
 
 `flow` possui ainda prática estrutural em `structure.practice`. `blankShape` oculta a forma, cuja resposta correta deriva do `kind` do nó; `shapeOptions` acrescenta alternativas. `labels.yes`, `labels.no`, `labels.match` e `labels.default` identificam ramos projetados, cujos rótulos corretos derivam do fluxo. Cada rótulo usa `blank: true`; `mode: "choice"` e `options` oferecem alternativas, enquanto `variants` registra grafias literais aceitas na digitação.
 
+O texto visível de um ramo é independente da lacuna. `branchLabels.yes` e `branchLabels.no` personalizam decisões e laços; em `if_chain`, podem ser declarados em cada item de `cases`; `branchLabels.default` personaliza a saída padrão de `switch_case`. O rótulo correspondente a cada caso de `switch_case` continua em `cases[].match`. Omita `branchLabels` para conservar os padrões locais `Sim`, `Não` e `Outro caso` sem persistir cópias.
+
+Em `if_chain`, use exclusivamente `cases[]`; cada caso declara sua `condition` e a saída em `thenBranch`. O campo antigo `branches` não pertence ao contrato e é rejeitado.
+
+Posicione a prática no ponto que produz a aresta: decisões e laços usam `practice.labels.yes/no` no nó; um caso de `if_chain` usa somente `practice.labels.yes`, enquanto o `no` compartilhado fica no nó; cada caso de `switch_case` usa `practice.labels.match` e o nó usa `practice.labels.default`. Uma chave em outro ponto não corresponde a alvo executável.
+
+Em `table`, `columns` é uma lista plana de textos e `rows` é uma grade bidimensional de textos. Não aninhe arrays ou objetos em células: cada linha e coluna lógica ocupa sua posição própria. Uma célula pode conter quebras de linha; linhas iniciadas por `- `, `* `, `+ ` ou numeração são renderizadas como lista. `topics` é metadado de indexação e nunca substitui o texto visível de `columns` e `rows`.
+
 Forma e rótulo não usam marcador nem definição em `gaps`. Um exercício `flow` composto somente por esses alvos declara `exercise: "gap"` e omite `gaps`. Se também ocultar `text` ou `condition`, usa `{gap:id}` nesses campos e declara as definições correspondentes.
 
 ## Escolha simples ou múltipla

@@ -470,11 +470,7 @@ function flowNodeHasStructuredPractice(node) {
     return true;
   }
 
-  return (Array.isArray(node.branches) ? node.branches : []).some((item) =>
-    flowPracticeIsActive(item?.practice)
-    || (Array.isArray(item?.items) ? item.items : [])
-      .some(flowNodeHasStructuredPractice)
-  );
+  return false;
 }
 
 export function flowHasStructuredPractice(value = {}) {

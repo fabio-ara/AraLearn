@@ -112,6 +112,8 @@ const RESOURCE_SHAPES = Object.freeze({
     ]),
     rules: Object.freeze([
       "Cada linha de rows tem exatamente o mesmo número de células de columns.",
+      "columns é uma lista plana de textos e rows é uma grade bidimensional de textos; não aninhe listas ou objetos em cabeçalhos ou células.",
+      "topics é metadado de indexação e não aparece na tabela; todo conteúdo visível fica em columns e rows.",
       "layout, quando informado, é compact, auto ou wide.",
       "columnMeta acompanha columns e usa align left, center, right ou numeric e wrap booleano."
     ])
@@ -133,10 +135,10 @@ const RESOURCE_SHAPES = Object.freeze({
         fields: Object.freeze(["id", "kind", "text"])
       }),
       branch: Object.freeze({
-        if_then: Object.freeze(["id", "kind", "condition", "thenBranch"]),
-        if_then_else: Object.freeze(["id", "kind", "condition", "thenBranch", "elseBranch"]),
-        while: Object.freeze(["id", "kind", "condition", "body"]),
-        do_while: Object.freeze(["id", "kind", "condition", "body"]),
+        if_then: Object.freeze(["id", "kind", "condition", "branchLabels", "thenBranch"]),
+        if_then_else: Object.freeze(["id", "kind", "condition", "branchLabels", "thenBranch", "elseBranch"]),
+        while: Object.freeze(["id", "kind", "condition", "branchLabels", "body"]),
+        do_while: Object.freeze(["id", "kind", "condition", "branchLabels", "body"]),
         for: Object.freeze([
           "id",
           "kind",
@@ -145,13 +147,18 @@ const RESOURCE_SHAPES = Object.freeze({
           "update",
           "iterator",
           "iterable",
+          "branchLabels",
           "body"
         ]),
         if_chain: Object.freeze(["id", "kind", "cases", "elseBranch"]),
-        switch_case: Object.freeze(["id", "kind", "expression", "cases", "defaultBranch"])
+        switch_case: Object.freeze(["id", "kind", "expression", "branchLabels", "cases", "defaultBranch"])
       }),
-      ifChainCase: Object.freeze(["id", "condition", "thenBranch", "practice"]),
+      ifChainCase: Object.freeze(["id", "condition", "branchLabels", "thenBranch", "practice"]),
       switchCase: Object.freeze(["id", "match", "body", "practice"]),
+      branchLabels: Object.freeze({
+        binary: Object.freeze(["yes", "no"]),
+        switchDefault: Object.freeze(["default"])
+      }),
       practice: Object.freeze({
         fields: Object.freeze(["blankShape", "shapeOptions", "text", "labels"]),
         textOrLabelEntry: Object.freeze({
@@ -166,8 +173,10 @@ const RESOURCE_SHAPES = Object.freeze({
     rules: Object.freeze([
       "structure tem uma única raiz sequence com items não vazio.",
       "Cada nó possui id estável e somente os campos de seu kind.",
+      "branchLabels personaliza somente texto visível: yes/no em decisões e laços; default em switch_case. Omitido, o renderer usa Sim/Não/Outro caso sem persistir cópias.",
       "Em text ou condition, {gap:id} ocupa sozinho o campo e possui definição em gaps.",
-      "Forma e rótulo usam practice estruturado; não usam marcador nem definição em gaps.",
+      "Forma e lacuna de rótulo usam practice estruturado; branchLabels não configura resposta nem usa gaps.",
+      "Em practice.labels, decisões e laços usam yes/no; cada caso de if_chain usa somente yes; cada caso de switch_case usa match; o nó switch_case usa default.",
       "A forma correta deriva do kind do nó. O rótulo correto deriva da aresta projetada.",
       "variants contém somente respostas literais; a autoria não aceita regex."
     ])
@@ -754,7 +763,7 @@ const DEFINITIONS = Object.freeze({
     ]),
     fields: Object.freeze(["title", "prompt", "structure", "after"]),
     exercises: Object.freeze(["none", "gap", "choice"]),
-    authoringNote: "Textos e condições usam {gap:id} com gaps. Formas e rótulos usam practice estruturado, cuja resposta correta deriva do kind do nó ou da aresta.",
+    authoringNote: "Textos e condições usam {gap:id} com gaps. branchLabels personaliza o texto visível; formas e lacunas de rótulo usam practice estruturado, cuja resposta correta deriva do kind do nó ou da aresta.",
     formalPracticeExample: Object.freeze({
       id: "decision-shape-and-labels",
       kind: "while",

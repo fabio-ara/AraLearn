@@ -176,6 +176,132 @@ function projectProviderRecursiveSchemas(sourceSchema) {
   return visit(sourceSchema);
 }
 
+function replaceDefinitionReferences(value, names, replacementName) {
+  if (Array.isArray(value)) {
+    return value.map((item) =>
+      replaceDefinitionReferences(item, names, replacementName)
+    );
+  }
+  if (!value || typeof value !== "object") return structuredClone(value);
+  if (typeof value.$ref === "string") {
+    const referencedName = localDefinitionName(value.$ref);
+    if (names.has(referencedName)) {
+      return { $ref: `#/$defs/${replacementName}` };
+    }
+  }
+  return Object.fromEntries(
+    Object.entries(value).map(([key, item]) => [
+      key,
+      replaceDefinitionReferences(item, names, replacementName)
+    ])
+  );
+}
+
+/**
+ * O contrato local limita flow com definições finitas para que Ajv também
+ * rejeite profundidade excessiva. O schema enviado ao provider pode usar a
+ * gramática recursiva equivalente: os limites seguem explícitos no contexto e
+ * são obrigatoriamente revalidados no contrato canônico antes da aplicação.
+ */
+function compactProviderFlowDefinitions(sourceDocument) {
+  const schema = structuredClone(sourceDocument);
+  const definitions = schema.$defs || {};
+  const rootNames = Object.keys(definitions)
+    .filter((name) => /flowBoundsRoot$/u.test(name));
+
+  rootNames.forEach((rootName) => {
+    const prefix = rootName.slice(0, -"flowBoundsRoot".length);
+    const depthNames = Object.keys(definitions).filter((name) =>
+      name.startsWith(`${prefix}flowBoundsDepth`)
+    );
+    if (!depthNames.length) return;
+    const depthSet = new Set(depthNames);
+    const canonicalNodeName = `${prefix}flowNode`;
+    const recursiveNodeName = Object.hasOwn(definitions, canonicalNodeName)
+      ? canonicalNodeName
+      : `${prefix}flowProviderNode`;
+    if (!Object.hasOwn(definitions, recursiveNodeName)) {
+      definitions[recursiveNodeName] = replaceDefinitionReferences(
+        definitions[depthNames[0]],
+        depthSet,
+        recursiveNodeName
+      );
+    }
+    definitions[rootName] = replaceDefinitionReferences(
+      definitions[rootName],
+      depthSet,
+      recursiveNodeName
+    );
+    depthNames.forEach((name) => delete definitions[name]);
+  });
+  return schema;
+}
+
+function compactProviderFormulaDefinitions(sourceDocument) {
+  let schema = structuredClone(sourceDocument);
+  const prefixes = new Set(
+    Object.keys(schema.$defs || {})
+      .map((name) => name.match(/^(.*)formulaNodeDepth\d+$/u)?.[1])
+      .filter((prefix) => prefix !== undefined)
+  );
+
+  prefixes.forEach((prefix) => {
+    const definitions = schema.$defs || {};
+    const depthNames = Object.keys(definitions)
+      .filter((name) => name.startsWith(`${prefix}formulaNodeDepth`))
+      .sort((left, right) => {
+        const leftDepth = Number(left.match(/Depth(\d+)$/u)?.[1] || 0);
+        const rightDepth = Number(right.match(/Depth(\d+)$/u)?.[1] || 0);
+        return leftDepth - rightDepth;
+      });
+    if (!depthNames.length) return;
+    const depthSet = new Set(depthNames);
+    const recursiveName = `${prefix}formulaProviderNode`;
+    definitions[recursiveName] = replaceDefinitionReferences(
+      definitions[depthNames[0]],
+      depthSet,
+      recursiveName
+    );
+    schema = replaceDefinitionReferences(schema, depthSet, recursiveName);
+    depthNames.forEach((name) => delete schema.$defs?.[name]);
+  });
+  return schema;
+}
+
+function pruneProviderDefinitions(sourceDocument) {
+  const schema = structuredClone(sourceDocument);
+  const definitions = schema.$defs || {};
+  const reachable = new Set();
+
+  function visit(value) {
+    if (Array.isArray(value)) {
+      value.forEach(visit);
+      return;
+    }
+    if (!value || typeof value !== "object") return;
+    const referenceName = localDefinitionName(value.$ref);
+    if (
+      referenceName
+      && !reachable.has(referenceName)
+      && Object.hasOwn(definitions, referenceName)
+    ) {
+      reachable.add(referenceName);
+      visit(definitions[referenceName]);
+    }
+    Object.entries(value).forEach(([key, item]) => {
+      if (key !== "$defs") visit(item);
+    });
+  }
+
+  visit(schema);
+  const kept = Object.fromEntries(
+    Object.entries(definitions).filter(([name]) => reachable.has(name))
+  );
+  if (Object.keys(kept).length) schema.$defs = kept;
+  else delete schema.$defs;
+  return schema;
+}
+
 function inferEnumType(values) {
   if (!Array.isArray(values) || !values.length) return "";
   if (values.every((value) => typeof value === "string")) return "string";
@@ -224,8 +350,8 @@ function localDefinitionName(reference) {
 /**
  * `allOf` não pertence ao subconjunto de Structured Outputs. A maior parte dos
  * usos canônicos apenas acrescenta coerência que será revalidada localmente.
- * O caso que precisa preservar forma é `$ref + objeto` (a raiz limitada de
- * flow). Nesse caso a interseção estrutural é materializada antes da projeção.
+ * Quando uma interseção combina `$ref` e objeto, a forma estrutural é
+ * materializada antes da projeção.
  */
 function projectProviderAllOfSchemas(sourceDocument) {
   const rootDefinitions = sourceDocument?.$defs || {};
@@ -528,8 +654,14 @@ const OPENAI_SUPPORTED_SCHEMA_KEYWORDS = new Set([
 
 export function toStrictJsonSchema(sourceSchema) {
   const normalizedDocument = projectProviderAllOfSchemas(
-    normalizeJsonSchemaDocument(
-      projectProviderRecursiveSchemas(sourceSchema)
+    pruneProviderDefinitions(
+      compactProviderFormulaDefinitions(
+        compactProviderFlowDefinitions(
+          normalizeJsonSchemaDocument(
+            projectProviderRecursiveSchemas(sourceSchema)
+          )
+        )
+      )
     )
   );
 
@@ -677,10 +809,18 @@ function compactGeminiRecursiveDefinitions(schema) {
   if (!definitions) return schema;
 
   Object.keys(definitions).forEach((definitionName) => {
-    const depth = Number(
-      definitionName.match(/(?:flowNode|formulaNode)Depth(\d+)$/u)?.[1] || 0
+    const flowDepth = Number(
+      definitionName.match(/(?:flowNode|flowBounds)Depth(\d+)$/u)?.[1] || 0
     );
-    if (depth >= 4) {
+    const formulaDepth = Number(
+      definitionName.match(/formulaNodeDepth(\d+)$/u)?.[1] || 0
+    );
+    const isFlowPractice = /flowPractice$/u.test(definitionName);
+    // Um nível tipado abaixo da raiz já informa ao Gemini todas as formas de
+    // nó de flow e formula. Descendentes e a prática incorporada continuam
+    // aceitos como objetos genéricos e são revalidados localmente; repetir as
+    // uniões recursivas excederia o orçamento sobretudo em cards composite.
+    if (flowDepth >= 2 || formulaDepth >= 2 || isFlowPractice) {
       definitions[definitionName] = genericGeminiRecursiveTerminal();
     }
   });
@@ -716,8 +856,14 @@ function compactGeminiRecursiveDefinitions(schema) {
 }
 
 export function toGeminiJsonSchema(sourceSchema) {
-  const normalizedDocument = normalizeJsonSchemaDocument(
-    projectProviderRecursiveSchemas(sourceSchema)
+  const normalizedDocument = pruneProviderDefinitions(
+    compactProviderFormulaDefinitions(
+      compactProviderFlowDefinitions(
+        normalizeJsonSchemaDocument(
+          projectProviderRecursiveSchemas(sourceSchema)
+        )
+      )
+    )
   );
 
   function visit(source, activeDefinition = "") {

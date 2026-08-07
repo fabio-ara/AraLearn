@@ -47,6 +47,10 @@ function normalizeOptionalText(value) {
   return String(value || "").replace(/\r/g, "").trim();
 }
 
+function resolveBranchLabel(node, key, fallback) {
+  return normalizeText(node?.branchLabels?.[key], fallback);
+}
+
 function normalizeFlowchartShapeKey(value) {
   const allowed = [
     "terminal",
@@ -940,7 +944,7 @@ function expandStructureNode(node, state, context) {
         from: decisionNode.id,
         to: thenBranch.entryNodeId,
         role: "yes",
-        label: "Sim",
+        label: resolveBranchLabel(node, "yes", "Sim"),
         outputSlot: 1,
         practice: getPracticeLabelEntry(node.practice, "yes")
       });
@@ -956,7 +960,7 @@ function expandStructureNode(node, state, context) {
         from: decisionNode.id,
         to: mergeNode.id,
         role: "yes",
-        label: "Sim",
+        label: resolveBranchLabel(node, "yes", "Sim"),
         outputSlot: 1,
         practice: getPracticeLabelEntry(node.practice, "yes")
       });
@@ -965,7 +969,7 @@ function expandStructureNode(node, state, context) {
       from: decisionNode.id,
       to: mergeNode.id,
       role: "no",
-      label: "Não",
+      label: resolveBranchLabel(node, "no", "Não"),
       outputSlot: 0,
       practice: getPracticeLabelEntry(node.practice, "no")
     });
@@ -1006,7 +1010,7 @@ function expandStructureNode(node, state, context) {
         from: decisionNode.id,
         to: thenBranch.entryNodeId,
         role: "yes",
-        label: "Sim",
+        label: resolveBranchLabel(node, "yes", "Sim"),
         outputSlot: 1,
         practice: getPracticeLabelEntry(node.practice, "yes")
       });
@@ -1022,7 +1026,7 @@ function expandStructureNode(node, state, context) {
         from: decisionNode.id,
         to: mergeNode.id,
         role: "yes",
-        label: "Sim",
+        label: resolveBranchLabel(node, "yes", "Sim"),
         outputSlot: 1,
         practice: getPracticeLabelEntry(node.practice, "yes")
       });
@@ -1033,7 +1037,7 @@ function expandStructureNode(node, state, context) {
         from: decisionNode.id,
         to: elseBranch.entryNodeId,
         role: "no",
-        label: "Não",
+        label: resolveBranchLabel(node, "no", "Não"),
         outputSlot: 0,
         practice: getPracticeLabelEntry(node.practice, "no")
       });
@@ -1049,7 +1053,7 @@ function expandStructureNode(node, state, context) {
         from: decisionNode.id,
         to: mergeNode.id,
         role: "no",
-        label: "Não",
+        label: resolveBranchLabel(node, "no", "Não"),
         outputSlot: 0,
         practice: getPracticeLabelEntry(node.practice, "no")
       });
@@ -1090,7 +1094,7 @@ function expandStructureNode(node, state, context) {
         from: decisionNode.id,
         to: loopEntryNodeId,
         role: "yes",
-        label: "Sim",
+        label: resolveBranchLabel(node, "yes", "Sim"),
         outputSlot: 1,
         practice: getPracticeLabelEntry(node.practice, "yes")
       });
@@ -1115,7 +1119,7 @@ function expandStructureNode(node, state, context) {
 
     return {
       entryNodeId: decisionNode.id,
-      exitPorts: [makeExitPort(decisionNode.id, "no", "Não", 0, getPracticeLabelEntry(node.practice, "no"))]
+      exitPorts: [makeExitPort(decisionNode.id, "no", resolveBranchLabel(node, "no", "Não"), 0, getPracticeLabelEntry(node.practice, "no"))]
     };
   }
 
@@ -1181,7 +1185,7 @@ function expandStructureNode(node, state, context) {
         from: decisionNode.id,
         to: entryConnectorNode.id,
         role: "loop-return",
-        label: "Sim",
+        label: resolveBranchLabel(node, "yes", "Sim"),
         outputSlot: 1,
         practice: getPracticeLabelEntry(node.practice, "yes")
       });
@@ -1189,7 +1193,7 @@ function expandStructureNode(node, state, context) {
 
     return {
       entryNodeId: entryConnectorNode.id,
-      exitPorts: [makeExitPort(decisionNode.id, "no", "Não", 0, getPracticeLabelEntry(node.practice, "no"))]
+      exitPorts: [makeExitPort(decisionNode.id, "no", resolveBranchLabel(node, "no", "Não"), 0, getPracticeLabelEntry(node.practice, "no"))]
     };
   }
 
@@ -1254,7 +1258,7 @@ function expandStructureNode(node, state, context) {
         from: controlNode.id,
         to: loopEntryNodeId,
         role: "yes",
-        label: "Sim",
+        label: resolveBranchLabel(node, "yes", "Sim"),
         outputSlot: 1,
         practice: getPracticeLabelEntry(node.practice, "yes")
       });
@@ -1297,7 +1301,7 @@ function expandStructureNode(node, state, context) {
 
     return {
       entryNodeId: initNode ? initNode.id : controlNode.id,
-      exitPorts: [makeExitPort(controlNode.id, "no", "Não", 0, getPracticeLabelEntry(node.practice, "no"))]
+      exitPorts: [makeExitPort(controlNode.id, "no", resolveBranchLabel(node, "no", "Não"), 0, getPracticeLabelEntry(node.practice, "no"))]
     };
   }
 
@@ -1322,6 +1326,7 @@ function expandStructureNode(node, state, context) {
     });
     let firstDecisionNodeId = "";
     let previousDecisionNodeId = "";
+    let previousCaseItem = null;
 
     caseList.forEach((caseItem, caseIndex) => {
       const decisionPractice = mergePractice(node.practice, caseItem.practice);
@@ -1345,7 +1350,7 @@ function expandStructureNode(node, state, context) {
           from: previousDecisionNodeId,
           to: decisionNode.id,
           role: "no",
-          label: "Não",
+          label: resolveBranchLabel(previousCaseItem, "no", "Não"),
           outputSlot: 0,
           practice: getPracticeLabelEntry(node.practice, "no")
         });
@@ -1356,7 +1361,7 @@ function expandStructureNode(node, state, context) {
           from: decisionNode.id,
           to: thenBranch.entryNodeId,
           role: "yes",
-          label: "Sim",
+          label: resolveBranchLabel(caseItem, "yes", "Sim"),
           outputSlot: 1,
           practice: getPracticeLabelEntry(decisionPractice, "yes")
         });
@@ -1372,13 +1377,14 @@ function expandStructureNode(node, state, context) {
           from: decisionNode.id,
           to: mergeNode.id,
           role: "yes",
-          label: "Sim",
+          label: resolveBranchLabel(caseItem, "yes", "Sim"),
           outputSlot: 1,
           practice: getPracticeLabelEntry(decisionPractice, "yes")
         });
       }
 
       previousDecisionNodeId = decisionNode.id;
+      previousCaseItem = caseItem;
     });
 
     const elseBranch = expandSequenceItems(node.elseBranch, state, {
@@ -1391,7 +1397,7 @@ function expandStructureNode(node, state, context) {
           from: previousDecisionNodeId,
           to: elseBranch.entryNodeId,
           role: "no",
-          label: "Não",
+          label: resolveBranchLabel(previousCaseItem, "no", "Não"),
           outputSlot: 0,
           practice: getPracticeLabelEntry(node.practice, "no")
         });
@@ -1407,7 +1413,7 @@ function expandStructureNode(node, state, context) {
           from: previousDecisionNodeId,
           to: mergeNode.id,
           role: "no",
-          label: "Não",
+          label: resolveBranchLabel(previousCaseItem, "no", "Não"),
           outputSlot: 0,
           practice: getPracticeLabelEntry(node.practice, "no")
         });
@@ -1508,7 +1514,7 @@ function expandStructureNode(node, state, context) {
           from: previousDecisionNodeId,
           to: defaultBranch.entryNodeId,
           role: "case-default",
-          label: "Outro caso",
+          label: resolveBranchLabel(node, "default", "Outro caso"),
           outputSlot: 0,
           practice: getPracticeLabelEntry(node.practice, "default")
         });
@@ -1524,7 +1530,7 @@ function expandStructureNode(node, state, context) {
           from: previousDecisionNodeId,
           to: mergeNode.id,
           role: "case-default",
-          label: "Outro caso",
+          label: resolveBranchLabel(node, "default", "Outro caso"),
           outputSlot: 0,
           practice: getPracticeLabelEntry(node.practice, "default")
         });

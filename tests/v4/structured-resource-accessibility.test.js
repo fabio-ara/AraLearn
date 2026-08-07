@@ -13,8 +13,14 @@ test("tabela informa dimensões, cabeçalhos e idioma sem alterar sua estrutura 
   }]);
 
   assert.match(html, /<table class="runtime-table" aria-label="Tabela com 2 colunas e 1 linha\. Colunas: Termo; Definição\.">/u);
-  assert.match(html, /<th scope="col" lang="he" dir="rtl" class="is-align-left is-wrap">Termo<\/th>/u);
-  assert.match(html, /<td lang="he" dir="rtl" class="is-align-left is-wrap">ידע<\/td>/u);
+  assert.match(
+    html,
+    /<th scope="col" lang="he" dir="rtl" class="is-align-left is-wrap"><div class="runtime-table-cell-content">Termo<\/div><\/th>/u
+  );
+  assert.match(
+    html,
+    /<td lang="he" dir="rtl" class="is-align-left is-wrap"><div class="runtime-table-cell-content"><p class="runtime-markdown-paragraph" lang="he" dir="rtl">ידע<\/p><\/div><\/td>/u
+  );
 });
 
 test("mapa de relações descreve conjuntos e ligações e neutraliza marcação", () => {

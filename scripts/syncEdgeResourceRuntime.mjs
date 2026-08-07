@@ -23,6 +23,7 @@ const files = [
   ["src/domain/cards.js", "domain/cards.js"],
   ["src/domain/resources.js", "domain/resources.js"],
   ["src/domain/formulaExpression.js", "domain/formulaExpression.js"],
+  ["src/flowchart/flowchartStructure.js", "flowchart/flowchartStructure.js"],
   ["src/persistence/contractToRelationalRows.js", "persistence/contractToRelationalRows.js"],
   ["src/persistence/canonicalCourseHash.js", "persistence/canonicalCourseHash.js"],
   ["src/persistence/relationalSchema.js", "persistence/relationalSchema.js"],

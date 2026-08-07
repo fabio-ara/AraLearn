@@ -77,6 +77,113 @@ test("fixture visual faz round-trip exato sem persistir geometria de grafo", asy
   assert.ok(rows.courses.every((row) => row.id !== row.contractKey));
 });
 
+test("rótulos autorais de fluxos fazem round-trip sem reconstruir branches legados", async () => {
+  const source = await readJson(fixture("v4/project-minimal.json"));
+  const microsequence = source.courses[0].modules[0].lessons[0].microsequences[0];
+  microsequence.cards = [{
+    id: "card-flow-branch-labels",
+    position: 1,
+    resource: "flow",
+    kind: "theory",
+    exercise: "none",
+    title: "Decisões rotuladas",
+    structure: {
+      id: "root",
+      kind: "sequence",
+      items: [
+        {
+          id: "binary-decision",
+          kind: "if_then_else",
+          condition: "usuário autenticado",
+          branchLabels: {
+            yes: "Sessão válida",
+            no: "Sessão ausente"
+          },
+          thenBranch: [{ id: "allow", kind: "process", text: "Liberar acesso" }],
+          elseBranch: [{ id: "deny", kind: "process", text: "Solicitar autenticação" }]
+        },
+        {
+          id: "role-chain",
+          kind: "if_chain",
+          cases: [
+            {
+              id: "admin-case",
+              condition: "perfil é administrador",
+              branchLabels: {
+                yes: "É administrador",
+                no: "Não é administrador"
+              },
+              thenBranch: [{ id: "admin-area", kind: "process", text: "Abrir administração" }]
+            },
+            {
+              id: "author-case",
+              condition: "perfil é autor",
+              branchLabels: {
+                yes: "É autor",
+                no: "Não é autor"
+              },
+              thenBranch: [{ id: "author-area", kind: "process", text: "Abrir autoria" }]
+            }
+          ],
+          elseBranch: [{ id: "student-area", kind: "process", text: "Abrir estudo" }]
+        },
+        {
+          id: "role-switch",
+          kind: "switch_case",
+          expression: "perfil",
+          branchLabels: { default: "Demais perfis" },
+          cases: [
+            {
+              id: "switch-admin",
+              match: "administrador",
+              body: [{ id: "switch-admin-area", kind: "process", text: "Abrir administração" }]
+            }
+          ],
+          defaultBranch: [{ id: "switch-student-area", kind: "process", text: "Abrir estudo" }]
+        }
+      ]
+    },
+    after: "Os rótulos tornam cada desvio explícito."
+  }];
+
+  assert.equal(validateProjectDocument(source).ok, true);
+  const rows = contractToRelationalRows(source);
+  const binaryRow = rows.flowNodes.find((row) => row.contractKey === "binary-decision");
+  const switchRow = rows.flowNodes.find((row) => row.contractKey === "role-switch");
+  const adminCaseRow = rows.flowCases.find((row) => row.contractKey === "admin-case");
+
+  assert.deepEqual(
+    [binaryRow.branchLabelYes, binaryRow.branchLabelNo],
+    ["Sessão válida", "Sessão ausente"]
+  );
+  assert.equal(switchRow.branchLabelDefault, "Demais perfis");
+  assert.deepEqual(
+    [adminCaseRow.caseKind, adminCaseRow.branchLabelYes, adminCaseRow.branchLabelNo],
+    ["if_chain", "É administrador", "Não é administrador"]
+  );
+  assert.ok(rows.flowCases.every((row) => ["if_chain", "switch"].includes(row.caseKind)));
+  assert.equal(rows.flowCases.some((row) => row.caseKind === "if_chain_branch"), false);
+  assert.equal(rows.flowNodes.some((row) => row.parentCaseId && row.branch === "items"), false);
+  assert.ok(rows.flowNodes.filter((row) => row.parentCaseId).every((row) => (
+    row.branch === "thenBranch" || row.branch === "body"
+  )));
+  assert.equal(rows.flowNodes.some((row) => Object.hasOwn(row, "hasBranches")), false);
+  assert.deepEqual(relationalRowsToContract(rows), source);
+
+  const legacy = structuredClone(source);
+  legacy.courses[0].modules[0].lessons[0].microsequences[0].cards[0]
+    .structure.items[1].branches = [{
+      id: "legacy-branch",
+      condition: "campo legado",
+      items: [{ id: "legacy-process", kind: "process", text: "Não persistir" }]
+    }];
+  assert.throws(
+    () => contractToRelationalRows(legacy),
+    (caught) => caught instanceof RelationalMappingError
+      && caught.details.some((entry) => entry.message.includes(".branches:unknown_field"))
+  );
+});
+
 test("todos os recursos, blocos e filhos reais preservam igualdade semântica", async () => {
   const courses = await Promise.all([
     readJson(repositoryFile("supabase/fixtures/catalog/dataprev-analista-processamento-seed-course.json")),

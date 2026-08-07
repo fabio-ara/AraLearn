@@ -133,7 +133,7 @@ function renderMarkdownInline(text) {
   return html + (state.inCode ? "</code>" : "");
 }
 
-function renderMarkdownParagraph(text, textMetadata = null) {
+function renderMarkdownParagraph(text, textMetadata = null, options = {}) {
   const source = String(text || "").replace(/\r/g, "");
   const lines = source.split("\n");
   const blocks = [];
@@ -144,7 +144,7 @@ function renderMarkdownParagraph(text, textMetadata = null) {
     if (!paragraphLines.length) return;
     blocks.push(
       '<p class="runtime-markdown-paragraph"' + renderTextAttributes(textMetadata) + '>' +
-      renderMarkdownInline(paragraphLines.join(" ")) +
+      renderMarkdownInline(paragraphLines.join(options.preserveLineBreaks ? "\n" : " ")) +
       "</p>"
     );
     paragraphLines = [];
@@ -693,7 +693,10 @@ function renderTableBlock(block, renderOptions = {}, blockKey = "runtime-table")
     '<div class="runtime-block runtime-table-block"' + renderTextAttributes(block) + '>' +
     `<div class="runtime-table-wrap is-layout-${layout}"><div class="runtime-table-frame"><table class="runtime-table" aria-label="` +
     escapeHtmlAttribute(accessibleLabel) + '">' +
-    (columns.length ? "<thead><tr>" + columns.map((column, columnIndex) => `<th scope="col"${renderTextAttributes(block)}${columnClass(columnIndex)}${manualEditAttributes(renderOptions, `columns[${columnIndex}]`, column, `Editar cabeçalho ${columnIndex + 1}`)}>${renderMarkdownInline(column)}</th>`).join("") + "</tr></thead>" : "") +
+    (columns.length ? "<thead><tr>" + columns.map((column, columnIndex) =>
+      `<th scope="col"${renderTextAttributes(block)}${columnClass(columnIndex)}>` +
+      `<div class="runtime-table-cell-content"${manualEditAttributes(renderOptions, `columns[${columnIndex}]`, column, `Editar cabeçalho ${columnIndex + 1}`)}>${renderMarkdownInline(column)}</div></th>`
+    ).join("") + "</tr></thead>" : "") +
     "<tbody>" +
     rows
       .map((row, rowIndex) =>
@@ -706,9 +709,12 @@ function renderTableBlock(block, renderOptions = {}, blockKey = "runtime-table")
             "runtime-table-gap-blank"
           );
           const classes = `${columnClass(columnIndex).slice(8, -1)}${gapHtml ? " runtime-table-cell-gap" : ""}`;
-          return `<td${renderTextAttributes(block)} class="${classes}"${manualEditAttributes(renderOptions, `rows[${rowIndex}][${columnIndex}]`, cell, `Editar célula ${rowIndex + 1}, ${columnIndex + 1}`)}>` +
-            (gapHtml ?? renderMarkdownInline(String(cell ?? ""))) +
-            "</td>";
+          return `<td${renderTextAttributes(block)} class="${classes}">` +
+            `<div class="runtime-table-cell-content"${manualEditAttributes(renderOptions, `rows[${rowIndex}][${columnIndex}]`, cell, `Editar célula ${rowIndex + 1}, ${columnIndex + 1}`)}>` +
+            (gapHtml ?? renderMarkdownParagraph(String(cell ?? ""), block, {
+              preserveLineBreaks: true
+            })) +
+            "</div></td>";
         }).join("") +
         "</tr>"
       )
@@ -2507,7 +2513,14 @@ function getFlowchartDisplayedRoutePoints(route, sourceNode, targetNode, layout)
   return points;
 }
 
-function renderFlowchartRoute(route, sourceNode, targetNode, layout, practiceEnabled = false) {
+function renderFlowchartRoute(
+  route,
+  sourceNode,
+  targetNode,
+  layout,
+  practiceEnabled = false,
+  renderOptions = {}
+) {
   const points = getFlowchartDisplayedRoutePoints(route, sourceNode, targetNode, layout);
   if (points.length < 2) return "";
   const label = String(route?.label || route?.link?.label || "").trim();
@@ -2528,7 +2541,12 @@ function renderFlowchartRoute(route, sourceNode, targetNode, layout, practiceEna
         escapeHtml(labelPos.y) +
         '" text-anchor="' +
         escapeHtml(labelPos.anchor || "middle") +
-        '">' +
+        '"' + manualEditAttributes(
+          renderOptions,
+          route?.link?.manualEditPath,
+          label,
+          "Editar rótulo do ramo"
+        ) + '>' +
         escapeHtml(label) +
         "</text>"
       : "")
@@ -2565,58 +2583,94 @@ export function resolveRuntimeFlowchartProjection(block) {
   return deriveFlowchartProjectionFromStructure(block.structure);
 }
 
-function listFlowStructureTextPaths(structure) {
-  const entries = [];
-  const add = (ownerId, path, value) => {
-    const normalized = normalizeInlineText(value);
-    if (ownerId && normalized) entries.push({ ownerId, path, value: normalized });
-  };
+function listFlowStructureManualBindings(structure) {
+  const nodePaths = new Map();
+  const nodeSegments = new Map();
+  const branchPaths = new Map();
+  const branchKey = (nodeId, role) => `${String(nodeId || "")}\u0000${String(role || "")}`;
+  const projectedCaseId = (node, item, index) => index === 0
+    ? String(node?.id || "")
+    : `${String(node?.id || "")}__case__${String(item?.id || index)}`;
   const visitList = (items, path) => {
     (Array.isArray(items) ? items : []).forEach((item, index) => {
       visitNode(item, `${path}[${index}]`);
     });
   };
-  const visitNode = (node, path, inheritedOwnerId = "") => {
+  const bindBinaryBranches = (nodeId, path) => {
+    branchPaths.set(branchKey(nodeId, "yes"), `${path}.branchLabels.yes`);
+    branchPaths.set(branchKey(nodeId, "no"), `${path}.branchLabels.no`);
+  };
+  const visitNode = (node, path) => {
     if (!node || typeof node !== "object" || Array.isArray(node)) return;
-    const ownerId = String(node.id || inheritedOwnerId || "");
-    ["text", "condition", "init", "update", "expression", "iterator", "iterable"].forEach(
-      (field) => add(ownerId, `${path}.${field}`, node[field])
-    );
+    const nodeId = String(node.id || "");
+    if (["start", "end", "input", "output", "process"].includes(node.kind)) {
+      nodePaths.set(nodeId, `${path}.text`);
+    } else if (["if_then", "if_then_else", "while", "do_while"].includes(node.kind)) {
+      nodePaths.set(nodeId, `${path}.condition`);
+      bindBinaryBranches(nodeId, path);
+      if (node.kind === "do_while") {
+        branchPaths.set(
+          branchKey(nodeId, "loop-return"),
+          `${path}.branchLabels.yes`
+        );
+      }
+    } else if (node.kind === "for") {
+      nodePaths.set(nodeId, `${path}.condition`);
+      if (node.init) nodePaths.set(`${nodeId}__init`, `${path}.init`);
+      if (node.update) nodePaths.set(`${nodeId}__update`, `${path}.update`);
+      bindBinaryBranches(nodeId, path);
+    } else if (node.kind === "if_chain") {
+      (Array.isArray(node.cases) ? node.cases : []).forEach((item, index) => {
+        const casePath = `${path}.cases[${index}]`;
+        const decisionId = projectedCaseId(node, item, index);
+        nodePaths.set(decisionId, `${casePath}.condition`);
+        bindBinaryBranches(decisionId, casePath);
+        visitList(item?.thenBranch, `${casePath}.thenBranch`);
+      });
+    } else if (node.kind === "switch_case") {
+      const cases = Array.isArray(node.cases) ? node.cases : [];
+      cases.forEach((item, index) => {
+        const casePath = `${path}.cases[${index}]`;
+        const decisionId = projectedCaseId(node, item, index);
+        nodeSegments.set(decisionId, [
+          { path: `${path}.expression`, value: String(node.expression || "") },
+          { literal: " = " },
+          { path: `${casePath}.match`, value: String(item?.match || "") },
+          { literal: "?" }
+        ]);
+        branchPaths.set(branchKey(decisionId, "case-match"), `${casePath}.match`);
+        if (index === cases.length - 1) {
+          branchPaths.set(branchKey(decisionId, "case-default"), `${path}.branchLabels.default`);
+        }
+        visitList(item?.body, `${casePath}.body`);
+      });
+    }
+
     ["items", "thenBranch", "elseBranch", "body", "defaultBranch"].forEach((field) => {
       visitList(node[field], `${path}.${field}`);
     });
-    (Array.isArray(node.cases) ? node.cases : []).forEach((item, index) => {
-      const casePath = `${path}.cases[${index}]`;
-      add(ownerId, `${casePath}.condition`, item?.condition);
-      add(ownerId, `${casePath}.match`, item?.match);
-      visitList(item?.thenBranch, `${casePath}.thenBranch`);
-      visitList(item?.body, `${casePath}.body`);
-    });
-    (Array.isArray(node.branches) ? node.branches : []).forEach((item, index) => {
-      const branchPath = `${path}.branches[${index}]`;
-      add(ownerId, `${branchPath}.condition`, item?.condition);
-      visitList(item?.items, `${branchPath}.items`);
-    });
   };
   visitNode(structure, "structure");
-  return entries;
+  return { nodePaths, nodeSegments, branchPaths, branchKey };
 }
 
-function attachFlowManualEditPaths(projection, structure) {
+function attachFlowManualEditPaths(projection, structure = projection?.structure) {
   if (!projection || !structure) return projection;
-  const pathsByKey = new Map();
-  listFlowStructureTextPaths(structure).forEach((entry) => {
-    const key = `${entry.ownerId}\u0000${entry.value}`;
-    const paths = pathsByKey.get(key) || [];
-    paths.push(entry.path);
-    pathsByKey.set(key, paths);
-  });
+  const bindings = listFlowStructureManualBindings(structure);
   return {
     ...projection,
-    nodes: (Array.isArray(projection.nodes) ? projection.nodes : []).map((node) => {
-      const key = `${String(node?.originId || node?.id || "")}\u0000${normalizeInlineText(node?.text)}`;
-      const paths = [...new Set(pathsByKey.get(key) || [])];
-      return paths.length === 1 ? { ...node, manualEditPath: paths[0] } : node;
+    nodes: (Array.isArray(projection.nodes) ? projection.nodes : []).map((node) => ({
+      ...node,
+      ...(bindings.nodePaths.has(String(node?.id || ""))
+        ? { manualEditPath: bindings.nodePaths.get(String(node.id)) }
+        : {}),
+      ...(bindings.nodeSegments.has(String(node?.id || ""))
+        ? { manualEditSegments: bindings.nodeSegments.get(String(node.id)) }
+        : {})
+    })),
+    links: (Array.isArray(projection.links) ? projection.links : []).map((link) => {
+      const path = bindings.branchPaths.get(bindings.branchKey(link?.fromNodeId, link?.role));
+      return path ? { ...link, manualEditPath: path } : link;
     })
   };
 }
@@ -2753,13 +2807,29 @@ function renderFlowchartBoardNode(node, layout, options = {}) {
       (currentText ? renderMarkdownInline(currentText) : "&nbsp;") +
       "</button>";
   } else if (!hideText) {
+    const manualSegments = Array.isArray(node.manualEditSegments)
+      ? node.manualEditSegments
+      : [];
+    const manualTextHtml = manualSegments.length
+      ? manualSegments.map((segment) => segment.path
+          ? '<span' + manualEditAttributes(
+              options.renderOptions,
+              segment.path,
+              segment.value,
+              "Editar rótulo do fluxograma"
+            ) + '>' + renderMarkdownInline(segment.value) + "</span>"
+          : escapeHtml(segment.literal || "")
+        ).join("")
+      : renderMarkdownInline(currentText);
     textHtml = '<div class="runtime-flow-board-copy" dir="auto"' +
-      manualEditAttributes(
-        options.renderOptions,
-        node.manualEditPath,
-        currentText,
-        "Editar texto do fluxograma"
-      ) + '>' + renderMarkdownInline(currentText) + "</div>";
+      (manualSegments.length
+        ? ""
+        : manualEditAttributes(
+            options.renderOptions,
+            node.manualEditPath,
+            currentText,
+            "Editar rótulo do fluxograma"
+          )) + '>' + manualTextHtml + "</div>";
   }
 
   return (
@@ -2996,7 +3066,8 @@ function renderProjectedFlowchart(block, renderOptions = {}, blockKey = "flowcha
       nodeById[route?.link?.fromNodeId],
       nodeById[route?.link?.toNodeId],
       layout,
-      practiceEnabled
+      practiceEnabled,
+      renderOptions
     ))
     .join("");
   const arrowsSvg = routeEntries

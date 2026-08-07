@@ -327,7 +327,72 @@ test("edição visual usa os caminhos canônicos do recurso principal e do fluxo
   assert.match(flowHtml, /data-manual-edit-path="prompt"/u);
   assert.match(flowHtml, /data-manual-edit-path="structure\.items\[0\]\.text"/u);
   assert.match(flowHtml, /data-manual-edit-path="structure\.items\[1\]\.condition"/u);
+  assert.match(flowHtml, /data-manual-edit-path="structure\.items\[1\]\.branchLabels\.yes"/u);
+  assert.match(flowHtml, /data-manual-edit-path="structure\.items\[1\]\.branchLabels\.no"/u);
   assert.match(flowHtml, /data-manual-edit-path="structure\.items\[1\]\.thenBranch\[0\]\.text"/u);
+
+  const doWhileHtml = renderCardRuntimeBlocks({
+    id: "card-do-while",
+    position: 1,
+    resource: "flow",
+    kind: "theory",
+    exercise: "none",
+    title: "Repetição pós-teste",
+    structure: {
+      id: "root",
+      kind: "sequence",
+      items: [{
+        id: "repeat",
+        kind: "do_while",
+        condition: "há outro item?",
+        body: [{ id: "consume", kind: "process", text: "Consumir item" }]
+      }, {
+        id: "done",
+        kind: "end",
+        text: "Concluído"
+      }]
+    },
+    after: ""
+  }, {
+    resourceSelectionEnabled: true,
+    resourceSelectionTargetIds: ["", "main"],
+    manualEditingTargetId: "main"
+  });
+  assert.match(doWhileHtml, /data-manual-edit-path="structure\.items\[0\]\.branchLabels\.yes"/u);
+  assert.match(doWhileHtml, /data-manual-edit-path="structure\.items\[0\]\.branchLabels\.no"/u);
+
+  const switchHtml = renderCardRuntimeBlocks({
+    id: "card-switch",
+    position: 1,
+    resource: "flow",
+    kind: "theory",
+    exercise: "none",
+    title: "Seleção",
+    structure: {
+      id: "root",
+      kind: "sequence",
+      items: [{
+        id: "selection",
+        kind: "switch_case",
+        expression: "perfil",
+        cases: [{
+          id: "admin",
+          match: "administrador",
+          body: [{ id: "grant", kind: "process", text: "Liberar painel" }]
+        }],
+        defaultBranch: [{ id: "deny", kind: "process", text: "Negar painel" }]
+      }]
+    },
+    after: ""
+  }, {
+    resourceSelectionEnabled: true,
+    resourceSelectionTargetIds: ["", "main"],
+    manualEditingTargetId: "main"
+  });
+  assert.match(switchHtml, /data-manual-edit-path="structure\.items\[0\]\.expression"/u);
+  assert.match(switchHtml, /data-manual-edit-path="structure\.items\[0\]\.cases\[0\]\.match"/u);
+  assert.match(switchHtml, /data-manual-edit-path="structure\.items\[0\]\.branchLabels\.default"/u);
+  assert.match(switchHtml, /data-manual-edit-path="structure\.items\[0\]\.defaultBranch\[0\]\.text"/u);
 });
 
 test("permissão sem autoria omite completamente os modos de edição", () => {
