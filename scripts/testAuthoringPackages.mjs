@@ -458,6 +458,18 @@ for (const definition of AUTHORING_WORKSPACE_MCP_TOOLS) {
     `components.schemas não contém ${inputComponentName}.`
   );
   const inputContract = actionInputValidator(actionSchema, definition.name);
+  assert.equal(
+    inputContract.resolved.type,
+    "object",
+    `${definition.name} precisa expor o corpo como objeto na raiz para a Action.`
+  );
+  assert.equal(
+    inputContract.resolved.properties != null
+      && typeof inputContract.resolved.properties === "object"
+      && !Array.isArray(inputContract.resolved.properties),
+    true,
+    `${definition.name} precisa expor properties na raiz para a Action.`
+  );
   assert.deepEqual(
     inputContract.resolved,
     definition.inputSchema,
@@ -737,6 +749,65 @@ for (const [operationId, payload] of structuralActionCases) {
       + inputContract.errorsText()
   );
   assert.doesNotThrow(() => mapAuthoringMcpToolCall(operationId, payload));
+}
+
+const educationalWorkspaceInput = actionInputValidator(
+  actionSchema,
+  "gerirWorkspaceEducacional"
+);
+assert.deepEqual(
+  educationalWorkspaceInput.resolved.properties.operation.enum,
+  [
+    "read",
+    "create",
+    "update",
+    "invite",
+    "accept_invite",
+    "cancel_invite",
+    "set_role",
+    "remove_member",
+    "transfer_owner",
+    "leave",
+    "list_comments",
+    "respond_comment",
+    "set_comment_status",
+    "link_comment_correction",
+    "list_observations",
+    "create_observation",
+    "delete_observation"
+  ]
+);
+for (const payload of [
+  {
+    operation: "read",
+    workspaceId: "10000000-0000-4000-8000-000000000001"
+  },
+  {
+    requestId: "action-workspace-invite-0001",
+    operation: "invite",
+    workspaceId: "10000000-0000-4000-8000-000000000001",
+    email: "author@example.test",
+    role: "author"
+  },
+  {
+    requestId: "action-observation-create-0001",
+    operation: "create_observation",
+    workspaceId: "10000000-0000-4000-8000-000000000001",
+    entityType: "lesson",
+    entityPath: ["course-1", "module-1", "lesson-1"],
+    body: "Rever a progressão deste exemplo."
+  }
+]) {
+  assert.equal(
+    educationalWorkspaceInput.validate(payload),
+    true,
+    `gerirWorkspaceEducacional/${payload.operation} perdeu argumentos no YAML: `
+      + educationalWorkspaceInput.errorsText()
+  );
+  assert.doesNotThrow(() => mapAuthoringMcpToolCall(
+    "gerirWorkspaceEducacional",
+    payload
+  ));
 }
 
 const structureInput = actionInputValidator(

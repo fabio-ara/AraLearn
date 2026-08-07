@@ -1694,12 +1694,10 @@ const WORKSPACE_OBSERVATION_DATA_SCHEMA = Object.freeze({
     })
   ]
 });
-const EDUCATIONAL_WORKSPACE_WITH_OBSERVATIONS_INPUT_SCHEMA = Object.freeze({
-  oneOf: Object.freeze([
-    ...EDUCATIONAL_WORKSPACE_INPUT_SCHEMA.oneOf,
-    ...WORKSPACE_OBSERVATION_INPUT_SCHEMA.oneOf
-  ])
-});
+const EDUCATIONAL_WORKSPACE_WITH_OBSERVATIONS_INPUT_SCHEMA = discriminatedInputSchema([
+  ...EDUCATIONAL_WORKSPACE_INPUT_SCHEMA.oneOf,
+  ...WORKSPACE_OBSERVATION_INPUT_SCHEMA.oneOf
+]);
 const EDUCATIONAL_WORKSPACE_WITH_OBSERVATIONS_DATA_SCHEMA = Object.freeze({
   type: "object",
   anyOf: Object.freeze([
@@ -2464,8 +2462,15 @@ function schemaWithOperation(inputSchema, operation) {
   });
 }
 
-function groupedInputSchema(branches, { write = false } = {}) {
-  const operations = Object.freeze(branches.map(({ operation }) => operation));
+function discriminatedInputSchema(alternatives, { write = false } = {}) {
+  const frozenAlternatives = Object.freeze([...alternatives]);
+  const operations = Object.freeze(frozenAlternatives.map((alternative) => {
+    const operation = alternative?.properties?.operation?.const;
+    if (typeof operation !== "string" || !operation) {
+      throw new TypeError("Variante discriminada sem operation constante.");
+    }
+    return operation;
+  }));
   return Object.freeze({
     type: "object",
     required: Object.freeze(write
@@ -2475,10 +2480,14 @@ function groupedInputSchema(branches, { write = false } = {}) {
       ...(write ? { requestId: REQUEST_ID } : {}),
       operation: Object.freeze({ type: "string", enum: operations })
     }),
-    oneOf: Object.freeze(branches.map(({ operation, toolName }) =>
-      schemaWithOperation(individualTool(toolName).inputSchema, operation)
-    ))
+    oneOf: frozenAlternatives
   });
+}
+
+function groupedInputSchema(branches, { write = false } = {}) {
+  return discriminatedInputSchema(branches.map(({ operation, toolName }) =>
+    schemaWithOperation(individualTool(toolName).inputSchema, operation)
+  ), { write });
 }
 
 function groupedDataSchema(branches) {
