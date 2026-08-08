@@ -22,7 +22,15 @@ const COURSE_A = "30000000-0000-4000-8000-000000000002";
 const PLACEMENT_Z = "40000000-0000-4000-8000-000000000001";
 const PLACEMENT_A = "40000000-0000-4000-8000-000000000002";
 
-async function prepareDatabase() {
+function withLineEnding(value, lineEnding) {
+  return value.replace(/\r\n?|\n/gu, "\n").replace(/\n/gu, lineEnding);
+}
+
+async function prepareDatabase({
+  historicalLineEnding = "\r\n",
+  migrationLineEnding = null,
+  transformHistoricalSchema = (value) => value
+} = {}) {
   const database = new PGlite();
   const historicalSchema = `
     create role anon;
@@ -338,15 +346,61 @@ async function prepareDatabase() {
       ('${PLACEMENT_Z}', '${COLLECTION_Z}', '${COURSE_Z}', 99),
       ('${PLACEMENT_A}', '${COLLECTION_Z}', '${COURSE_A}', 0);
   `;
-  // A função implantada foi criada por uma migration com CRLF. O PostgreSQL
-  // conserva essas quebras em prosrc e pg_get_functiondef, enquanto a migration
-  // corretiva versionada usa LF.
-  await database.exec(historicalSchema.replace(/\n/gu, "\r\n"));
-  await database.exec("drop function private.require_workspace_actor_v4(uuid,text)");
-  await database.exec(await fs.readFile(alphabeticCatalogMigrationUrl, "utf8"));
-  await database.exec(await fs.readFile(catalogRuntimeMigrationUrl, "utf8"));
-  return database;
+  // O PostgreSQL conserva as quebras do corpo em prosrc e
+  // pg_get_functiondef. O corte deve ser independente do EOL usado tanto pela
+  // migration histórica quanto pela migration corretiva.
+  try {
+    await database.exec(withLineEnding(
+      transformHistoricalSchema(historicalSchema),
+      historicalLineEnding
+    ));
+    await database.exec("drop function private.require_workspace_actor_v4(uuid,text)");
+    const migration = await fs.readFile(alphabeticCatalogMigrationUrl, "utf8");
+    await database.exec(migrationLineEnding === null
+      ? migration
+      : withLineEnding(migration, migrationLineEnding));
+    await database.exec(await fs.readFile(catalogRuntimeMigrationUrl, "utf8"));
+    return database;
+  } catch (error) {
+    await database.close();
+    throw error;
+  }
 }
+
+test("corte da publicação independe de LF ou CRLF", async (t) => {
+  const combinations = [
+    { historicalLineEnding: "\r\n", migrationLineEnding: "\n" },
+    { historicalLineEnding: "\n", migrationLineEnding: "\r\n" }
+  ];
+
+  for (const lineEndings of combinations) {
+    const database = await prepareDatabase(lineEndings);
+    t.after(() => database.close());
+    const publication = await database.query(`
+      select pg_get_functiondef(
+        'public.publish_authoring_workspace_course_v5(
+          uuid,uuid,text,text,bigint,text,text,uuid,text,uuid,uuid,jsonb,jsonb
+        )'::regprocedure
+      ) as definition
+    `);
+    assert.doesNotMatch(publication.rows[0].definition, /\bposition\b/u);
+  }
+});
+
+test("corte da publicação falha fechado diante de corpo desconhecido", async () => {
+  await assert.rejects(
+    prepareDatabase({
+      transformHistoricalSchema: (value) => value.replace(
+        `set collection_id = p_collection_id,
+        position = coalesce((`,
+        `set collection_id = p_collection_id,
+        position = 1 + coalesce((`
+      )
+    }),
+    (error) => error?.code === "55000"
+      && error?.message === "A publicação corrente não corresponde ao corte alfabético."
+  );
+});
 
 test("migration remove posições e contratos de reordenação", async (t) => {
   const database = await prepareDatabase();

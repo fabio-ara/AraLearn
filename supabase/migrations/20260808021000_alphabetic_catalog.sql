@@ -18,6 +18,7 @@ declare
     'public.publish_authoring_workspace_course_v5(uuid,uuid,text,text,bigint,text,text,uuid,text,uuid,uuid,jsonb,jsonb)'
   );
   v_definition text;
+  v_match_count integer;
   v_previous text := $previous$
     update public.catalog_collection_courses item
     set collection_id = p_collection_id,
@@ -59,15 +60,22 @@ $previous$;
 $current$;
 begin
   if v_signature is null then return; end if;
-  -- Migrations históricas podem conservar CRLF no corpo de funções criado a
-  -- partir do Windows. pg_get_functiondef preserva esses caracteres em
-  -- prosrc; normalize somente a definição transitória antes da substituição.
-  v_definition := replace(
-    pg_get_functiondef(v_signature),
-    E'\r\n',
-    E'\n'
-  );
-  if strpos(v_definition, v_previous) = 0 then
+  -- Tanto a função histórica quanto esta própria migration podem chegar ao
+  -- PostgreSQL com LF ou CRLF. Canonicalize os três textos antes do corte; do
+  -- contrário, o checkout do runner passa a influenciar o contrato SQL.
+  v_definition := replace(replace(
+    pg_get_functiondef(v_signature), E'\r\n', E'\n'
+  ), E'\r', E'\n');
+  v_previous := replace(replace(
+    v_previous, E'\r\n', E'\n'
+  ), E'\r', E'\n');
+  v_current := replace(replace(
+    v_current, E'\r\n', E'\n'
+  ), E'\r', E'\n');
+  v_match_count := (
+    length(v_definition) - length(replace(v_definition, v_previous, ''))
+  ) / length(v_previous);
+  if v_match_count <> 1 then
     raise exception 'A publicação corrente não corresponde ao corte alfabético.'
       using errcode = '55000';
   end if;

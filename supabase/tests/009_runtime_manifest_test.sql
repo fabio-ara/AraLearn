@@ -160,32 +160,32 @@ select has_trigger(
   'a proteção estrutural cobre toda mutação da coleção Outros'
 );
 
-select has_function(
+select hasnt_function(
   'public',
   'apply_situated_comment_batch_v1',
   array['uuid', 'jsonb'],
-  'observações situadas usam uma RPC própria'
+  'a RPC isolada de observações foi retirada no estado pessoal unificado'
 );
 
 select function_privs_are(
   'public',
-  'apply_situated_comment_batch_v1',
-  array['uuid', 'jsonb'],
+  'mutate_trail_personal_state_v1',
+  array['uuid', 'bigint', 'jsonb', 'uuid'],
   'authenticated',
   array['EXECUTE'],
-  'somente a conta autenticada sincroniza suas observações'
+  'somente a conta autenticada altera seu estado pessoal de Trilhas'
 );
 
 select ok(
   (public.get_aralearn_runtime_manifest() -> 'features')
-    ? 'situated-personal-comments-v1',
-  'o manifesto anuncia observações pessoais situadas'
+    ? 'situated-trail-observations-v1',
+  'o manifesto anuncia observações situadas no estado de Trilhas'
 );
 
 select ok(
   (public.get_aralearn_runtime_manifest() -> 'features')
-    ? 'workspace-pedagogical-comments-v1',
-  'o manifesto anuncia triagem contextual das observações'
+    ? 'workspace-trail-observations-v1',
+  'o manifesto anuncia triagem autoral das observações de Trilhas'
 );
 
 select ok(
