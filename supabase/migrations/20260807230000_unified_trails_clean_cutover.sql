@@ -32,6 +32,7 @@ drop trigger if exists lesson_progress_sync on public.lesson_progress;
 drop trigger if exists card_progress_sync on public.card_progress;
 drop trigger if exists card_comments_sync on public.card_comments;
 drop trigger if exists card_comments_infer_workspace_v2 on public.card_comments;
+drop trigger if exists infer_situated_comment_workspace_v2 on public.card_comments;
 drop function if exists private.infer_situated_comment_workspace_v2();
 
 -- As tabelas antigas não participam mais de membership nem das observações

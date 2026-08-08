@@ -28,7 +28,6 @@ const FEATURES = [
   "workspace-publication-bindings",
   "unchanged-publication-short-circuit",
   "bounded-authoring-events",
-  "partial-private-publication",
   "microtheory-review-projection",
   "workspace-event-cursor-pagination",
   "workspace-microsequence-card-pagination",

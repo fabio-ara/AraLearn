@@ -975,6 +975,7 @@ async function main() {
     }
   }
   for (const retiredFeature of [
+    "partial-private-publication",
     "situated-personal-comments-v1",
     "workspace-pedagogical-comments-v1",
     "non-punitive-study-state-v1",

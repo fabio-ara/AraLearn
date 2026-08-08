@@ -22,6 +22,18 @@ const cleanCutoverUrl = new URL(
   "../../supabase/migrations/20260807230000_unified_trails_clean_cutover.sql",
   import.meta.url
 );
+const runtimeManifestExecutionUrl = new URL(
+  "../../supabase/migrations/20260808010000_runtime_manifest_execution.sql",
+  import.meta.url
+);
+const runtimeManifestContractUrl = new URL(
+  "../../supabase/migrations/20260808011000_runtime_manifest_contract.sql",
+  import.meta.url
+);
+const runtimeManifestSearchPathUrl = new URL(
+  "../../supabase/migrations/20260808012000_runtime_manifest_search_path.sql",
+  import.meta.url
+);
 
 const USER = "00000000-0000-4000-8000-000000000001";
 const OTHER = "00000000-0000-4000-8000-000000000002";
@@ -582,19 +594,48 @@ async function prepare({
   await db.exec(await fs.readFile(stateUrl, "utf8"));
   await db.exec(await fs.readFile(observationUrl, "utf8"));
   await db.exec(await fs.readFile(cleanCutoverUrl, "utf8"));
+  await db.exec(await fs.readFile(runtimeManifestExecutionUrl, "utf8"));
+  await db.exec(await fs.readFile(runtimeManifestContractUrl, "utf8"));
+  await db.exec(await fs.readFile(runtimeManifestSearchPathUrl, "utf8"));
   await db.exec(`set request.jwt.claim.sub='${USER}'`);
   return db;
 }
 
 test("projeção distingue raízes e lê partes sem artefato integral", async () => {
   const db = await prepare();
+  await db.exec("set role anon");
   const manifest = (await db.query(
     "select public.get_aralearn_runtime_manifest() value"
   )).rows[0].value;
   assert.equal(manifest.features.includes("atomic-trail-personal-state-v1"), true);
   assert.equal(manifest.features.includes("unified-trails-clean-cutover-v1"), true);
+  assert.equal(manifest.features.includes("catalog-collection-ordering-v1"), true);
+  assert.equal(manifest.features.includes("partial-private-publication"), false);
   assert.equal(manifest.features.includes("integrated-trails-v1"), false);
   assert.equal(manifest.schemaRevision, "20260807230000");
+  const manifestSecurity = (await db.query(`
+    select procedure.prosecdef as security_definer,
+           procedure.proconfig as configuration
+    from pg_proc procedure
+    join pg_namespace namespace on namespace.oid = procedure.pronamespace
+    where namespace.nspname = 'public'
+      and procedure.proname = 'get_aralearn_runtime_manifest'
+      and pg_get_function_identity_arguments(procedure.oid) = ''
+  `)).rows[0];
+  assert.equal(manifestSecurity.security_definer, true);
+  assert.deepEqual(manifestSecurity.configuration, ["search_path=pg_catalog"]);
+  for (const internalFunction of [
+    "get_aralearn_runtime_manifest_without_contract_alignment_v1",
+    "get_aralearn_runtime_manifest_without_clean_trails_v1",
+    "get_aralearn_runtime_manifest_without_trail_observations_v1",
+    "get_aralearn_runtime_manifest_without_trail_state_v1"
+  ]) {
+    await assert.rejects(
+      db.query(`select public.${internalFunction}()`),
+      /permission denied/iu
+    );
+  }
+  await db.exec("reset role");
   const legacyTables = (await db.query(`
     select table_name from information_schema.tables
     where table_schema='public'
