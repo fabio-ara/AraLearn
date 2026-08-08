@@ -144,7 +144,8 @@ Implante migrations e regras de acesso antes das Edge Functions e da aplicação
   pertinente, arquiva seu artefato privado, sem apagar uma composição de
   workspace que ainda exista sob o mesmo `trailItemId`;
 - `remove_catalog_course_v5`: retira uma publicação oficial, suas seleções e
-  sua composição vinculada, com CAS da classificação e do hash do curso;
+  seu alias distribuído, mas preserva a composição vinculada, com CAS da
+  classificação e do hash do curso;
 - `submit_private_course_for_catalog_review_v5`: envia uma revisão privada específica para avaliação;
 - `list_catalog_reviews_v5`, `get_catalog_review_artifact_v5`, `claim_catalog_review_v5`, `link_catalog_review_workspace_v5`, `decide_catalog_review_v5` e `withdraw_catalog_review_v5`: controlam a fila editorial;
 - `register_authoring_artifact_v5`: pré-registra, somente para a Edge Function, o descritor coletável de uma publicação antes do upload;

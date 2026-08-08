@@ -121,11 +121,13 @@ composição é outra operação, baseada na revisão corrente da raiz ou do
 workspace. Uma submissão editorial ativa continua protegendo seu artefato até
 ser retirada ou concluída.
 
-A exclusão administrativa de um curso oficial tem outro alcance: retira sua
+A retirada administrativa de um curso oficial tem outro alcance: retira sua
 classificação e publicação de `Coleções`, elimina todas as seleções e os estados
-pessoais dependentes e encerra a composição vinculada na mesma transação. Os
-tombstones dos feeds impedem que uma réplica antiga ressuscite o curso. O botão
-correspondente só é habilitado por uma capacidade editorial autenticada.
+pessoais dependentes e desativa o alias distribuído. Se houver um workspace
+vinculado, sua composição e o vínculo leve de continuidade permanecem; remover
+a raiz ou o workspace é outra operação explícita. Os tombstones dos feeds
+impedem que uma réplica antiga ressuscite a publicação. O botão correspondente
+só é habilitado por uma capacidade editorial autenticada.
 
 O aplicativo serializa a exclusão com a réplica: conclui a fila local e exige
 uma sincronização fresca antes do commit remoto; depois dele, confirma a

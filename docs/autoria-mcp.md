@@ -458,9 +458,11 @@ corrente, conforme o pedido.
 Uma conta editorial usa `retirarDoCatalogo` com `operation: remove_course` para
 retirar a publicação oficial, não `retirarCursoDasTrilhas`. Essa operação exige
 a revisão corrente da classificação e o hash corrente do curso; no mesmo
-commit, o backend remove a publicação de `Coleções`, todas as seleções e a
-composição oficial vinculada. A confirmação explícita deve referir-se a esse
-alcance global.
+commit, o backend remove a publicação de `Coleções`, todas as seleções e o
+alias distribuído. A composição oficial vinculada e seu vínculo leve de
+continuidade permanecem; excluí-los exige `excluirDoWorkspace` sobre a raiz ou
+o projeto. A confirmação explícita deve referir-se ao alcance global da
+retirada, sem afirmar que o workspace será apagado.
 
 Não existe uma integração administrativa separada. O mesmo Plugin ou Chatbot
 recebe apenas as ferramentas autorizadas para a conta conectada.
