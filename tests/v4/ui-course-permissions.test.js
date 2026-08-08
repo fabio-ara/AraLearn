@@ -98,6 +98,81 @@ test("a home mantém somente a entrada para o painel integrado", () => {
   assert.doesNotMatch(markup, /open-authoring-assistant|quick-create-course|open-home-actions/u);
 });
 
+test("falha ao carregar Trilhas aparece como erro e não como biblioteca vazia", () => {
+  const markup = renderHomeScreen({
+    project: {
+      contract: "aralearn.contract",
+      version: 4,
+      kind: "project",
+      courses: []
+    },
+    progress: { version: 1, lessons: {} },
+    editorSupport: {
+      trailSnapshot: null,
+      trailLoading: false,
+      homeOrganization: { error: "Sessão expirada. Entre novamente." }
+    }
+  });
+
+  assert.match(markup, /role="alert"/u);
+  assert.match(markup, /Sessão expirada\. Entre novamente\./u);
+  assert.doesNotMatch(markup, /Nenhum curso|Sem cursos neste grupo/u);
+});
+
+test("mutação de Trilhas torna toda a curadoria inerte até a resposta", () => {
+  const project = {
+    contract: "aralearn.contract",
+    version: 4,
+    kind: "project",
+    courses: [{ id: "course-busy", title: "Curso", goal: "", modules: [] }]
+  };
+  const trailSnapshot = homeTrailSnapshotForProject(project);
+  const markup = renderHomeScreen({
+    project,
+    progress: { version: 1, lessons: {} },
+    editorSupport: {
+      trailSnapshot,
+      selectedHomeTrailItemId: trailSnapshot.items[0].trailItemId,
+      homeOrganization: {
+        selectedGroupId: trailSnapshot.groups[0].id,
+        busy: true
+      }
+    }
+  });
+
+  assert.match(markup, /class="home-course-selector-card" aria-busy="true" inert/u);
+  assert.match(markup, /data-field="home-group-select"/u);
+  assert.match(markup, /data-field="home-course-select"/u);
+});
+
+test("a home permite criar e renomear grupos mesmo antes do primeiro curso", () => {
+  const markup = renderHomeScreen({
+    project: {
+      contract: "aralearn.contract",
+      version: 4,
+      kind: "project",
+      courses: []
+    },
+    progress: { version: 1, lessons: {} },
+    editorSupport: {
+      trailSnapshot: {
+        space: "trails",
+        items: [],
+        groups: [{ id: "71000000-0000-4000-8000-000000000001", title: "Dataprev", revision: 1 }],
+        capabilities: { organize: true, catalogManage: false, catalogReview: false }
+      },
+      homeOrganization: {
+        selectedGroupId: "71000000-0000-4000-8000-000000000001"
+      }
+    }
+  });
+
+  assert.match(markup, /data-field="home-group-select"/u);
+  assert.match(markup, /data-action="start-home-group-create"/u);
+  assert.match(markup, /data-action="edit-home-group"/u);
+  assert.match(markup, /Sem cursos neste grupo/u);
+});
+
 test("a home conserva estudo e omite autoria sem permissão", () => {
   const project = {
     contract: "aralearn.contract",
@@ -181,7 +256,7 @@ test("snapshot local indica o estado offline e não oferece organização", () =
     editorSupport: {
       trailSnapshot,
       selectedHomeTrailItemId: trailSnapshot.items[0].trailItemId,
-      homeOrganization: { active: true }
+      homeOrganization: { selectedGroupId: trailSnapshot.groups[0].id }
     }
   });
 
@@ -236,5 +311,68 @@ test("ações de curso separam retirada da seleção e exclusão por origem", ()
     }
   });
   assert.match(catalogMarkup, /data-action="remove-home-trail-item"/u);
-  assert.match(catalogMarkup, /aria-label="Retirar de Coleções"/u);
+  assert.doesNotMatch(catalogMarkup, /aria-label="Retirar de Coleções"/u);
+});
+
+test("edição da Home transforma título e descrição do curso no próprio card", () => {
+  const project = {
+    contract: "aralearn.contract",
+    version: 4,
+    kind: "project",
+    courses: [{ id: "course-inline", title: "Curso editável", goal: "Descrição editável", modules: [] }]
+  };
+  const trailSnapshot = homeTrailSnapshotForProject(project, {
+    permissions: {
+      "course-inline": {
+        origin: "private",
+        canEdit: true,
+        canDelete: true,
+        canRemove: false
+      }
+    }
+  });
+  const markup = renderHomeScreen({
+    project,
+    progress: { version: 1, lessons: {} },
+    editorSupport: {
+      trailSnapshot,
+      selectedHomeTrailItemId: trailSnapshot.items[0].trailItemId,
+      inlineStructureEditor: { level: "course", courseKey: "course-inline" },
+      entitySaving: false,
+      entityMutationError: ""
+    }
+  });
+
+  assert.match(markup, /data-inline-structure-editor="true"/u);
+  assert.match(markup, /data-field="inline-entity-title"[^>]*contenteditable="plaintext-only"|contenteditable="plaintext-only"[^>]*data-field="inline-entity-title"/u);
+  assert.match(markup, /data-field="inline-entity-description"/u);
+  assert.match(markup, /class="[^"]*home-course-edit-dock/u);
+  assert.match(markup, /data-action="save-inline-entity"/u);
+  assert.doesNotMatch(markup, /data-action="open-course"/u);
+});
+
+test("lista de cards para rever conserva botões nativos sem simular menu ARIA", () => {
+  const project = {
+    contract: "aralearn.contract",
+    version: 4,
+    kind: "project",
+    courses: [{ id: "course-review", title: "Curso", goal: "", modules: [] }]
+  };
+  const trailSnapshot = homeTrailSnapshotForProject(project);
+  const markup = renderHomeScreen({
+    project,
+    progress: { version: 1, lessons: {} },
+    editorSupport: {
+      trailSnapshot,
+      selectedHomeTrailItemId: trailSnapshot.items[0].trailItemId,
+      reviewItems: [{
+        trailItemId: trailSnapshot.items[0].trailItemId,
+        title: "Rever conceito",
+        entityPath: ["course-review", "module", "lesson", "microsequence", "card"]
+      }]
+    }
+  });
+
+  assert.match(markup, /<button[^>]*data-action="open-review-card"/u);
+  assert.doesNotMatch(markup, /role="menu(?:item)?"/u);
 });

@@ -436,7 +436,6 @@ test("exclusão oficial encontra a classificação além da primeira página", a
           })),
           hasMore: true,
           nextCursor: {
-            afterPosition: 99,
             afterId: "44444444-4444-4444-8444-444444444444"
           }
         };
@@ -464,7 +463,6 @@ test("exclusão oficial encontra a classificação além da primeira página", a
     operation: "list_collection_courses",
     collectionId,
     limit: 100,
-    afterPosition: 99,
     afterId: "44444444-4444-4444-8444-444444444444"
   });
   const removal = calls.find(([name]) => name === "retirarDoCatalogo");

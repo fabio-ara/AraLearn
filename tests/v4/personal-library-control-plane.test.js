@@ -164,8 +164,6 @@ test("adaptador pessoal consulta a mesma projeção canônica de Trilhas", async
   assert.deepEqual(body, {
     p_actor_id: ACTOR_ID,
     p_limit: 20,
-    p_after_path_position: null,
-    p_after_item_position: null,
     p_after_id: null
   });
 });
@@ -178,6 +176,8 @@ test("projeção MCP de Trilhas inclui progresso agregado sem carregar o curso",
   const itemSchema = successSchema.properties.data
     .properties.items.items;
   assert.equal(itemSchema.required.includes("completedCardCount"), true);
+  assert.equal(itemSchema.required.includes("pathPosition"), false);
+  assert.equal(itemSchema.required.includes("itemPosition"), false);
   assert.deepEqual(itemSchema.properties.completedCardCount, {
     type: "integer",
     minimum: 0

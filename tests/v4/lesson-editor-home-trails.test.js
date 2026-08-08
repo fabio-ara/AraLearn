@@ -228,7 +228,7 @@ test("refresh monta somente o workspace homônimo selecionado por trailItemId", 
   const groupId = "c0000000-0000-4000-8000-000000000001";
   const snapshot = {
     space: "trails",
-    groups: [{ id: groupId, title: "Testes", position: 0 }],
+    groups: [{ id: groupId, title: "Testes" }],
     items: [alpha, beta].map((course, index) => ({
       trailItemId: trailItemIds[index],
       workspaceId: workspaceIds[index],
@@ -252,8 +252,6 @@ test("refresh monta somente o workspace homônimo selecionado por trailItemId", 
       canRemove: false,
       pathId: groupId,
       pathTitle: "Testes",
-      pathPosition: 0,
-      itemPosition: index,
       updatedAt: "2026-08-07T12:00:00Z"
     })),
     capabilities: { organize: true, catalogManage: false, catalogReview: false }

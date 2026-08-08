@@ -143,7 +143,8 @@ O trabalho entregue por outro autor segue submissão e revisão. Uma conta
 editorial também pode criar ou atualizar diretamente um curso `complete` de seu
 próprio workspace, desde que informe a coleção e tenha a capacidade efetiva.
 
-Coleções, ordem e posicionamento dos cursos são metadados relacionais. Mover ou
+Coleções e a classificação dos cursos são metadados relacionais. Grupos e
+cursos aparecem automaticamente em ordem alfabética; transferir um curso ou
 renomear uma coleção não reabre a árvore pedagógica. Contas editoriais podem
 administrar esses grupos e cursos oficiais diretamente na aba `Coleções` do
 aplicativo. Essas ações têm alcance global e permanecem separadas da seleção

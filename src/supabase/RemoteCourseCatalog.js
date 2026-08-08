@@ -21,6 +21,25 @@ const AUTHENTICATION_FAILURE_CODES = new Set([
   "REFRESH_TOKEN_ALREADY_USED",
   "PGRST301"
 ]);
+const CATALOG_TITLE_COLLATOR = new Intl.Collator("pt-BR", {
+  usage: "sort",
+  sensitivity: "base",
+  numeric: true
+});
+
+function compareCatalogRows(left, right) {
+  const leftCollection = String(left?.collection_title || left?.collectionTitle || "");
+  const rightCollection = String(right?.collection_title || right?.collectionTitle || "");
+  const byCollection = CATALOG_TITLE_COLLATOR.compare(leftCollection, rightCollection);
+  if (byCollection !== 0) return byCollection;
+  const leftTitle = String(left?.title || left?.course_title || left?.courseTitle || "");
+  const rightTitle = String(right?.title || right?.course_title || right?.courseTitle || "");
+  const byTitle = CATALOG_TITLE_COLLATOR.compare(leftTitle, rightTitle);
+  if (byTitle !== 0) return byTitle;
+  const leftId = String(left?.course_id || left?.courseId || "");
+  const rightId = String(right?.course_id || right?.courseId || "");
+  return leftId < rightId ? -1 : leftId > rightId ? 1 : 0;
+}
 
 function isAuthenticationFailure(error) {
   const status = Number(error?.status ?? error?.response?.status ?? 0);
@@ -164,20 +183,19 @@ export class RemoteCourseCatalog {
     }
   }
 
-  listCollections(query = "") {
-    return this.rpc("list_catalog_collections", { p_query: String(query || "").trim() });
+  async listCollections(query = "") {
+    const rows = await this.rpc("list_catalog_collections", {
+      p_query: String(query || "").trim()
+    });
+    return Array.isArray(rows) ? [...rows].sort(compareCatalogRows) : rows;
   }
 
   listTrailItems({
     limit = 50,
-    afterPathPosition = null,
-    afterItemPosition = null,
     afterId = null
   } = {}) {
     return this.rpc("list_trail_items_v1", {
       p_limit: Number(limit),
-      p_after_path_position: afterPathPosition,
-      p_after_item_position: afterItemPosition,
       p_after_id: afterId === null ? null : requiredUuid(afterId, "Cursor de Trilhas")
     });
   }

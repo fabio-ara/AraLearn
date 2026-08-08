@@ -8,7 +8,7 @@ import {
   verifyHostedBackend
 } from "../../scripts/verifyHostedBackend.mjs";
 
-const EXPECTED_REVISION = "20260807230000";
+const EXPECTED_REVISION = "20260808021000";
 const EXPECTED_CONTRACT_VERSION = 4;
 const PUBLIC_KEY = "sb_publishable_test-public-value";
 const FEATURES = [
@@ -59,7 +59,7 @@ const FEATURES = [
   "atomic-private-course-removal-v1",
   "atomic-catalog-course-removal-v1",
   "single-active-course-composition-v1",
-  "catalog-collection-ordering-v1",
+  "alphabetic-catalog-v1",
   "stable-trail-item-identity-v1",
   "workspace-course-paged-composition-v1",
   "atomic-trail-groups-v1",
@@ -68,7 +68,8 @@ const FEATURES = [
   "stable-entity-personal-state-v1",
   "situated-trail-observations-v1",
   "workspace-trail-observations-v1",
-  "unified-trails-clean-cutover-v1"
+  "unified-trails-clean-cutover-v1",
+  "alphabetic-trails-v1"
 ];
 
 function response(status, body, headers = {}) {

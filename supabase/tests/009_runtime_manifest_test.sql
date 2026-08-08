@@ -1,6 +1,6 @@
 begin;
 
-select plan(46);
+select plan(48);
 
 select has_function(
   'public',
@@ -26,14 +26,14 @@ select hasnt_function(
 select has_function(
   'public',
   'list_trail_items_v1',
-  array['integer', 'integer', 'text'],
+  array['integer', 'uuid'],
   'Trilhas expõe planos e cursos em uma projeção paginada'
 );
 
 select function_privs_are(
   'public',
   'list_trail_items_v1',
-  array['integer', 'integer', 'text'],
+  array['integer', 'uuid'],
   'authenticated',
   array['EXECUTE'],
   'somente uma conta autenticada lê Trilhas'
@@ -77,7 +77,7 @@ select hasnt_function(
 
 select is(
   public.get_aralearn_runtime_manifest() ->> 'schemaRevision',
-  '20260804170000',
+  '20260808021000',
   'a revisão corresponde à migration mais recente exigida'
 );
 
@@ -120,30 +120,30 @@ select ok(
 
 select ok(
   (public.get_aralearn_runtime_manifest() -> 'features')
-    ? 'integrated-trails-v1',
-  'o manifesto anuncia a projeção integrada de Trilhas'
+    ? 'alphabetic-trails-v1',
+  'o manifesto anuncia a ordenação alfabética de Trilhas'
 );
 
 select ok(
   (public.get_aralearn_runtime_manifest() -> 'features')
-    ? 'catalog-collection-ordering-v1',
-  'o manifesto anuncia a ordenação editorial das coleções'
+    ? 'alphabetic-catalog-v1',
+  'o manifesto anuncia Coleções alfabéticas sem posição manual'
 );
 
-select has_function(
+select hasnt_function(
   'public',
   'move_catalog_collection_v5',
   array['uuid', 'uuid', 'text', 'bigint', 'integer'],
-  'o catálogo permite reordenar uma coleção com CAS'
+  'o catálogo não expõe mais reordenação manual de Coleções'
 );
 
 select function_privs_are(
   'public',
-  'move_catalog_collection_v5',
-  array['uuid', 'uuid', 'text', 'bigint', 'integer'],
+  'move_catalog_course_v5',
+  array['uuid', 'uuid', 'text', 'bigint', 'uuid'],
   'service_role',
   array['EXECUTE'],
-  'somente o executor interno reordena coleções'
+  'somente o executor interno transfere cursos entre Coleções'
 );
 
 select has_function(
@@ -255,6 +255,17 @@ select ok(
 select ok(
   (public.get_aralearn_runtime_manifest() -> 'features') ? 'default-catalog-collection',
   'o manifesto anuncia a coleção padrão para a primeira publicação oficial'
+);
+
+select ok(
+  (public.get_aralearn_runtime_manifest() -> 'features') ? 'alphabetic-catalog-v1',
+  'o manifesto anuncia Coleções alfabéticas sem posição manual'
+);
+
+select ok(
+  not ((public.get_aralearn_runtime_manifest() -> 'features')
+    ? 'catalog-collection-ordering-v1'),
+  'o manifesto não anuncia o contrato retirado de ordenação manual'
 );
 
 select ok(

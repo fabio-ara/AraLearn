@@ -109,12 +109,12 @@ Implante migrations e regras de acesso antes das Edge Functions e da aplicação
 - `create_catalog_collection_v5`, `update_catalog_collection_v5` e
   `retire_catalog_collection_v5`: administram o ciclo de vida das coleções com
   capacidade editorial, idempotência e revisão;
-- `move_catalog_collection_v5` e `move_catalog_course_v5`: alteram somente a
-  classificação e a ordem do catálogo, por compare-and-swap;
+- `move_catalog_course_v5`: transfere um curso entre coleções, sem ordem manual,
+  por compare-and-swap;
 - `list_trail_items_v1`: pagina a projeção canônica de grupos, planos, cursos em
   materialização e seleções, com identidade estável e progresso agregado;
-- `mutate_trails_v1`: cria, renomeia e ordena grupos e posiciona qualquer
-  `trailItemId`, sem copiar conteúdo;
+- `mutate_trails_v1`: cria, renomeia e exclui grupos e transfere qualquer
+  `trailItemId` entre eles, sem copiar conteúdo;
 - `get_trail_workspace_course_v1`: pagina as partes correntes de um curso de
   workspace sob uma revisão fixa, para montagem e validação no cliente;
 - `load_trail_personal_state_v1` e `mutate_trail_personal_state_v1`: leem e

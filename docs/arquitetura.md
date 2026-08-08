@@ -55,13 +55,13 @@ o dispositivo quando necessário. Abrir ou iniciar o estudo é uma consulta e n�
 executa seleção, movimentação, cópia, publicação ou outra mutação.
 
 Grupos pessoais são mantidos por `study_paths` e `study_path_items`, vinculados
-ao `trailItemId` estável. Criar, renomear, ordenar ou excluir um grupo afeta
+ao `trailItemId` estável. Criar, renomear ou excluir um grupo afeta
 somente a conta e aceita tanto um plano quanto um curso materializado ou
 selecionado. A exclusão do grupo preserva o item e o estado de estudo,
-deixando-o em **Outros** até nova organização. Coleções, classificação e
-posição de cursos pertencem ao plano de controle editorial; contas
-autorizadas podem administrá-las pelo aplicativo, com confirmação explícita
-para operações de alcance global.
+deixando-o em **Outros** até nova organização. Grupos e cursos usam ordem
+alfabética automática. Coleções e classificações pertencem ao plano de controle
+editorial; contas autorizadas podem administrá-las pelo aplicativo, com
+confirmação explícita para operações de alcance global.
 
 Edição manual e assistência por API acontecem no próprio conteúdo renderizado.
 A seleção congela a autoridade, o fragmento e a revisão correntes; a resposta

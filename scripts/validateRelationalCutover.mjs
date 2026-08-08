@@ -298,6 +298,12 @@ async function main() {
   const unifiedTrailsCleanCutover = migrations.find(({ fileName }) =>
     fileName === "20260807230000_unified_trails_clean_cutover.sql"
   );
+  const alphabeticTrails = migrations.find(({ fileName }) =>
+    fileName === "20260808020000_alphabetic_trails.sql"
+  );
+  const alphabeticCatalog = migrations.find(({ fileName }) =>
+    fileName === "20260808021000_alphabetic_catalog.sql"
+  );
   const relationalRemoval = migrations.find(({ fileName }) =>
     fileName === "20260728020000_remove_relational_course_legacy.sql"
   );
@@ -321,7 +327,8 @@ async function main() {
       || !workspaceCommentAggregates || !integratedLearningSpaces
       || !workspaceEntityObservations || !atomicPrivateCourseRemoval
       || !catalogCollectionReordering || !unifiedTrails || !trailPersonalState
-      || !trailObservationThreads || !unifiedTrailsCleanCutover) {
+      || !trailObservationThreads || !unifiedTrailsCleanCutover || !alphabeticTrails
+      || !alphabeticCatalog) {
     fail("Corte final de workspaces compostos/OAuth v5 não encontrado.");
   }
   if (!relationalRemoval) {
@@ -678,28 +685,23 @@ async function main() {
   );
   assertContains(
     catalogCollectionReordering.source,
-    /function\s+public\.move_catalog_collection_v5\s*\([\s\S]+p_expected_revision\s+bigint[\s\S]+p_position\s+integer/iu,
-    "A ordenação das coleções não possui um comando público com CAS."
-  );
-  assertContains(
-    catalogCollectionReordering.source,
-    /private\.can_publish_catalog_v5\(p_actor_id\)[\s\S]+p_operation\s+not\s+in[\s\S]+'move_collection'/iu,
-    "A ordenação das coleções não preserva a autorização editorial no banco."
-  );
-  assertContains(
-    catalogCollectionReordering.source,
-    /contract_key\s*=\s*'outros'[\s\S]+Outros permanece no final/iu,
-    "A coleção Outros pode deixar de ocupar o final do catálogo."
-  );
-  assertContains(
-    catalogCollectionReordering.source,
     /function\s+private\.protect_structural_catalog_collection_v1\s*\([\s\S]+catalog_structural_collection_semantics[\s\S]+create\s+trigger\s+catalog_collections_protect_structural_other_v1/iu,
     "A identidade semântica da coleção Outros não está protegida no banco."
   );
   assertContains(
-    catalogCollectionReordering.source,
-    /'schemaRevision',\s*'20260804170000'[\s\S]*'catalog-collection-ordering-v1'/iu,
-    "O manifesto final não exige ordenação editorial das coleções."
+    alphabeticCatalog.source,
+    /alter\s+table\s+public\.catalog_collections[\s\S]+drop\s+column\s+position[\s\S]+alter\s+table\s+public\.catalog_collection_courses[\s\S]+drop\s+column\s+position/iu,
+    "O corte alfabético não removeu posições manuais de Coleções."
+  );
+  assertContains(
+    alphabeticCatalog.source,
+    /drop\s+function\s+if\s+exists\s+public\.move_catalog_collection_v5[\s\S]+create\s+function\s+public\.move_catalog_course_v5\s*\([\s\S]+p_target_collection_id\s+uuid\s*\)/iu,
+    "O catálogo não eliminou a reordenação preservando a transferência entre Coleções."
+  );
+  assertNotContains(
+    alphabeticCatalog.source,
+    /p_after_position|p_position\s+integer\s+default\s+null/iu,
+    "O contrato final de Coleções ainda expõe posição manual."
   );
   assertContains(
     workspaceEntityObservations.source,
@@ -725,6 +727,16 @@ async function main() {
     unifiedTrails.source,
     /order\s+by\s+workspace\.updated_at\s+desc\s*,\s*workspace\.id\s*,\s*course\.position/iu,
     "A paginação de Trilhas ainda muda quando o workspace é atualizado."
+  );
+  assertContains(
+    alphabeticTrails.source,
+    /alter\s+table\s+public\.study_paths[\s\S]+drop\s+column\s+position[\s\S]+alter\s+table\s+public\.study_path_items[\s\S]+drop\s+column\s+position/iu,
+    "O corte alfabético não removeu as posições manuais de Trilhas."
+  );
+  assertNotContains(
+    alphabeticTrails.source,
+    /p_after_path_position|p_after_item_position|'targetPosition'|p_operation\s*=\s*'move_(?:group|item)'/iu,
+    "O contrato final de Trilhas ainda expõe ordenação manual."
   );
   assertContains(
     trailPersonalState.source,
@@ -957,8 +969,8 @@ async function main() {
     path.join(repositoryRoot, "supabase", "runtime-manifest.json"),
     "utf8"
   ));
-  if (runtimeManifest.schemaRevision !== "20260807230000") {
-    fail("O manifesto estático não aponta para o corte final de Trilhas.");
+  if (runtimeManifest.schemaRevision !== "20260808021000") {
+    fail("O manifesto estático não aponta para o corte alfabético final.");
   }
   for (const feature of [
     "stable-trail-item-identity-v1",
@@ -968,7 +980,9 @@ async function main() {
     "stable-entity-personal-state-v1",
     "situated-trail-observations-v1",
     "workspace-trail-observations-v1",
-    "unified-trails-clean-cutover-v1"
+    "unified-trails-clean-cutover-v1",
+    "alphabetic-trails-v1",
+    "alphabetic-catalog-v1"
   ]) {
     if (!runtimeManifest.requiredFeatures.includes(feature)) {
       fail(`O manifesto estático não exige ${feature}.`);
@@ -981,14 +995,15 @@ async function main() {
     "non-punitive-study-state-v1",
     "non-punitive-study-projections-v1",
     "workspace-comment-aggregates-v1",
-    "integrated-trails-v1"
+    "integrated-trails-v1",
+    "catalog-collection-ordering-v1"
   ]) {
     if (runtimeManifest.requiredFeatures.includes(retiredFeature)) {
       fail(`O manifesto estático ainda anuncia ${retiredFeature}.`);
     }
   }
   console.log(
-    `Corte validado até ${unifiedTrailsCleanCutover.fileName}: Trilhas unificadas, estado pessoal compacto, observações situadas, coleções, workspaces educacionais, OAuth/MCP/Action e uma revisão corrente por curso.`
+    `Corte validado até ${alphabeticCatalog.fileName}: Trilhas e Coleções alfabéticas, estado pessoal compacto, observações situadas, workspaces educacionais, OAuth/MCP/Action e uma revisão corrente por curso.`
   );
 }
 

@@ -1009,7 +1009,7 @@ test("a home usa menu contextual compacto sem atalhos órfãos", () => {
   assert.match(html, /home-course-context-menu/u);
 });
 
-test("a home agrupa pelo id relacional sem expor essa identidade na navegação", () => {
+test("a home usa seletores relacionais de grupo e curso sem exibir ids como texto", () => {
   const fixture = getCatalogFixtureProject();
   const course = fixture.courses[0];
   const project = { ...fixture, courses: [course] };
@@ -1025,9 +1025,10 @@ test("a home agrupa pelo id relacional sem expor essa identidade na navegação"
     progress: createEmptyProgressDocument(),
     editorSupport: { trailSnapshot }
   });
-  assert.match(html, /<optgroup label="Certificações">/u);
+  assert.match(html, /data-field="home-group-select"/u);
+  assert.match(html, /<option value="11111111-1111-4111-8111-111111111111" selected>Certificações<\/option>/u);
   assert.match(html, new RegExp(`value="${trailSnapshot.items[0].trailItemId}"`, "u"));
-  assert.doesNotMatch(html, /value="11111111-1111-4111-8111-111111111111"/u);
+  assert.doesNotMatch(html, />11111111-1111-4111-8111-111111111111</u);
   assert.match(html, /home-course-origin is-catalog/u);
 });
 

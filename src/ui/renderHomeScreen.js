@@ -154,8 +154,8 @@ function buildHomeCoursePreviews(
         courseId: String(item.courseId || ""),
         selectionId: String(item.selectionId || ""),
         workspaceId: String(item.workspaceId || ""),
-        title: item.title || course?.title || "Curso",
-        description: item.description || course?.goal || "",
+        title: course?.title || item.title || "Curso",
+        description: course?.goal || item.description || "",
         moduleCount: item.moduleCount || (course?.modules || []).length,
         lessonCount: item.lessonCount || (course ? countLessons(course) : 0),
         completedCount,
@@ -211,11 +211,12 @@ function renderCourseOrigin(course) {
   );
 }
 
-function renderCourseUtilities(course) {
+function renderCourseUtilities(course, { canOrganize = false } = {}) {
   const resetProgress = course.kind === "plan"
     ? ""
     : '<button class="icon-ghost" type="button" data-action="reset-course-progress-direct" data-course-key="' +
-      escapeHtml(course.id) + '" title="Zerar progresso do curso" aria-label="Zerar progresso do curso">' +
+      escapeHtml(course.id) + '" data-trail-item-id="' + escapeHtml(course.trailItemId) +
+      '" title="Zerar progresso do curso" aria-label="Zerar progresso do curso">' +
       renderUiIcon("rotate", "home-tab-icon") + "</button>";
   const edit = course.permissions.canEdit
     ? '<button class="icon-ghost" type="button" data-action="edit-course" data-course-key="' +
@@ -233,6 +234,12 @@ function renderCourseUtilities(course) {
       '" title="Retirar de Trilhas" aria-label="Retirar de Trilhas">' +
       renderUiIcon("remove-state", "home-tab-icon") + "</button>"
     : "";
+  const moveToGroup = canOrganize
+    ? '<button class="icon-ghost" type="button" data-action="choose-home-item-group" data-trail-item-id="' +
+      escapeHtml(course.trailItemId) +
+      '" title="Mudar grupo" aria-label="Mudar grupo">' +
+      renderUiIcon("trail", "home-tab-icon") + "</button>"
+    : "";
   const deleteMode = trailItemDeleteMode({
     origin: course.origin,
     kind: course.kind,
@@ -241,11 +248,11 @@ function renderCourseUtilities(course) {
     selectionId: course.selectionId,
     workspaceId: course.workspaceId
   });
-  const remove = deleteMode
+  const deleteLabel = course.kind === "plan" ? "Excluir plano" : "Excluir curso privado";
+  const remove = deleteMode && deleteMode !== "catalog"
     ? '<button class="icon-ghost is-danger" type="button" data-action="delete-course-direct" data-course-key="' +
       escapeHtml(course.id) + '" data-trail-item-id="' + escapeHtml(course.trailItemId) +
-      '" title="' + (deleteMode === "catalog" ? "Retirar de Coleções" : "Excluir curso") +
-      '" aria-label="' + (deleteMode === "catalog" ? "Retirar de Coleções" : "Excluir curso") + '">' +
+      '" title="' + deleteLabel + '" aria-label="' + deleteLabel + '">' +
       renderUiIcon("trash", "home-tab-icon") + "</button>"
     : "";
   const openWorkspace = course.workspaceId
@@ -258,8 +265,59 @@ function renderCourseUtilities(course) {
     '<summary class="icon-ghost" title="Ações do curso" aria-label="Ações do curso">' +
     renderUiIcon("more", "home-tab-icon") + "</summary>" +
     '<div class="home-course-context-actions">' +
-    resetProgress + openWorkspace + edit + removeFromTrails + remove +
+    resetProgress + openWorkspace + edit + moveToGroup + removeFromTrails + remove +
     "</div></details>"
+  );
+}
+
+function inlineCourseTargetMatches(editorSupport, course) {
+  const target = editorSupport?.inlineStructureEditor;
+  return target?.level === "course" && String(target.courseKey || "") === String(course?.id || "");
+}
+
+function renderHomeEditableField({
+  tag,
+  value,
+  field,
+  label,
+  className = "",
+  editing = false,
+  multiline = false
+}) {
+  const normalized = value || "";
+  const classes = [className, "structure-edit-field-shell", normalized ? "" : "is-empty"]
+    .filter(Boolean)
+    .join(" ");
+  return (
+    '<' + tag + ' class="' + classes + '">' +
+    '<span class="structure-edit-field-base' + (editing ? " is-concealed" : "") + '"' +
+    (editing ? ' aria-hidden="true"' : "") + '>' + escapeHtml(normalized) + "</span>" +
+    (editing
+      ? '<span class="structure-edit-field-overlay" contenteditable="plaintext-only" role="textbox"' +
+        (multiline ? ' aria-multiline="true"' : "") + ' data-field="' + escapeHtml(field) +
+        '"' + (field === "inline-entity-title" ? ' data-card-authoring-focus="inline-structure-title"' : "") +
+        ' aria-label="' + escapeHtml(label) + '" spellcheck="true">' + escapeHtml(normalized) + "</span>"
+      : "") +
+    "</" + tag + ">"
+  );
+}
+
+function renderCourseGroupChooser(course, groups, currentGroupId, organization) {
+  if (organization?.movingItemId !== course.trailItemId) return "";
+  return (
+    '<form class="home-course-group-form" data-home-item-move-form="' + escapeHtml(course.trailItemId) + '">' +
+    '<label class="sr-only" for="home-course-group-target">Grupo</label>' +
+    '<select id="home-course-group-target" name="groupId" aria-label="Grupo do curso">' +
+    groups.map((group) => {
+      const value = group.id === "others" ? "__others__" : group.id;
+      return '<option value="' + escapeHtml(value) + '"' +
+        (group.id === currentGroupId ? " selected" : "") + '>' + escapeHtml(group.title) + "</option>";
+    }).join("") +
+    "</select>" +
+    '<div class="home-trails-inline-actions">' +
+    renderIconButton({ action: "cancel-home-item-move", icon: "remove-state", label: "Cancelar" }) +
+    renderIconButton({ action: "save-home-item-group", icon: "save", label: "Salvar grupo", className: "open-main" }) +
+    "</div></form>"
   );
 }
 
@@ -290,12 +348,12 @@ function renderCourseReviewMenu(reviewItems) {
     '<details class="learning-spaces-context-menu home-course-review-menu">' +
     '<summary class="learning-spaces-context-menu-summary" title="Cards para rever" aria-label="Cards para rever">' +
     renderUiIcon("review", "home-tab-icon") + "</summary>" +
-    '<div class="learning-spaces-context-menu-list home-course-review-list" role="menu" aria-label="Cards marcados para rever">' +
+    '<div class="learning-spaces-context-menu-list home-course-review-list" aria-label="Cards marcados para rever">' +
     reviewItems.map((item) => {
       const [courseKey, moduleKey, lessonKey, microsequenceKey, cardKey] = item.entityPath;
       const accessibleLabel = `Abrir card para rever: ${item.title}${item.context ? ` — ${item.context}` : ""}`;
       return (
-        '<button class="learning-spaces-context-menu-item" type="button" role="menuitem" data-action="open-review-card"' +
+        '<button class="learning-spaces-context-menu-item" type="button" data-action="open-review-card"' +
         ' data-trail-item-id="' + escapeHtml(item.trailItemId) + '"' +
         ' data-course-key="' + escapeHtml(courseKey) + '"' +
         ' data-module-key="' + escapeHtml(moduleKey) + '"' +
@@ -311,28 +369,56 @@ function renderCourseReviewMenu(reviewItems) {
   );
 }
 
-function renderCoursePreview(course, reviewItems = []) {
+function renderCoursePreview(course, reviewItems = [], {
+  groups = [],
+  currentGroupId = "others",
+  organization = {},
+  canOrganize = false,
+  editorSupport = {}
+} = {}) {
   const plan = course.kind === "plan";
+  const editing = inlineCourseTargetMatches(editorSupport, course);
   return (
-    '<article class="home-course-selector-preview" data-course-key="' +
+    '<article class="home-course-selector-preview' + (editing ? " is-editing" : "") + '" data-course-key="' +
     escapeHtml(course.id) +
-    '" data-trail-item-id="' + escapeHtml(course.trailItemId) + '">' +
+    '" data-trail-item-id="' + escapeHtml(course.trailItemId) + '"' +
+    (editing
+      ? ' data-inline-structure-editor="true" data-structure-level="course"'
+      : "") + '>' +
     '<div class="home-course-selector-heading">' + renderCourseOrigin(course) +
-    '<h2>' + escapeHtml(course.title || "Curso") + "</h2></div>" +
-    (course.description ? '<p class="card-subtitle">' + escapeHtml(course.description) + "</p>" : "") +
+    renderHomeEditableField({
+      tag: "h2",
+      value: course.title || "Curso",
+      field: "inline-entity-title",
+      label: "Título do curso",
+      editing
+    }) + "</div>" +
+    (course.description || editing
+      ? renderHomeEditableField({
+          tag: "p",
+          value: course.description,
+          field: "inline-entity-description",
+          label: "Descrição do curso",
+          className: "card-subtitle",
+          editing,
+          multiline: true
+        })
+      : "") +
     renderHomeCourseMeta(course) +
-    '<div class="home-course-selector-actions">' + renderCourseReviewMenu(reviewItems) +
-    renderCourseUtilities(course) +
-    '<button class="open-main" type="button" data-action="open-course" data-course-key="' +
-    escapeHtml(course.id) +
-    '" data-trail-item-id="' + escapeHtml(course.trailItemId) +
-    '" data-trail-kind="' + escapeHtml(course.kind) + '" data-can-edit="' +
-    (course.permissions.canEdit ? "true" : "false") + '" title="' +
-    (plan ? "Abrir planejamento" : "Abrir curso") + '" aria-label="' +
-    (plan ? "Abrir planejamento" : "Abrir curso") + '">' +
-    renderUiIcon(plan ? "edit" : "play", "home-tab-icon") +
-    "</button>" +
-    "</div>" +
+    renderCourseGroupChooser(course, groups, currentGroupId, organization) +
+    (editing
+      ? ""
+      : '<div class="home-course-selector-actions">' + renderCourseReviewMenu(reviewItems) +
+        renderCourseUtilities(course, { canOrganize: canOrganize && groups.length > 1 }) +
+        '<button class="open-main" type="button" data-action="open-course" data-course-key="' +
+        escapeHtml(course.id) +
+        '" data-trail-item-id="' + escapeHtml(course.trailItemId) +
+        '" data-trail-kind="' + escapeHtml(course.kind) + '" data-can-edit="' +
+        (course.permissions.canEdit ? "true" : "false") + '" title="' +
+        (plan ? "Abrir planejamento" : "Abrir curso") + '" aria-label="' +
+        (plan ? "Abrir planejamento" : "Abrir curso") + '">' +
+        renderUiIcon(plan ? "edit" : "play", "home-tab-icon") +
+        "</button></div>") +
     "</article>"
   );
 }
@@ -343,32 +429,16 @@ function buildCourseGroups(courses, trailSnapshot) {
     id: group.id,
     title: group.title,
     courses: group.items.map((item) => byItemId.get(item.itemId)).filter(Boolean)
-  })).filter((group) => group.courses.length);
+  }));
 }
 
-function renderCourseOptions(groups, selectedTrailItemId) {
-  return groups.map((group) => (
-    '<optgroup label="' + escapeHtml(group.title) + '">' +
-    group.courses.map((course) => (
-      '<option value="' + escapeHtml(course.trailItemId) + '"' +
-      (course.trailItemId === selectedTrailItemId ? " selected" : "") + '>' +
-      escapeHtml(course.title || "Curso") + "</option>"
-    )).join("") + "</optgroup>"
+function renderCourseOptions(group, selectedTrailItemId) {
+  if (!group?.courses?.length) return '<option value="">Sem cursos neste grupo</option>';
+  return group.courses.map((course) => (
+    '<option value="' + escapeHtml(course.trailItemId) + '"' +
+    (course.trailItemId === selectedTrailItemId ? " selected" : "") + '>' +
+    escapeHtml(course.title || "Curso") + "</option>"
   )).join("");
-}
-
-function renderHomeSelectToolbar(groups, selectedTrailItemId, canOrganize) {
-  return (
-    '<div class="home-course-select-row">' +
-    '<label class="sr-only" for="home-course-select">Curso</label>' +
-    '<select id="home-course-select" data-field="home-course-select" aria-label="Selecionar curso">' +
-    renderCourseOptions(groups, selectedTrailItemId) + "</select>" +
-    (canOrganize
-      ? '<button class="icon-ghost" type="button" data-action="toggle-home-organize" title="Organizar Trilhas" aria-label="Organizar Trilhas">' +
-        renderUiIcon("trail", "home-tab-icon") + "</button>"
-      : "") +
-    "</div>"
-  );
 }
 
 function renderIconButton({ action, icon, label, className = "icon-ghost", data = {} }) {
@@ -382,10 +452,11 @@ function renderIconButton({ action, icon, label, className = "icon-ghost", data 
 
 function renderGroupForm(group = null) {
   return (
-    '<form class="home-trails-inline-form" data-home-group-form="' + (group ? "rename" : "create") + '"' +
+    '<form class="home-trails-inline-form home-group-inline-form" data-home-group-form="' + (group ? "rename" : "create") + '"' +
     (group ? ' data-group-id="' + escapeHtml(group.id) + '"' : "") + '>' +
     '<input name="title" required maxlength="120" value="' + escapeHtml(group?.title || "") +
-    '" placeholder="Nome do grupo" aria-label="' + (group ? "Novo nome do grupo" : "Nome do novo grupo") + '">' +
+    '" placeholder="Nome do grupo" aria-label="' + (group ? "Novo nome do grupo" : "Nome do novo grupo") +
+    '" data-card-authoring-focus="home-group-title">' +
     '<div class="home-trails-inline-actions">' +
     renderIconButton({ action: "cancel-home-group-form", icon: "remove-state", label: "Cancelar" }) +
     renderIconButton({ action: "save-home-group", icon: "save", label: "Salvar", className: "open-main" }) +
@@ -393,143 +464,64 @@ function renderGroupForm(group = null) {
   );
 }
 
-function renderHomeTrailItem(item, group, index, groups, organization) {
-  const studyable = isStudyableTrailItem(item);
-  const originIcon = item.kind === "plan" ? "edit" : item.origin === "catalog" ? "folder" : "key";
-  const originKind = item.kind === "plan" ? "plan" : item.origin === "catalog" ? "catalog" : "private";
-  const groupData = { "trail-item-id": item.itemId };
-  const actions = [];
-  if (item.workspaceId) {
+function renderGroupActions(group, canOrganize) {
+  if (!canOrganize) return "";
+  const structural = !group || group.id === "others" ||
+    String(group.title || "").localeCompare("Outros", "pt-BR", { sensitivity: "base" }) === 0;
+  const actions = [renderIconButton({
+    action: "start-home-group-create",
+    icon: "add",
+    label: "Criar grupo"
+  })];
+  if (!structural) {
     actions.push(renderIconButton({
-      action: "open-home-workspace", icon: "prompt", label: "Abrir detalhes da autoria",
-      data: { "workspace-id": item.workspaceId }
+      action: "edit-home-group",
+      icon: "edit",
+      label: "Renomear grupo",
+      data: { "group-id": group.id }
+    }));
+    actions.push(renderIconButton({
+      action: "delete-home-group",
+      icon: "trash",
+      label: "Excluir grupo",
+      className: "icon-ghost is-danger",
+      data: { "group-id": group.id }
     }));
   }
-  if (group.id !== "others") {
-    actions.push(renderIconButton({
-      action: "move-home-item-up", icon: "arrow-up", label: "Mover para cima",
-      data: { ...groupData, "group-id": group.id }
-    }));
-    actions.push(renderIconButton({
-      action: "move-home-item-down", icon: "arrow-down", label: "Mover para baixo",
-      data: { ...groupData, "group-id": group.id }
-    }));
-  }
-  if (groups.some((candidate) => candidate.id !== "others")) {
-    actions.push(renderIconButton({
-      action: "choose-home-item-group", icon: "trail", label: "Mover para outro grupo",
-      data: groupData
-    }));
-  }
-  if (group.id !== "others") {
-    actions.push(renderIconButton({
-      action: "detach-home-item", icon: "remove-state", label: "Retirar do grupo",
-      data: groupData
-    }));
-  }
-  const deleteMode = trailItemDeleteMode(item);
-  if (deleteMode) {
-    actions.push(renderIconButton({
-      action: "delete-home-trail-item", icon: "trash",
-      label: deleteMode === "catalog"
-        ? "Retirar de Coleções"
-        : item.kind === "plan" ? "Excluir plano" : "Excluir curso",
-      className: "icon-ghost is-danger", data: groupData
-    }));
-  }
-  if (shouldOfferTrailRemoval(item)) {
-    actions.unshift(renderIconButton({
-      action: "remove-home-trail-item", icon: "remove-state", label: "Retirar de Trilhas",
-      data: groupData
-    }));
-  }
-  const chooser = organization.movingItemId === item.itemId
-    ? '<form class="home-trails-inline-form home-trails-move-form" data-home-item-move-form="' + escapeHtml(item.itemId) + '">' +
-      '<select name="groupId" aria-label="Novo grupo">' +
-      '<option value="__others__">Outros</option>' +
-      groups.filter((candidate) => candidate.id !== "others").map((candidate) =>
-        '<option value="' + escapeHtml(candidate.id) + '"' + (candidate.id === group.id ? " selected" : "") + '>' +
-        escapeHtml(candidate.title) + "</option>"
-      ).join("") + "</select>" +
-      '<div class="home-trails-inline-actions">' +
-      renderIconButton({ action: "cancel-home-item-move", icon: "remove-state", label: "Cancelar" }) +
-      renderIconButton({ action: "save-home-item-group", icon: "save", label: "Mover", className: "open-main" }) +
-      "</div></form>"
-    : "";
   return (
-    '<article class="home-trails-organizer-item" data-trail-item-id="' + escapeHtml(item.itemId) + '">' +
-    '<span class="home-course-origin is-' + originKind +
-    '" title="' + escapeHtml(item.kind === "plan" ? "Planejamento" : item.origin === "catalog" ? "Curso de Coleções" : "Curso privado") + '">' +
-    renderUiIcon(originIcon, "home-course-origin-icon") + "</span>" +
-    '<span class="home-trails-organizer-item-title">' + escapeHtml(item.title) + "</span>" +
-    (studyable ? renderIconButton({
-      action: "open-course", icon: "play", label: "Abrir curso", className: "open-main",
-      data: { "trail-item-id": item.itemId, "course-key": trailItemCourseKey(item) }
-    }) : item.workspaceId ? renderIconButton({
-      action: "open-course", icon: "edit", label: "Abrir planejamento", className: "open-main",
-      data: {
-        "trail-item-id": item.itemId,
-        "course-key": trailItemCourseKey(item),
-        "trail-kind": "plan",
-        "can-edit": item.canEdit ? "true" : "false"
-      }
-    }) : "") +
-    '<details class="home-course-context-menu"><summary class="icon-ghost" title="Ações" aria-label="Ações">' +
-    renderUiIcon("more", "home-tab-icon") + '</summary><div class="home-course-context-actions">' +
-    actions.join("") + "</div></details>" + chooser +
-    '<span class="sr-only">Posição ' + escapeHtml(index + 1) + "</span>" +
-    "</article>"
+    '<details class="home-course-context-menu home-group-context-menu">' +
+    '<summary class="icon-ghost" title="Ações do grupo" aria-label="Ações do grupo">' +
+    renderUiIcon("more", "home-tab-icon") + "</summary>" +
+    '<div class="home-course-context-actions">' + actions.join("") + "</div></details>"
   );
 }
 
-function renderOrganizerGroup(group, index, groups, organization) {
-  const structural = group.id === "others";
-  const groupActions = structural ? "" : [
-    renderIconButton({ action: "move-home-group-up", icon: "arrow-up", label: "Mover grupo para cima", data: { "group-id": group.id } }),
-    renderIconButton({ action: "move-home-group-down", icon: "arrow-down", label: "Mover grupo para baixo", data: { "group-id": group.id } }),
-    renderIconButton({ action: "edit-home-group", icon: "edit", label: "Renomear grupo", data: { "group-id": group.id } }),
-    renderIconButton({ action: "delete-home-group", icon: "trash", label: "Excluir grupo", className: "icon-ghost is-danger", data: { "group-id": group.id } })
-  ].join("");
+function renderHomeSelectToolbar(groups, selectedGroup, selectedTrailItemId, organization, canOrganize) {
+  const editingGroup = groups.find((group) => group.id === organization?.editingGroupId) || null;
+  const groupControl = organization?.creatingGroup
+    ? renderGroupForm()
+    : editingGroup
+      ? renderGroupForm(editingGroup)
+      : '<div class="home-group-select-row">' +
+        '<label class="sr-only" for="home-group-select">Grupo</label>' +
+        '<select id="home-group-select" data-field="home-group-select" aria-label="Selecionar grupo">' +
+        groups.map((group) => '<option value="' + escapeHtml(group.id) + '"' +
+          (group.id === selectedGroup?.id ? " selected" : "") + '>' + escapeHtml(group.title) + "</option>").join("") +
+        "</select>" + renderGroupActions(selectedGroup, canOrganize) + "</div>";
   return (
-    '<section class="home-trails-organizer-group" data-group-id="' + escapeHtml(group.id) + '">' +
-    '<header class="home-trails-organizer-group-heading"><h2>' + escapeHtml(group.title) +
-    '</h2><span class="home-trails-group-count">' + group.items.length + "</span>" +
-    (groupActions ? '<details class="home-course-context-menu"><summary class="icon-ghost" title="Ações do grupo" aria-label="Ações do grupo">' +
-      renderUiIcon("more", "home-tab-icon") + '</summary><div class="home-course-context-actions">' + groupActions + "</div></details>" : "") +
-    "</header>" +
-    (organization.editingGroupId === group.id ? renderGroupForm(group) : "") +
-    '<div class="home-trails-organizer-list">' +
-    (group.items.length
-      ? group.items.map((item, itemIndex) => renderHomeTrailItem(item, group, itemIndex, groups, organization)).join("")
-      : '<p class="empty-state-copy">Sem itens.</p>') +
-    "</div>" + '<span class="sr-only">Grupo ' + escapeHtml(index + 1) + "</span></section>"
-  );
-}
-
-function renderHomeOrganizer(snapshot, organization = {}) {
-  const groups = groupTrailItems(snapshot, { includePlans: true });
-  return (
-    '<section class="home-trails-organizer" aria-label="Organizar Trilhas"' + (organization.busy ? ' aria-busy="true"' : "") + '>' +
-    '<header class="home-trails-organizer-toolbar"><h2>Trilhas</h2><div>' +
-    renderIconButton({ action: "start-home-group-create", icon: "add", label: "Criar grupo" }) +
-    renderIconButton({ action: "finish-home-organize", icon: "remove-state", label: "Concluir organização" }) +
-    "</div></header>" +
-    (organization.creatingGroup ? renderGroupForm() : "") +
-    (organization.error ? '<p class="home-trails-error" role="alert">' + escapeHtml(organization.error) + "</p>" : "") +
-    groups.map((group, index) => renderOrganizerGroup(group, index, groups, organization)).join("") +
-    "</section>"
+    '<div class="home-library-controls">' +
+    groupControl +
+    '<div class="home-course-select-row">' +
+    '<label class="sr-only" for="home-course-select">Curso</label>' +
+    '<select id="home-course-select" data-field="home-course-select" aria-label="Selecionar curso"' +
+    (!selectedGroup?.courses?.length ? " disabled" : "") + '>' +
+    renderCourseOptions(selectedGroup, selectedTrailItemId) + "</select></div></div>"
   );
 }
 
 function renderCoursesPane({ project, progress, editorSupport }) {
   const hasRemoteSnapshot = editorSupport.trailSnapshot && Array.isArray(editorSupport.trailSnapshot.items);
   const snapshot = hasRemoteSnapshot ? normalizeHomeTrailSnapshot(editorSupport.trailSnapshot) : null;
-  if (
-    editorSupport.homeOrganization?.active &&
-    snapshot?.capabilities?.organize
-  ) {
-    return renderHomeOrganizer(snapshot, editorSupport.homeOrganization);
-  }
   const selectedTrailItemId = preserveSelectedTrailItem(
     snapshot,
     editorSupport.selectedHomeTrailItemId
@@ -542,21 +534,35 @@ function renderCoursesPane({ project, progress, editorSupport }) {
     editorSupport.loadedHomeTrailItemIds,
     editorSupport.courseKeyByHomeTrailItemId
   );
-  if (!courses.length) {
-    return '<article class="home-course-selector-empty"><p class="empty-state-copy">' +
-      (editorSupport.trailLoading ? "Atualizando Trilhas…" : "Nenhum curso materializado em Trilhas.") +
+  if (!snapshot) {
+    const message = editorSupport.homeOrganization?.error ||
+      (editorSupport.trailLoading ? "Atualizando Trilhas…" : "Não foi possível carregar Trilhas.");
+    return '<article class="home-course-selector-empty"><p class="empty-state-copy"' +
+      (editorSupport.homeOrganization?.error ? ' role="alert"' : "") + '>' +
+      escapeHtml(message) +
       "</p></article>";
   }
   const groups = buildCourseGroups(courses, snapshot);
-  const selected = courses.find((course) => course.trailItemId === selectedTrailItemId) || courses[0];
-  const reviewItems = reviewItemsForCourse(
-    editorSupport.reviewItems,
-    selected.id,
-    selected.trailItemId
+  const courseGroup = groups.find((group) =>
+    group.courses.some((course) => course.trailItemId === selectedTrailItemId)
   );
+  const requestedGroupId = String(editorSupport.homeOrganization?.selectedGroupId || "");
+  const selectedGroup = groups.find((group) => group.id === requestedGroupId) || courseGroup || groups[0];
+  const selected = selectedGroup?.courses.find((course) => course.trailItemId === selectedTrailItemId) ||
+    selectedGroup?.courses[0] || null;
+  const reviewItems = selected
+    ? reviewItemsForCourse(editorSupport.reviewItems, selected.id, selected.trailItemId)
+    : [];
   return (
-    '<section class="home-course-selector-card">' +
-    renderHomeSelectToolbar(groups, selected.trailItemId, Boolean(snapshot?.capabilities?.organize)) +
+    '<section class="home-course-selector-card"' +
+    (editorSupport.homeOrganization?.busy ? ' aria-busy="true" inert' : "") + '>' +
+    renderHomeSelectToolbar(
+      groups,
+      selectedGroup,
+      selected?.trailItemId || "",
+      editorSupport.homeOrganization,
+      Boolean(snapshot?.capabilities?.organize)
+    ) +
     (snapshot?.stale
       ? '<p class="muted tiny home-trails-stale" role="status">Neste dispositivo</p>'
       : "") +
@@ -564,8 +570,36 @@ function renderCoursesPane({ project, progress, editorSupport }) {
       ? '<p class="home-trails-error" role="alert">' +
         escapeHtml(editorSupport.homeOrganization.error) + "</p>"
       : "") +
-    renderCoursePreview(selected, reviewItems) +
+    (selected
+      ? renderCoursePreview(selected, reviewItems, {
+          groups,
+          currentGroupId: selectedGroup?.id || "others",
+          organization: editorSupport.homeOrganization,
+          canOrganize: Boolean(snapshot?.capabilities?.organize),
+          editorSupport
+        })
+      : '<p class="empty-state-copy home-group-empty">Sem cursos neste grupo.</p>') +
     "</section>"
+  );
+}
+
+function renderHomeCourseEditDock(editorSupport) {
+  const target = editorSupport?.inlineStructureEditor;
+  if (target?.level !== "course" || !target.courseKey) return "";
+  const disabled = editorSupport.entitySaving ? ' disabled aria-disabled="true"' : "";
+  return (
+    '<nav class="study-reader-footer structure-edit-dock home-course-edit-dock" aria-label="Edição do curso">' +
+    '<div class="study-action-dock"><div class="study-action-stack">' +
+    (editorSupport.entityMutationError
+      ? '<p class="card-assistance-message" role="status">' + escapeHtml(editorSupport.entityMutationError) + "</p>"
+      : "") +
+    '<div class="study-next-wrap structure-edit-dock-actions">' +
+    '<button class="icon-ghost" type="button" data-action="close-inline-structure-entity" title="Cancelar edição" aria-label="Cancelar edição"' +
+    disabled + '>' + renderUiIcon("remove-state", "home-tab-icon") + "</button>" +
+    '<button class="open-main" type="button" data-action="save-inline-entity" data-structure-level="course" data-course-key="' +
+    escapeHtml(target.courseKey) + '" title="Salvar" aria-label="Salvar"' + disabled + '>' +
+    renderUiIcon("ready-state", "home-tab-icon") + "</button>" +
+    "</div></div></div></nav>"
   );
 }
 
@@ -577,6 +611,8 @@ export function renderHomeScreen({ project, progress, editorSupport = {} }) {
     '<section class="courses-home-list">' +
     renderCoursesPane({ project, progress, editorSupport }) +
     "</section>" +
-    "</main></section>"
+    "</main>" +
+    renderHomeCourseEditDock(editorSupport) +
+    "</section>"
   );
 }

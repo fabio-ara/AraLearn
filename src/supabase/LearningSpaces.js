@@ -5,11 +5,11 @@ import {
 } from "../assist/courseRemovalCommand.js";
 import { validateProjectDocument } from "../domain/aralearnProject.js";
 
-const CACHE_VERSION = 4;
+const CACHE_VERSION = 5;
 const CACHE_PREFIX = "learning.spaces.v1";
 const TRAIL_COURSE_CACHE_CONTRACT = "aralearn.trail-course-cache.v1";
 const TRAIL_COURSE_CACHE_PREFIX = "learning.trail.course.v1";
-const TRAIL_MUTATION_CACHE_VERSION = 1;
+const TRAIL_MUTATION_CACHE_VERSION = 2;
 const TRAIL_MUTATION_CACHE_PREFIX = "learning.trail.mutations.v1";
 const TRAIL_PAGE_LIMIT = 100;
 const MAX_TRAIL_PAGES = 100;
@@ -18,6 +18,11 @@ const MAX_CATALOG_PAGES = 100;
 const CATALOG_READ_CONCURRENCY = 4;
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
 const CONTENT_HASH_PATTERN = /^[0-9a-f]{64}$/u;
+const TRAIL_TITLE_COLLATOR = new Intl.Collator("pt-BR", {
+  usage: "sort",
+  sensitivity: "base",
+  numeric: true
+});
 
 function text(value) {
   return typeof value === "string" ? value : "";
@@ -90,9 +95,7 @@ function trailItem(value = {}) {
     canDelete: value.canDelete === true,
     canRemove: value.canRemove === true,
     pathId: value.pathId === null ? null : text(value.pathId).toLowerCase(),
-    pathTitle: text(value.pathTitle),
-    pathPosition: value.pathPosition === null ? null : integer(value.pathPosition),
-    itemPosition: value.itemPosition === null ? null : integer(value.itemPosition),
+    pathTitle: value.pathTitle === null ? null : text(value.pathTitle).trim() || null,
     revision: value.revision === null ? null : integer(value.revision),
     updatedAt: text(value.updatedAt)
   });
@@ -103,8 +106,7 @@ function trailGroup(value = {}) {
   if (!UUID_PATTERN.test(id)) throw new Error("Trilhas devolveu um grupo sem identidade válida.");
   return Object.freeze({
     id,
-    title: text(value.title).trim() || "Grupo",
-    position: integer(value.position)
+    title: text(value.title).trim() || "Grupo"
   });
 }
 
@@ -120,8 +122,6 @@ function trailPage(value) {
     hasMore: source?.hasMore === true,
     nextCursor: source?.nextCursor && typeof source.nextCursor === "object"
       ? Object.freeze({
-          afterPathPosition: Number(source.nextCursor.afterPathPosition),
-          afterItemPosition: Number(source.nextCursor.afterItemPosition),
           afterId: text(source.nextCursor.afterId)
         })
       : null,
@@ -134,11 +134,11 @@ function trailPage(value) {
 }
 
 function cursorKey(cursor) {
-  return `${cursor.afterPosition}:${cursor.afterId}`;
+  return cursor.afterId;
 }
 
 function trailCursorKey(cursor) {
-  return `${cursor.afterPathPosition}:${cursor.afterItemPosition}:${cursor.afterId}`;
+  return cursor.afterId;
 }
 
 function requestId() {
@@ -158,12 +158,11 @@ function collectionContractKey(title) {
 
 function validActionCursor(value, label) {
   if (value === null || value === undefined) return null;
-  const afterPosition = Number(value?.afterPosition);
   const afterId = text(value?.afterId).trim().toLowerCase();
-  if (!Number.isSafeInteger(afterPosition) || afterPosition < 0 || !UUID_PATTERN.test(afterId)) {
+  if (!UUID_PATTERN.test(afterId)) {
     throw new Error(`A paginação de ${label} devolveu um cursor inválido.`);
   }
-  return { afterPosition, afterId };
+  return { afterId };
 }
 
 async function loadCatalogActionItems(catalog, { operation, label, ...parameters }) {
@@ -210,10 +209,6 @@ function nextTrailCursor(page) {
   if (
     page?.hasMore !== true ||
     !cursor ||
-    !Number.isSafeInteger(cursor.afterPathPosition) ||
-    cursor.afterPathPosition < 0 ||
-    !Number.isSafeInteger(cursor.afterItemPosition) ||
-    cursor.afterItemPosition < 0 ||
     !UUID_PATTERN.test(text(cursor.afterId).trim())
   ) {
     if (page?.hasMore === true) {
@@ -224,11 +219,23 @@ function nextTrailCursor(page) {
   return cursor;
 }
 
+function compareTrailTitles(left, right) {
+  return TRAIL_TITLE_COLLATOR.compare(text(left?.title), text(right?.title)) ||
+    text(left?.trailItemId || left?.id).localeCompare(text(right?.trailItemId || right?.id));
+}
+
 function completeTrailPage(groups, items, capabilities) {
+  const sortedGroups = [...groups].sort(compareTrailTitles);
+  const groupTitles = new Map(sortedGroups.map((group) => [group.id, group.title]));
+  const sortedItems = [...items].sort((left, right) => {
+    const leftGroup = left.pathId ? groupTitles.get(left.pathId) || left.pathTitle || "" : "Outros";
+    const rightGroup = right.pathId ? groupTitles.get(right.pathId) || right.pathTitle || "" : "Outros";
+    return TRAIL_TITLE_COLLATOR.compare(leftGroup, rightGroup) || compareTrailTitles(left, right);
+  });
   return Object.freeze({
     space: "trails",
-    groups: Object.freeze(groups),
-    items: Object.freeze(items),
+    groups: Object.freeze(sortedGroups),
+    items: Object.freeze(sortedItems),
     hasMore: false,
     nextCursor: null,
     capabilities: Object.freeze({
@@ -348,8 +355,6 @@ export class LearningSpaces {
       for (let pageIndex = 0; pageIndex < MAX_TRAIL_PAGES; pageIndex += 1) {
         const page = trailPage(await this.catalog.listTrailItems({
           limit: TRAIL_PAGE_LIMIT,
-          afterPathPosition: cursor?.afterPathPosition ?? null,
-          afterItemPosition: cursor?.afterItemPosition ?? null,
           afterId: cursor?.afterId || null
         }));
         if (groups === null) {
@@ -462,6 +467,9 @@ export class LearningSpaces {
     try {
       const cached = await this.store.getSyncState(trailMutationCacheKey(userId));
       if (cached?.version !== TRAIL_MUTATION_CACHE_VERSION || !Array.isArray(cached?.entries)) {
+        if (cached !== null && cached !== undefined) {
+          await this.store.putSyncState(trailMutationCacheKey(userId), null);
+        }
         return this.#trailMutationRequests;
       }
       cached.entries.forEach((entry) => {
@@ -498,12 +506,11 @@ export class LearningSpaces {
     }
   }
 
-  createGroup({ title, targetPosition = null } = {}) {
+  createGroup({ title } = {}) {
     const normalizedTitle = text(title).trim();
     if (!normalizedTitle) throw new TypeError("Informe o nome do grupo.");
     return this.#mutateTrails("create_group", {
-      title: normalizedTitle,
-      ...(Number.isSafeInteger(targetPosition) && targetPosition >= 0 ? { targetPosition } : {})
+      title: normalizedTitle
     });
   }
 
@@ -516,32 +523,16 @@ export class LearningSpaces {
     });
   }
 
-  moveGroup({ groupId, targetPosition } = {}) {
-    return this.#mutateTrails("move_group", {
-      groupId: text(groupId).trim().toLowerCase(),
-      targetPosition: integer(targetPosition)
-    });
-  }
-
   deleteGroup({ groupId } = {}) {
     return this.#mutateTrails("delete_group", {
       groupId: text(groupId).trim().toLowerCase()
     });
   }
 
-  placeItem({ trailItemId, groupId, targetPosition = null } = {}) {
+  placeItem({ trailItemId, groupId } = {}) {
     return this.#mutateTrails("place_item", {
       trailItemId: text(trailItemId).trim().toLowerCase(),
-      groupId: text(groupId).trim().toLowerCase(),
-      ...(Number.isSafeInteger(targetPosition) && targetPosition >= 0 ? { targetPosition } : {})
-    });
-  }
-
-  moveItem({ trailItemId, groupId, targetPosition } = {}) {
-    return this.#mutateTrails("move_item", {
-      trailItemId: text(trailItemId).trim().toLowerCase(),
-      groupId: text(groupId).trim().toLowerCase(),
-      targetPosition: integer(targetPosition)
+      groupId: text(groupId).trim().toLowerCase()
     });
   }
 
@@ -736,7 +727,7 @@ export class LearningSpaces {
       return { ...collection, collectionId };
     });
     const groups = await mapWithConcurrency(
-      normalizedCollections,
+      normalizedCollections.sort(compareTrailTitles),
       CATALOG_READ_CONCURRENCY,
       async (collection) => {
         const courses = await loadCatalogActionItems(this.catalog, {
@@ -744,7 +735,13 @@ export class LearningSpaces {
           label: "cursos da Coleção",
           collectionId: collection.collectionId
         });
-        return Object.freeze({ ...collection, courses: Object.freeze(courses) });
+        return Object.freeze({
+          ...collection,
+          courses: Object.freeze(courses.sort((left, right) => (
+            TRAIL_TITLE_COLLATOR.compare(text(left?.title), text(right?.title)) ||
+            text(left?.courseId).localeCompare(text(right?.courseId))
+          )))
+        });
       }
     );
     return Object.freeze(groups);
@@ -778,26 +775,6 @@ export class LearningSpaces {
     });
   }
 
-  async moveCatalogCollection({ collectionId, revision, position } = {}) {
-    const normalizedCollectionId = text(collectionId).trim().toLowerCase();
-    if (
-      !UUID_PATTERN.test(normalizedCollectionId)
-      || !Number.isSafeInteger(revision)
-      || revision < 1
-      || !Number.isSafeInteger(position)
-      || position < 0
-    ) {
-      throw new TypeError("Coleção inválida para ordenação.");
-    }
-    return this.catalog.executeApplicationAuthoringAction("editarCatalogo", {
-      operation: "move_collection",
-      requestId: requestId(),
-      collectionId: normalizedCollectionId,
-      expectedRevision: revision,
-      position
-    });
-  }
-
   async retireCatalogCollection({ collectionId, revision, replacementCollectionId = null } = {}) {
     const normalizedCollectionId = text(collectionId).trim().toLowerCase();
     const replacement = replacementCollectionId
@@ -815,7 +792,7 @@ export class LearningSpaces {
     });
   }
 
-  async moveCatalogCourse({ courseId, placementRevision, targetCollectionId, position = null } = {}) {
+  async moveCatalogCourse({ courseId, placementRevision, targetCollectionId } = {}) {
     const normalizedCourseId = text(courseId).trim().toLowerCase();
     const normalizedCollectionId = text(targetCollectionId).trim().toLowerCase();
     if (!UUID_PATTERN.test(normalizedCourseId) || !UUID_PATTERN.test(normalizedCollectionId)) {
@@ -826,8 +803,7 @@ export class LearningSpaces {
       requestId: requestId(),
       courseId: normalizedCourseId,
       expectedPlacementRevision: Number(placementRevision),
-      targetCollectionId: normalizedCollectionId,
-      ...(Number.isSafeInteger(position) && position >= 0 ? { position } : {})
+      targetCollectionId: normalizedCollectionId
     });
   }
 

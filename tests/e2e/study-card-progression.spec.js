@@ -259,8 +259,6 @@ async function mockSupabase(page, {
           canRemove: true,
           pathId: groupId,
           pathTitle: "Geral",
-          pathPosition: 0,
-          itemPosition: selection.position,
           updatedAt: selection.updatedAt
         };
       });
@@ -268,7 +266,7 @@ async function mockSupabase(page, {
         contentType: "application/json",
         body: JSON.stringify({
           space: "trails",
-          groups: [{ id: groupId, title: "Geral", position: 0 }],
+          groups: [{ id: groupId, title: "Geral" }],
           items,
           hasMore: false,
           nextCursor: null,

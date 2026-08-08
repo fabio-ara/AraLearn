@@ -617,16 +617,12 @@ export class SupabaseAuthoringAdapter {
   async listPersonalLibraryCourses({
     principal,
     limit = 20,
-    afterPathPosition = null,
-    afterItemPosition = null,
     afterId = null,
     deadlineAt = null
   }) {
     return first(await this.rpc("list_trail_items_for_actor_v1", {
       p_actor_id: principal.actorId,
       p_limit: limit,
-      p_after_path_position: afterPathPosition,
-      p_after_item_position: afterItemPosition,
       p_after_id: afterId
     }, { deadlineAt })) || {
       space: "trails",
@@ -658,7 +654,6 @@ export class SupabaseAuthoringAdapter {
   async listCatalogCollections({
     principal,
     limit = 50,
-    afterPosition = null,
     afterId = null,
     query = "",
     includeRetired = false,
@@ -668,7 +663,6 @@ export class SupabaseAuthoringAdapter {
       ? await this.rpc("list_catalog_collections_admin", {
           p_actor_user_id: principal.actorId,
           p_limit: limit,
-          p_after_position: afterPosition,
           p_after_id: afterId,
           p_query: query,
           p_include_retired: true
@@ -676,7 +670,6 @@ export class SupabaseAuthoringAdapter {
       : await this.rpc("list_authoring_catalog_collections_v4", {
           p_owner_id: principal.actorId,
           p_limit: limit,
-          p_after_position: afterPosition,
           p_after_id: afterId,
           p_query: query
         }, { deadlineAt });
@@ -687,7 +680,6 @@ export class SupabaseAuthoringAdapter {
     principal,
     collectionId,
     limit = 50,
-    afterPosition = null,
     afterId = null,
     query = "",
     deadlineAt = null
@@ -696,7 +688,6 @@ export class SupabaseAuthoringAdapter {
       p_owner_id: principal.actorId,
       p_collection_id: collectionId,
       p_limit: limit,
-      p_after_position: afterPosition,
       p_after_id: afterId,
       p_query: query
     }, { deadlineAt })) || {
@@ -782,30 +773,12 @@ export class SupabaseAuthoringAdapter {
     }, { deadlineAt }));
   }
 
-  async moveCatalogCollection({
-    principal,
-    collectionId,
-    requestId,
-    expectedRevision,
-    position,
-    deadlineAt = null
-  }) {
-    return first(await this.rpc("move_catalog_collection_v5", {
-      p_actor_id: principal.actorId,
-      p_collection_id: collectionId,
-      p_request_id: requestId,
-      p_expected_revision: expectedRevision,
-      p_position: position
-    }, { deadlineAt }));
-  }
-
   async moveCatalogCourse({
     principal,
     courseId,
     requestId,
     expectedPlacementRevision,
     targetCollectionId,
-    position,
     deadlineAt = null
   }) {
     return first(await this.rpc("move_catalog_course_v5", {
@@ -813,8 +786,7 @@ export class SupabaseAuthoringAdapter {
       p_course_id: courseId,
       p_request_id: requestId,
       p_expected_placement_revision: expectedPlacementRevision,
-      p_target_collection_id: targetCollectionId,
-      p_position: position
+      p_target_collection_id: targetCollectionId
     }, { deadlineAt }));
   }
 

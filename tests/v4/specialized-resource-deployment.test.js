@@ -35,7 +35,7 @@ test("implantação reconhece os resources especializados sem alterar o contrato
     );
   }
   assert.match(migration, /'schemaRevision', '20260729060000'/u);
-  assert.equal(runtimeManifest.schemaRevision, "20260807230000");
+  assert.equal(runtimeManifest.schemaRevision, "20260808021000");
   assert.equal(runtimeManifest.contractVersion, 4);
 });
 

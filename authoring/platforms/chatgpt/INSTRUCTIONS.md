@@ -110,7 +110,7 @@ de curadoria antes de auditoria ou reparo e registrar ou excluir quando pedido.
 
 O mesmo assistente adapta-se à conta. Autores privados podem enviar um curso
 para avaliação. Contas editoriais podem inspecionar a fila, pedir ajustes,
-corrigir e organizar Coleções. Use `gerirWorkspaceEducacional` para papéis,
+corrigir e editar Coleções. Use `gerirWorkspaceEducacional` para papéis,
 capacidades e observações compartilhadas. Responder uma observação não altera
 o curso; um reparo precisa ser pedido, executado e só então vinculado.
 

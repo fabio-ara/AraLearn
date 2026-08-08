@@ -64,7 +64,6 @@ async function mountPanel(page, {
         contractKey: "dataprev",
         title: "Dataprev",
         description: "Concursos públicos",
-        position: 0,
         revision: 2,
         courses: [{
           courseId: "70000000-0000-4000-8000-000000000007",
@@ -72,7 +71,6 @@ async function mountPanel(page, {
           goal: "Preparação",
           contentHash: "b".repeat(64),
           placementRevision: 4,
-          position: 0,
           moduleCount: 3,
           lessonCount: 8
         }, {
@@ -81,7 +79,6 @@ async function mountPanel(page, {
           goal: "Novo curso",
           contentHash: "d".repeat(64),
           placementRevision: 2,
-          position: 1,
           moduleCount: 1,
           lessonCount: 2
         }]
@@ -90,7 +87,6 @@ async function mountPanel(page, {
         contractKey: "tecnologia",
         title: "Tecnologia",
         description: "Tecnologia e dados",
-        position: 1,
         revision: 1,
         courses: []
       }, {
@@ -98,7 +94,6 @@ async function mountPanel(page, {
         contractKey: "outros",
         title: "Outros cursos",
         description: "Destino estrutural",
-        position: 2,
         revision: 1,
         courses: []
       }]
@@ -111,7 +106,7 @@ async function mountPanel(page, {
     const addedTrailItemId = "a2000000-0000-4000-8000-000000000004";
     if (shouldSeedAdminTrailCache) {
       stored.set(`learning.spaces.v1:${userId}`, {
-        version: 4,
+        version: 5,
         cachedAt: "2026-08-04T12:00:00Z",
         page: {
           space: "trails",
@@ -137,8 +132,6 @@ async function mountPanel(page, {
             canRemove: true,
             pathId: trailGroupId,
             pathTitle: "Concursos",
-            pathPosition: 0,
-            itemPosition: 0,
             updatedAt: "2026-08-04T12:00:00Z"
           }],
           hasMore: false,
@@ -192,8 +185,6 @@ async function mountPanel(page, {
             canRemove: false,
             pathId: trailGroupId,
             pathTitle: "Concursos",
-            pathPosition: 0,
-            itemPosition: 0,
             updatedAt: "2026-08-03T12:00:00Z"
           }, {
             trailItemId: privateTrailItemId,
@@ -216,8 +207,6 @@ async function mountPanel(page, {
             canRemove: true,
             pathId: trailGroupId,
             pathTitle: "Concursos",
-            pathPosition: 0,
-            itemPosition: 1,
             updatedAt: "2026-08-03T12:00:00Z"
           }, {
             trailItemId: catalogTrailItemId,
@@ -240,8 +229,6 @@ async function mountPanel(page, {
             canRemove: true,
             pathId: trailGroupId,
             pathTitle: "Concursos",
-            pathPosition: 0,
-            itemPosition: 2,
             updatedAt: "2026-08-03T12:00:00Z"
           }].concat(probe.selectedCourseIds.has("71000000-0000-4000-8000-000000000017") ? [{
             trailItemId: addedTrailItemId,
@@ -264,8 +251,6 @@ async function mountPanel(page, {
             canRemove: true,
             pathId: trailGroupId,
             pathTitle: "Concursos",
-            pathPosition: 0,
-            itemPosition: 3,
             updatedAt: "2026-08-03T12:00:00Z"
           }] : []).filter((item) =>
             !probe.removedSelectionIds.has(item.selectionId)
@@ -278,8 +263,6 @@ async function mountPanel(page, {
         if (shouldFailTrailSecondPage) {
           response.hasMore = true;
           response.nextCursor = {
-            afterPathPosition: 0,
-            afterItemPosition: 2,
             afterId: catalogTrailItemId
           };
         }
@@ -292,7 +275,6 @@ async function mountPanel(page, {
           collection_contract_key: collection.contractKey,
           collection_title: collection.title,
           collection_description: collection.description,
-          collection_position: collection.position,
           course_id: course.courseId,
           title: course.title,
           goal: course.goal,
@@ -389,7 +371,6 @@ async function mountPanel(page, {
               contractKey: collection.contractKey,
               title: collection.title,
               description: collection.description,
-              position: collection.position,
               status: "active",
               revision: collection.revision,
               courseCount: collection.courses.length,
@@ -408,7 +389,6 @@ async function mountPanel(page, {
             ).map((course) => ({
               placementId: `placement-${course.courseId}`,
               placementRevision: course.placementRevision,
-              position: course.position,
               courseId: course.courseId,
               contractKey: course.title.toLowerCase(),
               title: course.title,
@@ -424,31 +404,20 @@ async function mountPanel(page, {
           };
         }
         if (name === "editarCatalogo" && args.operation === "create_collection") {
-          const othersIndex = probe.catalogCollections.findIndex((collection) => collection.contractKey === "outros");
           const collection = {
             collectionId: "62000000-0000-4000-8000-000000000026",
             contractKey: args.contractKey,
             title: args.title,
             description: args.description || "",
-            position: othersIndex,
             revision: 1,
             courses: []
           };
-          probe.catalogCollections.splice(othersIndex, 0, collection);
-          probe.catalogCollections.forEach((item, position) => { item.position = position; });
+          probe.catalogCollections.push(collection);
           return { collectionId: "62000000-0000-4000-8000-000000000026", revision: 1 };
         }
         if (name === "editarCatalogo" && args.operation === "update_collection") {
           const collection = probe.catalogCollections.find((item) => item.collectionId === args.collectionId);
           collection.title = args.title;
-          collection.revision += 1;
-          return { collectionId: collection.collectionId, revision: collection.revision };
-        }
-        if (name === "editarCatalogo" && args.operation === "move_collection") {
-          const index = probe.catalogCollections.findIndex((item) => item.collectionId === args.collectionId);
-          const [collection] = probe.catalogCollections.splice(index, 1);
-          probe.catalogCollections.splice(args.position, 0, collection);
-          probe.catalogCollections.forEach((item, position) => { item.position = position; });
           collection.revision += 1;
           return { collectionId: collection.collectionId, revision: collection.revision };
         }
@@ -459,9 +428,8 @@ async function mountPanel(page, {
             if (index >= 0) [moved] = collection.courses.splice(index, 1);
           });
           const target = probe.catalogCollections.find((collection) => collection.collectionId === args.targetCollectionId);
-          target.courses.splice(Number.isInteger(args.position) ? args.position : target.courses.length, 0, moved);
-          probe.catalogCollections.forEach((collection) => collection.courses.forEach((course, position) => {
-            course.position = position;
+          target.courses.push(moved);
+          probe.catalogCollections.forEach((collection) => collection.courses.forEach((course) => {
             if (course.courseId === args.courseId) course.placementRevision += 1;
           }));
           return { courseId: args.courseId, collectionId: target.collectionId };
@@ -529,8 +497,6 @@ async function mountPanel(page, {
               canRemove: true,
               pathId: null,
               pathTitle: "",
-              pathPosition: Number.MAX_SAFE_INTEGER,
-              itemPosition: 0,
               revision: null,
               updatedAt: "2026-08-07T12:00:00Z"
             }] : [],
@@ -968,7 +934,7 @@ test("página posterior com falha não transforma capacidade administrativa em c
   )).toHaveCount(0);
 });
 
-test("admin organiza Coleções sem alterar Outros nem reordenar resultados filtrados", async ({ page }) => {
+test("admin vê Coleções alfabetizadas sem controles de reordenação manual", async ({ page }) => {
   await mountPanel(page, { admin: true });
   await page.getByRole("tab", { name: "Coleções" }).click();
   await expect(page.getByRole("button", { name: "Organizar Coleções" })).toHaveCount(0);
@@ -981,21 +947,18 @@ test("admin organiza Coleções sem alterar Outros nem reordenar resultados filt
   const others = page.locator('[data-course-group-id="61000000-0000-4000-8000-000000000016"]');
   await expect(others.getByRole("heading", { name: "Outros cursos", exact: true })).toBeVisible();
   await expect(others.getByRole("button", { name: /Mover Outros|Renomear Outros|Retirar Outros/u })).toHaveCount(0);
-
-  const technology = page.locator('[data-course-group-id="60000000-0000-4000-8000-000000000006"]');
-  await revealPanelAction(technology, "move-catalog-collection-up");
-  await expect(technology.locator('[data-panel-action="move-catalog-collection-down"]')).toBeDisabled();
-  await technology.locator('[data-panel-action="move-catalog-collection-up"]').click();
-  await expect.poll(() => page.evaluate(() => window.learningSpacesProbe.catalogActions.at(-1))).toMatchObject({
-    name: "editarCatalogo",
-    args: {
-      operation: "move_collection",
-      collectionId: "60000000-0000-4000-8000-000000000006",
-      expectedRevision: 1,
-      position: 0
-    }
-  });
-  await expect(page.locator(".remote-course-group-heading h2")).toHaveText(["Tecnologia", "Dataprev", "Outros cursos"]);
+  await expect(page.locator(".remote-course-group-heading h2")).toHaveText([
+    "Dataprev",
+    "Outros cursos",
+    "Tecnologia"
+  ]);
+  const dataprev = page.locator('[data-course-group-id="50000000-0000-4000-8000-000000000005"]');
+  await expect(dataprev.locator(".remote-catalog-course-card h3")).toHaveText([
+    "Curso oficial",
+    "Curso para adicionar"
+  ]);
+  await expect(page.locator('[data-panel-action^="move-catalog-collection-"]')).toHaveCount(0);
+  await expect(page.locator('[data-panel-action^="move-catalog-course-"]')).toHaveCount(0);
 
   const readsBeforeSearch = await page.evaluate(() => ({
     collections: window.learningSpacesProbe.collectionReads,
@@ -1009,7 +972,6 @@ test("admin organiza Coleções sem alterar Outros nem reordenar resultados filt
     managed: window.learningSpacesProbe.managedCatalogReads,
     trails: window.learningSpacesProbe.trailReads
   }))).toEqual(readsBeforeSearch);
-  const dataprev = page.locator('[data-course-group-id="50000000-0000-4000-8000-000000000005"]');
   await expect(dataprev.getByRole("button", { name: "Mover Dataprev para cima" })).toHaveCount(0);
   await expect(dataprev.getByRole("button", { name: "Mover Dataprev para baixo" })).toHaveCount(0);
   const course = dataprev.locator(".remote-catalog-course-card").filter({
@@ -1040,16 +1002,6 @@ test("admin conclui o ciclo de grupos e usa Outros como destino da última Cole�
   await expect(created).toBeVisible();
 
   let dataprev = page.locator('[data-course-group-id="50000000-0000-4000-8000-000000000005"]');
-  const official = dataprev.locator(".remote-catalog-course-card").filter({
-    has: page.getByRole("heading", { name: "Curso oficial", exact: true })
-  });
-  await clickPanelAction(official, "move-catalog-course-down");
-  await expect.poll(() => page.evaluate(() => window.learningSpacesProbe.catalogActions.at(-1))).toMatchObject({
-    name: "editarCatalogo",
-    args: { operation: "move_course", position: 1 }
-  });
-
-  dataprev = page.locator('[data-course-group-id="50000000-0000-4000-8000-000000000005"]');
   const courseToMove = dataprev.locator(".remote-catalog-course-card").filter({
     has: page.getByRole("heading", { name: "Curso para adicionar", exact: true })
   });

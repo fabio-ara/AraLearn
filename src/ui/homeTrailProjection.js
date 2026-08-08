@@ -1,5 +1,11 @@
 import { validateProjectDocument } from "../domain/aralearnProject.js";
 
+const TRAIL_LABEL_COLLATOR = new Intl.Collator("pt-BR", {
+  usage: "sort",
+  sensitivity: "base",
+  numeric: true
+});
+
 function text(value) {
   return typeof value === "string" ? value.trim() : "";
 }
@@ -17,7 +23,15 @@ function itemIdentity(value = {}) {
   return text(value.trailItemId);
 }
 
-function normalizeTrailItem(value = {}, index = 0) {
+export function compareTrailLabels(leftLabel, rightLabel, leftId = "", rightId = "") {
+  const byLabel = TRAIL_LABEL_COLLATOR.compare(text(leftLabel), text(rightLabel));
+  if (byLabel) return byLabel;
+  const byVariant = String(leftLabel || "").localeCompare(String(rightLabel || ""), "pt-BR");
+  if (byVariant) return byVariant;
+  return String(leftId || "").localeCompare(String(rightId || ""));
+}
+
+function normalizeTrailItem(value = {}) {
   const itemId = itemIdentity(value);
   if (!itemId) throw new Error("Trilhas devolveu um item sem trailItemId.");
   const kind = value.kind === "plan" ? "plan" : "course";
@@ -51,15 +65,6 @@ function normalizeTrailItem(value = {}, index = 0) {
     canRemove: value.canRemove === true,
     pathId: text(value.pathId) || null,
     pathTitle: text(value.pathTitle),
-    pathPosition: Number.isSafeInteger(Number(value.pathPosition))
-      ? Number(value.pathPosition)
-      : Number.MAX_SAFE_INTEGER,
-    itemPosition: Number.isSafeInteger(Number(value.itemPosition))
-      ? Number(value.itemPosition)
-      : Number.isSafeInteger(Number(value.position))
-        ? Number(value.position)
-        : index,
-    position: Number.isSafeInteger(Number(value.position)) ? Number(value.position) : index,
     revision: value.revision === null || value.revision === undefined
       ? null
       : Number.isSafeInteger(Number(value.revision)) && Number(value.revision) >= 1
@@ -69,7 +74,7 @@ function normalizeTrailItem(value = {}, index = 0) {
   });
 }
 
-function normalizeGroup(value = {}, index = 0, items = []) {
+function normalizeGroup(value = {}, items = []) {
   const id = text(value.id);
   if (!id) throw new Error("Trilhas devolveu um grupo sem identidade.");
   const members = items
@@ -77,15 +82,22 @@ function normalizeGroup(value = {}, index = 0, items = []) {
     .map((item) => ({
       itemId: item.itemId,
       membershipId: item.itemId,
-      position: item.itemPosition
+      title: item.title
     }))
-    .sort((left, right) => left.position - right.position || left.itemId.localeCompare(right.itemId));
+    .sort((left, right) => compareTrailLabels(
+      left.title,
+      right.title,
+      left.itemId,
+      right.itemId
+    ));
   return Object.freeze({
     id,
     title: text(value.title) || "Grupo",
-    position: Number.isSafeInteger(Number(value.position)) ? Number(value.position) : index,
     revision: integer(value.revision),
-    members: Object.freeze(members.map(Object.freeze))
+    members: Object.freeze(members.map((member) => Object.freeze({
+      itemId: member.itemId,
+      membershipId: member.membershipId
+    })))
   });
 }
 
@@ -95,25 +107,25 @@ export function normalizeHomeTrailSnapshot(value) {
     throw new Error("Trilhas devolveu uma projeção incompleta.");
   }
   const seenItems = new Set();
-  const items = array(source?.items).flatMap((item, index) => {
-    const normalized = normalizeTrailItem(item, index);
+  const items = array(source?.items).flatMap((item) => {
+    const normalized = normalizeTrailItem(item);
     if (!normalized || seenItems.has(normalized.itemId)) return [];
     seenItems.add(normalized.itemId);
     return [normalized];
-  }).sort((left, right) =>
-    left.pathPosition - right.pathPosition ||
-    left.itemPosition - right.itemPosition ||
-    left.position - right.position ||
-    left.itemId.localeCompare(right.itemId)
-  );
-  const explicitGroups = source.groups.map((group, index) =>
-    normalizeGroup(group, index, items)
+  }).sort((left, right) => compareTrailLabels(
+    left.title,
+    right.title,
+    left.itemId,
+    right.itemId
+  ));
+  const explicitGroups = source.groups.map((group) =>
+    normalizeGroup(group, items)
   );
   const groups = explicitGroups;
   const existingItems = new Set(items.map((item) => item.itemId));
   const assigned = new Set();
   const normalizedGroups = groups
-    .sort((left, right) => left.position - right.position || left.id.localeCompare(right.id))
+    .sort((left, right) => compareTrailLabels(left.title, right.title, left.id, right.id))
     .map((group) => Object.freeze({
       ...group,
       members: Object.freeze(group.members.filter((member) => {
@@ -153,15 +165,28 @@ export function groupTrailItems(snapshot, { includePlans = false } = {}) {
       const item = byId.get(member.itemId);
       if (!item || assigned.has(item.itemId)) return [];
       assigned.add(item.itemId);
-      return [{ ...item, membershipId: member.membershipId, groupPosition: member.position }];
+      return [{ ...item, membershipId: member.membershipId }];
     });
     return { ...group, items: groupedItems };
   });
-  const looseItems = items.filter((item) => !assigned.has(item.itemId));
-  if (looseItems.length) {
-    groups.push({ id: "others", title: "Outros", position: groups.length, revision: 0, items: looseItems });
+  const looseItems = items
+    .filter((item) => !assigned.has(item.itemId))
+    .sort((left, right) => compareTrailLabels(left.title, right.title, left.itemId, right.itemId));
+  const explicitOthers = groups.find((group) =>
+    TRAIL_LABEL_COLLATOR.compare(group.title, "Outros") === 0
+  );
+  if (explicitOthers) {
+    explicitOthers.items = [...explicitOthers.items, ...looseItems]
+      .sort((left, right) => compareTrailLabels(left.title, right.title, left.itemId, right.itemId));
+  } else {
+    groups.push({ id: "others", title: "Outros", revision: 0, items: looseItems });
   }
-  return groups;
+  return groups.sort((left, right) => compareTrailLabels(
+    left.title,
+    right.title,
+    left.id,
+    right.id
+  ));
 }
 
 export function trailItemDeleteMode(item) {

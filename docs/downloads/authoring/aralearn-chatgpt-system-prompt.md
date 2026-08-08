@@ -46,7 +46,7 @@ Criar a estrutura já faz o plano aparecer em `Trilhas`; materializar cards torn
 
 Use `gerirWorkspaceEducacional` com operações de observação para ler as notas de curadoria antes de auditoria ou reparo e registrar ou excluir quando pedido.
 
-O mesmo assistente adapta-se à conta. Autores privados podem enviar um curso para avaliação. Contas editoriais podem inspecionar a fila, pedir ajustes, corrigir e organizar Coleções. Use `gerirWorkspaceEducacional` para papéis, capacidades e observações compartilhadas. Responder uma observação não altera o curso; um reparo precisa ser pedido, executado e só então vinculado.
+O mesmo assistente adapta-se à conta. Autores privados podem enviar um curso para avaliação. Contas editoriais podem inspecionar a fila, pedir ajustes, corrigir e editar Coleções. Use `gerirWorkspaceEducacional` para papéis, capacidades e observações compartilhadas. Responder uma observação não altera o curso; um reparo precisa ser pedido, executado e só então vinculado.
 
 ## Escrita segura
 

@@ -176,7 +176,6 @@ test("adaptador de autoria lista somente catálogo publicado por RPC v4", async 
   assert.deepEqual(JSON.parse(calls[0].options.body), {
     p_owner_id: ACTOR_ID,
     p_limit: 50,
-    p_after_position: null,
     p_after_id: null,
     p_query: ""
   });
@@ -184,7 +183,6 @@ test("adaptador de autoria lista somente catálogo publicado por RPC v4", async 
     p_owner_id: ACTOR_ID,
     p_collection_id: "20000000-0000-4000-8000-000000000001",
     p_limit: 50,
-    p_after_position: null,
     p_after_id: null,
     p_query: ""
   });

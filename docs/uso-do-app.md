@@ -43,11 +43,15 @@ menos frequentes ficam nos controles contextuais do grupo, curso ou parte
 correspondente. Sair e excluir a conta ficam recolhidos no menu de conta. Isso
 não torna os grupos equivalentes no banco:
 
-- em `Trilhas`, cada grupo é pessoal e pode ser criado, renomeado, reordenado ou
-  excluído pela própria pessoa;
+- em `Trilhas`, cada grupo é pessoal e pode ser criado, renomeado ou excluído
+  pela própria pessoa;
 - em `Coleções`, cada grupo pertence ao catálogo oficial. A pessoa comum o
-  consulta; uma conta editorial pode criá-lo, renomeá-lo, reordená-lo ou
-  retirá-lo, com alcance global.
+  consulta; uma conta editorial pode criá-lo, renomeá-lo ou retirá-lo, com
+  alcance global.
+
+Grupos e cursos são apresentados automaticamente em ordem alfabética de
+português, com números em ordem natural. Não há botões de subir ou descer nem
+uma ordem pessoal paralela para manter.
 
 Excluir um grupo pessoal não retira os cursos escolhidos nem apaga o estado de
 estudo. Eles continuam em `Trilhas`, no grupo **Outros**, até serem movidos
@@ -94,20 +98,20 @@ publica uma revisão nem cria uma cópia.
 Ao adicionar um curso, a conta passa a tê-lo na biblioteca e o dispositivo baixa o material para estudo. Isso não altera o curso oficial nem cria outra cópia dele no banco.
 
 Uma conta editorial encontra diretamente, nos alvos correspondentes, os menus
-para criar, renomear, ordenar ou retirar coleções e para mover, ordenar ou
-retirar cursos oficiais. Não existe um modo intermediário de organização.
+para criar, renomear ou retirar coleções e para mover um curso entre coleções
+ou retirá-lo do catálogo. Não existe um modo intermediário de organização.
 Essas ações alteram o catálogo para todas as pessoas e, quando são destrutivas,
 exigem confirmação. Elas são diferentes de adicionar ou retirar um curso da
-biblioteca pessoal. **Outros cursos** é o destino estrutural do catálogo:
-permanece no fim e recebe cursos que deixam uma coleção temática.
+biblioteca pessoal. **Outros cursos** é o destino estrutural do catálogo e
+recebe cursos que deixam uma coleção temática. A lista continua alfabética.
 
 **Retirar de Trilhas** remove somente uma seleção daquela conta. A publicação
-oficial continua disponível em `Coleções` para outras pessoas. Para uma conta
-editorial, o mesmo card mostra também **Retirar de Coleções**, uma ação
-administrativa distinta que, depois da confirmação, retira a publicação de
-`Coleções` e de todas as contas que a selecionaram. Um curso proveniente de
-workspace usa a ação distinta **Excluir curso privado**, baseada na composição
-corrente e não numa seleção.
+oficial continua disponível em `Coleções` para outras pessoas. A ação editorial
+distinta **Retirar de Coleções** permanece no alvo correspondente da aba
+`Coleções`; depois da confirmação, ela retira a publicação do catálogo e de
+todas as contas que a selecionaram. Um curso proveniente de workspace usa a
+ação **Excluir curso privado**, baseada na composição corrente e não numa
+seleção.
 
 A retirada identifica a seleção exata, e não o título. Por isso duas tentativas
 independentes com o mesmo nome continuam sendo cursos diferentes. Arquivar um
@@ -120,17 +124,21 @@ a réplica e a lista. Se o servidor tiver concluído a exclusão, mas o disposit
 não conseguir atualizar a tela, a mensagem informa que a retirada já ocorreu e
 pede apenas uma sincronização; não se deve repetir o comando.
 
-## Organizar Trilhas na tela inicial
+## Curadoria de Trilhas na tela inicial
 
 Na tela inicial, a pessoa acompanha o que planejou e o que já pode estudar. Ali
-pode criar, renomear e reordenar grupos pessoais, além de mover
-ou reordenar neles planos, cursos em materialização e cursos oficiais
-selecionados. Excluir um grupo deixa seus itens
-em **Outros**;
+seleciona primeiro o grupo e depois o curso, sem abrir uma tela administrativa
+paralela. O menu do grupo permite criar, renomear ou excluir; o menu do curso
+reúne somente as operações aplicáveis àquele item, inclusive movê-lo para outro
+grupo. Título e descrição tornam-se editáveis no próprio card selecionado,
+sem navegar para outra tela. Grupos e cursos permanecem em ordem alfabética
+depois de cada alteração. Excluir um grupo deixa seus itens em **Outros**;
 **Retirar de Trilhas** é a ação separada que remove uma seleção oficial, e
 **Excluir** remove a composição privada escolhida.
-Mover uma parte muda sua posição na composição corrente; copiar uma parte para
-outro curso cria uma cópia independente. Excluir uma parte retira também seus
+
+Essa ordenação alfabética vale para a biblioteca, não para a árvore pedagógica.
+Mover uma parte do curso muda sua posição na composição corrente; copiar uma
+parte para outro curso cria uma cópia independente. Excluir uma parte retira também seus
 descendentes, após confirmação. O progresso do estudo continua separado do
 conteúdo. Um curso distribuído tem uma só composição ativa vinculada; voltar a
 organizá-lo abre essa composição, em vez de criar outra. Planos realmente

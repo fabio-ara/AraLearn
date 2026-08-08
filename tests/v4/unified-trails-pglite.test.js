@@ -34,6 +34,10 @@ const runtimeManifestSearchPathUrl = new URL(
   "../../supabase/migrations/20260808012000_runtime_manifest_search_path.sql",
   import.meta.url
 );
+const alphabeticTrailsUrl = new URL(
+  "../../supabase/migrations/20260808020000_alphabetic_trails.sql",
+  import.meta.url
+);
 
 const USER = "00000000-0000-4000-8000-000000000001";
 const OTHER = "00000000-0000-4000-8000-000000000002";
@@ -69,7 +73,8 @@ async function prepare({
   dualPublication = false,
   conflictingPublication = false,
   terminalSubmission = false,
-  inactiveSelection = false
+  inactiveSelection = false,
+  legacyOtherGroup = false
 } = {}) {
   const db = new PGlite();
   await db.exec(`
@@ -597,6 +602,13 @@ async function prepare({
   await db.exec(await fs.readFile(runtimeManifestExecutionUrl, "utf8"));
   await db.exec(await fs.readFile(runtimeManifestContractUrl, "utf8"));
   await db.exec(await fs.readFile(runtimeManifestSearchPathUrl, "utf8"));
+  if (legacyOtherGroup) {
+    await db.exec(`
+      insert into public.study_paths(id,owner_id,title,position)
+      values('7b000000-0000-4000-8000-000000000001','${USER}','OUTROS',99)
+    `);
+  }
+  await db.exec(await fs.readFile(alphabeticTrailsUrl, "utf8"));
   await db.exec(`set request.jwt.claim.sub='${USER}'`);
   return db;
 }
@@ -610,9 +622,10 @@ test("projeção distingue raízes e lê partes sem artefato integral", async ()
   assert.equal(manifest.features.includes("atomic-trail-personal-state-v1"), true);
   assert.equal(manifest.features.includes("unified-trails-clean-cutover-v1"), true);
   assert.equal(manifest.features.includes("catalog-collection-ordering-v1"), true);
+  assert.equal(manifest.features.includes("alphabetic-trails-v1"), true);
   assert.equal(manifest.features.includes("partial-private-publication"), false);
   assert.equal(manifest.features.includes("integrated-trails-v1"), false);
-  assert.equal(manifest.schemaRevision, "20260807230000");
+  assert.equal(manifest.schemaRevision, "20260808020000");
   const manifestSecurity = (await db.query(`
     select procedure.prosecdef as security_definer,
            procedure.proconfig as configuration
@@ -625,6 +638,7 @@ test("projeção distingue raízes e lê partes sem artefato integral", async ()
   assert.equal(manifestSecurity.security_definer, true);
   assert.deepEqual(manifestSecurity.configuration, ["search_path=pg_catalog"]);
   for (const internalFunction of [
+    "get_aralearn_runtime_manifest_without_alphabetic_trails_v1",
     "get_aralearn_runtime_manifest_without_contract_alignment_v1",
     "get_aralearn_runtime_manifest_without_clean_trails_v1",
     "get_aralearn_runtime_manifest_without_trail_observations_v1",
@@ -665,6 +679,20 @@ test("projeção distingue raízes e lê partes sem artefato integral", async ()
       )
   `)).rows;
   assert.deepEqual(removedRpcNames, []);
+  const removedOrderingFunctions = (await db.query(`
+    select procedure.proname
+    from pg_proc procedure
+    join pg_namespace namespace on namespace.oid = procedure.pronamespace
+    where namespace.nspname = 'private'
+      and procedure.proname in (
+        'normalize_trail_groups_v1',
+        'normalize_trail_group_items_v1',
+        'move_trail_group_v1',
+        'move_trail_item_v1'
+      )
+    order by procedure.proname
+  `)).rows;
+  assert.deepEqual(removedOrderingFunctions, []);
   assert.equal((await db.query(
     "select to_regclass('public.study_paths') is not null as present"
   )).rows[0].present, true);
@@ -682,12 +710,19 @@ test("projeção distingue raízes e lê partes sem artefato integral", async ()
   assert.deepEqual(placementRules, [
     "study_path_items_id_owner_unique",
     "study_path_items_owner_item_unique",
-    "study_path_items_path_item_unique",
-    "study_path_items_position_nonnegative"
+    "study_path_items_path_item_unique"
   ]);
+  const obsoletePositionColumns = (await db.query(`
+    select table_name from information_schema.columns
+    where table_schema='public'
+      and table_name in ('study_paths','study_path_items')
+      and column_name='position'
+    order by table_name
+  `)).rows;
+  assert.deepEqual(obsoletePositionColumns, []);
   assert.equal(manifest.features.includes("non-punitive-study-state-v1"), false);
   const snapshot = (await db.query(
-    "select public.list_trail_items_v1(100,null,null,null) value"
+    "select public.list_trail_items_v1(100,null) value"
   )).rows[0].value;
   assert.equal(snapshot.items.length, 2);
   const first = snapshot.items.find((item) => item.courseKey === "course-a");
@@ -769,7 +804,7 @@ test("cutover descarta seleção e placement de curso já inativo", async () => 
 test("curso selecionado e raiz importada compartilham identidade antes da publicação", async () => {
   const db = await prepare({ sourceCourse: true });
   const snapshot = (await db.query(
-    "select public.list_trail_items_v1(100,null,null,null) value"
+    "select public.list_trail_items_v1(100,null) value"
   )).rows[0].value;
   const sourceItems = snapshot.items.filter((item) =>
     item.courseId === COURSE || item.courseKey === "course-a"
@@ -812,7 +847,7 @@ test("publicações privada e de catálogo da mesma raiz usam um único trailIte
     "select source_course_id from private.authoring_workspaces where id=$1", [WORKSPACE]
   )).rows[0].source_course_id, null);
   const projected = (await db.query(
-    "select public.list_trail_items_v1(100,null,null,null) value"
+    "select public.list_trail_items_v1(100,null) value"
   )).rows[0].value.items.filter((item) => item.courseKey === "course-a");
   assert.equal(projected.length, 1);
   assert.equal(projected[0].courseId, COURSE_CATALOG);
@@ -978,7 +1013,7 @@ test("primeiro card transforma o mesmo plano agrupado em curso estudável", asyn
     [WORKSPACE]
   );
   let projected = (await db.query(
-    "select public.list_trail_items_v1(100,null,null,null) value"
+    "select public.list_trail_items_v1(100,null) value"
   )).rows[0].value;
   const plan = projected.items.find((value) => value.courseKey === "course-a");
   assert.equal(plan.kind, "plan");
@@ -1006,7 +1041,7 @@ test("primeiro card transforma o mesmo plano agrupado em curso estudável", asyn
     [WORKSPACE]
   );
   projected = (await db.query(
-    "select public.list_trail_items_v1(100,null,null,null) value"
+    "select public.list_trail_items_v1(100,null) value"
   )).rows[0].value;
   const course = projected.items.find((value) => value.courseKey === "course-a");
   assert.equal(course.trailItemId, plan.trailItemId);
@@ -1016,10 +1051,10 @@ test("primeiro card transforma o mesmo plano agrupado em curso estudável", asyn
   await db.close();
 });
 
-test("grupos são atômicos, idempotentes e normalizam posições", async () => {
+test("grupos são atômicos, idempotentes e não aceitam ordem manual", async () => {
   const db = await prepare();
   const trailItemId = (await db.query(
-    "select (public.list_trail_items_v1(100,null,null,null)->'items'->0->>'trailItemId')::uuid id"
+    "select (public.list_trail_items_v1(100,null)->'items'->0->>'trailItemId')::uuid id"
   )).rows[0].id;
   const request = "40000000-0000-4000-8000-000000000001";
   const created = (await db.query(
@@ -1031,14 +1066,47 @@ test("grupos são atômicos, idempotentes e normalizam posições", async () => 
     [request, JSON.stringify({ title: "Dataprev" })]
   )).rows[0].value;
   assert.equal(repeated.idempotent, true);
-  await db.query(
-    "select public.mutate_trails_v1($1,'place_item',$2::jsonb)",
+  const placed = (await db.query(
+    "select public.mutate_trails_v1($1,'place_item',$2::jsonb) value",
     ["40000000-0000-4000-8000-000000000002", JSON.stringify({
       trailItemId, groupId: created.groupId
     })]
+  )).rows[0].value;
+  assert.equal(placed.changed, true);
+  const unchanged = (await db.query(
+    "select public.mutate_trails_v1($1,'place_item',$2::jsonb) value",
+    ["40000000-0000-4000-8000-000000000004", JSON.stringify({
+      trailItemId, groupId: created.groupId
+    })]
+  )).rows[0].value;
+  assert.equal(unchanged.changed, false);
+  await assert.rejects(
+    db.query(
+      "select public.mutate_trails_v1($1,'create_group',$2::jsonb)",
+      ["40000000-0000-4000-8000-000000000007", JSON.stringify({ title: "Outros" })]
+    ),
+    /Novo grupo inválido/u
+  );
+  await assert.rejects(
+    db.query(
+      "select public.mutate_trails_v1($1,'place_item',$2::jsonb)",
+      ["40000000-0000-4000-8000-000000000005", JSON.stringify({
+        trailItemId, groupId: created.groupId, targetPosition: 0
+      })]
+    ),
+    /Posicionamento de item inválido/u
+  );
+  await assert.rejects(
+    db.query(
+      "select public.mutate_trails_v1($1,'move_item',$2::jsonb)",
+      ["40000000-0000-4000-8000-000000000006", JSON.stringify({
+        trailItemId, groupId: created.groupId
+      })]
+    ),
+    /Mutação de Trilhas inválida/u
   );
   const grouped = (await db.query(
-    "select public.list_trail_items_v1(100,null,null,null) value"
+    "select public.list_trail_items_v1(100,null) value"
   )).rows[0].value;
   assert.equal(grouped.groups[0].title, "Dataprev");
   assert.equal(grouped.items.find((item) => item.trailItemId === trailItemId).pathId,
@@ -1048,9 +1116,41 @@ test("grupos são atômicos, idempotentes e normalizam posições", async () => 
     ["40000000-0000-4000-8000-000000000003", JSON.stringify({ groupId: created.groupId })]
   );
   const ungrouped = (await db.query(
-    "select public.list_trail_items_v1(100,null,null,null) value"
+    "select public.list_trail_items_v1(100,null) value"
   )).rows[0].value;
   assert.equal(ungrouped.items.find((item) => item.trailItemId === trailItemId).pathId, null);
+  await db.close();
+});
+
+test("Outros é virtual e o corte remove o grupo explícito legado", async () => {
+  const db = await prepare({ legacyOtherGroup: true });
+  const legacy = (await db.query(
+    "select count(*)::integer count from public.study_paths where lower(btrim(title))='outros'"
+  )).rows[0].count;
+  assert.equal(legacy, 0);
+  const snapshot = (await db.query(
+    "select public.list_trail_items_v1(100,null) value"
+  )).rows[0].value;
+  assert.equal(snapshot.groups.some((group) => group.title.toLowerCase() === "outros"), false);
+  assert(snapshot.items.some((item) => item.pathId === null));
+  await db.close();
+});
+
+test("grupos são projetados alfabeticamente sem depender da ordem de criação", async () => {
+  const db = await prepare();
+  for (const [index, title] of ["SENAI", "Árvore", "Dataprev"].entries()) {
+    await db.query(
+      "select public.mutate_trails_v1($1,'create_group',$2::jsonb)",
+      [`40100000-0000-4000-8000-${String(index + 1).padStart(12, "0")}`,
+        JSON.stringify({ title })]
+    );
+  }
+  const snapshot = (await db.query(
+    "select public.list_trail_items_v1(100,null) value"
+  )).rows[0].value;
+  assert.deepEqual(snapshot.groups.map((group) => group.title), ["Árvore", "Dataprev", "SENAI"]);
+  assert(snapshot.groups.every((group) => !("position" in group)));
+  assert(snapshot.items.every((item) => !("pathPosition" in item) && !("itemPosition" in item)));
   await db.close();
 });
 
@@ -1078,7 +1178,7 @@ test("paginação não perde item quando metadados mudam entre páginas", async 
     where title like 'Curso em lote %';
   `);
   const first = (await db.query(
-    "select public.list_trail_items_v1(100,null,null,null) value"
+    "select public.list_trail_items_v1(100,null) value"
   )).rows[0].value;
   assert.equal(first.items.length, 100);
   assert.equal(first.hasMore, true);
@@ -1087,12 +1187,8 @@ test("paginação não perde item quando metadados mudam entre páginas", async 
     ["81000000-0000-4000-8000-000000000105"]
   );
   const second = (await db.query(
-    "select public.list_trail_items_v1(100,$1,$2,$3) value",
-    [
-      first.nextCursor.afterPathPosition,
-      first.nextCursor.afterItemPosition,
-      first.nextCursor.afterId
-    ]
+    "select public.list_trail_items_v1(100,$1) value",
+    [first.nextCursor.afterId]
   )).rows[0].value;
   const ids = [...first.items, ...second.items].map((item) => item.trailItemId);
   assert.equal(ids.length, 107);
@@ -1104,7 +1200,7 @@ test("paginação não perde item quando metadados mudam entre páginas", async 
 test("estado pessoal usa CAS e sobrevive à publicação mantendo trailItemId", async () => {
   const db = await prepare();
   const item = (await db.query(
-    "select public.list_trail_items_v1(100,null,null,null) value"
+    "select public.list_trail_items_v1(100,null) value"
   )).rows[0].value.items.find((value) => value.courseKey === "course-a");
   const state = {
     version: 1,
@@ -1132,7 +1228,7 @@ test("estado pessoal usa CAS e sobrevive à publicação mantendo trailItemId", 
   assert.equal(saved.revision, 1);
   assert.equal(Object.hasOwn(saved, "state"), false);
   const progressProjection = (await db.query(
-    "select public.list_trail_items_v1(100,null,null,null) value"
+    "select public.list_trail_items_v1(100,null) value"
   )).rows[0].value.items.find((value) => value.trailItemId === item.trailItemId);
   assert.equal(progressProjection.completedCardCount, 1);
   await assert.rejects(db.query(
@@ -1218,7 +1314,7 @@ test("estado pessoal usa CAS e sobrevive à publicação mantendo trailItemId", 
      values($1,$2,$3)`, [SELECTION, USER, COURSE]
   );
   const after = (await db.query(
-    "select public.list_trail_items_v1(100,null,null,null) value"
+    "select public.list_trail_items_v1(100,null) value"
   )).rows[0].value.items.find((value) => value.courseKey === "course-a");
   assert.equal(after.trailItemId, item.trailItemId);
   const loaded = (await db.query(
@@ -1246,7 +1342,7 @@ test("estado pessoal usa CAS e sobrevive à publicação mantendo trailItemId", 
 test("observação usa trailItemId antes da publicação e separa a thread editorial", async () => {
   const db = await prepare();
   const item = (await db.query(
-    "select public.list_trail_items_v1(100,null,null,null) value"
+    "select public.list_trail_items_v1(100,null) value"
   )).rows[0].value.items.find((value) => value.courseKey === "course-a");
   const cardId = "card-a";
   const operation = [{
@@ -1448,7 +1544,7 @@ test("cutover preserva observação antiga integral e remove somente a tabela an
 test("mover card e lição preserva estado por IDs sem reescrever alunos", async () => {
   const db = await prepare();
   const item = (await db.query(
-    "select public.list_trail_items_v1(100,null,null,null) value"
+    "select public.list_trail_items_v1(100,null) value"
   )).rows[0].value.items.find((value) => value.courseKey === "course-a");
   await db.query(
     "select public.mutate_trail_personal_state_v1($1,0,$2::jsonb,$3)",
@@ -1518,7 +1614,7 @@ test("mover card e lição preserva estado por IDs sem reescrever alunos", async
 test("mover parte no rascunho não reescreve estado da publicação estudada", async () => {
   const db = await prepare();
   const snapshot = (await db.query(
-    "select public.list_trail_items_v1(100,null,null,null) value"
+    "select public.list_trail_items_v1(100,null) value"
   )).rows[0].value.items;
   const source = snapshot.find((value) => value.courseKey === "course-a");
   const target = snapshot.find((value) => value.courseKey === "course-b");
@@ -1568,7 +1664,7 @@ test("mover parte no rascunho não reescreve estado da publicação estudada", a
 test("excluir subárvore conserva a declaração própria como alvo indisponível", async () => {
   const db = await prepare();
   const item = (await db.query(
-    "select public.list_trail_items_v1(100,null,null,null) value"
+    "select public.list_trail_items_v1(100,null) value"
   )).rows[0].value.items.find((value) => value.courseKey === "course-a");
   const cardId = "card-a";
   await db.query(
@@ -1602,7 +1698,7 @@ test("excluir subárvore conserva a declaração própria como alvo indisponíve
 test("excluir publicação preserva identidade, grupo e estado do workspace", async () => {
   const db = await prepare();
   const item = (await db.query(
-    "select public.list_trail_items_v1(100,null,null,null) value"
+    "select public.list_trail_items_v1(100,null) value"
   )).rows[0].value.items.find((value) => value.courseKey === "course-a");
   const group = (await db.query(
     "select public.mutate_trails_v1($1,'create_group',$2::jsonb) value",
@@ -1680,11 +1776,11 @@ test("excluir publicação preserva identidade, grupo e estado do workspace", as
 test("ator diferente não organiza nem lê composição alheia", async () => {
   const db = await prepare();
   const item = (await db.query(
-    "select public.list_trail_items_v1(100,null,null,null) value"
+    "select public.list_trail_items_v1(100,null) value"
   )).rows[0].value.items[0];
   await db.exec(`set request.jwt.claim.sub='${OTHER}'`);
   const snapshot = (await db.query(
-    "select public.list_trail_items_v1(100,null,null,null) value"
+    "select public.list_trail_items_v1(100,null) value"
   )).rows[0].value;
   assert.equal(snapshot.items.length, 0);
   await assert.rejects(
@@ -1851,7 +1947,7 @@ test("delete de seleção pelo sync executa o mesmo cleanup atômico", async () 
 test("remover membro limpa só raízes sem uma seleção alternativa", async () => {
   const db = await prepare();
   const items = (await db.query(
-    "select public.list_trail_items_v1(100,null,null,null) value"
+    "select public.list_trail_items_v1(100,null) value"
   )).rows[0].value.items;
   const withoutSelection = items.find((item) => item.courseKey === "course-a");
   const withSelection = items.find((item) => item.courseKey === "course-b");
@@ -1922,7 +2018,7 @@ test("remover membro limpa só raízes sem uma seleção alternativa", async () 
 test("descartar workspace multi-raiz preserva só a raiz ainda selecionada", async () => {
   const db = await prepare();
   const items = (await db.query(
-    "select public.list_trail_items_v1(100,null,null,null) value"
+    "select public.list_trail_items_v1(100,null) value"
   )).rows[0].value.items;
   const selected = items.find((item) => item.courseKey === "course-a");
   const workspaceOnly = items.find((item) => item.courseKey === "course-b");
@@ -2093,7 +2189,7 @@ test("desativar curso remove alias sem desmontar composição autorizada", async
 test("reader altera progresso, mas observação requer comment ou seleção ativa", async () => {
   const db = await prepare();
   const item = (await db.query(
-    "select public.list_trail_items_v1(100,null,null,null) value"
+    "select public.list_trail_items_v1(100,null) value"
   )).rows[0].value.items.find((value) => value.courseKey === "course-a");
   await db.query(
     "insert into private.educational_workspace_members values($1,$2,'reader')",
@@ -2156,7 +2252,7 @@ test("reader altera progresso, mas observação requer comment ou seleção ativ
 test("excluir respondente anonimiza ator sem apagar resposta e resolução", async () => {
   const db = await prepare();
   const item = (await db.query(
-    "select public.list_trail_items_v1(100,null,null,null) value"
+    "select public.list_trail_items_v1(100,null) value"
   )).rows[0].value.items.find((value) => value.courseKey === "course-a");
   await db.query(
     "select public.mutate_trail_personal_state_v1($1,0,$2::jsonb,$3)",

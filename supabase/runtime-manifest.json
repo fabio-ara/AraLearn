@@ -1,5 +1,5 @@
 {
-  "schemaRevision": "20260807230000",
+  "schemaRevision": "20260808021000",
   "contractVersion": 4,
   "requiredFeatures": [
     "lean-shared-catalog",
@@ -49,10 +49,11 @@
     "atomic-private-course-removal-v1",
     "atomic-catalog-course-removal-v1",
     "single-active-course-composition-v1",
-    "catalog-collection-ordering-v1",
+    "alphabetic-catalog-v1",
     "stable-trail-item-identity-v1",
     "workspace-course-paged-composition-v1",
     "atomic-trail-groups-v1",
+    "alphabetic-trails-v1",
     "trail-personal-state-v1",
     "atomic-trail-personal-state-v1",
     "stable-entity-personal-state-v1",

@@ -121,6 +121,7 @@ import {
   isHomeTrailsAuthorityError
 } from "./HomeTrailsController.js";
 import {
+  groupTrailItems,
   isStudyableTrailItem,
   mergeWorkspaceCourse,
   trailItemDeleteMode
@@ -322,7 +323,7 @@ export function createLessonEditorApp({
     trailPersonalStorageByItemId: new Map(),
     trailPersonalStorageLoadingByItemId: new Map(),
     homeOrganization: {
-      active: false,
+      selectedGroupId: "",
       creatingGroup: false,
       editingGroupId: "",
       movingItemId: "",
@@ -535,6 +536,12 @@ export function createLessonEditorApp({
         if (localCourseKey) homeTrailsController.bindCourseKey(item.itemId, localCourseKey);
       }
       const selectedItem = homeTrailsController.item(state.homeSelectedTrailItemId);
+      const groups = groupTrailItems(snapshot, { includePlans: true });
+      if (!groups.some((group) => group.id === state.homeOrganization.selectedGroupId)) {
+        state.homeOrganization.selectedGroupId = groups.find((group) =>
+          group.items.some((item) => item.itemId === state.homeSelectedTrailItemId)
+        )?.id || groups[0]?.id || "";
+      }
       state.homeSelectedCourseKey = homeTrailsController.courseRefs
         .get(state.homeSelectedTrailItemId)?.courseKey ||
         selectedItem?.courseKey || selectedItem?.courseId || "";
@@ -546,7 +553,7 @@ export function createLessonEditorApp({
         state.homeTrailSnapshot = null;
         state.homeSelectedTrailItemId = "";
         state.homeSelectedCourseKey = "";
-        state.homeOrganization.active = false;
+        state.homeOrganization.selectedGroupId = "";
         setProject(storage.loadProject());
         selectFirstPath(state.project);
         state.view = "courses";
@@ -635,6 +642,33 @@ export function createLessonEditorApp({
     }
   }
 
+  async function openHomeCourseEditor(itemId) {
+    if (!homeTrailsController || state.entityMutationSaving) return false;
+    const item = homeTrailsController.item(itemId);
+    if (!item?.canEdit) return false;
+    state.homeSelectedTrailItemId = item.itemId;
+    homeTrailsController.select(item.itemId);
+    state.homeTrailLoading = true;
+    state.homeOrganization.error = "";
+    render({ preserveState: true });
+    try {
+      const course = await prepareHomeTrailItem(item.itemId);
+      state.homeSelectedCourseKey = course.id;
+      state.inlineStructureEditor = { level: "course", courseKey: course.id };
+      state.entityMutationError = "";
+      queueAuthoringFocus("inline-structure-title");
+      return true;
+    } catch (error) {
+      state.homeOrganization.error = error instanceof Error
+        ? error.message
+        : "Não foi possível editar o curso.";
+      return false;
+    } finally {
+      state.homeTrailLoading = false;
+      render({ preserveState: true });
+    }
+  }
+
   async function mutateHomeTrails(operation, argumentsValue = {}) {
     if (!homeTrailsController || state.homeOrganization.busy) return null;
     state.homeOrganization.busy = true;
@@ -654,6 +688,25 @@ export function createLessonEditorApp({
       state.homeOrganization.busy = false;
       render({ preserveState: true });
     }
+  }
+
+  function selectHomeTrailItem(trailItemId, { closeInlineEditor = true } = {}) {
+    if (!trailItemId || !homeTrailsController?.select(trailItemId)) return false;
+    state.homeSelectedTrailItemId = trailItemId;
+    const item = homeTrailsController.item(trailItemId);
+    state.homeSelectedCourseKey = homeTrailsController.courseRefs.get(trailItemId)?.courseKey ||
+      item?.courseKey || item?.courseId || "";
+    if (closeInlineEditor) {
+      state.inlineStructureEditor = null;
+      state.entityMutationError = "";
+    }
+    setProject(composeLoadedWorkspaceCourses(storage.loadProject()));
+    return true;
+  }
+
+  function groupWithTrailItem(trailItemId) {
+    return groupTrailItems(state.homeTrailSnapshot, { includePlans: true })
+      .find((group) => group.items.some((item) => item.itemId === trailItemId)) || null;
   }
 
   function isCoursesView(view) {
@@ -4276,15 +4329,39 @@ export function createLessonEditorApp({
     });
     root.querySelectorAll("[data-action='reset-course-progress-direct']").forEach((node) => {
       node.addEventListener("click", () => {
-        const courseKey = node.getAttribute("data-course-key");
-        const course = findCourse(state.project, courseKey);
-        if (!course) return;
-        if (
-          typeof globalThis.confirm === "function" &&
-          !globalThis.confirm(`Zerar progresso de todo o curso "${course.title || "Curso"}"?`)
-        ) return;
-        resetCourseProgress(courseKey);
-        render({ preserveState: false });
+        void (async () => {
+          if (state.homeTrailLoading) return;
+          const courseKey = node.getAttribute("data-course-key");
+          const trailItemId = node.getAttribute("data-trail-item-id") || "";
+          let course = findCourse(state.project, courseKey);
+          if (!course && trailItemId && homeTrailsController) {
+            state.homeTrailLoading = true;
+            state.homeOrganization.error = "";
+            render({ preserveState: true });
+            try {
+              course = await prepareHomeTrailItem(trailItemId);
+            } catch (error) {
+              state.homeOrganization.error = error instanceof Error
+                ? error.message
+                : "Não foi possível abrir o curso.";
+              return;
+            } finally {
+              state.homeTrailLoading = false;
+              render({ preserveState: true });
+            }
+          }
+          if (!course) {
+            state.homeOrganization.error = "O curso ainda não está disponível neste dispositivo.";
+            render({ preserveState: true });
+            return;
+          }
+          if (
+            typeof globalThis.confirm === "function" &&
+            !globalThis.confirm(`Zerar progresso de todo o curso "${course.title || "Curso"}"?`)
+          ) return;
+          resetCourseProgress(course.id);
+          render({ preserveState: false });
+        })();
       });
     });
     root.querySelectorAll("[data-action='reset-entity-progress-direct']").forEach((node) => {
@@ -4332,15 +4409,6 @@ export function createLessonEditorApp({
         });
       });
     });
-    root.querySelectorAll("[data-action='delete-home-trail-item']").forEach((node) => {
-      node.addEventListener("click", () => {
-        const trailItemId = node.getAttribute("data-trail-item-id") || "";
-        const reference = homeTrailsController?.courseRefs.get(trailItemId);
-        if (trailItemId && reference) {
-          void deleteCourseDirect(reference.courseKey || "", { trailItemId });
-        }
-      });
-    });
     root.querySelectorAll("[data-action='remove-home-trail-item']").forEach((node) => {
       node.addEventListener("click", () => {
         const trailItemId = node.getAttribute("data-trail-item-id") || "";
@@ -4373,33 +4441,30 @@ export function createLessonEditorApp({
     });
     root.querySelector("[data-field='home-course-select']")?.addEventListener("change", (event) => {
       const trailItemId = String(event.currentTarget.value || "");
-      if (!trailItemId || !homeTrailsController?.select(trailItemId)) return;
-      state.homeSelectedTrailItemId = trailItemId;
-      const item = homeTrailsController.item(trailItemId);
-      state.homeSelectedCourseKey = homeTrailsController.courseRefs.get(trailItemId)?.courseKey ||
-        item?.courseKey || item?.courseId || "";
-      setProject(composeLoadedWorkspaceCourses(storage.loadProject()));
+      if (!selectHomeTrailItem(trailItemId)) return;
+      state.homeOrganization.selectedGroupId = groupWithTrailItem(trailItemId)?.id || "";
       render({ preserveState: true });
     });
-    root.querySelector("[data-action='toggle-home-organize']")?.addEventListener("click", () => {
-      state.homeOrganization.active = true;
-      state.homeOrganization.error = "";
-      render({ preserveState: false });
-    });
-    root.querySelector("[data-action='finish-home-organize']")?.addEventListener("click", () => {
-      state.homeOrganization = {
-        ...state.homeOrganization,
-        active: false,
-        creatingGroup: false,
-        editingGroupId: "",
-        movingItemId: "",
-        error: ""
-      };
-      render({ preserveState: false });
+    root.querySelector("[data-field='home-group-select']")?.addEventListener("change", (event) => {
+      const groupId = String(event.currentTarget.value || "");
+      const group = groupTrailItems(state.homeTrailSnapshot, { includePlans: true })
+        .find((candidate) => candidate.id === groupId);
+      if (!group) return;
+      state.homeOrganization.selectedGroupId = group.id;
+      const firstItem = group.items.find((item) =>
+        isStudyableTrailItem(item) || (item.kind === "plan" && item.workspaceId)
+      );
+      if (firstItem) selectHomeTrailItem(firstItem.itemId);
+      else {
+        state.inlineStructureEditor = null;
+        state.entityMutationError = "";
+      }
+      render({ preserveState: true });
     });
     root.querySelector("[data-action='start-home-group-create']")?.addEventListener("click", () => {
       state.homeOrganization.creatingGroup = true;
       state.homeOrganization.editingGroupId = "";
+      queueAuthoringFocus("home-group-title");
       render({ preserveState: true });
     });
     root.querySelectorAll("[data-action='cancel-home-group-form']").forEach((node) => {
@@ -4413,7 +4478,14 @@ export function createLessonEditorApp({
       node.addEventListener("click", () => {
         state.homeOrganization.editingGroupId = node.getAttribute("data-group-id") || "";
         state.homeOrganization.creatingGroup = false;
+        queueAuthoringFocus("home-group-title");
         render({ preserveState: true });
+      });
+    });
+    root.querySelectorAll("[data-home-group-form]").forEach((form) => {
+      form.addEventListener("submit", (event) => {
+        event.preventDefault();
+        form.querySelector("[data-action='save-home-group']")?.click();
       });
     });
     root.querySelectorAll("[data-action='save-home-group']").forEach((node) => {
@@ -4422,34 +4494,34 @@ export function createLessonEditorApp({
         const title = String(form?.querySelector("[name='title']")?.value || "").trim();
         if (!title) return;
         const groupId = form?.getAttribute("data-group-id") || "";
+        const previousGroupIds = new Set((state.homeTrailSnapshot?.groups || []).map((group) => group.id));
         void mutateHomeTrails(groupId ? "renameGroup" : "createGroup", groupId
           ? { groupId, title }
           : { title }).then((snapshot) => {
           if (!snapshot) return;
+          if (groupId) state.homeOrganization.selectedGroupId = groupId;
+          else {
+            state.homeOrganization.selectedGroupId = snapshot.groups.find((group) =>
+              !previousGroupIds.has(group.id)
+            )?.id || state.homeOrganization.selectedGroupId;
+          }
           state.homeOrganization.creatingGroup = false;
           state.homeOrganization.editingGroupId = "";
           render({ preserveState: true });
         });
       });
     });
-    root.querySelectorAll("[data-action='move-home-group-up'], [data-action='move-home-group-down']")
-      .forEach((node) => {
-        node.addEventListener("click", () => {
-          const groupId = node.getAttribute("data-group-id") || "";
-          const groups = state.homeTrailSnapshot?.groups || [];
-          const index = groups.findIndex((group) => group.id === groupId);
-          const delta = node.getAttribute("data-action") === "move-home-group-up" ? -1 : 1;
-          const targetPosition = index + delta;
-          if (index < 0 || targetPosition < 0 || targetPosition >= groups.length) return;
-          void mutateHomeTrails("moveGroup", { groupId, targetPosition });
-        });
-      });
     root.querySelectorAll("[data-action='delete-home-group']").forEach((node) => {
       node.addEventListener("click", () => {
         const groupId = node.getAttribute("data-group-id") || "";
         if (!groupId) return;
         if (typeof globalThis.confirm === "function" && !globalThis.confirm("Excluir este grupo? Os itens irão para Outros.")) return;
-        void mutateHomeTrails("deleteGroup", { groupId });
+        void mutateHomeTrails("deleteGroup", { groupId }).then((snapshot) => {
+          if (!snapshot) return;
+          state.homeOrganization.selectedGroupId = groupTrailItems(snapshot, { includePlans: true })
+            .find((group) => group.id === "others")?.id || "";
+          render({ preserveState: true });
+        });
       });
     });
     root.querySelectorAll("[data-action='choose-home-item-group']").forEach((node) => {
@@ -4464,6 +4536,12 @@ export function createLessonEditorApp({
         render({ preserveState: true });
       });
     });
+    root.querySelectorAll("[data-home-item-move-form]").forEach((form) => {
+      form.addEventListener("submit", (event) => {
+        event.preventDefault();
+        form.querySelector("[data-action='save-home-item-group']")?.click();
+      });
+    });
     root.querySelectorAll("[data-action='save-home-item-group']").forEach((node) => {
       node.addEventListener("click", () => {
         const form = node.closest("[data-home-item-move-form]");
@@ -4476,31 +4554,11 @@ export function createLessonEditorApp({
         ).then((snapshot) => {
           if (!snapshot) return;
           state.homeOrganization.movingItemId = "";
+          state.homeOrganization.selectedGroupId = groupWithTrailItem(trailItemId)?.id || "";
           render({ preserveState: true });
         });
       });
     });
-    root.querySelectorAll("[data-action='detach-home-item']").forEach((node) => {
-      node.addEventListener("click", () => {
-        const trailItemId = node.getAttribute("data-trail-item-id") || "";
-        if (trailItemId) void mutateHomeTrails("removeItemFromGroup", { trailItemId });
-      });
-    });
-    root.querySelectorAll("[data-action='move-home-item-up'], [data-action='move-home-item-down']")
-      .forEach((node) => {
-        node.addEventListener("click", () => {
-          const trailItemId = node.getAttribute("data-trail-item-id") || "";
-          const groupId = node.getAttribute("data-group-id") || "";
-          const groupItems = state.homeTrailSnapshot?.items
-            ?.filter((item) => item.pathId === groupId)
-            .sort((left, right) => left.itemPosition - right.itemPosition) || [];
-          const index = groupItems.findIndex((item) => item.itemId === trailItemId);
-          const delta = node.getAttribute("data-action") === "move-home-item-up" ? -1 : 1;
-          const targetPosition = index + delta;
-          if (index < 0 || targetPosition < 0 || targetPosition >= groupItems.length) return;
-          void mutateHomeTrails("moveItem", { trailItemId, groupId, targetPosition });
-        });
-      });
     root.querySelectorAll("[data-action='open-review-card']").forEach((node) => {
       node.addEventListener("click", () => {
         void (async () => {
@@ -5014,7 +5072,8 @@ export function createLessonEditorApp({
         event.stopPropagation();
         const trailItemId = node.getAttribute("data-trail-item-id");
         if (trailItemId && homeTrailsController) {
-          void openHomeTrailCourse(trailItemId, { mode: "edit" });
+          if (state.view === "courses") void openHomeCourseEditor(trailItemId);
+          else void openHomeTrailCourse(trailItemId, { mode: "edit" });
           return;
         }
         const courseKey = node.getAttribute("data-course-key") || state.selection.courseKey;

@@ -675,7 +675,7 @@ Assim que o servidor confirma a estrutura, o plano aparece em `Trilhas`. Partes 
 
 ## Coleções
 
-`publicarCursoDoWorkspace` com `target: "catalog"` leva a composição corrente à Coleção indicada quando a conta possui capacidade editorial. O mesmo assistente pode organizar Coleções, inspecionar envios de outros autores e devolver ajustes.
+`publicarCursoDoWorkspace` com `target: "catalog"` leva a composição corrente à Coleção indicada quando a conta possui capacidade editorial. O mesmo assistente pode editar Coleções, inspecionar envios de outros autores e devolver ajustes.
 
 Um autor privado pode enviar a revisão privada corrente para avaliação. O envio aponta para o hash exato do artefato e não duplica o workspace nem expõe outros cursos. A revisão editorial é uma tarefa de curadoria em Coleções, não um estado do curso em Trilhas.
 

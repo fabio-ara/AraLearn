@@ -298,7 +298,6 @@ async function rpcAsUser(userId, name, body = {}) {
 async function listTrailsForUser(userId) {
   return rpcAsUser(userId, "list_trail_items_v1", {
     p_limit: 100,
-    p_after_position: null,
     p_after_id: null
   });
 }

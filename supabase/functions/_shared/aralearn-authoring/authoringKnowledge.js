@@ -257,8 +257,8 @@ const KNOWLEDGE_CHUNKS = Object.freeze([
     group: "workflow",
     intents: ["inspect", "restructure", "publish"],
     entities: ["course"],
-    keywords: ["colecao", "catalogo", "oficial", "mover", "reordenar", "retirar", "administrar"],
-    text: "Quando access.manageCatalog for verdadeiro, o mesmo assistente pode criar, renomear ou retirar coleções e mover, reordenar ou retirar cursos oficiais. Leia coleção, curso, revisão de classificação e hash atuais antes do comando. Retirar uma coleção com cursos exige uma coleção ativa de destino; retirar um curso não modifica o workspace que lhe deu origem."
+    keywords: ["colecao", "catalogo", "oficial", "transferir", "retirar", "administrar"],
+    text: "Quando access.manageCatalog for verdadeiro, o mesmo assistente pode criar, renomear ou retirar coleções e transferir cursos oficiais entre elas ou retirá-los. Coleções e cursos são apresentados em ordem alfabética, sem posição manual. Leia coleção, curso, revisão de classificação e hash atuais antes do comando. Retirar uma coleção com cursos exige uma coleção ativa de destino; retirar um curso não modifica o workspace que lhe deu origem."
   }),
   Object.freeze({
     id: "personal-library-removal",

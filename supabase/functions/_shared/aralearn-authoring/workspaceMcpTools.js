@@ -422,17 +422,16 @@ const AUTHORING_CONTEXT_DATA_SCHEMA = schema([
   },
   access: AUTHORING_ACCESS_SCHEMA
 });
-const TRAIL_GROUP_SCHEMA = schema(["id", "title", "position"], {
+const TRAIL_GROUP_SCHEMA = schema(["id", "title"], {
   id: UUID,
-  title: NON_EMPTY_STRING,
-  position: NON_NEGATIVE_INTEGER
+  title: NON_EMPTY_STRING
 });
 const TRAIL_ITEM_SCHEMA = schema([
   "trailItemId", "workspaceId", "courseKey", "courseId", "selectionId",
   "kind", "source", "origin", "title", "description", "moduleCount",
   "lessonCount", "microsequenceCount", "cardCount", "completedCardCount", "contentHash",
   "revision", "canEdit", "canDelete", "canRemove", "pathId", "pathTitle",
-  "pathPosition", "itemPosition", "updatedAt"
+  "updatedAt"
 ], {
   trailItemId: UUID,
   workspaceId: NULLABLE_UUID,
@@ -456,15 +455,9 @@ const TRAIL_ITEM_SCHEMA = schema([
   canRemove: { type: "boolean" },
   pathId: NULLABLE_UUID,
   pathTitle: { type: ["string", "null"] },
-  pathPosition: { type: ["integer", "null"], minimum: 0 },
-  itemPosition: { type: ["integer", "null"], minimum: 0 },
   updatedAt: DATE_TIME
 });
-const TRAIL_CURSOR_SCHEMA = schema([
-  "afterPathPosition", "afterItemPosition", "afterId"
-], {
-  afterPathPosition: NON_NEGATIVE_INTEGER,
-  afterItemPosition: NON_NEGATIVE_INTEGER,
+const TRAIL_CURSOR_SCHEMA = schema(["afterId"], {
   afterId: UUID
 });
 const PERSONAL_LIBRARY_DATA_SCHEMA = schema([
@@ -504,7 +497,6 @@ const CATALOG_COLLECTION_SCHEMA = schema([
   "contractKey",
   "title",
   "description",
-  "position",
   "status",
   "revision",
   "courseCount",
@@ -515,15 +507,13 @@ const CATALOG_COLLECTION_SCHEMA = schema([
   contractKey: NON_EMPTY_STRING,
   title: NON_EMPTY_STRING,
   description: { type: "string" },
-  position: NON_NEGATIVE_INTEGER,
   status: { const: "active" },
   revision: REVISION,
   courseCount: NON_NEGATIVE_INTEGER,
   createdAt: DATE_TIME,
   updatedAt: DATE_TIME
 });
-const POSITION_ID_CURSOR_SCHEMA = schema(["afterPosition", "afterId"], {
-  afterPosition: NON_NEGATIVE_INTEGER,
+const ID_CURSOR_SCHEMA = schema(["afterId"], {
   afterId: UUID
 });
 const CATALOG_COLLECTIONS_DATA_SCHEMA = schema(["items", "nextCursor"], {
@@ -534,14 +524,13 @@ const CATALOG_COLLECTIONS_DATA_SCHEMA = schema(["items", "nextCursor"], {
   nextCursor: {
     anyOf: [
       { type: "null" },
-      POSITION_ID_CURSOR_SCHEMA
+      ID_CURSOR_SCHEMA
     ]
   }
 });
 const CATALOG_COURSE_SCHEMA = schema([
   "placementId",
   "placementRevision",
-  "position",
   "courseId",
   "contractKey",
   "title",
@@ -555,7 +544,6 @@ const CATALOG_COURSE_SCHEMA = schema([
 ], {
   placementId: UUID,
   placementRevision: REVISION,
-  position: NON_NEGATIVE_INTEGER,
   courseId: UUID,
   contractKey: NON_EMPTY_STRING,
   title: NON_EMPTY_STRING,
@@ -578,7 +566,7 @@ const CATALOG_COURSES_DATA_SCHEMA = schema([
   nextCursor: {
     anyOf: [
       { type: "null" },
-      POSITION_ID_CURSOR_SCHEMA
+      ID_CURSOR_SCHEMA
     ]
   }
 });
@@ -1089,14 +1077,13 @@ const CATALOG_REVIEW_READ_DATA_SCHEMA = schema(
 );
 const CATALOG_COLLECTION_COMMAND_DATA_SCHEMA = schema([
   "status", "collectionId", "contractKey", "title", "description",
-  "position", "revision", "courseCount", "idempotent"
+  "revision", "courseCount", "idempotent"
 ], {
   status: { type: "string", enum: ["created", "updated", "unchanged"] },
   collectionId: UUID,
   contractKey: NON_EMPTY_STRING,
   title: NON_EMPTY_STRING,
   description: { type: "string" },
-  position: NON_NEGATIVE_INTEGER,
   revision: REVISION,
   courseCount: NON_NEGATIVE_INTEGER,
   idempotent: { type: "boolean" }
@@ -1112,26 +1099,14 @@ const CATALOG_COLLECTION_RETIRE_DATA_SCHEMA = schema([
   revision: REVISION,
   idempotent: { type: "boolean" }
 });
-const CATALOG_COLLECTION_MOVE_DATA_SCHEMA = schema([
-  "status", "collectionId", "fromPosition", "position", "revision",
-  "idempotent"
-], {
-  status: { type: "string", enum: ["moved", "unchanged"] },
-  collectionId: UUID,
-  fromPosition: NON_NEGATIVE_INTEGER,
-  position: NON_NEGATIVE_INTEGER,
-  revision: REVISION,
-  idempotent: { type: "boolean" }
-});
 const CATALOG_COURSE_MOVE_DATA_SCHEMA = schema([
   "status", "courseId", "fromCollectionId", "collectionId",
-  "position", "placementRevision", "idempotent"
+  "placementRevision", "idempotent"
 ], {
   status: { type: "string", enum: ["moved", "unchanged"] },
   courseId: UUID,
   fromCollectionId: UUID,
   collectionId: UUID,
-  position: NON_NEGATIVE_INTEGER,
   placementRevision: REVISION,
   idempotent: { type: "boolean" }
 });
@@ -1779,10 +1754,8 @@ const INDIVIDUAL_AUTHORING_WORKSPACE_MCP_TOOLS = Object.freeze([
     "Lista a projeção corrente de Trilhas: planos, cursos em materialização e cursos selecionados, sem exigir publicação.",
     groupedCursorReadSchema([], {
       limit: { type: "integer", minimum: 1, maximum: 25, default: 20 },
-      afterPathPosition: NON_NEGATIVE_INTEGER,
-      afterItemPosition: NON_NEGATIVE_INTEGER,
       afterId: UUID
-    }, ["afterPathPosition", "afterItemPosition", "afterId"]),
+    }, ["afterId"]),
     PERSONAL_LIBRARY_DATA_SCHEMA,
     { readOnlyHint: true }
   ),
@@ -1804,7 +1777,6 @@ const INDIVIDUAL_AUTHORING_WORKSPACE_MCP_TOOLS = Object.freeze([
     "Lista as coleções do catálogo para localizar cursos existentes.",
     readSchema([], {
       limit: { type: "integer", minimum: 1, maximum: 100, default: 50 },
-      afterPosition: { type: "integer", minimum: 0 },
       afterId: UUID,
       query: { type: "string", maxLength: 200 },
       includeRetired: {
@@ -1823,7 +1795,6 @@ const INDIVIDUAL_AUTHORING_WORKSPACE_MCP_TOOLS = Object.freeze([
     readSchema(["collectionId"], {
       collectionId: UUID,
       limit: { type: "integer", minimum: 1, maximum: 100, default: 50 },
-      afterPosition: { type: "integer", minimum: 0 },
       afterId: UUID,
       query: { type: "string", maxLength: 200 }
     }),
@@ -1893,17 +1864,6 @@ const INDIVIDUAL_AUTHORING_WORKSPACE_MCP_TOOLS = Object.freeze([
     CATALOG_COLLECTION_COMMAND_DATA_SCHEMA
   ),
   tool(
-    "moverColecaoNoCatalogo",
-    "Mover coleção",
-    "Reordena uma coleção oficial pela revisão corrente. A coleção Outros permanece fixa no final.",
-    writeSchema(["collectionId", "expectedRevision", "position"], {
-      collectionId: UUID,
-      expectedRevision: REVISION,
-      position: { type: "integer", minimum: 0 }
-    }),
-    CATALOG_COLLECTION_MOVE_DATA_SCHEMA
-  ),
-  tool(
     "retirarColecaoDoCatalogo",
     "Retirar coleção",
     "Retira uma coleção; se houver cursos, informe outra coleção ativa para recebê-los.",
@@ -1918,14 +1878,13 @@ const INDIVIDUAL_AUTHORING_WORKSPACE_MCP_TOOLS = Object.freeze([
   tool(
     "moverCursoNoCatalogo",
     "Mover curso no catálogo",
-    "Move ou reordena um curso oficial usando a revisão da classificação lida.",
+    "Transfere um curso oficial para outra Coleção usando a revisão da classificação lida.",
     writeSchema([
       "courseId", "expectedPlacementRevision", "targetCollectionId"
     ], {
       courseId: UUID,
       expectedPlacementRevision: REVISION,
-      targetCollectionId: UUID,
-      position: { type: "integer", minimum: 0 }
+      targetCollectionId: UUID
     }),
     CATALOG_COURSE_MOVE_DATA_SCHEMA
   ),
@@ -2580,18 +2539,14 @@ const CATALOG_EDIT_BRANCHES = Object.freeze([
     toolName: "atualizarColecaoDoCatalogo"
   }),
   Object.freeze({
-    operation: "move_collection",
-    toolName: "moverColecaoNoCatalogo"
-  }),
-  Object.freeze({
     operation: "move_course",
     toolName: "moverCursoNoCatalogo"
   })
 ]);
 const CATALOG_EDIT_TOOL = tool(
   "editarCatalogo",
-  "Organizar Coleções",
-  "Cria ou atualiza uma Coleção, ou move e reordena um curso oficial, conforme operation.",
+  "Editar Coleções",
+  "Cria ou atualiza uma Coleção, ou transfere um curso oficial entre Coleções, conforme operation.",
   groupedInputSchema(CATALOG_EDIT_BRANCHES, { write: true }),
   groupedDataSchema(CATALOG_EDIT_BRANCHES)
 );
@@ -2685,7 +2640,6 @@ const CONSOLIDATED_REMOVALS = new Set([
   "listarCursosDaColecao",
   "buscarCursosNoCatalogo",
   "atualizarColecaoDoCatalogo",
-  "moverColecaoNoCatalogo",
   "moverCursoNoCatalogo",
   "retirarCursoDoCatalogo",
   "renomearEntidadeNoWorkspace",
@@ -3179,7 +3133,7 @@ export function mapAuthoringMcpToolCall(name, rawArguments) {
     return {
       method: "GET",
       path: "/v1/library/courses" + query(args, [
-        "limit", "afterPathPosition", "afterItemPosition", "afterId"
+        "limit", "afterId"
       ]),
       body: null,
       requestId: null
@@ -3259,7 +3213,7 @@ export function mapAuthoringMcpToolCall(name, rawArguments) {
     return {
       method: "GET",
       path: "/v1/catalog/collections" + query(args, [
-        "limit", "afterPosition", "afterId", "query", "includeRetired"
+        "limit", "afterId", "query", "includeRetired"
       ]),
       body: null,
       requestId: null
@@ -3269,7 +3223,7 @@ export function mapAuthoringMcpToolCall(name, rawArguments) {
     return {
       method: "GET",
       path: `/v1/catalog/collections/${encode(args.collectionId)}/courses` + query(args, [
-        "limit", "afterPosition", "afterId", "query"
+        "limit", "afterId", "query"
       ]),
       body: null,
       requestId: null
@@ -3371,15 +3325,6 @@ export function mapAuthoringMcpToolCall(name, rawArguments) {
     return {
       method: "POST",
       path: `/v1/catalog/manage/collections/${encode(collectionId)}/update`,
-      body,
-      requestId: args.requestId
-    };
-  }
-  if (name === "moverColecaoNoCatalogo") {
-    const { collectionId, ...body } = args;
-    return {
-      method: "POST",
-      path: `/v1/catalog/manage/collections/${encode(collectionId)}/move`,
       body,
       requestId: args.requestId
     };

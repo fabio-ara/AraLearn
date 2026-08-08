@@ -15,6 +15,28 @@ function array(value) {
   return Array.isArray(value) ? value : [];
 }
 
+const CATALOG_TITLE_COLLATOR = new Intl.Collator("pt-BR", {
+  usage: "sort",
+  sensitivity: "base",
+  numeric: true
+});
+
+function compareCatalogEntries(left, right, identityField) {
+  const byTitle = CATALOG_TITLE_COLLATOR.compare(text(left?.title), text(right?.title));
+  if (byTitle !== 0) return byTitle;
+  const leftIdentity = text(left?.[identityField]);
+  const rightIdentity = text(right?.[identityField]);
+  return leftIdentity < rightIdentity ? -1 : leftIdentity > rightIdentity ? 1 : 0;
+}
+
+function compareCatalogGroups(left, right) {
+  return compareCatalogEntries(left, right, "collectionId");
+}
+
+function compareCatalogCourses(left, right) {
+  return compareCatalogEntries(left, right, "courseId");
+}
+
 function icon(name, className = "remote-library-action-icon") {
   return renderUiIcon(name, className);
 }
@@ -645,7 +667,6 @@ export function createLearningSpacesPanel({
         contractKey: text(group.contractKey).trim().toLowerCase(),
         title: text(group.title) || "Coleção",
         description: text(group.description),
-        position: integer(group.position),
         revision: integer(group.revision),
         courseCount: integer(group.courseCount),
         courses: array(group.courses).map((course) => {
@@ -661,7 +682,6 @@ export function createLearningSpacesPanel({
             isSelected: value(publicRow, "is_selected", "isSelected") === true,
             moduleCount: integer(course.moduleCount),
             lessonCount: integer(course.lessonCount),
-            position: integer(course.position),
             placementRevision: integer(course.placementRevision)
           };
         })
@@ -677,7 +697,6 @@ export function createLearningSpacesPanel({
             contractKey: text(value(row, "collection_contract_key", "collectionContractKey")).trim().toLowerCase(),
             title: text(value(row, "collection_title", "collectionTitle")) || "Coleção",
             description: text(value(row, "collection_description", "collectionDescription")),
-            position: integer(value(row, "collection_position", "collectionPosition")),
             revision: 0,
             courseCount: 0,
             courses: []
@@ -694,7 +713,6 @@ export function createLearningSpacesPanel({
           isSelected: value(row, "is_selected", "isSelected") === true,
           moduleCount: integer(value(row, "module_count", "moduleCount")),
           lessonCount: integer(value(row, "lesson_count", "lessonCount")),
-          position: byId.get(collectionId).courses.length,
           placementRevision: 0
         });
       });
@@ -714,7 +732,12 @@ export function createLearningSpacesPanel({
         return courses.length ? [{ ...group, courses }] : [];
       });
     }
-    return groups.sort((left, right) => left.position - right.position || left.title.localeCompare(right.title, "pt-BR"));
+    return groups
+      .map((group) => ({
+        ...group,
+        courses: [...group.courses].sort(compareCatalogCourses)
+      }))
+      .sort(compareCatalogGroups);
   }
 
   function renderCatalogCollectionForm(group = null) {
@@ -840,7 +863,7 @@ export function createLearningSpacesPanel({
     return form;
   }
 
-  function renderCatalogCourse(course, group, groups, index, { allowReorder = true } = {}) {
+  function renderCatalogCourse(course, group, groups) {
     const row = documentValue.createElement("article");
     row.className = "remote-catalog-course-card learning-spaces-outline-item learning-spaces-catalog-item is-origin-catalog";
     row.setAttribute("role", "listitem");
@@ -884,34 +907,6 @@ export function createLearningSpacesPanel({
       });
     }
     if (authenticatedCapabilities.catalogManage && catalogManagementReady) {
-      if (allowReorder) {
-        menuItems.push(
-          menuButton(documentValue, {
-            action: "move-catalog-course-up",
-            iconName: "arrow-up",
-            label: `Mover ${course.title} para cima`,
-            disabled: index === 0,
-            data: {
-              courseId: course.courseId,
-              placementRevision: String(course.placementRevision),
-              collectionId: group.collectionId,
-              position: String(index - 1)
-            }
-          }),
-          menuButton(documentValue, {
-            action: "move-catalog-course-down",
-            iconName: "arrow-down",
-            label: `Mover ${course.title} para baixo`,
-            disabled: index >= group.courses.length - 1,
-            data: {
-              courseId: course.courseId,
-              placementRevision: String(course.placementRevision),
-              collectionId: group.collectionId,
-              position: String(index + 1)
-            }
-          })
-        );
-      }
       if (groups.length > 1) {
         menuItems.push(menuButton(documentValue, {
           action: "choose-catalog-course-collection",
@@ -962,38 +957,13 @@ export function createLearningSpacesPanel({
     if (creatingCatalogCollection) section.append(renderNewCatalogCollectionGroup());
     const allGroups = catalogGroupsForRender({ applyQuery: false });
     const groups = catalogGroupsForRender();
-    const movableGroups = allGroups.filter((group) => group.contractKey !== "outros");
-    const filtering = Boolean(catalogQuery.trim());
     groups.forEach((group) => {
-      const movableIndex = movableGroups.findIndex((candidate) => candidate.collectionId === group.collectionId);
       const isStructural = group.contractKey === "outros";
       if (isStructural && !group.courses.length && !catalogManagementReady) return;
       const hasRetirementDestination = allGroups.some(
         (candidate) => candidate.collectionId !== group.collectionId
       );
       const menuItems = authenticatedCapabilities.catalogManage && catalogManagementReady && !isStructural ? [
-        menuButton(documentValue, {
-          action: "move-catalog-collection-up",
-          iconName: "arrow-up",
-          label: `Mover ${group.title} para cima`,
-          hidden: filtering,
-          disabled: movableIndex <= 0,
-          data: {
-            collectionId: group.collectionId,
-            revision: String(group.revision)
-          }
-        }),
-        menuButton(documentValue, {
-          action: "move-catalog-collection-down",
-          iconName: "arrow-down",
-          label: `Mover ${group.title} para baixo`,
-          hidden: filtering,
-          disabled: movableIndex < 0 || movableIndex >= movableGroups.length - 1,
-          data: {
-            collectionId: group.collectionId,
-            revision: String(group.revision)
-          }
-        }),
         menuButton(documentValue, {
           action: "edit-catalog-collection",
           iconName: "edit",
@@ -1026,14 +996,12 @@ export function createLearningSpacesPanel({
         id: group.collectionId,
         kind: "catalog",
         title: group.title,
-        entries: group.courses.map((course, index) => renderCatalogCourse(
+        entries: group.courses.map((course) => renderCatalogCourse(
           course,
           group,
-          allGroups,
-          index,
-          { allowReorder: !filtering }
+          allGroups
         )),
-        menuItems: menuItems.filter((action) => !action.hidden),
+        menuItems,
         form
       }));
     });
@@ -1194,28 +1162,6 @@ export function createLearningSpacesPanel({
     }
   }
 
-  async function moveCatalogCollection(node, direction) {
-    const groups = catalogGroupsForRender({ applyQuery: false })
-      .filter((group) => group.contractKey !== "outros");
-    const currentIndex = groups.findIndex((group) => group.collectionId === node.dataset.collectionId);
-    const delta = direction === "up" ? -1 : direction === "down" ? 1 : 0;
-    const targetPosition = Math.max(0, Math.min(groups.length - 1, currentIndex + delta));
-    if (!delta || currentIndex < 0 || targetPosition === currentIndex) return;
-    const operation = beginBusy("Movendo…");
-    try {
-      await spaces.moveCatalogCollection({
-        collectionId: node.dataset.collectionId,
-        revision: Number(node.dataset.revision),
-        position: targetPosition
-      });
-      await refreshCatalogAfterMutation();
-    } catch (error) {
-      reportStatus(error instanceof Error ? error.message : "Não foi possível mover a Coleção.");
-    } finally {
-      endBusy(operation);
-    }
-  }
-
   async function retireCatalogCollection(formOrNode) {
     const collectionId = formOrNode.dataset.catalogCollectionRetireForm
       || formOrNode.dataset.collectionId;
@@ -1242,23 +1188,6 @@ export function createLearningSpacesPanel({
         );
       }
       reportStatus(error instanceof Error ? error.message : "Não foi possível retirar a Coleção.");
-    } finally {
-      endBusy(operation);
-    }
-  }
-
-  async function moveCatalogCourse(node) {
-    const operation = beginBusy("Movendo…");
-    try {
-      await spaces.moveCatalogCourse({
-        courseId: node.dataset.courseId,
-        placementRevision: Number(node.dataset.placementRevision),
-        targetCollectionId: node.dataset.collectionId,
-        position: Number(node.dataset.position)
-      });
-      await refreshCatalogAfterMutation();
-    } catch (error) {
-      reportStatus(error instanceof Error ? error.message : "Não foi possível mover o curso.");
     } finally {
       endBusy(operation);
     }
@@ -1804,8 +1733,6 @@ export function createLearningSpacesPanel({
     } else if (action === "submit-catalog-collection-edit") {
       const form = node.closest("[data-catalog-collection-form='rename']");
       if (form?.reportValidity()) void renameCatalogCollection(form);
-    } else if (action === "move-catalog-collection-up" || action === "move-catalog-collection-down") {
-      void moveCatalogCollection(node, action.endsWith("up") ? "up" : "down");
     } else if (action === "retire-catalog-collection") {
       if (Number(node.dataset.courseCount) > 0) {
         retiringCatalogCollectionId = node.dataset.collectionId;
@@ -1843,8 +1770,6 @@ export function createLearningSpacesPanel({
     } else if (action === "submit-catalog-course-move") {
       const form = node.closest("[data-catalog-course-move-form]");
       if (form?.reportValidity()) void moveCatalogCourseToCollection(form);
-    } else if (action === "move-catalog-course-up" || action === "move-catalog-course-down") {
-      void moveCatalogCourse(node);
     } else if (action === "add-course-to-trails") {
       void addCourseToTrails(node);
     }

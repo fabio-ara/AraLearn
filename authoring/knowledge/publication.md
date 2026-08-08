@@ -29,7 +29,7 @@ distribuição, sem pedir ao usuário que escolha entre criar e atualizar.
 
 `publicarCursoDoWorkspace` com `target: "catalog"` leva a composição corrente à
 Coleção indicada quando a conta possui capacidade editorial. O mesmo assistente
-pode organizar Coleções, inspecionar envios de outros autores e devolver
+pode editar Coleções, inspecionar envios de outros autores e devolver
 ajustes.
 
 Um autor privado pode enviar a revisão privada corrente para avaliação. O envio

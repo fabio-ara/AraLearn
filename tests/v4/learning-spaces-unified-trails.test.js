@@ -29,7 +29,7 @@ function authClient(sessionStore) {
   };
 }
 
-function trailItem(trailItemId, itemPosition) {
+function trailItem(trailItemId, titleIndex) {
   return {
     trailItemId,
     workspaceId: WORKSPACE_ID,
@@ -39,7 +39,7 @@ function trailItem(trailItemId, itemPosition) {
     kind: "course",
     source: "workspace",
     origin: "workspace",
-    title: `Curso ${itemPosition + 1}`,
+    title: `Curso ${titleIndex + 1}`,
     description: "Objetivo",
     moduleCount: 1,
     lessonCount: 1,
@@ -53,8 +53,6 @@ function trailItem(trailItemId, itemPosition) {
     canRemove: false,
     pathId: GROUP_ID,
     pathTitle: "Grupo",
-    pathPosition: 0,
-    itemPosition,
     updatedAt: "2026-08-07T12:00:00Z"
   };
 }
@@ -93,7 +91,7 @@ function fixtureParts() {
   return parts;
 }
 
-test("snapshot de Trilhas percorre cursor triplo e persiste somente a página completa", async () => {
+test("snapshot de Trilhas percorre cursor por identidade e ordena somente a página completa", async () => {
   const sessionStore = store();
   const calls = [];
   const catalog = {
@@ -101,32 +99,28 @@ test("snapshot de Trilhas percorre cursor triplo e persiste somente a página co
       calls.push(options);
       const common = {
         space: "trails",
-        groups: [{ id: GROUP_ID, title: "Grupo", position: 0 }],
+        groups: [{ id: GROUP_ID, title: "Grupo" }],
         capabilities: { catalogManage: false, catalogReview: false }
       };
       if (options.afterId === null) {
         return {
           ...common,
-          items: [trailItem(ITEM_A, 0)],
+          items: [trailItem(ITEM_A, 1)],
           hasMore: true,
-          nextCursor: { afterPathPosition: 0, afterItemPosition: 0, afterId: ITEM_A }
+          nextCursor: { afterId: ITEM_A }
         };
       }
-      return { ...common, items: [trailItem(ITEM_B, 1)], hasMore: false, nextCursor: null };
+      return { ...common, items: [trailItem(ITEM_B, 0)], hasMore: false, nextCursor: null };
     }
   };
   const spaces = new LearningSpaces({ catalog, authClient: authClient(sessionStore) });
   const snapshot = await spaces.loadTrailSnapshot();
-  assert.deepEqual(snapshot.items.map((entry) => entry.trailItemId), [ITEM_A, ITEM_B]);
+  assert.deepEqual(snapshot.items.map((entry) => entry.trailItemId), [ITEM_B, ITEM_A]);
   assert.deepEqual(calls, [{
     limit: 100,
-    afterPathPosition: null,
-    afterItemPosition: null,
     afterId: null
   }, {
     limit: 100,
-    afterPathPosition: 0,
-    afterItemPosition: 0,
     afterId: ITEM_A
   }]);
   assert.equal([...sessionStore.values.values()][0].page.items.length, 2);
@@ -140,7 +134,7 @@ test("falha transitória da projeção usa o cache sem conservar autoridade", as
       if (!available) throw new TypeError("Failed to fetch");
       return {
         space: "trails",
-        groups: [{ id: GROUP_ID, title: "Grupo", position: 0 }],
+        groups: [{ id: GROUP_ID, title: "Grupo" }],
         items: [trailItem(ITEM_A, 0)],
         hasMore: false,
         nextCursor: null,
@@ -207,13 +201,12 @@ test("mutações de grupo usam trailItemId e invalidam a projeção", async () =
       async mutateTrails(input) { calls.push(input); return { revision: 2 }; }
     }
   });
-  await sessionStore.putSyncState(`learning.spaces.v1:${USER_ID}`, { version: 4 });
-  await spaces.moveItem({ trailItemId: ITEM_A, groupId: GROUP_ID, targetPosition: 1 });
-  assert.equal(calls[0].operation, "move_item");
+  await sessionStore.putSyncState(`learning.spaces.v1:${USER_ID}`, { version: 5 });
+  await spaces.placeItem({ trailItemId: ITEM_A, groupId: GROUP_ID });
+  assert.equal(calls[0].operation, "place_item");
   assert.deepEqual(calls[0].arguments, {
     trailItemId: ITEM_A,
-    groupId: GROUP_ID,
-    targetPosition: 1
+    groupId: GROUP_ID
   });
   assert.equal(sessionStore.values.size, 0);
 });
@@ -264,7 +257,7 @@ test("snapshot online remove caches dos itens cuja autoridade foi revogada", asy
     async listTrailItems() {
       return {
         space: "trails",
-        groups: visible ? [{ id: GROUP_ID, title: "Grupo", position: 0 }] : [],
+        groups: visible ? [{ id: GROUP_ID, title: "Grupo" }] : [],
         items: visible ? [trailItem(ITEM_A, 0)] : [],
         hasMore: false,
         nextCursor: null,
@@ -294,7 +287,7 @@ test("snapshot online remove caches dos itens cuja autoridade foi revogada", asy
 test("falha de autoridade pode purgar projeção e caches derivados de uma sessão anterior", async () => {
   const sessionStore = store();
   await sessionStore.putSyncState(`learning.spaces.v1:${USER_ID}`, {
-    version: 4,
+    version: 5,
     page: {
       space: "trails",
       groups: [],

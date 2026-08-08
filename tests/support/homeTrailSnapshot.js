@@ -9,7 +9,7 @@ export function homeTrailSnapshotForProject(project, {
 } = {}) {
   return {
     space: "trails",
-    groups: [{ id: groupId, title: groupTitle, position: 0 }],
+    groups: [{ id: groupId, title: groupTitle }],
     items: (project?.courses || []).map((course, index) => {
       const access = permissions[course.id] || {};
       return {
@@ -38,8 +38,6 @@ export function homeTrailSnapshotForProject(project, {
         canRemove: access.canRemove === true,
         pathId: groupId,
         pathTitle: groupTitle,
-        pathPosition: 0,
-        itemPosition: index,
         updatedAt: "2026-08-07T12:00:00Z"
       };
     }),

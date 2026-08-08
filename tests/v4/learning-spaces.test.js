@@ -30,9 +30,7 @@ function makeTrailItemForCursor(index) {
     origin: "workspace",
     cardCount: 0,
     revision: 1,
-    pathId: null,
-    pathPosition: null,
-    itemPosition: index
+    pathId: null
   };
 }
 
@@ -64,7 +62,7 @@ test("Trilhas guarda somente a projeção corrente por conta e a reutiliza offli
       async listTrailItems(options) {
         calls.push(options);
         return trailProjection({
-          groups: [{ id: GROUP_ID, title: "Planos", position: 0 }],
+          groups: [{ id: GROUP_ID, title: "Planos" }],
           items: [{
             trailItemId: TRAIL_ITEM_ID,
             workspaceId: WORKSPACE_ID,
@@ -86,8 +84,6 @@ test("Trilhas guarda somente a projeção corrente por conta e a reutiliza offli
             canRemove: false,
             pathId: GROUP_ID,
             pathTitle: "Planos",
-            pathPosition: 0,
-            itemPosition: 0,
             revision: 1,
             updatedAt: "2026-08-03T12:00:00Z"
           }],
@@ -102,12 +98,10 @@ test("Trilhas guarda somente a projeção corrente por conta e a reutiliza offli
   assert.equal(online.page.items[0].cardCount, 0);
   assert.deepEqual(calls, [{
     limit: 100,
-    afterPathPosition: null,
-    afterItemPosition: null,
     afterId: null
   }]);
   assert.equal(store.values.size, 1);
-  assert.equal(Array.from(store.values.values())[0].version, 4);
+  assert.equal(Array.from(store.values.values())[0].version, 5);
 
   const offline = await spaces.loadTrails({ online: false });
   assert.equal(offline.stale, true);
@@ -140,8 +134,6 @@ test("Trilhas agrega mais de cinquenta itens, preserva ordem e elimina sobreposi
     title: `Plano ${position}`,
     pathId: null,
     pathTitle: "",
-    pathPosition: null,
-    itemPosition: position,
     revision: 1,
     canEdit: true,
     canDelete: true,
@@ -157,8 +149,6 @@ test("Trilhas agrega mais de cinquenta itens, preserva ordem e elimina sobreposi
             items: Array.from({ length: 50 }, (_, index) => makeItem(index)),
             hasMore: true,
             nextCursor: {
-              afterPathPosition: 2147483647,
-              afterItemPosition: 49,
               afterId: makeItem(49).trailItemId
             },
             capabilities: { catalogManage: true, catalogReview: true }
@@ -190,13 +180,9 @@ test("Trilhas agrega mais de cinquenta itens, preserva ordem e elimina sobreposi
   });
   assert.deepEqual(calls, [{
     limit: 100,
-    afterPathPosition: null,
-    afterItemPosition: null,
     afterId: null
   }, {
     limit: 100,
-    afterPathPosition: 2147483647,
-    afterItemPosition: 49,
     afterId: makeItem(49).trailItemId
   }]);
   const cached = Array.from(store.values.values())[0];
@@ -219,8 +205,6 @@ test("cursor repetido interrompe Trilhas sem gravar projeção parcial", async (
           }],
           hasMore: true,
           nextCursor: {
-            afterPathPosition: 2147483647,
-            afterItemPosition: 1,
             afterId: "80000000-0000-4000-8000-000000000001"
           },
           capabilities: { catalogManage: true, catalogReview: true }
@@ -255,8 +239,6 @@ test("falha em página posterior preserva somente o último cache completo", asy
             items: [{ ...makeTrailItemForCursor(11), title: "Parcial" }],
             hasMore: true,
             nextCursor: {
-              afterPathPosition: 2147483647,
-              afterItemPosition: 11,
               afterId: makeTrailItemForCursor(11).trailItemId
             },
             capabilities: { catalogManage: true, catalogReview: true }
@@ -401,17 +383,50 @@ test("cliente remoto chama somente a projeção integrada de Trilhas", async () 
   });
   await catalog.listTrailItems({
     limit: 20,
-    afterPathPosition: 3,
-    afterItemPosition: 7,
     afterId: WORKSPACE_ID
   });
   assert.match(requests[0].url, /\/rpc\/list_trail_items_v1$/u);
   assert.deepEqual(requests[0].body, {
     p_limit: 20,
-    p_after_path_position: 3,
-    p_after_item_position: 7,
     p_after_id: WORKSPACE_ID
   });
+});
+
+test("cliente remoto ordena o catálogo completo segundo pt-BR", async () => {
+  const catalog = new RemoteCourseCatalog({
+    projectUrl: "https://project.example",
+    publishableKey: "sb_publishable_test",
+    authClient: {
+      getSession: () => ({ user: { id: USER_ID } }),
+      getAccessToken: async () => "access-token"
+    },
+    fetchImpl: async () => new Response(JSON.stringify([
+      {
+        collection_id: "50000000-0000-4000-8000-000000000005",
+        collection_title: "Zoologia",
+        course_id: "70000000-0000-4000-8000-000000000007",
+        title: "Zinco"
+      },
+      {
+        collection_id: "60000000-0000-4000-8000-000000000006",
+        collection_title: "Álgebra",
+        course_id: "71000000-0000-4000-8000-000000000017",
+        title: "Vetores"
+      },
+      {
+        collection_id: "60000000-0000-4000-8000-000000000006",
+        collection_title: "Álgebra",
+        course_id: "72000000-0000-4000-8000-000000000027",
+        title: "Ábacos"
+      }
+    ]), {
+      status: 200,
+      headers: { "Content-Type": "application/json" }
+    })
+  });
+
+  const rows = await catalog.listCollections();
+  assert.deepEqual(rows.map((row) => row.title), ["Ábacos", "Vetores", "Zinco"]);
 });
 
 test("administração de Coleções pagina leituras e envia CAS sem campos implícitos", async () => {
@@ -427,19 +442,19 @@ test("administração de Coleções pagina leituras e envia CAS sem campos impl�
         if (name === "consultarCatalogo" && args.operation === "list_collections") {
           if (!args.afterId) {
             return {
-              items: [{ collectionId: firstCollectionId, title: "Primeira", position: 0, revision: 2 }],
-              nextCursor: { afterPosition: 0, afterId: firstCollectionId }
+              items: [{ collectionId: firstCollectionId, title: "Zoologia", revision: 2 }],
+              nextCursor: { afterId: firstCollectionId }
             };
           }
           return {
-            items: [{ collectionId: secondCollectionId, title: "Segunda", position: 1, revision: 3 }],
+            items: [{ collectionId: secondCollectionId, title: "Álgebra", revision: 3 }],
             nextCursor: null
           };
         }
         if (name === "consultarCatalogo" && args.operation === "list_collection_courses") {
           return {
             items: args.collectionId === firstCollectionId
-              ? [{ courseId: COURSE_ID, title: "Curso", placementRevision: 4, position: 0 }]
+              ? [{ courseId: COURSE_ID, title: "Curso", placementRevision: 4 }]
               : [],
             nextCursor: null
           };
@@ -450,8 +465,8 @@ test("administração de Coleções pagina leituras e envia CAS sem campos impl�
   });
 
   const groups = await spaces.loadManagedCatalog();
-  assert.deepEqual(groups.map((group) => group.collectionId), [firstCollectionId, secondCollectionId]);
-  assert.equal(groups[0].courses[0].courseId, COURSE_ID);
+  assert.deepEqual(groups.map((group) => group.collectionId), [secondCollectionId, firstCollectionId]);
+  assert.equal(groups[1].courses[0].courseId, COURSE_ID);
   assert.deepEqual(calls.slice(0, 4).map(([, args]) => args.operation), [
     "list_collections",
     "list_collections",
@@ -461,7 +476,6 @@ test("administração de Coleções pagina leituras e envia CAS sem campos impl�
   assert.deepEqual(calls[1][1], {
     operation: "list_collections",
     limit: 100,
-    afterPosition: 0,
     afterId: firstCollectionId
   });
 
@@ -478,48 +492,14 @@ test("administração de Coleções pagina leituras e envia CAS sem campos impl�
   });
   assert.equal(calls.at(-1)[1].expectedRevision, 2);
 
-  await spaces.moveCatalogCollection({
-    collectionId: firstCollectionId,
-    revision: 3,
-    position: 1
-  });
-  assert.deepEqual(calls.at(-1)[1], {
-    operation: "move_collection",
-    requestId: calls.at(-1)[1].requestId,
-    collectionId: firstCollectionId,
-    expectedRevision: 3,
-    position: 1
-  });
-
-  const callCountBeforeInvalidMoves = calls.length;
-  for (const invalid of [
-    { revision: 0, position: 0 },
-    { revision: 1.5, position: 0 },
-    { revision: "3", position: 0 },
-    { revision: 3, position: -1 },
-    { revision: 3, position: 0.5 },
-    { revision: 3, position: null },
-    { revision: 3, position: undefined }
-  ]) {
-    await assert.rejects(
-      spaces.moveCatalogCollection({
-        collectionId: firstCollectionId,
-        ...invalid
-      }),
-      (error) => error instanceof TypeError
-        && error.message === "Coleção inválida para ordenação."
-    );
-  }
-  assert.equal(calls.length, callCountBeforeInvalidMoves);
-
   await spaces.moveCatalogCourse({
     courseId: COURSE_ID,
     placementRevision: 4,
-    targetCollectionId: secondCollectionId,
-    position: 0
+    targetCollectionId: secondCollectionId
   });
   assert.equal(calls.at(-1)[1].operation, "move_course");
   assert.equal(calls.at(-1)[1].expectedPlacementRevision, 4);
+  assert.equal(Object.hasOwn(calls.at(-1)[1], "position"), false);
 
   await spaces.retireCatalogCollection({
     collectionId: firstCollectionId,
@@ -549,8 +529,7 @@ test("administração de Coleções limita e paraleliza a leitura dos cursos", a
           return {
             items: collectionIds.map((collectionId, position) => ({
               collectionId,
-              title: `Coleção ${position + 1}`,
-              position,
+              title: `Coleção ${collectionIds.length - position}`,
               revision: 1
             })),
             nextCursor: null
@@ -582,7 +561,7 @@ test("administração de Coleções limita e paraleliza a leitura dos cursos", a
   assert.equal(collectionReads, 1);
   assert.equal(courseReads, collectionIds.length);
   assert.equal(maxActiveCourseReads, 4);
-  assert.deepEqual(groups.map((group) => group.collectionId), collectionIds);
+  assert.deepEqual(groups.map((group) => group.collectionId), [...collectionIds].reverse());
 });
 
 test("retirada confirmada limpa a réplica antes de reconstruir a home", async () => {

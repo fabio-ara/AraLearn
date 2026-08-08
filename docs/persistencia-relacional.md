@@ -55,12 +55,12 @@ O estado pessoal ocupa tabelas separadas:
 | --- | --- | --- |
 | Cursos selecionados | `user_course_selections` | `courseSelections` |
 | Identidade de Trilhas | `private.trail_items` | projeção em `syncState` |
-| Grupos e posições | `study_paths`, `study_path_items` | projeção em `syncState` |
+| Grupos e vínculos | `study_paths`, `study_path_items` | projeção em `syncState` |
 | Progresso, Rever e observações | `trail_personal_states` | cache por `trailItemId` em `syncState` |
 | Sincronização de seleção oficial | tabelas privadas | fila leve de envio (`outbox`) |
 
 A tela inicial não possui uma árvore remota paralela. `list_trail_items_v1` projeta planos e
-cursos correntes, com cursor composto, sem copiar conteúdo. O dispositivo
+cursos correntes, com cursor estável por UUID, sem copiar conteúdo. O dispositivo
 sobrescreve uma única entrada `learning.spaces.v1:<userId>` em `syncState` com
 a projeção completa de Trilhas, depois de percorrer todas as páginas. Resultado
 parcial e Coleções não são persistidos por essa superfície. O registro é uma
@@ -95,13 +95,13 @@ As consultas usadas por assistentes também respeitam essa separação. Uma cont
 autora comum lê seus planos e cursos em Trilhas. Uma conta revisora
 lê somente o artefato submetido à fila que ela pode atender. Leituras grandes
 são recortadas por árvore, entidade ou documento. Criar, renomear ou excluir
-um grupo e mover qualquer `trailItemId` continuam sendo comandos pessoais
+um grupo e classificar qualquer `trailItemId` continuam sendo comandos pessoais
 idempotentes vinculados ao UUID do proprietário. Excluir o grupo conserva os
 cursos e seu estado de estudo; os itens passam a aparecer sem grupo até serem
 movidos.
 
 O catálogo possui outro plano de controle. Coleções e classificações guardam
-posição e revisão; alterações administrativas deixam recibos privados de
+identidade e revisão; alterações administrativas deixam recibos privados de
 idempotência. O conteúdo integral é uma revisão JSON imutável no Storage.
 Título e objetivo permanecem como metadados pequenos. Qualquer alteração de
 conteúdo passa novamente pelo fluxo de autoria, validação e troca atômica do
@@ -109,10 +109,10 @@ ponteiro de revisão. O aplicativo pode expor a administração desses metadados
 contas editoriais, mas a semelhança visual com uma trilha pessoal não muda o
 alcance global da operação.
 
-A coleção `outros` é estrutural: o banco conserva seu nome, publicação e posição
-final, recusa sua retirada e permite usá-la como destino ao retirar a última
-coleção temática. Reordenações de coleção exigem sua revisão corrente e deixam
-recibo idempotente curto.
+A coleção `outros` é estrutural: o banco conserva seu nome e publicação, recusa
+sua retirada e permite usá-la como destino ao retirar a última coleção
+temática. Coleções e cursos são apresentados alfabeticamente; transferências
+entre coleções exigem a revisão corrente e deixam recibo idempotente curto.
 
 ## Selecionar, editar e remover
 
@@ -165,7 +165,7 @@ mesmo `trailItemId`, o grupo e o estado pessoal.
 
 ## Início da réplica
 
-`bootstrap_replica` devolve seleções leves e a posição atual do histórico de
+`bootstrap_replica` devolve seleções leves e o ponto atual do histórico de
 mudanças. Grupos e estado pessoal usam as RPCs de Trilhas e são gravados por
 `trailItemId`; revisões oficiais ausentes são baixadas separadamente.
 
@@ -181,7 +181,7 @@ separados pelo que realmente sincronizam:
 
 - a outbox relacional e `apply_sync_batch` transportam somente a seleção leve
   de cursos oficiais;
-- criar, renomear e ordenar grupos ou mover um item usa uma RPC transacional de
+- criar, renomear e excluir grupos ou mover um item entre grupos usa uma RPC transacional de
   Trilhas e um `requestId`, sem projeção otimista concorrente;
 - cursor, conclusão, **Rever** e o texto autoral da observação usam operações
   pontuais sobre a única linha corrente de `trail_personal_states`.

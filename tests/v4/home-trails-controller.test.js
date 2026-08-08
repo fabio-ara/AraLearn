@@ -45,8 +45,6 @@ function item(overrides = {}) {
     canRemove: false,
     pathId: GROUP_ID,
     pathTitle: "Grupo",
-    pathPosition: 0,
-    itemPosition: 0,
     updatedAt: "2026-08-07T12:00:00Z",
     ...overrides
   };
@@ -55,7 +53,7 @@ function item(overrides = {}) {
 function snapshot(items) {
   return {
     space: "trails",
-    groups: [{ id: GROUP_ID, title: "Grupo", position: 0 }],
+    groups: [{ id: GROUP_ID, title: "Grupo" }],
     items,
     hasMore: false,
     nextCursor: null,
@@ -109,8 +107,7 @@ test("projeção canônica agrupa cursos e mantém plano materializado selecion�
     selectionId: SELECTION_ID,
     source: "selection",
     origin: "catalog",
-    revision: null,
-    itemPosition: 1
+    revision: null
   });
   const normalized = normalizeHomeTrailSnapshot(snapshot([plan, course]));
   assert.equal(preserveSelectedTrailItem(normalized), SELECTION_ITEM_ID);
@@ -121,11 +118,40 @@ test("projeção canônica agrupa cursos e mantém plano materializado selecion�
   );
 });
 
-test("grupo explícito preenchido não cria o grupo vazio Outros", () => {
+test("Outros permanece disponível para receber cursos sem abrir uma segunda tela", () => {
   const normalized = normalizeHomeTrailSnapshot(snapshot([item()]));
   assert.deepEqual(
     groupTrailItems(normalized, { includePlans: true }).map((group) => group.id),
-    [GROUP_ID]
+    [GROUP_ID, "others"]
+  );
+});
+
+test("grupos e cursos usam ordem alfabética pt-BR independentemente da ordem recebida", () => {
+  const secondGroupId = "10000000-0000-4000-8000-000000000009";
+  const normalized = normalizeHomeTrailSnapshot({
+    ...snapshot([
+      item({ title: "Curso 10" }),
+      item({
+        trailItemId: SELECTION_ITEM_ID,
+        title: "Curso 2"
+      }),
+      item({
+        trailItemId: HOMONYM_ITEM_ID,
+        title: "Árvore",
+        pathId: secondGroupId,
+        pathTitle: "Álgebra"
+      })
+    ]),
+    groups: [
+      { id: GROUP_ID, title: "Zoologia" },
+      { id: secondGroupId, title: "Álgebra" }
+    ]
+  });
+  const groups = groupTrailItems(normalized, { includePlans: true });
+  assert.deepEqual(groups.map((group) => group.title), ["Álgebra", "Outros", "Zoologia"]);
+  assert.deepEqual(
+    groups.find((group) => group.id === GROUP_ID).items.map((entry) => entry.title),
+    ["Curso 2", "Curso 10"]
   );
 });
 
@@ -182,8 +208,7 @@ test("controller registra ref selection-only e invalida composição quando a re
       selectionId: SELECTION_ID,
       source: "selection",
       origin: "catalog",
-      revision: null,
-      itemPosition: 1
+      revision: null
     })
   ]);
   const cleared = [];
@@ -248,7 +273,6 @@ test("controller ancora homônimos em trailItemId e recusa lookup ambíguo", asy
         item({
           trailItemId: HOMONYM_ITEM_ID,
           workspaceId: HOMONYM_WORKSPACE_ID,
-          itemPosition: 1,
           title: "Fixture homônima"
         })
       ])

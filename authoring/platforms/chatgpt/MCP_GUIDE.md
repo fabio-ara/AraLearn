@@ -172,9 +172,10 @@ Uma conta revisora pode assumir o envio e usar
 pedir ajustes, rejeitar ou levar o resultado a Coleções. O autor pode retirar
 um envio ainda pendente.
 
-Com `catalog:manage`, o mesmo assistente cria e atualiza coleções ou move e
-reordena cursos com `editarCatalogo`. Retiradas usam `retirarDoCatalogo`.
-Essas operações conferem revisão, classificação e hash atuais.
+Com `catalog:manage`, o mesmo assistente cria e atualiza coleções ou transfere
+cursos entre elas com `editarCatalogo`. A apresentação é alfabética, sem um
+comando de reordenação. Retiradas usam `retirarDoCatalogo`. Essas operações
+conferem revisão, classificação e hash atuais.
 
 ## Respostas
 
