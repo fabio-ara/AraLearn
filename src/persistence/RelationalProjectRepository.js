@@ -2,13 +2,6 @@ import {
   createEmptyProjectDocument,
   validateProjectDocument
 } from "../domain/aralearnProject.js";
-import { normalizePedagogicalCommentDraft } from "../domain/pedagogicalComment.js";
-import {
-  buildLessonProgressKey,
-  createEmptyProgressDocument,
-  removeLessonProgressEntries,
-  validateProgressDocument
-} from "../storage/progressStore.js";
 import { DomainMutationService } from "./DomainMutationService.js";
 import {
   IndexedDbRelationalStore,
@@ -18,18 +11,9 @@ import {
 } from "./IndexedDbRelationalStore.js";
 import { ProjectDocumentAssembler } from "./ProjectDocumentAssembler.js";
 import { ProjectDocumentDiffer } from "./ProjectDocumentDiffer.js";
-import { deterministicUuid, relationalNaturalKey } from "./deterministicUuid.js";
 import { defaultUuidFactory } from "./relationalSchema.js";
 
-const VOLATILE_ROW_FIELDS = new Set(["updatedAt", "deletedAt"]);
-const PERSONAL_REPLICA_STORE_NAMES = [
-  "courseSelections",
-  "lessonProgress",
-  "cardProgress",
-  "comments",
-  "studyPaths",
-  "studyPathCourses"
-];
+const PERSONAL_REPLICA_STORE_NAMES = ["courseSelections"];
 const CARD_ASSISTANCE_LOCAL_STATE_CONTRACT =
   "aralearn.card-assistance-local-state.v4";
 const CARD_ASSISTANCE_SYNC_MAX_PATHS = 64;
@@ -149,25 +133,12 @@ function activeRows(rows, userId = undefined) {
   ));
 }
 
-function comparePositionAndIdentity(left, right) {
-  return Number(left.position || 0) - Number(right.position || 0)
-    || String(left.id).localeCompare(String(right.id));
-}
-
 function activeRowsSnapshot(rows, userId) {
   return JSON.stringify(
     activeRows(rows, userId).sort((left, right) =>
       String(left.id).localeCompare(String(right.id))
     )
   );
-}
-
-function requireCurrentUser(requestedUserId, currentUserId) {
-  if (!currentUserId) throw new Error("A operação exige um usuário autenticado.");
-  if (requestedUserId != null && String(requestedUserId) !== String(currentUserId)) {
-    throw new Error("O estado pessoal deve pertencer ao usuário autenticado.");
-  }
-  return currentUserId;
 }
 
 function validationError(result) {
@@ -215,84 +186,6 @@ function courseIdsByContractKey(projectRows) {
     .map((course) => [String(course.contractKey || course.id), String(course.id)]));
 }
 
-function domainRow(row) {
-  return Object.fromEntries(
-    Object.entries(row || {})
-      .filter(([fieldName]) => !VOLATILE_ROW_FIELDS.has(fieldName))
-      .sort(([left], [right]) => left.localeCompare(right))
-  );
-}
-
-function rowsEqual(left, right) {
-  return JSON.stringify(stableValue(domainRow(left))) ===
-    JSON.stringify(stableValue(domainRow(right)));
-}
-
-function changedFields(previousRow, nextRow) {
-  return [...new Set([
-    ...Object.keys(previousRow || {}),
-    ...Object.keys(nextRow || {})
-  ])]
-    .filter((fieldName) => !VOLATILE_ROW_FIELDS.has(fieldName))
-    .filter((fieldName) =>
-      JSON.stringify(stableValue(previousRow?.[fieldName])) !==
-      JSON.stringify(stableValue(nextRow?.[fieldName]))
-    )
-    .sort();
-}
-
-function makeMutation(storeName, previousRow, nextRow) {
-  const row = nextRow || previousRow;
-  return {
-    storeName,
-    entityType: storeName,
-    entityId: row.id,
-    courseId: row.courseId ?? null,
-    operation: nextRow ? "upsert" : "delete",
-    previousRow: clone(previousRow),
-    nextRow: clone(nextRow),
-    changedFields: nextRow ? changedFields(previousRow, nextRow) : []
-  };
-}
-
-function normalizedPositionMutations(storeName, orderedRows, currentRows) {
-  return orderedRows.flatMap((row, position) => {
-    const stored = currentRows.get(String(row.id));
-    const previous = isActive(stored) ? stored : null;
-    const next = Number(row.position) === position ? row : { ...row, position };
-    if (previous && rowsEqual(previous, next)) return [];
-    return [makeMutation(storeName, previous, next)];
-  });
-}
-
-function diffRowMaps(storeName, previousMap, nextRows) {
-  const nextMap = new Map(nextRows.map((row) => [row.id, row]));
-  const mutations = [];
-  const ids = new Set([...previousMap.keys(), ...nextMap.keys()]);
-  ids.forEach((id) => {
-    const previousRow = isActive(previousMap.get(id)) ? previousMap.get(id) : null;
-    const nextRow = nextMap.get(id) || null;
-    if (previousRow && nextRow && rowsEqual(previousRow, nextRow)) return;
-    if (!previousRow && !nextRow) return;
-    mutations.push(makeMutation(storeName, previousRow, nextRow));
-  });
-  return mutations;
-}
-
-function mergeAppliedRows(map, appliedRows, storeName) {
-  appliedRows
-    .filter((entry) => entry.storeName === storeName)
-    .forEach((entry) => {
-      const id = entry.entityId || entry.row?.id;
-      if (!id) return;
-      if (!entry.row || entry.operation === "delete" || entry.row.deletedAt != null) {
-        map.delete(id);
-      } else {
-        map.set(id, clone(entry.row));
-      }
-    });
-}
-
 function selectedProjectRows(projectRows, selectionRows, userId) {
   const selectedCourseIds = new Set(
     selectionRows
@@ -307,119 +200,14 @@ function selectedProjectRows(projectRows, selectionRows, userId) {
   ]));
 }
 
-function projectIndexes(projectRows) {
-  const courses = new Map((projectRows.courses || []).map((row) => [row.id, row]));
-  const modules = new Map((projectRows.modules || []).map((row) => [row.id, row]));
-  const lessons = new Map((projectRows.lessons || []).map((row) => [row.id, row]));
-  const cards = new Map((projectRows.cards || []).map((row) => [row.id, row]));
-  const microsequences = new Map(
-    (projectRows.microsequences || []).map((row) => [row.id, row])
-  );
-  const cardOrder = new Map();
-  const cardLessonIds = new Map();
-  const cardsByLesson = new Map();
-  (projectRows.cards || []).forEach((card) => {
-    const microsequence = microsequences.get(card.microsequenceId);
-    const lessonId = card.lessonId || microsequence?.lessonId;
-    if (lessonId) {
-      cardLessonIds.set(card.id, lessonId);
-      if (!cardsByLesson.has(lessonId)) cardsByLesson.set(lessonId, []);
-      cardsByLesson.get(lessonId).push(card);
-    }
-    cardOrder.set(card.id, [
-      Number(microsequence?.position || 0),
-      Number(card.position || 0),
-      String(card.id)
-    ]);
-  });
-  cardsByLesson.forEach((lessonCards) => lessonCards.sort((left, right) => {
-    const leftOrder = cardOrder.get(left.id);
-    const rightOrder = cardOrder.get(right.id);
-    return leftOrder[0] - rightOrder[0] ||
-      leftOrder[1] - rightOrder[1] ||
-      leftOrder[2].localeCompare(rightOrder[2]);
-  }));
-  const lessonPaths = new Map();
-  lessons.forEach((lesson) => {
-    const moduleValue = modules.get(lesson.moduleId);
-    const course = moduleValue ? courses.get(moduleValue.courseId) : null;
-    if (!course || !moduleValue) return;
-    lessonPaths.set(lesson.id, {
-      courseKey: course.contractKey,
-      moduleKey: moduleValue.contractKey,
-      lessonKey: lesson.contractKey,
-      pathKey: `${course.contractKey}::${moduleValue.contractKey}::${lesson.contractKey}`
-    });
-  });
-  return { courses, modules, lessons, cards, cardOrder, cardLessonIds, cardsByLesson, lessonPaths };
-}
-
-function canonicalProgressTimestamp(value) {
-  const source = String(value || "").trim();
-  const parsed = new Date(source);
-  if (!source || !Number.isFinite(parsed.getTime())) return null;
-  return parsed.toISOString();
-}
-
-function progressDocumentFromRows(lessonRows, cardRows, userId, projectRows) {
-  const indexes = projectIndexes(projectRows);
-  const completedByLesson = new Map();
-  activeRows(cardRows, userId)
-    .filter((row) => row.completedAt)
-    .forEach((row) => {
-      const lessonId = row.lessonId || indexes.cardLessonIds.get(row.cardId);
-      if (!lessonId) return;
-      if (!completedByLesson.has(lessonId)) completedByLesson.set(lessonId, new Map());
-      completedByLesson.get(lessonId).set(row.cardId, row);
-    });
-  const lessonProgressByLesson = new Map(activeRows(lessonRows, userId)
-    .filter((row) => row.lessonId)
-    .map((row) => [row.lessonId, row]));
-  const lessons = {};
-  const lessonIds = new Set([...lessonProgressByLesson.keys(), ...completedByLesson.keys()]);
-  lessonIds.forEach((lessonId) => {
-    const row = lessonProgressByLesson.get(lessonId) || {};
-    const completedRows = completedByLesson.get(lessonId) || new Map();
-    const completed = [];
-    for (const card of indexes.cardsByLesson.get(lessonId) || []) {
-      const cardProgress = completedRows.get(card.id);
-      if (!cardProgress) break;
-      completed.push(cardProgress);
-    }
-    if (!completed.length) return;
-    const metadata = indexes.lessonPaths.get(lessonId);
-    const pathKey = row.pathKey || metadata?.pathKey;
-    if (!pathKey) return;
-    const stateTimes = [
-      row.updatedAt,
-      ...completed.map((card) => card.updatedAt)
-    ].map(canonicalProgressTimestamp).filter(Boolean).sort();
-    const updatedAt = stateTimes.at(-1) || null;
-    lessons[pathKey] = {
-      cursor: completed.length - 1,
-      completedCardKeys: completed.map((cardProgress) =>
-        cardProgress.cardKey || indexes.cards.get(cardProgress.cardId)?.contractKey
-      ).filter(Boolean),
-      ...(updatedAt ? { updatedAt } : {})
-    };
-  });
-  return { version: 1, lessons };
-}
-
 export class RelationalProjectRepository {
   #initialized = false;
   #projectRows = {};
   #project = createEmptyProjectDocument();
   #committedProject = createEmptyProjectDocument();
   #selectionRows = new Map();
-  #lessonProgressRows = new Map();
-  #cardProgressRows = new Map();
-  #commentRows = new Map();
-  #studyPathRows = new Map();
-  #studyPathCourseRows = new Map();
   #localDraftRevisions = new Map();
   #catalogManagementAllowed = false;
-  #progress = createEmptyProgressDocument();
   #tail = Promise.resolve();
   #pendingWrites = 0;
   #durabilityError = null;
@@ -428,7 +216,6 @@ export class RelationalProjectRepository {
   #durabilityListeners = new Set();
   #durabilityChangedAt = null;
   #latestProjectSave = 0;
-  #latestProgressSave = 0;
 
   constructor({
     store,
@@ -438,7 +225,6 @@ export class RelationalProjectRepository {
     identityMap = new Map(),
     userId = null,
     uuidFactory = defaultUuidFactory,
-    naturalKeyIdFactory = deterministicUuid,
     clock = () => new Date(),
     onLocalCommit = null
   } = {}) {
@@ -449,8 +235,6 @@ export class RelationalProjectRepository {
     this.assembler = assembler;
     this.identityMap = identityMap;
     this.userId = userId;
-    this.uuidFactory = uuidFactory;
-    this.naturalKeyIdFactory = naturalKeyIdFactory;
     this.clock = clock;
     this.differ = differ || new ProjectDocumentDiffer({ identityMap, uuidFactory });
     this.mutations = mutationService || new DomainMutationService({
@@ -497,11 +281,6 @@ export class RelationalProjectRepository {
       }
       this.identityMap.set(row.identityKey, row.id);
     });
-    this.#lessonProgressRows = new Map(personalRows.lessonProgress.map((row) => [row.id, row]));
-    this.#cardProgressRows = new Map(personalRows.cardProgress.map((row) => [row.id, row]));
-    this.#commentRows = new Map(personalRows.comments.map((row) => [row.id, row]));
-    this.#studyPathRows = new Map(personalRows.studyPaths.map((row) => [row.id, row]));
-    this.#studyPathCourseRows = new Map(personalRows.studyPathCourses.map((row) => [row.id, row]));
     const selectedCourseIds = [...new Set(
       activeRows(this.#selectionRows, this.userId).map((row) => String(row.courseId))
     )];
@@ -512,12 +291,6 @@ export class RelationalProjectRepository {
     ]));
     this.#committedProject = normalizeProject(this.assembler.assemble(this.#projectRows));
     this.#project = clone(this.#committedProject);
-    this.#progress = progressDocumentFromRows(
-      this.#lessonProgressRows,
-      this.#cardProgressRows,
-      this.userId,
-      this.#projectRows
-    );
   }
 
   async refreshFromReplica() {
@@ -526,8 +299,6 @@ export class RelationalProjectRepository {
     const previousProjectDocument = this.loadProject();
     const previousCourseIds = courseIdsByContractKey(this.#projectRows);
     const previousProject = JSON.stringify(this.#project);
-    const previousProgress = JSON.stringify(this.#progress);
-    const previousStudyPaths = JSON.stringify(this.loadStudyPaths());
     await this.#reloadFromStore();
     const nextProjectDocument = this.loadProject();
     const documentChanged = previousProject !== JSON.stringify(this.#project);
@@ -553,10 +324,7 @@ export class RelationalProjectRepository {
     }
     return {
       project: this.loadProject(),
-      progress: this.loadProgress(),
-      documentChanged,
-      progressChanged: previousProgress !== JSON.stringify(this.#progress),
-      studyPathsChanged: previousStudyPaths !== JSON.stringify(this.loadStudyPaths())
+      documentChanged
     };
   }
 
@@ -566,9 +334,6 @@ export class RelationalProjectRepository {
     const previousProjectDocument = this.loadProject();
     const previousCourseIds = courseIdsByContractKey(this.#projectRows);
     const previousSelectionRows = activeRowsSnapshot(this.#selectionRows, this.userId);
-    const previousProgress = JSON.stringify(this.#progress);
-    const previousStudyPaths = JSON.stringify(this.loadStudyPaths());
-    const previousComments = activeRowsSnapshot(this.#commentRows, this.userId);
     const personalRows = await this.store.readStores(PERSONAL_REPLICA_STORE_NAMES);
     const nextSelectionRows = new Map(personalRows.courseSelections.map((row) => [row.id, row]));
     const selectionRowsChanged = previousSelectionRows !==
@@ -597,49 +362,20 @@ export class RelationalProjectRepository {
       }
       return {
         project: this.loadProject(),
-        documentChanged: true,
-        progressChanged: previousProgress !== JSON.stringify(this.#progress),
-        studyPathsChanged: previousStudyPaths !== JSON.stringify(this.loadStudyPaths()),
-        commentsChanged: previousComments !== activeRowsSnapshot(this.#commentRows, this.userId)
+        documentChanged: true
       };
     }
 
     this.#selectionRows = nextSelectionRows;
-    this.#lessonProgressRows = new Map(personalRows.lessonProgress.map((row) => [row.id, row]));
-    this.#cardProgressRows = new Map(personalRows.cardProgress.map((row) => [row.id, row]));
-    this.#commentRows = new Map(personalRows.comments.map((row) => [row.id, row]));
-    this.#studyPathRows = new Map(personalRows.studyPaths.map((row) => [row.id, row]));
-    this.#studyPathCourseRows = new Map(personalRows.studyPathCourses.map((row) => [row.id, row]));
-    this.#progress = progressDocumentFromRows(
-      this.#lessonProgressRows,
-      this.#cardProgressRows,
-      this.userId,
-      this.#projectRows
-    );
-
-    return {
-      documentChanged: false,
-      progressChanged: previousProgress !== JSON.stringify(this.#progress),
-      studyPathsChanged: previousStudyPaths !== JSON.stringify(this.loadStudyPaths()),
-      commentsChanged: previousComments !== activeRowsSnapshot(this.#commentRows, this.userId)
-    };
+    return { documentChanged: false };
   }
 
   #assertInitialized() {
     if (!this.#initialized) throw new Error("O repositório relacional ainda não foi inicializado.");
   }
 
-  #committedProgress() {
-    return progressDocumentFromRows(
-      this.#lessonProgressRows,
-      this.#cardProgressRows,
-      this.userId,
-      this.#projectRows
-    );
-  }
-
   #hasUncommittedMemory() {
-    return JSON.stringify(this.#progress) !== JSON.stringify(this.#committedProgress());
+    return false;
   }
 
   #notifyDurability() {
@@ -738,212 +474,6 @@ export class RelationalProjectRepository {
       }
     );
     return operation;
-  }
-
-  #mergeAuxiliaryRows(appliedRows) {
-    mergeAppliedRows(this.#selectionRows, appliedRows, "courseSelections");
-    mergeAppliedRows(this.#lessonProgressRows, appliedRows, "lessonProgress");
-    mergeAppliedRows(this.#cardProgressRows, appliedRows, "cardProgress");
-    mergeAppliedRows(this.#commentRows, appliedRows, "comments");
-    mergeAppliedRows(this.#studyPathRows, appliedRows, "studyPaths");
-    mergeAppliedRows(this.#studyPathCourseRows, appliedRows, "studyPathCourses");
-    if (appliedRows.some((entry) => ["lessonProgress", "cardProgress"].includes(entry.storeName))) {
-      this.#progress = this.#committedProgress();
-    }
-  }
-
-  #assembleStudyPaths(pathRows = this.#studyPathRows, itemRows = this.#studyPathCourseRows) {
-    const contractKeys = new Map((this.#projectRows.courses || []).map((course) => [
-      course.id,
-      course.contractKey || course.id
-    ]));
-    const items = activeRows(itemRows, this.userId).sort(comparePositionAndIdentity);
-    return activeRows(pathRows, this.userId)
-      .sort(comparePositionAndIdentity)
-      .map((path) => ({
-        ...clone(path),
-        courses: items.filter((item) => item.pathId === path.id).map((item) => ({
-          ...clone(item),
-          persistentCourseId: item.courseId,
-          courseId: contractKeys.get(item.courseId) || item.courseId
-        }))
-      }));
-  }
-
-  loadStudyPaths() {
-    this.#assertInitialized();
-    return this.#assembleStudyPaths();
-  }
-
-  createStudyPath(title) {
-    this.#assertInitialized();
-    const normalizedTitle = String(title || "").trim();
-    if (!this.userId) throw new Error("Entre na sua conta para criar uma trilha.");
-    if (!normalizedTitle) throw new Error("Informe um nome para a trilha.");
-    return this.#enqueue(async () => {
-      const siblings = activeRows(this.#studyPathRows, this.userId)
-        .sort(comparePositionAndIdentity);
-      const next = {
-        id: this.uuidFactory(),
-        ownerId: this.userId,
-        title: normalizedTitle,
-        position: siblings.length,
-        updatedAt: timestamp(this.clock)
-      };
-      const result = await this.mutations.applyMutations(
-        normalizedPositionMutations("studyPaths", [...siblings, next], this.#studyPathRows)
-      );
-      this.#mergeAuxiliaryRows(result.appliedRows);
-      return clone(next);
-    });
-  }
-
-  renameStudyPath(pathId, title) {
-    this.#assertInitialized();
-    const normalizedTitle = String(title || "").trim();
-    if (!normalizedTitle) throw new Error("Informe um nome para a trilha.");
-    return this.#enqueue(async () => {
-      const previous = this.#studyPathRows.get(String(pathId));
-      if (!isActive(previous) || previous.ownerId !== this.userId) throw new Error("Trilha não encontrada.");
-      const next = { ...previous, title: normalizedTitle, updatedAt: timestamp(this.clock) };
-      const result = await this.mutations.applyRowChange("studyPaths", previous, next);
-      this.#mergeAuxiliaryRows(result.appliedRows);
-      return clone(next);
-    });
-  }
-
-  deleteStudyPath(pathId) {
-    this.#assertInitialized();
-    return this.#enqueue(async () => {
-      const previous = this.#studyPathRows.get(String(pathId));
-      if (!isActive(previous) || previous.ownerId !== this.userId) return null;
-      const mutations = activeRows(this.#studyPathCourseRows, this.userId)
-        .filter((row) => row.pathId === previous.id)
-        .map((row) => makeMutation("studyPathCourses", row, null));
-      mutations.push(makeMutation("studyPaths", previous, null));
-      const remaining = activeRows(this.#studyPathRows, this.userId)
-        .filter((row) => row.id !== previous.id)
-        .sort(comparePositionAndIdentity);
-      mutations.push(...normalizedPositionMutations("studyPaths", remaining, this.#studyPathRows));
-      const result = await this.mutations.applyMutations(mutations);
-      this.#mergeAuxiliaryRows(result.appliedRows);
-      return clone(previous);
-    });
-  }
-
-  moveStudyPath(pathId, direction) {
-    this.#assertInitialized();
-    const delta = direction === "up" ? -1 : direction === "down" ? 1 : 0;
-    if (!delta) throw new Error("Direção de ordenação inválida.");
-    return this.#enqueue(async () => {
-      const current = this.#studyPathRows.get(String(pathId));
-      if (!isActive(current) || current.ownerId !== this.userId) {
-        throw new Error("Trilha não encontrada.");
-      }
-      const siblings = activeRows(this.#studyPathRows, this.userId)
-        .sort(comparePositionAndIdentity);
-      const index = siblings.findIndex((row) => row.id === current.id);
-      const targetIndex = index + delta;
-      if (targetIndex < 0 || targetIndex >= siblings.length) return null;
-      siblings.splice(index, 1);
-      siblings.splice(targetIndex, 0, current);
-      const result = await this.mutations.applyMutations(
-        normalizedPositionMutations("studyPaths", siblings, this.#studyPathRows)
-      );
-      this.#mergeAuxiliaryRows(result.appliedRows);
-      return this.loadStudyPaths();
-    });
-  }
-
-  addCourseToStudyPath(pathId, courseId) {
-    this.#assertInitialized();
-    return this.#enqueue(async () => {
-      const path = this.#studyPathRows.get(String(pathId));
-      if (!isActive(path) || path.ownerId !== this.userId) throw new Error("Trilha não encontrada.");
-      const normalizedCourseId = String(courseId || "");
-      const selection = activeRows(this.#selectionRows, this.userId)
-        .find((row) => String(row.courseId) === normalizedCourseId);
-      if (!selection) throw new Error("Curso não selecionado nesta conta.");
-      const previous = activeRows(this.#studyPathCourseRows, this.userId)
-        .find((row) => String(row.courseId) === normalizedCourseId) || null;
-      if (previous?.pathId === path.id) return null;
-      const siblings = activeRows(this.#studyPathCourseRows, this.userId)
-        .filter((row) => row.pathId === path.id && row.id !== previous?.id)
-        .sort(comparePositionAndIdentity);
-      const next = {
-        ...(previous || {}),
-        id: previous?.id || await this.#naturalEntityId("studyPathCourses", normalizedCourseId),
-        ownerId: this.userId,
-        pathId: path.id,
-        selectionId: selection.id,
-        courseId: normalizedCourseId,
-        position: siblings.length,
-        updatedAt: timestamp(this.clock)
-      };
-      const sourceSiblings = previous
-        ? activeRows(this.#studyPathCourseRows, this.userId)
-          .filter((row) => row.pathId === previous.pathId && row.id !== previous.id)
-          .sort(comparePositionAndIdentity)
-        : [];
-      const result = await this.mutations.applyMutations([
-        ...normalizedPositionMutations(
-          "studyPathCourses",
-          sourceSiblings,
-          this.#studyPathCourseRows
-        ),
-        ...normalizedPositionMutations(
-          "studyPathCourses",
-          [...siblings, next],
-          this.#studyPathCourseRows
-        )
-      ]);
-      this.#mergeAuxiliaryRows(result.appliedRows);
-      return clone(next);
-    });
-  }
-
-  removeCourseFromStudyPath(itemId) {
-    this.#assertInitialized();
-    return this.#enqueue(async () => {
-      const previous = this.#studyPathCourseRows.get(String(itemId));
-      if (!isActive(previous) || previous.ownerId !== this.userId) return null;
-      const remaining = activeRows(this.#studyPathCourseRows, this.userId)
-        .filter((row) => row.pathId === previous.pathId && row.id !== previous.id)
-        .sort(comparePositionAndIdentity);
-      const result = await this.mutations.applyMutations([
-        makeMutation("studyPathCourses", previous, null),
-        ...normalizedPositionMutations(
-          "studyPathCourses",
-          remaining,
-          this.#studyPathCourseRows
-        )
-      ]);
-      this.#mergeAuxiliaryRows(result.appliedRows);
-      return clone(previous);
-    });
-  }
-
-  moveCourseInStudyPath(itemId, direction) {
-    this.#assertInitialized();
-    const delta = direction === "up" ? -1 : direction === "down" ? 1 : 0;
-    if (!delta) throw new Error("Direção de ordenação inválida.");
-    return this.#enqueue(async () => {
-      const current = this.#studyPathCourseRows.get(String(itemId));
-      if (!isActive(current) || current.ownerId !== this.userId) throw new Error("Curso da trilha não encontrado.");
-      const siblings = activeRows(this.#studyPathCourseRows, this.userId)
-        .filter((row) => row.pathId === current.pathId)
-        .sort(comparePositionAndIdentity);
-      const index = siblings.findIndex((row) => row.id === current.id);
-      const targetIndex = index + delta;
-      if (targetIndex < 0 || targetIndex >= siblings.length) return null;
-      siblings.splice(index, 1);
-      siblings.splice(targetIndex, 0, current);
-      const result = await this.mutations.applyMutations(
-        normalizedPositionMutations("studyPathCourses", siblings, this.#studyPathCourseRows)
-      );
-      this.#mergeAuxiliaryRows(result.appliedRows);
-      return this.loadStudyPaths();
-    });
   }
 
   #courseRow(courseIdentity) {
@@ -1046,6 +576,40 @@ export class RelationalProjectRepository {
           courseOrigin
         }
       : null;
+  }
+
+  async acknowledgeWorkspaceCourseDraft(courseIdentity, {
+    expectedLocalDraftRevision,
+    workspaceId,
+    workspaceRevision
+  } = {}) {
+    this.#assertInitialized();
+    const course = this.#courseRow(courseIdentity);
+    if (!course) throw new Error("Curso selecionado não encontrado.");
+    const selection = this.#courseSelectionRow(course.id);
+    if (!selection) {
+      throw new Error("O curso local não possui uma seleção ativa nesta conta.");
+    }
+    const permissions = this.coursePermissions(course.id);
+    if (!permissions.canAuthorContent || permissions.writeTarget === null) {
+      throw courseAuthoringDenied(course.id);
+    }
+    const expectedRevision = String(expectedLocalDraftRevision || "").trim();
+    if (!expectedRevision) {
+      throw new TypeError("A confirmação exige a revisão local materializada.");
+    }
+    await this.flush();
+    const result = await this.store.acknowledgeWorkspaceCourseDraft(course.id, {
+      expectedRevision,
+      workspaceId,
+      workspaceRevision
+    });
+    await this.#reloadFromStore();
+    return {
+      ...result,
+      courseKey: String(course.contractKey || course.id),
+      courseOrigin: requireCourseOrigin(selection)
+    };
   }
 
   createLocalCourseDraftGuard(courseIdentity) {
@@ -1587,374 +1151,6 @@ export class RelationalProjectRepository {
     });
   }
 
-  async #naturalEntityId(entityType, entityId) {
-    return this.naturalKeyIdFactory(relationalNaturalKey(entityType, this.userId, entityId));
-  }
-
-  #rowPathKey(row) {
-    return row.pathKey || projectIndexes(this.#projectRows).lessonPaths.get(row.lessonId)?.pathKey || "";
-  }
-
-  async #progressRowsFromDocument(progressDocument, removedPathKeys = new Set()) {
-    const now = timestamp(this.clock);
-    const activeLessons = activeRows(this.#lessonProgressRows, this.userId);
-    const activeCards = activeRows(this.#cardProgressRows, this.userId);
-    const desiredLessons = new Map(activeLessons
-      .filter((row) => !removedPathKeys.has(this.#rowPathKey(row)))
-      .map((row) => [row.id, row]));
-    const desiredCards = new Map(activeCards
-      .filter((row) => !removedPathKeys.has(this.#rowPathKey(row)))
-      .map((row) => [row.id, row]));
-
-    for (const [pathKey, entry] of Object.entries(progressDocument.lessons)) {
-      const reference = this.#findProjectReference(pathKey);
-      if (!reference.course || !reference.moduleValue || !reference.lesson) {
-        throw new Error(`Não foi possível resolver a lição do progresso: "${pathKey}".`);
-      }
-      const previousLesson = activeLessons.find((row) => row.lessonId === reference.lesson.id) || null;
-      const lessonProgressId = previousLesson?.id || await this.#naturalEntityId(
-        "lessonProgress",
-        reference.lesson.id
-      );
-      const changedAt = canonicalProgressTimestamp(entry.updatedAt) || now;
-      const lessonRow = {
-        ...(previousLesson || {}),
-        id: lessonProgressId,
-        userId: this.userId,
-        courseId: reference.course.id,
-        moduleId: reference.moduleValue.id,
-        lessonId: reference.lesson.id,
-        pathKey,
-        cursor: Number(entry.cursor ?? -1),
-        completedAt: entry.completedCardKeys.length >= reference.cards.length && reference.cards.length
-          ? previousLesson?.completedAt || changedAt
-          : null,
-        updatedAt: changedAt
-      };
-      desiredLessons.set(lessonRow.id, lessonRow);
-
-      for (const [position, cardKey] of entry.completedCardKeys.entries()) {
-        const card = reference.cards.find((row) => row.contractKey === cardKey);
-        if (!card) throw new Error(`Não foi possível resolver o card de progresso: "${cardKey}".`);
-        const previousCard = activeCards.find((row) => row.cardId === card.id) || null;
-        const cardProgressId = previousCard?.id || await this.#naturalEntityId("cardProgress", card.id);
-        desiredCards.set(cardProgressId, {
-          ...(previousCard || {}),
-          id: cardProgressId,
-          userId: this.userId,
-          courseId: reference.course.id,
-          moduleId: reference.moduleValue.id,
-          lessonId: reference.lesson.id,
-          lessonProgressId: lessonRow.id,
-          cardId: card.id,
-          pathKey,
-          cardKey,
-          position,
-          completedAt: previousCard?.completedAt || changedAt,
-          reviewMarkedAt: previousCard?.reviewMarkedAt || null,
-          updatedAt: changedAt
-        });
-      }
-    }
-    return {
-      lessonProgress: [...desiredLessons.values()],
-      cardProgress: [...desiredCards.values()]
-    };
-  }
-
-  loadProgress() {
-    this.#assertInitialized();
-    return clone(this.#progress);
-  }
-
-  saveProgress(progressDocument) {
-    this.#assertInitialized();
-    const normalized = validateProgressDocument(progressDocument);
-    const removed = new Set(Object.keys(this.#progress.lessons)
-      .filter((pathKey) => !(pathKey in normalized.lessons)));
-    return this.#saveProgressSnapshot(normalized, removed);
-  }
-
-  #saveProgressSnapshot(progressDocument, removedPathKeys = new Set()) {
-    const normalized = validateProgressDocument(progressDocument);
-    const snapshot = clone(normalized);
-    const saveNumber = ++this.#latestProgressSave;
-    this.#progress = clone(snapshot);
-    return this.#enqueue(async () => {
-      const desired = await this.#progressRowsFromDocument(snapshot, removedPathKeys);
-      const result = await this.mutations.applyMutations([
-        ...diffRowMaps("lessonProgress", new Map(activeRows(this.#lessonProgressRows, this.userId).map((row) => [row.id, row])), desired.lessonProgress),
-        ...diffRowMaps("cardProgress", new Map(activeRows(this.#cardProgressRows, this.userId).map((row) => [row.id, row])), desired.cardProgress)
-      ]);
-      this.#mergeAuxiliaryRows(result.appliedRows);
-      if (saveNumber === this.#latestProgressSave) this.#progress = this.#committedProgress();
-      return clone(snapshot);
-    }, {
-      durabilityKey: "progress",
-      durabilityVersion: saveNumber
-    });
-  }
-
-  removeProgressEntries(lessonReferences) {
-    const snapshot = removeLessonProgressEntries(this.#progress, lessonReferences);
-    return this.#saveProgressSnapshot(snapshot, new Set(lessonReferences.map(buildLessonProgressKey)));
-  }
-
-  clearProgress() {
-    const paths = new Set(activeRows(this.#lessonProgressRows, this.userId).map((row) => this.#rowPathKey(row)));
-    return this.#saveProgressSnapshot(createEmptyProgressDocument(), paths);
-  }
-
-  loadLessonProgress(lessonId, userId = this.userId) {
-    const currentUserId = requireCurrentUser(userId, this.userId);
-    return clone(activeRows(this.#lessonProgressRows, currentUserId)
-      .find((row) => row.lessonId === lessonId) || null);
-  }
-
-  loadCardProgress(cardId, userId = this.userId) {
-    const currentUserId = requireCurrentUser(userId, this.userId);
-    return clone(activeRows(this.#cardProgressRows, currentUserId)
-      .find((row) => row.cardId === cardId) || null);
-  }
-
-  saveLessonProgress(row) {
-    this.#assertInitialized();
-    const input = clone(row);
-    const currentUserId = requireCurrentUser(input.userId, this.userId);
-    return this.#enqueue(async () => {
-      const previous = activeRows(this.#lessonProgressRows, currentUserId)
-        .find((entry) => entry.lessonId === input.lessonId) || null;
-      const next = {
-        ...input,
-        id: previous?.id || input.id || await this.#naturalEntityId("lessonProgress", input.lessonId),
-        userId: currentUserId,
-        updatedAt: input.updatedAt || timestamp(this.clock)
-      };
-      const result = await this.mutations.applyRowChange("lessonProgress", previous, next);
-      this.#mergeAuxiliaryRows(result.appliedRows);
-      return clone(next);
-    });
-  }
-
-  saveCardProgress(row) {
-    this.#assertInitialized();
-    const input = clone(row);
-    const currentUserId = requireCurrentUser(input.userId, this.userId);
-    return this.#enqueue(async () => {
-      const previous = activeRows(this.#cardProgressRows, currentUserId)
-        .find((entry) => entry.cardId === input.cardId) || null;
-      const next = {
-        ...input,
-        id: previous?.id || input.id || await this.#naturalEntityId("cardProgress", input.cardId),
-        userId: currentUserId,
-        updatedAt: input.updatedAt || timestamp(this.clock)
-      };
-      const result = await this.mutations.applyRowChange("cardProgress", previous, next);
-      this.#mergeAuxiliaryRows(result.appliedRows);
-      return clone(next);
-    });
-  }
-
-  isCardMarkedForReview(reference) {
-    this.#assertInitialized();
-    const resolved = this.resolveCardReference(reference);
-    if (!resolved) return false;
-    return Boolean(activeRows(this.#cardProgressRows, this.userId)
-      .find((row) => row.cardId === resolved.cardId)?.reviewMarkedAt);
-  }
-
-  setCardReviewMark(reference, marked) {
-    this.#assertInitialized();
-    const resolved = this.resolveCardReference(reference);
-    if (!this.userId) throw new Error("A marca de revisão exige um usuário autenticado.");
-    if (!resolved) throw new Error("Não foi possível resolver o card marcado para revisão.");
-    const shouldMark = marked === true;
-    return this.#enqueue(async () => {
-      const previous = activeRows(this.#cardProgressRows, this.userId)
-        .find((row) => row.cardId === resolved.cardId) || null;
-      if (!shouldMark && !previous) return null;
-      const now = timestamp(this.clock);
-      const next = !shouldMark && !previous?.completedAt
-        ? null
-        : {
-            ...(previous || {}),
-            id: previous?.id || await this.#naturalEntityId("cardProgress", resolved.cardId),
-            userId: this.userId,
-            courseId: resolved.courseId,
-            moduleId: resolved.moduleId,
-            lessonId: resolved.lessonId,
-            cardId: resolved.cardId,
-            pathKey: `${resolved.courseKey}::${resolved.moduleKey}::${resolved.lessonKey}`,
-            cardKey: resolved.cardKey,
-            completedAt: previous?.completedAt || null,
-            reviewMarkedAt: shouldMark ? now : null,
-            updatedAt: now
-          };
-      const result = await this.mutations.applyMutations([
-        makeMutation("cardProgress", previous, next)
-      ]);
-      this.#mergeAuxiliaryRows(result.appliedRows);
-      return clone(next);
-    });
-  }
-
-  loadReviewItems() {
-    this.#assertInitialized();
-    const markedByCardId = new Map(activeRows(this.#cardProgressRows, this.userId)
-      .filter((row) => row.reviewMarkedAt)
-      .map((row) => [String(row.cardId), row]));
-    const items = [];
-    for (const course of this.#project.courses || []) {
-      for (const moduleValue of course.modules || []) {
-        for (const lesson of moduleValue.lessons || []) {
-          for (const microsequence of lesson.microsequences || []) {
-            for (const card of microsequence.cards || []) {
-              const resolved = this.resolveCardReference({
-                courseKey: course.id,
-                moduleKey: moduleValue.id,
-                lessonKey: lesson.id,
-                microsequenceKey: microsequence.id,
-                cardKey: card.id
-              });
-              const row = resolved ? markedByCardId.get(String(resolved.cardId)) : null;
-              if (!row) continue;
-              items.push({
-                cardId: resolved.cardId,
-                title: card.title || card.id,
-                context: `${course.title} · ${lesson.title}`,
-                reviewMarkedAt: row.reviewMarkedAt,
-                entityPath: [course.id, moduleValue.id, lesson.id, microsequence.id, card.id]
-              });
-            }
-          }
-        }
-      }
-    }
-    return items.sort((left, right) =>
-      String(right.reviewMarkedAt).localeCompare(String(left.reviewMarkedAt)) ||
-      String(left.title).localeCompare(String(right.title), "pt-BR")
-    );
-  }
-
-  loadPersonalObservationItems() {
-    this.#assertInitialized();
-    const commentsByCardId = new Map(activeRows(this.#commentRows, this.userId)
-      .map((row) => [String(row.cardId), row]));
-    const items = [];
-    for (const course of this.#project.courses || []) {
-      for (const moduleValue of course.modules || []) {
-        for (const lesson of moduleValue.lessons || []) {
-          for (const microsequence of lesson.microsequences || []) {
-            for (const card of microsequence.cards || []) {
-              const resolved = this.resolveCardReference({
-                courseKey: course.id,
-                moduleKey: moduleValue.id,
-                lessonKey: lesson.id,
-                microsequenceKey: microsequence.id,
-                cardKey: card.id
-              });
-              const row = resolved ? commentsByCardId.get(String(resolved.cardId)) : null;
-              if (!row) continue;
-              items.push({
-                commentId: row.id,
-                cardId: resolved.cardId,
-                title: card.title || card.id,
-                context: `${course.title} · ${lesson.title}`,
-                category: row.category,
-                body: row.body,
-                updatedAt: row.updatedAt,
-                entityPath: [course.id, moduleValue.id, lesson.id, microsequence.id, card.id]
-              });
-            }
-          }
-        }
-      }
-    }
-    return items.sort((left, right) =>
-      String(right.updatedAt).localeCompare(String(left.updatedAt)) ||
-      String(left.title).localeCompare(String(right.title), "pt-BR")
-    );
-  }
-
-  loadComments({ courseId, cardId, userId, includeDeleted = false } = {}) {
-    const currentUserId = requireCurrentUser(userId, this.userId);
-    return [...this.#commentRows.values()]
-      .filter((row) => includeDeleted || isActive(row))
-      .filter((row) => courseId === undefined || row.courseId === courseId)
-      .filter((row) => cardId === undefined || row.cardId === cardId)
-      .filter((row) => row.userId === currentUserId)
-      .map(clone);
-  }
-
-  loadCommentForPath(reference, userId = this.userId) {
-    const currentUserId = requireCurrentUser(userId, this.userId);
-    const resolved = this.resolveCardReference(reference);
-    if (!resolved) return null;
-    return clone(activeRows(this.#commentRows, currentUserId)
-      .find((row) => row.cardId === resolved.cardId) || null);
-  }
-
-  async saveCommentForPath(reference, draft, userId = this.userId) {
-    const currentUserId = requireCurrentUser(userId, this.userId);
-    const resolved = this.resolveCardReference(reference);
-    if (!resolved) throw new Error("Card não encontrado para persistir comentário.");
-    const previous = activeRows(this.#commentRows, currentUserId)
-      .find((row) => row.cardId === resolved.cardId);
-    const normalizedDraft = normalizePedagogicalCommentDraft(draft);
-    return this.saveComment({
-      ...resolved,
-      id: previous?.id,
-      userId: currentUserId,
-      ...normalizedDraft,
-      status: previous?.status || "open",
-      createdAt: previous?.createdAt || timestamp(this.clock)
-    });
-  }
-
-  async deleteCommentForPath(reference, userId = this.userId) {
-    const currentUserId = requireCurrentUser(userId, this.userId);
-    const resolved = this.resolveCardReference(reference);
-    if (!resolved) throw new Error("Card não encontrado para retirar a observação.");
-    const previous = activeRows(this.#commentRows, currentUserId)
-      .find((row) => row.cardId === resolved.cardId);
-    return previous ? this.deleteComment(previous.id) : null;
-  }
-
-  saveComment(comment) {
-    this.#assertInitialized();
-    if (!comment?.cardId) throw new Error("Comentário relacional exige cardId.");
-    const input = clone(comment);
-    const normalizedDraft = normalizePedagogicalCommentDraft(input);
-    const currentUserId = requireCurrentUser(input.userId, this.userId);
-    return this.#enqueue(async () => {
-      const previous = activeRows(this.#commentRows, currentUserId)
-        .find((row) => row.cardId === input.cardId) || null;
-      const next = {
-        ...input,
-        id: previous?.id || input.id || await this.#naturalEntityId("comments", input.cardId),
-        userId: currentUserId,
-        category: normalizedDraft.category,
-        body: normalizedDraft.body,
-        status: previous?.status || "open",
-        updatedAt: timestamp(this.clock)
-      };
-      const mutationResult = await this.mutations.applyRowChange("comments", previous, next);
-      this.#mergeAuxiliaryRows(mutationResult.appliedRows);
-      return clone(next);
-    });
-  }
-
-  deleteComment(commentId) {
-    this.#assertInitialized();
-    return this.#enqueue(async () => {
-      const previous = this.#commentRows.get(String(commentId));
-      if (!isActive(previous)) return null;
-      const result = await this.mutations.applyRowChange("comments", previous, null);
-      this.#mergeAuxiliaryRows(result.appliedRows);
-      return clone(previous);
-    });
-  }
-
   exportJson() {
     this.#assertInitialized();
     return JSON.stringify(this.#project, null, 2);
@@ -1996,9 +1192,6 @@ export class RelationalProjectRepository {
         durabilityKey: entry.durabilityKey,
         durabilityVersion: entry.durabilityVersion
       }));
-    if (JSON.stringify(this.#progress) !== JSON.stringify(this.#committedProgress())) {
-      operations.push(this.saveProgress(this.#progress));
-    }
     if (operations.length) await Promise.all(operations);
     await this.flush();
     this.#notifyDurability();

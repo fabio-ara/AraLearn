@@ -51,13 +51,6 @@ export function routeRequest(method, pathname) {
       collectionId: validateUuid(match[1])
     };
   }
-  match = path.match(/^\/v1\/catalog\/manage\/collections\/([^/]+)\/move$/u);
-  if (match && verb === "POST") {
-    return {
-      name: "moveCatalogCollection",
-      collectionId: validateUuid(match[1])
-    };
-  }
   match = path.match(/^\/v1\/catalog\/manage\/collections\/([^/]+)\/retire$/u);
   if (match && verb === "POST") {
     return {

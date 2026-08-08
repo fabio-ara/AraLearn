@@ -80,16 +80,18 @@ chat](../docs/criar-cursos-pelo-chat.md). Os detalhes técnicos ficam em
 
 É sempre o mesmo assistente. As ferramentas disponíveis mudam conforme a conta:
 
-- autoria privada: criar, reorganizar e publicar para teste próprio;
+- autoria privada: criar, reorganizar e estudar imediatamente o materializado;
 - submissão: enviar uma revisão privada para avaliação;
 - revisão: ler o artefato submetido, assumir a fila, abrir uma cópia editorial
   independente e solicitar ajustes ou rejeitar;
 - publicação: aprovar um curso completo em uma coleção do catálogo.
 
-Disponibilizar em Trilhas torna estudáveis as partes já materializadas e mantém
-o restante visível como planejamento. Coleções são organizadas por uma conta
-editorial. O trabalho enviado por outro autor passa por submissão e revisão;
-uma conta editorial também pode organizar diretamente seu próprio curso.
+Criar a estrutura já faz o plano aparecer em Trilhas; materializar cards torna
+essas partes estudáveis e mantém o restante visível como planejamento. Uma
+publicação privada é criada somente para fixar o hash de uma submissão
+editorial. Coleções são organizadas por uma conta editorial. O trabalho enviado
+por outro autor passa por submissão e revisão; uma conta editorial também pode
+distribuir diretamente seu próprio curso.
 
 ## Pastas
 

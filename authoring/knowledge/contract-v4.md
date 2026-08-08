@@ -126,9 +126,15 @@ local. No MCP, a concorrência remota é controlada separadamente por
 
 ## Identidades e ordem
 
+- `course.id` é único no projeto. Identificadores de `module`, `lesson`,
+  `topic`, `microsequence` e `card` são únicos por tipo em todo o curso,
+  inclusive entre ramos; cursos independentes podem repetir identificadores
+  internos. No workspace de autoria, a unicidade por tipo abrange todos os
+  cursos da área de trabalho.
 - Use identificadores estáveis e preserve-os nas substituições e movimentações.
+  Cópias e importações geram identidades novas para toda a parte copiada.
 - `position` define a ordem dos cards e deve ser inteira, positiva e sem ambiguidade.
-- Não reutilize o mesmo identificador para entidades diferentes.
+- Não reutilize um identificador do mesmo tipo em outro ramo.
 - Uma mutação só pode alterar o alvo declarado pela ferramenta.
 - Campos desconhecidos são erro. Não descarte dados para fazer o documento passar.
 

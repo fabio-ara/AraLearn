@@ -75,17 +75,15 @@ export async function findCatalogCoursePlacement(remoteCatalog, courseId) {
     if (item) return { collectionId, item };
     if (page?.hasMore !== true) break;
     const nextCursor = page?.nextCursor;
-    const afterPosition = Number(nextCursor?.afterPosition);
     const afterId = normalized(nextCursor?.afterId);
-    if (!Number.isSafeInteger(afterPosition) || afterPosition < 0 || !afterId) {
+    if (!afterId) {
       throw new Error("A paginação de Coleções devolveu um cursor inválido.");
     }
-    const cursorKey = `${afterPosition}:${afterId}`;
-    if (seenCursors.has(cursorKey)) {
+    if (seenCursors.has(afterId)) {
       throw new Error("A paginação de Coleções repetiu o mesmo cursor.");
     }
-    seenCursors.add(cursorKey);
-    cursor = { afterPosition, afterId };
+    seenCursors.add(afterId);
+    cursor = { afterId };
   }
   throw new Error("A classificação atual do curso não foi encontrada.");
 }

@@ -22,13 +22,13 @@ O trabalho avança em etapas pequenas e decididas pela pessoa:
 5. quando autorizado, audita a parte sem alterá-la e espera a decisão;
 6. quando autorizado, repara somente os problemas escolhidos e espera;
 7. quando autorizado, reaudita sem reparar e espera;
-8. publica uma prévia privada, submete ou avança para outra parte somente
-   quando a pessoa pedir.
+8. fixa uma revisão privada para submissão, distribui em Coleções ou avança
+   para outra parte somente quando a pessoa pedir.
 
 Cada etapa termina com o resultado real, o estado corrente e exatamente uma
 próxima etapa sugerida. O assistente não executa essa sugestão na mesma
 resposta. A pessoa pode pular auditoria ou reauditoria, rejeitar reparos,
-aprovar apenas alguns deles e publicar uma prévia incompleta sem criar erro
+aprovar apenas alguns deles e testar uma parte incompleta em Trilhas sem criar erro
 artificial.
 
 Depois que a ferramenta confirma o workspace e a estrutura inicial, o plano
@@ -77,7 +77,7 @@ reaproveitados. Depois proponha uma árvore compacta de módulos, lições e
 microteorias. Registre a estrutura planejada em lotes pequenos e produza uma
 microssequência por vez, com teoria suficiente e práticas variadas. Mostre no
 chat somente as microteorias e a quantidade de práticas. Assim que houver um
-trecho coerente, publique uma prévia privada parcial para eu testar.
+trecho coerente, avise que ele já pode ser testado em Trilhas.
 ```
 
 O assistente pode pedir uma decisão sobre o recorte se o programa e os materiais
@@ -209,13 +209,15 @@ ocorre numa resposta posterior e apenas para os problemas aprovados. Depois, a
 reauditoria relê o resultado para procurar resolução, regressões e novos
 problemas; ela também não repara na mesma rodada.
 
-### 6. Prévia e catálogo
+### 6. Trilhas, submissão e catálogo
 
-Uma prévia privada `partial` permite testar o conteúdo já pronto mesmo que
-outras unidades continuem planejadas. O fluxo completo é:
+O conteúdo já pronto pode ser testado em Trilhas mesmo que outras unidades
+continuem planejadas. Isso não publica nem copia o workspace. Para submeter, o
+assistente fixa um artefato privado com hash; para distribuir, uma conta
+editorial publica a revisão completa em Coleções. O fluxo completo é:
 
 ```text
-autoria privada -> prévia partial -> submissão -> revisão administrativa -> catálogo
+autoria privada em Trilhas -> artefato privado -> submissão -> revisão administrativa -> Coleções
 ```
 
 É sempre o mesmo assistente. O que muda são as capacidades da conta:
@@ -228,13 +230,12 @@ autoria privada -> prévia partial -> submissão -> revisão administrativa -> c
 O assistente não inventa permissões nem promete uma ação administrativa que a
 conta conectada não possui.
 
-Um pedido explícito para retirar um curso de Trilhas usa a seleção e o hash
-acabados de ler. Se o curso veio de Coleções, somente a seleção daquela conta é
-retirada. Se for uma publicação privada própria, ela também é arquivada e deixa
-de reter o JSON corrente. Um envio editorial ativo precisa ser retirado ou
-concluído primeiro; decisões editoriais já encerradas não impedem a operação.
-Se o conteúdo voltar a ser publicado depois do arquivamento, ele recebe novos
-`courseId` e `selectionId`; o curso arquivado não é restaurado.
+Um pedido explícito para retirar de Trilhas um curso selecionado usa a seleção e
+o hash acabados de ler. Se o curso veio de Coleções, somente a seleção daquela
+conta é retirada. Um item cuja fonte seja o workspace não possui seleção: para
+excluí-lo, o assistente relê a revisão e exclui a raiz do curso ou o workspace,
+conforme o pedido. Um artefato submetido segue as regras da revisão editorial e
+não transforma o workspace corrente numa categoria separada em Trilhas.
 
 ## Se alguma etapa falhar
 
@@ -289,7 +290,8 @@ Depois de iniciar o curso, a pessoa pode dizer:
   corrija a ordem.”
 - “Reaproveite a lição equivalente do meu outro curso e adapte-a a este
   público.”
-- “Publique uma prévia privada parcial para eu testar.”
+- “Avise quando a primeira lição já puder ser testada em Trilhas.”
+- “Fixe a revisão corrente e envie-a para avaliação editorial.”
 - “Aplique os ajustes devolvidos pela revisão administrativa.”
 
 O assistente continua a partir do estado confirmado no AraLearn, sem exigir que

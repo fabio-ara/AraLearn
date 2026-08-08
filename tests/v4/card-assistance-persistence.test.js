@@ -490,14 +490,12 @@ test("persistência recusa alteração externa antes do commit", async (context)
   );
 });
 
-test("curso de catálogo comum pode ser organizado, mas não alterado", async (context) => {
+test("curso de catálogo comum não pode ser alterado pelo repositório local", async (context) => {
   const { store, repository, course } = await openEditableRepository(
     new IDBFactory(),
     { courseOrigin: "catalog" }
   );
   context.after(() => store.close());
-  const path = await repository.createStudyPath("Minha trilha");
-  await repository.addCourseToStudyPath(path.id, course.id);
 
   const edited = repository.loadProject();
   const microsequence = edited.courses[0].modules[0].lessons[0].microsequences[0];
@@ -511,7 +509,6 @@ test("curso de catálogo comum pode ser organizado, mas não alterado", async (c
     repository.saveMicrosequenceGeneration(edited, microsequence.id),
     (error) => error?.code === "course_authoring_forbidden"
   );
-  assert.equal(repository.loadStudyPaths()[0].title, "Minha trilha");
   assert.equal(await repository.getLocalCourseDraft(course.id), null);
 });
 

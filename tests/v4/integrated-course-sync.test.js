@@ -3,7 +3,10 @@ import test from "node:test";
 
 import {
   courseRemovalWasCommitted,
-  deleteIntegratedCourse
+  deleteIntegratedCourse,
+  deleteIntegratedEntity,
+  moveIntegratedEntity,
+  saveIntegratedEntityMetadata
 } from "../../src/assist/integratedCourseSync.js";
 import { removeCatalogCourse } from "../../src/assist/courseRemovalCommand.js";
 
@@ -30,6 +33,135 @@ function storageForPrivateCourse(calls = []) {
     markRemoved() { selected = false; }
   };
 }
+
+function editableStorage(calls, { withDraft = false } = {}) {
+  return {
+    resolveCourseContractKey(value) { return value; },
+    loadCourseSummaries() {
+      return [{
+        courseId: COURSE_ID,
+        courseKey: COURSE_ID,
+        selectionId: SELECTION_ID,
+        contentHash: CONTENT_HASH,
+        courseOrigin: "private",
+        title: "Curso privado"
+      }];
+    },
+    coursePermissions() { return { canEdit: true }; },
+    async getLocalCourseDraft() {
+      return withDraft ? { revision: "draft-local-1" } : null;
+    },
+    async acknowledgeWorkspaceCourseDraft(courseKey, options) {
+      calls.push(["acknowledge", courseKey, structuredClone(options)]);
+      return { status: "acknowledged" };
+    }
+  };
+}
+
+function workspaceMutationCatalog(calls, action, revision = 4) {
+  return {
+    async executeApplicationAuthoringAction(name, args) {
+      calls.push(["remote", name, structuredClone(args)]);
+      if (name === "criarWorkspaceDeAutoria") {
+        return { workspaceId: "workspace-private-1", revision: 1 };
+      }
+      if (name === "lerWorkspaceDeAutoria") {
+        return { workspaceId: "workspace-private-1", revision, content: { courses: [] } };
+      }
+      if (name === action) {
+        assert.equal(args.expectedRevision, revision);
+        return { workspaceId: "workspace-private-1", revision: revision + 1 };
+      }
+      throw new Error(`Chamada inesperada: ${name}`);
+    }
+  };
+}
+
+test("edição integrada materializa metadados no workspace e não publica artefato", async () => {
+  const calls = [];
+  let refreshCount = 0;
+  const result = await saveIntegratedEntityMetadata({
+    remoteCatalog: workspaceMutationCatalog(calls, "atualizarMetadadosDaEntidade"),
+    storage: editableStorage(calls, { withDraft: true }),
+    refreshTrails: async () => { refreshCount += 1; },
+    courseKey: COURSE_ID,
+    entityType: "course",
+    entityPath: [COURSE_ID],
+    metadata: { title: "Título corrigido" },
+    title: "Curso privado"
+  });
+
+  assert.deepEqual(result, {
+    status: "materialized",
+    source: "workspace",
+    operation: "update_metadata",
+    workspaceId: "workspace-private-1",
+    revision: 5,
+    trailItemId: null,
+    courseKey: COURSE_ID,
+    sourceCourseId: COURSE_ID
+  });
+  const mutation = calls.find((entry) =>
+    entry[0] === "remote" && entry[1] === "atualizarMetadadosDaEntidade"
+  );
+  assert.equal(mutation[2].workspaceId, "workspace-private-1");
+  assert.equal(mutation[2].expectedRevision, 4);
+  assert.equal(mutation[2].title, "Título corrigido");
+  assert.deepEqual(calls.find((entry) => entry[0] === "acknowledge"), [
+    "acknowledge",
+    COURSE_ID,
+    {
+      expectedLocalDraftRevision: "draft-local-1",
+      workspaceId: "workspace-private-1",
+      workspaceRevision: 5
+    }
+  ]);
+  assert.equal(calls.some((entry) => entry[1] === "publicarCursoDoWorkspace"), false);
+  assert.equal(refreshCount, 1);
+});
+
+test("movimentação integrada aplica CAS e devolve a composição corrente", async () => {
+  const calls = [];
+  const result = await moveIntegratedEntity({
+    remoteCatalog: workspaceMutationCatalog(calls, "reorganizarWorkspace", 8),
+    storage: editableStorage(calls),
+    courseKey: COURSE_ID,
+    entityType: "lesson",
+    entityPath: [COURSE_ID, "module-a", "lesson-a"],
+    targetParentPath: [COURSE_ID, "module-b"],
+    position: 2,
+    title: "Curso privado"
+  });
+
+  assert.equal(result.status, "materialized");
+  assert.equal(result.operation, "move_entity");
+  assert.equal(result.revision, 9);
+  const mutation = calls.find((entry) => entry[1] === "reorganizarWorkspace")[2];
+  assert.equal(mutation.operation, "move_entity");
+  assert.deepEqual(mutation.targetParentPath, [COURSE_ID, "module-b"]);
+  assert.equal(mutation.position, 2);
+  assert.equal(calls.some((entry) => entry[1] === "publicarCursoDoWorkspace"), false);
+});
+
+test("exclusão integrada remove apenas a entidade da composição", async () => {
+  const calls = [];
+  const result = await deleteIntegratedEntity({
+    remoteCatalog: workspaceMutationCatalog(calls, "excluirDoWorkspace", 2),
+    storage: editableStorage(calls),
+    courseKey: COURSE_ID,
+    entityType: "microsequence",
+    entityPath: [COURSE_ID, "module-a", "lesson-a", "micro-a"],
+    title: "Curso privado"
+  });
+
+  assert.equal(result.status, "materialized");
+  assert.equal(result.operation, "delete_entity");
+  assert.equal(result.revision, 3);
+  const mutation = calls.find((entry) => entry[1] === "excluirDoWorkspace")[2];
+  assert.equal(mutation.operation, "delete_entity");
+  assert.deepEqual(mutation.entityPath, [COURSE_ID, "module-a", "lesson-a", "micro-a"]);
+  assert.equal(calls.some((entry) => entry[1] === "publicarCursoDoWorkspace"), false);
+});
 
 test("exclusão privada usa uma única operação transacional", async () => {
   const calls = [];
@@ -304,7 +436,6 @@ test("exclusão oficial encontra a classificação além da primeira página", a
           })),
           hasMore: true,
           nextCursor: {
-            afterPosition: 99,
             afterId: "44444444-4444-4444-8444-444444444444"
           }
         };
@@ -332,7 +463,6 @@ test("exclusão oficial encontra a classificação além da primeira página", a
     operation: "list_collection_courses",
     collectionId,
     limit: 100,
-    afterPosition: 99,
     afterId: "44444444-4444-4444-8444-444444444444"
   });
   const removal = calls.find(([name]) => name === "retirarDoCatalogo");

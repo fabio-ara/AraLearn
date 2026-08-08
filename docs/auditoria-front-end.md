@@ -14,8 +14,8 @@ Início
 │       └── lição
 │           └── microssequência
 │               └── card
+├── organização contextual de grupos e cursos de Trilhas
 └── painel
-    ├── Organizar: índice e ações contextuais de Trilhas
     ├── Coleções: grupos e cursos oficiais
     └── Chatbot: Chatbot personalizado e Plugin
 ```
@@ -26,9 +26,8 @@ expõe `planned`, `ready`, `partial`, hashes ou revisões. Esses detalhes podem
 existir na persistência para validar concorrência e publicação, mas não criam
 categorias de navegação.
 
-A tela inicial é a superfície canônica de leitura de `Trilhas`. O painel não
-repete descrições, progresso, play nem cards de estudo: **Organizar** reduz a
-biblioteca pessoal a um índice estrutural. Em `Trilhas`, o grupo é pessoal e
+A tela inicial é a superfície canônica de leitura e organização de `Trilhas`.
+Não há um índice paralelo repetindo os mesmos cursos. Em `Trilhas`, o grupo é pessoal e
 administrável pela própria conta; em `Coleções`, o grupo é editorial e somente
 uma capacidade autenticada permite alterá-lo. A linguagem de grupo permanece
 previsível sem duplicar a tela inicial, compartilhar propriedade ou ampliar
@@ -41,8 +40,8 @@ No leitor, ficam somente **Editar card** e **Abrir painel**. Foram removidos os
 atalhos redundantes para Chatbot, criação rápida e importação/exportação, além
 do menu genérico sem alvo, do editor de fonte-guia já desativado e da criação
 manual de um plano vazio. Planos criados pelo Chatbot ou Plugin continuam
-visíveis e administráveis em `Trilhas`. Em **Organizar**, o ícone de mais abre
-somente as ações contextuais do item correspondente.
+visíveis e administráveis em `Trilhas`. O ícone de mais abre somente as ações
+contextuais do item correspondente.
 
 Cada card HTML estrutural de navegação oferece diretamente somente as ações de
 uso frequente:
@@ -57,17 +56,19 @@ estudo. Curso privado é editável pelo dono. Curso oficial é editável somente
 por uma conta administrativa/editorial. Na ausência de uma capacidade
 confirmada, o cliente falha fechado e desabilita edição e exclusão.
 
-## Painel integrado
+## Projeção integrada
 
-O painel lê primeiro a projeção paginada completa de `Trilhas` para montar o
-índice **Organizar**. `Coleções` é carregada somente quando a aba é aberta. Um
+A tela inicial lê a projeção paginada completa de `Trilhas`; `Coleções` é
+carregada somente quando a aba é aberta. Um
 cache por conta substitui o estado anterior somente ao terminar todas as
 páginas. No uso offline ele é somente leitura e não concede permissões.
 
-Menus contextuais recolhem renomear, mover, ordenar e excluir no item a que se
-referem. Formulários aparecem no próprio grupo, curso ou parte e devolvem o foco
-ao acionador. A criação de grupo pessoal é a única ação direta do cabeçalho e
-as operações raras da conta ficam em um único menu no rodapé. Em `Coleções`,
+Na tela inicial, seletores compactos escolhem o grupo e o curso. Seus menus
+contextuais recolhem criar, renomear, mover entre grupos e excluir no alvo a que
+se referem; título e descrição do curso tornam-se editáveis no próprio card.
+Formulários aparecem no mesmo lugar do rótulo e devolvem o foco ao acionador.
+Grupos e cursos usam ordem alfabética automática em português, sem setas ou modo
+de organização. As operações raras da conta ficam em um único menu no rodapé. Em `Coleções`,
 ações editoriais aparecem diretamente no alvo somente para uma conta
 autorizada; consultar, buscar, adicionar e abrir continuam sendo o estado
 padrão para as demais pessoas. Não existe modo intermediário de organização.
@@ -76,7 +77,9 @@ Selecionar um curso oficial usa uma ação dedicada que cria apenas o vínculo
 pessoal. Abrir ou iniciar um curso é leitura e navegação: não seleciona, move,
 copia nem publica. Em `Coleções`, contas editoriais também administram grupos e
 cursos oficiais pelo aplicativo; em `Trilhas`, cada pessoa administra seus
-grupos e a posição de suas seleções.
+grupos e a classificação de planos, composições em materialização e seleções.
+Em ambos os casos, a ordem visual é alfabética; a posição pedagógica dentro do
+curso continua explícita e editável.
 
 Ao abrir um plano, a árvore corrente permite renomear, descrever, reordenar,
 excluir e observar cursos, módulos, lições e microssequências. Observações

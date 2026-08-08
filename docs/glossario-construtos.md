@@ -27,7 +27,7 @@ interface sejam tratados como medidas psicológicas ou educacionais.
 | frugalidade | adequação de custo, armazenamento, payload e manutenção ao contexto | estado corrente, paginação e ausência de cópias | reduzir qualidade, segurança ou acessibilidade |
 | local-first no AraLearn | dispositivo mantém réplica e fila úteis sem ser autoridade de permissão remota | estudo e estado pessoal offline | sincronização irrestrita ou conteúdo autoral remoto automático |
 | estado corrente | representação válida mais recente de uma entidade | uma linha por parte, progresso ou observação | histórico completo ou impossibilidade de auditoria operacional |
-| publicação | materialização explícita de um curso composto numa revisão distribuível | publicação privada incompleta ou revisão completa | fim do workspace, aprovação acadêmica ou cópia por edição |
+| publicação | materialização explícita de um curso composto numa revisão distribuível | artefato privado de submissão ou revisão completa em Coleções | visibilidade e estudo do workspace em Trilhas, fim do workspace, aprovação acadêmica ou cópia por edição |
 | usabilidade | capacidade de pessoas específicas alcançarem objetivos com efetividade, eficiência e satisfação no contexto | conclusão de jornadas e compreensão de estados | aprendizagem, preferência estética ou número de acessos |
 | compreensão | construção de significado demonstrável para o conteúdo | explicação, aplicação e discriminação em tarefas | conclusão do card ou confiança declarada |
 | retenção | disponibilidade posterior do que foi aprendido | tarefa adiada planejada na avaliação | progresso salvo ou lembrança imediata |

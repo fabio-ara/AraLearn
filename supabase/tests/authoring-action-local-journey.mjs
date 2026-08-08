@@ -86,7 +86,8 @@ const state = {
   privateCourse: null,
   submissions: new Map(),
   collection: null,
-  officialCourse: null
+  officialCourse: null,
+  officialWorkspaceId: null
 };
 
 function sha256(value) {
@@ -298,7 +299,6 @@ async function rpcAsUser(userId, name, body = {}) {
 async function listTrailsForUser(userId) {
   return rpcAsUser(userId, "list_trail_items_v1", {
     p_limit: 100,
-    p_after_position: null,
     p_after_id: null
   });
 }
@@ -419,11 +419,22 @@ async function expectActionError(
 }
 
 async function findPersonalCourse(token, courseId) {
-  const library = await action(token, "listarCursosDaBibliotecaPessoal", {
-    limit: 100,
-    query: "Dataprev: Teste"
-  });
-  return library.items.find((item) => item.courseId === courseId) || null;
+  const visitedCursors = new Set();
+  let afterId = null;
+  while (true) {
+    const library = await action(token, "listarCursosDaBibliotecaPessoal", {
+      limit: 25,
+      ...(afterId ? { afterId } : {})
+    });
+    const found = library.items.find((item) => item.courseId === courseId);
+    if (found) return found;
+    const nextAfterId = library.nextCursor?.afterId || null;
+    if (!library.hasMore || !nextAfterId || visitedCursors.has(nextAfterId)) {
+      return null;
+    }
+    visitedCursors.add(nextAfterId);
+    afterId = nextAfterId;
+  }
 }
 
 async function findCollection(token, collectionId) {
@@ -874,6 +885,7 @@ async function runJourney() {
       sourceCourseId: official.courseId
     }
   );
+  state.officialWorkspaceId = officialComposition.workspaceId;
 
   const authorCatalogSelection = await rpcAsUser(
     authorId,
@@ -941,11 +953,19 @@ async function runJourney() {
   assert.equal(removedOfficial.status, "removed");
   state.officialCourse.removed = true;
 
-  await expectActionError(
+  const retainedOfficialComposition = await action(
     state.adminToken,
     "lerWorkspaceDeAutoria",
-    { workspaceId: officialComposition.workspaceId, view: "outline" },
-    { status: 404, code: "not_found" }
+    { workspaceId: officialComposition.workspaceId, view: "outline" }
+  );
+  assert.equal(
+    retainedOfficialComposition.revision,
+    officialComposition.revision
+  );
+  assert.deepEqual(retainedOfficialComposition.publications, []);
+  assert.deepEqual(
+    retainedOfficialComposition.content.courses.map((course) => course.id),
+    [paths.course[0]]
   );
 
   for (const [userId, deviceId, selectedCourse] of [
@@ -953,10 +973,22 @@ async function runJourney() {
     [adminId, adminSyncDevice, adminCatalogSelection]
   ]) {
     const trailsAfterRemoval = await listTrailsForUser(userId);
-    assert(!trailsAfterRemoval.items.some(
-      (item) => item.courseId === official.courseId
-        || item.workspaceId === officialComposition.workspaceId
-    ));
+    if (userId === authorId) {
+      assert(!trailsAfterRemoval.items.some(
+        (item) => item.courseId === official.courseId
+          || item.workspaceId === officialComposition.workspaceId
+      ));
+    } else {
+      const retainedTrailItem = trailsAfterRemoval.items.find(
+        (item) => item.workspaceId === officialComposition.workspaceId
+      );
+      assert(retainedTrailItem);
+      assert.equal(retainedTrailItem.source, "workspace");
+      assert.equal(retainedTrailItem.origin, "catalog");
+      assert.equal(retainedTrailItem.courseKey, paths.course[0]);
+      assert.equal(retainedTrailItem.selectionId, null);
+      assert.equal(retainedTrailItem.contentHash, official.contentHash);
+    }
     const personalChanges = await rpcAsUser(
       userId,
       "pull_sync_changes",
@@ -1007,6 +1039,14 @@ async function runJourney() {
   assert.equal(retired.status, "retired");
   state.collection.retired = true;
 
+  await action(state.adminToken, "excluirDoWorkspace", {
+    operation: "delete_workspace",
+    requestId: requestId("action-official-composition-cleanup"),
+    workspaceId: officialComposition.workspaceId,
+    expectedRevision: retainedOfficialComposition.revision
+  });
+  state.officialWorkspaceId = null;
+
   const finalAuthorHistory = await action(
     state.authorToken,
     "listarRevisoesEditoriais",
@@ -1041,6 +1081,7 @@ async function runJourney() {
   );
   assert.equal(removedPrivate.status, "removed");
   assert.equal(removedPrivate.courseArchived, true);
+  state.privateCourse = null;
   const replayedPrivateRemoval = await action(
     state.authorToken,
     "retirarCursoDasTrilhas",
@@ -1048,18 +1089,32 @@ async function runJourney() {
   );
   assert.equal(replayedPrivateRemoval.status, "removed");
   assert.equal(replayedPrivateRemoval.idempotent, true);
-  await expectActionError(
+  const retainedPrivateWorkspace = await action(
     state.authorToken,
     "lerWorkspaceDeAutoria",
-    { workspaceId: removedWorkspaceId, view: "outline" },
-    { status: 404, code: "not_found" }
+    { workspaceId: removedWorkspaceId, view: "outline" }
+  );
+  assert.deepEqual(retainedPrivateWorkspace.publications, []);
+  assert.deepEqual(
+    retainedPrivateWorkspace.content.courses.map((course) => course.id),
+    [paths.course[0]]
   );
   const authorTrailsAfterPrivateRemoval = await listTrailsForUser(authorId);
-  assert(!authorTrailsAfterPrivateRemoval.items.some(
-    (item) => item.courseId === removedPrivateCourseId
-      || item.workspaceId === removedWorkspaceId
-  ));
-  state.privateCourse = null;
+  const retainedPrivateTrailItem = authorTrailsAfterPrivateRemoval.items.find(
+    (item) => item.workspaceId === removedWorkspaceId
+  );
+  assert(retainedPrivateTrailItem);
+  assert.equal(retainedPrivateTrailItem.courseId, removedPrivateCourseId);
+  assert.equal(retainedPrivateTrailItem.selectionId, null);
+  assert.equal(retainedPrivateTrailItem.source, "workspace");
+  assert.equal(retainedPrivateTrailItem.origin, "private");
+  assert.equal(retainedPrivateTrailItem.contentHash, selected.contentHash);
+  await action(state.authorToken, "excluirDoWorkspace", {
+    operation: "delete_workspace",
+    requestId: requestId("action-private-workspace-cleanup"),
+    workspaceId: removedWorkspaceId,
+    expectedRevision: retainedPrivateWorkspace.revision
+  });
   state.authorWorkspaceId = null;
 
   const multiCourseA = `course-composition-a-${runKey}`;
@@ -1110,13 +1165,9 @@ async function runJourney() {
       target: "private"
     }
   );
-  const multiLibrary = await action(
+  const multiSelection = await findPersonalCourse(
     state.authorToken,
-    "listarCursosDaBibliotecaPessoal",
-    { limit: 100, query: "Composição A" }
-  );
-  const multiSelection = multiLibrary.items.find(
-    (item) => item.courseId === multiPublished.courseId
+    multiPublished.courseId
   );
   assert(multiSelection);
   const multiRemoved = await action(
@@ -1136,15 +1187,19 @@ async function runJourney() {
     "lerWorkspaceDeAutoria",
     { workspaceId: multiWorkspace.workspaceId, view: "outline" }
   );
-  assert.equal(retainedWorkspace.revision, multiStructured.revision + 1);
+  assert.equal(retainedWorkspace.revision, multiStructured.revision);
+  assert.deepEqual(retainedWorkspace.publications, []);
   assert.deepEqual(
     retainedWorkspace.content.courses.map((course) => course.id),
-    [multiCourseB]
+    [multiCourseA, multiCourseB]
   );
   const trailsAfterRootRemoval = await listTrailsForUser(authorId);
-  assert(!trailsAfterRootRemoval.items.some(
-    (item) => item.courseId === multiPublished.courseId
-      || item.courseKey === multiCourseA
+  assert(trailsAfterRootRemoval.items.some(
+    (item) => item.workspaceId === multiWorkspace.workspaceId
+      && item.courseKey === multiCourseA
+      && item.courseId === multiPublished.courseId
+      && item.selectionId === null
+      && item.origin === "private"
   ));
   assert(trailsAfterRootRemoval.items.some(
     (item) => item.workspaceId === multiWorkspace.workspaceId
@@ -1173,8 +1228,24 @@ async function cleanup() {
   const failures = [];
 
   if (state.authorToken) {
-    for (const [submissionId, status] of state.submissions) {
-      if (!new Set(["submitted", "in_review", "changes_requested"]).has(status)) {
+    let currentSubmissions = new Map();
+    await ignoreCleanup(
+      "reler submissões editoriais",
+      async () => {
+        const listed = await action(
+          state.authorToken,
+          "listarRevisoesEditoriais",
+          { view: "mine", limit: 100 }
+        );
+        currentSubmissions = new Map(listed.items.map(
+          (item) => [item.submissionId, item.status]
+        ));
+      },
+      failures
+    );
+    for (const [submissionId, trackedStatus] of state.submissions) {
+      const status = currentSubmissions.get(submissionId) || trackedStatus;
+      if (!new Set(["submitted", "in_review"]).has(status)) {
         continue;
       }
       await ignoreCleanup(
@@ -1289,6 +1360,27 @@ async function cleanup() {
           expectedRevision: current.revision
         });
         state.authorWorkspaceId = null;
+      },
+      failures
+    );
+  }
+
+  if (state.adminToken && state.officialWorkspaceId) {
+    await ignoreCleanup(
+      "excluir composição oficial",
+      async () => {
+        const current = await action(
+          state.adminToken,
+          "lerWorkspaceDeAutoria",
+          { workspaceId: state.officialWorkspaceId, view: "outline" }
+        );
+        await action(state.adminToken, "excluirDoWorkspace", {
+          operation: "delete_workspace",
+          requestId: requestId("cleanup-official-workspace"),
+          workspaceId: state.officialWorkspaceId,
+          expectedRevision: current.revision
+        });
+        state.officialWorkspaceId = null;
       },
       failures
     );

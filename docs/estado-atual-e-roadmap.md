@@ -14,8 +14,8 @@ referência válida o proteger; depois disso, torna-se elegível à coleta de li
 Também estão disponíveis:
 
 - cadastro, confirmação por e-mail, recuperação de senha, sessão persistida e saída;
-- painel integrado com índice **Organizar**, `Coleções` e configuração do
-  Chatbot/Plugin, sem repetir a tela inicial de estudo;
+- tela inicial integrada para estudar e organizar `Trilhas`, com painel apenas
+  para `Coleções` e configuração do Chatbot/Plugin;
 - retomada por lição, conclusão estrutural, marca **Rever**, observações e estudo sem conexão depois do primeiro download, sem telemetria de abertura, tempo, tentativa ou resultado;
 - sincronização automática quando o aplicativo está aberto e encontra rede;
 - modos contextuais **Ler** e **Editar** na mesma superfície do card, sem aba
@@ -33,17 +33,17 @@ Também estão disponíveis:
 - edição no curso privado próprio e, para conta administrativa ou editorial,
   no curso oficial; conteúdo sem autoridade permanece somente leitura;
 - GPT externo com gateway MCP para planejamento e autoria extensa, com leitura,
-  edição estrutural, recombinação, prévia privada e submissão editorial
+  edição estrutural, recombinação, estudo imediato em Trilhas e submissão editorial
   (`atomic-resource-authoring`);
 - OAuth 2.1 como autenticação exclusiva do gateway MCP, com autoridade
   resolvida pelos papéis e permissões do banco;
 - capacidades por conta para autoria privada, submissão, revisão e publicação
   no catálogo, no mesmo assistente;
-- painel progressivo em que `Trilhas` reúne planos e cursos e `Coleções` reúne
+- projeção progressiva em que `Trilhas` reúne planos e cursos e `Coleções` reúne
   o catálogo oficial; listas remotas são paginadas e abertas sob demanda;
 - workspaces pessoais, de turma ou equipe com seis papéis locais, convites,
   transferência, composição corrente dos planos e cursos e administração no próprio
-  app; o mesmo papel governa MCP, Action, autoria e publicação privada sem
+  app; o mesmo papel governa MCP, Action, autoria e artefato privado de submissão sem
   copiar o curso; responsáveis recebem contagens e **Pontos de melhoria**
   calculados a partir das observações correntes, sem histórico ou telemetria;
 - sistema visual único em claro e escuro, sem paleta paralela, glifos de

@@ -43,6 +43,16 @@ fornece contexto para ferramentas de autoria ou pesquisa. A revisão publicada
 Durante a autoria remota, o documento é composto a partir das partes correntes
 do workspace no PostgreSQL.
 
+As identidades são estáveis. `course.id` é único no projeto; os identificadores
+de `module`, `lesson`, `topic`, `microsequence` e `card` são únicos por tipo em
+todo o curso, inclusive entre ramos diferentes. Cursos independentes podem usar
+o mesmo identificador interno. Um workspace de autoria aplica a restrição mais
+forte de unicidade por tipo em toda a área de trabalho, inclusive entre cursos,
+porque suas partes são endereçadas diretamente. Um movimento preserva a
+identidade; uma cópia ou importação para o workspace remapeia as identidades da
+parte copiada. A validação rejeita uma repetição e informa a ocorrência original
+e a duplicada.
+
 ## Relação com a persistência
 
 No PostgreSQL, o workspace em edição usa linhas para projeto, cursos, módulos,

@@ -32,7 +32,7 @@ O detalhe mostra a composição corrente de cursos, módulos, lições e
 microssequências. **Observações** reúne textos situados para triagem. Não há
 painel de vigilância, notas, tempo ou tentativas.
 
-Os grupos vistos em **Organizar** são uma organização pessoal separada:
+Os grupos vistos na tela inicial são uma organização pessoal separada:
 excluí-los não exclui workspaces, planos, cursos nem progresso. As coleções
 pertencem ao catálogo e só podem ser administradas por uma conta editorial;
 nesse caso, as ações aparecem diretamente no alvo, sem ativar um modo

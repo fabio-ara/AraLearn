@@ -706,9 +706,9 @@ test("revisões editoriais usam cursor keyset completo e resposta pequena", () =
   );
 });
 
-test("disponibilidade em Trilhas não expõe estado editorial", () => {
+test("artefato privado de submissão não expõe estado conversacional", () => {
   const operation = mapAuthoringMcpToolCall("publicarCursoDoWorkspace", {
-    requestId: "publish-preview-0001",
+    requestId: "publish-submission-artifact-0001",
     workspaceId: WORKSPACE_ID,
     expectedRevision: 3,
     courseId: "course-preview",
@@ -722,7 +722,7 @@ test("disponibilidade em Trilhas não expõe estado editorial", () => {
   const validate = compileOutputSchema(definition.outputSchema);
   assert.equal(validate({
     ok: true,
-    requestId: "publish-preview-0001",
+    requestId: "publish-submission-artifact-0001",
     data: {
       workspaceId: WORKSPACE_ID,
       revision: 3,
@@ -989,10 +989,12 @@ test("curso publicado pode ser lido por árvore ou entidade", () => {
   assert.match(operation.path, /entityType=module/u);
 });
 
-test("o contrato público usa somente Trilhas ou Coleções como destino", () => {
+test("publicação explícita não é requisito de Trilhas e distribui artefatos", () => {
   const definition = AUTHORING_WORKSPACE_MCP_TOOLS.find(
     (entry) => entry.name === "publicarCursoDoWorkspace"
   );
-  assert.match(definition.description, /Trilhas.*Coleções/u);
+  assert.match(definition.description, /Trilhas.*sem esta operação/u);
+  assert.match(definition.description, /private.*submissão editorial/u);
+  assert.match(definition.description, /catalog.*Coleções/u);
   assert.equal(Object.hasOwn(definition.inputSchema.properties, "completion"), false);
 });

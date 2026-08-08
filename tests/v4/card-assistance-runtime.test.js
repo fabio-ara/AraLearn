@@ -160,6 +160,8 @@ test("reparo de recurso envia contexto limitado e devolve change set mínimo", a
     }
   };
   const project = projectFixture();
+  project.courses[0].modules[0].lessons[0].microsequences[0].cards[0].after =
+    "Contexto posterior preservado.";
   const generated = await generateCardAssistanceChangeSet({
     projectDocument: project,
     selection,
@@ -178,6 +180,19 @@ test("reparo de recurso envia contexto limitado e devolve change set mínimo", a
   assert.deepEqual(requests[0].engineContext.writableTargets[0].value, {
     text: "Texto original."
   });
+  assert.equal(
+    Object.hasOwn(requests[0].engineContext.readOnlyContext.cards.current, "text"),
+    false
+  );
+  assert.equal(
+    requests[0].engineContext.readOnlyContext.cards.current.after,
+    "Contexto posterior preservado."
+  );
+  assert.deepEqual(
+    requests[0].engineContext.readOnlyContext.cards.current
+      .selectedWritableContentOmitted,
+    ["main"]
+  );
   const mainValueSchema = requests[0].schema.properties.replacements.items
     .oneOf[0].properties.value;
   ["id", "position", "resource", "kind", "exercise", "title", "after", "afterBlocks", "sources"]
@@ -242,7 +257,26 @@ test("reparo conjunto de main e response compila cada alvo sem estado intermedi�
   project.courses[0].modules[0].lessons[0].microsequences[0].cards[0] =
     chartChoiceCard();
   const provider = {
-    async generateStructured() {
+    async generateStructured(request) {
+      const readOnlyCurrent = request.engineContext.readOnlyContext.cards.current;
+      [
+        "prompt",
+        "chartType",
+        "xAxis",
+        "yAxis",
+        "series",
+        "question",
+        "selectionMode",
+        "selectionCriterion",
+        "options",
+        "answerIds"
+      ].forEach((fieldName) => {
+        assert.equal(Object.hasOwn(readOnlyCurrent, fieldName), false, fieldName);
+      });
+      assert.deepEqual(
+        readOnlyCurrent.selectedWritableContentOmitted,
+        ["main", "response"]
+      );
       return {
         value: {
           replacements: [
@@ -457,8 +491,10 @@ test("reparo de recursos múltiplos preserva bloco não selecionado e apoio", as
     ],
     after: ""
   };
+  const requests = [];
   const provider = {
-    async generateStructured() {
+    async generateStructured(request) {
+      requests.push(request);
       return {
         value: {
           replacements: [
@@ -493,6 +529,26 @@ test("reparo de recursos múltiplos preserva bloco não selecionado e apoio", as
   assert.equal(generated.changeSet.card.blocks[1].value, "Segunda corrigida.");
   assert.deepEqual(generated.changeSet.card.blocks[2], microsequence.cards[0].blocks[2]);
   assert.deepEqual(generated.changeSet.card.afterBlocks, microsequence.cards[0].afterBlocks);
+  assert.deepEqual(
+    requests[0].engineContext.readOnlyContext.cards.current.blocks,
+    [
+      {
+        id: "part-1",
+        kind: "paragraph",
+        selectedWritableContentOmitted: true
+      },
+      {
+        id: "part-2",
+        kind: "paragraph",
+        selectedWritableContentOmitted: true
+      },
+      { id: "part-3", kind: "paragraph", value: "Intocada." }
+    ]
+  );
+  assert.deepEqual(
+    requests[0].engineContext.writableTargets.map((target) => target.value.value),
+    ["Primeira.", "Segunda."]
+  );
 });
 
 test("reparo de afterBlock não altera o recurso principal", async () => {
@@ -502,7 +558,18 @@ test("reparo de afterBlock não altera o recurso principal", async () => {
     { id: "support-1", kind: "paragraph", value: "Apoio original." }
   ];
   const provider = {
-    async generateStructured() {
+    async generateStructured(request) {
+      const readOnlyCurrent = request.engineContext.readOnlyContext.cards.current;
+      assert.equal(readOnlyCurrent.text, "Texto original.");
+      assert.deepEqual(readOnlyCurrent.afterBlocks, [{
+        id: "support-1",
+        kind: "paragraph",
+        selectedWritableContentOmitted: true
+      }]);
+      assert.equal(
+        request.engineContext.writableTargets[0].value.value,
+        "Apoio original."
+      );
       return {
         value: {
           replacements: [{
@@ -541,6 +608,18 @@ test("reparo do texto posterior não precisa reconstruir o card", async () => {
   );
   const provider = {
     async generateStructured(request) {
+      assert.equal(
+        Object.hasOwn(request.engineContext.readOnlyContext.cards.current, "after"),
+        false
+      );
+      assert.deepEqual(
+        request.engineContext.readOnlyContext.cards.current
+          .selectedWritableContentOmitted,
+        ["after:text"]
+      );
+      assert.deepEqual(request.engineContext.writableTargets[0].value, {
+        text: ""
+      });
       const branch = request.schema.properties.replacements.items.oneOf[0];
       assert.deepEqual(
         Object.keys(branch.properties.value.properties),
@@ -603,6 +682,17 @@ test("reparo da resposta choice preserva o recurso visual", async () => {
   assert.ok(targets.some((target) => target.targetId === "response"));
   const provider = {
     async generateStructured(request) {
+      const readOnlyCurrent = request.engineContext.readOnlyContext.cards.current;
+      assert.equal(readOnlyCurrent.code, original.code);
+      ["question", "selectionMode", "selectionCriterion", "options", "answerIds"]
+        .forEach((fieldName) => {
+          assert.equal(Object.hasOwn(readOnlyCurrent, fieldName), false, fieldName);
+        });
+      assert.deepEqual(readOnlyCurrent.selectedWritableContentOmitted, ["response"]);
+      assert.equal(
+        request.engineContext.writableTargets[0].value.question,
+        original.question
+      );
       const valueSchema = request.schema.properties.replacements.items
         .oneOf[0].properties.value;
       assert.deepEqual(
@@ -647,6 +737,47 @@ test("reparo da resposta choice preserva o recurso visual", async () => {
   assert.equal(generated.changeSet.card.code, original.code);
   assert.equal(generated.changeSet.card.after, original.after);
   assert.equal(generated.changeSet.card.title, original.title);
+});
+
+test("conteúdo selecionado extenso não reaparece no contexto somente leitura", async () => {
+  const project = projectFixture();
+  const card = project.courses[0].modules[0].lessons[0].microsequences[0].cards[0];
+  const selectedText = `ALVO_EXTENSO_${"x".repeat(18000)}`;
+  card.text = selectedText;
+  card.after = "Síntese somente leitura.";
+  const provider = {
+    async generateStructured(request) {
+      const readOnlyCurrent = request.engineContext.readOnlyContext.cards.current;
+      assert.equal(JSON.stringify(readOnlyCurrent).includes("ALVO_EXTENSO_"), false);
+      assert.equal(readOnlyCurrent.after, "Síntese somente leitura.");
+      assert.equal(request.engineContext.writableTargets[0].value.text, selectedText);
+      return {
+        value: {
+          replacements: [{
+            targetId: "main",
+            value: { text: "Versão curta e corrigida." },
+            gaps: []
+          }]
+        }
+      };
+    }
+  };
+
+  const generated = await generateCardAssistanceChangeSet({
+    projectDocument: project,
+    selection,
+    request: {
+      operation: "repair",
+      repairScope: "resources",
+      resourceTargetIds: ["main"],
+      promptText: "Resuma o resource selecionado."
+    },
+    provider,
+    modelId: "fake:model"
+  });
+
+  assert.equal(generated.changeSet.card.text, "Versão curta e corrigida.");
+  assert.equal(generated.changeSet.card.after, "Síntese somente leitura.");
 });
 
 test("reparo formal de uma lacuna composta preserva a lacuna não selecionada", async () => {

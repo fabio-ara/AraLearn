@@ -1,7 +1,7 @@
 # Ciclo de autoria por rodadas
 
-O mesmo assistente pode planejar, construir, auditar, reparar, reauditar e
-disponibilizar. Depois de uma ação relevante, apresenta o resultado, sugere uma
+O mesmo assistente pode planejar, construir, auditar, reparar, reauditar,
+submeter e distribuir. Depois de uma ação relevante, apresenta o resultado, sugere uma
 próxima etapa e espera a decisão da pessoa.
 
 ```text
@@ -43,6 +43,6 @@ regressões; não repare durante a reauditoria.
 ## Escolhas da pessoa
 
 A pessoa pode ajustar ou aprovar o plano, limitar a construção, pedir práticas,
-pular auditoria, aprovar só alguns reparos ou disponibilizar o que já existe.
+pular auditoria, aprovar só alguns reparos ou estudar o que já existe.
 Essas escolhas não criam status ou bloqueios. Em Trilhas, planejamento e
 conteúdo materializado coexistem no mesmo item.

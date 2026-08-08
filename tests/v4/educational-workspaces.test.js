@@ -468,6 +468,15 @@ test("migration separa governança, autorização e projeção corrente", () => 
 test("MCP usa um contrato discriminado para leitura e governança", () => {
   const definition = authoringMcpToolDefinition("gerirWorkspaceEducacional");
   assert.ok(definition);
+  const commentListOutput = definition.outputSchema.oneOf[0].properties.data.anyOf
+    .find((variant) => variant.properties?.items?.items?.properties?.trailItemId);
+  assert.ok(commentListOutput);
+  const commentOutput = commentListOutput.properties.items.items;
+  assert.equal(commentOutput.required.includes("trailItemId"), true);
+  assert.deepEqual(commentOutput.properties.courseId.anyOf.map((value) =>
+    value.type), ["string", "null"]);
+  assert.equal(commentOutput.properties.cardId.format, undefined);
+  assert.equal(commentOutput.properties.cardId.maxLength, 240);
   assert.deepEqual(
     definition.inputSchema.oneOf.map((variant) => variant.properties.operation.const),
     [

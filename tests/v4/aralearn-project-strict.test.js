@@ -155,6 +155,41 @@ test("a fronteira rejeita ids duplicados entre entidades irmãs", () => {
   });
 });
 
+test("ids de lição são únicos entre módulos e informam as duas ocorrências", () => {
+  const project = canonicalProject();
+  const secondModule = structuredClone(nested(project).moduleValue);
+  secondModule.id = "module-b";
+  secondModule.title = "Módulo B";
+  secondModule.lessons[0].topics[0].id = "topic-b";
+  secondModule.lessons[0].microsequences[0].id = "micro-b";
+  secondModule.lessons[0].microsequences[0].cards[0].id = "card-b";
+  project.courses[0].modules.push(secondModule);
+
+  const result = validateProjectDocument(project);
+  const duplicate = result.errors.find((error) =>
+    error.path === "$.courses[0].modules[1].lessons[0].id"
+  );
+
+  assert.equal(result.ok, false);
+  assert.match(duplicate?.message || "", /id de lesson duplicado em todo o curso/u);
+  assert.match(
+    duplicate?.message || "",
+    /primeira ocorrência em \$\.courses\[0\]\.modules\[0\]\.lessons\[0\]\.id/u
+  );
+});
+
+test("ids estruturais podem se repetir entre cursos independentes", () => {
+  const project = canonicalProject();
+  const secondCourse = structuredClone(project.courses[0]);
+  secondCourse.id = "course-b";
+  secondCourse.title = "Curso B";
+  project.courses.push(secondCourse);
+
+  const result = validateProjectDocument(project);
+
+  assert.equal(result.ok, true, errorText(result));
+});
+
 test("topic.kind inválido é rejeitado em vez de virar concept", () => {
   const project = canonicalProject();
   nested(project).topic.kind = "skill";

@@ -13,12 +13,15 @@ metadados e cards e `reorganizarWorkspace` com uma `operation` explícita para
 cópia ou movimento. Cursos no mesmo workspace podem trocar módulos, lições,
 microssequências e cards; `copy_entity` cria identidades novas e `move_entity`
 remove a origem.
+IDs estruturais são estáveis e únicos por tipo em todo o workspace, mesmo em
+ramos ou cursos diferentes; copiar ou importar remapeia toda a parte.
 
 Apresente no chat somente microteorias e contagens de práticas, salvo pedido
 explícito. As práticas permanecem variadas, autocontidas e alinhadas.
 
-Disponibilize em Trilhas as partes já materializadas sem bloquear o restante
-do plano. A mesma integração adapta as ações às capacidades da conta: autoria
+Criar a estrutura já a faz aparecer em Trilhas; as partes materializadas ficam
+estudáveis sem publicação e sem bloquear o restante do plano. A mesma
+integração adapta as ações às capacidades da conta: autoria
 privada, submissão, revisão editorial e Coleções. Trabalho submetido por outro
 autor passa por revisão; uma conta editorial pode organizar diretamente o
 próprio workspace.

@@ -6,20 +6,20 @@ import {
   synchronizationRequiresFullReplicaRefresh
 } from "../../src/sync/replicaRefreshPolicy.js";
 
-test("eco de progresso sincronizado exige somente atualização pessoal", () => {
+test("mudança de seleção sincronizada recompõe a réplica oficial", () => {
   const result = {
     pushed: { accepted: 2, rejected: 0 },
     bootstrap: { status: "already_bootstrapped" },
     pulled: {
       applied: 2,
-      appliedByStore: { lessonProgress: 1, cardProgress: 1 }
+      appliedByStore: { courseSelections: 2 }
     },
     updatedCourses: 0,
     unavailableCourses: []
   };
 
   assert.equal(synchronizationHasPersonalReplicaChanges(result), true);
-  assert.equal(synchronizationRequiresFullReplicaRefresh(result), false);
+  assert.equal(synchronizationRequiresFullReplicaRefresh(result), true);
 });
 
 test("mudanças estruturais da réplica continuam exigindo recomposição completa", () => {

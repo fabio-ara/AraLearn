@@ -14,9 +14,6 @@ import {
   SupabaseAuthoringAdapter
 } from "../../supabase/functions/_shared/aralearn-authoring/supabaseAdapter.js";
 import {
-  validateMoveCatalogCollectionPayload
-} from "../../supabase/functions/_shared/aralearn-authoring/workspaceProtocol.js";
-import {
   AUTHORING_WORKSPACE_MCP_TOOLS,
   authoringMcpToolIsAllowed,
   authoringMcpToolsForPrincipal,
@@ -99,7 +96,6 @@ function createCatalogAdapter(principalValue = principal()) {
     course: {
       courseId: COURSE_ID,
       collectionId: SOURCE_COLLECTION_ID,
-      position: 0,
       placementRevision: 7,
       contentHash: CONTENT_HASH,
       removed: false
@@ -131,7 +127,6 @@ function createCatalogAdapter(principalValue = principal()) {
           contractKey: "concursos-publicos",
           title: "Concursos públicos",
           description: "",
-          position: 0,
           status: "active",
           revision: 3,
           courseCount: 1,
@@ -154,7 +149,6 @@ function createCatalogAdapter(principalValue = principal()) {
         contractKey: options.contractKey,
         title: options.title,
         description: options.description,
-        position: 4,
         revision: 1,
         courseCount: 0
       };
@@ -193,22 +187,6 @@ function createCatalogAdapter(principalValue = principal()) {
         idempotent: false
       };
     },
-    async moveCatalogCollection(options) {
-      calls.push({ method: "moveCatalogCollection", options });
-      assert.equal(options.collectionId, state.createdCollectionId);
-      assert.equal(options.expectedRevision, state.collection.revision);
-      const fromPosition = state.collection.position;
-      state.collection.position = options.position;
-      state.collection.revision += 1;
-      return {
-        status: fromPosition === state.collection.position ? "unchanged" : "moved",
-        collectionId: state.createdCollectionId,
-        fromPosition,
-        position: state.collection.position,
-        revision: state.collection.revision,
-        idempotent: false
-      };
-    },
     async moveCatalogCourse(options) {
       calls.push({ method: "moveCatalogCourse", options });
       assert.equal(options.courseId, COURSE_ID);
@@ -216,9 +194,9 @@ function createCatalogAdapter(principalValue = principal()) {
         options.expectedPlacementRevision,
         state.course.placementRevision
       );
+      assert.equal(Object.hasOwn(options, "position"), false);
       const fromCollectionId = state.course.collectionId;
       state.course.collectionId = options.targetCollectionId;
-      state.course.position = options.position;
       state.course.placementRevision += 1;
       state.collection.courseCount = 1;
       return {
@@ -226,7 +204,6 @@ function createCatalogAdapter(principalValue = principal()) {
         courseId: COURSE_ID,
         fromCollectionId,
         collectionId: state.course.collectionId,
-        position: state.course.position,
         placementRevision: state.course.placementRevision,
         idempotent: false
       };
@@ -366,45 +343,21 @@ async function runCatalogJourney(transport) {
   });
   assert.equal(updated.data.revision, 2);
 
-  const movedCollection = await call("editarCatalogo", {
-    operation: "move_collection",
-    requestId: `${transport}-catalog-move-collection-0001`,
-    collectionId,
-    expectedRevision: 2,
-    position: 0
-  });
-  assert.equal(movedCollection.data.fromPosition, 4);
-  assert.equal(movedCollection.data.position, 0);
-  assert.equal(movedCollection.data.revision, 3);
-
   const moved = await call("editarCatalogo", {
     operation: "move_course",
     requestId: `${transport}-catalog-move-0001`,
     courseId: COURSE_ID,
     expectedPlacementRevision: 7,
-    targetCollectionId: collectionId,
-    position: 0
+    targetCollectionId: collectionId
   });
   assert.equal(moved.data.fromCollectionId, SOURCE_COLLECTION_ID);
   assert.equal(moved.data.placementRevision, 8);
-
-  const reordered = await call("editarCatalogo", {
-    operation: "move_course",
-    requestId: `${transport}-catalog-reorder-0001`,
-    courseId: COURSE_ID,
-    expectedPlacementRevision: 8,
-    targetCollectionId: collectionId,
-    position: 2
-  });
-  assert.equal(reordered.data.fromCollectionId, collectionId);
-  assert.equal(reordered.data.position, 2);
-  assert.equal(reordered.data.placementRevision, 9);
 
   const removed = await call("retirarDoCatalogo", {
     operation: "remove_course",
     requestId: `${transport}-catalog-remove-0001`,
     courseId: COURSE_ID,
-    expectedPlacementRevision: 9,
+    expectedPlacementRevision: 8,
     expectedContentHash: CONTENT_HASH
   });
   assert.equal(removed.data.collectionId, collectionId);
@@ -413,32 +366,28 @@ async function runCatalogJourney(transport) {
     operation: "retire_collection",
     requestId: `${transport}-catalog-retire-0001`,
     collectionId,
-    expectedRevision: 3,
+    expectedRevision: 2,
     replacementCollectionId: SOURCE_COLLECTION_ID
   });
   assert.equal(retired.data.status, "retired");
-  assert.equal(retired.data.revision, 4);
+  assert.equal(retired.data.revision, 3);
 
   assert.deepEqual(adapter.calls.map(({ method }) => method), [
     "createCatalogCollection",
     "updateCatalogCollection",
-    "moveCatalogCollection",
-    "moveCatalogCourse",
     "moveCatalogCourse",
     "removeCatalogCourse",
     "retireCatalogCollection"
   ]);
   assert.equal(adapter.calls[1].options.expectedRevision, 1);
-  assert.equal(adapter.calls[2].options.expectedRevision, 2);
-  assert.equal(adapter.calls[2].options.position, 0);
   assert.deepEqual(
-    adapter.calls.slice(3, 6).map(({ options }) =>
+    adapter.calls.slice(2, 4).map(({ options }) =>
       options.expectedPlacementRevision
     ),
-    [7, 8, 9]
+    [7, 8]
   );
-  assert.equal(adapter.calls[5].options.expectedContentHash, CONTENT_HASH);
-  assert.equal(adapter.calls[6].options.expectedRevision, 3);
+  assert.equal(adapter.calls[3].options.expectedContentHash, CONTENT_HASH);
+  assert.equal(adapter.calls[4].options.expectedRevision, 2);
   assert.equal(adapter.state.course.removed, true);
   assert.equal(adapter.state.collectionRetired, true);
 }
@@ -477,12 +426,18 @@ test("somente catalog:manage anuncia as ferramentas administrativas agrupadas", 
       ._meta["aralearn/actionConsequentialHint"],
     false
   );
-  const moveCollection = inputBranch("editarCatalogo", "move_collection");
-  assert.deepEqual([...moveCollection.required].sort(), [
-    "collectionId", "expectedRevision", "operation", "position", "requestId"
+  assert.equal(
+    toolDefinition("editarCatalogo").inputSchema.oneOf.some(
+      (branch) => branch.properties?.operation?.const === "move_collection"
+    ),
+    false
+  );
+  const moveCourse = inputBranch("editarCatalogo", "move_course");
+  assert.deepEqual([...moveCourse.required].sort(), [
+    "courseId", "expectedPlacementRevision", "operation", "requestId",
+    "targetCollectionId"
   ]);
-  assert.equal(moveCollection.properties.expectedRevision.minimum, 1);
-  assert.equal(moveCollection.properties.position.minimum, 0);
+  assert.equal(Object.hasOwn(moveCourse.properties, "position"), false);
 });
 
 test("conta editorial pode solicitar coleções retiradas sem expor catálogo ao autor privado", () => {
@@ -544,17 +499,6 @@ test("mapeamento mantém rotas, CAS e hash sem campos implícitos", () => {
       `/v1/catalog/manage/collections/${collectionId}/update`
     ],
     [
-      "editarCatalogo",
-      {
-        operation: "move_collection",
-        requestId: "map-catalog-move-collection-0001",
-        collectionId,
-        expectedRevision: 4,
-        position: 1
-      },
-      `/v1/catalog/manage/collections/${collectionId}/move`
-    ],
-    [
       "retirarDoCatalogo",
       {
         operation: "retire_collection",
@@ -572,8 +516,7 @@ test("mapeamento mantém rotas, CAS e hash sem campos implícitos", () => {
         requestId: "map-catalog-move-0001",
         courseId: COURSE_ID,
         expectedPlacementRevision: 5,
-        targetCollectionId: collectionId,
-        position: 2
+        targetCollectionId: collectionId
       },
       `/v1/catalog/manage/courses/${COURSE_ID}/move`
     ],
@@ -616,17 +559,12 @@ test("mapeamento mantém rotas, CAS e hash sem campos implícitos", () => {
     3
   );
   assert.equal(
-    mapAuthoringMcpToolCall("editarCatalogo", fixtures[2][1])
-      .body.expectedRevision,
-    4
-  );
-  assert.equal(
-    mapAuthoringMcpToolCall("editarCatalogo", fixtures[4][1])
+    mapAuthoringMcpToolCall("editarCatalogo", fixtures[3][1])
       .body.expectedPlacementRevision,
     5
   );
   assert.equal(
-    mapAuthoringMcpToolCall("retirarDoCatalogo", fixtures[5][1])
+    mapAuthoringMcpToolCall("retirarDoCatalogo", fixtures[4][1])
       .body.expectedContentHash,
     CONTENT_HASH
   );
@@ -638,15 +576,15 @@ test("mapeamento mantém rotas, CAS e hash sem campos implícitos", () => {
     ],
     [
       "editarCatalogo",
-      { ...fixtures[2][1], position: -1 }
+      { ...fixtures[3][1], position: 0 }
     ],
     [
       "editarCatalogo",
-      { ...fixtures[4][1], expectedPlacementRevision: 0 }
+      { ...fixtures[3][1], expectedPlacementRevision: 0 }
     ],
     [
       "retirarDoCatalogo",
-      { ...fixtures[5][1], expectedContentHash: "hash-invalido" }
+      { ...fixtures[4][1], expectedContentHash: "hash-invalido" }
     ]
   ]) {
     assert.throws(
@@ -656,7 +594,7 @@ test("mapeamento mantém rotas, CAS e hash sem campos implícitos", () => {
   }
 });
 
-test("Action, aplicativo e MCP executam criação, edição, movimento, reordenação e retirada", async (t) => {
+test("Action, aplicativo e MCP executam criação, edição, transferência e retirada", async (t) => {
   await t.test("Action", () => runCatalogJourney("action"));
   await t.test("Aplicativo", () => runCatalogJourney("app"));
   await t.test("MCP", () => runCatalogJourney("mcp"));
@@ -678,7 +616,7 @@ test("aplicativo consulta o catálogo pelo mesmo contrato e preserva a identidad
   );
 });
 
-test("adaptador envia a reordenação estreita para o RPC v5", async () => {
+test("adaptador envia somente a transferência entre Coleções ao RPC v5", async () => {
   const calls = [];
   const adapter = new SupabaseAuthoringAdapter({
     supabaseUrl: "https://example.supabase.co",
@@ -688,10 +626,10 @@ test("adaptador envia a reordenação estreita para o RPC v5", async () => {
       calls.push({ url, options });
       return new Response(JSON.stringify([{
         status: "moved",
+        courseId: COURSE_ID,
+        fromCollectionId: SOURCE_COLLECTION_ID,
         collectionId: SOURCE_COLLECTION_ID,
-        fromPosition: 2,
-        position: 0,
-        revision: 4,
+        placementRevision: 4,
         idempotent: false
       }]), {
         status: 200,
@@ -700,22 +638,22 @@ test("adaptador envia a reordenação estreita para o RPC v5", async () => {
     }
   });
 
-  const result = await adapter.moveCatalogCollection({
+  const result = await adapter.moveCatalogCourse({
     principal: principal(),
-    collectionId: SOURCE_COLLECTION_ID,
-    requestId: "adapter-catalog-move-collection-0001",
-    expectedRevision: 3,
-    position: 0
+    courseId: COURSE_ID,
+    requestId: "adapter-catalog-transfer-course-0001",
+    expectedPlacementRevision: 3,
+    targetCollectionId: SOURCE_COLLECTION_ID
   });
 
   assert.equal(result.status, "moved");
-  assert.match(calls[0].url, /\/rest\/v1\/rpc\/move_catalog_collection_v5$/u);
+  assert.match(calls[0].url, /\/rest\/v1\/rpc\/move_catalog_course_v5$/u);
   assert.deepEqual(JSON.parse(calls[0].options.body), {
     p_actor_id: ACTOR_ID,
-    p_collection_id: SOURCE_COLLECTION_ID,
-    p_request_id: "adapter-catalog-move-collection-0001",
-    p_expected_revision: 3,
-    p_position: 0
+    p_course_id: COURSE_ID,
+    p_request_id: "adapter-catalog-transfer-course-0001",
+    p_expected_placement_revision: 3,
+    p_target_collection_id: SOURCE_COLLECTION_ID
   });
 });
 
@@ -777,22 +715,28 @@ test("Action e MCP preservam a proteção semântica da coleção Outros", async
   ));
 });
 
-test("movimento de coleção recusa position ausente ou null na Action e no aplicativo", async () => {
+test("contratos retirados de posição falham antes de chamar o adapter", async () => {
   const adapter = createCatalogAdapter();
-  const base = {
-    operation: "move_collection",
-    requestId: "missing-catalog-position-0001",
-    collectionId: SOURCE_COLLECTION_ID,
-    expectedRevision: 3
-  };
-
   for (const [transport, makeRequest] of [
     ["Action", actionRequest],
     ["Aplicativo", applicationRequest]
   ]) {
     for (const [variant, argumentsValue] of [
-      ["ausente", base],
-      ["null", { ...base, position: null }]
+      ["coleção", {
+        operation: "move_collection",
+        requestId: "retired-catalog-collection-move-0001",
+        collectionId: SOURCE_COLLECTION_ID,
+        expectedRevision: 3,
+        position: 0
+      }],
+      ["curso", {
+        operation: "move_course",
+        requestId: "retired-catalog-course-position-0001",
+        courseId: COURSE_ID,
+        expectedPlacementRevision: 7,
+        targetCollectionId: SOURCE_COLLECTION_ID,
+        position: 0
+      }]
     ]) {
       const response = await actionHandler(adapter)(
         makeRequest("editarCatalogo", argumentsValue)
@@ -805,16 +749,6 @@ test("movimento de coleção recusa position ausente ou null na Action e no apli
         `${transport}: ${variant}`
       );
     }
-  }
-  for (const payload of [
-    { requestId: base.requestId, expectedRevision: 3 },
-    { requestId: base.requestId, expectedRevision: 3, position: null }
-  ]) {
-    assert.throws(
-      () => validateMoveCatalogCollectionPayload(payload),
-      (error) => error?.code === "invalid_workspace_position"
-        && error?.details?.field === "position"
-    );
   }
   assert.deepEqual(adapter.calls, []);
 });
@@ -839,11 +773,11 @@ test("conta privada e campos extras falham antes de chamar o adapter", async () 
 
   const applicationMoveResponse = await actionHandler(privateAdapter)(
     applicationRequest("editarCatalogo", {
-      operation: "move_collection",
-      requestId: "private-catalog-move-collection-0001",
-      collectionId: SOURCE_COLLECTION_ID,
-      expectedRevision: 1,
-      position: 0
+      operation: "move_course",
+      requestId: "private-catalog-transfer-course-0001",
+      courseId: COURSE_ID,
+      expectedPlacementRevision: 7,
+      targetCollectionId: SOURCE_COLLECTION_ID
     })
   );
   const applicationMovePayload = await applicationMoveResponse.json();

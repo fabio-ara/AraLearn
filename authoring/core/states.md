@@ -21,15 +21,18 @@ ficam executáveis. O contrato interno pode manter marcadores técnicos para
 validar o runtime, mas eles não integram a linguagem pública das ferramentas e
 não criam categorias no aplicativo.
 
-## Disponibilidade
+## Disponibilidade e distribuição
 
-`publicarCursoDoWorkspace` sincroniza a composição corrente com Trilhas ou
-Coleções. O mesmo vínculo é atualizado nas chamadas seguintes. Partes com cards
-podem ser estudadas; partes ainda sem cards continuam visíveis no plano. Não há
-parâmetro público de conclusão.
+Criar a raiz do curso já faz a composição corrente aparecer em `Trilhas`.
+Partes com cards podem ser estudadas; partes ainda sem cards continuam visíveis
+no plano. Isso não chama `publicarCursoDoWorkspace`, não cria artefato no Storage
+e não exige parâmetro público de conclusão.
 
-O Storage recebe apenas o artefato canônico corrente de um curso disponível.
-Alterações intermediárias do workspace não geram cópias integrais.
+`publicarCursoDoWorkspace` é uma operação explícita de distribuição. Com
+`target: "private"`, fixa ou atualiza o artefato privado necessário para uma
+submissão editorial. Com `target: "catalog"`, distribui ou atualiza uma revisão
+em `Coleções` quando a conta possui capacidade editorial. Alterações
+intermediárias do workspace não geram cópias integrais.
 
 ## Erros
 

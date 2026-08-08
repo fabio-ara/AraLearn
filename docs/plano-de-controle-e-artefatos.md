@@ -102,10 +102,10 @@ o ponteiro do curso pode avançar para outro hash. Veja [Git internals —
 objects](https://git-scm.com/book/en/v2/Git-Internals-Git-Objects) e [Supabase
 Storage uploads](https://supabase.com/docs/guides/storage/uploads/standard-uploads).
 
-## Publicação e submissão
+## Trilhas, publicação e submissão
 
-- `private + partial`: prévia testável na biblioteca do proprietário;
-- `private + complete`: curso pessoal integral;
+- workspace corrente: plano e partes estudáveis em Trilhas, sem artefato;
+- `private + partial|complete`: revisão exata fixada para submissão editorial;
 - `catalog + complete`: publicação editorial;
 - `catalog + partial`: rejeitada.
 
@@ -120,8 +120,10 @@ Atualizar exige a revisão esperada do workspace e confere internamente o hash
 vigente do curso contra o vínculo. O par explícito `existingCourseId` e
 `expectedContentHash` só é necessário para anexar uma publicação existente
 quando ainda não houver vínculo, e os dois campos são indivisíveis. Excluir a
-raiz do curso ou arquivar a publicação remove o vínculo. Publicar não congela
-o workspace.
+raiz do curso remove o vínculo. Arquivar a publicação desativa o artefato
+distribuído, suas seleções e seu alias, mas conserva esse vínculo leve para uma
+republicação da mesma composição. Publicar e arquivar não congelam nem apagam o
+workspace.
 
 Uma submissão editorial aponta para uma revisão privada e seu hash exato. Esse
 artefato permanece retido enquanto a submissão estiver ativa. A pessoa revisora pode

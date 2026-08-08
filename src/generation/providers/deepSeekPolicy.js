@@ -2,7 +2,6 @@ export const DEEPSEEK_BASE_URL = "https://api.deepseek.com";
 export const DEEPSEEK_BETA_BASE_URL = "https://api.deepseek.com/beta";
 export const DEEPSEEK_V4_FLASH = "deepseek-v4-flash";
 export const DEEPSEEK_V4_PRO = "deepseek-v4-pro";
-export const DEEPSEEK_QUALITY_MODEL = "deepseek-quality";
 
 const DEEPSEEK_PHASE_POLICIES = Object.freeze({
   card_assistance_representation: Object.freeze({
@@ -57,8 +56,7 @@ export function resolveDeepSeekBaseUrl(baseUrl = "", { useBeta = false } = {}) {
 
 export function isDeepSeekModelId(modelId = "") {
   const normalized = text(modelId).toLowerCase();
-  return normalized === DEEPSEEK_QUALITY_MODEL
-    || normalized === DEEPSEEK_V4_FLASH
+  return normalized === DEEPSEEK_V4_FLASH
     || normalized === DEEPSEEK_V4_PRO
     || normalized === `deepseek:${DEEPSEEK_V4_FLASH}`
     || normalized === `deepseek:${DEEPSEEK_V4_PRO}`;
@@ -69,7 +67,7 @@ export function isDeepSeekRequest({ modelId = "", baseUrl = "", providerId = "" 
 }
 
 export function stripDeepSeekModelPrefix(modelId = "") {
-  const normalized = text(modelId);
+  const normalized = text(modelId).toLowerCase();
   return normalized.startsWith("deepseek:") ? normalized.slice("deepseek:".length) : normalized;
 }
 
@@ -77,23 +75,20 @@ export function resolveDeepSeekPhasePolicy({ phase = "" } = {}) {
   return DEEPSEEK_PHASE_POLICIES[text(phase)] || null;
 }
 
-export function resolveDeepSeekModelForPhase({ selectedModelId = "", phase = "" } = {}) {
+function resolveDeepSeekModel(selectedModelId = "") {
   const normalizedModelId = stripDeepSeekModelPrefix(selectedModelId);
-  if (normalizedModelId === DEEPSEEK_QUALITY_MODEL) {
-    return resolveDeepSeekPhasePolicy({ phase })?.modelId || DEEPSEEK_V4_FLASH;
-  }
+  if (!normalizedModelId) return DEEPSEEK_V4_FLASH;
   if (normalizedModelId === DEEPSEEK_V4_FLASH || normalizedModelId === DEEPSEEK_V4_PRO) {
     return normalizedModelId;
   }
-  return normalizedModelId || DEEPSEEK_V4_FLASH;
+  throw new RangeError(
+    `Modelo DeepSeek não suportado: ${normalizedModelId}.`
+  );
 }
 
 export function buildDeepSeekTextPayload(request = {}, policy = null) {
   const systemInstruction = text(request.system) || "Responda exatamente no formato textual solicitado.";
-  const model = resolveDeepSeekModelForPhase({
-    selectedModelId: request.modelId,
-    phase: request.phase
-  });
+  const model = resolveDeepSeekModel(request.modelId);
   return {
     model,
     max_tokens: Number(request.maxTokens) || Number(policy?.maxTokens) || 4000,

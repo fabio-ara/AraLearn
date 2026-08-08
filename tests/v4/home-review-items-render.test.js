@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 
 import { createEmptyProgressDocument } from "../../src/storage/progressStore.js";
 import { renderHomeScreen } from "../../src/ui/renderHomeScreen.js";
+import { homeTrailSnapshotForProject } from "../support/homeTrailSnapshot.js";
 
 function projectWith(courseIds) {
   return {
@@ -28,11 +29,15 @@ test("a home lista em um único menu apenas os cards para rever do curso selecio
     'microsequence-"<&',
     'card-"<&'
   ];
+  const project = projectWith([selectedCourseId, otherCourseId]);
+  const trailSnapshot = homeTrailSnapshotForProject(project);
   const html = renderHomeScreen({
-    project: projectWith([selectedCourseId, otherCourseId]),
+    project,
     progress: createEmptyProgressDocument(),
     editorSupport: {
       selectedHomeCourseKey: selectedCourseId,
+      selectedHomeTrailItemId: trailSnapshot.items[0].trailItemId,
+      trailSnapshot,
       reviewItems: [
         {
           title: '<img src=x onerror="globalThis.compromised=true">',
@@ -66,11 +71,15 @@ test("a home lista em um único menu apenas os cards para rever do curso selecio
 });
 
 test("a home não cria menu Rever quando o curso selecionado não tem marca", () => {
+  const project = projectWith(["course-a", "course-b"]);
+  const trailSnapshot = homeTrailSnapshotForProject(project);
   const html = renderHomeScreen({
-    project: projectWith(["course-a", "course-b"]),
+    project,
     progress: createEmptyProgressDocument(),
     editorSupport: {
       selectedHomeCourseKey: "course-a",
+      selectedHomeTrailItemId: trailSnapshot.items[0].trailItemId,
+      trailSnapshot,
       reviewItems: [{
         title: "Card B",
         entityPath: ["course-b", "module-b", "lesson-b", "micro-b", "card-b"]

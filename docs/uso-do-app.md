@@ -6,9 +6,10 @@ O uso cotidiano segue um caminho simples: entrar, escolher cursos, organizá-los
 
 Quatro ideias bastam para acompanhar o funcionamento cotidiano:
 
-1. A conta guarda seleções, trilhas, estado funcional de retomada e observações.
+1. A conta guarda grupos de Trilhas, seleções, estado funcional de retomada e observações.
 2. O catálogo guarda uma única publicação oficial de cada curso.
-3. O dispositivo baixa os cursos selecionados e mantém uma réplica para uso sem conexão.
+3. O dispositivo mantém cursos oficiais selecionados e a composição corrente
+   dos itens de workspace já abertos para uso sem conexão.
 4. Ao estudar, o AraLearn grava primeiro no dispositivo e sincroniza depois.
 
 ```text
@@ -31,25 +32,26 @@ Depois da entrada, três etapas indicam a preparação do dispositivo, da conta 
 
 ## Encontrar e organizar conteúdo
 
-O botão de nuvem abre as funções complementares sem repetir a tela de estudo:
+O botão de nuvem abre as funções complementares à tela inicial:
 
-- **Organizar** mostra um índice compacto dos grupos, planos e cursos de
-  `Trilhas`;
 - **Coleções** apresenta os cursos oficiais disponíveis;
 - **Chatbot** contém a configuração do Chatbot personalizado e do Plugin.
 
-A tela inicial continua sendo a única superfície para percorrer e iniciar os
-cursos de `Trilhas`. Em **Organizar**, descrições, progresso e botões de estudo
-não são repetidos: ações menos frequentes ficam recolhidas no menu do grupo,
-curso ou parte correspondente. **Criar grupo** permanece como a única ação
-direta da área; sair e excluir a conta ficam recolhidos no menu de conta do
-rodapé. Isso não torna os grupos equivalentes no banco:
+A tela inicial é a superfície única para percorrer, iniciar e organizar os
+cursos de `Trilhas`. O seletor mostra planos e cursos da mesma projeção; ações
+menos frequentes ficam nos controles contextuais do grupo, curso ou parte
+correspondente. Sair e excluir a conta ficam recolhidos no menu de conta. Isso
+não torna os grupos equivalentes no banco:
 
-- em `Trilhas`, cada grupo é pessoal e pode ser criado, renomeado, reordenado ou
-  excluído pela própria pessoa;
+- em `Trilhas`, cada grupo é pessoal e pode ser criado, renomeado ou excluído
+  pela própria pessoa;
 - em `Coleções`, cada grupo pertence ao catálogo oficial. A pessoa comum o
-  consulta; uma conta editorial pode criá-lo, renomeá-lo, reordená-lo ou
-  retirá-lo, com alcance global.
+  consulta; uma conta editorial pode criá-lo, renomeá-lo ou retirá-lo, com
+  alcance global.
+
+Grupos e cursos são apresentados automaticamente em ordem alfabética de
+português, com números em ordem natural. Não há botões de subir ou descer nem
+uma ordem pessoal paralela para manter.
 
 Excluir um grupo pessoal não retira os cursos escolhidos nem apaga o estado de
 estudo. Eles continuam em `Trilhas`, no grupo **Outros**, até serem movidos
@@ -66,15 +68,14 @@ O aplicativo não cria um plano vazio por um formulário próprio. O Chatbot ou 
 Plugin cria o workspace e registra a estrutura planejada; assim que o servidor
 confirma esse trabalho, o plano aparece em `Trilhas`. Conforme os cards são
 materializados, o mesmo item passa a oferecer conteúdo estudável, sem criar uma
-cópia paralela. O controle de novo grupo em **Organizar** administra a
+cópia paralela. O controle de novo grupo na tela inicial administra a
 organização pessoal; não cria cursos ou planos.
 
 Os cards distinguem a origem sem depender dos botões: um ícone azul identifica
 planejamento, uma chave vermelha identifica curso somente privado e a pasta
 verde de `Coleções` identifica um curso público selecionado em `Trilhas`. Não
 há rótulo textual concorrendo com o título. Donos e contas editoriais podem
-usar **Organizar curso** para abrir a composição corrente ligada à mesma
-publicação.
+alternar para a edição na própria hierarquia, sem abrir uma árvore paralela.
 
 `Coleções` é consultada somente quando a aba é aberta. `Trilhas` carrega todas
 as páginas antes de substituir a lista anterior e só então conserva essa
@@ -97,24 +98,25 @@ publica uma revisão nem cria uma cópia.
 Ao adicionar um curso, a conta passa a tê-lo na biblioteca e o dispositivo baixa o material para estudo. Isso não altera o curso oficial nem cria outra cópia dele no banco.
 
 Uma conta editorial encontra diretamente, nos alvos correspondentes, os menus
-para criar, renomear, ordenar ou retirar coleções e para mover, ordenar ou
-retirar cursos oficiais. Não existe um modo intermediário de organização.
+para criar, renomear ou retirar coleções e para mover um curso entre coleções
+ou retirá-lo do catálogo. Não existe um modo intermediário de organização.
 Essas ações alteram o catálogo para todas as pessoas e, quando são destrutivas,
 exigem confirmação. Elas são diferentes de adicionar ou retirar um curso da
-biblioteca pessoal. **Outros cursos** é o destino estrutural do catálogo:
-permanece no fim e recebe cursos que deixam uma coleção temática.
+biblioteca pessoal. **Outros cursos** é o destino estrutural do catálogo e
+recebe cursos que deixam uma coleção temática. A lista continua alfabética.
 
-**Retirar de Trilhas** remove somente a seleção daquela conta. A publicação
-oficial continua disponível em `Coleções` para outras pessoas. Para uma conta
-editorial, o mesmo card mostra também **Retirar de Coleções**, uma ação
-administrativa distinta que, depois da confirmação, retira a publicação de
-`Coleções` e de todas as contas que a selecionaram. Em publicação privada
-própria, o rótulo é **Excluir curso privado**.
+**Retirar de Trilhas** remove somente uma seleção daquela conta. A publicação
+oficial continua disponível em `Coleções` para outras pessoas. A ação editorial
+distinta **Retirar de Coleções** permanece no alvo correspondente da aba
+`Coleções`; depois da confirmação, ela retira a publicação do catálogo e de
+todas as contas que a selecionaram. Um curso proveniente de workspace usa a
+ação **Excluir curso privado**, baseada na composição corrente e não numa
+seleção.
 
 A retirada identifica a seleção exata, e não o título. Por isso duas tentativas
-independentes com o mesmo nome continuam sendo cursos diferentes. Quando a
-pessoa retira uma publicação privada própria, o AraLearn encerra também a
-composição ligada a essa publicação; ela não reaparece como plano residual.
+independentes com o mesmo nome continuam sendo cursos diferentes. Arquivar um
+artefato privado não apaga uma composição de workspace ativa; para retirá-la de
+Trilhas, a pessoa exclui explicitamente a raiz ou o workspace correspondente.
 
 Antes de excluir uma publicação, o aplicativo termina as gravações locais e
 consulta o estado remoto corrente. Depois da confirmação do servidor, atualiza
@@ -122,15 +124,21 @@ a réplica e a lista. Se o servidor tiver concluído a exclusão, mas o disposit
 não conseguir atualizar a tela, a mensagem informa que a retirada já ocorreu e
 pede apenas uma sincronização; não se deve repetir o comando.
 
-## Organizar Trilhas
+## Curadoria de Trilhas na tela inicial
 
-Na tela inicial, a pessoa acompanha o que planejou e o que já pode estudar. Em
-**Organizar**, pode criar, renomear e reordenar grupos pessoais, além de mover
-ou reordenar neles os cursos selecionados. Excluir um grupo deixa seus cursos
-em **Outros**;
-**Retirar de Trilhas** é a ação separada que remove uma seleção.
-Mover uma parte muda sua posição na composição corrente; copiar uma parte para
-outro curso cria uma cópia independente. Excluir uma parte retira também seus
+Na tela inicial, a pessoa acompanha o que planejou e o que já pode estudar. Ali
+seleciona primeiro o grupo e depois o curso, sem abrir uma tela administrativa
+paralela. O menu do grupo permite criar, renomear ou excluir; o menu do curso
+reúne somente as operações aplicáveis àquele item, inclusive movê-lo para outro
+grupo. Título e descrição tornam-se editáveis no próprio card selecionado,
+sem navegar para outra tela. Grupos e cursos permanecem em ordem alfabética
+depois de cada alteração. Excluir um grupo deixa seus itens em **Outros**;
+**Retirar de Trilhas** é a ação separada que remove uma seleção oficial, e
+**Excluir** remove a composição privada escolhida.
+
+Essa ordenação alfabética vale para a biblioteca, não para a árvore pedagógica.
+Mover uma parte do curso muda sua posição na composição corrente; copiar uma
+parte para outro curso cria uma cópia independente. Excluir uma parte retira também seus
 descendentes, após confirmação. O progresso do estudo continua separado do
 conteúdo. Um curso distribuído tem uma só composição ativa vinculada; voltar a
 organizá-lo abre essa composição, em vez de criar outra. Planos realmente

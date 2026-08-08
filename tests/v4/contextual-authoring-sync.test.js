@@ -10,6 +10,11 @@ import {
 import {
   buildWorkspaceOutline
 } from "../../supabase/functions/_shared/aralearn-authoring/workspaceModel.js";
+import {
+  claimContextualAuthoringSyncAttempt,
+  createLessonEditorApp,
+  settleContextualAuthoringSyncAttempt
+} from "../../src/ui/lessonEditorApp.js";
 
 const project = JSON.parse(fs.readFileSync(
   new URL("../fixtures/v4/project-minimal.json", import.meta.url),
@@ -47,6 +52,78 @@ function pathFor(microsequenceKey) {
   return { ...path, microsequenceKey };
 }
 
+function deferred() {
+  let resolve;
+  let reject;
+  const promise = new Promise((resolvePromise, rejectPromise) => {
+    resolve = resolvePromise;
+    reject = rejectPromise;
+  });
+  return { promise, resolve, reject };
+}
+
+function courseVariant(suffix, title) {
+  const course = structuredClone(project.courses[0]);
+  course.id = `course-${suffix}`;
+  course.title = title;
+  const moduleValue = course.modules[0];
+  moduleValue.id = `module-${suffix}`;
+  const lesson = moduleValue.lessons[0];
+  lesson.id = `lesson-${suffix}`;
+  lesson.topics = lesson.topics.map((topic, index) => ({
+    ...topic,
+    id: `topic-${suffix}-${index + 1}`
+  }));
+  const microsequence = lesson.microsequences[0];
+  microsequence.id = `micro-${suffix}`;
+  microsequence.cards = microsequence.cards.map((card, index) => ({
+    ...card,
+    id: `card-${suffix}-${index + 1}`
+  }));
+  return course;
+}
+
+function coursePath(course) {
+  const moduleValue = course.modules[0];
+  const lesson = moduleValue.lessons[0];
+  const microsequence = lesson.microsequences[0];
+  return {
+    courseKey: course.id,
+    moduleKey: moduleValue.id,
+    lessonKey: lesson.id,
+    microsequenceKey: microsequence.id
+  };
+}
+
+function pendingLocalState(pathValue, expectedRevision) {
+  return {
+    contract: "aralearn.card-assistance-local-state.v4",
+    undo: null,
+    sync: {
+      pendingPaths: [pathValue],
+      expectedRevision
+    }
+  };
+}
+
+function cleanLocalState() {
+  return {
+    contract: "aralearn.card-assistance-local-state.v4",
+    undo: null,
+    sync: { pendingPaths: [], expectedRevision: null }
+  };
+}
+
+function timeout(promise, label) {
+  let timer;
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => {
+      timer = setTimeout(() => reject(new Error(`Tempo esgotado: ${label}`)), 2_000);
+    })
+  ]).finally(() => clearTimeout(timer));
+}
+
 function storage(courseOrigin = "private", { catalogAdmin = false, privateOwner = true } = {}) {
   return {
     coursePermissions() {
@@ -67,6 +144,252 @@ function storage(courseOrigin = "private", { catalogAdmin = false, privateOwner 
     }
   };
 }
+
+test("edição concorrente agenda uma única sincronização posterior sem perder a fila", async () => {
+  const syncState = {
+    running: false,
+    trailingAttemptRequested: false
+  };
+  let scheduledAttempts = 0;
+
+  assert.equal(claimContextualAuthoringSyncAttempt(syncState), true, "R1 inicia");
+  assert.equal(claimContextualAuthoringSyncAttempt(syncState), false, "R2 espera R1");
+  assert.equal(claimContextualAuthoringSyncAttempt(syncState), false, "R3 compartilha a fila");
+  assert.deepEqual(syncState, {
+    running: true,
+    trailingAttemptRequested: true
+  });
+
+  assert.equal(
+    settleContextualAuthoringSyncAttempt(
+      syncState,
+      () => {
+        scheduledAttempts += 1;
+      }
+    ),
+    true,
+    "a fila pendente exige uma nova tentativa após R1"
+  );
+  assert.equal(scheduledAttempts, 0, "a nova tentativa espera o finally corrente terminar");
+  await Promise.resolve();
+  assert.equal(scheduledAttempts, 1, "R2 é reagendada automaticamente");
+  assert.equal(claimContextualAuthoringSyncAttempt(syncState), true, "a tentativa posterior inicia");
+  assert.equal(
+    settleContextualAuthoringSyncAttempt(syncState),
+    false,
+    "a fila consumida não produz um loop vazio"
+  );
+  assert.deepEqual(syncState, {
+    running: false,
+    trailingAttemptRequested: false
+  });
+});
+
+test("sinal concorrente agenda uma tentativa posterior mesmo sem fila visível", async () => {
+  const syncState = {
+    running: false,
+    trailingAttemptRequested: false
+  };
+  let scheduledAttempts = 0;
+
+  assert.equal(claimContextualAuthoringSyncAttempt(syncState), true);
+  assert.equal(claimContextualAuthoringSyncAttempt(syncState), false);
+  assert.equal(settleContextualAuthoringSyncAttempt(
+    syncState,
+    () => {
+      scheduledAttempts += 1;
+    }
+  ), true);
+  await Promise.resolve();
+  assert.equal(scheduledAttempts, 1);
+  assert.equal(claimContextualAuthoringSyncAttempt(syncState), true);
+  assert.equal(settleContextualAuthoringSyncAttempt(syncState), false);
+});
+
+test("sincronização iniciada em A não sobrescreve nem perde a edição persistida em B", async (t) => {
+  const courseA = courseVariant("a", "Curso A");
+  const courseB = courseVariant("b", "Curso B");
+  const twoCourseProject = {
+    ...structuredClone(project),
+    courses: [courseA, courseB]
+  };
+  const pathA = coursePath(courseA);
+  const pathB = coursePath(courseB);
+  const sourceIds = new Map([
+    [courseA.id, "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"],
+    [courseB.id, "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb"]
+  ]);
+  const draftRevisions = new Map([
+    [courseA.id, "draft-a"],
+    [courseB.id, "draft-b"]
+  ]);
+  const localStates = new Map([
+    [courseA.id, pendingLocalState(pathA, draftRevisions.get(courseA.id))],
+    [courseB.id, pendingLocalState(pathB, draftRevisions.get(courseB.id))]
+  ]);
+  const startedA = deferred();
+  const releaseA = deferred();
+  const loadedB = deferred();
+  const finalizedB = deferred();
+  const finalizedCourses = [];
+  const acknowledgedCourses = [];
+  const workspaceCourseKeys = new Map();
+  const revisions = new Map();
+  const listeners = {};
+  const previousWindow = globalThis.window;
+  globalThis.window = {
+    addEventListener(type, listener) {
+      listeners[type] = listener;
+    }
+  };
+  t.after(() => {
+    if (previousWindow === undefined) delete globalThis.window;
+    else globalThis.window = previousWindow;
+  });
+
+  let renderedHtml = "";
+  const root = {
+    get innerHTML() {
+      return renderedHtml;
+    },
+    set innerHTML(value) {
+      renderedHtml = value;
+    },
+    querySelector() {
+      return null;
+    },
+    querySelectorAll() {
+      return [];
+    },
+    dispatchEvent() {}
+  };
+  const editorStorage = {
+    loadProject() {
+      return twoCourseProject;
+    },
+    loadCommentForPath() {
+      return null;
+    },
+    async saveCommentForPath() {},
+    async deleteCommentForPath() {},
+    loadProgress() {
+      return { version: 1, lessons: {} };
+    },
+    saveProgress() {},
+    coursePermissions() {
+      return {
+        role: "owner",
+        canAuthorContent: true,
+        writeTarget: "private",
+        canOrganizeSelection: true,
+        canRemoveSelection: true,
+        canDeleteCourse: true
+      };
+    },
+    async loadCardAssistanceLocalState(courseKey) {
+      if (courseKey === courseB.id) loadedB.resolve();
+      return structuredClone(localStates.get(courseKey) || cleanLocalState());
+    },
+    async saveCardAssistanceLocalState(courseKey, localState) {
+      localStates.set(courseKey, structuredClone(localState));
+    },
+    async getLocalCourseDraft(courseKey) {
+      return {
+        courseId: sourceIds.get(courseKey),
+        courseKey,
+        courseOrigin: "private",
+        revision: draftRevisions.get(courseKey),
+        baseContentHash: (courseKey === courseA.id ? "a" : "b").repeat(64)
+      };
+    },
+    async acknowledgeWorkspaceCourseDraft(courseKey, {
+      expectedLocalDraftRevision,
+      workspaceId: acknowledgedWorkspaceId,
+      workspaceRevision
+    }) {
+      assert.equal(expectedLocalDraftRevision, draftRevisions.get(courseKey));
+      assert.equal(acknowledgedWorkspaceId, `workspace-${courseKey}`);
+      assert.ok(Number.isSafeInteger(workspaceRevision));
+      acknowledgedCourses.push(courseKey);
+    },
+    async finalizeCardAssistanceSync(courseKey, { expectedLocalDraftRevision }) {
+      assert.equal(expectedLocalDraftRevision, draftRevisions.get(courseKey));
+      finalizedCourses.push(courseKey);
+      const nextLocalState = cleanLocalState();
+      localStates.set(courseKey, nextLocalState);
+      if (courseKey === courseB.id) finalizedB.resolve();
+      return structuredClone(nextLocalState);
+    }
+  };
+  const remoteCatalog = {
+    async executeApplicationAuthoringAction(name, args) {
+      if (name === "criarWorkspaceDeAutoria") {
+        const courseKey = [...sourceIds.entries()].find(
+          ([, sourceId]) => sourceId === args.sourceCourseId
+        )?.[0];
+        assert.ok(courseKey);
+        if (courseKey === courseA.id) {
+          startedA.resolve();
+          await releaseA.promise;
+        }
+        const targetWorkspaceId = `workspace-${courseKey}`;
+        workspaceCourseKeys.set(targetWorkspaceId, courseKey);
+        revisions.set(targetWorkspaceId, 1);
+        return { workspaceId: targetWorkspaceId, revision: 1 };
+      }
+      const targetWorkspaceId = args.workspaceId;
+      const courseKey = workspaceCourseKeys.get(targetWorkspaceId);
+      assert.ok(courseKey, `workspace conhecido para ${name}`);
+      if (name === "lerWorkspaceDeAutoria") {
+        return {
+          workspaceId: targetWorkspaceId,
+          revision: revisions.get(targetWorkspaceId),
+          content: buildWorkspaceOutline(twoCourseProject),
+          publications: []
+        };
+      }
+      if ([
+        "atualizarMetadadosDaEntidade",
+        "salvarCardsNaMicrossequencia"
+      ].includes(name)) {
+        const revision = revisions.get(targetWorkspaceId) + 1;
+        revisions.set(targetWorkspaceId, revision);
+        return { workspaceId: targetWorkspaceId, revision };
+      }
+      throw new Error(`Chamada inesperada: ${name}`);
+    }
+  };
+  const app = createLessonEditorApp({
+    root,
+    storage: editorStorage,
+    editor: {},
+    initialProject: twoCourseProject,
+    contextualAuthoring: {
+      remoteCatalog
+    }
+  });
+
+  await timeout(startedA.promise, "início da sincronização de A");
+  const cardPathB = [
+    pathB.courseKey,
+    pathB.moduleKey,
+    pathB.lessonKey,
+    pathB.microsequenceKey,
+    courseB.modules[0].lessons[0].microsequences[0].cards[0].id
+  ];
+  assert.equal(app.openCardPath(cardPathB, { edit: true }), true);
+  await timeout(loadedB.promise, "leitura do estado local de B");
+  assert.equal(typeof listeners.online, "function");
+  listeners.online();
+  releaseA.resolve();
+
+  await timeout(finalizedB.promise, "materialização posterior de B");
+  assert.deepEqual(acknowledgedCourses, [courseA.id, courseB.id]);
+  assert.deepEqual(finalizedCourses, [courseA.id, courseB.id]);
+  assert.deepEqual(localStates.get(courseA.id).sync.pendingPaths, []);
+  assert.deepEqual(localStates.get(courseB.id).sync.pendingPaths, []);
+  assert.match(renderedHtml, /Curso B/u);
+});
 
 for (const denied of [
   { title: "curso de catálogo comum", origin: "catalog", options: {} },
@@ -93,14 +416,10 @@ for (const denied of [
   });
 }
 
-test("administrador substitui a microssequência e atualiza o curso oficial", async () => {
+test("administrador materializa a correção em workspace sem alterar o curso oficial", async () => {
   const calls = [];
   let revision = 1;
-  const collectionId = "44444444-4444-4444-8444-444444444444";
   const remoteCatalog = {
-    async listCollections() {
-      return [{ courseId: sourceCourseId, collectionId }];
-    },
     async executeApplicationAuthoringAction(name, args) {
       calls.push([name, args]);
       if (name === "criarWorkspaceDeAutoria") return { workspaceId, revision };
@@ -116,16 +435,6 @@ test("administrador substitui a microssequência e atualiza o curso oficial", as
         "atualizarMetadadosDaEntidade",
         "salvarCardsNaMicrossequencia"
       ]).has(name)) return { workspaceId, revision: ++revision };
-      if (name === "publicarCursoDoWorkspace") {
-        return {
-          workspaceId,
-          revision,
-          courseId: sourceCourseId,
-          contentHash: "b".repeat(64),
-          target: "catalog",
-          completionState: "partial"
-        };
-      }
       throw new Error(`Chamada inesperada: ${name}`);
     }
   };
@@ -138,25 +447,25 @@ test("administrador substitui a microssequência e atualiza o curso oficial", as
     uuidFactory: async (key) => `request-${calls.length}-${key.length}`
   });
 
-  assert.equal(result.status, "published");
+  assert.equal(result.status, "materialized");
+  assert.equal(result.source, "workspace");
+  assert.equal(result.workspaceId, workspaceId);
+  assert.equal(result.revision, 3);
   assert.deepEqual(result.localFinalization, {
     courseKey: path.courseKey,
-    expectedLocalDraftRevision: "draft-revision"
+    expectedLocalDraftRevision: "draft-revision",
+    workspaceId,
+    workspaceRevision: 3
   });
   const save = calls.find(([name]) => name === "salvarCardsNaMicrossequencia")[1];
   assert.deepEqual(save.microsequencePath, Object.values(path));
   assert.equal(save.mode, "replace");
   assert.equal(Object.hasOwn(save, "status"), false);
   assert.equal(JSON.parse(save.cardsJson).length, 2);
-  const publish = calls.find(([name]) => name === "publicarCursoDoWorkspace")[1];
-  assert.equal(Object.hasOwn(publish, "completion"), false);
-  assert.equal(publish.target, "catalog");
-  assert.equal(publish.existingCourseId, sourceCourseId);
-  assert.equal(publish.expectedContentHash, "a".repeat(64));
-  assert.equal(publish.collectionId, collectionId);
+  assert.equal(calls.some(([name]) => name === "publicarCursoDoWorkspace"), false);
 });
 
-test("curso privado atualiza a publicação corrente com CAS de conteúdo", async () => {
+test("curso privado atualiza a composição corrente sem gerar artefato publicado", async () => {
   const calls = [];
   let revision = 1;
   const remoteCatalog = {
@@ -173,12 +482,6 @@ test("curso privado atualiza a publicação corrente com CAS de conteúdo", asyn
         "atualizarMetadadosDaEntidade",
         "salvarCardsNaMicrossequencia"
       ]).has(name)) return { workspaceId, revision: ++revision };
-      if (name === "publicarCursoDoWorkspace") return {
-        workspaceId,
-        revision,
-        courseId: sourceCourseId,
-        contentHash: "c".repeat(64)
-      };
       throw new Error(`Chamada inesperada: ${name}`);
     }
   };
@@ -190,10 +493,7 @@ test("curso privado atualiza a publicação corrente com CAS de conteúdo", asyn
     pendingPaths: [path],
     uuidFactory: async (key) => `request-${calls.length}-${key.length}`
   });
-  const publish = calls.find(([name]) => name === "publicarCursoDoWorkspace")[1];
-  assert.equal(publish.target, "private");
-  assert.equal(publish.existingCourseId, sourceCourseId);
-  assert.equal(publish.expectedContentHash, "a".repeat(64));
+  assert.equal(calls.some(([name]) => name === "publicarCursoDoWorkspace"), false);
 });
 
 test("microssequência criada ou retirada sincroniza primeiro sua estrutura", async () => {
@@ -221,12 +521,6 @@ test("microssequência criada ou retirada sincroniza primeiro sua estrutura", as
       if (name === "atualizarMetadadosDaEntidade") return { workspaceId, revision: ++revision };
       if (name === "reorganizarWorkspace") return { workspaceId, revision: ++revision };
       if (name === "excluirDoWorkspace") return { workspaceId, revision: ++revision };
-      if (name === "publicarCursoDoWorkspace") return {
-        workspaceId,
-        revision,
-        courseId: "33333333-3333-4333-8333-333333333333",
-        contentHash: "d".repeat(64)
-      };
       throw new Error(`Chamada inesperada: ${name}`);
     }
   };
@@ -309,12 +603,6 @@ test("metadados e posição da microssequência são sincronizados antes dos car
         "reorganizarWorkspace",
         "salvarCardsNaMicrossequencia"
       ].includes(name)) return { workspaceId, revision: ++revision };
-      if (name === "publicarCursoDoWorkspace") return {
-        workspaceId,
-        revision,
-        courseId: sourceCourseId,
-        contentHash: "e".repeat(64)
-      };
       throw new Error(`Chamada inesperada: ${name}`);
     }
   };
@@ -381,12 +669,6 @@ test("replace vazio preserva a microssequência planejada na sincronização", a
         "atualizarMetadadosDaEntidade",
         "salvarCardsNaMicrossequencia"
       ]).has(name)) return { workspaceId, revision: ++revision };
-      if (name === "publicarCursoDoWorkspace") return {
-        workspaceId,
-        revision,
-        courseId: sourceCourseId,
-        contentHash: "f".repeat(64)
-      };
       throw new Error(`Chamada inesperada: ${name}`);
     }
   };
@@ -410,17 +692,29 @@ test("finalização local encaminha exatamente o curso e a revisão materializad
   const calls = [];
   const result = await finalizeContextualCourseDraftSync({
     storage: {
+      async acknowledgeWorkspaceCourseDraft(courseKey, options) {
+        calls.push(["acknowledge", courseKey, options]);
+      },
       async finalizeCardAssistanceSync(courseKey, options) {
-        calls.push([courseKey, options]);
+        calls.push(["finalize", courseKey, options]);
         return { status: "finalized" };
       }
     },
     courseKey: path.courseKey,
-    expectedLocalDraftRevision: "draft-revision"
+    expectedLocalDraftRevision: "draft-revision",
+    workspaceId,
+    workspaceRevision: 7
   });
-  assert.deepEqual(calls, [[path.courseKey, {
-    expectedLocalDraftRevision: "draft-revision"
-  }]]);
+  assert.deepEqual(calls, [
+    ["acknowledge", path.courseKey, {
+      expectedLocalDraftRevision: "draft-revision",
+      workspaceId,
+      workspaceRevision: 7
+    }],
+    ["finalize", path.courseKey, {
+      expectedLocalDraftRevision: "draft-revision"
+    }]
+  ]);
   assert.deepEqual(result, { status: "finalized" });
 });
 

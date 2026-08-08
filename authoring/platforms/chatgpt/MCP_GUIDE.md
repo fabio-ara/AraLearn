@@ -116,7 +116,8 @@ O fluxo recomendado evita pedir ao modelo uma árvore grande e populada:
    auditoria independente e espere;
 8. audite em rodada somente leitura; repare apenas numa rodada posterior e
    reaudite somente depois de nova decisão;
-9. publique uma prévia privada somente quando a pessoa pedir.
+9. se a pessoa decidir submeter, fixe a revisão privada; se a conta puder e a
+   pessoa pedir, distribua a revisão em Coleções.
 
 `salvarCardsNaMicrossequencia` recebe os cards v4 completos da unidade. Para
 uma correção pontual, use `atualizarMetadadosDaEntidade` em curso, módulo,
@@ -147,17 +148,20 @@ destino.
 
 ## Trilhas, Coleções e revisão editorial
 
-Para tornar o conteúdo corrente estudável em Trilhas, use
-`publicarCursoDoWorkspace` com `target: "private"`. Não envie
+Criar a estrutura já faz o plano aparecer em Trilhas. Partes com cards ficam
+executáveis e partes sem cards continuam visíveis como planejamento, sem
+chamar `publicarCursoDoWorkspace`.
+
+Para preparar uma submissão editorial, use `publicarCursoDoWorkspace` com
+`target: "private"` e depois envie o `courseId` e o hash confirmados. Não envie
 `completion`. O mesmo vínculo é atualizado nas chamadas seguintes, portanto o
-assistente não escolhe entre criar e atualizar. Partes com cards ficam
-executáveis e partes sem cards continuam visíveis como planejamento.
+assistente não escolhe entre criar e atualizar.
 
 Para levar o curso a Coleções, use `target: "catalog"` e `collectionId`.
 Isso exige capacidade editorial. O backend valida o contrato corrente sem
 obrigar a pessoa a administrar estados de conclusão.
 
-Uma composição privada pode ser enviada por
+O artefato privado corrente pode ser enviado por
 `submeterCursoParaRevisaoEditorial`. O envio aponta para seu hash exato, sem
 duplicar o workspace. `listarRevisoesEditoriais` mostra os próprios envios ou
 a fila administrativa, e `lerRevisaoEditorial` abre somente o artefato
@@ -168,9 +172,10 @@ Uma conta revisora pode assumir o envio e usar
 pedir ajustes, rejeitar ou levar o resultado a Coleções. O autor pode retirar
 um envio ainda pendente.
 
-Com `catalog:manage`, o mesmo assistente cria e atualiza coleções ou move e
-reordena cursos com `editarCatalogo`. Retiradas usam `retirarDoCatalogo`.
-Essas operações conferem revisão, classificação e hash atuais.
+Com `catalog:manage`, o mesmo assistente cria e atualiza coleções ou transfere
+cursos entre elas com `editarCatalogo`. A apresentação é alfabética, sem um
+comando de reordenação. Retiradas usam `retirarDoCatalogo`. Essas operações
+conferem revisão, classificação e hash atuais.
 
 ## Respostas
 

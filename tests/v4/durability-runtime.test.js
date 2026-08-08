@@ -39,6 +39,9 @@ const explicitCourseOriginMigration = read(
 const removeTestLaboratoryMigration = read(
   "supabase/migrations/20260728050000_remove_test_laboratory_course.sql"
 );
+const trailStateMigration = read(
+  "supabase/migrations/20260807220000_trail_personal_state.sql"
+);
 
 test("runtime torna a durabilidade local visível e faz flush nos caminhos de saída", () => {
   assert.match(main, /repository\.onDurabilityChange/u);
@@ -105,7 +108,7 @@ test("sincronização é automática e oportunista sem atividade remota em segun
 });
 
 test("logout preserva o banco físico isolado pelo UUID da conta", () => {
-  assert.match(relationalStore, /RELATIONAL_DATABASE_NAME = "aralearn-relational-v4-r2"/u);
+  assert.match(relationalStore, /RELATIONAL_DATABASE_NAME = "aralearn-relational-v4-r3"/u);
   assert.match(relationalStore, /`\$\{RELATIONAL_DATABASE_NAME\}:user:\$\{normalizedUserId\}`/u);
   assert.match(main, /authStore = await IndexedDbRelationalStore\.open\(globalThis\.indexedDB\)/u);
   assert.match(main, /watchLocalConnection\(authStore\)/u);
@@ -139,11 +142,12 @@ test("conta pode ser excluída sem expor operação administrativa no cliente", 
   assert.doesNotMatch(remoteCatalog, /service.role|service_role|sb_secret_/iu);
 });
 
-test("painel integra organização, Coleções e Chatbot sem duplicar a tela de estudo", () => {
+test("painel integra Coleções e Chatbot sem duplicar organização nem a tela de estudo", () => {
   assert.match(panel, /import \{ renderUiIcon \}/u);
   assert.match(panel, /node\.title = label/u);
   assert.match(panel, /node\.setAttribute\("aria-label", label\)/u);
-  assert.match(panel, /role="tablist"[\s\S]*data-panel-view="organize"[\s\S]*data-panel-view="collections"[\s\S]*data-panel-view="chatbot"/u);
+  assert.match(panel, /role="tablist"[\s\S]*data-panel-view="collections"[\s\S]*data-panel-view="chatbot"/u);
+  assert.doesNotMatch(panel, /data-panel-view="organize"/u);
   assert.match(panel, /title="Fechar painel" aria-label="Fechar painel"/u);
   assert.match(panel, /await spaces\.addCourseToTrails\(courseId\)/u);
   assert.match(panel, /action: "add-course-to-trails"/u);
@@ -161,7 +165,8 @@ test("estados vazios usam uma tipografia compacta única nas superfícies do app
   assert.match(styles, /\.empty-state-copy,[\s\S]*\.remote-library-status \{[\s\S]*font-family: var\(--font-ui\)[\s\S]*font-size: 0\.78rem[\s\S]*font-weight: 400/u);
   assert.match(panel, /empty-state-copy/u);
   assert.match(homeScreen, /home-course-selector-empty/u);
-  assert.match(homeScreen, /<p class="empty-state-copy">Nenhum curso em Trilhas\.<\/p>/u);
+  assert.match(homeScreen, /Sem cursos neste grupo\./u);
+  assert.doesNotMatch(homeScreen, /Nenhum curso materializado em Trilhas\./u);
   assert.match(lessonScreen, /<p class="empty-state-copy">Sem módulos\.<\/p>/u);
   assert.match(lessonScreen, /<p class="empty-state-copy">Sem lições\.<\/p>/u);
   assert.match(lessonScreen, /<p class="empty-state-copy">Sem microssequências\.<\/p>/u);
@@ -186,28 +191,31 @@ test("corte por revisão preserva somente seleção e remove o download da árvo
   );
 });
 
-test("bootstrap é leve e o feed sincroniza apenas estado pessoal por last-write-wins", () => {
+test("bootstrap e feed genérico sincronizam somente seleções leves", () => {
   const bootstrapSql = between(
-    leanMigration,
+    trailStateMigration,
     "create or replace function public.bootstrap_replica(p_device_id uuid)",
-    "create or replace function public.pull_sync_changes("
+    "-- O transporte relacional ainda usa este nome"
   );
   assert.match(bootstrapSql, /'courseSelections'/u);
-  assert.match(bootstrapSql, /'lessonProgress'/u);
-  assert.match(bootstrapSql, /'cardProgress'/u);
-  assert.match(bootstrapSql, /'comments'/u);
-  assert.match(bootstrapSql, /'studyPaths'/u);
-  assert.match(bootstrapSql, /'studyPathCourses'/u);
+  assert.doesNotMatch(
+    bootstrapSql,
+    /'lessonProgress'|'cardProgress'|'comments'|'studyPaths'|'studyPathCourses'/u
+  );
   assert.match(bootstrapSql, /'selectedCourses'/u);
   assert.match(bootstrapSql, /'highWaterSequence'/u);
   assert.doesNotMatch(bootstrapSql, /get_selected_course_graph|private\.camel_active_rows/u);
 
   const applySql = between(
-    leanMigration,
-    "create or replace function public.apply_sync_batch(p_device_id uuid, p_mutations jsonb)",
-    "create or replace function private.official_import_store_names()"
+    trailStateMigration,
+    "create function public.apply_sync_batch(",
+    "revoke all on function public.apply_sync_batch(uuid, jsonb)"
   );
-  assert.match(applySql, /lessonProgress','cardProgress','comments','studyPaths','studyPathCourses/u);
+  assert.match(applySql, /v_mutation->>'entityType' <> 'courseSelections'/u);
+  assert.doesNotMatch(
+    applySql,
+    /'lessonProgress'|'cardProgress'|'comments'|'studyPaths'|'studyPathCourses'/u
+  );
   assert.doesNotMatch(applySql, /baseRevision|base_revision|optimistic revision|status','conflict/iu);
   assert.doesNotMatch(
     mutationService,

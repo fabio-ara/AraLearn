@@ -183,11 +183,11 @@ test("edição e retirada agrupadas preservam CAS, hash e rotas administrativas"
     operation: "move_course",
     courseId: COURSE_ID,
     expectedPlacementRevision: 4,
-    targetCollectionId: TARGET_COLLECTION_ID,
-    position: 1
+    targetCollectionId: TARGET_COLLECTION_ID
   });
   assert.equal(moved.path, `/v1/catalog/manage/courses/${COURSE_ID}/move`);
   assert.equal(moved.body.expectedPlacementRevision, 4);
+  assert.equal(moved.body.position, undefined);
 
   const retired = mapAuthoringMcpToolCall("retirarDoCatalogo", {
     requestId: WRITE.requestId,

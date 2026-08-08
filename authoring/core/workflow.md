@@ -165,7 +165,7 @@ Não existem assistentes separados para planejar, produzir e auditar. A mesma
 conversa continua do pedido inicial ao teste. As ações disponíveis derivam da
 conta conectada:
 
-- autoria privada e teste de prévia;
+- autoria privada e estudo imediato do que já foi materializado;
 - submissão de um curso quando o autor decidir;
 - revisão administrativa quando a conta tiver essa responsabilidade;
 - aprovação e publicação no catálogo quando houver capacidade editorial.
@@ -174,7 +174,7 @@ Ausência de capacidade administrativa não impede a autoria privada. O
 assistente explica o próximo passo permitido sem simular uma autoridade que a
 conta não possui.
 
-## Disponibilizar e testar
+## Estudar, submeter e distribuir
 
 O percurso normal é:
 
@@ -182,17 +182,21 @@ O percurso normal é:
 autoria privada -> Trilhas -> submissão -> revisão administrativa -> Coleções
 ```
 
-Trilhas permite estudar e testar imediatamente o conteúdo já materializado,
+Criar a estrutura faz o plano aparecer em Trilhas. Materializar cards permite
+estudar e testar imediatamente esse conteúdo,
 enquanto as demais microssequências permanecem visíveis no plano. Coleções são
 organizadas por contas editoriais. O trabalho de outro autor chega por
 submissão e revisão; uma conta editorial também pode organizar diretamente seu
-próprio workspace. Quando o pedido já especifica claramente disponibilidade
-ou exclusão e o respectivo alvo, releia o estado e
+próprio workspace. Nenhuma dessas ações em Trilhas exige publicação. Quando o
+pedido já especifica claramente submissão, distribuição ou exclusão e o
+respectivo alvo, releia o estado e
 execute; somente uma ambiguidade real exige nova pergunta.
 
-Ao disponibilizar, não escolha um modo de criação ou atualização. O vínculo corrente
-do curso e do destino faz a primeira chamada criar e as seguintes atualizarem
-a mesma identidade, mesmo depois de outra conversa. O par
+Ao publicar explicitamente, não escolha um modo de criação ou atualização. Com
+`target: "private"`, a operação fixa o artefato privado necessário para uma
+submissão editorial; com `target: "catalog"`, distribui o curso em Coleções.
+O vínculo corrente do curso e do destino faz a primeira chamada criar e as
+seguintes atualizarem a mesma identidade, mesmo depois de outra conversa. O par
 `existingCourseId + expectedContentHash` só deve ser enviado junto para anexar
 uma publicação existente quando ainda não houver vínculo; normalmente omita os
 dois.
@@ -205,16 +209,21 @@ A revisão administrativa pode devolver ajustes. O autor corrige as
 microssequências indicadas no mesmo workspace e submete novamente quando
 estiver satisfeito.
 
-Para retirar um curso de Trilhas, releia a biblioteca e use juntos
+Para retirar de Trilhas um curso selecionado, releia a biblioteca e use juntos
 `selectionId`, `courseId` e o hash corrente. Em curso oficial, a operação
 remove somente a seleção da conta. Em publicação privada própria, remove a
 seleção, arquiva a publicação corrente e libera sua referência ao artefato; uma
 submissão editorial ainda ativa precisa ser retirada ou concluída antes.
 Submissões já encerradas não impedem a limpeza.
 
-Arquivar encerra essa identidade publicada e remove o vínculo do workspace.
-Uma publicação posterior do mesmo conteúdo é uma nova publicação, com novos
-`courseId` e `selectionId`; não é restauração da identidade arquivada.
+Um item cuja fonte corrente seja somente o workspace não possui seleção para
+retirar. Para excluí-lo, releia a revisão e use `excluirDoWorkspace` com
+`operation: "delete_entity"` na raiz do curso ou `delete_workspace` no projeto
+inteiro, conforme o pedido.
+
+Arquivar encerra a identidade do artefato distribuído. Um workspace ativo
+preserva seu `trailItemId`, grupo e estado pessoal; uma distribuição posterior
+pode receber novos `courseId` e `selectionId` sem criar outro item em Trilhas.
 
 ## Repetição, conflito e correção
 

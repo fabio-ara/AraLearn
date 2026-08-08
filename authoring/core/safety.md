@@ -29,7 +29,10 @@
   corrente por parte e até 200 resumos recentes, sem snapshots nem restauração.
 - O gateway MCP rejeita escrita baseada em revisão desatualizada.
 - Uma mutação não pode alterar entidades fora do alvo declarado.
-- Uma prévia privada pode ser parcial e testada pelo autor.
+- Partes materializadas podem ser testadas diretamente em Trilhas, sem
+  publicação privada.
+- O artefato privado fixa uma revisão somente quando o autor decide submetê-la
+  à avaliação editorial.
 - A publicação no catálogo acrescenta a verificação da permissão editorial.
 - Uma publicação incompleta nunca entra no catálogo.
 - Erros determinísticos não são repetidos indefinidamente.

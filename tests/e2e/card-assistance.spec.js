@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { homeTrailSnapshotForProject } from "../support/homeTrailSnapshot.js";
 
 function projectFixture() {
   const guide = (goal) => ({
@@ -117,8 +118,20 @@ async function openCardAssistance(page, {
   stopAtMicrosequence = false,
   initialProject = projectFixture()
 } = {}) {
+  const trailSnapshot = homeTrailSnapshotForProject(initialProject, {
+    permissions: Object.fromEntries(initialProject.courses.map((course) => [course.id, {
+      origin: "private",
+      canEdit: true,
+      canDelete: true,
+      canRemove: true,
+      cardCount: course.modules.reduce((courseTotal, moduleValue) =>
+        courseTotal + moduleValue.lessons.reduce((moduleTotal, lesson) =>
+          moduleTotal + lesson.microsequences.reduce((lessonTotal, microsequence) =>
+            lessonTotal + microsequence.cards.length, 0), 0), 0)
+    }]))
+  });
   await page.goto("/");
-  await page.evaluate(async ({ initialProject, holdProvider }) => {
+  await page.evaluate(async ({ initialProject, holdProvider, trailSnapshot }) => {
     const oldRoot = document.querySelector("#app-root");
     const root = document.createElement("div");
     root.id = "app-root";
@@ -243,7 +256,10 @@ async function openCardAssistance(page, {
       }),
       loadProgress: () => ({ version: 1, lessons: {} }),
       saveProgress: async () => undefined,
-      loadStudyPaths: () => [],
+      initialize: async () => undefined,
+      refresh: async () => undefined,
+      setCourse: () => undefined,
+      clearLocal: async () => true,
       loadReviewItems: () => structuredClone(probe.reviewItems),
       isCardMarkedForReview: (selection) => probe.reviewItems.some((item) =>
         item.entityPath.join("/") === [
@@ -341,11 +357,16 @@ async function openCardAssistance(page, {
       storage,
       editor: createEditorSession(storage),
       initialProject: probe.project,
-      assistProvider
+      assistProvider,
+      homeTrails: {
+        loadTrailSnapshot: async () => structuredClone(trailSnapshot)
+      },
+      trailPersonalStateFactory: () => storage
     });
   }, {
     initialProject,
-    holdProvider
+    holdProvider,
+    trailSnapshot
   });
 
   await expect(page.locator('[data-field="home-course-select"]')).toBeVisible();
@@ -1036,13 +1057,16 @@ test("microssequência envia bottom-up direto, persiste atomicamente e desfaz um
   }]);
   expect(applied.providerCalls.map(({ phase }) => phase)).toEqual([
     "bottom_up_operation",
-    "bottom_up_targets",
     "card_assistance_representation",
     "card_assistance_build"
   ]);
-  expect(applied.providerCalls.every(
-    ({ didacticProfileId }) => didacticProfileId === "aralearn.engine.ads.general.v4"
-  )).toBe(true);
+  expect(applied.providerCalls
+    .filter(({ phase }) => [
+      "card_assistance_representation",
+      "card_assistance_build"
+    ].includes(phase))
+    .every(({ didacticProfileId }) => didacticProfileId === "aralearn.engine.ads.general.v4")
+  ).toBe(true);
   expect(applied.cards[1]).toEqual(
     projectFixture().courses[0].modules[0].lessons[0].microsequences[0].cards[1]
   );

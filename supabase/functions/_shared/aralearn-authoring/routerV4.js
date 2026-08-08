@@ -21,7 +21,6 @@ import {
   validateEducationalWorkspaceActionPayload,
   validateEducationalWorkspaceCommentActionPayload,
   validateWorkspaceObservationActionPayload,
-  validateMoveCatalogCollectionPayload,
   validateMoveCatalogCoursePayload,
   validateRemovePersonalLibraryCoursePayload,
   validateRemoveCatalogCoursePayload,
@@ -160,26 +159,18 @@ function workspaceCommentPagination(request) {
   };
 }
 
-function positionedPagination(request, cursorId, { query = false, retired = false } = {}) {
+function identityPagination(request, cursorId, { query = false, retired = false } = {}) {
   const url = new URL(request.url);
-  const rawPosition = url.searchParams.get("afterPosition");
-  const rawId = url.searchParams.get(cursorId);
-  if ((rawPosition == null) !== (rawId == null)) {
+  if (url.searchParams.has("afterPosition")) {
     throw new AuthoringApiError(
       422,
       "invalid_pagination",
-      `afterPosition e ${cursorId} devem ser usados juntos.`
+      "afterPosition não pertence à paginação atual. Use somente afterId."
     );
   }
+  const rawId = url.searchParams.get(cursorId);
   const result = { limit: positiveLimit(request) };
-  if (rawPosition != null) {
-    const afterPosition = Number(rawPosition);
-    if (!Number.isSafeInteger(afterPosition) || afterPosition < 0) {
-      throw new AuthoringApiError(422, "invalid_pagination", "afterPosition é inválido.");
-    }
-    result.afterPosition = afterPosition;
-    result[cursorId] = validateUuid(rawId);
-  }
+  if (rawId != null) result[cursorId] = validateUuid(rawId);
   if (query) {
     result.query = String(url.searchParams.get("query") || "").trim();
     if (result.query.length > 200) {
@@ -188,6 +179,13 @@ function positionedPagination(request, cursorId, { query = false, retired = fals
   }
   if (retired) result.includeRetired = url.searchParams.get("includeRetired") === "true";
   return result;
+}
+
+function trailPagination(request) {
+  const url = new URL(request.url);
+  const result = { limit: positiveLimit(request, 20, 25) };
+  const afterId = url.searchParams.get("afterId");
+  return afterId == null ? result : { ...result, afterId: validateUuid(afterId) };
 }
 
 function workspaceCardPagination(request) {
@@ -505,16 +503,6 @@ export async function executeAuthoringRoute({
       requestId: value.requestId
     };
   }
-  if (route.name === "moveCatalogCollection") {
-    assertScope(principal, "catalog:manage");
-    const value = await payload(request, validateMoveCatalogCollectionPayload);
-    return {
-      data: await adapter.moveCatalogCollection({
-        principal, collectionId: route.collectionId, ...value
-      }),
-      requestId: value.requestId
-    };
-  }
   if (route.name === "retireCatalogCollection") {
     assertScope(principal, "catalog:manage");
     const value = await payload(request, validateRetireCatalogCollectionPayload);
@@ -746,7 +734,7 @@ export async function executeAuthoringRoute({
     return {
       data: await adapter.listPersonalLibraryCourses({
         principal,
-        ...positionedPagination(request, "afterSelectionId", { query: true })
+        ...trailPagination(request)
       }),
       requestId: null
     };
@@ -767,7 +755,7 @@ export async function executeAuthoringRoute({
     };
   }
   if (route.name === "listCatalogCollections") {
-    const pagination = positionedPagination(request, "afterId", {
+    const pagination = identityPagination(request, "afterId", {
       query: true,
       retired: true
     });
@@ -787,7 +775,7 @@ export async function executeAuthoringRoute({
       data: await adapter.listCatalogCourses({
         principal,
         collectionId: route.collectionId,
-        ...positionedPagination(request, "afterId", { query: true })
+        ...identityPagination(request, "afterId", { query: true })
       }),
       requestId: null
     };

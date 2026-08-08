@@ -56,8 +56,8 @@ Authorization Path. O shell preserva `authorization_id` durante confirmação de
 e-mail ou login, consulta os dados do cliente e o pedido de identidade no
 Supabase Auth, permite autorizar ou negar e só então segue o `redirect_url`
 validado. A tela distingue o consentimento de identidade da autoridade efetiva:
-ler cursos acessíveis, editar ou excluir rascunhos de workspace e publicar na
-biblioteca privada são permissões calculadas no banco. Publicação no catálogo
+ler cursos acessíveis, editar ou excluir composições de workspace e preparar
+uma submissão editorial são permissões calculadas no banco. Publicação no catálogo
 continua condicionada ao papel editorial ali atribuído.
 
 Uma falha de autenticação devolve `WWW-Authenticate` com
@@ -157,7 +157,9 @@ As ferramentas são pequenas e previsíveis:
 
 - preparar a autoria recuperando um brief pertinente ao pedido;
 - listar recursos e consultar o contrato formal de um `resource`;
-- listar e retirar cursos em Trilhas; somente uma conta com capacidade
+- listar a projeção canônica de Trilhas, incluindo planos, cursos em
+  materialização e seleções, com `completedCardCount` sem carregar a árvore;
+  retirar uma seleção continua sendo operação separada; somente uma conta com capacidade
   editorial recebe também a listagem de Coleções, de seus cursos e a busca
   global em `consultarCatalogo`;
 - ler árvore, entidade, documento ou microteorias de um curso;
@@ -168,8 +170,8 @@ As ferramentas são pequenas e previsíveis:
 - copiar, renomear, mover ou excluir uma entidade;
 - juntar ou separar microssequências;
 - transformar módulo em curso ou curso em módulo;
-- publicar uma prévia privada ou um curso completo e excluir o workspace com
-  a revisão corrente;
+- fixar ou atualizar o artefato privado de uma submissão, distribuir um curso
+  completo em Coleções e excluir o workspace com a revisão corrente;
 - enviar uma revisão privada, acompanhar a fila e, quando a conta permitir,
   revisar ou publicar no catálogo.
 
@@ -390,11 +392,16 @@ documento v4 (`contract`, `version`, `kind`, `scope` e `courses`). Ele não é o
 `outputSchema` das ferramentas MCP nem substitui os contratos canônicos da
 árvore pedagógica e dos dezoito `resources`.
 
-## Publicação incompleta
+## Trilhas e publicação editorial
 
-Um curso em construção pode ser publicado e testado como `partial`, mas
-somente na biblioteca privada do proprietário. A revisão parcial é um curso
-real e sincronizável; microssequências prontas continuam estudáveis.
+Um curso em construção aparece em Trilhas assim que sua estrutura é confirmada.
+Microssequências com cards ficam estudáveis no mesmo item; as demais continuam
+visíveis como planejamento. Esse fluxo lê as partes correntes do workspace e
+não exige `publicarCursoDoWorkspace` nem grava um artefato no Storage.
+
+Uma revisão `partial` ainda pode ser fixada com `target: "private"` quando o
+autor decide submetê-la à avaliação. O artefato privado dá à fila editorial um
+hash exato; ele não é requisito para teste em Trilhas.
 
 `complete` exige todas as microssequências com estado `ready`. O catálogo
 aceita apenas `complete` aprovado e exige permissão editorial. Se o pedido já
@@ -421,8 +428,9 @@ ativo devolve o envio existente. Uma revisão nova substitui atomicamente um
 envio ainda `submitted`, marcando-o como `superseded`; se o envio já estiver
 `in_review`, a operação falha com `catalog_review_in_progress`. O autor pode
 então aguardar a decisão ou retirar explicitamente o envio. Depois de
-`changes_requested`, ele publica novamente o mesmo curso privado e submete o
-novo hash; a decisão anterior permanece visível sem duplicar o JSON.
+`changes_requested`, ele corrige a composição, fixa uma nova revisão privada e
+submete o novo hash; a revisão recusada já pode ser coletada, enquanto a decisão
+anterior permanece visível sem duplicar o JSON.
 
 `claim_catalog_review_v5` concede a revisão por 30 minutos. O mesmo revisor
 renova a concessão e retoma idempotentemente o workspace já vinculado. Uma
@@ -431,25 +439,30 @@ abandonados ligados à submissão são fechados. Uma disputa ou uma fila já
 alterada produz `catalog_review_unavailable`, e o cliente deve reler a fila.
 `link_catalog_review_workspace_v5` também renova a concessão.
 
-`retirarCursoDasTrilhas` opera sobre a seleção exata acabada de listar e exige
+`retirarCursoDasTrilhas` opera somente sobre a seleção exata acabada de listar e exige
 `selectionId`, `courseId` e `expectedContentHash`. Para curso oficial, remove
 somente a seleção da conta, com a mesma semântica de progresso já usada pelo
-aplicativo. Para publicação privada própria, também arquiva o curso, solta sua
-revisão corrente e encerra, na mesma transação, a raiz ou o workspace ligado
-àquela publicação. A remoção não deixa uma composição residual reaparecer em
-`Trilhas`. Submissões `submitted` ou `in_review` bloqueiam essa limpeza;
-submissões encerradas não a bloqueiam. O `requestId` permite repetir com
+aplicativo. Para publicação privada própria, também arquiva o artefato e solta
+sua revisão corrente. Se ainda existir um workspace ativo, a identidade estável
+do item, seu grupo e seu estado pessoal continuam ligados à composição; para
+retirá-la é necessária a exclusão explícita da raiz ou do workspace. Submissões
+`submitted`, `in_review` ou `changes_requested` bloqueiam a retirada do
+curso-fonte; em `changes_requested`, a revisão recusada pode já ter sido
+coletada. Submissões encerradas não bloqueiam a retirada. O `requestId` permite repetir com
 segurança uma resposta perdida, e um hash desatualizado produz conflito
 explícito.
-Uma publicação posterior ao arquivamento cria novos `courseId` e
-`selectionId`; a identidade encerrada não é reativada.
+Um item cuja fonte seja apenas o workspace não usa essa ferramenta. Nesse caso,
+`excluirDoWorkspace` remove a raiz do curso ou o projeto inteiro com a revisão
+corrente, conforme o pedido.
 
 Uma conta editorial usa `retirarDoCatalogo` com `operation: remove_course` para
 retirar a publicação oficial, não `retirarCursoDasTrilhas`. Essa operação exige
 a revisão corrente da classificação e o hash corrente do curso; no mesmo
-commit, o backend remove a publicação de `Coleções`, todas as seleções e a
-composição oficial vinculada. A confirmação explícita deve referir-se a esse
-alcance global.
+commit, o backend remove a publicação de `Coleções`, todas as seleções e o
+alias distribuído. A composição oficial vinculada e seu vínculo leve de
+continuidade permanecem; excluí-los exige `excluirDoWorkspace` sobre a raiz ou
+o projeto. A confirmação explícita deve referir-se ao alcance global da
+retirada, sem afirmar que o workspace será apagado.
 
 Não existe uma integração administrativa separada. O mesmo Plugin ou Chatbot
 recebe apenas as ferramentas autorizadas para a conta conectada.

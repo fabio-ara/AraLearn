@@ -35,6 +35,7 @@ import {
   getCatalogFixtureProject
 } from "../support/catalogPublicationFixture.js";
 import { loadCourseFixture, loadCourseFixtureManifest } from "../support/loadCourseFixture.js";
+import { homeTrailSnapshotForProject } from "../support/homeTrailSnapshot.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -973,15 +974,16 @@ test("README e docs públicos descrevem o contrato atual", () => {
 
 test("a home renderiza abrir curso com ids reais do contrato v4", () => {
   const project = getCatalogFixtureProject();
+  const trailSnapshot = homeTrailSnapshotForProject(project);
   const html = renderHomeScreen({
     project,
     progress: createEmptyProgressDocument(),
-    editorSupport: {}
+    editorSupport: { trailSnapshot }
   });
 
   assert.match(html, /data-action="open-course"/);
-  assert.match(html, /value="course-microsoft-azure-ai-fundamentals-ai900"/);
-  assert.match(html, /value="course-dataprev-2026-analista-processamento-seguranca-informacao"/);
+  assert.match(html, new RegExp(`value="${trailSnapshot.items[0].trailItemId}"`, "u"));
+  assert.match(html, new RegExp(`value="${trailSnapshot.items[1].trailItemId}"`, "u"));
   assert.equal((html.match(/data-action="open-course"/g) || []).length, 1);
 });
 
@@ -989,13 +991,12 @@ test("a home usa menu contextual compacto sem atalhos órfãos", () => {
   const fixture = getCatalogFixtureProject();
   const course = fixture.courses[0];
   const project = { ...fixture, courses: [course] };
+  const trailSnapshot = homeTrailSnapshotForProject(project);
   const html = renderHomeScreen({
     project,
     progress: createEmptyProgressDocument(),
     editorSupport: {
-      coursePermissionsById: {
-        [course.id]: { role: "learner", canEdit: false, canDelete: false }
-      }
+      trailSnapshot
     }
   });
 
@@ -1008,27 +1009,59 @@ test("a home usa menu contextual compacto sem atalhos órfãos", () => {
   assert.match(html, /home-course-context-menu/u);
 });
 
-test("a home agrupa pelo id relacional sem expor essa identidade na navegação", () => {
+test("a home usa seletores relacionais de grupo e curso sem exibir ids como texto", () => {
   const fixture = getCatalogFixtureProject();
   const course = fixture.courses[0];
-  const html = renderHomeScreen({
-    project: { ...fixture, courses: [course] },
-    progress: createEmptyProgressDocument(),
-    editorSupport: {
-      courseSummaries: [{
-        courseId: "11111111-1111-4111-8111-111111111111",
-        courseKey: course.id,
-        courseOrigin: "catalog"
-      }],
-      studyPaths: [{
-        title: "Certificações",
-        courses: [{ courseId: "11111111-1111-4111-8111-111111111111" }]
-      }]
+  const project = { ...fixture, courses: [course] };
+  const trailSnapshot = homeTrailSnapshotForProject(project, {
+    groupId: "11111111-1111-4111-8111-111111111111",
+    groupTitle: "Certificações",
+    permissions: {
+      [course.id]: { origin: "catalog" }
     }
   });
-  assert.match(html, /<optgroup label="Certificações">/u);
-  assert.match(html, new RegExp(`value="${course.id}"`, "u"));
+  const html = renderHomeScreen({
+    project,
+    progress: createEmptyProgressDocument(),
+    editorSupport: { trailSnapshot }
+  });
+  assert.match(html, /data-field="home-group-select"/u);
+  assert.match(html, /<option value="11111111-1111-4111-8111-111111111111" selected>Certificações<\/option>/u);
+  assert.match(html, new RegExp(`value="${trailSnapshot.items[0].trailItemId}"`, "u"));
+  assert.doesNotMatch(html, />11111111-1111-4111-8111-111111111111</u);
   assert.match(html, /home-course-origin is-catalog/u);
+});
+
+test("a home abre planejamento sem inventar progresso nem oferecer zerar", () => {
+  const fixture = getCatalogFixtureProject();
+  const project = { ...fixture, courses: [fixture.courses[0]] };
+  const baseSnapshot = homeTrailSnapshotForProject(project);
+  const trailSnapshot = {
+    ...baseSnapshot,
+    items: [{
+      ...baseSnapshot.items[0],
+      workspaceId: "22222222-2222-4222-8222-222222222222",
+      courseId: null,
+      selectionId: null,
+      kind: "plan",
+      source: "workspace",
+      origin: "workspace",
+      cardCount: 0,
+      completedCardCount: 0,
+      revision: 1,
+      canEdit: true
+    }]
+  };
+  const html = renderHomeScreen({
+    project,
+    progress: createEmptyProgressDocument(),
+    editorSupport: { trailSnapshot }
+  });
+
+  assert.match(html, /aria-label="Planejamento"/u);
+  assert.match(html, /aria-label="Abrir planejamento"/u);
+  assert.doesNotMatch(html, /Progresso: 0\/0/u);
+  assert.doesNotMatch(html, /data-action="reset-course-progress-direct"/u);
 });
 
 test("a edição estrutural seleciona o card e leva as ações para o dock externo", () => {

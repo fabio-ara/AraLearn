@@ -4,6 +4,7 @@ import {
   PROVIDER_PROTOCOL,
   PROVIDER_PROTOCOL_OPTIONS
 } from "../generation/providers/providerRegistry.js";
+import { isDeepSeekModelId } from "../generation/providers/deepSeekPolicy.js";
 
 function escapeHtml(value) {
   return String(value ?? "")
@@ -52,7 +53,7 @@ export function renderProviderConfigOverlay({
 } = {}) {
   const isCodexLocal = String(selectedModel || "").trim() === "codex-cli-local";
   const normalizedModel = String(selectedModel || "").trim();
-  const isDeepSeek = normalizedModel === "deepseek-quality" || normalizedModel.startsWith("deepseek-");
+  const isDeepSeek = isDeepSeekModelId(normalizedModel);
   const isCustom = normalizedModel === CUSTOM_PROVIDER_MODEL_ID;
   const isCustomOpenAi = isCustom && providerProtocol === PROVIDER_PROTOCOL.OPENAI_COMPATIBLE;
   const isCustomLocal = isCustom && providerProtocol === PROVIDER_PROTOCOL.LOCAL_BRIDGE;

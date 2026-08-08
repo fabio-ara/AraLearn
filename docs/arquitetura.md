@@ -24,8 +24,9 @@ Há duas representações remotas com finalidades diferentes:
 O dispositivo projeta o artefato publicado em tabelas do IndexedDB, onde a
 normalização ajuda navegação, estudo e atualização transacional.
 
-Coleções organizam o catálogo oficial. Trilhas organizam os cursos selecionados
-por cada pessoa. As duas projeções usam grupos e cards equivalentes na
+Coleções organizam o catálogo oficial. Trilhas projetam, para cada pessoa,
+planos de workspace, cursos em materialização e cursos oficiais selecionados.
+As duas projeções usam grupos e cards equivalentes na
 interface, mas não compartilham autoridade: grupos de Trilhas pertencem à conta;
 grupos de Coleções são metadados editoriais globais. Workspaces contextualizam
 autoria e participação: o mesmo usuário pode ter papéis diferentes em espaços
@@ -35,8 +36,9 @@ paralelas.
 O workspace composto é também o workspace educacional. `owner_id` identifica o
 proprietário principal; `educational_workspace_members` contém os papéis locais.
 Capacidades são derivadas no PostgreSQL e revalidadas a cada operação remota.
-Convites são efêmeros e armazenam hash do código. Publicações privadas concedem
-seleção aos membros sem duplicar o artefato do curso.
+Convites são efêmeros e armazenam hash do código. O workspace aparece
+diretamente em Trilhas para cada membro autorizado; isso não cria seleção,
+publicação nem artefato por participante.
 
 O detalhe administrativo deriva até 50 raízes de curso diretamente de
 `authoring_workspace_entities`, contando descendentes e microssequências
@@ -52,12 +54,14 @@ conta apenas o vínculo com o curso e o hash vigente; o documento é baixado par
 o dispositivo quando necessário. Abrir ou iniciar o estudo é uma consulta e não
 executa seleção, movimentação, cópia, publicação ou outra mutação.
 
-Grupos pessoais são mantidos por `study_paths` e `study_path_courses`. Criar,
-renomear, ordenar ou excluir um grupo afeta somente a conta. A exclusão do grupo
-preserva as seleções e o estado de estudo, deixando os cursos sem grupo até nova
-organização. Coleções, classificação e posição de cursos pertencem ao plano de
-controle editorial; contas autorizadas podem administrá-las pelo aplicativo,
-com confirmação explícita para operações de alcance global.
+Grupos pessoais são mantidos por `study_paths` e `study_path_items`, vinculados
+ao `trailItemId` estável. Criar, renomear ou excluir um grupo afeta
+somente a conta e aceita tanto um plano quanto um curso materializado ou
+selecionado. A exclusão do grupo preserva o item e o estado de estudo,
+deixando-o em **Outros** até nova organização. Grupos e cursos usam ordem
+alfabética automática. Coleções e classificações pertencem ao plano de controle
+editorial; contas autorizadas podem administrá-las pelo aplicativo, com
+confirmação explícita para operações de alcance global.
 
 Edição manual e assistência por API acontecem no próprio conteúdo renderizado.
 A seleção congela a autoridade, o fragmento e a revisão correntes; a resposta
@@ -109,19 +113,21 @@ publicação já distribuída. Se o curso publicado for aberto outra vez, o back
 pode criar uma nova composição a partir da revisão corrente, sem encontrar um
 vínculo órfão.
 
-Retirar um curso oficial da biblioteca remove a seleção e os dados pessoais
-ligados a ela. Não remove a publicação oficial nem interfere na biblioteca de
-outra conta. Ao retirar uma publicação privada própria, o mesmo commit remove a
-seleção, arquiva a publicação e encerra a raiz ou o workspace que compunha
-aquele curso. Assim, a composição vinculada não reaparece em `Trilhas` como um
-plano residual. Uma submissão editorial ativa continua protegendo o conteúdo
-até ser retirada ou concluída.
+Retirar um curso oficial da biblioteca remove a seleção, sem remover a
+publicação oficial nem interferir na biblioteca de outra conta. Estado pessoal
+e posição pertencem ao `trailItemId` estável: se ainda existir a composição de
+workspace da mesma identidade, ela continua em `Trilhas`. Excluir essa
+composição é outra operação, baseada na revisão corrente da raiz ou do
+workspace. Uma submissão editorial ativa continua protegendo seu artefato até
+ser retirada ou concluída.
 
-A exclusão administrativa de um curso oficial tem outro alcance: retira sua
+A retirada administrativa de um curso oficial tem outro alcance: retira sua
 classificação e publicação de `Coleções`, elimina todas as seleções e os estados
-pessoais dependentes e encerra a composição vinculada na mesma transação. Os
-tombstones dos feeds impedem que uma réplica antiga ressuscite o curso. O botão
-correspondente só é habilitado por uma capacidade editorial autenticada.
+pessoais dependentes e desativa o alias distribuído. Se houver um workspace
+vinculado, sua composição e o vínculo leve de continuidade permanecem; remover
+a raiz ou o workspace é outra operação explícita. Os tombstones dos feeds
+impedem que uma réplica antiga ressuscite a publicação. O botão correspondente
+só é habilitado por uma capacidade editorial autenticada.
 
 O aplicativo serializa a exclusão com a réplica: conclui a fila local e exige
 uma sincronização fresca antes do commit remoto; depois dele, confirma a
@@ -138,7 +144,12 @@ Seleções, trilhas, estado funcional de estudo e comentários são dados pessoa
 
 Cada conta usa um banco local identificado por seu UUID. Entrar em outra conta abre outro banco. Sair não apaga o material local nem as alterações que aguardam envio.
 
-Ao abrir o aplicativo, o servidor entrega o estado pessoal e o ponto a partir do qual novas mudanças devem ser recebidas. O dispositivo grava esse conjunto de uma vez e baixa apenas as árvores de cursos selecionados que estejam ausentes ou desatualizadas.
+Ao abrir o aplicativo, o servidor entrega a projeção corrente de `Trilhas` e o
+ponto a partir do qual novas mudanças devem ser recebidas. O dispositivo grava
+essa lista de uma vez. A composição de um workspace é baixada somente quando a
+pessoa abre seu plano ou curso e substitui o cache anterior pela revisão
+corrente; artefatos oficiais selecionados continuam na réplica para estudo sem
+conexão.
 
 ## Sincronização
 
@@ -206,10 +217,14 @@ Também não existe pacote SharePoint/SPFx. O aplicativo protege a navegação c
 
 ## Publicação de cursos
 
-A publicação seleciona um curso do workspace, compõe e valida o documento e só
-então grava uma revisão imutável no Storage. A escrita final troca
-atomicamente o ponteiro vigente. Uma revisão `partial` pode aparecer apenas
-como publicação privada incompleta do proprietário; o catálogo aceita somente
+Criar a raiz do curso já a inclui na projeção de `Trilhas`; materializar cards
+torna essas partes estudáveis diretamente das linhas correntes do workspace.
+Isso não chama publicação nem grava JSON no Storage.
+
+A publicação explícita seleciona um curso do workspace, compõe e valida o
+documento e só então grava uma revisão imutável no Storage. A escrita final
+troca atomicamente o ponteiro vigente. Uma revisão privada `partial` pode fixar
+o conteúdo exato de uma submissão editorial; o catálogo aceita somente
 `complete`.
 
 Cada raiz de curso guarda um vínculo compacto e separado para os destinos
@@ -227,6 +242,11 @@ e cursor repetido e só troca o cache quando a projeção terminou. Uma falha em
 qualquer página conserva a projeção anterior, mas revoga as capacidades
 exibidas. A leitura offline do cache é sempre somente leitura: `canEdit`,
 `canDelete`, `canRemove` e as capacidades editoriais são forçadas para falso.
+Cada item informa a origem corrente (`workspace` ou `selection`), as contagens
+estruturais e `completedCardCount`; a tela inicial não baixa a árvore apenas
+para calcular progresso. Ao abrir uma composição de workspace, o cliente lê
+suas partes em páginas sob uma única revisão e só monta o curso depois de
+validar o conjunto completo.
 O bloqueio temporário contra comandos repetidos é contado por operação, para
 que chamadas encadeadas ou uma falha não deixem abas e botões desabilitados.
 
@@ -238,8 +258,8 @@ usuário ativa ícones temáticos.
 O caminho editorial é:
 
 ```text
-autoria privada
-→ publicação privada, parcial ou completa
+autoria privada visível em Trilhas
+→ artefato privado da revisão a submeter
 → submissão de uma revisão específica
 → revisão em workspace editorial independente
 → catálogo

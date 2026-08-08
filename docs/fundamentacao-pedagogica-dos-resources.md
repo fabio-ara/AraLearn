@@ -283,9 +283,10 @@ formativa depende de evidências usadas para ajustar o ensino; no AraLearn, a
 projeção é um mecanismo de decisão autoral, não evidência de aprendizagem do
 estudante. A eficácia desse desenho ainda precisa ser testada empiricamente.
 
-Publicar uma revisão `partial` na biblioteca privada permite testar cedo uma
-parte funcional do percurso. O estado parcial permanece explícito e não pode
-ser confundido com publicação editorial completa.
+Usar a composição corrente em `Trilhas` permite testar cedo uma parte
+funcional do percurso, sem publicar nem duplicar o workspace. O que já possui
+cards fica estudável no mesmo item; o restante continua visível como
+planejamento até ser materializado.
 
 ## Consequências para avaliação do artefato
 
@@ -306,9 +307,9 @@ Para cada regra didática, a avaliação deve registrar cinco campos: fonte,
 população e tarefa estudadas, força/limite da evidência, inferência feita pelo
 AraLearn e métrica que poderá refutá-la. Reparo direto, fingerprint, validação
 interna, reversão compacta e controle de escopo pertencem à confiabilidade de
-software; expor só microteorias no chat e publicar revisões parciais são
-hipóteses de produto. Não devem ser apresentados como resultados já
-demonstrados pela literatura.
+software; expor só microteorias no chat e permitir o teste incremental da
+composição corrente em `Trilhas` são hipóteses de produto. Não devem ser
+apresentados como resultados já demonstrados pela literatura.
 
 ## Referências técnicas
 

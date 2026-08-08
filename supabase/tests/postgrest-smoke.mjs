@@ -154,29 +154,12 @@ async function deleteOwnSmokeAccount(token) {
   return result.response.ok && result.payload?.status === "deleted";
 }
 
-function progressMutation({
-  mutationId = crypto.randomUUID(),
-  sequence,
-  entityId,
-  courseId,
-  selectionId,
-  lessonId,
-  cursor,
-}) {
+function lessonProgressOperation({ lessonId, cursorCardId, completedCardIds }) {
   return {
-    mutationId,
-    sequence,
-    entityType: "lessonProgress",
-    entityId,
-    courseId,
-    operation: "upsert",
-    changedFields: ["cursor", "completedAt"],
-    payload: {
-      selectionId,
-      lessonId,
-      cursor,
-      completedAt: null,
-    },
+    kind: "set",
+    collection: "progress.lessons",
+    path: lessonId,
+    value: { cursorCardId, completedCardIds },
   };
 }
 
@@ -211,8 +194,10 @@ let userB;
 let tokenA;
 let tokenB;
 let officialCourseId;
+let trailItemId;
 let selectionAId;
 let selectionBId;
+let selectionAActive = false;
 let selectionBActive = false;
 
 try {
@@ -224,6 +209,18 @@ try {
   for (const [rpcName, body] of [
     ["list_catalog_collections", { p_query: "" }],
     ["select_catalog_course", { p_course_id: crypto.randomUUID(), p_mutation_id: crypto.randomUUID() }],
+    ["list_trail_items_v1", { p_limit: 1, p_after_id: null }],
+    ["load_trail_personal_state_v1", { p_trail_item_id: crypto.randomUUID() }],
+    ["mutate_trail_personal_state_v1", {
+      p_trail_item_id: crypto.randomUUID(),
+      p_expected_revision: 0,
+      p_operations: [lessonProgressOperation({
+        lessonId: "lesson-anon",
+        cursorCardId: "card-anon",
+        completedCardIds: ["card-anon"],
+      })],
+      p_mutation_id: crypto.randomUUID(),
+    }],
     ["bootstrap_replica", { p_device_id: crypto.randomUUID() }],
     ["apply_sync_batch", { p_device_id: crypto.randomUUID(), p_mutations: [] }],
     ["pull_sync_changes", { p_after_sequence: 0, p_limit: 1, p_device_id: crypto.randomUUID() }],
@@ -238,6 +235,8 @@ try {
     "card_progress",
     "card_comments",
     "study_paths",
+    "study_path_items",
+    "trail_personal_states",
     "study_path_courses",
     "sync_devices",
     "sync_changes",
@@ -282,6 +281,7 @@ try {
   );
   selectionAId = selectedA.selectionId;
   selectionBId = selectedB.selectionId;
+  selectionAActive = true;
   selectionBActive = true;
 
   assert.equal(selectedA.courseId, officialCourseId);
@@ -291,6 +291,47 @@ try {
   assert.equal(replayedA.selectionId, selectionAId);
   assert.equal(selectedA.row.userId, userA.id, "auth.uid() deve vincular a seleção a A");
   assert.equal(selectedB.row.userId, userB.id, "auth.uid() deve vincular a seleção a B");
+
+  const trailsA = await rpc(
+    "list_trail_items_v1",
+    { p_limit: 50, p_after_id: null },
+    tokenA,
+  );
+  const trailsB = await rpc(
+    "list_trail_items_v1",
+    { p_limit: 50, p_after_id: null },
+    tokenB,
+  );
+  const trailA = trailsA.items.find(({ courseId }) => courseId === officialCourseId);
+  const trailB = trailsB.items.find(({ courseId }) => courseId === officialCourseId);
+  assert(trailA, "o curso selecionado deve aparecer em Trilhas para A");
+  assert(trailB, "o curso selecionado deve aparecer em Trilhas para B");
+  trailItemId = trailA.trailItemId;
+  assert.equal(
+    trailB.trailItemId,
+    trailItemId,
+    "a publicação compartilhada deve possuir uma única identidade em Trilhas",
+  );
+  assert.equal(trailA.completedCardCount, 0);
+  assert.equal(trailB.completedCardCount, 0);
+  assert.equal(
+    await rpc(
+      "load_trail_personal_state_v1",
+      { p_trail_item_id: trailItemId },
+      tokenA,
+    ),
+    null,
+    "o estado pessoal nasce somente na primeira mutação",
+  );
+  assert.equal(
+    await rpc(
+      "load_trail_personal_state_v1",
+      { p_trail_item_id: trailItemId },
+      tokenB,
+    ),
+    null,
+    "B não pode observar o estado pessoal de A",
+  );
 
   const bootstrapA = await rpc("bootstrap_replica", { p_device_id: deviceA }, tokenA);
   const bootstrapB = await rpc("bootstrap_replica", { p_device_id: deviceB }, tokenB);
@@ -309,94 +350,190 @@ try {
   }
   assert.equal(typeof bootstrapA.highWaterSequence, "number");
 
-  const lessonId = crypto.randomUUID();
-  const progressAId = crypto.randomUUID();
-  const firstMutationA = progressMutation({
-    sequence: 1,
-    entityId: progressAId,
-    courseId: officialCourseId,
-    selectionId: selectionAId,
+  const lessonId = "lesson-smoke";
+  const cardsA = ["card-a-1", "card-a-2", "card-a-3", "card-a-4"];
+  const operationA1 = lessonProgressOperation({
     lessonId,
-    cursor: 1,
+    cursorCardId: cardsA[0],
+    completedCardIds: cardsA.slice(0, 1),
   });
-  const lastMutationA = progressMutation({
-    sequence: 2,
-    entityId: progressAId,
-    courseId: officialCourseId,
-    selectionId: selectionAId,
+  const operationA2 = lessonProgressOperation({
     lessonId,
-    cursor: 4,
+    cursorCardId: cardsA.at(-1),
+    completedCardIds: cardsA,
   });
-  const lwwA = await rpc(
-    "apply_non_punitive_study_state_batch_v1",
-    { p_device_id: deviceA, p_mutations: [firstMutationA, lastMutationA] },
+  const mutationA1 = crypto.randomUUID();
+  const savedA = await rpc(
+    "mutate_trail_personal_state_v1",
+    {
+      p_trail_item_id: trailItemId,
+      p_expected_revision: 0,
+      p_operations: [operationA1],
+      p_mutation_id: mutationA1,
+    },
     tokenA,
   );
-  assert(lwwA.results.every(({ status }) => status === "applied"));
-  assert.equal(lwwA.results[1].row.cursor, 4, "a última mutação válida deve vencer");
+  assert.equal(savedA.revision, 1);
+  assert.equal(savedA.idempotent, false);
 
-  const replayLwwA = await rpc(
-    "apply_non_punitive_study_state_batch_v1",
-    { p_device_id: deviceA, p_mutations: [lastMutationA] },
+  const replayedStateA = await rpc(
+    "mutate_trail_personal_state_v1",
+    {
+      p_trail_item_id: trailItemId,
+      p_expected_revision: 0,
+      p_operations: [operationA1],
+      p_mutation_id: mutationA1,
+    },
     tokenA,
   );
-  assert.equal(replayLwwA.results[0].idempotent, true);
-  assert.equal(replayLwwA.results[0].row.cursor, 4);
+  assert.equal(replayedStateA.revision, 1);
+  assert.equal(replayedStateA.idempotent, true);
 
-  const unauthorizedB = progressMutation({
-    sequence: 1,
-    entityId: progressAId,
-    courseId: officialCourseId,
-    selectionId: selectionAId,
-    lessonId,
-    cursor: 99,
+  const staleStateA = await request(
+    "/rest/v1/rpc/mutate_trail_personal_state_v1",
+    {
+      method: "POST",
+      token: tokenA,
+      body: {
+        p_trail_item_id: trailItemId,
+        p_expected_revision: 0,
+        p_operations: [operationA2],
+        p_mutation_id: crypto.randomUUID(),
+      },
+    },
+  );
+  assert.equal(staleStateA.response.ok, false, "CAS deve rejeitar revisão defasada");
+  const stateAfterStaleA = await rpc(
+    "load_trail_personal_state_v1",
+    { p_trail_item_id: trailItemId },
+    tokenA,
+  );
+  assert.equal(stateAfterStaleA.revision, 1);
+  assert.deepEqual(stateAfterStaleA.state.progress.lessons, {
+    [lessonId]: {
+      cursorCardId: cardsA[0],
+      completedCardIds: cardsA.slice(0, 1),
+    },
   });
-  const rejectedB = await rpc(
-    "apply_non_punitive_study_state_batch_v1",
-    { p_device_id: deviceB, p_mutations: [unauthorizedB] },
+
+  const savedA2 = await rpc(
+    "mutate_trail_personal_state_v1",
+    {
+      p_trail_item_id: trailItemId,
+      p_expected_revision: 1,
+      p_operations: [operationA2],
+      p_mutation_id: crypto.randomUUID(),
+    },
+    tokenA,
+  );
+  assert.equal(savedA2.revision, 2);
+  assert.equal(savedA2.idempotent, false);
+
+  assert.equal(
+    await rpc(
+      "load_trail_personal_state_v1",
+      { p_trail_item_id: trailItemId },
+      tokenB,
+    ),
+    null,
+    "a criação do estado de A não pode criar estado para B",
+  );
+  const cardsB = ["card-b-1", "card-b-2"];
+  const savedB = await rpc(
+    "mutate_trail_personal_state_v1",
+    {
+      p_trail_item_id: trailItemId,
+      p_expected_revision: 0,
+      p_operations: [lessonProgressOperation({
+        lessonId,
+        cursorCardId: cardsB.at(-1),
+        completedCardIds: cardsB,
+      })],
+      p_mutation_id: crypto.randomUUID(),
+    },
     tokenB,
   );
-  assert.equal(rejectedB.results[0].status, "rejected", "B não pode usar a seleção de A");
-  assert.equal(rejectedB.results[0].code, "42501");
+  assert.equal(savedB.revision, 1);
+  assert.equal(savedB.idempotent, false);
 
-  const progressBId = crypto.randomUUID();
-  const ownMutationB = progressMutation({
-    sequence: 2,
-    entityId: progressBId,
-    courseId: officialCourseId,
-    selectionId: selectionBId,
-    lessonId,
-    cursor: 2,
-  });
-  const appliedB = await rpc(
-    "apply_non_punitive_study_state_batch_v1",
-    { p_device_id: deviceB, p_mutations: [ownMutationB] },
+  const afterProgressA = await rpc(
+    "load_trail_personal_state_v1",
+    { p_trail_item_id: trailItemId },
+    tokenA,
+  );
+  const afterProgressB = await rpc(
+    "load_trail_personal_state_v1",
+    { p_trail_item_id: trailItemId },
     tokenB,
   );
-  assert.equal(appliedB.results[0].status, "applied");
+  assert.equal(afterProgressA.revision, 2);
+  assert.equal(afterProgressB.revision, 1);
+  assert.equal(afterProgressA.state.progress.version, 3);
+  assert.equal(afterProgressB.state.progress.version, 3);
+  assert.deepEqual(afterProgressA.state.progress.lessons[lessonId], {
+    cursorCardId: cardsA.at(-1),
+    completedCardIds: cardsA,
+  });
+  assert.deepEqual(afterProgressB.state.progress.lessons[lessonId], {
+    cursorCardId: cardsB.at(-1),
+    completedCardIds: cardsB,
+  });
 
-  const afterProgressA = await rpc("bootstrap_replica", { p_device_id: deviceA }, tokenA);
-  const afterProgressB = await rpc("bootstrap_replica", { p_device_id: deviceB }, tokenB);
-  assert.deepEqual(
-    afterProgressA.snapshot.lessonProgress.map(({ id, cursor }) => [id, cursor]),
-    [[progressAId, 4]],
+  const projectedTrailsA = await rpc(
+    "list_trail_items_v1",
+    { p_limit: 50, p_after_id: null },
+    tokenA,
   );
-  assert.deepEqual(
-    afterProgressB.snapshot.lessonProgress.map(({ id, cursor }) => [id, cursor]),
-    [[progressBId, 2]],
+  const projectedTrailsB = await rpc(
+    "list_trail_items_v1",
+    { p_limit: 50, p_after_id: null },
+    tokenB,
   );
+  assert.equal(
+    projectedTrailsA.items.find(({ trailItemId: id }) => id === trailItemId)
+      ?.completedCardCount,
+    cardsA.length,
+  );
+  assert.equal(
+    projectedTrailsB.items.find(({ trailItemId: id }) => id === trailItemId)
+      ?.completedCardCount,
+    cardsB.length,
+  );
+
+  const bootstrapAfterProgressA = await rpc(
+    "bootstrap_replica",
+    { p_device_id: deviceA },
+    tokenA,
+  );
+  const bootstrapAfterProgressB = await rpc(
+    "bootstrap_replica",
+    { p_device_id: deviceB },
+    tokenB,
+  );
+  for (const bootstrap of [bootstrapAfterProgressA, bootstrapAfterProgressB]) {
+    assert.deepEqual(
+      Object.keys(bootstrap.snapshot),
+      ["courseSelections"],
+      "bootstrap relacional não pode reincorporar estado pessoal de estudo",
+    );
+  }
 
   const pullA = await pullAllChanges(tokenA, deviceA);
   const pullB = await pullAllChanges(tokenB, deviceB);
   assert.equal(
-    pullA.some(({ entityId }) => entityId === progressBId),
-    false,
-    "feed de A não pode conter progresso de B",
+    [...pullA, ...pullB].every(({ entityType }) => entityType === "courseSelections"),
+    true,
+    "o feed genérico deve conservar somente seleções leves",
   );
   assert.equal(
-    pullB.some(({ entityId }) => entityId === progressAId),
+    pullA.some(({ entityId }) => entityId === selectionBId),
     false,
-    "feed de B não pode conter progresso de A",
+    "feed de A não pode conter a seleção de B",
+  );
+  assert.equal(
+    pullB.some(({ entityId }) => entityId === selectionAId),
+    false,
+    "feed de B não pode conter a seleção de A",
   );
 
   const unselectMutationA = crypto.randomUUID();
@@ -405,6 +542,7 @@ try {
     { p_course_id: officialCourseId, p_mutation_id: unselectMutationA },
     tokenA,
   );
+  selectionAActive = false;
   const replayedRemovalA = await rpc(
     "unselect_catalog_course",
     { p_course_id: officialCourseId, p_mutation_id: unselectMutationA },
@@ -416,9 +554,94 @@ try {
   const bootstrapWithoutA = await rpc("bootstrap_replica", { p_device_id: deviceA }, tokenA);
   const bootstrapWithB = await rpc("bootstrap_replica", { p_device_id: deviceB }, tokenB);
   assert.equal(bootstrapWithoutA.snapshot.courseSelections.length, 0);
-  assert.equal(bootstrapWithoutA.snapshot.lessonProgress.length, 0);
+  assert.equal(Object.hasOwn(bootstrapWithoutA.snapshot, "lessonProgress"), false);
   assert.equal(bootstrapWithB.snapshot.courseSelections.length, 1);
-  assert.equal(bootstrapWithB.snapshot.lessonProgress[0].id, progressBId);
+  assert.equal(Object.hasOwn(bootstrapWithB.snapshot, "lessonProgress"), false);
+
+  const inaccessibleStateA = await request(
+    "/rest/v1/rpc/load_trail_personal_state_v1",
+    {
+      method: "POST",
+      token: tokenA,
+      body: { p_trail_item_id: trailItemId },
+    },
+  );
+  assert.equal(
+    inaccessibleStateA.response.status,
+    403,
+    `estado de A sem acesso: ${JSON.stringify(inaccessibleStateA.payload)}`,
+  );
+  assert.equal(inaccessibleStateA.payload?.code, "42501");
+  const retainedStateB = await rpc(
+    "load_trail_personal_state_v1",
+    { p_trail_item_id: trailItemId },
+    tokenB,
+  );
+  assert.deepEqual(retainedStateB.state.progress.lessons[lessonId], {
+    cursorCardId: cardsB.at(-1),
+    completedCardIds: cardsB,
+  });
+  const trailsWithoutA = await rpc(
+    "list_trail_items_v1",
+    { p_limit: 50, p_after_id: null },
+    tokenA,
+  );
+  const trailsWithB = await rpc(
+    "list_trail_items_v1",
+    { p_limit: 50, p_after_id: null },
+    tokenB,
+  );
+  assert.equal(
+    trailsWithoutA.items.some(({ trailItemId: id }) => id === trailItemId),
+    false,
+  );
+  assert.equal(
+    trailsWithB.items.find(({ trailItemId: id }) => id === trailItemId)
+      ?.completedCardCount,
+    cardsB.length,
+  );
+
+  const reselectedA = await rpc(
+    "select_catalog_course",
+    { p_course_id: officialCourseId, p_mutation_id: crypto.randomUUID() },
+    tokenA,
+  );
+  selectionAActive = true;
+  selectionAId = reselectedA.selectionId;
+  const trailsReselectedA = await rpc(
+    "list_trail_items_v1",
+    { p_limit: 50, p_after_id: null },
+    tokenA,
+  );
+  const reselectedTrailA = trailsReselectedA.items.find(
+    ({ courseId }) => courseId === officialCourseId,
+  );
+  assert(reselectedTrailA, "o curso re-selecionado deve reaparecer em Trilhas");
+  assert.equal(
+    reselectedTrailA.trailItemId,
+    trailItemId,
+    "re-selecionar deve recuperar a mesma identidade de Trilhas",
+  );
+  assert.equal(
+    reselectedTrailA.completedCardCount,
+    0,
+    "o progresso removido não pode reaparecer após nova seleção",
+  );
+  assert.equal(
+    await rpc(
+      "load_trail_personal_state_v1",
+      { p_trail_item_id: trailItemId },
+      tokenA,
+    ),
+    null,
+    "re-selecionar deve comprovar que o estado pessoal anterior foi apagado",
+  );
+  await rpc(
+    "unselect_catalog_course",
+    { p_course_id: officialCourseId, p_mutation_id: crypto.randomUUID() },
+    tokenA,
+  );
+  selectionAActive = false;
 
   const catalogAfterUnselectA = await rpc("list_catalog_collections", { p_query: "" }, tokenA);
   const catalogAfterUnselectB = await rpc("list_catalog_collections", { p_query: "" }, tokenB);
@@ -445,10 +668,32 @@ try {
   );
   selectionBActive = false;
 
+  const trailsWithoutB = await rpc(
+    "list_trail_items_v1",
+    { p_limit: 50, p_after_id: null },
+    tokenB,
+  );
+  assert.equal(
+    trailsWithoutB.items.some(({ trailItemId: id }) => id === trailItemId),
+    false,
+    "retirar a última seleção deve remover o curso das Trilhas de B",
+  );
+
   console.log(
-    "Smoke PostgREST/Auth/RLS: aprovado (artefato compartilhado, A/B isolados, LWW e bootstrap leve).",
+    "Smoke PostgREST/Auth/RLS: aprovado (artefato compartilhado, estado v3 isolado e bootstrap leve).",
   );
 } finally {
+  if (selectionAActive && tokenA && officialCourseId) {
+    try {
+      await rpc(
+        "unselect_catalog_course",
+        { p_course_id: officialCourseId, p_mutation_id: crypto.randomUUID() },
+        tokenA,
+      );
+    } catch {
+      // A exclusão da conta abaixo ainda remove toda seleção temporária.
+    }
+  }
   if (selectionBActive && tokenB && officialCourseId) {
     try {
       await rpc(

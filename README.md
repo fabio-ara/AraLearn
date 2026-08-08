@@ -35,9 +35,10 @@ grupos e cards, mas atendem a finalidades e permissões diferentes:
 - **Coleções** organizam o catálogo oficial. Qualquer pessoa pode consultá-las;
   contas editoriais também podem criar, renomear, ordenar ou retirar grupos e
   cursos oficiais.
-- **Trilhas** são pessoais: o estudante cria, renomeia e ordena seus grupos e
-  organiza neles os cursos que selecionou. Excluir um grupo não exclui os
-  cursos nem o estado de estudo; eles permanecem selecionados, sem grupo.
+- **Trilhas** são pessoais: a pessoa cria, renomeia e ordena seus grupos e
+  organiza neles planos, composições em materialização e cursos oficiais
+  selecionados. Excluir um grupo não exclui os itens nem o estado de estudo;
+  eles passam para **Outros**.
 - **Workspaces** reúnem pessoas e autoria com papéis locais, sem duplicar o curso.
 
 Em `Coleções`, adicionar um curso a `Trilhas` é sempre uma ação explícita e cria
@@ -84,8 +85,9 @@ Planejamento, construção de uma parte, auditoria independente, reparo e
 reauditoria acontecem em rodadas distintas. Cada rodada mostra o resultado e
 espera a decisão da pessoa; essas pausas não criam estados ou bloqueios no
 backend. Auditoria é somente leitura e reparo altera apenas os problemas
-aprovados. O conteúdo materializado pode ser atualizado em `Trilhas` a pedido,
-mesmo quando o restante do plano ainda não foi produzido.
+aprovados. Assim que a estrutura é confirmada, o mesmo item aparece em
+`Trilhas`; cada parte materializada fica estudável sem publicação, mesmo quando
+o restante do plano ainda não foi produzido.
 
 É o mesmo assistente em todas as etapas. A conta conectada determina se ele
 pode apenas criar e testar conteúdo privado, enviar uma revisão para avaliação,
@@ -103,7 +105,7 @@ OAuth confidencial compatível com o construtor de GPTs.
 
 O roteiro em linguagem comum está em [Criar cursos pelo
 chat](docs/criar-cursos-pelo-chat.md). Ele explica a construção incremental, a
-revisão por microteorias, a atualização em `Trilhas` e a submissão editorial sem exigir
+revisão por microteorias, a presença automática em `Trilhas` e a submissão editorial sem exigir
 que a pessoa manipule JSON ou nomes de ferramentas.
 
 Cards produzidos por integrações usam uma linguagem JSON formal. Uma lacuna é marcada no campo exato do recurso e recebe uma definição estruturada de resposta. O servidor valida e compila essa forma para o contrato v4; não interpreta instruções em português como HTML ou posição visual. Assim, uma prática pode completar uma célula, um trecho de código, um nó, uma aresta, uma matriz ou um elemento de fórmula sem reduzir a atividade a uma pergunta genérica.

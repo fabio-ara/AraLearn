@@ -43,11 +43,10 @@ function outlineMicrosequenceLocation(outline, path) {
   };
 }
 
-function requestKey(draftRevision, revision, phase, path = null) {
+function requestKey(draftRevision, phase, path = null) {
   return [
     "aralearn:contextual-sync",
     draftRevision,
-    revision,
     phase,
     ...(path ? [path.courseKey, path.moduleKey, path.lessonKey, path.microsequenceKey] : [])
   ].join(":");
@@ -129,19 +128,6 @@ function courseAuthority(storage, courseKey) {
   return { ...permissions, writeTarget };
 }
 
-async function catalogCollectionId(remoteCatalog, courseId) {
-  if (typeof remoteCatalog?.listCollections !== "function") {
-    throw new Error("A Coleção do curso oficial não pode ser consultada.");
-  }
-  const rows = await remoteCatalog.listCollections("");
-  const current = (Array.isArray(rows) ? rows : []).find((row) =>
-    String(row?.course_id ?? row?.courseId ?? "") === String(courseId)
-  );
-  const collectionId = current?.collection_id ?? current?.collectionId ?? null;
-  if (!collectionId) throw new Error("A Coleção do curso oficial não foi encontrada.");
-  return collectionId;
-}
-
 function assertDependencies({ remoteCatalog, storage, projectDocument, courseKey, pendingPaths }) {
   if (typeof remoteCatalog?.executeApplicationAuthoringAction !== "function") {
     throw new Error("A autoria contextual remota não está disponível.");
@@ -202,7 +188,7 @@ export async function materializeContextualCourseDraft({
     if (!localMicrosequence && !remoteMicrosequence) continue;
     if (!localMicrosequence) {
       const requestId = await uuidFactory(requestKey(
-        draft.revision, revision, "delete", path
+        draft.revision, "delete", path
       ));
       const result = await remoteCatalog.executeApplicationAuthoringAction(
         "excluirDoWorkspace",
@@ -221,7 +207,7 @@ export async function materializeContextualCourseDraft({
     }
     if (!remoteMicrosequence) {
       const requestId = await uuidFactory(requestKey(
-        draft.revision, revision, "structure", path
+        draft.revision, "structure", path
       ));
       const result = await remoteCatalog.executeApplicationAuthoringAction(
         "criarEstruturaNoWorkspace",
@@ -247,7 +233,7 @@ export async function materializeContextualCourseDraft({
     } else {
       if (metadataChanged(localMicrosequence, remoteMicrosequence)) {
         const requestId = await uuidFactory(requestKey(
-          draft.revision, revision, "metadata", path
+          draft.revision, "metadata", path
         ));
         const result = await remoteCatalog.executeApplicationAuthoringAction(
           "atualizarMetadadosDaEntidade",
@@ -268,7 +254,7 @@ export async function materializeContextualCourseDraft({
       }
       if (localLocation.index !== remoteLocation.index) {
         const requestId = await uuidFactory(requestKey(
-          draft.revision, revision, "position", path
+          draft.revision, "position", path
         ));
         const result = await remoteCatalog.executeApplicationAuthoringAction(
           "reorganizarWorkspace",
@@ -290,7 +276,7 @@ export async function materializeContextualCourseDraft({
       }
     }
     const requestId = await uuidFactory(requestKey(
-      draft.revision, revision, "cards", path
+      draft.revision, "cards", path
     ));
     const result = await remoteCatalog.executeApplicationAuthoringAction(
       "salvarCardsNaMicrossequencia",
@@ -318,41 +304,22 @@ export async function materializeContextualCourseDraft({
     { workspaceId: workspace.workspaceId, view: "outline" }
   );
   revision = workspace.revision;
-  const currentPublication = (workspace.publications || []).find((item) =>
-    item.workspaceCourseId === courseKey && item.target === authority.writeTarget
+  const trailItemId = text(
+    workspace.trailItemId || created.trailItemId || workspace.trail?.itemId
   ) || null;
-  const existingCourseId = currentPublication?.courseId || draft.courseId;
-  const expectedContentHash = currentPublication?.contentHash || draft.baseContentHash;
-  if (!existingCourseId || !expectedContentHash) {
-    throw new Error("A publicação corrente do curso não possui base para atualização.");
-  }
-  const collectionId = authority.writeTarget === "catalog"
-    ? await catalogCollectionId(remoteCatalog, existingCourseId)
-    : null;
-  const publishRequestId = await uuidFactory(requestKey(
-    draft.revision, revision, "publish"
-  ));
-  const publication = await remoteCatalog.executeApplicationAuthoringAction(
-    "publicarCursoDoWorkspace",
-    {
-      requestId: publishRequestId,
-      workspaceId: workspace.workspaceId,
-      expectedRevision: revision,
-      courseId: courseKey,
-      target: authority.writeTarget,
-      existingCourseId,
-      expectedContentHash,
-      ...(collectionId ? { collectionId } : {})
-    }
-  );
   return {
-    status: "published",
+    status: "materialized",
     draft,
     workspaceId: workspace.workspaceId,
-    publication,
+    courseKey,
+    revision,
+    trailItemId,
+    source: "workspace",
     localFinalization: {
       courseKey,
-      expectedLocalDraftRevision: draft.revision
+      expectedLocalDraftRevision: draft.revision,
+      workspaceId: workspace.workspaceId,
+      workspaceRevision: revision
     }
   };
 }
@@ -360,7 +327,9 @@ export async function materializeContextualCourseDraft({
 export async function finalizeContextualCourseDraftSync({
   storage,
   courseKey,
-  expectedLocalDraftRevision
+  expectedLocalDraftRevision,
+  workspaceId = null,
+  workspaceRevision = null
 }) {
   if (typeof storage?.finalizeCardAssistanceSync !== "function") {
     throw new Error("A finalização local da autoria contextual não está disponível.");
@@ -369,6 +338,17 @@ export async function finalizeContextualCourseDraftSync({
   const normalizedRevision = text(expectedLocalDraftRevision);
   if (!normalizedCourseKey || !normalizedRevision) {
     throw new Error("A finalização local da autoria contextual é inválida.");
+  }
+  const normalizedWorkspaceId = text(workspaceId);
+  if (normalizedWorkspaceId) {
+    if (typeof storage?.acknowledgeWorkspaceCourseDraft !== "function") {
+      throw new Error("A confirmação local da composição remota não está disponível.");
+    }
+    await storage.acknowledgeWorkspaceCourseDraft(normalizedCourseKey, {
+      expectedLocalDraftRevision: normalizedRevision,
+      workspaceId: normalizedWorkspaceId,
+      workspaceRevision
+    });
   }
   return storage.finalizeCardAssistanceSync(normalizedCourseKey, {
     expectedLocalDraftRevision: normalizedRevision

@@ -99,7 +99,7 @@ test("cenário 5: pular auditoria não cria gate estrutural", () => {
   assert.match(editorialCycle, /pular auditoria/iu);
   assert.doesNotMatch(workspaceProtocol, /workspace_ready_requires_separate_review/u);
   assert.doesNotMatch(workspaceIncremental, /workspace_ready_requires_separate_review/u);
-  assert.match(AUTHORING_SERVER_INSTRUCTIONS, /sem bloqueio técnico/iu);
+  assert.match(AUTHORING_SERVER_INSTRUCTIONS, /não cria bloqueio técnico/iu);
 });
 
 test("cenários 6 a 10: auditoria cobre bastidor, termos, contexto, ancoragem e carga", () => {
@@ -139,8 +139,8 @@ test("cenário 11: práticas são legíveis sob demanda, sem despejo de JSON", (
 test("cenário 12 e contrato MCP: publicação não é prematura e intents são explícitas", () => {
   const create = prepareAuthoringContext({ intent: "create" });
   assert.equal(create.recommendedTools.includes("publicarCursoDoWorkspace"), false);
-  assert.match(instructions, /Só execute quando a pessoa pedir/iu);
-  assert.match(instructions, /Partes materializadas ficam estudáveis/iu);
+  assert.match(instructions, /publicarCursoDoWorkspace` somente quando a pessoa pedir distribuição/iu);
+  assert.match(instructions, /materializar cards\s+torna essas partes estudáveis/iu);
 
   const prepare = authoringMcpToolDefinition("prepararAutoriaAraLearn");
   const intent = prepare.inputSchema.properties.intent;

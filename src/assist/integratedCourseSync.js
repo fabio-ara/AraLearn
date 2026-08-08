@@ -123,40 +123,7 @@ export async function reconcileCommittedCourseRemoval({
   };
 }
 
-async function listWorkspaces(remoteCatalog) {
-  const items = [];
-  let cursor = null;
-  do {
-    const result = await remoteCatalog.executeApplicationAuthoringAction(
-      "listarWorkspacesDeAutoria",
-      {
-        limit: 100,
-        ...(cursor?.beforeUpdatedAt ? { beforeUpdatedAt: cursor.beforeUpdatedAt } : {}),
-        ...(cursor?.beforeId ? { beforeId: cursor.beforeId } : {})
-      }
-    );
-    items.push(...(Array.isArray(result?.items) ? result.items : []));
-    cursor = result?.hasMore === true ? result.nextCursor : null;
-  } while (cursor?.beforeUpdatedAt && cursor?.beforeId);
-  return items;
-}
-
-async function findLinkedWorkspace(remoteCatalog, courseId) {
-  const workspaces = await listWorkspaces(remoteCatalog);
-  for (const summary of workspaces) {
-    const workspace = await remoteCatalog.executeApplicationAuthoringAction(
-      "lerWorkspaceDeAutoria",
-      { workspaceId: summary.workspaceId, view: "outline" }
-    );
-    const publication = (workspace.publications || []).find((item) => item.courseId === courseId);
-    if (publication) return { workspace, publication };
-  }
-  return null;
-}
-
 async function ensureLinkedWorkspace({ remoteCatalog, courseSummary, title }) {
-  const linked = await findLinkedWorkspace(remoteCatalog, courseSummary.courseId);
-  if (linked) return linked;
   const requestId = await deterministicUuid(`aralearn:integrated-course:${courseSummary.courseId}`);
   const created = await remoteCatalog.executeApplicationAuthoringAction(
     "criarWorkspaceDeAutoria",
@@ -171,10 +138,46 @@ async function ensureLinkedWorkspace({ remoteCatalog, courseSummary, title }) {
     "lerWorkspaceDeAutoria",
     { workspaceId: created.workspaceId, view: "outline" }
   );
-  const publication = (workspace.publications || []).find((item) =>
-    item.courseId === courseSummary.courseId
-  ) || null;
-  return { workspace, publication };
+  return { workspace };
+}
+
+function materializedWorkspaceReceipt({ workspace, changed, summary, courseKey, operation }) {
+  const revision = Number(changed?.revision);
+  if (!Number.isSafeInteger(revision) || revision < 1) {
+    throw new Error("A mutação remota não devolveu uma revisão de workspace válida.");
+  }
+  return {
+    status: "materialized",
+    source: "workspace",
+    operation,
+    workspaceId: String(workspace.workspaceId),
+    revision,
+    trailItemId: text(changed?.trailItemId || workspace?.trailItemId) || null,
+    courseKey: text(courseKey),
+    sourceCourseId: String(summary.courseId)
+  };
+}
+
+async function acknowledgeIntegratedLocalDraft({
+  storage,
+  courseKey,
+  workspaceId,
+  workspaceRevision
+}) {
+  const localDraft = await storage.getLocalCourseDraft?.(courseKey);
+  if (!localDraft) return null;
+  if (typeof storage.acknowledgeWorkspaceCourseDraft !== "function") {
+    throw new Error("A confirmação local da composição remota não está disponível.");
+  }
+  return storage.acknowledgeWorkspaceCourseDraft(courseKey, {
+    expectedLocalDraftRevision: localDraft.revision,
+    workspaceId,
+    workspaceRevision
+  });
+}
+
+async function refreshTrailProjection(refreshTrails) {
+  if (typeof refreshTrails === "function") await refreshTrails();
 }
 
 function courseSummary(storage, courseKey) {
@@ -189,8 +192,7 @@ function courseSummary(storage, courseKey) {
 export async function saveIntegratedEntityMetadata({
   remoteCatalog,
   storage,
-  syncEngine,
-  synchronizeReplica,
+  refreshTrails,
   courseKey,
   entityType,
   entityPath,
@@ -213,36 +215,21 @@ export async function saveIntegratedEntityMetadata({
       ...metadata
     }
   );
-  const target = summary.courseOrigin === "catalog" ? "catalog" : "private";
-  let collectionId = null;
-  if (target === "catalog") {
-    const rows = await remoteCatalog.listCollections("");
-    const current = (Array.isArray(rows) ? rows : []).find((row) =>
-      String(row.course_id ?? row.courseId ?? "") === summary.courseId
-    );
-    collectionId = current?.collection_id ?? current?.collectionId ?? null;
-    if (!collectionId) throw new Error("A Coleção do curso não foi encontrada.");
-  }
-  const published = await remoteCatalog.executeApplicationAuthoringAction(
-    "publicarCursoDoWorkspace",
-    {
-      requestId: globalThis.crypto.randomUUID(),
-      workspaceId: workspace.workspaceId,
-      expectedRevision: changed.revision,
-      courseId: entityPath[0],
-      target,
-      ...(collectionId ? { collectionId } : {})
-    }
-  );
-  const localDraft = await storage.getLocalCourseDraft?.(courseKey);
-  if (localDraft) {
-    await syncEngine.restoreDeferredCourseRevision({
-      courseId: summary.courseId,
-      expectedLocalDraftRevision: localDraft.revision
-    });
-  }
-  await synchronizeReplica({ expectedCourseIds: [published.courseId] });
-  return published;
+  const receipt = materializedWorkspaceReceipt({
+    workspace,
+    changed,
+    summary,
+    courseKey: entityPath[0],
+    operation: "update_metadata"
+  });
+  await acknowledgeIntegratedLocalDraft({
+    storage,
+    courseKey,
+    workspaceId: receipt.workspaceId,
+    workspaceRevision: receipt.revision
+  });
+  await refreshTrailProjection(refreshTrails);
+  return receipt;
 }
 
 export async function deleteIntegratedCourse({
@@ -299,8 +286,7 @@ export async function deleteIntegratedCourse({
 export async function deleteIntegratedEntity({
   remoteCatalog,
   storage,
-  syncEngine,
-  synchronizeReplica,
+  refreshTrails,
   courseKey,
   entityType,
   entityPath,
@@ -318,40 +304,27 @@ export async function deleteIntegratedEntity({
     entityType,
     entityPath
   });
-  const target = summary.courseOrigin === "catalog" ? "catalog" : "private";
-  let collectionId = null;
-  if (target === "catalog") {
-    const rows = await remoteCatalog.listCollections("");
-    const current = (Array.isArray(rows) ? rows : []).find((row) =>
-      String(row.course_id ?? row.courseId ?? "") === summary.courseId
-    );
-    collectionId = current?.collection_id ?? current?.collectionId ?? null;
-    if (!collectionId) throw new Error("A Coleção do curso não foi encontrada.");
-  }
-  const published = await remoteCatalog.executeApplicationAuthoringAction("publicarCursoDoWorkspace", {
-    requestId: globalThis.crypto.randomUUID(),
-    workspaceId: workspace.workspaceId,
-    expectedRevision: changed.revision,
-    courseId: entityPath[0],
-    target,
-    ...(collectionId ? { collectionId } : {})
+  const receipt = materializedWorkspaceReceipt({
+    workspace,
+    changed,
+    summary,
+    courseKey: entityPath[0],
+    operation: "delete_entity"
   });
-  const localDraft = await storage.getLocalCourseDraft?.(courseKey);
-  if (localDraft) {
-    await syncEngine.restoreDeferredCourseRevision({
-      courseId: summary.courseId,
-      expectedLocalDraftRevision: localDraft.revision
-    });
-  }
-  await synchronizeReplica({ expectedCourseIds: [published.courseId] });
-  return published;
+  await acknowledgeIntegratedLocalDraft({
+    storage,
+    courseKey,
+    workspaceId: receipt.workspaceId,
+    workspaceRevision: receipt.revision
+  });
+  await refreshTrailProjection(refreshTrails);
+  return receipt;
 }
 
 export async function moveIntegratedEntity({
   remoteCatalog,
   storage,
-  syncEngine,
-  synchronizeReplica,
+  refreshTrails,
   courseKey,
   entityType,
   entityPath,
@@ -373,31 +346,19 @@ export async function moveIntegratedEntity({
     targetParentPath,
     position
   });
-  const target = summary.courseOrigin === "catalog" ? "catalog" : "private";
-  let collectionId = null;
-  if (target === "catalog") {
-    const rows = await remoteCatalog.listCollections("");
-    const current = (Array.isArray(rows) ? rows : []).find((row) =>
-      String(row.course_id ?? row.courseId ?? "") === summary.courseId
-    );
-    collectionId = current?.collection_id ?? current?.collectionId ?? null;
-    if (!collectionId) throw new Error("A Coleção do curso não foi encontrada.");
-  }
-  const published = await remoteCatalog.executeApplicationAuthoringAction("publicarCursoDoWorkspace", {
-    requestId: globalThis.crypto.randomUUID(),
-    workspaceId: workspace.workspaceId,
-    expectedRevision: changed.revision,
-    courseId: entityPath[0],
-    target,
-    ...(collectionId ? { collectionId } : {})
+  const receipt = materializedWorkspaceReceipt({
+    workspace,
+    changed,
+    summary,
+    courseKey: entityPath[0],
+    operation: "move_entity"
   });
-  const localDraft = await storage.getLocalCourseDraft?.(courseKey);
-  if (localDraft) {
-    await syncEngine.restoreDeferredCourseRevision({
-      courseId: summary.courseId,
-      expectedLocalDraftRevision: localDraft.revision
-    });
-  }
-  await synchronizeReplica({ expectedCourseIds: [published.courseId] });
-  return published;
+  await acknowledgeIntegratedLocalDraft({
+    storage,
+    courseKey,
+    workspaceId: receipt.workspaceId,
+    workspaceRevision: receipt.revision
+  });
+  await refreshTrailProjection(refreshTrails);
+  return receipt;
 }
