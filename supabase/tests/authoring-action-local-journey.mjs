@@ -962,18 +962,7 @@ async function runJourney() {
     retainedOfficialComposition.revision,
     officialComposition.revision
   );
-  assert.deepEqual(
-    retainedOfficialComposition.publications.map((publication) => ({
-      target: publication.target,
-      courseId: publication.courseId,
-      contentHash: publication.contentHash
-    })),
-    [{
-      target: "catalog",
-      courseId: official.courseId,
-      contentHash: official.contentHash
-    }]
-  );
+  assert.deepEqual(retainedOfficialComposition.publications, []);
   assert.deepEqual(
     retainedOfficialComposition.content.courses.map((course) => course.id),
     [paths.course[0]]
@@ -1105,18 +1094,7 @@ async function runJourney() {
     "lerWorkspaceDeAutoria",
     { workspaceId: removedWorkspaceId, view: "outline" }
   );
-  assert.deepEqual(
-    retainedPrivateWorkspace.publications.map((publication) => ({
-      target: publication.target,
-      courseId: publication.courseId,
-      contentHash: publication.contentHash
-    })),
-    [{
-      target: "private",
-      courseId: removedPrivateCourseId,
-      contentHash: selected.contentHash
-    }]
-  );
+  assert.deepEqual(retainedPrivateWorkspace.publications, []);
   assert.deepEqual(
     retainedPrivateWorkspace.content.courses.map((course) => course.id),
     [paths.course[0]]
@@ -1210,20 +1188,7 @@ async function runJourney() {
     { workspaceId: multiWorkspace.workspaceId, view: "outline" }
   );
   assert.equal(retainedWorkspace.revision, multiStructured.revision);
-  assert.deepEqual(
-    retainedWorkspace.publications.map((publication) => ({
-      workspaceCourseId: publication.workspaceCourseId,
-      target: publication.target,
-      courseId: publication.courseId,
-      contentHash: publication.contentHash
-    })),
-    [{
-      workspaceCourseId: multiCourseA,
-      target: "private",
-      courseId: multiPublished.courseId,
-      contentHash: multiPublished.contentHash
-    }]
-  );
+  assert.deepEqual(retainedWorkspace.publications, []);
   assert.deepEqual(
     retainedWorkspace.content.courses.map((course) => course.id),
     [multiCourseA, multiCourseB]
