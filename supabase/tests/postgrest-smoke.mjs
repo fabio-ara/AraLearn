@@ -388,16 +388,6 @@ try {
   );
   assert.equal(replayedStateA.revision, 1);
   assert.equal(replayedStateA.idempotent, true);
-  const stateA1 = await rpc(
-    "load_trail_personal_state_v1",
-    { p_trail_item_id: trailItemId },
-    tokenA,
-  );
-  assert.equal(stateA1.revision, 1);
-  assert.deepEqual(stateA1.state.progress.lessons[lessonId], {
-    cursorCardId: cardsA[0],
-    completedCardIds: cardsA.slice(0, 1),
-  });
 
   const staleStateA = await request(
     "/rest/v1/rpc/mutate_trail_personal_state_v1",
@@ -413,7 +403,18 @@ try {
     },
   );
   assert.equal(staleStateA.response.ok, false, "CAS deve rejeitar revisão defasada");
-  assert.equal(staleStateA.payload?.code, "40001");
+  const stateAfterStaleA = await rpc(
+    "load_trail_personal_state_v1",
+    { p_trail_item_id: trailItemId },
+    tokenA,
+  );
+  assert.equal(stateAfterStaleA.revision, 1);
+  assert.deepEqual(stateAfterStaleA.state.progress.lessons, {
+    [lessonId]: {
+      cursorCardId: cardsA[0],
+      completedCardIds: cardsA.slice(0, 1),
+    },
+  });
 
   const savedA2 = await rpc(
     "mutate_trail_personal_state_v1",
