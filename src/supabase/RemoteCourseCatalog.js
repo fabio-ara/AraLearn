@@ -63,6 +63,36 @@ function requiredUuid(value, label) {
   return normalized;
 }
 
+function requiredRevision(value, label = "Revisão") {
+  const normalized = Number(value);
+  if (!Number.isSafeInteger(normalized) || normalized < 0) {
+    throw new TypeError(`${label} inválida.`);
+  }
+  return normalized;
+}
+
+function requiredJsonObject(value, label) {
+  const prototype = value && typeof value === "object" ? Object.getPrototypeOf(value) : null;
+  if (!value || typeof value !== "object" || Array.isArray(value) ||
+      (prototype !== Object.prototype && prototype !== null)) {
+    throw new TypeError(`${label} inválido.`);
+  }
+  return structuredClone(value);
+}
+
+function requiredJsonArray(value, label, { maxItems, maxBytes } = {}) {
+  if (!Array.isArray(value) || value.length === 0 ||
+      (Number.isSafeInteger(maxItems) && value.length > maxItems)) {
+    throw new TypeError(`${label} inválidas.`);
+  }
+  const normalized = structuredClone(value);
+  if (Number.isSafeInteger(maxBytes) &&
+      new TextEncoder().encode(JSON.stringify(normalized)).byteLength > maxBytes) {
+    throw new TypeError(`${label} excedem o limite permitido.`);
+  }
+  return normalized;
+}
+
 export class RemoteCourseCatalog {
   constructor({ projectUrl, publishableKey, authClient, fetchImpl = globalThis.fetch } = {}) {
     if (
@@ -138,15 +168,74 @@ export class RemoteCourseCatalog {
     return this.rpc("list_catalog_collections", { p_query: String(query || "").trim() });
   }
 
-  listLibrary() {
-    return this.rpc("list_user_course_summaries");
-  }
-
-  listTrailItems({ limit = 50, afterPosition = null, afterId = null } = {}) {
+  listTrailItems({
+    limit = 50,
+    afterPathPosition = null,
+    afterItemPosition = null,
+    afterId = null
+  } = {}) {
     return this.rpc("list_trail_items_v1", {
       p_limit: Number(limit),
-      p_after_position: afterPosition,
-      p_after_id: afterId
+      p_after_path_position: afterPathPosition,
+      p_after_item_position: afterItemPosition,
+      p_after_id: afterId === null ? null : requiredUuid(afterId, "Cursor de Trilhas")
+    });
+  }
+
+  mutateTrails({ requestId = mutationId(), operation, arguments: argumentsValue = {} } = {}) {
+    const normalizedOperation = String(operation || "").trim();
+    if (!normalizedOperation) throw new TypeError("Operação de Trilhas inválida.");
+    return this.rpc("mutate_trails_v1", {
+      p_request_id: requiredUuid(requestId, "Identidade da operação"),
+      p_operation: normalizedOperation,
+      p_arguments: requiredJsonObject(argumentsValue, "Argumentos de Trilhas")
+    });
+  }
+
+  getTrailWorkspaceCourse({
+    trailItemId,
+    limit = 100,
+    afterCursor = null,
+    expectedRevision = null
+  } = {}) {
+    const normalizedLimit = Number(limit);
+    if (!Number.isSafeInteger(normalizedLimit) || normalizedLimit < 1 || normalizedLimit > 100) {
+      throw new TypeError("Limite da composição inválido.");
+    }
+    const cursor = afterCursor === null ? null : String(afterCursor);
+    if (cursor !== null && (!cursor || cursor.length > 4096)) {
+      throw new TypeError("Cursor da composição inválido.");
+    }
+    return this.rpc("get_trail_workspace_course_v1", {
+      p_trail_item_id: requiredUuid(trailItemId, "Item de Trilhas"),
+      p_limit: normalizedLimit,
+      p_after_cursor: cursor,
+      p_expected_revision: expectedRevision === null
+        ? null
+        : requiredRevision(expectedRevision)
+    });
+  }
+
+  loadTrailPersonalState(trailItemId) {
+    return this.rpc("load_trail_personal_state_v1", {
+      p_trail_item_id: requiredUuid(trailItemId, "Item de Trilhas")
+    });
+  }
+
+  mutateTrailPersonalState({
+    trailItemId,
+    expectedRevision,
+    operations,
+    mutationId: requestMutationId = mutationId()
+  } = {}) {
+    return this.rpc("mutate_trail_personal_state_v1", {
+      p_trail_item_id: requiredUuid(trailItemId, "Item de Trilhas"),
+      p_expected_revision: requiredRevision(expectedRevision),
+      p_operations: requiredJsonArray(operations, "Operações do estado pessoal", {
+        maxItems: 512,
+        maxBytes: 65_536
+      }),
+      p_mutation_id: requiredUuid(requestMutationId, "Identidade da alteração")
     });
   }
 
@@ -203,52 +292,6 @@ export class RemoteCourseCatalog {
     return this.rpc("manage_current_educational_workspace_v1", {
       p_request_id: normalizedRequestId,
       p_operation: normalizedOperation,
-      p_payload: payload
-    });
-  }
-
-  listEducationalWorkspaceComments({
-    workspaceId,
-    limit = 20,
-    beforeUpdatedAt = null,
-    beforeId = null,
-    categories = null,
-    statuses = null
-  } = {}) {
-    return this.rpc("list_current_educational_workspace_comments_v1", {
-      p_workspace_id: requiredUuid(workspaceId, "Workspace"),
-      p_limit: Number(limit),
-      p_before_updated_at: beforeUpdatedAt,
-      p_before_id: beforeId,
-      p_categories: categories,
-      p_statuses: statuses
-    });
-  }
-
-  manageEducationalWorkspaceComment({
-    requestId,
-    workspaceId,
-    commentId,
-    operation,
-    payload
-  } = {}) {
-    const normalizedRequestId = String(requestId || "").trim();
-    if (!/^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$/u.test(normalizedRequestId)) {
-      throw new TypeError("Identidade da operação inválida.");
-    }
-    if (![
-      "respond_comment", "set_comment_status", "link_comment_correction"
-    ].includes(operation)) {
-      throw new TypeError("Operação de observação inválida.");
-    }
-    if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
-      throw new TypeError("Dados da observação inválidos.");
-    }
-    return this.rpc("manage_current_educational_workspace_comment_v1", {
-      p_request_id: normalizedRequestId,
-      p_workspace_id: requiredUuid(workspaceId, "Workspace"),
-      p_comment_id: requiredUuid(commentId, "Observação"),
-      p_operation: operation,
       p_payload: payload
     });
   }

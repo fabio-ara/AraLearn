@@ -286,6 +286,18 @@ async function main() {
   const catalogCollectionReordering = migrations.find(({ fileName }) =>
     fileName === "20260804170000_catalog_collection_reordering.sql"
   );
+  const unifiedTrails = migrations.find(({ fileName }) =>
+    fileName === "20260807210000_unified_trails.sql"
+  );
+  const trailPersonalState = migrations.find(({ fileName }) =>
+    fileName === "20260807220000_trail_personal_state.sql"
+  );
+  const trailObservationThreads = migrations.find(({ fileName }) =>
+    fileName === "20260807225000_trail_observation_threads.sql"
+  );
+  const unifiedTrailsCleanCutover = migrations.find(({ fileName }) =>
+    fileName === "20260807230000_unified_trails_clean_cutover.sql"
+  );
   const relationalRemoval = migrations.find(({ fileName }) =>
     fileName === "20260728020000_remove_relational_course_legacy.sql"
   );
@@ -308,7 +320,8 @@ async function main() {
       || !nonPunitiveStudyState || !nonPunitiveStudyProjections
       || !workspaceCommentAggregates || !integratedLearningSpaces
       || !workspaceEntityObservations || !atomicPrivateCourseRemoval
-      || !catalogCollectionReordering) {
+      || !catalogCollectionReordering || !unifiedTrails || !trailPersonalState
+      || !trailObservationThreads || !unifiedTrailsCleanCutover) {
     fail("Corte final de workspaces compostos/OAuth v5 não encontrado.");
   }
   if (!relationalRemoval) {
@@ -698,6 +711,73 @@ async function main() {
     /'schemaRevision',\s*'20260803020000'[\s\S]*'workspace-entity-observations-v1'/iu,
     "O manifesto final não exige as observações integradas às partes do workspace."
   );
+  assertContains(
+    unifiedTrails.source,
+    /create\s+table\s+private\.trail_items[\s\S]+alter\s+table\s+public\.study_path_courses\s+rename\s+to\s+study_path_items/iu,
+    "Trilhas não possui identidade própria e agrupamento remoto corrente."
+  );
+  assertContains(
+    unifiedTrails.source,
+    /0::integer\s+as\s+sort_path_position[\s\S]+0::integer\s+as\s+sort_item_position/iu,
+    "A paginação de Trilhas ainda depende de posições mutáveis."
+  );
+  assertNotContains(
+    unifiedTrails.source,
+    /order\s+by\s+workspace\.updated_at\s+desc\s*,\s*workspace\.id\s*,\s*course\.position/iu,
+    "A paginação de Trilhas ainda muda quando o workspace é atualizado."
+  );
+  assertContains(
+    trailPersonalState.source,
+    /'progress'\s*,\s*jsonb_build_object\(\s*'version'\s*,\s*3\s*,\s*'lessons'/iu,
+    "O estado pessoal não usa IDs estáveis no progresso compacto v3."
+  );
+  assertNotContains(
+    trailPersonalState.source,
+    /['"]progress\.cards['"]/iu,
+    "O estado pessoal ainda duplica um objeto por card concluído."
+  );
+  assertContains(
+    trailPersonalState.source,
+    /from\s+public\.user_course_selections\s+selection[\s\S]+join\s+private\.trail_item_courses\s+alias[\s\S]+join\s+private\.trail_items\s+item/iu,
+    "O backfill não preserva cursos que têm somente seleção."
+  );
+  assertContains(
+    trailPersonalState.source,
+    /select\s+distinct\s+card_id[\s\S]+completedCardIds/iu,
+    "A fusão do estado pessoal não deduplica conclusões da mesma lição."
+  );
+  assertContains(
+    trailObservationThreads.source,
+    /create\s+table\s+private\.trail_observation_threads[\s\S]+trail_item_id[\s\S]+card_id\s+text[\s\S]+status\s+text/iu,
+    "A triagem de observações não está ligada à identidade de Trilhas."
+  );
+  assertNotContains(
+    trailObservationThreads.source,
+    /remap_trail|path_prefix|authoring_workspace_entity_trail_state_move/iu,
+    "A persistência por IDs estáveis ainda carrega remapeamento hierárquico."
+  );
+  assertContains(
+    unifiedTrailsCleanCutover.source,
+    /drop\s+table\s+if\s+exists\s+public\.lesson_progress\s*;[\s\S]+drop\s+table\s+if\s+exists\s+public\.card_progress\s*;[\s\S]+drop\s+table\s+if\s+exists\s+public\.card_comments\s*;/iu,
+    "O corte final não remove explicitamente as tabelas pessoais antigas."
+  );
+  assertNotContains(
+    unifiedTrailsCleanCutover.source,
+    /drop\s+table[^;]+(?:lesson_progress|card_progress|card_comments)[^;]+cascade/iu,
+    "O corte final ainda mascara dependências antigas com DROP CASCADE."
+  );
+  for (const functionName of [
+    "list_current_educational_workspace_comments_v1",
+    "list_educational_workspace_comments_for_actor_v1",
+    "manage_current_educational_workspace_comment_v1",
+    "manage_educational_workspace_comment_for_actor_v1"
+  ]) {
+    assertNotContains(
+      unifiedTrailsCleanCutover.source,
+      new RegExp(`drop\\s+function[^;]+${escapePattern(functionName)}`, "iu"),
+      `O corte final retiraria a operação MCP de observações ${functionName}.`
+    );
+  }
   for (const commentSource of [
     workspacePedagogicalComments.source,
     workspaceCommentAggregates.source
@@ -873,8 +953,41 @@ async function main() {
       "android", "app", "build", "generated", "web-assets", "main", "www", "public", "runtime-config.js"
     ))
   ]);
+  const runtimeManifest = JSON.parse(await fs.readFile(
+    path.join(repositoryRoot, "supabase", "runtime-manifest.json"),
+    "utf8"
+  ));
+  if (runtimeManifest.schemaRevision !== "20260807230000") {
+    fail("O manifesto estático não aponta para o corte final de Trilhas.");
+  }
+  for (const feature of [
+    "stable-trail-item-identity-v1",
+    "atomic-trail-groups-v1",
+    "trail-personal-state-v1",
+    "atomic-trail-personal-state-v1",
+    "stable-entity-personal-state-v1",
+    "situated-trail-observations-v1",
+    "workspace-trail-observations-v1",
+    "unified-trails-clean-cutover-v1"
+  ]) {
+    if (!runtimeManifest.requiredFeatures.includes(feature)) {
+      fail(`O manifesto estático não exige ${feature}.`);
+    }
+  }
+  for (const retiredFeature of [
+    "situated-personal-comments-v1",
+    "workspace-pedagogical-comments-v1",
+    "non-punitive-study-state-v1",
+    "non-punitive-study-projections-v1",
+    "workspace-comment-aggregates-v1",
+    "integrated-trails-v1"
+  ]) {
+    if (runtimeManifest.requiredFeatures.includes(retiredFeature)) {
+      fail(`O manifesto estático ainda anuncia ${retiredFeature}.`);
+    }
+  }
   console.log(
-    `Corte validado até ${catalogCollectionReordering.fileName}: Trilhas integradas, coleções ordenáveis, workspaces educacionais, observações situadas, remoção atômica, OAuth/MCP/Action e uma revisão corrente por curso publicado.`
+    `Corte validado até ${unifiedTrailsCleanCutover.fileName}: Trilhas unificadas, estado pessoal compacto, observações situadas, coleções, workspaces educacionais, OAuth/MCP/Action e uma revisão corrente por curso.`
   );
 }
 

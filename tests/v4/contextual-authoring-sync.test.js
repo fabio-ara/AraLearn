@@ -70,6 +70,10 @@ function courseVariant(suffix, title) {
   moduleValue.id = `module-${suffix}`;
   const lesson = moduleValue.lessons[0];
   lesson.id = `lesson-${suffix}`;
+  lesson.topics = lesson.topics.map((topic, index) => ({
+    ...topic,
+    id: `topic-${suffix}-${index + 1}`
+  }));
   const microsequence = lesson.microsequences[0];
   microsequence.id = `micro-${suffix}`;
   microsequence.cards = microsequence.cards.map((card, index) => ({
@@ -226,9 +230,9 @@ test("sincronização iniciada em A não sobrescreve nem perde a edição persis
   const startedA = deferred();
   const releaseA = deferred();
   const loadedB = deferred();
-  const synchronizedB = deferred();
+  const finalizedB = deferred();
   const finalizedCourses = [];
-  const synchronizedCourses = [];
+  const acknowledgedCourses = [];
   const workspaceCourseKeys = new Map();
   const revisions = new Map();
   const listeners = {};
@@ -298,11 +302,22 @@ test("sincronização iniciada em A não sobrescreve nem perde a edição persis
         baseContentHash: (courseKey === courseA.id ? "a" : "b").repeat(64)
       };
     },
+    async acknowledgeWorkspaceCourseDraft(courseKey, {
+      expectedLocalDraftRevision,
+      workspaceId: acknowledgedWorkspaceId,
+      workspaceRevision
+    }) {
+      assert.equal(expectedLocalDraftRevision, draftRevisions.get(courseKey));
+      assert.equal(acknowledgedWorkspaceId, `workspace-${courseKey}`);
+      assert.ok(Number.isSafeInteger(workspaceRevision));
+      acknowledgedCourses.push(courseKey);
+    },
     async finalizeCardAssistanceSync(courseKey, { expectedLocalDraftRevision }) {
       assert.equal(expectedLocalDraftRevision, draftRevisions.get(courseKey));
       finalizedCourses.push(courseKey);
       const nextLocalState = cleanLocalState();
       localStates.set(courseKey, nextLocalState);
+      if (courseKey === courseB.id) finalizedB.resolve();
       return structuredClone(nextLocalState);
     }
   };
@@ -341,16 +356,6 @@ test("sincronização iniciada em A não sobrescreve nem perde a edição persis
         revisions.set(targetWorkspaceId, revision);
         return { workspaceId: targetWorkspaceId, revision };
       }
-      if (name === "publicarCursoDoWorkspace") {
-        return {
-          workspaceId: targetWorkspaceId,
-          revision: revisions.get(targetWorkspaceId),
-          courseId: sourceIds.get(courseKey),
-          contentHash: (courseKey === courseA.id ? "c" : "d").repeat(64),
-          target: "private",
-          completionState: "partial"
-        };
-      }
       throw new Error(`Chamada inesperada: ${name}`);
     }
   };
@@ -360,16 +365,7 @@ test("sincronização iniciada em A não sobrescreve nem perde a edição persis
     editor: {},
     initialProject: twoCourseProject,
     contextualAuthoring: {
-      remoteCatalog,
-      syncEngine: {
-        async restoreDeferredCourseRevision() {}
-      },
-      async synchronizeReplica({ expectedCourseIds }) {
-        synchronizedCourses.push(...expectedCourseIds);
-        if (expectedCourseIds.includes(sourceIds.get(courseB.id))) {
-          synchronizedB.resolve();
-        }
-      }
+      remoteCatalog
     }
   });
 
@@ -387,12 +383,9 @@ test("sincronização iniciada em A não sobrescreve nem perde a edição persis
   listeners.online();
   releaseA.resolve();
 
-  await timeout(synchronizedB.promise, "sincronização posterior de B");
+  await timeout(finalizedB.promise, "materialização posterior de B");
+  assert.deepEqual(acknowledgedCourses, [courseA.id, courseB.id]);
   assert.deepEqual(finalizedCourses, [courseA.id, courseB.id]);
-  assert.deepEqual(synchronizedCourses, [
-    sourceIds.get(courseA.id),
-    sourceIds.get(courseB.id)
-  ]);
   assert.deepEqual(localStates.get(courseA.id).sync.pendingPaths, []);
   assert.deepEqual(localStates.get(courseB.id).sync.pendingPaths, []);
   assert.match(renderedHtml, /Curso B/u);
@@ -423,14 +416,10 @@ for (const denied of [
   });
 }
 
-test("administrador substitui a microssequência e atualiza o curso oficial", async () => {
+test("administrador materializa a correção em workspace sem alterar o curso oficial", async () => {
   const calls = [];
   let revision = 1;
-  const collectionId = "44444444-4444-4444-8444-444444444444";
   const remoteCatalog = {
-    async listCollections() {
-      return [{ courseId: sourceCourseId, collectionId }];
-    },
     async executeApplicationAuthoringAction(name, args) {
       calls.push([name, args]);
       if (name === "criarWorkspaceDeAutoria") return { workspaceId, revision };
@@ -446,16 +435,6 @@ test("administrador substitui a microssequência e atualiza o curso oficial", as
         "atualizarMetadadosDaEntidade",
         "salvarCardsNaMicrossequencia"
       ]).has(name)) return { workspaceId, revision: ++revision };
-      if (name === "publicarCursoDoWorkspace") {
-        return {
-          workspaceId,
-          revision,
-          courseId: sourceCourseId,
-          contentHash: "b".repeat(64),
-          target: "catalog",
-          completionState: "partial"
-        };
-      }
       throw new Error(`Chamada inesperada: ${name}`);
     }
   };
@@ -468,25 +447,25 @@ test("administrador substitui a microssequência e atualiza o curso oficial", as
     uuidFactory: async (key) => `request-${calls.length}-${key.length}`
   });
 
-  assert.equal(result.status, "published");
+  assert.equal(result.status, "materialized");
+  assert.equal(result.source, "workspace");
+  assert.equal(result.workspaceId, workspaceId);
+  assert.equal(result.revision, 3);
   assert.deepEqual(result.localFinalization, {
     courseKey: path.courseKey,
-    expectedLocalDraftRevision: "draft-revision"
+    expectedLocalDraftRevision: "draft-revision",
+    workspaceId,
+    workspaceRevision: 3
   });
   const save = calls.find(([name]) => name === "salvarCardsNaMicrossequencia")[1];
   assert.deepEqual(save.microsequencePath, Object.values(path));
   assert.equal(save.mode, "replace");
   assert.equal(Object.hasOwn(save, "status"), false);
   assert.equal(JSON.parse(save.cardsJson).length, 2);
-  const publish = calls.find(([name]) => name === "publicarCursoDoWorkspace")[1];
-  assert.equal(Object.hasOwn(publish, "completion"), false);
-  assert.equal(publish.target, "catalog");
-  assert.equal(publish.existingCourseId, sourceCourseId);
-  assert.equal(publish.expectedContentHash, "a".repeat(64));
-  assert.equal(publish.collectionId, collectionId);
+  assert.equal(calls.some(([name]) => name === "publicarCursoDoWorkspace"), false);
 });
 
-test("curso privado atualiza a publicação corrente com CAS de conteúdo", async () => {
+test("curso privado atualiza a composição corrente sem gerar artefato publicado", async () => {
   const calls = [];
   let revision = 1;
   const remoteCatalog = {
@@ -503,12 +482,6 @@ test("curso privado atualiza a publicação corrente com CAS de conteúdo", asyn
         "atualizarMetadadosDaEntidade",
         "salvarCardsNaMicrossequencia"
       ]).has(name)) return { workspaceId, revision: ++revision };
-      if (name === "publicarCursoDoWorkspace") return {
-        workspaceId,
-        revision,
-        courseId: sourceCourseId,
-        contentHash: "c".repeat(64)
-      };
       throw new Error(`Chamada inesperada: ${name}`);
     }
   };
@@ -520,10 +493,7 @@ test("curso privado atualiza a publicação corrente com CAS de conteúdo", asyn
     pendingPaths: [path],
     uuidFactory: async (key) => `request-${calls.length}-${key.length}`
   });
-  const publish = calls.find(([name]) => name === "publicarCursoDoWorkspace")[1];
-  assert.equal(publish.target, "private");
-  assert.equal(publish.existingCourseId, sourceCourseId);
-  assert.equal(publish.expectedContentHash, "a".repeat(64));
+  assert.equal(calls.some(([name]) => name === "publicarCursoDoWorkspace"), false);
 });
 
 test("microssequência criada ou retirada sincroniza primeiro sua estrutura", async () => {
@@ -551,12 +521,6 @@ test("microssequência criada ou retirada sincroniza primeiro sua estrutura", as
       if (name === "atualizarMetadadosDaEntidade") return { workspaceId, revision: ++revision };
       if (name === "reorganizarWorkspace") return { workspaceId, revision: ++revision };
       if (name === "excluirDoWorkspace") return { workspaceId, revision: ++revision };
-      if (name === "publicarCursoDoWorkspace") return {
-        workspaceId,
-        revision,
-        courseId: "33333333-3333-4333-8333-333333333333",
-        contentHash: "d".repeat(64)
-      };
       throw new Error(`Chamada inesperada: ${name}`);
     }
   };
@@ -639,12 +603,6 @@ test("metadados e posição da microssequência são sincronizados antes dos car
         "reorganizarWorkspace",
         "salvarCardsNaMicrossequencia"
       ].includes(name)) return { workspaceId, revision: ++revision };
-      if (name === "publicarCursoDoWorkspace") return {
-        workspaceId,
-        revision,
-        courseId: sourceCourseId,
-        contentHash: "e".repeat(64)
-      };
       throw new Error(`Chamada inesperada: ${name}`);
     }
   };
@@ -711,12 +669,6 @@ test("replace vazio preserva a microssequência planejada na sincronização", a
         "atualizarMetadadosDaEntidade",
         "salvarCardsNaMicrossequencia"
       ]).has(name)) return { workspaceId, revision: ++revision };
-      if (name === "publicarCursoDoWorkspace") return {
-        workspaceId,
-        revision,
-        courseId: sourceCourseId,
-        contentHash: "f".repeat(64)
-      };
       throw new Error(`Chamada inesperada: ${name}`);
     }
   };
@@ -740,17 +692,29 @@ test("finalização local encaminha exatamente o curso e a revisão materializad
   const calls = [];
   const result = await finalizeContextualCourseDraftSync({
     storage: {
+      async acknowledgeWorkspaceCourseDraft(courseKey, options) {
+        calls.push(["acknowledge", courseKey, options]);
+      },
       async finalizeCardAssistanceSync(courseKey, options) {
-        calls.push([courseKey, options]);
+        calls.push(["finalize", courseKey, options]);
         return { status: "finalized" };
       }
     },
     courseKey: path.courseKey,
-    expectedLocalDraftRevision: "draft-revision"
+    expectedLocalDraftRevision: "draft-revision",
+    workspaceId,
+    workspaceRevision: 7
   });
-  assert.deepEqual(calls, [[path.courseKey, {
-    expectedLocalDraftRevision: "draft-revision"
-  }]]);
+  assert.deepEqual(calls, [
+    ["acknowledge", path.courseKey, {
+      expectedLocalDraftRevision: "draft-revision",
+      workspaceId,
+      workspaceRevision: 7
+    }],
+    ["finalize", path.courseKey, {
+      expectedLocalDraftRevision: "draft-revision"
+    }]
+  ]);
   assert.deepEqual(result, { status: "finalized" });
 });
 

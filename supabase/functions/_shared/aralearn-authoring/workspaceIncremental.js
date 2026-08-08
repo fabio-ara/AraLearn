@@ -427,27 +427,43 @@ function normalizeCardPositions(microsequence) {
   });
 }
 
-function collectIds(value, ids = new Set()) {
-  if (Array.isArray(value)) {
-    value.forEach((item) => collectIds(item, ids));
-    return ids;
-  }
-  if (!isPlainObject(value)) return ids;
-  if (text(value.id)) ids.add(text(value.id));
-  Object.values(value).forEach((item) => collectIds(item, ids));
-  return ids;
+function entityIdentityKey(entityType, entityId) {
+  return `${entityType}\u0000${entityId}`;
 }
 
-function createDescendantIdFactory(newRootId, usedIds) {
+function collectWorkspaceIdentityKeys(document) {
+  const identities = new Set();
+  const register = (entityType, entity) => {
+    const entityId = text(entity?.id);
+    if (entityId) identities.add(entityIdentityKey(entityType, entityId));
+  };
+  for (const course of document?.courses || []) {
+    register("course", course);
+    for (const moduleValue of course?.modules || []) {
+      register("module", moduleValue);
+      for (const lesson of moduleValue?.lessons || []) {
+        register("lesson", lesson);
+        for (const topic of lesson?.topics || []) register("topic", topic);
+        for (const microsequence of lesson?.microsequences || []) {
+          register("microsequence", microsequence);
+          for (const card of microsequence?.cards || []) register("card", card);
+        }
+      }
+    }
+  }
+  return identities;
+}
+
+function createDescendantIdFactory(newRootId, usedIdentityKeys) {
   return (entityType, path) => {
     const base = `${newRootId}--${entityType}-${path.join("-")}`;
     let candidate = base;
     let collision = 1;
-    while (usedIds.has(candidate)) {
+    while (usedIdentityKeys.has(entityIdentityKey(entityType, candidate))) {
       collision += 1;
       candidate = `${base}-${collision}`;
     }
-    usedIds.add(candidate);
+    usedIdentityKeys.add(entityIdentityKey(entityType, candidate));
     return candidate;
   };
 }
@@ -533,11 +549,17 @@ function remapCourseContents(course, path, nextId) {
   });
 }
 
-function remapCopiedEntity(entityType, entity, newRootId, usedIds, targetParent) {
+function remapCopiedEntity(
+  entityType,
+  entity,
+  newRootId,
+  usedIdentityKeys,
+  targetParent
+) {
   const previousRootId = entity.id;
   entity.id = newRootId;
-  usedIds.add(newRootId);
-  const nextId = createDescendantIdFactory(newRootId, usedIds);
+  usedIdentityKeys.add(entityIdentityKey(entityType, newRootId));
+  const nextId = createDescendantIdFactory(newRootId, usedIdentityKeys);
 
   if (entityType === "course") {
     remapCourseContents(entity, [], nextId);
@@ -580,8 +602,8 @@ export function cloneWorkspaceEntityWithFreshIds(document, {
     fail("invalid_workspace_copy", "newRootId deve ser texto não vazio.");
   }
 
-  const usedIds = collectIds(document);
-  if (usedIds.has(normalizedRootId)) {
+  const usedIdentityKeys = collectWorkspaceIdentityKeys(document);
+  if (usedIdentityKeys.has(entityIdentityKey(entityType, normalizedRootId))) {
     fail(
       "workspace_entity_conflict",
       "newRootId precisa ser inédito no workspace.",
@@ -600,7 +622,7 @@ export function cloneWorkspaceEntityWithFreshIds(document, {
     entityType,
     clone(entity),
     normalizedRootId,
-    usedIds,
+    usedIdentityKeys,
     targetParent
   );
 }

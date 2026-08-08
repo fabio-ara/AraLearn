@@ -14,8 +14,8 @@ Início
 │       └── lição
 │           └── microssequência
 │               └── card
+├── organização contextual de grupos e cursos de Trilhas
 └── painel
-    ├── Organizar: índice e ações contextuais de Trilhas
     ├── Coleções: grupos e cursos oficiais
     └── Chatbot: Chatbot personalizado e Plugin
 ```
@@ -26,9 +26,8 @@ expõe `planned`, `ready`, `partial`, hashes ou revisões. Esses detalhes podem
 existir na persistência para validar concorrência e publicação, mas não criam
 categorias de navegação.
 
-A tela inicial é a superfície canônica de leitura de `Trilhas`. O painel não
-repete descrições, progresso, play nem cards de estudo: **Organizar** reduz a
-biblioteca pessoal a um índice estrutural. Em `Trilhas`, o grupo é pessoal e
+A tela inicial é a superfície canônica de leitura e organização de `Trilhas`.
+Não há um índice paralelo repetindo os mesmos cursos. Em `Trilhas`, o grupo é pessoal e
 administrável pela própria conta; em `Coleções`, o grupo é editorial e somente
 uma capacidade autenticada permite alterá-lo. A linguagem de grupo permanece
 previsível sem duplicar a tela inicial, compartilhar propriedade ou ampliar
@@ -41,8 +40,8 @@ No leitor, ficam somente **Editar card** e **Abrir painel**. Foram removidos os
 atalhos redundantes para Chatbot, criação rápida e importação/exportação, além
 do menu genérico sem alvo, do editor de fonte-guia já desativado e da criação
 manual de um plano vazio. Planos criados pelo Chatbot ou Plugin continuam
-visíveis e administráveis em `Trilhas`. Em **Organizar**, o ícone de mais abre
-somente as ações contextuais do item correspondente.
+visíveis e administráveis em `Trilhas`. O ícone de mais abre somente as ações
+contextuais do item correspondente.
 
 Cada card HTML estrutural de navegação oferece diretamente somente as ações de
 uso frequente:
@@ -57,10 +56,10 @@ estudo. Curso privado é editável pelo dono. Curso oficial é editável somente
 por uma conta administrativa/editorial. Na ausência de uma capacidade
 confirmada, o cliente falha fechado e desabilita edição e exclusão.
 
-## Painel integrado
+## Projeção integrada
 
-O painel lê primeiro a projeção paginada completa de `Trilhas` para montar o
-índice **Organizar**. `Coleções` é carregada somente quando a aba é aberta. Um
+A tela inicial lê a projeção paginada completa de `Trilhas`; `Coleções` é
+carregada somente quando a aba é aberta. Um
 cache por conta substitui o estado anterior somente ao terminar todas as
 páginas. No uso offline ele é somente leitura e não concede permissões.
 
@@ -76,7 +75,7 @@ Selecionar um curso oficial usa uma ação dedicada que cria apenas o vínculo
 pessoal. Abrir ou iniciar um curso é leitura e navegação: não seleciona, move,
 copia nem publica. Em `Coleções`, contas editoriais também administram grupos e
 cursos oficiais pelo aplicativo; em `Trilhas`, cada pessoa administra seus
-grupos e a posição de suas seleções.
+grupos e a posição de planos, composições em materialização e seleções.
 
 Ao abrir um plano, a árvore corrente permite renomear, descrever, reordenar,
 excluir e observar cursos, módulos, lições e microssequências. Observações

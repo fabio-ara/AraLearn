@@ -1022,7 +1022,7 @@ test("401 de RPC invalida a sessão e propaga estado explícito para a porta de 
   });
 
   await assert.rejects(
-    () => catalog.listLibrary(),
+    () => catalog.listTrailItems(),
     (error) => error.authRequired === true && error.status === 401
   );
   assert.equal(cleared, 1);

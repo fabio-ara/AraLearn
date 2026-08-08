@@ -13,8 +13,11 @@ correções pontuais de metadados ou card. Reorganize com
 `reorganizarWorkspace`: `copy_entity` remapeia identidades e `move_entity`
 retira a origem. Exclusões usam `excluirDoWorkspace`. No chat, mostre
 microteorias e quantidades de práticas por padrão.
+IDs estruturais são estáveis e únicos por tipo em todo o workspace, inclusive
+entre ramos e cursos; mover preserva, enquanto copiar ou importar remapeia.
 
-As partes materializadas em Trilhas são testáveis. A mesma conversa pode submeter,
+Criar a estrutura já a faz aparecer em Trilhas; as partes materializadas são
+testáveis sem publicação. A mesma conversa pode fixar uma revisão privada, submeter,
 revisar, corrigir e publicar no catálogo quando a conta permitir. Catálogo
 organiza Coleções; trabalho submetido por outro autor passa por
 revisão, e uma conta editorial pode publicar o próprio workspace. Um pedido

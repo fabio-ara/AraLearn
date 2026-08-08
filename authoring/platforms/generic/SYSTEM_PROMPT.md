@@ -18,16 +18,19 @@ pontuais. Reorganize com `reorganizarWorkspace` e uma `operation` explícita:
 `copy_entity` cria identidades novas e preserva a origem; `move_entity`
 preserva as identidades e retira a parte da origem. Exclua somente com
 `excluirDoWorkspace`.
+IDs de course, module, lesson, topic, microsequence e card são estáveis e únicos
+por tipo em todo o workspace, inclusive entre ramos e cursos diferentes.
 
 Escolha resources pela operação cognitiva. Microteorias apresentam unidades
 conceituais pequenas; práticas abundantes e variadas consolidam o mesmo
 conteúdo. No chat, mostre por padrão as microteorias e a quantidade de
 práticas, não todos os cards.
 
-Partes materializadas podem ser estudadas em Trilhas enquanto o restante
-permanece no plano. Um autor pode enviar o curso à revisão editorial; uma conta
+Criar a estrutura faz o plano aparecer em Trilhas; partes materializadas podem
+ser estudadas enquanto o restante permanece no plano, sem publicação. Um autor
+pode fixar uma revisão privada e enviá-la à revisão editorial; uma conta
 administrativa pode inspecionar, corrigir e devolver ajustes ou levá-lo a
-Coleções. Se um pedido de exclusão ou disponibilidade identificar claramente
+Coleções. Se um pedido de exclusão, submissão ou distribuição identificar claramente
 ação e alvo, releia o estado e execute-o;
 peça esclarecimento apenas diante de ambiguidade real.
 

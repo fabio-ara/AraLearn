@@ -100,9 +100,10 @@ Implante migrations e regras de acesso antes das Edge Functions e da aplicação
 - `select_catalog_course`: registra a seleção de uma publicação oficial sem copiar sua árvore;
 - `unselect_catalog_course`: retira a seleção do usuário sem alterar a publicação;
 - `delete_own_account`: exige JWT e confirmação explícita, remove transacionalmente a conta autenticada e seus dados pessoais e não concede execução a `anon`;
-- `apply_sync_batch`: aplica lote idempotente apenas de estado pessoal pela regra da última mutação válida;
+- `apply_sync_batch`: conserva somente a associação leve de cursos oficiais à
+  conta; estado de estudo e organização não passam por esse canal;
 - `pull_sync_changes`: pagina somente mudanças pessoais e sinais compactos;
-- `bootstrap_replica`: devolve seleções, progresso, comentários, trilhas, metadados e `highWaterSequence` da mesma visão transacional;
+- `bootstrap_replica`: devolve seleções leves e `highWaterSequence` da mesma visão transacional;
 - `list_catalog_collections`: retorna coleções e metadados publicados;
 - `list_authoring_catalog_collections_v4` e `list_authoring_catalog_courses_v4`: são leitores internos do catálogo publicado, expostos pelo chat somente quando o principal possui `catalog:read`;
 - `create_catalog_collection_v5`, `update_catalog_collection_v5` e
@@ -110,11 +111,15 @@ Implante migrations e regras de acesso antes das Edge Functions e da aplicação
   capacidade editorial, idempotência e revisão;
 - `move_catalog_collection_v5` e `move_catalog_course_v5`: alteram somente a
   classificação e a ordem do catálogo, por compare-and-swap;
-- `list_user_course_summaries`: retorna os metadados dos cursos selecionados;
-- `list_personal_library_courses`: pagina os cursos selecionados da própria conta e informa sua trilha atual;
-- `list_personal_study_paths`: pagina as trilhas da própria conta e informa quantos cursos permanecem em **Outros**;
-- `create_personal_study_path`, `rename_personal_study_path` e `delete_personal_study_path`: administram trilhas próprias; a exclusão preserva cursos e estado de estudo;
-- `move_personal_course_selection`: move uma seleção para uma trilha própria ou para **Outros**;
+- `list_trail_items_v1`: pagina a projeção canônica de grupos, planos, cursos em
+  materialização e seleções, com identidade estável e progresso agregado;
+- `mutate_trails_v1`: cria, renomeia e ordena grupos e posiciona qualquer
+  `trailItemId`, sem copiar conteúdo;
+- `get_trail_workspace_course_v1`: pagina as partes correntes de um curso de
+  workspace sob uma revisão fixa, para montagem e validação no cliente;
+- `load_trail_personal_state_v1` e `mutate_trail_personal_state_v1`: leem e
+  alteram o estado corrente de progresso, **Rever** e observações por
+  `trailItemId`, com CAS e operações pequenas;
 - `compact_sync_history`: simula ou executa a compactação administrativa abaixo do watermark seguro;
 - `current_user_capabilities`: informa à interface as permissões da conta sem expor tabelas privadas;
 - `create_authoring_workspace_v5`: cria o workspace composto, opcionalmente a partir de um curso ou de uma submissão assumida;
@@ -135,9 +140,9 @@ Implante migrations e regras de acesso antes das Edge Functions e da aplicação
 - `manage_current_educational_workspace_v1`: cria e atualiza espaços, aceita ou
   cancela convites, altera participação e transfere propriedade com recibo
   idempotente;
-- `remove_course_from_personal_library_v5`: retira a seleção oficial exata ou,
-  no curso privado próprio, remove a seleção, arquiva a publicação e encerra
-  sua composição vinculada, tudo com CAS e idempotência;
+- `remove_course_from_personal_library_v5`: retira a seleção exata e, quando
+  pertinente, arquiva seu artefato privado, sem apagar uma composição de
+  workspace que ainda exista sob o mesmo `trailItemId`;
 - `remove_catalog_course_v5`: retira uma publicação oficial, suas seleções e
   sua composição vinculada, com CAS da classificação e do hash do curso;
 - `submit_private_course_for_catalog_review_v5`: envia uma revisão privada específica para avaliação;
@@ -222,8 +227,8 @@ segredos específicos de cada função. Não use `*`. Informe em
 `-AllowedOrigin` somente origens adicionais; o roteiro já conserva o site, o
 servidor local e a origem estável do WebView Android.
 
-`apply_sync_batch` recebe somente trilhas e a associação leve entre seleção e
-trilha. Estado de estudo e observações usam suas RPCs contextuais próprias;
+`apply_sync_batch` recebe somente a associação leve entre curso oficial e
+conta. Grupos, estado de estudo e observações usam suas RPCs contextuais próprias;
 selecionar ou remover um curso também usa operações idempotentes dedicadas.
 Conteúdo pedagógico nunca passa pelo sincronizador. Cada operação traz
 `mutationId` e uma sequência causal do dispositivo. Repetir uma requisição
@@ -233,10 +238,14 @@ pelo servidor passa a ser o estado corrente. Uma rejeição determinística
 reverte somente aquela mutação, não deixa linha parcial e não impede as demais
 mutações válidas do lote.
 
-`list_catalog_collections` expõe somente metadados pesquisáveis de coleções e cursos oficiais publicados. Coleções não concedem escrita a usuários comuns. Trilhas pessoais forçam `owner_id = auth.uid()`, participam do feed e da carga inicial de `bootstrap_replica` e não fazem parte do contrato JSON v4.
+`list_catalog_collections` expõe somente metadados pesquisáveis de coleções e
+cursos oficiais publicados. Coleções não concedem escrita a usuários comuns.
+`list_trail_items_v1` deriva a visão autenticada de `trail_items`, workspaces e
+seleções; grupos e posições pertencem à conta e não fazem parte do contrato
+JSON v4.
 
-O bootstrap hospedado retorna somente o estado pessoal pequeno, os metadados dos
-cursos selecionados e o `highWaterSequence`. Para uma revisão endereçada por
+O bootstrap hospedado retorna somente as seleções leves e o
+`highWaterSequence`. Para uma revisão endereçada por
 SHA-256, o runtime compara o hash com a réplica local, baixa o JSON imutável pelo
 endpoint `aralearn-course-revisions`, valida contrato e hash e só então projeta
 o conteúdo no IndexedDB. A ausência dessa revisão é erro; o cliente não recorre
@@ -244,11 +253,9 @@ a uma árvore remota para o mesmo hash.
 
 Uma publicação que remova alvo de mutação local não resolvida fica adiada no
 dispositivo, sem descarte silencioso da outbox. Arquivar ou marcar uma publicação
-como removida apaga seleções e estado pessoal dependente no mesmo commit, emite
-tombstones pelo feed e a exclui de novos bootstraps. Se a publicação for
-privada e própria, o mesmo commit exclui a raiz vinculada ou encerra o workspace
-quando ela era seu único curso; desse modo `list_trail_items_v1` não a projeta
-novamente como plano.
+como removida apaga sua seleção. Se uma composição de workspace ainda existir,
+`trailItemId`, grupo e estado pessoal permanecem e a projeção continua mostrando
+o mesmo item; sua exclusão exige um comando autoral próprio.
 
 `authoring_workspace_publications` admite uma única composição ativa por
 `course_id` e destino. Ao criar um workspace com `sourceCourseId`, o gateway
@@ -256,7 +263,7 @@ reutiliza o vínculo ativo acessível em vez de materializar outro. A restriçã
 não usa título: workspaces independentes com o mesmo nome continuam válidos.
 
 `list_trail_items_v1` continua paginado no servidor. O cliente percorre todas
-as páginas, deduplica por `itemId`, rejeita cursor repetido e só substitui a
+as páginas, deduplica por `trailItemId`, rejeita cursor repetido e só substitui a
 entrada única do cache depois de obter a projeção completa. Cache e fallback de
 tela são sempre sem autoridade: todos os controles de escrita e as capacidades
 editoriais ficam falsos até uma leitura autenticada completa.

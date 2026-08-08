@@ -616,19 +616,26 @@ export class SupabaseAuthoringAdapter {
 
   async listPersonalLibraryCourses({
     principal,
-    limit = 50,
-    afterPosition = null,
-    afterSelectionId = null,
-    query = "",
+    limit = 20,
+    afterPathPosition = null,
+    afterItemPosition = null,
+    afterId = null,
     deadlineAt = null
   }) {
-    return first(await this.rpc("list_personal_library_courses", {
-      p_owner_id: principal.actorId,
+    return first(await this.rpc("list_trail_items_for_actor_v1", {
+      p_actor_id: principal.actorId,
       p_limit: limit,
-      p_after_position: afterPosition,
-      p_after_selection_id: afterSelectionId,
-      p_query: query
-    }, { deadlineAt })) || { items: [], nextCursor: null };
+      p_after_path_position: afterPathPosition,
+      p_after_item_position: afterItemPosition,
+      p_after_id: afterId
+    }, { deadlineAt })) || {
+      space: "trails",
+      groups: [],
+      items: [],
+      hasMore: false,
+      nextCursor: null,
+      capabilities: { catalogManage: false, catalogReview: false }
+    };
   }
 
   async removePersonalLibraryCourse({

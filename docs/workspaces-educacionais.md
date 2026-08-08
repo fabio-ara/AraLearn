@@ -27,7 +27,8 @@ que o backend confirmar a primeira composição, o plano aparece em **Trilhas**;
 não é necessário criar antes um contêiner vazio no aplicativo. Cards
 materializados passam a ser estudáveis no mesmo item, sem uma segunda cópia.
 
-No painel de **Trilhas**, é possível:
+No detalhe do workspace, aberto pela ação contextual do item em **Trilhas**, é
+possível:
 
 - abrir um workspace e consultar pessoas, papel e composição dos cursos;
 - ajustar nome, finalidade e tipo;
@@ -95,8 +96,8 @@ parte do curso mantém uma linha corrente. Esta etapa acrescenta apenas:
 - um recibo pequeno por comando, eliminado após sete dias;
 - uma resposta e um estado correntes por observação, sem histórico ou cópia do card.
 
-Uma publicação privada é vinculada ao workspace e selecionada para seus membros;
-o JSON do curso não é copiado. Ao remover um membro, o acesso concedido somente
+O workspace é projetado em Trilhas para quem possui acesso local; não é preciso
+publicá-lo nem copiar o JSON do curso. Ao remover um membro, o acesso concedido somente
 por aquele workspace é revogado. Recibos não guardam curso, card, conversa ou
 conteúdo anterior.
 

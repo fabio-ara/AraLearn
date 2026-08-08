@@ -9,13 +9,7 @@ import {
 
 const OUTBOX_SEQUENCE_STATE_ID = "outbox.sequence";
 
-export const PERSONAL_STATE_OUTBOX_STORE_NAMES = Object.freeze([
-  "lessonProgress",
-  "cardProgress",
-  "comments",
-  "studyPaths",
-  "studyPathCourses"
-]);
+export const PERSONAL_STATE_OUTBOX_STORE_NAMES = Object.freeze(["courseSelections"]);
 
 const LOCAL_CONTENT_STORE_NAMES = Object.freeze(
   RELATIONAL_ROW_COLLECTIONS.filter((storeName) => storeName !== "projectMeta")
@@ -35,56 +29,21 @@ const LOCAL_METADATA_FIELDS = new Set([
 ]);
 
 const RECONSTRUCTION_FIELDS = Object.freeze({
-  lessonProgress: ["courseId", "selectionId", "lessonId"],
-  cardProgress: ["courseId", "selectionId", "cardId"],
-  comments: ["courseId", "selectionId", "cardId"]
+  courseSelections: ["courseId"]
 });
 
 const COMPLETE_STATE_PATCH_FIELDS = Object.freeze({
-  lessonProgress: ["cursor", "completedAt"],
-  cardProgress: ["completedAt", "reviewMarkedAt"],
-  comments: ["category", "body"],
-  studyPaths: ["title", "position"],
-  studyPathCourses: ["pathId", "selectionId", "courseId", "position"]
+  courseSelections: ["courseId", "position"]
 });
 
 // Campos de identidade auxiliam a leitura local, mas nunca entram num patch:
 // a autorização do servidor é a única fonte de propriedade da organização.
 const MUTABLE_STATE_UPDATE_FIELDS = Object.freeze({
-  lessonProgress: new Set(["cursor", "completedAt"]),
-  cardProgress: new Set(["completedAt", "reviewMarkedAt"]),
-  comments: new Set(["category", "body"]),
-  studyPaths: new Set(["title", "position"]),
-  studyPathCourses: new Set(["pathId", "selectionId", "courseId", "position"])
-});
-
-// Estes campos ajudam a remontar o caminho de leitura no dispositivo, mas não
-// fazem parte do protocolo remoto. Uma sincronização pode substituir uma linha
-// enriquecida por sua forma enxuta enquanto uma ação de estudo já está em
-// memória; essa diferença local não pode invalidar a gravação do progresso.
-const LOCAL_ONLY_STATE_FIELDS = Object.freeze({
-  lessonProgress: new Set([
-    "moduleId", "pathKey", "courseKey", "moduleKey", "lessonKey"
-  ]),
-  cardProgress: new Set([
-    "moduleId", "lessonId", "lessonProgressId", "pathKey", "cardKey", "position",
-    "courseKey", "moduleKey", "lessonKey", "microsequenceKey"
-  ])
+  courseSelections: new Set(["position"])
 });
 
 const REMOTE_PAYLOAD_FIELDS = Object.freeze({
-  lessonProgress: [
-    "courseId", "selectionId", "lessonId", "cursor", "completedAt"
-  ],
-  cardProgress: [
-    "courseId", "selectionId", "cardId", "completedAt", "reviewMarkedAt"
-  ],
-  comments: [
-    "courseId", "selectionId", "cardId", "courseKey", "moduleKey",
-    "lessonKey", "microsequenceKey", "cardKey", "cardTitle", "category", "body"
-  ],
-  studyPaths: ["title", "position"],
-  studyPathCourses: ["pathId", "selectionId", "courseId", "position"]
+  courseSelections: ["courseId", "position"]
 });
 
 function clone(value) {
@@ -144,10 +103,7 @@ function assertMutation(mutation) {
 function nextChangedFields(mutation, currentRow) {
   if (mutation.operation === "delete") return [];
   const calculated = rowChangedFields(currentRow, mutation.nextRow);
-  const localOnlyFields = LOCAL_ONLY_STATE_FIELDS[mutation.storeName];
-  const protocolChanges = localOnlyFields
-    ? calculated.filter((fieldName) => !localOnlyFields.has(fieldName))
-    : calculated;
+  const protocolChanges = calculated;
   let selected = calculated;
   if (Array.isArray(mutation.changedFields)) {
     const declared = new Set(

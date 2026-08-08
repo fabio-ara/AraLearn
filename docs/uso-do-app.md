@@ -6,9 +6,10 @@ O uso cotidiano segue um caminho simples: entrar, escolher cursos, organizá-los
 
 Quatro ideias bastam para acompanhar o funcionamento cotidiano:
 
-1. A conta guarda seleções, trilhas, estado funcional de retomada e observações.
+1. A conta guarda grupos de Trilhas, seleções, estado funcional de retomada e observações.
 2. O catálogo guarda uma única publicação oficial de cada curso.
-3. O dispositivo baixa os cursos selecionados e mantém uma réplica para uso sem conexão.
+3. O dispositivo mantém cursos oficiais selecionados e a composição corrente
+   dos itens de workspace já abertos para uso sem conexão.
 4. Ao estudar, o AraLearn grava primeiro no dispositivo e sincroniza depois.
 
 ```text
@@ -31,19 +32,16 @@ Depois da entrada, três etapas indicam a preparação do dispositivo, da conta 
 
 ## Encontrar e organizar conteúdo
 
-O botão de nuvem abre as funções complementares sem repetir a tela de estudo:
+O botão de nuvem abre as funções complementares à tela inicial:
 
-- **Organizar** mostra um índice compacto dos grupos, planos e cursos de
-  `Trilhas`;
 - **Coleções** apresenta os cursos oficiais disponíveis;
 - **Chatbot** contém a configuração do Chatbot personalizado e do Plugin.
 
-A tela inicial continua sendo a única superfície para percorrer e iniciar os
-cursos de `Trilhas`. Em **Organizar**, descrições, progresso e botões de estudo
-não são repetidos: ações menos frequentes ficam recolhidas no menu do grupo,
-curso ou parte correspondente. **Criar grupo** permanece como a única ação
-direta da área; sair e excluir a conta ficam recolhidos no menu de conta do
-rodapé. Isso não torna os grupos equivalentes no banco:
+A tela inicial é a superfície única para percorrer, iniciar e organizar os
+cursos de `Trilhas`. O seletor mostra planos e cursos da mesma projeção; ações
+menos frequentes ficam nos controles contextuais do grupo, curso ou parte
+correspondente. Sair e excluir a conta ficam recolhidos no menu de conta. Isso
+não torna os grupos equivalentes no banco:
 
 - em `Trilhas`, cada grupo é pessoal e pode ser criado, renomeado, reordenado ou
   excluído pela própria pessoa;
@@ -66,15 +64,14 @@ O aplicativo não cria um plano vazio por um formulário próprio. O Chatbot ou 
 Plugin cria o workspace e registra a estrutura planejada; assim que o servidor
 confirma esse trabalho, o plano aparece em `Trilhas`. Conforme os cards são
 materializados, o mesmo item passa a oferecer conteúdo estudável, sem criar uma
-cópia paralela. O controle de novo grupo em **Organizar** administra a
+cópia paralela. O controle de novo grupo na tela inicial administra a
 organização pessoal; não cria cursos ou planos.
 
 Os cards distinguem a origem sem depender dos botões: um ícone azul identifica
 planejamento, uma chave vermelha identifica curso somente privado e a pasta
 verde de `Coleções` identifica um curso público selecionado em `Trilhas`. Não
 há rótulo textual concorrendo com o título. Donos e contas editoriais podem
-usar **Organizar curso** para abrir a composição corrente ligada à mesma
-publicação.
+alternar para a edição na própria hierarquia, sem abrir uma árvore paralela.
 
 `Coleções` é consultada somente quando a aba é aberta. `Trilhas` carrega todas
 as páginas antes de substituir a lista anterior e só então conserva essa
@@ -104,17 +101,18 @@ exigem confirmação. Elas são diferentes de adicionar ou retirar um curso da
 biblioteca pessoal. **Outros cursos** é o destino estrutural do catálogo:
 permanece no fim e recebe cursos que deixam uma coleção temática.
 
-**Retirar de Trilhas** remove somente a seleção daquela conta. A publicação
+**Retirar de Trilhas** remove somente uma seleção daquela conta. A publicação
 oficial continua disponível em `Coleções` para outras pessoas. Para uma conta
 editorial, o mesmo card mostra também **Retirar de Coleções**, uma ação
 administrativa distinta que, depois da confirmação, retira a publicação de
-`Coleções` e de todas as contas que a selecionaram. Em publicação privada
-própria, o rótulo é **Excluir curso privado**.
+`Coleções` e de todas as contas que a selecionaram. Um curso proveniente de
+workspace usa a ação distinta **Excluir curso privado**, baseada na composição
+corrente e não numa seleção.
 
 A retirada identifica a seleção exata, e não o título. Por isso duas tentativas
-independentes com o mesmo nome continuam sendo cursos diferentes. Quando a
-pessoa retira uma publicação privada própria, o AraLearn encerra também a
-composição ligada a essa publicação; ela não reaparece como plano residual.
+independentes com o mesmo nome continuam sendo cursos diferentes. Arquivar um
+artefato privado não apaga uma composição de workspace ativa; para retirá-la de
+Trilhas, a pessoa exclui explicitamente a raiz ou o workspace correspondente.
 
 Antes de excluir uma publicação, o aplicativo termina as gravações locais e
 consulta o estado remoto corrente. Depois da confirmação do servidor, atualiza
@@ -122,13 +120,15 @@ a réplica e a lista. Se o servidor tiver concluído a exclusão, mas o disposit
 não conseguir atualizar a tela, a mensagem informa que a retirada já ocorreu e
 pede apenas uma sincronização; não se deve repetir o comando.
 
-## Organizar Trilhas
+## Organizar Trilhas na tela inicial
 
-Na tela inicial, a pessoa acompanha o que planejou e o que já pode estudar. Em
-**Organizar**, pode criar, renomear e reordenar grupos pessoais, além de mover
-ou reordenar neles os cursos selecionados. Excluir um grupo deixa seus cursos
+Na tela inicial, a pessoa acompanha o que planejou e o que já pode estudar. Ali
+pode criar, renomear e reordenar grupos pessoais, além de mover
+ou reordenar neles planos, cursos em materialização e cursos oficiais
+selecionados. Excluir um grupo deixa seus itens
 em **Outros**;
-**Retirar de Trilhas** é a ação separada que remove uma seleção.
+**Retirar de Trilhas** é a ação separada que remove uma seleção oficial, e
+**Excluir** remove a composição privada escolhida.
 Mover uma parte muda sua posição na composição corrente; copiar uma parte para
 outro curso cria uma cópia independente. Excluir uma parte retira também seus
 descendentes, após confirmação. O progresso do estudo continua separado do

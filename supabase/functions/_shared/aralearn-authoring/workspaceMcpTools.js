@@ -16,7 +16,7 @@ const ENTITY_TYPE = Object.freeze({
 });
 const AUTHORING_INTENT = Object.freeze({
   type: "string",
-  description: "inspect lê; create planeja/cria; extend amplia/constrói; audit audita ou reaudita sem escrever; repair aplica reparos autorizados; revise revisa; restructure reorganiza; publish publica; study estuda.",
+  description: "inspect lê; create planeja/cria; extend amplia/constrói; audit audita ou reaudita sem escrever; repair aplica reparos autorizados; revise revisa; restructure reorganiza; publish prepara submissão ou distribui em Coleções; study estuda.",
   enum: [
     "inspect", "create", "extend", "audit", "repair", "revise",
     "restructure", "publish", "study"
@@ -422,56 +422,71 @@ const AUTHORING_CONTEXT_DATA_SCHEMA = schema([
   },
   access: AUTHORING_ACCESS_SCHEMA
 });
-const PERSONAL_COURSE_SCHEMA = schema([
-  "selectionId",
-  "courseId",
-  "kind",
-  "contractKey",
-  "title",
-  "goal",
-  "position",
-  "publicationSeq",
-  "catalogRevision",
-  "contentHash",
-  "moduleCount",
-  "lessonCount",
-  "pathId",
-  "pathTitle",
-  "lastStudyStateAt"
-], {
-  selectionId: UUID,
-  courseId: UUID,
-  kind: { type: "string", enum: ["official", "personal"] },
-  contractKey: NON_EMPTY_STRING,
+const TRAIL_GROUP_SCHEMA = schema(["id", "title", "position"], {
+  id: UUID,
   title: NON_EMPTY_STRING,
-  goal: NON_EMPTY_STRING,
-  position: NON_NEGATIVE_INTEGER,
-  publicationSeq: NON_NEGATIVE_INTEGER,
-  catalogRevision: REVISION,
-  contentHash: SHA256,
+  position: NON_NEGATIVE_INTEGER
+});
+const TRAIL_ITEM_SCHEMA = schema([
+  "trailItemId", "workspaceId", "courseKey", "courseId", "selectionId",
+  "kind", "source", "origin", "title", "description", "moduleCount",
+  "lessonCount", "microsequenceCount", "cardCount", "completedCardCount", "contentHash",
+  "revision", "canEdit", "canDelete", "canRemove", "pathId", "pathTitle",
+  "pathPosition", "itemPosition", "updatedAt"
+], {
+  trailItemId: UUID,
+  workspaceId: NULLABLE_UUID,
+  courseKey: { type: ["string", "null"], minLength: 1, maxLength: 240 },
+  courseId: NULLABLE_UUID,
+  selectionId: NULLABLE_UUID,
+  kind: { type: "string", enum: ["plan", "course"] },
+  source: { type: "string", enum: ["workspace", "selection"] },
+  origin: { type: "string", enum: ["workspace", "private", "catalog"] },
+  title: NON_EMPTY_STRING,
+  description: { type: "string" },
   moduleCount: NON_NEGATIVE_INTEGER,
   lessonCount: NON_NEGATIVE_INTEGER,
+  microsequenceCount: NON_NEGATIVE_INTEGER,
+  cardCount: NON_NEGATIVE_INTEGER,
+  completedCardCount: NON_NEGATIVE_INTEGER,
+  contentHash: NULLABLE_SHA256,
+  revision: { type: ["integer", "null"], minimum: 1 },
+  canEdit: { type: "boolean" },
+  canDelete: { type: "boolean" },
+  canRemove: { type: "boolean" },
   pathId: NULLABLE_UUID,
   pathTitle: { type: ["string", "null"] },
-  lastStudyStateAt: NULLABLE_DATE_TIME
+  pathPosition: { type: ["integer", "null"], minimum: 0 },
+  itemPosition: { type: ["integer", "null"], minimum: 0 },
+  updatedAt: DATE_TIME
 });
-const PERSONAL_COURSE_CURSOR_SCHEMA = schema([
-  "afterPosition", "afterSelectionId"
+const TRAIL_CURSOR_SCHEMA = schema([
+  "afterPathPosition", "afterItemPosition", "afterId"
 ], {
-  afterPosition: NON_NEGATIVE_INTEGER,
-  afterSelectionId: UUID
+  afterPathPosition: NON_NEGATIVE_INTEGER,
+  afterItemPosition: NON_NEGATIVE_INTEGER,
+  afterId: UUID
 });
-const PERSONAL_LIBRARY_DATA_SCHEMA = schema(["items", "nextCursor"], {
+const PERSONAL_LIBRARY_DATA_SCHEMA = schema([
+  "space", "groups", "items", "hasMore", "nextCursor", "capabilities"
+], {
+  space: { const: "trails" },
+  groups: { type: "array", items: TRAIL_GROUP_SCHEMA },
   items: {
     type: "array",
-    items: PERSONAL_COURSE_SCHEMA
+    items: TRAIL_ITEM_SCHEMA
   },
+  hasMore: { type: "boolean" },
   nextCursor: {
     anyOf: [
       { type: "null" },
-      PERSONAL_COURSE_CURSOR_SCHEMA
+      TRAIL_CURSOR_SCHEMA
     ]
-  }
+  },
+  capabilities: schema(["catalogManage", "catalogReview"], {
+    catalogManage: { type: "boolean" },
+    catalogReview: { type: "boolean" }
+  })
 });
 const PERSONAL_LIBRARY_REMOVE_DATA_SCHEMA = schema([
   "status", "selectionId", "courseId", "kind", "courseArchived",
@@ -1464,11 +1479,12 @@ const EDUCATIONAL_WORKSPACE_COMMENTS_DATA_SCHEMA = Object.freeze({
         type: "array",
         maxItems: 20,
         items: schema([
-          "courseId", "cardId", "courseTitle", "cardTitle", "entityPath",
+          "trailItemId", "courseId", "cardId", "courseTitle", "cardTitle", "entityPath",
           "targetAvailable", "totalCount", "openCount", "byCategory"
         ], {
-          courseId: UUID,
-          cardId: UUID,
+          trailItemId: UUID,
+          courseId: { anyOf: [UUID, { type: "null" }] },
+          cardId: ID,
           courseTitle: { type: "string" },
           cardTitle: { type: ["string", "null"] },
           entityPath: {
@@ -1491,7 +1507,7 @@ const EDUCATIONAL_WORKSPACE_COMMENTS_DATA_SCHEMA = Object.freeze({
         type: "object",
         additionalProperties: false,
         required: [
-          "commentId", "workspaceId", "courseId", "cardId", "entityPath",
+          "commentId", "workspaceId", "trailItemId", "courseId", "cardId", "entityPath",
           "courseTitle", "cardTitle", "author", "category", "body", "status",
           "response", "resolutionNote", "courseRevisionHash", "targetAvailable",
           "correction", "createdAt", "updatedAt", "respondedAt", "resolvedAt"
@@ -1499,8 +1515,9 @@ const EDUCATIONAL_WORKSPACE_COMMENTS_DATA_SCHEMA = Object.freeze({
         properties: {
           commentId: UUID,
           workspaceId: UUID,
-          courseId: UUID,
-          cardId: UUID,
+          trailItemId: UUID,
+          courseId: { anyOf: [UUID, { type: "null" }] },
+          cardId: ID,
           entityPath: { type: ["array", "null"], minItems: 5, maxItems: 5, items: ID },
           courseTitle: { type: "string" },
           cardTitle: { type: ["string", "null"] },
@@ -1713,7 +1730,7 @@ const INDIVIDUAL_AUTHORING_WORKSPACE_MCP_TOOLS = Object.freeze([
   tool(
     "prepararAutoriaAraLearn",
     "Preparar autoria AraLearn",
-    "Use no início da etapa: create planeja/cria, extend amplia/constrói, audit audita sem escrever, repair repara, restructure reorganiza e publish publica.",
+    "Use no início da etapa: create planeja/cria, extend amplia/constrói, audit audita sem escrever, repair repara, restructure reorganiza e publish prepara submissão ou distribui em Coleções.",
     readSchema(["intent"], {
       intent: AUTHORING_INTENT,
       targetEntity: {
@@ -1759,13 +1776,13 @@ const INDIVIDUAL_AUTHORING_WORKSPACE_MCP_TOOLS = Object.freeze([
   tool(
     "listarCursosDaBibliotecaPessoal",
     "Listar cursos de Trilhas",
-    "Lista publicações privadas e cursos oficiais selecionados em Trilhas, com ids e revisões.",
-    readSchema([], {
-      limit: { type: "integer", minimum: 1, maximum: 100, default: 50 },
-      afterPosition: { type: "integer", minimum: 0 },
-      afterSelectionId: UUID,
-      query: { type: "string", maxLength: 160 }
-    }),
+    "Lista a projeção corrente de Trilhas: planos, cursos em materialização e cursos selecionados, sem exigir publicação.",
+    groupedCursorReadSchema([], {
+      limit: { type: "integer", minimum: 1, maximum: 25, default: 20 },
+      afterPathPosition: NON_NEGATIVE_INTEGER,
+      afterItemPosition: NON_NEGATIVE_INTEGER,
+      afterId: UUID
+    }, ["afterPathPosition", "afterItemPosition", "afterId"]),
     PERSONAL_LIBRARY_DATA_SCHEMA,
     { readOnlyHint: true }
   ),
@@ -2315,8 +2332,8 @@ const INDIVIDUAL_AUTHORING_WORKSPACE_MCP_TOOLS = Object.freeze([
   ),
   tool(
     "publicarCursoDoWorkspace",
-    "Disponibilizar curso",
-    "Atualiza o mesmo curso em Trilhas ou o coloca em Coleções. O conteúdo já materializado fica estudável; partes ainda planejadas permanecem visíveis.",
+    "Distribuir curso",
+    "Trilhas já mostra e permite estudar o workspace sem esta operação. Materializa um artefato explícito: private prepara ou atualiza a revisão privada usada numa submissão editorial; catalog distribui ou atualiza o curso em Coleções quando a conta tem capacidade.",
     publicationSchema(),
     WORKSPACE_PUBLICATION_DATA_SCHEMA
   ),
@@ -2481,6 +2498,16 @@ function discriminatedInputSchema(alternatives, { write = false } = {}) {
       operation: Object.freeze({ type: "string", enum: operations })
     }),
     oneOf: frozenAlternatives
+  });
+}
+
+function groupedCursorReadSchema(required, properties, fields) {
+  return Object.freeze({
+    ...readSchema(required, properties),
+    allOf: fields.map((field) => ({
+      if: { required: [field] },
+      then: { required: fields }
+    }))
   });
 }
 
@@ -3152,7 +3179,7 @@ export function mapAuthoringMcpToolCall(name, rawArguments) {
     return {
       method: "GET",
       path: "/v1/library/courses" + query(args, [
-        "limit", "afterPosition", "afterSelectionId", "query"
+        "limit", "afterPathPosition", "afterItemPosition", "afterId"
       ]),
       body: null,
       requestId: null

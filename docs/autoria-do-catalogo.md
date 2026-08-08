@@ -49,17 +49,19 @@ curso e podem ser lidas sob demanda.
 O procedimento em linguagem comum está em [Criar cursos pelo
 chat](criar-cursos-pelo-chat.md).
 
-## Prévia privada
+## Estudo em Trilhas e artefato editorial
 
-| Destino | Estado | Resultado |
+| Destino | Forma | Resultado |
 | --- | --- | --- |
-| biblioteca privada | `partial` | prévia estudável, mesmo com microssequências ainda em construção |
-| biblioteca privada | `complete` | curso pessoal integral |
+| Trilhas | workspace corrente | plano visível e partes materializadas estudáveis, sem publicação |
+| submissão editorial | artefato privado | revisão exata, parcial ou completa, identificada por hash |
 | catálogo | `complete` | revisão editorial publicada |
 
-Uma prévia `partial` permite testar cedo o que já está pronto. O catálogo recusa
-`partial`. Atualizar uma publicação existente exige o hash vigente, impedindo
-sobrescrita acidental.
+O workspace pode ser testado cedo em `Trilhas`; isso não grava JSON no Storage.
+Quando a pessoa decide submeter, `publicarCursoDoWorkspace` com
+`target: "private"` fixa ou atualiza o artefato que receberá um hash. O catálogo
+recusa conteúdo incompleto. Atualizar uma publicação existente exige o hash
+vigente, impedindo sobrescrita acidental.
 
 ## Submissão editorial
 
@@ -85,13 +87,13 @@ antigo já não precisa permanecer no Storage.
 Há no máximo uma submissão ativa de cada curso por pessoa:
 
 - repetir o mesmo hash ainda ativo recupera o mesmo envio;
-- publicar uma revisão nova substitui automaticamente um envio que ainda esteja
+- fixar uma revisão privada nova substitui automaticamente um envio que ainda esteja
   apenas aguardando na fila;
 - uma revisão já assumida não é atropelada: a pessoa aguarda a decisão ou pede
   explicitamente a retirada antes de enviar outra.
 
 Quando recebe um pedido de ajustes, a pessoa continua seu próprio workspace,
-publica outra vez o mesmo curso privado e submete o novo hash. A submissão
+atualiza explicitamente o artefato privado e submete o novo hash. A submissão
 anterior fica como registro compacto da decisão, sem conservar outra cópia do
 curso.
 

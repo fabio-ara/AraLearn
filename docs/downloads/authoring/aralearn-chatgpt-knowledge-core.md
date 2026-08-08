@@ -88,14 +88,14 @@ Observações pedagógicas são manifestações situadas, não ordens de altera�
 
 Não existem assistentes separados para planejar, produzir e auditar. A mesma conversa continua do pedido inicial ao teste. As ações disponíveis derivam da conta conectada:
 
-- autoria privada e teste de prévia;
+- autoria privada e estudo imediato do que já foi materializado;
 - submissão de um curso quando o autor decidir;
 - revisão administrativa quando a conta tiver essa responsabilidade;
 - aprovação e publicação no catálogo quando houver capacidade editorial.
 
 Ausência de capacidade administrativa não impede a autoria privada. O assistente explica o próximo passo permitido sem simular uma autoridade que a conta não possui.
 
-## Disponibilizar e testar
+## Estudar, submeter e distribuir
 
 O percurso normal é:
 
@@ -103,17 +103,19 @@ O percurso normal é:
 autoria privada -> Trilhas -> submissão -> revisão administrativa -> Coleções
 ```
 
-Trilhas permite estudar e testar imediatamente o conteúdo já materializado, enquanto as demais microssequências permanecem visíveis no plano. Coleções são organizadas por contas editoriais. O trabalho de outro autor chega por submissão e revisão; uma conta editorial também pode organizar diretamente seu próprio workspace. Quando o pedido já especifica claramente disponibilidade ou exclusão e o respectivo alvo, releia o estado e execute; somente uma ambiguidade real exige nova pergunta.
+Criar a estrutura faz o plano aparecer em Trilhas. Materializar cards permite estudar e testar imediatamente esse conteúdo, enquanto as demais microssequências permanecem visíveis no plano. Coleções são organizadas por contas editoriais. O trabalho de outro autor chega por submissão e revisão; uma conta editorial também pode organizar diretamente seu próprio workspace. Nenhuma dessas ações em Trilhas exige publicação. Quando o pedido já especifica claramente submissão, distribuição ou exclusão e o respectivo alvo, releia o estado e execute; somente uma ambiguidade real exige nova pergunta.
 
-Ao disponibilizar, não escolha um modo de criação ou atualização. O vínculo corrente do curso e do destino faz a primeira chamada criar e as seguintes atualizarem a mesma identidade, mesmo depois de outra conversa. O par `existingCourseId + expectedContentHash` só deve ser enviado junto para anexar uma publicação existente quando ainda não houver vínculo; normalmente omita os dois.
+Ao publicar explicitamente, não escolha um modo de criação ou atualização. Com `target: "private"`, a operação fixa o artefato privado necessário para uma submissão editorial; com `target: "catalog"`, distribui o curso em Coleções. O vínculo corrente do curso e do destino faz a primeira chamada criar e as seguintes atualizarem a mesma identidade, mesmo depois de outra conversa. O par `existingCourseId + expectedContentHash` só deve ser enviado junto para anexar uma publicação existente quando ainda não houver vínculo; normalmente omita os dois.
 
 Se hash, destino e estado já coincidirem com a publicação corrente, a chamada é satisfeita sem novo upload ou sincronização e devolve `unchanged: true` com o mesmo `publicationSeq`.
 
 A revisão administrativa pode devolver ajustes. O autor corrige as microssequências indicadas no mesmo workspace e submete novamente quando estiver satisfeito.
 
-Para retirar um curso de Trilhas, releia a biblioteca e use juntos `selectionId`, `courseId` e o hash corrente. Em curso oficial, a operação remove somente a seleção da conta. Em publicação privada própria, remove a seleção, arquiva a publicação corrente e libera sua referência ao artefato; uma submissão editorial ainda ativa precisa ser retirada ou concluída antes. Submissões já encerradas não impedem a limpeza.
+Para retirar de Trilhas um curso selecionado, releia a biblioteca e use juntos `selectionId`, `courseId` e o hash corrente. Em curso oficial, a operação remove somente a seleção da conta. Em publicação privada própria, remove a seleção, arquiva a publicação corrente e libera sua referência ao artefato; uma submissão editorial ainda ativa precisa ser retirada ou concluída antes. Submissões já encerradas não impedem a limpeza.
 
-Arquivar encerra essa identidade publicada e remove o vínculo do workspace. Uma publicação posterior do mesmo conteúdo é uma nova publicação, com novos `courseId` e `selectionId`; não é restauração da identidade arquivada.
+Um item cuja fonte corrente seja somente o workspace não possui seleção para retirar. Para excluí-lo, releia a revisão e use `excluirDoWorkspace` com `operation: "delete_entity"` na raiz do curso ou `delete_workspace` no projeto inteiro, conforme o pedido.
+
+Arquivar encerra a identidade do artefato distribuído. Um workspace ativo preserva seu `trailItemId`, grupo e estado pessoal; uma distribuição posterior pode receber novos `courseId` e `selectionId` sem criar outro item em Trilhas.
 
 ## Repetição, conflito e correção
 
@@ -133,7 +135,7 @@ Nenhuma falha técnica transforma planejamento descrito no chat em conteúdo sal
 
 # Ciclo de autoria por rodadas
 
-O mesmo assistente pode planejar, construir, auditar, reparar, reauditar e disponibilizar. Depois de uma ação relevante, apresenta o resultado, sugere uma próxima etapa e espera a decisão da pessoa.
+O mesmo assistente pode planejar, construir, auditar, reparar, reauditar, submeter e distribuir. Depois de uma ação relevante, apresenta o resultado, sugere uma próxima etapa e espera a decisão da pessoa.
 
 ```text
 planejamento -> decisão -> construção -> decisão -> auditoria -> decisão
@@ -160,7 +162,7 @@ Repare apenas o escopo aprovado, preservando ids e posições. Informe exatament
 
 ## Escolhas da pessoa
 
-A pessoa pode ajustar ou aprovar o plano, limitar a construção, pedir práticas, pular auditoria, aprovar só alguns reparos ou disponibilizar o que já existe. Essas escolhas não criam status ou bloqueios. Em Trilhas, planejamento e conteúdo materializado coexistem no mesmo item.
+A pessoa pode ajustar ou aprovar o plano, limitar a construção, pedir práticas, pular auditoria, aprovar só alguns reparos ou estudar o que já existe. Essas escolhas não criam status ou bloqueios. Em Trilhas, planejamento e conteúdo materializado coexistem no mesmo item.
 
 ---
 
@@ -178,11 +180,11 @@ O backend conserva uma linha corrente por parte da árvore e um feed compacto de
 
 Microssequências sem cards permanecem planejamento. Microssequências com cards ficam executáveis. O contrato interno pode manter marcadores técnicos para validar o runtime, mas eles não integram a linguagem pública das ferramentas e não criam categorias no aplicativo.
 
-## Disponibilidade
+## Disponibilidade e distribuição
 
-`publicarCursoDoWorkspace` sincroniza a composição corrente com Trilhas ou Coleções. O mesmo vínculo é atualizado nas chamadas seguintes. Partes com cards podem ser estudadas; partes ainda sem cards continuam visíveis no plano. Não há parâmetro público de conclusão.
+Criar a raiz do curso já faz a composição corrente aparecer em `Trilhas`. Partes com cards podem ser estudadas; partes ainda sem cards continuam visíveis no plano. Isso não chama `publicarCursoDoWorkspace`, não cria artefato no Storage e não exige parâmetro público de conclusão.
 
-O Storage recebe apenas o artefato canônico corrente de um curso disponível. Alterações intermediárias do workspace não geram cópias integrais.
+`publicarCursoDoWorkspace` é uma operação explícita de distribuição. Com `target: "private"`, fixa ou atualiza o artefato privado necessário para uma submissão editorial. Com `target: "catalog"`, distribui ou atualiza uma revisão em `Coleções` quando a conta possui capacidade editorial. Alterações intermediárias do workspace não geram cópias integrais.
 
 ## Erros
 
@@ -407,7 +409,8 @@ Não copie material protegido em extensão incompatível com a finalidade didát
 - `revision` controla concorrência; o workspace conserva somente o estado corrente por parte e até 200 resumos recentes, sem snapshots nem restauração.
 - O gateway MCP rejeita escrita baseada em revisão desatualizada.
 - Uma mutação não pode alterar entidades fora do alvo declarado.
-- Uma prévia privada pode ser parcial e testada pelo autor.
+- Partes materializadas podem ser testadas diretamente em Trilhas, sem publicação privada.
+- O artefato privado fixa uma revisão somente quando o autor decide submetê-la à avaliação editorial.
 - A publicação no catálogo acrescenta a verificação da permissão editorial.
 - Uma publicação incompleta nunca entra no catálogo.
 - Erros determinísticos não são repetidos indefinidamente.
@@ -500,9 +503,10 @@ Curso privado próprio mantém sua identidade. Curso oficial é somente leitura 
 
 ## Identidades e ordem
 
-- Use identificadores estáveis e preserve-os nas substituições e movimentações.
+- `course.id` é único no projeto. Identificadores de `module`, `lesson`, `topic`, `microsequence` e `card` são únicos por tipo em todo o curso, inclusive entre ramos; cursos independentes podem repetir identificadores internos. No workspace de autoria, a unicidade por tipo abrange todos os cursos da área de trabalho.
+- Use identificadores estáveis e preserve-os nas substituições e movimentações. Cópias e importações geram identidades novas para toda a parte copiada.
 - `position` define a ordem dos cards e deve ser inteira, positiva e sem ambiguidade.
-- Não reutilize o mesmo identificador para entidades diferentes.
+- Não reutilize um identificador do mesmo tipo em outro ramo.
 - Uma mutação só pode alterar o alvo declarado pela ferramenta.
 - Campos desconhecidos são erro. Não descarte dados para fazer o documento passar.
 
@@ -655,21 +659,25 @@ Cada mudança de continuidade altera somente as partes afetadas no estado corren
 
 ## knowledge/publication.md
 
-# Trilhas e Coleções
+# Trilhas, submissão e Coleções
 
-O workspace é a composição mutável corrente. Disponibilizar um curso cria ou atualiza um artefato canônico único para estudo; não cria uma versão integral a cada alteração.
+O workspace é a composição mutável corrente. Ele aparece em `Trilhas` sem precisar ser publicado e não cria uma versão integral a cada alteração.
 
 ## Trilhas
 
-`target: "private"` disponibiliza a composição corrente em Trilhas. O vínculo entre workspace, curso e destino é persistido, portanto chamadas posteriores atualizam a mesma identidade. O usuário não escolhe entre criar e atualizar.
+Assim que o servidor confirma a estrutura, o plano aparece em `Trilhas`. Partes com cards ficam estudáveis imediatamente. Partes sem cards continuam visíveis como planejamento dentro do mesmo item. Não existe parâmetro público `completion`, etapa de publicação privada nem exigência de que toda a árvore esteja materializada para essa experiência.
 
-Partes com cards ficam estudáveis imediatamente. Partes sem cards continuam visíveis como planejamento dentro do mesmo item. Não existe parâmetro público `completion` nem exigência de que toda a árvore esteja materializada.
+`listarCursosDaBibliotecaPessoal` devolve a projeção canônica paginada, com a mesma identidade estável para plano, composição materializada e eventual curso distribuído. `completedCardCount` resume o progresso corrente sem carregar a árvore. Leia itens com `source: "workspace"` em `lerWorkspaceDeAutoria`; leia itens com `source: "selection"` em `lerConteudoDoCurso`.
+
+## Submissão editorial
+
+`publicarCursoDoWorkspace` com `target: "private"` fixa ou atualiza o artefato privado usado por `submeterCursoParaRevisaoEditorial`. Essa operação existe para dar à revisão um hash exato e imutável; não é necessária para aparecer ou estudar em `Trilhas`. Chamadas posteriores atualizam a mesma identidade de distribuição, sem pedir ao usuário que escolha entre criar e atualizar.
 
 ## Coleções
 
-`target: "catalog"` leva a composição corrente à Coleção indicada quando a conta possui capacidade editorial. O mesmo assistente pode organizar Coleções, inspecionar envios de outros autores e devolver ajustes.
+`publicarCursoDoWorkspace` com `target: "catalog"` leva a composição corrente à Coleção indicada quando a conta possui capacidade editorial. O mesmo assistente pode organizar Coleções, inspecionar envios de outros autores e devolver ajustes.
 
-Um autor privado pode enviar o curso corrente para avaliação. O envio aponta para o hash exato do artefato e não duplica o workspace nem expõe outros cursos. A revisão editorial é uma tarefa de curadoria em Coleções, não um estado do curso em Trilhas.
+Um autor privado pode enviar a revisão privada corrente para avaliação. O envio aponta para o hash exato do artefato e não duplica o workspace nem expõe outros cursos. A revisão editorial é uma tarefa de curadoria em Coleções, não um estado do curso em Trilhas.
 
 ## Identidade e integridade
 
@@ -894,7 +902,8 @@ A troca do artefato corrente é atômica. O banco conserva hash, contagens e o p
       "type": "string",
       "minLength": 1,
       "maxLength": 240,
-      "pattern": "\\S"
+      "pattern": "\\S",
+      "description": "Identidade persistente e estável. Para course, module, lesson, topic, microsequence e card, o valor deve ser único por tipo em todo o workspace; movimentos preservam a identidade e cópias ou importações a remapeiam."
     },
     "title": {
       "type": "string",
@@ -1552,7 +1561,7 @@ A troca do artefato corrente é atômica. O banco conserva hash, contagens e o p
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://fabio-ara.github.io/AraLearn/authoring/schemas/workspace-publication.schema.json",
-  "title": "Disponibilidade corrente de curso do workspace",
+  "title": "Distribuição de curso do workspace",
   "description": "O vínculo entre workspace, curso e destino escolhe automaticamente criar ou atualizar.",
   "type": "object",
   "additionalProperties": false,
@@ -1810,6 +1819,8 @@ project -> course -> module -> lesson -> microsequence -> card
 ```
 
 Os cards pertencem diretamente à microssequência na visão pública e seguem a ordem declarada em `position`. Essa hierarquia preserva a ordem de estudo e fornece contexto para ferramentas de autoria ou pesquisa. A revisão publicada é armazenada no Storage e projetada em linhas no IndexedDB de cada dispositivo. Durante a autoria remota, o documento é composto a partir das partes correntes do workspace no PostgreSQL.
+
+As identidades são estáveis. `course.id` é único no projeto; os identificadores de `module`, `lesson`, `topic`, `microsequence` e `card` são únicos por tipo em todo o curso, inclusive entre ramos diferentes. Cursos independentes podem usar o mesmo identificador interno. Um workspace de autoria aplica a restrição mais forte de unicidade por tipo em toda a área de trabalho, inclusive entre cursos, porque suas partes são endereçadas diretamente. Um movimento preserva a identidade; uma cópia ou importação para o workspace remapeia as identidades da parte copiada. A validação rejeita uma repetição e informa a ocorrência original e a duplicada.
 
 ## Relação com a persistência
 

@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { homeTrailSnapshotForProject } from "../support/homeTrailSnapshot.js";
 
 test("painel abre Chatbot e separa o Plugin", async ({ page }) => {
   await page.goto("/");
@@ -262,72 +263,60 @@ test("consentimento OAuth identifica cliente, permissões e conclui a autorizaç
   ]);
 });
 
-test("Trilhas distingue a origem dos cursos por ícones acessíveis sem expor estados técnicos", async ({ page }) => {
+test("Home distingue a origem dos cursos por ícones acessíveis sem expor estados técnicos", async ({ page }) => {
+  const project = {
+    contract: "aralearn.contract",
+    version: 4,
+    kind: "project",
+    courses: [{
+      id: "course-catalog",
+      title: "Fundamentos oficiais",
+      goal: "Curso distribuído em Coleções.",
+      modules: []
+    }, {
+      id: "course-private",
+      title: "Meu curso",
+      goal: "Curso privado da pessoa.",
+      modules: []
+    }]
+  };
+  const trailSnapshot = homeTrailSnapshotForProject(project, {
+    permissions: {
+      "course-catalog": { origin: "catalog", canRemove: true, cardCount: 4 },
+      "course-private": {
+        origin: "private",
+        canEdit: true,
+        canDelete: true,
+        canRemove: true,
+        cardCount: 4
+      }
+    }
+  });
   await page.goto("/");
-  await page.evaluate(async () => {
+  await page.evaluate(async ({ project, trailSnapshot }) => {
     document.body.replaceChildren();
     const root = document.createElement("main");
     document.body.append(root);
-    const { createLearningSpacesPanel } = await import("/src/ui/LearningSpacesPanel.js");
-    const overlay = createLearningSpacesPanel({
-      root,
-      catalog: {
-        async listCollections() { return []; },
-        async listTrailItems() {
-          return {
-            items: [{
-              itemId: "catalog-course",
-              workspaceId: null,
-              courseKey: "catalog-course",
-              courseId: "20000000-0000-4000-8000-000000000001",
-              selectionId: "30000000-0000-4000-8000-000000000001",
-              kind: "course",
-              source: "selection",
-              origin: "catalog",
-              title: "Curso de coleção",
-              moduleCount: 1,
-              lessonCount: 1,
-              cardCount: 4,
-              canEdit: false,
-              canDelete: false,
-              position: 0
-            }, {
-              itemId: "private-course",
-              workspaceId: null,
-              courseKey: "private-course",
-              courseId: "20000000-0000-4000-8000-000000000002",
-              selectionId: "30000000-0000-4000-8000-000000000002",
-              kind: "course",
-              source: "selection",
-              origin: "private",
-              title: "Curso pessoal",
-              moduleCount: 1,
-              lessonCount: 1,
-              cardCount: 4,
-              canEdit: true,
-              canDelete: true,
-              position: 1
-            }],
-            hasMore: false,
-            nextCursor: null,
-            capabilities: {}
-          };
-        }
-      },
-      authClient: {
-        sessionStore: {},
-        getSession: () => ({ user: { id: "10000000-0000-4000-8000-000000000001" } }),
-        async getAccessToken() { return "token"; },
-        async signOut() {}
-      }
-    });
-    await overlay.open();
-  });
+    const [{ renderHomeScreen }, { createEmptyProgressDocument }] = await Promise.all([
+      import("/src/ui/renderHomeScreen.js"),
+      import("/src/storage/progressStore.js")
+    ]);
+    window.renderHomeOriginFixture = (selectedHomeTrailItemId) => {
+      root.innerHTML = renderHomeScreen({
+        project,
+        progress: createEmptyProgressDocument(),
+        editorSupport: { trailSnapshot, selectedHomeTrailItemId }
+      });
+    };
+    window.renderHomeOriginFixture(trailSnapshot.items[0].trailItemId);
+  }, { project, trailSnapshot });
 
-  await expect(page.getByRole("heading", { name: "Curso de coleção" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Curso pessoal" })).toBeVisible();
-  await expect(page.getByLabel("Curso de Coleções selecionado em Trilhas", { exact: true })).toBeVisible();
-  await expect(page.getByLabel("Curso disponível somente em Trilhas", { exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Fundamentos oficiais" })).toBeVisible();
+  await expect(page.getByLabel("Curso de Coleções", { exact: true })).toBeVisible();
+  await page.evaluate((trailItemId) => window.renderHomeOriginFixture(trailItemId),
+    trailSnapshot.items[1].trailItemId);
+  await expect(page.getByRole("heading", { name: "Meu curso" })).toBeVisible();
+  await expect(page.getByLabel("Curso privado", { exact: true })).toBeVisible();
   await expect(page.getByText(/De Coleções|Privado/u, { exact: true })).toHaveCount(0);
   await expect(page.getByText(/publicado|parcial/iu)).toHaveCount(0);
 });

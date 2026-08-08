@@ -5,6 +5,7 @@ import { contractToRelationalRows } from "../../src/persistence/contractToRelati
 import { canonicalRevisionHash } from "../../src/storage/canonicalRevision.js";
 import { renderUiIcon } from "../../src/ui/renderUiIcons.js";
 import { createExampleProjectDocument } from "../support/exampleProjectDocument.js";
+import { homeTrailSnapshotForProject } from "../support/homeTrailSnapshot.js";
 
 const USER_ID = "77777777-7777-4777-8777-777777777777";
 const PROJECT_URL = process.env.ARALEARN_SUPABASE_URL || "https://project.supabase.test";
@@ -55,18 +56,15 @@ async function mockSupabase(page, {
   catalog = [],
   includeSelectedCourse = true,
   holdPush = false,
-  replicaRows = EXAMPLE_ROWS
+  replicaRows = EXAMPLE_ROWS,
+  initialTrailPersonalState = null
 } = {}) {
   const revisionDocument = createExampleProjectDocument();
   const revisionHash = await canonicalRevisionHash(revisionDocument);
   const graph = structuredClone(replicaRows);
-  const personalState = Object.fromEntries([
+  for (const retiredStore of [
     "lessonProgress", "cardProgress", "comments", "studyPaths", "studyPathCourses"
-  ].map((storeName) => [
-    storeName,
-    new Map((graph[storeName] || []).map((row) => [String(row.id), structuredClone(row)]))
-  ]));
-  Object.keys(personalState).forEach((storeName) => delete graph[storeName]);
+  ]) delete graph[retiredStore];
   delete graph.projectMeta;
   const officialCourse = graph.courses?.[0] || null;
   const publicationSeq = 1;
@@ -89,12 +87,16 @@ async function mockSupabase(page, {
   }
   let remoteSequence = 1;
   const changes = [];
+  let trailPersonalRevision = initialTrailPersonalState ? 1 : 0;
+  const trailPersonalState = structuredClone(initialTrailPersonalState || {
+    version: 1,
+    progress: { version: 3, lessons: {} },
+    reviewMarks: {},
+    observations: {}
+  });
+  const trailPersonalReceipts = new Map();
   const personalSnapshotRows = () => ({
-    courseSelections: [...selectedCourses.values()].map((row) => structuredClone(row)),
-    ...Object.fromEntries(Object.entries(personalState).map(([storeName, rows]) => [
-      storeName,
-      [...rows.values()].map((row) => structuredClone(row))
-    ]))
+    courseSelections: [...selectedCourses.values()].map((row) => structuredClone(row))
   });
   const appendSelectionChange = (selection, operation) => {
     remoteSequence += 1;
@@ -189,10 +191,10 @@ async function mockSupabase(page, {
         return;
       }
       const results = (body.p_mutations || []).map((mutation) => {
-        const rows = personalState[mutation.entityType];
-        if (!rows) {
+        if (mutation.entityType !== "courseSelections") {
           return { mutationId: mutation.mutationId, status: "rejected", code: "22023" };
         }
+        const rows = selectedCourses;
         const previous = rows.get(String(mutation.entityId)) || {};
         const operation = mutation.operation === "delete" ? "delete" : "upsert";
         const row = operation === "delete"
@@ -226,6 +228,7 @@ async function mockSupabase(page, {
       return;
     }
     if (pathname.endsWith("/rpc/list_trail_items_v1")) {
+      const groupId = "88888888-8888-4888-8888-888888888889";
       const items = [...selectedCourses.values()].map((selection) => {
         const course = remoteCatalogRows.find((entry) => entry.course_id === selection.courseId) ||
           (selection.courseId === officialCourse?.id ? {
@@ -234,7 +237,7 @@ async function mockSupabase(page, {
             contract_key: officialCourse.contractKey
           } : {});
         return {
-          itemId: `selection:${selection.id}`,
+          trailItemId: selection.id,
           workspaceId: null,
           courseKey: course.contract_key || selection.courseId,
           courseId: selection.courseId,
@@ -248,21 +251,93 @@ async function mockSupabase(page, {
           lessonCount: 1,
           microsequenceCount: 1,
           cardCount: 1,
+          completedCardCount: new Set(Object.values(trailPersonalState.progress.lessons)
+            .flatMap((entry) => entry.completedCardIds)).size,
+          contentHash: selection.contentHash,
           canEdit: selection.courseOrigin === "private",
           canDelete: selection.courseOrigin === "private",
-          position: selection.position,
+          canRemove: true,
+          pathId: groupId,
+          pathTitle: "Geral",
+          pathPosition: 0,
+          itemPosition: selection.position,
           updatedAt: selection.updatedAt
         };
       });
       await route.fulfill({
         contentType: "application/json",
         body: JSON.stringify({
+          space: "trails",
+          groups: [{ id: groupId, title: "Geral", position: 0 }],
           items,
           hasMore: false,
           nextCursor: null,
-          capabilities: { catalogManage: false, catalogReview: false }
+          capabilities: { organize: true, catalogManage: false, catalogReview: false }
         })
       });
+      return;
+    }
+    if (pathname.endsWith("/rpc/load_trail_personal_state_v1")) {
+      const trailItemId = request.postDataJSON()?.p_trail_item_id;
+      const authorized = [...selectedCourses.values()].some((selection) =>
+        selection.id === trailItemId
+      );
+      await route.fulfill({
+        status: authorized ? 200 : 403,
+        contentType: "application/json",
+        body: authorized
+          ? JSON.stringify(trailPersonalRevision === 0 ? null : {
+              trailItemId,
+              revision: trailPersonalRevision,
+              state: trailPersonalState,
+              updatedAt: "2026-08-07T12:00:00.000Z"
+            })
+          : JSON.stringify({ code: "42501", message: "Item inacessível." })
+      });
+      return;
+    }
+    if (pathname.endsWith("/rpc/mutate_trail_personal_state_v1")) {
+      const body = request.postDataJSON();
+      if (holdPush) {
+        await route.fulfill({
+          status: 503,
+          contentType: "application/json",
+          body: JSON.stringify({ code: "57P03", message: "Temporariamente indisponível." })
+        });
+        return;
+      }
+      const previousReceipt = trailPersonalReceipts.get(body.p_mutation_id);
+      if (previousReceipt) {
+        await route.fulfill({
+          contentType: "application/json",
+          body: JSON.stringify({ ...previousReceipt, idempotent: true })
+        });
+        return;
+      }
+      if (Number(body.p_expected_revision) !== trailPersonalRevision) {
+        await route.fulfill({
+          status: 409,
+          contentType: "application/json",
+          body: JSON.stringify({ code: "40001", message: "Revisão divergente." })
+        });
+        return;
+      }
+      for (const operation of body.p_operations || []) {
+        const target = operation.collection === "progress.lessons"
+          ? trailPersonalState.progress.lessons
+          : trailPersonalState[operation.collection];
+        if (operation.kind === "delete") delete target[operation.path];
+        else target[operation.path] = structuredClone(operation.value);
+      }
+      trailPersonalRevision += 1;
+      const receipt = {
+        trailItemId: body.p_trail_item_id,
+        revision: trailPersonalRevision,
+        updatedAt: "2026-08-07T12:00:00.000Z",
+        idempotent: false
+      };
+      trailPersonalReceipts.set(body.p_mutation_id, receipt);
+      await route.fulfill({ contentType: "application/json", body: JSON.stringify(receipt) });
       return;
     }
     if (pathname.endsWith("/rpc/list_catalog_collections")) {
@@ -443,7 +518,7 @@ async function openMicrosequenceRuntime(page, microsequenceKey = null) {
 
 async function readLocalStore(page, storeName) {
   return page.evaluate(async ({ userId, requestedStore }) => {
-    const request = indexedDB.open(`aralearn-relational-v4-r2:user:${userId}`);
+    const request = indexedDB.open(`aralearn-relational-v4-r3:user:${userId}`);
     const database = await new Promise((resolve, reject) => {
       request.onsuccess = () => resolve(request.result);
       request.onerror = () => reject(request.error);
@@ -457,6 +532,11 @@ async function readLocalStore(page, storeName) {
     database.close();
     return rows;
   }, { userId: USER_ID, requestedStore: storeName });
+}
+
+async function readTrailPersonalCache(page) {
+  const rows = await readLocalStore(page, "syncState");
+  return rows.find((row) => String(row.id || "").startsWith("trail.personalState:"))?.value || null;
 }
 
 test("sem sessão o artefato mostra somente a porta de autenticação", async ({ page }) => {
@@ -674,15 +754,19 @@ test("continuar cria somente estado funcional de retomada", async ({ page }) => 
   await page.locator('[data-action="continue-popup-next"]').tap();
   await expect(page.locator(".runtime-card-title")).toHaveText("Um grafo pequeno");
 
-  const outbox = await readLocalStore(page, "outbox");
-  expect(outbox.length).toBeGreaterThan(0);
-  expect(new Set(outbox.map((entry) => entry.entityType))).toEqual(new Set(["lessonProgress", "cardProgress"]));
-  expect(outbox.every((entry) => !entry.payload?.courses && !entry.payload?.lessons)).toBe(true);
-  for (const entry of outbox) {
-    expect(entry.payload).not.toHaveProperty("firstViewedAt");
-    expect(entry.payload).not.toHaveProperty("lastActivityAt");
-    expect(entry.payload).not.toHaveProperty("attempts");
-    expect(entry.payload).not.toHaveProperty("lastResult");
+  const cache = await readTrailPersonalCache(page);
+  expect(await readLocalStore(page, "outbox")).toHaveLength(0);
+  expect(cache.contract).toBe("aralearn.trail-personal-state-cache.v3");
+  expect(cache.pending.operations.every((operation) =>
+    operation.collection === "progress.lessons"
+  )).toBe(true);
+  const entries = Object.values(cache.state.progress.lessons);
+  expect(entries).toHaveLength(1);
+  expect(entries[0].completedCardIds.length).toBeGreaterThan(0);
+  expect(entries[0].completedCardIds).toContain(entries[0].cursorCardId);
+  const serialized = JSON.stringify(cache.state);
+  for (const retiredField of ["firstViewedAt", "lastActivityAt", "attempts", "lastResult"]) {
+    expect(serialized).not.toContain(retiredField);
   }
   expect(pageErrors).toEqual([]);
 });
@@ -698,12 +782,15 @@ test("Rever persiste uma decisão pessoal sem registrar desempenho", async ({ pa
   await expect(page.getByRole("button", { name: "Retirar card de Rever" }))
     .toHaveAttribute("aria-pressed", "true");
 
-  const outbox = await readLocalStore(page, "outbox");
-  const reviewMutation = outbox.find((entry) => entry.entityType === "cardProgress");
-  expect(reviewMutation?.payload?.reviewMarkedAt).toBeTruthy();
-  expect(reviewMutation?.payload).not.toHaveProperty("attempts");
-  expect(reviewMutation?.payload).not.toHaveProperty("lastResult");
-  expect(await readLocalStore(page, "lessonProgress")).toHaveLength(0);
+  const cache = await readTrailPersonalCache(page);
+  expect(await readLocalStore(page, "outbox")).toHaveLength(0);
+  expect(Object.keys(cache.state.reviewMarks)).toEqual(["card-grafo-conjuntos-regra"]);
+  expect(cache.state.progress.lessons).toEqual({});
+  expect(cache.pending.operations).toMatchObject([{
+    kind: "set",
+    collection: "reviewMarks",
+    path: "card-grafo-conjuntos-regra"
+  }]);
 });
 
 test("observação situada fica editável no card enquanto aguarda reconexão", async ({ page }) => {
@@ -720,21 +807,17 @@ test("observação situada fica editável no card enquanto aguarda reconexão", 
   await expect(page.getByRole("button", { name: "Observação do card: 1" })).toBeVisible();
 
   await expect.poll(async () => {
-    const outbox = await readLocalStore(page, "outbox");
-    return outbox.find((entry) => entry.entityType === "comments")?.payload || null;
+    const cache = await readTrailPersonalCache(page);
+    return Object.values(cache?.state?.observations || {})[0] || null;
   }).toMatchObject({
     category: "possible_error",
     body: "Conferir a definição apresentada."
   });
-  const comments = await readLocalStore(page, "comments");
-  expect(comments).toHaveLength(1);
-  expect(comments[0]).toMatchObject({
-    category: "possible_error",
-    body: "Conferir a definição apresentada.",
-    status: "open"
-  });
-  expect(comments[0]).not.toHaveProperty("card");
-  expect(comments[0]).not.toHaveProperty("course");
+  const cache = await readTrailPersonalCache(page);
+  const [observation] = Object.values(cache.state.observations);
+  expect(observation).not.toHaveProperty("card");
+  expect(observation).not.toHaveProperty("course");
+  expect(cache.pending.operations[0].collection).toBe("observations");
 
   await page.getByRole("button", { name: "Observação do card: 1" }).tap();
   await expect(page.locator("[data-field='card-comment']")).toHaveValue(
@@ -742,49 +825,25 @@ test("observação situada fica editável no card enquanto aguarda reconexão", 
   );
 });
 
-test("timestamp PostgreSQL de progresso não bloqueia estudo nem retorno à lição", async ({ page }) => {
+test("progresso remoto v3 por ids estáveis não bloqueia estudo nem retorno à lição", async ({ page }) => {
   const pageErrors = [];
   page.on("pageerror", (error) => pageErrors.push(error.message));
-  const replicaRows = structuredClone(EXAMPLE_ROWS);
-  const course = replicaRows.courses[0];
-  const moduleValue = replicaRows.modules.find((row) => row.contractKey === "module-teoria-dos-grafos");
-  const lesson = replicaRows.lessons.find((row) => row.contractKey === "lesson-vocabulario-contagem");
-  const card = replicaRows.cards.find((row) => row.contractKey === "card-grafo-conjuntos-regra");
-  const lessonProgressId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
-  const timestamp = "2026-07-19T12:30:00.123456+00:00";
-  replicaRows.lessonProgress = [{
-    id: lessonProgressId,
-    userId: USER_ID,
-    courseId: course.id,
-    moduleId: moduleValue.id,
-    lessonId: lesson.id,
-    courseKey: course.contractKey,
-    moduleKey: moduleValue.contractKey,
-    lessonKey: lesson.contractKey,
-    pathKey: `${course.contractKey}::${moduleValue.contractKey}::${lesson.contractKey}`,
-    cursor: 0,
-    completedAt: null,
-    updatedAt: timestamp,
-    deletedAt: null
-  }];
-  replicaRows.cardProgress = [{
-    id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
-    userId: USER_ID,
-    courseId: course.id,
-    moduleId: moduleValue.id,
-    lessonId: lesson.id,
-    lessonProgressId,
-    cardId: card.id,
-    pathKey: `${course.contractKey}::${moduleValue.contractKey}::${lesson.contractKey}`,
-    cardKey: card.contractKey,
-    position: 0,
-    completedAt: timestamp,
-    reviewMarkedAt: null,
-    updatedAt: timestamp,
-    deletedAt: null
-  }];
-
-  await signIn(page, { replicaRows });
+  await signIn(page, {
+    initialTrailPersonalState: {
+      version: 1,
+      progress: {
+        version: 3,
+        lessons: {
+          "lesson-vocabulario-contagem": {
+            cursorCardId: "card-grafo-conjuntos-regra",
+            completedCardIds: ["card-grafo-conjuntos-regra"]
+          }
+        }
+      },
+      reviewMarks: {},
+      observations: {}
+    }
+  });
   await page.locator('[data-action="open-course"]').tap();
   await page.locator('[data-action="open-module"][data-module-key="module-teoria-dos-grafos"]').tap();
   await page.locator('[data-action="open-lesson"][data-lesson-key="lesson-vocabulario-contagem"]').tap();
@@ -1099,10 +1158,21 @@ test("o runtime completo executa escolhas, lacunas, fluxograma, popup e anotaç�
       }]
     }]
   };
+  const trailSnapshot = homeTrailSnapshotForProject(project, {
+    permissions: {
+      "course-runtime": {
+        origin: "private",
+        canEdit: true,
+        canDelete: true,
+        canRemove: true,
+        cardCount: 6
+      }
+    }
+  });
 
   await page.goto("/");
   await expect(page.getByRole("heading", { name: "Acesso" })).toBeVisible();
-  await page.evaluate(async (initialProject) => {
+  await page.evaluate(async ({ initialProject, trailSnapshot }) => {
     const oldRoot = document.querySelector("#app-root");
     const root = document.createElement("div");
     root.id = "app-root";
@@ -1118,7 +1188,10 @@ test("o runtime completo executa escolhas, lacunas, fluxograma, popup e anotaç�
       saveProject: async (next) => { probe.project = structuredClone(next); },
       loadProgress: () => probe.progress,
       saveProgress: async (next) => { probe.progress = structuredClone(next); },
-      loadStudyPaths: () => [],
+      initialize: async () => undefined,
+      refresh: async () => undefined,
+      setCourse: () => undefined,
+      clearLocal: async () => true,
       isCardMarkedForReview: () => probe.reviewMarked,
       setCardReviewMark: async (_path, marked) => { probe.reviewMarked = marked; },
       loadCommentForPath: () => structuredClone(probe.comment),
@@ -1134,9 +1207,13 @@ test("o runtime completo executa escolhas, lacunas, fluxograma, popup e anotaç�
       root,
       storage,
       editor: createEditorSession(storage),
-      initialProject: probe.project
+      initialProject: probe.project,
+      homeTrails: {
+        loadTrailSnapshot: async () => structuredClone(trailSnapshot)
+      },
+      trailPersonalStateFactory: () => storage
     });
-  }, project);
+  }, { initialProject: project, trailSnapshot });
 
   await page.locator('[data-action="open-course"]').click();
   await page.locator('[data-action="open-module"]').click();

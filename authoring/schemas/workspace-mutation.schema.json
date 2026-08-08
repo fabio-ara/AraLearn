@@ -120,7 +120,8 @@
       "type": "string",
       "minLength": 1,
       "maxLength": 240,
-      "pattern": "\\S"
+      "pattern": "\\S",
+      "description": "Identidade persistente e estável. Para course, module, lesson, topic, microsequence e card, o valor deve ser único por tipo em todo o workspace; movimentos preservam a identidade e cópias ou importações a remapeiam."
     },
     "title": {
       "type": "string",

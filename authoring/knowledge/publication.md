@@ -1,27 +1,39 @@
-# Trilhas e Coleções
+# Trilhas, submissão e Coleções
 
-O workspace é a composição mutável corrente. Disponibilizar um curso cria ou
-atualiza um artefato canônico único para estudo; não cria uma versão integral a
-cada alteração.
+O workspace é a composição mutável corrente. Ele aparece em `Trilhas` sem
+precisar ser publicado e não cria uma versão integral a cada alteração.
 
 ## Trilhas
 
-`target: "private"` disponibiliza a composição corrente em Trilhas. O vínculo
-entre workspace, curso e destino é persistido, portanto chamadas posteriores
-atualizam a mesma identidade. O usuário não escolhe entre criar e atualizar.
-
+Assim que o servidor confirma a estrutura, o plano aparece em `Trilhas`.
 Partes com cards ficam estudáveis imediatamente. Partes sem cards continuam
 visíveis como planejamento dentro do mesmo item. Não existe parâmetro público
-`completion` nem exigência de que toda a árvore esteja materializada.
+`completion`, etapa de publicação privada nem exigência de que toda a árvore
+esteja materializada para essa experiência.
+
+`listarCursosDaBibliotecaPessoal` devolve a projeção canônica paginada, com a
+mesma identidade estável para plano, composição materializada e eventual curso
+distribuído. `completedCardCount` resume o progresso corrente sem carregar a
+árvore. Leia itens com `source: "workspace"` em `lerWorkspaceDeAutoria`; leia
+itens com `source: "selection"` em `lerConteudoDoCurso`.
+
+## Submissão editorial
+
+`publicarCursoDoWorkspace` com `target: "private"` fixa ou atualiza o artefato
+privado usado por `submeterCursoParaRevisaoEditorial`. Essa operação existe
+para dar à revisão um hash exato e imutável; não é necessária para aparecer ou
+estudar em `Trilhas`. Chamadas posteriores atualizam a mesma identidade de
+distribuição, sem pedir ao usuário que escolha entre criar e atualizar.
 
 ## Coleções
 
-`target: "catalog"` leva a composição corrente à Coleção indicada quando a
-conta possui capacidade editorial. O mesmo assistente pode organizar Coleções,
-inspecionar envios de outros autores e devolver ajustes.
+`publicarCursoDoWorkspace` com `target: "catalog"` leva a composição corrente à
+Coleção indicada quando a conta possui capacidade editorial. O mesmo assistente
+pode organizar Coleções, inspecionar envios de outros autores e devolver
+ajustes.
 
-Um autor privado pode enviar o curso corrente para avaliação. O envio aponta
-para o hash exato do artefato e não duplica o workspace nem expõe outros
+Um autor privado pode enviar a revisão privada corrente para avaliação. O envio
+aponta para o hash exato do artefato e não duplica o workspace nem expõe outros
 cursos. A revisão editorial é uma tarefa de curadoria em Coleções, não um
 estado do curso em Trilhas.
 

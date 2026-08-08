@@ -102,10 +102,10 @@ o ponteiro do curso pode avançar para outro hash. Veja [Git internals —
 objects](https://git-scm.com/book/en/v2/Git-Internals-Git-Objects) e [Supabase
 Storage uploads](https://supabase.com/docs/guides/storage/uploads/standard-uploads).
 
-## Publicação e submissão
+## Trilhas, publicação e submissão
 
-- `private + partial`: prévia testável na biblioteca do proprietário;
-- `private + complete`: curso pessoal integral;
+- workspace corrente: plano e partes estudáveis em Trilhas, sem artefato;
+- `private + partial|complete`: revisão exata fixada para submissão editorial;
 - `catalog + complete`: publicação editorial;
 - `catalog + partial`: rejeitada.
 

@@ -585,6 +585,65 @@ test("import registra intenção própria e envia somente rows novas", async () 
   assert.equal(Object.hasOwn(committed, "p_artifact"), false);
 });
 
+test("import remapeia contra o workspace e separa identidades por tipo", async () => {
+  const source = await fixture();
+  const current = await fixture();
+  const sharedId = "shared-course-and-module-id";
+  current.courses[0].modules[0].id = sharedId;
+  current.courses[0].modules.push({
+    id: `${sharedId}--module-1`,
+    title: "Reserva de identidade",
+    guide: {
+      goal: "Reservar uma identidade de módulo já usada no destino.",
+      include: [],
+      exclude: [],
+      notation: [],
+      avoid: []
+    },
+    lessons: []
+  });
+  let committed = null;
+  const reference = workspaceReference(current, 4);
+  const engine = engineWithRpc(async (name, payload) => {
+    if (name === "replay_authoring_workspace_request_v5") return null;
+    if (name === "get_authoring_workspace_v5") return reference;
+    if (name === "get_course_document_artifact_v4") {
+      return {
+        artifact: { hash: "source-course" },
+        revisionHash: "a".repeat(64)
+      };
+    }
+    if (name === "commit_authoring_workspace_changes_v5") {
+      committed = payload;
+      return { workspaceId: WORKSPACE_ID, revision: 5, idempotent: false };
+    }
+    throw new Error(`RPC inesperada: ${name}`);
+  });
+  engine.artifacts = {
+    async getJson() {
+      return source;
+    }
+  };
+
+  await engine.importCourse({
+    principal: PRINCIPAL,
+    workspaceId: WORKSPACE_ID,
+    requestId: "import-course-destination-collision-0001",
+    expectedRevision: 4,
+    courseId: SOURCE_COURSE_ID,
+    workspaceCourseId: sharedId
+  });
+
+  const imported = composeWorkspaceDocument([
+    ...reference.entities,
+    ...committed.p_changes.upserts
+  ]).courses.find((course) => course.id === sharedId);
+  assert.ok(imported, "course.id pode coincidir com module.id de outro curso");
+  assert.equal(imported.modules[0].id, `${sharedId}--module-1-2`);
+  assert.equal(current.courses[0].modules[0].id, sharedId);
+  assert.equal(current.courses[0].modules[1].id, `${sharedId}--module-1`);
+});
+
 test("Trilhas materializa somente o curso escolhido e o torna testável", async () => {
   const source = await fixture();
   source.courses[0].modules = [];

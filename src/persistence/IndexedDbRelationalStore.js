@@ -5,8 +5,8 @@ import { assertValidRelationalCourse } from "./validateRelationalCourse.js";
 // deixar o Chrome em estado "connection is closing" antes do bootstrap. Esta
 // geração é deliberadamente isolada: a réplica oficial é reconstruída do
 // servidor, sem depender de nem disputar a conexão do namespace encerrado.
-export const RELATIONAL_DATABASE_NAME = "aralearn-relational-v4-r2";
-export const RELATIONAL_DATABASE_VERSION = 3;
+export const RELATIONAL_DATABASE_NAME = "aralearn-relational-v4-r3";
+export const RELATIONAL_DATABASE_VERSION = 4;
 
 const index = (name, keyPath, options = {}) => ({ name, keyPath, options });
 const OUTBOX_SEQUENCE_STATE_ID = "outbox.sequence";
@@ -71,14 +71,7 @@ export class IndexedDbConnectionReplacedError extends Error {
   }
 }
 
-export const SYNCED_PERSONAL_STORE_NAMES = Object.freeze([
-  "courseSelections",
-  "lessonProgress",
-  "cardProgress",
-  "comments",
-  "studyPaths",
-  "studyPathCourses"
-]);
+export const SYNCED_PERSONAL_STORE_NAMES = Object.freeze(["courseSelections"]);
 
 
 function outboxSequence(entry) {
@@ -304,65 +297,6 @@ export const RELATIONAL_STORE_DEFINITIONS = Object.freeze({
       index("byDeletedAt", "deletedAt")
     ]
   },
-  lessonProgress: {
-    keyPath: "id",
-    indexes: [
-      index("bySelectionId", "selectionId"),
-      index("byLessonId", "lessonId"),
-      index("byUserId", "userId"),
-      index("byUserAndLesson", ["userId", "lessonId"]),
-      index("byCourseId", "courseId"),
-      index("byUpdatedAt", "updatedAt"),
-      index("byDeletedAt", "deletedAt")
-    ]
-  },
-  cardProgress: {
-    keyPath: "id",
-    indexes: [
-      index("bySelectionId", "selectionId"),
-      index("byCardId", "cardId"),
-      index("byLessonId", "lessonId"),
-      index("byUserId", "userId"),
-      index("byUserAndCard", ["userId", "cardId"]),
-      index("byCourseId", "courseId"),
-      index("byUpdatedAt", "updatedAt"),
-      index("byDeletedAt", "deletedAt")
-    ]
-  },
-  comments: {
-    keyPath: "id",
-    indexes: [
-      index("bySelectionId", "selectionId"),
-      index("byCardId", "cardId"),
-      index("byUserId", "userId"),
-      index("byUserAndCard", ["userId", "cardId"]),
-      index("byCourseId", "courseId"),
-      index("byUpdatedAt", "updatedAt"),
-      index("byDeletedAt", "deletedAt")
-    ]
-  },
-  studyPaths: {
-    keyPath: "id",
-    indexes: [
-      index("byOwnerId", "ownerId"),
-      index("byOwnerPosition", ["ownerId", "position"]),
-      index("byUpdatedAt", "updatedAt"),
-      index("byDeletedAt", "deletedAt")
-    ]
-  },
-  studyPathCourses: {
-    keyPath: "id",
-    indexes: [
-      index("byPathId", "pathId"),
-      index("byPathPosition", ["pathId", "position"]),
-      index("bySelectionId", "selectionId"),
-      index("byOwnerSelection", ["ownerId", "selectionId"], { unique: true }),
-      index("byCourseId", "courseId"),
-      index("byOwnerId", "ownerId"),
-      index("byUpdatedAt", "updatedAt"),
-      index("byDeletedAt", "deletedAt")
-    ]
-  },
   outbox: {
     keyPath: "mutationId",
     indexes: [
@@ -446,6 +380,12 @@ function normalizePersonalSnapshot(snapshot) {
   if (!snapshot || typeof snapshot !== "object" || Array.isArray(snapshot)) {
     throw new TypeError("Snapshot pessoal da réplica inválido.");
   }
+  const unknownStore = Object.keys(snapshot).find(
+    (storeName) => !SYNCED_PERSONAL_STORE_NAMES.includes(storeName)
+  );
+  if (unknownStore) {
+    throw new Error(`Snapshot pessoal contém a coleção retirada "${unknownStore}".`);
+  }
   return Object.fromEntries(SYNCED_PERSONAL_STORE_NAMES.map((storeName) => {
     const rows = snapshot[storeName] ?? [];
     if (!Array.isArray(rows)) throw new TypeError(`Snapshot pessoal inválido em ${storeName}.`);
@@ -502,29 +442,9 @@ async function deleteCourseContent(transaction, courseId) {
   await transaction.delete("syncState", localCourseAuthoringStateId(courseId));
 }
 
-async function deletePersonalCourseState(transaction, courseId) {
-  for (const storeName of ["lessonProgress", "cardProgress", "comments", "studyPathCourses"]) {
-    const rows = await transaction.getAllByIndex(storeName, "byCourseId", courseId);
-    for (const row of rows) await transaction.delete(storeName, row.id);
-  }
+async function deleteCourseOutboxEntries(transaction, courseId) {
   const outboxRows = await transaction.getAllByIndex("outbox", "byCourseId", courseId);
   for (const row of outboxRows) await transaction.delete("outbox", row.mutationId);
-}
-
-async function pruneOrphanedPersonalCourseState(transaction, courseId, normalizedRows) {
-  const validLessonIds = new Set(normalizedRows.lessons.map((row) => String(row.id)));
-  const validCardIds = new Set(normalizedRows.cards.map((row) => String(row.id)));
-  for (const [storeName, targetField, validIds] of [
-    ["lessonProgress", "lessonId", validLessonIds],
-    ["cardProgress", "cardId", validCardIds],
-    ["comments", "cardId", validCardIds]
-  ]) {
-    const rows = await transaction.getAllByIndex(storeName, "byCourseId", courseId);
-    for (const row of rows) {
-      if (validIds.has(String(row?.[targetField] || ""))) continue;
-      await transaction.delete(storeName, row.id);
-    }
-  }
 }
 
 async function unresolvedCourseMutationIds(transaction, courseId) {
@@ -544,7 +464,6 @@ async function writeOfficialCourseReplica(
   for (const storeName of OFFICIAL_COURSE_STORE_NAMES) {
     await transaction.putMany(storeName, normalizedRows[storeName]);
   }
-  await pruneOrphanedPersonalCourseState(transaction, courseId, normalizedRows);
   const stateId = `${CATALOG_REPLICA_STATE_PREFIX}:${courseId}`;
   await transaction.put("syncState", {
     id: stateId,
@@ -580,6 +499,10 @@ function ensureStoreIndexes(store, definition) {
 }
 
 function ensureRelationalSchema(database, transaction) {
+  const expectedStores = new Set(Object.keys(RELATIONAL_STORE_DEFINITIONS));
+  for (const storeName of Array.from(database.objectStoreNames)) {
+    if (!expectedStores.has(storeName)) database.deleteObjectStore(storeName);
+  }
   for (const [storeName, definition] of Object.entries(RELATIONAL_STORE_DEFINITIONS)) {
     const existingStore = database.objectStoreNames.contains(storeName)
       ? transaction.objectStore(storeName)
@@ -858,6 +781,54 @@ export class IndexedDbRelationalStore {
     );
   }
 
+  async acknowledgeWorkspaceCourseDraft(courseId, {
+    expectedRevision,
+    workspaceId,
+    workspaceRevision
+  } = {}) {
+    const normalizedCourseId = String(courseId || "").trim();
+    if (!normalizedCourseId) throw new TypeError("O UUID do curso é obrigatório.");
+    const normalizedExpectedRevision = String(expectedRevision || "").trim();
+    if (!normalizedExpectedRevision) {
+      throw new TypeError("A confirmação exige a revisão local materializada.");
+    }
+    const normalizedWorkspaceId = String(workspaceId || "").trim();
+    if (!normalizedWorkspaceId) {
+      throw new TypeError("A confirmação exige o workspace materializado.");
+    }
+    const normalizedWorkspaceRevision = Number(workspaceRevision);
+    if (!Number.isSafeInteger(normalizedWorkspaceRevision) || normalizedWorkspaceRevision < 1) {
+      throw new TypeError("A confirmação exige uma revisão válida do workspace.");
+    }
+    const stateId = localCourseAuthoringStateId(normalizedCourseId);
+    return this.transaction(["syncState"], "readwrite", async (transaction) => {
+      const draftRow = await transaction.get("syncState", stateId);
+      const draft = localCourseDraftFromRow(draftRow, normalizedCourseId);
+      if (!draft) {
+        return {
+          status: "already_acknowledged",
+          courseId: normalizedCourseId,
+          workspaceId: normalizedWorkspaceId,
+          workspaceRevision: normalizedWorkspaceRevision
+        };
+      }
+      if (draft.revision !== normalizedExpectedRevision) {
+        throw new LocalCourseDraftChangedError(
+          normalizedCourseId,
+          normalizedExpectedRevision,
+          draft.revision
+        );
+      }
+      await transaction.delete("syncState", stateId);
+      return {
+        status: "acknowledged",
+        courseId: normalizedCourseId,
+        workspaceId: normalizedWorkspaceId,
+        workspaceRevision: normalizedWorkspaceRevision
+      };
+    });
+  }
+
   async replaceOfficialCourseReplica(courseId, graph, {
     publicationSeq = 0,
     contentHash = "",
@@ -870,9 +841,6 @@ export class IndexedDbRelationalStore {
     if (validate) validateOfficialCourseGraph(normalizedRows);
     const stores = [
       ...OFFICIAL_COURSE_STORE_NAMES,
-      "lessonProgress",
-      "cardProgress",
-      "comments",
       "outbox",
       "syncState"
     ];
@@ -943,9 +911,6 @@ export class IndexedDbRelationalStore {
     const stores = [
       ...OFFICIAL_COURSE_STORE_NAMES,
       "courseSelections",
-      "lessonProgress",
-      "cardProgress",
-      "comments",
       "outbox",
       "syncState"
     ];
@@ -1038,18 +1003,13 @@ export class IndexedDbRelationalStore {
     };
   }
 
-  async removeOfficialCourseReplica(courseId, {
-    removePersonalState = false,
-    removeSelection = false
-  } = {}) {
+  async removeOfficialCourseReplica(courseId, { removeSelection = false } = {}) {
     const normalizedCourseId = String(courseId || "");
     const stores = [
       ...OFFICIAL_COURSE_STORE_NAMES,
       "syncState",
       ...(removeSelection ? ["courseSelections"] : []),
-      ...(removePersonalState
-        ? ["lessonProgress", "cardProgress", "comments", "studyPathCourses", "outbox"]
-        : [])
+      "outbox"
     ];
     await this.transaction(stores, "readwrite", async (transaction) => {
       if (removeSelection) {
@@ -1063,7 +1023,7 @@ export class IndexedDbRelationalStore {
         }
       }
       await deleteCourseContent(transaction, normalizedCourseId);
-      if (removePersonalState) await deletePersonalCourseState(transaction, normalizedCourseId);
+      await deleteCourseOutboxEntries(transaction, normalizedCourseId);
       await transaction.delete("syncState", `catalog.removalPending:${normalizedCourseId}`);
     });
   }
@@ -1076,10 +1036,6 @@ export class IndexedDbRelationalStore {
     const removedIds = [];
     await this.transaction([
       ...OFFICIAL_COURSE_STORE_NAMES,
-      "lessonProgress",
-      "cardProgress",
-      "comments",
-      "studyPathCourses",
       "outbox",
       "syncState"
     ], "readwrite", async (transaction) => {
@@ -1092,7 +1048,7 @@ export class IndexedDbRelationalStore {
         );
         if (unresolved.length || localDraft) continue;
         await deleteCourseContent(transaction, courseId);
-        await deletePersonalCourseState(transaction, courseId);
+        await deleteCourseOutboxEntries(transaction, courseId);
         await transaction.delete("syncState", `catalog.removalPending:${courseId}`);
         removedIds.push(courseId);
       }
@@ -1118,10 +1074,6 @@ export class IndexedDbRelationalStore {
     const selectedCourseIds = new Set(manifest.map((entry) => entry.courseId));
     normalizedRows.courseSelections = normalizedRows.courseSelections
       .filter((row) => selectedCourseIds.has(String(row.courseId || "")));
-    for (const storeName of ["lessonProgress", "cardProgress", "comments", "studyPathCourses"]) {
-      normalizedRows[storeName] = normalizedRows[storeName]
-        .filter((row) => selectedCourseIds.has(String(row.courseId || "")));
-    }
     return this.transaction(
       [...SYNCED_PERSONAL_STORE_NAMES, "outbox", "syncState"],
       "readwrite",
@@ -1287,7 +1239,7 @@ export class IndexedDbRelationalStore {
               });
             } else {
               await deleteCourseContent(transaction, changeCourseId);
-              await deletePersonalCourseState(transaction, changeCourseId);
+              await deleteCourseOutboxEntries(transaction, changeCourseId);
               await transaction.delete("syncState", `catalog.removalPending:${changeCourseId}`);
               outboxRows
                 .filter((row) => String(row.courseId || "") === changeCourseId)

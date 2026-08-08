@@ -190,6 +190,34 @@ function positionedPagination(request, cursorId, { query = false, retired = fals
   return result;
 }
 
+function trailPagination(request) {
+  const url = new URL(request.url);
+  const names = ["afterPathPosition", "afterItemPosition", "afterId"];
+  const values = names.map((name) => url.searchParams.get(name));
+  const supplied = values.filter((value) => value != null).length;
+  if (supplied !== 0 && supplied !== names.length) {
+    throw new AuthoringApiError(
+      422,
+      "invalid_pagination",
+      "O cursor de Trilhas deve ser informado por inteiro."
+    );
+  }
+  const result = { limit: positiveLimit(request, 20, 25) };
+  if (supplied === 0) return result;
+  const afterPathPosition = Number(values[0]);
+  const afterItemPosition = Number(values[1]);
+  if (!Number.isSafeInteger(afterPathPosition) || afterPathPosition < 0
+      || !Number.isSafeInteger(afterItemPosition) || afterItemPosition < 0) {
+    throw new AuthoringApiError(422, "invalid_pagination", "O cursor de Trilhas é inválido.");
+  }
+  return {
+    ...result,
+    afterPathPosition,
+    afterItemPosition,
+    afterId: validateUuid(values[2])
+  };
+}
+
 function workspaceCardPagination(request) {
   const url = new URL(request.url);
   const microsequencePath = entityPathFromUrl(url, "microsequencePath");
@@ -746,7 +774,7 @@ export async function executeAuthoringRoute({
     return {
       data: await adapter.listPersonalLibraryCourses({
         principal,
-        ...positionedPagination(request, "afterSelectionId", { query: true })
+        ...trailPagination(request)
       }),
       requestId: null
     };

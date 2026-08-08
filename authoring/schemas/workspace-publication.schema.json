@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://fabio-ara.github.io/AraLearn/authoring/schemas/workspace-publication.schema.json",
-  "title": "Disponibilidade corrente de curso do workspace",
+  "title": "Distribuição de curso do workspace",
   "description": "O vínculo entre workspace, curso e destino escolhe automaticamente criar ou atualizar.",
   "type": "object",
   "additionalProperties": false,

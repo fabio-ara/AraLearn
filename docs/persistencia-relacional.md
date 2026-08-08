@@ -1,9 +1,10 @@
 # Persistência relacional e sincronização
 
 O Supabase guarda o estado compartilhado. O IndexedDB mantém, em cada
-dispositivo, uma projeção relacional para estudo sem conexão. Uma publicação
-JSON v4 imutável no Storage é a fonte de verdade do curso disponível para
-estudo; a autoria remota em andamento usa partes mutáveis no PostgreSQL.
+dispositivo, uma projeção relacional para estudo sem conexão. Cursos oficiais
+selecionados vêm de uma publicação JSON v4 imutável no Storage; planos e cursos
+em materialização são compostos diretamente das partes correntes do workspace
+no PostgreSQL.
 
 ## O que fica no banco
 
@@ -53,12 +54,12 @@ O estado pessoal ocupa tabelas separadas:
 | Finalidade | PostgreSQL | IndexedDB |
 | --- | --- | --- |
 | Cursos selecionados | `user_course_selections` | `courseSelections` |
-| Trilhas | `study_paths`, `study_path_courses` | `studyPaths`, `studyPathCourses` |
-| Progresso | `lesson_progress`, `card_progress` | `lessonProgress`, `cardProgress` |
-| Comentários | `card_comments` | `comments` |
-| Sincronização | tabelas privadas | fila de envio (`outbox`) e estado da sincronização |
+| Identidade de Trilhas | `private.trail_items` | projeção em `syncState` |
+| Grupos e posições | `study_paths`, `study_path_items` | projeção em `syncState` |
+| Progresso, Rever e observações | `trail_personal_states` | cache por `trailItemId` em `syncState` |
+| Sincronização de seleção oficial | tabelas privadas | fila leve de envio (`outbox`) |
 
-O painel não possui tabela nem snapshot. `list_trail_items_v1` projeta planos e
+A tela inicial não possui uma árvore remota paralela. `list_trail_items_v1` projeta planos e
 cursos correntes, com cursor composto, sem copiar conteúdo. O dispositivo
 sobrescreve uma única entrada `learning.spaces.v1:<userId>` em `syncState` com
 a projeção completa de Trilhas, depois de percorrer todas as páginas. Resultado
@@ -66,14 +67,20 @@ parcial e Coleções não são persistidos por essa superfície. O registro é u
 lembrança offline sem autoridade: os indicadores de edição, exclusão e retirada
 ficam falsos até uma nova leitura autenticada completa.
 
+O dispositivo não pode descobrir uma revogação enquanto está desconectado. Na
+primeira leitura autenticada posterior, compara a projeção anterior com a nova e
+remove composição e estado pessoal de todo item cuja última autoridade acabou;
+uma nova sessão executa a mesma reconciliação antes de reutilizar caches.
+
 Pessoas e governança ficam em `educational_workspace_members` e
 `educational_workspace_invitations`. O papel é uma relação pequena; não cria
 outra árvore. Convites guardam hash do código e expiram em sete dias. Recibos
-idempotentes também expiram. Publicações privadas são disponibilizadas aos
-membros por seleção e referência ao mesmo curso, sem cópia por participante.
+idempotentes também expiram. O workspace aparece em Trilhas por sua identidade
+estável, sem publicação nem cópia por participante. Um artefato privado só é
+fixado quando necessário para uma submissão editorial.
 
 O dispositivo abre um banco por UUID de conta no namespace físico
-`aralearn-relational-v4-r2`. O endereço de e-mail não participa dessa identidade.
+`aralearn-relational-v4-r3`. O endereço de e-mail não participa dessa identidade.
 Esse namespace é uma geração limpa do contrato v4: cópias locais de gerações
 encerradas não são abertas, migradas nem disputadas. Após autenticar, a seleção
 e as revisões oficiais são reconstruídas pela sincronização remota.
@@ -88,9 +95,10 @@ As consultas usadas por assistentes também respeitam essa separação. Uma cont
 autora comum lê seus planos e cursos em Trilhas. Uma conta revisora
 lê somente o artefato submetido à fila que ela pode atender. Leituras grandes
 são recortadas por árvore, entidade ou documento. Criar, renomear ou excluir
-uma trilha e mover uma seleção continuam sendo comandos pessoais idempotentes
-vinculados ao UUID do proprietário. Excluir a trilha conserva os cursos e seu
-estado de estudo; as seleções passam a aparecer sem grupo até serem movidas.
+um grupo e mover qualquer `trailItemId` continuam sendo comandos pessoais
+idempotentes vinculados ao UUID do proprietário. Excluir o grupo conserva os
+cursos e seu estado de estudo; os itens passam a aparecer sem grupo até serem
+movidos.
 
 O catálogo possui outro plano de controle. Coleções e classificações guardam
 posição e revisão; alterações administrativas deixam recibos privados de
@@ -151,15 +159,15 @@ oficial e sua revisão corrente continuam intactas.
 Pelo Chatbot ou Plugin, `remove_course_from_personal_library_v5` usa a seleção,
 o curso e o hash que acabaram de ser lidos. Em um curso oficial, conserva a
 mesma retirada de seleção. Em publicação privada da própria conta, também
-arquiva a publicação e remove sua referência corrente; submissão editorial
-ativa bloqueia essa limpeza, mas submissões encerradas não.
+arquiva o artefato e remove sua referência corrente; submissão editorial ativa
+bloqueia essa limpeza. Uma composição de workspace ainda existente preserva o
+mesmo `trailItemId`, o grupo e o estado pessoal.
 
 ## Início da réplica
 
-`bootstrap_replica` devolve seleções, trilhas, estado funcional de estudo, comentários,
-metadados dos cursos, hashes de revisão e a posição atual do histórico de
-mudanças. O dispositivo grava o estado pessoal em uma transação e baixa as
-revisões ausentes separadamente.
+`bootstrap_replica` devolve seleções leves e a posição atual do histórico de
+mudanças. Grupos e estado pessoal usam as RPCs de Trilhas e são gravados por
+`trailItemId`; revisões oficiais ausentes são baixadas separadamente.
 
 Uma revisão é baixada apenas quando o hash mudou. Antes da troca, o dispositivo
 confere o contrato v4 e o SHA-256, projeta o documento em linhas locais e
@@ -168,46 +176,60 @@ ou inválido não substitui o que já está disponível.
 
 ## Envio e recebimento
 
-Cada alteração recebe um `mutationId`. A outbox conserva trilhas, associações
-de trilha, progresso e comentários. Selecionar ou retirar curso usa sua própria
-intenção idempotente persistida. Nenhum desses mecanismos guarda ou envia o
-documento integral.
+Cada alteração recebe um identificador idempotente, mas os fluxos permanecem
+separados pelo que realmente sincronizam:
 
-`apply_sync_batch` recebe somente trilhas e sua organização. Cursor, conclusão
-estrutural e a marca pessoal **Rever** usam
-`apply_non_punitive_study_state_batch_v1`. Abertura, tempo, tentativa e resultado
-não pertencem ao schema. Observações usam `apply_situated_comment_batch_v1`,
-que aceita somente categoria, texto e referências pequenas; o endpoint genérico
-rejeita os dois contratos. O transporte preserva a sequência da outbox ao
-alternar entre eles. O mesmo identificador
-pode ser reenviado depois de uma falha de rede sem criar uma segunda gravação.
-`pull_sync_changes` entrega todas as mudanças pessoais em páginas; cada página
-é confirmada no dispositivo antes da seguinte.
+- a outbox relacional e `apply_sync_batch` transportam somente a seleção leve
+  de cursos oficiais;
+- criar, renomear e ordenar grupos ou mover um item usa uma RPC transacional de
+  Trilhas e um `requestId`, sem projeção otimista concorrente;
+- cursor, conclusão, **Rever** e o texto autoral da observação usam operações
+  pontuais sobre a única linha corrente de `trail_personal_states`.
 
-A última alteração válida aceita pelo servidor passa a valer para a mesma
-informação pessoal. O horário usado nessa ordem é controlado pelo protocolo do
-servidor. A revisão do curso não pode ser alterada por esse caminho.
+O cache do estado pessoal conserva apenas a revisão atual e uma fila compacta
+de `set|delete` por chave estável. `mutate_trail_personal_state_v1` recebe no máximo
+512 operações ou 64 KiB por lote, aplica compare-and-swap e devolve somente
+revisão e data. O documento inteiro não volta no recibo nem é enviado a cada
+mudança. Uma resposta perdida pode repetir o mesmo `mutationId`; conflito faz o
+cliente reler a linha corrente e reaplicar somente os patches ainda pendentes.
+O progresso v3 usa o `id` estável da lição como chave e guarda apenas
+`cursorCardId` e o conjunto `completedCardIds`; não cria uma entrada com
+timestamp para cada card. O
+orçamento canônico do cliente é 256 KiB, inclusive nos cursos grandes do
+catálogo.
+
+O feed de `pull_sync_changes` continua pequeno porque comunica seleções, não
+grupos nem o estado funcional. Abertura, tempo, tentativa e resultado não
+pertencem a nenhum desses contratos. A revisão do curso também não pode ser
+alterada por esse caminho.
 
 ## Falhas esperadas
 
 | Situação | Resultado |
 | --- | --- |
-| Sem rede, demora de resposta, 429 ou erro temporário do servidor | A alteração permanece na fila para nova tentativa. |
-| Sessão ausente ou expirada | A fila é preservada e o aplicativo pede novo acesso. |
-| Dado inválido, referência inexistente ou permissão revogada | A alteração é rejeitada e não volta à fila automaticamente. |
+| Sem rede, demora de resposta, 429 ou erro temporário do servidor | Seleção e estado pessoal permanecem nas filas próprias; organização remota não é simulada localmente. |
+| Sessão ausente ou expirada | O aplicativo preserva a pendência local e pede novo acesso. |
+| Dado inválido ou referência inexistente | A operação é recusada sem escrita parcial. |
+| Permissão revogada | Na próxima sincronização online, composição, estado e cache de autoridade são apagados; a operação falha fechada. |
 | A revisão do conteúdo mudou durante a escrita | A operação obsoleta é recusada e a tela recarrega o estado corrente. |
 | A seleção avançou durante o download da revisão | A revisão capturada não é instalada; a operação pode ser repetida com o novo hash. |
 
-Uma falha ao enviar não impede o recebimento de mudanças remotas quando a sessão e a conexão continuam válidas.
+Uma falha em um canal não autoriza gravação por outro nem altera o conteúdo
+do curso.
 
 ## Atualização, retirada e limpeza
 
-Quando um curso oficial muda, identidades preservadas mantêm progresso e
-comentários. Partes removidas deixam de usar os dados associados. O dispositivo
-valida a nova publicação antes de trocar a projeção e conserva a anterior se o
-download ou a validação falhar.
+Quando uma publicação oficial muda ou uma composição é promovida, o
+`trailItemId` preservado mantém grupo, progresso, **Rever** e observações. O
+dispositivo valida uma revisão oficial antes de trocar sua projeção e conserva
+a anterior se o download ou a validação falhar. Partes que deixaram a árvore
+não reaparecem na navegação.
 
-Ao retirar uma seleção em outro dispositivo, a réplica local deixa de mostrar o curso. Sem trabalho pendente, curso, progresso, comentários e referências de trilha são removidos juntos. Com trabalho pendente, o curso fica oculto e os dados locais são preservados até a resolução.
+Retirar a seleção de um curso oficial o oculta de Trilhas sem apagar a
+publicação global. Se a mesma identidade também possui workspace acessível, o
+item continua visível pela composição. Excluir de fato a última fonte de um
+item remove por cascata seus vínculos de grupo e estado pessoal; itens e cursos
+homônimos independentes não são atingidos.
 
 O histórico de sincronização é mantido enquanto houver dispositivos ativos que possam precisar dele. A limpeza usa o menor ponto já recebido por esses dispositivos e nunca elimina apenas parte de uma sequência. Dispositivos inativos fazem uma nova carga inicial quando voltam a ser usados.
 

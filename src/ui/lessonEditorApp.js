@@ -117,6 +117,15 @@ import {
   toggleBottomUpAssistanceItem
 } from "./bottomUpAssistanceUiState.js";
 import {
+  HomeTrailsController,
+  isHomeTrailsAuthorityError
+} from "./HomeTrailsController.js";
+import {
+  isStudyableTrailItem,
+  mergeWorkspaceCourse,
+  trailItemDeleteMode
+} from "./homeTrailProjection.js";
+import {
   applyAssistConfigPatch,
   checkCodexCliConnection,
   createCodexCliSetupStatus,
@@ -124,6 +133,7 @@ import {
   resolveCardAssistanceProviderReadiness
 } from "../generation/runtime/cardAssistanceConfig.js";
 import {
+  createEmptyProgressDocument,
   removeLessonProgressEntries,
   truncateLessonProgressFromCardKeys,
   writeLessonProgressEntry
@@ -285,23 +295,40 @@ export function createLessonEditorApp({
   editor,
   initialProject,
   assistProvider = null,
-  contextualAuthoring = null
+  contextualAuthoring = null,
+  homeTrails = null,
+  workspaceCourseAdapter = null,
+  trailPersonalStateFactory = null
 }) {
   if (!root) fail("Raiz inválida.");
   if (!storage || typeof storage.loadProject !== "function") fail("Storage inválido.");
-  if (
-    typeof storage.loadCommentForPath !== "function" ||
-    typeof storage.saveCommentForPath !== "function" ||
-    typeof storage.deleteCommentForPath !== "function"
-  ) fail("Storage relacional de comentários inválido.");
   if (!editor) fail("Editor inválido.");
   if (!initialProject || !Array.isArray(initialProject.courses)) fail("Projeto inicial inválido.");
+  if (homeTrails && typeof trailPersonalStateFactory !== "function") {
+    fail("Adaptador de estado pessoal de Trilhas inválido.");
+  }
   const initialAssistConfig = normalizeAssistConfig({});
+  const homeTrailsController = homeTrails
+    ? new HomeTrailsController({ adapter: homeTrails })
+    : null;
   const state = {
     project: initialProject,
     view: "courses",
     homeTab: "courses",
     homeSelectedCourseKey: "",
+    homeSelectedTrailItemId: "",
+    homeTrailSnapshot: null,
+    homeTrailLoading: false,
+    trailPersonalStorageByItemId: new Map(),
+    trailPersonalStorageLoadingByItemId: new Map(),
+    homeOrganization: {
+      active: false,
+      creatingGroup: false,
+      editingGroupId: "",
+      movingItemId: "",
+      busy: false,
+      error: ""
+    },
     selection: null,
     cardCommentOpen: false,
     entityMutationSaving: false,
@@ -363,9 +390,270 @@ export function createLessonEditorApp({
   state.selection = resolveFirstSelection(state.project);
   state.homeSelectedCourseKey = state.selection?.courseKey || "";
 
+  function trailCourseRef(
+    courseKey = state.selection?.courseKey,
+    trailItemId = state.homeSelectedTrailItemId
+  ) {
+    return homeTrailsController?.courseRefForKey(courseKey, { trailItemId }) || null;
+  }
+
+  function workspaceCourseRef(courseKey = state.selection?.courseKey) {
+    const reference = trailCourseRef(courseKey);
+    return reference?.workspaceId ? reference : null;
+  }
+
+  function workspaceCourseHook(name) {
+    return typeof workspaceCourseAdapter?.[name] === "function"
+      ? workspaceCourseAdapter[name].bind(workspaceCourseAdapter)
+      : null;
+  }
+
+  function workspaceAuthoringAvailable(courseKey) {
+    const reference = workspaceCourseRef(courseKey);
+    return Boolean(
+      reference?.canEdit === true &&
+      workspaceCourseHook("saveMetadata") &&
+      workspaceCourseHook("saveMicrosequenceCards") &&
+      workspaceCourseHook("moveEntity") &&
+      workspaceCourseHook("deleteEntity") &&
+      workspaceCourseHook("deleteCourse")
+    );
+  }
+
+  function activeTrailPersonalStorage(courseKey = state.selection?.courseKey) {
+    if (!homeTrailsController) return storage;
+    const reference = trailCourseRef(courseKey);
+    if (!reference) return null;
+    return state.trailPersonalStorageByItemId.get(reference.trailItemId) || null;
+  }
+
+  async function ensureTrailPersonalStorage(item, course) {
+    if (!item || !course || !homeTrailsController) return storage;
+    const reference = homeTrailsController.bindCourseKey(item.itemId, course.id);
+    if (!reference) throw new Error("O item de Trilhas não corresponde ao curso carregado.");
+    const existing = state.trailPersonalStorageByItemId.get(reference.trailItemId);
+    if (existing) {
+      existing.setCourse?.(course);
+      try {
+        await existing.refresh?.();
+      } catch (error) {
+        if (isHomeTrailsAuthorityError(error)) {
+          state.trailPersonalStorageByItemId.delete(reference.trailItemId);
+          state.trailPersonalStorageLoadingByItemId.delete(reference.trailItemId);
+        }
+        throw error;
+      }
+      return existing;
+    }
+    const loading = state.trailPersonalStorageLoadingByItemId.get(reference.trailItemId);
+    if (loading) return loading;
+    const pending = Promise.resolve(trailPersonalStateFactory({
+      trailItemId: reference.trailItemId,
+      course,
+      item,
+      courseRef: reference
+    })).then(async (personalStorage) => {
+      if (!personalStorage || typeof personalStorage.initialize !== "function") {
+        throw new Error("O estado pessoal de Trilhas não pôde ser inicializado.");
+      }
+      personalStorage.setCourse?.(course);
+      await personalStorage.initialize();
+      state.trailPersonalStorageByItemId.set(reference.trailItemId, personalStorage);
+      return personalStorage;
+    }).finally(() => {
+      state.trailPersonalStorageLoadingByItemId.delete(reference.trailItemId);
+    });
+    state.trailPersonalStorageLoadingByItemId.set(reference.trailItemId, pending);
+    return pending;
+  }
+
+  function activeProgress(courseKey = state.selection?.courseKey) {
+    const personalStorage = activeTrailPersonalStorage(courseKey);
+    return personalStorage?.loadProgress?.() || createEmptyProgressDocument();
+  }
+
+  function saveActiveProgress(nextProgress, courseKey = state.selection?.courseKey) {
+    const personalStorage = activeTrailPersonalStorage(courseKey);
+    if (!personalStorage?.saveProgress) return;
+    void Promise.resolve(personalStorage.saveProgress(nextProgress)).catch((error) => {
+      console.warn("Não foi possível salvar o progresso em Trilhas.", error);
+    });
+  }
+
+  function homeReviewItems() {
+    if (!homeTrailsController) return storage.loadReviewItems?.() || [];
+    return [...state.trailPersonalStorageByItemId.entries()].flatMap(([trailItemId, personalStorage]) =>
+      (personalStorage.loadReviewItems?.() || []).map((item) => ({ ...item, trailItemId }))
+    );
+  }
+
   function setProject(nextProject) {
     state.project = nextProject;
     state.flowchartProjectionByBlockKey = {};
+  }
+
+  function composeLoadedWorkspaceCourses(projectDocument) {
+    if (!homeTrailsController) return projectDocument;
+    const itemId = state.homeSelectedTrailItemId || homeTrailsController.selectedItemId;
+    const item = homeTrailsController.item(itemId);
+    const course = homeTrailsController.loadedCourses.get(itemId);
+    if (!item || !course) return projectDocument;
+    return mergeWorkspaceCourse(projectDocument, course, [item.courseKey, item.courseId]);
+  }
+
+  async function clearTrailPersonalStorage(itemIds = null) {
+    const selectedIds = itemIds ? new Set(itemIds) : null;
+    const entries = [...state.trailPersonalStorageByItemId.entries()]
+      .filter(([itemId]) => !selectedIds || selectedIds.has(itemId));
+    await Promise.all(entries.map(async ([itemId, personalStorage]) => {
+      await Promise.resolve(personalStorage.clearLocal?.()).catch(() => undefined);
+      state.trailPersonalStorageByItemId.delete(itemId);
+      state.trailPersonalStorageLoadingByItemId.delete(itemId);
+    }));
+  }
+
+  async function refreshHomeTrails({ preserveSelection = true } = {}) {
+    if (!homeTrailsController || state.homeTrailLoading) return state.homeTrailSnapshot;
+    state.homeTrailLoading = true;
+    if (state.view === "courses") render({ preserveState: true });
+    try {
+      const snapshot = await homeTrailsController.refresh({
+        selectedItemId: preserveSelection ? state.homeSelectedTrailItemId : ""
+      });
+      for (const removedItemId of homeTrailsController.removedItemIds) {
+        const personalStorage = state.trailPersonalStorageByItemId.get(removedItemId);
+        await personalStorage?.clearLocal?.();
+        state.trailPersonalStorageByItemId.delete(removedItemId);
+        state.trailPersonalStorageLoadingByItemId.delete(removedItemId);
+      }
+      state.homeTrailSnapshot = snapshot;
+      state.homeSelectedTrailItemId = homeTrailsController.selectedItemId;
+      state.homeOrganization.error = "";
+      for (const item of snapshot.items) {
+        if (item.workspaceId || !item.courseId) continue;
+        const localCourseKey = storage.resolveCourseContractKey?.(item.courseId) || "";
+        if (localCourseKey) homeTrailsController.bindCourseKey(item.itemId, localCourseKey);
+      }
+      const selectedItem = homeTrailsController.item(state.homeSelectedTrailItemId);
+      state.homeSelectedCourseKey = homeTrailsController.courseRefs
+        .get(state.homeSelectedTrailItemId)?.courseKey ||
+        selectedItem?.courseKey || selectedItem?.courseId || "";
+      setProject(composeLoadedWorkspaceCourses(storage.loadProject()));
+      return snapshot;
+    } catch (error) {
+      if (isHomeTrailsAuthorityError(error)) {
+        await clearTrailPersonalStorage();
+        state.homeTrailSnapshot = null;
+        state.homeSelectedTrailItemId = "";
+        state.homeSelectedCourseKey = "";
+        state.homeOrganization.active = false;
+        setProject(storage.loadProject());
+        selectFirstPath(state.project);
+        state.view = "courses";
+      }
+      state.homeOrganization.error = error instanceof Error
+        ? error.message
+        : "Não foi possível atualizar Trilhas.";
+      return null;
+    } finally {
+      state.homeTrailLoading = false;
+      if (state.view === "courses") render({ preserveState: true });
+    }
+  }
+
+  async function ensureHomeTrailCourse(itemId) {
+    if (!homeTrailsController) return null;
+    const item = homeTrailsController.item(itemId);
+    if (!item) return null;
+    const baseProject = storage.loadProject();
+    const reference = homeTrailsController.courseRefs.get(item.itemId);
+    let course = (baseProject.courses || []).find((candidate) =>
+      candidate.id === reference?.courseKey ||
+      candidate.id === item.courseKey ||
+      candidate.id === item.courseId
+    ) || null;
+    if (item.workspaceId) {
+      course = await homeTrailsController.loadCourse(item.itemId);
+      if (course) setProject(mergeWorkspaceCourse(
+        baseProject,
+        course,
+        [item.courseKey, item.courseId]
+      ));
+    }
+    if (course) homeTrailsController.bindCourseKey(item.itemId, course.id);
+    return course;
+  }
+
+  async function prepareHomeTrailItem(itemId) {
+    const item = homeTrailsController?.item(itemId);
+    if (!item || (!isStudyableTrailItem(item) && !(item.kind === "plan" && item.workspaceId))) {
+      return null;
+    }
+    const course = await ensureHomeTrailCourse(item.itemId);
+    if (!course) throw new Error("O curso ainda não está disponível neste dispositivo.");
+    await ensureTrailPersonalStorage(item, course);
+    return course;
+  }
+
+  async function refreshWorkspaceCourseDocument(courseRef) {
+    const course = await homeTrailsController.reloadCourse(
+      courseRef.trailItemId,
+      workspaceCourseHook("load")
+        ? (item, reference) => workspaceCourseHook("load")({ item, courseRef: reference })
+        : null
+    );
+    const nextProject = mergeWorkspaceCourse(
+      storage.loadProject(),
+      course,
+      [courseRef.courseKey, courseRef.courseId]
+    );
+    setProject(nextProject);
+    return nextProject;
+  }
+
+  async function openHomeTrailCourse(itemId, { mode = "view" } = {}) {
+    if (!homeTrailsController) return false;
+    const item = homeTrailsController.item(itemId);
+    if (!item) return false;
+    state.homeSelectedTrailItemId = item.itemId;
+    homeTrailsController.select(item.itemId);
+    state.homeTrailLoading = true;
+    render({ preserveState: true });
+    try {
+      const course = await prepareHomeTrailItem(item.itemId);
+      state.homeSelectedCourseKey = course.id;
+      openCourse(course.id, { mode });
+      return true;
+    } catch (error) {
+      state.homeOrganization.error = error instanceof Error
+        ? error.message
+        : "Não foi possível abrir o curso.";
+      return false;
+    } finally {
+      state.homeTrailLoading = false;
+      if (state.view === "courses") render({ preserveState: true });
+    }
+  }
+
+  async function mutateHomeTrails(operation, argumentsValue = {}) {
+    if (!homeTrailsController || state.homeOrganization.busy) return null;
+    state.homeOrganization.busy = true;
+    state.homeOrganization.error = "";
+    render({ preserveState: true });
+    try {
+      const snapshot = await homeTrailsController.mutate(operation, argumentsValue);
+      state.homeTrailSnapshot = snapshot;
+      state.homeSelectedTrailItemId = homeTrailsController.selectedItemId;
+      return snapshot;
+    } catch (error) {
+      state.homeOrganization.error = error instanceof Error
+        ? error.message
+        : "Não foi possível organizar Trilhas.";
+      return null;
+    } finally {
+      state.homeOrganization.busy = false;
+      render({ preserveState: true });
+    }
   }
 
   function isCoursesView(view) {
@@ -528,7 +816,7 @@ export function createLessonEditorApp({
   }
 
   function openLesson(moduleKey, lessonKey, { mode = "view" } = {}) {
-    const navigationState = buildLessonNavigationState(state.project, storage.loadProgress(), {
+    const navigationState = buildLessonNavigationState(state.project, activeProgress(state.selection.courseKey), {
       courseKey: state.selection.courseKey,
       moduleKey,
       lessonKey
@@ -554,13 +842,16 @@ export function createLessonEditorApp({
   }
 
   function currentCardIsMarkedForReview() {
-    return Boolean(storage.isCardMarkedForReview?.(state.selection));
+    const personalStorage = activeTrailPersonalStorage();
+    return Boolean(personalStorage?.isCardMarkedForReview?.(state.selection));
   }
 
   async function toggleCurrentCardReviewMark() {
-    if (typeof storage.setCardReviewMark !== "function" || !state.selection.cardKey) return;
+    if (!state.selection.cardKey) return;
     try {
-      await storage.setCardReviewMark(
+      const personalStorage = activeTrailPersonalStorage();
+      if (!personalStorage?.setCardReviewMark) return;
+      await personalStorage.setCardReviewMark(
         state.selection,
         !currentCardIsMarkedForReview()
       );
@@ -575,14 +866,14 @@ export function createLessonEditorApp({
       return;
     }
 
-    const currentProgress = storage.loadProgress();
+    const currentProgress = activeProgress(reference.courseKey);
     const nextProgress = writeLessonProgressEntry(
       currentProgress,
       reference,
       lessonCards.map((entry) => entry.card),
       reachedIndex
     );
-    storage.saveProgress(nextProgress);
+    saveActiveProgress(nextProgress, reference.courseKey);
   }
 
   function collectProgressReferencesInModule(courseKey, moduleValue) {
@@ -594,13 +885,17 @@ export function createLessonEditorApp({
   }
 
   function removeProgressEntries(lessonReferences) {
-    if (typeof storage.removeProgressEntries === "function") {
-      storage.removeProgressEntries(lessonReferences);
+    const courseKey = lessonReferences[0]?.courseKey || state.selection?.courseKey;
+    const personalStorage = activeTrailPersonalStorage(courseKey);
+    if (typeof personalStorage?.removeProgressEntries === "function") {
+      void Promise.resolve(personalStorage.removeProgressEntries(lessonReferences)).catch((error) => {
+        console.warn("Não foi possível zerar o progresso em Trilhas.", error);
+      });
       return;
     }
-    const currentProgress = storage.loadProgress();
+    const currentProgress = activeProgress(courseKey);
     const nextProgress = removeLessonProgressEntries(currentProgress, lessonReferences);
-    storage.saveProgress(nextProgress);
+    saveActiveProgress(nextProgress, courseKey);
   }
 
   function getCodexSetupEndpoint() {
@@ -1289,7 +1584,8 @@ export function createLessonEditorApp({
   }
 
   function openCardComment() {
-    const comment = storage.loadCommentForPath(state.selection);
+    const personalStorage = activeTrailPersonalStorage();
+    const comment = personalStorage?.loadCommentForPath?.(state.selection) || null;
     state.cardCommentDraft = {
       category: comment ? String(comment.category || "") : "observation",
       body: typeof comment?.body === "string" ? comment.body : "",
@@ -1317,7 +1613,11 @@ export function createLessonEditorApp({
     state.cardCommentError = "";
     render({ preserveState: true });
     try {
-      await storage.saveCommentForPath(state.selection, {
+      const personalStorage = activeTrailPersonalStorage();
+      if (!personalStorage?.saveCommentForPath) {
+        throw new Error("As observações deste curso não estão disponíveis.");
+      }
+      await personalStorage.saveCommentForPath(state.selection, {
         category: state.cardCommentDraft.category,
         body: state.cardCommentDraft.body
       });
@@ -1370,20 +1670,20 @@ export function createLessonEditorApp({
     );
     const cardKeys = (microsequence?.cards || []).map((card) => card.id);
     const nextProgress = truncateLessonProgressFromCardKeys(
-      storage.loadProgress(),
+      activeProgress(courseKey),
       { courseKey, moduleKey, lessonKey },
       cardKeys
     );
-    storage.saveProgress(nextProgress);
+    saveActiveProgress(nextProgress, courseKey);
   }
 
   function resetCardProgress(courseKey, moduleKey, lessonKey, cardKey) {
     const nextProgress = truncateLessonProgressFromCardKeys(
-      storage.loadProgress(),
+      activeProgress(courseKey),
       { courseKey, moduleKey, lessonKey },
       [cardKey]
     );
-    storage.saveProgress(nextProgress);
+    saveActiveProgress(nextProgress, courseKey);
   }
 
   function buildCurrentCardAssistanceRequest() {
@@ -1408,7 +1708,11 @@ export function createLessonEditorApp({
     state.cardCommentError = "";
     render({ preserveState: true });
     try {
-      await storage.deleteCommentForPath(state.selection);
+      const personalStorage = activeTrailPersonalStorage();
+      if (!personalStorage?.deleteCommentForPath) {
+        throw new Error("As observações deste curso não estão disponíveis.");
+      }
+      await personalStorage.deleteCommentForPath(state.selection);
       state.cardCommentExists = false;
       state.cardCommentOpen = false;
     } catch (error) {
@@ -1450,9 +1754,7 @@ export function createLessonEditorApp({
   }
 
   function contextualAuthoringIsAvailable() {
-    return typeof contextualAuthoring?.remoteCatalog?.executeApplicationAuthoringAction === "function" &&
-      typeof contextualAuthoring?.syncEngine?.restoreDeferredCourseRevision === "function" &&
-      typeof contextualAuthoring?.synchronizeReplica === "function";
+    return typeof contextualAuthoring?.remoteCatalog?.executeApplicationAuthoringAction === "function";
   }
 
   async function attemptContextualAuthoringSync() {
@@ -1511,10 +1813,6 @@ export function createLessonEditorApp({
         applyContextualAuthoringLocalState(courseKey, nextLocalState);
         return;
       }
-      await contextualAuthoring.syncEngine.restoreDeferredCourseRevision({
-        courseId: result.draft.courseId,
-        expectedLocalDraftRevision: result.draft.revision
-      });
       const nextLocalState = normalizeCardAssistanceLocalState(
         await finalizeContextualCourseDraftSync({
           storage,
@@ -1522,14 +1820,29 @@ export function createLessonEditorApp({
         }) || {}
       );
       applyContextualAuthoringLocalState(courseKey, nextLocalState);
-      await contextualAuthoring.synchronizeReplica({
-        expectedCourseIds: [result.publication.courseId]
-      });
+      const previousSelection = { ...state.selection };
+      const snapshot = await refreshHomeTrails();
+      const materializedItem = snapshot?.items?.find((item) =>
+        (result.trailItemId && item.itemId === result.trailItemId) ||
+        (item.workspaceId === result.workspaceId && item.courseKey === result.courseKey)
+      );
+      if (materializedItem) {
+        const materializedCourse = await ensureHomeTrailCourse(materializedItem.itemId);
+        if (materializedCourse) {
+          await ensureTrailPersonalStorage(materializedItem, materializedCourse);
+          state.homeSelectedTrailItemId = materializedItem.itemId;
+          state.homeSelectedCourseKey = materializedCourse.id;
+          applySelectionByKeys(state.project, {
+            ...previousSelection,
+            courseKey: materializedCourse.id
+          });
+        }
+      }
     } catch (error) {
       console.warn("Sincronização da autoria contextual adiada.", error);
       if (contextualAuthoringAttemptOwnsVisibleState(courseKey)) {
         state.assistDraft.syncError =
-          "A alteração ficou salva neste dispositivo, mas ainda não foi sincronizada com o curso remoto.";
+          "A alteração ficou na fila local e será materializada quando a conexão permitir.";
       }
     } finally {
       settleContextualAuthoringSyncAttempt(
@@ -1608,7 +1921,11 @@ export function createLessonEditorApp({
     entries,
     persistenceGuard
   }) {
-    assertCourseAuthoringAllowed(requestedSelection.courseKey);
+    const workspaceRef = workspaceCourseRef(requestedSelection.courseKey);
+    if (!workspaceRef) assertCourseAuthoringAllowed(requestedSelection.courseKey);
+    else if (!workspaceCourseHook("saveMicrosequenceCards")) {
+      throw new Error("A gravação deste curso de workspace não está disponível.");
+    }
     const beforeMicrosequence = findMicrosequence(
       requestedProjectDocument,
       requestedSelection.courseKey,
@@ -1616,7 +1933,7 @@ export function createLessonEditorApp({
       requestedSelection.lessonKey,
       requestedSelection.microsequenceKey
     );
-    const guard = requireCardAssistancePersistenceGuard(
+    const guard = workspaceRef ? null : requireCardAssistancePersistenceGuard(
       persistenceGuard,
       requestedSelection.courseKey
     );
@@ -1635,6 +1952,39 @@ export function createLessonEditorApp({
       .findIndex((card) => card.id === applied.cardKey);
     if (!targetMicrosequence || targetIndex < 0) {
       throw new Error("A alteração validada não contém o card de destino.");
+    }
+    if (workspaceRef) {
+      const saved = await workspaceCourseHook("saveMicrosequenceCards")({
+        courseRef: workspaceRef,
+        microsequencePath: [
+          requestedSelection.courseKey,
+          requestedSelection.moduleKey,
+          requestedSelection.lessonKey,
+          applied.targetMicrosequenceKey
+        ],
+        cards: structuredClone(targetMicrosequence.cards || [])
+      });
+      if (Number.isSafeInteger(Number(saved?.revision))) {
+        homeTrailsController.updateCourseRef(workspaceRef.trailItemId, {
+          revision: Number(saved.revision)
+        });
+      }
+      setProject(applied.projectDocument);
+      homeTrailsController.loadedCourses.set(
+        workspaceRef.trailItemId,
+        structuredClone(findCourse(applied.projectDocument, requestedSelection.courseKey))
+      );
+      state.selection.microsequenceKey = applied.targetMicrosequenceKey;
+      state.selection.cardIndex = targetIndex;
+      state.selection.cardKey = targetMicrosequence.cards[targetIndex].id;
+      state.assistDraft.promptText = "";
+      state.assistDraft.composerOpen = false;
+      state.assistDraft.manualDraft = null;
+      state.assistDraft.assistance = createCardAssistanceUiState(state.selection);
+      queueAuthoringFocus("card-title");
+      state.cardExerciseLoadVersion += 1;
+      await refreshHomeTrails();
+      return applied;
     }
     if (typeof storage.saveMicrosequenceGeneration !== "function") {
       throw new Error("Não foi possível salvar a alteração neste dispositivo.");
@@ -1708,20 +2058,24 @@ export function createLessonEditorApp({
       button.setAttribute("aria-disabled", "true");
     });
     try {
-      assertCourseAuthoringAllowed(state.selection.courseKey);
-      if (
-        typeof storage.flush !== "function" ||
-        typeof storage.createLocalCourseDraftGuard !== "function"
-      ) {
-        throw new Error("Não foi possível salvar a alteração neste dispositivo.");
-      }
-      await storage.flush();
       const requestedProjectDocument = structuredClone(state.project);
       const requestedSelection = { ...state.selection };
-      const guard = requireCardAssistancePersistenceGuard(
-        await storage.createLocalCourseDraftGuard(requestedSelection.courseKey),
-        requestedSelection.courseKey
-      );
+      const workspaceRef = workspaceCourseRef(requestedSelection.courseKey);
+      let guard = null;
+      if (!workspaceRef) {
+        assertCourseAuthoringAllowed(state.selection.courseKey);
+        if (
+          typeof storage.flush !== "function" ||
+          typeof storage.createLocalCourseDraftGuard !== "function"
+        ) {
+          throw new Error("Não foi possível salvar a alteração neste dispositivo.");
+        }
+        await storage.flush();
+        guard = requireCardAssistancePersistenceGuard(
+          await storage.createLocalCourseDraftGuard(requestedSelection.courseKey),
+          requestedSelection.courseKey
+        );
+      }
       const targetId = container.getAttribute("data-manual-target-id") || "card";
       const request = targetId === "card"
         ? { operation: "repair", repairScope: "card", resourceTargetIds: [] }
@@ -1827,21 +2181,27 @@ export function createLessonEditorApp({
     state.assistDraft.errorMessage = "";
     render({ preserveState: true });
     try {
-      assertCourseAuthoringAllowed(state.selection.courseKey);
-      if (
-        typeof storage.flush !== "function" ||
-        typeof storage.createLocalCourseDraftGuard !== "function"
-      ) {
-        throw new Error("Não foi possível salvar a alteração neste dispositivo.");
-      }
-      await storage.flush();
       const requestedProjectDocument = structuredClone(state.project);
       const requestedSelection = { ...state.selection };
       const requestedAssistConfig = structuredClone(state.assistConfig);
-      const persistenceGuard = requireCardAssistancePersistenceGuard(
-        await storage.createLocalCourseDraftGuard(requestedSelection.courseKey),
-        requestedSelection.courseKey
-      );
+      const workspaceRef = workspaceCourseRef(requestedSelection.courseKey);
+      let persistenceGuard = null;
+      if (!workspaceRef) {
+        assertCourseAuthoringAllowed(state.selection.courseKey);
+        if (
+          typeof storage.flush !== "function" ||
+          typeof storage.createLocalCourseDraftGuard !== "function"
+        ) {
+          throw new Error("Não foi possível salvar a alteração neste dispositivo.");
+        }
+        await storage.flush();
+        persistenceGuard = requireCardAssistancePersistenceGuard(
+          await storage.createLocalCourseDraftGuard(requestedSelection.courseKey),
+          requestedSelection.courseKey
+        );
+      } else if (!workspaceCourseHook("saveMicrosequenceCards")) {
+        throw new Error("A gravação deste curso de workspace não está disponível.");
+      }
       const submission = await executeCardAssistance({
         projectDocument: requestedProjectDocument,
         selection: requestedSelection,
@@ -1966,22 +2326,47 @@ export function createLessonEditorApp({
       ];
     }
 
-    if (toIndex === null || !entityPath || !contextualAuthoringIsAvailable()) return;
+    const workspaceRef = workspaceCourseRef(drag.courseKey);
+    if (
+      toIndex === null ||
+      !entityPath ||
+      (!workspaceRef && !contextualAuthoringIsAvailable()) ||
+      (workspaceRef && !workspaceCourseHook("moveEntity"))
+    ) return;
     state.entityMutationSaving = true;
     render({ preserveState: true });
     try {
-      await moveIntegratedEntity({
-        ...contextualAuthoring,
-        storage,
-        courseKey: drag.courseKey,
-        entityType: drag.level,
-        entityPath,
-        targetParentPath: entityPath.length === 1 ? null : entityPath.slice(0, -1),
-        position: toIndex,
-        title: findCourse(state.project, drag.courseKey)?.title
-      });
-      const nextProject = storage.loadProject();
+      const targetParentPath = entityPath.length === 1 ? null : entityPath.slice(0, -1);
+      if (workspaceRef) {
+        const moved = await workspaceCourseHook("moveEntity")({
+          courseRef: workspaceRef,
+          entityType: drag.level,
+          entityPath,
+          targetParentPath,
+          position: toIndex
+        });
+        if (Number.isSafeInteger(Number(moved?.revision))) {
+          homeTrailsController.updateCourseRef(workspaceRef.trailItemId, {
+            revision: Number(moved.revision)
+          });
+        }
+      } else {
+        await moveIntegratedEntity({
+          ...contextualAuthoring,
+          storage,
+          courseKey: drag.courseKey,
+          entityType: drag.level,
+          entityPath,
+          targetParentPath,
+          position: toIndex,
+          title: findCourse(state.project, drag.courseKey)?.title
+        });
+      }
+      const nextProject = workspaceRef
+        ? await refreshWorkspaceCourseDocument(workspaceRef)
+        : storage.loadProject();
       setProject(nextProject);
+      if (workspaceRef) await refreshHomeTrails();
       applySelectionByKeys(nextProject, state.selection);
       syncAssistDraft();
     } catch (error) {
@@ -2013,16 +2398,41 @@ export function createLessonEditorApp({
     render({ preserveState: false });
   }
 
-  async function deleteCourseDirect(courseKey) {
-    const course = findCourse(state.project, courseKey);
-    if (!course || state.entityMutationSaving) return;
+  async function deleteCourseDirect(courseKey, { trailItemId = "" } = {}) {
+    const descriptor = trailItemId ? homeTrailsController?.item(trailItemId) : null;
+    const directReference = trailItemId
+      ? homeTrailsController?.courseRefs.get(trailItemId) || null
+      : null;
+    const resolvedCourseKey = directReference?.courseKey || courseKey;
+    const course = findCourse(state.project, resolvedCourseKey);
+    if (state.entityMutationSaving) return;
+    const deletionMode = descriptor ? trailItemDeleteMode(descriptor) : null;
+    const workspaceRef = deletionMode === "workspace"
+      ? directReference
+      : descriptor
+        ? null
+        : workspaceCourseRef(resolvedCourseKey);
+    if (descriptor && !deletionMode) {
+      globalThis.alert?.("Este curso não pode ser excluído.");
+      return;
+    }
+    if (!descriptor && !course && !workspaceRef) return;
+    const courseTitle = descriptor?.title || course?.title || "Curso";
     let confirmationMessage;
     try {
-      confirmationMessage = courseRemovalConfirmation(
-        storage,
-        courseKey,
-        course.title || "Curso"
-      );
+      if (deletionMode === "catalog") {
+        confirmationMessage = `Retirar o curso oficial "${courseTitle}" de Coleções?`;
+      } else if (deletionMode === "private-published") {
+        confirmationMessage = `Excluir o curso privado "${courseTitle}" de Trilhas?`;
+      } else if (workspaceRef) {
+        confirmationMessage = `Excluir o curso em construção "${courseTitle}"?`;
+      } else {
+        confirmationMessage = courseRemovalConfirmation(
+          storage,
+          resolvedCourseKey,
+          courseTitle
+        );
+      }
     } catch (error) {
       globalThis.alert?.(error instanceof Error ? error.message : "Não foi possível identificar o curso.");
       return;
@@ -2034,13 +2444,25 @@ export function createLessonEditorApp({
     state.entityMutationSaving = true;
     let remoteRemovalCommitted = false;
     let reconciliationWarningShown = false;
+    let nextSnapshot = null;
     try {
-      if (!contextualAuthoringIsAvailable()) throw new Error("A exclusão precisa de conexão.");
-      await deleteIntegratedCourse({
-        ...contextualAuthoring,
-        storage,
-        courseKey
-      });
+      if (deletionMode === "catalog") {
+        nextSnapshot = await homeTrailsController.deleteFromCatalog(trailItemId);
+      } else if (deletionMode === "private-published") {
+        nextSnapshot = await homeTrailsController.removeFromTrails(trailItemId);
+      } else if (workspaceRef) {
+        const remove = workspaceCourseHook("deleteCourse");
+        if (!remove) throw new Error("A exclusão deste curso não está disponível.");
+        await remove({ courseRef: workspaceRef });
+      } else {
+        if (!contextualAuthoringIsAvailable()) throw new Error("A exclusão precisa de conexão.");
+        await deleteIntegratedCourse({
+          ...contextualAuthoring,
+          storage,
+          courseKey: resolvedCourseKey,
+          refreshTrails: () => refreshHomeTrails()
+        });
+      }
       remoteRemovalCommitted = true;
     } catch (error) {
       if (courseRemovalWasCommitted(error)) {
@@ -2053,16 +2475,72 @@ export function createLessonEditorApp({
     }
     try {
       if (!remoteRemovalCommitted) return;
-      setProject(storage.loadProject());
+      if (descriptor) {
+        const itemStillVisible = nextSnapshot?.items?.some((item) =>
+          item.itemId === descriptor.itemId
+        ) === true;
+        if (!itemStillVisible) {
+          await clearTrailPersonalStorage([descriptor.itemId]);
+          homeTrailsController.loadedCourses.delete(descriptor.itemId);
+          homeTrailsController.courseRefs.delete(descriptor.itemId);
+        }
+        if (nextSnapshot) {
+          state.homeTrailSnapshot = nextSnapshot;
+          state.homeSelectedTrailItemId = homeTrailsController.selectedItemId;
+          const selectedItem = homeTrailsController.item();
+          state.homeSelectedCourseKey = homeTrailsController.courseRefs
+            .get(state.homeSelectedTrailItemId)?.courseKey ||
+            selectedItem?.courseKey || selectedItem?.courseId || "";
+        } else {
+          await refreshHomeTrails();
+        }
+        setProject(composeLoadedWorkspaceCourses(storage.loadProject()));
+      } else if (workspaceRef) {
+        homeTrailsController.loadedCourses.delete(workspaceRef.trailItemId);
+        homeTrailsController.courseRefs.delete(workspaceRef.trailItemId);
+        await refreshHomeTrails();
+        setProject(composeLoadedWorkspaceCourses(storage.loadProject()));
+      } else {
+        setProject(storage.loadProject());
+      }
       selectFirstPath(state.project);
       state.view = "courses";
     } catch (error) {
       if (!reconciliationWarningShown) {
-        globalThis.alert?.(new CourseRemovalCommittedError(courseKey, error).message);
+        globalThis.alert?.(new CourseRemovalCommittedError(resolvedCourseKey, error).message);
       }
     } finally {
       state.entityMutationSaving = false;
       render({ preserveState: false });
+    }
+  }
+
+  async function removeHomeTrailItem(trailItemId) {
+    const item = homeTrailsController?.item(trailItemId);
+    if (!item?.canRemove || state.homeOrganization.busy) return;
+    if (typeof globalThis.confirm === "function" &&
+        !globalThis.confirm(`Retirar "${item.title}" de Trilhas?`)) return;
+    state.homeOrganization.busy = true;
+    state.homeOrganization.error = "";
+    render({ preserveState: true });
+    try {
+      const snapshot = await homeTrailsController.removeFromTrails(trailItemId);
+      if (!snapshot.items.some((candidate) => candidate.itemId === trailItemId)) {
+        await clearTrailPersonalStorage([trailItemId]);
+      }
+      state.homeTrailSnapshot = snapshot;
+      state.homeSelectedTrailItemId = homeTrailsController.selectedItemId;
+      state.homeSelectedCourseKey = homeTrailsController.courseRefs
+        .get(state.homeSelectedTrailItemId)?.courseKey ||
+        homeTrailsController.item()?.courseKey || homeTrailsController.item()?.courseId || "";
+      setProject(composeLoadedWorkspaceCourses(storage.loadProject()));
+    } catch (error) {
+      state.homeOrganization.error = error instanceof Error
+        ? error.message
+        : "Não foi possível retirar o curso de Trilhas.";
+    } finally {
+      state.homeOrganization.busy = false;
+      render({ preserveState: true });
     }
   }
 
@@ -2095,7 +2573,7 @@ export function createLessonEditorApp({
     ) return;
     state.entityMutationSaving = true;
     try {
-      if (!contextualAuthoringIsAvailable()) throw new Error("A exclusão precisa de conexão.");
+      const workspaceRef = workspaceCourseRef(target.courseKey);
       const entityPath = [
         target.courseKey,
         target.moduleKey,
@@ -2103,15 +2581,33 @@ export function createLessonEditorApp({
         ...(["microsequence", "card"].includes(target.level) ? [target.microsequenceKey] : []),
         ...(target.level === "card" ? [target.cardKey] : [])
       ];
-      await deleteIntegratedEntity({
-        ...contextualAuthoring,
-        storage,
-        courseKey: target.courseKey,
-        entityType: target.level,
-        entityPath,
-        title: course.title
-      });
-      setProject(storage.loadProject());
+      if (workspaceRef) {
+        const remove = workspaceCourseHook("deleteEntity");
+        if (!remove) throw new Error("A exclusão desta parte não está disponível.");
+        const deleted = await remove({
+          courseRef: workspaceRef,
+          entityType: target.level,
+          entityPath
+        });
+        if (Number.isSafeInteger(Number(deleted?.revision))) {
+          homeTrailsController.updateCourseRef(workspaceRef.trailItemId, {
+            revision: Number(deleted.revision)
+          });
+        }
+        await refreshWorkspaceCourseDocument(workspaceRef);
+        await refreshHomeTrails();
+      } else {
+        if (!contextualAuthoringIsAvailable()) throw new Error("A exclusão precisa de conexão.");
+        await deleteIntegratedEntity({
+          ...contextualAuthoring,
+          storage,
+          courseKey: target.courseKey,
+          entityType: target.level,
+          entityPath,
+          title: course.title
+        });
+        setProject(storage.loadProject());
+      }
       applySelectionByKeys(state.project, state.selection) || selectFirstPath(state.project);
       state.inlineStructureEditor = null;
     } catch (error) {
@@ -3266,8 +3762,12 @@ export function createLessonEditorApp({
     state.entityMutationSaving = true;
     state.entityMutationError = "";
     try {
-      assertCourseAuthoringAllowed(target.courseKey);
-      const guard = requireCardAssistancePersistenceGuard(
+      const workspaceRef = workspaceCourseRef(target.courseKey);
+      if (!workspaceRef) assertCourseAuthoringAllowed(target.courseKey);
+      else if (!workspaceAuthoringAvailable(target.courseKey)) {
+        throw new Error("A edição deste curso de workspace não está disponível.");
+      }
+      const guard = workspaceRef ? null : requireCardAssistancePersistenceGuard(
         await storage.createLocalCourseDraftGuard(target.courseKey),
         target.courseKey
       );
@@ -3371,12 +3871,35 @@ export function createLessonEditorApp({
       } else {
         throw new Error("O nível de edição não é válido.");
       }
-      await storage.saveProject(nextProject, {
-        expectedLocalDraftRevision: guard.expectedRevision
-      });
-      await storage.flush?.();
-      setProject(nextProject);
-      if (contextualAuthoringIsAvailable()) {
+      if (workspaceRef) {
+        const saved = await workspaceCourseHook("saveMetadata")({
+          courseRef: workspaceRef,
+          entityType: level,
+          entityPath,
+          metadata
+        });
+        if (Number.isSafeInteger(Number(saved?.revision))) {
+          homeTrailsController.updateCourseRef(workspaceRef.trailItemId, {
+            revision: Number(saved.revision)
+          });
+        }
+        setProject(nextProject);
+        const updatedCourse = findCourse(nextProject, target.courseKey);
+        if (updatedCourse) {
+          homeTrailsController.loadedCourses.set(
+            workspaceRef.trailItemId,
+            structuredClone(updatedCourse)
+          );
+        }
+        await refreshHomeTrails();
+      } else {
+        await storage.saveProject(nextProject, {
+          expectedLocalDraftRevision: guard.expectedRevision
+        });
+        await storage.flush?.();
+        setProject(nextProject);
+      }
+      if (!workspaceRef && contextualAuthoringIsAvailable()) {
         const preservedSelection = { ...state.selection };
         await saveIntegratedEntityMetadata({
           ...contextualAuthoring,
@@ -3482,7 +4005,21 @@ export function createLessonEditorApp({
     const coursePermissionsById = Object.fromEntries(
       permissionCourses.map((course) => [
         course.id,
-        resolveCourseUiPermissions(storage, course.id)
+        (() => {
+          const reference = workspaceCourseRef(course.id);
+          if (!reference) return resolveCourseUiPermissions(storage, course.id);
+          const canAuthorContent = reference.canEdit === true && workspaceAuthoringAvailable(course.id);
+          return {
+            role: canAuthorContent ? "author" : "learner",
+            canAuthorContent,
+            writeTarget: null,
+            canOrganizeSelection: true,
+            canRemoveSelection: false,
+            canDeleteCourse: reference.canDelete === true && Boolean(workspaceCourseHook("deleteCourse")),
+            canEdit: canAuthorContent,
+            canDelete: reference.canDelete === true && Boolean(workspaceCourseHook("deleteCourse"))
+          };
+        })()
       ])
     );
     const currentCoursePermissions = context.course
@@ -3550,11 +4087,23 @@ export function createLessonEditorApp({
         editorSupport: {
           coursePermissions: currentCoursePermissions,
           coursePermissionsById,
-          courseSummaries: state.view === "courses" ? storage.loadCourseSummaries?.() || [] : [],
           selectedHomeCourseKey: state.homeSelectedCourseKey,
-          studyPaths: state.view === "courses" ? storage.loadStudyPaths?.() || [] : [],
-          reviewItems: state.view === "courses" ? storage.loadReviewItems?.() || [] : [],
-          progress: storage.loadProgress(),
+          selectedHomeTrailItemId: state.homeSelectedTrailItemId,
+          trailSnapshot: state.homeTrailSnapshot,
+          trailLoading: state.homeTrailLoading,
+          loadedHomeTrailItemIds: homeTrailsController
+            ? [...homeTrailsController.loadedCourses.keys()]
+            : [],
+          courseKeyByHomeTrailItemId: homeTrailsController
+            ? Object.fromEntries([...homeTrailsController.courseRefs].map(([itemId, reference]) =>
+                [itemId, reference.courseKey]
+              ))
+            : {},
+          homeOrganization: state.homeOrganization,
+          reviewItems: state.view === "courses" ? homeReviewItems() : [],
+          progress: activeProgress(
+            state.view === "courses" ? state.homeSelectedCourseKey : context.course?.id
+          ),
           entityModes: state.entityModes,
           entitySaving: state.entityMutationSaving,
           entityMutationError: state.entityMutationError,
@@ -3592,7 +4141,9 @@ export function createLessonEditorApp({
           promptText: state.assistDraft.promptText,
           assistErrorMessage: state.assistDraft.errorMessage || state.assistDraft.syncError,
           manualCardEditError: state.assistDraft.manualEditError,
-          hasCardComment: Boolean(storage.loadCommentForPath(state.selection)),
+          hasCardComment: Boolean(
+            activeTrailPersonalStorage()?.loadCommentForPath?.(state.selection)
+          ),
           cardMarkedForReview: currentCardIsMarkedForReview(),
           canUndoCardEdit: Boolean(
             state.assistDraft.localState.undo?.kind === "microsequence" &&
@@ -3663,6 +4214,16 @@ export function createLessonEditorApp({
         root.dispatchEvent(new CustomEvent("aralearn:open-library", { bubbles: true }));
       });
     });
+    root.querySelectorAll("[data-action='open-home-workspace']").forEach((node) => {
+      node.addEventListener("click", () => {
+        const workspaceId = node.getAttribute("data-workspace-id") || "";
+        if (!workspaceId) return;
+        root.dispatchEvent(new CustomEvent("aralearn:open-workspace", {
+          bubbles: true,
+          detail: { workspaceId }
+        }));
+      });
+    });
     root.querySelectorAll("[data-action='open-context-observation']").forEach((node) => {
       node.addEventListener("click", () => {
         const current = getRenderContext();
@@ -3699,6 +4260,15 @@ export function createLessonEditorApp({
     });
     root.querySelectorAll("[data-action='open-course']").forEach((node) => {
       node.addEventListener("click", () => {
+        const trailItemId = node.getAttribute("data-trail-item-id");
+        if (trailItemId && homeTrailsController) {
+          const mode = node.getAttribute("data-trail-kind") === "plan" &&
+            node.getAttribute("data-can-edit") === "true"
+            ? "edit"
+            : "view";
+          void openHomeTrailCourse(trailItemId, { mode });
+          return;
+        }
         const courseKey = node.getAttribute("data-course-key");
         if (!courseKey) return;
         openCourse(courseKey);
@@ -3757,7 +4327,24 @@ export function createLessonEditorApp({
       node.addEventListener("click", () => {
         const courseKey = node.getAttribute("data-course-key");
         if (!courseKey) return;
-        void deleteCourseDirect(courseKey);
+        void deleteCourseDirect(courseKey, {
+          trailItemId: node.getAttribute("data-trail-item-id") || ""
+        });
+      });
+    });
+    root.querySelectorAll("[data-action='delete-home-trail-item']").forEach((node) => {
+      node.addEventListener("click", () => {
+        const trailItemId = node.getAttribute("data-trail-item-id") || "";
+        const reference = homeTrailsController?.courseRefs.get(trailItemId);
+        if (trailItemId && reference) {
+          void deleteCourseDirect(reference.courseKey || "", { trailItemId });
+        }
+      });
+    });
+    root.querySelectorAll("[data-action='remove-home-trail-item']").forEach((node) => {
+      node.addEventListener("click", () => {
+        const trailItemId = node.getAttribute("data-trail-item-id") || "";
+        if (trailItemId) void removeHomeTrailItem(trailItemId);
       });
     });
     root.querySelectorAll("[data-action='delete-entity-direct']").forEach((node) => {
@@ -3785,25 +4372,162 @@ export function createLessonEditorApp({
       });
     });
     root.querySelector("[data-field='home-course-select']")?.addEventListener("change", (event) => {
-      const courseKey = String(event.currentTarget.value || "");
-      if (!courseKey) return;
-      state.homeSelectedCourseKey = courseKey;
+      const trailItemId = String(event.currentTarget.value || "");
+      if (!trailItemId || !homeTrailsController?.select(trailItemId)) return;
+      state.homeSelectedTrailItemId = trailItemId;
+      const item = homeTrailsController.item(trailItemId);
+      state.homeSelectedCourseKey = homeTrailsController.courseRefs.get(trailItemId)?.courseKey ||
+        item?.courseKey || item?.courseId || "";
+      setProject(composeLoadedWorkspaceCourses(storage.loadProject()));
       render({ preserveState: true });
     });
+    root.querySelector("[data-action='toggle-home-organize']")?.addEventListener("click", () => {
+      state.homeOrganization.active = true;
+      state.homeOrganization.error = "";
+      render({ preserveState: false });
+    });
+    root.querySelector("[data-action='finish-home-organize']")?.addEventListener("click", () => {
+      state.homeOrganization = {
+        ...state.homeOrganization,
+        active: false,
+        creatingGroup: false,
+        editingGroupId: "",
+        movingItemId: "",
+        error: ""
+      };
+      render({ preserveState: false });
+    });
+    root.querySelector("[data-action='start-home-group-create']")?.addEventListener("click", () => {
+      state.homeOrganization.creatingGroup = true;
+      state.homeOrganization.editingGroupId = "";
+      render({ preserveState: true });
+    });
+    root.querySelectorAll("[data-action='cancel-home-group-form']").forEach((node) => {
+      node.addEventListener("click", () => {
+        state.homeOrganization.creatingGroup = false;
+        state.homeOrganization.editingGroupId = "";
+        render({ preserveState: true });
+      });
+    });
+    root.querySelectorAll("[data-action='edit-home-group']").forEach((node) => {
+      node.addEventListener("click", () => {
+        state.homeOrganization.editingGroupId = node.getAttribute("data-group-id") || "";
+        state.homeOrganization.creatingGroup = false;
+        render({ preserveState: true });
+      });
+    });
+    root.querySelectorAll("[data-action='save-home-group']").forEach((node) => {
+      node.addEventListener("click", () => {
+        const form = node.closest("[data-home-group-form]");
+        const title = String(form?.querySelector("[name='title']")?.value || "").trim();
+        if (!title) return;
+        const groupId = form?.getAttribute("data-group-id") || "";
+        void mutateHomeTrails(groupId ? "renameGroup" : "createGroup", groupId
+          ? { groupId, title }
+          : { title }).then((snapshot) => {
+          if (!snapshot) return;
+          state.homeOrganization.creatingGroup = false;
+          state.homeOrganization.editingGroupId = "";
+          render({ preserveState: true });
+        });
+      });
+    });
+    root.querySelectorAll("[data-action='move-home-group-up'], [data-action='move-home-group-down']")
+      .forEach((node) => {
+        node.addEventListener("click", () => {
+          const groupId = node.getAttribute("data-group-id") || "";
+          const groups = state.homeTrailSnapshot?.groups || [];
+          const index = groups.findIndex((group) => group.id === groupId);
+          const delta = node.getAttribute("data-action") === "move-home-group-up" ? -1 : 1;
+          const targetPosition = index + delta;
+          if (index < 0 || targetPosition < 0 || targetPosition >= groups.length) return;
+          void mutateHomeTrails("moveGroup", { groupId, targetPosition });
+        });
+      });
+    root.querySelectorAll("[data-action='delete-home-group']").forEach((node) => {
+      node.addEventListener("click", () => {
+        const groupId = node.getAttribute("data-group-id") || "";
+        if (!groupId) return;
+        if (typeof globalThis.confirm === "function" && !globalThis.confirm("Excluir este grupo? Os itens irão para Outros.")) return;
+        void mutateHomeTrails("deleteGroup", { groupId });
+      });
+    });
+    root.querySelectorAll("[data-action='choose-home-item-group']").forEach((node) => {
+      node.addEventListener("click", () => {
+        state.homeOrganization.movingItemId = node.getAttribute("data-trail-item-id") || "";
+        render({ preserveState: true });
+      });
+    });
+    root.querySelectorAll("[data-action='cancel-home-item-move']").forEach((node) => {
+      node.addEventListener("click", () => {
+        state.homeOrganization.movingItemId = "";
+        render({ preserveState: true });
+      });
+    });
+    root.querySelectorAll("[data-action='save-home-item-group']").forEach((node) => {
+      node.addEventListener("click", () => {
+        const form = node.closest("[data-home-item-move-form]");
+        const trailItemId = form?.getAttribute("data-home-item-move-form") || "";
+        const groupId = String(form?.querySelector("[name='groupId']")?.value || "");
+        if (!trailItemId || !groupId) return;
+        void mutateHomeTrails(
+          groupId === "__others__" ? "removeItemFromGroup" : "placeItem",
+          groupId === "__others__" ? { trailItemId } : { trailItemId, groupId }
+        ).then((snapshot) => {
+          if (!snapshot) return;
+          state.homeOrganization.movingItemId = "";
+          render({ preserveState: true });
+        });
+      });
+    });
+    root.querySelectorAll("[data-action='detach-home-item']").forEach((node) => {
+      node.addEventListener("click", () => {
+        const trailItemId = node.getAttribute("data-trail-item-id") || "";
+        if (trailItemId) void mutateHomeTrails("removeItemFromGroup", { trailItemId });
+      });
+    });
+    root.querySelectorAll("[data-action='move-home-item-up'], [data-action='move-home-item-down']")
+      .forEach((node) => {
+        node.addEventListener("click", () => {
+          const trailItemId = node.getAttribute("data-trail-item-id") || "";
+          const groupId = node.getAttribute("data-group-id") || "";
+          const groupItems = state.homeTrailSnapshot?.items
+            ?.filter((item) => item.pathId === groupId)
+            .sort((left, right) => left.itemPosition - right.itemPosition) || [];
+          const index = groupItems.findIndex((item) => item.itemId === trailItemId);
+          const delta = node.getAttribute("data-action") === "move-home-item-up" ? -1 : 1;
+          const targetPosition = index + delta;
+          if (index < 0 || targetPosition < 0 || targetPosition >= groupItems.length) return;
+          void mutateHomeTrails("moveItem", { trailItemId, groupId, targetPosition });
+        });
+      });
     root.querySelectorAll("[data-action='open-review-card']").forEach((node) => {
       node.addEventListener("click", () => {
-        const entityPath = [
-          node.getAttribute("data-course-key"),
-          node.getAttribute("data-module-key"),
-          node.getAttribute("data-lesson-key"),
-          node.getAttribute("data-microsequence-key"),
-          node.getAttribute("data-card-key")
-        ];
-        const selection = resolveExactCardSelection(state.project, entityPath);
-        if (!selection) return;
-        applySelection(selection);
-        state.homeSelectedCourseKey = selection.courseKey;
-        openMicrosequenceScreen(selection.microsequenceKey, selection.cardIndex, "play");
+        void (async () => {
+          const trailItemId = node.getAttribute("data-trail-item-id") || "";
+          if (trailItemId && homeTrailsController) {
+            if (!homeTrailsController.select(trailItemId)) return;
+            state.homeSelectedTrailItemId = trailItemId;
+            await prepareHomeTrailItem(trailItemId);
+          }
+          const entityPath = [
+            node.getAttribute("data-course-key"),
+            node.getAttribute("data-module-key"),
+            node.getAttribute("data-lesson-key"),
+            node.getAttribute("data-microsequence-key"),
+            node.getAttribute("data-card-key")
+          ];
+          const selection = resolveExactCardSelection(state.project, entityPath);
+          if (!selection) return;
+          applySelection(selection);
+          state.homeSelectedCourseKey = selection.courseKey;
+          openMicrosequenceScreen(selection.microsequenceKey, selection.cardIndex, "play");
+        })().catch((error) => {
+          state.homeOrganization.error = error instanceof Error
+            ? error.message
+            : "Não foi possível abrir o card.";
+          render({ preserveState: true });
+        });
       });
     });
 
@@ -4288,6 +5012,11 @@ export function createLessonEditorApp({
       node.addEventListener("click", (event) => {
         event.preventDefault();
         event.stopPropagation();
+        const trailItemId = node.getAttribute("data-trail-item-id");
+        if (trailItemId && homeTrailsController) {
+          void openHomeTrailCourse(trailItemId, { mode: "edit" });
+          return;
+        }
         const courseKey = node.getAttribute("data-course-key") || state.selection.courseKey;
         if (!courseKey) return;
         openCourse(courseKey, { mode: "edit" });
@@ -4704,6 +5433,7 @@ export function createLessonEditorApp({
     });
   }
   render({ preserveState: false });
+  void refreshHomeTrails({ preserveSelection: false });
   void loadCardAssistanceLocalState(state.selection.courseKey).then(() => {
     if (globalThis.navigator?.onLine !== false) {
       return attemptContextualAuthoringSync();
@@ -4712,8 +5442,22 @@ export function createLessonEditorApp({
   });
   globalThis.AndroidHost?.runtimeReady?.();
   return {
-    refreshPersonalState() {
+    async refreshPersonalState() {
+      await Promise.allSettled(
+        [...state.trailPersonalStorageByItemId.entries()].map(async ([itemId, personalStorage]) => {
+          try {
+            await personalStorage.refresh?.();
+          } catch (error) {
+            if (isHomeTrailsAuthorityError(error)) {
+              state.trailPersonalStorageByItemId.delete(itemId);
+              state.trailPersonalStorageLoadingByItemId.delete(itemId);
+            }
+            throw error;
+          }
+        })
+      );
       render({ preserveState: true });
+      return refreshHomeTrails();
     },
     replaceProject(nextProject) {
       const localStateCourseKey = state.assistDraft.localStateCourseKey;
@@ -4723,8 +5467,9 @@ export function createLessonEditorApp({
           null
         );
       }
-      setProject(nextProject);
-      if (!applySelectionByKeys(nextProject, state.selection)) selectFirstPath(nextProject);
+      const composedProject = composeLoadedWorkspaceCourses(nextProject);
+      setProject(composedProject);
+      if (!applySelectionByKeys(composedProject, state.selection)) selectFirstPath(composedProject);
       render({ preserveState: false });
       void loadCardAssistanceLocalState(state.selection.courseKey);
     },
@@ -4736,6 +5481,16 @@ export function createLessonEditorApp({
       state.view = "course";
       render({ preserveState: false });
       return true;
+    },
+    refreshTrails() {
+      return refreshHomeTrails();
+    },
+    flushPersonalState() {
+      return Promise.all(
+        [...state.trailPersonalStorageByItemId.values()].map((personalStorage) =>
+          Promise.resolve(personalStorage.flush?.())
+        )
+      );
     },
     openCardPath(entityPath, { edit = false } = {}) {
       const selection = resolveExactCardSelection(state.project, entityPath);

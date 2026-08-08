@@ -143,7 +143,7 @@ test("rota compartilhada retira somente a seleção explicitamente lida", async 
   assert.equal(result.data.courseArchived, false);
 });
 
-test("adaptador pessoal consulta somente resumos encapsulados", async () => {
+test("adaptador pessoal consulta a mesma projeção canônica de Trilhas", async () => {
   const calls = [];
   const adapter = new SupabaseAuthoringAdapter({
     supabaseUrl: "https://example.supabase.co",
@@ -159,14 +159,28 @@ test("adaptador pessoal consulta somente resumos encapsulados", async () => {
   });
   assert.equal(typeof adapter.getPersonalLibraryCourseStructure, "undefined");
   await adapter.listPersonalLibraryCourses({ principal: principal() });
-  assert.match(calls[0].url, /\/rest\/v1\/rpc\/list_personal_library_courses$/u);
+  assert.match(calls[0].url, /\/rest\/v1\/rpc\/list_trail_items_for_actor_v1$/u);
   const body = JSON.parse(calls[0].options.body);
   assert.deepEqual(body, {
-    p_owner_id: ACTOR_ID,
-    p_limit: 50,
-    p_after_position: null,
-    p_after_selection_id: null,
-    p_query: ""
+    p_actor_id: ACTOR_ID,
+    p_limit: 20,
+    p_after_path_position: null,
+    p_after_item_position: null,
+    p_after_id: null
+  });
+});
+
+test("projeção MCP de Trilhas inclui progresso agregado sem carregar o curso", () => {
+  const definition = authoringMcpToolsForPrincipal(principal())
+    .find(({ name }) => name === "listarCursosDaBibliotecaPessoal");
+  const successSchema = definition.outputSchema.oneOf
+    .find((branch) => branch.properties?.ok?.const === true);
+  const itemSchema = successSchema.properties.data
+    .properties.items.items;
+  assert.equal(itemSchema.required.includes("completedCardCount"), true);
+  assert.deepEqual(itemSchema.properties.completedCardCount, {
+    type: "integer",
+    minimum: 0
   });
 });
 

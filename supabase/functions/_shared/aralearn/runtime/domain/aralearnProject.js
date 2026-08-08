@@ -201,6 +201,59 @@ function validateLessonDependencies(microsequences, path, errors) {
   });
 }
 
+function validateEntityIdsPerCourse(courses, errors) {
+  courses.forEach((course, courseIndex) => {
+    const firstPathByTypeAndId = new Map();
+    const register = (entityType, entity, path) => {
+      if (!isPlainObject(entity)) return;
+      const id = text(entity.id);
+      if (!id) return;
+      let pathsById = firstPathByTypeAndId.get(entityType);
+      if (!pathsById) {
+        pathsById = new Map();
+        firstPathByTypeAndId.set(entityType, pathsById);
+      }
+      const identityPath = `${path}.id`;
+      const firstPath = pathsById.get(id);
+      if (firstPath) {
+        pushError(
+          errors,
+          identityPath,
+          `id de ${entityType} duplicado em todo o curso: "${id}"; primeira ocorrência em ${firstPath}.`
+        );
+        return;
+      }
+      pathsById.set(id, identityPath);
+    };
+    const coursePath = `$.courses[${courseIndex}]`;
+    if (!isPlainObject(course) || !Array.isArray(course.modules)) return;
+    course.modules.forEach((moduleValue, moduleIndex) => {
+      const modulePath = `${coursePath}.modules[${moduleIndex}]`;
+      register("module", moduleValue, modulePath);
+      if (!isPlainObject(moduleValue) || !Array.isArray(moduleValue.lessons)) return;
+      moduleValue.lessons.forEach((lesson, lessonIndex) => {
+        const lessonPath = `${modulePath}.lessons[${lessonIndex}]`;
+        register("lesson", lesson, lessonPath);
+        if (!isPlainObject(lesson)) return;
+        if (Array.isArray(lesson.topics)) {
+          lesson.topics.forEach((topic, topicIndex) => {
+            register("topic", topic, `${lessonPath}.topics[${topicIndex}]`);
+          });
+        }
+        if (!Array.isArray(lesson.microsequences)) return;
+        lesson.microsequences.forEach((microsequence, microsequenceIndex) => {
+          const microsequencePath = `${lessonPath}.microsequences[${microsequenceIndex}]`;
+          register("microsequence", microsequence, microsequencePath);
+          if (!isPlainObject(microsequence) || !Array.isArray(microsequence.cards)) return;
+          microsequence.cards.forEach((card, cardIndex) => {
+            register("card", card, `${microsequencePath}.cards[${cardIndex}]`);
+          });
+        });
+      });
+    });
+  });
+}
+
 function validateGuide(value, path, errors) {
   if (!isPlainObject(value)) {
     pushError(errors, path, "guide é obrigatório e deve ser objeto.");
@@ -382,6 +435,7 @@ export function validateProjectDocument(document) {
 
   const coursesInput = validateRequiredArray(document, "courses", "$", errors);
   validateSiblingIds(coursesInput, "$.courses", errors, "cursos do projeto");
+  validateEntityIdsPerCourse(coursesInput, errors);
   const courses = coursesInput
     .map((course, index) => validateCourse(course, `$.courses[${index}]`, errors))
     .filter(Boolean);

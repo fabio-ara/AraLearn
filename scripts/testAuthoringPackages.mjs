@@ -897,7 +897,7 @@ const exampleNames = (await readdir(path.join(ROOT, "authoring", "examples"), {
 assert.deepEqual(exampleNames, [
   "01-workspace-create.json",
   "02-rename-entity.json",
-  "03-private-preview.json",
+  "03-editorial-submission.json",
   "README.md"
 ]);
 

@@ -44,12 +44,7 @@ async function revisionDocumentToRows(document, courseId) {
 }
 
 const REMOTE_TABLE_TO_STORE = Object.freeze({
-  user_course_selections: "courseSelections",
-  lesson_progress: "lessonProgress",
-  card_progress: "cardProgress",
-  card_comments: "comments",
-  study_paths: "studyPaths",
-  study_path_courses: "studyPathCourses"
+  user_course_selections: "courseSelections"
 });
 
 function array(value) {
@@ -92,13 +87,16 @@ function normalizeRowsByStore(rawRows, allowedStores, { strict = false } = {}) {
       }
       continue;
     }
+    const storeName = storeNameForRemote(remoteName);
+    if (strict && !allowedStores.has(storeName)) {
+      throw new Error(`O grafo oficial retornou a coleção desconhecida "${remoteName}".`);
+    }
     if (!Array.isArray(rows)) {
       if (strict) throw new Error(`O grafo oficial retornou ${remoteName} em formato inválido.`);
       continue;
     }
     for (const rawRow of rows) {
       const row = camelizeRow(rawRow);
-      const storeName = storeNameForRemote(remoteName);
       if (!allowedStores.has(storeName)) {
         if (strict) throw new Error(`O grafo oficial retornou a coleção desconhecida "${remoteName}".`);
         continue;
@@ -107,7 +105,6 @@ function normalizeRowsByStore(rawRows, allowedStores, { strict = false } = {}) {
       normalized[storeName].push(row);
     }
     if (!rows.length) {
-      const storeName = storeNameForRemote(remoteName);
       if (allowedStores.has(storeName)) seenStores.add(storeName);
     }
   }
@@ -228,7 +225,8 @@ function normalizeBootstrapResponse(rawResponse) {
   const response = firstObject(rawResponse);
   const snapshot = normalizeRowsByStore(
     response.snapshot || response.rows || response.replica || {},
-    PERSONAL_FEED_STORE_SET
+    PERSONAL_FEED_STORE_SET,
+    { strict: true }
   );
   const highWaterSequence = Number(
     response.highWaterSequence ?? response.high_water_sequence ?? response.highWater ?? response.high_water ?? 0
@@ -420,36 +418,10 @@ export class SupabaseSyncTransport {
         changedFields,
         payload
       }));
-    const segments = [];
-    serialized.forEach((mutation) => {
-      const kind = mutation.entityType === "comments"
-        ? "comments"
-        : ["lessonProgress", "cardProgress"].includes(mutation.entityType)
-          ? "study-state"
-          : "personal";
-      const current = segments[segments.length - 1];
-      if (current?.kind === kind) {
-        current.mutations.push(mutation);
-      } else {
-        segments.push({ kind, mutations: [mutation] });
-      }
+    return this.remote.rpc("apply_sync_batch", {
+      p_device_id: deviceId,
+      p_mutations: serialized
     });
-    const results = [];
-    for (const segment of segments) {
-      const response = await this.remote.rpc(
-        segment.kind === "comments"
-          ? "apply_situated_comment_batch_v1"
-          : segment.kind === "study-state"
-            ? "apply_non_punitive_study_state_batch_v1"
-            : "apply_sync_batch",
-        {
-          p_device_id: deviceId,
-          p_mutations: segment.mutations
-        }
-      );
-      if (Array.isArray(response?.results)) results.push(...response.results);
-    }
-    return { status: "applied", results };
   }
 
   pullSyncChanges({ deviceId, afterSequence, limit }) {
@@ -576,7 +548,6 @@ export class RelationalSyncEngine {
 
   async confirmSelectedCourseRemoval(courseId) {
     await this.store.removeOfficialCourseReplica(courseId, {
-      removePersonalState: true,
       removeSelection: true
     });
   }

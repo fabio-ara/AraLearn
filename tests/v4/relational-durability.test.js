@@ -1,5 +1,5 @@
-import test from "node:test";
 import assert from "node:assert/strict";
+import test from "node:test";
 
 import { IDBFactory } from "fake-indexeddb";
 
@@ -11,22 +11,13 @@ import {
   seedSelectedOfficialCourse
 } from "./helpers/leanRelationalFixture.js";
 
-const LESSON_PATH = "course-fixture-minimal::module-fixture-minimal::lesson-fixture-minimal";
-const PROGRESS = {
-  version: 1,
-  lessons: {
-    [LESSON_PATH]: {
-      cursor: 0,
-      completedCardKeys: ["card-fixture-minimal-regra"],
-      updatedAt: "2026-07-20T14:00:00.000Z"
-    }
-  }
-};
-
 async function openControlledRepository(indexedDb = new IDBFactory()) {
   const store = await IndexedDbRelationalStore.open(indexedDb, { userId: TEST_USER_ID });
-  const seeded = await seedSelectedOfficialCourse(store, { userId: TEST_USER_ID });
-  const realService = new DomainMutationService({ store });
+  await seedSelectedOfficialCourse(store, {
+    userId: TEST_USER_ID,
+    courseOrigin: "private"
+  });
+  const delegate = new DomainMutationService({ store });
   let nextFailure = null;
   let blocked = null;
   const beforeMutation = async () => {
@@ -41,165 +32,88 @@ async function openControlledRepository(indexedDb = new IDBFactory()) {
       throw error;
     }
   };
-  const service = {
-    failNext(error = new Error("IndexedDB indisponível")) {
+  const mutations = {
+    failNext(error) {
       nextFailure = error;
     },
     blockNext() {
       let release;
       blocked = new Promise((resolve) => { release = resolve; });
-      return release;
+      return () => release();
     },
     async applyMutations(...args) {
       await beforeMutation();
-      return realService.applyMutations(...args);
+      return delegate.applyMutations(...args);
     },
     async applyRowChange(...args) {
       await beforeMutation();
-      return realService.applyRowChange(...args);
+      return delegate.applyRowChange(...args);
     }
   };
   const repository = new RelationalProjectRepository({
     store,
-    mutationService: service,
+    mutationService: mutations,
     userId: TEST_USER_ID
   });
   await repository.initialize();
-  return { indexedDb, store, repository, service, ...seeded };
+  return { indexedDb, store, repository, mutations };
 }
 
-test("progresso, comentário e trilha expõem Promises de commit local real", async (context) => {
-  const { store, repository, graph } = await openControlledRepository();
+function renamedProject(repository, title) {
+  const project = repository.loadProject();
+  project.courses[0].title = title;
+  return project;
+}
+
+test("edição do grafo expõe commit local real", async (context) => {
+  const { store, repository } = await openControlledRepository();
   context.after(() => store.close());
-  const progressCommit = repository.saveProgress(PROGRESS);
-  assert.ok(progressCommit instanceof Promise);
-  await progressCommit;
-  const commentCommit = repository.saveComment({
-    cardId: graph.cards[0].id,
-    courseId: graph.courses[0].id,
-    userId: TEST_USER_ID,
-    category: "observation",
-    body: "Nota durável"
-  });
-  const pathCommit = repository.createStudyPath("Graduação");
-  assert.ok(commentCommit instanceof Promise);
-  assert.ok(pathCommit instanceof Promise);
-  await Promise.all([commentCommit, pathCommit, repository.flush()]);
+
+  const commit = repository.saveProject(renamedProject(repository, "Título durável"));
+  assert.ok(commit instanceof Promise);
+  await Promise.all([commit, repository.flush()]);
 
   assert.equal(repository.getDurabilityState().status, "saved");
-  assert.equal((await store.getAll("lessonProgress")).length, 1);
-  assert.equal((await store.getAll("cardProgress")).length, 1);
-  assert.equal((await store.getAll("comments"))[0].body, "Nota durável");
-  assert.equal((await store.getAll("studyPaths"))[0].title, "Graduação");
+  assert.equal((await store.getAll("courses"))[0].title, "Título durável");
+  assert.deepEqual(await store.getAll("outbox"), []);
 });
 
-test("fila preserva causalidade e não anuncia salvo antes da última transação", async (context) => {
-  const { store, repository, service, graph } = await openControlledRepository();
+test("fila não anuncia salvo antes da transação pendente", async (context) => {
+  const { store, repository, mutations } = await openControlledRepository();
   context.after(() => store.close());
-  const release = service.blockNext();
+  const release = mutations.blockNext();
 
-  const first = repository.saveProgress(PROGRESS);
-  const second = repository.saveComment({
-    cardId: graph.cards[0].id,
-    courseId: graph.courses[0].id,
-    userId: TEST_USER_ID,
-    category: "suggestion",
-    body: "Segunda operação"
-  });
-  const third = repository.createStudyPath("Terceira operação");
-  assert.equal(repository.getDurabilityState().pendingWrites, 3);
+  const commit = repository.saveProject(renamedProject(repository, "Título em fila"));
+  assert.equal(repository.getDurabilityState().pendingWrites, 1);
   assert.notEqual(repository.getDurabilityState().status, "saved");
 
   release();
-  await Promise.all([first, second, third, repository.flush()]);
-  const outbox = await store.listPendingOutbox();
-  assert.deepEqual(
-    outbox.map((row) => row.entityType),
-    ["lessonProgress", "cardProgress", "comments", "studyPaths"]
-  );
-  assert.deepEqual(
-    outbox.map((row) => row.sequence),
-    [...outbox].map((row) => row.sequence).sort((left, right) => left - right)
-  );
+  await Promise.all([commit, repository.flush()]);
   assert.equal(repository.getDurabilityState().pendingWrites, 0);
   assert.equal(repository.getDurabilityState().status, "saved");
 });
 
-test("falha de IndexedDB fica visível e retryDurability recupera a mesma alteração", async (context) => {
-  const { store, repository, service } = await openControlledRepository();
+test("falha local fica visível e retryDurability reaplica a edição corrente", async (context) => {
+  const { store, repository, mutations } = await openControlledRepository();
   context.after(() => store.close());
-  const states = [];
-  repository.onDurabilityChange((state) => states.push(state.status));
-  service.failNext(new Error("quota local excedida"));
+  mutations.failNext(new Error("quota local excedida"));
 
-  await assert.rejects(repository.saveProgress(PROGRESS), /quota local excedida/u);
-  const failed = repository.getDurabilityState();
-  assert.equal(failed.status, "error");
-  assert.equal(failed.error.message, "quota local excedida");
-  assert.equal(failed.hasUncommittedMemory, true);
-  await assert.rejects(repository.flush(), /quota local excedida/u);
+  await assert.rejects(
+    repository.saveProject(renamedProject(repository, "Título a recuperar")),
+    /quota local excedida/u
+  );
+  assert.equal(repository.getDurabilityState().status, "error");
 
   const recovered = await repository.retryDurability();
   assert.equal(recovered.status, "saved");
-  assert.equal(recovered.hasUncommittedMemory, false);
-  assert.equal((await store.getAll("lessonProgress")).length, 1);
-  assert.equal((await store.getAll("cardProgress")).length, 1);
-  assert.ok(states.includes("pending"));
-  assert.equal(states.at(-1), "saved");
+  assert.equal((await store.getAll("courses"))[0].title, "Título a recuperar");
 });
 
-test("erro permanece visível enquanto há memória ainda não persistida", async (context) => {
-  const { store, repository, service } = await openControlledRepository();
-  context.after(() => store.close());
-  service.failNext(new Error("gravação local interrompida"));
-
-  await assert.rejects(repository.saveProgress(PROGRESS), /gravação local interrompida/u);
-
-  assert.deepEqual(repository.getDurabilityState(), {
-    status: "error",
-    pendingWrites: 0,
-    hasUncommittedMemory: true,
-    error: {
-      name: "Error",
-      message: "gravação local interrompida"
-    },
-    changedAt: repository.getDurabilityState().changedAt
-  });
-});
-
-test("retry não reaplica snapshot anterior após uma gravação mais recente bem-sucedida", async (context) => {
-  const { store, repository, service } = await openControlledRepository();
-  context.after(() => store.close());
-  const earlier = structuredClone(PROGRESS);
-  const latest = { version: 1, lessons: {} };
-  service.failNext(new Error("primeira gravação falhou"));
-
-  await assert.rejects(repository.saveProgress(earlier), /primeira gravação falhou/u);
-  await repository.saveProgress(latest);
-  const outboxBeforeRetry = await store.listPendingOutbox();
-  assert.equal(repository.getDurabilityState().status, "saved");
-
-  const state = await repository.retryDurability();
-  const persistedLesson = (await store.getAll("lessonProgress"))[0];
-  const outboxAfterRetry = await store.listPendingOutbox();
-
-  assert.equal(state.status, "saved");
-  assert.equal(persistedLesson, undefined);
-  assert.deepEqual(repository.loadProgress(), latest);
-  assert.deepEqual(outboxAfterRetry, outboxBeforeRetry);
-});
-
-test("close aguarda gravação pendente e a próxima instância lê os dados", async () => {
+test("close aguarda a edição pendente e a próxima instância lê o grafo", async () => {
   const indexedDb = new IDBFactory();
-  const { repository, service, graph } = await openControlledRepository(indexedDb);
-  const release = service.blockNext();
-  const commit = repository.saveComment({
-    cardId: graph.cards[0].id,
-    courseId: graph.courses[0].id,
-    userId: TEST_USER_ID,
-    category: "observation",
-    body: "Persistir antes de fechar"
-  });
+  const { repository, mutations } = await openControlledRepository(indexedDb);
+  const release = mutations.blockNext();
+  const commit = repository.saveProject(renamedProject(repository, "Antes de fechar"));
   let closed = false;
   const closing = repository.close().then(() => { closed = true; });
   await new Promise((resolve) => setTimeout(resolve, 0));
@@ -207,7 +121,14 @@ test("close aguarda gravação pendente e a próxima instância lê os dados", a
 
   release();
   await Promise.all([commit, closing]);
-  const reopened = await IndexedDbRelationalStore.open(indexedDb, { userId: TEST_USER_ID });
-  assert.equal((await reopened.getAll("comments"))[0].body, "Persistir antes de fechar");
-  reopened.close();
+  const reopenedStore = await IndexedDbRelationalStore.open(indexedDb, {
+    userId: TEST_USER_ID
+  });
+  const reopenedRepository = new RelationalProjectRepository({
+    store: reopenedStore,
+    userId: TEST_USER_ID
+  });
+  await reopenedRepository.initialize();
+  assert.equal(reopenedRepository.loadProject().courses[0].title, "Antes de fechar");
+  await reopenedRepository.close();
 });

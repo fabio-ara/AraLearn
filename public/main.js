@@ -1,6 +1,7 @@
 import { createEditorSession } from "../src/editor/contractEditor.js";
 import { IndexedDbRelationalStore } from "../src/persistence/IndexedDbRelationalStore.js";
 import { RelationalProjectRepository } from "../src/persistence/RelationalProjectRepository.js";
+import { TrailPersonalStateRepository } from "../src/persistence/TrailPersonalStateRepository.js";
 import { registerAraLearnServiceWorker } from "../src/runtime/registerServiceWorker.js";
 import {
   classifySyncFailure,
@@ -13,6 +14,7 @@ import {
   synchronizationRequiresFullReplicaRefresh
 } from "../src/sync/replicaRefreshPolicy.js";
 import { RemoteCourseCatalog } from "../src/supabase/RemoteCourseCatalog.js";
+import { LearningSpaces } from "../src/supabase/LearningSpaces.js";
 import { SupabaseAuthClient } from "../src/supabase/SupabaseAuthClient.js";
 import { readSupabaseRuntimeConfig } from "../src/supabase/runtimeConfig.js";
 import { renderAuthGate } from "../src/ui/AuthGate.js";
@@ -241,6 +243,7 @@ async function renderAuthenticatedApplication(root, config, authClient, session)
     publishableKey: config.publishableKey,
     authClient
   });
+  const homeLearningSpaces = new LearningSpaces({ catalog: remoteCatalog, authClient });
   const syncEngine = new RelationalSyncEngine({
     store: relationalStore,
     transport: new SupabaseSyncTransport(remoteCatalog),
@@ -288,12 +291,6 @@ async function renderAuthenticatedApplication(root, config, authClient, session)
           if (refreshed.documentChanged) {
             if (editorApp?.replaceProject) editorApp.replaceProject(refreshed.project);
             else globalThis.location.reload();
-          } else if (
-            refreshed.progressChanged ||
-            refreshed.studyPathsChanged ||
-            refreshed.commentsChanged
-          ) {
-            editorApp?.refreshPersonalState?.();
           }
         }
       } catch (refreshError) {
@@ -302,6 +299,8 @@ async function renderAuthenticatedApplication(root, config, authClient, session)
       }
     }
     if (synchronizationError) throw synchronizationError;
+    if (editorApp?.refreshPersonalState) await editorApp.refreshPersonalState();
+    else if (editorApp) await editorApp.refreshTrails?.();
     return result;
   };
   const runAutomaticSync = async () => {
@@ -446,7 +445,10 @@ async function renderAuthenticatedApplication(root, config, authClient, session)
 
   const bestEffortFlush = () => {
     if (!repository) return Promise.resolve();
-    return repository.flush().catch(() => undefined);
+    return Promise.all([
+      repository.flush(),
+      editorApp?.flushPersonalState?.() || Promise.resolve()
+    ]).catch(() => undefined);
   };
   lifecycleAbortController = new AbortController();
   lifecycleAbortController.signal.addEventListener("abort", () => {
@@ -462,6 +464,7 @@ async function renderAuthenticatedApplication(root, config, authClient, session)
       void bestEffortFlush();
     } else {
       scheduleAutomaticSync(100);
+      void editorApp?.refreshPersonalState?.();
     }
   }, { signal: lifecycleAbortController.signal });
   globalThis.addEventListener("pagehide", () => {
@@ -472,7 +475,7 @@ async function renderAuthenticatedApplication(root, config, authClient, session)
   globalThis.AraLearnAndroid = {
     flush: bestEffortFlush,
     handleBackPress() {
-      void repository.flush()
+      void bestEffortFlush()
         .then(() => globalThis.AndroidHost?.finishApp?.())
         .catch(() => undefined);
       return true;
@@ -484,9 +487,73 @@ async function renderAuthenticatedApplication(root, config, authClient, session)
     editor,
     initialProject: project,
     contextualAuthoring: {
-      remoteCatalog,
-      syncEngine,
-      synchronizeReplica
+      remoteCatalog
+    },
+    homeTrails: homeLearningSpaces,
+    workspaceCourseAdapter: {
+      load({ item, courseRef }) {
+        return homeLearningSpaces.loadWorkspaceCourse(courseRef || item);
+      },
+      saveMetadata({ courseRef, entityType, entityPath, metadata }) {
+        return remoteCatalog.executeApplicationAuthoringAction("atualizarMetadadosDaEntidade", {
+          requestId: globalThis.crypto.randomUUID(),
+          workspaceId: courseRef.workspaceId,
+          expectedRevision: courseRef.revision,
+          entityType,
+          entityPath,
+          ...metadata
+        });
+      },
+      saveMicrosequenceCards({ courseRef, microsequencePath, cards }) {
+        return remoteCatalog.executeApplicationAuthoringAction("salvarCardsNaMicrossequencia", {
+          requestId: globalThis.crypto.randomUUID(),
+          workspaceId: courseRef.workspaceId,
+          expectedRevision: courseRef.revision,
+          microsequencePath,
+          mode: "replace",
+          cardsJson: JSON.stringify(cards)
+        });
+      },
+      moveEntity({ courseRef, entityType, entityPath, targetParentPath, position }) {
+        return remoteCatalog.executeApplicationAuthoringAction("reorganizarWorkspace", {
+          operation: "move_entity",
+          requestId: globalThis.crypto.randomUUID(),
+          workspaceId: courseRef.workspaceId,
+          expectedRevision: courseRef.revision,
+          entityType,
+          entityPath,
+          targetParentPath,
+          position
+        });
+      },
+      deleteEntity({ courseRef, entityType, entityPath }) {
+        return remoteCatalog.executeApplicationAuthoringAction("excluirDoWorkspace", {
+          operation: "delete_entity",
+          requestId: globalThis.crypto.randomUUID(),
+          workspaceId: courseRef.workspaceId,
+          expectedRevision: courseRef.revision,
+          entityType,
+          entityPath
+        });
+      },
+      deleteCourse({ courseRef }) {
+        return remoteCatalog.executeApplicationAuthoringAction("excluirDoWorkspace", {
+          operation: "delete_entity",
+          requestId: globalThis.crypto.randomUUID(),
+          workspaceId: courseRef.workspaceId,
+          expectedRevision: courseRef.revision,
+          entityType: "course",
+          entityPath: [courseRef.courseKey]
+        });
+      }
+    },
+    trailPersonalStateFactory({ trailItemId, course }) {
+      return new TrailPersonalStateRepository({
+        trailItemId,
+        store: relationalStore,
+        remoteCatalog,
+        course
+      });
     }
   });
   const learningPanel = createLearningSpacesPanel({
@@ -500,7 +567,7 @@ async function renderAuthenticatedApplication(root, config, authClient, session)
       return synchronizeReplica(options);
     },
     async beforeSignOut() {
-      await repository.flush();
+      await Promise.all([repository.flush(), editorApp?.flushPersonalState?.()]);
       try {
         await synchronizeReplica();
       } catch (error) {
@@ -561,8 +628,14 @@ async function renderAuthenticatedApplication(root, config, authClient, session)
       console.warn("Não foi possível abrir a observação situada.", error);
     });
   });
+  editorRoot.addEventListener("aralearn:open-workspace", (event) => {
+    void learningPanel.openWorkspaceTarget(event.detail?.workspaceId).catch((error) => {
+      console.warn("Não foi possível abrir o planejamento.", error);
+    });
+  });
   globalThis.addEventListener("online", () => {
     scheduleAutomaticSync(100);
+    void editorApp?.refreshPersonalState?.();
   }, { signal: lifecycleAbortController.signal });
   globalThis.addEventListener("offline", () => {
     globalThis.clearTimeout(automaticSyncTimer);

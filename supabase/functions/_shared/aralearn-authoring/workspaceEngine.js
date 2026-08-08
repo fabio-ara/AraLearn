@@ -7,6 +7,7 @@ import {
   MAX_ARTIFACT_BYTES
 } from "./artifactStore.js";
 import {
+  cloneWorkspaceEntityWithFreshIds,
   copyWorkspaceEntity,
   createWorkspaceStructure,
   saveWorkspaceCard,
@@ -695,14 +696,11 @@ export class AuthoringWorkspaceEngine {
         422, "invalid_source_course", "O curso não contém uma raiz válida."
       );
     }
-    const clonedSource = copyWorkspaceEntity(sourceDocument, {
+    const course = cloneWorkspaceEntityWithFreshIds(current.document, {
       entityType: "course",
-      entityPath: [sourceCourse.id],
-      targetParentPath: null,
-      newRootId: workspaceCourseId,
-      position: sourceDocument.courses.length
+      entity: sourceCourse,
+      newRootId: workspaceCourseId
     });
-    const course = clonedSource.courses.find((item) => item.id === workspaceCourseId);
     const nextDocument = attachWorkspaceEntity(current.document, {
       entityType: "course",
       parentPath: null,

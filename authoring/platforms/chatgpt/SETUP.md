@@ -73,8 +73,8 @@ continuam resolvidas no banco.
 5. insira uma estrutura v4 pequena;
 6. renomeie e mova entidades usando a revisão atual;
 7. consulte as microteorias de uma lição;
-8. disponibilize o conteúdo corrente em Trilhas;
-9. abra o curso na biblioteca e teste o conteúdo pronto.
+8. confira que o plano apareceu em Trilhas sem publicação;
+9. materialize cards, abra o curso na biblioteca e teste o conteúdo pronto.
 
 Confirme que o chat mostra microteorias, não despeja todas as práticas e que
 uma revisão antiga produz conflito sem sobrescrever a atual.

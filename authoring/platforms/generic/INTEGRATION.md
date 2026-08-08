@@ -22,8 +22,9 @@ comando. O Storage recebe o artefato canônico imutável na publicação.
 6. para corrigir, use `atualizarMetadadosDaEntidade` ou
    `salvarCardNoWorkspace`;
 7. conserve a nova revisão e use `microtheories` para revisão humana;
-8. publique uma prévia privada parcial ou um curso completo com
-   `publicarCursoDoWorkspace`.
+8. estude em Trilhas sem publicar; somente para submissão, fixe o artefato
+   privado com `publicarCursoDoWorkspace`, ou distribua em Coleções quando a
+   conta puder e a pessoa pedir.
 
 O documento integral é uma visão composta, não o estado que o cliente deve
 reenviar em toda alteração. `listarAlteracoesRecentesDoWorkspace` oferece
@@ -49,8 +50,9 @@ nunca uma operação estrutural genérica.
 
 ## Âmbitos privado e editorial
 
-As partes materializadas podem ser disponibilizadas e testadas em Trilhas.
-`submeterCursoParaRevisaoEditorial` aponta para o hash exato dessa publicação,
+O plano e as partes materializadas aparecem e podem ser testados em Trilhas sem
+publicação. Para submeter, `publicarCursoDoWorkspace` com `target: "private"`
+fixa o artefato; `submeterCursoParaRevisaoEditorial` aponta para o hash exato,
 sem criar outro artefato, e aceita também conteúdo parcial. Conforme as
 capacidades da conta, a mesma integração pode listar os próprios envios ou a
 fila, ler o artefato submetido, criar uma cópia editorial independente, pedir
@@ -65,8 +67,9 @@ expõe outros conteúdos privados.
   `catalog:manage`, conforme a função da conta.
 
 Esses identificadores pertencem ao modelo de autorização do banco. Eles não
-são escopos OAuth solicitados ao provedor nem claims do access token. Publicação
-parcial é sempre privada.
+são escopos OAuth solicitados ao provedor nem claims do access token. O
+catálogo recebe somente revisão completa; o workspace em Trilhas pode continuar
+parcial.
 
 Consulte o percurso para pessoas autoras em
 [Criar cursos pelo chat](../../../docs/criar-cursos-pelo-chat.md) e o contrato

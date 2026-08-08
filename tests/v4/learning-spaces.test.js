@@ -12,7 +12,29 @@ const USER_ID = "10000000-0000-4000-8000-000000000001";
 const WORKSPACE_ID = "20000000-0000-4000-8000-000000000002";
 const COURSE_ID = "30000000-0000-4000-8000-000000000003";
 const SELECTION_ID = "40000000-0000-4000-8000-000000000004";
+const TRAIL_ITEM_ID = "50000000-0000-4000-8000-000000000005";
+const GROUP_ID = "60000000-0000-4000-8000-000000000006";
 const CONTENT_HASH = "a".repeat(64);
+
+function trailProjection({ items = [], groups = [], hasMore = false, nextCursor = null, capabilities = {} } = {}) {
+  return { space: "trails", groups, items, hasMore, nextCursor, capabilities };
+}
+
+function makeTrailItemForCursor(index) {
+  return {
+    trailItemId: `80000000-0000-4000-8000-${String(index).padStart(12, "0")}`,
+    workspaceId: WORKSPACE_ID,
+    courseKey: `course-${index}`,
+    kind: "plan",
+    source: "workspace",
+    origin: "workspace",
+    cardCount: 0,
+    revision: 1,
+    pathId: null,
+    pathPosition: null,
+    itemPosition: index
+  };
+}
 
 function sessionStore() {
   const values = new Map();
@@ -41,9 +63,10 @@ test("Trilhas guarda somente a projeção corrente por conta e a reutiliza offli
     catalog: {
       async listTrailItems(options) {
         calls.push(options);
-        return {
+        return trailProjection({
+          groups: [{ id: GROUP_ID, title: "Planos", position: 0 }],
           items: [{
-            itemId: `workspace:${WORKSPACE_ID}:course:course-a`,
+            trailItemId: TRAIL_ITEM_ID,
             workspaceId: WORKSPACE_ID,
             courseKey: "course-a",
             courseId: null,
@@ -61,13 +84,15 @@ test("Trilhas guarda somente a projeção corrente por conta e a reutiliza offli
             canEdit: true,
             canDelete: true,
             canRemove: false,
-            position: 0,
+            pathId: GROUP_ID,
+            pathTitle: "Planos",
+            pathPosition: 0,
+            itemPosition: 0,
+            revision: 1,
             updatedAt: "2026-08-03T12:00:00Z"
           }],
-          hasMore: false,
-          nextCursor: null,
           capabilities: { catalogManage: false, catalogReview: false }
-        };
+        });
       }
     }
   });
@@ -75,19 +100,25 @@ test("Trilhas guarda somente a projeção corrente por conta e a reutiliza offli
   const online = await spaces.loadTrails({ online: true });
   assert.equal(online.page.items[0].kind, "plan");
   assert.equal(online.page.items[0].cardCount, 0);
-  assert.deepEqual(calls, [{ limit: 100, afterPosition: null, afterId: null }]);
+  assert.deepEqual(calls, [{
+    limit: 100,
+    afterPathPosition: null,
+    afterItemPosition: null,
+    afterId: null
+  }]);
   assert.equal(store.values.size, 1);
-  assert.equal(Array.from(store.values.values())[0].version, 3);
+  assert.equal(Array.from(store.values.values())[0].version, 4);
 
   const offline = await spaces.loadTrails({ online: false });
   assert.equal(offline.stale, true);
   assert.deepEqual(
-    offline.page.items.map((item) => item.itemId),
-    online.page.items.map((item) => item.itemId)
+    offline.page.items.map((item) => item.trailItemId),
+    online.page.items.map((item) => item.trailItemId)
   );
   assert.deepEqual(offline.page.capabilities, {
     catalogManage: false,
-    catalogReview: false
+    catalogReview: false,
+    organize: false
   });
   assert.equal(offline.page.items[0].canEdit, false);
   assert.equal(offline.page.items[0].canDelete, false);
@@ -97,9 +128,9 @@ test("Trilhas agrega mais de cinquenta itens, preserva ordem e elimina sobreposi
   const store = sessionStore();
   const calls = [];
   const makeItem = (position) => ({
-    itemId: `plan:${String(position).padStart(3, "0")}`,
-    workspaceId: null,
-    courseKey: null,
+    trailItemId: `70000000-0000-4000-8000-${String(position + 1).padStart(12, "0")}`,
+    workspaceId: WORKSPACE_ID,
+    courseKey: `plan-${String(position).padStart(3, "0")}`,
     courseId: null,
     selectionId: null,
     contentHash: null,
@@ -107,7 +138,11 @@ test("Trilhas agrega mais de cinquenta itens, preserva ordem e elimina sobreposi
     source: "workspace",
     origin: "workspace",
     title: `Plano ${position}`,
-    position,
+    pathId: null,
+    pathTitle: "",
+    pathPosition: null,
+    itemPosition: position,
+    revision: 1,
     canEdit: true,
     canDelete: true,
     canRemove: false
@@ -118,14 +153,18 @@ test("Trilhas agrega mais de cinquenta itens, preserva ordem e elimina sobreposi
       async listTrailItems(options) {
         calls.push(options);
         if (options.afterId === null) {
-          return {
+          return trailProjection({
             items: Array.from({ length: 50 }, (_, index) => makeItem(index)),
             hasMore: true,
-            nextCursor: { afterPosition: 49, afterId: "plan:049" },
+            nextCursor: {
+              afterPathPosition: 2147483647,
+              afterItemPosition: 49,
+              afterId: makeItem(49).trailItemId
+            },
             capabilities: { catalogManage: true, catalogReview: true }
-          };
+          });
         }
-        return {
+        return trailProjection({
           items: Array.from({ length: 24 }, (_, index) => ({
             ...makeItem(index + 49),
             ...(index === 0 ? { title: "Plano 49 revalidado" } : {})
@@ -133,26 +172,32 @@ test("Trilhas agrega mais de cinquenta itens, preserva ordem e elimina sobreposi
           hasMore: false,
           nextCursor: null,
           capabilities: { catalogManage: true, catalogReview: true }
-        };
+        });
       }
     }
   });
 
   const result = await spaces.loadTrails({ online: true });
   assert.equal(result.page.items.length, 73);
-  assert.equal(result.page.items[0].itemId, "plan:000");
-  assert.equal(result.page.items.at(-1).itemId, "plan:072");
+  assert.equal(result.page.items[0].trailItemId, makeItem(0).trailItemId);
+  assert.equal(result.page.items.at(-1).trailItemId, makeItem(72).trailItemId);
   assert.equal(result.page.items[49].title, "Plano 49 revalidado");
-  assert.equal(new Set(result.page.items.map((item) => item.itemId)).size, 73);
-  assert.deepEqual(result.page.capabilities, { catalogManage: true, catalogReview: true });
+  assert.equal(new Set(result.page.items.map((item) => item.trailItemId)).size, 73);
+  assert.deepEqual(result.page.capabilities, {
+    catalogManage: true,
+    catalogReview: true,
+    organize: true
+  });
   assert.deepEqual(calls, [{
     limit: 100,
-    afterPosition: null,
+    afterPathPosition: null,
+    afterItemPosition: null,
     afterId: null
   }, {
     limit: 100,
-    afterPosition: 49,
-    afterId: "plan:049"
+    afterPathPosition: 2147483647,
+    afterItemPosition: 49,
+    afterId: makeItem(49).trailItemId
   }]);
   const cached = Array.from(store.values.values())[0];
   assert.equal(cached.page.items.length, 73);
@@ -167,12 +212,19 @@ test("cursor repetido interrompe Trilhas sem gravar projeção parcial", async (
     catalog: {
       async listTrailItems() {
         calls += 1;
-        return {
-          items: [{ itemId: `item:${calls}`, title: `Item ${calls}`, position: calls }],
+        return trailProjection({
+          items: [{
+            ...makeTrailItemForCursor(calls),
+            title: `Item ${calls}`
+          }],
           hasMore: true,
-          nextCursor: { afterPosition: 1, afterId: "item:1" },
+          nextCursor: {
+            afterPathPosition: 2147483647,
+            afterItemPosition: 1,
+            afterId: "80000000-0000-4000-8000-000000000001"
+          },
           capabilities: { catalogManage: true, catalogReview: true }
-        };
+        });
       }
     }
   });
@@ -193,19 +245,22 @@ test("falha em página posterior preserva somente o último cache completo", asy
     catalog: {
       async listTrailItems({ afterId }) {
         if (phase === "seed") {
-          return {
-            items: [{ itemId: "cached:item", title: "Completo", position: 0 }],
-            hasMore: false,
+          return trailProjection({
+            items: [{ ...makeTrailItemForCursor(10), title: "Completo" }],
             capabilities: { catalogManage: true, catalogReview: true }
-          };
+          });
         }
         if (afterId === null) {
-          return {
-            items: [{ itemId: "partial:item", title: "Parcial", position: 0 }],
+          return trailProjection({
+            items: [{ ...makeTrailItemForCursor(11), title: "Parcial" }],
             hasMore: true,
-            nextCursor: { afterPosition: 0, afterId: "partial:item" },
+            nextCursor: {
+              afterPathPosition: 2147483647,
+              afterItemPosition: 11,
+              afterId: makeTrailItemForCursor(11).trailItemId
+            },
             capabilities: { catalogManage: true, catalogReview: true }
-          };
+          });
         }
         throw new Error("segunda página indisponível");
       }
@@ -214,14 +269,22 @@ test("falha em página posterior preserva somente o último cache completo", asy
 
   await spaces.loadTrails({ online: true });
   phase = "fail";
-  await assert.rejects(
-    () => spaces.loadTrails({ online: true }),
-    /segunda página indisponível/iu
+  const fallback = await spaces.loadTrails({ online: true });
+  assert.equal(fallback.stale, true);
+  assert.deepEqual(
+    fallback.page.items.map((item) => item.trailItemId),
+    [makeTrailItemForCursor(10).trailItemId]
   );
   const cached = await spaces.loadTrails({ online: false });
   assert.equal(cached.stale, true);
-  assert.deepEqual(cached.page.items.map((item) => item.itemId), ["cached:item"]);
-  assert.equal(cached.page.items.some((item) => item.itemId === "partial:item"), false);
+  assert.deepEqual(
+    cached.page.items.map((item) => item.trailItemId),
+    [makeTrailItemForCursor(10).trailItemId]
+  );
+  assert.equal(
+    cached.page.items.some((item) => item.trailItemId === makeTrailItemForCursor(11).trailItemId),
+    false
+  );
 });
 
 test("ações do painel usam contratos focados e limpam a projeção após mutação", async () => {
@@ -230,7 +293,7 @@ test("ações do painel usam contratos focados e limpam a projeção após muta�
   const spaces = new LearningSpaces({
     authClient: authClient(store),
     catalog: {
-      async listTrailItems() { return { items: [], capabilities: {} }; },
+      async listTrailItems() { return trailProjection(); },
       async selectCourse(courseId) {
         calls.push(["selectCourse", { courseId }]);
         return { courseId };
@@ -338,13 +401,15 @@ test("cliente remoto chama somente a projeção integrada de Trilhas", async () 
   });
   await catalog.listTrailItems({
     limit: 20,
-    afterPosition: 3,
+    afterPathPosition: 3,
+    afterItemPosition: 7,
     afterId: WORKSPACE_ID
   });
   assert.match(requests[0].url, /\/rpc\/list_trail_items_v1$/u);
   assert.deepEqual(requests[0].body, {
     p_limit: 20,
-    p_after_position: 3,
+    p_after_path_position: 3,
+    p_after_item_position: 7,
     p_after_id: WORKSPACE_ID
   });
 });
@@ -565,7 +630,7 @@ test("cache local indisponível não invalida leitura nem exclusão remotas", as
     catalog: {
       async listTrailItems() {
         calls.push("read");
-        return { items: [], capabilities: {} };
+        return trailProjection();
       },
       async executeApplicationAuthoringAction(name) {
         calls.push(name);
