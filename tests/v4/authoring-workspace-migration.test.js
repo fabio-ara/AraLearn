@@ -24,6 +24,9 @@ const catalogCollectionReorderingMigration = readProjectText(
 const alphabeticCatalogMigration = readProjectText(
   "../../supabase/migrations/20260808021000_alphabetic_catalog.sql"
 );
+const alphabeticCatalogRuntimeMigration = readProjectText(
+  "../../supabase/migrations/20260808022000_align_alphabetic_catalog_runtime.sql"
+);
 const engine = readProjectText(
   "../../supabase/functions/_shared/aralearn-authoring/workspaceEngine.js"
 );
@@ -1136,6 +1139,22 @@ test("Coleções removem posições manuais e preservam transferência com CAS",
   assert.match(
     alphabeticCatalogMigration,
     /20260808021000[\s\S]+alphabetic-catalog-v1/u
+  );
+  assert.match(
+    alphabeticCatalogRuntimeMigration,
+    /placement\.position[\s\S]+order by placement\.id/u
+  );
+  assert.match(
+    alphabeticCatalogRuntimeMigration,
+    /private\.require_workspace_actor_v4[\s\S]+private\.require_workspace_actor_v5/u
+  );
+  assert.match(
+    alphabeticCatalogRuntimeMigration,
+    /valid_trail_personal_state_v1\(jsonb\) stable[\s\S]+merge_trail_personal_state_v1\(jsonb, jsonb\) stable/u
+  );
+  assert.match(
+    alphabeticCatalogRuntimeMigration,
+    /provolatile <> 's'[\s\S]+search_path=pg_catalog[\s\S]+20260808022000/u
   );
 });
 

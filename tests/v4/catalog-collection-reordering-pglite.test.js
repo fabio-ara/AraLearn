@@ -4,8 +4,12 @@ import test from "node:test";
 
 import { PGlite } from "@electric-sql/pglite";
 
-const migrationUrl = new URL(
+const alphabeticCatalogMigrationUrl = new URL(
   "../../supabase/migrations/20260808021000_alphabetic_catalog.sql",
+  import.meta.url
+);
+const catalogRuntimeMigrationUrl = new URL(
+  "../../supabase/migrations/20260808022000_align_alphabetic_catalog_runtime.sql",
   import.meta.url
 );
 
@@ -208,6 +212,50 @@ async function prepareDatabase() {
       uuid, uuid, text, bigint, uuid, integer
     ) returns jsonb language sql as $$ select '{}'::jsonb $$;
 
+    create function public.resolve_catalog_artifact_publisher_v4(
+      p_contract_key text,
+      p_requested_owner_id uuid default null
+    ) returns jsonb language plpgsql security definer
+    set search_path = pg_catalog, public, private as $function$
+    declare
+      v_course public.courses%rowtype;
+      v_collection_id uuid;
+    begin
+      select * into v_course
+      from public.courses course
+      where course.contract_key = p_contract_key
+      order by course.updated_at desc, course.id
+      limit 1;
+      select placement.collection_id into v_collection_id
+      from public.catalog_collection_courses placement
+      where placement.course_id = v_course.id
+        and placement.deleted_at is null
+      order by placement.position, placement.id
+      limit 1;
+      return jsonb_build_object(
+        'actorId', p_requested_owner_id,
+        'courseId', v_course.id,
+        'collectionId', v_collection_id
+      );
+    end;
+    $function$;
+
+    create function private.valid_trail_personal_state_v1(p_state jsonb)
+    returns boolean language sql immutable
+    set search_path = pg_catalog as $$
+      select pg_column_size(p_state) <= 524288
+    $$;
+    create function private.merge_trail_personal_state_v1(
+      p_older jsonb,
+      p_current jsonb
+    ) returns jsonb language sql immutable strict
+    set search_path = pg_catalog as $$
+      select jsonb_build_object(
+        'older', p_older,
+        'current', p_current
+      )
+    $$;
+
     create function public.publish_authoring_workspace_course_v5(
       p_owner_id uuid,
       p_workspace_id uuid,
@@ -294,7 +342,9 @@ async function prepareDatabase() {
   // conserva essas quebras em prosrc e pg_get_functiondef, enquanto a migration
   // corretiva versionada usa LF.
   await database.exec(historicalSchema.replace(/\n/gu, "\r\n"));
-  await database.exec(await fs.readFile(migrationUrl, "utf8"));
+  await database.exec("drop function private.require_workspace_actor_v4(uuid,text)");
+  await database.exec(await fs.readFile(alphabeticCatalogMigrationUrl, "utf8"));
+  await database.exec(await fs.readFile(catalogRuntimeMigrationUrl, "utf8"));
   return database;
 }
 
@@ -338,6 +388,34 @@ test("migration remove posições e contratos de reordenação", async (t) => {
     publication.rows[0].definition,
     /insert into public\.catalog_collection_courses\(\s*collection_id, course_id\s*\)/u
   );
+
+  const runtimeFunctions = await database.query(`
+    select oid::regprocedure::text as signature, pg_get_functiondef(oid) as definition
+    from pg_proc
+    where oid in (
+      'public.resolve_catalog_artifact_publisher_v4(text,uuid)'::regprocedure,
+      'public.list_authoring_catalog_collections_v4(uuid,integer,uuid,text)'::regprocedure,
+      'public.list_authoring_catalog_courses_v4(uuid,uuid,integer,uuid,text)'::regprocedure
+    )
+    order by oid::regprocedure::text
+  `);
+  assert.equal(runtimeFunctions.rows.length, 3);
+  for (const row of runtimeFunctions.rows) {
+    assert.doesNotMatch(
+      row.definition,
+      /placement\.position|private\.require_workspace_actor_v4/u,
+      row.signature
+    );
+  }
+  assert.match(
+    runtimeFunctions.rows.find((row) =>
+      row.signature.startsWith("resolve_catalog_artifact_publisher_v4"))
+      .definition,
+    /order by placement\.id/u
+  );
+  assert.ok(runtimeFunctions.rows
+    .filter((row) => row.signature.startsWith("list_authoring_catalog_"))
+    .every((row) => row.definition.includes("private.require_workspace_actor_v5")));
 
   const operations = await database.query(`
     select pg_get_constraintdef(oid) as definition
@@ -426,14 +504,33 @@ test("mover curso é somente transferência com CAS e idempotência", async (t) 
   );
 });
 
-test("manifesto anuncia apenas o catálogo alfabético", async (t) => {
+test("funções de estado pessoal conservam search_path e usam volatilidade estável", async (t) => {
+  const database = await prepareDatabase();
+  t.after(() => database.close());
+
+  const functions = await database.query(`
+    select oid::regprocedure::text as signature, provolatile, proconfig
+    from pg_proc
+    where oid in (
+      'private.valid_trail_personal_state_v1(jsonb)'::regprocedure,
+      'private.merge_trail_personal_state_v1(jsonb,jsonb)'::regprocedure
+    )
+    order by oid::regprocedure::text
+  `);
+  assert.equal(functions.rows.length, 2);
+  assert.ok(functions.rows.every((row) => row.provolatile === "s"));
+  assert.ok(functions.rows.every((row) =>
+    JSON.stringify(row.proconfig) === JSON.stringify(["search_path=pg_catalog"])));
+});
+
+test("manifesto anuncia o catálogo alfabético recompilado", async (t) => {
   const database = await prepareDatabase();
   t.after(() => database.close());
 
   const manifest = (await database.query(
     "select public.get_aralearn_runtime_manifest() as result"
   )).rows[0].result;
-  assert.equal(manifest.schemaRevision, "20260808021000");
+  assert.equal(manifest.schemaRevision, "20260808022000");
   assert.ok(manifest.features.includes("alphabetic-catalog-v1"));
   assert.ok(manifest.features.includes("unified-trails-v1"));
   assert.ok(!manifest.features.includes("catalog-collection-ordering-v1"));

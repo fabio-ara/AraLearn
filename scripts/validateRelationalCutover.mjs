@@ -304,6 +304,9 @@ async function main() {
   const alphabeticCatalog = migrations.find(({ fileName }) =>
     fileName === "20260808021000_alphabetic_catalog.sql"
   );
+  const alphabeticCatalogRuntime = migrations.find(({ fileName }) =>
+    fileName === "20260808022000_align_alphabetic_catalog_runtime.sql"
+  );
   const relationalRemoval = migrations.find(({ fileName }) =>
     fileName === "20260728020000_remove_relational_course_legacy.sql"
   );
@@ -328,7 +331,7 @@ async function main() {
       || !workspaceEntityObservations || !atomicPrivateCourseRemoval
       || !catalogCollectionReordering || !unifiedTrails || !trailPersonalState
       || !trailObservationThreads || !unifiedTrailsCleanCutover || !alphabeticTrails
-      || !alphabeticCatalog) {
+      || !alphabeticCatalog || !alphabeticCatalogRuntime) {
     fail("Corte final de workspaces compostos/OAuth v5 não encontrado.");
   }
   if (!relationalRemoval) {
@@ -704,6 +707,26 @@ async function main() {
     "O contrato final de Coleções ainda expõe posição manual."
   );
   assertContains(
+    alphabeticCatalogRuntime.source,
+    /order by placement\.position, placement\.id[\s\S]+order by placement\.id/iu,
+    "O resolvedor editorial não foi recompilado sem posição manual."
+  );
+  assertContains(
+    alphabeticCatalogRuntime.source,
+    /private\.require_workspace_actor_v4[\s\S]+private\.require_workspace_actor_v5/iu,
+    "Os leitores alfabéticos não foram recompilados contra a autoridade v5."
+  );
+  assertContains(
+    alphabeticCatalogRuntime.source,
+    /alter\s+function\s+private\.valid_trail_personal_state_v1\(jsonb\)\s+stable[\s\S]+alter\s+function\s+private\.merge_trail_personal_state_v1\(jsonb,\s*jsonb\)\s+stable/iu,
+    "As funções de estado pessoal ainda anunciam volatilidade incompatível."
+  );
+  assertContains(
+    alphabeticCatalogRuntime.source,
+    /provolatile\s*<>\s*'s'[\s\S]+proconfig[\s\S]+search_path=pg_catalog[\s\S]+20260808022000/iu,
+    "O corte não confirma volatilidade, search_path e revisão finais."
+  );
+  assertContains(
     workspaceEntityObservations.source,
     /function\s+private\.manage_authoring_workspace_observation_v1\s*\(/iu,
     "A mutação atômica de observações do workspace não foi instalada."
@@ -969,8 +992,8 @@ async function main() {
     path.join(repositoryRoot, "supabase", "runtime-manifest.json"),
     "utf8"
   ));
-  if (runtimeManifest.schemaRevision !== "20260808021000") {
-    fail("O manifesto estático não aponta para o corte alfabético final.");
+  if (runtimeManifest.schemaRevision !== "20260808022000") {
+    fail("O manifesto estático não aponta para o corte alfabético recompilado.");
   }
   for (const feature of [
     "stable-trail-item-identity-v1",
@@ -1003,7 +1026,7 @@ async function main() {
     }
   }
   console.log(
-    `Corte validado até ${alphabeticCatalog.fileName}: Trilhas e Coleções alfabéticas, estado pessoal compacto, observações situadas, workspaces educacionais, OAuth/MCP/Action e uma revisão corrente por curso.`
+    `Corte validado até ${alphabeticCatalogRuntime.fileName}: Trilhas e Coleções alfabéticas, estado pessoal compacto, observações situadas, workspaces educacionais, OAuth/MCP/Action e uma revisão corrente por curso.`
   );
 }
 
