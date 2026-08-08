@@ -59,7 +59,14 @@ $previous$;
 $current$;
 begin
   if v_signature is null then return; end if;
-  v_definition := pg_get_functiondef(v_signature);
+  -- Migrations históricas podem conservar CRLF no corpo de funções criado a
+  -- partir do Windows. pg_get_functiondef preserva esses caracteres em
+  -- prosrc; normalize somente a definição transitória antes da substituição.
+  v_definition := replace(
+    pg_get_functiondef(v_signature),
+    E'\r\n',
+    E'\n'
+  );
   if strpos(v_definition, v_previous) = 0 then
     raise exception 'A publicação corrente não corresponde ao corte alfabético.'
       using errcode = '55000';

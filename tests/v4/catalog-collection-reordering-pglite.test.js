@@ -20,7 +20,7 @@ const PLACEMENT_A = "40000000-0000-4000-8000-000000000002";
 
 async function prepareDatabase() {
   const database = new PGlite();
-  await database.exec(`
+  const historicalSchema = `
     create role anon;
     create role authenticated;
     create role service_role;
@@ -289,7 +289,11 @@ async function prepareDatabase() {
     ) values
       ('${PLACEMENT_Z}', '${COLLECTION_Z}', '${COURSE_Z}', 99),
       ('${PLACEMENT_A}', '${COLLECTION_Z}', '${COURSE_A}', 0);
-  `);
+  `;
+  // A função implantada foi criada por uma migration com CRLF. O PostgreSQL
+  // conserva essas quebras em prosrc e pg_get_functiondef, enquanto a migration
+  // corretiva versionada usa LF.
+  await database.exec(historicalSchema.replace(/\n/gu, "\r\n"));
   await database.exec(await fs.readFile(migrationUrl, "utf8"));
   return database;
 }
