@@ -129,12 +129,19 @@ pede apenas uma sincronização; não se deve repetir o comando.
 Na tela inicial, a pessoa acompanha o que planejou e o que já pode estudar. Ali
 seleciona primeiro o grupo e depois o curso, sem abrir uma tela administrativa
 paralela. O menu do grupo permite criar, renomear ou excluir; o menu do curso
-reúne somente as operações aplicáveis àquele item, inclusive movê-lo para outro
-grupo. Título e descrição tornam-se editáveis no próprio card selecionado,
-sem navegar para outra tela. Grupos e cursos permanecem em ordem alfabética
-depois de cada alteração. Excluir um grupo deixa seus itens em **Outros**;
+reúne somente as operações aplicáveis àquele item. Ao abri-lo, as ações aparecem
+com ícone e texto; **Mover para outro grupo** abre o seletor de destino no próprio
+card, inclusive para **Outros**. Escolher o grupo corrente apenas fecha o seletor,
+sem repetir uma gravação remota. Título e descrição tornam-se editáveis no
+próprio card selecionado, sem navegar para outra tela. Grupos e cursos permanecem
+em ordem alfabética depois de cada alteração. Excluir um grupo deixa seus itens
+em **Outros**;
 **Retirar de Trilhas** é a ação separada que remove uma seleção oficial, e
 **Excluir** remove a composição privada escolhida.
+
+Títulos, mensagens de erro, seletores e menus permanecem contidos na largura da
+home e quebram texto longo, inclusive com zoom ou em telas estreitas; nenhum
+controle deve ser empurrado para fora do card.
 
 Essa ordenação alfabética vale para a biblioteca, não para a árvore pedagógica.
 Mover uma parte do curso muda sua posição na composição corrente; copiar uma

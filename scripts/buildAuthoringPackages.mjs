@@ -196,7 +196,9 @@ async function buildChatGptKnowledge(variantName) {
   for (const fileName of variant.schemas) {
     const relative = `schemas/${fileName}`;
     const absolutePath = path.join(AUTHORING_ROOT, relative);
-    const content = (await readFile(absolutePath, "utf8")).trim();
+    const content = (await readFile(absolutePath, "utf8"))
+      .replace(/\r\n?/gu, "\n")
+      .trim();
     sections.push("", "---", "", `## ${relative}`, "", "```json", content, "```");
   }
 

@@ -118,6 +118,33 @@ function integer(valueToRead) {
   return Number.isSafeInteger(parsed) && parsed >= 0 ? parsed : 0;
 }
 
+const WORKSPACE_PART_PREVIEW_LIMIT = 8;
+const WORKSPACE_FINDING_PREVIEW_LIMIT = 3;
+
+const FINDING_SEVERITY_LABEL = Object.freeze({
+  low: "Baixa",
+  medium: "Média",
+  high: "Alta",
+  critical: "Crítica"
+});
+
+const FINDING_STATUS_LABEL = Object.freeze({
+  open: "A avaliar",
+  approved: "Aprovado",
+  repaired: "Corrigido; aguarda verificação"
+});
+
+function workspaceRevisionMatches(workspace, resume) {
+  return text(workspace?.workspaceId).trim().toLowerCase() ===
+      text(resume?.workspaceId).trim().toLowerCase() &&
+    Number.isSafeInteger(Number(workspace?.revision)) &&
+    Number(workspace.revision) === Number(resume?.revision);
+}
+
+function plural(count, singular, pluralValue) {
+  return `${count} ${count === 1 ? singular : pluralValue}`;
+}
+
 function includesQuery(valueToRead, query) {
   return text(valueToRead).toLocaleLowerCase("pt-BR").includes(query);
 }
@@ -484,10 +511,15 @@ export function createLearningSpacesPanel({
     form.append(input, formActions);
     notePanel.append(form);
     observations
-      .filter((note) =>
-        JSON.stringify(note.entityPath || []) === pathKey &&
-        text(note.resourceTargetId) === text(resourceTargetId)
-      )
+      .filter((note) => {
+        const currentPath = note.targetAvailable !== false &&
+          Array.isArray(note.currentEntityPath)
+          ? note.currentEntityPath
+          : note.entityPath;
+        return note.kind === "note" &&
+          JSON.stringify(currentPath || []) === pathKey &&
+          text(note.resourceTargetId) === text(resourceTargetId);
+      })
       .forEach((note) => {
         const item = documentValue.createElement("article");
         item.className = "remote-observation-item";
@@ -508,6 +540,165 @@ export function createLearningSpacesPanel({
     return notePanel;
   }
 
+  function renderWorkspaceContinuity(workspace) {
+    const resume = workspace.authoringResume;
+    if (!resume && !workspace.authoringResumeError) return null;
+    const section = documentValue.createElement("section");
+    section.className = "learning-spaces-continuity";
+    section.setAttribute("aria-labelledby", "learning-spaces-continuity-title");
+    const heading = documentValue.createElement("h3");
+    heading.id = "learning-spaces-continuity-title";
+    heading.textContent = "Andamento";
+    section.append(heading);
+    if (!resume) {
+      const unavailable = documentValue.createElement("p");
+      unavailable.className = "learning-spaces-continuity-unavailable";
+      unavailable.textContent = "O conteúdo está disponível, mas não foi possível carregar o andamento da autoria.";
+      section.append(unavailable);
+      return section;
+    }
+
+    const resumeContent = resume.content || {};
+    const parts = array(resumeContent.parts);
+    const visibleParts = parts.slice(0, WORKSPACE_PART_PREVIEW_LIMIT);
+    const partTitles = new Map(parts.map((part) => [text(part?.id), text(part?.title)]));
+    const authorization = documentValue.createElement("p");
+    authorization.className = "learning-spaces-continuity-authorization";
+    const mandate = resumeContent.mandate;
+    const targetTitle = mandate?.targetPartId
+      ? partTitles.get(text(mandate.targetPartId)) || "a Parte indicada"
+      : "";
+    if (!mandate) {
+      authorization.textContent = "Nenhuma tarefa de autoria está em andamento.";
+    } else if (mandate.kind === "build_part") {
+      authorization.textContent = `Construção autorizada: ${targetTitle}.`;
+    } else if (mandate.kind === "repair_findings") {
+      const findingCount = array(mandate.findingIds).length;
+      authorization.textContent = `Reparo autorizado para ${plural(
+        findingCount,
+        "achado",
+        "achados"
+      )}.`;
+    } else if (mandate.kind === "audit") {
+      authorization.textContent = targetTitle
+        ? `Auditoria em andamento: ${targetTitle}.`
+        : "Auditoria em andamento.";
+    } else if (mandate.kind === "restructure") {
+      authorization.textContent = targetTitle
+        ? `Reorganização autorizada: ${targetTitle}.`
+        : "Reorganização autorizada.";
+    } else {
+      authorization.textContent = "Há uma tarefa de autoria em andamento.";
+    }
+    section.append(authorization);
+
+    const partsHeading = documentValue.createElement("h4");
+    partsHeading.textContent = "Partes";
+    section.append(partsHeading);
+    if (!parts.length) {
+      const noParts = documentValue.createElement("p");
+      noParts.className = "learning-spaces-continuity-empty";
+      noParts.textContent = "O planejamento ainda não foi dividido em Partes.";
+      section.append(noParts);
+    } else {
+      const partList = documentValue.createElement("div");
+      partList.className = "learning-spaces-continuity-parts";
+      partList.setAttribute("role", "list");
+      partList.setAttribute("aria-label", "Progresso das Partes");
+      visibleParts.forEach((part, index) => {
+        const total = integer(part?.microsequenceCount);
+        const ready = Math.min(total, integer(part?.readyCount));
+        const materialized = Math.min(total, integer(part?.materializedCount));
+        const cards = integer(part?.cardCount);
+        const missing = integer(part?.missingCount);
+        const title = text(part?.title) || `Parte ${index + 1}`;
+        const item = documentValue.createElement("article");
+        item.className = "learning-spaces-continuity-part";
+        item.setAttribute("role", "listitem");
+        const titleNode = documentValue.createElement("strong");
+        titleNode.textContent = title;
+        const details = documentValue.createElement("span");
+        const detailParts = [
+          `${ready} de ${total} prontas`,
+          materialized !== ready ? `${materialized} com conteúdo` : "",
+          plural(cards, "card", "cards"),
+          missing ? plural(missing, "unidade não encontrada", "unidades não encontradas") : ""
+        ].filter(Boolean);
+        details.textContent = detailParts.join(" · ");
+        const progress = documentValue.createElement("progress");
+        progress.max = Math.max(total, 1);
+        progress.value = ready;
+        progress.setAttribute(
+          "aria-label",
+          `${title}: ${ready} de ${total} microssequências prontas.`
+        );
+        item.append(titleNode, details, progress);
+        partList.append(item);
+      });
+      section.append(partList);
+      if (parts.length > visibleParts.length) {
+        const hiddenParts = documentValue.createElement("p");
+        hiddenParts.className = "learning-spaces-continuity-more";
+        hiddenParts.textContent = `${parts.length - visibleParts.length} Partes adicionais não aparecem neste resumo.`;
+        section.append(hiddenParts);
+      }
+    }
+
+    const findingsValue = resumeContent.findings || {};
+    const activeStatuses = new Set(["open", "approved", "repaired"]);
+    const findings = array(findingsValue.items).filter((finding) =>
+      activeStatuses.has(text(finding?.status))).slice(0, WORKSPACE_FINDING_PREVIEW_LIMIT);
+    const activeCount = Math.max(
+      integer(findingsValue.summary?.activeCount),
+      findings.length
+    );
+    const findingsHeading = documentValue.createElement("h4");
+    findingsHeading.textContent = `Achados em acompanhamento (${activeCount})`;
+    section.append(findingsHeading);
+    if (!findings.length) {
+      const noFindings = documentValue.createElement("p");
+      noFindings.className = "learning-spaces-continuity-empty";
+      noFindings.textContent = activeCount
+        ? "Os detalhes dos achados não cabem neste resumo."
+        : "Nenhum achado ativo.";
+      section.append(noFindings);
+    } else {
+      const findingList = documentValue.createElement("div");
+      findingList.className = "learning-spaces-continuity-findings";
+      findingList.setAttribute("role", "list");
+      findingList.setAttribute("aria-label", "Achados ativos");
+      findings.forEach((finding) => {
+        const item = documentValue.createElement("article");
+        item.className = "learning-spaces-continuity-finding";
+        item.setAttribute("role", "listitem");
+        const metadata = documentValue.createElement("p");
+        metadata.className = "learning-spaces-continuity-finding-meta";
+        const severity = FINDING_SEVERITY_LABEL[text(finding?.severity)] || "Não classificada";
+        const findingStatus = FINDING_STATUS_LABEL[text(finding?.status)] || "Em acompanhamento";
+        metadata.textContent = `Gravidade ${severity.toLocaleLowerCase("pt-BR")} · ${findingStatus}`;
+        const summary = documentValue.createElement("p");
+        summary.className = "learning-spaces-continuity-finding-summary";
+        summary.textContent = text(finding?.summary) || "Achado sem síntese.";
+        item.append(metadata, summary);
+        findingList.append(item);
+      });
+      section.append(findingList);
+    }
+    if (
+      findingsValue.truncated === true ||
+      activeCount > findings.length ||
+      array(findingsValue.items).length > findings.length
+    ) {
+      const moreFindings = documentValue.createElement("p");
+      moreFindings.className = "learning-spaces-continuity-more";
+      moreFindings.textContent = findingsValue.truncated === true
+        ? "A lista é resumida; outros achados permanecem no histórico da autoria."
+        : `Mostrando ${findings.length} de ${activeCount} achados em acompanhamento.`;
+      section.append(moreFindings);
+    }
+    return section;
+  }
+
   function renderWorkspaceTree(workspace) {
     const section = documentValue.createElement("section");
     section.className = "remote-library-view remote-workspace-view learning-spaces-workspace-outline";
@@ -518,6 +709,8 @@ export function createLearningSpacesPanel({
       Object.assign(documentValue.createElement("h2"), { textContent: workspace.title || "Plano" })
     );
     section.append(head);
+    const continuity = renderWorkspaceContinuity(workspace);
+    if (continuity) section.append(continuity);
     if (observingEntity && ["card", "resource"].includes(observingEntity.entityType)) {
       section.append(renderWorkspaceObservationPanel({
         entityType: observingEntity.entityType,
@@ -1054,6 +1247,7 @@ export function createLearningSpacesPanel({
       trails = trailResult.page;
       await applyAuthenticatedCapabilities(trails, { trusted: trailResult.stale !== true });
       let catalogWarning = "";
+      let workspaceWarning = "";
       if (activeView === "collections") {
         const nextCollections = await catalog.listCollections(catalogQuery);
         if (epoch !== loadEpoch || collectionEpoch !== collectionLoadEpoch || !opened) return;
@@ -1072,8 +1266,19 @@ export function createLearningSpacesPanel({
               : "A administração de Coleções está indisponível.";
           }
         }
+      } else if (activeView === "workspace" && selectedWorkspace?.workspaceId) {
+        try {
+          workspaceWarning = await refreshSelectedWorkspace({ render: false });
+        } catch (error) {
+          workspaceWarning = error instanceof Error
+            ? error.message
+            : "Não foi possível atualizar o plano aberto.";
+        }
+        if (epoch !== loadEpoch || !opened) return;
       }
-      reportStatus(catalogWarning || (trailResult.stale ? "Último estado disponível." : ""));
+      reportStatus(
+        workspaceWarning || catalogWarning || (trailResult.stale ? "Último estado disponível." : "")
+      );
     } catch (error) {
       if (epoch !== loadEpoch || !opened) return;
       await applyAuthenticatedCapabilities(null, { trusted: true });
@@ -1233,14 +1438,65 @@ export function createLearningSpacesPanel({
     }
   }
 
-  async function refreshSelectedWorkspace() {
-    if (!selectedWorkspace?.workspaceId) return;
+  async function loadWorkspacePresentation(workspaceId, access, outlinePromise = null) {
+    let workspace = await (outlinePromise || spaces.loadWorkspace(workspaceId, "outline"));
+    if (access?.review !== true) {
+      return { workspace, resume: null, resumeError: "" };
+    }
+    try {
+      let resume = await spaces.loadWorkspaceResume(workspaceId);
+      if (!workspaceRevisionMatches(workspace, resume)) {
+        [workspace, resume] = await Promise.all([
+          spaces.loadWorkspace(workspaceId, "outline"),
+          spaces.loadWorkspaceResume(workspaceId)
+        ]);
+      }
+      if (!workspaceRevisionMatches(workspace, resume)) {
+        throw new Error("O plano mudou durante a leitura. Abra novamente para atualizar o andamento.");
+      }
+      return { workspace, resume, resumeError: "" };
+    } catch (error) {
+      return {
+        workspace,
+        resume: null,
+        resumeError: error instanceof Error
+          ? error.message
+          : "Não foi possível carregar o andamento da autoria."
+      };
+    }
+  }
+
+  async function refreshSelectedWorkspace({ render = true } = {}) {
+    const workspaceId = selectedWorkspace?.workspaceId;
+    if (!workspaceId) return "";
     const access = selectedWorkspace.access;
+    const observationsPromise = spaces.listObservations(workspaceId).then(
+      (result) => ({ result, warning: "" }),
+      (error) => ({
+        result: null,
+        warning: error instanceof Error
+          ? error.message
+          : "Não foi possível atualizar as observações."
+      })
+    );
+    const [presentation, nextObservations] = await Promise.all([
+      loadWorkspacePresentation(workspaceId, access),
+      observationsPromise
+    ]);
+    if (!opened || selectedWorkspace?.workspaceId !== workspaceId) return "";
     selectedWorkspace = {
-      ...(await spaces.loadWorkspace(selectedWorkspace.workspaceId, "outline")),
-      access
+      ...presentation.workspace,
+      access,
+      authoringResume: presentation.resume,
+      authoringResumeError: presentation.resumeError
     };
-    await renderActive();
+    if (nextObservations.result) {
+      observations = array(nextObservations.result.items);
+    }
+    if (render) await renderActive();
+    return [presentation.resumeError, nextObservations.warning]
+      .filter(Boolean)
+      .join(" ");
   }
 
   async function saveWorkspaceEntity(form) {
@@ -1258,8 +1514,7 @@ export function createLearningSpacesPanel({
       });
       editingEntity = null;
       queueActionFocus("edit-workspace-entity", { entityPath });
-      await refreshSelectedWorkspace();
-      reportStatus("");
+      reportStatus(await refreshSelectedWorkspace());
     } catch (error) {
       reportStatus(error instanceof Error ? error.message : "Não foi possível salvar.");
     } finally {
@@ -1282,8 +1537,7 @@ export function createLearningSpacesPanel({
         position: Number(node.dataset.position)
       });
       queueActionFocus(action, { entityPath: entityPathKey });
-      await refreshSelectedWorkspace();
-      reportStatus("");
+      reportStatus(await refreshSelectedWorkspace());
     } catch (error) {
       reportStatus(error instanceof Error ? error.message : "Não foi possível mover.");
     } finally {
@@ -1303,8 +1557,7 @@ export function createLearningSpacesPanel({
       });
       editingEntity = null;
       queueActionFocus("back-to-collections");
-      await refreshSelectedWorkspace();
-      reportStatus("");
+      reportStatus(await refreshSelectedWorkspace());
     } catch (error) {
       reportStatus(error instanceof Error ? error.message : "Não foi possível excluir.");
     } finally {
@@ -1320,10 +1573,21 @@ export function createLearningSpacesPanel({
         spaces.listObservations(workspaceId),
         spaces.loadWorkspaceAccess(workspaceId)
       ]);
-      selectedWorkspace = { ...workspace, access: context?.capabilities || {} };
+      const access = context?.capabilities || {};
+      const presentation = await loadWorkspacePresentation(
+        workspaceId,
+        access,
+        Promise.resolve(workspace)
+      );
+      selectedWorkspace = {
+        ...presentation.workspace,
+        access,
+        authoringResume: presentation.resume,
+        authoringResumeError: presentation.resumeError
+      };
       observations = array(notes?.items);
       activeView = "workspace";
-      reportStatus("");
+      reportStatus(presentation.resumeError);
       queueActionFocus("back-to-collections");
       await renderActive();
       return true;

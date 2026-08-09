@@ -381,7 +381,16 @@ test("mutação renomeia uma entidade com um único upsert e sem snapshot", asyn
     created: 0,
     updated: 1,
     deleted: 0,
+    operationFamily: "structure",
     targetPath: [courseId],
+    targetPaths: [[courseId]],
+    targetPathsTruncated: false,
+    resourceTargets: [],
+    resourceTargetsTruncated: false,
+    changedCardPaths: [],
+    changedCardPathsTruncated: false,
+    cardShellChangedPaths: [],
+    cardShellChangedPathsTruncated: false,
     entityType: "course"
   });
   assert.equal(Object.hasOwn(committed, "p_artifact"), false);
@@ -460,6 +469,7 @@ test("novo card.sources exige declaração explícita no brief corrente", async 
     cardChange.content.sources,
     ["fgv-prova-2024"]
   );
+  assert.deepEqual(committed.p_summary.targetPath, cardPath);
 });
 
 test("append confirma no resumo que posições foram normalizadas", async () => {

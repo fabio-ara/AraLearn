@@ -127,6 +127,14 @@ Implante migrations e regras de acesso antes das Edge Functions e da aplicação
 - `commit_authoring_workspace_changes_v5`: aplica somente as partes criadas, atualizadas ou excluídas e valida o documento recomposto;
 - `get_authoring_workspace_v5` e `list_authoring_workspaces_v5`: leem as partes correntes ou uma página de workspaces;
 - `list_authoring_workspace_events_v5`: devolve resumos recentes, sem cópias antigas da árvore;
+- `get_authoring_workspace_continuity_v1`: compõe a retomada compacta com
+  Partes, decisões, mandato, achados ativos e sínteses, sem copiar cards;
+- `update_authoring_workspace_continuity_v1`: altera por CAS o contexto estável
+  ou o estado corrente de continuidade com operações fechadas e idempotentes;
+- `manage_authoring_workspace_finding_v1`: registra, decide, vincula, verifica
+  ou exclui achados compactos de auditoria;
+- `list_authoring_workspace_observations_for_actor_v1`: pagina notas e achados
+  visíveis ao ator, com filtros e cursor estável;
 - `list_authoring_workspace_microsequence_cards_v5`: pagina metadados curtos
   dos cards filhos diretamente nas rows correntes, sem recompor o documento;
 - `resume_or_reserve_authoring_workspace_v1`: localiza a composição ativa de

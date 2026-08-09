@@ -4526,13 +4526,19 @@ export function createLessonEditorApp({
     });
     root.querySelectorAll("[data-action='choose-home-item-group']").forEach((node) => {
       node.addEventListener("click", () => {
-        state.homeOrganization.movingItemId = node.getAttribute("data-trail-item-id") || "";
+        const trailItemId = node.getAttribute("data-trail-item-id") || "";
+        if (!trailItemId || state.homeOrganization.busy) return;
+        state.homeOrganization.movingItemId = trailItemId;
+        queueAuthoringFocus("home-course-group-target");
         render({ preserveState: true });
       });
     });
     root.querySelectorAll("[data-action='cancel-home-item-move']").forEach((node) => {
       node.addEventListener("click", () => {
+        const trailItemId = node.closest("[data-home-item-move-form]")
+          ?.getAttribute("data-home-item-move-form") || state.homeOrganization.movingItemId;
         state.homeOrganization.movingItemId = "";
+        queueAuthoringFocus(`home-course-actions:${trailItemId}`);
         render({ preserveState: true });
       });
     });
@@ -4547,14 +4553,28 @@ export function createLessonEditorApp({
         const form = node.closest("[data-home-item-move-form]");
         const trailItemId = form?.getAttribute("data-home-item-move-form") || "";
         const groupId = String(form?.querySelector("[name='groupId']")?.value || "");
-        if (!trailItemId || !groupId) return;
+        if (!trailItemId || !groupId || state.homeOrganization.busy) return;
+        const currentGroupId = form?.getAttribute("data-current-group-id") ||
+          groupWithTrailItem(trailItemId)?.id || "others";
+        const targetGroupId = groupId === "__others__" ? "others" : groupId;
+        if (targetGroupId === currentGroupId) {
+          state.homeOrganization.movingItemId = "";
+          queueAuthoringFocus(`home-course-actions:${trailItemId}`);
+          render({ preserveState: true });
+          return;
+        }
         void mutateHomeTrails(
           groupId === "__others__" ? "removeItemFromGroup" : "placeItem",
           groupId === "__others__" ? { trailItemId } : { trailItemId, groupId }
         ).then((snapshot) => {
-          if (!snapshot) return;
+          if (!snapshot) {
+            queueAuthoringFocus("home-course-group-target");
+            render({ preserveState: true });
+            return;
+          }
           state.homeOrganization.movingItemId = "";
           state.homeOrganization.selectedGroupId = groupWithTrailItem(trailItemId)?.id || "";
+          queueAuthoringFocus(`home-course-actions:${trailItemId}`);
           render({ preserveState: true });
         });
       });

@@ -15,6 +15,16 @@ function integer(value) {
   return Number.isSafeInteger(parsed) && parsed >= 0 ? parsed : 0;
 }
 
+function workspacePartPosition(value, entityType, entityId) {
+  const minimum = entityType === "card" ? 1 : 0;
+  if (!Number.isSafeInteger(value) || value < minimum) {
+    throw new Error(
+      `A composição corrente contém posição inválida em ${entityType}:${entityId}.`
+    );
+  }
+  return value;
+}
+
 function array(value) {
   return Array.isArray(value) ? value : [];
 }
@@ -238,7 +248,14 @@ export function courseFromWorkspaceParts(result, item) {
     const content = part?.content && typeof part.content === "object" && !Array.isArray(part.content)
       ? structuredClone(part.content)
       : {};
+    if (Object.hasOwn(content, "position")) {
+      throw new Error(
+        `A composição corrente repete a posição dentro do conteúdo de ${type}:${id}.`
+      );
+    }
+    const position = workspacePartPosition(part?.position, type, id);
     const entity = { ...content, id };
+    if (type === "card") entity.position = position;
     for (const collectionName of ownCollections[type] || []) entity[collectionName] = [];
     let typedEntities = entitiesByType.get(type);
     if (!typedEntities) {
@@ -253,7 +270,7 @@ export function courseFromWorkspaceParts(result, item) {
       id,
       parentType: text(part?.parentType),
       parentId: text(part?.parentId),
-      position: integer(part?.position),
+      position,
       entity
     };
     typedEntities.set(id, record);

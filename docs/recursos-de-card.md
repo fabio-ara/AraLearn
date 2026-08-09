@@ -66,6 +66,31 @@ uma definição correspondente em `gaps`:
 
 ```json
 {
+  "id": "card-conjuncao",
+  "position": 1,
+  "resource": "paragraph",
+  "kind": "exercise",
+  "exercise": "gap",
+  "title": "Conjunção",
+  "text": "P ∧ Q só é verdadeira quando {gap:condition}.",
+  "gaps": [{
+    "id": "condition",
+    "response": "choice",
+    "answer": "P e Q são verdadeiras",
+    "distractors": ["apenas P é verdadeira", "ao menos uma é verdadeira"]
+  }],
+  "after": "A conjunção exige que as duas proposições sejam verdadeiras."
+}
+```
+
+Em `paragraph`, a lacuna pertence a `text`; não use `question`, `options`, um
+objeto `content` paralelo nem a notação interna do runtime.
+
+O mesmo mecanismo preserva a estrutura de outros resources. Por exemplo, em
+uma tabela:
+
+```json
+{
   "id": "card-tabela",
   "position": 2,
   "resource": "table",

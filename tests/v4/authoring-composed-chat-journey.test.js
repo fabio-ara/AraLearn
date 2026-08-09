@@ -454,13 +454,16 @@ function createJourneyAdapter() {
       });
     },
 
-    async updateWorkspaceBrief({
+    async manageWorkspaceContinuity({
       workspaceId,
       expectedRevision,
-      brief
+      operation,
+      arguments: operationArguments
     }) {
+      assert.equal(operation, "replace_stable_brief");
       const state = workspace(workspaceId);
       assertRevision(state, expectedRevision);
+      const brief = operationArguments.brief;
       state.brief = brief;
       state.revision += 1;
       contextLog.push({ workspaceId, brief });
@@ -929,11 +932,12 @@ test("jornada Dataprev atravessa Chatbot autoral e Plugin editorial sem snapshot
 
   const contextUpdated = await actionCall(
     chatbot,
-    "atualizarContextoDoWorkspace",
+    "gerirContinuidadeDaAutoria",
     {
       requestId: "dataprev-context-0001",
       workspaceId,
       expectedRevision: created.revision,
+      operation: "replace_stable_brief",
       brief: "Público sem conhecimentos prévios; cargo Analista de Processamento da Dataprev; banca FGV; fonte primária: ementa fornecida e prova anterior anexada; cobrir todos os produtos citados; dimensionar de forma autossuficiente e praticar com resources variados, inclusive gaps."
     }
   );

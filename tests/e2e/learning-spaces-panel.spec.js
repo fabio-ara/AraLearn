@@ -10,7 +10,9 @@ async function mountPanel(page, {
   admin = false,
   assistantDelayMs = 0,
   failTrailSecondPage = false,
-  seedAdminTrailCache = false
+  seedAdminTrailCache = false,
+  failResume = false,
+  movableWorkspace = false
 } = {}) {
   await page.goto("/");
   await page.evaluate(async ({
@@ -22,7 +24,9 @@ async function mountPanel(page, {
     isAdmin,
     assistantDelay,
     shouldFailTrailSecondPage,
-    shouldSeedAdminTrailCache
+    shouldSeedAdminTrailCache,
+    shouldFailResume,
+    shouldSeedMovableWorkspace
   }) => {
     document.body.replaceChildren();
     const homeRoot = document.createElement("section");
@@ -38,6 +42,9 @@ async function mountPanel(page, {
       collectionReads: 0,
       managedCatalogReads: 0,
       trailReads: 0,
+      outlineReads: 0,
+      resumeReads: 0,
+      observationReads: 0,
       createCalls: 0,
       catalogActions: [],
       observationCalls: [],
@@ -59,6 +66,10 @@ async function mountPanel(page, {
       repositoryFlushes: 0,
       homeCourseVisible: true,
       selectedCourseIds: new Set(["70000000-0000-4000-8000-000000000007"]),
+      workspaceRevision: 2,
+      partReadyCount: 3,
+      partCardCount: 21,
+      lessonPlanMoved: false,
       catalogCollections: [{
         collectionId: "50000000-0000-4000-8000-000000000005",
         contractKey: "dataprev",
@@ -302,9 +313,99 @@ async function mountPanel(page, {
           return { workspaceId, revision: 1 };
         }
         if (name === "lerWorkspaceDeAutoria") {
+          if (args.view === "resume") {
+            probe.resumeReads += 1;
+            if (shouldFailResume) throw new Error("Andamento temporariamente indisponível.");
+            const findings = [
+              ["high", "open", "A relação entre virtualização e nuvem precisa ser explicitada."],
+              ["medium", "approved", "Agilidade foi introduzida somente durante a prática."],
+              ["medium", "repaired", "Alguns distratores permitem eliminação imediata."],
+              ["low", "open", "Escalabilidade e elasticidade ainda se sobrepõem."]
+            ].map(([severity, status, summary], index) => ({
+              observationId: `92000000-0000-4000-8000-${String(index + 1).padStart(12, "0")}`,
+              severity,
+              status,
+              summary
+            }));
+            return {
+              workspaceId,
+              revision: probe.workspaceRevision,
+              title: "Plano Dataprev",
+              view: "resume",
+              content: {
+                outline: {
+                  courseCount: 1,
+                  moduleCount: 1,
+                  lessonCount: 2,
+                  microsequenceCount: 6,
+                  cardCount: probe.partCardCount,
+                  unassignedMicrosequenceCount: 0
+                },
+                parts: [{
+                  id: "part-foundations",
+                  title: "Fundamentos e arquitetura de nuvem",
+                  microsequenceIds: ["m01", "m02", "m03", "m04"],
+                  microsequenceStateMask: probe.partReadyCount === 4 ? "rrrr" : "rrrm",
+                  microsequenceCount: 4,
+                  materializedCount: 4,
+                  readyCount: probe.partReadyCount,
+                  cardCount: probe.partCardCount,
+                  missingCount: 0
+                }, {
+                  id: "part-security",
+                  title: "Segurança, IaC e automação",
+                  microsequenceIds: ["m05", "m06"],
+                  microsequenceStateMask: "pp",
+                  microsequenceCount: 2,
+                  materializedCount: 0,
+                  readyCount: 0,
+                  cardCount: 0,
+                  missingCount: 0
+                }],
+                decisions: [],
+                mandate: {
+                  id: "audit-foundations",
+                  kind: "audit",
+                  targetPartId: "part-foundations",
+                  decidedAtRevision: 2
+                },
+                findings: {
+                  items: findings,
+                  summary: {
+                    totalCount: 4,
+                    activeCount: 4,
+                    byStatus: { open: 2, approved: 1, rejected: 0, repaired: 1, resolved: 0 }
+                  },
+                  truncated: true
+                },
+                observations: {},
+                publications: { items: [], totalCount: 0, truncated: false }
+              }
+            };
+          }
+          probe.outlineReads += 1;
+          const primaryLesson = {
+            id: "lesson-plan",
+            title: "Elasticidade",
+            microsequences: [{
+              id: "micro-plan",
+              title: "Escala sob demanda",
+              cards: [{ id: "card-plan", title: "Elasticidade automática" }]
+            }]
+          };
+          const supportingLesson = {
+            id: "lesson-support",
+            title: "Revisão de nuvem",
+            microsequences: []
+          };
+          const lessons = shouldSeedMovableWorkspace
+            ? probe.lessonPlanMoved
+              ? [supportingLesson, primaryLesson]
+              : [primaryLesson, supportingLesson]
+            : [primaryLesson];
           return {
             workspaceId,
-            revision: 2,
+            revision: probe.workspaceRevision,
             title: "Plano Dataprev",
             content: {
               courses: [{
@@ -314,15 +415,7 @@ async function mountPanel(page, {
                 modules: [{
                   id: "module-plan",
                   title: "Computação em nuvem",
-                  lessons: [{
-                    id: "lesson-plan",
-                    title: "Elasticidade",
-                    microsequences: [{
-                      id: "micro-plan",
-                      title: "Escala sob demanda",
-                      cards: [{ id: "card-plan", title: "Elasticidade automática" }]
-                    }]
-                  }]
+                  lessons
                 }]
               }]
             }
@@ -342,21 +435,46 @@ async function mountPanel(page, {
           };
         }
         if (name === "gerirWorkspaceEducacional" && args.operation === "list_observations") {
-          return { items: structuredClone(probe.observations) };
+          probe.observationReads += 1;
+          return {
+            workspaceId,
+            items: structuredClone(probe.observations),
+            hasMore: false,
+            nextCursor: null,
+            summary: {
+              total: probe.observations.length,
+              notes: probe.observations.length,
+              findings: 0,
+              activeFindings: 0,
+              byStatus: { open: 0, approved: 0, rejected: 0, repaired: 0, resolved: 0 }
+            }
+          };
         }
         if (name === "gerirWorkspaceEducacional" && args.operation === "create_observation") {
           probe.observationCalls.push(structuredClone(args));
+          const observationId = `90000000-0000-4000-8000-${String(
+            probe.observations.length + 1
+          ).padStart(12, "0")}`;
           probe.observations.push({
-            observationId: `observation-${probe.observations.length + 1}`,
+            observationId,
+            workspaceId,
+            kind: "note",
             entityType: args.entityType,
             entityPath: structuredClone(args.entityPath),
+            currentEntityPath: structuredClone(args.entityPath),
+            targetAvailable: true,
             resourceTargetId: args.resourceTargetId || null,
             body: args.body,
             canDelete: true
           });
-          return { observationId: `observation-${probe.observations.length}` };
+          return { observationId };
         }
         if (name === "gerirWorkspaceEducacional") return { items: [] };
+        if (name === "reorganizarWorkspace") {
+          probe.lessonPlanMoved = args.position === 1;
+          probe.workspaceRevision += 1;
+          return { workspaceId, revision: probe.workspaceRevision };
+        }
         if (name === "retirarCursoDasTrilhas") {
           probe.removedCourses.push(structuredClone(args));
           probe.removedSelectionIds.add(args.selectionId);
@@ -575,7 +693,9 @@ async function mountPanel(page, {
     isAdmin: admin,
     assistantDelay: assistantDelayMs,
     shouldFailTrailSecondPage: failTrailSecondPage,
-    shouldSeedAdminTrailCache: seedAdminTrailCache
+    shouldSeedAdminTrailCache: seedAdminTrailCache,
+    shouldFailResume: failResume,
+    shouldSeedMovableWorkspace: movableWorkspace
   });
 }
 
@@ -647,6 +767,175 @@ test("painel administra foco entre Coleções e Chatbot sem reintroduzir Organiz
   });
   expect(invalidViewMessage).toBe("Área do painel inválida.");
   await expect(page.locator("[data-learning-panel]")).toBeHidden();
+});
+
+test("detalhes do workspace mostram andamento humano sem criar novos controles", async ({ page }) => {
+  await mountPanel(page);
+  const opened = await page.evaluate((workspaceId) =>
+    window.learningSpacesPanel.openWorkspaceTarget(workspaceId), WORKSPACE_ID);
+  expect(opened).toBe(true);
+
+  const summary = page.locator(".learning-spaces-continuity");
+  await expect(summary.getByRole("heading", { name: "Andamento" })).toBeVisible();
+  await expect(summary.getByText(
+    "Auditoria em andamento: Fundamentos e arquitetura de nuvem."
+  )).toBeVisible();
+  await expect(summary.getByText("3 de 4 prontas · 4 com conteúdo · 21 cards")).toBeVisible();
+  await expect(summary.getByText("0 de 2 prontas · 0 cards")).toBeVisible();
+  await expect(summary.locator("progress").first()).toHaveAttribute("value", "3");
+  await expect(summary.locator("progress").first()).toHaveAttribute("max", "4");
+  await expect(summary.locator("progress").first()).toHaveAttribute(
+    "aria-label",
+    "Fundamentos e arquitetura de nuvem: 3 de 4 microssequências prontas."
+  );
+  await expect(summary.getByRole("heading", {
+    name: "Achados em acompanhamento (4)"
+  })).toBeVisible();
+  await expect(summary.locator(".learning-spaces-continuity-finding")).toHaveCount(3);
+  await expect(summary.getByText("Gravidade alta · A avaliar")).toBeVisible();
+  await expect(summary.getByText("Gravidade média · Aprovado")).toBeVisible();
+  await expect(summary.getByText("Gravidade média · Corrigido; aguarda verificação")).toBeVisible();
+  await expect(summary.getByText(
+    "A lista é resumida; outros achados permanecem no histórico da autoria."
+  )).toBeVisible();
+  await expect(summary.getByText("part-foundations")).toHaveCount(0);
+  await expect(summary.getByRole("button")).toHaveCount(0);
+  const presentation = await summary.evaluate((node) => {
+    const parseColor = (value) => (value.match(/[\d.]+/gu) || [])
+      .slice(0, 3)
+      .map(Number);
+    const luminance = (value) => {
+      const channels = parseColor(value).map((channel) => {
+        const normalized = channel / 255;
+        return normalized <= 0.03928
+          ? normalized / 12.92
+          : ((normalized + 0.055) / 1.055) ** 2.4;
+      });
+      return 0.2126 * channels[0] + 0.7152 * channels[1] + 0.0722 * channels[2];
+    };
+    const background = getComputedStyle(node).backgroundColor;
+    const backgroundLuminance = luminance(background);
+    const contrasts = [...node.querySelectorAll(
+      ".learning-spaces-continuity-part span, .learning-spaces-continuity-finding-meta"
+    )].map((item) => {
+      const foregroundLuminance = luminance(getComputedStyle(item).color);
+      return (Math.max(foregroundLuminance, backgroundLuminance) + 0.05) /
+        (Math.min(foregroundLuminance, backgroundLuminance) + 0.05);
+    });
+    return {
+      fitsViewport: node.scrollWidth <= node.clientWidth + 1,
+      minimumContrast: Math.min(...contrasts)
+    };
+  });
+  expect(presentation.fitsViewport).toBe(true);
+  expect(presentation.minimumContrast).toBeGreaterThanOrEqual(4.5);
+  if (process.env.ARALEARN_VISUAL_AUDIT === "1") {
+    await page.screenshot({ path: ".pages/v9-audit/v9-workspace-continuity.png" });
+  }
+  await expect.poll(() => page.evaluate(
+    () => window.learningSpacesProbe.resumeReads
+  )).toBe(1);
+});
+
+test("Sincronizar atualiza outline, andamento e observações do workspace aberto", async ({ page }) => {
+  await mountPanel(page);
+  const opened = await page.evaluate((workspaceId) =>
+    window.learningSpacesPanel.openWorkspaceTarget(workspaceId), WORKSPACE_ID);
+  expect(opened).toBe(true);
+  await expect(page.getByText("3 de 4 prontas · 4 com conteúdo · 21 cards")).toBeVisible();
+  const before = await page.evaluate(() => ({
+    outline: window.learningSpacesProbe.outlineReads,
+    resume: window.learningSpacesProbe.resumeReads,
+    observations: window.learningSpacesProbe.observationReads
+  }));
+  await page.evaluate(() => {
+    window.learningSpacesProbe.workspaceRevision += 1;
+    window.learningSpacesProbe.partReadyCount = 4;
+    window.learningSpacesProbe.partCardCount = 24;
+  });
+
+  await page.getByRole("button", { name: "Sincronizar" }).click();
+
+  await expect(page.getByText("4 de 4 prontas · 24 cards")).toBeVisible();
+  await expect.poll(() => page.evaluate(() => ({
+    outline: window.learningSpacesProbe.outlineReads,
+    resume: window.learningSpacesProbe.resumeReads,
+    observations: window.learningSpacesProbe.observationReads
+  }))).toEqual({
+    outline: before.outline + 1,
+    resume: before.resume + 1,
+    observations: before.observations + 1
+  });
+});
+
+test("movimento estrutural relê notas antes de redesenhar o workspace", async ({ page }) => {
+  await mountPanel(page, { movableWorkspace: true });
+  await page.evaluate((workspaceId) => window.learningSpacesProbe.observations.push({
+    observationId: "90000000-0000-4000-8000-000000000088",
+    workspaceId,
+    kind: "note",
+    entityType: "lesson",
+    entityPath: ["course-plan", "module-plan", "lesson-plan"],
+    currentEntityPath: ["course-plan", "module-plan", "lesson-plan"],
+    targetAvailable: true,
+    resourceTargetId: null,
+    body: "Nota antes do movimento.",
+    canDelete: true
+  }), WORKSPACE_ID);
+  const opened = await page.evaluate(() => window.learningSpacesPanel.openObservationTarget({
+    courseKey: "course-ready",
+    entityType: "lesson",
+    entityPath: ["course-plan", "module-plan", "lesson-plan"],
+    title: "Elasticidade"
+  }));
+  expect(opened).toBe(true);
+  await expect(page.getByText("Nota antes do movimento.")).toBeVisible();
+  const readsBeforeMove = await page.evaluate(
+    () => window.learningSpacesProbe.observationReads
+  );
+  await page.evaluate(() => {
+    window.learningSpacesProbe.observations[0].body = "Nota relida depois do movimento.";
+  });
+  const lesson = page.locator(".remote-workspace-tree-item.is-lesson").filter({
+    has: page.getByRole("heading", { name: "Elasticidade", exact: true })
+  });
+  const moveDown = await revealPanelAction(lesson, "move-entity-down");
+
+  await moveDown.click();
+
+  await expect(page.getByText("Nota relida depois do movimento.")).toBeVisible();
+  await expect.poll(() => page.evaluate(
+    () => window.learningSpacesProbe.observationReads
+  )).toBe(readsBeforeMove + 1);
+  await expect(page.locator(".remote-workspace-tree-item.is-lesson > h5")).toHaveText([
+    "Revisão de nuvem",
+    "Elasticidade"
+  ]);
+});
+
+test("falha do resumo não bloqueia o conteúdo e leitura sem review não consulta resume", async ({ page }) => {
+  await mountPanel(page, { failResume: true });
+  let opened = await page.evaluate((workspaceId) =>
+    window.learningSpacesPanel.openWorkspaceTarget(workspaceId), WORKSPACE_ID);
+  expect(opened).toBe(true);
+  await expect(page.getByRole("heading", { name: "Plano Dataprev" })).toBeVisible();
+  await expect(page.getByText(
+    "O conteúdo está disponível, mas não foi possível carregar o andamento da autoria."
+  )).toBeVisible();
+  await expect(page.locator("[data-panel-status]")).toHaveText(
+    "Andamento temporariamente indisponível."
+  );
+
+  await page.reload();
+  await mountPanel(page, { readOnly: true });
+  opened = await page.evaluate((workspaceId) =>
+    window.learningSpacesPanel.openWorkspaceTarget(workspaceId), WORKSPACE_ID);
+  expect(opened).toBe(true);
+  await expect(page.getByRole("heading", { name: "Plano Dataprev" })).toBeVisible();
+  await expect(page.locator(".learning-spaces-continuity")).toHaveCount(0);
+  await expect.poll(() => page.evaluate(
+    () => window.learningSpacesProbe.resumeReads
+  )).toBe(0);
 });
 
 test("Coleções carrega sob demanda sem consultar Trilhas novamente", async ({ page }) => {
@@ -805,6 +1094,18 @@ test("falha ao sair não mantém overlay nem navegação ocupados", async ({ pag
 
 test("alvo contextual abre a observação da entidade e preserva o resource exato", async ({ page }) => {
   await mountPanel(page);
+  await page.evaluate((workspaceId) => window.learningSpacesProbe.observations.push({
+    observationId: "90000000-0000-4000-8000-000000000099",
+    workspaceId,
+    kind: "note",
+    entityType: "lesson",
+    entityPath: ["course-plan", "module-antigo", "lesson-plan"],
+    currentEntityPath: ["course-plan", "module-plan", "lesson-plan"],
+    targetAvailable: true,
+    resourceTargetId: null,
+    body: "Nota preservada após mover a lição.",
+    canDelete: true
+  }), WORKSPACE_ID);
 
   const lessonOpened = await page.evaluate(() => window.learningSpacesPanel.openObservationTarget({
     courseKey: "course-ready",
@@ -825,6 +1126,7 @@ test("alvo contextual abre a observação da entidade e preserva o resource exat
     '["course-plan","module-plan","lesson-plan"]'
   );
   await expect(lessonForm).not.toHaveAttribute("data-resource-target-id", /.+/u);
+  await expect(lessonRow.getByText("Nota preservada após mover a lição.")).toBeVisible();
 
   const resourceOpened = await page.evaluate(() => window.learningSpacesPanel.openObservationTarget({
     courseId: "30000000-0000-4000-8000-000000000003",

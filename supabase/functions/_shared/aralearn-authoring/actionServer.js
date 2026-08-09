@@ -19,6 +19,7 @@ const APPLICATION_AUTHORING_ACTIONS = new Set([
   "listarWorkspacesDeAutoria",
   "criarWorkspaceDeAutoria",
   "lerWorkspaceDeAutoria",
+  "gerirContinuidadeDaAutoria",
   "criarEstruturaNoWorkspace",
   "salvarCardsNaMicrossequencia",
   "atualizarMetadadosDaEntidade",

@@ -1,5 +1,5 @@
 {
-  "schemaRevision": "20260808022000",
+  "schemaRevision": "20260809010000",
   "contractVersion": 4,
   "requiredFeatures": [
     "lean-shared-catalog",
@@ -59,6 +59,7 @@
     "stable-entity-personal-state-v1",
     "situated-trail-observations-v1",
     "workspace-trail-observations-v1",
-    "unified-trails-clean-cutover-v1"
+    "unified-trails-clean-cutover-v1",
+    "resumable-authoring-continuity-v1"
   ]
 }

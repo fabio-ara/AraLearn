@@ -22,6 +22,17 @@ import {
 } from "./workspaceParts.js";
 import { sha256Hex } from "./security.js";
 import {
+  getCardResourceDefinition
+} from "../aralearn/runtime/resources/registry/index.js";
+import {
+  applyContinuityStateOperation,
+  buildWorkspaceResumeProjection,
+  CONTINUITY_FINDING_OPERATIONS,
+  CONTINUITY_STATE_OPERATIONS,
+  normalizeContinuityState,
+  validateFindingOperation
+} from "./workspaceContinuity.js";
+import {
   buildMicrotheoryReview,
   buildWorkspaceOutline,
   createEmptyAuthoringWorkspace,
@@ -39,6 +50,23 @@ import {
 
 function first(value) {
   return Array.isArray(value) ? value[0] : value;
+}
+
+const STABLE_BRIEF_MAX_CHARACTERS = 16_000;
+const STABLE_BRIEF_MAX_BYTES = 16 * 1_024;
+
+function stableBrief(value, { allowEmpty = false } = {}) {
+  const result = typeof value === "string" ? value.trim() : "";
+  if ((!allowEmpty && !result)
+      || result.length > STABLE_BRIEF_MAX_CHARACTERS
+      || new TextEncoder().encode(result).byteLength > STABLE_BRIEF_MAX_BYTES) {
+    throw new AuthoringApiError(
+      422,
+      "authoring_brief_too_large",
+      "O contexto estável deve ocupar no máximo 16 KiB em UTF-8."
+    );
+  }
+  return result;
 }
 
 function principalArgs(principal) {
@@ -165,17 +193,356 @@ function withoutEntities(reference) {
   return control;
 }
 
-function mutationSummary(operation, diff, operationArguments) {
-  const targetPath = operationArguments.entityPath
-    || operationArguments.microsequencePath
-    || operationArguments.targetPath
-    || operationArguments.sourcePath
-    || null;
+const FINDING_RPC_OPERATIONS = Object.freeze({
+  record_finding: "create",
+  decide_finding: "decide",
+  link_finding_correction: "link_correction",
+  verify_finding: "verify",
+  delete_finding: "delete"
+});
+
+function findingRpcPayload(operation, value) {
+  if (operation === "record_finding") {
+    const { summary, ...payload } = value;
+    return { ...payload, body: summary };
+  }
+  if (operation === "decide_finding") {
+    return {
+      findingId: value.observationId,
+      decision: value.decision === "approved" ? "approve" : "reject"
+    };
+  }
+  if (operation === "link_finding_correction") {
+    return {
+      findingId: value.observationId,
+      correctionRequestId: value.correctionRequestId
+    };
+  }
+  if (operation === "verify_finding") {
+    return {
+      findingId: value.observationId,
+      outcome: value.outcome,
+      verification: value.note
+    };
+  }
+  return { findingId: value.observationId };
+}
+
+function findingMutationProjection(value, operation) {
+  return {
+    workspaceId: value.workspaceId,
+    revision: value.revision,
+    observationId: value.observationId || value.findingId,
+    findingOperation: operation,
+    status: value.status,
+    updatedAt: value.updatedAt,
+    idempotent: Boolean(value.idempotent)
+  };
+}
+
+const PRESERVED_CARD_RESOURCE_FIELDS = new Set([
+  "id", "position", "resource", "kind", "exercise", "title", "after",
+  "sources", "topics", "afterBlocks"
+]);
+const CONTEXTUAL_CHOICE_FIELDS = new Set([
+  "question", "selectionMode", "selectionCriterion", "options", "answerIds"
+]);
+const CONTENT_MUTATION_OPERATIONS = new Set([
+  "save_microsequence_cards", "save_card"
+]);
+const SUMMARY_PATH_ITEM_LIMIT = 20;
+const SUMMARY_RESOURCE_TARGET_LIMIT = 10;
+const SUMMARY_PATH_BYTES = 10 * 1_024;
+const SUMMARY_EVIDENCE_BYTES = 6 * 1_024;
+
+function cardMainResourceFieldNames(card) {
+  if (card.resource === "composite") return ["blocks"];
+  const properties = getCardResourceDefinition(card.resource)
+    ?.cardSchema?.properties || {};
+  return Object.keys(properties).filter((fieldName) =>
+    !PRESERVED_CARD_RESOURCE_FIELDS.has(fieldName)
+    && (card.resource === "choice"
+      || !CONTEXTUAL_CHOICE_FIELDS.has(fieldName)));
+}
+
+function cardResponseResourceFieldNames(card) {
+  if (card.resource === "choice" || card.exercise !== "choice") return [];
+  const properties = getCardResourceDefinition(card.resource)
+    ?.cardSchema?.properties || {};
+  return [...CONTEXTUAL_CHOICE_FIELDS].filter((fieldName) =>
+    Object.hasOwn(properties, fieldName));
+}
+
+function cardResourceTargetSnapshots(card) {
+  if (!card || typeof card !== "object" || Array.isArray(card)) return new Map();
+  const snapshots = new Map();
+  if (card.resource === "composite") {
+    for (const [position, block] of (
+      Array.isArray(card.blocks) ? card.blocks : []
+    ).entries()) {
+      if (typeof block?.id === "string" && block.id.trim()) {
+        snapshots.set(`body:${block.id.trim()}`, { position, block });
+      }
+    }
+  } else {
+    const fieldNames = cardMainResourceFieldNames(card);
+    snapshots.set("main", Object.fromEntries(fieldNames
+      .filter((fieldName) => Object.hasOwn(card, fieldName))
+      .map((fieldName) => [fieldName, card[fieldName]])));
+  }
+  const responseFieldNames = cardResponseResourceFieldNames(card);
+  if (responseFieldNames.length > 0) {
+    snapshots.set("response", Object.fromEntries(responseFieldNames
+      .filter((fieldName) => Object.hasOwn(card, fieldName))
+      .map((fieldName) => [fieldName, card[fieldName]])));
+  }
+  snapshots.set("after:text", card.after ?? "");
+  for (const [position, block] of (
+    Array.isArray(card.afterBlocks) ? card.afterBlocks : []
+  ).entries()) {
+    if (typeof block?.id === "string" && block.id.trim()) {
+      snapshots.set(`after:${block.id.trim()}`, { position, block });
+    }
+  }
+  return snapshots;
+}
+
+function cardShellSnapshot(card) {
+  if (!card || typeof card !== "object" || Array.isArray(card)) return null;
+  const resourceFields = new Set([
+    ...cardMainResourceFieldNames(card),
+    ...cardResponseResourceFieldNames(card),
+    "after",
+    "afterBlocks"
+  ]);
+  return Object.fromEntries(Object.entries(card).filter(([fieldName]) =>
+    !resourceFields.has(fieldName)));
+}
+
+function boundedSummaryItems(items, maxItems, maxBytes) {
+  const accepted = [];
+  for (const item of items) {
+    if (accepted.length >= maxItems) break;
+    const candidate = [...accepted, item];
+    if (new TextEncoder().encode(JSON.stringify(candidate)).byteLength
+        > maxBytes) break;
+    accepted.push(item);
+  }
+  return {
+    items: accepted,
+    truncated: accepted.length < items.length
+  };
+}
+
+function rowEntityPath(rows, entityType, entityId) {
+  const index = new Map((rows || []).map((row) => [
+    `${row.entityType}\u0000${row.entityId}`,
+    row
+  ]));
+  let current = index.get(`${entityType}\u0000${entityId}`);
+  if (!current) return null;
+  const path = [current.entityId];
+  while (current.parentType && current.parentType !== "project") {
+    current = index.get(`${current.parentType}\u0000${current.parentId}`);
+    if (!current) return null;
+    path.unshift(current.entityId);
+  }
+  return path;
+}
+
+function changedCardResourceTargets(diff, currentRows) {
+  const currentCards = new Map((currentRows || [])
+    .filter(({ entityType }) => entityType === "card")
+    .map((row) => [row.entityId, row.content]));
+  const changes = new Map();
+  const compare = (before, after) => {
+    const beforeTargets = cardResourceTargetSnapshots(before);
+    const afterTargets = cardResourceTargetSnapshots(after);
+    for (const targetId of new Set([
+      ...beforeTargets.keys(), ...afterTargets.keys()
+    ])) {
+      if (canonicalJsonStringify(beforeTargets.get(targetId) ?? null)
+          !== canonicalJsonStringify(afterTargets.get(targetId) ?? null)) {
+        changes.set(targetId, true);
+      }
+    }
+    return [...changes.keys()];
+  };
+  const pairs = new Map();
+  for (const row of diff.upserts.filter(({ entityType }) =>
+    entityType === "card")) {
+    changes.clear();
+    const cardPath = rowEntityPath(diff.nextRows, "card", row.entityId)
+      || rowEntityPath(currentRows, "card", row.entityId);
+    for (const targetId of compare(
+      currentCards.get(row.entityId) ?? null,
+      row.content
+    )) {
+      if (cardPath) {
+        pairs.set(`${JSON.stringify(cardPath)}\u0000${targetId}`, {
+          cardPath,
+          targetId
+        });
+      }
+    }
+  }
+  for (const row of diff.deletes.filter(({ entityType }) =>
+    entityType === "card")) {
+    changes.clear();
+    const cardPath = rowEntityPath(currentRows, "card", row.entityId);
+    for (const targetId of compare(row.content, null)) {
+      if (cardPath) {
+        pairs.set(`${JSON.stringify(cardPath)}\u0000${targetId}`, {
+          cardPath,
+          targetId
+        });
+      }
+    }
+  }
+  const items = [...pairs.values()].sort((left, right) =>
+    JSON.stringify(left).localeCompare(JSON.stringify(right)));
+  return boundedSummaryItems(
+    items,
+    SUMMARY_RESOURCE_TARGET_LIMIT,
+    SUMMARY_EVIDENCE_BYTES
+  );
+}
+
+function changedCardPaths(diff, currentRows) {
+  const targets = new Map();
+  const add = (row, rows) => {
+    if (row.entityType !== "card") return;
+    const entityPath = rowEntityPath(rows, row.entityType, row.entityId);
+    if (!entityPath) return;
+    targets.set(JSON.stringify(entityPath), entityPath);
+  };
+  diff.upserts.forEach((row) => add(row, diff.nextRows));
+  diff.deletes.forEach((row) => add(row, currentRows));
+  const items = [...targets.values()].sort((left, right) =>
+    JSON.stringify(left).localeCompare(JSON.stringify(right)));
+  return boundedSummaryItems(
+    items,
+    SUMMARY_PATH_ITEM_LIMIT,
+    SUMMARY_EVIDENCE_BYTES
+  );
+}
+
+function changedCardShellPaths(diff, currentRows) {
+  const currentCards = new Map((currentRows || [])
+    .filter(({ entityType }) => entityType === "card")
+    .map((row) => [row.entityId, row.content]));
+  const targets = new Map();
+  const addWhenChanged = (row, rows, before, after) => {
+    if (canonicalJsonStringify(cardShellSnapshot(before))
+        === canonicalJsonStringify(cardShellSnapshot(after))) return;
+    const entityPath = rowEntityPath(rows, "card", row.entityId);
+    if (!entityPath) return;
+    targets.set(JSON.stringify(entityPath), entityPath);
+  };
+  for (const row of diff.upserts.filter(({ entityType }) =>
+    entityType === "card")) {
+    addWhenChanged(
+      row,
+      diff.nextRows,
+      currentCards.get(row.entityId) ?? null,
+      row.content
+    );
+  }
+  for (const row of diff.deletes.filter(({ entityType }) =>
+    entityType === "card")) {
+    addWhenChanged(row, currentRows, row.content, null);
+  }
+  const items = [...targets.values()].sort((left, right) =>
+    JSON.stringify(left).localeCompare(JSON.stringify(right)));
+  return boundedSummaryItems(
+    items,
+    SUMMARY_PATH_ITEM_LIMIT,
+    SUMMARY_EVIDENCE_BYTES
+  );
+}
+
+function mutationSummary(
+  operation,
+  diff,
+  operationArguments,
+  continuityRemap = null,
+  currentRows = []
+) {
+  const structurePaths = operation === "create_structure"
+    ? (operationArguments.parts || []).flatMap((part) => {
+      const parentPath = Array.isArray(part.parentPath) ? part.parentPath : null;
+      const fullPath = [
+        ...(parentPath || []),
+        part.id
+      ];
+      return parentPath ? [parentPath, fullPath] : [fullPath];
+    })
+    : [];
+  const postMutationPaths = [];
+  if (new Set(["copy_entity", "move_entity"]).has(operation)
+      && Array.isArray(operationArguments.entityPath)) {
+    postMutationPaths.push([
+      ...(operationArguments.targetParentPath || []),
+      operation === "copy_entity"
+        ? operationArguments.newRootId
+        : operationArguments.entityPath.at(-1)
+    ]);
+  } else if (operation === "split_microsequence") {
+    postMutationPaths.push([
+      ...operationArguments.sourcePath.slice(0, -1),
+      operationArguments.newMicrosequence.id
+    ]);
+  } else if (operation === "promote_module") {
+    postMutationPaths.push([operationArguments.courseId]);
+  } else if (operation === "demote_course") {
+    postMutationPaths.push([
+      ...operationArguments.targetCoursePath,
+      operationArguments.moduleId
+    ]);
+  }
+  const allTargetPaths = [
+    operation === "copy_entity" ? null : operationArguments.entityPath,
+    operationArguments.microsequencePath,
+    operationArguments.cardPath,
+    operationArguments.modulePath,
+    operationArguments.coursePath,
+    operationArguments.targetPath,
+    operationArguments.sourcePath,
+    ...(Array.isArray(operationArguments.sourcePaths)
+      ? operationArguments.sourcePaths
+      : []),
+    ...structurePaths,
+    ...postMutationPaths
+  ].filter((path, index, paths) =>
+    Array.isArray(path)
+    && paths.findIndex((candidate) =>
+      JSON.stringify(candidate) === JSON.stringify(path)) === index);
+  const targetPath = allTargetPaths[0] || null;
+  const targetPaths = boundedSummaryItems(
+    allTargetPaths,
+    SUMMARY_PATH_ITEM_LIMIT,
+    SUMMARY_PATH_BYTES
+  );
+  const changedResources = changedCardResourceTargets(diff, currentRows);
+  const cardPaths = changedCardPaths(diff, currentRows);
+  const cardShellPaths = changedCardShellPaths(diff, currentRows);
   return {
     created: diff.upserts.filter((row) => row.version == null).length,
     updated: diff.upserts.filter((row) => row.version != null).length,
     deleted: diff.deletes.length,
+    operationFamily: CONTENT_MUTATION_OPERATIONS.has(operation)
+      ? "content"
+      : "structure",
     ...(targetPath ? { targetPath } : {}),
+    targetPaths: targetPaths.items,
+    targetPathsTruncated: targetPaths.truncated,
+    ...(continuityRemap ? { continuityRemap } : {}),
+    resourceTargets: changedResources.items,
+    resourceTargetsTruncated: changedResources.truncated,
+    changedCardPaths: cardPaths.items,
+    changedCardPathsTruncated: cardPaths.truncated,
+    cardShellChangedPaths: cardShellPaths.items,
+    cardShellChangedPathsTruncated: cardShellPaths.truncated,
     ...(operationArguments.entityType
       ? { entityType: operationArguments.entityType }
       : {}),
@@ -187,6 +554,39 @@ function mutationSummary(operation, diff, operationArguments) {
       }
       : {})
   };
+}
+
+function continuityRemapForMutation(operation, operationArguments, rawState) {
+  if (!new Set(["split_microsequence", "merge_microsequences"]).has(operation)) {
+    return null;
+  }
+  const state = normalizeContinuityState(rawState);
+  if (operation === "split_microsequence") {
+    return {
+      kind: "split",
+      sourceId: operationArguments.sourcePath.at(-1),
+      newId: operationArguments.newMicrosequence.id
+    };
+  }
+  const targetId = operationArguments.targetPath.at(-1);
+  const sourceIds = [...new Set(operationArguments.sourcePaths
+    .map((path) => path.at(-1))
+    .filter((id) => id !== targetId))];
+  const participantIds = new Set([targetId, ...sourceIds]);
+  const partIds = new Set(state.parts
+    .filter((part) => part.microsequenceIds.some((id) => participantIds.has(id)))
+    .map(({ id }) => id));
+  if (partIds.size > 1) {
+    throw new AuthoringApiError(
+      422,
+      "workspace_cross_part_merge",
+      "Antes de juntar Partes diferentes, aprove um record_approved_plan pós-junção "
+        + "sob mandato restructure, mantendo o destino e retirando temporariamente "
+        + "as origens das Partes; depois repita a junção.",
+      { partIds: [...partIds] }
+    );
+  }
+  return { kind: "merge", targetId, sourceIds };
 }
 
 function mutationCourseIds(operation, operationArguments) {
@@ -298,6 +698,46 @@ export class AuthoringWorkspaceEngine {
     return { control: withoutEntities(reference), rows, document };
   }
 
+  async #workspaceContinuity(principal, workspaceId, deadlineAt = null) {
+    return first(await this.rpc("get_authoring_workspace_continuity_v1", {
+      p_actor_id: principal.actorId,
+      p_workspace_id: workspaceId
+    }, { deadlineAt }));
+  }
+
+  async #consistentWorkspaceContinuity(
+    principal,
+    workspaceId,
+    deadlineAt = null,
+    { courseIds = null, includeCardContent = false } = {}
+  ) {
+    let last = null;
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      const [reference, continuity] = await Promise.all([
+        this.#workspaceReference(
+          principal,
+          workspaceId,
+          deadlineAt,
+          { courseIds, includeCardContent }
+        ),
+        this.#workspaceContinuity(principal, workspaceId, deadlineAt)
+      ]);
+      if (reference?.revision === continuity?.revision) {
+        return { reference, continuity };
+      }
+      last = {
+        referenceRevision: reference?.revision ?? null,
+        continuityRevision: continuity?.revision ?? null
+      };
+    }
+    throw new AuthoringApiError(
+      409,
+      "workspace_snapshot_changed",
+      "O workspace mudou durante a leitura. Leia novamente antes de continuar.",
+      last
+    );
+  }
+
   async #createFromDocument({
     principal,
     workspaceId,
@@ -342,6 +782,7 @@ export class AuthoringWorkspaceEngine {
     sourceSubmissionId = null,
     deadlineAt = null
   }) {
+    brief = stableBrief(brief, { allowEmpty: true });
     if (sourceCourseId && sourceSubmissionId) {
       throw new AuthoringApiError(
         422,
@@ -414,6 +855,7 @@ export class AuthoringWorkspaceEngine {
     document,
     deadlineAt = null
   }) {
+    brief = stableBrief(brief, { allowEmpty: true });
     assertCatalogBatchPrincipal(principal);
     const prepared = await prepareCourseDocument(document, {
       requireReady: true
@@ -479,6 +921,7 @@ export class AuthoringWorkspaceEngine {
     brief,
     deadlineAt = null
   }) {
+    brief = stableBrief(brief);
     const operation = "update_brief";
     const payloadHash = await this.#hash(operation, {
       workspaceId,
@@ -508,6 +951,15 @@ export class AuthoringWorkspaceEngine {
     includeDescendants = true,
     deadlineAt = null
   }) {
+    if (view === "resume") {
+      const { reference, continuity } = await this.#consistentWorkspaceContinuity(
+        principal,
+        workspaceId,
+        deadlineAt,
+        { includeCardContent: false }
+      );
+      return buildWorkspaceResumeProjection(reference, continuity);
+    }
     if (view === "outline") {
       const reference = await this.#workspaceReference(
         principal,
@@ -589,12 +1041,38 @@ export class AuthoringWorkspaceEngine {
       principal, requestId, payloadHash, operation, deadlineAt
     );
     if (replayed) return replayed;
-    const current = await this.#workspaceDocument(
-      principal,
-      workspaceId,
-      deadlineAt,
-      { courseIds: mutationCourseIds(operation, operationArguments) }
-    );
+    const requiresContinuityRemap = new Set([
+      "merge_microsequences", "split_microsequence"
+    ]).has(operation);
+    let current;
+    let continuity = null;
+    if (requiresContinuityRemap) {
+      const snapshot = await this.#consistentWorkspaceContinuity(
+        principal,
+        workspaceId,
+        deadlineAt,
+        {
+          courseIds: mutationCourseIds(operation, operationArguments),
+          includeCardContent: true
+        }
+      );
+      const rows = Array.isArray(snapshot.reference?.entities)
+        ? snapshot.reference.entities
+        : [];
+      current = {
+        control: withoutEntities(snapshot.reference),
+        rows,
+        document: composeWorkspaceDocument(rows)
+      };
+      continuity = snapshot.continuity;
+    } else {
+      current = await this.#workspaceDocument(
+        principal,
+        workspaceId,
+        deadlineAt,
+        { courseIds: mutationCourseIds(operation, operationArguments) }
+      );
+    }
     if (current.control.revision !== expectedRevision) {
       throw new AuthoringApiError(
         409,
@@ -637,6 +1115,23 @@ export class AuthoringWorkspaceEngine {
         "A alteração não modifica o workspace atual."
       );
     }
+    if (requiresContinuityRemap
+        && (!continuity?.authoringState
+          || typeof continuity.authoringState !== "object"
+          || Array.isArray(continuity.authoringState))) {
+      throw new AuthoringApiError(
+        502,
+        "invalid_authoring_continuity_response",
+        "O backend não devolveu o estado de continuidade autoral."
+      );
+    }
+    const continuityRemap = requiresContinuityRemap
+      ? continuityRemapForMutation(
+        operation,
+        operationArguments,
+        continuity.authoringState
+      )
+      : null;
     return first(await this.rpc("commit_authoring_workspace_changes_v5", {
       ...principalArgs(principal),
       p_workspace_id: workspaceId,
@@ -652,8 +1147,127 @@ export class AuthoringWorkspaceEngine {
           ...(version == null ? {} : { version })
         }))
       },
-      p_summary: mutationSummary(operation, diff, operationArguments)
+      p_summary: mutationSummary(
+        operation,
+        diff,
+        operationArguments,
+        continuityRemap,
+        current.rows
+      )
     }, { deadlineAt }));
+  }
+
+  async manageContinuity({
+    principal,
+    workspaceId,
+    requestId,
+    expectedRevision,
+    operation,
+    arguments: operationArguments,
+    deadlineAt = null
+  }) {
+    if (operation === "replace_stable_brief") {
+      return this.updateBrief({
+        principal,
+        workspaceId,
+        requestId,
+        expectedRevision,
+        brief: operationArguments.brief,
+        deadlineAt
+      });
+    }
+    const payload = {
+      workspaceId,
+      expectedRevision,
+      operation,
+      arguments: operationArguments
+    };
+    const payloadHash = await this.#hash(operation, payload);
+    const receiptOperation = CONTINUITY_STATE_OPERATIONS.has(operation)
+      ? "update_continuity"
+      : operation === "record_finding"
+        ? "create_finding"
+        : operation;
+    const replayed = await this.#replay(
+      principal,
+      requestId,
+      payloadHash,
+      receiptOperation,
+      deadlineAt
+    );
+    if (replayed) {
+      return CONTINUITY_FINDING_OPERATIONS.has(operation)
+        ? findingMutationProjection(replayed, operation)
+        : replayed;
+    }
+    const { reference, continuity } = await this.#consistentWorkspaceContinuity(
+      principal,
+      workspaceId,
+      deadlineAt,
+      {
+        includeCardContent: operation === "record_finding"
+          && operationArguments.entityType === "resource"
+      }
+    );
+    if (reference.revision !== expectedRevision) {
+      throw new AuthoringApiError(
+        409,
+        "stale_workspace_revision",
+        "O workspace mudou desde a leitura usada para preparar a alteração.",
+        { expectedRevision, currentRevision: reference.revision }
+      );
+    }
+    if (CONTINUITY_STATE_OPERATIONS.has(operation)) {
+      if (!continuity?.authoringState
+          || typeof continuity.authoringState !== "object"
+          || Array.isArray(continuity.authoringState)) {
+        throw new AuthoringApiError(
+          502,
+          "invalid_authoring_continuity_response",
+          "O backend não devolveu o estado de continuidade autoral."
+        );
+      }
+      const state = applyContinuityStateOperation({
+        state: normalizeContinuityState(continuity?.authoringState),
+        operation,
+        arguments: operationArguments,
+        reference,
+        continuity,
+        expectedRevision
+      });
+      return first(await this.rpc("update_authoring_workspace_continuity_v1", {
+        p_actor_id: principal.actorId,
+        p_workspace_id: workspaceId,
+        p_request_id: requestId,
+        p_payload_hash: payloadHash,
+        p_expected_revision: expectedRevision,
+        p_operation: operation,
+        p_state: state
+      }, { deadlineAt }));
+    }
+    if (CONTINUITY_FINDING_OPERATIONS.has(operation)) {
+      const findingPayload = validateFindingOperation({
+        operation,
+        arguments: operationArguments,
+        reference,
+        continuity
+      });
+      const result = first(await this.rpc("manage_authoring_workspace_finding_v1", {
+        p_actor_id: principal.actorId,
+        p_workspace_id: workspaceId,
+        p_request_id: requestId,
+        p_payload_hash: payloadHash,
+        p_expected_revision: expectedRevision,
+        p_operation: FINDING_RPC_OPERATIONS[operation],
+        p_payload: findingRpcPayload(operation, findingPayload)
+      }, { deadlineAt }));
+      return findingMutationProjection(result, operation);
+    }
+    throw new AuthoringApiError(
+      422,
+      "invalid_authoring_continuity_operation",
+      "A operação de continuidade é inválida."
+    );
   }
 
   async importCourse({
@@ -720,6 +1334,16 @@ export class AuthoringWorkspaceEngine {
         created: diff.upserts.length,
         updated: 0,
         deleted: 0,
+        operationFamily: "structure",
+        targetPath: [workspaceCourseId],
+        targetPaths: [[workspaceCourseId]],
+        targetPathsTruncated: false,
+        changedCardPaths: [],
+        changedCardPathsTruncated: false,
+        cardShellChangedPaths: [],
+        cardShellChangedPathsTruncated: false,
+        resourceTargets: [],
+        resourceTargetsTruncated: false,
         sourceCourseId: courseId,
         importedCourseId: workspaceCourseId
       }

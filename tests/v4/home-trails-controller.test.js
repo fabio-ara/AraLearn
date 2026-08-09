@@ -76,6 +76,7 @@ function fixtureParts() {
     delete content.microsequences;
     delete content.cards;
     delete content.id;
+    delete content.position;
     parts.push({ entityType, id: entity.id, parentType, parentId, position, content });
   };
   add("course", course);
@@ -88,8 +89,8 @@ function fixtureParts() {
       );
       lesson.microsequences.forEach((microsequence, microsequenceIndex) => {
         add("microsequence", microsequence, "lesson", lesson.id, microsequenceIndex);
-        microsequence.cards.forEach((card, cardIndex) =>
-          add("card", card, "microsequence", microsequence.id, cardIndex)
+        microsequence.cards.forEach((card) =>
+          add("card", card, "microsequence", microsequence.id, card.position)
         );
       });
     });
@@ -187,6 +188,10 @@ test("composição paginada reconstrói topics e cards e valida o contrato v4", 
   const course = courseFromWorkspaceParts({ parts: fixtureParts() }, item());
   assert.equal(course.modules[0].lessons[0].topics[0].id, "topic-conjuncao");
   assert.equal(course.modules[0].lessons[0].microsequences[0].cards.length, 2);
+  assert.deepEqual(
+    course.modules[0].lessons[0].microsequences[0].cards.map((card) => card.position),
+    [1, 2]
+  );
   assert.throws(
     () => courseFromWorkspaceParts({ parts: fixtureParts().filter((part) => part.entityType !== "lesson") }, item()),
     /sem ascendente/iu
@@ -194,6 +199,18 @@ test("composição paginada reconstrói topics e cards e valida o contrato v4", 
   assert.throws(
     () => courseFromWorkspaceParts({ parts: [...fixtureParts(), fixtureParts()[0]] }, item()),
     /repete a identidade/iu
+  );
+  const invalidPosition = fixtureParts();
+  invalidPosition.find((part) => part.entityType === "card").position = 0;
+  assert.throws(
+    () => courseFromWorkspaceParts({ parts: invalidPosition }, item()),
+    /posição inválida em card/iu
+  );
+  const duplicatedPosition = fixtureParts();
+  duplicatedPosition.find((part) => part.entityType === "card").content.position = 1;
+  assert.throws(
+    () => courseFromWorkspaceParts({ parts: duplicatedPosition }, item()),
+    /repete a posição dentro do conteúdo/iu
   );
 });
 

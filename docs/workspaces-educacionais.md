@@ -52,9 +52,10 @@ oficial aparece em `Coleções`. Não existe um segundo plano, snapshot ou JSON
 criado apenas para alimentar a tela.
 
 Os grupos pessoais de `Trilhas` organizam planos e cursos sem pertencer ao
-workspace. Podem ser criados, renomeados, ordenados e excluídos pela própria
-conta; excluir um grupo não apaga o projeto nem o curso. Coleções usam a mesma
-apresentação visual, mas são organização editorial do catálogo.
+workspace. Podem ser criados, renomeados, preenchidos e excluídos pela própria
+conta; grupos e itens aparecem em ordem alfabética. Excluir um grupo não apaga
+o projeto nem o curso. Coleções usam a mesma apresentação visual, mas são
+organização editorial do catálogo.
 
 ## Chatbot e Plugin
 
@@ -67,13 +68,40 @@ A ferramenta `gerirWorkspaceEducacional` usa `operation`:
 - `list_comments` consulta a triagem paginada e devolve a síntese corrente do workspace;
 - `respond_comment` responde sem alterar o curso;
 - `set_comment_status` considera, resolve ou reabre;
-- `link_comment_correction` vincula somente um reparo já concluído.
+- `link_comment_correction` vincula somente um reparo já concluído;
+- `list_observations` com `kinds: ["note"]`, `create_observation` e
+  `delete_observation` tratam notas situadas na árvore do workspace; achados
+  ativos já aparecem na retomada, e o histórico usa
+  `kinds: ["audit_finding"]`, estados e paginação.
 
 Estudantes leem apenas as próprias observações. Proprietário, administrador,
 professor/autor e revisor podem triar as observações do workspace. O assistente
 não transforma uma observação em correção por conta própria: ele lê o alvo,
 executa uma operação de autoria separada quando solicitada e só então liga o
 reparo confirmado ao registro.
+
+Comentários são observações feitas durante o estudo e possuem triagem,
+resposta e vínculo de correção. Observações situadas são notas de curadoria
+presas a uma entidade do workspace. Uma auditoria pelo chat consulta as duas
+fontes, registra apenas achados compactos e não usa a conversa como memória. O
+reparo exige decisão e mandato persistidos, atua só nos achados aprovados,
+vincula a correção depois do sucesso e reaudita.
+
+Durante o reparo, o achado aprovado conserva apenas o `requestId` e a revisão
+pendentes mais recentes. `resume` permite recuperar esse ponto após uma queda;
+o vínculo explícito só ocorre depois da releitura confirmar que o reparo foi
+concluído.
+
+`link_comment_correction` pertence ao comentário feito no estudo;
+`link_finding_correction` pertence ao achado formal registrado pela auditoria.
+
+Ao continuar um projeto em outra sessão, o assistente usa
+`lerWorkspaceDeAutoria` com `view: "resume"`. Partes aprovadas são listas
+ordenadas de ids de microssequências e ficam na continuidade do workspace; o
+`brief` guarda somente contexto estável e fontes. A retomada usa contagens
+compactas da árvore e uma máscara por Parte; a árvore completa continua em
+`outline`. A aprovação inicial grava todas as Partes, decisões e o mandato de
+forma atômica com `record_approved_plan`.
 
 A síntese de `list_comments` contém contagens por categoria e estado e até vinte
 cards com maior concentração de registros abertos. Ela sempre descreve a fila
@@ -94,7 +122,15 @@ parte do curso mantém uma linha corrente. Esta etapa acrescenta apenas:
 - uma linha por membro;
 - uma linha temporária por convite pendente;
 - um recibo pequeno por comando, eliminado após sete dias;
-- uma resposta e um estado correntes por observação, sem histórico ou cópia do card.
+- um estado de continuidade corrente e limitado por workspace, sem chat,
+  prompt, resposta, card ou snapshot de revisão;
+- uma resposta e um estado correntes por observação, sem cópia do card.
+
+O estado de continuidade guarda somente Partes por ids, decisões e o mandato
+corrente. Achados de auditoria guardam alvo, síntese, reparo proposto, decisão e
+verificação compactos. Achados ativos são preservados; entre os terminais,
+ficam no máximo os 100 mais recentes e os dos últimos 90 dias. Notas criadas
+pela pessoa não são apagadas por essa política.
 
 O workspace é projetado em Trilhas para quem possui acesso local; não é preciso
 publicá-lo nem copiar o JSON do curso. Ao remover um membro, o acesso concedido somente
@@ -111,9 +147,10 @@ Uma medição com `pg_column_size` encontrou 96 bytes por membro, 200 por
 convite e 360 por recibo representativo, antes dos índices. Com margens
 conservadoras para índices, 1.000 workspaces com 30 membros, 500 convites
 pendentes e 10.000 recibos na janela de sete dias ocupam cerca de 14,89 MiB.
-Isso corresponde a menos de 3% dos 500 MB atuais do banco no plano gratuito;
-o cálculo não promete capacidade geral do projeto, pois cursos, autenticação e
-overhead do PostgreSQL também consomem o limite. A evidência está no
+Esse valor mede somente participação e recibos: não inclui entidades de curso,
+estado de continuidade nem achados, que possuem limites próprios e precisam ser
+acompanhados no uso real. Portanto, não é uma promessa de capacidade geral do
+projeto. A evidência desse recorte está no
 [orçamento de armazenamento](evidence/educational-workspace-storage-budget-2026-08-01.json),
 e o limite deve ser revisto na
 [documentação do Supabase](https://supabase.com/docs/guides/platform/database-size).

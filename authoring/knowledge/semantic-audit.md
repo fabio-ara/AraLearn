@@ -1,13 +1,20 @@
 # Auditoria semântica independente
 
-Esta auditoria ocorre somente após autorização e sobre a parte persistida que
-foi relida do workspace. Ela não substitui o contrato, a validação de fontes ou
-a continuidade causal: verifica se o conteúdo é ensinável, compreensível e
-tecnicamente sustentado para a pessoa que o verá no celular.
+Esta auditoria ocorre somente após autorização. Grave um mandato `audit` com
+identificador novo e, quando o recorte for uma Parte, seu `targetPartId`; retome o workspace, consulte
+`list_comments` e `list_observations` com `kinds: ["note"]` e releia a parte
+persistida. Achados ativos, sua síntese e o reparo proposto já vêm em
+`resume`; quando truncados ou para histórico, consulte
+`kinds: ["audit_finding"]`, estados e paginação. Ao concluir o relatório, limpe
+o mandato de auditoria. Ela não
+substitui o contrato, a validação de fontes ou a continuidade causal: verifica
+se o conteúdo é ensinável, compreensível e tecnicamente sustentado para a
+pessoa que o verá no celular.
 
 Não aprove pela aparência de JSON válido e não repare durante a auditoria.
-Percorra os critérios abaixo, registre achados legíveis e preserve o workspace
-inalterado. As observações não viram propriedades adicionais no card ou na
+Percorra os critérios abaixo, registre achados legíveis e preserve o conteúdo
+e a estrutura do workspace. Mandato e achados compactos são as únicas escritas
+desta rodada. As observações não viram propriedades adicionais no card ou na
 microssequência. Reparos autorizados e reauditoria pertencem a rodadas
 posteriores, conforme `core/editorial-cycle.md`.
 
@@ -96,16 +103,27 @@ Essas regras valem para qualquer recurso estruturado e também para blocos equiv
 Separe **Aspectos adequados** de **Problemas encontrados**. Para cada problema,
 informe localização legível, tipo, descrição, impacto pedagógico, gravidade
 (`crítica`, `alta`, `média` ou `baixa`), reparo recomendado e escopo. Não altere
-conteúdo nem estado.
+conteúdo. Registre com `gerirContinuidadeDaAutoria` somente o achado compacto e
+seu alvo; não copie card, relatório, conversa ou fonte para esse registro.
 
 Quando não houver problema relevante, escreva: “Não foram encontrados problemas
 semânticos relevantes segundo os critérios aplicados.” Isso não comprova a
 eficácia do curso. Sugira exatamente uma próxima etapa: reparo, próxima parte
 ou reavaliação humana, conforme o resultado, e espere a decisão.
 
-No reparo posterior, releia os alvos, preserve IDs e posições e mude somente o
-escopo aprovado. Depois informe o que mudou e o que permaneceu pendente, sem
-certificar o próprio reparo. A reauditoria volta a aplicar estes critérios ao
-estado persistido, incluindo regressões e problemas novos.
+`link_comment_correction` liga reparo a comentário de estudo;
+`link_finding_correction` liga reparo ao achado formal desta auditoria. Não
+intercambie essas operações.
+
+No reparo posterior, retome o workspace, releia o mandato persistido e os alvos,
+preserve IDs e posições e mude somente os achados aprovados. Depois informe o
+que mudou, vincule a correção à observação correspondente apenas após sucesso e
+declare o que permaneceu pendente, sem certificar o próprio reparo. A
+reauditoria volta a aplicar estes critérios ao estado persistido, registra seu
+resultado e procura regressões e problemas novos.
+
+Se houver interrupção entre alterações, a retomada informa o identificador e a
+revisão da correção pendente mais recente. Releia o alvo antes de continuar ou
+vincular; o estado pendente não significa que o achado já foi resolvido.
 
 Os testes operacionalizam carga cognitiva, exemplos resolvidos, prática de recuperação, variação, feedback explicativo, representação múltipla e acessibilidade já referenciados em `core/quality.md`. Eles orientam julgamento pedagógico rigoroso, mas não prometem substituir revisão humana especializada em um domínio.

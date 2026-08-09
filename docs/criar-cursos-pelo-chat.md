@@ -5,6 +5,13 @@ pessoa conheça JSON, schemas ou operações do backend. O assistente cuida da
 estrutura técnica; a pessoa autora decide o público, o recorte, as fontes e a
 qualidade conceitual.
 
+A conversa é descartável: o curso não depende de mensagens antigas para ser
+retomado. No início de cada nova etapa, o assistente relê a retomada compacta:
+contagens da árvore, Partes, decisões, mandato e achados persistidos; depois
+consulta `outline` ou a entidade necessária. Assim, trocar de conversa ou de
+cliente não obriga a reconstruir o plano pela memória do chat. Tecnicamente, a
+retomada usa `lerWorkspaceDeAutoria` com `view: "resume"`.
+
 No Chatbot personalizado, mantenha **Pesquisa na Web** habilitada quando o
 curso depender de editais, normas, produtos ou outras informações atuais.
 Habilite também **Intérprete de código e Análise de Dados** para trabalhar com
@@ -15,7 +22,7 @@ construtor do GPT; a Action AraLearn cuida da leitura e da gravação dos cursos
 
 O trabalho avança em etapas pequenas e decididas pela pessoa:
 
-1. o assistente registra o contexto útil e salva o planejamento;
+1. o assistente registra o contexto estável e salva o planejamento;
 2. mostra as partes propostas e espera aprovação ou ajuste;
 3. constrói somente uma parte aprovada, gravando uma microssequência por vez;
 4. mostra microteorias, contagens de práticas, resources e termos e espera;
@@ -88,9 +95,15 @@ schemas ou nomes de operações.
 
 ### 1. Contexto
 
-O assistente resume público, objetivo, fontes, inclusões, exclusões, idioma,
-notação e decisões tomadas. Esse contexto orienta a autoria, mas não aparece
-como texto de bastidor nos cards do estudante.
+O assistente resume no `brief` somente público, objetivo, fontes, inclusões,
+exclusões, idioma e notação que continuem válidos entre etapas. Esse contexto
+orienta a autoria, mas não aparece como texto de bastidor nos cards do
+estudante. Partes, decisões, mandatos e achados possuem registros próprios e
+não são misturados ao `brief`.
+
+Uma mudança de contexto estável substitui o `brief` inteiro depois de o
+assistente reler seu valor corrente. Isso evita perder fontes ou limites ainda
+válidos e impede usar a conversa como armazenamento implícito.
 
 ### 2. Estrutura planejada
 
@@ -103,6 +116,14 @@ e pode reunir várias lições ou microssequências que façam sentido avaliar e
 conjunto. O assistente não transforma cada microssequência em uma etapa para a
 pessoa. Em cursos com centenas de cards, cerca de 6 a 10 partes substanciais é
 uma heurística inicial, não um limite.
+
+Depois que a pessoa aprova o plano, o assistente usa uma única
+`record_approved_plan` para gravar atomicamente todas as Partes, decisões e o
+mandato corrente. Cada Parte é uma lista ordenada dos ids exatos de suas
+microssequências. Essa fronteira permite retomar “Parte 2” sem inferir o recorte
+pelo título ou pelo chat e evita perder Partes se a sessão cair entre chamadas.
+Operações unitárias servem a ajustes posteriores. A mesma ferramenta substitui
+o contexto estável com `replace_stable_brief`, sempre depois de uma releitura.
 
 O dimensionamento não parte de uma cota fixa de lições ou cards. O assistente
 mapeia cada item substantivo da ementa e das fontes obrigatórias para tópicos
@@ -209,10 +230,36 @@ ocorre numa resposta posterior e apenas para os problemas aprovados. Depois, a
 reauditoria relê o resultado para procurar resolução, regressões e novos
 problemas; ela também não repara na mesma rodada.
 
+Antes da auditoria, o assistente reúne tanto observações feitas durante o estudo
+quanto notas situadas na árvore do workspace (`list_observations` com
+`kinds: ["note"]`). Achados ativos já vêm na retomada; histórico de auditoria
+usa `kinds: ["audit_finding"]`, estados e paginação. Registra achados compactos, grava
+a decisão e o mandato humano, repara somente os achados aprovados, vincula a
+correção apenas depois da escrita confirmada e então reaudita. O chat nunca é a
+única fonte dessa autorização.
+
+Se o reparo exigir mais de uma escrita ou a conversa for interrompida, o achado
+continua aprovado e conserva somente o identificador e a revisão pendentes mais
+recentes. A retomada apresenta esse par para que o alvo seja relido antes de
+continuar ou confirmar o vínculo.
+
+Cada autorização recebe um novo identificador de mandato. O mandato de
+construção termina quando toda a Parte tem cards aceitos como `ready`; os de
+auditoria e reestruturação são limpos ao concluir a rodada; cada vínculo de
+correção retira o achado confirmado do mandato de reparo, e o último o encerra.
+A reauditoria usa outro mandato de auditoria, com a Parte quando esse for o
+recorte autorizado. Se a retomada indicar achados truncados, o
+assistente percorre `list_observations` antes de reparar.
+
+O vínculo de correção de um comentário de estudo é distinto do vínculo do
+achado formal de auditoria; o assistente não intercambia essas duas operações.
+
 ### 6. Trilhas, submissão e catálogo
 
 O conteúdo já pronto pode ser testado em Trilhas mesmo que outras unidades
-continuem planejadas. Isso não publica nem copia o workspace. Para submeter, o
+continuem planejadas. “Publicado” significa apenas fixado para submissão ou
+distribuído; não é condição para estudar. Testar a composição corrente não
+publica nem copia o workspace. Para submeter, o
 assistente fixa um artefato privado com hash; para distribuir, uma conta
 editorial publica a revisão completa em Coleções. O fluxo completo é:
 

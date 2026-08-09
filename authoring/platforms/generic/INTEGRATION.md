@@ -11,20 +11,30 @@ tópico, microssequência e card. O servidor compõe o documento v4 quando
 precisa ler, validar ou publicar e grava somente as partes modificadas por cada
 comando. O Storage recebe o artefato canônico imutável na publicação.
 
-1. chame `prepararAutoriaAraLearn` para receber um brief curto;
+1. chame `prepararAutoriaAraLearn` para a intenção e, se o workspace já existir, chame
+   `lerWorkspaceDeAutoria` com `view: "resume"`; o chat não é estado;
 2. liste cursos ou workspaces e leia primeiro `outline`;
 3. leia somente a entidade necessária e conserve seu `entityPath` completo;
 4. registre a árvore planejada em lotes pequenos com
    `criarEstruturaNoWorkspace`;
-5. consulte os resources usados com `consultarRecursosDeCard` e salve os cards
+5. após a aprovação, use uma única `record_approved_plan` com todas as Partes
+   por ids de microssequências, decisões e o mandato humano;
+6. consulte os resources usados com `consultarRecursosDeCard` e salve os cards
    de uma microssequência por vez com `salvarCardsNaMicrossequencia`; nunca
    envie um curso populado inteiro;
-6. para corrigir, use `atualizarMetadadosDaEntidade` ou
+7. para corrigir, use `atualizarMetadadosDaEntidade` ou
    `salvarCardNoWorkspace`;
-7. conserve a nova revisão e use `microtheories` para revisão humana;
-8. estude em Trilhas sem publicar; somente para submissão, fixe o artefato
+8. conserve a nova revisão e use `microtheories` para revisão humana;
+9. audite depois de consultar `list_comments` e `list_observations` com
+   `kinds: ["note"]`; achados ativos já vêm em `resume`; registre
+   achados compactos, repare somente os aprovados e reaudite;
+10. estude em Trilhas sem publicar; somente para submissão, fixe o artefato
    privado com `publicarCursoDoWorkspace`, ou distribua em Coleções quando a
    conta puder e a pessoa pedir.
+
+O `brief` contém somente contexto estável e fontes. Para alterá-lo, releia o
+valor completo e use `gerirContinuidadeDaAutoria` com
+`replace_stable_brief`; não grave ali partes, decisões, mandatos ou achados.
 
 O documento integral é uma visão composta, não o estado que o cliente deve
 reenviar em toda alteração. `listarAlteracoesRecentesDoWorkspace` oferece
@@ -51,7 +61,8 @@ nunca uma operação estrutural genérica.
 ## Âmbitos privado e editorial
 
 O plano e as partes materializadas aparecem e podem ser testados em Trilhas sem
-publicação. Para submeter, `publicarCursoDoWorkspace` com `target: "private"`
+publicação. “Publicado” significa somente fixado para submissão ou distribuído,
+nunca condição para estudar. Para submeter, `publicarCursoDoWorkspace` com `target: "private"`
 fixa o artefato; `submeterCursoParaRevisaoEditorial` aponta para o hash exato,
 sem criar outro artefato, e aceita também conteúdo parcial. Conforme as
 capacidades da conta, a mesma integração pode listar os próprios envios ou a

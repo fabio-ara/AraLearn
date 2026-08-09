@@ -13,7 +13,13 @@ um resource ou um card.
 ## Estado atual do workspace
 
 `private.authoring_workspaces` guarda proprietário, título, revisão corrente,
-origem opcional, contexto curto e exclusão lógica.
+origem opcional, contexto curto, continuidade corrente e exclusão lógica. A
+continuidade contém apenas Partes por ids, decisões e um mandato humano; não
+contém chat, prompt, resposta, card nem snapshot.
+
+O ledger compacto de achados conserva, durante reparo aprovado, somente o
+`requestId` e a revisão pendentes mais recentes. Esse par é um ponto de retomada,
+não histórico nem certificado de resolução.
 
 `private.authoring_workspace_entities` guarda uma linha corrente para cada:
 
@@ -33,6 +39,11 @@ publicar.
 O workspace aceita até 10 mil partes e 32 MiB quando recomposto. Cada parte
 tem limite próprio de 1 MiB. Esses tetos tornam o custo previsível sem impor
 uma cota artificial de cards por pessoa.
+
+Achados formais de auditoria ficam em registros situados compactos, separados
+das notas comuns. A retomada agrega apenas um recorte ativo; o histórico é
+paginado. Achados terminais têm retenção limitada, enquanto notas da pessoa não
+são apagadas por essa limpeza.
 
 ## Concorrência e repetição segura
 

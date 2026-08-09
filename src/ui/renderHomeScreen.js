@@ -214,31 +214,45 @@ function renderCourseOrigin(course) {
 function renderCourseUtilities(course, { canOrganize = false } = {}) {
   const resetProgress = course.kind === "plan"
     ? ""
-    : '<button class="icon-ghost" type="button" data-action="reset-course-progress-direct" data-course-key="' +
-      escapeHtml(course.id) + '" data-trail-item-id="' + escapeHtml(course.trailItemId) +
-      '" title="Zerar progresso do curso" aria-label="Zerar progresso do curso">' +
-      renderUiIcon("rotate", "home-tab-icon") + "</button>";
+    : renderContextMenuButton({
+        action: "reset-course-progress-direct",
+        icon: "rotate",
+        label: "Zerar progresso do curso",
+        data: {
+          "course-key": course.id,
+          "trail-item-id": course.trailItemId
+        }
+      });
   const edit = course.permissions.canEdit
-    ? '<button class="icon-ghost" type="button" data-action="edit-course" data-course-key="' +
-      escapeHtml(course.id) + '" data-trail-item-id="' + escapeHtml(course.trailItemId) +
-      '" title="Editar curso" aria-label="Editar curso">' +
-      renderUiIcon("edit", "home-tab-icon") + "</button>"
+    ? renderContextMenuButton({
+        action: "edit-course",
+        icon: "edit",
+        label: "Editar curso",
+        data: {
+          "course-key": course.id,
+          "trail-item-id": course.trailItemId
+        }
+      })
     : "";
   const removeFromTrails = shouldOfferTrailRemoval({
     origin: course.origin,
     canRemove: course.permissions.canRemove,
     canDelete: course.permissions.canDelete
   })
-    ? '<button class="icon-ghost" type="button" data-action="remove-home-trail-item" data-trail-item-id="' +
-      escapeHtml(course.trailItemId) +
-      '" title="Retirar de Trilhas" aria-label="Retirar de Trilhas">' +
-      renderUiIcon("remove-state", "home-tab-icon") + "</button>"
+    ? renderContextMenuButton({
+        action: "remove-home-trail-item",
+        icon: "remove-state",
+        label: "Retirar de Trilhas",
+        data: { "trail-item-id": course.trailItemId }
+      })
     : "";
   const moveToGroup = canOrganize
-    ? '<button class="icon-ghost" type="button" data-action="choose-home-item-group" data-trail-item-id="' +
-      escapeHtml(course.trailItemId) +
-      '" title="Mudar grupo" aria-label="Mudar grupo">' +
-      renderUiIcon("trail", "home-tab-icon") + "</button>"
+    ? renderContextMenuButton({
+        action: "choose-home-item-group",
+        icon: "trail",
+        label: "Mover para outro grupo",
+        data: { "trail-item-id": course.trailItemId }
+      })
     : "";
   const deleteMode = trailItemDeleteMode({
     origin: course.origin,
@@ -250,21 +264,32 @@ function renderCourseUtilities(course, { canOrganize = false } = {}) {
   });
   const deleteLabel = course.kind === "plan" ? "Excluir plano" : "Excluir curso privado";
   const remove = deleteMode && deleteMode !== "catalog"
-    ? '<button class="icon-ghost is-danger" type="button" data-action="delete-course-direct" data-course-key="' +
-      escapeHtml(course.id) + '" data-trail-item-id="' + escapeHtml(course.trailItemId) +
-      '" title="' + deleteLabel + '" aria-label="' + deleteLabel + '">' +
-      renderUiIcon("trash", "home-tab-icon") + "</button>"
+    ? renderContextMenuButton({
+        action: "delete-course-direct",
+        icon: "trash",
+        label: deleteLabel,
+        className: "is-danger",
+        data: {
+          "course-key": course.id,
+          "trail-item-id": course.trailItemId
+        }
+      })
     : "";
   const openWorkspace = course.workspaceId
-    ? '<button class="icon-ghost" type="button" data-action="open-home-workspace" data-workspace-id="' +
-      escapeHtml(course.workspaceId) + '" title="Abrir detalhes da autoria" aria-label="Abrir detalhes da autoria">' +
-      renderUiIcon("prompt", "home-tab-icon") + "</button>"
+    ? renderContextMenuButton({
+        action: "open-home-workspace",
+        icon: "prompt",
+        label: "Abrir detalhes da autoria",
+        data: { "workspace-id": course.workspaceId }
+      })
     : "";
   return (
-    '<details class="home-course-context-menu">' +
-    '<summary class="icon-ghost" title="Ações do curso" aria-label="Ações do curso">' +
+    '<details class="learning-spaces-context-menu home-course-context-menu">' +
+    '<summary class="learning-spaces-context-menu-summary icon-ghost"' +
+    ' data-card-authoring-focus="home-course-actions:' + escapeHtml(course.trailItemId) +
+    '" title="Ações do curso" aria-label="Ações do curso">' +
     renderUiIcon("more", "home-tab-icon") + "</summary>" +
-    '<div class="home-course-context-actions">' +
+    '<div class="learning-spaces-context-menu-list home-course-context-actions">' +
     resetProgress + openWorkspace + edit + moveToGroup + removeFromTrails + remove +
     "</div></details>"
   );
@@ -305,9 +330,11 @@ function renderHomeEditableField({
 function renderCourseGroupChooser(course, groups, currentGroupId, organization) {
   if (organization?.movingItemId !== course.trailItemId) return "";
   return (
-    '<form class="home-course-group-form" data-home-item-move-form="' + escapeHtml(course.trailItemId) + '">' +
+    '<form class="home-course-group-form" data-home-item-move-form="' + escapeHtml(course.trailItemId) +
+    '" data-current-group-id="' + escapeHtml(currentGroupId) + '">' +
     '<label class="sr-only" for="home-course-group-target">Grupo</label>' +
-    '<select id="home-course-group-target" name="groupId" aria-label="Grupo do curso">' +
+    '<select id="home-course-group-target" name="groupId" aria-label="Mover curso para o grupo"' +
+    ' data-card-authoring-focus="home-course-group-target">' +
     groups.map((group) => {
       const value = group.id === "others" ? "__others__" : group.id;
       return '<option value="' + escapeHtml(value) + '"' +
@@ -315,8 +342,8 @@ function renderCourseGroupChooser(course, groups, currentGroupId, organization) 
     }).join("") +
     "</select>" +
     '<div class="home-trails-inline-actions">' +
-    renderIconButton({ action: "cancel-home-item-move", icon: "remove-state", label: "Cancelar" }) +
-    renderIconButton({ action: "save-home-item-group", icon: "save", label: "Salvar grupo", className: "open-main" }) +
+    renderIconButton({ action: "cancel-home-item-move", icon: "remove-state", label: "Cancelar mudança de grupo" }) +
+    renderIconButton({ action: "save-home-item-group", icon: "save", label: "Mover curso", className: "open-main" }) +
     "</div></form>"
   );
 }
@@ -450,6 +477,17 @@ function renderIconButton({ action, icon, label, className = "icon-ghost", data 
     renderUiIcon(icon, "home-tab-icon") + "</button>";
 }
 
+function renderContextMenuButton({ action, icon, label, className = "", data = {} }) {
+  const attributes = Object.entries(data).map(([key, value]) =>
+    ` data-${key}="${escapeHtml(value)}"`
+  ).join("");
+  return '<button class="learning-spaces-context-menu-item' + (className ? ` ${className}` : "") +
+    '" type="button" data-action="' + action + '"' + attributes +
+    ' title="' + escapeHtml(label) + '" aria-label="' + escapeHtml(label) + '">' +
+    renderUiIcon(icon, "home-tab-icon remote-library-action-icon") +
+    '<span>' + escapeHtml(label) + "</span></button>";
+}
+
 function renderGroupForm(group = null) {
   return (
     '<form class="home-trails-inline-form home-group-inline-form" data-home-group-form="' + (group ? "rename" : "create") + '"' +
@@ -468,31 +506,33 @@ function renderGroupActions(group, canOrganize) {
   if (!canOrganize) return "";
   const structural = !group || group.id === "others" ||
     String(group.title || "").localeCompare("Outros", "pt-BR", { sensitivity: "base" }) === 0;
-  const actions = [renderIconButton({
+  const actions = [renderContextMenuButton({
     action: "start-home-group-create",
     icon: "add",
     label: "Criar grupo"
   })];
   if (!structural) {
-    actions.push(renderIconButton({
+    actions.push(renderContextMenuButton({
       action: "edit-home-group",
       icon: "edit",
       label: "Renomear grupo",
       data: { "group-id": group.id }
     }));
-    actions.push(renderIconButton({
+    actions.push(renderContextMenuButton({
       action: "delete-home-group",
       icon: "trash",
       label: "Excluir grupo",
-      className: "icon-ghost is-danger",
+      className: "is-danger",
       data: { "group-id": group.id }
     }));
   }
   return (
-    '<details class="home-course-context-menu home-group-context-menu">' +
-    '<summary class="icon-ghost" title="Ações do grupo" aria-label="Ações do grupo">' +
+    '<details class="learning-spaces-context-menu home-course-context-menu home-group-context-menu">' +
+    '<summary class="learning-spaces-context-menu-summary icon-ghost"' +
+    ' title="Ações do grupo" aria-label="Ações do grupo">' +
     renderUiIcon("more", "home-tab-icon") + "</summary>" +
-    '<div class="home-course-context-actions">' + actions.join("") + "</div></details>"
+    '<div class="learning-spaces-context-menu-list home-course-context-actions">' +
+    actions.join("") + "</div></details>"
   );
 }
 

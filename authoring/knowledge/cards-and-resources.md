@@ -61,6 +61,31 @@ O identificador liga as duas partes de modo exato. Não informe um caminho textu
 
 `gap` é uma forma de interação, não um recurso visual. Um card de tabela continua sendo tabela; um card de código continua preservando linguagem e indentação; uma fórmula continua sendo uma árvore de expressão. A lacuna apenas substitui um valor permitido dentro dessa estrutura. Assim, a prática ocorre sobre a representação escolhida para a operação, sem ser convertida numa pergunta genérica.
 
+Exemplo mínimo válido de lacuna em `paragraph`:
+
+```json
+{
+  "id": "card-conjuncao",
+  "position": 1,
+  "resource": "paragraph",
+  "kind": "exercise",
+  "exercise": "gap",
+  "title": "Conjunção",
+  "text": "P ∧ Q só é verdadeira quando {gap:condition}.",
+  "gaps": [{
+    "id": "condition",
+    "response": "choice",
+    "answer": "P e Q são verdadeiras",
+    "distractors": ["apenas P é verdadeira", "ao menos uma é verdadeira"]
+  }],
+  "after": "A conjunção exige que as duas proposições sejam verdadeiras."
+}
+```
+
+O marcador fica em `text`, a definição correspondente fica em `gaps` e o
+servidor compila ambos ao salvar. Não envie `question`, `options`, um objeto
+`content` paralelo nem a notação interna `[[...]]`.
+
 Lacuna por alternativas:
 
 ```json

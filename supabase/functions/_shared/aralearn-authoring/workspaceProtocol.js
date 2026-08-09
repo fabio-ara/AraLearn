@@ -52,6 +52,18 @@ function requiredText(value, field, max = 300) {
   return result;
 }
 
+function stableBriefText(value, field = "brief") {
+  const result = requiredText(value, field, 16_000);
+  if (new TextEncoder().encode(result).byteLength > 16 * 1_024) {
+    fail(
+      "authoring_brief_too_large",
+      `${field} deve ocupar no máximo 16 KiB em UTF-8.`,
+      { field }
+    );
+  }
+  return result;
+}
+
 function optionalUuid(value, field) {
   if (value?.[field] == null) return null;
   return workspaceUuid(value[field], field);
@@ -611,7 +623,7 @@ export function validateCreateWorkspacePayload(payload) {
   return {
     requestId: workspaceRequestId(payload.requestId),
     title: requiredText(payload, "title"),
-    brief: payload.brief == null ? "" : requiredText(payload, "brief", 16_000),
+    brief: payload.brief == null ? "" : stableBriefText(payload),
     sourceCourseId,
     sourceSubmissionId
   };
@@ -623,7 +635,7 @@ export function validateUpdateWorkspaceBriefPayload(payload) {
   return {
     requestId: workspaceRequestId(payload.requestId),
     expectedRevision: positiveRevision(payload),
-    brief: requiredText(payload, "brief", 16_000)
+    brief: stableBriefText(payload)
   };
 }
 
@@ -844,6 +856,236 @@ export function validateMoveCatalogCoursePayload(payload) {
   };
 }
 
+const CONTINUITY_OPERATIONS = new Set([
+  "replace_stable_brief",
+  "record_approved_plan",
+  "define_part",
+  "remove_part",
+  "record_decision",
+  "remove_decision",
+  "set_mandate",
+  "clear_mandate",
+  "record_finding",
+  "decide_finding",
+  "link_finding_correction",
+  "verify_finding",
+  "delete_finding"
+]);
+
+function continuityEntityTarget(value, label, { resource = false } = {}) {
+  const entityType = requiredText(value, "entityType", 30);
+  const depths = {
+    workspace: 0,
+    course: 1,
+    module: 2,
+    lesson: 3,
+    microsequence: 4,
+    card: 5,
+    ...(resource ? { resource: 5 } : {})
+  };
+  if (!Object.hasOwn(depths, entityType)) {
+    fail("invalid_authoring_continuity", `${label}.entityType é inválido.`);
+  }
+  return {
+    entityType,
+    entityPath: workspaceEntityPath(
+      value.entityPath,
+      `${label}.entityPath`,
+      depths[entityType]
+    )
+  };
+}
+
+function continuityPartArgument(rawValue, label) {
+  const value = object(rawValue, label);
+  only(value, ["id", "title", "microsequenceIds"], label);
+  return {
+    id: requiredText(value, "id", 240),
+    title: requiredText(value, "title", 300),
+    microsequenceIds: uniqueTextList(
+      value.microsequenceIds,
+      `${label}.microsequenceIds`,
+      { maximum: 500 }
+    )
+  };
+}
+
+function continuityDecisionArgument(rawValue, label) {
+  const value = object(rawValue, label);
+  only(value, ["id", "summary", "entityType", "entityId"], label);
+  const entityType = optionalText(value, "entityType", 30);
+  const entityId = optionalText(value, "entityId", 240);
+  if ((entityType == null) !== (entityId == null)
+      || (entityType && !ENTITY_TYPES.has(entityType))) {
+    fail(
+      "invalid_authoring_decision_target",
+      `${label}.entityType e ${label}.entityId devem identificar juntos uma entidade.`
+    );
+  }
+  return {
+    id: requiredText(value, "id", 240),
+    summary: requiredText(value, "summary", 1_000),
+    ...(entityType ? { entityType, entityId } : {})
+  };
+}
+
+function continuityMandateArgument(rawValue, label) {
+  const value = object(rawValue, label);
+  only(value, ["id", "kind", "targetPartId", "findingIds", "note"], label);
+  const kind = requiredText(value, "kind", 80);
+  if (!new Set(["build_part", "repair_findings", "audit", "restructure"]).has(kind)) {
+    fail("invalid_authoring_mandate", `${label}.kind é inválido.`);
+  }
+  const targetPartId = optionalText(value, "targetPartId", 240);
+  const findingIds = value.findingIds == null
+    ? []
+    : uniqueTextList(value.findingIds, `${label}.findingIds`, { maximum: 50 })
+      .map((findingId, index) =>
+        workspaceUuid(findingId, `${label}.findingIds[${index}]`));
+  const note = optionalText(value, "note", 2_000);
+  if (kind === "build_part" && !targetPartId) {
+    fail("invalid_authoring_mandate", `${label}.targetPartId é obrigatório.`);
+  }
+  if (kind === "repair_findings" && findingIds.length === 0) {
+    fail("invalid_authoring_mandate", `${label}.findingIds é obrigatório.`);
+  }
+  if (kind !== "repair_findings" && findingIds.length > 0) {
+    fail("invalid_authoring_mandate", `${label}.findingIds é incompatível.`);
+  }
+  if (kind === "repair_findings" && targetPartId) {
+    fail("invalid_authoring_mandate", `${label}.targetPartId é incompatível.`);
+  }
+  return {
+    id: requiredText(value, "id", 240),
+    kind,
+    ...(targetPartId ? { targetPartId } : {}),
+    ...(findingIds.length ? { findingIds } : {}),
+    ...(note ? { note } : {})
+  };
+}
+
+export function validateWorkspaceContinuityActionPayload(payload) {
+  object(payload);
+  only(payload, ["requestId", "expectedRevision", "operation", "arguments"]);
+  const operation = requiredText(payload, "operation", 40);
+  if (!CONTINUITY_OPERATIONS.has(operation)) {
+    fail("invalid_authoring_continuity_operation", "operation é inválida.");
+  }
+  const value = object(payload.arguments, "arguments");
+  let argumentsValue;
+  if (operation === "replace_stable_brief") {
+    only(value, ["brief"], "arguments");
+    argumentsValue = { brief: stableBriefText(value) };
+  } else if (operation === "record_approved_plan") {
+    only(value, ["parts", "decisions", "mandate"], "arguments");
+    if (!Array.isArray(value.parts)
+        || value.parts.length < 1
+        || value.parts.length > 64) {
+      fail("invalid_authoring_plan", "arguments.parts deve conter de 1 a 64 Partes.");
+    }
+    if (!Array.isArray(value.decisions)
+        || value.decisions.length < 1
+        || value.decisions.length > 128) {
+      fail(
+        "invalid_authoring_plan",
+        "arguments.decisions deve conter de 1 a 128 decisões."
+      );
+    }
+    argumentsValue = {
+      parts: value.parts.map((part, index) =>
+        continuityPartArgument(part, `arguments.parts[${index}]`)),
+      decisions: value.decisions.map((decision, index) =>
+        continuityDecisionArgument(decision, `arguments.decisions[${index}]`)),
+      mandate: value.mandate == null
+        ? null
+        : continuityMandateArgument(value.mandate, "arguments.mandate")
+    };
+  } else if (operation === "define_part") {
+    only(value, ["id", "title", "microsequenceIds"], "arguments");
+    argumentsValue = {
+      id: requiredText(value, "id", 240),
+      title: requiredText(value, "title", 300),
+      microsequenceIds: uniqueTextList(value.microsequenceIds, "microsequenceIds", {
+        maximum: 500
+      })
+    };
+  } else if (operation === "remove_part") {
+    only(value, ["partId"], "arguments");
+    argumentsValue = { partId: requiredText(value, "partId", 240) };
+  } else if (operation === "record_decision") {
+    argumentsValue = continuityDecisionArgument(value, "arguments");
+  } else if (operation === "remove_decision") {
+    only(value, ["decisionId"], "arguments");
+    argumentsValue = { decisionId: requiredText(value, "decisionId", 240) };
+  } else if (operation === "set_mandate") {
+    argumentsValue = continuityMandateArgument(value, "arguments");
+  } else if (operation === "clear_mandate") {
+    only(value, [], "arguments");
+    argumentsValue = {};
+  } else if (operation === "record_finding") {
+    only(value, [
+      "entityType", "entityPath", "resourceTargetId", "category", "severity",
+      "summary", "proposedRepair"
+    ], "arguments");
+    const target = continuityEntityTarget(value, "arguments", { resource: true });
+    const severity = requiredText(value, "severity", 20);
+    if (!new Set(["low", "medium", "high", "critical"]).has(severity)) {
+      fail("invalid_authoring_finding", "severity é inválido.");
+    }
+    const resourceTargetId = optionalText(value, "resourceTargetId", 240);
+    if ((target.entityType === "resource") !== (resourceTargetId != null)) {
+      fail("invalid_authoring_finding", "resourceTargetId é inválido.");
+    }
+    argumentsValue = {
+      ...target,
+      ...(resourceTargetId ? { resourceTargetId } : {}),
+      category: requiredText(value, "category", 64),
+      severity,
+      summary: requiredText(value, "summary", 1_000),
+      proposedRepair: requiredText(value, "proposedRepair", 1_000)
+    };
+  } else if (operation === "decide_finding") {
+    only(value, ["observationId", "decision"], "arguments");
+    const decision = requiredText(value, "decision", 20);
+    if (!new Set(["approved", "rejected"]).has(decision)) {
+      fail("invalid_authoring_finding_decision", "decision é inválido.");
+    }
+    argumentsValue = {
+      observationId: workspaceUuid(value.observationId, "observationId"),
+      decision
+    };
+  } else if (operation === "link_finding_correction") {
+    only(value, ["observationId", "correctionRequestId"], "arguments");
+    argumentsValue = {
+      observationId: workspaceUuid(value.observationId, "observationId"),
+      correctionRequestId: workspaceRequestId(value.correctionRequestId)
+    };
+  } else if (operation === "verify_finding") {
+    only(value, ["observationId", "outcome", "note"], "arguments");
+    const outcome = requiredText(value, "outcome", 20);
+    if (!new Set(["resolved", "still_open"]).has(outcome)) {
+      fail("invalid_authoring_finding_verification", "outcome é inválido.");
+    }
+    const note = requiredText(value, "note", 1_000);
+    argumentsValue = {
+      observationId: workspaceUuid(value.observationId, "observationId"),
+      outcome,
+      note
+    };
+  } else {
+    only(value, ["observationId"], "arguments");
+    argumentsValue = {
+      observationId: workspaceUuid(value.observationId, "observationId")
+    };
+  }
+  return {
+    requestId: workspaceRequestId(payload.requestId),
+    expectedRevision: positiveRevision(payload),
+    operation,
+    arguments: argumentsValue
+  };
+}
+
 export function validateRemoveCatalogCoursePayload(payload) {
   object(payload);
   only(payload, [
@@ -907,7 +1149,7 @@ export function validateEducationalWorkspaceCommentActionPayload(payload) {
   if (operation === "set_comment_status") {
     only(operationPayload, ["status", "note"], "payload.payload");
     const status = requiredText(operationPayload, "status", 20);
-    if (!new Set(["open", "considered", "resolved", "incorporated"]).has(status)) {
+    if (!new Set(["open", "considered", "resolved"]).has(status)) {
       fail("invalid_workspace_comment_status", "status é inválido.");
     }
     const note = operationPayload.note == null
@@ -1053,10 +1295,10 @@ export function workspaceRoute(method, path) {
   if (match && method === "GET") {
     return { name: "getWorkspaceEvents", workspaceId: workspaceUuid(match[1], "workspaceId") };
   }
-  match = path.match(/^\/v1\/workspaces\/([^/]+)\/context$/u);
+  match = path.match(/^\/v1\/workspaces\/([^/]+)\/continuity\/actions$/u);
   if (match && method === "POST") {
     return {
-      name: "updateWorkspaceBrief",
+      name: "manageWorkspaceContinuity",
       workspaceId: workspaceUuid(match[1], "workspaceId")
     };
   }
