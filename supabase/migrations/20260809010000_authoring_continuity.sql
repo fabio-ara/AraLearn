@@ -2451,7 +2451,7 @@ alter function public.commit_authoring_workspace_changes_v5(
 ) rename to commit_authoring_workspace_changes_without_continuity_v1;
 
 create function public.commit_authoring_workspace_changes_v5(
-  p_actor_id uuid,
+  p_owner_id uuid,
   p_workspace_id uuid,
   p_request_id text,
   p_payload_hash text,
@@ -2476,7 +2476,7 @@ declare
   v_pending_update_count integer := 0;
 begin
   perform private.require_educational_workspace_capability_v1(
-    p_workspace_id, p_actor_id, 'author'
+    p_workspace_id, p_owner_id, 'author'
   );
   if p_operation in ('split_microsequence', 'merge_microsequences') then
     if jsonb_typeof(p_summary->'continuityRemap') <> 'object' then
@@ -2490,11 +2490,11 @@ begin
   if exists (
     select 1
     from private.authoring_workspace_requests request
-    where request.owner_id = p_actor_id
+    where request.owner_id = p_owner_id
       and request.request_id = p_request_id
   ) then
     return public.commit_authoring_workspace_changes_without_continuity_v1(
-      p_actor_id, p_workspace_id, p_request_id, p_payload_hash,
+      p_owner_id, p_workspace_id, p_request_id, p_payload_hash,
       p_expected_revision, p_operation, p_changes, p_summary
     );
   end if;
@@ -2528,7 +2528,7 @@ begin
   end if;
 
   v_result := public.commit_authoring_workspace_changes_without_continuity_v1(
-    p_actor_id, p_workspace_id, p_request_id, p_payload_hash,
+    p_owner_id, p_workspace_id, p_request_id, p_payload_hash,
     p_expected_revision, p_operation, p_changes, p_summary
   );
   if coalesce((v_result->>'idempotent')::boolean, false) then
@@ -2586,7 +2586,7 @@ begin
   v_result := jsonb_set(v_result, '{change}', v_change_summary, false);
   update private.authoring_workspace_requests request
   set result = v_result
-  where request.owner_id = p_actor_id
+  where request.owner_id = p_owner_id
     and request.request_id = p_request_id
     and request.workspace_id = p_workspace_id;
   update private.authoring_workspace_events event

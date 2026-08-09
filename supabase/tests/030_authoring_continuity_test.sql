@@ -1,6 +1,6 @@
 begin;
 
-select plan(58);
+select plan(59);
 
 select has_column(
   'private', 'authoring_workspaces', 'authoring_state',
@@ -235,6 +235,16 @@ select ok(
       'public.commit_authoring_workspace_changes_v5(uuid,uuid,text,text,bigint,text,jsonb,jsonb)'::regprocedure
     ) not like '%autoLinkedFindingCount%',
   'o commit preserva um handoff pendente e o vínculo não depende do receipt expirável'
+);
+select is(
+  (
+    select procedure_value.proargnames[1]
+    from pg_proc procedure_value
+    where procedure_value.oid =
+      'public.commit_authoring_workspace_changes_v5(uuid,uuid,text,text,bigint,text,jsonb,jsonb)'::regprocedure
+  ),
+  'p_owner_id',
+  'o wrapper preserva o nome público usado pelo cliente PostgREST'
 );
 select ok(
   pg_get_functiondef(
