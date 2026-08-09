@@ -69,7 +69,7 @@ function fixtureParts() {
   const parts = [];
   const add = (entityType, entity, parentType = null, parentId = null, position = 0) => {
     const content = structuredClone(entity);
-    for (const key of ["id", "modules", "lessons", "topics", "microsequences", "cards"]) {
+    for (const key of ["id", "position", "modules", "lessons", "topics", "microsequences", "cards"]) {
       delete content[key];
     }
     parts.push({ entityType, id: entity.id, parentType, parentId, position, content });
@@ -82,8 +82,8 @@ function fixtureParts() {
       lesson.topics.forEach((topic, index) => add("topic", topic, "lesson", lesson.id, index));
       for (const [microIndex, microsequence] of lesson.microsequences.entries()) {
         add("microsequence", microsequence, "lesson", lesson.id, microIndex);
-        microsequence.cards.forEach((card, index) =>
-          add("card", card, "microsequence", microsequence.id, index)
+        microsequence.cards.forEach((card) =>
+          add("card", card, "microsequence", microsequence.id, card.position)
         );
       }
     }

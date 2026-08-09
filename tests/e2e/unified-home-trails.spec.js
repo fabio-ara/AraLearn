@@ -1,9 +1,42 @@
 import { expect, test } from "@playwright/test";
+import fs from "node:fs";
 
 const GROUP_ID = "10000000-0000-4000-8000-000000000001";
 const SECOND_GROUP_ID = "10000000-0000-4000-8000-000000000002";
 const ITEM_ID = "20000000-0000-4000-8000-000000000002";
 const WORKSPACE_ID = "30000000-0000-4000-8000-000000000003";
+const PROJECT_FIXTURE = JSON.parse(fs.readFileSync(
+  new URL("../fixtures/v4/project-minimal.json", import.meta.url),
+  "utf8"
+));
+
+function workspacePartsForCourse(course) {
+  const parts = [];
+  const add = (entityType, entity, parentType, parentId, position) => {
+    const content = structuredClone(entity);
+    for (const field of [
+      "id", "position", "modules", "lessons", "topics", "microsequences", "cards"
+    ]) delete content[field];
+    parts.push({ entityType, id: entity.id, parentType, parentId, position, content });
+  };
+  add("course", course, "project", "project", 0);
+  course.modules.forEach((moduleValue, moduleIndex) => {
+    add("module", moduleValue, "course", course.id, moduleIndex);
+    moduleValue.lessons.forEach((lesson, lessonIndex) => {
+      add("lesson", lesson, "module", moduleValue.id, lessonIndex);
+      lesson.topics.forEach((topic, topicIndex) => {
+        add("topic", topic, "lesson", lesson.id, topicIndex);
+      });
+      lesson.microsequences.forEach((microsequence, microsequenceIndex) => {
+        add("microsequence", microsequence, "lesson", lesson.id, microsequenceIndex);
+        microsequence.cards.forEach((card) => {
+          add("card", card, "microsequence", microsequence.id, card.position);
+        });
+      });
+    });
+  });
+  return parts;
+}
 
 function trailSnapshot(items = []) {
   return {
@@ -195,6 +228,89 @@ test("materialização aparece na Home única e muda de grupo pelo trailItemId",
   expect(result.groupLabels).toEqual(["Dataprev", "Estudos", "Outros"]);
   expect(result.workspaceAction).toBe(WORKSPACE_ID);
   expect(result.hasReset).toBe(false);
+});
+
+test("Play recompõe a posição do card da linha remota e abre o runtime", async ({ page }) => {
+  const course = structuredClone(PROJECT_FIXTURE.courses[0]);
+  const courseItem = {
+    ...plan(),
+    kind: "course",
+    title: course.title,
+    description: course.goal,
+    cardCount: course.modules[0].lessons[0].microsequences[0].cards.length
+  };
+  await page.goto("/");
+  await page.evaluate(async ({ remoteSnapshot, remoteParts }) => {
+    const { createLessonEditorApp } = await import("/src/ui/lessonEditorApp.js");
+    const emptyProject = {
+      contract: "aralearn.contract",
+      version: 4,
+      kind: "project",
+      courses: []
+    };
+    const root = document.createElement("main");
+    document.body.replaceChildren(root);
+    const storage = {
+      loadProject: () => structuredClone(emptyProject),
+      loadProgress: () => ({ version: 1, lessons: {} }),
+      saveProgress() {},
+      loadReviewItems: () => [],
+      loadCourseSummaries: () => [],
+      loadCommentForPath: () => null,
+      async loadCardAssistanceLocalState() { return {}; },
+      coursePermissions: () => ({
+        role: "owner",
+        canAuthorContent: true,
+        writeTarget: "private",
+        canOrganizeSelection: true,
+        canRemoveSelection: false,
+        canDeleteCourse: true
+      })
+    };
+    const personalStorage = {
+      setCourse() {},
+      async initialize() {},
+      async refresh() {},
+      loadProgress: () => ({ version: 1, lessons: {} }),
+      saveProgress() {},
+      loadReviewItems: () => [],
+      async clearLocal() {},
+      async flush() {}
+    };
+    const app = createLessonEditorApp({
+      root,
+      storage,
+      editor: {},
+      initialProject: emptyProject,
+      homeTrails: {
+        loadTrailSnapshot: async () => structuredClone(remoteSnapshot),
+        loadWorkspaceCourse: async () => ({
+          trailItemId: remoteSnapshot.items[0].trailItemId,
+          workspaceId: remoteSnapshot.items[0].workspaceId,
+          courseKey: remoteSnapshot.items[0].courseKey,
+          revision: remoteSnapshot.items[0].revision,
+          parts: structuredClone(remoteParts)
+        }),
+        async cacheWorkspaceCourse() {}
+      },
+      trailPersonalStateFactory: () => personalStorage
+    });
+    await app.refreshTrails();
+  }, {
+    remoteSnapshot: trailSnapshot([courseItem]),
+    remoteParts: workspacePartsForCourse(course)
+  });
+
+  await page.locator('[data-action="open-course"]').click();
+  await expect(page.locator('[data-action="open-module"]')).toBeVisible();
+  await page.locator('[data-action="open-module"]').click();
+  await page.locator('[data-action="open-lesson"]').click();
+  await page.locator('[data-action="open-microsequence-overview"]').click();
+  await page.locator(
+    '[data-action="open-microsequence-card"][data-card-index="0"]'
+  ).click();
+  await expect(page.locator(".runtime-card-title")).toHaveText("Regra central");
+  await expect(page.locator(".home-trails-error")).toHaveCount(0);
 });
 
 test("Home mantém eixo central e tipografia simétrica entre os seletores", async ({ page }) => {

@@ -393,14 +393,14 @@ async function prepare({
       ('${WORKSPACE}','module','module-a','course','course-a',0,'{}'),
       ('${WORKSPACE}','lesson','lesson-a','module','module-a',0,'{}'),
       ('${WORKSPACE}','microsequence','micro-a','lesson','lesson-a',0,'{}'),
-      ('${WORKSPACE}','card','card-a','microsequence','micro-a',0,'{}'),
+      ('${WORKSPACE}','card','card-a','microsequence','micro-a',1,'{}'),
       ('${WORKSPACE}','course','course-b',null,null,1,
         '{"title":"Curso B","goal":"B"}'),
       ('${WORKSPACE}','module','module-b','course','course-b',0,'{}'),
       ('${WORKSPACE}','lesson','lesson-b','module','module-b',0,'{}'),
       ('${WORKSPACE}','microsequence','micro-b','lesson','lesson-b',0,'{}'),
-      ('${WORKSPACE}','card','card-b1','microsequence','micro-b',0,'{}'),
-      ('${WORKSPACE}','card','card-b2','microsequence','micro-b',1,'{}');
+      ('${WORKSPACE}','card','card-b1','microsequence','micro-b',1,'{}'),
+      ('${WORKSPACE}','card','card-b2','microsequence','micro-b',2,'{}');
   `);
   if (sourceCourse) {
     await db.query(
@@ -747,6 +747,11 @@ test("projeção distingue raízes e lê partes sem artefato integral", async ()
   )).rows[0].value;
   assert.equal(page2.parts.length, 2);
   assert(page2.parts.every((part) => !String(part.id).endsWith("-b")));
+  const composedCardPart = [...page1.parts, ...page2.parts].find(
+    (part) => part.entityType === "card"
+  );
+  assert.equal(composedCardPart.position, 1);
+  assert.equal(Object.hasOwn(composedCardPart.content, "position"), false);
   await db.close();
 });
 

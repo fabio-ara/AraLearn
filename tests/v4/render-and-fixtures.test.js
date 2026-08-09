@@ -987,7 +987,7 @@ test("a home renderiza abrir curso com ids reais do contrato v4", () => {
   assert.equal((html.match(/data-action="open-course"/g) || []).length, 1);
 });
 
-test("a home usa menu contextual compacto sem atalhos órfãos", () => {
+test("a home usa menus contextuais rotulados sem atalhos órfãos", () => {
   const fixture = getCatalogFixtureProject();
   const course = fixture.courses[0];
   const project = { ...fixture, courses: [course] };
@@ -1007,6 +1007,10 @@ test("a home usa menu contextual compacto sem atalhos órfãos", () => {
   assert.doesNotMatch(html, /data-action="open-course-actions"/);
   assert.match(html, /data-action="open-course"/);
   assert.match(html, /home-course-context-menu/u);
+  assert.match(html, /<span>Mover para outro grupo<\/span>/u);
+  assert.match(html, /<span>Criar grupo<\/span>/u);
+  assert.doesNotMatch(html, />Criar curso</u);
+  assert.doesNotMatch(html, /role="(?:menu|menuitem)"|aria-haspopup="menu"/u);
 });
 
 test("a home usa seletores relacionais de grupo e curso sem exibir ids como texto", () => {
