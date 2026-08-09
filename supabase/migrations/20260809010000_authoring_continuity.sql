@@ -1656,7 +1656,6 @@ declare
   v_pre_change_path text[];
   v_post_change_path text[];
   v_path_to_check text[];
-  v_finding_path text[];
   v_summary_path jsonb;
   v_summary_path_array text[];
   v_resource_target jsonb;
@@ -3567,7 +3566,6 @@ set search_path = pg_catalog, public, private, auth, extensions
 as $function$
 declare
   v_thread private.trail_observation_threads%rowtype;
-  v_existing_receipt private.educational_workspace_receipts%rowtype;
   v_path text[];
   v_resulting_revision bigint;
   v_result jsonb;
@@ -3589,7 +3587,7 @@ begin
   perform pg_advisory_xact_lock(hashtextextended(
     'workspace-comment:' || p_actor_id::text || ':' || p_request_id, 0
   ));
-  select * into v_existing_receipt
+  perform 1
   from private.educational_workspace_receipts receipt
   where receipt.actor_id = p_actor_id and receipt.request_id = p_request_id;
   if found then
