@@ -13,7 +13,8 @@ import {
 } from "../../src/domain/educationalWorkspace.js";
 import {
   authoringMcpToolDefinition,
-  mapAuthoringMcpToolCall
+  mapAuthoringMcpToolCall,
+  validateAuthoringMcpToolOutput
 } from "../../supabase/functions/_shared/aralearn-authoring/workspaceMcpTools.js";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
@@ -558,6 +559,32 @@ test("MCP usa um contrato discriminado para leitura e governança", () => {
     },
     requestId: "comment:response:0001"
   });
+  assert.throws(
+    () => mapAuthoringMcpToolCall("gerirWorkspaceEducacional", {
+      requestId: "comment:status:0001",
+      operation: "set_comment_status",
+      workspaceId: WORKSPACE,
+      commentId: "30000000-0000-4000-8000-000000000001",
+      status: "incorporated"
+    }),
+    ({ status, code }) => status === 422 && code === "invalid_tool_arguments"
+  );
+  assert.doesNotThrow(() => validateAuthoringMcpToolOutput(
+    "gerirWorkspaceEducacional",
+    {
+      ok: true,
+      requestId: "comment:link:0001",
+      data: {
+        workspaceId: WORKSPACE,
+        commentId: "30000000-0000-4000-8000-000000000001",
+        operation: "link_comment_correction",
+        status: "incorporated",
+        updatedAt: "2026-08-09T12:00:00.000Z",
+        idempotent: false,
+        resultingRevision: 18
+      }
+    }
+  ));
   assert.throws(
     () => mapAuthoringMcpToolCall("gerirWorkspaceEducacional", {
       requestId: "workspace:invite:0003",

@@ -14,9 +14,18 @@ const ENTITY_TYPE = Object.freeze({
   type: "string",
   enum: ["course", "module", "lesson", "microsequence", "card"]
 });
+const EDUCATIONAL_WORKSPACE_ROLE = Object.freeze({
+  type: "string",
+  enum: ["owner", "admin", "author", "reviewer", "learner", "reader"]
+});
+const WORKSPACE_CONTEXT_CAPABILITIES_SCHEMA = schema([
+  "author", "review", "comment", "publish", "manage"
+], Object.fromEntries([
+  "author", "review", "comment", "publish", "manage"
+].map((capability) => [capability, { type: "boolean" }])));
 const AUTHORING_INTENT = Object.freeze({
   type: "string",
-  description: "inspect lê; create planeja/cria; extend amplia/constrói; audit audita ou reaudita sem escrever; repair aplica reparos autorizados; revise revisa; restructure reorganiza; publish prepara submissão ou distribui em Coleções; study estuda.",
+  description: "inspect lê; create planeja/cria; extend amplia/constrói; audit audita ou reaudita sem alterar conteúdo ou estrutura; repair aplica reparos autorizados; revise revisa; restructure reorganiza; publish prepara submissão ou distribui em Coleções; study estuda.",
   enum: [
     "inspect", "create", "extend", "audit", "repair", "revise",
     "restructure", "publish", "study"
@@ -747,20 +756,98 @@ const WORKSPACE_CONTROL_REQUIRED = Object.freeze([
   "updatedAt",
   "idempotent"
 ]);
-const WORKSPACE_CHANGE_SCHEMA = schema([
+const WORKSPACE_CHANGE_BASE_SCHEMA = schema([
   "operation", "created", "updated", "deleted"
 ], {
   operation: NON_EMPTY_STRING,
+  operationFamily: { type: "string", enum: ["content", "structure"] },
   created: NON_NEGATIVE_INTEGER,
   updated: NON_NEGATIVE_INTEGER,
   deleted: NON_NEGATIVE_INTEGER,
   targetPath: ENTITY_PATH,
+  entityPath: ENTITY_PATH,
+  targetPaths: {
+    type: "array",
+    minItems: 0,
+    maxItems: 20,
+    uniqueItems: true,
+    items: ENTITY_PATH
+  },
+  targetPathsTruncated: { type: "boolean" },
+  continuityRemap: {
+    oneOf: [
+      schema(["kind", "sourceId", "newId"], {
+        kind: { const: "split" },
+        sourceId: ID,
+        newId: ID
+      }),
+      schema(["kind", "targetId", "sourceIds"], {
+        kind: { const: "merge" },
+        targetId: ID,
+        sourceIds: {
+          type: "array", minItems: 1, maxItems: 100,
+          uniqueItems: true, items: ID
+        }
+      })
+    ]
+  },
+  resourceTargets: {
+    type: "array",
+    minItems: 0,
+    maxItems: 10,
+    uniqueItems: true,
+    items: schema(["cardPath", "targetId"], {
+      cardPath: fixedEntityPath(5),
+      targetId: ID
+    })
+  },
+  resourceTargetsTruncated: { type: "boolean" },
+  changedCardPaths: {
+    type: "array",
+    minItems: 0,
+    maxItems: 20,
+    uniqueItems: true,
+    items: fixedEntityPath(5)
+  },
+  changedCardPathsTruncated: { type: "boolean" },
+  cardShellChangedPaths: {
+    type: "array",
+    minItems: 0,
+    maxItems: 20,
+    uniqueItems: true,
+    items: fixedEntityPath(5)
+  },
+  cardShellChangedPathsTruncated: { type: "boolean" },
   entityType: ENTITY_TYPE,
   sourceCourseId: UUID,
   importedCourseId: ID,
   mode: { type: "string", enum: ["append", "replace"] },
   submittedCardCount: NON_NEGATIVE_INTEGER,
-  positionsNormalized: { type: "boolean" }
+  positionsNormalized: { type: "boolean" },
+  continuityAdjusted: { type: "boolean" },
+  continuityAffectedPartCount: NON_NEGATIVE_INTEGER,
+  continuityReferenceCount: NON_NEGATIVE_INTEGER,
+  continuityMandateConsumed: { type: "boolean" }
+});
+const WORKSPACE_CHANGE_SCHEMA = Object.freeze({
+  ...WORKSPACE_CHANGE_BASE_SCHEMA,
+  allOf: [
+    ["targetPaths", "targetPathsTruncated"],
+    ["resourceTargets", "resourceTargetsTruncated"],
+    ["changedCardPaths", "changedCardPathsTruncated"],
+    ["cardShellChangedPaths", "cardShellChangedPathsTruncated"]
+  ].map(([itemsField, truncatedField]) => ({
+    if: {
+      required: [itemsField],
+      properties: { [itemsField]: {} }
+    },
+    then: {
+      required: [truncatedField],
+      properties: {
+        [truncatedField]: { type: "boolean" }
+      }
+    }
+  }))
 });
 const WORKSPACE_PUBLICATION_LINK_SCHEMA = schema([
   "workspaceCourseId",
@@ -784,6 +871,11 @@ const WORKSPACE_CONTROL_PROPERTIES = Object.freeze({
     ...NON_EMPTY_STRING,
     maxLength: 300
   },
+  purpose: { type: "string", maxLength: 1_000 },
+  workspaceKind: { type: "string", enum: ["personal", "class", "team"] },
+  visibility: { type: "string", enum: ["private", "members"] },
+  role: EDUCATIONAL_WORKSPACE_ROLE,
+  capabilities: WORKSPACE_CONTEXT_CAPABILITIES_SCHEMA,
   revision: REVISION,
   currentRevision: REVISION,
   entityCount: NON_NEGATIVE_INTEGER,
@@ -803,29 +895,239 @@ const WORKSPACE_REVISION_DATA_SCHEMA = schema(
   WORKSPACE_CONTROL_REQUIRED,
   WORKSPACE_CONTROL_PROPERTIES
 );
+const CONTINUITY_DECISION_SCHEMA = Object.freeze({
+  ...schema(["id", "summary"], {
+    id: ID,
+    summary: { type: "string", minLength: 1, maxLength: 1_000, pattern: "\\S" },
+    entityType: ENTITY_TYPE,
+    entityId: ID
+  }),
+  allOf: [
+    {
+      if: { properties: { entityType: {} }, required: ["entityType"] },
+      then: { properties: { entityId: ID }, required: ["entityId"] }
+    },
+    {
+      if: { properties: { entityId: {} }, required: ["entityId"] },
+      then: { properties: { entityType: ENTITY_TYPE }, required: ["entityType"] }
+    }
+  ]
+});
+const CONTINUITY_DECISION_PROJECTION_SCHEMA = Object.freeze({
+  ...CONTINUITY_DECISION_SCHEMA,
+  required: [
+    ...CONTINUITY_DECISION_SCHEMA.required,
+    "targetAvailable"
+  ],
+  properties: {
+    ...CONTINUITY_DECISION_SCHEMA.properties,
+    targetAvailable: { type: "boolean" }
+  }
+});
+const CONTINUITY_MANDATE_SCHEMA = Object.freeze({
+  ...schema([
+    "id", "kind", "decidedAtRevision"
+  ], {
+    id: ID,
+    kind: {
+      type: "string",
+      enum: ["build_part", "repair_findings", "audit", "restructure"]
+    },
+    targetPartId: ID,
+    findingIds: {
+      type: "array",
+      maxItems: 50,
+      uniqueItems: true,
+      items: UUID
+    },
+    note: { type: "string", minLength: 1, maxLength: 2_000, pattern: "\\S" },
+    decidedAtRevision: REVISION
+  }),
+  allOf: [
+    {
+      if: { properties: { kind: { const: "build_part" } }, required: ["kind"] },
+      then: {
+        properties: { targetPartId: {} },
+        required: ["targetPartId"],
+        not: { properties: { findingIds: {} }, required: ["findingIds"] }
+      }
+    },
+    {
+      if: {
+        properties: { kind: { const: "repair_findings" } }, required: ["kind"]
+      },
+      then: {
+        required: ["findingIds"],
+        properties: { findingIds: { type: "array", minItems: 1 } },
+        not: { properties: { targetPartId: {} }, required: ["targetPartId"] }
+      }
+    },
+    {
+      if: {
+        properties: { kind: { enum: ["audit", "restructure"] } },
+        required: ["kind"]
+      },
+      then: {
+        not: { properties: { findingIds: {} }, required: ["findingIds"] }
+      }
+    }
+  ]
+});
+const CONTINUITY_PART_PROJECTION_SCHEMA = schema([
+  "id", "title", "microsequenceIds", "microsequenceStateMask", "microsequenceCount",
+  "materializedCount", "readyCount", "cardCount", "missingCount"
+], {
+  id: ID,
+  title: NON_EMPTY_STRING,
+  microsequenceIds: {
+    type: "array", minItems: 1, maxItems: 500, uniqueItems: true, items: ID
+  },
+  microsequenceStateMask: {
+    type: "string", minLength: 1, maxLength: 500, pattern: "^[rmpx]+$"
+  },
+  microsequenceCount: NON_NEGATIVE_INTEGER,
+  materializedCount: NON_NEGATIVE_INTEGER,
+  readyCount: NON_NEGATIVE_INTEGER,
+  cardCount: NON_NEGATIVE_INTEGER,
+  missingCount: NON_NEGATIVE_INTEGER
+});
+const CONTINUITY_FINDING_SCHEMA = schema([
+  "observationId", "entityType", "entityPath", "currentEntityPath",
+  "targetAvailable", "resourceTargetId", "category", "severity", "status",
+  "summary", "proposedRepair", "auditRevision", "pendingCorrectionRequestId",
+  "pendingRevision", "resultingRevision", "createdAt", "updatedAt"
+], {
+  observationId: UUID,
+  entityType: {
+    type: "string",
+    enum: ["workspace", "course", "module", "lesson", "microsequence", "card", "resource"]
+  },
+  entityPath: { type: "array", minItems: 0, maxItems: 5, items: ID },
+  currentEntityPath: {
+    anyOf: [
+      { type: "array", minItems: 0, maxItems: 5, items: ID },
+      { type: "null" }
+    ]
+  },
+  targetAvailable: { type: "boolean" },
+  resourceTargetId: { type: ["string", "null"], maxLength: 240 },
+  category: { type: "string", minLength: 1, maxLength: 64 },
+  severity: { type: "string", enum: ["low", "medium", "high", "critical"] },
+  status: {
+    type: "string",
+    enum: ["open", "approved", "rejected", "repaired", "resolved"]
+  },
+  summary: { type: "string", minLength: 1, maxLength: 1_000 },
+  proposedRepair: { type: "string", minLength: 1, maxLength: 1_000 },
+  auditRevision: REVISION,
+  pendingCorrectionRequestId: { anyOf: [REQUEST_ID, { type: "null" }] },
+  pendingRevision: { anyOf: [REVISION, { type: "null" }] },
+  resultingRevision: { anyOf: [REVISION, { type: "null" }] },
+  createdAt: DATE_TIME,
+  updatedAt: NULLABLE_DATE_TIME
+});
+const CONTINUITY_FINDING_SUMMARY_SCHEMA = schema([
+  "totalCount", "activeCount", "byStatus"
+], {
+  totalCount: NON_NEGATIVE_INTEGER,
+  activeCount: NON_NEGATIVE_INTEGER,
+  byStatus: schema(["open", "approved", "rejected", "repaired", "resolved"], {
+    open: NON_NEGATIVE_INTEGER,
+    approved: NON_NEGATIVE_INTEGER,
+    rejected: NON_NEGATIVE_INTEGER,
+    repaired: NON_NEGATIVE_INTEGER,
+    resolved: NON_NEGATIVE_INTEGER
+  })
+});
+const CONTINUITY_OBSERVATION_SUMMARY_SCHEMA = schema([
+  "totalCount", "openCount", "focus"
+], {
+  totalCount: NON_NEGATIVE_INTEGER,
+  openCount: NON_NEGATIVE_INTEGER,
+  focus: { type: "array", maxItems: 20, items: OPEN_CANONICAL_OBJECT }
+});
+const WORKSPACE_RESUME_CONTENT_SCHEMA = schema([
+  "outline", "parts", "decisions", "mandate", "findings", "observations",
+  "publications"
+], {
+  outline: schema([
+    "courseCount", "moduleCount", "lessonCount", "microsequenceCount", "cardCount",
+    "unassignedMicrosequenceCount"
+  ], {
+    courseCount: NON_NEGATIVE_INTEGER,
+    moduleCount: NON_NEGATIVE_INTEGER,
+    lessonCount: NON_NEGATIVE_INTEGER,
+    microsequenceCount: NON_NEGATIVE_INTEGER,
+    cardCount: NON_NEGATIVE_INTEGER,
+    unassignedMicrosequenceCount: NON_NEGATIVE_INTEGER
+  }),
+  parts: { type: "array", maxItems: 64, items: CONTINUITY_PART_PROJECTION_SCHEMA },
+  decisions: {
+    type: "array", maxItems: 128, items: CONTINUITY_DECISION_PROJECTION_SCHEMA
+  },
+  mandate: { anyOf: [{ type: "null" }, CONTINUITY_MANDATE_SCHEMA] },
+  findings: schema(["items", "summary", "truncated"], {
+    items: { type: "array", maxItems: 10, items: CONTINUITY_FINDING_SCHEMA },
+    summary: CONTINUITY_FINDING_SUMMARY_SCHEMA,
+    truncated: { type: "boolean" }
+  }),
+  observations: schema(["structural", "situated"], {
+    structural: CONTINUITY_OBSERVATION_SUMMARY_SCHEMA,
+    situated: CONTINUITY_OBSERVATION_SUMMARY_SCHEMA
+  }),
+  publications: schema(["items", "totalCount", "truncated"], {
+    items: { type: "array", maxItems: 10, items: WORKSPACE_PUBLICATION_LINK_SCHEMA },
+    totalCount: NON_NEGATIVE_INTEGER,
+    truncated: { type: "boolean" }
+  })
+});
 const WORKSPACE_READ_DATA_SCHEMA = Object.freeze({
   ...schema(
-    [...WORKSPACE_CONTROL_REQUIRED, "brief", "publications", "view", "content"],
+    [
+      ...WORKSPACE_CONTROL_REQUIRED,
+      "brief", "purpose", "workspaceKind", "visibility", "role",
+      "capabilities", "view", "content"
+    ],
     {
       ...WORKSPACE_CONTROL_PROPERTIES,
       idempotent: { const: false },
-      brief: { type: "string", maxLength: 16_000 },
+      brief: {
+        type: "string",
+        maxLength: 16_000,
+        description: "Contexto estável, limitado também a 16 KiB em UTF-8."
+      },
       view: {
         type: "string",
-        enum: ["outline", "entity", "document"]
+        enum: ["outline", "entity", "document", "resume"]
       },
       content: OPEN_CANONICAL_OBJECT
     }
   ),
-  allOf: [{
-    if: {
-      properties: { view: { const: "outline" } },
-      required: ["view"]
+  allOf: [
+    {
+      if: {
+        properties: { view: { const: "outline" } },
+        required: ["view"]
+      },
+      then: { properties: { content: WORKSPACE_OUTLINE_SCHEMA } }
     },
-    then: {
-      properties: { content: WORKSPACE_OUTLINE_SCHEMA }
+    {
+      if: {
+        properties: { view: { const: "resume" } },
+        required: ["view"]
+      },
+      then: { properties: { content: WORKSPACE_RESUME_CONTENT_SCHEMA } },
+      else: {
+        properties: {
+          publications: {
+            type: "array",
+            items: WORKSPACE_PUBLICATION_LINK_SCHEMA
+          }
+        },
+        required: ["publications"]
+      }
     }
-  }]
+  ]
 });
 const COURSE_READ_DATA_SCHEMA = Object.freeze({
   ...schema([
@@ -863,7 +1165,11 @@ const MICROTHEORY_REVIEW_DATA_SCHEMA = schema([
 ], {
   ...WORKSPACE_CONTROL_PROPERTIES,
   idempotent: { const: false },
-  brief: { type: "string", maxLength: 16_000 },
+  brief: {
+    type: "string",
+    maxLength: 16_000,
+    description: "Contexto estável, limitado também a 16 KiB em UTF-8."
+  },
   view: { const: "microtheories" },
   content: schema(["courses"], {
     courses: {
@@ -875,6 +1181,10 @@ const MICROTHEORY_REVIEW_DATA_SCHEMA = schema([
 const WORKSPACE_LIST_ITEM_SCHEMA = schema([
   "workspaceId",
   "title",
+  "purpose",
+  "workspaceKind",
+  "visibility",
+  "role",
   "revision",
   "sourceCourseId",
   "publicationCount",
@@ -883,6 +1193,10 @@ const WORKSPACE_LIST_ITEM_SCHEMA = schema([
 ], {
   workspaceId: UUID,
   title: NON_EMPTY_STRING,
+  purpose: { type: "string", maxLength: 1_000 },
+  workspaceKind: { type: "string", enum: ["personal", "class", "team"] },
+  visibility: { type: "string", enum: ["private", "members"] },
+  role: EDUCATIONAL_WORKSPACE_ROLE,
   revision: REVISION,
   sourceCourseId: NULLABLE_UUID,
   sourceRevisionHash: NULLABLE_SHA256,
@@ -910,12 +1224,71 @@ const WORKSPACE_LIST_DATA_SCHEMA = schema([
     ]
   }
 });
+const WORKSPACE_CONTINUITY_EVENT_SUMMARY_SCHEMA = schema([
+  "continuityOperation", "stateVersion", "partCount", "decisionCount",
+  "mandateId"
+], {
+  continuityOperation: {
+    type: "string",
+    enum: [
+      "record_approved_plan", "define_part", "remove_part",
+      "record_decision", "remove_decision", "set_mandate", "clear_mandate"
+    ]
+  },
+  stateVersion: { const: 1 },
+  partCount: NON_NEGATIVE_INTEGER,
+  decisionCount: NON_NEGATIVE_INTEGER,
+  mandateId: { anyOf: [{ type: "null" }, ID] }
+});
+const WORKSPACE_FINDING_CREATE_EVENT_SUMMARY_SCHEMA = schema([
+  "findingId", "findingOperation", "entityType", "category", "severity",
+  "status", "auditRevision"
+], {
+  findingId: UUID,
+  findingOperation: { const: "create" },
+  entityType: {
+    type: "string",
+    enum: [
+      "workspace", "course", "module", "lesson", "microsequence", "card",
+      "resource"
+    ]
+  },
+  category: { type: "string", minLength: 1, maxLength: 64, pattern: "\\S" },
+  severity: { type: "string", enum: ["low", "medium", "high", "critical"] },
+  status: { const: "open" },
+  auditRevision: REVISION
+});
+const WORKSPACE_FINDING_LIFECYCLE_EVENT_SUMMARY_SCHEMA = schema([
+  "findingId", "findingOperation", "status", "correctionRequestId",
+  "resultingRevision", "verifiedRevision"
+], {
+  findingId: UUID,
+  findingOperation: {
+    type: "string",
+    enum: ["decide", "link_correction", "verify", "delete"]
+  },
+  status: {
+    type: "string",
+    enum: ["open", "approved", "rejected", "repaired", "resolved", "deleted"]
+  },
+  correctionRequestId: { anyOf: [{ type: "null" }, REQUEST_ID] },
+  resultingRevision: { anyOf: [{ type: "null" }, REVISION] },
+  verifiedRevision: { anyOf: [{ type: "null" }, REVISION] }
+});
+const WORKSPACE_EVENT_SUMMARY_SCHEMA = Object.freeze({
+  oneOf: [
+    WORKSPACE_CHANGE_SCHEMA,
+    WORKSPACE_CONTINUITY_EVENT_SUMMARY_SCHEMA,
+    WORKSPACE_FINDING_CREATE_EVENT_SUMMARY_SCHEMA,
+    WORKSPACE_FINDING_LIFECYCLE_EVENT_SUMMARY_SCHEMA
+  ]
+});
 const WORKSPACE_EVENT_ITEM_SCHEMA = schema([
   "revision", "operation", "summary", "createdAt"
 ], {
   revision: REVISION,
   operation: NON_EMPTY_STRING,
-  summary: WORKSPACE_CHANGE_SCHEMA,
+  summary: WORKSPACE_EVENT_SUMMARY_SCHEMA,
   createdAt: DATE_TIME
 });
 const WORKSPACE_EVENTS_DATA_SCHEMA = schema(["items"], {
@@ -1145,6 +1518,15 @@ function schemaAlwaysRequires(inputSchema, property) {
   );
 }
 
+function schemaCanRequire(inputSchema, property) {
+  if (inputSchema.required?.includes(property)) return true;
+  return [
+    ...(inputSchema.oneOf || []),
+    ...(inputSchema.anyOf || []),
+    ...(inputSchema.allOf || [])
+  ].some((branch) => schemaCanRequire(branch, property));
+}
+
 function tool(
   name,
   title,
@@ -1161,7 +1543,9 @@ function tool(
   const destructiveHint = protocolAnnotations.destructiveHint ?? !readOnlyHint;
   const successRequestIdSchema = schemaAlwaysRequires(inputSchema, "requestId")
     ? REQUEST_ID
-    : { const: null };
+    : schemaCanRequire(inputSchema, "requestId")
+      ? { anyOf: [{ const: null }, REQUEST_ID] }
+      : { const: null };
   return Object.freeze({
     name,
     title,
@@ -1194,7 +1578,14 @@ const VIEW_PROPERTIES = Object.freeze({
   includeDescendants: { type: "boolean", default: true }
 });
 
-const WORKSPACE_VIEW_PROPERTIES = VIEW_PROPERTIES;
+const WORKSPACE_VIEW_PROPERTIES = Object.freeze({
+  ...VIEW_PROPERTIES,
+  view: {
+    type: "string",
+    enum: ["outline", "entity", "document", "resume"],
+    default: "outline"
+  }
+});
 const OPTIONAL_TEXT_LIST = Object.freeze({
   type: "array",
   maxItems: 200,
@@ -1291,10 +1682,6 @@ const REVIEW_VIEW_PROPERTIES = Object.freeze({
   entityType: ENTITY_TYPE,
   entityPath: ENTITY_PATH,
   includeDescendants: { type: "boolean", default: true }
-});
-const EDUCATIONAL_WORKSPACE_ROLE = Object.freeze({
-  type: "string",
-  enum: ["owner", "admin", "author", "reviewer", "learner", "reader"]
 });
 const EDUCATIONAL_WORKSPACE_MUTABLE_ROLE = Object.freeze({
   type: "string",
@@ -1414,6 +1801,10 @@ const EDUCATIONAL_WORKSPACE_COMMAND_DATA_SCHEMA = Object.freeze({
 const EDUCATIONAL_WORKSPACE_COMMENT_STATUS = Object.freeze({
   type: "string",
   enum: ["open", "considered", "resolved", "incorporated"]
+});
+const EDUCATIONAL_WORKSPACE_COMMENT_MUTABLE_STATUS = Object.freeze({
+  type: "string",
+  enum: ["open", "considered", "resolved"]
 });
 const EDUCATIONAL_WORKSPACE_COMMENT_CATEGORY = Object.freeze({
   type: "string",
@@ -1549,7 +1940,8 @@ const EDUCATIONAL_WORKSPACE_COMMENT_COMMAND_DATA_SCHEMA = Object.freeze({
     },
     status: EDUCATIONAL_WORKSPACE_COMMENT_STATUS,
     updatedAt: { type: "string", format: "date-time" },
-    idempotent: { type: "boolean" }
+    idempotent: { type: "boolean" },
+    resultingRevision: { anyOf: [REVISION, { type: "null" }] }
   }
 });
 
@@ -1617,7 +2009,7 @@ const EDUCATIONAL_WORKSPACE_INPUT_SCHEMA = Object.freeze({
     }),
     writeSchema(["operation", "workspaceId", "commentId", "status"], {
       operation: { const: "set_comment_status" }, workspaceId: UUID, commentId: UUID,
-      status: EDUCATIONAL_WORKSPACE_COMMENT_STATUS,
+      status: EDUCATIONAL_WORKSPACE_COMMENT_MUTABLE_STATUS,
       note: { type: "string", maxLength: 1000 }
     }),
     writeSchema([
@@ -1631,8 +2023,9 @@ const EDUCATIONAL_WORKSPACE_INPUT_SCHEMA = Object.freeze({
 });
 
 const WORKSPACE_OBSERVATION_ITEM_SCHEMA = schema([
-  "observationId", "workspaceId", "entityType", "entityPath", "body",
-  "authorId", "canDelete", "createdAt", "updatedAt"
+  "observationId", "workspaceId", "kind", "entityType", "entityPath",
+  "currentEntityPath", "targetAvailable", "body", "authorId", "canDelete",
+  "createdAt", "updatedAt"
 ], {
   observationId: UUID,
   workspaceId: UUID,
@@ -1641,8 +2034,33 @@ const WORKSPACE_OBSERVATION_ITEM_SCHEMA = schema([
     enum: ["workspace", "course", "module", "lesson", "microsequence", "card", "resource"]
   },
   entityPath: { type: "array", minItems: 0, maxItems: 5, items: ID },
+  currentEntityPath: {
+    anyOf: [
+      { type: "array", minItems: 0, maxItems: 5, items: ID },
+      { type: "null" }
+    ]
+  },
+  targetAvailable: { type: "boolean" },
   resourceTargetId: { type: ["string", "null"], maxLength: 240 },
   body: { type: "string", minLength: 1, maxLength: 2000 },
+  kind: { type: "string", enum: ["note", "audit_finding"] },
+  category: { type: ["string", "null"], maxLength: 64 },
+  severity: {
+    type: ["string", "null"],
+    enum: ["low", "medium", "high", "critical", null]
+  },
+  status: {
+    type: ["string", "null"],
+    enum: ["open", "approved", "rejected", "repaired", "resolved", null]
+  },
+  proposedRepair: { type: ["string", "null"], maxLength: 1_000 },
+  auditRevision: { anyOf: [REVISION, { type: "null" }] },
+  pendingCorrectionRequestId: { type: ["string", "null"], maxLength: 128 },
+  pendingRevision: { anyOf: [REVISION, { type: "null" }] },
+  correctionRequestId: { type: ["string", "null"], maxLength: 128 },
+  resultingRevision: { anyOf: [REVISION, { type: "null" }] },
+  verification: { type: ["string", "null"], maxLength: 1_000 },
+  verifiedRevision: { anyOf: [REVISION, { type: "null" }] },
   authorId: UUID,
   canDelete: { type: "boolean" },
   createdAt: DATE_TIME,
@@ -1650,9 +2068,45 @@ const WORKSPACE_OBSERVATION_ITEM_SCHEMA = schema([
 });
 const WORKSPACE_OBSERVATION_INPUT_SCHEMA = Object.freeze({
   oneOf: [
-    readSchema(["operation", "workspaceId"], {
-      operation: { const: "list_observations" }, workspaceId: UUID
-    }),
+    pairedCursorReadSchema(
+      ["operation", "workspaceId"],
+      {
+        operation: { const: "list_observations" },
+        workspaceId: UUID,
+        limit: { type: "integer", minimum: 1, maximum: 50, default: 20 },
+        beforeUpdatedAt: DATE_TIME,
+        beforeId: UUID,
+        entityTypes: {
+          type: "array",
+          maxItems: 7,
+          uniqueItems: true,
+          items: {
+            type: "string",
+            enum: [
+              "workspace", "course", "module", "lesson",
+              "microsequence", "card", "resource"
+            ]
+          }
+        },
+        kinds: {
+          type: "array",
+          maxItems: 2,
+          uniqueItems: true,
+          items: { type: "string", enum: ["note", "audit_finding"] }
+        },
+        statuses: {
+          type: "array",
+          maxItems: 5,
+          uniqueItems: true,
+          items: {
+            type: "string",
+            enum: ["open", "approved", "rejected", "repaired", "resolved"]
+          }
+        }
+      },
+      "beforeUpdatedAt",
+      "beforeId"
+    ),
     writeSchema(["operation", "workspaceId", "entityType", "entityPath", "body"], {
       operation: { const: "create_observation" },
       workspaceId: UUID,
@@ -1674,8 +2128,17 @@ const WORKSPACE_OBSERVATION_INPUT_SCHEMA = Object.freeze({
 const WORKSPACE_OBSERVATION_DATA_SCHEMA = Object.freeze({
   type: "object",
   anyOf: [
-    schema(["items"], {
-      items: { type: "array", items: WORKSPACE_OBSERVATION_ITEM_SCHEMA }
+    schema(["workspaceId", "items", "hasMore", "nextCursor", "summary"], {
+      workspaceId: UUID,
+      items: { type: "array", items: WORKSPACE_OBSERVATION_ITEM_SCHEMA },
+      hasMore: { type: "boolean" },
+      nextCursor: {
+        anyOf: [{ type: "null" }, schema(["beforeUpdatedAt", "beforeId"], {
+          beforeUpdatedAt: DATE_TIME,
+          beforeId: UUID
+        })]
+      },
+      summary: OPEN_CANONICAL_OBJECT
     }),
     schema(["operation", "observationId", "workspaceId", "updatedAt", "idempotent"], {
       operation: { type: "string", enum: ["create", "delete"] },
@@ -1701,11 +2164,322 @@ const EDUCATIONAL_WORKSPACE_WITH_OBSERVATIONS_DATA_SCHEMA = Object.freeze({
   ])
 });
 
+const CONTINUITY_PLAN_PART_SCHEMA = schema(["id", "title", "microsequenceIds"], {
+  id: ID,
+  title: { type: "string", minLength: 1, maxLength: 300, pattern: "\\S" },
+  microsequenceIds: {
+    type: "array", minItems: 1, maxItems: 500, uniqueItems: true, items: ID
+  }
+});
+const CONTINUITY_MANDATE_ARGUMENT_SCHEMA = Object.freeze({
+  ...schema(["id", "kind"], {
+    id: ID,
+    kind: {
+      type: "string",
+      enum: ["build_part", "repair_findings", "audit", "restructure"]
+    },
+    targetPartId: ID,
+    findingIds: { type: "array", maxItems: 50, uniqueItems: true, items: UUID },
+    note: { type: "string", minLength: 1, maxLength: 2_000, pattern: "\\S" }
+  }),
+  allOf: [
+    {
+      if: { properties: { kind: { const: "build_part" } }, required: ["kind"] },
+      then: {
+        properties: { targetPartId: {} },
+        required: ["targetPartId"],
+        not: { properties: { findingIds: {} }, required: ["findingIds"] }
+      }
+    },
+    {
+      if: {
+        properties: { kind: { const: "repair_findings" } },
+        required: ["kind"]
+      },
+      then: {
+        required: ["findingIds"],
+        properties: { findingIds: { type: "array", minItems: 1 } },
+        not: { properties: { targetPartId: {} }, required: ["targetPartId"] }
+      }
+    },
+    {
+      if: {
+        properties: { kind: { enum: ["audit", "restructure"] } },
+        required: ["kind"]
+      },
+      then: {
+        not: { properties: { findingIds: {} }, required: ["findingIds"] }
+      }
+    }
+  ]
+});
+
+const CONTINUITY_INPUT_SCHEMA = discriminatedInputSchema([
+  writeSchema(["operation", "workspaceId", "expectedRevision", "brief"], {
+    operation: { const: "replace_stable_brief" },
+    workspaceId: UUID,
+    expectedRevision: REVISION,
+    brief: {
+      type: "string",
+      minLength: 1,
+      maxLength: 16_000,
+      pattern: "\\S",
+      description: "Contexto estável completo; máximo de 16 KiB em UTF-8."
+    }
+  }),
+  writeSchema([
+    "operation", "workspaceId", "expectedRevision", "parts", "decisions", "mandate"
+  ], {
+    operation: { const: "record_approved_plan" },
+    workspaceId: UUID,
+    expectedRevision: REVISION,
+    parts: {
+      type: "array", minItems: 1, maxItems: 64,
+      items: CONTINUITY_PLAN_PART_SCHEMA
+    },
+    decisions: {
+      type: "array", minItems: 1, maxItems: 128,
+      items: CONTINUITY_DECISION_SCHEMA
+    },
+    mandate: {
+      anyOf: [CONTINUITY_MANDATE_ARGUMENT_SCHEMA, { type: "null" }]
+    }
+  }),
+  writeSchema([
+    "operation", "workspaceId", "expectedRevision", "partId", "title",
+    "microsequenceIds"
+  ], {
+    operation: { const: "define_part" },
+    workspaceId: UUID,
+    expectedRevision: REVISION,
+    partId: ID,
+    title: { type: "string", minLength: 1, maxLength: 300, pattern: "\\S" },
+    microsequenceIds: {
+      type: "array", minItems: 1, maxItems: 500, uniqueItems: true, items: ID
+    }
+  }),
+  writeSchema(["operation", "workspaceId", "expectedRevision", "partId"], {
+    operation: { const: "remove_part" },
+    workspaceId: UUID,
+    expectedRevision: REVISION,
+    partId: ID
+  }),
+  Object.freeze({
+    ...writeSchema([
+      "operation", "workspaceId", "expectedRevision", "decisionId", "summary"
+    ], {
+      operation: { const: "record_decision" },
+      workspaceId: UUID,
+      expectedRevision: REVISION,
+      decisionId: ID,
+      summary: { type: "string", minLength: 1, maxLength: 1_000, pattern: "\\S" },
+      entityType: ENTITY_TYPE,
+      entityId: ID
+    }),
+    allOf: [
+      {
+        if: { properties: { entityType: {} }, required: ["entityType"] },
+        then: { properties: { entityId: ID }, required: ["entityId"] }
+      },
+      {
+        if: { properties: { entityId: {} }, required: ["entityId"] },
+        then: { properties: { entityType: ENTITY_TYPE }, required: ["entityType"] }
+      }
+    ]
+  }),
+  writeSchema(["operation", "workspaceId", "expectedRevision", "decisionId"], {
+    operation: { const: "remove_decision" },
+    workspaceId: UUID,
+    expectedRevision: REVISION,
+    decisionId: ID
+  }),
+  Object.freeze({
+    ...writeSchema([
+      "operation", "workspaceId", "expectedRevision", "mandateId", "kind"
+    ], {
+      operation: { const: "set_mandate" },
+      workspaceId: UUID,
+      expectedRevision: REVISION,
+      mandateId: ID,
+      kind: {
+        type: "string",
+        enum: ["build_part", "repair_findings", "audit", "restructure"]
+      },
+      targetPartId: ID,
+      findingIds: { type: "array", maxItems: 50, uniqueItems: true, items: UUID },
+      note: { type: "string", minLength: 1, maxLength: 2_000, pattern: "\\S" }
+    }),
+    allOf: [
+      {
+        if: { properties: { kind: { const: "build_part" } }, required: ["kind"] },
+        then: {
+          properties: { targetPartId: {} },
+          required: ["targetPartId"],
+          not: { properties: { findingIds: {} }, required: ["findingIds"] }
+        }
+      },
+      {
+        if: {
+          properties: { kind: { const: "repair_findings" } },
+          required: ["kind"]
+        },
+        then: {
+          required: ["findingIds"],
+          properties: { findingIds: { type: "array", minItems: 1 } },
+          not: { properties: { targetPartId: {} }, required: ["targetPartId"] }
+        }
+      },
+      {
+        if: {
+          properties: { kind: { enum: ["audit", "restructure"] } },
+          required: ["kind"]
+        },
+        then: {
+          not: { properties: { findingIds: {} }, required: ["findingIds"] }
+        }
+      }
+    ]
+  }),
+  writeSchema(["operation", "workspaceId", "expectedRevision"], {
+    operation: { const: "clear_mandate" },
+    workspaceId: UUID,
+    expectedRevision: REVISION
+  }),
+  Object.freeze({
+    ...writeSchema([
+      "operation", "workspaceId", "expectedRevision", "entityType", "entityPath",
+      "category", "severity", "summary", "proposedRepair"
+    ], {
+      operation: { const: "record_finding" },
+      workspaceId: UUID,
+      expectedRevision: REVISION,
+      entityType: {
+        type: "string",
+        enum: [
+          "workspace", "course", "module", "lesson",
+          "microsequence", "card", "resource"
+        ]
+      },
+      entityPath: { type: "array", minItems: 0, maxItems: 5, items: ID },
+      resourceTargetId: ID,
+      category: { type: "string", minLength: 1, maxLength: 64, pattern: "\\S" },
+      severity: { type: "string", enum: ["low", "medium", "high", "critical"] },
+      summary: { type: "string", minLength: 1, maxLength: 1_000, pattern: "\\S" },
+      proposedRepair: {
+        type: "string", minLength: 1, maxLength: 1_000, pattern: "\\S"
+      }
+    }),
+    allOf: [
+      ...[
+        ["workspace", 0], ["course", 1], ["module", 2], ["lesson", 3],
+        ["microsequence", 4], ["card", 5], ["resource", 5]
+      ].map(([entityType, depth]) => ({
+        if: { properties: { entityType: { const: entityType } }, required: ["entityType"] },
+        then: { properties: { entityPath: fixedEntityPath(depth) } }
+      })),
+      {
+        if: {
+          properties: { entityType: { const: "resource" } },
+          required: ["entityType"]
+        },
+        then: { required: ["resourceTargetId"] },
+        else: { not: { required: ["resourceTargetId"] } }
+      }
+    ]
+  }),
+  writeSchema([
+    "operation", "workspaceId", "expectedRevision", "observationId", "decision"
+  ], {
+    operation: { const: "decide_finding" },
+    workspaceId: UUID,
+    expectedRevision: REVISION,
+    observationId: UUID,
+    decision: { type: "string", enum: ["approved", "rejected"] }
+  }),
+  writeSchema([
+    "operation", "workspaceId", "expectedRevision", "observationId",
+    "correctionRequestId"
+  ], {
+    operation: { const: "link_finding_correction" },
+    workspaceId: UUID,
+    expectedRevision: REVISION,
+    observationId: UUID,
+    correctionRequestId: REQUEST_ID
+  }),
+  writeSchema([
+    "operation", "workspaceId", "expectedRevision", "observationId", "outcome",
+    "note"
+  ], {
+    operation: { const: "verify_finding" },
+    workspaceId: UUID,
+    expectedRevision: REVISION,
+    observationId: UUID,
+    outcome: { type: "string", enum: ["resolved", "still_open"] },
+    note: { type: "string", minLength: 1, maxLength: 1_000, pattern: "\\S" }
+  }),
+  writeSchema(["operation", "workspaceId", "expectedRevision", "observationId"], {
+    operation: { const: "delete_finding" },
+    workspaceId: UUID,
+    expectedRevision: REVISION,
+    observationId: UUID
+  })
+], { write: true });
+
+const CONTINUITY_STATE_MUTATION_DATA_SCHEMA = schema([
+  "workspaceId", "revision", "continuityOperation", "stateVersion",
+  "partCount", "decisionCount", "mandateId", "updatedAt", "idempotent"
+], {
+  workspaceId: UUID,
+  revision: REVISION,
+  continuityOperation: {
+    type: "string",
+    enum: [
+      "define_part", "remove_part", "record_decision", "remove_decision",
+      "record_approved_plan", "set_mandate", "clear_mandate"
+    ]
+  },
+  stateVersion: { const: 1 },
+  partCount: NON_NEGATIVE_INTEGER,
+  decisionCount: NON_NEGATIVE_INTEGER,
+  mandateId: { anyOf: [ID, { type: "null" }] },
+  updatedAt: DATE_TIME,
+  idempotent: { type: "boolean" }
+});
+const CONTINUITY_FINDING_MUTATION_DATA_SCHEMA = schema([
+  "workspaceId", "revision", "observationId", "findingOperation", "status",
+  "updatedAt", "idempotent"
+], {
+  workspaceId: UUID,
+  revision: REVISION,
+  observationId: UUID,
+  findingOperation: {
+    type: "string",
+    enum: [
+      "record_finding", "decide_finding", "link_finding_correction",
+      "verify_finding", "delete_finding"
+    ]
+  },
+  status: {
+    type: "string",
+    enum: ["open", "approved", "rejected", "repaired", "resolved", "deleted"]
+  },
+  updatedAt: DATE_TIME,
+  idempotent: { type: "boolean" }
+});
+const CONTINUITY_MUTATION_DATA_SCHEMA = Object.freeze({
+  type: "object",
+  anyOf: [
+    WORKSPACE_REVISION_DATA_SCHEMA,
+    CONTINUITY_STATE_MUTATION_DATA_SCHEMA,
+    CONTINUITY_FINDING_MUTATION_DATA_SCHEMA
+  ]
+});
+
 const INDIVIDUAL_AUTHORING_WORKSPACE_MCP_TOOLS = Object.freeze([
   tool(
     "prepararAutoriaAraLearn",
     "Preparar autoria AraLearn",
-    "Use no início da etapa: create planeja/cria, extend amplia/constrói, audit audita sem escrever, repair repara, restructure reorganiza e publish prepara submissão ou distribui em Coleções.",
+    "Use no início da etapa: create planeja/cria, extend amplia/constrói, audit audita sem alterar conteúdo ou estrutura, repair repara, restructure reorganiza e publish prepara submissão ou distribui em Coleções.",
     readSchema(["intent"], {
       intent: AUTHORING_INTENT,
       targetEntity: {
@@ -1941,7 +2715,7 @@ const INDIVIDUAL_AUTHORING_WORKSPACE_MCP_TOOLS = Object.freeze([
         minLength: 1,
         maxLength: 16_000,
         pattern: "\\S",
-        description: "Resumo do público, objetivo, escopo e restrições. Declare cada fonte aprovada como [source:id] seguida de sua identificação."
+        description: "Resumo do público, objetivo, escopo, fontes e restrições; máximo de 16 KiB em UTF-8. Declare cada fonte aprovada como [source:id] seguida de sua identificação."
       },
       sourceCourseId: UUID,
       sourceSubmissionId: UUID
@@ -1952,7 +2726,7 @@ const INDIVIDUAL_AUTHORING_WORKSPACE_MCP_TOOLS = Object.freeze([
   tool(
     "lerWorkspaceDeAutoria",
     "Ler workspace",
-    "Lê a árvore, uma entidade ou o documento composto atual do workspace.",
+    "Lê a árvore, uma entidade ou o documento composto; use view resume ao retomar outra sessão. Se findings.truncated for true, detalhe achados por list_observations com kind audit_finding.",
     readSchema(["workspaceId"], {
       workspaceId: UUID,
       ...WORKSPACE_VIEW_PROPERTIES
@@ -2333,20 +3107,11 @@ const INDIVIDUAL_AUTHORING_WORKSPACE_MCP_TOOLS = Object.freeze([
     { readOnlyHint: true }
   ),
   tool(
-    "atualizarContextoDoWorkspace",
-    "Atualizar contexto de autoria",
-    "Substitui o resumo curto que orienta decisões posteriores sem copiar a árvore. Declare fontes aprovadas como [source:id] seguida de sua identificação.",
-    writeSchema(["workspaceId", "expectedRevision", "brief"], {
-      workspaceId: UUID,
-      expectedRevision: REVISION,
-      brief: {
-        type: "string",
-        minLength: 1,
-        maxLength: 16_000,
-        pattern: "\\S"
-      }
-    }),
-    WORKSPACE_REVISION_DATA_SCHEMA
+    "gerirContinuidadeDaAutoria",
+    "Gerir continuidade da autoria",
+    "Mantém contexto estável, Partes, decisões, mandato e achados sem copiar árvore ou conversa. record_approved_plan persiste o plano aprovado em uma escrita; replace_stable_brief substitui somente público, objetivo, fontes, recorte e restrições.",
+    CONTINUITY_INPUT_SCHEMA,
+    CONTINUITY_MUTATION_DATA_SCHEMA
   ),
   tool(
     "lerRevisaoEditorial",
@@ -3041,6 +3806,15 @@ export function authoringMcpToolDefinition(name) {
   return TOOL_BY_NAME.get(name) || null;
 }
 
+export function validateAuthoringMcpToolOutput(name, value) {
+  const definition = TOOL_BY_NAME.get(name);
+  if (!definition) {
+    throw new AuthoringApiError(404, "unknown_tool", "Ferramenta inexistente.");
+  }
+  validateValue(value, definition.outputSchema, "result");
+  return value;
+}
+
 export function authoringMcpToolIsAllowed(name, principal) {
   const definition = TOOL_BY_NAME.get(name);
   if (
@@ -3161,7 +3935,9 @@ export function mapAuthoringMcpToolCall(name, rawArguments) {
     if (args.operation === "list_observations") {
       return {
         method: "GET",
-        path: `/v1/workspaces/${encode(args.workspaceId)}/observations`,
+        path: `/v1/workspaces/${encode(args.workspaceId)}/observations` + query(args, [
+          "limit", "beforeUpdatedAt", "beforeId", "entityTypes", "kinds", "statuses"
+        ]),
         body: null,
         requestId: null
       };
@@ -3356,13 +4132,24 @@ export function mapAuthoringMcpToolCall(name, rawArguments) {
       requestId: args.requestId
     };
   }
-  if (name === "atualizarContextoDoWorkspace") {
-    const { workspaceId, ...body } = args;
+  if (name === "gerirContinuidadeDaAutoria") {
+    const { requestId, workspaceId, expectedRevision, operation, ...rawPayload } = args;
+    const payload = { ...rawPayload };
+    if (operation === "define_part") {
+      payload.id = payload.partId;
+      delete payload.partId;
+    } else if (operation === "record_decision") {
+      payload.id = payload.decisionId;
+      delete payload.decisionId;
+    } else if (operation === "set_mandate") {
+      payload.id = payload.mandateId;
+      delete payload.mandateId;
+    }
     return {
       method: "POST",
-      path: `/v1/workspaces/${encode(workspaceId)}/context`,
-      body,
-      requestId: args.requestId
+      path: `/v1/workspaces/${encode(workspaceId)}/continuity/actions`,
+      body: { requestId, expectedRevision, operation, arguments: payload },
+      requestId
     };
   }
   if (new Set([

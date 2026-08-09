@@ -286,6 +286,18 @@ test("ações do painel usam contratos focados e limpam a projeção após muta�
           return { workspaceId: WORKSPACE_ID, revision: 1 };
         }
         if (name === "lerWorkspaceDeAutoria") {
+          if (args.view === "resume") {
+            return {
+              workspaceId: WORKSPACE_ID,
+              revision: 4,
+              view: "resume",
+              content: {
+                parts: [],
+                findings: { items: [], summary: { activeCount: 0 }, truncated: false },
+                mandate: null
+              }
+            };
+          }
           return { workspaceId: WORKSPACE_ID, revision: 4, content: { courses: [] } };
         }
         return { workspaceId: WORKSPACE_ID, revision: 5 };
@@ -362,6 +374,37 @@ test("ações do painel usam contratos focados e limpam a projeção após muta�
     operation: "read",
     workspaceId: WORKSPACE_ID
   });
+
+  const resume = await spaces.loadWorkspaceResume(WORKSPACE_ID);
+  assert.equal(resume.view, "resume");
+  assert.deepEqual(calls.at(-1), ["lerWorkspaceDeAutoria", {
+    workspaceId: WORKSPACE_ID,
+    view: "resume"
+  }]);
+});
+
+test("andamento do workspace rejeita identidade ou forma divergente", async () => {
+  const spaces = new LearningSpaces({
+    authClient: authClient(sessionStore()),
+    catalog: {
+      async executeApplicationAuthoringAction() {
+        return {
+          workspaceId: "90000000-0000-4000-8000-000000000009",
+          revision: 2,
+          view: "resume",
+          content: { parts: [], findings: { items: [] } }
+        };
+      }
+    }
+  });
+  await assert.rejects(
+    () => spaces.loadWorkspaceResume(WORKSPACE_ID),
+    /andamento do plano devolveu uma resposta inválida/iu
+  );
+  await assert.rejects(
+    () => spaces.loadWorkspaceResume("inválido"),
+    /Plano inválido/iu
+  );
 });
 
 test("cliente remoto chama somente a projeção integrada de Trilhas", async () => {
@@ -390,6 +433,76 @@ test("cliente remoto chama somente a projeção integrada de Trilhas", async () 
     p_limit: 20,
     p_after_id: WORKSPACE_ID
   });
+});
+
+test("observações estruturais percorrem todas as páginas sem misturar achados", async () => {
+  const calls = [];
+  const firstObservationId = "a0000000-0000-4000-8000-000000000001";
+  const secondObservationId = "a0000000-0000-4000-8000-000000000003";
+  const cursor = {
+    beforeUpdatedAt: "2026-08-08T12:00:00Z",
+    beforeId: firstObservationId
+  };
+  const summary = {
+    total: 3,
+    notes: 2,
+    findings: 1,
+    activeFindings: 1,
+    byStatus: { open: 1, approved: 0, rejected: 0, repaired: 0, resolved: 0 }
+  };
+  const spaces = new LearningSpaces({
+    authClient: authClient(sessionStore()),
+    catalog: {
+      async executeApplicationAuthoringAction(name, args) {
+        calls.push([name, structuredClone(args)]);
+        if (!args.beforeId) {
+          return {
+            workspaceId: WORKSPACE_ID,
+            items: [{ observationId: firstObservationId, kind: "note", body: "Nota 1" }],
+            hasMore: true,
+            nextCursor: cursor,
+            summary
+          };
+        }
+        return {
+          workspaceId: WORKSPACE_ID,
+          items: [{
+            observationId: secondObservationId,
+            kind: "note",
+            body: "Nota 2",
+            targetAvailable: true,
+            currentEntityPath: ["course-a", "module-b"]
+          }],
+          hasMore: false,
+          nextCursor: null,
+          summary
+        };
+      }
+    }
+  });
+
+  const result = await spaces.listObservations(WORKSPACE_ID);
+
+  assert.deepEqual(result.items.map(({ observationId }) => observationId), [
+    firstObservationId,
+    secondObservationId
+  ]);
+  assert.deepEqual(result.summary, summary);
+  assert.deepEqual(calls, [
+    ["gerirWorkspaceEducacional", {
+      operation: "list_observations",
+      workspaceId: WORKSPACE_ID,
+      limit: 50,
+      kinds: ["note"]
+    }],
+    ["gerirWorkspaceEducacional", {
+      operation: "list_observations",
+      workspaceId: WORKSPACE_ID,
+      limit: 50,
+      kinds: ["note"],
+      ...cursor
+    }]
+  ]);
 });
 
 test("cliente remoto ordena o catálogo completo segundo pt-BR", async () => {

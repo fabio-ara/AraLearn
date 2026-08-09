@@ -1,6 +1,6 @@
 begin;
 
-select plan(48);
+select plan(49);
 
 select has_function(
   'public',
@@ -77,7 +77,7 @@ select hasnt_function(
 
 select is(
   public.get_aralearn_runtime_manifest() ->> 'schemaRevision',
-  '20260808022000',
+  '20260809010000',
   'a revisão corresponde à migration mais recente exigida'
 );
 
@@ -296,6 +296,12 @@ select ok(
 select ok(
   (public.get_aralearn_runtime_manifest() -> 'features') ? 'structured-authoring-errors',
   'o manifesto anuncia diagnóstico estruturado da autoria'
+);
+
+select ok(
+  (public.get_aralearn_runtime_manifest() -> 'features')
+    ? 'resumable-authoring-continuity-v1',
+  'o manifesto anuncia retomada autoral corrente sem snapshots'
 );
 
 select enum_has_labels(

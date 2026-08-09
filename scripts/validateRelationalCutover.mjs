@@ -307,6 +307,9 @@ async function main() {
   const alphabeticCatalogRuntime = migrations.find(({ fileName }) =>
     fileName === "20260808022000_align_alphabetic_catalog_runtime.sql"
   );
+  const authoringContinuity = migrations.find(({ fileName }) =>
+    fileName === "20260809010000_authoring_continuity.sql"
+  );
   const relationalRemoval = migrations.find(({ fileName }) =>
     fileName === "20260728020000_remove_relational_course_legacy.sql"
   );
@@ -331,7 +334,7 @@ async function main() {
       || !workspaceEntityObservations || !atomicPrivateCourseRemoval
       || !catalogCollectionReordering || !unifiedTrails || !trailPersonalState
       || !trailObservationThreads || !unifiedTrailsCleanCutover || !alphabeticTrails
-      || !alphabeticCatalog || !alphabeticCatalogRuntime) {
+      || !alphabeticCatalog || !alphabeticCatalogRuntime || !authoringContinuity) {
     fail("Corte final de workspaces compostos/OAuth v5 não encontrado.");
   }
   if (!relationalRemoval) {
@@ -727,6 +730,116 @@ async function main() {
     "O corte não confirma volatilidade, search_path e revisão finais."
   );
   assertContains(
+    authoringContinuity.source,
+    /add\s+column\s+authoring_state\s+jsonb\s+not\s+null\s+default[\s\S]+private\.valid_authoring_continuity_v1\(authoring_state\)/iu,
+    "A continuidade autoral não possui um único estado corrente validado."
+  );
+  assertContains(
+    authoringContinuity.source,
+    /octet_length\(p_state::text\)\s*>\s*65536[\s\S]+jsonb_array_length\(v_part->'microsequenceIds'\)\s*>\s*500/iu,
+    "A continuidade autoral não fecha os limites econômicos do estado."
+  );
+  assertContains(
+    authoringContinuity.source,
+    /function\s+public\.get_authoring_workspace_continuity_v1\s*\([\s\S]+function\s+public\.update_authoring_workspace_continuity_v1\s*\([\s\S]+function\s+public\.manage_authoring_workspace_finding_v1\s*\(/iu,
+    "As RPCs internas de retomada e achados não foram instaladas."
+  );
+  assertContains(
+    authoringContinuity.source,
+    /function\s+private\.educational_workspace_effective_role_v1[\s\S]+educational_workspace_can_v1\([\s\S]+then\s+'admin'[\s\S]+create\s+or\s+replace\s+function\s+private\.require_educational_workspace_capability_v1[\s\S]+educational_workspace_effective_role_v1/iu,
+    "O guard de continuidade não reconhece a capacidade editorial global."
+  );
+  assertContains(
+    authoringContinuity.source,
+    /get_authoring_workspace_v5\(uuid,uuid,text\[\],boolean\)[\s\S]+educational_workspace_effective_role_v1\(v_workspace\.id,\s*p_owner_id\)[\s\S]+list_authoring_workspaces_v5\(uuid,integer,timestamptz,uuid\)[\s\S]+educational_workspace_effective_role_v1\(page\.id,\s*p_owner_id\)/iu,
+    "As leituras autorais não projetam o papel efetivo do editor global."
+  );
+  assertContains(
+    authoringContinuity.source,
+    /function\s+private\.remap_authoring_continuity_v1[\s\S]+Merge cruza Partes[\s\S]+rename\s+to\s+commit_authoring_workspace_changes_without_continuity_v1[\s\S]+continuityMandateConsumed/iu,
+    "O commit v5 não remapeia Partes e mandato no mesmo CAS de split/merge."
+  );
+  assertContains(
+    authoringContinuity.source,
+    /function\s+private\.authoring_finding_touched_by_commit_v1[\s\S]+v_pending_finding_ids[\s\S]+pending_correction_request_id\s*=\s*p_request_id[\s\S]+pending_revision\s*=\s*\(v_result->>'revision'\)::bigint[\s\S]+v_finding\.pending_correction_request_id/iu,
+    "O commit v5 não preserva atomicamente o handoff dos achados tocados."
+  );
+  assertContains(
+    authoringContinuity.source,
+    /function\s+private\.authoring_audit_target_in_part_v1[\s\S]+targetPartId[\s\S]+function\s+public\.manage_authoring_workspace_finding_v1[\s\S]+p_operation\s+in\s*\(\s*'create',\s*'verify'\s*\)[\s\S]+\{mandate,kind\}[\s\S]+distinct\s+from\s+'audit'[\s\S]+authoring_audit_target_in_part_v1/iu,
+    "Criação e reauditoria de achados não exigem mandato audit vigente."
+  );
+  assertContains(
+    authoringContinuity.source,
+    /p_entity_type\s*=\s*'microsequence'[\s\S]+array\[v_target_id\][\s\S]+p_entity_type\s+in\s*\('card',\s*'resource'\)[\s\S]+array\[p_entity_path\[4\]\]/iu,
+    "A reauditoria focal perde o recorte após excluir micro, card ou resource."
+  );
+  assertContains(
+    authoringContinuity.source,
+    /add\s+column\s+audit_part_id\s+text[\s\S]+proposed_repair,\s*audit_revision,\s*audit_part_id[\s\S]+\{mandate,targetPartId\}[\s\S]+v_finding\.audit_part_id[\s\S]+authoring_observation_target_available_v1/iu,
+    "A reauditoria focal não conserva a Parte de um ancestral já apagado."
+  );
+  assertContains(
+    authoringContinuity.source,
+    /set\s+status\s*=\s*'repaired'[\s\S]+v_consume_mandate\s*:=\s*true[\s\S]+elsif\s+p_operation\s*=\s*'verify'/iu,
+    "O vínculo de correção não consome atomicamente o achado reparado."
+  );
+  assertContains(
+    authoringContinuity.source,
+    /function\s+private\.remap_authoring_continuity_v1[\s\S]+v_decisions[\s\S]+\{entityId\}[\s\S]+to_jsonb\(v_target_id\)[\s\S]+\{decisions\}/iu,
+    "O merge não remapeia decisões da origem para a microssequência sobrevivente."
+  );
+  assertContains(
+    authoringContinuity.source,
+    /function\s+private\.authoring_post_change_path_v1[\s\S]+function\s+private\.assert_authoring_commit_mandate_v1[\s\S]+Mandato de auditoria não autoriza[\s\S]+Mandato build_part aceita somente[\s\S]+cardShellChangedPaths[\s\S]+Resource escapa dos achados autorizados[\s\S]+v_pre_change_path[\s\S]+v_post_change_path[\s\S]+Reestruturação escapa da Parte autorizada/iu,
+    "O commit v5 não aplica integralmente o mandato autoral corrente."
+  );
+  assertContains(
+    authoringContinuity.source,
+    /v_entity_type\s*=\s*'card'[\s\S]+p_operation\s+in\s*\('split_microsequence',\s*'merge_microsequences'\)[\s\S]+v_pre_parent_id[\s\S]+v_post_parent_id[\s\S]+continuityRemap/iu,
+    "Split/merge focal não valida os cards participantes na mesma Parte."
+  );
+  assertContains(
+    authoringContinuity.source,
+    /add\s+column\s+correction_resulting_revision[\s\S]+function\s+private\.authoring_comment_correction_revision_v1[\s\S]+event\.created_at\s*>\s*p_comment_created_at[\s\S]+changedCardPathsTruncated[\s\S]+incorporated exige vínculo com correção autoral validada[\s\S]+correction_resulting_revision\s*=\s*v_resulting_revision/iu,
+    "Comentários situados ainda podem ser incorporados sem correção comprovada."
+  );
+  assertContains(
+    authoringContinuity.source,
+    /prune_authoring_workspace_terminal_findings_v1[\s\S]+interval\s+'90 days'[\s\S]+ordinal\s*>\s*100/iu,
+    "A retenção não limita apenas o histórico terminal por workspace."
+  );
+  assertContains(
+    authoringContinuity.source,
+    /observation\.author_id\s*=\s*p_actor_id[\s\S]+educational_workspace_can_v1\([\s\S]+p_actor_id,\s*'review'[\s\S]+function\s+public\.get_authoring_workspace_continuity_v1[\s\S]+p_workspace_id,\s*p_actor_id,\s*'review'/iu,
+    "A retomada e as observações não respeitam a fronteira de review."
+  );
+  assertContains(
+    authoringContinuity.source,
+    /targetPaths[\s\S]+authoring_observation_paths_related_v1[\s\S]+changedCardPaths[\s\S]+resourceTargets[\s\S]+resource_target->>'targetId'[\s\S]+A correção confirmada não alcança o resource do achado/iu,
+    "O vínculo de correção não prova relação com qualquer alvo confirmado."
+  );
+  assertContains(
+    authoringContinuity.source,
+    /p_operation\s+not\s+in\s*\(\s*'define_part'[\s\S]+'record_approved_plan'[\s\S]+private\.authoring_workspace_requests[\s\S]+v_workspace\.revision\s*<>\s*p_expected_revision/iu,
+    "A continuidade não usa operações fechadas, receipts e CAS."
+  );
+  assertContains(
+    authoringContinuity.source,
+    /p_entity_types\s+text\[\][\s\S]+p_kinds\s+text\[\][\s\S]+p_statuses\s+text\[\][\s\S]+p_limit\s+not\s+between\s+1\s+and\s+50/iu,
+    "A listagem estrutural não oferece filtros e paginação limitada."
+  );
+  assertContains(
+    authoringContinuity.source,
+    /\{schemaRevision\}[\s\S]+20260809010000[\s\S]+'resumable-authoring-continuity-v1'/iu,
+    "O manifesto não anuncia a continuidade autoral retomável."
+  );
+  assertNotContains(
+    authoringContinuity.source,
+    /authoring_(?:state_)?snapshot|prompt_(?:text|body)|card_snapshot/iu,
+    "A continuidade autoral introduziu snapshots ou prompts persistidos."
+  );
+  assertContains(
     workspaceEntityObservations.source,
     /function\s+private\.manage_authoring_workspace_observation_v1\s*\(/iu,
     "A mutação atômica de observações do workspace não foi instalada."
@@ -992,8 +1105,8 @@ async function main() {
     path.join(repositoryRoot, "supabase", "runtime-manifest.json"),
     "utf8"
   ));
-  if (runtimeManifest.schemaRevision !== "20260808022000") {
-    fail("O manifesto estático não aponta para o corte alfabético recompilado.");
+  if (runtimeManifest.schemaRevision !== "20260809010000") {
+    fail("O manifesto estático não aponta para a continuidade autoral corrente.");
   }
   for (const feature of [
     "stable-trail-item-identity-v1",
@@ -1005,7 +1118,8 @@ async function main() {
     "workspace-trail-observations-v1",
     "unified-trails-clean-cutover-v1",
     "alphabetic-trails-v1",
-    "alphabetic-catalog-v1"
+    "alphabetic-catalog-v1",
+    "resumable-authoring-continuity-v1"
   ]) {
     if (!runtimeManifest.requiredFeatures.includes(feature)) {
       fail(`O manifesto estático não exige ${feature}.`);
@@ -1026,7 +1140,7 @@ async function main() {
     }
   }
   console.log(
-    `Corte validado até ${alphabeticCatalogRuntime.fileName}: Trilhas e Coleções alfabéticas, estado pessoal compacto, observações situadas, workspaces educacionais, OAuth/MCP/Action e uma revisão corrente por curso.`
+    `Corte validado até ${authoringContinuity.fileName}: continuidade autoral corrente, Trilhas e Coleções alfabéticas, estado pessoal compacto, observações situadas, workspaces educacionais, OAuth/MCP/Action e uma revisão corrente por curso.`
   );
 }
 

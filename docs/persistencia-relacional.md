@@ -13,6 +13,18 @@ progresso, revisão vigente e feed de sincronização. Também compõe o workspa
 de autoria com uma linha corrente por projeto, curso, módulo, lição, tópico,
 microssequência e card.
 
+O mesmo workspace possui um único estado corrente de continuidade. Ele guarda
+somente Partes por ids de microssequência, decisões e o mandato humano atual;
+não guarda conversa, prompt, resposta, card nem snapshot de revisão. Achados
+formais de auditoria reutilizam registros situados compactos e são lidos por
+paginação. A retomada compõe esse estado com contagens da árvore, sem criar uma
+segunda representação do curso.
+
+Durante um reparo amplo, o achado aprovado conserva apenas o `requestId` e a
+revisão pendentes mais recentes. O par é atualizado na mesma transação do
+conteúdo e continua disponível além da janela curta dos recibos; não guarda
+snapshot nem transforma uma escrita parcial em reparo concluído.
+
 Quando o curso é publicado, essa árvore deixa de depender das linhas de autoria
 para ser estudada: o servidor materializa um documento canônico no Storage. A
 publicação não é decomposta numa segunda árvore de tabelas remotas.

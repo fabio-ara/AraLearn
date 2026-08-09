@@ -27,7 +27,7 @@ import {
   validateRetireCatalogCollectionPayload,
   validateSubmitCatalogReviewPayload,
   validateUpdateCatalogCollectionPayload,
-  validateUpdateWorkspaceBriefPayload,
+  validateWorkspaceContinuityActionPayload,
   validateWorkspaceImportPayload,
   validateWorkspaceMutationPayload,
   validateWorkspacePublishPayload,
@@ -179,6 +179,36 @@ function identityPagination(request, cursorId, { query = false, retired = false 
   }
   if (retired) result.includeRetired = url.searchParams.get("includeRetired") === "true";
   return result;
+}
+
+function workspaceObservationPagination(request) {
+  const url = new URL(request.url);
+  const beforeUpdatedAt = url.searchParams.get("beforeUpdatedAt");
+  const beforeId = url.searchParams.get("beforeId");
+  if ((beforeUpdatedAt == null) !== (beforeId == null)) {
+    throw new AuthoringApiError(
+      422, "invalid_pagination", "beforeUpdatedAt e beforeId devem ser usados juntos."
+    );
+  }
+  if (beforeUpdatedAt != null && !validRfc3339DateTime(beforeUpdatedAt)) {
+    throw new AuthoringApiError(
+      422, "invalid_pagination", "beforeUpdatedAt deve usar data e hora RFC 3339 válida."
+    );
+  }
+  return {
+    limit: positiveLimit(request, 20, 50),
+    beforeUpdatedAt,
+    beforeId: beforeId == null ? null : validateUuid(beforeId),
+    entityTypes: boundedStringList(url, "entityTypes", new Set([
+      "workspace", "course", "module", "lesson", "microsequence", "card", "resource"
+    ]), 7),
+    kinds: boundedStringList(url, "kinds", new Set([
+      "note", "audit_finding"
+    ]), 2),
+    statuses: boundedStringList(url, "statuses", new Set([
+      "open", "approved", "rejected", "repaired", "resolved"
+    ]), 5)
+  };
 }
 
 function trailPagination(request) {
@@ -416,7 +446,8 @@ export async function executeAuthoringRoute({
     return {
       data: await adapter.listWorkspaceObservations({
         principal,
-        workspaceId: route.workspaceId
+        workspaceId: route.workspaceId,
+        ...workspaceObservationPagination(request)
       }),
       requestId: null
     };
@@ -658,11 +689,11 @@ export async function executeAuthoringRoute({
       requestId: value.requestId
     };
   }
-  if (route.name === "updateWorkspaceBrief") {
+  if (route.name === "manageWorkspaceContinuity") {
     assertAuthoringScope(principal, "write");
-    const value = await payload(request, validateUpdateWorkspaceBriefPayload);
+    const value = await payload(request, validateWorkspaceContinuityActionPayload);
     return {
-      data: await adapter.updateWorkspaceBrief({
+      data: await adapter.manageWorkspaceContinuity({
         principal, workspaceId: route.workspaceId, ...value
       }),
       requestId: value.requestId

@@ -16,6 +16,8 @@ const MAX_TRAIL_PAGES = 100;
 const CATALOG_PAGE_LIMIT = 100;
 const MAX_CATALOG_PAGES = 100;
 const CATALOG_READ_CONCURRENCY = 4;
+const OBSERVATION_PAGE_LIMIT = 50;
+const MAX_OBSERVATION_PAGES = 100;
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
 const CONTENT_HASH_PATTERN = /^[0-9a-f]{64}$/u;
 const TRAIL_TITLE_COLLATOR = new Intl.Collator("pt-BR", {
@@ -686,6 +688,23 @@ export class LearningSpaces {
     });
   }
 
+  async loadWorkspaceResume(workspaceId) {
+    const normalizedWorkspaceId = text(workspaceId).trim().toLowerCase();
+    if (!UUID_PATTERN.test(normalizedWorkspaceId)) throw new TypeError("Plano inválido.");
+    const resume = await this.loadWorkspace(normalizedWorkspaceId, "resume");
+    if (
+      text(resume?.workspaceId).trim().toLowerCase() !== normalizedWorkspaceId ||
+      resume?.view !== "resume" ||
+      !resume?.content ||
+      !Array.isArray(resume.content.parts) ||
+      !resume.content.findings ||
+      !Array.isArray(resume.content.findings.items)
+    ) {
+      throw new Error("O andamento do plano devolveu uma resposta inválida.");
+    }
+    return resume;
+  }
+
   async createCourseWorkspace({ courseId, title } = {}) {
     const normalizedCourseId = text(courseId).trim().toLowerCase();
     const normalizedTitle = text(title).trim();
@@ -919,10 +938,64 @@ export class LearningSpaces {
   }
 
   async listObservations(workspaceId) {
-    return this.catalog.executeApplicationAuthoringAction("gerirWorkspaceEducacional", {
-      operation: "list_observations",
-      workspaceId
-    });
+    if (!UUID_PATTERN.test(text(workspaceId))) throw new TypeError("Plano inválido.");
+    const items = [];
+    const observationIds = new Set();
+    const cursorKeys = new Set();
+    let cursor = null;
+    let summary = null;
+    for (let pageIndex = 0; pageIndex < MAX_OBSERVATION_PAGES; pageIndex += 1) {
+      const page = await this.catalog.executeApplicationAuthoringAction(
+        "gerirWorkspaceEducacional",
+        {
+          operation: "list_observations",
+          workspaceId,
+          limit: OBSERVATION_PAGE_LIMIT,
+          kinds: ["note"],
+          ...(cursor || {})
+        }
+      );
+      if (text(page?.workspaceId).toLowerCase() !== workspaceId.toLowerCase()) {
+        throw new Error("As observações devolveram um workspace diferente.");
+      }
+      if (!Array.isArray(page?.items)) {
+        throw new Error("As observações devolveram uma página inválida.");
+      }
+      summary ??= page.summary || null;
+      for (const item of page.items) {
+        const observationId = text(item?.observationId).trim().toLowerCase();
+        if (!UUID_PATTERN.test(observationId) || observationIds.has(observationId)) {
+          throw new Error("As observações devolveram itens repetidos ou sem identidade.");
+        }
+        observationIds.add(observationId);
+        if (item?.kind !== "note") {
+          throw new Error("As observações devolveram um item fora do filtro solicitado.");
+        }
+        items.push(item);
+      }
+      if (page?.hasMore !== true) {
+        if (page?.nextCursor != null) {
+          throw new Error("As observações devolveram cursor após a última página.");
+        }
+        return Object.freeze({
+          workspaceId,
+          items: Object.freeze(items),
+          hasMore: false,
+          nextCursor: null,
+          summary
+        });
+      }
+      const beforeUpdatedAt = text(page?.nextCursor?.beforeUpdatedAt).trim();
+      const beforeId = text(page?.nextCursor?.beforeId).trim().toLowerCase();
+      const cursorKeyValue = `${beforeUpdatedAt}\u0000${beforeId}`;
+      if (!beforeUpdatedAt || !Number.isFinite(Date.parse(beforeUpdatedAt)) ||
+          !UUID_PATTERN.test(beforeId) || cursorKeys.has(cursorKeyValue)) {
+        throw new Error("A paginação das observações devolveu um cursor inválido.");
+      }
+      cursorKeys.add(cursorKeyValue);
+      cursor = { beforeUpdatedAt, beforeId };
+    }
+    throw new Error("A paginação das observações excedeu o limite seguro.");
   }
 
   async loadWorkspaceAccess(workspaceId) {

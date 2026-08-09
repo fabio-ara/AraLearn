@@ -81,6 +81,17 @@ function createJourneyAdapter(source) {
     return {
       workspaceId,
       title,
+      purpose: "Construir e revisar o curso corrente.",
+      workspaceKind: "personal",
+      visibility: "private",
+      role: "owner",
+      capabilities: {
+        author: true,
+        review: true,
+        comment: true,
+        publish: true,
+        manage: true
+      },
       revision,
       currentRevision: revision,
       entityCount: document == null ? 0 : flattenWorkspaceDocument(document).length,

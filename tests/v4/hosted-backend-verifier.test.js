@@ -8,7 +8,7 @@ import {
   verifyHostedBackend
 } from "../../scripts/verifyHostedBackend.mjs";
 
-const EXPECTED_REVISION = "20260808022000";
+const EXPECTED_REVISION = "20260809010000";
 const EXPECTED_CONTRACT_VERSION = 4;
 const PUBLIC_KEY = "sb_publishable_test-public-value";
 const FEATURES = [
@@ -69,7 +69,8 @@ const FEATURES = [
   "situated-trail-observations-v1",
   "workspace-trail-observations-v1",
   "unified-trails-clean-cutover-v1",
-  "alphabetic-trails-v1"
+  "alphabetic-trails-v1",
+  "resumable-authoring-continuity-v1"
 ];
 
 function response(status, body, headers = {}) {

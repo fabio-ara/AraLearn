@@ -278,8 +278,8 @@ const resourceKnowledge = await readFile(
 const knowledge = `${coreKnowledge}\n${resourceKnowledge}`;
 const localMarkdownLink = /\]\((?!https?:\/\/|mailto:|#)[^)]+\)/u;
 assert.ok(
-  prompt.length <= CHATGPT_INSTRUCTIONS_MAX_CHARACTERS,
-  `Instruções do ChatGPT excedem ${CHATGPT_INSTRUCTIONS_MAX_CHARACTERS} caracteres.`
+  prompt.length < CHATGPT_INSTRUCTIONS_MAX_CHARACTERS,
+  `Instruções do ChatGPT atingem ${CHATGPT_INSTRUCTIONS_MAX_CHARACTERS} caracteres.`
 );
 assert.doesNotMatch(coreKnowledge, localMarkdownLink);
 assert.doesNotMatch(resourceKnowledge, localMarkdownLink);
@@ -297,7 +297,20 @@ for (const required of [
   "merge_microsequences",
   "consultarCatalogo",
   "listarCursosDaBibliotecaPessoal",
-  "prepararAutoriaAraLearn"
+  "prepararAutoriaAraLearn",
+  "lerWorkspaceDeAutoria",
+  "view: \"resume\"",
+  "gerirContinuidadeDaAutoria",
+  "replace_stable_brief",
+  "record_approved_plan",
+  "clear_mandate",
+  "pendingCorrectionRequestId",
+  "list_comments",
+  "list_observations",
+  "kinds: [\"note\"]",
+  "kinds: [\"audit_finding\"]",
+  "link_comment_correction",
+  "link_finding_correction"
 ]) {
   assert.ok(prompt.includes(required), `Prompt sem ${required}.`);
 }
@@ -306,7 +319,8 @@ for (const obsolete of [
   "entregarFaseDeAutoria",
   "submissionReadReceipt",
   "planHash",
-  "partial"
+  "partial",
+  "atualizarContextoDoWorkspace"
 ]) {
   assert.equal(prompt.includes(obsolete), false, `Prompt conserva ${obsolete}.`);
   assert.equal(knowledge.includes(obsolete), false, `Conhecimento conserva ${obsolete}.`);
@@ -322,6 +336,15 @@ for (const obsoleteRule of [
 }
 assert.match(coreKnowledge, /workspace-mutation\.schema\.json/u);
 assert.match(resourceKnowledge, /consultarRecursosDeCard/u);
+assert.match(resourceKnowledge, /"resource": "paragraph"/u);
+assert.match(resourceKnowledge, /\{gap:condition\}/u);
+assert.match(resourceKnowledge, /servidor compila ambos ao salvar/iu);
+assert.match(coreKnowledge, /chat é descartável/iu);
+assert.match(
+  coreKnowledge,
+  /lista ordenada dos ids exatos (?:de suas|das) microssequências/iu
+);
+assert.match(coreKnowledge, /achados? compact/iu);
 assert.doesNotMatch(coreKnowledge, /schemas\/card\.schema\.json/u);
 assert.doesNotMatch(resourceKnowledge, /schemas\/card\.schema\.json/u);
 assert.ok(
@@ -426,7 +449,7 @@ assert.match(
 assert.match(
   actionSchema.components.schemas.InputPrepararAutoriaAraLearn
     .properties.intent.description,
-  /audit audita ou reaudita sem escrever/iu
+  /audit audita ou reaudita sem alterar conteúdo ou estrutura/iu
 );
 assert.ok(
   actionSchema.components.schemas.InputPrepararAutoriaAraLearn

@@ -488,8 +488,9 @@ test("as 30 assinaturas públicas validam, roteiam e recusam kwargs não anuncia
       expectedContentHash: HASH
     }],
     ["listarRevisoesEditoriais", {}],
-    ["atualizarContextoDoWorkspace", {
+    ["gerirContinuidadeDaAutoria", {
       ...WRITE,
+      operation: "replace_stable_brief",
       brief: "Público e objetivo do curso."
     }],
     ["lerRevisaoEditorial", { submissionId: SUBMISSION_ID, view: "outline" }],

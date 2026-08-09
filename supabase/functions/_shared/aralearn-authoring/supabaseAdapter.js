@@ -877,10 +877,26 @@ export class SupabaseAuthoringAdapter {
     }, { deadlineAt }));
   }
 
-  async listWorkspaceObservations({ principal, workspaceId, deadlineAt = null }) {
+  async listWorkspaceObservations({
+    principal,
+    workspaceId,
+    limit = 20,
+    beforeUpdatedAt = null,
+    beforeId = null,
+    entityTypes = null,
+    kinds = null,
+    statuses = null,
+    deadlineAt = null
+  }) {
     return first(await this.rpc("list_authoring_workspace_observations_for_actor_v1", {
       p_actor_id: principal.actorId,
-      p_workspace_id: workspaceId
+      p_workspace_id: workspaceId,
+      p_limit: limit,
+      p_before_updated_at: beforeUpdatedAt,
+      p_before_id: beforeId,
+      p_entity_types: entityTypes,
+      p_kinds: kinds,
+      p_statuses: statuses
     }, { deadlineAt }));
   }
 
@@ -936,8 +952,8 @@ export class SupabaseAuthoringAdapter {
     return this.workspaceEngine.mutate(options);
   }
 
-  async updateWorkspaceBrief(options) {
-    return this.workspaceEngine.updateBrief(options);
+  async manageWorkspaceContinuity(options) {
+    return this.workspaceEngine.manageContinuity(options);
   }
 
   async importCourseIntoWorkspace(options) {

@@ -96,6 +96,12 @@ conversa. `revision` controla concorrência; `ready` representa aceitação
 explícita do conteúdo corrente; validação estrutural não comprova qualidade
 pedagógica.
 
+O chat é descartável. No início de cada etapa sobre um workspace existente, o
+cliente chama `lerWorkspaceDeAutoria` com `view: "resume"`. Essa projeção reúne
+contagens compactas da árvore, os ids e estados das Partes, decisões, mandato,
+achados ativos, sínteses e vínculos de publicação. A árvore e o conteúdo são
+lidos depois com `outline` ou `entity`; nada é inferido das mensagens antigas.
+
 ## Modelo de workspace
 
 Um workspace contém zero ou mais cursos v4 e pode reunir conteúdo de cursos
@@ -132,6 +138,10 @@ O Storage não recebe arquivos a cada mutação. A publicação fixa um artefato
 canônico e imutável; uma submissão editorial aponta para o hash exato desse
 artefato.
 
+Nesse contrato, “publicado” significa somente fixado para submissão ou
+distribuído. A composição corrente e suas partes materializadas podem ser
+estudadas em Trilhas sem publicação; publicação não é um gate pedagógico.
+
 Cada curso do workspace mantém, por destino, um vínculo compacto com sua
 publicação. A leitura devolve esses vínculos em `publications` e a listagem de
 workspaces traz `publicationCount`. A primeira publicação cria; as seguintes
@@ -164,6 +174,8 @@ As ferramentas são pequenas e previsíveis:
   global em `consultarCatalogo`;
 - ler árvore, entidade, documento ou microteorias de um curso;
 - listar, criar e ler workspaces, além de consultar resumos recentes;
+- retomar a continuidade e registrar contexto estável, Partes, decisões,
+  mandatos e achados com operações fechadas;
 - importar um curso existente para reaproveitar conteúdo;
 - registrar uma estrutura planejada em lote pequeno;
 - materializar uma microssequência, atualizar metadados ou corrigir um card;
@@ -186,8 +198,16 @@ continuam válidas. Em `append`, a ordem recebida é anexada ao fim, as posiçõ
 são renumeradas e `change.positionsNormalized` torna essa normalização
 explícita.
 
-O registro canônico tem 30 ferramentas tanto no MCP quanto na Action. Sete
-nomes concentram famílias relacionadas com contratos fechados. Seis usam
+O `brief` contém apenas contexto estável e fontes, nunca Partes, decisões,
+mandatos ou achados. `gerirContinuidadeDaAutoria` substitui a antiga atualização
+de contexto: `replace_stable_brief` exige releitura e substituição integral do
+valor, enquanto as demais operações mantêm registros próprios. Depois da
+aprovação, `record_approved_plan` substitui em uma única revisão todas as
+Partes, decisões e o mandato. Cada Parte é uma lista ordenada dos ids exatos de
+suas microssequências; as operações unitárias servem a ajustes posteriores.
+
+O registro canônico tem 30 ferramentas tanto no MCP quanto na Action. Oito
+nomes concentram famílias relacionadas com contratos fechados. Sete usam
 `operation`; a consulta de resources alterna entre lista e detalhe pela
 presença de `resource`:
 
@@ -199,14 +219,51 @@ presença de `resource`:
 | `retirarDoCatalogo` | `retire_collection`, `remove_course` |
 | `reorganizarWorkspace` | `copy_entity`, `rename_entity`, `move_entity`, `merge_microsequences`, `split_microsequence`, `promote_module`, `demote_course` |
 | `excluirDoWorkspace` | `delete_entity`, `delete_workspace` |
-| `gerirWorkspaceEducacional` | `read`, `create`, `update`, `invite`, `accept_invite`, `cancel_invite`, `set_role`, `remove_member`, `transfer_owner`, `leave`, `list_comments`, `respond_comment`, `set_comment_status`, `link_comment_correction` |
+| `gerirContinuidadeDaAutoria` | `replace_stable_brief`, `record_approved_plan`, `define_part`, `remove_part`, `record_decision`, `remove_decision`, `set_mandate`, `clear_mandate`, `record_finding`, `decide_finding`, `link_finding_correction`, `verify_finding`, `delete_finding` |
+| `gerirWorkspaceEducacional` | `read`, `create`, `update`, `invite`, `accept_invite`, `cancel_invite`, `set_role`, `remove_member`, `transfer_owner`, `leave`, `list_comments`, `respond_comment`, `set_comment_status`, `link_comment_correction`, `list_observations`, `create_observation`, `delete_observation` |
 
 `list_comments` é uma leitura paginada e filtrável por categoria e estado. Um
 estudante recebe somente as próprias observações; papéis de revisão recebem a
 triagem do workspace. `respond_comment` não modifica o curso. Para incorporar
-um achado, faça primeiro a mutação focada do card ou da entidade, confirme seu
+um comentário de estudo, faça primeiro a mutação focada do card ou da entidade, confirme seu
 sucesso e só então use `link_comment_correction` com o mesmo caminho corrigido.
-Uma auditoria não responde, corrige ou encerra observações automaticamente.
+O servidor comprova request, autor, workspace, revisão posterior e alcance do card;
+`set_comment_status` não pode declarar `incorporated`. Uma auditoria não responde,
+corrige ou encerra observações automaticamente.
+
+`list_comments` cobre observações feitas durante o estudo;
+`list_observations` com `kinds: ["note"]` cobre notas situadas na árvore. Achados
+ativos já estão em `resume`; a consulta histórica usa
+`kinds: ["audit_finding"]`, filtro de estados e paginação. Uma auditoria consulta ambas
+antes de reler o alvo, persiste achados compactos e para. O reparo posterior
+exige decisão e mandato persistidos, altera somente achados aprovados, vincula
+a correção depois da escrita confirmada e termina com nova auditoria.
+
+Cada commit autorizado registra no achado aprovado apenas
+`pendingCorrectionRequestId` e `pendingRevision` correntes. Uma sessão nova
+recupera esse par em `resume`, relê o alvo e continua o trabalho ou confirma o
+vínculo; a presença do par não muda o status para reparado.
+
+A máscara de cada Parte usa `r` para microssequência pronta com cards, `m`
+para materializada ainda não pronta, `p` para planejada sem cards e `x` para
+referência ausente. A lista curta de achados ativos traz síntese e reparo
+proposto; quando vier truncada, o cliente pagina `list_observations`. Cada nova
+autorização humana usa outro `mandate.id`. `build_part` termina ao completar a
+Parte com cards `ready`; `audit` e `restructure` são limpos ao fim da rodada;
+cada `link_finding_correction` retira o achado confirmado de `repair_findings`
+e o último vínculo encerra o mandato. A reauditoria usa outro mandato `audit`;
+se autorizada para uma Parte, ele leva seu `targetPartId`.
+
+Um mandato ativo também limita o commit: construção fica na Parte indicada,
+reparo nos alvos aprovados, auditoria não escreve conteúdo e reestruturação
+não materializa cards. Lote misto ou resumo truncado falha por inteiro. Sem
+mandato, pedidos humanos diretos continuam sujeitos à capacidade da conta e ao
+escopo fechado de cada ferramenta.
+
+`link_comment_correction` vincula o comentário feito durante o estudo;
+`link_finding_correction` vincula o achado formal de auditoria. Os dois registros
+podem apontar para o mesmo reparo confirmado, mas uma operação nunca substitui
+a outra.
 
 Esse agrupamento não transforma o backend em uma mutação genérica. Cada valor
 de `operation` seleciona uma entrada fechada; em resources, a presença do campo

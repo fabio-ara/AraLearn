@@ -15,6 +15,16 @@ as partes atuais do workspace da própria conta. Cada mutação usa uma revisão
 esperada e um identificador idempotente. A submissão editorial expõe somente a
 revisão privada escolhida, nunca os demais cursos da biblioteca.
 
+Para permitir retomada em outra conversa, o workspace conserva um estado
+corrente e limitado com ids das Partes, decisões e o mandato humano atual.
+Achados formais guardam alvo, síntese, reparo proposto, decisão e verificação.
+Enquanto um reparo aprovado está em curso, guardam também somente o
+identificador e a revisão pendentes mais recentes para permitir retomada.
+Esse estado não inclui mensagens, prompts, respostas do modelo, cards nem
+snapshots do curso. Achados ativos permanecem até resolução ou exclusão;
+terminais possuem retenção limitada. Notas criadas pela pessoa não são
+apagadas pela limpeza de achados terminais.
+
 Na assistência bottom-up, o serviço configurado recebe o pedido e um recorte
 delimitado: hierarquia e guias da etapa, alvos graváveis, ordem, vizinhos
 limitados e índice compacto da lição. O curso inteiro não é enviado. Pedido,
