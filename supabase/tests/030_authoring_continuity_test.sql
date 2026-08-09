@@ -1,6 +1,6 @@
 begin;
 
-select plan(59);
+select plan(60);
 
 select has_column(
   'private', 'authoring_workspaces', 'authoring_state',
@@ -245,6 +245,18 @@ select is(
   ),
   'p_owner_id',
   'o wrapper preserva o nome público usado pelo cliente PostgREST'
+);
+select ok(
+  (
+    select count(*) = 3 and bool_and(procedure_value.provolatile = 's')
+    from pg_proc procedure_value
+    where procedure_value.oid in (
+      'private.valid_authoring_continuity_v1(jsonb)'::regprocedure,
+      'private.normalize_authoring_continuity_v1(jsonb,jsonb,bigint)'::regprocedure,
+      'private.remap_authoring_continuity_v1(jsonb,text,jsonb,jsonb)'::regprocedure
+    )
+  ),
+  'os helpers de continuidade anunciam volatilidade STABLE compatível'
 );
 select ok(
   pg_get_functiondef(

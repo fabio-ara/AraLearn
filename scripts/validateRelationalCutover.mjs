@@ -310,6 +310,9 @@ async function main() {
   const authoringContinuity = migrations.find(({ fileName }) =>
     fileName === "20260809010000_authoring_continuity.sql"
   );
+  const authoringContinuityVolatility = migrations.find(({ fileName }) =>
+    fileName === "20260809011000_align_authoring_continuity_volatility.sql"
+  );
   const relationalRemoval = migrations.find(({ fileName }) =>
     fileName === "20260728020000_remove_relational_course_legacy.sql"
   );
@@ -334,7 +337,8 @@ async function main() {
       || !workspaceEntityObservations || !atomicPrivateCourseRemoval
       || !catalogCollectionReordering || !unifiedTrails || !trailPersonalState
       || !trailObservationThreads || !unifiedTrailsCleanCutover || !alphabeticTrails
-      || !alphabeticCatalog || !alphabeticCatalogRuntime || !authoringContinuity) {
+      || !alphabeticCatalog || !alphabeticCatalogRuntime || !authoringContinuity
+      || !authoringContinuityVolatility) {
     fail("Corte final de workspaces compostos/OAuth v5 não encontrado.");
   }
   if (!relationalRemoval) {
@@ -733,6 +737,11 @@ async function main() {
     authoringContinuity.source,
     /add\s+column\s+authoring_state\s+jsonb\s+not\s+null\s+default[\s\S]+private\.valid_authoring_continuity_v1\(authoring_state\)/iu,
     "A continuidade autoral não possui um único estado corrente validado."
+  );
+  assertContains(
+    authoringContinuityVolatility.source,
+    /alter\s+function\s+private\.valid_authoring_continuity_v1\(jsonb\)\s+stable[\s\S]+alter\s+function\s+private\.normalize_authoring_continuity_v1\([\s\S]+\)\s+stable[\s\S]+alter\s+function\s+private\.remap_authoring_continuity_v1\([\s\S]+\)\s+stable/iu,
+    "Os helpers de continuidade autoral ainda anunciam volatilidade incompatível."
   );
   assertContains(
     authoringContinuity.source,
@@ -1140,7 +1149,7 @@ async function main() {
     }
   }
   console.log(
-    `Corte validado até ${authoringContinuity.fileName}: continuidade autoral corrente, Trilhas e Coleções alfabéticas, estado pessoal compacto, observações situadas, workspaces educacionais, OAuth/MCP/Action e uma revisão corrente por curso.`
+    `Corte validado até ${authoringContinuityVolatility.fileName}: continuidade autoral corrente, Trilhas e Coleções alfabéticas, estado pessoal compacto, observações situadas, workspaces educacionais, OAuth/MCP/Action e uma revisão corrente por curso.`
   );
 }
 

@@ -8,6 +8,10 @@ const migrationUrl = new URL(
   "../../supabase/migrations/20260809010000_authoring_continuity.sql",
   import.meta.url
 );
+const volatilityMigrationUrl = new URL(
+  "../../supabase/migrations/20260809011000_align_authoring_continuity_volatility.sql",
+  import.meta.url
+);
 const ACTOR = "10000000-0000-4000-8000-000000000001";
 const REVIEWER = "10000000-0000-4000-8000-000000000002";
 const CATALOG_EDITOR = "10000000-0000-4000-8000-000000000003";
@@ -493,6 +497,7 @@ async function setupDatabase() {
     `, [workspaceId]);
   }
   await database.exec(await fs.readFile(migrationUrl, "utf8"));
+  await database.exec(await fs.readFile(volatilityMigrationUrl, "utf8"));
   return database;
 }
 
@@ -4153,6 +4158,26 @@ test("resume limita achados ativos a dez mesmo no pior payload compacto", async 
     `);
     assert.equal(manifest.schemaRevision, "20260809010000");
     assert.equal(manifest.features.includes("resumable-authoring-continuity-v1"), true);
+  } finally {
+    await database.close();
+  }
+});
+
+test("helpers de continuidade usam volatilidade compatível", async () => {
+  const database = await setupDatabase();
+  try {
+    const result = await database.query(`
+      select proname, provolatile
+      from pg_proc
+      where oid in (
+        'private.valid_authoring_continuity_v1(jsonb)'::regprocedure,
+        'private.normalize_authoring_continuity_v1(jsonb,jsonb,bigint)'::regprocedure,
+        'private.remap_authoring_continuity_v1(jsonb,text,jsonb,jsonb)'::regprocedure
+      )
+      order by proname
+    `);
+    assert.equal(result.rows.length, 3);
+    assert.equal(result.rows.every(({ provolatile }) => provolatile === "s"), true);
   } finally {
     await database.close();
   }
