@@ -8,6 +8,7 @@ import {
   applyContextualAuthoringInversePatch,
   clearContextualAuthoringSync,
   createContextualAuthoringInversePatch,
+  markContextualAuthoringMetadataPending,
   markContextualAuthoringSyncPending,
   normalizeCardAssistanceUndo,
   normalizeCardAssistanceLocalState,
@@ -160,6 +161,7 @@ test("sincronização guarda somente os caminhos correntes", () => {
   }]);
   assert.deepEqual(clearContextualAuthoringSync(state).sync, {
     pendingPaths: [],
+    pendingMetadata: [],
     expectedRevision: null
   });
 });
@@ -170,7 +172,41 @@ test("estado anterior não é reaproveitado como fallback", () => {
     sync: { pendingPaths: [request(1).selection] }
   });
   assert.equal(normalized.contract, CARD_ASSISTANCE_LOCAL_STATE_CONTRACT);
-  assert.deepEqual(normalized.sync, { pendingPaths: [], expectedRevision: null });
+  assert.deepEqual(normalized.sync, {
+    pendingPaths: [],
+    pendingMetadata: [],
+    expectedRevision: null
+  });
+});
+
+test("metadado textual pendente preserva a primeira base e a redação mais recente", () => {
+  let state = markContextualAuthoringMetadataPending({}, {
+    entityType: "lesson",
+    entityPath: ["course-a", "module-a", "lesson-a"],
+    baseMetadata: { title: "Antes", goal: "Objetivo" },
+    metadata: { title: "Primeira", goal: "Objetivo" }
+  });
+  state = markContextualAuthoringMetadataPending(state, {
+    entityType: "lesson",
+    entityPath: ["course-a", "module-a", "lesson-a"],
+    baseMetadata: { title: "Primeira", goal: "Objetivo" },
+    metadata: { title: "Final", goal: "Objetivo" }
+  });
+  assert.deepEqual(state.sync.pendingMetadata, [{
+    entityType: "lesson",
+    entityPath: ["course-a", "module-a", "lesson-a"],
+    baseMetadata: { title: "Antes", goal: "Objetivo" },
+    metadata: { title: "Final", goal: "Objetivo" }
+  }]);
+  assert.throws(
+    () => markContextualAuthoringMetadataPending(state, {
+      entityType: "lesson",
+      entityPath: ["course-a", "module-a", "lesson-a"],
+      baseMetadata: { title: "Antes", goal: "Objetivo" },
+      metadata: { title: "Final", goal: "Objetivo", lessons: [] }
+    }),
+    /alvo sincronizável/u
+  );
 });
 
 test("caminhos pendentes nunca são truncados silenciosamente", () => {

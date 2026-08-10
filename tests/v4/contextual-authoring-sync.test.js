@@ -8,9 +8,6 @@ import {
   materializeContextualCourseDraft
 } from "../../src/assist/contextualAuthoringSync.js";
 import {
-  buildWorkspaceOutline
-} from "../../supabase/functions/_shared/aralearn-authoring/workspaceModel.js";
-import {
   claimContextualAuthoringSyncAttempt,
   createLessonEditorApp,
   settleContextualAuthoringSyncAttempt
@@ -29,10 +26,6 @@ const path = {
 const sourceCourseId = "11111111-1111-4111-8111-111111111111";
 const workspaceId = "22222222-2222-4222-8222-222222222222";
 
-function outline(document = project) {
-  return buildWorkspaceOutline(document);
-}
-
 function firstLesson(document) {
   return document.courses[0].modules[0].lessons[0];
 }
@@ -50,6 +43,34 @@ function copiedMicrosequence(document, id, title = id) {
 
 function pathFor(microsequenceKey) {
   return { ...path, microsequenceKey };
+}
+
+function pendingPathFrom(document, pathValue = path) {
+  const lesson = findLessonForPath(document, pathValue);
+  const position = lesson.microsequences.findIndex((item) => item.id === pathValue.microsequenceKey);
+  const microsequence = lesson.microsequences[position];
+  return {
+    ...pathValue,
+    textOnly: true,
+    baseCards: structuredClone(microsequence.cards || []),
+    baseMetadata: {
+      title: microsequence.title,
+      goal: microsequence.goal,
+      role: microsequence.role,
+      branchOf: microsequence.branchOf || null,
+      dependsOn: microsequence.dependsOn || [],
+      covers: microsequence.covers || [],
+      checks: microsequence.checks || [],
+      errors: microsequence.errors || []
+    },
+    basePosition: position
+  };
+}
+
+function findLessonForPath(document, pathValue) {
+  const course = document.courses.find((item) => item.id === pathValue.courseKey);
+  const moduleValue = course.modules.find((item) => item.id === pathValue.moduleKey);
+  return moduleValue.lessons.find((item) => item.id === pathValue.lessonKey);
 }
 
 function deferred() {
@@ -101,6 +122,7 @@ function pendingLocalState(pathValue, expectedRevision) {
     undo: null,
     sync: {
       pendingPaths: [pathValue],
+      pendingMetadata: [],
       expectedRevision
     }
   };
@@ -110,7 +132,7 @@ function cleanLocalState() {
   return {
     contract: "aralearn.card-assistance-local-state.v4",
     undo: null,
-    sync: { pendingPaths: [], expectedRevision: null }
+    sync: { pendingPaths: [], pendingMetadata: [], expectedRevision: null }
   };
 }
 
@@ -144,6 +166,49 @@ function storage(courseOrigin = "private", { catalogAdmin = false, privateOwner 
     }
   };
 }
+
+test("materialização usa o localDraft do snapshot sem abrir uma segunda leitura", async () => {
+  const localProject = structuredClone(project);
+  firstLesson(localProject).microsequences[0].cards[0].title = "Título capturado em R1";
+  const localStorage = storage("private");
+  const draftSnapshot = await localStorage.getLocalCourseDraft();
+  localStorage.getLocalCourseDraft = async () => {
+    assert.fail("o localDraft não deve ser relido fora do snapshot atômico");
+  };
+  let revision = 1;
+  let savedCards = null;
+  const remoteCatalog = {
+    async executeApplicationAuthoringAction(name, args) {
+      if (name === "criarWorkspaceDeAutoria") return { workspaceId, revision };
+      if (name === "lerWorkspaceDeAutoria") {
+        return {
+          workspaceId,
+          revision,
+          content: structuredClone(project),
+          publications: []
+        };
+      }
+      if (name === "salvarCardsNaMicrossequencia") {
+        savedCards = JSON.parse(args.cardsJson);
+        return { workspaceId, revision: ++revision };
+      }
+      throw new Error(`Chamada inesperada: ${name}`);
+    }
+  };
+
+  const result = await materializeContextualCourseDraft({
+    remoteCatalog,
+    storage: localStorage,
+    projectDocument: localProject,
+    courseKey: path.courseKey,
+    pendingPaths: [pendingPathFrom(project)],
+    expectedLocalDraftRevision: draftSnapshot.revision,
+    draftSnapshot
+  });
+
+  assert.equal(result.status, "materialized");
+  assert.equal(savedCards[0].title, "Título capturado em R1");
+});
 
 test("edição concorrente agenda uma única sincronização posterior sem perder a fila", async () => {
   const syncState = {
@@ -344,7 +409,12 @@ test("sincronização iniciada em A não sobrescreve nem perde a edição persis
         return {
           workspaceId: targetWorkspaceId,
           revision: revisions.get(targetWorkspaceId),
-          content: buildWorkspaceOutline(twoCourseProject),
+          content: {
+            ...structuredClone(twoCourseProject),
+            courses: [structuredClone(
+              twoCourseProject.courses.find((course) => course.id === courseKey)
+            )]
+          },
           publications: []
         };
       }
@@ -419,6 +489,8 @@ for (const denied of [
 test("administrador materializa a correção em workspace sem alterar o curso oficial", async () => {
   const calls = [];
   let revision = 1;
+  const changedProject = structuredClone(project);
+  firstLesson(changedProject).microsequences[0].cards[0].title = "Título corrigido";
   const remoteCatalog = {
     async executeApplicationAuthoringAction(name, args) {
       calls.push([name, args]);
@@ -427,7 +499,7 @@ test("administrador materializa a correção em workspace sem alterar o curso of
         return {
           workspaceId,
           revision,
-          content: outline(),
+          content: structuredClone(project),
           publications: []
         };
       }
@@ -441,7 +513,7 @@ test("administrador materializa a correção em workspace sem alterar o curso of
   const result = await materializeContextualCourseDraft({
     remoteCatalog,
     storage: storage("catalog", { catalogAdmin: true }),
-    projectDocument: project,
+    projectDocument: changedProject,
     courseKey: path.courseKey,
     pendingPaths: [path],
     uuidFactory: async (key) => `request-${calls.length}-${key.length}`
@@ -450,12 +522,12 @@ test("administrador materializa a correção em workspace sem alterar o curso of
   assert.equal(result.status, "materialized");
   assert.equal(result.source, "workspace");
   assert.equal(result.workspaceId, workspaceId);
-  assert.equal(result.revision, 3);
+  assert.equal(result.revision, 2);
   assert.deepEqual(result.localFinalization, {
     courseKey: path.courseKey,
     expectedLocalDraftRevision: "draft-revision",
     workspaceId,
-    workspaceRevision: 3
+    workspaceRevision: 2
   });
   const save = calls.find(([name]) => name === "salvarCardsNaMicrossequencia")[1];
   assert.deepEqual(save.microsequencePath, Object.values(path));
@@ -475,7 +547,7 @@ test("curso privado atualiza a composição corrente sem gerar artefato publicad
       if (name === "lerWorkspaceDeAutoria") return {
         workspaceId,
         revision,
-        content: outline(),
+        content: structuredClone(project),
         publications: []
       };
       if (new Set([
@@ -496,6 +568,123 @@ test("curso privado atualiza a composição corrente sem gerar artefato publicad
   assert.equal(calls.some(([name]) => name === "publicarCursoDoWorkspace"), false);
 });
 
+test("metadado textual local materializa sem depender da sessão que o editou", async () => {
+  const calls = [];
+  let revision = 1;
+  const changedProject = structuredClone(project);
+  changedProject.courses[0].title = "Título retomado offline";
+  const remoteCatalog = {
+    async executeApplicationAuthoringAction(name, args) {
+      calls.push([name, args]);
+      if (name === "criarWorkspaceDeAutoria") return { workspaceId, revision };
+      if (name === "lerWorkspaceDeAutoria") return {
+        workspaceId,
+        revision,
+        content: structuredClone(project),
+        publications: []
+      };
+      if (name === "atualizarMetadadosDaEntidade") {
+        return { workspaceId, revision: ++revision };
+      }
+      throw new Error(`Chamada inesperada: ${name}`);
+    }
+  };
+  const result = await materializeContextualCourseDraft({
+    remoteCatalog,
+    storage: storage("private"),
+    projectDocument: changedProject,
+    courseKey: path.courseKey,
+    pendingMetadata: [{
+      entityType: "course",
+      entityPath: [path.courseKey],
+      baseMetadata: { title: project.courses[0].title, goal: project.courses[0].goal },
+      metadata: { title: changedProject.courses[0].title, goal: project.courses[0].goal }
+    }],
+    uuidFactory: async (key) => `request-${calls.length}-${key.length}`
+  });
+  const update = calls.find(([name]) => name === "atualizarMetadadosDaEntidade");
+  assert.equal(update[1].title, "Título retomado offline");
+  assert.deepEqual(update[1].entityPath, [path.courseKey]);
+  assert.equal(calls.some(([name]) => name === "salvarCardsNaMicrossequencia"), false);
+  assert.equal(result.status, "materialized");
+});
+
+test("metadado textual concorrente preserva o rascunho local sem sobrescrever o remoto", async () => {
+  const remoteProject = structuredClone(project);
+  remoteProject.courses[0].title = "Título de outro dispositivo";
+  const localProject = structuredClone(project);
+  localProject.courses[0].title = "Título local";
+  const calls = [];
+  await assert.rejects(
+    materializeContextualCourseDraft({
+      remoteCatalog: {
+        async executeApplicationAuthoringAction(name, args) {
+          calls.push([name, args]);
+          if (name === "criarWorkspaceDeAutoria") return { workspaceId, revision: 1 };
+          if (name === "lerWorkspaceDeAutoria") return {
+            workspaceId,
+            revision: 1,
+            content: structuredClone(remoteProject),
+            publications: []
+          };
+          throw new Error("A escrita remota não deveria ocorrer.");
+        }
+      },
+      storage: storage("private"),
+      projectDocument: localProject,
+      courseKey: path.courseKey,
+      pendingMetadata: [{
+        entityType: "course",
+        entityPath: [path.courseKey],
+        baseMetadata: { title: project.courses[0].title, goal: project.courses[0].goal },
+        metadata: { title: localProject.courses[0].title, goal: project.courses[0].goal }
+      }]
+    }),
+    (error) => error?.code === "contextual_authoring_conflict"
+  );
+  assert.equal(calls.some(([name]) => name === "atualizarMetadadosDaEntidade"), false);
+});
+
+test("metadados textuais concorrentes em folhas distintas são combinados", async () => {
+  const remoteProject = structuredClone(project);
+  remoteProject.courses[0].goal = "Objetivo de outro dispositivo";
+  const localProject = structuredClone(project);
+  localProject.courses[0].title = "Título local combinado";
+  const calls = [];
+  let revision = 1;
+  const result = await materializeContextualCourseDraft({
+    remoteCatalog: {
+      async executeApplicationAuthoringAction(name, args) {
+        calls.push([name, args]);
+        if (name === "criarWorkspaceDeAutoria") return { workspaceId, revision };
+        if (name === "lerWorkspaceDeAutoria") return {
+          workspaceId,
+          revision,
+          content: structuredClone(remoteProject),
+          publications: []
+        };
+        if (name === "atualizarMetadadosDaEntidade") {
+          return { workspaceId, revision: ++revision };
+        }
+        throw new Error(`Chamada inesperada: ${name}`);
+      }
+    },
+    storage: storage("private"),
+    projectDocument: localProject,
+    courseKey: path.courseKey,
+    pendingMetadata: [{
+      entityType: "course",
+      entityPath: [path.courseKey],
+      baseMetadata: { title: project.courses[0].title, goal: project.courses[0].goal },
+      metadata: { title: localProject.courses[0].title, goal: project.courses[0].goal }
+    }]
+  });
+  const update = calls.find(([name]) => name === "atualizarMetadadosDaEntidade")[1];
+  assert.equal(update.title, localProject.courses[0].title);
+  assert.equal(update.goal, remoteProject.courses[0].goal);
+  assert.equal(result.status, "materialized");
+});
+
 test("microssequência criada ou retirada sincroniza primeiro sua estrutura", async () => {
   const createdProject = structuredClone(project);
   const created = copiedMicrosequence(createdProject, "micro-created", "Nova prática");
@@ -513,7 +702,7 @@ test("microssequência criada ou retirada sincroniza primeiro sua estrutura", as
       if (name === "lerWorkspaceDeAutoria") return {
         workspaceId,
         revision,
-        content: outline(remoteDocument),
+        content: structuredClone(remoteDocument),
         publications: []
       };
       if (name === "criarEstruturaNoWorkspace") return { workspaceId, revision: ++revision };
@@ -585,6 +774,7 @@ test("metadados e posição da microssequência são sincronizados antes dos car
   const changedMicrosequence = firstLesson(changedProject).microsequences[0];
   changedMicrosequence.title = "Título corrigido";
   changedMicrosequence.goal = "Objetivo corrigido.";
+  changedMicrosequence.cards[0].title = "Card corrigido";
   const movedPath = pathFor(changedMicrosequence.id);
   const calls = [];
   let revision = 1;
@@ -595,7 +785,7 @@ test("metadados e posição da microssequência são sincronizados antes dos car
       if (name === "lerWorkspaceDeAutoria") return {
         workspaceId,
         revision,
-        content: outline(remoteProject),
+        content: structuredClone(remoteProject),
         publications: []
       };
       if ([
@@ -662,7 +852,7 @@ test("replace vazio preserva a microssequência planejada na sincronização", a
       if (name === "lerWorkspaceDeAutoria") return {
         workspaceId,
         revision,
-        content: outline(),
+        content: structuredClone(project),
         publications: []
       };
       if (new Set([
@@ -686,6 +876,130 @@ test("replace vazio preserva a microssequência planejada na sincronização", a
   assert.equal(save.mode, "replace");
   assert.equal(Object.hasOwn(save, "status"), false);
   assert.deepEqual(JSON.parse(save.cardsJson), []);
+});
+
+test("replay textOnly combina folhas do mesmo card e preserva adição e ordem remotas por ID", async () => {
+  const baseProject = structuredClone(project);
+  const localProject = structuredClone(baseProject);
+  const remoteProject = structuredClone(baseProject);
+  firstLesson(localProject).microsequences[0].cards[0].title = "Título local";
+  const remoteCards = firstLesson(remoteProject).microsequences[0].cards;
+  remoteCards[0].text = "Texto remoto na mesma ficha.";
+  const addedCard = {
+    ...structuredClone(remoteCards[0]),
+    id: "card-remoto-adicionado",
+    title: "Card criado remotamente",
+    text: "Conteúdo criado em outro dispositivo.",
+    position: 1
+  };
+  remoteCards[1].position = 2;
+  remoteCards[0].position = 3;
+  firstLesson(remoteProject).microsequences[0].cards = [
+    addedCard,
+    remoteCards[1],
+    remoteCards[0]
+  ];
+  let revision = 7;
+  let savedCards = null;
+  const remoteCatalog = {
+    async executeApplicationAuthoringAction(name, args) {
+      if (name === "criarWorkspaceDeAutoria") return { workspaceId, revision };
+      if (name === "lerWorkspaceDeAutoria") {
+        return { workspaceId, revision, content: structuredClone(remoteProject), publications: [] };
+      }
+      if (name === "salvarCardsNaMicrossequencia") {
+        savedCards = JSON.parse(args.cardsJson);
+        revision += 1;
+        return { workspaceId, revision };
+      }
+      throw new Error(`Chamada inesperada: ${name}`);
+    }
+  };
+
+  await materializeContextualCourseDraft({
+    remoteCatalog,
+    storage: storage(),
+    projectDocument: localProject,
+    courseKey: path.courseKey,
+    pendingPaths: [pendingPathFrom(baseProject)],
+    uuidFactory: async (key) => `request-${key.length}`
+  });
+
+  assert.deepEqual(savedCards.map(({ id, position }) => ({ id, position })), [
+    { id: "card-remoto-adicionado", position: 1 },
+    { id: "card-fixture-minimal-complete", position: 2 },
+    { id: "card-fixture-minimal-regra", position: 3 }
+  ]);
+  assert.equal(savedCards[0].title, "Card criado remotamente");
+  assert.equal(savedCards[2].title, "Título local");
+  assert.equal(savedCards[2].text, "Texto remoto na mesma ficha.");
+});
+
+test("replay textual recusa conflito no mesmo card sem sobrescrever o remoto", async () => {
+  const baseProject = structuredClone(project);
+  const localProject = structuredClone(baseProject);
+  const remoteProject = structuredClone(baseProject);
+  firstLesson(localProject).microsequences[0].cards[0].title = "Título local";
+  firstLesson(remoteProject).microsequences[0].cards[0].title = "Título remoto";
+  let remoteWrites = 0;
+  const remoteCatalog = {
+    async executeApplicationAuthoringAction(name) {
+      if (name === "criarWorkspaceDeAutoria") return { workspaceId, revision: 7 };
+      if (name === "lerWorkspaceDeAutoria") {
+        return { workspaceId, revision: 7, content: structuredClone(remoteProject), publications: [] };
+      }
+      remoteWrites += 1;
+      return { workspaceId, revision: 8 };
+    }
+  };
+
+  await assert.rejects(
+    () => materializeContextualCourseDraft({
+      remoteCatalog,
+      storage: storage(),
+      projectDocument: localProject,
+      courseKey: path.courseKey,
+      pendingPaths: [pendingPathFrom(baseProject)]
+    }),
+    (error) => error?.code === "contextual_authoring_conflict"
+  );
+  assert.equal(remoteWrites, 0);
+});
+
+test("replay textOnly com conflictPolicy local mantém a folha local e as demais folhas remotas", async () => {
+  const baseProject = structuredClone(project);
+  const localProject = structuredClone(baseProject);
+  const remoteProject = structuredClone(baseProject);
+  firstLesson(localProject).microsequences[0].cards[0].title = "Título local escolhido";
+  firstLesson(remoteProject).microsequences[0].cards[0].title = "Título remoto concorrente";
+  firstLesson(remoteProject).microsequences[0].cards[0].text = "Texto remoto preservado.";
+  let revision = 9;
+  let savedCards = null;
+  const remoteCatalog = {
+    async executeApplicationAuthoringAction(name, args) {
+      if (name === "criarWorkspaceDeAutoria") return { workspaceId, revision };
+      if (name === "lerWorkspaceDeAutoria") {
+        return { workspaceId, revision, content: structuredClone(remoteProject), publications: [] };
+      }
+      if (name === "salvarCardsNaMicrossequencia") {
+        savedCards = JSON.parse(args.cardsJson);
+        return { workspaceId, revision: ++revision };
+      }
+      throw new Error(`Chamada inesperada: ${name}`);
+    }
+  };
+
+  await materializeContextualCourseDraft({
+    remoteCatalog,
+    storage: storage(),
+    projectDocument: localProject,
+    courseKey: path.courseKey,
+    pendingPaths: [pendingPathFrom(baseProject)],
+    conflictPolicy: "local"
+  });
+
+  assert.equal(savedCards[0].title, "Título local escolhido");
+  assert.equal(savedCards[0].text, "Texto remoto preservado.");
 });
 
 test("finalização local encaminha exatamente o curso e a revisão materializada", async () => {
@@ -721,6 +1035,9 @@ test("finalização local encaminha exatamente o curso e a revisão materializad
 test("retry clean finaliza idempotentemente a revisão ainda registrada na fila", async () => {
   const calls = [];
   const storage = {
+    async getWorkspaceCourseDraftReceipt() {
+      return { consumedRevision: "draft-revision-consumed" };
+    },
     async finalizeCardAssistanceSync(courseKey, options) {
       calls.push([courseKey, options]);
       return {
@@ -760,4 +1077,34 @@ test("retry clean finaliza idempotentemente a revisão ainda registrada na fila"
     [path.courseKey, { expectedLocalDraftRevision: "draft-revision-consumed" }]
   ]);
   assert.deepEqual(alreadyCleared, { attempted: false, localState: null });
+});
+
+test("fila pendente sem rascunho nem recibo nunca é tratada como sincronizada", async () => {
+  const pending = pendingLocalState(path, "draft-missing");
+  const missingDraftStorage = {
+    ...storage("private"),
+    async getLocalCourseDraft() { return null; },
+    async getWorkspaceCourseDraftReceipt() { return null; }
+  };
+
+  await assert.rejects(
+    () => materializeContextualCourseDraft({
+      remoteCatalog: { executeApplicationAuthoringAction: async () => assert.fail("não chama remoto") },
+      storage: missingDraftStorage,
+      projectDocument: project,
+      courseKey: path.courseKey,
+      pendingPaths: pending.sync.pendingPaths,
+      expectedLocalDraftRevision: pending.sync.expectedRevision
+    }),
+    (error) => error?.code === "contextual_authoring_draft_missing"
+  );
+  await assert.rejects(
+    () => finalizeCleanContextualCourseDraftSync({
+      storage: missingDraftStorage,
+      courseKey: path.courseKey,
+      localState: pending
+    }),
+    (error) => error?.code === "contextual_authoring_not_materialized"
+  );
+  assert.deepEqual(pending.sync.pendingPaths, [path]);
 });

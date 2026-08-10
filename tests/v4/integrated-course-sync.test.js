@@ -77,7 +77,7 @@ function workspaceMutationCatalog(calls, action, revision = 4) {
   };
 }
 
-test("edição integrada materializa metadados no workspace e não publica artefato", async () => {
+test("edição integrada materializa somente os metadados sem reconhecer o rascunho inteiro", async () => {
   const calls = [];
   let refreshCount = 0;
   const result = await saveIntegratedEntityMetadata({
@@ -107,15 +107,7 @@ test("edição integrada materializa metadados no workspace e não publica artef
   assert.equal(mutation[2].workspaceId, "workspace-private-1");
   assert.equal(mutation[2].expectedRevision, 4);
   assert.equal(mutation[2].title, "Título corrigido");
-  assert.deepEqual(calls.find((entry) => entry[0] === "acknowledge"), [
-    "acknowledge",
-    COURSE_ID,
-    {
-      expectedLocalDraftRevision: "draft-local-1",
-      workspaceId: "workspace-private-1",
-      workspaceRevision: 5
-    }
-  ]);
+  assert.equal(calls.some((entry) => entry[0] === "acknowledge"), false);
   assert.equal(calls.some((entry) => entry[1] === "publicarCursoDoWorkspace"), false);
   assert.equal(refreshCount, 1);
 });

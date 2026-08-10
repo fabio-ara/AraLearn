@@ -39,7 +39,11 @@ function reconciliationCause(failures) {
   return failures.length ? new AggregateError(failures, "Falha ao reconciliar a exclusão local.") : null;
 }
 
-export async function prepareIntegratedCourseRemoval({ repository, synchronizeReplica } = {}) {
+export async function prepareIntegratedCourseRemoval({
+  repository,
+  synchronizeReplica,
+  courseId = null
+} = {}) {
   if (typeof repository?.flush !== "function") {
     throw new TypeError("Persistência local indisponível para excluir o curso.");
   }
@@ -47,6 +51,16 @@ export async function prepareIntegratedCourseRemoval({ repository, synchronizeRe
     throw new TypeError("Sincronização indisponível para excluir o curso.");
   }
   await repository.flush();
+  if (courseId && typeof repository.listPendingLocalAuthoring === "function") {
+    const pending = await repository.listPendingLocalAuthoring();
+    if (pending.some((entry) => String(entry.courseId) === String(courseId))) {
+      const error = new Error(
+        "Sincronize ou resolva primeiro as edições textuais pendentes antes de retirar o curso."
+      );
+      error.code = "contextual_authoring_pending";
+      throw error;
+    }
+  }
   await synchronizeReplica({ guaranteeFresh: true });
 }
 
@@ -158,24 +172,6 @@ function materializedWorkspaceReceipt({ workspace, changed, summary, courseKey, 
   };
 }
 
-async function acknowledgeIntegratedLocalDraft({
-  storage,
-  courseKey,
-  workspaceId,
-  workspaceRevision
-}) {
-  const localDraft = await storage.getLocalCourseDraft?.(courseKey);
-  if (!localDraft) return null;
-  if (typeof storage.acknowledgeWorkspaceCourseDraft !== "function") {
-    throw new Error("A confirmação local da composição remota não está disponível.");
-  }
-  return storage.acknowledgeWorkspaceCourseDraft(courseKey, {
-    expectedLocalDraftRevision: localDraft.revision,
-    workspaceId,
-    workspaceRevision
-  });
-}
-
 async function refreshTrailProjection(refreshTrails) {
   if (typeof refreshTrails === "function") await refreshTrails();
 }
@@ -222,12 +218,6 @@ export async function saveIntegratedEntityMetadata({
     courseKey: entityPath[0],
     operation: "update_metadata"
   });
-  await acknowledgeIntegratedLocalDraft({
-    storage,
-    courseKey,
-    workspaceId: receipt.workspaceId,
-    workspaceRevision: receipt.revision
-  });
   await refreshTrailProjection(refreshTrails);
   return receipt;
 }
@@ -239,11 +229,12 @@ export async function deleteIntegratedCourse({
   synchronizeReplica,
   courseKey
 }) {
+  const summary = courseSummary(storage, courseKey);
   await prepareIntegratedCourseRemoval({
     repository: storage,
-    synchronizeReplica
+    synchronizeReplica,
+    courseId: summary.courseId
   });
-  const summary = courseSummary(storage, courseKey);
   const permissions = storage.coursePermissions?.(courseKey);
   if (!permissions?.canDelete) throw new Error("Este curso não pode ser excluído nesta conta.");
   if (summary.courseOrigin === "catalog") {
@@ -311,12 +302,6 @@ export async function deleteIntegratedEntity({
     courseKey: entityPath[0],
     operation: "delete_entity"
   });
-  await acknowledgeIntegratedLocalDraft({
-    storage,
-    courseKey,
-    workspaceId: receipt.workspaceId,
-    workspaceRevision: receipt.revision
-  });
   await refreshTrailProjection(refreshTrails);
   return receipt;
 }
@@ -352,12 +337,6 @@ export async function moveIntegratedEntity({
     summary,
     courseKey: entityPath[0],
     operation: "move_entity"
-  });
-  await acknowledgeIntegratedLocalDraft({
-    storage,
-    courseKey,
-    workspaceId: receipt.workspaceId,
-    workspaceRevision: receipt.revision
   });
   await refreshTrailProjection(refreshTrails);
   return receipt;

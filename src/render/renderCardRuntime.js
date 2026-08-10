@@ -45,12 +45,24 @@ function renderTextAttributes(value) {
     ` dir="${textDirection(value)}"`;
 }
 
-function manualEditAttributes(renderOptions, path, originalValue, label = "Editar conteúdo") {
+function manualEditAttributes(
+  renderOptions,
+  path,
+  originalValue,
+  label = "Editar conteúdo",
+  options = {}
+) {
   if (renderOptions?.manualEditEnabled !== true || !path) return "";
   return (
     ' data-manual-edit-path="' + escapeHtmlAttribute(path) + '"' +
     ' data-manual-edit-original="' + escapeHtmlAttribute(originalValue ?? "") + '"' +
+    (options.optional ? ' data-manual-edit-optional="true"' : "") +
+    (options.placeholder
+      ? ' data-manual-edit-placeholder="' + escapeHtmlAttribute(options.placeholder) + '"'
+      : "") +
+    (options.preserveGaps ? ' data-manual-edit-preserve-gaps="true"' : "") +
     ' contenteditable="plaintext-only" role="textbox" spellcheck="false"' +
+    ' aria-multiline="true"' +
     ' aria-label="' + escapeHtmlAttribute(label) + '"'
   );
 }
@@ -271,6 +283,21 @@ function resolveResourceGapField(gapContext, path, fallback = "") {
   const field = gapContext?.model?.fieldByPath?.get(path);
   if (!field || !field.count) return String(fallback ?? "");
   return resolveResourceGapText(field.value, gapContext.values, field.startIndex);
+}
+
+function manualResourceEditAttributes(
+  renderOptions,
+  gapContext,
+  path,
+  originalValue,
+  label,
+  options = {}
+) {
+  const gapField = gapContext?.model?.fieldByPath?.get(path);
+  return manualEditAttributes(renderOptions, path, originalValue, label, {
+    ...options,
+    preserveGaps: Boolean(gapField?.count)
+  });
 }
 
 function renderStructuredGapPanel(gapContext, paths = null) {
@@ -521,6 +548,7 @@ function renderChoiceOptionValue(option, textMetadata = null) {
 
 function renderChoiceBlock(block, renderOptions = {}, blockKey = "runtime-choice") {
   const normalized = normalizeChoiceBlock(block);
+  const manualEditing = renderOptions.manualEditEnabled === true;
   const exercise = renderOptions.choiceExerciseStateByBlockKey?.[blockKey] || null;
   const selected = new Set(
     (Array.isArray(exercise?.selected) ? exercise.selected : []).map((item) => String(item || "").trim()).filter(Boolean)
@@ -533,7 +561,9 @@ function renderChoiceBlock(block, renderOptions = {}, blockKey = "runtime-choice
     optionId: getExerciseOptionStableId(option, index),
     sourceIndex: index
   }));
-  const displayOptions = shuffleExerciseOptions(options, buildExerciseShuffleSeed(renderOptions, `choice::${blockKey}`));
+  const displayOptions = manualEditing
+    ? options
+    : shuffleExerciseOptions(options, buildExerciseShuffleSeed(renderOptions, `choice::${blockKey}`));
 
   const optionsHtml = displayOptions.map(({ option, optionId, sourceIndex }) => {
     const isSelected = selected.has(optionId);
@@ -546,7 +576,11 @@ function renderChoiceBlock(block, renderOptions = {}, blockKey = "runtime-choice
       evaluated && isSelected && !selectionIsCorrect ? " selected-incorrect" : "",
       evaluated && !isSelected && expectedSelected ? " expected-selection" : ""
     ].join("");
-    const mark = evaluated
+    const mark = manualEditing
+      ? expectedSelected
+        ? renderUiIcon("ready-state", "multiple-choice-state-icon")
+        : ""
+      : evaluated
       ? expectedSelected
         ? renderUiIcon("ready-state", "multiple-choice-state-icon")
         : isSelected
@@ -557,11 +591,56 @@ function renderChoiceBlock(block, renderOptions = {}, blockKey = "runtime-choice
           ? '<span class="multiple-choice-dot" aria-hidden="true"></span>'
           : renderUiIcon("ready-state", "multiple-choice-state-icon")
         : "";
-    const optionFeedback = evaluated && option.feedback
-      ? '<div class="multiple-choice-option-feedback">' +
-        renderMarkdownParagraph(option.feedback, block) +
+    const optionFeedback = manualEditing
+      ? '<div class="multiple-choice-option-feedback runtime-manual-choice-feedback"' +
+        manualEditAttributes(
+          renderOptions,
+          `options[${sourceIndex}].feedback`,
+          option.feedback,
+          `Editar feedback da alternativa ${sourceIndex + 1}`,
+          {
+            optional: true,
+            placeholder: "Adicionar feedback desta alternativa"
+          }
+        ) + '>' +
+        (option.feedback ? renderMarkdownParagraph(option.feedback, block) : "") +
         "</div>"
-      : "";
+      : evaluated && option.feedback
+        ? '<div class="multiple-choice-option-feedback">' +
+          renderMarkdownParagraph(option.feedback, block) +
+          "</div>"
+        : "";
+    const optionBody = (
+      '<span class="multiple-choice-mark">' +
+      mark +
+      "</span>" +
+      '<span class="multiple-choice-label"' + renderTextAttributes(block) + '>' +
+      '<span class="runtime-manual-choice-value"' + manualEditAttributes(
+        renderOptions,
+        `options[${sourceIndex}].${isChoiceCodeOption(option) ? "code" : "text"}`,
+        isChoiceCodeOption(option) ? option.code : option.text,
+        `Editar alternativa ${sourceIndex + 1}`
+      ) + '>' + renderChoiceOptionValue(option, block) + "</span>" +
+      optionFeedback +
+      "</span>"
+    );
+    if (manualEditing) {
+      return (
+        '<div class="multiple-choice-option runtime-manual-choice-option' +
+        (expectedSelected ? " is-expected" : "") +
+        '" data-choice-option-id="' +
+        escapeHtml(optionId) +
+        '" role="listitem" aria-label="Alternativa ' +
+        (sourceIndex + 1) +
+        (expectedSelected ? ", resposta esperada" : "") +
+        '">' +
+        optionBody +
+        (expectedSelected
+          ? '<span class="runtime-manual-choice-answer-badge">Resposta esperada</span>'
+          : "") +
+        "</div>"
+      );
+    }
     return (
       '<button class="multiple-choice-option' +
       stateClass +
@@ -574,18 +653,8 @@ function renderChoiceBlock(block, renderOptions = {}, blockKey = "runtime-choice
       '" aria-checked="' +
       (isSelected ? "true" : "false") +
       '">' +
-      '<span class="multiple-choice-mark">' +
-      mark +
-      "</span>" +
-      '<span class="multiple-choice-label"' + renderTextAttributes(block) + '>' +
-      '<span class="runtime-manual-choice-value"' + manualEditAttributes(
-        renderOptions,
-        `options[${sourceIndex}].${isChoiceCodeOption(option) ? "code" : "text"}`,
-        isChoiceCodeOption(option) ? option.code : option.text,
-        `Editar alternativa ${sourceIndex + 1}`
-      ) + '>' + renderChoiceOptionValue(option, block) + "</span>" +
-      optionFeedback +
-      "</span></button>"
+      optionBody +
+      "</button>"
     );
   }).join("");
 
@@ -601,11 +670,15 @@ function renderChoiceBlock(block, renderOptions = {}, blockKey = "runtime-choice
     '<p class="multiple-choice-instruction" id="' +
     escapeHtml(`${blockKey}::instruction`) +
     '">' +
-    escapeHtml(choiceInstruction(normalized)) +
+    escapeHtml(manualEditing
+      ? "Edite os textos e feedbacks. A resposta esperada permanece vinculada à identidade da alternativa."
+      : choiceInstruction(normalized)) +
     "</p>" +
     "</div>" +
     '<div class="multiple-choice-list" role="' +
-    (normalized.selectionMode === "single" ? "radiogroup" : "group") +
+    (manualEditing
+      ? "list"
+      : normalized.selectionMode === "single" ? "radiogroup" : "group") +
     '" aria-labelledby="' +
     escapeHtml(`${blockKey}::instruction`) +
     '">' +
@@ -1074,6 +1147,7 @@ function buildGraphPresentation(vertices, edges) {
       key,
       label: fullLabel,
       editPath: vertex.editPath,
+      editOriginal: vertex.editOriginal,
       highlighted: Boolean(vertex.highlighted)
     });
   });
@@ -1095,6 +1169,7 @@ function buildGraphPresentation(vertices, edges) {
         key,
         label: fullLabel,
         editPath: edge.editPath,
+        editOriginal: edge.editOriginal,
         highlighted: Boolean(edge.highlighted)
       });
     } else if (edge.highlighted) {
@@ -1109,7 +1184,7 @@ function buildGraphPresentation(vertices, edges) {
   return { vertexLabels, edgeLabels, legend };
 }
 
-function renderGraphLegend(items, block, renderOptions = {}) {
+function renderGraphLegend(items, block, gapContext = null, renderOptions = {}) {
   if (!items.length) return "";
   return (
     '<div class="runtime-graph-legend" role="list" aria-label="Legenda do grafo">' +
@@ -1126,16 +1201,64 @@ function renderGraphLegend(items, block, renderOptions = {}) {
         escapeHtml(item.key) +
         "</span>" +
         '<span class="runtime-graph-legend-separator" aria-hidden="true">·</span>' +
-        '<span class="runtime-graph-legend-label"' + renderTextAttributes(block) + manualEditAttributes(
+        '<span class="runtime-graph-legend-label"' + renderTextAttributes(block) + manualResourceEditAttributes(
           renderOptions,
+          gapContext,
           item.editPath,
-          item.label,
+          item.editOriginal,
           `Editar ${kindLabel.toLowerCase()}`
         ) + '>' +
         escapeHtml(item.label) +
         "</span></span>"
       );
     }).join("") +
+    "</div>"
+  );
+}
+
+function renderGraphManualFallbackFields(block, gapContext, visiblePaths, renderOptions = {}) {
+  if (renderOptions.manualEditEnabled !== true) return "";
+  const fields = [];
+  (Array.isArray(block?.vertices) ? block.vertices : []).forEach((vertex, index) => {
+    const path = `vertices[${index}].label`;
+    if (visiblePaths.has(path)) return;
+    fields.push({
+      path,
+      label: `Vértice ${String(vertex?.id || index + 1)}`,
+      original: vertex?.label,
+      displayed: resolveResourceGapField(gapContext, path, vertex?.label)
+    });
+  });
+  (Array.isArray(block?.edges) ? block.edges : []).forEach((edge, index) => {
+    const edgeLabel = `${String(edge?.from || "?")}–${String(edge?.to || "?")}`;
+    [["label", "Rótulo"], ["weight", "Peso"]].forEach(([fieldName, label]) => {
+      if (edge?.[fieldName] === undefined) return;
+      const path = `edges[${index}].${fieldName}`;
+      if (visiblePaths.has(path)) return;
+      fields.push({
+        path,
+        label: `${label} ${edgeLabel}`,
+        original: edge[fieldName],
+        displayed: resolveResourceGapField(gapContext, path, edge[fieldName])
+      });
+    });
+  });
+  if (!fields.length) return "";
+  return (
+    '<div class="runtime-manual-resource-fields" aria-label="Outros textos do grafo">' +
+    fields.map((field) => (
+      '<label class="runtime-manual-resource-field"><span>' +
+      escapeHtml(field.label) +
+      '</span><span class="runtime-manual-resource-value"' +
+      manualResourceEditAttributes(
+        renderOptions,
+        gapContext,
+        field.path,
+        field.original,
+        `Editar ${field.label}`
+      ) +
+      '>' + escapeHtml(field.displayed) + "</span></label>"
+    )).join("") +
     "</div>"
   );
 }
@@ -1150,7 +1273,8 @@ function renderGraphBlock(block, renderOptions = {}, blockKey = "runtime-graph")
         `vertices[${index}].label`,
         vertex?.label || vertex?.id || ""
       ).trim(),
-      editPath: `vertices[${index}].label`
+      editPath: `vertices[${index}].label`,
+      editOriginal: vertex?.label
     }))
     .filter((vertex) => vertex.id);
   const highlightVertexIds = new Set(
@@ -1178,14 +1302,27 @@ function renderGraphBlock(block, renderOptions = {}, blockKey = "runtime-graph")
         return null;
       }
       pairCounts.set(key, (pairCounts.get(key) || 0) + 1);
+      const resolvedLabel = normalizeInlineText(resolveResourceGapField(
+        gapContext,
+        `edges[${index}].label`,
+        edge?.label
+      ));
+      const resolvedWeight = normalizeInlineText(resolveResourceGapField(
+        gapContext,
+        `edges[${index}].weight`,
+        edge?.weight
+      ));
+      const usesLabel = Boolean(resolvedLabel);
       return {
         id: String(edge?.id || "").trim(),
         from,
         to,
         key,
-        label: normalizeInlineText(resolveResourceGapField(gapContext, `edges[${index}].label`, edge?.label)),
-        weight: normalizeInlineText(resolveResourceGapField(gapContext, `edges[${index}].weight`, edge?.weight)),
-        editPath: edge?.label !== undefined ? `edges[${index}].label` : `edges[${index}].weight`,
+        label: resolvedLabel,
+        weight: resolvedWeight,
+        editPath: usesLabel ? `edges[${index}].label` : `edges[${index}].weight`,
+        editOriginal: usesLabel ? edge?.label : edge?.weight,
+        sourceIndex: index,
         directed: edge?.directed === true,
         highlighted: highlightEdgeIds.has(String(edge?.id || "").trim())
       };
@@ -1208,6 +1345,12 @@ function renderGraphBlock(block, renderOptions = {}, blockKey = "runtime-graph")
     Array.from(vertexMap.values()),
     edges
   );
+  const visibleManualPaths = new Set([
+    ...Array.from(vertexMap.values()).map((vertex) => vertex.editPath),
+    ...edges
+      .filter((_edge, index) => Boolean(presentation.edgeLabels[index]))
+      .map((edge) => edge.editPath)
+  ]);
 
   const bodyHtml = (
     '<div class="runtime-block runtime-graph-block"' + renderTextAttributes(block) + '>' +
@@ -1252,7 +1395,13 @@ function renderGraphBlock(block, renderOptions = {}, blockKey = "runtime-graph")
             " " +
             geometry.labelY +
             ')"><text text-anchor="middle" dominant-baseline="middle" y="-1" fill="var(--resource-text)" font-size="4.1" font-weight="700"' +
-            manualEditAttributes(renderOptions, edge.editPath, edge.label || edge.weight, "Editar aresta") + '>' +
+            manualResourceEditAttributes(
+              renderOptions,
+              gapContext,
+              edge.editPath,
+              edge.editOriginal,
+              "Editar aresta"
+            ) + '>' +
             escapeHtml(label) +
             "</text></g>"
           : "") +
@@ -1283,12 +1432,19 @@ function renderGraphBlock(block, renderOptions = {}, blockKey = "runtime-graph")
       (vertex.highlighted ? "2.2" : "1.7") +
       '"></circle>' +
       '<text class="runtime-graph-vertex-label" text-anchor="middle" dominant-baseline="central" y="0.5" fill="var(--resource-text)" font-size="5.4" font-weight="700"' +
-      manualEditAttributes(renderOptions, vertex.editPath, vertex.label, "Editar vértice") + '>' +
+      manualResourceEditAttributes(
+        renderOptions,
+        gapContext,
+        vertex.editPath,
+        vertex.editOriginal,
+        "Editar vértice"
+      ) + '>' +
       escapeHtml(presentation.vertexLabels.get(vertex.id) || vertex.id) +
       "</text></g>"
     )).join("") +
     "</svg>" +
-    renderGraphLegend(presentation.legend, block, renderOptions) +
+    renderGraphLegend(presentation.legend, block, gapContext, renderOptions) +
+    renderGraphManualFallbackFields(block, gapContext, visibleManualPaths, renderOptions) +
     renderStructuredGapPanel(gapContext) +
     "</div></div>"
   );
@@ -1304,7 +1460,8 @@ function normalizeRelationMapSet(setValue, fallbackLabel, sidePrefix, gapContext
         `${pathPrefix}.items[${index}].label`,
         item?.label || item?.id || `${sidePrefix}${index + 1}`
       ).trim(),
-      editPath: `${pathPrefix}.items[${index}].label`
+      editPath: `${pathPrefix}.items[${index}].label`,
+      editOriginal: item?.label
     }))
     .filter((item) => item.id);
   return {
@@ -1486,7 +1643,13 @@ function buildRelationMapLinkGeometry(from, to, index, total) {
   return { path, labelX, labelY };
 }
 
-function renderRelationMapLabelGroup(item, side, highlighted = false, renderOptions = {}) {
+function renderRelationMapLabelGroup(
+  item,
+  side,
+  highlighted = false,
+  gapContext = null,
+  renderOptions = {}
+) {
   const boxClass = `runtime-relation-map-item-box${highlighted ? " is-highlighted" : ""}`;
   const textClass = `runtime-relation-map-item-label${side === "right" ? " is-right" : " is-left"}`;
   const boxY = Number((item.y - (item.labelHeight / 2)).toFixed(2));
@@ -1508,7 +1671,13 @@ function renderRelationMapLabelGroup(item, side, highlighted = false, renderOpti
   return (
     `<g class="runtime-relation-map-item-label-group${highlighted ? " is-highlighted" : ""}">` +
     `<rect class="${boxClass}" x="${item.labelX}" y="${boxY}" width="${item.labelWidth}" height="${item.labelHeight}" rx="${Math.min(5.4, item.labelHeight / 2)}" ry="${Math.min(5.4, item.labelHeight / 2)}"></rect>` +
-    `<text class="${textClass}" x="${textX}" y="${firstLineY}" text-anchor="${textAnchor}"${manualEditAttributes(renderOptions, item.editPath, item.label, "Editar item")}>` +
+    `<text class="${textClass}" x="${textX}" y="${firstLineY}" text-anchor="${textAnchor}"${manualResourceEditAttributes(
+      renderOptions,
+      gapContext,
+      item.editPath,
+      item.editOriginal,
+      "Editar item"
+    )}>` +
     item.labelLines
       .map((line, index) => {
         const dy = index === 0 ? 0 : RELATION_MAP_LAYOUT.lineHeight;
@@ -1530,7 +1699,13 @@ function renderRelationSupplementTable(block, gapContext = null, renderOptions =
     "<thead><tr>" + columns.map((column, columnIndex) => `<th scope="col"${renderTextAttributes(block)}${manualEditAttributes(renderOptions, `relationTable.columns[${columnIndex}]`, column, `Editar cabeçalho ${columnIndex + 1}`)}>${renderMarkdownInline(column)}</th>`).join("") + "</tr></thead>" +
     "<tbody>" +
     rows.map((row, rowIndex) => "<tr>" + row.map((cell, columnIndex) =>
-      `<td${renderTextAttributes(block)}${manualEditAttributes(renderOptions, `relationTable.rows[${rowIndex}][${columnIndex}]`, cell, `Editar célula ${rowIndex + 1}, ${columnIndex + 1}`)}>${renderMarkdownInline(resolveResourceGapField(
+      `<td${renderTextAttributes(block)}${manualResourceEditAttributes(
+        renderOptions,
+        gapContext,
+        `relationTable.rows[${rowIndex}][${columnIndex}]`,
+        cell,
+        `Editar célula ${rowIndex + 1}, ${columnIndex + 1}`
+      )}>${renderMarkdownInline(resolveResourceGapField(
         gapContext,
         `relationTable.rows[${rowIndex}][${columnIndex}]`,
         cell
@@ -1584,7 +1759,8 @@ function renderRelationMapBlock(block, renderOptions = {}, blockKey = "runtime-r
       from: String(relation?.from || "").trim(),
       to: String(relation?.to || "").trim(),
       label: normalizeInlineText(resolveResourceGapField(gapContext, `relations[${index}].label`, relation?.label)),
-      editPath: `relations[${index}].label`
+      editPath: `relations[${index}].label`,
+      editOriginal: relation?.label
     }))
     .filter((relation) => relation.from && relation.to && leftMap.has(relation.from) && rightMap.has(relation.to));
   const pairList = Array.isArray(block?.pairList)
@@ -1632,7 +1808,13 @@ function renderRelationMapBlock(block, renderOptions = {}, blockKey = "runtime-r
         '">' +
         `<path class="runtime-relation-map-link${isHighlighted ? " is-highlighted" : ""}" d="${escapeHtmlAttribute(linkGeometry.path)}" />` +
         (relation.label
-          ? `<text class="runtime-relation-map-link-label" x="${linkGeometry.labelX}" y="${linkGeometry.labelY}" text-anchor="middle"${manualEditAttributes(renderOptions, relation.editPath, relation.label, "Editar relação")}>${escapeHtml(relation.label)}</text>`
+          ? `<text class="runtime-relation-map-link-label" x="${linkGeometry.labelX}" y="${linkGeometry.labelY}" text-anchor="middle"${manualResourceEditAttributes(
+              renderOptions,
+              gapContext,
+              relation.editPath,
+              relation.editOriginal,
+              "Editar relação"
+            )}>${escapeHtml(relation.label)}</text>`
           : "") +
         "</g>"
       );
@@ -1647,12 +1829,30 @@ function renderRelationMapBlock(block, renderOptions = {}, blockKey = "runtime-r
       '<circle class="runtime-relation-map-item-dot" cx="0" cy="0" r="2.2"></circle>' +
       "</g>"
     )).join("") +
-    leftPositions.map((item) => renderRelationMapLabelGroup(item, "left", highlightedLeftIds.has(item.id), renderOptions)).join("") +
-    rightPositions.map((item) => renderRelationMapLabelGroup(item, "right", highlightedRightIds.has(item.id), renderOptions)).join("") +
+    leftPositions.map((item) => renderRelationMapLabelGroup(
+      item,
+      "left",
+      highlightedLeftIds.has(item.id),
+      gapContext,
+      renderOptions
+    )).join("") +
+    rightPositions.map((item) => renderRelationMapLabelGroup(
+      item,
+      "right",
+      highlightedRightIds.has(item.id),
+      gapContext,
+      renderOptions
+    )).join("") +
     "</svg>" +
     (pairList.length
       ? '<div class="runtime-relation-map-pairs">' +
-        pairList.map((item, index) => `<span class="runtime-relation-map-pair"${renderTextAttributes(block)}${manualEditAttributes(renderOptions, `pairList[${index}]`, block.pairList[index], `Editar par ${index + 1}`)}>${renderMarkdownInline(item)}</span>`).join("") +
+        pairList.map((item, index) => `<span class="runtime-relation-map-pair"${renderTextAttributes(block)}${manualResourceEditAttributes(
+          renderOptions,
+          gapContext,
+          `pairList[${index}]`,
+          block.pairList[index],
+          `Editar par ${index + 1}`
+        )}>${renderMarkdownInline(item)}</span>`).join("") +
         "</div>"
       : "") +
     renderRelationSupplementTable(block, gapContext, renderOptions) +
@@ -3299,8 +3499,9 @@ function renderFormulaExpression(
   }
   const type = String(node.type || "");
   const value = resolveResourceGapField(gapContext, `${path}.value`, node.value);
-  const editAttributes = manualEditAttributes(
+  const editAttributes = manualResourceEditAttributes(
     gapContext?.renderOptions,
+    gapContext,
     `${path}.value`,
     node.value,
     "Editar expressão"
@@ -3405,10 +3606,33 @@ function renderFormulaExpression(
 
 function renderFormulaBlock(block, renderOptions = {}, blockKey = "runtime-formula") {
   const gapContext = prepareResourceGapRender(block, renderOptions, blockKey);
+  const sourceAccessibleText = String(block?.accessibleText || "").trim();
   const accessibleText = resolveResourceGapText(
-    String(block?.accessibleText || "Fórmula").trim() || "Fórmula",
+    sourceAccessibleText || "Fórmula",
     gapContext?.values || []
   );
+  const accessibleTextParts = parseTextGapParts(sourceAccessibleText);
+  const accessibleTextHasGaps = accessibleTextParts.some((part) => part.kind === "blank");
+  const accessibleTextEditor = renderOptions.manualEditEnabled
+    ? '<div class="runtime-manual-resource-fields" aria-label="Acessibilidade da fórmula">' +
+      '<div class="runtime-manual-resource-field"><span>Descrição acessível</span>' +
+      '<span class="runtime-manual-resource-value"' + manualEditAttributes(
+        renderOptions,
+        "accessibleText",
+        sourceAccessibleText,
+        "Editar descrição acessível da fórmula",
+        { preserveGaps: accessibleTextHasGaps }
+      ) + '>' +
+      renderTextGapParts(
+        accessibleTextParts,
+        `${blockKey}::accessible-text`,
+        gapContext?.values || [],
+        renderMarkdownInline,
+        "runtime-text-gap-blank runtime-formula-accessible-gap",
+        { ...renderOptions, dockExerciseParts: null, suppressTextGapPrompt: true }
+      ) +
+      "</span></div></div>"
+    : "";
   const notation = block?.notation === "chemistry" ? "chemistry" : "mathematics";
   const bodyHtml = (
     '<div class="runtime-block runtime-formula-block" data-formula-notation="' + escapeHtmlAttribute(notation) + '"' + renderTextAttributes(block) + '>' +
@@ -3422,6 +3646,7 @@ function renderFormulaBlock(block, renderOptions = {}, blockKey = "runtime-formu
     ) +
     '<annotation encoding="text/plain">' + escapeHtml(accessibleText) + "</annotation>" +
     "</semantics></math></div>" +
+    accessibleTextEditor +
     renderStructuredGapPanel(gapContext) +
     "</div>"
   );
@@ -3618,10 +3843,22 @@ function renderChartBlock(block, renderOptions = {}, blockKey = "runtime-chart")
   const yAxisDescription = formatChartAxis({ label: yAxisLabel, unit: yAxisUnit });
   const renderAxisCaption = (prefix, label, unit, axisLabel) => (
     '<span class="runtime-chart-axis-caption">' +
-    '<span' + manualEditAttributes(renderOptions, `${prefix}.label`, block?.[prefix]?.label, `Editar ${axisLabel}`) + '>' +
+    '<span' + manualResourceEditAttributes(
+      renderOptions,
+      gapContext,
+      `${prefix}.label`,
+      block?.[prefix]?.label,
+      `Editar ${axisLabel}`
+    ) + '>' +
     escapeHtml(label) + "</span>" +
     (unit
-      ? ' (<span' + manualEditAttributes(renderOptions, `${prefix}.unit`, block?.[prefix]?.unit, `Editar unidade de ${axisLabel}`) + '>' + escapeHtml(unit) + "</span>)"
+      ? ' (<span' + manualResourceEditAttributes(
+          renderOptions,
+          gapContext,
+          `${prefix}.unit`,
+          block?.[prefix]?.unit,
+          `Editar unidade de ${axisLabel}`
+        ) + '>' + escapeHtml(unit) + "</span>)"
       : "") +
     "</span>"
   );
@@ -3640,7 +3877,13 @@ function renderChartBlock(block, renderOptions = {}, blockKey = "runtime-chart")
     marks + xTickLabels + "</svg>" +
     `<figcaption>${renderAxisCaption("xAxis", xAxisLabel, xAxisUnit, "eixo horizontal")} · ${renderAxisCaption("yAxis", yAxisLabel, yAxisUnit, "eixo vertical")}</figcaption>` +
     `<ul class="runtime-chart-legend">${series.map((entry, index) =>
-      `<li><span style="--series-color:${palette[index % palette.length]}"></span><span${manualEditAttributes(renderOptions, `series[${index}].name`, block.series[index]?.name, `Editar série ${index + 1}`)}>${escapeHtml(entry.name)}</span></li>`
+      `<li><span style="--series-color:${palette[index % palette.length]}"></span><span${manualResourceEditAttributes(
+        renderOptions,
+        gapContext,
+        `series[${index}].name`,
+        block.series[index]?.name,
+        `Editar série ${index + 1}`
+      )}>${escapeHtml(entry.name)}</span></li>`
     ).join("")}</ul>${renderStructuredGapPanel(gapContext)}</figure>`;
   return finishResourceGapRender(bodyHtml, gapContext);
 }
@@ -3958,11 +4201,23 @@ function renderSystemMapBlock(block, renderOptions = {}, blockKey = "runtime-sys
       '" data-system-link-id="' +
       escapeHtmlAttribute(link.id) +
       '">' +
-      '<span dir="auto"' + manualEditAttributes(renderOptions, `nodes[${fromIndex}].label`, from?.label, "Editar componente de origem") + '>' + escapeHtml(fromLabel || link.from) + "</span>" +
+      '<span dir="auto"' + manualResourceEditAttributes(
+        renderOptions,
+        gapContext,
+        `nodes[${fromIndex}].label`,
+        from?.label,
+        "Editar componente de origem"
+      ) + '>' + escapeHtml(fromLabel || link.from) + "</span>" +
       '<span class="runtime-system-map-link-arrow" aria-hidden="true">' +
       arrow +
       "</span>" +
-      '<span dir="auto"' + manualEditAttributes(renderOptions, `nodes[${toIndex}].label`, to?.label, "Editar componente de destino") + '>' + escapeHtml(toLabel || link.to) + "</span>" +
+      '<span dir="auto"' + manualResourceEditAttributes(
+        renderOptions,
+        gapContext,
+        `nodes[${toIndex}].label`,
+        to?.label,
+        "Editar componente de destino"
+      ) + '>' + escapeHtml(toLabel || link.to) + "</span>" +
       (labelHtml
         ? '<span class="runtime-system-map-link-label" dir="auto"' + manualEditAttributes(renderOptions, `links[${index}].label`, link.label, "Editar conexão") + '>' +
           labelHtml +
@@ -4183,6 +4438,38 @@ function getPopupBlocksFromCard(card) {
   return after.blocks;
 }
 
+function renderAuthoringSupportResources(card, renderOptions = {}) {
+  if (renderOptions.resourceSelectionEnabled !== true) return "";
+  const normalizedAfter = normalizeInlineText(card?.after || "");
+  const popupBlocks = getPopupBlocksFromCard(card);
+  const afterBlocks = normalizedAfter ? popupBlocks.slice(1) : popupBlocks;
+  const blocks = [{
+    kind: "paragraph",
+    value: String(card?.after ?? ""),
+    exerciseMode: "none",
+    languageTag: card?.languageTag,
+    textDirection: card?.textDirection,
+    manualEditPlaceholder: "Adicionar explicação posterior",
+    authoringEmptyLabel: "Adicionar explicação posterior"
+  }, ...afterBlocks];
+  const targetIds = [
+    "after:text",
+    ...(Array.isArray(card?.afterBlocks) ? card.afterBlocks : []).map((block) =>
+      block?.id ? `after:${block.id}` : ""
+    )
+  ];
+  return (
+    '<section class="runtime-authoring-support-resources" aria-label="Explicações do card">' +
+    '<span class="runtime-authoring-support-title">Explicações</span>' +
+    renderRuntimeBlockList(blocks, "", {
+      ...renderOptions,
+      blockKeyPrefix: "runtime-authoring-after",
+      resourceSelectionTargetIds: targetIds
+    }) +
+    "</section>"
+  );
+}
+
 function paragraphManualEditPath(renderOptions = {}) {
   if (renderOptions.manualEditSourceTargetId === "main") return "text";
   if (renderOptions.manualEditSourceTargetId === "after:text") return "after";
@@ -4199,7 +4486,20 @@ function renderRuntimeBlock(block, renderOptions = {}, blockKey = "runtime-block
   }
   if (block.kind === "paragraph") {
     if (!blockUsesTextGapExercise(block)) {
-      return '<div class="runtime-block runtime-paragraph"' + renderTextAttributes(block) + manualEditAttributes(renderOptions, paragraphManualEditPath(renderOptions), block.value, "Editar texto") + '>' + renderMarkdownParagraph(block.value || "", block) + "</div>";
+      const editable = renderOptions.manualEditEnabled === true;
+      const bodyHtml = block.value
+        ? renderMarkdownParagraph(block.value, block)
+        : !editable && block.authoringEmptyLabel
+          ? '<p class="runtime-markdown-paragraph runtime-authoring-empty-value">' +
+            escapeHtml(block.authoringEmptyLabel) + "</p>"
+          : renderMarkdownParagraph("", block);
+      return '<div class="runtime-block runtime-paragraph"' + renderTextAttributes(block) + manualEditAttributes(
+        renderOptions,
+        paragraphManualEditPath(renderOptions),
+        block.value,
+        "Editar texto",
+        { placeholder: block.manualEditPlaceholder }
+      ) + '>' + bodyHtml + "</div>";
     }
     const exercise = renderOptions.textGapExerciseStateByBlockKey?.[blockKey] || renderOptions.completeExerciseStateByBlockKey?.[blockKey] || null;
     const values = Array.isArray(exercise?.values) ? exercise.values : [];
@@ -4327,7 +4627,7 @@ export function renderCardRuntimeBlocks(card, options = {}) {
       ? entries.slice(1)
       : entries;
 
-  return renderRuntimeBlockList(
+  const bodyHtml = renderRuntimeBlockList(
     normalizedEntries.map((entry) => entry.block),
     options.fallbackText || runtime?.fallbackText || "",
     {
@@ -4338,6 +4638,7 @@ export function renderCardRuntimeBlocks(card, options = {}) {
       )
     }
   );
+  return bodyHtml + renderAuthoringSupportResources(card, options);
 }
 
 export function getRuntimePopupButtonEntry(card) {

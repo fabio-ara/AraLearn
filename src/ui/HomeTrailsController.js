@@ -4,6 +4,7 @@ import {
   normalizeHomeTrailSnapshot,
   preserveSelectedTrailItem
 } from "./homeTrailProjection.js";
+import { validateProjectDocument } from "../domain/aralearnProject.js";
 
 function requiredMethod(adapter, name) {
   if (typeof adapter?.[name] !== "function") {
@@ -55,11 +56,18 @@ export class HomeTrailsController {
     for (const itemId of this.loadedCourses.keys()) {
       const current = snapshot.items.find((item) => item.itemId === itemId);
       const loadedReference = this.courseRefs.get(itemId);
+      const loadedRevision = Number(loadedReference?.revision);
+      const currentRevision = Number(current?.revision);
+      const revisionMatches = loadedReference?.revision === current?.revision || (
+        snapshot.stale === true &&
+        Number.isSafeInteger(loadedRevision) && Number.isSafeInteger(currentRevision) &&
+        loadedRevision >= currentRevision
+      );
       const loadedMatchesCurrent = Boolean(
         current &&
         loadedReference?.workspaceId === current.workspaceId &&
         loadedReference?.courseKey === current.courseKey &&
-        loadedReference?.revision === current.revision
+        revisionMatches
       );
       if (
         !currentIds.has(itemId) ||
@@ -76,7 +84,19 @@ export class HomeTrailsController {
       const current = this.courseRefs.get(item.itemId);
       const loaded = this.loadedCourses.get(item.itemId);
       const courseKey = loaded?.id || current?.courseKey || item.courseKey || item.courseId || null;
-      this.courseRefs.set(item.itemId, this.#referenceFor(item, courseKey));
+      const nextReference = this.#referenceFor(item, courseKey);
+      this.courseRefs.set(item.itemId, Object.freeze(
+        snapshot.stale === true && current && Number(current.revision) > Number(item.revision)
+          ? {
+              ...nextReference,
+              revision: current.revision,
+              canEditOffline: current.canEditOffline === true || nextReference.canEditOffline === true,
+              authoringStatus: current.authoringStatus,
+              authoringPendingCount: current.authoringPendingCount,
+              authoringErrorMessage: current.authoringErrorMessage
+            }
+          : nextReference
+      ));
     }
     if (typeof this.adapter.clearWorkspaceCourseCache === "function") {
       await Promise.all([...invalidatedCacheIds].map((itemId) =>
@@ -121,8 +141,12 @@ export class HomeTrailsController {
       origin: item.origin,
       source: item.source,
       canEdit: item.canEdit,
+      canEditOffline: item.canEditOffline,
       canDelete: item.canDelete,
-      canRemove: item.canRemove
+      canRemove: item.canRemove,
+      authoringStatus: item.authoringStatus || "",
+      authoringPendingCount: Number(item.authoringPendingCount) || 0,
+      authoringErrorMessage: String(item.authoringErrorMessage || "")
     });
   }
 
@@ -158,12 +182,35 @@ export class HomeTrailsController {
     if (!Array.isArray(response?.parts)) {
       throw new Error("A composição corrente do curso não contém parts.");
     }
-    const course = courseFromWorkspaceParts(response, item);
+    let course;
+    if (response?.draftCourse) {
+      const validation = validateProjectDocument({
+        contract: "aralearn.contract",
+        version: 4,
+        kind: "project",
+        courses: [response.draftCourse]
+      });
+      if (!validation.ok) {
+        throw new Error("O rascunho offline deste curso viola o contrato v4.");
+      }
+      course = structuredClone(validation.value.courses[0]);
+    } else {
+      course = courseFromWorkspaceParts(response, item);
+    }
     const responseRevision = Number(response?.revision);
-    const reference = this.#referenceFor({
+    const baseReference = this.#referenceFor({
       ...item,
       revision: Number.isSafeInteger(responseRevision) ? responseRevision : item.revision
     }, course.id);
+    const reference = Object.freeze({
+      ...baseReference,
+      canEditOffline: baseReference.canEditOffline === true || (
+        baseReference.canEdit === true && Boolean(baseReference.workspaceId)
+      ),
+      authoringStatus: response?.authoringQueue?.status || "",
+      authoringPendingCount: Number(response?.authoringQueue?.pendingCount) || 0,
+      authoringErrorMessage: String(response?.authoringQueue?.errorMessage || "")
+    });
     this.courseRefs.set(item.itemId, reference);
     this.loadedCourses.set(item.itemId, course);
     return course;
@@ -208,7 +255,17 @@ export class HomeTrailsController {
     const item = this.item(trailItemId);
     const normalized = String(courseKey || "").trim();
     if (!item || !normalized) return null;
-    const reference = this.#referenceFor(item, normalized);
+    const current = this.courseRefs.get(trailItemId);
+    const reference = Object.freeze({
+      ...this.#referenceFor(item, normalized),
+      ...(current?.authoringStatus
+        ? {
+            authoringStatus: current.authoringStatus,
+            authoringPendingCount: current.authoringPendingCount,
+            authoringErrorMessage: current.authoringErrorMessage
+          }
+        : {})
+    });
     this.courseRefs.set(item.itemId, reference);
     return reference;
   }

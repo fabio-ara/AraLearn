@@ -36,10 +36,29 @@ test("edição manual separa o título dos resources do card", () => {
   assert.equal(renamed.after, card.after);
 
   const editedMain = applyManualCardEdit(renamed, "main", {
-    pathValues: { text: "Três mais três são [[seis::cinco|sete]]." }
+    pathValues: {
+      text: "Agora, duas mais duas são [[quatro::três|cinco]], com certeza."
+    }
   });
   assert.equal(editedMain.title, "Soma");
-  assert.match(editedMain.text, /\[\[seis::cinco\|sete\]\]/u);
+  assert.equal(
+    editedMain.text,
+    "Agora, duas mais duas são [[quatro::três|cinco]], com certeza."
+  );
+  assert.throws(
+    () => applyManualCardEdit(editedMain, "main", {
+      pathValues: { text: "Agora, duas mais duas são [[cinco::quatro|seis]]." }
+    }),
+    /não pode alterar a estrutura das lacunas/u
+  );
+  assert.throws(
+    () => applyManualCardEdit(editedMain, "main", {
+      pathValues: {
+        text: "Agora, duas mais duas são quatro. [[quatro::três|cinco]]"
+      }
+    }),
+    /não pode alterar a estrutura das lacunas/u
+  );
 
   const editedAfter = applyManualCardEdit(editedMain, "after:text", {
     pathValues: { after: "Confira a operação." }
@@ -70,6 +89,51 @@ test("edição manual preserva identidades e resposta ao editar o texto das alte
   });
   assert.deepEqual(edited.options.map((option) => option.id), ["a", "b"]);
   assert.deepEqual(edited.options.map((option) => option.text), ["quatro", "cinco"]);
+  assert.deepEqual(edited.answerIds, ["b"]);
+});
+
+test("edição manual cria, atualiza e remove feedback sem alterar a resposta por id", () => {
+  const card = base("choice", {
+    kind: "exercise",
+    exercise: "choice",
+    question: "Qual é o resultado?",
+    selectionMode: "single",
+    selectionCriterion: "correct",
+    options: [
+      { id: "a", kind: "text", text: "3", feedback: "Revise a soma." },
+      { id: "b", kind: "text", text: "4" }
+    ],
+    answerIds: ["b"]
+  });
+  const model = buildManualCardEditModel(card, "main");
+  assert.deepEqual(
+    model.pathFields.filter((field) => field.path.endsWith(".feedback")),
+    [
+      {
+        path: "options[0].feedback",
+        value: "Revise a soma.",
+        valueType: "string",
+        optional: true
+      },
+      {
+        path: "options[1].feedback",
+        value: "",
+        valueType: "string",
+        synthetic: true,
+        optional: true
+      }
+    ]
+  );
+
+  const edited = applyManualCardEdit(card, "main", {
+    pathValues: {
+      "options[0].feedback": "",
+      "options[1].feedback": "Isso: 2 + 2 resulta em 4."
+    }
+  });
+  assert.equal(Object.hasOwn(edited.options[0], "feedback"), false);
+  assert.equal(edited.options[1].feedback, "Isso: 2 + 2 resulta em 4.");
+  assert.deepEqual(edited.options.map((option) => option.id), ["a", "b"]);
   assert.deepEqual(edited.answerIds, ["b"]);
 });
 
@@ -161,6 +225,53 @@ test("edição manual de flow persiste somente rótulos de ramo personalizados",
   assert.deepEqual(editedSwitch.structure.items[0].branchLabels, {
     default: "Demais perfis"
   });
+
+  const ifChainCard = base("flow", {
+    structure: {
+      id: "root",
+      kind: "sequence",
+      items: [{
+        id: "conditions",
+        kind: "if_chain",
+        cases: [{
+          id: "first",
+          condition: "primeira condição?",
+          thenBranch: [{ id: "first-output", kind: "output", text: "Primeira saída" }]
+        }, {
+          id: "second",
+          condition: "segunda condição?",
+          thenBranch: [{ id: "second-output", kind: "output", text: "Segunda saída" }]
+        }],
+        elseBranch: []
+      }]
+    }
+  });
+  const ifChainPaths = new Set(
+    buildManualCardEditModel(ifChainCard, "main").pathFields.map(({ path }) => path)
+  );
+  assert.equal(
+    ifChainPaths.has("structure.items[0].cases[0].branchLabels.yes"),
+    true
+  );
+  assert.equal(
+    ifChainPaths.has("structure.items[0].cases[0].branchLabels.no"),
+    true
+  );
+  const ifChainStructure = structuredClone(ifChainCard.structure);
+  const editedIfChain = applyManualCardEdit(ifChainCard, "main", {
+    pathValues: {
+      "structure.items[0].cases[0].branchLabels.yes": "Primeira",
+      "structure.items[0].cases[0].branchLabels.no": "Próxima"
+    }
+  });
+  assert.deepEqual(editedIfChain.structure.items[0].cases[0].branchLabels, {
+    yes: "Primeira",
+    no: "Próxima"
+  });
+  assert.deepEqual(
+    editedIfChain.structure.items[0].cases[0].thenBranch,
+    ifChainStructure.items[0].cases[0].thenBranch
+  );
 });
 
 test("alvos main, response e after:text expõem e alteram somente o recurso prometido", () => {
@@ -189,6 +300,7 @@ test("alvos main, response e after:text expõem e alteram somente o recurso prom
   const main = buildManualCardEditModel(card, "main");
   assert.deepEqual(main.pathFields.map((field) => field.path), [
     "prompt",
+    "accessibleText",
     "expression.base.value",
     "expression.exponent.value"
   ]);
@@ -197,7 +309,9 @@ test("alvos main, response e after:text expõem e alteram somente o recurso prom
   assert.deepEqual(response.pathFields.map((field) => field.path), [
     "question",
     "options[0].text",
-    "options[1].text"
+    "options[1].text",
+    "options[0].feedback",
+    "options[1].feedback"
   ]);
 
   const after = buildManualCardEditModel(card, "after:text");
@@ -209,14 +323,16 @@ test("alvos main, response e after:text expõem e alteram somente o recurso prom
       prompt: "Observe a potência.",
       question: "Não alterar",
       after: "Não alterar",
-      accessibleText: "Não alterar",
+      accessibleText: "alfa elevado ao quadrado.",
+      "expression.type": "fraction",
       "expression.exponent.value": "3"
     }
   });
   assert.equal(editedMain.title, card.title);
   assert.equal(editedMain.prompt, "Observe a potência.");
   assert.equal(editedMain.expression.exponent.value, "3");
-  assert.equal(editedMain.accessibleText, card.accessibleText);
+  assert.equal(editedMain.expression.type, "superscript");
+  assert.equal(editedMain.accessibleText, "alfa elevado ao quadrado.");
   assert.equal(editedMain.question, card.question);
   assert.equal(editedMain.after, card.after);
 

@@ -215,12 +215,29 @@ criar cards dentro dela. Na lição, selecionar uma microssequência permite cri
 cards nela; selecionar todas permite criar no máximo uma nova microssequência.
 Não há assistência por API em módulo ou curso.
 
-Uma edição manual curta altera título, texto, alternativas, resposta, células
-ou lacunas no próprio resource. A assistência envia o pedido com o contexto
-somente leitura, valida o retorno e mostra diretamente o resultado. A última
-mudança pode ser desfeita. Uma falha não altera parte do conteúdo e mantém a
-superfície utilizável. O envio por IA exige conexão; estudo e edição manual do
-conteúdo baixado continuam disponíveis sem rede.
+Uma edição manual curta altera somente texto com origem inequívoca: títulos,
+parágrafos, rótulos, células, texto e código de alternativas, feedback de cada
+alternativa, explicação posterior e texto ao redor de uma lacuna. A resposta
+correta, os tokens e respostas aceitas da lacuna, identidades, tipos, relações,
+quantidade e ordem permanecem protegidos. O campo acompanha a largura do
+resource e texto longo quebra ou rola dentro da própria caixa, inclusive no
+teclado do smartphone, sem distorcer o runtime.
+
+A assistência envia o pedido com o contexto somente leitura, valida o retorno
+e mostra diretamente o resultado. A última mudança pode ser desfeita. Uma
+falha não altera parte do conteúdo e mantém a superfície utilizável. Alterar
+semanticamente um exercício também limpa seu resultado e progresso anteriores,
+para que uma resposta antiga não continue marcada como correta.
+
+Providers remotos de IA exigem conexão. Estudo e edição manual do conteúdo já
+baixado continuam disponíveis sem rede; o bridge local também pode prestar
+assistência textual se estiver acessível no próprio dispositivo. O app grava um
+rascunho durável, mantém a identidade da tentativa e sincroniza ao reconectar.
+Mudanças em folhas distintas são combinadas; se o mesmo texto tiver sido
+alterado remotamente, o rascunho é preservado e o conflito é informado, sem
+sobrescrita silenciosa. A autorização armazenada serve apenas para texto no
+conteúdo já baixado. Mover, excluir, comentar, publicar e usar providers remotos
+continuam exigindo conexão e autorização atual do servidor.
 
 Um curso oficial continua compartilhado como uma publicação protegida. Uma
 conta comum apenas o estuda; uma conta administrativa ou editorial pode

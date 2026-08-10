@@ -87,8 +87,10 @@ guardam apenas alvo e texto corrente, sem copiar card, curso, prompt ou
 conversa. Chatbot e Plugin podem ler essas observações pelo mesmo contrato MCP.
 
 Falhas de escrita deixam o formulário utilizável e mostram uma mensagem curta.
-Uma alteração local não é aplicada antes da confirmação remota quando a ação
-depende do backend.
+Ações estruturais só são aplicadas após confirmação remota. Edição textual pode
+ser confirmada primeiro no rascunho durável do dispositivo e fica identificada
+como pendente até a sincronização CAS; conflito no mesmo alvo conserva o texto
+local em vez de sobrescrever o remoto.
 
 ## Edição situada
 
@@ -102,8 +104,10 @@ cards autoriza criar cards naquela microssequência; selecionar todas as
 microssequências autoriza criar no máximo uma nova microssequência. O contexto
 adjacente e o índice compacto da lição entram somente para leitura. O pedido
 fica junto ao conteúdo e o resultado validado aparece diretamente. Um único
-botão **Desfazer** conserva a reversão mais recente. A assistência por IA exige
-rede; a edição manual continua disponível sem provider.
+botão **Desfazer** conserva a reversão mais recente. Providers remotos de IA
+exigem rede; a edição manual e o bridge local continuam disponíveis para
+conteúdo já baixado e anteriormente autorizado. Respostas, gaps, identidades,
+ordem e topologia não se tornam editáveis nesse modo.
 
 ## Sistema visual e validação
 

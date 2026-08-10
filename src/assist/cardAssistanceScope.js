@@ -24,6 +24,95 @@ const CONTEXTUAL_CHOICE_FIELDS = new Set([
   "options",
   "answerIds"
 ]);
+const TEXTUAL_LEAF_FIELD_NAMES = new Set([
+  "accessibleText",
+  "after",
+  "code",
+  "coefficient",
+  "condition",
+  "connector",
+  "detail",
+  "expression",
+  "feedback",
+  "form",
+  "formula",
+  "gloss",
+  "init",
+  "ipa",
+  "label",
+  "match",
+  "name",
+  "note",
+  "prompt",
+  "question",
+  "reading",
+  "result",
+  "simplified",
+  "text",
+  "title",
+  "traditional",
+  "translation",
+  "unit",
+  "update",
+  "value"
+]);
+const TEXTUAL_PRIMITIVE_ARRAY_FIELDS = new Set([
+  "columns",
+  "conditions",
+  "pairList",
+  "rows",
+  "values"
+]);
+const PROTECTED_TEXTUAL_FIELD_NAMES = new Set([
+  "answer",
+  "answerIds",
+  "chartType",
+  "directed",
+  "distractors",
+  "entryType",
+  "exercise",
+  "from",
+  "gap",
+  "gaps",
+  "groupId",
+  "id",
+  "kind",
+  "language",
+  "languageTag",
+  "layout",
+  "misconceptionId",
+  "notation",
+  "open",
+  "parentId",
+  "practice",
+  "reactionType",
+  "resource",
+  "response",
+  "role",
+  "selectionCriterion",
+  "selectionMode",
+  "shape",
+  "sources",
+  "state",
+  "targetIds",
+  "textDirection",
+  "to",
+  "topics",
+  "type",
+  "variant",
+  "writingMode",
+  "alignment",
+  "acceptedAnswers"
+]);
+const FLOW_BINARY_BRANCH_KINDS = new Set([
+  "if_then",
+  "if_then_else",
+  "while",
+  "do_while",
+  "for"
+]);
+const MASKED_TEXT_VALUE = "__aralearn_authorized_text_leaf__";
+const TEXT_REBASE_CONFLICT_POLICIES = new Set(["reject", "local"]);
 
 function text(value) {
   return typeof value === "string" ? value.trim() : "";
@@ -35,6 +124,171 @@ function clone(value) {
 
 function same(left, right) {
   return canonicalStringify(left) === canonicalStringify(right);
+}
+
+function appendPath(base, key) {
+  if (typeof key === "number") return `${base}[${key}]`;
+  return base ? `${base}.${key}` : key;
+}
+
+function parsePath(path) {
+  const segments = [];
+  String(path || "").replace(/([^.[]+)|\[(\d+)\]/gu, (_match, key, index) => {
+    segments.push(index === undefined ? key : Number(index));
+    return "";
+  });
+  return segments;
+}
+
+function readPath(target, path) {
+  return parsePath(path).reduce((value, segment) => value?.[segment], target);
+}
+
+function writePath(target, path, value, { createMissing = false } = {}) {
+  const segments = parsePath(path);
+  const last = segments.pop();
+  if (last === undefined) return false;
+  let parent = target;
+  for (const segment of segments) {
+    if (!parent || typeof parent !== "object") return false;
+    if (parent[segment] === undefined && createMissing) parent[segment] = {};
+    parent = parent[segment];
+  }
+  if (!parent || typeof parent !== "object") return false;
+  if (!Object.hasOwn(parent, last) && !createMissing) return false;
+  parent[last] = value;
+  return true;
+}
+
+function deletePath(target, path) {
+  const segments = parsePath(path);
+  const last = segments.pop();
+  if (last === undefined) return;
+  const parent = segments.reduce((value, segment) => value?.[segment], target);
+  if (!parent || typeof parent !== "object") return;
+  delete parent[last];
+}
+
+function sourceGapTokens(value) {
+  return typeof value === "string"
+    ? value.match(/\{gap:[^}]+\}|\[\[[\s\S]*?\]\]/gu) || []
+    : [];
+}
+
+function gapTextSegments(value) {
+  if (typeof value !== "string") return [];
+  return value
+    .split(/(\{gap:[^}]+\}|\[\[[\s\S]*?\]\])/gu)
+    .filter((_part, index) => index % 2 === 0);
+}
+
+function preservesGapTokenStructure(left, right) {
+  const leftTokens = sourceGapTokens(left);
+  const rightTokens = sourceGapTokens(right);
+  if (
+    leftTokens.length !== rightTokens.length ||
+    !leftTokens.every((token, index) => token === rightTokens[index])
+  ) return false;
+  if (!leftTokens.length) return true;
+
+  const leftSegments = gapTextSegments(left);
+  const rightSegments = gapTextSegments(right);
+  return leftSegments.length === rightSegments.length &&
+    leftSegments.every((segment, index) => !segment.trim() || rightSegments[index]?.trim());
+}
+
+function pathTerminalField(path) {
+  return String(path || "")
+    .split(".")
+    .at(-1)
+    ?.replace(/\[\d+\]$/u, "") || "";
+}
+
+function primitiveArrayIsTextual(path) {
+  const fieldName = pathTerminalField(path);
+  if (!TEXTUAL_PRIMITIVE_ARRAY_FIELDS.has(fieldName)) return false;
+  return !/^series\[\d+\]\.values(?:\[|$)/u.test(path);
+}
+
+function listTextualLeaves(
+  value,
+  {
+    basePath = "",
+    editableTopFields = null,
+    optional = false,
+    leaves = new Map()
+  } = {}
+) {
+  if (Array.isArray(value)) {
+    value.forEach((item, index) => {
+      const path = appendPath(basePath, index);
+      if (typeof item === "string" && primitiveArrayIsTextual(basePath)) {
+        leaves.set(path, { path, optional });
+        return;
+      }
+      if (item && typeof item === "object") {
+        listTextualLeaves(item, { basePath: path, leaves });
+      }
+    });
+    return leaves;
+  }
+  if (!value || typeof value !== "object") return leaves;
+
+  Object.entries(value).forEach(([fieldName, child]) => {
+    if (!basePath && editableTopFields && !editableTopFields.has(fieldName)) return;
+    if (PROTECTED_TEXTUAL_FIELD_NAMES.has(fieldName) || /Ids?$/u.test(fieldName)) return;
+    const path = appendPath(basePath, fieldName);
+    if (typeof child === "string" && TEXTUAL_LEAF_FIELD_NAMES.has(fieldName)) {
+      leaves.set(path, { path, optional });
+      return;
+    }
+    if (Array.isArray(child) || (child && typeof child === "object")) {
+      listTextualLeaves(child, { basePath: path, leaves });
+    }
+  });
+
+  if (Array.isArray(value.options) && (!editableTopFields || editableTopFields.has("options"))) {
+    value.options.forEach((option, index) => {
+      if (!option || typeof option !== "object" || Array.isArray(option)) return;
+      const path = appendPath(appendPath(basePath, "options"), index) + ".feedback";
+      leaves.set(path, { path, optional: true });
+    });
+  }
+  return leaves;
+}
+
+function listFlowBranchLabelLeaves(structure, basePath, leaves) {
+  const add = (path) => leaves.set(path, { path, optional: true });
+  const visitList = (items, path) => {
+    (Array.isArray(items) ? items : []).forEach((item, index) => {
+      visitNode(item, appendPath(path, index));
+    });
+  };
+  const addBinary = (path) => {
+    add(`${path}.branchLabels.yes`);
+    add(`${path}.branchLabels.no`);
+  };
+  const visitNode = (node, path) => {
+    if (!node || typeof node !== "object" || Array.isArray(node)) return;
+    if (FLOW_BINARY_BRANCH_KINDS.has(text(node.kind))) addBinary(path);
+    if (text(node.kind) === "switch_case") {
+      add(`${path}.branchLabels.default`);
+      (Array.isArray(node.cases) ? node.cases : []).forEach((item, index) => {
+        visitList(item?.body, `${path}.cases[${index}].body`);
+      });
+    }
+    if (text(node.kind) === "if_chain") {
+      (Array.isArray(node.cases) ? node.cases : []).forEach((item, index) => {
+        const casePath = `${path}.cases[${index}]`;
+        addBinary(casePath);
+        visitList(item?.thenBranch, `${casePath}.thenBranch`);
+      });
+    }
+    ["items", "thenBranch", "elseBranch", "body", "defaultBranch"].forEach((fieldName) => {
+      visitList(node[fieldName], `${path}.${fieldName}`);
+    });
+  };
+  visitNode(structure, basePath);
 }
 
 function fail(message, code = "INVALID_CARD_ASSISTANCE_SCOPE") {
@@ -320,12 +574,6 @@ export async function assertCardAssistanceScopeCurrent({
   return current;
 }
 
-function blockCollection(card, location) {
-  if (location === "body") return Array.isArray(card.blocks) ? card.blocks : [];
-  if (location === "after") return Array.isArray(card.afterBlocks) ? card.afterBlocks : [];
-  return [];
-}
-
 export function listCardMainResourceFieldNames(card = {}) {
   const definition = getCardResourceDefinition(text(card.resource));
   const protectedFields = new Set([...PRESERVED_CARD_FIELDS, "afterBlocks"]);
@@ -350,61 +598,233 @@ export function listCardResponseFieldNames(card = {}) {
   );
 }
 
-function replaceSelectedWithIdentity(card, target) {
+function addFlowBranchLeaves(value, basePath, leaves) {
+  const resourceType = text(value?.resource || value?.kind);
+  if (resourceType !== "flow" || !value?.structure) return;
+  listFlowBranchLabelLeaves(value.structure, appendPath(basePath, "structure"), leaves);
+}
+
+function addTargetTextualLeaves(card, target, leaves) {
   if (target.location === "main") {
-    listCardMainResourceFieldNames(card).forEach((fieldName) => {
-      delete card[fieldName];
-    });
+    const editableTopFields = new Set(listCardMainResourceFieldNames(card));
+    listTextualLeaves(card, { editableTopFields, leaves });
+    if (editableTopFields.has("structure")) addFlowBranchLeaves(card, "", leaves);
     return;
   }
   if (target.location === "response") {
-    listCardResponseFieldNames(card).forEach((fieldName) => {
-      delete card[fieldName];
+    listTextualLeaves(card, {
+      editableTopFields: new Set(listCardResponseFieldNames(card)),
+      leaves
     });
     return;
   }
   if (target.location === "after_text") {
-    card.after = "__selectedResource";
+    leaves.set("after", { path: "after", optional: false });
     return;
   }
   const fieldName = target.location === "body" ? "blocks" : "afterBlocks";
-  if (!Array.isArray(card[fieldName])) return;
-  card[fieldName] = card[fieldName].map((block) =>
-    text(block?.id) === target.blockId
-      ? { id: block.id, kind: block.kind, __selectedResource: true }
-      : block
-  );
+  const blocks = Array.isArray(card[fieldName]) ? card[fieldName] : [];
+  const blockIndex = blocks.findIndex((block) => text(block?.id) === target.blockId);
+  if (blockIndex < 0) return;
+  const basePath = `${fieldName}[${blockIndex}]`;
+  listTextualLeaves(blocks[blockIndex], { basePath, leaves });
+  addFlowBranchLeaves(blocks[blockIndex], basePath, leaves);
 }
 
-function assertResourceRepairBoundary(beforeCard, afterCard, targets) {
+function authorizedTextualLeaves(card, repairScope, targets) {
+  const leaves = new Map();
+  const selectedTargets = repairScope === "card"
+    ? listCardResourceTargets(card)
+    : targets;
+  selectedTargets.forEach((target) => addTargetTextualLeaves(card, target, leaves));
+  if (repairScope === "card") {
+    leaves.set("title", { path: "title", optional: false });
+  }
+  return [...leaves.values()];
+}
+
+export function listCardAssistanceTextPaths(
+  card,
+  { repairScope = "card", targets = [] } = {}
+) {
+  return authorizedTextualLeaves(card, repairScope, targets)
+    .map(({ path }) => path);
+}
+
+export function assertCardAssistanceTextBoundary(
+  beforeCard,
+  afterCard,
+  { repairScope = "card", targets = [] } = {}
+) {
   const beforeComparable = clone(beforeCard);
   const afterComparable = clone(afterCard);
-  targets.forEach((target) => {
-    replaceSelectedWithIdentity(beforeComparable, target);
-    replaceSelectedWithIdentity(afterComparable, target);
-  });
-  if (!same(beforeComparable, afterComparable)) {
-    fail(
-      "A resposta tentou alterar conteúdo fora dos recursos selecionados.",
-      "OUT_OF_SCOPE_CARD_ASSISTANCE_CHANGE"
-    );
-  }
-  targets.filter((target) =>
-    ["body", "after"].includes(target.location)
-  ).forEach((target) => {
-    const beforeBlock = blockCollection(beforeCard, target.location)
-      .find((block) => text(block?.id) === target.blockId);
-    const afterBlock = blockCollection(afterCard, target.location)
-      .find((block) => text(block?.id) === target.blockId);
-    if (!beforeBlock || !afterBlock ||
-        beforeBlock.id !== afterBlock.id ||
-        beforeBlock.kind !== afterBlock.kind) {
+  const leaves = authorizedTextualLeaves(beforeCard, repairScope, targets);
+
+  leaves.forEach(({ path, optional }) => {
+    const beforeValue = readPath(beforeCard, path);
+    const afterValue = readPath(afterCard, path);
+    if (
+      (!optional && (typeof beforeValue !== "string" || typeof afterValue !== "string")) ||
+      (optional && beforeValue !== undefined && typeof beforeValue !== "string") ||
+      (optional && afterValue !== undefined && typeof afterValue !== "string")
+    ) {
       fail(
-        "A resposta tentou trocar a identidade ou o tipo de um recurso selecionado.",
+        `O reparo tentou alterar a forma estrutural do campo textual ${path}.`,
+        "OUT_OF_SCOPE_CARD_ASSISTANCE_CHANGE"
+      );
+    }
+    if (!preservesGapTokenStructure(beforeValue, afterValue)) {
+      fail(
+        `O reparo tentou alterar uma lacuna ou sua resposta em ${path}.`,
+        "OUT_OF_SCOPE_CARD_ASSISTANCE_CHANGE"
+      );
+    }
+    const createMissing = optional === true;
+    if (
+      !writePath(beforeComparable, path, MASKED_TEXT_VALUE, { createMissing }) ||
+      !writePath(afterComparable, path, MASKED_TEXT_VALUE, { createMissing })
+    ) {
+      fail(
+        `O reparo tentou remover o campo textual autorizado ${path}.`,
         "OUT_OF_SCOPE_CARD_ASSISTANCE_CHANGE"
       );
     }
   });
+
+  if (!same(beforeComparable, afterComparable)) {
+    fail(
+      repairScope === "resources"
+        ? "A resposta tentou alterar estrutura, resposta ou conteúdo fora dos recursos selecionados."
+        : "A resposta tentou alterar a estrutura ou as respostas do card.",
+      "OUT_OF_SCOPE_CARD_ASSISTANCE_CHANGE"
+    );
+  }
+  return afterCard;
+}
+
+export function projectCardAssistanceTextChange(
+  beforeCard,
+  proposedCard,
+  { repairScope = "card", targets = [] } = {}
+) {
+  const beforeValidation = validateCard(beforeCard, "$.assistance.beforeCard");
+  const proposedValidation = validateCard(proposedCard, "$.assistance.proposedCard");
+  if (!proposedValidation.ok) {
+    fail("O reparo textual contém um card inválido.", "INVALID_CARD_ASSISTANCE_RESULT");
+  }
+  const normalizedBefore = beforeValidation.ok ? beforeValidation.value : beforeCard;
+  const normalizedProposal = beforeValidation.ok
+    ? proposedValidation.value
+    : proposedCard;
+  assertCardAssistanceTextBoundary(normalizedBefore, normalizedProposal, {
+    repairScope,
+    targets
+  });
+
+  const projected = clone(beforeCard);
+  authorizedTextualLeaves(normalizedBefore, repairScope, targets)
+    .forEach(({ path, optional }) => {
+      const value = readPath(normalizedProposal, path);
+      if (optional && value === undefined) {
+        deletePath(projected, path);
+        return;
+      }
+      if (!writePath(projected, path, value, { createMissing: optional })) {
+        fail(
+          `Não foi possível aplicar a folha textual autorizada ${path}.`,
+          "INVALID_CARD_ASSISTANCE_RESULT"
+        );
+      }
+    });
+  const projectedValidation = validateCard(projected, "$.assistance.projectedCard");
+  if (!projectedValidation.ok) {
+    fail("O reparo textual projetado deixou o card inválido.", "INVALID_CARD_ASSISTANCE_RESULT");
+  }
+  return projected;
+}
+
+function throwTextRebaseConflict(paths, message) {
+  const error = new CardAssistanceScopeError(
+    message || "O mesmo texto foi alterado local e remotamente.",
+    "CARD_ASSISTANCE_TEXT_CONFLICT"
+  );
+  error.paths = [...new Set(paths)].sort();
+  throw error;
+}
+
+export function rebaseCardAssistanceTextChange({
+  baseCard,
+  localCard,
+  remoteCard,
+  repairScope = "card",
+  targets = [],
+  conflictPolicy = "reject"
+} = {}) {
+  if (!TEXT_REBASE_CONFLICT_POLICIES.has(conflictPolicy)) {
+    fail(
+      "A política de conflito textual deve ser reject ou local.",
+      "INVALID_CARD_ASSISTANCE_REQUEST"
+    );
+  }
+  const safeLocal = projectCardAssistanceTextChange(baseCard, localCard, {
+    repairScope,
+    targets
+  });
+  let safeRemote;
+  try {
+    safeRemote = projectCardAssistanceTextChange(baseCard, remoteCard, {
+      repairScope: "card"
+    });
+  } catch (error) {
+    if (!(error instanceof CardAssistanceScopeError)) throw error;
+    throwTextRebaseConflict(
+      ["$structure"],
+      "A estrutura ou as respostas do card mudaram no remoto; o texto local foi preservado como conflito."
+    );
+  }
+
+  const rebased = clone(safeRemote);
+  const appliedPaths = [];
+  const convergedPaths = [];
+  const conflictPaths = [];
+  authorizedTextualLeaves(baseCard, repairScope, targets)
+    .forEach(({ path, optional }) => {
+      const baseValue = readPath(baseCard, path);
+      const localValue = readPath(safeLocal, path);
+      if (Object.is(baseValue, localValue)) return;
+      const remoteValue = readPath(safeRemote, path);
+      if (!Object.is(remoteValue, baseValue) && !Object.is(remoteValue, localValue)) {
+        if (conflictPolicy === "reject") {
+          conflictPaths.push(path);
+          return;
+        }
+      }
+      if (Object.is(remoteValue, localValue)) {
+        convergedPaths.push(path);
+        return;
+      }
+      if (optional && localValue === undefined) {
+        deletePath(rebased, path);
+      } else if (!writePath(rebased, path, localValue, { createMissing: optional })) {
+        conflictPaths.push(path);
+        return;
+      }
+      appliedPaths.push(path);
+    });
+  if (conflictPaths.length) throwTextRebaseConflict(conflictPaths);
+
+  const validation = validateCard(rebased, "$.assistance.rebasedCard");
+  if (!validation.ok) {
+    throwTextRebaseConflict(
+      ["$validation"],
+      "A combinação dos textos local e remoto deixaria o card inválido."
+    );
+  }
+  return {
+    card: rebased,
+    appliedPaths,
+    convergedPaths
+  };
 }
 
 function validateProposedCard(card, path) {
@@ -441,9 +861,10 @@ export async function applyCardAssistanceChangeSet({
       "OUT_OF_SCOPE_CARD_ASSISTANCE_CHANGE"
     );
   }
-  if (snapshot.target.repairScope === "resources") {
-    assertResourceRepairBoundary(context.card, proposedCard, snapshot.target.resources || []);
-  }
+  assertCardAssistanceTextBoundary(context.card, proposedCard, {
+    repairScope: snapshot.target.repairScope,
+    targets: snapshot.target.resources || []
+  });
   nextContext.microsequence.cards[nextContext.cardIndex] = proposedCard;
 
   const validation = validateProjectDocument(nextProject);
@@ -536,13 +957,10 @@ export async function applyCardAssistanceBatchChangeSet({
         "OUT_OF_SCOPE_CARD_ASSISTANCE_CHANGE"
       );
     }
-    if (item.snapshot.target.repairScope === "resources") {
-      assertResourceRepairBoundary(
-        beforeContext.card,
-        proposedCard,
-        item.snapshot.target.resources || []
-      );
-    }
+    assertCardAssistanceTextBoundary(beforeContext.card, proposedCard, {
+      repairScope: item.snapshot.target.repairScope,
+      targets: item.snapshot.target.resources || []
+    });
     afterContext.microsequence.cards[afterContext.cardIndex] = proposedCard;
   }
 

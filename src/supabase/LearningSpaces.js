@@ -3,12 +3,23 @@ import {
   privateCourseRemovalRequestId,
   removeCatalogCourse
 } from "../assist/courseRemovalCommand.js";
+import { rebaseCardAssistanceTextChange } from "../assist/cardAssistanceScope.js";
 import { validateProjectDocument } from "../domain/aralearnProject.js";
+import { canonicalStringify } from "../persistence/canonicalCourseHash.js";
+import { courseFromWorkspaceParts } from "../ui/homeTrailProjection.js";
 
 const CACHE_VERSION = 5;
 const CACHE_PREFIX = "learning.spaces.v1";
 const TRAIL_COURSE_CACHE_CONTRACT = "aralearn.trail-course-cache.v1";
 const TRAIL_COURSE_CACHE_PREFIX = "learning.trail.course.v1";
+const WORKSPACE_AUTHORING_QUEUE_CONTRACT = "aralearn.workspace-authoring-queue.v1";
+const WORKSPACE_AUTHORING_QUEUE_PREFIX = "learning.workspace.authoring.v1";
+const WORKSPACE_AUTHORING_LOCK_CONTRACT = "aralearn.workspace-authoring-lock.v1";
+const WORKSPACE_AUTHORING_LOCK_LEASE_MS = 30_000;
+const WORKSPACE_AUTHORING_LOCK_RENEW_MS = 5_000;
+const WORKSPACE_AUTHORING_LOCK_RETRY_MS = 20;
+const WORKSPACE_AUTHORING_QUEUE_LIMIT = 100;
+const WORKSPACE_AUTHORING_QUEUE_MAX_BYTES = 16 * 1024 * 1024;
 const TRAIL_MUTATION_CACHE_VERSION = 2;
 const TRAIL_MUTATION_CACHE_PREFIX = "learning.trail.mutations.v1";
 const TRAIL_PAGE_LIMIT = 100;
@@ -25,6 +36,7 @@ const TRAIL_TITLE_COLLATOR = new Intl.Collator("pt-BR", {
   sensitivity: "base",
   numeric: true
 });
+const workspaceAuthoringFallbackLocks = new Map();
 
 function text(value) {
   return typeof value === "string" ? value : "";
@@ -50,6 +62,306 @@ function trailCourseCacheKey(userId, trailItemId) {
 
 function trailPersonalStateCacheKey(userId, trailItemId) {
   return `trail.personalState:${userId}:${trailItemId}`;
+}
+
+function workspaceAuthoringQueueKey(userId, trailItemId) {
+  return `${WORKSPACE_AUTHORING_QUEUE_PREFIX}:${userId}:${trailItemId}`;
+}
+
+function sameCanonical(left, right) {
+  return canonicalStringify(left) === canonicalStringify(right);
+}
+
+function authoringConflict(message) {
+  const error = new Error(message);
+  error.code = "workspace_authoring_conflict";
+  error.conflict = true;
+  return error;
+}
+
+function validEntityPath(value, min = 1, max = 5) {
+  return Array.isArray(value) && value.length >= min && value.length <= max &&
+    value.every((entry) => text(entry).trim());
+}
+
+function normalizeWorkspaceAuthoringOperation(value = {}) {
+  const kind = value.kind === "cards" ? "cards" : value.kind === "metadata" ? "metadata" : "";
+  const operationId = text(value.operationId).trim();
+  const requestIdValue = text(value.requestId).trim().toLowerCase();
+  if (!kind || !operationId || !UUID_PATTERN.test(requestIdValue)) {
+    throw new Error("A fila de autoria contém uma operação inválida.");
+  }
+  if (kind === "metadata") {
+    const entityType = text(value.entityType).trim();
+    const allowedFields = new Set(["title", "goal"]);
+    const hasMetadataRecords = value.baseMetadata && typeof value.baseMetadata === "object" &&
+      !Array.isArray(value.baseMetadata) && value.metadata &&
+      typeof value.metadata === "object" && !Array.isArray(value.metadata);
+    const baseFields = hasMetadataRecords ? Object.keys(value.baseMetadata) : [];
+    const nextFields = hasMetadataRecords ? Object.keys(value.metadata) : [];
+    if (!new Set(["course", "module", "lesson", "microsequence", "card"]).has(entityType) ||
+        entityType === "card" || !validEntityPath(value.entityPath) ||
+        !hasMetadataRecords ||
+        baseFields.length !== nextFields.length ||
+        baseFields.some((field) => !allowedFields.has(field) || !nextFields.includes(field))) {
+      throw new Error("A fila de autoria contém metadados inválidos.");
+    }
+    return {
+      kind,
+      operationId,
+      requestId: requestIdValue,
+      entityType,
+      entityPath: value.entityPath.map((entry) => text(entry).trim()),
+      baseMetadata: structuredClone(value.baseMetadata),
+      metadata: structuredClone(value.metadata),
+      createdAt: text(value.createdAt),
+      attemptedAt: text(value.attemptedAt)
+    };
+  }
+  if (!validEntityPath(value.microsequencePath, 4, 4) ||
+      !Array.isArray(value.baseCards) || !Array.isArray(value.cards) ||
+      value.baseCards.length > 500 || value.cards.length > 500) {
+    throw new Error("A fila de autoria contém cards inválidos.");
+  }
+  const baseStructure = value.baseCards.map((card) => [text(card?.id), Number(card?.position)]);
+  const nextStructure = value.cards.map((card) => [text(card?.id), Number(card?.position)]);
+  if (baseStructure.length !== nextStructure.length ||
+      baseStructure.some(([id, position], index) =>
+        !id || !Number.isSafeInteger(position) || position < 1 ||
+        id !== nextStructure[index]?.[0] || position !== nextStructure[index]?.[1]
+      )) {
+    throw new Error("A edição textual não pode alterar a identidade, a ordem ou a quantidade dos cards.");
+  }
+  value.baseCards.forEach((baseCard, index) => {
+    rebaseCardAssistanceTextChange({
+      baseCard,
+      localCard: value.cards[index],
+      remoteCard: baseCard
+    });
+  });
+  return {
+    kind,
+    operationId,
+    requestId: requestIdValue,
+    microsequencePath: value.microsequencePath.map((entry) => text(entry).trim()),
+    baseCards: structuredClone(value.baseCards),
+    cards: structuredClone(value.cards),
+    createdAt: text(value.createdAt),
+    attemptedAt: text(value.attemptedAt)
+  };
+}
+
+function workspaceAuthoringOperationTarget(operation) {
+  return operation.kind === "metadata"
+    ? `metadata:${operation.entityType}:${operation.entityPath.join("\u0000")}`
+    : `cards:${operation.microsequencePath.join("\u0000")}`;
+}
+
+function coalesceWorkspaceAuthoringOperations(values, nextOperation) {
+  const operations = values.map(normalizeWorkspaceAuthoringOperation);
+  const next = normalizeWorkspaceAuthoringOperation(nextOperation);
+  const target = workspaceAuthoringOperationTarget(next);
+  let index = -1;
+  for (let candidate = operations.length - 1; candidate >= 0; candidate -= 1) {
+    if (!operations[candidate].attemptedAt &&
+        workspaceAuthoringOperationTarget(operations[candidate]) === target) {
+      index = candidate;
+      break;
+    }
+  }
+  if (index < 0) return [...operations, next];
+  const previous = operations[index];
+  if (previous.kind === "metadata") {
+    const metadata = {};
+    for (const field of Object.keys(next.metadata)) {
+      const baseValue = next.baseMetadata[field];
+      const localValue = next.metadata[field];
+      const queuedValue = previous.metadata[field];
+      if (sameCanonical(localValue, baseValue)) {
+        metadata[field] = structuredClone(queuedValue);
+      } else if (sameCanonical(queuedValue, baseValue) || sameCanonical(queuedValue, localValue)) {
+        metadata[field] = structuredClone(localValue);
+      } else {
+        throw authoringConflict(`O campo "${field}" possui duas edições locais concorrentes.`);
+      }
+    }
+    operations[index] = {
+      ...next,
+      baseMetadata: structuredClone(previous.baseMetadata),
+      metadata,
+      createdAt: previous.createdAt
+    };
+  } else {
+    const { cards } = rebaseWorkspaceTextCards(previous.cards, next);
+    operations[index] = {
+      ...next,
+      baseCards: structuredClone(previous.baseCards),
+      cards,
+      createdAt: previous.createdAt
+    };
+  }
+  return operations;
+}
+
+function normalizeWorkspaceAuthoringQueue(value, { trailItemId, workspaceId, courseKey } = {}) {
+  if (!value) return null;
+  const normalizedTrailItemId = text(value.trailItemId).trim().toLowerCase();
+  const normalizedWorkspaceId = text(value.workspaceId).trim().toLowerCase();
+  const normalizedCourseKey = text(value.courseKey).trim();
+  const requestedTrailItemId = text(trailItemId).trim().toLowerCase();
+  const requestedWorkspaceId = text(workspaceId).trim().toLowerCase();
+  const requestedCourseKey = text(courseKey).trim();
+  const operations = Array.isArray(value.operations)
+    ? value.operations.map(normalizeWorkspaceAuthoringOperation)
+    : [];
+  if (value.contract !== WORKSPACE_AUTHORING_QUEUE_CONTRACT ||
+      !UUID_PATTERN.test(normalizedTrailItemId) || !UUID_PATTERN.test(normalizedWorkspaceId) ||
+      !normalizedCourseKey || !value.draftCourse ||
+      !Number.isSafeInteger(Number(value.baseRevision)) || Number(value.baseRevision) < 1 ||
+      operations.length > WORKSPACE_AUTHORING_QUEUE_LIMIT) {
+    throw new Error("A fila offline de autoria do workspace é inválida.");
+  }
+  if ((requestedTrailItemId && requestedTrailItemId !== normalizedTrailItemId) ||
+      (requestedWorkspaceId && requestedWorkspaceId !== normalizedWorkspaceId) ||
+      (requestedCourseKey && requestedCourseKey !== normalizedCourseKey)) {
+    throw new Error("A fila offline pertence a outra composição de workspace.");
+  }
+  const validation = validateProjectDocument({
+    contract: "aralearn.contract",
+    version: 4,
+    kind: "project",
+    courses: [value.draftCourse]
+  });
+  if (!validation.ok || value.draftCourse.id !== normalizedCourseKey) {
+    throw new Error("O rascunho offline do workspace viola o contrato v4.");
+  }
+  return {
+    contract: WORKSPACE_AUTHORING_QUEUE_CONTRACT,
+    trailItemId: normalizedTrailItemId,
+    workspaceId: normalizedWorkspaceId,
+    courseKey: normalizedCourseKey,
+    baseRevision: Number(value.baseRevision),
+    status: value.status === "conflict" ? "conflict" : "pending",
+    errorMessage: text(value.errorMessage),
+    operations,
+    draftCourse: structuredClone(value.draftCourse),
+    updatedAt: text(value.updatedAt)
+  };
+}
+
+function findCourseEntity(course, entityType, entityPath) {
+  if (!course || entityPath[0] !== course.id) return null;
+  if (entityType === "course") return course;
+  const moduleValue = (course.modules || []).find((item) => item.id === entityPath[1]);
+  if (entityType === "module") return moduleValue || null;
+  const lesson = (moduleValue?.lessons || []).find((item) => item.id === entityPath[2]);
+  if (entityType === "lesson") return lesson || null;
+  const microsequence = (lesson?.microsequences || []).find((item) => item.id === entityPath[3]);
+  if (entityType === "microsequence") return microsequence || null;
+  return (microsequence?.cards || []).find((item) => item.id === entityPath[4]) || null;
+}
+
+function metadataProjection(entity, metadata) {
+  return Object.fromEntries(Object.keys(metadata).map((field) => [
+    field,
+    structuredClone(entity?.[field] ?? (field === "branchOf" ? null : ""))
+  ]));
+}
+
+function reconcileWorkspaceMetadata(course, operation, { conflictPolicy = "reject" } = {}) {
+  const entity = findCourseEntity(course, operation.entityType, operation.entityPath);
+  if (!entity) throw authoringConflict("O texto editado não existe mais no workspace.");
+  const remoteMetadata = metadataProjection(entity, operation.metadata);
+  const metadata = {};
+  for (const field of Object.keys(operation.metadata)) {
+    const baseValue = operation.baseMetadata[field];
+    const localValue = operation.metadata[field];
+    const remoteValue = remoteMetadata[field];
+    if (sameCanonical(localValue, baseValue)) {
+      metadata[field] = structuredClone(remoteValue);
+    } else if (sameCanonical(remoteValue, baseValue) || sameCanonical(remoteValue, localValue) ||
+               conflictPolicy === "local") {
+      metadata[field] = structuredClone(localValue);
+    } else {
+      throw authoringConflict(`O campo "${field}" também foi alterado em outro dispositivo.`);
+    }
+  }
+  return { changed: !sameCanonical(remoteMetadata, metadata), metadata };
+}
+
+function findMicrosequence(course, path) {
+  return findCourseEntity(course, "microsequence", path);
+}
+
+function rebaseWorkspaceTextCards(remoteCards, operation, { conflictPolicy = "reject" } = {}) {
+  const baseById = new Map(operation.baseCards.map((card) => [text(card?.id), card]));
+  const localById = new Map(operation.cards.map((card) => [text(card?.id), card]));
+  if (baseById.size !== operation.baseCards.length || localById.size !== operation.cards.length) {
+    throw authoringConflict("A microssequência possui identidades de card incompatíveis.");
+  }
+  const remoteIds = remoteCards.map((card) => text(card?.id));
+  if (remoteIds.some((id) => !id) || new Set(remoteIds).size !== remoteIds.length) {
+    throw authoringConflict("A microssequência remota possui identidades de card incompatíveis.");
+  }
+  const remoteIdsSet = new Set(remoteIds);
+  for (const [id, baseCard] of baseById) {
+    const localCard = localById.get(id);
+    if (!remoteIdsSet.has(id) && !sameCanonical(baseCard, localCard)) {
+      throw authoringConflict(`O card "${id}" editado localmente foi retirado em outro dispositivo.`);
+    }
+  }
+  try {
+    const cards = remoteCards.map((remoteCard) => {
+      const id = text(remoteCard?.id);
+      const baseCard = baseById.get(id);
+      const localCard = localById.get(id);
+      if (!baseCard || !localCard || sameCanonical(baseCard, localCard)) {
+        return structuredClone(remoteCard);
+      }
+      const alignedBase = { ...structuredClone(baseCard), position: remoteCard.position };
+      const alignedLocal = { ...structuredClone(localCard), position: remoteCard.position };
+      return rebaseCardAssistanceTextChange({
+        baseCard: alignedBase,
+        localCard: alignedLocal,
+        remoteCard,
+        conflictPolicy
+      }).card;
+    });
+    return { changed: !sameCanonical(cards, remoteCards), cards };
+  } catch (error) {
+    if (error?.conflict === true) throw error;
+    if (error?.code === "CARD_ASSISTANCE_TEXT_CONFLICT") {
+      throw authoringConflict(
+        "O mesmo texto também foi alterado em outro dispositivo. Escolha qual redação deve prevalecer."
+      );
+    }
+    throw error;
+  }
+}
+
+function reconcileWorkspaceCards(course, operation, options = {}) {
+  const microsequence = findMicrosequence(course, operation.microsequencePath);
+  if (!microsequence) throw authoringConflict("A microssequência editada não existe mais.");
+  const remoteCards = Array.isArray(microsequence.cards) ? microsequence.cards : [];
+  if (sameCanonical(remoteCards, operation.cards)) {
+    return { changed: false, cards: structuredClone(remoteCards) };
+  }
+  return rebaseWorkspaceTextCards(remoteCards, operation, options);
+}
+
+function projectWorkspaceDraftCourse(currentDraft, incomingDraft, operation) {
+  if (!currentDraft) return structuredClone(incomingDraft);
+  const draft = structuredClone(currentDraft);
+  if (operation.kind === "metadata") {
+    const reconciliation = reconcileWorkspaceMetadata(draft, operation);
+    const entity = findCourseEntity(draft, operation.entityType, operation.entityPath);
+    Object.assign(entity, structuredClone(reconciliation.metadata));
+  } else {
+    const reconciliation = reconcileWorkspaceCards(draft, operation);
+    const microsequence = findMicrosequence(draft, operation.microsequencePath);
+    microsequence.cards = structuredClone(reconciliation.cards);
+  }
+  return draft;
 }
 
 function trailMutationCacheKey(userId) {
@@ -94,8 +406,14 @@ function trailItem(value = {}) {
     cardCount: integer(value.cardCount),
     completedCardCount: integer(value.completedCardCount),
     canEdit: value.canEdit === true,
+    canEditOffline: value.canEditOffline === true,
     canDelete: value.canDelete === true,
     canRemove: value.canRemove === true,
+    authoringStatus: ["pending", "conflict"].includes(value.authoringStatus)
+      ? value.authoringStatus
+      : "",
+    authoringPendingCount: integer(value.authoringPendingCount),
+    authoringErrorMessage: text(value.authoringErrorMessage),
     pathId: value.pathId === null ? null : text(value.pathId).toLowerCase(),
     pathTitle: value.pathTitle === null ? null : text(value.pathTitle).trim() || null,
     revision: value.revision === null ? null : integer(value.revision),
@@ -255,6 +573,7 @@ function trailPageWithoutAuthority(value) {
     page.items.map((item) => Object.freeze({
       ...item,
       canEdit: false,
+      canEditOffline: false,
       canDelete: false,
       canRemove: false
     })),
@@ -334,6 +653,31 @@ export class LearningSpaces {
     }
   }
 
+  async #offlineTrailPage(value) {
+    const cachedAuthority = trailPage(value);
+    const withoutAuthority = trailPageWithoutAuthority(value);
+    const cachedById = new Map(cachedAuthority.items.map((item) => [item.trailItemId, item]));
+    const items = await Promise.all(withoutAuthority.items.map(async (item) => {
+      const cachedItem = cachedById.get(item.trailItemId);
+      if (!cachedItem?.workspaceId || cachedItem.canEdit !== true) return item;
+      try {
+        const [course, queue] = await Promise.all([
+          this.readWorkspaceCourseCache(cachedItem),
+          this.readWorkspaceAuthoringQueue(cachedItem)
+        ]);
+        if (!course && !queue) return item;
+        return Object.freeze({ ...item, canEditOffline: true });
+      } catch {
+        return item;
+      }
+    }));
+    return completeTrailPage(
+      withoutAuthority.groups,
+      items,
+      { catalogManage: false, catalogReview: false, organize: false }
+    );
+  }
+
   async loadTrails({
     online = globalThis.navigator?.onLine !== false,
     fallbackPage = null
@@ -342,7 +686,7 @@ export class LearningSpaces {
       const cached = await this.readCache();
       const available = cached?.page || fallbackPage;
       return {
-        page: available ? trailPageWithoutAuthority(available) : null,
+        page: available ? await this.#offlineTrailPage(available) : null,
         stale: true,
         cachedAt: cached?.cachedAt || ""
       };
@@ -399,7 +743,7 @@ export class LearningSpaces {
       const available = cached?.page || fallbackPage;
       if (!available) throw error;
       return {
-        page: trailPageWithoutAuthority(available),
+        page: await this.#offlineTrailPage(available),
         stale: true,
         cachedAt: cached?.cachedAt || ""
       };
@@ -409,8 +753,34 @@ export class LearningSpaces {
   async loadTrailSnapshot(options = {}) {
     const result = await this.loadTrails(options);
     if (!result?.page) throw new Error("Trilhas não possui uma projeção disponível.");
+    const items = await Promise.all(result.page.items.map(async (item) => {
+      if (!item.workspaceId) return item;
+      try {
+        const queue = await this.readWorkspaceAuthoringQueue(item);
+        return Object.freeze({
+          ...item,
+          authoringStatus: queue?.status || "",
+          authoringPendingCount: queue?.operations?.length || 0,
+          authoringErrorMessage: queue?.errorMessage || ""
+        });
+      } catch (error) {
+        return Object.freeze({
+          ...item,
+          authoringStatus: "conflict",
+          authoringPendingCount: 1,
+          authoringErrorMessage: error instanceof Error
+            ? error.message
+            : "A fila local de autoria precisa de atenção."
+        });
+      }
+    }));
+    const page = completeTrailPage(
+      result.page.groups,
+      items,
+      result.page.capabilities
+    );
     return Object.freeze({
-      ...result.page,
+      ...page,
       stale: result.stale === true,
       cachedAt: text(result.cachedAt)
     });
@@ -557,7 +927,7 @@ export class LearningSpaces {
     const expectedRevision = item && typeof item === "object" && item.revision !== null
       ? Number(item.revision)
       : null;
-    if (Number.isSafeInteger(expectedRevision) && expectedRevision !== Number(cached.revision)) {
+    if (Number.isSafeInteger(expectedRevision) && Number(cached.revision) < expectedRevision) {
       return null;
     }
     return structuredClone(cached.response);
@@ -579,12 +949,18 @@ export class LearningSpaces {
         !Array.isArray(response?.parts) || !validation.ok) {
       throw new Error("A composição corrente não pode ser armazenada offline.");
     }
+    if (response?.draftCourse && response?.authoringQueue && response.parts.length === 0) {
+      return false;
+    }
+    const cachedResponse = structuredClone(response);
+    delete cachedResponse.draftCourse;
+    delete cachedResponse.authoringQueue;
     await this.store.putSyncState(trailCourseCacheKey(userId, trailItemId), {
       contract: TRAIL_COURSE_CACHE_CONTRACT,
       trailItemId,
       revision,
       cachedAt: new Date().toISOString(),
-      response: structuredClone(response)
+      response: cachedResponse
     });
     return true;
   }
@@ -597,18 +973,539 @@ export class LearningSpaces {
     }
   }
 
+  async readWorkspaceAuthoringQueue(courseRef) {
+    const userId = currentUserId(this.authClient);
+    const trailItemId = text(courseRef?.trailItemId).trim().toLowerCase();
+    if (!userId || !UUID_PATTERN.test(trailItemId) ||
+        typeof this.store?.getSyncState !== "function") return null;
+    const value = await this.store.getSyncState(workspaceAuthoringQueueKey(userId, trailItemId));
+    return normalizeWorkspaceAuthoringQueue(value, courseRef);
+  }
+
+  async #writeWorkspaceAuthoringQueue(courseRef, value) {
+    const userId = currentUserId(this.authClient);
+    const trailItemId = text(courseRef?.trailItemId).trim().toLowerCase();
+    if (!userId || !UUID_PATTERN.test(trailItemId) ||
+        typeof this.store?.putSyncState !== "function") {
+      throw new Error("A fila offline de autoria não está disponível.");
+    }
+    const normalized = value ? normalizeWorkspaceAuthoringQueue(value, courseRef) : null;
+    await this.store.putSyncState(workspaceAuthoringQueueKey(userId, trailItemId), normalized);
+    return normalized;
+  }
+
+  #withWorkspaceAuthoringLock(courseRef, callback) {
+    const userId = currentUserId(this.authClient);
+    const trailItemId = text(courseRef?.trailItemId).trim().toLowerCase();
+    if (!userId || !UUID_PATTERN.test(trailItemId)) {
+      throw new Error("A fila offline de autoria não possui identidade válida.");
+    }
+    const key = workspaceAuthoringQueueKey(userId, trailItemId);
+    const browserLocks = globalThis.navigator?.locks;
+    if (typeof browserLocks?.request === "function") {
+      return browserLocks.request(`aralearn:${key}`, { mode: "exclusive" }, callback);
+    }
+    if (typeof this.store?.transaction === "function") {
+      return this.#withWorkspaceAuthoringTransactionalLock(key, callback);
+    }
+    const previous = workspaceAuthoringFallbackLocks.get(key) || Promise.resolve();
+    const pending = previous.catch(() => undefined).then(callback);
+    workspaceAuthoringFallbackLocks.set(key, pending);
+    return pending.finally(() => {
+      if (workspaceAuthoringFallbackLocks.get(key) === pending) {
+        workspaceAuthoringFallbackLocks.delete(key);
+      }
+    });
+  }
+
+  async #withWorkspaceAuthoringTransactionalLock(queueKey, callback) {
+    const lockKey = `${WORKSPACE_AUTHORING_LOCK_CONTRACT}:${queueKey}`;
+    const ownerId = requestId();
+    const writeLease = async ({ acquire = false } = {}) => this.store.transaction(
+      ["syncState"],
+      "readwrite",
+      async (transaction) => {
+        const row = await transaction.get("syncState", lockKey);
+        const lease = row?.value;
+        const now = Date.now();
+        const owned = lease?.contract === WORKSPACE_AUTHORING_LOCK_CONTRACT &&
+          lease.ownerId === ownerId;
+        const available = !lease || lease.contract !== WORKSPACE_AUTHORING_LOCK_CONTRACT ||
+          !Number.isFinite(Number(lease.expiresAt)) || Number(lease.expiresAt) <= now;
+        if (!owned && (!acquire || !available)) return false;
+        await transaction.put("syncState", {
+          id: lockKey,
+          key: lockKey,
+          value: {
+            contract: WORKSPACE_AUTHORING_LOCK_CONTRACT,
+            ownerId,
+            expiresAt: now + WORKSPACE_AUTHORING_LOCK_LEASE_MS
+          },
+          updatedAt: new Date(now).toISOString()
+        });
+        return true;
+      }
+    );
+    const releaseLease = () => this.store.transaction(
+      ["syncState"],
+      "readwrite",
+      async (transaction) => {
+        const row = await transaction.get("syncState", lockKey);
+        if (row?.value?.contract === WORKSPACE_AUTHORING_LOCK_CONTRACT &&
+            row.value.ownerId === ownerId) {
+          await transaction.delete("syncState", lockKey);
+        }
+      }
+    );
+
+    while (!await writeLease({ acquire: true })) {
+      await new Promise((resolve) => globalThis.setTimeout(
+        resolve,
+        WORKSPACE_AUTHORING_LOCK_RETRY_MS
+      ));
+    }
+
+    let heartbeat = Promise.resolve();
+    let heartbeatError = null;
+    const renew = () => {
+      heartbeat = heartbeat
+        .then(async () => {
+          if (!await writeLease()) {
+            throw new Error("A trava da fila offline expirou durante a autoria.");
+          }
+        })
+        .catch((error) => {
+          heartbeatError ||= error;
+        });
+    };
+    const timer = globalThis.setInterval(renew, WORKSPACE_AUTHORING_LOCK_RENEW_MS);
+    let result;
+    let callbackError = null;
+    try {
+      result = await callback();
+    } catch (error) {
+      callbackError = error;
+    } finally {
+      globalThis.clearInterval(timer);
+      await heartbeat;
+      await releaseLease().catch((error) => {
+        heartbeatError ||= error;
+      });
+    }
+    if (callbackError) throw callbackError;
+    if (heartbeatError) throw heartbeatError;
+    return result;
+  }
+
+  async #queueWorkspaceAuthoringOperation({ courseRef, draftCourse, operation }) {
+    return this.#withWorkspaceAuthoringLock(courseRef, async () => {
+      const current = await this.readWorkspaceAuthoringQueue(courseRef);
+      const normalizedOperation = normalizeWorkspaceAuthoringOperation(operation);
+      const projectedDraftCourse = projectWorkspaceDraftCourse(
+        current?.draftCourse || null,
+        draftCourse,
+        normalizedOperation
+      );
+      const operations = coalesceWorkspaceAuthoringOperations(
+        current?.operations || [],
+        normalizedOperation
+      );
+      if (operations.length > WORKSPACE_AUTHORING_QUEUE_LIMIT) {
+        throw new Error("A fila offline de autoria atingiu o limite seguro.");
+      }
+      const nextQueue = {
+        contract: WORKSPACE_AUTHORING_QUEUE_CONTRACT,
+        trailItemId: courseRef.trailItemId,
+        workspaceId: courseRef.workspaceId,
+        courseKey: courseRef.courseKey,
+        baseRevision: current?.baseRevision || courseRef.revision,
+        status: "pending",
+        errorMessage: "",
+        operations,
+        draftCourse: projectedDraftCourse,
+        updatedAt: new Date().toISOString()
+      };
+      if (new TextEncoder().encode(JSON.stringify(nextQueue)).byteLength >
+          WORKSPACE_AUTHORING_QUEUE_MAX_BYTES) {
+        throw new Error(
+          "O rascunho offline atingiu o limite seguro. Reconecte para sincronizar antes de continuar."
+        );
+      }
+      const queued = await this.#writeWorkspaceAuthoringQueue(courseRef, nextQueue);
+      if (globalThis.navigator?.onLine === false) {
+        return {
+          status: "pending",
+          pending: true,
+          revision: courseRef.revision,
+          queue: queued
+        };
+      }
+      return this.#syncWorkspaceAuthoringQueueUnlocked(courseRef);
+    });
+  }
+
+  queueWorkspaceMetadata({
+    courseRef,
+    draftCourse,
+    entityType,
+    entityPath,
+    baseMetadata,
+    metadata
+  } = {}) {
+    const id = requestId();
+    return this.#queueWorkspaceAuthoringOperation({
+      courseRef,
+      draftCourse,
+      operation: {
+        kind: "metadata",
+        operationId: id,
+        requestId: id,
+        entityType,
+        entityPath,
+        baseMetadata,
+        metadata,
+        createdAt: new Date().toISOString(),
+        attemptedAt: ""
+      }
+    });
+  }
+
+  queueWorkspaceCards({
+    courseRef,
+    draftCourse,
+    microsequencePath,
+    baseCards,
+    cards
+  } = {}) {
+    const id = requestId();
+    return this.#queueWorkspaceAuthoringOperation({
+      courseRef,
+      draftCourse,
+      operation: {
+        kind: "cards",
+        operationId: id,
+        requestId: id,
+        microsequencePath,
+        baseCards,
+        cards,
+        createdAt: new Date().toISOString(),
+        attemptedAt: ""
+      }
+    });
+  }
+
+  async #syncWorkspaceAuthoringQueueUnlocked(courseRef) {
+    let queue = await this.readWorkspaceAuthoringQueue(courseRef);
+    if (!queue) return { status: "clean", pending: false };
+    try {
+      queue = { ...queue, status: "pending", errorMessage: "" };
+      await this.#writeWorkspaceAuthoringQueue(courseRef, queue);
+      while (queue.operations.length) {
+        let operation = queue.operations[0];
+        const response = await this.#loadWorkspaceCourseRemote({
+          trailItemId: queue.trailItemId
+        });
+        const remoteCourse = courseFromWorkspaceParts(response, {
+          courseKey: queue.courseKey
+        });
+        let changed = false;
+        let result = { revision: response.revision };
+        if (operation.kind === "metadata") {
+          const reconciliation = reconcileWorkspaceMetadata(remoteCourse, operation);
+          changed = reconciliation.changed;
+          if (changed) {
+            if (!operation.attemptedAt) {
+              operation = { ...operation, attemptedAt: new Date().toISOString() };
+              queue = {
+                ...queue,
+                operations: [operation, ...queue.operations.slice(1)],
+                updatedAt: operation.attemptedAt
+              };
+              await this.#writeWorkspaceAuthoringQueue(courseRef, queue);
+            }
+            result = await this.catalog.executeApplicationAuthoringAction(
+              "atualizarMetadadosDaEntidade",
+              {
+                requestId: operation.requestId,
+                workspaceId: queue.workspaceId,
+                expectedRevision: response.revision,
+                entityType: operation.entityType,
+                entityPath: operation.entityPath,
+                ...reconciliation.metadata
+              }
+            );
+          }
+        } else {
+          const reconciliation = reconcileWorkspaceCards(remoteCourse, operation);
+          changed = reconciliation.changed;
+          if (changed) {
+            if (!operation.attemptedAt) {
+              operation = { ...operation, attemptedAt: new Date().toISOString() };
+              queue = {
+                ...queue,
+                operations: [operation, ...queue.operations.slice(1)],
+                updatedAt: operation.attemptedAt
+              };
+              await this.#writeWorkspaceAuthoringQueue(courseRef, queue);
+            }
+            result = await this.catalog.executeApplicationAuthoringAction(
+              "salvarCardsNaMicrossequencia",
+              {
+                requestId: operation.requestId,
+                workspaceId: queue.workspaceId,
+                expectedRevision: response.revision,
+                microsequencePath: operation.microsequencePath,
+                mode: "replace",
+                cardsJson: JSON.stringify(reconciliation.cards)
+              }
+            );
+          }
+        }
+        const revision = Number(result?.revision);
+        if (!Number.isSafeInteger(revision) || revision < 1) {
+          throw new Error("A autoria do workspace não devolveu uma revisão válida.");
+        }
+        queue = {
+          ...queue,
+          baseRevision: revision,
+          operations: queue.operations.slice(1),
+          updatedAt: new Date().toISOString()
+        };
+        await this.#writeWorkspaceAuthoringQueue(courseRef, queue);
+      }
+      const response = await this.#loadWorkspaceCourseRemote({ trailItemId: queue.trailItemId });
+      const course = courseFromWorkspaceParts(response, { courseKey: queue.courseKey });
+      await this.cacheWorkspaceCourse({ trailItemId: queue.trailItemId }, response, course);
+      await this.#writeWorkspaceAuthoringQueue(courseRef, null);
+      return {
+        status: "materialized",
+        pending: false,
+        revision: response.revision,
+        response,
+        course
+      };
+    } catch (error) {
+      const statusCode = Number(error?.status);
+      const conflicted = error?.conflict === true ||
+        (Number.isSafeInteger(statusCode) && statusCode >= 400 && statusCode < 500 &&
+          ![408, 429].includes(statusCode)) ||
+        ["course_authoring_forbidden", "workspace_forbidden"].includes(error?.code);
+      queue = await this.#writeWorkspaceAuthoringQueue(courseRef, {
+        ...queue,
+        status: conflicted ? "conflict" : "pending",
+        errorMessage: error instanceof Error ? error.message : "A sincronização foi adiada.",
+        updatedAt: new Date().toISOString()
+      });
+      return {
+        status: queue.status,
+        pending: true,
+        conflict: queue.status === "conflict",
+        revision: queue.baseRevision,
+        errorMessage: queue.errorMessage,
+        queue
+      };
+    }
+  }
+
+  syncWorkspaceAuthoringQueue(courseRef) {
+    return this.#withWorkspaceAuthoringLock(
+      courseRef,
+      () => this.#syncWorkspaceAuthoringQueueUnlocked(courseRef)
+    );
+  }
+
+  resolveWorkspaceAuthoringConflict(courseRef, resolution) {
+    return this.#withWorkspaceAuthoringLock(courseRef, async () => {
+      const queue = await this.readWorkspaceAuthoringQueue(courseRef);
+      if (!queue) return { status: "clean", pending: false };
+      if (resolution === "discard_local") {
+        if (globalThis.navigator?.onLine === false) {
+          await this.#writeWorkspaceAuthoringQueue(courseRef, null);
+          return { status: "discarded", pending: false, course: null, response: null };
+        }
+        const response = await this.#loadWorkspaceCourseRemote({
+          trailItemId: queue.trailItemId
+        });
+        const course = courseFromWorkspaceParts(response, { courseKey: queue.courseKey });
+        await this.cacheWorkspaceCourse({ trailItemId: queue.trailItemId }, response, course);
+        await this.#writeWorkspaceAuthoringQueue(courseRef, null);
+        return { status: "discarded", pending: false, revision: response.revision, response, course };
+      }
+      if (resolution !== "keep_local") {
+        throw new TypeError("Escolha uma resolução válida para a edição offline.");
+      }
+      if (globalThis.navigator?.onLine === false) {
+        throw new Error("Reconecte para comparar e manter a redação local.");
+      }
+      if (queue.status !== "conflict" || !queue.operations.length) {
+        return this.#syncWorkspaceAuthoringQueueUnlocked(courseRef);
+      }
+      const response = await this.#loadWorkspaceCourseRemote({
+        trailItemId: queue.trailItemId
+      });
+      const remoteCourse = courseFromWorkspaceParts(response, { courseKey: queue.courseKey });
+      const operation = queue.operations[0];
+      let rebasedOperation;
+      if (operation.kind === "metadata") {
+        const remoteEntity = findCourseEntity(
+          remoteCourse,
+          operation.entityType,
+          operation.entityPath
+        );
+        if (!remoteEntity) throw authoringConflict("O texto editado não existe mais no workspace.");
+        const remoteMetadata = metadataProjection(remoteEntity, operation.metadata);
+        const metadata = Object.fromEntries(Object.keys(operation.metadata).map((field) => [
+          field,
+          sameCanonical(operation.metadata[field], operation.baseMetadata[field])
+            ? structuredClone(remoteMetadata[field])
+            : structuredClone(operation.metadata[field])
+        ]));
+        const rebasedId = requestId();
+        rebasedOperation = {
+          ...operation,
+          operationId: rebasedId,
+          requestId: rebasedId,
+          attemptedAt: "",
+          baseMetadata: remoteMetadata,
+          metadata
+        };
+      } else {
+        const remoteMicrosequence = findMicrosequence(remoteCourse, operation.microsequencePath);
+        const remoteCards = remoteMicrosequence?.cards || [];
+        if (!remoteMicrosequence) {
+          throw authoringConflict("A microssequência editada não existe mais no workspace.");
+        }
+        const { cards } = rebaseWorkspaceTextCards(remoteCards, operation, {
+          conflictPolicy: "local"
+        });
+        const rebasedId = requestId();
+        rebasedOperation = {
+          ...operation,
+          operationId: rebasedId,
+          requestId: rebasedId,
+          attemptedAt: "",
+          baseCards: structuredClone(remoteCards),
+          cards
+        };
+      }
+      await this.#writeWorkspaceAuthoringQueue(courseRef, {
+        ...queue,
+        baseRevision: Number(response.revision),
+        status: "pending",
+        errorMessage: "",
+        operations: [rebasedOperation, ...queue.operations.slice(1)],
+        updatedAt: new Date().toISOString()
+      });
+      return this.#syncWorkspaceAuthoringQueueUnlocked(courseRef);
+    });
+  }
+
+  async syncAllWorkspaceAuthoringQueues() {
+    const cached = await this.readCache();
+    const referencesById = new Map((cached?.page?.items || [])
+      .filter((item) => item?.workspaceId && item?.trailItemId)
+      .map((item) => ({
+        trailItemId: item.trailItemId,
+        workspaceId: item.workspaceId,
+        courseKey: item.courseKey,
+        revision: item.revision
+      }))
+      .map((reference) => [reference.trailItemId, reference]));
+    const userId = currentUserId(this.authClient);
+    if (userId && typeof this.store?.getAll === "function") {
+      try {
+        const prefix = `${WORKSPACE_AUTHORING_QUEUE_PREFIX}:${userId}:`;
+        const rows = await this.store.getAll("syncState");
+        for (const row of rows) {
+          if (!text(row?.key || row?.id).startsWith(prefix)) continue;
+          try {
+            const queue = normalizeWorkspaceAuthoringQueue(row?.value);
+            referencesById.set(queue.trailItemId, {
+              trailItemId: queue.trailItemId,
+              workspaceId: queue.workspaceId,
+              courseKey: queue.courseKey,
+              revision: queue.baseRevision
+            });
+          } catch (error) {
+            console.warn("Uma fila local de autoria inválida foi isolada.", error);
+          }
+        }
+      } catch {
+        // O cache da Home ainda permite tentar as filas conhecidas nesta sessão.
+      }
+    }
+    return Promise.all([...referencesById.values()].map(async (courseRef) => {
+      const queue = await this.readWorkspaceAuthoringQueue(courseRef);
+      if (!queue) return null;
+      if (queue.status === "conflict") {
+        return {
+          status: "conflict",
+          pending: true,
+          conflict: true,
+          revision: queue.baseRevision,
+          errorMessage: queue.errorMessage,
+          queue
+        };
+      }
+      return this.syncWorkspaceAuthoringQueue(courseRef);
+    }));
+  }
+
+  async #workspaceCourseWithDraft(item, response) {
+    const trailItemId = text(item?.trailItemId || item).trim().toLowerCase();
+    if (!response || !UUID_PATTERN.test(trailItemId)) return response;
+    const queue = await this.readWorkspaceAuthoringQueue({
+      trailItemId,
+      workspaceId: response.workspaceId || item?.workspaceId,
+      courseKey: response.courseKey || item?.courseKey
+    });
+    return queue
+      ? Object.freeze({
+          ...response,
+          draftCourse: structuredClone(queue.draftCourse),
+          authoringQueue: Object.freeze({
+            status: queue.status,
+            pendingCount: queue.operations.length,
+            errorMessage: queue.errorMessage
+          })
+        })
+      : response;
+  }
+
+  async #workspaceCourseDraftOnly(item) {
+    const queue = await this.readWorkspaceAuthoringQueue(item);
+    if (!queue) return null;
+    return Object.freeze({
+      trailItemId: queue.trailItemId,
+      workspaceId: queue.workspaceId,
+      courseKey: queue.courseKey,
+      revision: queue.baseRevision,
+      parts: Object.freeze([]),
+      draftCourse: structuredClone(queue.draftCourse),
+      authoringQueue: Object.freeze({
+        status: queue.status,
+        pendingCount: queue.operations.length,
+        errorMessage: queue.errorMessage
+      })
+    });
+  }
+
   async loadWorkspaceCourse(item) {
     if (globalThis.navigator?.onLine === false) {
       const cached = await this.readWorkspaceCourseCache(item);
-      if (cached) return cached;
+      if (cached) return this.#workspaceCourseWithDraft(item, cached);
+      const draft = await this.#workspaceCourseDraftOnly(item);
+      if (draft) return draft;
       throw new Error("A composição deste curso ainda não está disponível offline.");
     }
     try {
-      return await this.#loadWorkspaceCourseRemote(item);
+      return this.#workspaceCourseWithDraft(item, await this.#loadWorkspaceCourseRemote(item));
     } catch (error) {
       if (!retryableReadFailure(error)) throw error;
       const cached = await this.readWorkspaceCourseCache(item);
-      if (cached) return cached;
+      if (cached) return this.#workspaceCourseWithDraft(item, cached);
+      const draft = await this.#workspaceCourseDraftOnly(item);
+      if (draft) return draft;
       throw error;
     }
   }

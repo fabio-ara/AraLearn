@@ -442,9 +442,34 @@ async function deleteCourseContent(transaction, courseId) {
   await transaction.delete("syncState", localCourseAuthoringStateId(courseId));
 }
 
+function cardAssistanceRowHasPendingAuthoring(row) {
+  const sync = row?.value?.sync;
+  return Array.isArray(sync?.pendingPaths) && sync.pendingPaths.length > 0 ||
+    Array.isArray(sync?.pendingMetadata) && sync.pendingMetadata.length > 0;
+}
+
 async function deleteCourseOutboxEntries(transaction, courseId) {
   const outboxRows = await transaction.getAllByIndex("outbox", "byCourseId", courseId);
   for (const row of outboxRows) await transaction.delete("outbox", row.mutationId);
+}
+
+function workspaceCourseDraftReceiptFromRow(row, courseId) {
+  if (!row || row.value?.status !== "materialized") return null;
+  const consumedRevision = String(row.value.consumedRevision || "").trim();
+  const workspaceId = String(row.value.workspaceId || "").trim();
+  const workspaceRevision = Number(row.value.workspaceRevision);
+  if (!consumedRevision || !workspaceId ||
+      !Number.isSafeInteger(workspaceRevision) || workspaceRevision < 1) {
+    throw new Error("A confirmação persistida do workspace é inválida.");
+  }
+  return {
+    courseId,
+    status: "materialized",
+    consumedRevision,
+    workspaceId,
+    workspaceRevision,
+    updatedAt: String(row.value.updatedAt || row.updatedAt || "")
+  };
 }
 
 async function unresolvedCourseMutationIds(transaction, courseId) {
@@ -460,6 +485,11 @@ async function writeOfficialCourseReplica(
   normalizedRows,
   { publicationSeq, contentHash, receivedAt }
 ) {
+  const authoringStateId = localCourseAuthoringStateId(courseId);
+  const materializedReceipt = workspaceCourseDraftReceiptFromRow(
+    await transaction.get("syncState", authoringStateId),
+    courseId
+  );
   await deleteCourseContent(transaction, courseId);
   for (const storeName of OFFICIAL_COURSE_STORE_NAMES) {
     await transaction.putMany(storeName, normalizedRows[storeName]);
@@ -475,6 +505,21 @@ async function writeOfficialCourseReplica(
     },
     updatedAt: receivedAt
   });
+  if (materializedReceipt) {
+    await transaction.put("syncState", {
+      id: authoringStateId,
+      key: authoringStateId,
+      courseId,
+      value: {
+        status: "materialized",
+        consumedRevision: materializedReceipt.consumedRevision,
+        workspaceId: materializedReceipt.workspaceId,
+        workspaceRevision: materializedReceipt.workspaceRevision,
+        updatedAt: materializedReceipt.updatedAt
+      },
+      updatedAt: materializedReceipt.updatedAt || receivedAt
+    });
+  }
 }
 
 function sameKeyPath(left, right) {
@@ -781,6 +826,18 @@ export class IndexedDbRelationalStore {
     );
   }
 
+  async getWorkspaceCourseDraftReceipt(courseId) {
+    const normalizedCourseId = String(courseId || "").trim();
+    if (!normalizedCourseId) throw new TypeError("O UUID do curso é obrigatório.");
+    const stateId = localCourseAuthoringStateId(normalizedCourseId);
+    return this.transaction(["syncState"], "readonly", async (transaction) =>
+      workspaceCourseDraftReceiptFromRow(
+        await transaction.get("syncState", stateId),
+        normalizedCourseId
+      )
+    );
+  }
+
   async acknowledgeWorkspaceCourseDraft(courseId, {
     expectedRevision,
     workspaceId,
@@ -819,7 +876,21 @@ export class IndexedDbRelationalStore {
           draft.revision
         );
       }
-      await transaction.delete("syncState", stateId);
+      const updatedAt = new Date().toISOString();
+      await transaction.put("syncState", {
+        ...draftRow,
+        id: stateId,
+        key: stateId,
+        courseId: normalizedCourseId,
+        value: {
+          status: "materialized",
+          consumedRevision: normalizedExpectedRevision,
+          workspaceId: normalizedWorkspaceId,
+          workspaceRevision: normalizedWorkspaceRevision,
+          updatedAt
+        },
+        updatedAt
+      });
       return {
         status: "acknowledged",
         courseId: normalizedCourseId,
@@ -1025,6 +1096,7 @@ export class IndexedDbRelationalStore {
       await deleteCourseContent(transaction, normalizedCourseId);
       await deleteCourseOutboxEntries(transaction, normalizedCourseId);
       await transaction.delete("syncState", `catalog.removalPending:${normalizedCourseId}`);
+      await transaction.delete("syncState", `authoring.cardAssistance:${normalizedCourseId}`);
     });
   }
 
@@ -1042,14 +1114,20 @@ export class IndexedDbRelationalStore {
       for (const courseId of staleIds) {
         const unresolved = (await transaction.getAllByIndex("outbox", "byCourseId", courseId))
           .filter(isUnresolvedOutboxEntry);
-        const localDraft = localCourseDraftFromRow(
-          await transaction.get("syncState", localCourseAuthoringStateId(courseId)),
-          courseId
+        const authoringStateId = localCourseAuthoringStateId(courseId);
+        const authoringRow = await transaction.get("syncState", authoringStateId);
+        const localDraft = localCourseDraftFromRow(authoringRow, courseId);
+        const materializedReceipt = workspaceCourseDraftReceiptFromRow(authoringRow, courseId);
+        const assistanceStateId = `authoring.cardAssistance:${courseId}`;
+        const pendingAssistance = cardAssistanceRowHasPendingAuthoring(
+          await transaction.get("syncState", assistanceStateId)
         );
-        if (unresolved.length || localDraft) continue;
+        const acknowledgedAssistance = Boolean(materializedReceipt && pendingAssistance);
+        if (unresolved.length || localDraft || acknowledgedAssistance) continue;
         await deleteCourseContent(transaction, courseId);
         await deleteCourseOutboxEntries(transaction, courseId);
         await transaction.delete("syncState", `catalog.removalPending:${courseId}`);
+        await transaction.delete("syncState", `authoring.cardAssistance:${courseId}`);
         removedIds.push(courseId);
       }
     });
@@ -1216,14 +1294,19 @@ export class IndexedDbRelationalStore {
               String(row.courseId || "") === changeCourseId &&
               isUnresolvedOutboxEntry(row)
             );
-            const localDraft = localCourseDraftFromRow(
-              await transaction.get(
-                "syncState",
-                localCourseAuthoringStateId(changeCourseId)
-              ),
+            const authoringStateId = localCourseAuthoringStateId(changeCourseId);
+            const authoringRow = await transaction.get("syncState", authoringStateId);
+            const localDraft = localCourseDraftFromRow(authoringRow, changeCourseId);
+            const materializedReceipt = workspaceCourseDraftReceiptFromRow(
+              authoringRow,
               changeCourseId
             );
-            if (unresolved.length || localDraft) {
+            const assistanceStateId = `authoring.cardAssistance:${changeCourseId}`;
+            const pendingAssistance = cardAssistanceRowHasPendingAuthoring(
+              await transaction.get("syncState", assistanceStateId)
+            );
+            const acknowledgedAssistance = Boolean(materializedReceipt && pendingAssistance);
+            if (unresolved.length || localDraft || acknowledgedAssistance) {
               await transaction.put("syncState", {
                 id: `catalog.removalPending:${changeCourseId}`,
                 key: `catalog.removalPending:${changeCourseId}`,
@@ -1231,7 +1314,8 @@ export class IndexedDbRelationalStore {
                 value: {
                   mutationIds: [
                     ...unresolved.map((row) => String(row.mutationId)),
-                    ...(localDraft ? [localCourseAuthoringStateId(changeCourseId)] : [])
+                    ...(localDraft || acknowledgedAssistance ? [authoringStateId] : []),
+                    ...(acknowledgedAssistance ? [assistanceStateId] : [])
                   ],
                   ...(localDraft ? { localDraftRevision: localDraft.revision } : {})
                 },
@@ -1241,6 +1325,7 @@ export class IndexedDbRelationalStore {
               await deleteCourseContent(transaction, changeCourseId);
               await deleteCourseOutboxEntries(transaction, changeCourseId);
               await transaction.delete("syncState", `catalog.removalPending:${changeCourseId}`);
+              await transaction.delete("syncState", `authoring.cardAssistance:${changeCourseId}`);
               outboxRows
                 .filter((row) => String(row.courseId || "") === changeCourseId)
                 .forEach((row) => pendingKeys.delete(`${row.entityType}:${row.entityId}`));

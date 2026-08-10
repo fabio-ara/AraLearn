@@ -406,3 +406,44 @@ test("permissão sem autoria omite completamente os modos de edição", () => {
   assert.doesNotMatch(html, /toggle-card-edit-mode|runtime-card-authoring/u);
   assert.doesNotMatch(html, /Este curso não pode|somente leitura/u);
 });
+
+test("conflito textual oferece manter o texto e só workspace oferece descartar o rascunho", () => {
+  const localHtml = renderWorkbench({
+    entityModes: { card: "edit" },
+    workspaceAuthoring: {
+      source: "local",
+      status: "conflict",
+      pendingCount: 1,
+      errorMessage: "O mesmo texto mudou em outro dispositivo.",
+      canKeepLocal: true,
+      canDiscardLocal: false
+    }
+  });
+  assert.match(localHtml, /aria-label="Sincronização da autoria"/u);
+  assert.match(localHtml, /O mesmo texto mudou em outro dispositivo./u);
+  assert.match(
+    localHtml,
+    /data-action="resolve-workspace-authoring-conflict" data-resolution="keep_local"[^>]*>Manter meu texto</u
+  );
+  assert.doesNotMatch(localHtml, /data-resolution="discard_local"/u);
+
+  const workspaceHtml = renderWorkbench({
+    entityModes: { card: "edit" },
+    workspaceAuthoring: {
+      source: "workspace",
+      status: "conflict",
+      pendingCount: 1,
+      errorMessage: "A fila do workspace divergiu.",
+      canKeepLocal: true,
+      canDiscardLocal: true
+    }
+  });
+  assert.match(
+    workspaceHtml,
+    /data-resolution="keep_local"[^>]*>Manter meu texto</u
+  );
+  assert.match(
+    workspaceHtml,
+    /data-resolution="discard_local"[^>]*>Descartar alterações locais</u
+  );
+});

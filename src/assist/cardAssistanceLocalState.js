@@ -1,4 +1,5 @@
 export const CARD_ASSISTANCE_SYNC_MAX_PATHS = 64;
+export const CONTEXTUAL_AUTHORING_SYNC_MAX_METADATA = 64;
 export const CARD_ASSISTANCE_LOCAL_STATE_CONTRACT =
   "aralearn.card-assistance-local-state.v4";
 export const CARD_ASSISTANCE_UNDO_CONTRACT =
@@ -21,9 +22,85 @@ function normalizeSelection(value = {}) {
 function normalizeSyncPath(value = {}) {
   const path = normalizeSelection(value);
   delete path.cardKey;
-  return ["courseKey", "moduleKey", "lessonKey", "microsequenceKey"].every(
+  if (!["courseKey", "moduleKey", "lessonKey", "microsequenceKey"].every(
     (fieldName) => path[fieldName]
-  ) ? path : null;
+  )) return null;
+  if (Object.hasOwn(value, "baseCards")) {
+    if (!Array.isArray(value.baseCards) || value.baseCards.length > 500) {
+      throw new Error("A base de cards da sincronização contextual é inválida.");
+    }
+    const ids = value.baseCards.map((card) => text(card?.id));
+    if (ids.some((id) => !id) || new Set(ids).size !== ids.length) {
+      throw new Error("A base de cards da sincronização contextual possui identidades inválidas.");
+    }
+    path.baseCards = structuredClone(value.baseCards);
+  }
+  if (Object.hasOwn(value, "baseMetadata")) {
+    if (!isRecord(value.baseMetadata)) {
+      throw new Error("A base de metadados da sincronização contextual é inválida.");
+    }
+    path.baseMetadata = structuredClone(value.baseMetadata);
+  }
+  if (Object.hasOwn(value, "basePosition")) {
+    const position = Number(value.basePosition);
+    if (!Number.isSafeInteger(position) || position < 0) {
+      throw new Error("A posição-base da sincronização contextual é inválida.");
+    }
+    path.basePosition = position;
+  }
+  if (value.textOnly === true) path.textOnly = true;
+  return path;
+}
+
+function syncPathKey(value = {}) {
+  return ["courseKey", "moduleKey", "lessonKey", "microsequenceKey"]
+    .map((fieldName) => text(value[fieldName]))
+    .join("\u0000");
+}
+
+function normalizePendingMetadataEntry(value = {}) {
+  const entityType = text(value.entityType);
+  const expectedPathLength = {
+    course: 1,
+    module: 2,
+    lesson: 3,
+    microsequence: 4
+  }[entityType];
+  const entityPath = Array.isArray(value.entityPath)
+    ? value.entityPath.map(text)
+    : [];
+  const allowedFields = new Set(["title", "goal"]);
+  const hasMetadataRecords = isRecord(value.baseMetadata) && isRecord(value.metadata);
+  const baseFields = hasMetadataRecords ? Object.keys(value.baseMetadata) : [];
+  const nextFields = hasMetadataRecords ? Object.keys(value.metadata) : [];
+  if (!expectedPathLength || entityPath.length !== expectedPathLength || entityPath.some((id) => !id) ||
+      !hasMetadataRecords ||
+      baseFields.length !== nextFields.length ||
+      baseFields.some((field) => !allowedFields.has(field) || !nextFields.includes(field))) return null;
+  return {
+    entityType,
+    entityPath,
+    baseMetadata: structuredClone(value.baseMetadata),
+    metadata: structuredClone(value.metadata)
+  };
+}
+
+function metadataEntryKey(value = {}) {
+  return `${text(value.entityType)}\u0000${(value.entityPath || []).map(text).join("\u0000")}`;
+}
+
+function normalizePendingMetadata(values = []) {
+  if (!Array.isArray(values)) return [];
+  const entries = [...new Map(values
+    .map(normalizePendingMetadataEntry)
+    .filter(Boolean)
+    .map((entry) => [metadataEntryKey(entry), entry])).values()];
+  if (entries.length > CONTEXTUAL_AUTHORING_SYNC_MAX_METADATA) {
+    throw new Error(
+      `A alteração alcança mais de ${CONTEXTUAL_AUTHORING_SYNC_MAX_METADATA} rótulos e precisa ser dividida.`
+    );
+  }
+  return entries;
 }
 
 function normalizeExpectedRevision(value) {
@@ -278,7 +355,7 @@ function normalizePendingPaths(values = []) {
     values
       .map(normalizeSyncPath)
       .filter(Boolean)
-      .map((pathValue) => [Object.values(pathValue).join("\u0000"), pathValue])
+      .map((pathValue) => [syncPathKey(pathValue), pathValue])
   ).values()];
   if (pendingPaths.length > CARD_ASSISTANCE_SYNC_MAX_PATHS) {
     const error = new Error(
@@ -294,13 +371,19 @@ export function normalizeCardAssistanceLocalState(value = {}) {
   const current = value?.contract === CARD_ASSISTANCE_LOCAL_STATE_CONTRACT
     ? value
     : {};
+  const sync = {
+    pendingPaths: normalizePendingPaths(current.sync?.pendingPaths),
+    pendingMetadata: normalizePendingMetadata(current.sync?.pendingMetadata),
+    expectedRevision: normalizeExpectedRevision(current.sync?.expectedRevision)
+  };
+  if (["pending", "conflict"].includes(current.sync?.status)) {
+    sync.status = current.sync.status;
+    sync.errorMessage = text(current.sync.errorMessage);
+  }
   return {
     contract: CARD_ASSISTANCE_LOCAL_STATE_CONTRACT,
     undo: normalizeCardAssistanceUndo(current.undo),
-    sync: {
-      pendingPaths: normalizePendingPaths(current.sync?.pendingPaths),
-      expectedRevision: normalizeExpectedRevision(current.sync?.expectedRevision)
-    }
+    sync
   };
 }
 
@@ -316,12 +399,24 @@ export function markContextualAuthoringSyncPending(value = {}, selection = {}) {
   const state = normalizeCardAssistanceLocalState(value);
   const pending = normalizeSyncPath(selection);
   if (!pending) throw new Error("O reparo local não possui um caminho sincronizável.");
-  const key = Object.values(pending).join("\u0000");
+  const key = syncPathKey(pending);
+  const current = state.sync.pendingPaths.find((item) => syncPathKey(item) === key) || null;
+  const combined = current
+    ? normalizeSyncPath({
+        ...pending,
+        textOnly: current.textOnly === true && pending.textOnly === true,
+        ...(current.baseCards ? { baseCards: current.baseCards } : {}),
+        ...(current.baseMetadata ? { baseMetadata: current.baseMetadata } : {}),
+        ...(Number.isSafeInteger(current.basePosition)
+          ? { basePosition: current.basePosition }
+          : {})
+      })
+    : pending;
   const pendingPaths = [
     ...state.sync.pendingPaths.filter(
-      (item) => Object.values(item).join("\u0000") !== key
+      (item) => syncPathKey(item) !== key
     ),
-    pending
+    combined
   ];
   if (pendingPaths.length > CARD_ASSISTANCE_SYNC_MAX_PATHS) {
     const error = new Error(
@@ -334,7 +429,60 @@ export function markContextualAuthoringSyncPending(value = {}, selection = {}) {
     ...state,
     sync: {
       ...state.sync,
-      pendingPaths
+      pendingPaths,
+      status: "pending",
+      errorMessage: ""
+    }
+  };
+}
+
+export function markContextualAuthoringMetadataPending(value = {}, operation = {}) {
+  const state = normalizeCardAssistanceLocalState(value);
+  const pending = normalizePendingMetadataEntry(operation);
+  if (!pending) throw new Error("A edição de metadados não possui um alvo sincronizável.");
+  const key = metadataEntryKey(pending);
+  const current = state.sync.pendingMetadata.find(
+    (item) => metadataEntryKey(item) === key
+  ) || null;
+  const pendingMetadata = [
+    ...state.sync.pendingMetadata.filter((item) => metadataEntryKey(item) !== key),
+    current
+      ? { ...pending, baseMetadata: structuredClone(current.baseMetadata) }
+      : pending
+  ];
+  if (pendingMetadata.length > CONTEXTUAL_AUTHORING_SYNC_MAX_METADATA) {
+    throw new Error(
+      `A alteração alcança mais de ${CONTEXTUAL_AUTHORING_SYNC_MAX_METADATA} rótulos e precisa ser dividida.`
+    );
+  }
+  return {
+    ...state,
+    sync: {
+      ...state.sync,
+      pendingMetadata,
+      status: "pending",
+      errorMessage: ""
+    }
+  };
+}
+
+export function setContextualAuthoringSyncStatus(value = {}, {
+  status = "pending",
+  errorMessage = ""
+} = {}) {
+  const state = normalizeCardAssistanceLocalState(value);
+  if (!["pending", "conflict"].includes(status)) {
+    throw new Error("O estado da sincronização contextual é inválido.");
+  }
+  if (!state.sync.pendingPaths.length && !state.sync.pendingMetadata.length) {
+    return clearContextualAuthoringSync(state);
+  }
+  return {
+    ...state,
+    sync: {
+      ...state.sync,
+      status,
+      errorMessage: text(errorMessage)
     }
   };
 }
@@ -343,6 +491,6 @@ export function clearContextualAuthoringSync(value = {}) {
   const state = normalizeCardAssistanceLocalState(value);
   return {
     ...state,
-    sync: { pendingPaths: [], expectedRevision: null }
+    sync: { pendingPaths: [], pendingMetadata: [], expectedRevision: null }
   };
 }

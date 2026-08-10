@@ -313,6 +313,187 @@ test("Play recompõe a posição do card da linha remota e abre o runtime", asyn
   await expect(page.locator(".home-trails-error")).toHaveCount(0);
 });
 
+test("workspace usa a mesma capacidade no render e nos modos de autoria", async ({ page }) => {
+  const course = structuredClone(PROJECT_FIXTURE.courses[0]);
+  const courseItem = {
+    ...plan(),
+    kind: "course",
+    title: course.title,
+    description: course.goal,
+    cardCount: course.modules[0].lessons[0].microsequences[0].cards.length
+  };
+  const cardPath = [
+    course.id,
+    course.modules[0].id,
+    course.modules[0].lessons[0].id,
+    course.modules[0].lessons[0].microsequences[0].id,
+    course.modules[0].lessons[0].microsequences[0].cards[0].id
+  ];
+
+  await page.goto("/");
+  await page.evaluate(async ({ initialSnapshot, remoteParts, exactCardPath }) => {
+    const { createLessonEditorApp } = await import("/src/ui/lessonEditorApp.js");
+    const emptyProject = {
+      contract: "aralearn.contract",
+      version: 4,
+      kind: "project",
+      courses: []
+    };
+    const root = document.createElement("main");
+    document.body.replaceChildren(root);
+    let snapshot = structuredClone(initialSnapshot);
+    let authoritativeCourse = null;
+    const metadataCalls = [];
+    const storage = {
+      loadProject: () => structuredClone(emptyProject),
+      loadProgress: () => ({ version: 1, lessons: {} }),
+      saveProgress() {},
+      loadReviewItems: () => [],
+      loadCourseSummaries: () => [],
+      loadCommentForPath: () => null,
+      async loadCardAssistanceLocalState() { return {}; },
+      coursePermissions: () => ({
+        role: "learner",
+        canAuthorContent: false,
+        canComment: false,
+        writeTarget: null,
+        canOrganizeSelection: false,
+        canRemoveSelection: false,
+        canDeleteCourse: false
+      })
+    };
+    const personalStorage = {
+      setCourse() {},
+      async initialize() {},
+      async refresh() {},
+      loadProgress: () => ({ version: 1, lessons: {} }),
+      saveProgress() {},
+      loadReviewItems: () => [],
+      loadCommentForPath: () => null,
+      async clearLocal() {},
+      async flush() {}
+    };
+    const nextRevision = () => {
+      snapshot.items[0].revision += 1;
+      return snapshot.items[0].revision;
+    };
+    const app = createLessonEditorApp({
+      root,
+      storage,
+      editor: {},
+      initialProject: emptyProject,
+      homeTrails: {
+        loadTrailSnapshot: async () => structuredClone(snapshot),
+        loadWorkspaceCourse: async () => ({
+          trailItemId: snapshot.items[0].trailItemId,
+          workspaceId: snapshot.items[0].workspaceId,
+          courseKey: snapshot.items[0].courseKey,
+          revision: snapshot.items[0].revision,
+          parts: structuredClone(remoteParts),
+          ...(authoritativeCourse
+            ? { draftCourse: structuredClone(authoritativeCourse) }
+            : {})
+        }),
+        async cacheWorkspaceCourse() {}
+      },
+      workspaceCourseAdapter: {
+        async saveMetadata(argumentsValue) {
+          metadataCalls.push(structuredClone(argumentsValue));
+          authoritativeCourse = structuredClone(argumentsValue.draftCourse);
+          authoritativeCourse.title = `${argumentsValue.metadata.title} · confirmada`;
+          return { revision: nextRevision(), course: authoritativeCourse };
+        },
+        async saveMicrosequenceCards() { return { revision: nextRevision() }; },
+        async moveEntity() { return { revision: nextRevision() }; },
+        async deleteEntity() { return { revision: nextRevision() }; },
+        async deleteCourse() { return { revision: nextRevision() }; }
+      },
+      trailPersonalStateFactory: () => personalStorage
+    });
+    globalThis.__workspaceCapabilitiesProbe = {
+      app,
+      exactCardPath,
+      metadataCalls,
+      async revoke() {
+        snapshot.items[0].canEdit = false;
+        snapshot.items[0].canDelete = false;
+        await app.refreshTrails();
+      }
+    };
+    await app.refreshTrails();
+  }, {
+    initialSnapshot: trailSnapshot([courseItem]),
+    remoteParts: workspacePartsForCourse(course),
+    exactCardPath: cardPath
+  });
+
+  const editMode = (level) => page.locator(
+    `[data-action="select-entity-mode"][data-entity-level="${level}"][data-entity-mode="edit"]`
+  );
+  const aiMode = (level) => page.locator(
+    `[data-action="select-entity-mode"][data-entity-level="${level}"][data-entity-mode="ai"]`
+  );
+  const expectCurrentLabelEditing = async (level) => {
+    const summary = page.locator(
+      `.entity-summary[data-structure-level="${level}"][data-inline-structure-editor="true"]`
+    );
+    await expect(summary).toHaveCount(1);
+    await expect(summary.locator('[data-field="inline-entity-title"]')).toBeEditable();
+    await expect(summary.locator('[data-field="inline-entity-title"]')).toBeFocused();
+  };
+
+  await page.locator('[data-action="open-course"]').click();
+  await editMode("course").click();
+  await expectCurrentLabelEditing("course");
+  await page.locator('.entity-summary [data-field="inline-entity-title"]').fill("Curso do workspace");
+  await page.locator('[data-action="save-inline-entity"]').click();
+  await expect.poll(() => page.evaluate(
+    () => globalThis.__workspaceCapabilitiesProbe.metadataCalls.length
+  )).toBe(1);
+  await expect(page.getByText("Curso do workspace · confirmada", { exact: true })).toBeVisible();
+
+  await page.locator('[data-action="open-module"]').click();
+  await editMode("module").click();
+  await expectCurrentLabelEditing("module");
+
+  await page.locator('[data-action="open-lesson"]').click();
+  await editMode("lesson").click();
+  await expectCurrentLabelEditing("lesson");
+  await expect(aiMode("lesson")).toHaveCount(0);
+
+  await page.locator('[data-action="open-microsequence-overview"]').click();
+  await editMode("microsequence").click();
+  await expectCurrentLabelEditing("microsequence");
+  await expect(aiMode("microsequence")).toHaveCount(0);
+
+  await page.locator('[data-action="open-microsequence-card"]').first().click();
+  await editMode("card").click();
+  const cardTitle = page.locator(
+    '.runtime-card-manual-editor.is-card-title-editor [data-manual-edit-key="title"]'
+  );
+  await expect(cardTitle).toBeEditable();
+  await expect(cardTitle).toBeFocused();
+  await page.locator(
+    '[data-action="select-entity-mode"][data-entity-level="card"][data-entity-mode="view"]'
+  ).click();
+  await aiMode("card").click();
+  await expect(page.locator(".workbench-surface")).toHaveClass(/is-editing/u);
+  await expect(page.locator('[data-action="toggle-card-assistance-composer"]')).toBeVisible();
+
+  await page.locator(
+    '[data-action="select-entity-mode"][data-entity-level="card"][data-entity-mode="view"]'
+  ).click();
+  await page.evaluate(() => globalThis.__workspaceCapabilitiesProbe.revoke());
+  await expect(page.locator(".workbench-surface")).not.toHaveClass(/is-editing/u);
+  await expect(editMode("card")).toHaveCount(0);
+  await expect(aiMode("card")).toHaveCount(0);
+  const openedForEditing = await page.evaluate(() => globalThis.__workspaceCapabilitiesProbe.app.openCardPath(
+    globalThis.__workspaceCapabilitiesProbe.exactCardPath,
+    { edit: true }
+  ));
+  expect(openedForEditing).toBe(false);
+});
+
 test("Home mantém eixo central e tipografia simétrica entre os seletores", async ({ page }) => {
   await page.goto("/");
   const result = await page.evaluate(async ({ populatedSnapshot, itemId }) => {
@@ -434,6 +615,10 @@ test("editar curso mantém a Home e torna o próprio resumo editável", async ({
       async saveProject(nextProject) {
         currentProject = structuredClone(nextProject);
       },
+      async saveProjectWithCardAssistanceState(nextProject, { localState }) {
+        currentProject = structuredClone(nextProject);
+        return { localState: structuredClone(localState) };
+      },
       async flush() {}
     };
     const personalStorage = {
@@ -513,8 +698,8 @@ test("editar curso mantém a Home e torna o próprio resumo editável", async ({
     const editor = root.querySelector('[data-inline-structure-editor="true"]');
     const title = editor?.querySelector('[data-field="inline-entity-title"]');
     const description = editor?.querySelector('[data-field="inline-entity-description"]');
-    if (title) title.textContent = "Curso depois";
-    if (description) description.textContent = "Descrição depois";
+    if (title) title.innerText = "Curso depois";
+    if (description) description.innerText = "Descrição depois";
     root.querySelector('[data-action="save-inline-entity"]')?.click();
     for (let attempt = 0; attempt < 40 && root.querySelector('[data-inline-structure-editor="true"]'); attempt += 1) {
       await new Promise((resolve) => setTimeout(resolve, 5));

@@ -1660,7 +1660,8 @@ export function createLearningSpacesPanel({
       }
       await prepareIntegratedCourseRemoval({
         repository: studyPathRepository,
-        synchronizeReplica: beforeRemoteRead
+        synchronizeReplica: beforeRemoteRead,
+        courseId: node.dataset.courseId
       });
       await spaces.removeCourseFromTrails({
         selectionId: node.dataset.selectionId,
@@ -1731,7 +1732,8 @@ export function createLearningSpacesPanel({
       }
       await prepareIntegratedCourseRemoval({
         repository: studyPathRepository,
-        synchronizeReplica: beforeRemoteRead
+        synchronizeReplica: beforeRemoteRead,
+        courseId: node.dataset.courseId
       });
       await spaces.removeCourseFromCatalog(node.dataset.courseId);
       remoteCommitted = true;

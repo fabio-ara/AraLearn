@@ -10,6 +10,7 @@ import {
 import {
   buildCardAssistanceAuthoringCardSchema,
   buildExactAuthoringCardSchema,
+  compileAndValidateAuthoringCard,
   listCardRepresentationCandidates
 } from "../../src/generation/engine/cardAuthoringSchema.js";
 import {
@@ -379,97 +380,71 @@ test("a assistência consome no máximo uma reconstrução entre decisão e card
   assert.equal(requests[1].maxAttempts, 1);
 });
 
-test("forma autoral explícita recupera uma única vez dado alternativo nulo ou ausente", async (t) => {
-  for (const firstVisualValue of ["absent", "null"]) {
-    await t.test(firstVisualValue, async () => {
-      const requests = [];
-      const progress = [];
-      const provider = {
-        async generateStructured(request) {
-          requests.push(request);
-          if (request.phase === "card_assistance_representation") {
-            return {
-              value: {
-                representation: "plane:theory:none@vector"
-              }
-            };
-          }
-          const target = request.engineContext.writableTarget;
-          const card = {
-            ...target,
-            title: "Vetor no plano",
-            prompt: "Observe as duas coordenadas do vetor.",
-            after: ""
-          };
-          if (requests.filter((item) => item.phase === "card_assistance_build").length === 1) {
-            if (firstVisualValue === "null") card.vector = null;
-            return { value: { card } };
-          }
-          return {
-            value: {
-              card: {
-                ...card,
-                vector: [2, 3]
-              }
-            }
-          };
+test("schema de reparo fixa a representação atual e rejeita alternativa estrutural", async () => {
+  const requests = [];
+  const project = projectFixture();
+  const original = structuredClone(project);
+  const provider = {
+    async generateStructured(request) {
+      requests.push(request);
+      assert.deepEqual(
+        request.schema.properties.representation.enum,
+        ["paragraph:theory:none"]
+      );
+      return {
+        value: {
+          representation: "plane:theory:none@vector"
         }
       };
+    }
+  };
 
-      const generated = await generateCardAssistanceChangeSet({
-        projectDocument: projectFixture(),
-        selection,
-        request: {
-          operation: "repair",
-          repairScope: "card",
-          promptText: "Transforme o card em uma microteoria visual sobre vetores."
-        },
-        provider,
-        modelId: "deepseek-v4-flash",
-        onProgress: (event) => progress.push(event)
-      });
-
-      assert.deepEqual(generated.changeSet.card.vector, [2, 3]);
-      assert.deepEqual(
-        requests.map((request) => request.phase),
-        [
-          "card_assistance_representation",
-          "card_assistance_build",
-          "card_assistance_build"
-        ]
-      );
-      const buildRequests = requests.filter(
-        (request) => request.phase === "card_assistance_build"
-      );
-      buildRequests.forEach((request) => {
-        assert.equal(
-          request.schema.properties.card.required.includes("vector"),
-          true
-        );
-        assert.deepEqual(
-          request.engineContext.resourceContract.shape.selectedRequiredAlternative,
-          ["vector"]
-        );
-        assert.equal(
-          request.engineContext.invariants.some((item) =>
-            /valor não nulo.+vector/iu.test(item)
-          ),
-          true
-        );
-      });
-      assert.equal(
-        buildRequests[1].engineContext.validationFeedback.length,
-        1
-      );
-      assert.equal(
-        progress.filter((event) => event.status === "retry").length,
-        1
-      );
-    });
-  }
+  await assert.rejects(
+    () => generateCardAssistanceChangeSet({
+      projectDocument: project,
+      selection,
+      request: {
+        operation: "repair",
+        repairScope: "card",
+        promptText: "Transforme o card em uma microteoria visual sobre vetores."
+      },
+      provider,
+      modelId: "deepseek-v4-flash"
+    }),
+    (error) => error?.code === "OUT_OF_SCOPE_CARD_ASSISTANCE_CHANGE"
+  );
+  assert.deepEqual(
+    requests.map((request) => request.phase),
+    ["card_assistance_representation", "card_assistance_representation"]
+  );
+  assert.deepEqual(project, original);
 });
 
-test("prática gap explicita o alvo formal e proíbe resposta já visível", async () => {
+test("prática gap mantém alvo, token e resposta imutáveis", async () => {
+  const project = projectFixture();
+  const authored = {
+    id: "card-a",
+    position: 1,
+    resource: "plane",
+    kind: "exercise",
+    exercise: "gap",
+    title: "Leitura do plano",
+    prompt: "Calcule a coordenada solicitada.",
+    x: [-1, 6],
+    y: [-1, 6],
+    vector: [4, 2],
+    result: "{gap:coordinate}",
+    after: "Revise os eixos.",
+    gaps: [{
+      id: "coordinate",
+      response: "choice",
+      answer: "(5, 1)",
+      distractors: ["(1, 5)", "(4, 2)"],
+      acceptedAnswers: []
+    }]
+  };
+  project.courses[0].modules[0].lessons[0].microsequences[0].cards[0] =
+    compileAndValidateAuthoringCard(authored);
   const requests = [];
   const provider = {
     async generateStructured(request) {
@@ -477,26 +452,16 @@ test("prática gap explicita o alvo formal e proíbe resposta já visível", asy
       if (request.phase === "card_assistance_representation") {
         return {
           value: {
-            representation: "plane:exercise:gap@vector"
+            representation: "plane:exercise:gap@x+y"
           }
         };
       }
       return {
         value: {
           card: {
-            ...request.engineContext.writableTarget,
-            title: "Sinal da coordenada",
-            prompt: "Observe o vetor e indique o sinal da coordenada x.",
-            vector: [4, 2],
-            result: "{gap:sinal-x}",
-            after: "A primeira coordenada corresponde ao eixo x.",
-            gaps: [{
-              id: "sinal-x",
-              response: "choice",
-              answer: "positiva",
-              distractors: ["negativa", "zero"],
-              acceptedAnswers: []
-            }]
+            ...authored,
+            title: "Leitura orientada do plano",
+            prompt: "Determine a coordenada pedida a partir do plano."
           }
         }
       };
@@ -504,12 +469,12 @@ test("prática gap explicita o alvo formal e proíbe resposta já visível", asy
   };
 
   const generated = await generateCardAssistanceChangeSet({
-    projectDocument: projectFixture(),
+    projectDocument: project,
     selection,
     request: {
       operation: "repair",
       repairScope: "card",
-      promptText: "Transforme o card em uma prática visual curta."
+      promptText: "Revise o texto da prática visual."
     },
     provider,
     modelId: "fake:model"
@@ -517,7 +482,7 @@ test("prática gap explicita o alvo formal e proíbe resposta já visível", asy
 
   assert.equal(
     generated.changeSet.card.result,
-    "[[positiva::positiva|negativa|zero]]"
+    "[[(5, 1)::(5, 1)|(1, 5)|(4, 2)]]"
   );
   const representationRequest = requests.find(
     (request) => request.phase === "card_assistance_representation"
@@ -527,13 +492,13 @@ test("prática gap explicita o alvo formal e proíbe resposta já visível", asy
   );
   assert.equal(
     representationRequest.engineContext.rules.some((rule) =>
-      /resposta não seja um dado já visível.+geometria/iu.test(rule)
+      /representação atual.+estrutural e imutável/iu.test(rule)
     ),
     true
   );
   assert.equal(
     buildRequest.engineContext.invariants.some((rule) =>
-      /somente nestes alvos interativos: result/iu.test(rule)
+      /lacunas existentes.+result.+não crie, remova ou mova/iu.test(rule)
     ),
     true
   );

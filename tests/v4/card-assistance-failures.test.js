@@ -510,7 +510,7 @@ test("barreiras de guide acima do orçamento falham antes do provider", async ()
   assert.deepEqual(project, original);
 });
 
-test("reparo do card inteiro pode trocar representação sem trocar identidade", async () => {
+test("reparo do card inteiro rejeita troca de representação antes da construção", async () => {
   const project = projectFixture();
   const original = structuredClone(project);
   const requests = [];
@@ -539,25 +539,25 @@ test("reparo do card inteiro pode trocar representação sem trocar identidade",
     }
   };
 
-  const generated = await generateCardAssistanceChangeSet({
-    projectDocument: project,
-    selection,
-    request: {
-      operation: "repair",
-      repairScope: "card",
-      promptText: "Transforme em um exemplo de código."
-    },
-    provider,
-    modelId: "fake:model"
-  });
+  await assert.rejects(
+    () => generateCardAssistanceChangeSet({
+      projectDocument: project,
+      selection,
+      request: {
+        operation: "repair",
+        repairScope: "card",
+        promptText: "Transforme em um exemplo de código."
+      },
+      provider,
+      modelId: "fake:model"
+    }),
+    (error) => error?.code === "OUT_OF_SCOPE_CARD_ASSISTANCE_CHANGE"
+  );
 
   assert.deepEqual(
     requests.map((request) => request.phase),
-    ["card_assistance_representation", "card_assistance_build"]
+    ["card_assistance_representation", "card_assistance_representation"]
   );
-  assert.equal(generated.changeSet.card.id, "card-a");
-  assert.equal(generated.changeSet.card.position, 1);
-  assert.equal(generated.changeSet.card.resource, "code");
   assert.deepEqual(project, original);
 });
 

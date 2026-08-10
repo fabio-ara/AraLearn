@@ -223,7 +223,7 @@ test("bootstrap e feed genérico sincronizam somente seleções leves", () => {
   );
   assert.doesNotMatch(syncEngine, /baseRevision|base_revision|SYNC_FAILURE_KIND\.CONFLICT/u);
   assert.doesNotMatch(relationalStore, /memberships|syncConflicts|conflicts|baseRevision/u);
-  assert.doesNotMatch(repository, /membership|baseRevision|conflict/iu);
+  assert.doesNotMatch(repository, /membership|baseRevision|syncConflict/iu);
 });
 
 test("cache local baixa a revisão ausente por hash e a projeta no IndexedDB", () => {
