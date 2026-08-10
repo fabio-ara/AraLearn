@@ -325,6 +325,7 @@ export function createLessonEditorApp({
     homeTrailLoading: false,
     trailPersonalStorageByItemId: new Map(),
     trailPersonalStorageLoadingByItemId: new Map(),
+    trailPersonalStorageRefreshScheduled: new WeakSet(),
     homeOrganization: {
       selectedGroupId: "",
       creatingGroup: false,
@@ -606,6 +607,37 @@ export function createLessonEditorApp({
     return state.trailPersonalStorageByItemId.get(reference.trailItemId) || null;
   }
 
+  function scheduleTrailPersonalStorageRefresh(trailItemId, personalStorage) {
+    if (
+      globalThis.navigator?.onLine === false
+      || typeof personalStorage?.refresh !== "function"
+      || state.trailPersonalStorageRefreshScheduled.has(personalStorage)
+    ) {
+      return;
+    }
+    state.trailPersonalStorageRefreshScheduled.add(personalStorage);
+    globalThis.setTimeout(() => {
+      void Promise.resolve(personalStorage.refresh())
+        .then(() => {
+          if (state.trailPersonalStorageByItemId.get(trailItemId) === personalStorage) {
+            render({ preserveState: true });
+          }
+        })
+        .catch((error) => {
+          if (isHomeTrailsAuthorityError(error)) {
+            state.trailPersonalStorageByItemId.delete(trailItemId);
+            state.trailPersonalStorageLoadingByItemId.delete(trailItemId);
+            void refreshHomeTrails();
+            return;
+          }
+          console.warn("A atualização do progresso foi adiada.", error);
+        })
+        .finally(() => {
+          state.trailPersonalStorageRefreshScheduled.delete(personalStorage);
+        });
+    }, 0);
+  }
+
   async function ensureTrailPersonalStorage(item, course) {
     if (!item || !course || !homeTrailsController) return storage;
     const reference = homeTrailsController.bindCourseKey(item.itemId, course.id);
@@ -613,15 +645,7 @@ export function createLessonEditorApp({
     const existing = state.trailPersonalStorageByItemId.get(reference.trailItemId);
     if (existing) {
       existing.setCourse?.(course);
-      try {
-        await existing.refresh?.();
-      } catch (error) {
-        if (isHomeTrailsAuthorityError(error)) {
-          state.trailPersonalStorageByItemId.delete(reference.trailItemId);
-          state.trailPersonalStorageLoadingByItemId.delete(reference.trailItemId);
-        }
-        throw error;
-      }
+      scheduleTrailPersonalStorageRefresh(reference.trailItemId, existing);
       return existing;
     }
     const loading = state.trailPersonalStorageLoadingByItemId.get(reference.trailItemId);
@@ -636,8 +660,9 @@ export function createLessonEditorApp({
         throw new Error("O estado pessoal de Trilhas não pôde ser inicializado.");
       }
       personalStorage.setCourse?.(course);
-      await personalStorage.initialize();
+      await personalStorage.initialize({ refresh: false });
       state.trailPersonalStorageByItemId.set(reference.trailItemId, personalStorage);
+      scheduleTrailPersonalStorageRefresh(reference.trailItemId, personalStorage);
       return personalStorage;
     }).finally(() => {
       state.trailPersonalStorageLoadingByItemId.delete(reference.trailItemId);
@@ -656,6 +681,32 @@ export function createLessonEditorApp({
     if (!personalStorage?.saveProgress) return Promise.resolve(true);
     return Promise.resolve(personalStorage.saveProgress(nextProgress))
       .then(() => true)
+      .catch((error) => {
+        console.warn("Não foi possível salvar o progresso em Trilhas.", error);
+        return false;
+      });
+  }
+
+  function saveActiveProgressLocally(nextProgress, courseKey = state.selection?.courseKey) {
+    const personalStorage = activeTrailPersonalStorage(courseKey);
+    if (!personalStorage?.saveProgress) return Promise.resolve(true);
+    const save = typeof personalStorage.saveProgressLocally === "function"
+      ? personalStorage.saveProgressLocally(nextProgress)
+      : personalStorage.saveProgress(nextProgress);
+    return Promise.resolve(save)
+      .then(() => {
+        if (
+          typeof personalStorage.saveProgressLocally === "function"
+          && globalThis.navigator?.onLine !== false
+        ) {
+          globalThis.setTimeout(() => {
+            void Promise.resolve(personalStorage.flush?.()).catch((error) => {
+              console.warn("A sincronização do progresso foi adiada.", error);
+            });
+          }, 0);
+        }
+        return true;
+      })
       .catch((error) => {
         console.warn("Não foi possível salvar o progresso em Trilhas.", error);
         return false;
@@ -1301,7 +1352,7 @@ export function createLessonEditorApp({
       lessonCards.map((entry) => entry.card),
       reachedIndex
     );
-    saveActiveProgress(nextProgress, reference.courseKey);
+    void saveActiveProgressLocally(nextProgress, reference.courseKey);
   }
 
   function collectProgressReferencesInModule(courseKey, moduleValue) {

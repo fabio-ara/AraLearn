@@ -632,10 +632,9 @@ function courseIndex(course) {
   return indexedLessons;
 }
 
-function canonicalProgressFromEditor(progressDocument, course) {
+function canonicalProgressFromEditor(progressDocument, course, indexedLessons = courseIndex(course)) {
   const progress = validateProgressDocument(progressDocument);
-  const lessons = courseIndex(course);
-  const byEditorPath = new Map(lessons.map((entry) => [
+  const byEditorPath = new Map(indexedLessons.map((entry) => [
     `${entry.courseKey}::${entry.moduleKey}::${entry.lessonKey}`,
     entry
   ]));
@@ -659,11 +658,11 @@ function canonicalProgressFromEditor(progressDocument, course) {
   return canonical;
 }
 
-function editorProgressFromCanonical(canonicalProgress, course) {
+function editorProgressFromCanonical(canonicalProgress, course, indexedLessons = courseIndex(course)) {
   const result = createEmptyProgressDocument();
   const completedCardIds = new Set(Object.values(canonicalProgress.lessons)
     .flatMap((entry) => entry.completedCardIds));
-  for (const indexed of courseIndex(course)) {
+  for (const indexed of indexedLessons) {
     let contiguous = 0;
     while (contiguous < indexed.cards.length &&
            completedCardIds.has(indexed.cards[contiguous].cardKey)) {
@@ -718,6 +717,9 @@ export class TrailPersonalStateRepository {
   #record = null;
   #cacheKey = "";
   #course = null;
+  #indexedLessons = [];
+  #progressViewCache = null;
+  #progressViewCacheSource = null;
   #localGeneration = 0;
 
   constructor({
@@ -750,8 +752,10 @@ export class TrailPersonalStateRepository {
   }
 
   setCourse(course) {
-    courseIndex(course);
+    this.#indexedLessons = courseIndex(course);
     this.#course = course;
+    this.#progressViewCache = null;
+    this.#progressViewCacheSource = null;
     return this;
   }
 
@@ -826,16 +830,33 @@ export class TrailPersonalStateRepository {
   loadProgress() {
     this.#assertInitialized();
     if (!this.#course) throw stateError("Carregue o curso antes de ler o progresso do editor.");
-    return editorProgressFromCanonical(this.#record.state.progress, this.#course);
+    if (this.#progressViewCacheSource !== this.#record.state.progress) {
+      this.#progressViewCache = editorProgressFromCanonical(
+        this.#record.state.progress,
+        this.#course,
+        this.#indexedLessons
+      );
+      this.#progressViewCacheSource = this.#record.state.progress;
+    }
+    return clone(this.#progressViewCache);
   }
 
   saveProgress(progressDocument) {
     this.#assertInitialized();
     if (!this.#course) throw stateError("Carregue o curso antes de salvar o progresso do editor.");
-    const next = canonicalProgressFromEditor(progressDocument, this.#course);
+    const next = canonicalProgressFromEditor(progressDocument, this.#course, this.#indexedLessons);
     return this.#mutate([
       ...mapDiff("progress.lessons", this.#record.state.progress.lessons, next.lessons)
     ]).then(() => this.loadProgress());
+  }
+
+  saveProgressLocally(progressDocument) {
+    this.#assertInitialized();
+    if (!this.#course) throw stateError("Carregue o curso antes de salvar o progresso do editor.");
+    const next = canonicalProgressFromEditor(progressDocument, this.#course, this.#indexedLessons);
+    return this.#mutate([
+      ...mapDiff("progress.lessons", this.#record.state.progress.lessons, next.lessons)
+    ], { synchronize: false }).then(() => this.loadProgress());
   }
 
   removeProgressEntries(lessonReferences) {
@@ -1054,7 +1075,7 @@ export class TrailPersonalStateRepository {
     return this.snapshot();
   }
 
-  #mutate(operations) {
+  #mutate(operations, { synchronize = true } = {}) {
     const normalizedOperations = operations.map(normalizeOperation);
     if (!normalizedOperations.length) return Promise.resolve(this.snapshot());
     const before = clone(this.#record);
@@ -1082,6 +1103,7 @@ export class TrailPersonalStateRepository {
     const generation = ++this.#localGeneration;
     return this.#enqueue(async () => {
       await this.#persist();
+      if (!synchronize) return this.snapshot();
       try {
         await this.#flushUnlocked();
       } catch (error) {

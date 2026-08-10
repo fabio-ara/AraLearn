@@ -331,7 +331,7 @@ export function createLearningSpacesPanel({
     busy = busyOperations.size > 0;
     overlay.setAttribute("aria-busy", String(busy));
     overlay.querySelectorAll("button, input, textarea, select").forEach((node) => {
-      if (node.matches("[data-panel-close]")) return;
+      if (node.matches("[data-panel-close], [data-theme-choice]")) return;
       if (busy) {
         if (!("disabledBeforeBusy" in node.dataset)) {
           node.dataset.disabledBeforeBusy = String(node.disabled);

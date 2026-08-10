@@ -135,6 +135,7 @@ test("refresh pessoal relê respostas remotas posteriores e as projeta na Home",
   });
 
   let refreshCount = 0;
+  let initializeOptions = null;
   let clearCount = 0;
   let exposeRemoteReview = false;
   let denyTrails = false;
@@ -147,7 +148,7 @@ test("refresh pessoal relê respostas remotas posteriores e as projeta na Home",
   ];
   const personalStorage = {
     setCourse() {},
-    async initialize() {},
+    async initialize(options) { initializeOptions = options; },
     async refresh() { refreshCount += 1; },
     loadProgress() { return { version: 1, lessons: {} }; },
     saveProgress() {},
@@ -197,12 +198,15 @@ test("refresh pessoal relê respostas remotas posteriores e as projeta na Home",
   await waitFor(() => typeof harness.openCourse === "function", "botão do curso");
   harness.openCourse();
   await waitFor(() => harness.html.includes("Módulos"), "abertura do curso");
+  assert.deepEqual(initializeOptions, { refresh: false });
+  await waitFor(() => refreshCount === 1, "refresh pessoal em segundo plano");
   assert.equal(typeof harness.goBack, "function");
   harness.goBack();
 
   exposeRemoteReview = true;
+  const refreshCountBeforeVisibility = refreshCount;
   await app.refreshPersonalState();
-  assert.equal(refreshCount, 1);
+  assert.equal(refreshCount, refreshCountBeforeVisibility + 1);
   assert.match(harness.html, /Resposta remota disponível/u);
 
   denyTrails = true;
