@@ -602,6 +602,7 @@ Essas regras valem para qualquer recurso estruturado e também para blocos equiv
 
 - Use português direto e adequado ao público. Uma sigla pode aparecer depois da expansão ou quando estiver autorizada como pré-requisito; não use jargão para encobrir uma explicação ausente.
 - Crases só representam código, comando, identificador, literal, sintaxe ou valor cuja forma exata importa para a tarefa. Não use crases como mero destaque de palavra comum, conceito pedagógico, frase natural ou nome de modalidade. Para ênfase conceitual, prefira redação clara; não dependa de aparência de código.
+- Cada par de crases delimita uma unidade literal inteira, sem espaço interno nas bordas. Nunca destaque apenas o sufixo de uma expressão de várias palavras nem separe uma sigla de sua forma expandida. Nomes técnicos em prosa ficam sem crases; quando a notação autorizada exigir o nome literal completo, escreva `Transmission Control Protocol (TCP)`, nunca Transmission Control `Protocol (TCP)`.
 - Preserve literalidade quando ela importa, como comandos, nomes de campos, expressões, caminhos, mensagens e trechos de programa. Fora disso, prefira linguagem corrente e explique a função do termo técnico.
 - Conteúdo multilíngue declara idioma e direção quando o contrato exigir. Não corrija variação linguística legítima como se fosse erro; corrija somente a formulação que prejudica compreensão, precisão ou adequação ao público.
 

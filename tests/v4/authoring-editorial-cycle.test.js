@@ -121,6 +121,8 @@ test("cenários 6 a 10: auditoria cobre bastidor, termos, contexto, ancoragem e 
   assert.match(sources, /operação cognitiva/iu);
   assert.match(semanticAudit, /carga cognitiva/iu);
   assert.match(semanticAudit, /uma decisão principal/iu);
+  assert.match(semanticAudit, /nunca Transmission Control `Protocol \(TCP\)`/u);
+  assert.match(AUTHORING_SERVER_INSTRUCTIONS, /nunca marque apenas o sufixo/iu);
 });
 
 test("contexto de banca reserva espaço para ancoragem em criação e ampliação", () => {

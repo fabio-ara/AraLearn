@@ -11578,7 +11578,7 @@
               "checks": [
                 "distingue Pandas DataFrame de Spark DataFrame",
                 "entende que Spark precisa de sessão",
-                "explica `header=True` e `inferSchema=True",
+                "explica `header=True` e `inferSchema=True`",
                 "reconhece `show()` como ação de visualização em Spark"
               ],
               "cards": [

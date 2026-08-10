@@ -7,8 +7,8 @@
     {
       "file": "aralearn-authoring-core.zip",
       "platform": null,
-      "bytes": 254907,
-      "sha256": "c1a33a3c056a5742ed145bc8e92eb46a56a4b43bafd84535064fc297caaacbce",
+      "bytes": 255308,
+      "sha256": "4e9401406afb7fbac7f5da46a0a4c33c0fec611ab7c23ab6bee1198ebe0f35e7",
       "files": [
         {
           "path": "aralearn-authoring/core/editorial-cycle.md",
@@ -112,8 +112,8 @@
         },
         {
           "path": "aralearn-authoring/knowledge/semantic-audit.md",
-          "bytes": 12006,
-          "sha256": "dc40aa6b39e4a40c4bb0c53c8137b7310ef2a63e3a63020372efaf175bd95950"
+          "bytes": 12407,
+          "sha256": "beebe4960ec325b20fc2514d48da9a892f48fc6e26564b4bd327dd6f2f58ced1"
         },
         {
           "path": "aralearn-authoring/knowledge/term-ledger.md",
@@ -165,8 +165,8 @@
     {
       "file": "aralearn-authoring-chatgpt.zip",
       "platform": "chatgpt",
-      "bytes": 522447,
-      "sha256": "b9594d2defbec33f92a90462eeb811fa31491fddd6354abeb4d78a7e176e792a",
+      "bytes": 523251,
+      "sha256": "47035c1739beb2bf16ab7eca1103168ac64337c49698e1ca393ae80922cbe919",
       "files": [
         {
           "path": "aralearn-authoring/core/editorial-cycle.md",
@@ -270,8 +270,8 @@
         },
         {
           "path": "aralearn-authoring/knowledge/semantic-audit.md",
-          "bytes": 11839,
-          "sha256": "7b063d1238b05e0f345fb6dea9ceb5059db1ad2f7330331fdddb70d4eaf7422c"
+          "bytes": 12241,
+          "sha256": "f4eacd5492ed55876e27b6e546d509f963ca78ee7f85fca49527757be0258055"
         },
         {
           "path": "aralearn-authoring/knowledge/term-ledger.md",
@@ -295,8 +295,8 @@
         },
         {
           "path": "aralearn-authoring/platforms/chatgpt/KNOWLEDGE_CORE.md",
-          "bytes": 114284,
-          "sha256": "74005a5c38c90f9efb75872adfdb3074435004b4bc96185bfa94fec80eaa8326"
+          "bytes": 114686,
+          "sha256": "0e3def7111955d6e1dd53d611c98f95695baf1da43ce274817ee548162b36a1d"
         },
         {
           "path": "aralearn-authoring/platforms/chatgpt/KNOWLEDGE_RESOURCES.md",
@@ -358,8 +358,8 @@
     {
       "file": "aralearn-authoring-gemini.zip",
       "platform": "gemini",
-      "bytes": 260712,
-      "sha256": "5bf0185d57c06a66ac4f62c0e95a63fb26550a27b589704bd5070a2ce96d6e7d",
+      "bytes": 261113,
+      "sha256": "15bef9fb7e68a9e5f25a594b6dcaca547ce6133f08514c13baf2f84c20acf0f9",
       "files": [
         {
           "path": "aralearn-authoring/core/editorial-cycle.md",
@@ -463,8 +463,8 @@
         },
         {
           "path": "aralearn-authoring/knowledge/semantic-audit.md",
-          "bytes": 12006,
-          "sha256": "dc40aa6b39e4a40c4bb0c53c8137b7310ef2a63e3a63020372efaf175bd95950"
+          "bytes": 12407,
+          "sha256": "beebe4960ec325b20fc2514d48da9a892f48fc6e26564b4bd327dd6f2f58ced1"
         },
         {
           "path": "aralearn-authoring/knowledge/term-ledger.md",
@@ -531,8 +531,8 @@
     {
       "file": "aralearn-authoring-microsoft-365.zip",
       "platform": "microsoft-365",
-      "bytes": 261691,
-      "sha256": "65da8b29cedda352545c9615c51c0b650b80202826f1360998361aff44c23978",
+      "bytes": 262092,
+      "sha256": "f5e6ef2f8fb520a11cd338b8141b4037547a8b3c0b58db09e395860c2cc7ea24",
       "files": [
         {
           "path": "aralearn-authoring/core/editorial-cycle.md",
@@ -636,8 +636,8 @@
         },
         {
           "path": "aralearn-authoring/knowledge/semantic-audit.md",
-          "bytes": 12006,
-          "sha256": "dc40aa6b39e4a40c4bb0c53c8137b7310ef2a63e3a63020372efaf175bd95950"
+          "bytes": 12407,
+          "sha256": "beebe4960ec325b20fc2514d48da9a892f48fc6e26564b4bd327dd6f2f58ced1"
         },
         {
           "path": "aralearn-authoring/knowledge/term-ledger.md",
@@ -709,8 +709,8 @@
     {
       "file": "aralearn-authoring-claude.zip",
       "platform": "claude",
-      "bytes": 261146,
-      "sha256": "6f1cfb6054d1db1b5f0bf5ed7d28ad265d52d50b21c1bc411382fe1cb76be6bf",
+      "bytes": 261547,
+      "sha256": "66ee3569e61f52d30f3c47fce928da1b53f11812e30652aa7cdd1911ed424eda",
       "files": [
         {
           "path": "aralearn-authoring/core/editorial-cycle.md",
@@ -814,8 +814,8 @@
         },
         {
           "path": "aralearn-authoring/knowledge/semantic-audit.md",
-          "bytes": 12006,
-          "sha256": "dc40aa6b39e4a40c4bb0c53c8137b7310ef2a63e3a63020372efaf175bd95950"
+          "bytes": 12407,
+          "sha256": "beebe4960ec325b20fc2514d48da9a892f48fc6e26564b4bd327dd6f2f58ced1"
         },
         {
           "path": "aralearn-authoring/knowledge/term-ledger.md",
@@ -882,8 +882,8 @@
     {
       "file": "aralearn-authoring-generic.zip",
       "platform": "generic",
-      "bytes": 262788,
-      "sha256": "dcc995728e50d3f575aad5176035a974f4da62190683a6fc3ffe02cd47d052ab",
+      "bytes": 263189,
+      "sha256": "4c29008f24b424e51957e5ef1d6119cbd51136611c065a7745f027104a76b07d",
       "files": [
         {
           "path": "aralearn-authoring/core/editorial-cycle.md",
@@ -987,8 +987,8 @@
         },
         {
           "path": "aralearn-authoring/knowledge/semantic-audit.md",
-          "bytes": 12006,
-          "sha256": "dc40aa6b39e4a40c4bb0c53c8137b7310ef2a63e3a63020372efaf175bd95950"
+          "bytes": 12407,
+          "sha256": "beebe4960ec325b20fc2514d48da9a892f48fc6e26564b4bd327dd6f2f58ced1"
         },
         {
           "path": "aralearn-authoring/knowledge/term-ledger.md",
@@ -1056,8 +1056,8 @@
     },
     {
       "file": "aralearn-chatgpt-knowledge-core.md",
-      "bytes": 114284,
-      "sha256": "74005a5c38c90f9efb75872adfdb3074435004b4bc96185bfa94fec80eaa8326"
+      "bytes": 114686,
+      "sha256": "0e3def7111955d6e1dd53d611c98f95695baf1da43ce274817ee548162b36a1d"
     },
     {
       "file": "aralearn-chatgpt-knowledge-resources.md",

@@ -25,6 +25,7 @@ export const AUTHORING_SERVER_INSTRUCTIONS = [
   "No planejamento, use criarEstruturaNoWorkspace em lotes pequenos, apresente cobertura e dimensionamento e pare. Somente após a aprovação, use gerirContinuidadeDaAutoria com record_approved_plan para substituir atomicamente todas as Partes, decisões correntes e o mandato.",
   "Na construção aprovada, use salvarCardsNaMicrossequencia em uma microssequência por vez; use reorganizarWorkspace com operation copy_entity quando conteúdo existente for a melhor base.",
   "Consulte consultarRecursosDeCard com o resource desejado antes do primeiro uso; a resposta compacta basta para o card comum e detail full só é necessário para afterBlocks.",
+  "Em texto visível, cada par de crases delimita uma unidade literal inteira, sem espaço nas bordas: nunca marque apenas o sufixo de uma expressão de várias palavras nem separe uma sigla de sua forma expandida; nomes técnicos em prosa ficam sem crases e uma notação que exija literalidade abrange o nome e a sigla completos.",
   "Depois da construção, apresente microteorias, quantidades de práticas, resources e termos introduzidos; não enumere práticas salvo pedido explícito e então sugira auditoria independente.",
   "Na auditoria autorizada, grave um mandato audit — com targetPartId se o recorte for uma Parte —, leia list_comments e list_observations com kinds note, releia o alvo e não altere conteúdo nem estrutura; registre somente findings compactos, relate aspectos adequados e problemas com impacto, gravidade, reparo e escopo, sugira uma etapa e pare.",
   "No reparo, altere somente problemas aprovados; para card pontual, use listarCardsDaMicrossequencia, leia o alvo e use salvarCardNoWorkspace preservando id e posição; depois sugira reauditoria sem executá-la.",
@@ -210,7 +211,7 @@ const KNOWLEDGE_CHUNKS = Object.freeze([
     intents: ["create", "extend", "revise", "restructure"],
     entities: ["course", "module", "lesson", "microsequence", "card"],
     keywords: ["continuidade", "prerequisito", "termo", "notacao", "idioma", "dependencia"],
-    text: "Apresente termos, siglas, convenções, unidades e notações antes de exigi-los. Na primeira sigla, dê a expansão e explique sua função; para comando ou palavra reservada, apresente forma literal, significado, função e ambiente. Ao mover ou recombinar partes, confira dependsOn, covers, checks, errors, tópicos e registro terminológico. Preserve idioma, direção de texto e fontes pertinentes; não deduza continuidade apenas pela proximidade de títulos."
+    text: "Apresente termos, siglas, convenções, unidades e notações antes de exigi-los. Na primeira sigla, dê a expansão e explique sua função; para comando ou palavra reservada, apresente forma literal, significado, função e ambiente. Crases delimitam uma unidade literal inteira, sem espaço nas bordas: nunca marque apenas o sufixo de uma expressão de várias palavras nem separe uma sigla de sua forma expandida. Nomes técnicos em prosa ficam sem crases; se a notação exigir literalidade, ela abrange nome e sigla completos. Ao mover ou recombinar partes, confira dependsOn, covers, checks, errors, tópicos e registro terminológico. Preserve idioma, direção de texto e fontes pertinentes; não deduza continuidade apenas pela proximidade de títulos."
   }),
   Object.freeze({
     id: "structural-editing",
