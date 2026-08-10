@@ -697,6 +697,82 @@ test("aparência muda no próprio dispositivo sem recarregar o curso", async ({ 
   expect(await page.evaluate(() => localStorage.getItem("aralearn.ui.theme"))).toBeNull();
 });
 
+test("tema e play respondem imediatamente enquanto a rede não responde", async ({ page }) => {
+  await signIn(page);
+  let releaseNetwork;
+  const stalledNetwork = new Promise((resolve) => {
+    releaseNetwork = resolve;
+  });
+  const stallNetwork = async (route) => {
+    await stalledNetwork;
+    await route.fulfill({
+      status: 503,
+      contentType: "application/json",
+      body: JSON.stringify({ code: "57P03", message: "Conexão indisponível." })
+    });
+  };
+  await page.route(`${PROJECT_URL}/**`, stallNetwork);
+
+  try {
+    await page.locator('[data-action="open-central"]').first().click();
+    const darkChoice = page.locator('[data-theme-choice="dark"]');
+    await expect(page.locator("[data-learning-panel]")).toHaveAttribute("aria-busy", "true");
+    await expect(darkChoice).toBeEnabled();
+    const themeDuration = await darkChoice.evaluate((button) => {
+      const startedAt = performance.now();
+      button.click();
+      return performance.now() - startedAt;
+    });
+    await expect(page.locator("html")).toHaveAttribute("data-color-mode", "dark");
+    await page.locator("[data-panel-close]").last().click();
+
+    const resumeDuration = await page.evaluate(() => new Promise((resolve) => {
+      const startedAt = performance.now();
+      const finish = () => {
+        if (!document.querySelector('[data-action="open-module"]')) return false;
+        resolve(performance.now() - startedAt);
+        return true;
+      };
+      const observer = new MutationObserver(() => {
+        if (finish()) observer.disconnect();
+      });
+      observer.observe(document.body, { childList: true, subtree: true });
+      document.querySelector('[data-action="open-course"]')?.click();
+      if (finish()) observer.disconnect();
+      setTimeout(() => {
+        observer.disconnect();
+        resolve(Number.POSITIVE_INFINITY);
+      }, 2_000);
+    }));
+    expect(resumeDuration).toBeLessThan(500);
+    await page.locator('[data-action="open-module"][data-module-key="module-teoria-dos-grafos"]').tap();
+    await page.locator('[data-action="open-lesson"][data-lesson-key="lesson-vocabulario-contagem"]').tap();
+    await openMicrosequenceRuntime(page, "micro-grafo-como-conjuntos");
+
+    const feedbackDuration = await page.locator('[data-action="next-card"]').evaluate((button) => {
+      const startedAt = performance.now();
+      button.click();
+      return performance.now() - startedAt;
+    });
+    await expect(page.locator(".study-continue-popup")).toBeVisible();
+
+    const advanceDuration = await page.locator('[data-action="continue-popup-next"]').evaluate((button) => {
+      const startedAt = performance.now();
+      button.click();
+      return performance.now() - startedAt;
+    });
+    await expect(page.locator(".runtime-card-title")).toHaveText("Um grafo pequeno");
+
+    expect(themeDuration).toBeLessThan(150);
+    expect(feedbackDuration).toBeLessThan(150);
+    expect(advanceDuration).toBeLessThan(150);
+  } finally {
+    releaseNetwork();
+    await expect(page.locator("[data-learning-panel]")).toHaveAttribute("aria-busy", "false");
+    await page.unroute(`${PROJECT_URL}/**`, stallNetwork);
+  }
+});
+
 test("exclusão da conta exige confirmação e retorna à porta de acesso", async ({ page }) => {
   await signIn(page);
   await page.getByRole("button", { name: "Abrir painel" }).click();

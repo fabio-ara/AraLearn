@@ -278,6 +278,37 @@ test("curso selection-only usa o mesmo estado sem workspaceId ou selectionId", a
   ), true);
 });
 
+test("progresso local fica durável sem aguardar a rede e sincroniza depois", async () => {
+  const remote = remoteFixture();
+  const { value, store } = repository(remote);
+  await value.initialize();
+
+  await value.saveProgressLocally({
+    version: 1,
+    lessons: {
+      "course/a::module-a::lesson-a": {
+        cursor: 0,
+        completedCardKeys: ["card-a"],
+        updatedAt: "2026-08-07T11:00:00.000Z"
+      }
+    }
+  });
+
+  assert.equal(remote.calls.mutate.length, 0);
+  assert.deepEqual(value.loadProgress().lessons["course/a::module-a::lesson-a"], {
+    cursor: 0,
+    completedCardKeys: ["card-a"]
+  });
+  assert.deepEqual(store.rows.values().next().value.state.progress.lessons["lesson-a"], {
+    cursorCardId: "card-a",
+    completedCardIds: ["card-a"]
+  });
+
+  await value.flush();
+  assert.equal(remote.calls.mutate.length, 1);
+  assert.equal(value.snapshot().pending, false);
+});
+
 test("reordenar cards não transforma um card novo em concluído", async () => {
   const original = course();
   original.modules[0].lessons[0].microsequences[0].cards.push({
