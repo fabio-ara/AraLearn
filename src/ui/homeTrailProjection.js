@@ -71,8 +71,14 @@ function normalizeTrailItem(value = {}) {
     cardCount: integer(value.cardCount),
     completedCardCount: Math.min(integer(value.completedCardCount), integer(value.cardCount)),
     canEdit: value.canEdit === true,
+    canEditOffline: value.canEditOffline === true,
     canDelete: value.canDelete === true,
     canRemove: value.canRemove === true,
+    authoringStatus: ["pending", "conflict"].includes(value.authoringStatus)
+      ? value.authoringStatus
+      : "",
+    authoringPendingCount: integer(value.authoringPendingCount),
+    authoringErrorMessage: text(value.authoringErrorMessage),
     pathId: text(value.pathId) || null,
     pathTitle: text(value.pathTitle),
     revision: value.revision === null || value.revision === undefined

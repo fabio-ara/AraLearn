@@ -9,6 +9,7 @@ import {
   listCardResourceTargets
 } from "../../src/assist/cardAssistanceScope.js";
 import { compileAuthoringCardGaps } from "../../src/core/authoringGaps.js";
+import { compileAndValidateAuthoringCard } from "../../src/generation/engine/cardAuthoringSchema.js";
 import {
   getAuthoringResourceContract,
   listResourceIds
@@ -180,6 +181,7 @@ test("reparo de recurso envia contexto limitado e devolve change set mínimo", a
   assert.deepEqual(requests[0].engineContext.writableTargets[0].value, {
     text: "Texto original."
   });
+  assert.deepEqual(requests[0].engineContext.writableTargets[0].textPaths, ["text"]);
   assert.equal(
     Object.hasOwn(requests[0].engineContext.readOnlyContext.cards.current, "text"),
     false
@@ -203,7 +205,7 @@ test("reparo de recurso envia contexto limitado e devolve change set mínimo", a
   assert.equal(generated.changeSet.card.text, "Texto corrigido.");
 });
 
-test("reparo isolado do recurso principal preserva a resposta choice contextual", async () => {
+test("reparo isolado do recurso principal preserva resposta e dados estruturais", async () => {
   const project = projectFixture();
   project.courses[0].modules[0].lessons[0].microsequences[0].cards[0] =
     chartChoiceCard();
@@ -221,7 +223,7 @@ test("reparo isolado do recurso principal preserva a resposta choice contextual"
               series: [{
                 id: "serie-a",
                 name: "Amostra revisada",
-                values: [["Alfa", 3], ["Beta", 7]]
+                values: [["Alfa", 2], ["Beta", 5]]
               }]
             },
             gaps: []
@@ -244,7 +246,8 @@ test("reparo isolado do recurso principal preserva a resposta choice contextual"
     modelId: "fake:model"
   });
 
-  assert.equal(generated.changeSet.card.series[0].values[1][1], 7);
+  assert.equal(generated.changeSet.card.series[0].values[1][1], 5);
+  assert.equal(generated.changeSet.card.series[0].name, "Amostra revisada");
   assert.equal(
     generated.changeSet.card.question,
     "Qual categoria apresenta a maior quantidade?"
@@ -290,7 +293,7 @@ test("reparo conjunto de main e response compila cada alvo sem estado intermedi�
                 series: [{
                   id: "serie-a",
                   name: "Nova coleta",
-                  values: [["Alfa", 8], ["Beta", 4]]
+                  values: [["Alfa", 2], ["Beta", 5]]
                 }]
               },
               gaps: []
@@ -302,10 +305,10 @@ test("reparo conjunto de main e response compila cada alvo sem estado intermedi�
                 selectionMode: "single",
                 selectionCriterion: "correct",
                 options: [
-                  { id: "alfa", text: "Alfa" },
-                  { id: "beta", text: "Beta" }
+                  { id: "alfa", text: "Categoria Alfa" },
+                  { id: "beta", text: "Categoria Beta", feedback: "É a maior barra." }
                 ],
-                answerIds: ["alfa"]
+                answerIds: ["beta"]
               },
               gaps: []
             }
@@ -328,9 +331,10 @@ test("reparo conjunto de main e response compila cada alvo sem estado intermedi�
     modelId: "fake:model"
   });
 
-  assert.equal(generated.changeSet.card.series[0].values[0][1], 8);
+  assert.equal(generated.changeSet.card.series[0].values[0][1], 2);
   assert.equal(generated.changeSet.card.question, "Qual categoria lidera a nova coleta?");
-  assert.deepEqual(generated.changeSet.card.answerIds, ["alfa"]);
+  assert.equal(generated.changeSet.card.options[1].feedback, "É a maior barra.");
+  assert.deepEqual(generated.changeSet.card.answerIds, ["beta"]);
 });
 
 test("runtime de card não cria nova microssequência", async () => {
@@ -410,6 +414,11 @@ test("reparo do card preserva envelopes fora do schema compacto", async () => {
   const buildSchema = requests.find((request) =>
     request.phase === "card_assistance_build"
   ).schema.properties.card;
+  assert.deepEqual(
+    new Set(requests.find((request) => request.phase === "card_assistance_build")
+      .engineContext.writableTextPaths),
+    new Set(["text", "after", "afterBlocks[0].value", "title"])
+  );
   for (const fieldName of [
     "afterBlocks",
     "sources",
@@ -423,7 +432,7 @@ test("reparo do card preserva envelopes fora do schema compacto", async () => {
   assert.equal(generated.changeSet.card.text, "Texto integralmente revisto.");
 });
 
-test("reparo integral aceita exemplos formais dos 18 recursos canônicos", async () => {
+test("reparo integral aceita os 18 recursos sem trocar sua estrutura", async () => {
   for (const resource of listResourceIds()) {
     const contract = getAuthoringResourceContract(resource);
     const source = structuredClone(contract.example);
@@ -437,6 +446,14 @@ test("reparo integral aceita exemplos formais dos 18 recursos canônicos", async
       `${resource}:${source.kind === "exercise" ? "exercise" : "theory"}:${source.exercise}`,
       requiredAlternative.length ? `@${requiredAlternative.join("+")}` : ""
     ].join("");
+    const project = projectFixture();
+    const currentAuthoringCard = {
+      ...source,
+      id: "card-a",
+      position: 1
+    };
+    const currentCard = compileAndValidateAuthoringCard(currentAuthoringCard);
+    project.courses[0].modules[0].lessons[0].microsequences[0].cards[0] = currentCard;
     const provider = {
       async generateStructured(request) {
         if (request.phase === "card_assistance_representation") {
@@ -447,19 +464,20 @@ test("reparo integral aceita exemplos formais dos 18 recursos canônicos", async
             card: {
               ...source,
               id: "card-a",
-              position: 1
+              position: 1,
+              title: `${source.title} revisado`
             }
           }
         };
       }
     };
     const generated = await generateCardAssistanceChangeSet({
-      projectDocument: projectFixture(),
+      projectDocument: project,
       selection,
       request: {
         operation: "repair",
         repairScope: "card",
-        promptText: `Reconstrua o card com o resource ${resource}.`
+        promptText: `Revise o texto do card com o resource ${resource}.`
       },
       provider,
       modelId: "fake:model"
@@ -467,6 +485,7 @@ test("reparo integral aceita exemplos formais dos 18 recursos canônicos", async
     assert.equal(generated.changeSet.card.resource, resource, resource);
     assert.equal(generated.changeSet.card.id, "card-a", resource);
     assert.equal(generated.changeSet.card.position, 1, resource);
+    assert.equal(generated.changeSet.card.title, `${source.title} revisado`, resource);
     assert.equal(Object.hasOwn(generated.changeSet.card, "gaps"), false, resource);
   }
 });
@@ -780,7 +799,7 @@ test("conteúdo selecionado extenso não reaparece no contexto somente leitura",
   assert.equal(generated.changeSet.card.after, "Síntese somente leitura.");
 });
 
-test("reparo formal de uma lacuna composta preserva a lacuna não selecionada", async () => {
+test("reparo textual de lacuna composta preserva tokens e respostas", async () => {
   const project = projectFixture();
   const microsequence = project.courses[0].modules[0].lessons[0].microsequences[0];
   microsequence.cards[0] = compileAuthoringCardGaps({
@@ -818,18 +837,18 @@ test("reparo formal de uma lacuna composta preserva a lacuna não selecionada", 
       return {
         value: {
           replacements: [{
-            targetId: "body:part-1",
-            value: {
-              id: "part-1",
-              kind: "paragraph",
-              value: "A corrigido = {gap:body-part-1-answer}."
-            },
-            gaps: [{
-              id: "body-part-1-answer",
-              response: "text",
-              answer: "10",
-              distractors: [],
-              acceptedAnswers: []
+              targetId: "body:part-1",
+              value: {
+                id: "part-1",
+                kind: "paragraph",
+                value: "A revisado = {gap:old-a}."
+              },
+              gaps: [{
+                id: "old-a",
+                response: "text",
+                answer: "1",
+                distractors: [],
+                acceptedAnswers: []
             }]
           }]
         }
@@ -843,12 +862,12 @@ test("reparo formal de uma lacuna composta preserva a lacuna não selecionada", 
       operation: "repair",
       repairScope: "resources",
       resourceTargetIds: ["body:part-1"],
-      promptText: "Corrija a primeira lacuna."
+      promptText: "Revise o texto ao redor da primeira lacuna."
     },
     provider,
     modelId: "fake:model"
   });
-  assert.match(generated.changeSet.card.blocks[0].value, /\[\[10/u);
+  assert.match(generated.changeSet.card.blocks[0].value, /A revisado = \[\[1/u);
   assert.deepEqual(generated.changeSet.card.blocks[1], untouched);
   assert.doesNotMatch(JSON.stringify(generated.changeSet.card), /\{gap:/u);
 });

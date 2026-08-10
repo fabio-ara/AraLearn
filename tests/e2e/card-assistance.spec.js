@@ -111,6 +111,7 @@ function projectFixtureWithTwoMicrosequences() {
 
 async function openCardAssistance(page, {
   holdProvider = false,
+  noopProvider = false,
   captureHierarchy = false,
   stopAtCourse = false,
   stopAtModule = false,
@@ -131,7 +132,7 @@ async function openCardAssistance(page, {
     }]))
   });
   await page.goto("/");
-  await page.evaluate(async ({ initialProject, holdProvider, trailSnapshot }) => {
+  await page.evaluate(async ({ initialProject, holdProvider, noopProvider, trailSnapshot }) => {
     const oldRoot = document.querySelector("#app-root");
     const root = document.createElement("div");
     root.id = "app-root";
@@ -307,7 +308,16 @@ async function openCardAssistance(page, {
           probe.releaseProvider = null;
         }
         if (request.phase === "card_assistance_representation") {
-          return { value: { representation: "paragraph:theory:none" } };
+          const currentCard = probe.project.courses
+            .flatMap((course) => course.modules || [])
+            .flatMap((moduleValue) => moduleValue.lessons || [])
+            .flatMap((lesson) => lesson.microsequences || [])
+            .flatMap((microsequence) => microsequence.cards || [])[0];
+          return {
+            value: {
+              representation: `${currentCard.resource}:${currentCard.kind}:${currentCard.exercise}`
+            }
+          };
         }
         if (request.phase === "bottom_up_operation") {
           return { value: { operation: "update_cards" } };
@@ -317,18 +327,25 @@ async function openCardAssistance(page, {
         }
         if (request.phase === "card_assistance_build") {
           const target = request.engineContext.writableTarget;
+          const currentCard = probe.project.courses
+            .flatMap((course) => course.modules || [])
+            .flatMap((moduleValue) => moduleValue.lessons || [])
+            .flatMap((lesson) => lesson.microsequences || [])
+            .flatMap((microsequence) => microsequence.cards || [])
+            .find((card) => card.id === target.id);
           return {
             value: {
-              card: {
-                id: target.id,
-                position: target.position,
-                resource: "paragraph",
-                kind: "theory",
-                exercise: "none",
-                title: "Conjunção revisada",
-                text: "P e Q são verdadeiras ao mesmo tempo.",
-                after: ""
-              }
+              card: noopProvider && currentCard
+                ? structuredClone(currentCard)
+                : {
+                    ...structuredClone(currentCard),
+                    title: "Conjunção revisada",
+                    blocks: (currentCard.blocks || []).map((block) =>
+                      block.id === "paragraph-1"
+                        ? { ...structuredClone(block), value: "P e Q são verdadeiras ao mesmo tempo." }
+                        : structuredClone(block)
+                    )
+                  }
             }
           };
         }
@@ -336,12 +353,14 @@ async function openCardAssistance(page, {
           value: {
             replacements: request.engineContext.writableTargets.map((target) => ({
               targetId: target.targetId,
-              value: {
-                ...structuredClone(target.value),
-                value: target.targetId === "body:paragraph-2"
-                  ? "Apenas V e V produz resultado verdadeiro."
-                  : "P e Q devem ser simultaneamente verdadeiras."
-              },
+              value: noopProvider
+                ? structuredClone(target.value)
+                : {
+                    ...structuredClone(target.value),
+                    value: target.targetId === "body:paragraph-2"
+                      ? "Apenas V e V produz resultado verdadeiro."
+                      : "P e Q devem ser simultaneamente verdadeiras."
+                  },
               gaps: []
             }))
           }
@@ -366,6 +385,7 @@ async function openCardAssistance(page, {
   }, {
     initialProject,
     holdProvider,
+    noopProvider,
     trailSnapshot
   });
 
@@ -534,7 +554,10 @@ test("Editar seleciona um alvo por vez e mantém as ações fora do card", async
   const moduleCards = page.locator('[data-structure-target="module"]');
   await expect(moduleCards).toHaveCount(1);
   const moduleCard = moduleCards.first();
-  await expect(page.locator('[data-inline-structure-editor="true"]')).toHaveCount(0);
+  const courseSummary = page.locator('.entity-summary[data-inline-structure-editor="true"]');
+  await expect(courseSummary).toHaveCount(1);
+  await expect(courseSummary.locator('[data-field="inline-entity-title"]')).toBeEditable();
+  await expect(courseSummary.locator('[data-field="inline-entity-title"]')).toBeFocused();
   await moduleCard.click();
 
   await expect(page.locator(".topbar-title")).toHaveText("Curso");
@@ -604,7 +627,9 @@ for (const viewportWidth of [320, 360, 390, 412]) {
     await page.locator(
       '[data-action="select-entity-mode"][data-entity-level="lesson"][data-entity-mode="edit"]'
     ).click();
-    await expect(page.locator('[data-inline-structure-editor="true"]')).toHaveCount(0);
+    await expect(page.locator(
+      '.entity-summary[data-structure-level="lesson"][data-inline-structure-editor="true"]'
+    )).toHaveCount(1);
     expectSameStructure(await snapshot(), viewGeometry);
 
     await cards.first().click();
@@ -1049,12 +1074,20 @@ test("microssequência envia bottom-up direto, persiste atomicamente e desfaz um
   expect(applied.saveCalls[0].localState.undo.kind).toBe("lesson");
   expect(applied.saveCalls[0].localState.undo.expectedRevision).toBe("draft-revision-1");
   expect(applied.saveCalls[0].localState.sync.expectedRevision).toBe("draft-revision-1");
-  expect(applied.saveCalls[0].localState.sync.pendingPaths).toEqual([{
+  expect(applied.saveCalls[0].localState.sync.pendingPaths).toHaveLength(1);
+  expect(applied.saveCalls[0].localState.sync.pendingPaths[0]).toMatchObject({
     courseKey: "course-a",
     moduleKey: "module-a",
     lessonKey: "lesson-a",
-    microsequenceKey: "micro-a"
-  }]);
+    microsequenceKey: "micro-a",
+    basePosition: 0,
+    baseMetadata: {
+      title: "Regra",
+      goal: "Reconhecer o caso verdadeiro."
+    }
+  });
+  expect(applied.saveCalls[0].localState.sync.pendingPaths[0].baseCards.map(({ id }) => id))
+    .toEqual(["card-a", "card-b"]);
   expect(applied.providerCalls.map(({ phase }) => phase)).toEqual([
     "bottom_up_operation",
     "card_assistance_representation",
@@ -1207,7 +1240,13 @@ test("o escopo de card inteiro executa somente reparo e preserva identidade", as
   ]);
   expect(result.cards[0].id).toBe("card-a");
   expect(result.cards[0].position).toBe(1);
-  expect(result.cards[0].resource).toBe("paragraph");
+  expect(result.cards[0].resource).toBe("composite");
+  expect(result.cards[0].blocks.map(({ id, kind }) => ({ id, kind }))).toEqual([
+    { id: "paragraph-1", kind: "paragraph" },
+    { id: "code-1", kind: "code" },
+    { id: "paragraph-2", kind: "paragraph" }
+  ]);
+  expect(result.cards[0].blocks[1].code).toBe("P ∧ Q");
   expect(result.cards[1]).toEqual(
     projectFixture().courses[0].modules[0].lessons[0].microsequences[0].cards[1]
   );
@@ -1306,6 +1345,78 @@ test("edição manual preserva o resource e usa ações no dock externo", async 
   await expect.poll(async () => (await probeSnapshot(page)).saveCalls.length).toBe(2);
   result = await probeSnapshot(page);
   expect(result.cards[0].blocks[0].value).toBe("P e Q precisam ser verdadeiras.");
+});
+
+test("salvar sem alteração manual ou da IA não cria escrita, fila nem erro", async ({ page }) => {
+  const initialProject = projectFixture();
+  await openCardAssistance(page, { initialProject, noopProvider: true });
+
+  await selectCardMode(page, "edit");
+  await selectedResource(page, "body:paragraph-1").click();
+  const manualField = page.locator(
+    '[data-resource-edit-target="body:paragraph-1"] [data-manual-edit-path="value"]'
+  );
+  await expect(manualField).toContainText("P e Q precisam ser verdadeiras.");
+  await page.locator('[data-action="save-manual-card-edit"]').click();
+  await expect(manualField).toHaveCount(0);
+
+  let snapshot = await probeSnapshot(page);
+  expect(snapshot.saveCalls).toEqual([]);
+  expect(snapshot.localState).toBeNull();
+  expect(snapshot.cards).toEqual(
+    initialProject.courses[0].modules[0].lessons[0].microsequences[0].cards
+  );
+  await expect(page.locator(".card-assistance-message")).toHaveCount(0);
+  await expect(page.locator('[data-action="undo-card-edit"]')).toHaveCount(0);
+
+  await selectCardMode(page, "ai");
+  await selectedResource(page, "body:paragraph-1").click();
+  await openCardAiComposer(page);
+  await page.locator('[data-field="assist-prompt"]').fill(
+    "Mantenha o texto exatamente como está."
+  );
+  await page.locator('[data-action="submit-card-assistance"]').click();
+  await expect(page.locator('[data-field="assist-prompt"]')).toHaveCount(0);
+
+  snapshot = await probeSnapshot(page);
+  expect(snapshot.providerCalls.map(({ phase }) => phase)).toEqual([
+    "card_assistance_resource_repair"
+  ]);
+  expect(snapshot.saveCalls).toEqual([]);
+  expect(snapshot.localState).toBeNull();
+  expect(snapshot.cards).toEqual(
+    initialProject.courses[0].modules[0].lessons[0].microsequences[0].cards
+  );
+  await expect(page.locator(".card-assistance-message")).toHaveCount(0);
+  await expect(page.locator('[data-action="undo-card-edit"]')).toHaveCount(0);
+});
+
+test("bottom-up idêntico fecha o pedido sem criar rascunho, fila ou desfazer", async ({ page }) => {
+  await openCardAssistance(page, { stopAtMicrosequence: true, noopProvider: true });
+  await page.locator(
+    '[data-action="select-entity-mode"][data-entity-level="microsequence"]' +
+    '[data-entity-mode="ai"]'
+  ).click();
+  await page.locator(
+    '[data-action="toggle-bottom-up-item"][data-assistance-level="microsequence"]' +
+    '[data-assistance-item-id="card-a"]'
+  ).click();
+  await page.locator('[data-action="toggle-bottom-up-composer"]').click();
+  await page.locator('[data-field="bottom-up-assist-prompt"]').fill(
+    "Mantenha este card exatamente como está."
+  );
+  await page.locator('[data-action="submit-bottom-up-assistance"]').click();
+  await expect(page.locator('[data-field="bottom-up-assist-prompt"]')).toHaveCount(0);
+
+  const snapshot = await probeSnapshot(page);
+  expect(snapshot.providerCalls.map(({ phase }) => phase)).toEqual([
+    "bottom_up_operation",
+    "card_assistance_representation",
+    "card_assistance_build"
+  ]);
+  expect(snapshot.saveCalls).toEqual([]);
+  expect(snapshot.localState).toBeNull();
+  await expect(page.locator('[data-action="undo-bottom-up-assistance"]')).toHaveCount(0);
 });
 
 test("edição de heading mantém a caixa e deixa o CTA no dock", async ({ page }) => {
@@ -1768,4 +1879,157 @@ test("draft de paragraph com gap restaura a lacuna visual sem expor o contrato",
   await expect(restored.locator(".runtime-text-gap-blank")).toHaveCount(1);
   await expect(restored).not.toContainText("[[");
   await expect(restored).not.toContainText("]]");
+});
+
+for (const viewportWidth of [320, 390]) {
+  test(`choice edita feedback e respeita composição IME em ${viewportWidth}px`, async ({ page }) => {
+    await page.setViewportSize({ width: viewportWidth, height: 800 });
+    const initialProject = projectFixture();
+    initialProject.courses[0].modules[0].lessons[0].microsequences[0].cards[0] = {
+      id: "card-a",
+      position: 1,
+      resource: "choice",
+      kind: "exercise",
+      exercise: "choice",
+      title: "Operador",
+      question: "Qual símbolo realiza a operação indicada?",
+      selectionMode: "single",
+      selectionCriterion: "correct",
+      options: [
+        { id: "a", kind: "text", text: "==" },
+        { id: "b", kind: "text", text: "=" },
+        { id: "c", kind: "text", text: "!=" }
+      ],
+      answerIds: ["b"],
+      after: ""
+    };
+    await openCardAssistance(page, { initialProject });
+    await selectCardMode(page, "edit");
+    await selectedResource(page, "main").click();
+
+    const resource = page.locator('[data-resource-edit-target="main"]');
+    await expect(resource.locator("button.multiple-choice-option")).toHaveCount(0);
+    await expect(resource.locator(".runtime-manual-choice-option")).toHaveCount(3);
+    await expect(resource.locator(".runtime-manual-choice-answer-badge")).toHaveCount(1);
+
+    const option = resource.locator('[data-manual-edit-path="options[1].text"]');
+    const composition = await option.evaluate((node) => {
+      node.dispatchEvent(new CompositionEvent("compositionstart", {
+        bubbles: true,
+        data: "atribuição"
+      }));
+      node.textContent = "atribuição direta";
+      node.dispatchEvent(new InputEvent("input", {
+        bubbles: true,
+        data: "atribuição direta",
+        inputType: "insertCompositionText",
+        isComposing: true
+      }));
+      const during = node.dataset.manualEditDirty || "";
+      node.dispatchEvent(new CompositionEvent("compositionend", {
+        bubbles: true,
+        data: "atribuição direta"
+      }));
+      return {
+        during,
+        after: node.dataset.manualEditDirty || ""
+      };
+    });
+    expect(composition).toEqual({ during: "", after: "true" });
+    await expect(resource).toHaveAttribute("data-manual-edit-invalidates-exercise", "true");
+
+    const feedback = resource.locator('[data-manual-edit-path="options[1].feedback"]');
+    await feedback.fill("Correto: esse símbolo faz a atribuição.");
+    const resourceBox = await resource.boundingBox();
+    expect(resourceBox).not.toBeNull();
+    expect(resourceBox.x).toBeGreaterThanOrEqual(0);
+    expect(resourceBox.x + resourceBox.width).toBeLessThanOrEqual(viewportWidth + 1);
+
+    await page.locator('[data-action="save-manual-card-edit"]').click();
+    await expect.poll(async () => {
+      const result = await probeSnapshot(page);
+      return {
+        ids: result.cards[0].options.map((entry) => entry.id),
+        answerIds: result.cards[0].answerIds,
+        text: result.cards[0].options[1].text,
+        feedback: result.cards[0].options[1].feedback
+      };
+    }).toEqual({
+      ids: ["a", "b", "c"],
+      answerIds: ["b"],
+      text: "atribuição direta",
+      feedback: "Correto: esse símbolo faz a atribuição."
+    });
+  });
+}
+
+test("lacuna vetorial fica legível e bloqueada sem perder o token ao salvar", async ({ page }) => {
+  const initialProject = projectFixture();
+  const card = initialProject.courses[0].modules[0].lessons[0].microsequences[0].cards[0];
+  card.kind = "exercise";
+  card.exercise = "gap";
+  card.blocks = [{
+    id: "relation-map-1",
+    kind: "relation_map",
+    prompt: "Complete a relação.",
+    leftSet: {
+      label: "U",
+      items: [{ id: "u1", label: "A" }]
+    },
+    rightSet: {
+      label: "V",
+      items: [{ id: "v1", label: "[[1::1|2]]" }]
+    },
+    relations: [{ from: "u1", to: "v1" }],
+    pairList: ["[[(A, 1)::(A, 1)|(A, 2)]]"]
+  }];
+  await openCardAssistance(page, { initialProject });
+  await selectCardMode(page, "edit");
+  await selectedResource(page, "body:relation-map-1").click();
+
+  const field = page.locator(
+    '[data-resource-edit-target="body:relation-map-1"] ' +
+    '[data-manual-edit-path="rightSet.items[0].label"]:not(.is-manual-edit-proxied-source)'
+  );
+  await expect(field).toHaveAttribute("data-manual-edit-original", "[[1::1|2]]");
+  await expect(field).toHaveAttribute("data-manual-gap-locked", "true");
+  await expect(field).toHaveAttribute("contenteditable", "false");
+  await expect(field).not.toContainText("[[");
+  await expect(field).not.toContainText("]]");
+
+  await page.locator('[data-action="save-manual-card-edit"]').click();
+  await expect.poll(async () => {
+    const result = await probeSnapshot(page);
+    const relation = result.cards[0].blocks[0];
+    return {
+      label: relation.rightSet.items[0].label,
+      pair: relation.pairList[0]
+    };
+  }).toEqual({
+    label: "[[1::1|2]]",
+    pair: "[[(A, 1)::(A, 1)|(A, 2)]]"
+  });
+});
+
+test("explicação vazia pode ser adicionada na própria superfície do card", async ({ page }) => {
+  await openCardAssistance(page);
+  await selectCardMode(page, "edit");
+  const target = selectedResource(page, "after:text");
+  await expect(target).toBeVisible();
+  await target.click();
+
+  const field = page.locator(
+    '[data-resource-edit-target="after:text"] [data-manual-edit-path="after"]'
+  );
+  await expect(field).toHaveAttribute(
+    "data-manual-edit-placeholder",
+    "Adicionar explicação posterior"
+  );
+  await field.fill("Compare também o resultado com a disjunção.");
+  await page.locator('[data-action="save-manual-card-edit"]').click();
+
+  await expect.poll(async () => {
+    const result = await probeSnapshot(page);
+    return result.cards[0].after;
+  }).toBe("Compare também o resultado com a disjunção.");
 });

@@ -5,6 +5,7 @@ import { IDBFactory } from "fake-indexeddb";
 import {
   CARD_ASSISTANCE_UNDO_CONTRACT,
   createContextualAuthoringInversePatch,
+  markContextualAuthoringMetadataPending,
   markContextualAuthoringSyncPending,
   normalizeCardAssistanceLocalState,
   setCardAssistanceUndo
@@ -153,7 +154,63 @@ test("conteúdo, rascunho, sincronização e desfazer são confirmados na mesma 
   );
 });
 
-test("edição normal posterior invalida só o desfazer dos cursos alterados", async (context) => {
+test("snapshot contextual entre abas não combina a fila R1 com o projeto R0", async (context) => {
+  const indexedDb = new IDBFactory();
+  const seedStore = await IndexedDbRelationalStore.open(indexedDb, { userId: TEST_USER_ID });
+  const { course } = await seedSelectedOfficialCourse(seedStore, {
+    courseOrigin: "private",
+    document: minimalProjectFixture
+  });
+  const storeA = await IndexedDbRelationalStore.open(indexedDb, { userId: TEST_USER_ID });
+  const storeB = await IndexedDbRelationalStore.open(indexedDb, { userId: TEST_USER_ID });
+  const repositoryA = await RelationalProjectRepository.open({
+    store: storeA,
+    userId: TEST_USER_ID,
+    clock: () => new Date(FIXED_TIME)
+  });
+  const repositoryB = await RelationalProjectRepository.open({
+    store: storeB,
+    userId: TEST_USER_ID,
+    clock: () => new Date(FIXED_TIME)
+  });
+  context.after(() => {
+    seedStore.close();
+    storeA.close();
+    storeB.close();
+  });
+
+  const staleProjectA = repositoryA.loadProject();
+  const projectB = repositoryB.loadProject();
+  const beforeLessonB = structuredClone(projectB.courses[0].modules[0].lessons[0]);
+  projectB.courses[0].modules[0].lessons[0].microsequences[0]
+    .cards[0].text = "Texto persistido pela aba B em R1.";
+  const guardB = repositoryB.createLocalCourseDraftGuard(course.id);
+  const savedB = await repositoryB.saveProjectWithCardAssistanceState(projectB, {
+    courseIdentity: course.id,
+    localState: assistanceStateWithLessonUndo(beforeLessonB, guardB.expectedRevision),
+    expectedLocalDraftRevision: guardB.expectedRevision
+  });
+
+  assert.notEqual(
+    staleProjectA.courses[0].modules[0].lessons[0]
+      .microsequences[0].cards[0].text,
+    "Texto persistido pela aba B em R1."
+  );
+  const snapshot = await repositoryA.loadContextualAuthoringSnapshot(course.id);
+  assert.equal(snapshot.contract, "aralearn.contextual-authoring-snapshot.v1");
+  assert.equal(snapshot.courseId, course.id);
+  assert.equal(snapshot.courseKey, course.contractKey);
+  assert.equal(
+    snapshot.projectDocument.courses[0].modules[0].lessons[0]
+      .microsequences[0].cards[0].text,
+    "Texto persistido pela aba B em R1."
+  );
+  assert.equal(snapshot.draft.revision, savedB.localState.sync.expectedRevision);
+  assert.equal(snapshot.localState.sync.expectedRevision, snapshot.draft.revision);
+  assert.deepEqual(snapshot.localState.sync.pendingPaths, savedB.localState.sync.pendingPaths);
+});
+
+test("edição normal sem fila invalida só o desfazer dos cursos alterados", async (context) => {
   const { store, repository, course } = await openEditableRepository(new IDBFactory());
   context.after(() => store.close());
   const unrelatedCourseId = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
@@ -162,9 +219,9 @@ test("edição normal posterior invalida só o desfazer dos cursos alterados", a
   const firstStateBefore = assistanceStateWithLessonUndo(
     minimalProjectFixture.courses[0].modules[0].lessons[0]
   );
+  firstStateBefore.sync = { pendingPaths: [], pendingMetadata: [], expectedRevision: null };
   const secondState = structuredClone(firstStateBefore);
   secondState.undo.courseKey = unrelatedCourseKey;
-  secondState.sync.pendingPaths[0].courseKey = unrelatedCourseKey;
   await repository.saveCardAssistanceLocalState(course.id, firstStateBefore);
   await store.putSyncState(
     `authoring.cardAssistance:${unrelatedCourseId}`,
@@ -177,17 +234,15 @@ test("edição normal posterior invalida só o desfazer dos cursos alterados", a
   await repository.saveProject(normallyEdited, { expectedLocalDraftRevision: null });
 
   const firstState = await repository.loadCardAssistanceLocalState(course.id);
-  const normalDraft = await repository.getLocalCourseDraft(course.id);
   assert.equal(firstState.undo, null);
-  assert.deepEqual(firstState.sync.pendingPaths, firstStateBefore.sync.pendingPaths);
-  assert.equal(firstState.sync.expectedRevision, normalDraft.revision);
+  assert.deepEqual(firstState.sync, firstStateBefore.sync);
   assert.deepEqual(
     await store.getSyncState(`authoring.cardAssistance:${unrelatedCourseId}`),
     secondState
   );
 });
 
-test("edição normal rebasa sincronização de R1 para R2 e finaliza com R2", async (context) => {
+test("edição normal fora da fila é recusada enquanto R1 está pendente", async (context) => {
   const { store, repository, course } = await openEditableRepository(new IDBFactory());
   context.after(() => store.close());
   const before = repository.loadProject();
@@ -205,25 +260,17 @@ test("edição normal rebasa sincronização de R1 para R2 e finaliza com R2", a
 
   const normallyEdited = repository.loadProject();
   normallyEdited.courses[0].goal = "Edição normal posterior em R2.";
-  await repository.saveProject(normallyEdited, {
-    expectedLocalDraftRevision: revisionR1
-  });
-  const draftR2 = await repository.getLocalCourseDraft(course.id);
-  const stateR2 = await repository.loadCardAssistanceLocalState(course.id);
-  assert.notEqual(draftR2.revision, revisionR1);
-  assert.equal(stateR2.undo, null);
-  assert.deepEqual(stateR2.sync.pendingPaths, firstSaved.localState.sync.pendingPaths);
-  assert.equal(stateR2.sync.expectedRevision, draftR2.revision);
-
-  await store.transaction(["syncState"], "readwrite", (transaction) =>
-    transaction.delete("syncState", localCourseAuthoringStateId(course.id))
+  await assert.rejects(
+    repository.saveProject(normallyEdited, {
+      expectedLocalDraftRevision: revisionR1
+    }),
+    (error) => error?.code === "contextual_authoring_pending"
   );
-  const finalized = await repository.finalizeCardAssistanceSync(course.id, {
-    expectedLocalDraftRevision: draftR2.revision
-  });
-  assert.deepEqual(finalized.sync.pendingPaths, []);
-  assert.equal(finalized.sync.expectedRevision, null);
-  assert.equal(repository.createLocalCourseDraftGuard(course.id).expectedRevision, null);
+  const draftAfter = await repository.getLocalCourseDraft(course.id);
+  const stateAfter = await repository.loadCardAssistanceLocalState(course.id);
+  assert.equal(draftAfter.revision, revisionR1);
+  assert.deepEqual(stateAfter, firstSaved.localState);
+  assert.equal(repository.loadProject().courses[0].goal, before.courses[0].goal);
 });
 
 test("refresh remoto que altera o curso invalida seu desfazer antes de retornar", async (context) => {
@@ -233,7 +280,7 @@ test("refresh remoto que altera o curso invalida seu desfazer antes de retornar"
   const localState = assistanceStateWithLessonUndo(
     before.courses[0].modules[0].lessons[0]
   );
-  localState.sync = { pendingPaths: [], expectedRevision: null };
+  localState.sync = { pendingPaths: [], pendingMetadata: [], expectedRevision: null };
   await repository.saveCardAssistanceLocalState(course.id, localState);
 
   const card = (await store.getAll("cards")).find((row) =>
@@ -266,7 +313,7 @@ test("refresh sem alteração documental preserva o desfazer corrente", async (c
   const localState = assistanceStateWithLessonUndo(
     before.courses[0].modules[0].lessons[0]
   );
-  localState.sync = { pendingPaths: [], expectedRevision: null };
+  localState.sync = { pendingPaths: [], pendingMetadata: [], expectedRevision: null };
   await repository.saveCardAssistanceLocalState(course.id, localState);
 
   const refreshed = await repository.refreshFromReplica();
@@ -285,7 +332,7 @@ test("refresh pessoal que retira o curso também invalida seu desfazer", async (
   const localState = assistanceStateWithLessonUndo(
     before.courses[0].modules[0].lessons[0]
   );
-  localState.sync = { pendingPaths: [], expectedRevision: null };
+  localState.sync = { pendingPaths: [], pendingMetadata: [], expectedRevision: null };
   await repository.saveCardAssistanceLocalState(course.id, localState);
   const selection = (await store.getAll("courseSelections"))[0];
   await store.delete("courseSelections", selection.id);
@@ -510,6 +557,51 @@ test("curso de catálogo comum não pode ser alterado pelo repositório local", 
     (error) => error?.code === "course_authoring_forbidden"
   );
   assert.equal(await repository.getLocalCourseDraft(course.id), null);
+});
+
+test("edição normal não amplia fila formada somente por metadado textual", async (context) => {
+  const { store, repository, course } = await openEditableRepository(new IDBFactory());
+  context.after(() => store.close());
+  const before = repository.loadProject();
+  const baseMetadata = { title: before.courses[0].title, goal: before.courses[0].goal };
+  const edited = structuredClone(before);
+  edited.courses[0].title = "Título textual pendente";
+  const pendingState = markContextualAuthoringMetadataPending(
+    normalizeCardAssistanceLocalState({}),
+    {
+      entityType: "course",
+      entityPath: [course.contractKey || course.id],
+      baseMetadata,
+      metadata: { title: edited.courses[0].title, goal: edited.courses[0].goal }
+    }
+  );
+  const firstSaved = await repository.saveProjectWithCardAssistanceState(edited, {
+    courseIdentity: course.id,
+    localState: pendingState,
+    expectedLocalDraftRevision: null
+  });
+  const revisionR1 = firstSaved.localState.sync.expectedRevision;
+  assert.ok(revisionR1);
+  assert.deepEqual(firstSaved.localState.sync.pendingPaths, []);
+  assert.equal(firstSaved.localState.sync.pendingMetadata.length, 1);
+
+  const normallyEdited = repository.loadProject();
+  normallyEdited.courses[0].modules[0].title = "Outra edição local posterior.";
+  await assert.rejects(
+    repository.saveProject(normallyEdited, {
+      expectedLocalDraftRevision: revisionR1
+    }),
+    (error) => error?.code === "contextual_authoring_pending"
+  );
+
+  const draftAfter = await repository.getLocalCourseDraft(course.id);
+  const stateAfter = await repository.loadCardAssistanceLocalState(course.id);
+  assert.equal(draftAfter.revision, revisionR1);
+  assert.deepEqual(stateAfter, firstSaved.localState);
+  assert.notEqual(
+    repository.loadProject().courses[0].modules[0].title,
+    normallyEdited.courses[0].modules[0].title
+  );
 });
 
 for (const courseOrigin of ["catalog", "private"]) {

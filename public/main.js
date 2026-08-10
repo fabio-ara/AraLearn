@@ -487,32 +487,48 @@ async function renderAuthenticatedApplication(root, config, authClient, session)
     editor,
     initialProject: project,
     contextualAuthoring: {
-      remoteCatalog
+      remoteCatalog,
+      synchronizeReplica
     },
     homeTrails: homeLearningSpaces,
     workspaceCourseAdapter: {
       load({ item, courseRef }) {
         return homeLearningSpaces.loadWorkspaceCourse(courseRef || item);
       },
-      saveMetadata({ courseRef, entityType, entityPath, metadata }) {
-        return remoteCatalog.executeApplicationAuthoringAction("atualizarMetadadosDaEntidade", {
-          requestId: globalThis.crypto.randomUUID(),
-          workspaceId: courseRef.workspaceId,
-          expectedRevision: courseRef.revision,
+      saveMetadata({
+        courseRef,
+        draftCourse,
+        entityType,
+        entityPath,
+        baseMetadata,
+        metadata
+      }) {
+        return homeLearningSpaces.queueWorkspaceMetadata({
+          courseRef,
+          draftCourse,
           entityType,
           entityPath,
-          ...metadata
+          baseMetadata,
+          metadata
         });
       },
-      saveMicrosequenceCards({ courseRef, microsequencePath, cards }) {
-        return remoteCatalog.executeApplicationAuthoringAction("salvarCardsNaMicrossequencia", {
-          requestId: globalThis.crypto.randomUUID(),
-          workspaceId: courseRef.workspaceId,
-          expectedRevision: courseRef.revision,
+      saveMicrosequenceCards({
+        courseRef,
+        draftCourse,
+        microsequencePath,
+        baseCards,
+        cards
+      }) {
+        return homeLearningSpaces.queueWorkspaceCards({
+          courseRef,
+          draftCourse,
           microsequencePath,
-          mode: "replace",
-          cardsJson: JSON.stringify(cards)
+          baseCards,
+          cards
         });
+      },
+      resolveAuthoringConflict({ courseRef, resolution }) {
+        return homeLearningSpaces.resolveWorkspaceAuthoringConflict(courseRef, resolution);
       },
       moveEntity({ courseRef, entityType, entityPath, targetParentPath, position }) {
         return remoteCatalog.executeApplicationAuthoringAction("reorganizarWorkspace", {
@@ -556,6 +572,16 @@ async function renderAuthenticatedApplication(root, config, authClient, session)
       });
     }
   });
+  const syncWorkspaceAuthoringDrafts = async () => {
+    const results = await homeLearningSpaces.syncAllWorkspaceAuthoringQueues();
+    if (results.some(Boolean)) await editorApp?.refreshTrails?.();
+    return results;
+  };
+  if (globalThis.navigator?.onLine !== false) {
+    void syncWorkspaceAuthoringDrafts().catch((error) => {
+      console.warn("Sincronização dos rascunhos de workspace adiada.", error);
+    });
+  }
   const learningPanel = createLearningSpacesPanel({
     root: libraryRoot,
     catalog: remoteCatalog,
@@ -568,16 +594,32 @@ async function renderAuthenticatedApplication(root, config, authClient, session)
     },
     async beforeSignOut() {
       await Promise.all([repository.flush(), editorApp?.flushPersonalState?.()]);
+      let contextualPendingFallback = 0;
       try {
-        await synchronizeReplica();
+        await editorApp?.syncContextualAuthoring?.();
+        await repository.flush();
       } catch (error) {
+        contextualPendingFallback = 1;
+        console.warn("Não foi possível enviar toda a autoria contextual antes da saída.", error);
+      }
+      let workspacePending;
+      try {
+        const [, workspaceResults] = await Promise.all([
+          synchronizeReplica(),
+          syncWorkspaceAuthoringDrafts()
+        ]);
+        workspacePending = workspaceResults.filter((result) => result?.pending === true).length;
+      } catch (error) {
+        workspacePending = 1;
         console.warn("Não foi possível enviar toda a fila antes da saída.", error);
       }
-      const [pending, rejected] = await Promise.all([
+      const [pending, rejected, contextualPending] = await Promise.all([
         relationalStore.listPendingOutbox(),
-        relationalStore.listRejectedOutbox()
+        relationalStore.listRejectedOutbox(),
+        repository.listPendingLocalAuthoring()
       ]);
-      return pending.length + rejected.length;
+      return pending.length + rejected.length + workspacePending +
+        Math.max(contextualPending.length, contextualPendingFallback);
     },
     async onChanged() {
       await repository.flush();
@@ -636,6 +678,9 @@ async function renderAuthenticatedApplication(root, config, authClient, session)
   globalThis.addEventListener("online", () => {
     scheduleAutomaticSync(100);
     void editorApp?.refreshPersonalState?.();
+    void syncWorkspaceAuthoringDrafts().catch((error) => {
+      console.warn("Sincronização dos rascunhos de workspace adiada.", error);
+    });
   }, { signal: lifecycleAbortController.signal });
   globalThis.addEventListener("offline", () => {
     globalThis.clearTimeout(automaticSyncTimer);

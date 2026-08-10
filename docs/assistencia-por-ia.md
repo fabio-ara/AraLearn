@@ -41,6 +41,14 @@ relações, respostas, topologia e demais elementos estruturais continuam
 somente leitura. Em projeções como fluxogramas, um texto só se torna editável
 quando pode ser associado deterministicamente ao campo de origem.
 
+Em escolhas, podem ser alterados o texto, o código e o feedback de cada opção,
+mas não a opção correta, o modo de seleção nem a identidade ou a ordem. Uma
+lacuna permanece um token atômico: é possível editar o texto ao redor dela,
+mas não mudar por acidente sua resposta, seus distratores ou seu modo. A
+explicação posterior (`after` e seus blocos) usa a mesma superfície textual,
+mesmo quando começa vazia. Campos longos respeitam a caixa do resource em tela
+estreita e a composição do teclado móvel antes de serem salvos.
+
 Na edição manual, o texto autorizado torna-se editável no próprio resource. Na
 assistência por API, um toque ou clique seleciona um alvo e outro toque o
 retira da seleção. O botão de brilhos abre a caixa do pedido na própria
@@ -330,9 +338,26 @@ próprio dispositivo em `http://127.0.0.1:4183`; no servidor local, também é
 aceito `http://localhost:4183`. Para **Outro modelo**, informe somente a origem
 HTTPS necessária em `ARALEARN_ASSIST_ALLOWED_ORIGINS` durante o build.
 
-Pedido, resposta e contexto montado não são anexados ao curso. O envio por IA
-exige rede; a edição manual e o estudo do conteúdo já baixado continuam
-disponíveis sem conexão.
+Pedido, resposta e contexto montado não são anexados ao curso. Providers
+remotos exigem rede. O bridge local pode prestar a assistência textual sem
+internet quando continua acessível no próprio dispositivo; nesse caso, usa
+somente o conteúdo já baixado e a autoridade de edição previamente confirmada.
+A edição manual segue disponível na mesma condição. Ambas persistem o rascunho
+por curso e workspace, com revisão de base e identificador de tentativa estável.
+O identificador é estável somente enquanto o payload daquela operação permanece
+igual; uma nova redação recebe outra chave mesmo se a resposta anterior se
+perder.
+Ao reconectar, o app relê a composição, combina alterações em folhas diferentes
+e usa comparação e CAS para não sobrescrever o mesmo texto alterado em outro
+dispositivo. Conflitos conservam o rascunho e oferecem manter a redação local ou
+descartá-la. A autoridade em cache nunca libera mudança estrutural, exclusão,
+comentário ou publicação; operações remotas só reaparecem depois de confirmar a
+autorização atual no servidor.
+
+Se a conexão cair depois de o serviço devolver uma mudança válida, a aplicação
+local e a fila durável usam o mesmo caminho da edição manual. Qualquer mudança
+semântica de exercício invalida a resposta e o progresso correntes antes de o
+card voltar ao estudo.
 
 O formato de intercâmbio está em [Contrato público](aralearn-contract.md). A
 fronteira entre assistência local e MCP está em [Fluxos e contratos de

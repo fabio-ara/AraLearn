@@ -336,6 +336,58 @@ function entityMode(editorSupport, level) {
   return "view";
 }
 
+function authoringCapability(permissions, capability, legacyFallback = true) {
+  if (typeof permissions?.[capability] === "boolean") return permissions[capability];
+  return legacyFallback && permissions?.canAuthorContent === true;
+}
+
+function permittedEntityMode(editorSupport, level, { canEdit = false, canAi = false } = {}) {
+  const requested = entityMode(editorSupport, level);
+  if (requested === "edit" && canEdit) return "edit";
+  if (requested === "ai" && canAi) return "ai";
+  return "view";
+}
+
+function renderAuthoringStatus(editorSupport, mode = "view") {
+  const errorHtml = editorSupport?.entityMutationError &&
+    !(mode === "edit" && editorSupport.inlineStructureEditor)
+    ? '<p class="card-assistance-message" role="status">' +
+      escapeHtml(editorSupport.entityMutationError) + "</p>"
+    : "";
+  const workspaceState = editorSupport?.workspaceAuthoring || {};
+  if (!["pending", "conflict"].includes(workspaceState.status)) return errorHtml;
+  const pendingCount = Math.max(0, Number(workspaceState.pendingCount) || 0);
+  const statusMessage = workspaceState.status === "conflict"
+    ? workspaceState.errorMessage ||
+      "A redação salva neste dispositivo diverge da versão remota. Escolha como continuar."
+    : pendingCount === 1
+      ? "Uma alteração está salva neste dispositivo e aguarda sincronização."
+      : pendingCount > 1
+        ? `${pendingCount} alterações estão salvas neste dispositivo e aguardam sincronização.`
+        : "Há alterações salvas neste dispositivo aguardando sincronização.";
+  const busy = editorSupport?.entitySaving === true;
+  const resolutionHtml = workspaceState.status === "conflict"
+    ? '<div class="workspace-authoring-resolution-actions">' +
+      '<button class="open-main" type="button" data-action="resolve-workspace-authoring-conflict" data-resolution="keep_local"' +
+      ' title="Comparar e manter a minha redação"' +
+      (workspaceState.canKeepLocal && !busy ? "" : ' disabled aria-disabled="true"') +
+      ">Manter meu texto</button>" +
+      (workspaceState.canDiscardLocal
+        ? '<button class="icon-ghost" type="button" data-action="resolve-workspace-authoring-conflict" data-resolution="discard_local"' +
+          ' title="Descartar as alterações locais"' +
+          (busy ? ' disabled aria-disabled="true"' : "") +
+          ">Descartar alterações locais</button>"
+        : "") +
+      "</div>"
+    : "";
+  return errorHtml +
+    '<section class="workspace-authoring-status is-' + escapeHtml(workspaceState.status) +
+    '" aria-label="Sincronização da autoria">' +
+    '<p role="status">' + escapeHtml(statusMessage) + "</p>" +
+    resolutionHtml +
+    "</section>";
+}
+
 function structureTargetAttributes({
   level,
   courseKey = "",
@@ -390,12 +442,12 @@ function renderStructureTextField({
   );
 }
 
-function renderEntityModeSwitcher(level, mode, canAuthorContent, { allowAi = false } = {}) {
-  if (!canAuthorContent) return "";
+function renderEntityModeSwitcher(level, mode, { canEdit = false, canAi = false } = {}) {
+  if (!canEdit && !canAi) return "";
   const options = [
     ["view", "Visualizar", "preview"],
-    ["edit", "Editar", "edit"],
-    ...(allowAi ? [["ai", "Assistência por IA", "sparkles"]] : [])
+    ...(canEdit ? [["edit", "Editar", "edit"]] : []),
+    ...(canAi ? [["ai", "Assistência por IA", "sparkles"]] : [])
   ];
   return (
     '<nav class="entity-mode-switcher" role="group" aria-label="Modo">' +
@@ -698,8 +750,8 @@ function renderHierarchyItemCard({
 
 function renderCourseScreen({ course, progress, editorSupport }) {
   const permissions = editorSupport.coursePermissions;
-  const canAuthorContent = permissions?.canAuthorContent === true;
-  const mode = canAuthorContent ? entityMode(editorSupport, "course") : "view";
+  const canEdit = authoringCapability(permissions, "canEditMetadata");
+  const mode = permittedEntityMode(editorSupport, "course", { canEdit });
   const moduleValues = Array.isArray(course.modules) ? course.modules : [];
   const modules = moduleValues
     .map((moduleValue) => {
@@ -741,7 +793,7 @@ function renderCourseScreen({ course, progress, editorSupport }) {
       backAction: "go-back",
       backTitle: "Menu principal",
       actions: [
-        canAuthorContent
+        permissions?.canComment === true
           ? { action: "open-context-observation", title: "Observações do curso", icon: renderUiIcon("prompt", "home-tab-icon") }
           : null,
         { action: "open-central", title: "Abrir painel", icon: renderUiIcon("cloud", "home-tab-icon") }
@@ -750,7 +802,8 @@ function renderCourseScreen({ course, progress, editorSupport }) {
     '<main class="screen-content course-screen" data-structure-collection="module" data-course-key="' +
     escapeHtml(entityId(course)) +
     '">' +
-    renderEntityModeSwitcher("course", mode, canAuthorContent) +
+    renderEntityModeSwitcher("course", mode, { canEdit }) +
+    renderAuthoringStatus(editorSupport, mode) +
     renderEntitySummary({
       level: "course",
       title: course.title || "Curso",
@@ -776,11 +829,13 @@ function renderCourseScreen({ course, progress, editorSupport }) {
           target: editorSupport.inlineStructureEditor,
           submitting: editorSupport.entitySaving,
           errorMessage: editorSupport.entityMutationError,
-          canMoveUp: editorSupport.inlineStructureEditor?.level === "module" &&
+          canMoveUp: permissions?.canMove === true && editorSupport.inlineStructureEditor?.level === "module" &&
             moduleValues.findIndex((item) => entityId(item) === editorSupport.inlineStructureEditor?.moduleKey) > 0,
-          canMoveDown: editorSupport.inlineStructureEditor?.level === "module" &&
+          canMoveDown: permissions?.canMove === true && editorSupport.inlineStructureEditor?.level === "module" &&
             moduleValues.findIndex((item) => entityId(item) === editorSupport.inlineStructureEditor?.moduleKey) < moduleValues.length - 1,
-          canDelete: permissions?.canDelete === true
+          canDelete: editorSupport.inlineStructureEditor?.level === "course"
+            ? permissions?.canDeleteCourse === true
+            : permissions?.canDeleteEntity === true
         })
       : "") +
     "</section>"
@@ -789,8 +844,8 @@ function renderCourseScreen({ course, progress, editorSupport }) {
 
 function renderModuleScreen({ course, moduleValue, progress, editorSupport }) {
   const permissions = editorSupport.coursePermissions;
-  const canAuthorContent = permissions?.canAuthorContent === true;
-  const mode = canAuthorContent ? entityMode(editorSupport, "module") : "view";
+  const canEdit = authoringCapability(permissions, "canEditMetadata");
+  const mode = permittedEntityMode(editorSupport, "module", { canEdit });
   const lessonValues = Array.isArray(moduleValue.lessons) ? moduleValue.lessons : [];
   const lessons = lessonValues
     .map((lesson) => {
@@ -834,7 +889,7 @@ function renderModuleScreen({ course, moduleValue, progress, editorSupport }) {
       backAction: "go-back",
       backTitle: "Voltar",
       actions: [
-        canAuthorContent
+        permissions?.canComment === true
           ? { action: "open-context-observation", title: "Observações do módulo", icon: renderUiIcon("prompt", "home-tab-icon") }
           : null,
         { action: "open-central", title: "Abrir painel", icon: renderUiIcon("cloud", "home-tab-icon") }
@@ -845,7 +900,8 @@ function renderModuleScreen({ course, moduleValue, progress, editorSupport }) {
     '" data-module-key="' +
     escapeHtml(entityId(moduleValue)) +
     '">' +
-    renderEntityModeSwitcher("module", mode, canAuthorContent) +
+    renderEntityModeSwitcher("module", mode, { canEdit }) +
+    renderAuthoringStatus(editorSupport, mode) +
     renderEntitySummary({
       level: "module",
       title: moduleValue.title || resolveModuleScreenContextTitle(moduleValue),
@@ -878,11 +934,11 @@ function renderModuleScreen({ course, moduleValue, progress, editorSupport }) {
           target: editorSupport.inlineStructureEditor,
           submitting: editorSupport.entitySaving,
           errorMessage: editorSupport.entityMutationError,
-          canMoveUp: editorSupport.inlineStructureEditor?.level === "lesson" &&
+          canMoveUp: permissions?.canMove === true && editorSupport.inlineStructureEditor?.level === "lesson" &&
             lessonValues.findIndex((item) => entityId(item) === editorSupport.inlineStructureEditor?.lessonKey) > 0,
-          canMoveDown: editorSupport.inlineStructureEditor?.level === "lesson" &&
+          canMoveDown: permissions?.canMove === true && editorSupport.inlineStructureEditor?.level === "lesson" &&
             lessonValues.findIndex((item) => entityId(item) === editorSupport.inlineStructureEditor?.lessonKey) < lessonValues.length - 1,
-          canDelete: permissions?.canDelete === true
+          canDelete: permissions?.canDeleteEntity === true
         })
       : "") +
     "</section>"
@@ -891,8 +947,9 @@ function renderModuleScreen({ course, moduleValue, progress, editorSupport }) {
 
 function renderLessonScreenView({ course, lesson, moduleValue, progress, editorSupport }) {
   const permissions = editorSupport.coursePermissions;
-  const canAuthorContent = permissions?.canAuthorContent === true;
-  const mode = canAuthorContent ? entityMode(editorSupport, "lesson") : "view";
+  const canEdit = authoringCapability(permissions, "canEditMetadata");
+  const canAi = authoringCapability(permissions, "canUseBottomUpAi");
+  const mode = permittedEntityMode(editorSupport, "lesson", { canEdit, canAi });
   const assistanceState = editorSupport.bottomUpAssistance || {};
   const selectedIds = new Set(assistanceState.selectedIds || []);
   const microsequences = Array.isArray(lesson.microsequences) ? lesson.microsequences : [];
@@ -933,7 +990,7 @@ function renderLessonScreenView({ course, lesson, moduleValue, progress, editorS
         }),
         openAction: "open-microsequence-overview",
         openTitle: isPlanned ? "Abrir microssequência planejada" : "Abrir microssequência",
-        openDisabled: !(canPlay || isPlanned || canAuthorContent),
+        openDisabled: !(canPlay || isPlanned || canEdit || canAi),
         authoringMode: mode === "edit",
         selectable: mode === "ai",
         selected: selectedIds.has(entityId(microsequence)),
@@ -954,14 +1011,15 @@ function renderLessonScreenView({ course, lesson, moduleValue, progress, editorS
       backAction: "go-back",
       backTitle: "Voltar",
       actions: [
-        canAuthorContent
+        permissions?.canComment === true
           ? { action: "open-context-observation", title: "Observações da lição", icon: renderUiIcon("prompt", "home-tab-icon") }
           : null,
         { action: "open-central", title: "Abrir painel", icon: renderUiIcon("cloud", "home-tab-icon") }
       ].filter(Boolean)
     }) +
     '<main class="screen-content lesson-structure-screen navigation-screen">' +
-    renderEntityModeSwitcher("lesson", mode, canAuthorContent, { allowAi: true }) +
+    renderEntityModeSwitcher("lesson", mode, { canEdit, canAi }) +
+    renderAuthoringStatus(editorSupport, mode) +
     renderEntitySummary({
       level: "lesson",
       title: lesson.title || "Lição",
@@ -1001,11 +1059,11 @@ function renderLessonScreenView({ course, lesson, moduleValue, progress, editorS
             target: editorSupport.inlineStructureEditor,
             submitting: editorSupport.entitySaving,
             errorMessage: editorSupport.entityMutationError,
-            canMoveUp: editorSupport.inlineStructureEditor?.level === "microsequence" &&
+            canMoveUp: permissions?.canMove === true && editorSupport.inlineStructureEditor?.level === "microsequence" &&
               microsequences.findIndex((item) => entityId(item) === editorSupport.inlineStructureEditor?.microsequenceKey) > 0,
-            canMoveDown: editorSupport.inlineStructureEditor?.level === "microsequence" &&
+            canMoveDown: permissions?.canMove === true && editorSupport.inlineStructureEditor?.level === "microsequence" &&
               microsequences.findIndex((item) => entityId(item) === editorSupport.inlineStructureEditor?.microsequenceKey) < microsequences.length - 1,
-            canDelete: permissions?.canDelete === true
+            canDelete: permissions?.canDeleteEntity === true
           })
         : "") +
     "</section>"
@@ -1022,8 +1080,9 @@ function renderMicrosequenceOverview({
   editorSupport
 }) {
   const permissions = editorSupport.coursePermissions || {};
-  const canAuthorContent = permissions.canAuthorContent === true;
-  const mode = canAuthorContent ? entityMode(editorSupport, "microsequence") : "view";
+  const canEdit = authoringCapability(permissions, "canEditMetadata");
+  const canAi = authoringCapability(permissions, "canUseBottomUpAi");
+  const mode = permittedEntityMode(editorSupport, "microsequence", { canEdit, canAi });
   const assistanceState = editorSupport.bottomUpAssistance || {};
   const selectedIds = new Set(assistanceState.selectedIds || []);
   const lessonProgress = readLessonProgressEntry(progress, {
@@ -1082,14 +1141,15 @@ function renderMicrosequenceOverview({
       canGoBack: true,
       backTitle: "Voltar para a lição",
       actions: [
-        canAuthorContent
+        permissions?.canComment === true
           ? { action: "open-context-observation", title: "Observações da microssequência", icon: renderUiIcon("prompt", "home-tab-icon") }
           : null,
         { action: "open-central", title: "Abrir painel", icon: renderUiIcon("cloud", "home-tab-icon") }
       ].filter(Boolean)
     }) +
     '<main class="screen-content microsequence-overview-content navigation-screen">' +
-    renderEntityModeSwitcher("microsequence", mode, canAuthorContent, { allowAi: true }) +
+    renderEntityModeSwitcher("microsequence", mode, { canEdit, canAi }) +
+    renderAuthoringStatus(editorSupport, mode) +
     renderEntitySummary({
       level: "microsequence",
       title: microsequence?.title || "Microssequência",
@@ -1116,11 +1176,11 @@ function renderMicrosequenceOverview({
             target: editorSupport.inlineStructureEditor,
             submitting: editorSupport.entitySaving,
             errorMessage: editorSupport.entityMutationError,
-            canMoveUp: editorSupport.inlineStructureEditor?.level === "card" &&
+            canMoveUp: permissions?.canMove === true && editorSupport.inlineStructureEditor?.level === "card" &&
               cards.findIndex((item) => entityId(item) === editorSupport.inlineStructureEditor?.cardKey) > 0,
-            canMoveDown: editorSupport.inlineStructureEditor?.level === "card" &&
+            canMoveDown: permissions?.canMove === true && editorSupport.inlineStructureEditor?.level === "card" &&
               cards.findIndex((item) => entityId(item) === editorSupport.inlineStructureEditor?.cardKey) < cards.length - 1,
-            canDelete: permissions?.canDelete === true
+            canDelete: permissions?.canDeleteEntity === true
           })
         : "") +
     "</section>"
@@ -1140,12 +1200,9 @@ function renderMicrosequenceScreen({ course, lesson, microsequence, cards, selec
   const activeCard = visibleCards[safeIndex] || null;
   const hasCards = visibleCards.length > 0;
   const permissions = editorSupport.coursePermissions || {};
-  const canAuthorContent = typeof permissions.canAuthorContent === "boolean"
-    ? permissions.canAuthorContent
-    : typeof permissions.canEdit === "boolean"
-      ? permissions.canEdit
-      : true;
-  const cardMode = canAuthorContent ? entityMode(editorSupport, "card") : "view";
+  const canEdit = authoringCapability(permissions, "canEditCards");
+  const canAi = authoringCapability(permissions, "canUseCardAi");
+  const cardMode = permittedEntityMode(editorSupport, "card", { canEdit, canAi });
   const authoringMode = Boolean(hasCards && (cardMode === "edit" || cardMode === "ai"));
   const lessonStudyCount = visibleCards.length;
   const prevDisabled = safeIndex <= 0;
@@ -1444,7 +1501,11 @@ function renderMicrosequenceScreen({ course, lesson, microsequence, cards, selec
       ].filter(Boolean)
     }) +
     '<main class="screen-content microsequence-generator-screen">' +
-    renderEntityModeSwitcher("card", cardMode, canAuthorContent && hasCards, { allowAi: true }) +
+    renderEntityModeSwitcher("card", cardMode, {
+      canEdit: canEdit && hasCards,
+      canAi: canAi && hasCards
+    }) +
+    renderAuthoringStatus(editorSupport, cardMode) +
     '<section class="workbench-surface' + (authoringMode ? " is-editing" : "") + '">' +
     '<div class="workbench-surface-body">' +
     readerSurface +

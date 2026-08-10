@@ -78,8 +78,10 @@ import {
   applyContextualAuthoringInversePatch,
   clearContextualAuthoringSync,
   createContextualAuthoringInversePatch,
+  markContextualAuthoringMetadataPending,
   markContextualAuthoringSyncPending,
   normalizeCardAssistanceLocalState,
+  setContextualAuthoringSyncStatus,
   setCardAssistanceUndo
 } from "../assist/cardAssistanceLocalState.js";
 import {
@@ -92,8 +94,7 @@ import {
   courseRemovalWasCommitted,
   deleteIntegratedEntity,
   deleteIntegratedCourse,
-  moveIntegratedEntity,
-  saveIntegratedEntityMetadata
+  moveIntegratedEntity
 } from "../assist/integratedCourseSync.js";
 import {
   applyCardAssistanceBatchChangeSet,
@@ -170,6 +171,7 @@ export function resolveCourseUiPermissions(storage, courseIdentity) {
   const fallback = {
     role: "learner",
     canAuthorContent: false,
+    canComment: false,
     writeTarget: null,
     canOrganizeSelection: false,
     canRemoveSelection: false,
@@ -186,6 +188,7 @@ export function resolveCourseUiPermissions(storage, courseIdentity) {
   return {
     role: String(permissions.role || "learner"),
     canAuthorContent,
+    canComment: permissions.canComment === true,
     writeTarget: canAuthorContent ? writeTarget : null,
     canOrganizeSelection: permissions.canOrganizeSelection === true,
     canRemoveSelection: permissions.canRemoveSelection === true,
@@ -366,10 +369,16 @@ export function createLessonEditorApp({
       assistance: createCardAssistanceUiState(),
       localState: normalizeCardAssistanceLocalState({}),
       localStateCourseKey: "",
+      localAuthoringByCourseId: new Map(),
       contextualAuthoringSync: {
         running: false,
-        trailingAttemptRequested: false
+        activePromise: null,
+        trailingAttemptRequested: false,
+        courseKeys: new Set(),
+        retryTimers: new Map(),
+        retryAttempts: new Map()
       },
+      progressResetTimers: new Map(),
       syncError: "",
       isSubmitting: false,
       errorMessage: "",
@@ -409,16 +418,185 @@ export function createLessonEditorApp({
       : null;
   }
 
-  function workspaceAuthoringAvailable(courseKey) {
+  function workspaceAuthoringState(courseKey = state.selection?.courseKey) {
     const reference = workspaceCourseRef(courseKey);
-    return Boolean(
-      reference?.canEdit === true &&
-      workspaceCourseHook("saveMetadata") &&
-      workspaceCourseHook("saveMicrosequenceCards") &&
-      workspaceCourseHook("moveEntity") &&
-      workspaceCourseHook("deleteEntity") &&
-      workspaceCourseHook("deleteCourse")
+    if (!reference) {
+      const localState = state.assistDraft.localStateCourseKey === courseKey
+        ? normalizeCardAssistanceLocalState(state.assistDraft.localState)
+        : state.assistDraft.localAuthoringByCourseId.get(courseKey) || null;
+      const pendingCount = localState
+        ? localState.sync.pendingPaths.length + localState.sync.pendingMetadata.length
+        : 0;
+      const status = localState?.sync.status === "conflict"
+        ? "conflict"
+        : pendingCount ? "pending" : "";
+      return Object.freeze({
+        source: "local",
+        status,
+        pendingCount,
+        errorMessage: String(localState?.sync.errorMessage || ""),
+        canKeepLocal: status === "conflict" &&
+          globalThis.navigator?.onLine !== false &&
+          contextualAuthoringIsAvailable(),
+        canDiscardLocal: status === "conflict" &&
+          globalThis.navigator?.onLine !== false &&
+          typeof storage.discardContextualAuthoringDraft === "function" &&
+          typeof contextualAuthoring?.synchronizeReplica === "function"
+      });
+    }
+    const status = ["pending", "conflict"].includes(reference?.authoringStatus)
+      ? reference.authoringStatus
+      : "";
+    return Object.freeze({
+      source: "workspace",
+      status,
+      pendingCount: Number(reference?.authoringPendingCount) || 0,
+      errorMessage: String(reference?.authoringErrorMessage || ""),
+      canKeepLocal: status === "conflict" &&
+        globalThis.navigator?.onLine !== false &&
+        Boolean(workspaceCourseHook("resolveAuthoringConflict")),
+      canDiscardLocal: status === "conflict" &&
+        Boolean(workspaceCourseHook("resolveAuthoringConflict"))
+    });
+  }
+
+  function updateWorkspaceAuthoringReference(courseRef, result = {}) {
+    if (!courseRef?.trailItemId || !homeTrailsController) return null;
+    const pending = result?.pending === true;
+    const status = pending
+      ? result?.conflict === true || result?.status === "conflict"
+        ? "conflict"
+        : "pending"
+      : "";
+    const current = homeTrailsController.courseRefs.get(courseRef.trailItemId) || courseRef;
+    const revision = Number(result?.revision);
+    return homeTrailsController.updateCourseRef(courseRef.trailItemId, {
+      ...(Number.isSafeInteger(revision) && revision > 0 ? { revision } : {}),
+      canEditOffline: current.canEditOffline === true || current.canEdit === true,
+      authoringStatus: status,
+      authoringPendingCount: pending
+        ? Number(result?.queue?.operations?.length) || Number(current.authoringPendingCount) || 1
+        : 0,
+      authoringErrorMessage: pending ? String(result?.errorMessage || "") : ""
+    });
+  }
+
+  function applyWorkspaceAuthoringResult(projectDocument, courseRef, result = {}) {
+    const savedCourse = result?.course && typeof result.course === "object"
+      ? structuredClone(result.course)
+      : null;
+    const nextProject = savedCourse
+      ? mergeWorkspaceCourse(
+          projectDocument,
+          savedCourse,
+          [courseRef?.courseKey, courseRef?.courseId]
+        )
+      : projectDocument;
+    const course = savedCourse || findCourse(nextProject, courseRef?.courseKey);
+    if (course && courseRef?.trailItemId) {
+      homeTrailsController.loadedCourses.set(
+        courseRef.trailItemId,
+        structuredClone(course)
+      );
+    }
+    return nextProject;
+  }
+
+  function resolveCourseAuthoringCapabilities(courseKey = state.selection?.courseKey) {
+    const online = globalThis.navigator?.onLine !== false;
+    const localAiAvailable = isLocalProviderSelection({
+      selectedModel: state.assistConfig.model,
+      providerProtocol: state.assistConfig.providerProtocol
+    });
+    const workspaceRef = workspaceCourseRef(courseKey);
+    if (workspaceRef) {
+      const hasPendingWorkspaceDraft = ["pending", "conflict"].includes(
+        workspaceRef.authoringStatus
+      );
+      const canEditRemotely = online && workspaceRef.canEdit === true;
+      const canDraftOffline = workspaceRef.canEditOffline === true;
+      const canEdit = canEditRemotely || canDraftOffline;
+      const canDelete = online && workspaceRef.canDelete === true && !hasPendingWorkspaceDraft;
+      const canEditCards = canEdit && Boolean(workspaceCourseHook("saveMicrosequenceCards"));
+      return Object.freeze({
+        source: "workspace",
+        workspaceRef,
+        canEditMetadata: canEdit && Boolean(workspaceCourseHook("saveMetadata")),
+        canEditCards,
+        canUseCardAi: canEdit && (online || localAiAvailable) &&
+          Boolean(workspaceCourseHook("saveMicrosequenceCards")),
+        canUseBottomUpAi: false,
+        canMove: canEditRemotely && !hasPendingWorkspaceDraft &&
+          Boolean(workspaceCourseHook("moveEntity")),
+        canDeleteEntity: canDelete && Boolean(workspaceCourseHook("deleteEntity")),
+        canDeleteCourse: canDelete && Boolean(workspaceCourseHook("deleteCourse")),
+        canComment: online && workspaceRef.canComment === true
+      });
+    }
+
+    const permissions = resolveCourseUiPermissions(storage, courseKey);
+    const canAuthorLocally = permissions.canAuthorContent === true &&
+      ["private", "catalog"].includes(permissions.writeTarget);
+    const hasPendingLocalDraft = ["pending", "conflict"].includes(
+      workspaceAuthoringState(courseKey).status
     );
+    return Object.freeze({
+      source: "local",
+      workspaceRef: null,
+      canEditMetadata: canAuthorLocally,
+      canEditCards: canAuthorLocally,
+      canUseCardAi: canAuthorLocally && (online || localAiAvailable),
+      canUseBottomUpAi: canAuthorLocally && online,
+      canMove: canAuthorLocally && online && !hasPendingLocalDraft &&
+        contextualAuthoringIsAvailable(),
+      canDeleteEntity: permissions.canDelete === true && online && !hasPendingLocalDraft &&
+        contextualAuthoringIsAvailable(),
+      canDeleteCourse: permissions.canDeleteCourse === true && online && !hasPendingLocalDraft,
+      canComment: permissions.canComment === true
+    });
+  }
+
+  function courseEditorPermissions(courseKey = state.selection?.courseKey) {
+    const capabilities = resolveCourseAuthoringCapabilities(courseKey);
+    const localPermissions = resolveCourseUiPermissions(storage, courseKey);
+    const canAuthorContent = capabilities.canEditMetadata ||
+      capabilities.canEditCards ||
+      capabilities.canUseBottomUpAi;
+    return {
+      ...(capabilities.source === "workspace"
+        ? {
+            role: canAuthorContent ? "author" : "learner",
+            writeTarget: null,
+            canOrganizeSelection: true,
+            canRemoveSelection: false
+          }
+        : localPermissions),
+      canAuthorContent,
+      canEdit: capabilities.canEditMetadata,
+      canDelete: capabilities.canDeleteCourse,
+      canDeleteCourse: capabilities.canDeleteCourse,
+      canComment: capabilities.canComment,
+      canEditMetadata: capabilities.canEditMetadata,
+      canEditCards: capabilities.canEditCards,
+      canUseCardAi: capabilities.canUseCardAi,
+      canUseBottomUpAi: capabilities.canUseBottomUpAi,
+      canMove: capabilities.canMove,
+      canDeleteEntity: capabilities.canDeleteEntity
+    };
+  }
+
+  function assertCourseCapability(
+    capability,
+    courseKey = state.selection?.courseKey,
+    message = "Este curso não pode ser alterado nesta conta."
+  ) {
+    const capabilities = resolveCourseAuthoringCapabilities(courseKey);
+    if (capabilities[capability] !== true) {
+      const error = new Error(message);
+      error.code = "course_authoring_forbidden";
+      throw error;
+    }
+    return capabilities;
   }
 
   function activeTrailPersonalStorage(courseKey = state.selection?.courseKey) {
@@ -475,10 +653,46 @@ export function createLessonEditorApp({
 
   function saveActiveProgress(nextProgress, courseKey = state.selection?.courseKey) {
     const personalStorage = activeTrailPersonalStorage(courseKey);
-    if (!personalStorage?.saveProgress) return;
-    void Promise.resolve(personalStorage.saveProgress(nextProgress)).catch((error) => {
-      console.warn("Não foi possível salvar o progresso em Trilhas.", error);
-    });
+    if (!personalStorage?.saveProgress) return Promise.resolve(true);
+    return Promise.resolve(personalStorage.saveProgress(nextProgress))
+      .then(() => true)
+      .catch((error) => {
+        console.warn("Não foi possível salvar o progresso em Trilhas.", error);
+        return false;
+      });
+  }
+
+  function scheduleProgressReset(key, reset, attempt = 1) {
+    const timers = state.assistDraft.progressResetTimers;
+    const previous = timers.get(key);
+    if (previous) globalThis.clearTimeout(previous);
+    const timer = globalThis.setTimeout(async () => {
+      timers.delete(key);
+      const saved = await reset();
+      if (!saved && attempt < 5) scheduleProgressReset(key, reset, attempt + 1);
+    }, Math.min(30_000, 2_000 * (2 ** (attempt - 1))));
+    timers.set(key, timer);
+  }
+
+  async function persistProgressReset(key, reset) {
+    if (await reset()) return true;
+    scheduleProgressReset(key, reset);
+    const error = new Error(
+      "O texto foi salvo, mas a atualização do progresso ficou pendente e será repetida automaticamente."
+    );
+    error.code = "progress_reset_pending";
+    throw error;
+  }
+
+  function invalidateRuntimeExerciseState() {
+    state.flowchartProjectionByBlockKey = {};
+    state.flowchartPracticeByBlockKey = {};
+    state.choiceExerciseByBlockKey = {};
+    state.completeExerciseByBlockKey = {};
+    state.continuePopup = null;
+    state.activeFlowchartPrompt = null;
+    state.activeTextGapPrompt = null;
+    state.cardExerciseLoadVersion += 1;
   }
 
   function homeReviewItems() {
@@ -491,6 +705,15 @@ export function createLessonEditorApp({
   function setProject(nextProject) {
     state.project = nextProject;
     state.flowchartProjectionByBlockKey = {};
+    if (homeTrailsController) {
+      state.trailPersonalStorageByItemId.forEach((personalStorage, trailItemId) => {
+        const reference = homeTrailsController.courseRefs.get(trailItemId);
+        const course = (nextProject.courses || []).find((candidate) =>
+          candidate.id === reference?.courseKey || candidate.id === reference?.courseId
+        );
+        if (course) personalStorage.setCourse?.(course);
+      });
+    }
   }
 
   function composeLoadedWorkspaceCourses(projectDocument) {
@@ -515,8 +738,11 @@ export function createLessonEditorApp({
 
   async function refreshHomeTrails({ preserveSelection = true } = {}) {
     if (!homeTrailsController || state.homeTrailLoading) return state.homeTrailSnapshot;
+    const activeItemId = state.homeSelectedTrailItemId || homeTrailsController.selectedItemId;
+    const activeWorkspaceCourse = homeTrailsController.loadedCourses.get(activeItemId) || null;
+    const shouldKeepActiveWorkspaceCourse = state.view !== "courses" && Boolean(activeWorkspaceCourse);
     state.homeTrailLoading = true;
-    if (state.view === "courses") render({ preserveState: true });
+    render({ preserveState: true });
     try {
       const snapshot = await homeTrailsController.refresh({
         selectedItemId: preserveSelection ? state.homeSelectedTrailItemId : ""
@@ -545,6 +771,23 @@ export function createLessonEditorApp({
       state.homeSelectedCourseKey = homeTrailsController.courseRefs
         .get(state.homeSelectedTrailItemId)?.courseKey ||
         selectedItem?.courseKey || selectedItem?.courseId || "";
+      if (
+        shouldKeepActiveWorkspaceCourse &&
+        selectedItem?.itemId === activeItemId &&
+        selectedItem.workspaceId &&
+        !homeTrailsController.loadedCourses.has(activeItemId)
+      ) {
+        try {
+          await homeTrailsController.loadCourse(activeItemId);
+        } catch (error) {
+          if (isHomeTrailsAuthorityError(error)) throw error;
+          homeTrailsController.loadedCourses.set(activeItemId, activeWorkspaceCourse);
+          homeTrailsController.bindCourseKey(activeItemId, activeWorkspaceCourse.id);
+          state.homeOrganization.error = error instanceof Error
+            ? `O curso continua aberto com a última cópia disponível. ${error.message}`
+            : "O curso continua aberto com a última cópia disponível.";
+        }
+      }
       setProject(composeLoadedWorkspaceCourses(storage.loadProject()));
       return snapshot;
     } catch (error) {
@@ -564,7 +807,7 @@ export function createLessonEditorApp({
       return null;
     } finally {
       state.homeTrailLoading = false;
-      if (state.view === "courses") render({ preserveState: true });
+      render({ preserveState: true });
     }
   }
 
@@ -587,7 +830,16 @@ export function createLessonEditorApp({
         [item.courseKey, item.courseId]
       ));
     }
-    if (course) homeTrailsController.bindCourseKey(item.itemId, course.id);
+    if (course) {
+      const reference = homeTrailsController.bindCourseKey(item.itemId, course.id);
+      if (reference?.authoringStatus) {
+        state.assistDraft.syncError = reference.authoringErrorMessage || (
+          reference.authoringStatus === "conflict"
+            ? "Há uma edição salva neste dispositivo que precisa resolver um conflito."
+            : "Há uma edição salva neste dispositivo aguardando sincronização."
+        );
+      }
+    }
     return course;
   }
 
@@ -618,6 +870,120 @@ export function createLessonEditorApp({
     return nextProject;
   }
 
+  async function resolveWorkspaceAuthoringConflict(resolution) {
+    if (state.entityMutationSaving) return false;
+    const courseRef = workspaceCourseRef();
+    const resolveConflict = workspaceCourseHook("resolveAuthoringConflict");
+    const localCourseKey = state.selection?.courseKey || "";
+    const authoringState = workspaceAuthoringState(localCourseKey);
+    if (!courseRef) {
+      if (authoringState.status !== "conflict" ||
+          !["keep_local", "discard_local"].includes(resolution)) return false;
+      if (globalThis.navigator?.onLine === false) {
+        state.entityMutationError = "Reconecte para resolver a edição preservada neste dispositivo.";
+        render({ preserveState: true });
+        return false;
+      }
+      if (resolution === "discard_local" &&
+          (!authoringState.canDiscardLocal ||
+           (typeof globalThis.confirm === "function" &&
+            !globalThis.confirm("Descartar as alterações salvas somente neste dispositivo?")))) {
+        return false;
+      }
+      state.entityMutationSaving = true;
+      state.entityMutationError = "";
+      state.assistDraft.syncError = "";
+      render({ preserveState: true });
+      try {
+        if (resolution === "discard_local") {
+          const previousSelection = { ...state.selection };
+          const discarded = await storage.discardContextualAuthoringDraft(localCourseKey);
+          await contextualAuthoring.synchronizeReplica({
+            expectedCourseIds: [discarded.courseId]
+          });
+          const nextProject = composeLoadedWorkspaceCourses(storage.loadProject());
+          setProject(nextProject);
+          if (!applySelectionByKeys(nextProject, previousSelection)) selectFirstPath(nextProject);
+          await loadCardAssistanceLocalState(state.selection.courseKey);
+          return true;
+        }
+        const result = await synchronizeContextualAuthoringCourse(localCourseKey, {
+          conflictPolicy: "local"
+        });
+        if (result?.pending === true) {
+          state.entityMutationError = result.errorMessage ||
+            "O conflito ainda não pôde ser resolvido. A alteração local foi preservada.";
+          state.assistDraft.syncError = state.entityMutationError;
+          return false;
+        }
+        return true;
+      } catch (error) {
+        state.entityMutationError = error instanceof Error
+          ? error.message
+          : "Não foi possível resolver o conflito de edição.";
+        state.assistDraft.syncError = state.entityMutationError;
+        return false;
+      } finally {
+        state.entityMutationSaving = false;
+        render({ preserveState: true });
+      }
+    }
+    if (courseRef.authoringStatus !== "conflict" || !resolveConflict) return false;
+    if (resolution === "keep_local" && globalThis.navigator?.onLine === false) {
+      state.entityMutationError = "Reconecte para comparar e manter a sua redação.";
+      render({ preserveState: true });
+      return false;
+    }
+    if (resolution === "discard_local" && typeof globalThis.confirm === "function" &&
+        !globalThis.confirm("Descartar as alterações salvas somente neste dispositivo?")) {
+      return false;
+    }
+    if (!["keep_local", "discard_local"].includes(resolution)) return false;
+
+    state.entityMutationSaving = true;
+    state.entityMutationError = "";
+    state.assistDraft.syncError = "";
+    render({ preserveState: true });
+    try {
+      const result = await resolveConflict({ courseRef, resolution });
+      const reference = updateWorkspaceAuthoringReference(courseRef, result) || courseRef;
+      if (result?.course) {
+        const nextProject = mergeWorkspaceCourse(
+          state.project,
+          result.course,
+          [courseRef.courseKey, courseRef.courseId]
+        );
+        setProject(nextProject);
+        homeTrailsController.loadedCourses.set(
+          courseRef.trailItemId,
+          structuredClone(result.course)
+        );
+        applySelectionByKeys(nextProject, state.selection);
+      } else if (result?.pending !== true) {
+        await refreshWorkspaceCourseDocument(reference);
+        applySelectionByKeys(state.project, state.selection);
+      }
+      if (result?.pending === true) {
+        const message = result.errorMessage ||
+          "O conflito ainda não pôde ser resolvido. Nenhuma alteração local foi perdida.";
+        state.entityMutationError = message;
+        state.assistDraft.syncError = message;
+      }
+      await refreshHomeTrails();
+      return result?.pending !== true;
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : "Não foi possível resolver o conflito de edição.";
+      state.entityMutationError = message;
+      state.assistDraft.syncError = message;
+      return false;
+    } finally {
+      state.entityMutationSaving = false;
+      render({ preserveState: true });
+    }
+  }
+
   async function openHomeTrailCourse(itemId, { mode = "view" } = {}) {
     if (!homeTrailsController) return false;
     const item = homeTrailsController.item(itemId);
@@ -629,8 +995,7 @@ export function createLessonEditorApp({
     try {
       const course = await prepareHomeTrailItem(item.itemId);
       state.homeSelectedCourseKey = course.id;
-      openCourse(course.id, { mode });
-      return true;
+      return openCourse(course.id, { mode }) === true;
     } catch (error) {
       state.homeOrganization.error = error instanceof Error
         ? error.message
@@ -645,7 +1010,7 @@ export function createLessonEditorApp({
   async function openHomeCourseEditor(itemId) {
     if (!homeTrailsController || state.entityMutationSaving) return false;
     const item = homeTrailsController.item(itemId);
-    if (!item?.canEdit) return false;
+    if (!item || (item.canEdit !== true && item.canEditOffline !== true)) return false;
     state.homeSelectedTrailItemId = item.itemId;
     homeTrailsController.select(item.itemId);
     state.homeTrailLoading = true;
@@ -654,6 +1019,7 @@ export function createLessonEditorApp({
     try {
       const course = await prepareHomeTrailItem(item.itemId);
       state.homeSelectedCourseKey = course.id;
+      assertCourseCapability("canEditMetadata", course.id);
       state.inlineStructureEditor = { level: "course", courseKey: course.id };
       state.entityMutationError = "";
       queueAuthoringFocus("inline-structure-title");
@@ -701,6 +1067,9 @@ export function createLessonEditorApp({
       state.entityMutationError = "";
     }
     setProject(composeLoadedWorkspaceCourses(storage.loadProject()));
+    if (state.homeSelectedCourseKey) {
+      void loadCardAssistanceLocalState(state.homeSelectedCourseKey);
+    }
     return true;
   }
 
@@ -844,14 +1213,16 @@ export function createLessonEditorApp({
 
   function openCourse(courseKey, { mode = "view" } = {}) {
     const navigationState = buildCourseNavigationState(state.project, courseKey);
-    if (!navigationState) return;
+    if (!navigationState) return false;
     state.homeSelectedCourseKey = courseKey;
     Object.assign(state, buildNavigationViewState(navigationState));
-    state.entityModes.course = mode === "edit" ? "edit" : "view";
+    state.entityModes.course = "view";
     state.inlineStructureEditor = null;
     state.entityMutationError = "";
 
+    if (mode === "edit") return setEntityMode("course", "edit", { preserveState: false });
     render({ preserveState: false });
+    return true;
   }
 
   function openModule(moduleKey, { mode = "view" } = {}) {
@@ -859,13 +1230,15 @@ export function createLessonEditorApp({
       courseKey: state.selection.courseKey,
       moduleKey
     });
-    if (!navigationState) return;
+    if (!navigationState) return false;
     Object.assign(state, buildNavigationViewState(navigationState));
-    state.entityModes.module = mode === "edit" ? "edit" : "view";
+    state.entityModes.module = "view";
     state.inlineStructureEditor = null;
     state.entityMutationError = "";
 
+    if (mode === "edit") return setEntityMode("module", "edit", { preserveState: false });
     render({ preserveState: false });
+    return true;
   }
 
   function openLesson(moduleKey, lessonKey, { mode = "view" } = {}) {
@@ -874,16 +1247,18 @@ export function createLessonEditorApp({
       moduleKey,
       lessonKey
     });
-    if (!navigationState) return;
+    if (!navigationState) return false;
     Object.assign(state, buildNavigationViewState(navigationState));
-    state.entityModes.lesson = mode === "edit" ? "edit" : "view";
+    state.entityModes.lesson = "view";
     state.inlineStructureEditor = null;
     state.entityMutationError = "";
     state.bottomUpDraft.composerOpen = false;
     state.bottomUpDraft.promptText = "";
     state.bottomUpDraft.errorMessage = "";
 
+    if (mode === "edit") return setEntityMode("lesson", "edit", { preserveState: false });
     render({ preserveState: false });
+    return true;
   }
 
   function getLessonProgressReference(courseKey, moduleKey, lessonKey) {
@@ -941,14 +1316,16 @@ export function createLessonEditorApp({
     const courseKey = lessonReferences[0]?.courseKey || state.selection?.courseKey;
     const personalStorage = activeTrailPersonalStorage(courseKey);
     if (typeof personalStorage?.removeProgressEntries === "function") {
-      void Promise.resolve(personalStorage.removeProgressEntries(lessonReferences)).catch((error) => {
-        console.warn("Não foi possível zerar o progresso em Trilhas.", error);
-      });
-      return;
+      return Promise.resolve(personalStorage.removeProgressEntries(lessonReferences))
+        .then(() => true)
+        .catch((error) => {
+          console.warn("Não foi possível zerar o progresso em Trilhas.", error);
+          return false;
+        });
     }
     const currentProgress = activeProgress(courseKey);
     const nextProgress = removeLessonProgressEntries(currentProgress, lessonReferences);
-    saveActiveProgress(nextProgress, courseKey);
+    return saveActiveProgress(nextProgress, courseKey);
   }
 
   function getCodexSetupEndpoint() {
@@ -1149,10 +1526,10 @@ export function createLessonEditorApp({
 
   function openMicrosequenceScreen(microsequenceKey, targetIndex = 0, mode = "play") {
     const microsequence = selectMicrosequenceCard(microsequenceKey, targetIndex);
-    if (!microsequence) return;
+    if (!microsequence) return false;
     if (mode === "play" && !resolveMicrosequenceRuntimeIncluded(microsequence)) {
       openMicrosequenceOverview(microsequenceKey);
-      return;
+      return true;
     }
 
     state.view = "microsequence";
@@ -1171,6 +1548,7 @@ export function createLessonEditorApp({
     state.cardExerciseLoadVersion += 1;
     render({ preserveState: false });
     void loadCardAssistanceLocalState(state.selection.courseKey);
+    return true;
   }
 
   function openCardAssistanceMode(microsequenceKey, targetIndex = 0) {
@@ -1181,13 +1559,21 @@ export function createLessonEditorApp({
       state.selection.lessonKey,
       microsequenceKey
     );
-    if (!microsequence) return;
+    if (!microsequence) return false;
     try {
-      assertCourseAuthoringAllowed(state.selection.courseKey);
+      assertCourseCapability(
+        "canUseCardAi",
+        state.selection.courseKey,
+        "A assistência por IA não está disponível para este curso."
+      );
     } catch (error) {
-      state.assistDraft.errorMessage = error.message;
+      state.entityModes.card = "view";
+      state.microsequenceMode = "play";
+      state.entityMutationError = error instanceof Error
+        ? error.message
+        : "A assistência por IA não está disponível para este curso.";
       render({ preserveState: true });
-      return;
+      return false;
     }
     state.selection.microsequenceKey = microsequence.id;
     selectMicrosequenceCard(microsequenceKey, targetIndex);
@@ -1198,6 +1584,7 @@ export function createLessonEditorApp({
     state.assistDraft.promptText = "";
     state.assistDraft.assistance = createCardAssistanceUiState(state.selection);
     state.assistDraft.errorMessage = "";
+    state.entityMutationError = "";
     state.microsequenceMode = "assist";
     syncAssistDraft();
     state.cardCommentOpen = false;
@@ -1207,6 +1594,7 @@ export function createLessonEditorApp({
     state.cardExerciseLoadVersion += 1;
     render({ preserveState: false });
     void loadCardAssistanceLocalState(state.selection.courseKey);
+    return true;
   }
 
   function getActiveMicrosequenceCards(reference = state.selection) {
@@ -1290,10 +1678,10 @@ export function createLessonEditorApp({
 
   function openMicrosequenceOverview(microsequenceKey, { mode = "view" } = {}) {
     const microsequence = selectMicrosequenceCard(microsequenceKey, 0);
-    if (!microsequence) return;
+    if (!microsequence) return false;
     state.view = "microsequence";
     state.microsequenceMode = "overview";
-    state.entityModes.microsequence = mode === "edit" ? "edit" : "view";
+    state.entityModes.microsequence = "view";
     state.inlineStructureEditor = null;
     state.entityMutationError = "";
     state.cardCommentOpen = false;
@@ -1305,7 +1693,11 @@ export function createLessonEditorApp({
     state.bottomUpDraft.assistance = createBottomUpAssistanceUiState(
       getBottomUpUiContext("microsequence")
     );
+    if (mode === "edit") {
+      return setEntityMode("microsequence", "edit", { preserveState: false });
+    }
     render({ preserveState: false });
+    return true;
   }
 
   function queueAuthoringFocus(key) {
@@ -1701,16 +2093,16 @@ export function createLessonEditorApp({
   function resetCourseProgress(courseKey) {
     const course = findCourse(state.project, courseKey);
     const lessonReferences = collectLessonProgressReferencesInCourse(course);
-    removeProgressEntries(lessonReferences);
+    return removeProgressEntries(lessonReferences);
   }
 
   function resetModuleProgress(courseKey, moduleKey) {
     const moduleValue = findModule(state.project, courseKey, moduleKey);
-    removeProgressEntries(collectProgressReferencesInModule(courseKey, moduleValue));
+    return removeProgressEntries(collectProgressReferencesInModule(courseKey, moduleValue));
   }
 
   function resetLessonProgress(courseKey, moduleKey, lessonKey) {
-    removeProgressEntries([{ courseKey, moduleKey, lessonKey }]);
+    return removeProgressEntries([{ courseKey, moduleKey, lessonKey }]);
   }
 
   function resetMicrosequenceProgress(courseKey, moduleKey, lessonKey, microsequenceKey) {
@@ -1727,7 +2119,7 @@ export function createLessonEditorApp({
       { courseKey, moduleKey, lessonKey },
       cardKeys
     );
-    saveActiveProgress(nextProgress, courseKey);
+    return saveActiveProgress(nextProgress, courseKey);
   }
 
   function resetCardProgress(courseKey, moduleKey, lessonKey, cardKey) {
@@ -1736,7 +2128,7 @@ export function createLessonEditorApp({
       { courseKey, moduleKey, lessonKey },
       [cardKey]
     );
-    saveActiveProgress(nextProgress, courseKey);
+    return saveActiveProgress(nextProgress, courseKey);
   }
 
   function buildCurrentCardAssistanceRequest() {
@@ -1781,13 +2173,35 @@ export function createLessonEditorApp({
     return normalizeCardAssistanceLocalState(stored || {});
   }
 
+  async function assertNoContextualAuthoringPending(courseKey) {
+    if (typeof storage.loadCardAssistanceLocalState !== "function") return;
+    const localState = await readCardAssistanceLocalState(courseKey);
+    if (
+      localState.sync.pendingPaths.length ||
+      localState.sync.pendingMetadata.length
+    ) {
+      const error = new Error(
+        "Sincronize primeiro as edições textuais pendentes antes de mover ou excluir conteúdo."
+      );
+      error.code = "contextual_authoring_pending";
+      throw error;
+    }
+  }
+
   async function loadCardAssistanceLocalState(courseKey = state.selection.courseKey) {
     if (!courseKey || typeof storage.loadCardAssistanceLocalState !== "function") return;
     try {
       const stored = await readCardAssistanceLocalState(courseKey);
       if (courseKey !== state.selection.courseKey) return;
+      if (state.assistDraft.localStateCourseKey) {
+        state.assistDraft.localAuthoringByCourseId.set(
+          state.assistDraft.localStateCourseKey,
+          normalizeCardAssistanceLocalState(state.assistDraft.localState)
+        );
+      }
       state.assistDraft.localState = stored;
       state.assistDraft.localStateCourseKey = courseKey;
+      state.assistDraft.localAuthoringByCourseId.set(courseKey, stored);
       state.assistDraft.syncError = "";
       render({ preserveState: true });
     } catch {
@@ -1801,8 +2215,10 @@ export function createLessonEditorApp({
   }
 
   function applyContextualAuthoringLocalState(courseKey, localState) {
+    const normalized = normalizeCardAssistanceLocalState(localState || {});
+    state.assistDraft.localAuthoringByCourseId.set(courseKey, normalized);
     if (!contextualAuthoringAttemptOwnsVisibleState(courseKey)) return false;
-    state.assistDraft.localState = normalizeCardAssistanceLocalState(localState || {});
+    state.assistDraft.localState = normalized;
     return true;
   }
 
@@ -1810,22 +2226,41 @@ export function createLessonEditorApp({
     return typeof contextualAuthoring?.remoteCatalog?.executeApplicationAuthoringAction === "function";
   }
 
-  async function attemptContextualAuthoringSync() {
-    const courseKey = state.selection?.courseKey;
-    if (
-      !courseKey ||
-      !contextualAuthoringIsAvailable() ||
-      globalThis.navigator?.onLine === false
-    ) return;
-    if (!claimContextualAuthoringSyncAttempt(
-      state.assistDraft.contextualAuthoringSync
-    )) return;
+  function contextualAuthoringFailureIsTerminal(error) {
+    if (error?.conflict === true || error?.code === "contextual_authoring_conflict") return true;
+    if ([
+      "course_authoring_forbidden",
+      "course_authoring_authority_mismatch",
+      "contextual_authoring_draft_missing",
+      "card_assistance_state_invalid",
+      "card_assistance_sync_scope_too_large"
+    ].includes(String(error?.code || ""))) return true;
+    const status = Number(error?.status);
+    return Number.isSafeInteger(status) && status >= 400 && status < 500 &&
+      ![408, 429].includes(status);
+  }
+
+  async function synchronizeContextualAuthoringCourse(courseKey, {
+    conflictPolicy = "reject"
+  } = {}) {
     if (contextualAuthoringAttemptOwnsVisibleState(courseKey)) {
       state.assistDraft.syncError = "";
     }
+    let attemptLocalState = null;
+    let authoringSnapshot = null;
     try {
-      let attemptLocalState;
-      if (state.assistDraft.localStateCourseKey !== courseKey) {
+      if (typeof storage.loadContextualAuthoringSnapshot === "function") {
+        authoringSnapshot = await storage.loadContextualAuthoringSnapshot(courseKey);
+        attemptLocalState = normalizeCardAssistanceLocalState(
+          authoringSnapshot.localState || {}
+        );
+        state.assistDraft.localAuthoringByCourseId.set(courseKey, attemptLocalState);
+        if (state.selection?.courseKey === courseKey) {
+          state.assistDraft.localState = attemptLocalState;
+          state.assistDraft.localStateCourseKey = courseKey;
+          state.assistDraft.syncError = "";
+        }
+      } else if (state.assistDraft.localStateCourseKey !== courseKey) {
         attemptLocalState = await readCardAssistanceLocalState(courseKey);
         if (state.selection?.courseKey === courseKey) {
           state.assistDraft.localState = attemptLocalState;
@@ -1838,13 +2273,18 @@ export function createLessonEditorApp({
         );
       }
       const pendingPaths = attemptLocalState.sync.pendingPaths;
-      if (!pendingPaths.length) return;
+      const pendingMetadata = attemptLocalState.sync.pendingMetadata;
+      if (!pendingPaths.length && !pendingMetadata.length) return;
       const result = await materializeContextualCourseDraft({
         remoteCatalog: contextualAuthoring.remoteCatalog,
         storage,
-        projectDocument: state.project,
+        projectDocument: authoringSnapshot?.projectDocument || state.project,
         courseKey,
-        pendingPaths
+        pendingPaths,
+        pendingMetadata,
+        expectedLocalDraftRevision: attemptLocalState.sync.expectedRevision,
+        draftSnapshot: authoringSnapshot === null ? undefined : authoringSnapshot.draft,
+        conflictPolicy
       });
       if (result.status === "clean") {
         const finalized = await finalizeCleanContextualCourseDraftSync({
@@ -1864,7 +2304,11 @@ export function createLessonEditorApp({
           await storage.saveCardAssistanceLocalState?.(courseKey, nextLocalState);
         }
         applyContextualAuthoringLocalState(courseKey, nextLocalState);
-        return;
+        const retryTimer = state.assistDraft.contextualAuthoringSync.retryTimers.get(courseKey);
+        if (retryTimer) globalThis.clearTimeout(retryTimer);
+        state.assistDraft.contextualAuthoringSync.retryTimers.delete(courseKey);
+        state.assistDraft.contextualAuthoringSync.retryAttempts.delete(courseKey);
+        return { status: "clean", pending: false };
       }
       const nextLocalState = normalizeCardAssistanceLocalState(
         await finalizeContextualCourseDraftSync({
@@ -1879,7 +2323,7 @@ export function createLessonEditorApp({
         (result.trailItemId && item.itemId === result.trailItemId) ||
         (item.workspaceId === result.workspaceId && item.courseKey === result.courseKey)
       );
-      if (materializedItem) {
+      if (materializedItem && state.selection?.courseKey === courseKey) {
         const materializedCourse = await ensureHomeTrailCourse(materializedItem.itemId);
         if (materializedCourse) {
           await ensureTrailPersonalStorage(materializedItem, materializedCourse);
@@ -1891,21 +2335,123 @@ export function createLessonEditorApp({
           });
         }
       }
+      const retryTimer = state.assistDraft.contextualAuthoringSync.retryTimers.get(courseKey);
+      if (retryTimer) globalThis.clearTimeout(retryTimer);
+      state.assistDraft.contextualAuthoringSync.retryTimers.delete(courseKey);
+      state.assistDraft.contextualAuthoringSync.retryAttempts.delete(courseKey);
+      return { status: "materialized", pending: false, ...result };
     } catch (error) {
       console.warn("Sincronização da autoria contextual adiada.", error);
-      if (contextualAuthoringAttemptOwnsVisibleState(courseKey)) {
-        state.assistDraft.syncError =
-          "A alteração ficou na fila local e será materializada quando a conexão permitir.";
+      const status = contextualAuthoringFailureIsTerminal(error)
+        ? "conflict"
+        : "pending";
+      const errorMessage = error instanceof Error ? error.message : "A sincronização foi adiada.";
+      let currentLocalState;
+      if (typeof storage.updateCardAssistanceSyncStatus === "function") {
+        const updated = await storage.updateCardAssistanceSyncStatus(courseKey, {
+          status,
+          errorMessage,
+          expectedLocalDraftRevision: attemptLocalState?.sync?.expectedRevision || null
+        });
+        currentLocalState = normalizeCardAssistanceLocalState(
+          updated?.localState || await readCardAssistanceLocalState(courseKey)
+        );
+      } else {
+        currentLocalState = setContextualAuthoringSyncStatus(
+          await readCardAssistanceLocalState(courseKey),
+          { status, errorMessage }
+        );
+        await storage.saveCardAssistanceLocalState?.(courseKey, currentLocalState);
       }
+      applyContextualAuthoringLocalState(courseKey, currentLocalState);
+      if (contextualAuthoringAttemptOwnsVisibleState(courseKey)) {
+        state.assistDraft.syncError = status === "conflict"
+          ? currentLocalState.sync.errorMessage ||
+            "O mesmo texto foi alterado em outro dispositivo. Escolha como continuar."
+          : "A alteração ficou na fila local e será sincronizada automaticamente.";
+      }
+      if (status === "pending" && globalThis.navigator?.onLine !== false) {
+        const syncState = state.assistDraft.contextualAuthoringSync;
+        if (!syncState.retryTimers.has(courseKey)) {
+          const attempt = (syncState.retryAttempts.get(courseKey) || 0) + 1;
+          syncState.retryAttempts.set(courseKey, attempt);
+          const timer = globalThis.setTimeout(() => {
+            syncState.retryTimers.delete(courseKey);
+            void attemptContextualAuthoringSync(courseKey);
+          }, Math.min(60_000, 5_000 * (2 ** (attempt - 1))));
+          syncState.retryTimers.set(courseKey, timer);
+        }
+      } else {
+        const syncState = state.assistDraft.contextualAuthoringSync;
+        const retryTimer = syncState.retryTimers.get(courseKey);
+        if (retryTimer) globalThis.clearTimeout(retryTimer);
+        syncState.retryTimers.delete(courseKey);
+        syncState.retryAttempts.delete(courseKey);
+      }
+      return {
+        status,
+        pending: true,
+        conflict: status === "conflict",
+        errorMessage: currentLocalState.sync.errorMessage
+      };
+    }
+  }
+
+  async function drainContextualAuthoringSync() {
+    const syncState = state.assistDraft.contextualAuthoringSync;
+    if (!contextualAuthoringIsAvailable() || globalThis.navigator?.onLine === false) return;
+    if (!claimContextualAuthoringSyncAttempt(syncState)) return syncState.activePromise;
+    const operation = (async () => {
+      while (syncState.courseKeys.size && globalThis.navigator?.onLine !== false) {
+        const [courseKey] = syncState.courseKeys;
+        syncState.courseKeys.delete(courseKey);
+        await synchronizeContextualAuthoringCourse(courseKey);
+      }
+    })();
+    syncState.activePromise = operation;
+    try {
+      await operation;
     } finally {
+      if (syncState.activePromise === operation) syncState.activePromise = null;
       settleContextualAuthoringSyncAttempt(
-        state.assistDraft.contextualAuthoringSync,
+        syncState,
         () => {
-          void attemptContextualAuthoringSync();
+          void drainContextualAuthoringSync();
         }
       );
       render({ preserveState: true });
     }
+  }
+
+  function attemptContextualAuthoringSync(courseKey = state.selection?.courseKey) {
+    const normalizedCourseKey = text(courseKey);
+    if (!normalizedCourseKey) return Promise.resolve();
+    state.assistDraft.contextualAuthoringSync.courseKeys.add(normalizedCourseKey);
+    return drainContextualAuthoringSync();
+  }
+
+  async function attemptAllContextualAuthoringSync() {
+    if (!contextualAuthoringIsAvailable() || globalThis.navigator?.onLine === false) return;
+    const courses = storage.loadProject()?.courses || [];
+    const states = await Promise.all(courses.map(async (course) => {
+      try {
+        return {
+          courseKey: course.id,
+          localState: await readCardAssistanceLocalState(course.id)
+        };
+      } catch {
+        return null;
+      }
+    }));
+    for (const entry of states.filter(Boolean)) {
+      const { courseKey, localState } = entry;
+      state.assistDraft.localAuthoringByCourseId.set(courseKey, localState);
+      if (localState.sync.status !== "conflict" &&
+          (localState.sync.pendingPaths.length || localState.sync.pendingMetadata.length)) {
+        state.assistDraft.contextualAuthoringSync.courseKeys.add(courseKey);
+      }
+    }
+    return drainContextualAuthoringSync();
   }
 
   function requireCardAssistancePersistenceGuard(value, courseKey) {
@@ -1974,11 +2520,12 @@ export function createLessonEditorApp({
     entries,
     persistenceGuard
   }) {
-    const workspaceRef = workspaceCourseRef(requestedSelection.courseKey);
-    if (!workspaceRef) assertCourseAuthoringAllowed(requestedSelection.courseKey);
-    else if (!workspaceCourseHook("saveMicrosequenceCards")) {
-      throw new Error("A gravação deste curso de workspace não está disponível.");
-    }
+    const capabilities = assertCourseCapability(
+      "canEditCards",
+      requestedSelection.courseKey,
+      "A edição de cards não está disponível para este curso."
+    );
+    const workspaceRef = capabilities.workspaceRef;
     const beforeMicrosequence = findMicrosequence(
       requestedProjectDocument,
       requestedSelection.courseKey,
@@ -2006,27 +2553,7 @@ export function createLessonEditorApp({
     if (!targetMicrosequence || targetIndex < 0) {
       throw new Error("A alteração validada não contém o card de destino.");
     }
-    if (workspaceRef) {
-      const saved = await workspaceCourseHook("saveMicrosequenceCards")({
-        courseRef: workspaceRef,
-        microsequencePath: [
-          requestedSelection.courseKey,
-          requestedSelection.moduleKey,
-          requestedSelection.lessonKey,
-          applied.targetMicrosequenceKey
-        ],
-        cards: structuredClone(targetMicrosequence.cards || [])
-      });
-      if (Number.isSafeInteger(Number(saved?.revision))) {
-        homeTrailsController.updateCourseRef(workspaceRef.trailItemId, {
-          revision: Number(saved.revision)
-        });
-      }
-      setProject(applied.projectDocument);
-      homeTrailsController.loadedCourses.set(
-        workspaceRef.trailItemId,
-        structuredClone(findCourse(applied.projectDocument, requestedSelection.courseKey))
-      );
+    if (canonicalStringify(beforeMicrosequence) === canonicalStringify(targetMicrosequence)) {
       state.selection.microsequenceKey = applied.targetMicrosequenceKey;
       state.selection.cardIndex = targetIndex;
       state.selection.cardKey = targetMicrosequence.cards[targetIndex].id;
@@ -2034,9 +2561,73 @@ export function createLessonEditorApp({
       state.assistDraft.composerOpen = false;
       state.assistDraft.manualDraft = null;
       state.assistDraft.assistance = createCardAssistanceUiState(state.selection);
+      state.assistDraft.manualEditError = "";
       queueAuthoringFocus("card-title");
-      state.cardExerciseLoadVersion += 1;
-      await refreshHomeTrails();
+      return { ...applied, unchanged: true };
+    }
+    if (workspaceRef) {
+      const draftCourse = structuredClone(
+        findCourse(applied.projectDocument, requestedSelection.courseKey)
+      );
+      const saved = await workspaceCourseHook("saveMicrosequenceCards")({
+        courseRef: workspaceRef,
+        draftCourse,
+        microsequencePath: [
+          requestedSelection.courseKey,
+          requestedSelection.moduleKey,
+          requestedSelection.lessonKey,
+          applied.targetMicrosequenceKey
+        ],
+        baseCards: structuredClone(beforeMicrosequence?.cards || []),
+        cards: structuredClone(targetMicrosequence.cards || [])
+      });
+      updateWorkspaceAuthoringReference(workspaceRef, saved);
+      if (saved?.pending === true) {
+        state.assistDraft.syncError = saved.errorMessage || (
+          saved.conflict === true
+            ? "A alteração foi salva neste dispositivo, mas precisa resolver um conflito antes de sincronizar."
+            : "A alteração foi salva neste dispositivo e será sincronizada quando a conexão permitir."
+        );
+      } else {
+        state.assistDraft.syncError = "";
+      }
+      const committedProject = applyWorkspaceAuthoringResult(
+        applied.projectDocument,
+        workspaceRef,
+        saved
+      );
+      const committedMicrosequence = findMicrosequence(
+        committedProject,
+        requestedSelection.courseKey,
+        requestedSelection.moduleKey,
+        requestedSelection.lessonKey,
+        applied.targetMicrosequenceKey
+      );
+      const committedIndex = (committedMicrosequence?.cards || [])
+        .findIndex((card) => card.id === applied.cardKey);
+      if (!committedMicrosequence || committedIndex < 0) {
+        throw new Error("O curso salvo não preservou o card editado.");
+      }
+      setProject(committedProject);
+      state.selection.microsequenceKey = applied.targetMicrosequenceKey;
+      state.selection.cardIndex = committedIndex;
+      state.selection.cardKey = committedMicrosequence.cards[committedIndex].id;
+      state.assistDraft.promptText = "";
+      state.assistDraft.composerOpen = false;
+      state.assistDraft.manualDraft = null;
+      state.assistDraft.assistance = createCardAssistanceUiState(state.selection);
+      queueAuthoringFocus("card-title");
+      invalidateRuntimeExerciseState();
+      await persistProgressReset(
+        `card:${requestedSelection.courseKey}:${committedMicrosequence.cards[committedIndex].id}`,
+        () => resetCardProgress(
+          requestedSelection.courseKey,
+          requestedSelection.moduleKey,
+          requestedSelection.lessonKey,
+          committedMicrosequence.cards[committedIndex].id
+        )
+      );
+      if (saved?.pending !== true) await refreshHomeTrails();
       return applied;
     }
     if (typeof storage.saveMicrosequenceGeneration !== "function") {
@@ -2064,7 +2655,27 @@ export function createLessonEditorApp({
       nextLocalState,
       {
         ...requestedSelection,
-        microsequenceKey: applied.targetMicrosequenceKey
+        microsequenceKey: applied.targetMicrosequenceKey,
+        textOnly: true,
+        baseCards: structuredClone(beforeMicrosequence?.cards || []),
+        baseMetadata: {
+          title: beforeMicrosequence?.title || "",
+          goal: beforeMicrosequence?.goal || "",
+          role: beforeMicrosequence?.role || "",
+          branchOf: beforeMicrosequence?.branchOf || null,
+          dependsOn: structuredClone(beforeMicrosequence?.dependsOn || []),
+          covers: structuredClone(beforeMicrosequence?.covers || []),
+          checks: structuredClone(beforeMicrosequence?.checks || []),
+          errors: structuredClone(beforeMicrosequence?.errors || [])
+        },
+        basePosition: Math.max(0, (
+          findLesson(
+            requestedProjectDocument,
+            requestedSelection.courseKey,
+            requestedSelection.moduleKey,
+            requestedSelection.lessonKey
+          )?.microsequences || []
+        ).findIndex((item) => item.id === beforeMicrosequence?.id))
       }
     );
     await storage.saveMicrosequenceGeneration(
@@ -2090,7 +2701,16 @@ export function createLessonEditorApp({
     state.assistDraft.assistance = createCardAssistanceUiState(state.selection);
     queueAuthoringFocus("card-title");
     void attemptContextualAuthoringSync();
-    state.cardExerciseLoadVersion += 1;
+    invalidateRuntimeExerciseState();
+    await persistProgressReset(
+      `card:${requestedSelection.courseKey}:${targetMicrosequence.cards[targetIndex].id}`,
+      () => resetCardProgress(
+        requestedSelection.courseKey,
+        requestedSelection.moduleKey,
+        requestedSelection.lessonKey,
+        targetMicrosequence.cards[targetIndex].id
+      )
+    );
     return applied;
   }
 
@@ -2113,10 +2733,14 @@ export function createLessonEditorApp({
     try {
       const requestedProjectDocument = structuredClone(state.project);
       const requestedSelection = { ...state.selection };
-      const workspaceRef = workspaceCourseRef(requestedSelection.courseKey);
+      const capabilities = assertCourseCapability(
+        "canEditCards",
+        requestedSelection.courseKey,
+        "A edição manual de cards não está disponível para este curso."
+      );
+      const workspaceRef = capabilities.workspaceRef;
       let guard = null;
       if (!workspaceRef) {
-        assertCourseAuthoringAllowed(state.selection.courseKey);
         if (
           typeof storage.flush !== "function" ||
           typeof storage.createLocalCourseDraftGuard !== "function"
@@ -2172,6 +2796,12 @@ export function createLessonEditorApp({
   async function undoCardEdit() {
     const undo = state.assistDraft.localState.undo;
     if (!undo || undo.kind !== "microsequence" || state.assistDraft.isSubmitting) return;
+    if (workspaceCourseRef(undo.courseKey)) {
+      state.assistDraft.manualEditError =
+        "O desfazer local não pertence a esta composição de workspace.";
+      render({ preserveState: true });
+      return;
+    }
     state.assistDraft.isSubmitting = true;
     state.assistDraft.manualEditError = "";
     try {
@@ -2182,6 +2812,7 @@ export function createLessonEditorApp({
         (microsequence) => microsequence.id === undo.microsequenceKey
       );
       if (index < 0) throw new Error("A microssequência da última alteração não existe mais.");
+      const beforeMicrosequence = structuredClone(lesson.microsequences[index]);
       lesson.microsequences[index] = applyContextualAuthoringInversePatch(
         lesson.microsequences[index],
         undo.inversePatch
@@ -2191,7 +2822,20 @@ export function createLessonEditorApp({
         courseKey: undo.courseKey,
         moduleKey: undo.moduleKey,
         lessonKey: undo.lessonKey,
-        microsequenceKey: undo.microsequenceKey
+        microsequenceKey: undo.microsequenceKey,
+        textOnly: true,
+        baseCards: structuredClone(beforeMicrosequence.cards || []),
+        baseMetadata: {
+          title: beforeMicrosequence.title || "",
+          goal: beforeMicrosequence.goal || "",
+          role: beforeMicrosequence.role || "",
+          branchOf: beforeMicrosequence.branchOf || null,
+          dependsOn: structuredClone(beforeMicrosequence.dependsOn || []),
+          covers: structuredClone(beforeMicrosequence.covers || []),
+          checks: structuredClone(beforeMicrosequence.checks || []),
+          errors: structuredClone(beforeMicrosequence.errors || [])
+        },
+        basePosition: index
       });
       await storage.saveMicrosequenceGeneration(nextProject, undo.microsequenceKey, {
         expectedLocalDraftRevision: undo.expectedRevision,
@@ -2204,7 +2848,11 @@ export function createLessonEditorApp({
       );
       state.assistDraft.localStateCourseKey = undo.courseKey;
       void attemptContextualAuthoringSync();
-      state.cardExerciseLoadVersion += 1;
+      invalidateRuntimeExerciseState();
+      await persistProgressReset(
+        `lesson:${undo.courseKey}:${undo.lessonKey}`,
+        () => resetLessonProgress(undo.courseKey, undo.moduleKey, undo.lessonKey)
+      );
     } catch (error) {
       if (error?.code === "local_course_draft_changed") setProject(storage.loadProject());
       state.assistDraft.manualEditError =
@@ -2237,10 +2885,14 @@ export function createLessonEditorApp({
       const requestedProjectDocument = structuredClone(state.project);
       const requestedSelection = { ...state.selection };
       const requestedAssistConfig = structuredClone(state.assistConfig);
-      const workspaceRef = workspaceCourseRef(requestedSelection.courseKey);
+      const capabilities = assertCourseCapability(
+        "canUseCardAi",
+        requestedSelection.courseKey,
+        "A assistência por IA não está disponível para este curso."
+      );
+      const workspaceRef = capabilities.workspaceRef;
       let persistenceGuard = null;
       if (!workspaceRef) {
-        assertCourseAuthoringAllowed(state.selection.courseKey);
         if (
           typeof storage.flush !== "function" ||
           typeof storage.createLocalCourseDraftGuard !== "function"
@@ -2252,8 +2904,6 @@ export function createLessonEditorApp({
           await storage.createLocalCourseDraftGuard(requestedSelection.courseKey),
           requestedSelection.courseKey
         );
-      } else if (!workspaceCourseHook("saveMicrosequenceCards")) {
-        throw new Error("A gravação deste curso de workspace não está disponível.");
       }
       const submission = await executeCardAssistance({
         projectDocument: requestedProjectDocument,
@@ -2379,14 +3029,24 @@ export function createLessonEditorApp({
       ];
     }
 
-    const workspaceRef = workspaceCourseRef(drag.courseKey);
-    if (
-      toIndex === null ||
-      !entityPath ||
-      (!workspaceRef && !contextualAuthoringIsAvailable()) ||
-      (workspaceRef && !workspaceCourseHook("moveEntity"))
-    ) return;
+    if (toIndex === null || !entityPath) return false;
+    let capabilities;
+    try {
+      capabilities = assertCourseCapability(
+        "canMove",
+        drag.courseKey,
+        "A reorganização deste curso não está disponível."
+      );
+    } catch (error) {
+      state.entityMutationError = error instanceof Error
+        ? error.message
+        : "A reorganização deste curso não está disponível.";
+      render({ preserveState: true });
+      return false;
+    }
+    const workspaceRef = capabilities.workspaceRef;
     state.entityMutationSaving = true;
+    state.entityMutationError = "";
     render({ preserveState: true });
     try {
       const targetParentPath = entityPath.length === 1 ? null : entityPath.slice(0, -1);
@@ -2404,6 +3064,7 @@ export function createLessonEditorApp({
           });
         }
       } else {
+        await assertNoContextualAuthoringPending(drag.courseKey);
         await moveIntegratedEntity({
           ...contextualAuthoring,
           storage,
@@ -2423,7 +3084,7 @@ export function createLessonEditorApp({
       applySelectionByKeys(nextProject, state.selection);
       syncAssistDraft();
     } catch (error) {
-      globalThis.alert?.(error instanceof Error ? error.message : "Não foi possível mover.");
+      state.entityMutationError = error instanceof Error ? error.message : "Não foi possível mover.";
     } finally {
       state.entityMutationSaving = false;
       render({ preserveState: true });
@@ -2470,6 +3131,22 @@ export function createLessonEditorApp({
       return;
     }
     if (!descriptor && !course && !workspaceRef) return;
+    try {
+      if (workspaceRef) {
+        assertCourseCapability(
+          "canDeleteCourse",
+          resolvedCourseKey,
+          ["pending", "conflict"].includes(workspaceRef.authoringStatus)
+            ? "Resolva ou sincronize as edições textuais antes de excluir este workspace."
+            : "A exclusão deste workspace não está disponível."
+        );
+      } else {
+        await assertNoContextualAuthoringPending(resolvedCourseKey);
+      }
+    } catch (error) {
+      globalThis.alert?.(error instanceof Error ? error.message : "O curso possui edições pendentes.");
+      return;
+    }
     const courseTitle = descriptor?.title || course?.title || "Curso";
     let confirmationMessage;
     try {
@@ -2571,6 +3248,25 @@ export function createLessonEditorApp({
   async function removeHomeTrailItem(trailItemId) {
     const item = homeTrailsController?.item(trailItemId);
     if (!item?.canRemove || state.homeOrganization.busy) return;
+    const courseRef = homeTrailsController.courseRefs.get(trailItemId);
+    try {
+      if (["pending", "conflict"].includes(courseRef?.authoringStatus)) {
+        throw new Error(
+          "Sincronize ou resolva primeiro as edições textuais pendentes antes de retirar o curso."
+        );
+      }
+      if (!courseRef?.workspaceId) {
+        await assertNoContextualAuthoringPending(
+          courseRef?.courseKey || item.courseKey || item.courseId
+        );
+      }
+    } catch (error) {
+      state.homeOrganization.error = error instanceof Error
+        ? error.message
+        : "Há edições textuais pendentes neste curso.";
+      render({ preserveState: true });
+      return;
+    }
     if (typeof globalThis.confirm === "function" &&
         !globalThis.confirm(`Retirar "${item.title}" de Trilhas?`)) return;
     state.homeOrganization.busy = true;
@@ -2620,13 +3316,27 @@ export function createLessonEditorApp({
               target.microsequenceKey
             )?.cards || []).find((card) => card.id === target.cardKey);
     if (!course || !entity) return;
+    let capabilities;
+    try {
+      capabilities = assertCourseCapability(
+        "canDeleteEntity",
+        target.courseKey,
+        "A exclusão desta parte não está disponível."
+      );
+    } catch (error) {
+      state.entityMutationError = error instanceof Error
+        ? error.message
+        : "A exclusão desta parte não está disponível.";
+      render({ preserveState: true });
+      return;
+    }
     if (
       typeof globalThis.confirm === "function" &&
       !globalThis.confirm(`Excluir "${entity.title || "Parte"}" e todo o seu conteúdo?`)
     ) return;
     state.entityMutationSaving = true;
     try {
-      const workspaceRef = workspaceCourseRef(target.courseKey);
+      const workspaceRef = capabilities.workspaceRef;
       const entityPath = [
         target.courseKey,
         target.moduleKey,
@@ -2651,6 +3361,7 @@ export function createLessonEditorApp({
         await refreshHomeTrails();
       } else {
         if (!contextualAuthoringIsAvailable()) throw new Error("A exclusão precisa de conexão.");
+        await assertNoContextualAuthoringPending(target.courseKey);
         await deleteIntegratedEntity({
           ...contextualAuthoring,
           storage,
@@ -3474,7 +4185,11 @@ export function createLessonEditorApp({
       return;
     }
     try {
-      assertCourseAuthoringAllowed(target.courseKey);
+      assertCourseCapability(
+        "canEditMetadata",
+        target.courseKey,
+        "A edição de títulos e descrições não está disponível para este curso."
+      );
     } catch (error) {
       state.entityMutationError = error instanceof Error ? error.message : "Este conteúdo não pode ser alterado.";
       render({ preserveState: true });
@@ -3524,24 +4239,83 @@ export function createLessonEditorApp({
     return { context, assistance };
   }
 
-  function setEntityMode(level, requestedMode) {
+  function currentStructureEditorTarget(level) {
+    const context = getRenderContext();
+    const selection = state.selection || {};
+    if (level === "course" && context.course) {
+      return { level, courseKey: selection.courseKey };
+    }
+    if (level === "module" && context.moduleValue) {
+      return {
+        level,
+        courseKey: selection.courseKey,
+        moduleKey: selection.moduleKey
+      };
+    }
+    if (level === "lesson" && context.lesson) {
+      return {
+        level,
+        courseKey: selection.courseKey,
+        moduleKey: selection.moduleKey,
+        lessonKey: selection.lessonKey
+      };
+    }
+    if (level === "microsequence" && context.microsequence) {
+      return {
+        level,
+        courseKey: selection.courseKey,
+        moduleKey: selection.moduleKey,
+        lessonKey: selection.lessonKey,
+        microsequenceKey: selection.microsequenceKey
+      };
+    }
+    return null;
+  }
+
+  function modeCapability(level, mode) {
+    if (mode === "edit") return level === "card" ? "canEditCards" : "canEditMetadata";
+    if (mode === "ai") return level === "card" ? "canUseCardAi" : "canUseBottomUpAi";
+    return "";
+  }
+
+  function modeDeniedMessage(level, mode) {
+    if (mode === "ai" && level !== "card" && workspaceCourseRef(state.selection?.courseKey)) {
+      return "A assistência por IA neste nível ainda não está disponível para cursos de workspace.";
+    }
+    if (mode === "ai") return "A assistência por IA não está disponível para este curso.";
+    return "Este curso não pode ser alterado nesta conta.";
+  }
+
+  function setEntityMode(level, requestedMode, { preserveState = true } = {}) {
     const allowAi = level === "lesson" || level === "microsequence" || level === "card";
     const mode = requestedMode === "edit" || (requestedMode === "ai" && allowAi)
       ? requestedMode
       : "view";
     if (mode !== "view") {
       try {
-        assertCourseAuthoringAllowed(state.selection.courseKey);
+        assertCourseCapability(
+          modeCapability(level, mode),
+          state.selection.courseKey,
+          modeDeniedMessage(level, mode)
+        );
       } catch (error) {
-        state.bottomUpDraft.errorMessage = error.message;
-        render({ preserveState: true });
-        return;
+        state.entityModes[level] = "view";
+        state.inlineStructureEditor = null;
+        state.entityMutationError = error instanceof Error
+          ? error.message
+          : modeDeniedMessage(level, mode);
+        if (level === "card") state.microsequenceMode = "play";
+        render({ preserveState });
+        return false;
       }
     }
     state.entityModes[level] = mode;
+    state.entityMutationError = "";
     if (level !== "card") {
-      state.inlineStructureEditor = null;
-      state.entityMutationError = "";
+      state.inlineStructureEditor = mode === "edit"
+        ? currentStructureEditorTarget(level)
+        : null;
+      if (state.inlineStructureEditor) queueAuthoringFocus("inline-structure-title");
     }
     if (level === "card") {
       state.microsequenceMode = mode === "view" ? "play" : "assist";
@@ -3550,8 +4324,18 @@ export function createLessonEditorApp({
       state.assistDraft.manualEditError = "";
       state.assistDraft.manualDraft = null;
       state.assistDraft.assistance = createCardAssistanceUiState(state.selection);
-      render({ preserveState: true });
-      return;
+      if (mode === "edit") {
+        const context = getRenderContext();
+        if (context.card) {
+          state.assistDraft.assistance = toggleCardAssistanceWholeCard(
+            state.assistDraft.assistance,
+            { selection: state.selection, card: context.card, cards: context.cards }
+          );
+          queueAuthoringFocus("manual-first-field");
+        }
+      }
+      render({ preserveState });
+      return true;
     }
     if (mode === "ai") {
       const context = getBottomUpUiContext(level);
@@ -3564,15 +4348,45 @@ export function createLessonEditorApp({
         errorMessage: ""
       };
     }
-    render({ preserveState: true });
+    render({ preserveState });
+    return true;
   }
 
-  function markBottomUpSyncPending(localState, microsequenceIds, reference = state.selection) {
+  function markBottomUpSyncPending(
+    localState,
+    microsequenceIds,
+    reference = state.selection,
+    baseLesson = null
+  ) {
     let nextLocalState = localState;
     for (const microsequenceKey of microsequenceIds) {
+      const basePosition = (baseLesson?.microsequences || [])
+        .findIndex((item) => item.id === microsequenceKey);
+      const baseMicrosequence = basePosition >= 0
+        ? baseLesson.microsequences[basePosition]
+        : null;
       nextLocalState = markContextualAuthoringSyncPending(
         nextLocalState,
-        { ...reference, microsequenceKey }
+        {
+          ...reference,
+          microsequenceKey,
+          ...(baseMicrosequence
+            ? {
+                baseCards: structuredClone(baseMicrosequence.cards || []),
+                baseMetadata: {
+                  title: baseMicrosequence.title || "",
+                  goal: baseMicrosequence.goal || "",
+                  role: baseMicrosequence.role || "",
+                  branchOf: baseMicrosequence.branchOf || null,
+                  dependsOn: structuredClone(baseMicrosequence.dependsOn || []),
+                  covers: structuredClone(baseMicrosequence.covers || []),
+                  checks: structuredClone(baseMicrosequence.checks || []),
+                  errors: structuredClone(baseMicrosequence.errors || [])
+                },
+                basePosition
+              }
+            : {})
+        }
       );
     }
     return nextLocalState;
@@ -3647,7 +4461,11 @@ export function createLessonEditorApp({
     state.bottomUpDraft.errorMessage = "";
     render({ preserveState: true });
     try {
-      assertCourseAuthoringAllowed(state.selection.courseKey);
+      assertCourseCapability(
+        "canUseBottomUpAi",
+        state.selection.courseKey,
+        modeDeniedMessage(level, "ai")
+      );
       if (
         typeof storage.flush !== "function" ||
         typeof storage.createLocalCourseDraftGuard !== "function" ||
@@ -3689,6 +4507,24 @@ export function createLessonEditorApp({
         requestedSelection.moduleKey,
         requestedSelection.lessonKey
       );
+      const lessonWithCanonicalMicrosequenceDefaults = (lesson) => {
+        const normalized = structuredClone(lesson);
+        normalized.microsequences = (normalized.microsequences || []).map((microsequence) => ({
+          ...microsequence,
+          branchOf: microsequence.branchOf || null,
+          errors: structuredClone(microsequence.errors || [])
+        }));
+        return normalized;
+      };
+      if (canonicalStringify(lessonWithCanonicalMicrosequenceDefaults(beforeLesson)) ===
+          canonicalStringify(lessonWithCanonicalMicrosequenceDefaults(afterLesson))) {
+        state.bottomUpDraft.promptText = "";
+        state.bottomUpDraft.composerOpen = false;
+        state.bottomUpDraft.assistance = createBottomUpAssistanceUiState(
+          getBottomUpUiContext(level)
+        );
+        return;
+      }
       const changedIds = resolveBottomUpAffectedMicrosequenceIds(
         result,
         beforeLesson,
@@ -3711,7 +4547,8 @@ export function createLessonEditorApp({
       nextLocalState = markBottomUpSyncPending(
         nextLocalState,
         changedIds,
-        requestedSelection
+        requestedSelection,
+        beforeLesson
       );
       const saved = await storage.saveProjectWithCardAssistanceState(
         result.projectDocument,
@@ -3726,6 +4563,15 @@ export function createLessonEditorApp({
       state.assistDraft.localState = normalizeCardAssistanceLocalState(saved.localState || {});
       state.assistDraft.localStateCourseKey = requestedSelection.courseKey;
       restoreSelectionInsideLesson(requestedSelection);
+      invalidateRuntimeExerciseState();
+      await persistProgressReset(
+        `lesson:${requestedSelection.courseKey}:${requestedSelection.lessonKey}`,
+        () => resetLessonProgress(
+          requestedSelection.courseKey,
+          requestedSelection.moduleKey,
+          requestedSelection.lessonKey
+        )
+      );
       state.bottomUpDraft.promptText = "";
       state.bottomUpDraft.composerOpen = false;
       state.bottomUpDraft.assistance = createBottomUpAssistanceUiState(
@@ -3750,6 +4596,12 @@ export function createLessonEditorApp({
   async function undoBottomUpAssistance() {
     const undo = state.assistDraft.localState.undo;
     if (!undo || undo.kind !== "lesson" || state.bottomUpDraft.isSubmitting) return;
+    if (workspaceCourseRef(undo.courseKey)) {
+      state.bottomUpDraft.errorMessage =
+        "O desfazer local não pertence a esta composição de workspace.";
+      render({ preserveState: true });
+      return;
+    }
     state.bottomUpDraft.isSubmitting = true;
     state.bottomUpDraft.errorMessage = "";
     try {
@@ -3760,6 +4612,7 @@ export function createLessonEditorApp({
         (lesson) => lesson.id === undo.lessonKey
       );
       if (lessonIndex < 0) throw new Error("A lição da última alteração não existe mais.");
+      const beforeUndoLesson = structuredClone(moduleValue.lessons[lessonIndex]);
       moduleValue.lessons[lessonIndex] = applyContextualAuthoringInversePatch(
         moduleValue.lessons[lessonIndex],
         undo.inversePatch
@@ -3768,7 +4621,8 @@ export function createLessonEditorApp({
       nextLocalState = markBottomUpSyncPending(
         nextLocalState,
         undo.affectedMicrosequenceIds,
-        undo
+        undo,
+        beforeUndoLesson
       );
       const saved = await storage.saveProjectWithCardAssistanceState(nextProject, {
         courseIdentity: undo.courseKey,
@@ -3780,6 +4634,11 @@ export function createLessonEditorApp({
       state.assistDraft.localState = normalizeCardAssistanceLocalState(saved.localState || {});
       state.assistDraft.localStateCourseKey = undo.courseKey;
       restoreSelectionInsideLesson(undo);
+      invalidateRuntimeExerciseState();
+      await persistProgressReset(
+        `lesson:${undo.courseKey}:${undo.lessonKey}`,
+        () => resetLessonProgress(undo.courseKey, undo.moduleKey, undo.lessonKey)
+      );
       void attemptContextualAuthoringSync();
     } catch (error) {
       if (error?.code === "local_course_draft_changed") setProject(storage.loadProject());
@@ -3815,11 +4674,14 @@ export function createLessonEditorApp({
     state.entityMutationSaving = true;
     state.entityMutationError = "";
     try {
-      const workspaceRef = workspaceCourseRef(target.courseKey);
-      if (!workspaceRef) assertCourseAuthoringAllowed(target.courseKey);
-      else if (!workspaceAuthoringAvailable(target.courseKey)) {
-        throw new Error("A edição deste curso de workspace não está disponível.");
-      }
+      const capabilities = assertCourseCapability(
+        target.level === "card" ? "canEditCards" : "canEditMetadata",
+        target.courseKey,
+        target.level === "card"
+          ? "A edição deste card não está disponível para este curso."
+          : "A edição de títulos e descrições não está disponível para este curso."
+      );
+      const workspaceRef = capabilities.workspaceRef;
       const guard = workspaceRef ? null : requireCardAssistancePersistenceGuard(
         await storage.createLocalCourseDraftGuard(target.courseKey),
         target.courseKey
@@ -3827,7 +4689,11 @@ export function createLessonEditorApp({
       let nextProject;
       let entityPath;
       let metadata;
+      let baseMetadata;
+      let baseCards = null;
       if (level === "course") {
+        const course = findCourse(state.project, target.courseKey);
+        baseMetadata = { title: course?.title || "", goal: course?.goal || "" };
         nextProject = updateCourseDocument(state.project, {
           courseKey: target.courseKey,
           title,
@@ -3836,6 +4702,8 @@ export function createLessonEditorApp({
         entityPath = [target.courseKey];
         metadata = { title, goal: description };
       } else if (level === "module") {
+        const moduleValue = findModule(state.project, target.courseKey, target.moduleKey);
+        baseMetadata = { title: moduleValue?.title || "", goal: moduleValue?.goal || "" };
         nextProject = updateModuleDocument(state.project, {
           courseKey: target.courseKey,
           moduleKey: target.moduleKey,
@@ -3845,6 +4713,13 @@ export function createLessonEditorApp({
         entityPath = [target.courseKey, target.moduleKey];
         metadata = { title, goal: description };
       } else if (level === "lesson") {
+        const lesson = findLesson(
+          state.project,
+          target.courseKey,
+          target.moduleKey,
+          target.lessonKey
+        );
+        baseMetadata = { title: lesson?.title || "", goal: lesson?.goal || "" };
         nextProject = updateLessonDocument(state.project, {
           courseKey: target.courseKey,
           moduleKey: target.moduleKey,
@@ -3867,6 +4742,10 @@ export function createLessonEditorApp({
           target.microsequenceKey
         );
         if (!microsequence) throw new Error("A microssequência não existe mais.");
+        baseMetadata = {
+          title: microsequence.title || "",
+          goal: microsequence.goal || ""
+        };
         nextProject = updateMicrosequenceDocument(state.project, {
           courseKey: target.courseKey,
           moduleKey: target.moduleKey,
@@ -3885,14 +4764,7 @@ export function createLessonEditorApp({
           target.lessonKey,
           target.microsequenceKey
         ];
-        metadata = {
-          title,
-          goal: description,
-          role: microsequence.role,
-          dependsOn: microsequence.dependsOn || [],
-          covers: microsequence.covers || [],
-          checks: microsequence.checks || []
-        };
+        metadata = { title, goal: description };
       } else if (level === "card") {
         const microsequence = findMicrosequence(
           state.project,
@@ -3905,6 +4777,7 @@ export function createLessonEditorApp({
           String(item?.id || item?.key || "") === target.cardKey
         );
         if (!card) throw new Error("O card não existe mais.");
+        baseCards = structuredClone(microsequence.cards || []);
         nextProject = updateCardDocument(state.project, {
           courseKey: target.courseKey,
           moduleKey: target.moduleKey,
@@ -3924,47 +4797,150 @@ export function createLessonEditorApp({
       } else {
         throw new Error("O nível de edição não é válido.");
       }
+      const nextCards = level === "card"
+        ? structuredClone(findMicrosequence(
+            nextProject,
+            target.courseKey,
+            target.moduleKey,
+            target.lessonKey,
+            target.microsequenceKey
+          )?.cards || [])
+        : null;
+      if (level === "card"
+        ? canonicalStringify(baseCards) === canonicalStringify(nextCards)
+        : canonicalStringify(baseMetadata) === canonicalStringify(metadata)) {
+        state.inlineStructureEditor = null;
+        return;
+      }
       if (workspaceRef) {
-        const saved = await workspaceCourseHook("saveMetadata")({
-          courseRef: workspaceRef,
-          entityType: level,
-          entityPath,
-          metadata
-        });
-        if (Number.isSafeInteger(Number(saved?.revision))) {
-          homeTrailsController.updateCourseRef(workspaceRef.trailItemId, {
-            revision: Number(saved.revision)
-          });
-        }
-        setProject(nextProject);
-        const updatedCourse = findCourse(nextProject, target.courseKey);
-        if (updatedCourse) {
-          homeTrailsController.loadedCourses.set(
-            workspaceRef.trailItemId,
-            structuredClone(updatedCourse)
+        const draftCourse = structuredClone(findCourse(nextProject, target.courseKey));
+        const saved = level === "card"
+          ? await workspaceCourseHook("saveMicrosequenceCards")({
+              courseRef: workspaceRef,
+              draftCourse,
+              microsequencePath: entityPath.slice(0, 4),
+              baseCards,
+              cards: nextCards
+            })
+          : await workspaceCourseHook("saveMetadata")({
+              courseRef: workspaceRef,
+              draftCourse,
+              entityType: level,
+              entityPath,
+              baseMetadata,
+              metadata
+            });
+        updateWorkspaceAuthoringReference(workspaceRef, saved);
+        if (saved?.pending === true) {
+          state.entityMutationError = saved.errorMessage || (
+            saved.conflict === true
+              ? "A edição foi salva neste dispositivo, mas precisa resolver um conflito antes de sincronizar."
+              : "A edição foi salva neste dispositivo e será sincronizada quando a conexão permitir."
           );
         }
-        await refreshHomeTrails();
+        const committedProject = applyWorkspaceAuthoringResult(
+          nextProject,
+          workspaceRef,
+          saved
+        );
+        setProject(committedProject);
+        applySelectionByKeys(committedProject, target);
+        if (level === "card") {
+          await persistProgressReset(
+            `card:${target.courseKey}:${target.cardKey}`,
+            () => resetCardProgress(
+              target.courseKey,
+              target.moduleKey,
+              target.lessonKey,
+              target.cardKey
+            )
+          );
+          invalidateRuntimeExerciseState();
+        }
+        if (saved?.pending !== true) await refreshHomeTrails();
       } else {
-        await storage.saveProject(nextProject, {
-          expectedLocalDraftRevision: guard.expectedRevision
-        });
+        if (level === "card") {
+          if (typeof storage.saveProjectWithCardAssistanceState !== "function") {
+            throw new Error("Não foi possível salvar a alteração neste dispositivo.");
+          }
+          const currentLocalState = state.assistDraft.localStateCourseKey === target.courseKey
+            ? state.assistDraft.localState
+            : await readCardAssistanceLocalState(target.courseKey);
+          const beforeMicrosequence = findMicrosequence(
+            state.project,
+            target.courseKey,
+            target.moduleKey,
+            target.lessonKey,
+            target.microsequenceKey
+          );
+          const lesson = findLesson(
+            state.project,
+            target.courseKey,
+            target.moduleKey,
+            target.lessonKey
+          );
+          const nextLocalState = markContextualAuthoringSyncPending(
+            setCardAssistanceUndo(currentLocalState, null), {
+            ...target,
+            textOnly: true,
+            baseCards,
+            baseMetadata: {
+              title: beforeMicrosequence?.title || "",
+              goal: beforeMicrosequence?.goal || "",
+              role: beforeMicrosequence?.role || "",
+              branchOf: beforeMicrosequence?.branchOf || null,
+              dependsOn: structuredClone(beforeMicrosequence?.dependsOn || []),
+              covers: structuredClone(beforeMicrosequence?.covers || []),
+              checks: structuredClone(beforeMicrosequence?.checks || []),
+              errors: structuredClone(beforeMicrosequence?.errors || [])
+            },
+            basePosition: Math.max(0, (lesson?.microsequences || [])
+              .findIndex((item) => item.id === target.microsequenceKey))
+            }
+          );
+          const saved = await storage.saveProjectWithCardAssistanceState(nextProject, {
+            courseIdentity: target.courseKey,
+            localState: nextLocalState,
+            expectedLocalDraftRevision: guard.expectedRevision
+          });
+          state.assistDraft.localState = normalizeCardAssistanceLocalState(saved.localState || {});
+          state.assistDraft.localStateCourseKey = target.courseKey;
+          await persistProgressReset(
+            `card:${target.courseKey}:${target.cardKey}`,
+            () => resetCardProgress(
+              target.courseKey,
+              target.moduleKey,
+              target.lessonKey,
+              target.cardKey
+            )
+          );
+          invalidateRuntimeExerciseState();
+        } else {
+          if (typeof storage.saveProjectWithCardAssistanceState !== "function") {
+            throw new Error("Não foi possível salvar a alteração neste dispositivo.");
+          }
+          const currentLocalState = state.assistDraft.localStateCourseKey === target.courseKey
+            ? state.assistDraft.localState
+            : await readCardAssistanceLocalState(target.courseKey);
+          const nextLocalState = markContextualAuthoringMetadataPending(
+            setCardAssistanceUndo(currentLocalState, null), {
+            entityType: level,
+            entityPath,
+            baseMetadata,
+            metadata
+            }
+          );
+          const saved = await storage.saveProjectWithCardAssistanceState(nextProject, {
+            courseIdentity: target.courseKey,
+            localState: nextLocalState,
+            expectedLocalDraftRevision: guard.expectedRevision
+          });
+          state.assistDraft.localState = normalizeCardAssistanceLocalState(saved.localState || {});
+          state.assistDraft.localStateCourseKey = target.courseKey;
+        }
         await storage.flush?.();
         setProject(nextProject);
-      }
-      if (!workspaceRef && contextualAuthoringIsAvailable()) {
-        const preservedSelection = { ...state.selection };
-        await saveIntegratedEntityMetadata({
-          ...contextualAuthoring,
-          storage,
-          courseKey: target.courseKey,
-          entityType: level,
-          entityPath,
-          metadata,
-          title: findCourse(state.project, target.courseKey)?.title
-        });
-        setProject(storage.loadProject());
-        applySelectionByKeys(state.project, preservedSelection);
+        void attemptContextualAuthoringSync();
       }
       state.inlineStructureEditor = null;
     } catch (error) {
@@ -4058,35 +5034,37 @@ export function createLessonEditorApp({
     const coursePermissionsById = Object.fromEntries(
       permissionCourses.map((course) => [
         course.id,
-        (() => {
-          const reference = workspaceCourseRef(course.id);
-          if (!reference) return resolveCourseUiPermissions(storage, course.id);
-          const canAuthorContent = reference.canEdit === true && workspaceAuthoringAvailable(course.id);
-          return {
-            role: canAuthorContent ? "author" : "learner",
-            canAuthorContent,
-            writeTarget: null,
-            canOrganizeSelection: true,
-            canRemoveSelection: false,
-            canDeleteCourse: reference.canDelete === true && Boolean(workspaceCourseHook("deleteCourse")),
-            canEdit: canAuthorContent,
-            canDelete: reference.canDelete === true && Boolean(workspaceCourseHook("deleteCourse"))
-          };
-        })()
+        courseEditorPermissions(course.id)
       ])
     );
     const currentCoursePermissions = context.course
-      ? coursePermissionsById[context.course.id] || resolveCourseUiPermissions(storage, context.course.id)
+      ? coursePermissionsById[context.course.id] || courseEditorPermissions(context.course.id)
       : {
           role: "learner",
           canAuthorContent: false,
+          canComment: false,
           writeTarget: null,
           canOrganizeSelection: false,
           canRemoveSelection: false,
           canDeleteCourse: false,
           canEdit: false,
-          canDelete: false
+          canDelete: false,
+          canEditMetadata: false,
+          canEditCards: false,
+          canUseCardAi: false,
+          canUseBottomUpAi: false,
+          canMove: false,
+          canDeleteEntity: false
         };
+    const currentWorkspaceAuthoring = context.course
+      ? workspaceAuthoringState(context.course.id)
+      : Object.freeze({
+          status: "",
+          pendingCount: 0,
+          errorMessage: "",
+          canKeepLocal: false,
+          canDiscardLocal: false
+        });
     if (rendersCardRuntime) {
       state.assistDraft.assistance = reconcileCardAssistanceUiState(
         state.assistDraft.assistance,
@@ -4152,6 +5130,12 @@ export function createLessonEditorApp({
                 [itemId, reference.courseKey]
               ))
             : {},
+          localAuthoringByCourseId: Object.fromEntries(
+            [...state.assistDraft.localAuthoringByCourseId.keys()].map((courseKey) => [
+              courseKey,
+              workspaceAuthoringState(courseKey)
+            ])
+          ),
           homeOrganization: state.homeOrganization,
           reviewItems: state.view === "courses" ? homeReviewItems() : [],
           progress: activeProgress(
@@ -4160,6 +5144,7 @@ export function createLessonEditorApp({
           entityModes: state.entityModes,
           entitySaving: state.entityMutationSaving,
           entityMutationError: state.entityMutationError,
+          workspaceAuthoring: currentWorkspaceAuthoring,
           inlineStructureEditor: state.inlineStructureEditor,
           bottomUpAssistance: bottomUpLevel
             ? {
@@ -4173,6 +5158,7 @@ export function createLessonEditorApp({
                   state.entityMutationError,
                 ready: bottomUpReady,
                 canUndo: Boolean(
+                  !workspaceCourseRef(state.selection.courseKey) &&
                   state.assistDraft.localState.undo?.kind === "lesson" &&
                   state.assistDraft.localState.undo.courseKey === state.selection.courseKey &&
                   state.assistDraft.localState.undo.lessonKey === state.selection.lessonKey
@@ -4199,6 +5185,7 @@ export function createLessonEditorApp({
           ),
           cardMarkedForReview: currentCardIsMarkedForReview(),
           canUndoCardEdit: Boolean(
+            !workspaceCourseRef(state.selection.courseKey) &&
             state.assistDraft.localState.undo?.kind === "microsequence" &&
             state.assistDraft.localState.undo.courseKey === state.selection.courseKey &&
             state.assistDraft.localState.undo.microsequenceKey === state.selection.microsequenceKey
@@ -4641,6 +5628,11 @@ export function createLessonEditorApp({
           node.getAttribute("data-entity-level"),
           node.getAttribute("data-entity-mode")
         );
+      });
+    });
+    root.querySelectorAll("[data-action='resolve-workspace-authoring-conflict']").forEach((node) => {
+      node.addEventListener("click", () => {
+        void resolveWorkspaceAuthoringConflict(node.getAttribute("data-resolution"));
       });
     });
     root.querySelectorAll("[data-action='select-inline-structure-entity']").forEach((node) => {
@@ -5508,14 +6500,17 @@ export function createLessonEditorApp({
       syncCardStripScroller({ keepActiveCardInView: true });
     });
     window.addEventListener("online", () => {
-      void attemptContextualAuthoringSync();
+      void refreshHomeTrails().finally(() => attemptAllContextualAuthoringSync());
+    });
+    window.addEventListener("offline", () => {
+      void refreshHomeTrails();
     });
   }
   render({ preserveState: false });
   void refreshHomeTrails({ preserveSelection: false });
   void loadCardAssistanceLocalState(state.selection.courseKey).then(() => {
     if (globalThis.navigator?.onLine !== false) {
-      return attemptContextualAuthoringSync();
+      return attemptAllContextualAuthoringSync();
     }
     return undefined;
   });
@@ -5571,16 +6566,17 @@ export function createLessonEditorApp({
         )
       );
     },
+    syncContextualAuthoring() {
+      return attemptAllContextualAuthoringSync();
+    },
     openCardPath(entityPath, { edit = false } = {}) {
       const selection = resolveExactCardSelection(state.project, entityPath);
       if (!selection) return false;
       applySelection(selection);
       if (edit) {
-        openCardAssistanceMode(selection.microsequenceKey, selection.cardIndex);
-      } else {
-        openMicrosequenceScreen(selection.microsequenceKey, selection.cardIndex, "play");
+        return openCardAssistanceMode(selection.microsequenceKey, selection.cardIndex) === true;
       }
-      return true;
+      return openMicrosequenceScreen(selection.microsequenceKey, selection.cardIndex, "play") === true;
     }
   };
 }

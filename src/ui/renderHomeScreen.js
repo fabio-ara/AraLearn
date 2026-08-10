@@ -127,7 +127,8 @@ function buildHomeCoursePreviews(
   trailSnapshot = null,
   progressTrailItemId = "",
   loadedTrailItemIds = [],
-  courseKeyByTrailItemId = {}
+  courseKeyByTrailItemId = {},
+  localAuthoringByCourseId = {}
 ) {
   const courses = Array.isArray(project?.courses) ? project.courses : [];
   const loadedWorkspaceItems = new Set(loadedTrailItemIds);
@@ -148,6 +149,8 @@ function buildHomeCoursePreviews(
         ? countCompletedCardsInCourse(course, progress)
         : item.completedCardCount;
       const totalCount = course ? countCardsInCourse(course) : item.cardCount;
+      const localAuthoring = localAuthoringByCourseId?.[identity] ||
+        localAuthoringByCourseId?.[entityId(course)] || null;
       return {
         id: course ? entityId(course) : identity,
         trailItemId: item.itemId,
@@ -161,16 +164,22 @@ function buildHomeCoursePreviews(
         completedCount,
         totalCount,
         permissions: {
-          role: item.canEdit ? "owner" : "learner",
-          canEdit: item.canEdit,
+          role: item.canEdit || item.canEditOffline ? "owner" : "learner",
+          canEdit: item.canEdit || item.canEditOffline,
           canDelete: item.canDelete,
           canRemove: item.canRemove,
-          canAuthorContent: item.canEdit,
+          canAuthorContent: item.canEdit || item.canEditOffline,
           canDeleteCourse: item.canDelete,
           writeTarget: item.origin === "catalog" ? "catalog" : "private"
         },
         origin: item.origin,
         kind: item.kind,
+        authoringStatus: item.authoringStatus || localAuthoring?.status || "",
+        authoringPendingCount: Number(item.authoringPendingCount) ||
+          Number(localAuthoring?.pendingCount) || 0,
+        authoringErrorMessage: String(
+          item.authoringErrorMessage || localAuthoring?.errorMessage || ""
+        ),
         loaded: Boolean(course),
         progressPercent: totalCount
           ? Math.max(0, Math.min(100, (completedCount / totalCount) * 100))
@@ -405,6 +414,11 @@ function renderCoursePreview(course, reviewItems = [], {
 } = {}) {
   const plan = course.kind === "plan";
   const editing = inlineCourseTargetMatches(editorSupport, course);
+  const authoringStatus = course.authoringStatus === "conflict"
+    ? course.authoringErrorMessage || "A edição offline precisa resolver um conflito."
+    : course.authoringStatus === "pending"
+      ? "Há uma edição salva neste dispositivo aguardando sincronização."
+      : "";
   return (
     '<article class="home-course-selector-preview' + (editing ? " is-editing" : "") + '" data-course-key="' +
     escapeHtml(course.id) +
@@ -430,6 +444,10 @@ function renderCoursePreview(course, reviewItems = [], {
           editing,
           multiline: true
         })
+      : "") +
+    (authoringStatus
+      ? '<p class="home-course-authoring-status is-' + escapeHtml(course.authoringStatus) +
+        '" role="status">' + escapeHtml(authoringStatus) + "</p>"
       : "") +
     renderHomeCourseMeta(course) +
     renderCourseGroupChooser(course, groups, currentGroupId, organization) +
@@ -572,7 +590,8 @@ function renderCoursesPane({ project, progress, editorSupport }) {
     snapshot,
     selectedTrailItemId,
     editorSupport.loadedHomeTrailItemIds,
-    editorSupport.courseKeyByHomeTrailItemId
+    editorSupport.courseKeyByHomeTrailItemId,
+    editorSupport.localAuthoringByCourseId
   );
   if (!snapshot) {
     const message = editorSupport.homeOrganization?.error ||

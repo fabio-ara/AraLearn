@@ -70,6 +70,7 @@ const VISIBLE_MANUAL_PATHS = Object.freeze({
   formula: Object.freeze({
     main: [
       "prompt",
+      "accessibleText",
       "expression.children[0].value",
       "expression.children[1].value",
       "expression.children[2].value"

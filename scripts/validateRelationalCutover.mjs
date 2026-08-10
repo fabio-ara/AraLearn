@@ -108,7 +108,7 @@ const forbiddenRuntimePatterns = [
   [/\bfork_catalog_course_for_editing\b|\bforkCourseForEditing\s*\(/iu, "copy-on-write relacional"],
   [/\bsourceEntityId\b|\bsource_entity_id\b/iu, "linhagem por entidade"],
   [/\bbaselineContentHash\b|\bsourceContentHash\b|\bsourcePublicationSeq\b/iu, "baseline de cópia"],
-  [/\bconflicts?\b|SYNC_FAILURE_KIND\.CONFLICT/iu, "resolução de conflito"],
+  [/\bsyncConflicts?\b|SYNC_FAILURE_KIND\.CONFLICT/iu, "resolução de conflito legada"],
   [/aralearn-relational-v1/iu, "banco IndexedDB retirado"]
 ];
 

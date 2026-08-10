@@ -1,4 +1,5 @@
 import { validateCard } from "../domain/cards.js";
+import { buildResourceGapModel } from "../core/resourceGaps.js";
 import {
   listCardMainResourceFieldNames,
   listCardResponseFieldNames
@@ -28,6 +29,7 @@ const PROTECTED_FIELD_NAMES = new Set([
   "reactionType",
   "entryType",
   "parentId",
+  "practice",
   "groupId",
   "from",
   "to",
@@ -55,7 +57,7 @@ const EDITABLE_FIELDS_BY_RESOURCE = Object.freeze({
   relation_map: ["prompt", "leftSet", "rightSet", "relations", "pairList", "relationTable"],
   matrix: ["prompt", "name", "values", "sequence"],
   plane: ["prompt", "result"],
-  formula: ["prompt", "expression"],
+  formula: ["prompt", "accessibleText", "expression"],
   chart: ["prompt", "xAxis", "yAxis", "series"],
   sequence: ["prompt", "items"],
   annotated_text: ["prompt", "segments", "annotations"],
@@ -73,11 +75,13 @@ const EDITABLE_PRIMITIVE_ARRAY_FIELDS = new Set([
 ]);
 
 const EDITABLE_LEAF_FIELD_NAMES = new Set([
+  "accessibleText",
   "title",
   "text",
   "value",
   "prompt",
   "question",
+  "feedback",
   "code",
   "after",
   "label",
@@ -228,13 +232,14 @@ function listFlowBranchLabelLeaves(structure, basePath = "structure") {
       visitNode(item, `${path}[${index}]`);
     });
   };
-  const addBinary = (node, path) => {
+  const addBinary = (node, path, { ifChainCase = false } = {}) => {
+    if (!ifChainCase && !FLOW_BINARY_BRANCH_KINDS.has(node?.kind)) return;
     add(`${path}.branchLabels.yes`, text(node?.branchLabels?.yes) || "Sim");
     add(`${path}.branchLabels.no`, text(node?.branchLabels?.no) || "Não");
   };
   const visitNode = (node, path) => {
     if (!node || typeof node !== "object" || Array.isArray(node)) return;
-    if (FLOW_BINARY_BRANCH_KINDS.has(node.kind)) addBinary(node, path);
+    addBinary(node, path);
     if (node.kind === "switch_case") {
       add(
         `${path}.branchLabels.default`,
@@ -244,7 +249,7 @@ function listFlowBranchLabelLeaves(structure, basePath = "structure") {
     if (node.kind === "if_chain") {
       (Array.isArray(node.cases) ? node.cases : []).forEach((item, index) => {
         const casePath = `${path}.cases[${index}]`;
-        addBinary(item, casePath);
+        addBinary(item, casePath, { ifChainCase: true });
         visitList(item?.thenBranch, `${casePath}.thenBranch`);
       });
     }
@@ -263,12 +268,33 @@ function listFlowBranchLabelLeaves(structure, basePath = "structure") {
 
 function listResolvedEditableLeaves(resolved) {
   const leaves = listEditableLeaves(resolved.value, resolved.editableFields);
-  const isFlow = resolved.value?.resource === "flow" || resolved.value?.kind === "flow";
-  if (!isFlow || !resolved.value?.structure) return leaves;
   const byPath = new Map(leaves.map((leaf) => [leaf.path, leaf]));
-  listFlowBranchLabelLeaves(resolved.value.structure).forEach((leaf) => {
-    if (!byPath.has(leaf.path)) byPath.set(leaf.path, leaf);
-  });
+  if (resolved.editableFields?.has("options") && Array.isArray(resolved.value?.options)) {
+    resolved.value.options.forEach((option, index) => {
+      if (!option || typeof option !== "object" || Array.isArray(option)) return;
+      const path = `options[${index}].feedback`;
+      const existing = byPath.get(path);
+      if (existing) {
+        byPath.set(path, { ...existing, optional: true });
+        return;
+      }
+      byPath.set(path, {
+        path,
+        value: "",
+        valueType: "string",
+        synthetic: true,
+        optional: true
+      });
+    });
+  }
+  const isFlow = (
+    resolved.value?.resource === "flow" || resolved.value?.kind === "flow"
+  ) && resolved.editableFields?.has("structure");
+  if (isFlow && resolved.value?.structure) {
+    listFlowBranchLabelLeaves(resolved.value.structure).forEach((leaf) => {
+      if (!byPath.has(leaf.path)) byPath.set(leaf.path, leaf);
+    });
+  }
   return [...byPath.values()];
 }
 
@@ -308,6 +334,36 @@ function writePath(target, path, rawValue, { createMissing = false } = {}) {
   parent[last] = String(rawValue ?? "");
 }
 
+function deletePath(target, path) {
+  const segments = parsePath(path);
+  if (!segments.length) return;
+  const last = segments.pop();
+  const parent = segments.reduce((value, segment) => value?.[segment], target);
+  if (!parent || typeof parent !== "object") return;
+  delete parent[last];
+}
+
+function gapTextSegments(value) {
+  return String(value ?? "")
+    .split(/(\{gap:[^}]+\}|\[\[[\s\S]*?\]\])/gu)
+    .filter((_part, index) => index % 2 === 0);
+}
+
+function preservesGapTokenStructure(left, right) {
+  const leftTokens = sourceGapTokens(left);
+  const rightTokens = sourceGapTokens(right);
+  if (
+    leftTokens.length !== rightTokens.length ||
+    !leftTokens.every((token, index) => token === rightTokens[index])
+  ) return false;
+  if (!leftTokens.length) return true;
+
+  const leftSegments = gapTextSegments(left);
+  const rightSegments = gapTextSegments(right);
+  return leftSegments.length === rightSegments.length &&
+    leftSegments.every((segment, index) => !segment.trim() || rightSegments[index]?.trim());
+}
+
 export function listManualCardEditablePaths(card = {}, targetId = "card") {
   const resolved = resolveTarget(card, targetId);
   if (!resolved) return [];
@@ -340,6 +396,9 @@ export function applyManualCardEdit(card = {}, targetId = "card", values = {}) {
 
   const editableLeaves = listResolvedEditableLeaves(resolved);
   const allowedPaths = new Map(editableLeaves.map((field) => [field.path, field]));
+  const resourceGapPaths = new Set(
+    buildResourceGapModel(resolved.value).fields.map((field) => field.path)
+  );
   const pathValues = values?.pathValues && typeof values.pathValues === "object"
     ? values.pathValues
     : resolved.collection === "card" && Object.hasOwn(values || {}, "title")
@@ -350,11 +409,27 @@ export function applyManualCardEdit(card = {}, targetId = "card", values = {}) {
     if (!editableLeaf || PROTECTED_FIELD_NAMES.has(topLevelField(path))) return;
     const currentValue = readPath(resolved.value, path);
     if (currentValue === undefined && !editableLeaf.synthetic) return;
+    const preservesGapStructure = resourceGapPaths.has(path) || (
+      path === "accessibleText" &&
+      (resolved.value?.resource === "formula" || resolved.value?.kind === "formula")
+    );
+    if (
+      text(nextCard.exercise) === "gap" &&
+      preservesGapStructure &&
+      !preservesGapTokenStructure(currentValue, value) &&
+      (sourceGapTokens(currentValue).length || sourceGapTokens(value).length)
+    ) {
+      throw new Error("A edição visual não pode alterar a estrutura das lacunas de prática.");
+    }
     if (
       currentValue === undefined &&
       editableLeaf.synthetic &&
       String(value ?? "") === String(editableLeaf.value ?? "")
     ) return;
+    if (editableLeaf.optional && !String(value ?? "").trim()) {
+      deletePath(resolved.value, path);
+      return;
+    }
     writePath(resolved.value, path, value, {
       createMissing: editableLeaf.synthetic === true
     });
@@ -370,25 +445,64 @@ export function applyManualCardEdit(card = {}, targetId = "card", values = {}) {
   return validation.value;
 }
 
-function serializeEditableNode(node) {
-  if (node.nodeType === Node.TEXT_NODE) return node.data;
-  if (!(node instanceof Element)) return "";
-  if (node.dataset.manualGapToken) return node.dataset.manualGapToken;
-  if (node.tagName === "BR") return "\n";
-  const value = [...node.childNodes].map(serializeEditableNode).join("");
-  if (node.tagName === "STRONG") return `**${value}**`;
-  if (node.tagName === "EM") return `*${value}*`;
-  if (node.tagName === "CODE" && node.dataset.manualMarkdownCode === "true") {
+function safeMarkdownLinkHref(value) {
+  const href = String(value ?? "").trim();
+  const hasControlCharacter = [...href].some((character) => {
+    const codePoint = character.codePointAt(0);
+    return codePoint <= 31 || codePoint === 127;
+  });
+  if (!href || href.length > 2048 || hasControlCharacter) return "";
+  const explicitScheme = href.match(/^([a-z][a-z\d+.-]*):/iu)?.[1]?.toLowerCase() || "";
+  if (explicitScheme && !["http", "https", "mailto", "tel"].includes(explicitScheme)) {
+    return "";
+  }
+  try {
+    const parsed = new URL(href, "https://aralearn.invalid/");
+    if (!["http:", "https:", "mailto:", "tel:"].includes(parsed.protocol)) return "";
+  } catch {
+    return "";
+  }
+  return href;
+}
+
+function markdownLinkLabel(value) {
+  return String(value || "").replace(/([\\[\]])/gu, "\\$1");
+}
+
+function markdownLinkHref(value) {
+  return String(value || "")
+    .replace(/\\/gu, "\\\\")
+    .replace(/\(/gu, "\\(")
+    .replace(/\)/gu, "\\)")
+    .replace(/ /gu, "%20");
+}
+
+export function serializeEditableNode(node) {
+  if (node?.nodeType === 3) return String(node.data ?? "");
+  if (node?.nodeType !== 1) return "";
+  if (node.dataset?.manualGapToken) return node.dataset.manualGapToken;
+  const tagName = String(node.tagName || "").toUpperCase();
+  if (tagName === "BR") return "\n";
+  const value = [...(node.childNodes || [])].map(serializeEditableNode).join("");
+  if (tagName === "STRONG") return `**${value}**`;
+  if (tagName === "EM") return `*${value}*`;
+  if (tagName === "CODE" && node.dataset?.manualMarkdownCode === "true") {
     return `\`${value}\``;
   }
-  if (node.tagName === "UL") {
-    return [...node.children].map((item) => `- ${serializeEditableNode(item)}`).join("\n") + "\n";
+  if (tagName === "A") {
+    const href = safeMarkdownLinkHref(node.getAttribute?.("href"));
+    return href
+      ? `[${markdownLinkLabel(value)}](${markdownLinkHref(href)})`
+      : value;
   }
-  if (node.tagName === "OL") {
-    return [...node.children].map((item, index) => `${index + 1}. ${serializeEditableNode(item)}`).join("\n") + "\n";
+  if (tagName === "UL") {
+    return [...(node.children || [])].map((item) => `- ${serializeEditableNode(item)}`).join("\n") + "\n";
   }
-  if (node.tagName === "P") return `${value}\n\n`;
-  if (node.tagName === "DIV") return `${value}\n`;
+  if (tagName === "OL") {
+    return [...(node.children || [])].map((item, index) => `${index + 1}. ${serializeEditableNode(item)}`).join("\n") + "\n";
+  }
+  if (tagName === "P") return `${value}\n\n`;
+  if (tagName === "DIV") return `${value}\n`;
   return value;
 }
 
@@ -416,54 +530,68 @@ function markRenderedMarkdownCode(field) {
 function makeVisualFieldEditable(field, host) {
   const isHtmlField = field.namespaceURI === "http://www.w3.org/1999/xhtml";
   if (isHtmlField || !host) return field;
-  const fieldRect = field.getBoundingClientRect();
-  const hostRect = host.getBoundingClientRect();
-  if (!fieldRect.width || !fieldRect.height) return field;
-  const computed = getComputedStyle(field);
-  const matrix = typeof field.getScreenCTM === "function" ? field.getScreenCTM() : null;
-  const scaleX = matrix ? Math.hypot(matrix.a, matrix.b) || 1 : 1;
-  const scaleY = matrix ? Math.hypot(matrix.c, matrix.d) || 1 : 1;
-  const sourceFontSize = Number.parseFloat(computed.fontSize) || 0;
-  const sourceLetterSpacing = Number.parseFloat(computed.letterSpacing) || 0;
-  const screenFontSize = sourceFontSize ? sourceFontSize * scaleY : 0;
-  const ink = computed.fill && computed.fill !== "none" ? computed.fill : computed.color;
   const originalValue = field.dataset.manualEditOriginal ?? field.textContent ?? "";
   const overlay = document.createElement("span");
   overlay.className = "runtime-manual-svg-field";
   overlay.dataset.manualEditPath = field.dataset.manualEditPath;
   overlay.dataset.manualEditOriginal = originalValue;
+  if (field.dataset.manualEditOptional === "true") {
+    overlay.dataset.manualEditOptional = "true";
+  }
+  if (field.dataset.manualEditPlaceholder) {
+    overlay.dataset.manualEditPlaceholder = field.dataset.manualEditPlaceholder;
+  }
+  if (field.dataset.manualEditPreserveGaps === "true") {
+    overlay.dataset.manualEditPreserveGaps = "true";
+  }
   overlay.setAttribute("contenteditable", "plaintext-only");
   overlay.setAttribute("role", "textbox");
+  overlay.setAttribute("aria-multiline", "true");
   overlay.setAttribute("aria-label", field.getAttribute("aria-label") || "Editar conteúdo");
   overlay.spellcheck = false;
-  overlay.textContent = originalValue;
-  Object.assign(overlay.style, {
-    left: `${fieldRect.left - hostRect.left}px`,
-    top: `${fieldRect.top - hostRect.top}px`,
-    width: `${Math.max(fieldRect.width, 1)}px`,
-    height: `${Math.max(fieldRect.height, 1)}px`,
-    color: "transparent",
-    fontFamily: computed.fontFamily,
-    fontSize: screenFontSize ? `${screenFontSize}px` : computed.fontSize,
-    fontWeight: computed.fontWeight,
-    fontStyle: computed.fontStyle,
-    fontVariantCaps: computed.fontVariantCaps,
-    letterSpacing: sourceLetterSpacing ? `${sourceLetterSpacing * scaleX}px` : computed.letterSpacing,
-    lineHeight: screenFontSize ? `${screenFontSize * 1.15}px` : computed.lineHeight,
-    textAlign: computed.textAnchor === "middle"
-      ? "center"
-      : computed.textAnchor === "end"
-        ? "right"
-        : "left",
-    textTransform: computed.textTransform
-  });
-  overlay.style.setProperty("--manual-edit-ink", ink);
+  overlay.textContent = field.textContent ?? "";
+  const refreshPosition = () => {
+    if (!field.isConnected || !host.isConnected) return;
+    const fieldRect = field.getBoundingClientRect();
+    const hostRect = host.getBoundingClientRect();
+    if (!fieldRect.width || !fieldRect.height) return;
+    const computed = getComputedStyle(field);
+    const matrix = typeof field.getScreenCTM === "function" ? field.getScreenCTM() : null;
+    const scaleX = matrix ? Math.hypot(matrix.a, matrix.b) || 1 : 1;
+    const scaleY = matrix ? Math.hypot(matrix.c, matrix.d) || 1 : 1;
+    const sourceFontSize = Number.parseFloat(computed.fontSize) || 0;
+    const sourceLetterSpacing = Number.parseFloat(computed.letterSpacing) || 0;
+    const screenFontSize = sourceFontSize ? sourceFontSize * scaleY : 0;
+    const ink = computed.fill && computed.fill !== "none" ? computed.fill : computed.color;
+    Object.assign(overlay.style, {
+      left: `${fieldRect.left - hostRect.left}px`,
+      top: `${fieldRect.top - hostRect.top}px`,
+      width: `${Math.max(fieldRect.width, 1)}px`,
+      height: `${Math.max(fieldRect.height, 1)}px`,
+      fontFamily: computed.fontFamily,
+      fontSize: screenFontSize ? `${screenFontSize}px` : computed.fontSize,
+      fontWeight: computed.fontWeight,
+      fontStyle: computed.fontStyle,
+      fontVariantCaps: computed.fontVariantCaps,
+      letterSpacing: sourceLetterSpacing ? `${sourceLetterSpacing * scaleX}px` : computed.letterSpacing,
+      lineHeight: screenFontSize ? `${screenFontSize * 1.15}px` : computed.lineHeight,
+      textAlign: computed.textAnchor === "middle"
+        ? "center"
+        : computed.textAnchor === "end"
+          ? "right"
+          : "left",
+      textTransform: computed.textTransform
+    });
+    overlay.style.setProperty("--manual-edit-ink", ink);
+  };
+  overlay.manualEditRefreshPosition = refreshPosition;
   overlay.manualEditSource = field;
   field.classList.add("is-manual-edit-proxied-source");
   field.removeAttribute("contenteditable");
   field.removeAttribute("role");
   field.setAttribute("aria-hidden", "true");
   host.append(overlay);
+  refreshPosition();
   return overlay;
 }
 
@@ -471,19 +599,102 @@ function sourceGapTokens(value) {
   return String(value || "").match(/\{gap:[^}]+\}|\[\[[\s\S]*?\]\]/gu) || [];
 }
 
+function rangeTouchesManualGap(range, field) {
+  if (!range || range.collapsed) return false;
+  return [...field.querySelectorAll("[data-manual-gap-token]")].some((blank) => {
+    try {
+      const liveRange = field.ownerDocument.createRange();
+      liveRange.setStart(range.startContainer, range.startOffset);
+      liveRange.setEnd(range.endContainer, range.endOffset);
+      return liveRange.intersectsNode(blank);
+    } catch {
+      return false;
+    }
+  });
+}
+
+function eventTouchesManualGap(event, field) {
+  const targetRanges = typeof event?.getTargetRanges === "function"
+    ? [...event.getTargetRanges()]
+    : [];
+  if (targetRanges.some((range) => rangeTouchesManualGap(range, field))) return true;
+  const selection = field.ownerDocument?.getSelection?.();
+  if (!selection || selection.rangeCount < 1) return false;
+  return [...Array(selection.rangeCount)].some((_value, index) =>
+    rangeTouchesManualGap(selection.getRangeAt(index), field)
+  );
+}
+
+function guardManualGapOperations(field) {
+  if (field.dataset.manualGapOperationsGuarded === "true") return;
+  field.dataset.manualGapOperationsGuarded = "true";
+  field.addEventListener("beforeinput", (event) => {
+    const inputType = String(event.inputType || "");
+    if (["deleteByDrag", "insertFromDrop"].includes(inputType) || (
+      inputType.startsWith("delete") && eventTouchesManualGap(event, field)
+    )) {
+      event.preventDefault();
+    }
+  });
+  field.addEventListener("cut", (event) => {
+    if (eventTouchesManualGap(event, field)) event.preventDefault();
+  });
+  field.addEventListener("dragstart", (event) => {
+    if (
+      event.target?.closest?.("[data-manual-gap-token]") ||
+      eventTouchesManualGap(event, field)
+    ) {
+      event.preventDefault();
+    }
+  });
+  field.addEventListener("drop", (event) => event.preventDefault());
+}
+
+function lockManualGapField(field) {
+  field.dataset.manualEditReadonly = "true";
+  field.dataset.manualGapLocked = "true";
+  field.classList.add("is-manual-gap-locked");
+  field.setAttribute("contenteditable", "false");
+  field.setAttribute("role", "note");
+  field.setAttribute("tabindex", "0");
+  field.setAttribute(
+    "aria-label",
+    "Lacuna de prática preservada. Edite a resposta e as alternativas pelo contrato autoral."
+  );
+  field.setAttribute(
+    "title",
+    "A estrutura desta lacuna é preservada na edição visual."
+  );
+}
+
 function protectGapTokens(field, sourceValue = field.dataset.manualEditOriginal) {
   const tokens = sourceGapTokens(sourceValue);
-  if (!tokens.length) return;
-  const blanks = field.querySelectorAll(
+  if (!tokens.length) return { hasGaps: false, locked: false };
+  const blanks = [...field.querySelectorAll(
     ".runtime-text-gap-blank, [data-text-gap-field], [data-text-gap-choice]"
-  );
-  [...blanks].forEach((blank, index) => {
-    if (!tokens[index]) return;
+  )];
+  if (field.dataset.manualEditPreserveGaps !== "true" && !blanks.length) {
+    return { hasGaps: false, locked: false };
+  }
+  if (blanks.length !== tokens.length) {
+    lockManualGapField(field);
+    return { hasGaps: true, locked: true };
+  }
+  blanks.forEach((blank, index) => {
     blank.dataset.manualGapToken = tokens[index];
     blank.setAttribute("contenteditable", "false");
+    blank.setAttribute("draggable", "false");
     blank.removeAttribute("data-action");
-    blank.removeAttribute("tabindex");
+    blank.setAttribute("tabindex", "-1");
+    blank.setAttribute("aria-disabled", "true");
+    blank.setAttribute("aria-label", `Lacuna ${index + 1} preservada`);
+    if (blank.matches("button, input, textarea, select")) {
+      blank.setAttribute("disabled", "");
+    }
   });
+  field.dataset.manualGapSignature = JSON.stringify(tokens);
+  guardManualGapOperations(field);
+  return { hasGaps: true, locked: false };
 }
 
 function restoreGapDraft(field, value) {
@@ -523,6 +734,13 @@ function markManualFieldDirty(field) {
   field.manualEditSource?.classList.add("is-manual-edit-source-hidden");
 }
 
+function manualEditAffectsPractice(path, field) {
+  return path === "question" ||
+    path.startsWith("options[") ||
+    field.dataset.manualEditPreserveGaps === "true" ||
+    Boolean(field.dataset.manualGapSignature);
+}
+
 export function activateManualCardEdit(container, draftValues = null) {
   if (!(container instanceof HTMLElement)) return null;
   const content = container.querySelector(".runtime-resource-selection-content") || container;
@@ -533,37 +751,114 @@ export function activateManualCardEdit(container, draftValues = null) {
   const visualFields = [...container.querySelectorAll(
     "svg [data-manual-edit-path], math [data-manual-edit-path]"
   )];
-  visualFields.forEach((field) => makeVisualFieldEditable(field, content));
+  const visualOverlays = visualFields.map((field) => makeVisualFieldEditable(field, content));
+  let visualResizeObserver = null;
+  let visualRemovalObserver = null;
+  if (typeof ResizeObserver === "function") {
+    visualResizeObserver = new ResizeObserver(() => {
+      visualOverlays.forEach((field) => field.manualEditRefreshPosition?.());
+    });
+    visualResizeObserver.observe(content);
+    visualFields.forEach((field) => visualResizeObserver.observe(field));
+    if (typeof MutationObserver === "function" && document?.documentElement) {
+      visualRemovalObserver = new MutationObserver(() => {
+        if (container.isConnected) return;
+        visualResizeObserver?.disconnect();
+        visualRemovalObserver?.disconnect();
+      });
+      visualRemovalObserver.observe(document.documentElement, {
+        childList: true,
+        subtree: true
+      });
+    }
+  }
   const fields = [...container.querySelectorAll("[data-manual-edit-path]")]
     .filter((field) => !field.classList.contains("is-manual-edit-proxied-source"));
   const draft = draftValues?.pathValues && typeof draftValues.pathValues === "object"
     ? draftValues.pathValues
     : {};
   const fieldsByPath = new Map();
-  fields.forEach((field, index) => {
+  let firstEditableField = null;
+  fields.forEach((field) => {
     const path = field.dataset.manualEditPath;
     const siblings = fieldsByPath.get(path) || [];
     siblings.push(field);
     fieldsByPath.set(path, siblings);
     markRenderedMarkdownCode(field);
-    protectGapTokens(field, Object.hasOwn(draft, path) ? draft[path] : undefined);
-    if (Object.hasOwn(draft, path)) {
+    const originalValue = field.dataset.manualEditOriginal ?? "";
+    let gapProtection = protectGapTokens(field, originalValue);
+    const preserveGapStructure = gapProtection.hasGaps;
+    const hasDraft = Object.hasOwn(draft, path);
+    if (
+      hasDraft &&
+      !gapProtection.locked &&
+      (!preserveGapStructure || preservesGapTokenStructure(originalValue, draft[path]))
+    ) {
       restoreGapDraft(field, draft[path]);
+      gapProtection = protectGapTokens(field, originalValue);
       markManualFieldDirty(field);
     }
+    field.manualEditSafeHtml = field.innerHTML;
     field.addEventListener("click", (event) => event.stopPropagation());
-    field.addEventListener("input", () => {
-      markManualFieldDirty(field);
+    if (gapProtection.locked) return;
+    if (!firstEditableField) firstEditableField = field;
+    let isComposing = false;
+    const synchronizeField = () => {
       const nextValue = editableText(field);
+      if (preserveGapStructure && !preservesGapTokenStructure(originalValue, nextValue)) {
+        field.innerHTML = field.manualEditSafeHtml;
+        protectGapTokens(field, originalValue);
+        return;
+      }
+      markManualFieldDirty(field);
+      field.manualEditSafeHtml = field.innerHTML;
+      if (manualEditAffectsPractice(path, field)) {
+        container.dataset.manualEditInvalidatesExercise = "true";
+      }
       (fieldsByPath.get(path) || []).forEach((mirror) => {
-        if (mirror === field) return;
-        mirror.textContent = nextValue;
+        if (mirror === field || mirror.dataset.manualEditReadonly === "true") return;
+        if (sourceGapTokens(mirror.dataset.manualEditOriginal).length) {
+          restoreGapDraft(mirror, nextValue);
+          protectGapTokens(mirror, mirror.dataset.manualEditOriginal);
+        } else {
+          mirror.textContent = nextValue;
+        }
+        mirror.manualEditSafeHtml = mirror.innerHTML;
         markManualFieldDirty(mirror);
       });
+      container.dispatchEvent(new CustomEvent("manual-card-edit-change", {
+        bubbles: true,
+        detail: {
+          path,
+          invalidatesExercise: manualEditAffectsPractice(path, field)
+        }
+      }));
+    };
+    field.addEventListener("compositionstart", () => {
+      isComposing = true;
     });
-    if (index === 0) field.dataset.cardAuthoringFocus = "manual-first-field";
+    field.addEventListener("compositionend", () => {
+      isComposing = false;
+      synchronizeField();
+    });
+    field.addEventListener("input", () => {
+      if (!isComposing) synchronizeField();
+    });
   });
-  return { fields, content };
+  if (firstEditableField) {
+    firstEditableField.dataset.cardAuthoringFocus = "manual-first-field";
+  }
+  return {
+    fields,
+    content,
+    refreshVisualFields() {
+      visualOverlays.forEach((field) => field.manualEditRefreshPosition?.());
+    },
+    destroy() {
+      visualResizeObserver?.disconnect();
+      visualRemovalObserver?.disconnect();
+    }
+  };
 }
 
 export function readManualCardEditPathValues(container) {

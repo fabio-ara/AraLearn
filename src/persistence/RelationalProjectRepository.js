@@ -17,6 +17,7 @@ const PERSONAL_REPLICA_STORE_NAMES = ["courseSelections"];
 const CARD_ASSISTANCE_LOCAL_STATE_CONTRACT =
   "aralearn.card-assistance-local-state.v4";
 const CARD_ASSISTANCE_SYNC_MAX_PATHS = 64;
+const CONTEXTUAL_AUTHORING_SYNC_MAX_METADATA = 64;
 
 function cardAssistanceLocalStateId(courseId) {
   return `authoring.cardAssistance:${courseId}`;
@@ -52,8 +53,21 @@ function normalizeCardAssistanceStateForCourse(value, courseKey) {
   }
   const normalized = clone(value);
   const pendingPaths = normalized.sync?.pendingPaths;
-  if (!Array.isArray(pendingPaths)) {
+  const pendingMetadata = normalized.sync?.pendingMetadata === undefined
+    ? []
+    : normalized.sync.pendingMetadata;
+  if (!Array.isArray(pendingPaths) || !Array.isArray(pendingMetadata)) {
     throw cardAssistanceStateError("A fila de sincronização contextual é inválida.");
+  }
+  normalized.sync.pendingMetadata = pendingMetadata;
+  if (normalized.sync.status !== undefined) {
+    if (!["pending", "conflict"].includes(normalized.sync.status)) {
+      throw cardAssistanceStateError("O estado da sincronização contextual é inválido.");
+    }
+    normalized.sync.errorMessage = String(normalized.sync.errorMessage || "").trim();
+    if (normalized.sync.errorMessage.length > 2_000) {
+      throw cardAssistanceStateError("A mensagem da sincronização contextual é muito longa.");
+    }
   }
   if (
     normalized.sync.expectedRevision !== null &&
@@ -75,6 +89,35 @@ function normalizeCardAssistanceStateForCourse(value, courseKey) {
     normalizedCourseKey,
     "A alteração pendente"
   ));
+  if (pendingMetadata.length > CONTEXTUAL_AUTHORING_SYNC_MAX_METADATA) {
+    throw cardAssistanceStateError(
+      `A sincronização contextual excede ${CONTEXTUAL_AUTHORING_SYNC_MAX_METADATA} metadados.`
+    );
+  }
+  pendingMetadata.forEach((entry) => {
+    const expectedLength = {
+      course: 1,
+      module: 2,
+      lesson: 3,
+      microsequence: 4
+    }[entry?.entityType];
+    const pathValue = entry?.entityPath;
+    const baseFields = entry?.baseMetadata && typeof entry.baseMetadata === "object"
+      ? Object.keys(entry.baseMetadata)
+      : [];
+    const nextFields = entry?.metadata && typeof entry.metadata === "object"
+      ? Object.keys(entry.metadata)
+      : [];
+    if (!expectedLength || !Array.isArray(pathValue) || pathValue.length !== expectedLength ||
+        pathValue.some((id) => typeof id !== "string" || !id.trim()) ||
+        pathValue[0] !== normalizedCourseKey ||
+        !baseFields.length || baseFields.length !== nextFields.length ||
+        baseFields.some((field) =>
+          !["title", "goal"].includes(field) || !nextFields.includes(field)
+        )) {
+      throw cardAssistanceStateError("A edição textual pendente é inválida.");
+    }
+  });
   if (normalized.undo !== null && normalized.undo !== undefined) {
     if (normalized.undo.contract !== "aralearn.contextual-authoring-undo.v2") {
       throw cardAssistanceStateError("A reversão contextual não segue o contrato atual.");
@@ -316,7 +359,6 @@ export class RelationalProjectRepository {
         await this.mutations.applyMutations([], {
           localRows: this.#cardAssistanceUndoInvalidationRows(
             changedCourseIds,
-            new Map(),
             { rebasePending: false }
           )
         });
@@ -355,7 +397,6 @@ export class RelationalProjectRepository {
         await this.mutations.applyMutations([], {
           localRows: this.#cardAssistanceUndoInvalidationRows(
             changedCourseIds,
-            new Map(),
             { rebasePending: false }
           )
         });
@@ -578,6 +619,19 @@ export class RelationalProjectRepository {
       : null;
   }
 
+  async getWorkspaceCourseDraftReceipt(courseIdentity) {
+    this.#assertInitialized();
+    const course = this.#courseRow(courseIdentity);
+    if (!course || typeof this.store.getWorkspaceCourseDraftReceipt !== "function") return null;
+    const receipt = await this.store.getWorkspaceCourseDraftReceipt(course.id);
+    return receipt
+      ? {
+          ...receipt,
+          courseKey: course.contractKey || course.id
+        }
+      : null;
+  }
+
   async acknowledgeWorkspaceCourseDraft(courseIdentity, {
     expectedLocalDraftRevision,
     workspaceId,
@@ -640,6 +694,91 @@ export class RelationalProjectRepository {
     return this.store.getSyncState(cardAssistanceLocalStateId(course.id));
   }
 
+  async loadContextualAuthoringSnapshot(courseIdentity) {
+    this.#assertInitialized();
+    await this.flush();
+    const course = this.#courseRow(courseIdentity);
+    if (!course) throw new Error("Curso selecionado não encontrado.");
+    const courseId = String(course.id);
+    const courseKey = String(course.contractKey || course.id);
+    const stateId = cardAssistanceLocalStateId(courseId);
+    const draftId = localCourseAuthoringStateId(courseId);
+    const snapshot = await this.store.transaction(
+      [...new Set([...PROJECT_ROW_STORE_NAMES, "courseSelections", "syncState"])],
+      "readonly",
+      async (transaction) => {
+        const rows = {};
+        for (const storeName of PROJECT_ROW_STORE_NAMES) {
+          if (storeName === "projectMeta") {
+            rows[storeName] = await transaction.getAll(storeName);
+          } else if (storeName === "courses") {
+            const row = await transaction.get(storeName, courseId);
+            rows[storeName] = row ? [row] : [];
+          } else {
+            rows[storeName] = await transaction.getAllByIndex(
+              storeName,
+              "byCourseId",
+              courseId
+            );
+          }
+        }
+        const selections = await transaction.getAllByIndex(
+          "courseSelections",
+          "byCourseId",
+          courseId
+        );
+        return {
+          rows,
+          selection: selections.find((row) => isActive(row) && (
+            row.userId === this.userId || row.ownerId === this.userId
+          )) || null,
+          draftRow: await transaction.get("syncState", draftId),
+          assistanceRow: await transaction.get("syncState", stateId)
+        };
+      }
+    );
+    const projectDocument = normalizeProject(this.assembler.assemble(snapshot.rows));
+    const draftValue = snapshot.draftRow?.value;
+    let draft = null;
+    if (draftValue?.status === "dirty") {
+      const revision = String(draftValue.revision || "").trim();
+      if (!revision) {
+        throw new Error("O localDraft persistido não possui uma revisão canônica válida.");
+      }
+      draft = {
+        courseId,
+        courseKey,
+        courseOrigin: requireCourseOrigin(snapshot.selection),
+        status: "dirty",
+        revision,
+        basePublicationSeq: Number(draftValue.basePublicationSeq || 0),
+        baseContentHash: String(draftValue.baseContentHash || ""),
+        createdAt: String(draftValue.createdAt || ""),
+        updatedAt: String(draftValue.updatedAt || "")
+      };
+    }
+    const localState = snapshot.assistanceRow
+      ? normalizeCardAssistanceStateForCourse(snapshot.assistanceRow.value, courseKey)
+      : null;
+    const hasPendingAssistance = Boolean(
+      localState?.sync?.pendingPaths?.length || localState?.sync?.pendingMetadata?.length
+    );
+    if (draft && hasPendingAssistance &&
+        String(localState.sync.expectedRevision || "").trim() !== draft.revision) {
+      throw cardAssistanceStateError(
+        "A fila contextual e o rascunho local pertencem a revisões diferentes."
+      );
+    }
+    return Object.freeze({
+      contract: "aralearn.contextual-authoring-snapshot.v1",
+      courseId,
+      courseKey,
+      projectDocument,
+      draft,
+      localState
+    });
+  }
+
   async saveCardAssistanceLocalState(courseIdentity, value) {
     this.#assertInitialized();
     const course = this.#courseRow(courseIdentity);
@@ -647,6 +786,117 @@ export class RelationalProjectRepository {
     const courseKey = String(course.contractKey || course.id);
     const normalized = normalizeCardAssistanceStateForCourse(value, courseKey);
     return this.store.putSyncState(cardAssistanceLocalStateId(course.id), normalized);
+  }
+
+  async updateCardAssistanceSyncStatus(courseIdentity, {
+    status,
+    errorMessage = "",
+    expectedLocalDraftRevision = null
+  } = {}) {
+    this.#assertInitialized();
+    const course = this.#courseRow(courseIdentity);
+    if (!course) throw new Error("Curso selecionado não encontrado.");
+    if (!["pending", "conflict"].includes(status)) {
+      throw new TypeError("O estado da sincronização contextual é inválido.");
+    }
+    const courseId = String(course.id);
+    const courseKey = String(course.contractKey || course.id);
+    const stateId = cardAssistanceLocalStateId(courseId);
+    const expectedRevision = String(expectedLocalDraftRevision || "").trim() || null;
+    const message = String(errorMessage || "").trim();
+    if (message.length > 2_000) {
+      throw new TypeError("A mensagem da sincronização contextual é muito longa.");
+    }
+    return this.#enqueue(async () => {
+      const result = await this.store.transaction(
+        ["syncState"],
+        "readwrite",
+        async (transaction) => {
+          const row = await transaction.get("syncState", stateId);
+          if (!row) return { updated: false, localState: null };
+          const localState = normalizeCardAssistanceStateForCourse(row.value, courseKey);
+          const actualRevision = String(localState.sync.expectedRevision || "").trim() || null;
+          if (expectedRevision !== actualRevision) {
+            return { updated: false, localState };
+          }
+          if (!localState.sync.pendingPaths.length && !localState.sync.pendingMetadata.length) {
+            delete localState.sync.status;
+            delete localState.sync.errorMessage;
+          } else {
+            localState.sync.status = status;
+            localState.sync.errorMessage = message;
+          }
+          const updatedAt = timestamp(this.clock);
+          await transaction.put("syncState", {
+            ...row,
+            id: stateId,
+            key: stateId,
+            courseId,
+            value: localState,
+            updatedAt
+          });
+          return { updated: true, localState };
+        }
+      );
+      return clone(result);
+    }, { retryable: false });
+  }
+
+  async listPendingLocalAuthoring() {
+    this.#assertInitialized();
+    const rows = typeof this.store.getAll === "function"
+      ? await this.store.getAll("syncState")
+      : [];
+    const byCourseId = new Map();
+    for (const row of rows) {
+      const key = String(row?.key || row?.id || "");
+      let courseId = "";
+      let kind;
+      if (key.startsWith("authoring.localDraft:")) {
+        courseId = key.slice("authoring.localDraft:".length);
+        if (row?.value?.status !== "dirty") continue;
+        kind = "draft";
+      } else if (key.startsWith("authoring.cardAssistance:")) {
+        courseId = key.slice("authoring.cardAssistance:".length);
+        const course = (this.#projectRows.courses || []).find((entry) => String(entry.id) === courseId);
+        const courseKey = String(course?.contractKey || courseId);
+        try {
+          const localState = normalizeCardAssistanceStateForCourse(row.value, courseKey);
+          if (!localState.sync.pendingPaths.length && !localState.sync.pendingMetadata.length) continue;
+        } catch {
+          // Um estado inválido também precisa ser isolado antes de trocar de conta.
+        }
+        kind = "assistance";
+      } else {
+        continue;
+      }
+      if (!courseId) continue;
+      const current = byCourseId.get(courseId) || {
+        courseId,
+        hasDraft: false,
+        hasAssistance: false
+      };
+      if (kind === "draft") current.hasDraft = true;
+      else current.hasAssistance = true;
+      byCourseId.set(courseId, current);
+    }
+    return [...byCourseId.values()].map((entry) => Object.freeze({ ...entry }));
+  }
+
+  async discardContextualAuthoringDraft(courseIdentity) {
+    this.#assertInitialized();
+    const course = this.#courseRow(courseIdentity);
+    if (!course) throw new Error("Curso selecionado não encontrado.");
+    const selection = this.#courseSelectionRow(course.id);
+    if (!selection) {
+      throw new Error("O curso local não possui uma seleção ativa nesta conta.");
+    }
+    const courseId = String(course.id);
+    const courseKey = String(course.contractKey || course.id);
+    await this.flush();
+    await this.store.removeOfficialCourseReplica(courseId, { removeSelection: false });
+    await this.#reloadFromStore();
+    return Object.freeze({ courseId, courseKey });
   }
 
   async finalizeCardAssistanceSync(courseIdentity, {
@@ -674,8 +924,23 @@ export class RelationalProjectRepository {
           if (actualRevision !== null) {
             throw new LocalCourseDraftChangedError(courseId, null, actualRevision);
           }
+          const materializedRevision = currentDraftRow?.value?.status === "materialized"
+            ? String(currentDraftRow.value.consumedRevision || "").trim() || null
+            : null;
+          if (materializedRevision !== null && materializedRevision !== consumedRevision) {
+            throw new LocalCourseDraftChangedError(
+              courseId,
+              consumedRevision,
+              materializedRevision
+            );
+          }
           const currentStateRow = await transaction.get("syncState", stateId);
-          if (!currentStateRow) return null;
+          if (!currentStateRow) {
+            if (materializedRevision === consumedRevision) {
+              await transaction.delete("syncState", draftId);
+            }
+            return null;
+          }
           if (currentStateRow.value?.contract !== CARD_ASSISTANCE_LOCAL_STATE_CONTRACT) {
             await transaction.delete("syncState", stateId);
             return null;
@@ -685,7 +950,8 @@ export class RelationalProjectRepository {
             String(course.contractKey || course.id)
           );
           const syncRevision = String(nextState.sync.expectedRevision || "").trim() || null;
-          if (nextState.sync.pendingPaths.length && syncRevision !== consumedRevision) {
+          if ((nextState.sync.pendingPaths.length || nextState.sync.pendingMetadata.length) &&
+              syncRevision !== consumedRevision) {
             throw new LocalCourseDraftChangedError(
               courseId,
               consumedRevision,
@@ -693,7 +959,10 @@ export class RelationalProjectRepository {
             );
           }
           nextState.sync.pendingPaths = [];
+          nextState.sync.pendingMetadata = [];
           nextState.sync.expectedRevision = null;
+          delete nextState.sync.status;
+          delete nextState.sync.errorMessage;
           if (nextState.undo?.expectedRevision === consumedRevision) {
             nextState.undo.expectedRevision = null;
           }
@@ -706,6 +975,9 @@ export class RelationalProjectRepository {
             value: nextState,
             updatedAt
           });
+          if (materializedRevision === consumedRevision) {
+            await transaction.delete("syncState", draftId);
+          }
           return nextState;
         }
       );
@@ -823,16 +1095,12 @@ export class RelationalProjectRepository {
 
   #cardAssistanceUndoInvalidationRows(
     courseIds,
-    localDraftRevisions = new Map(),
     { rebasePending = true } = {}
   ) {
     const updatedAt = timestamp(this.clock);
     return [...courseIds].map((courseId) => {
       const normalizedCourseId = String(courseId);
       const stateId = cardAssistanceLocalStateId(normalizedCourseId);
-      const nextRevision = String(
-        localDraftRevisions.get(normalizedCourseId) || ""
-      ).trim();
       return {
         storeName: "syncState",
         row: {
@@ -852,15 +1120,20 @@ export class RelationalProjectRepository {
             return null;
           }
           const pendingPaths = currentValue.sync?.pendingPaths;
-          const hasPendingPaths = rebasePending &&
-            Array.isArray(pendingPaths) && pendingPaths.length > 0;
+          const pendingMetadata = currentValue.sync?.pendingMetadata;
+          const hasPendingWork = rebasePending && (
+            (Array.isArray(pendingPaths) && pendingPaths.length > 0) ||
+            (Array.isArray(pendingMetadata) && pendingMetadata.length > 0)
+          );
           const invalidatesUndo = currentValue.undo != null;
-          if (!invalidatesUndo && !hasPendingPaths) return null;
-          if (hasPendingPaths && !nextRevision) {
-            throw new Error(
-              "A edição normal não produziu revisão local para a sincronização pendente."
+          if (hasPendingWork) {
+            const error = new Error(
+              "Sincronize ou resolva a edição textual pendente antes de fazer outra alteração neste curso."
             );
+            error.code = "contextual_authoring_pending";
+            throw error;
           }
+          if (!invalidatesUndo && !hasPendingWork) return null;
           return {
             ...currentRow,
             id: stateId,
@@ -868,15 +1141,7 @@ export class RelationalProjectRepository {
             courseId: normalizedCourseId,
             value: {
               ...currentValue,
-              ...(invalidatesUndo ? { undo: null } : {}),
-              ...(hasPendingPaths
-                ? {
-                    sync: {
-                      ...currentValue.sync,
-                      expectedRevision: nextRevision
-                    }
-                  }
-                : {})
+              ...(invalidatesUndo ? { undo: null } : {})
             },
             updatedAt
           };
@@ -968,13 +1233,8 @@ export class RelationalProjectRepository {
           });
           localRows.push(...authoringStateRows);
           if (!assistanceCourse) {
-            const localDraftRevisions = new Map(authoringStateRows.map((entry) => [
-              String(entry.row?.courseId || ""),
-              String(entry.row?.value?.revision || "")
-            ]));
             localRows.push(...this.#cardAssistanceUndoInvalidationRows(
-              changedCourseIds,
-              localDraftRevisions
+              changedCourseIds
             ));
           }
         }
@@ -993,7 +1253,10 @@ export class RelationalProjectRepository {
           if (committedRevision && nextAssistanceState.undo) {
             nextAssistanceState.undo.expectedRevision = committedRevision;
           }
-          if (committedRevision && nextAssistanceState.sync.pendingPaths.length) {
+          if (committedRevision && (
+            nextAssistanceState.sync.pendingPaths.length ||
+            nextAssistanceState.sync.pendingMetadata.length
+          )) {
             nextAssistanceState.sync.expectedRevision = committedRevision;
           }
           const stateId = cardAssistanceLocalStateId(assistanceCourse.id);
@@ -1017,7 +1280,8 @@ export class RelationalProjectRepository {
       } catch (error) {
         if (
           error?.code === "local_course_draft_changed" ||
-          error?.code === "course_authoring_forbidden"
+          error?.code === "course_authoring_forbidden" ||
+          error?.code === "contextual_authoring_pending"
         ) {
           await this.#reloadFromStore();
         }

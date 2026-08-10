@@ -27,6 +27,7 @@ test("curso oficial só é editável quando a capacidade autenticada permite", (
   assert.deepEqual(resolveCourseUiPermissions(storage, "course-shared"), {
     role: "editor",
     canAuthorContent: true,
+    canComment: false,
     writeTarget: "catalog",
     canOrganizeSelection: true,
     canRemoveSelection: true,
@@ -40,6 +41,7 @@ test("ausência de adaptador de permissão falha fechada", () => {
   assert.deepEqual(resolveCourseUiPermissions({}, "course-unknown"), {
     role: "learner",
     canAuthorContent: false,
+    canComment: false,
     writeTarget: null,
     canOrganizeSelection: false,
     canRemoveSelection: false,

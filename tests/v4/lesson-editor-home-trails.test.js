@@ -54,12 +54,14 @@ function rootHarness(snapshot) {
   let html = "";
   let openCourse = null;
   let goBack = null;
+  let undoCardEdit = null;
   let selectCourse = null;
   let selectedItemId = snapshot.items[0]?.trailItemId || "";
   return {
     get html() { return html; },
     get openCourse() { return openCourse; },
     get goBack() { return goBack; },
+    get undoCardEdit() { return undoCardEdit; },
     chooseCourse(itemId) {
       selectedItemId = itemId;
       selectCourse?.({ currentTarget: { value: itemId } });
@@ -81,6 +83,14 @@ function rootHarness(snapshot) {
           return {
             addEventListener(type, listener) {
               if (type === "change") selectCourse = listener;
+            }
+          };
+        }
+        if (selector === "[data-action='undo-card-edit']" &&
+            html.includes('data-action="undo-card-edit"')) {
+          return {
+            addEventListener(type, listener) {
+              if (type === "click") undoCardEdit = listener;
             }
           };
         }
@@ -326,4 +336,128 @@ test("refresh monta somente o workspace homônimo selecionado por trailItemId", 
   assert.equal(app.openCourse(baseCourse.id), true);
   assert.match(harness.html, /Conteúdo Alpha/u);
   assert.doesNotMatch(harness.html, /Conteúdo Beta/u);
+});
+
+test("undo local do mesmo courseKey não aparece nem recebe ação dentro do workspace", async (t) => {
+  const fixture = fixtureProject();
+  const course = fixture.courses[0];
+  const moduleValue = course.modules[0];
+  const lesson = moduleValue.lessons[0];
+  const microsequence = lesson.microsequences[0];
+  const snapshot = homeTrailSnapshotForProject(fixture);
+  Object.assign(snapshot.items[0], {
+    workspaceId: "b0000000-0000-4000-8000-000000000099",
+    courseId: null,
+    courseKey: course.id,
+    source: "workspace",
+    origin: "workspace",
+    revision: 4,
+    canEdit: true,
+    canEditOffline: true,
+    canDelete: true,
+    canRemove: false
+  });
+  const harness = rootHarness(snapshot);
+  const previousWindow = globalThis.window;
+  globalThis.window = { addEventListener() {} };
+  t.after(() => {
+    if (previousWindow === undefined) delete globalThis.window;
+    else globalThis.window = previousWindow;
+  });
+  let localUndoWrites = 0;
+  const localState = {
+    contract: "aralearn.card-assistance-local-state.v4",
+    undo: {
+      contract: "aralearn.contextual-authoring-undo.v2",
+      kind: "microsequence",
+      courseKey: course.id,
+      moduleKey: moduleValue.id,
+      lessonKey: lesson.id,
+      microsequenceKey: microsequence.id,
+      cardKey: microsequence.cards[0].id,
+      expectedRevision: "rascunho-local-antigo",
+      affectedMicrosequenceIds: [microsequence.id],
+      inversePatch: {
+        type: "object",
+        fields: { title: { type: "replace", value: "Título local anterior" } }
+      }
+    },
+    sync: { pendingPaths: [], pendingMetadata: [], expectedRevision: null }
+  };
+  const emptyProject = { ...structuredClone(fixture), courses: [] };
+  const storage = {
+    loadProject: () => emptyProject,
+    loadProgress: () => ({ version: 1, lessons: {} }),
+    saveProgress() {},
+    loadCommentForPath: () => null,
+    loadReviewItems: () => [],
+    async loadCardAssistanceLocalState(courseKey) {
+      return courseKey === course.id ? structuredClone(localState) : {};
+    },
+    async saveMicrosequenceGeneration() { localUndoWrites += 1; },
+    coursePermissions: () => ({
+      role: "owner",
+      canAuthorContent: true,
+      writeTarget: "private",
+      canOrganizeSelection: true,
+      canRemoveSelection: false,
+      canDeleteCourse: true
+    })
+  };
+  const personalStorage = {
+    setCourse() {},
+    async initialize() {},
+    async refresh() {},
+    loadProgress: () => ({ version: 1, lessons: {} }),
+    saveProgress() {},
+    loadReviewItems: () => [],
+    loadCommentForPath: () => null,
+    async clearLocal() {},
+    async flush() {}
+  };
+  const app = createLessonEditorApp({
+    root: harness.root,
+    storage,
+    editor: {},
+    initialProject: emptyProject,
+    homeTrails: {
+      loadTrailSnapshot: async () => snapshot,
+      async loadWorkspaceCourse() {
+        return {
+          trailItemId: snapshot.items[0].trailItemId,
+          workspaceId: snapshot.items[0].workspaceId,
+          courseKey: course.id,
+          revision: 4,
+          parts: partsForCourse(course)
+        };
+      },
+      async cacheWorkspaceCourse() {}
+    },
+    workspaceCourseAdapter: {
+      saveMetadata() {},
+      saveMicrosequenceCards() {},
+      moveEntity() {},
+      deleteEntity() {},
+      deleteCourse() {}
+    },
+    trailPersonalStateFactory: () => personalStorage
+  });
+
+  await app.refreshTrails();
+  await waitFor(() => typeof harness.openCourse === "function", "curso do workspace");
+  await harness.openCourse();
+  await waitFor(() => harness.html.includes('data-action="open-module"'), "workspace carregado");
+  assert.equal(app.openCardPath([
+    course.id,
+    moduleValue.id,
+    lesson.id,
+    microsequence.id,
+    microsequence.cards[0].id
+  ], { edit: true }), true);
+  await waitFor(() => harness.html.includes("runtime-card-sheet"), "card do workspace");
+  await new Promise((resolve) => setTimeout(resolve, 0));
+
+  assert.doesNotMatch(harness.html, /data-action="undo-card-edit"/u);
+  assert.equal(harness.undoCardEdit, null);
+  assert.equal(localUndoWrites, 0);
 });

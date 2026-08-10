@@ -55,11 +55,12 @@ function fixture() {
   };
 }
 
-function editorSupport(canAuthorContent, extra = {}) {
+function editorSupport(canAuthorContent, extra = {}, canComment = false) {
   return {
     progress: { version: 1, lessons: {} },
     coursePermissions: {
       canAuthorContent,
+      canComment,
       canEdit: canAuthorContent,
       canDelete: canAuthorContent
     },
@@ -68,7 +69,7 @@ function editorSupport(canAuthorContent, extra = {}) {
   };
 }
 
-function renderLevel(level, canAuthorContent) {
+function renderLevel(level, canAuthorContent, canComment = false) {
   const values = fixture();
   const common = {
     ...values,
@@ -81,7 +82,7 @@ function renderLevel(level, canAuthorContent) {
       cardIndex: 0
     },
     cards: values.microsequence.cards,
-    editorSupport: editorSupport(canAuthorContent)
+    editorSupport: editorSupport(canAuthorContent, {}, canComment)
   };
   if (level === "microsequence") {
     return renderLessonScreen({
@@ -97,14 +98,17 @@ function renderLevel(level, canAuthorContent) {
   });
 }
 
-test("observações contextuais aparecem nos níveis estruturais somente para quem pode autorar", () => {
+test("observações contextuais dependem de comentário, não de autoria", () => {
   for (const level of ["course", "module", "lesson", "microsequence"]) {
-    const authorHtml = renderLevel(level, true);
-    const readerHtml = renderLevel(level, false);
+    const authorOnlyHtml = renderLevel(level, true, false);
+    const commenterHtml = renderLevel(level, false, true);
+    const readerHtml = renderLevel(level, false, false);
 
-    assert.match(authorHtml, /data-action="open-context-observation"/u, level);
+    assert.doesNotMatch(authorOnlyHtml, /data-action="open-context-observation"/u, level);
+    assert.match(commenterHtml, /data-action="open-context-observation"/u, level);
     assert.doesNotMatch(readerHtml, /data-action="open-context-observation"/u, level);
-    assert.match(authorHtml, /data-action="open-central"/u, level);
+    assert.match(authorOnlyHtml, /data-action="open-central"/u, level);
+    assert.match(commenterHtml, /data-action="open-central"/u, level);
     assert.match(readerHtml, /data-action="open-central"/u, level);
   }
 });

@@ -1087,7 +1087,8 @@ test("a edição estrutural seleciona o card e leva as ações para o dock exter
       coursePermissions: {
         canAuthorContent: true,
         canEdit: true,
-        canDelete: true
+        canDelete: true,
+        canDeleteEntity: true
       },
       entityModes: { course: "edit" },
       inlineStructureEditor: {
