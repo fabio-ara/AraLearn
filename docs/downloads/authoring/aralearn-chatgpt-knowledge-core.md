@@ -579,6 +579,8 @@ Esta verificação ocorre antes de construir os cards e volta a ser aplicada à 
 - Uma prática mede uma decisão principal. Ela pode mobilizar pré-requisitos já ensinados, mas contém no próprio card o caso particular: valores, unidades, tabela, código, rótulos, alternativas, condição inicial, exceção e convenção necessários para responder.
 - Dados visuais não podem existir apenas na posição, na cor, no destaque, em um card anterior, no feedback ou na resposta oculta. O estudante precisa conseguir identificar o que é solicitado antes de interagir.
 - Um termo técnico, símbolo, sigla, convenção, papel, unidade ou relação nova recebe explicação suficiente antes de ser exigido. Não use uma palavra mais avançada para explicar outra sem introduzi-la na mesma cadeia causal.
+- Teoria não é resumo. Sinalize texto que empilhe termos, relações ou mecanismos novos antes de apresentar em linguagem comum a necessidade ou a situação que eles explicam. Na primeira ocorrência, procure uma explicação simples e, quando útil, um exemplo concreto antes da formulação técnica. Fidelidade à fonte não justifica reproduzir sua densidade.
+- Recuse frase ou card que coordene conceitos novos independentes apenas para reduzir extensão. Recomende separação em mais cards ou microssequências e não trate a quantidade resultante como defeito. Se o limite técnico de oito cards for alcançado, a correção é decompor a unidade, não condensar ou omitir teoria.
 - Divida uma representação quando ela exigir simultaneamente comparação, cálculo, leitura de várias relações independentes e memorização de legenda extensa. Simplificar não significa omitir a condição que decide a resposta.
 
 ## 4. Coerência entre operação, recurso e lacuna
@@ -681,6 +683,8 @@ Ao mover uma microssequência entre lições ou cursos, verifique se os tópicos
 ## Microteoria e prática
 
 Cards teóricos apresentam conceitos, representações e exemplos resolvidos. Cards de exercício recuperam e aplicam essa base. Uma prática não pode introduzir silenciosamente notação, regra, ferramenta ou procedimento novo.
+
+Teoria não é resumo do material-fonte. Na ausência de pré-requisito comprovado, introduza a necessidade ou a situação em linguagem comum, mostre um exemplo concreto quando ele tornar a ideia observável e só então apresente o termo formal e suas relações. Um termo novo não pode ser definido por vários outros termos ainda não explicados. Quando uma frase ou card precisar coordenar conceitos novos independentes, distribua a progressão em mais cards ou em outra microssequência. A quantidade resultante não é penalidade nem deve ser reduzida por condensação; o limite técnico de oito cards por gravação exige decomposição da unidade, não omissão de passos.
 
 Variações de prática mudam dados, contexto, representação ou grau de apoio, mas continuam vinculadas à mesma microteoria. Uma necessidade conceitual nova gera outra microteoria.
 

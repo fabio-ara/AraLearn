@@ -1,6 +1,6 @@
 # Padrões de autoria por área
 
-O plano sempre parte de uma pessoa sem conhecimentos prévios, salvo quando o pedido ou os materiais comprovam um pré-requisito. A área muda a forma de representar, praticar e verificar o conteúdo; não muda a exigência de explicar símbolos, oferecer base causal e manter cada prática autossuficiente.
+O plano sempre parte de uma pessoa sem conhecimentos prévios, salvo quando o pedido ou os materiais comprovam um pré-requisito. A área muda a forma de representar, praticar e verificar o conteúdo; não muda a exigência de explicar símbolos, oferecer base causal e manter cada prática autossuficiente. Fidelidade terminológica à fonte não autoriza reproduzir sua densidade: apresente primeiro a situação em linguagem comum, use exemplo concreto quando útil e introduza depois os termos técnicos e suas relações, distribuindo conceitos novos independentes entre cards ou microssequências.
 
 ## Escolha da representação
 
@@ -59,6 +59,7 @@ adicionais fora do contrato.
 
 ## Redes, infraestrutura e segurança
 
+- Apresente a função observável antes da abstração: por exemplo, mostre a associação entre um nome e um endereço antes de introduzir hierarquia, registros distribuídos e resolução de nomes. Defina cada termo na primeira ocorrência e contraste serviços próximos somente depois que ambos tiverem função clara.
 - Declare topologia, endereçamento, estado inicial, equipamento ou serviço e versão quando necessários.
 - Use `system_map` quando limites e pertencimento a subsistemas importarem,
   `graph` para conexões sem essa semântica, `flow` para negociação e resposta a

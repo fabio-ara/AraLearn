@@ -171,6 +171,13 @@ concluir somente a parte pedida:
 - práticas variadas que recuperam e aplicam a mesma ideia;
 - respostas verificáveis e feedback específico.
 
+“Pequena” descreve o foco conceitual, não um texto condensado. Sem
+pré-requisito comprovado, a teoria parte de linguagem comum, torna a ideia
+observável por exemplo concreto quando útil e introduz depois o termo formal.
+Conceitos novos independentes ocupam cards ou microssequências distintos. A
+quantidade resultante não é penalidade; quando uma unidade pedir mais de oito
+cards, o assistente a decompõe sem omitir etapas.
+
 `salvarCardsNaMicrossequencia` valida e salva o conjunto dessa unidade. O
 assistente não tenta enviar um curso populado inteiro em uma única chamada e
 também não obriga a pessoa a aprovar card por card.

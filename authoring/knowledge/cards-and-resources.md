@@ -219,6 +219,15 @@ previsíveis determinam o necessário para a aprendizagem pretendida. Recuse uma
 sequência dominada por `paragraph` e `choice` quando uma representação
 estruturada tornar a operação mais clara.
 
+Uma microteoria focada pode ocupar vários cards. Ela começa pela situação ou
+necessidade em linguagem corrente, oferece exemplo concreto quando útil e
+introduz depois o termo formal, a relação ou o mecanismo correspondente. Não
+transforme o material-fonte em resumo telegráfico e não use uma sequência de
+jargões como explicação. Se uma frase precisar apresentar vários conceitos
+novos independentes, separe-os e explicite as ligações. Mais cards são
+preferíveis a um card denso; se o conjunto ultrapassar o limite técnico de oito
+cards, decomponha-o em microssequências causais, sem cortar teoria.
+
 Recupere componentes já estudados quando eles forem pré-requisitos úteis. Registre a dependência causal e mude o exemplo, a representação ou a situação. Não aumente a densidade de um card para revisar muitos assuntos ao mesmo tempo.
 
 Use somente os vínculos didáticos do contrato:

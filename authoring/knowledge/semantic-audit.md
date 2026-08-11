@@ -48,6 +48,15 @@ sequência pronta.
 - Um termo técnico, símbolo, sigla, convenção, papel, unidade ou relação nova
   recebe explicação suficiente antes de ser exigido. Não use uma palavra mais
   avançada para explicar outra sem introduzi-la na mesma cadeia causal.
+- Teoria não é resumo. Sinalize texto que empilhe termos, relações ou mecanismos
+  novos antes de apresentar em linguagem comum a necessidade ou a situação que
+  eles explicam. Na primeira ocorrência, procure uma explicação simples e, quando
+  útil, um exemplo concreto antes da formulação técnica. Fidelidade à fonte não
+  justifica reproduzir sua densidade.
+- Recuse frase ou card que coordene conceitos novos independentes apenas para
+  reduzir extensão. Recomende separação em mais cards ou microssequências e não
+  trate a quantidade resultante como defeito. Se o limite técnico de oito cards
+  for alcançado, a correção é decompor a unidade, não condensar ou omitir teoria.
 - Divida uma representação quando ela exigir simultaneamente comparação, cálculo, leitura de várias relações independentes e memorização de legenda extensa. Simplificar não significa omitir a condição que decide a resposta.
 
 ## 4. Coerência entre operação, recurso e lacuna
