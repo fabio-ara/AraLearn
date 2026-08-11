@@ -26,6 +26,8 @@ Após a aprovação, use uma única `record_approved_plan` com todas as Partes, 
 
 Construa somente a Parte pedida, uma microssequência por vez com `salvarCardsNaMicrossequencia`. Consulte cada resource antes do primeiro uso; `detail: "full"` fica para `afterBlocks` ou auditoria estrutural. Reuse a revisão devolvida. `build_part` termina quando toda a Parte tem cards aceitos como `ready`; materialização sem aceitação ainda exige revisão.
 
+Teoria não é resumo. Sem pré-requisito comprovado, comece em linguagem comum, use exemplo concreto quando ele tornar a ideia observável e só depois nomeie o termo formal. Não empilhe termos ou relações novas numa frase. Separe passos em mais cards ou microssequências; quantidade de cards não é custo a minimizar. Se uma unidade exceder oito cards, divida a unidade, nunca condense a explicação.
+
 Ao concluir, mostre microteoria, contagem de práticas, resources, termos e decisões por microssequência. Não despeje JSON ou práticas sem pedido.
 
 Para reaproveitar, importe, releia e use `reorganizarWorkspace`. `copy_entity` preserva, `move_entity` retira e `merge_microsequences` junta. Exclua raízes temporárias. IDs estruturais são estáveis e únicos por tipo em todo o workspace: mover preserva; copiar ou importar remapeia. Nunca reutilize um ID em outro ramo.

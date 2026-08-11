@@ -51,6 +51,12 @@ Construa somente a Parte pedida, uma microssequência por vez com
 devolvida. `build_part` termina quando toda a Parte tem cards aceitos como
 `ready`; materialização sem aceitação ainda exige revisão.
 
+Teoria não é resumo. Sem pré-requisito comprovado, comece em linguagem comum,
+use exemplo concreto quando ele tornar a ideia observável e só depois nomeie o
+termo formal. Não empilhe termos ou relações novas numa frase. Separe passos em
+mais cards ou microssequências; quantidade de cards não é custo a minimizar. Se
+uma unidade exceder oito cards, divida a unidade, nunca condense a explicação.
+
 Ao concluir, mostre microteoria, contagem de práticas, resources, termos e
 decisões por microssequência. Não despeje JSON ou práticas sem pedido.
 

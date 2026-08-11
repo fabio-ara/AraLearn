@@ -1327,7 +1327,36 @@ test("o runtime completo executa escolhas, lacunas, fluxograma, popup e anotaç�
   await page.getByRole("button", { name: "Fechar" }).press("Enter");
 
   await page.locator('[data-action="choice-toggle"][data-choice-option-id="certa"]').click();
-  await page.locator('[data-action="next-card"]').click();
+  const cdp = await page.context().newCDPSession(page);
+  const measurePlayToPaint = (locator) => locator.evaluate((button) =>
+    new Promise((resolve) => {
+      const root = document.querySelector("#app-root");
+      const observer = new MutationObserver(() => undefined);
+      observer.observe(root, { childList: true });
+      const startedAt = performance.now();
+      button.click();
+      const handlerDuration = performance.now() - startedAt;
+      const renderCount = observer.takeRecords().reduce((count, record) =>
+        count + Array.from(record.addedNodes).filter((node) =>
+          node instanceof Element && node.classList.contains("app-shell")
+        ).length, 0);
+      observer.disconnect();
+      requestAnimationFrame(() => requestAnimationFrame(() => resolve({
+        handlerDuration,
+        paintDuration: performance.now() - startedAt,
+        renderCount
+      })));
+    })
+  );
+  const expectImmediateSingleRender = (measurement) => {
+    expect(measurement.renderCount).toBe(1);
+    expect(measurement.handlerDuration).toBeLessThan(100);
+    expect(measurement.paintDuration).toBeLessThan(180);
+  };
+  await cdp.send("Emulation.setCPUThrottlingRate", { rate: 6 });
+  const nextPerformance = await measurePlayToPaint(page.locator('[data-action="next-card"]'));
+  await cdp.send("Emulation.setCPUThrottlingRate", { rate: 1 });
+  expectImmediateSingleRender(nextPerformance);
   await expect(page.locator(".runtime-card-title")).toHaveText("Lacuna de opção");
 
   let choiceGap = page.locator('[data-action="text-gap-open-choice"]');
@@ -1373,7 +1402,12 @@ test("o runtime completo executa escolhas, lacunas, fluxograma, popup e anotaç�
   const popup = page.locator(".study-continue-popup");
   await expect(popup).toBeVisible();
   await popup.locator('[data-action="choice-toggle"][data-choice-option-id="sim"]').click();
-  await popup.locator('[data-action="continue-popup-next"]').click();
+  await cdp.send("Emulation.setCPUThrottlingRate", { rate: 6 });
+  const popupNextPerformance = await measurePlayToPaint(
+    popup.locator('[data-action="continue-popup-next"]')
+  );
+  await cdp.send("Emulation.setCPUThrottlingRate", { rate: 1 });
+  expectImmediateSingleRender(popupNextPerformance);
   await expect(page.locator(".runtime-card-title")).toHaveText("Concluído");
 
   expect(await page.evaluate(() => globalThis.__learnerRuntimeProbe.reviewMarked)).toBe(true);

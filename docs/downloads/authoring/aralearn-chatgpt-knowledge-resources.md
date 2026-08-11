@@ -211,6 +211,8 @@ Uma progressão frequente é:
 
 Isso não é uma quantidade fixa de cards. `goal`, `covers`, `checks` e os erros previsíveis determinam o necessário para a aprendizagem pretendida. Recuse uma sequência dominada por `paragraph` e `choice` quando uma representação estruturada tornar a operação mais clara.
 
+Uma microteoria focada pode ocupar vários cards. Ela começa pela situação ou necessidade em linguagem corrente, oferece exemplo concreto quando útil e introduz depois o termo formal, a relação ou o mecanismo correspondente. Não transforme o material-fonte em resumo telegráfico e não use uma sequência de jargões como explicação. Se uma frase precisar apresentar vários conceitos novos independentes, separe-os e explicite as ligações. Mais cards são preferíveis a um card denso; se o conjunto ultrapassar o limite técnico de oito cards, decomponha-o em microssequências causais, sem cortar teoria.
+
 Recupere componentes já estudados quando eles forem pré-requisitos úteis. Registre a dependência causal e mude o exemplo, a representação ou a situação. Não aumente a densidade de um card para revisar muitos assuntos ao mesmo tempo.
 
 Use somente os vínculos didáticos do contrato:
@@ -303,7 +305,7 @@ Consulte `docs/recursos-de-card.md` para a forma completa do recurso escolhido. 
 
 # Padrões de autoria por área
 
-O plano sempre parte de uma pessoa sem conhecimentos prévios, salvo quando o pedido ou os materiais comprovam um pré-requisito. A área muda a forma de representar, praticar e verificar o conteúdo; não muda a exigência de explicar símbolos, oferecer base causal e manter cada prática autossuficiente.
+O plano sempre parte de uma pessoa sem conhecimentos prévios, salvo quando o pedido ou os materiais comprovam um pré-requisito. A área muda a forma de representar, praticar e verificar o conteúdo; não muda a exigência de explicar símbolos, oferecer base causal e manter cada prática autossuficiente. Fidelidade terminológica à fonte não autoriza reproduzir sua densidade: apresente primeiro a situação em linguagem comum, use exemplo concreto quando útil e introduza depois os termos técnicos e suas relações, distribuindo conceitos novos independentes entre cards ou microssequências.
 
 ## Escolha da representação
 
@@ -355,6 +357,7 @@ Registre o objetivo e a evidência em `microsequence.goal` e `microsequence.chec
 
 ## Redes, infraestrutura e segurança
 
+- Apresente a função observável antes da abstração: por exemplo, mostre a associação entre um nome e um endereço antes de introduzir hierarquia, registros distribuídos e resolução de nomes. Defina cada termo na primeira ocorrência e contraste serviços próximos somente depois que ambos tiverem função clara.
 - Declare topologia, endereçamento, estado inicial, equipamento ou serviço e versão quando necessários.
 - Use `system_map` quando limites e pertencimento a subsistemas importarem, `graph` para conexões sem essa semântica, `flow` para negociação e resposta a falhas, `table` para configuração e `code` para comandos.
 - Diferencie observação, diagnóstico e ação. Uma evidência isolada não prova uma causa sem as condições correspondentes.

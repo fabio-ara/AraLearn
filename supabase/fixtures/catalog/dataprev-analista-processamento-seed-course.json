@@ -43275,15 +43275,15 @@
                   "resource": "paragraph",
                   "kind": "theory",
                   "exercise": "none",
-                  "title": "Organização distribuída de nomes",
-                  "after": "A hierarquia divide o espaço de nomes, enquanto registros distribuídos fornecem as informações consultadas durante a resolução.",
+                  "title": "Do nome ao endereço IP",
+                  "after": "O DNS consulta informações já registradas para responder sobre um nome. Ele não entrega um novo endereço IP ao dispositivo. A concessão automática de endereços é uma função do Dynamic Host Configuration Protocol (DHCP), apresentado adiante.",
                   "sources": [
                     "src-rfc1034"
                   ],
                   "topics": [
                     "topic-redes-l05-dns"
                   ],
-                  "text": "O Domain Name System (DNS), ou Sistema de Nomes de Domínio, organiza nomes em um espaço hierárquico em árvore. Uma base distribuída de registros de recursos associa esses nomes a informações, e a resolução consulta essa estrutura; ela não aloca endereços por concessão."
+                  "text": "Na internet, pessoas usam nomes como `www.exemplo.com.br`, mas os computadores enviam dados para endereços do Protocolo de Internet (IP), usados para localizar destinos na rede. O Domain Name System (DNS), ou Sistema de Nomes de Domínio, associa um nome a informações sobre ele, como seu endereço IP. Essas informações ficam distribuídas entre servidores DNS. Quando um dispositivo precisa descobrir o IP de um nome, inicia uma consulta chamada resolução de nomes."
                 },
                 {
                   "id": "dataprev-redes-l05-ms03-dns-dhcp-c02",

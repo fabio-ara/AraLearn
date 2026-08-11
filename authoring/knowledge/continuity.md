@@ -30,6 +30,16 @@ Cards teóricos apresentam conceitos, representações e exemplos resolvidos.
 Cards de exercício recuperam e aplicam essa base. Uma prática não pode
 introduzir silenciosamente notação, regra, ferramenta ou procedimento novo.
 
+Teoria não é resumo do material-fonte. Na ausência de pré-requisito
+comprovado, introduza a necessidade ou a situação em linguagem comum, mostre um
+exemplo concreto quando ele tornar a ideia observável e só então apresente o
+termo formal e suas relações. Um termo novo não pode ser definido por vários
+outros termos ainda não explicados. Quando uma frase ou card precisar coordenar
+conceitos novos independentes, distribua a progressão em mais cards ou em outra
+microssequência. A quantidade resultante não é penalidade nem deve ser reduzida
+por condensação; o limite técnico de oito cards por gravação exige decomposição
+da unidade, não omissão de passos.
+
 Variações de prática mudam dados, contexto, representação ou grau de apoio,
 mas continuam vinculadas à mesma microteoria. Uma necessidade conceitual nova
 gera outra microteoria.

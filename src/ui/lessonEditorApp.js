@@ -1970,7 +1970,7 @@ export function createLessonEditorApp({
         const exercise = state.choiceExerciseByBlockKey[entry.blockKey] || { selected: [], feedback: null };
         if (exercise.feedback !== "correct") {
           // Força feedback para impedir avanço silencioso.
-          const status = validateChoice(entry.blockKey);
+          const status = validateChoice(entry.blockKey, { renderCorrect: false });
           if (status !== "correct") {
             return;
           }
@@ -1981,7 +1981,7 @@ export function createLessonEditorApp({
       for (const entry of completes) {
         const exercise = state.completeExerciseByBlockKey[entry.blockKey] || { values: [], feedback: null };
         if (exercise.feedback !== "correct") {
-          const status = validateComplete(entry.blockKey);
+          const status = validateComplete(entry.blockKey, { renderCorrect: false });
           if (status !== "correct") {
             return;
           }
@@ -2023,7 +2023,7 @@ export function createLessonEditorApp({
         for (const entry of popupChoices) {
           const exercise = state.choiceExerciseByBlockKey[entry.blockKey] || { selected: [], feedback: null };
           if (exercise.feedback !== "correct") {
-            const status = validateChoice(entry.blockKey);
+            const status = validateChoice(entry.blockKey, { renderCorrect: false });
             if (status !== "correct") {
               return;
             }
@@ -2034,7 +2034,7 @@ export function createLessonEditorApp({
         for (const entry of popupCompletes) {
           const exercise = state.completeExerciseByBlockKey[entry.blockKey] || { values: [], feedback: null };
           if (exercise.feedback !== "correct") {
-            const status = validateComplete(entry.blockKey);
+            const status = validateComplete(entry.blockKey, { renderCorrect: false });
             if (status !== "correct") {
               return;
             }
@@ -3844,7 +3844,7 @@ export function createLessonEditorApp({
     render({ preserveState: true });
   }
 
-  function validateChoice(blockKey) {
+  function validateChoice(blockKey, { renderCorrect = true } = {}) {
     const entry = getCurrentChoiceEntry(blockKey);
     if (!entry) {
       return null;
@@ -3875,7 +3875,9 @@ export function createLessonEditorApp({
     }
 
     state.choiceExerciseByBlockKey[blockKey] = { ...exercise, feedback: ok ? "correct" : "wrong" };
-    render({ preserveState: true });
+    if (!ok || renderCorrect) {
+      render({ preserveState: true });
+    }
     return ok ? "correct" : "wrong";
   }
 
@@ -3964,7 +3966,7 @@ export function createLessonEditorApp({
     render({ preserveState: true });
   }
 
-  function validateComplete(blockKey) {
+  function validateComplete(blockKey, { renderCorrect = true } = {}) {
     const entry = getCurrentCompleteEntry(blockKey);
     if (!entry) {
       return null;
@@ -3979,7 +3981,9 @@ export function createLessonEditorApp({
 
     if (!answers.length) {
       state.completeExerciseByBlockKey[blockKey] = { ...exercise, feedback: "correct" };
-      render({ preserveState: true });
+      if (renderCorrect) {
+        render({ preserveState: true });
+      }
       return "correct";
     }
 
@@ -3996,7 +4000,9 @@ export function createLessonEditorApp({
       textGapResponseMatches(tokens[idx], value)
     );
     state.completeExerciseByBlockKey[blockKey] = { ...exercise, feedback: ok ? "correct" : "wrong" };
-    render({ preserveState: true });
+    if (!ok || renderCorrect) {
+      render({ preserveState: true });
+    }
     return ok ? "correct" : "wrong";
   }
 

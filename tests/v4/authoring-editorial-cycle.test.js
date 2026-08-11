@@ -17,12 +17,15 @@ const readProjectFile = (relativePath) => readFile(
 );
 
 const [instructions, editorialCycle, workflow, semanticAudit, cardsAndResources,
-  mcpGuide, sources, termLedger, workspaceProtocol, workspaceIncremental] = await Promise.all([
+  continuity, domainPatterns, mcpGuide, sources, termLedger, workspaceProtocol,
+  workspaceIncremental] = await Promise.all([
   readProjectFile("authoring/platforms/chatgpt/INSTRUCTIONS.md"),
   readProjectFile("authoring/core/editorial-cycle.md"),
   readProjectFile("authoring/core/workflow.md"),
   readProjectFile("authoring/knowledge/semantic-audit.md"),
   readProjectFile("authoring/knowledge/cards-and-resources.md"),
+  readProjectFile("authoring/knowledge/continuity.md"),
+  readProjectFile("authoring/knowledge/domain-patterns.md"),
   readProjectFile("authoring/platforms/chatgpt/MCP_GUIDE.md"),
   readProjectFile("authoring/core/sources.md"),
   readProjectFile("authoring/knowledge/term-ledger.md"),
@@ -121,6 +124,31 @@ test("cenários 6 a 10: auditoria cobre bastidor, termos, contexto, ancoragem e 
   assert.match(sources, /operação cognitiva/iu);
   assert.match(semanticAudit, /carga cognitiva/iu);
   assert.match(semanticAudit, /uma decisão principal/iu);
+  assert.match(semanticAudit, /nunca Transmission Control `Protocol \(TCP\)`/u);
+  assert.match(AUTHORING_SERVER_INSTRUCTIONS, /nunca marque apenas o sufixo/iu);
+});
+
+test("microteoria progride sem pré-requisitos e não se condensa para reduzir cards", () => {
+  assert.match(instructions, /Teoria não é resumo/iu);
+  assert.match(instructions, /quantidade de cards não é custo a minimizar/iu);
+  assert.match(AUTHORING_SERVER_INSTRUCTIONS, /Teoria não é resumo/iu);
+  assert.match(semanticAudit, /Fidelidade à fonte não\s+justifica reproduzir sua densidade/iu);
+  assert.match(continuity, /limite técnico de oito cards.*decomposição/isu);
+  assert.match(
+    domainPatterns,
+    /associação entre um nome e um endereço.*hierarquia, registros distribuídos e resolução/isu
+  );
+
+  const context = prepareAuthoringContext({
+    intent: "extend",
+    targetEntity: "microsequence",
+    context: "Explicar a microteoria sem pré-requisito, com exemplo concreto e progressão"
+  });
+  const microtheory = context.guidance.find(({ id }) => id === "microtheory-design");
+  assert.ok(microtheory);
+  assert.match(microtheory.text, /focada.*não significa texto curto ou condensado/iu);
+  assert.match(microtheory.text, /linguagem comum.*exemplo concreto.*termo formal/isu);
+  assert.match(microtheory.text, /empilhe conceitos novos.*distribua a progressão/iu);
 });
 
 test("contexto de banca reserva espaço para ancoragem em criação e ampliação", () => {

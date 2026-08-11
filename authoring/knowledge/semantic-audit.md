@@ -48,6 +48,15 @@ sequência pronta.
 - Um termo técnico, símbolo, sigla, convenção, papel, unidade ou relação nova
   recebe explicação suficiente antes de ser exigido. Não use uma palavra mais
   avançada para explicar outra sem introduzi-la na mesma cadeia causal.
+- Teoria não é resumo. Sinalize texto que empilhe termos, relações ou mecanismos
+  novos antes de apresentar em linguagem comum a necessidade ou a situação que
+  eles explicam. Na primeira ocorrência, procure uma explicação simples e, quando
+  útil, um exemplo concreto antes da formulação técnica. Fidelidade à fonte não
+  justifica reproduzir sua densidade.
+- Recuse frase ou card que coordene conceitos novos independentes apenas para
+  reduzir extensão. Recomende separação em mais cards ou microssequências e não
+  trate a quantidade resultante como defeito. Se o limite técnico de oito cards
+  for alcançado, a correção é decompor a unidade, não condensar ou omitir teoria.
 - Divida uma representação quando ela exigir simultaneamente comparação, cálculo, leitura de várias relações independentes e memorização de legenda extensa. Simplificar não significa omitir a condição que decide a resposta.
 
 ## 4. Coerência entre operação, recurso e lacuna
@@ -71,6 +80,7 @@ Essas regras valem para qualquer recurso estruturado e também para blocos equiv
 
 - Use português direto e adequado ao público. Uma sigla pode aparecer depois da expansão ou quando estiver autorizada como pré-requisito; não use jargão para encobrir uma explicação ausente.
 - Crases só representam código, comando, identificador, literal, sintaxe ou valor cuja forma exata importa para a tarefa. Não use crases como mero destaque de palavra comum, conceito pedagógico, frase natural ou nome de modalidade. Para ênfase conceitual, prefira redação clara; não dependa de aparência de código.
+- Cada par de crases delimita uma unidade literal inteira, sem espaço interno nas bordas. Nunca destaque apenas o sufixo de uma expressão de várias palavras nem separe uma sigla de sua forma expandida. Nomes técnicos em prosa ficam sem crases; quando a notação autorizada exigir o nome literal completo, escreva `Transmission Control Protocol (TCP)`, nunca Transmission Control `Protocol (TCP)`.
 - Preserve literalidade quando ela importa, como comandos, nomes de campos, expressões, caminhos, mensagens e trechos de programa. Fora disso, prefira linguagem corrente e explique a função do termo técnico.
 - Conteúdo multilíngue declara idioma e direção quando o contrato exigir. Não corrija variação linguística legítima como se fosse erro; corrija somente a formulação que prejudica compreensão, precisão ou adequação ao público.
 

@@ -89,7 +89,10 @@ function wrapPlainInlineSyntax(escapedText) {
   protect(/#include\s*&lt;[^&]+&gt;/g);
   protect(/\b(?:for|while|if|switch)\s*\([^<\n)]*?\)/g);
   protect(/\b(?:printf|scanf|getch|puts|gets|strlen|strcmp|strcpy|strupr|main)\s*\([^<\n)]*?\);?/g);
-  protect(/\b[A-Za-z_][A-Za-z0-9_]*\s*\([^<\n)]*?\);?/g);
+  // A forma genérica exige adjacência: em prosa, "Protocol (TCP)" é uma
+  // expansão com sigla, não uma chamada de função. Funções conhecidas acima
+  // continuam aceitando espaço antes do parêntese quando isso for necessário.
+  protect(/\b[A-Za-z_][A-Za-z0-9_]*\([^<\n)]*?\);?/g);
   protect(/\bcase\s+(?:'[^']+'|-?\d+(?:\.\d+)?)\s*:?/g);
   protect(/\bdefault:?/g);
   protect(/%(?:\.\d+)?[dfcs]/g);
