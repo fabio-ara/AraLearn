@@ -25,7 +25,7 @@
   <body>
     <main class="resource-gallery" aria-label="Galeria de packages"></main>
     <script type="module">
-      import { RESOURCE_PACKAGE_REGISTRY } from "/src/resources/packages/index.js";
+      import { renderPackageCardBlocks } from "/src/render/renderPackageCard.js";
 
       const response = await fetch("/tests/fixtures/package/project-resources-gallery.json", {
         cache: "no-store"
@@ -35,14 +35,11 @@
       const cards = library.courses[0].modules[0].lessons[0].microsequences[0].cards;
       const gallery = document.querySelector(".resource-gallery");
       cards.forEach((card) => {
-        const instance = card.content.find(({ package: packageId }) =>
-          packageId !== "aralearn.resource.paragraph"
-        ) || card.response || card.content[0];
-        const slot = card.response === instance ? "response" : "content";
+        const packageId = card.response?.package || card.content[0]?.package;
         const article = document.createElement("article");
         article.className = "resource-gallery-card";
-        article.dataset.resource = instance.package;
-        article.innerHTML = `<h2>${card.title}</h2>${RESOURCE_PACKAGE_REGISTRY.renderInstance(instance, slot)}`;
+        article.dataset.resource = packageId;
+        article.innerHTML = `<h2>${card.title}</h2>${renderPackageCardBlocks(card)}`;
         gallery.append(article);
       });
       globalThis.__RESOURCE_GALLERY_READY__ = true;

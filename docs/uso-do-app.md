@@ -185,10 +185,11 @@ tiver sido substituído, o app não abre outro card por aproximação. O
 funcionamento e os limites de interpretação estão em
 [Observações pedagógicas](observacoes-pedagogicas.md).
 
-Os cards podem usar dezoito recursos: parágrafo, escolha, composição, código,
-tabela, fluxo, árvore, grafo, mapa de relações, matriz, plano cartesiano,
-fórmula, gráfico estatístico, sequência, texto anotado, exemplo linguístico,
-mapa de sistema e reação química. Os cards de estudo não exibem controles de
+Os cards combinam packages de conteúdo, resposta e feedback. O catálogo atual
+inclui parágrafo, código, tabela, fluxo, árvore, grafo, mapa de relações,
+matriz, plano cartesiano, fórmula, gráfico estatístico, sequência, texto
+anotado, exemplo linguístico, mapa de sistema, reação química, escolha, lacuna
+e ordenação. Os cards de estudo não exibem controles de
 movimentação. **Visualizar**, **Editar** e **IA** usam o próprio conteúdo. Um
 contorno discreto identifica o alvo sem redimensionar o resource nem criar uma
 segunda tela. Outro toque retira o alvo da seleção.
@@ -196,8 +197,8 @@ segunda tela. Outro toque retira o alvo da seleção.
 Na lição, o botão **Play** da microssequência abre sua lista compacta de cards.
 As etiquetas permanecem no nível da microssequência. Dentro dela, o
 preenchimento de cada card comunica sua conclusão sem repetir `0/1` ou `1/1`;
-zerar progresso e **Play** continuam disponíveis, e este último entra no
-runtime. Em modo de autoria, editar ou excluir age no próprio card estrutural e
+zerar progresso e **Play** continuam disponíveis, e este último abre o estudo.
+Em modo de autoria, editar ou excluir age no próprio card estrutural e
 não dispara a navegação de estudo.
 
 O progresso dentro da lição é sequencial. Por isso, zerar um card ou uma
@@ -205,7 +206,9 @@ microssequência também reabre os cards posteriores daquela lição: assim, a
 retomada nunca afirma que uma etapa posterior continua concluída depois de uma
 etapa anterior ser reiniciada.
 
-Nos grafos, nomes curtos permanecem junto dos vértices e arestas. Nomes que não cabem no desenho recebem uma chave curta e aparecem por inteiro na legenda abaixo do grafo.
+Nos grafos, os vértices conservam nomes legíveis e as relações aparecem fora do
+desenho, sem rótulos sobre as arestas. Mapas de relações apresentam cada par em
+uma linha dimensionável, sem setas atravessando os textos.
 
 Quando a conta tem permissão de autoria, os botões de editar e excluir aparecem
 junto do curso, módulo ou lição; sem permissão, permanecem desabilitados. No

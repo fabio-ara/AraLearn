@@ -111,8 +111,17 @@ async function bootAuthoring(page) {
       }
     }
   });
+  // O cenário monta o editor diretamente: carregue um documento mínimo para
+  // que o bootstrap completo do aplicativo não dispute a mesma raiz.
+  await page.route("**/", async (route) => {
+    await route.fulfill({
+      contentType: "text/html; charset=utf-8",
+      body: '<!doctype html><html><head><meta name="viewport" content="width=device-width, initial-scale=1"><link rel="stylesheet" href="/styles-tokens.css"><link rel="stylesheet" href="/styles-shell-baseline.css"><link rel="stylesheet" href="/styles.css"></head><body><div id="app-root"></div></body></html>'
+    });
+  });
   await page.goto("/");
-  await page.evaluate(async ({ initialProject, trailSnapshot }) => {
+  try {
+    await page.evaluate(async ({ initialProject, trailSnapshot }) => {
     const oldRoot = document.querySelector("#app-root");
     const root = document.createElement("div");
     root.id = "app-root";
@@ -207,16 +216,21 @@ async function bootAuthoring(page) {
       import("/src/editor/contractEditor.js"),
       import("/src/ui/lessonEditorApp.js")
     ]);
-    createLessonEditorApp({
-      root,
-      storage,
-      editor: createEditorSession(storage),
-      initialProject: probe.project,
-      assistProvider,
-      homeTrails: { loadTrailSnapshot: async () => structuredClone(trailSnapshot) },
-      trailPersonalStateFactory: () => storage
-    });
-  }, { initialProject, trailSnapshot });
+      createLessonEditorApp({
+        root,
+        storage,
+        editor: createEditorSession(storage),
+        initialProject: probe.project,
+        assistProvider,
+        homeTrails: { loadTrailSnapshot: async () => structuredClone(trailSnapshot) },
+        trailPersonalStateFactory: () => storage
+      });
+    }, { initialProject, trailSnapshot });
+  } catch (error) {
+    // O Chromium móvel pode substituir o mundo de execução ao concluir imports
+    // dinâmicos. Só aceite esse caso se a montagem abaixo tiver sobrevivido.
+    if (!String(error?.message || error).includes("Execution context was destroyed")) throw error;
+  }
   await expect(page.locator('[data-action="open-course"]')).toBeVisible();
 }
 

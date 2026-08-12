@@ -34,7 +34,7 @@ validação, autorização nem leitura do estado atual.
 
 O workspace é composto no PostgreSQL. Há uma entidade corrente para cada
 projeto, curso, módulo, lição, tópico, microssequência e card. Relações de pai e
-posição formam a árvore, e o servidor recompõe o documento v4 quando uma
+posição formam a árvore, e o servidor recompõe `aralearn.library.v1` quando uma
 leitura, validação ou publicação precisa dele.
 
 Cada alteração envia apenas as partes atingidas. O Storage recebe o artefato

@@ -76,7 +76,7 @@
 - Dados voláteis aparecem no próprio card: valores, nomes, trechos de código, tabelas, casos, coordenadas, opções e demais elementos particulares da questão não podem existir apenas em um card anterior. Conceitos e notações já ensinados podem ser mobilizados, mas o caso que será resolvido precisa estar completo.
 - Confira os dados necessários nos campos que a pessoa vê antes de responder,
   como enunciado, texto, código, rótulos, valores ou alternativas. Metadados,
-  `after`, respostas e conteúdo oculto não tornam a prática autossuficiente.
+  respostas e conteúdo oculto não tornam a prática autossuficiente.
 - Cada item de `microsequence.checks` precisa chegar a uma prática observável.
   Quando útil, `card.topics` liga o card aos IDs declarados em
   `lesson.topics`; não crie campos adicionais para resultados ou funções.
@@ -99,6 +99,9 @@
 - Alternativas erradas representam equívocos plausíveis e não simples absurdos.
 - No package de escolha, selecione resposta única ou múltipla conforme a
   evidência pretendida e verifique o conjunto exato de identificadores.
+- A pergunta de `aralearn.response.choice` é o único enunciado da escolha. Não
+  copie a mesma pergunta para um `paragraph` de `content`; use `content: []`
+  quando não houver cenário, dado ou representação adicional.
 - Use de 2 a 7 opções. Três alternativas costumam bastar; cinco só se justificam quando houver quatro distratores ou decisões realmente competitivos. Não infle a lista.
 - Detecte opções equivalentes, pistas gramaticais, diferença injustificada de extensão, repetição exclusiva do enunciado e alternativa parcialmente correta tratada como errada sem condição explícita.
 - O feedback explica a regra, o detalhe decisivo e o motivo do erro provável.

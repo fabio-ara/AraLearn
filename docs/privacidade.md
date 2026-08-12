@@ -10,7 +10,7 @@ O usuário pode retirar cursos, apagar os dados deste dispositivo, encerrar a se
 
 ## Autoria privada e catálogo
 
-O gateway MCP recebe comandos sobre entidades do documento v4 e conserva
+O gateway MCP recebe comandos sobre entidades de `aralearn.library.v1` e conserva
 as partes atuais do workspace da própria conta. Cada mutação usa uma revisão
 esperada e um identificador idempotente. A submissão editorial expõe somente a
 revisão privada escolhida, nunca os demais cursos da biblioteca.

@@ -85,7 +85,7 @@ As hipóteses de design são:
 
 1. A microssequência reduz a distância entre explicação isolada e lição extensa.
 2. Uma linguagem JSON formal e compilada de modo determinístico pode tornar a autoria assistida mais auditável sem converter prosa em marcação.
-3. Tópicos, cobertura, evidências e dependências explícitos no documento v4
+3. Tópicos, cobertura, evidências e dependências explícitos em `aralearn.library.v1`
    podem preservar continuidade quando microssequências são criadas ou
    reorganizadas separadamente.
 4. Escopo determinístico, saída estruturada, validação interna e gravação

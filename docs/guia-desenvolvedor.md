@@ -16,7 +16,7 @@ npm run dev
   IndexedDB.
 - [Persistência e sincronização](persistencia-relacional.md): réplica, outbox e
   conflitos.
-- [Contrato público](aralearn-contract.md): documento v4.
+- [Contrato público](aralearn-contract.md): biblioteca e packages correntes.
 - [Resources](recursos-de-card.md): representações aceitas.
 - [Supabase](supabase.md): migrations, RLS, funções e implantação.
 - [Sistema visual](sistema-visual.md): tokens, temas, ícones e acessibilidade.

@@ -13,7 +13,7 @@ interface sejam tratados como medidas psicológicas ou educacionais.
 | microssequência | unidade operacional intermediária que trabalha objetivo delimitado com contexto | conjunto ordenado de microteoria e práticas | duração fixa, microlearning universal ou card isolado |
 | microteoria | conjunto breve de cards teóricos suficiente para sustentar as práticas locais | conteúdo conceitual revisto no chat | teoria simplificada ou superficial |
 | prática de recuperação | tentativa de produzir conhecimento ou decisão sem nova exposição integral | escolha, gap e demais práticas | qualquer toque, tentativa ou reconhecimento |
-| feedback formativo | informação específica destinada a apoiar interpretação e ação posterior | feedback no recurso, `after`, resposta à observação | “certo/errado” isolado ou nota |
+| feedback formativo | informação específica destinada a apoiar interpretação e ação posterior | feedback da resposta, packages no slot `feedback`, resposta à observação | “certo/errado” isolado ou nota |
 | feedback literacy | capacidade de compreender, julgar e usar feedback | ler resposta, comparar e decidir revisão | recebimento automático de uma mensagem |
 | baixa consequência | situação sem nota, ranking ou penalização acumulada | revelar, limpar e repetir livremente | ausência de desafio ou de feedback |
 | retomada | reencontro do ponto e do contexto necessários para continuar | progresso simples e réplica offline | prova de retenção ou engajamento |

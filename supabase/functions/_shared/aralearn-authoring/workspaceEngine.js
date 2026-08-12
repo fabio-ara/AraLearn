@@ -825,6 +825,53 @@ export class AuthoringWorkspaceEngine {
     });
   }
 
+  async replaceCanonicalCatalogWorkspace({
+    principal,
+    workspaceId,
+    requestId,
+    expectedRevision,
+    title,
+    brief = "",
+    document,
+    deadlineAt = null
+  }) {
+    brief = stableBrief(brief, { allowEmpty: true });
+    assertCatalogBatchPrincipal(principal);
+    const prepared = await prepareCourseDocument(document, {
+      requireReady: true
+    });
+    const operation = "replace_catalog_document";
+    const payloadHash = await this.#hash(operation, {
+      workspaceId,
+      expectedRevision,
+      title,
+      brief,
+      canonicalContentHash: prepared.contentHash
+    });
+    return first(await this.rpc("replace_catalog_authoring_document_v1", {
+      p_actor_id: principal.actorId,
+      p_workspace_id: workspaceId,
+      p_request_id: requestId,
+      p_payload_hash: payloadHash,
+      p_expected_revision: expectedRevision,
+      p_title: title,
+      p_brief: brief,
+      p_rows: flattenWorkspaceDocument(prepared.document)
+    }, { deadlineAt }));
+  }
+
+  async discardUnpublishedCatalogMaterialization({
+    principal,
+    workspaceId,
+    deadlineAt = null
+  }) {
+    assertCatalogBatchPrincipal(principal);
+    return first(await this.rpc("discard_unpublished_catalog_materialization_v1", {
+      p_actor_id: principal.actorId,
+      p_workspace_id: workspaceId
+    }, { deadlineAt }));
+  }
+
   async list({
     principal,
     limit = 50,

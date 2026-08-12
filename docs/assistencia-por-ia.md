@@ -35,18 +35,17 @@ os mesmos nos três modos. Na edição, o texto digitável ocupa a caixa origina
 e rola dentro dela se ultrapassar o espaço disponível. Salvar e cancelar ficam
 no rodapé da tela, nunca dentro do card ou do resource selecionado.
 
-O modo Editar conserva o renderer canônico de cada resource: muda apenas a
+O modo Editar conserva o renderer canônico de cada package: muda apenas a
 editabilidade do texto que possui caminho inequívoco no contrato. Identidades,
 relações, respostas, topologia e demais elementos estruturais continuam
-somente leitura. Em projeções como fluxogramas, um texto só se torna editável
+somente leitura. Em packages estruturados, um texto só se torna editável
 quando pode ser associado deterministicamente ao campo de origem.
 
 Em escolhas, podem ser alterados o texto, o código e o feedback de cada opção,
 mas não a opção correta, o modo de seleção nem a identidade ou a ordem. Uma
-lacuna permanece um token atômico: é possível editar o texto ao redor dela,
-mas não mudar por acidente sua resposta, seus distratores ou seu modo. A
-explicação posterior (`after` e seus blocos) usa a mesma superfície textual,
-mesmo quando começa vazia. Campos longos respeitam a caixa do resource em tela
+lacuna liga-se por caminho formal a um campo textual do package de conteúdo;
+a edição não muda por acidente sua resposta, seus distratores ou seu modo.
+Packages no slot `feedback` usam a mesma superfície textual. Campos longos respeitam a caixa do resource em tela
 estreita e a composição do teclado móvel antes de serem salvos.
 
 Na edição manual, o texto autorizado torna-se editável no próprio resource. Na
@@ -77,15 +76,12 @@ reparo de conteúdo, não exclusão do card.
 
 ### Card
 
-Ao selecionar um ou mais resources, somente esses alvos podem mudar. Os
+Ao selecionar um ou mais packages, somente esses alvos podem mudar. Os
 identificadores de alvo são fechados:
 
-- `main` para os campos do resource principal;
-- `response` para a prática contextual por escolha de um resource que não seja
-  `choice`;
-- `after:text` para o texto posterior canônico;
-- `body:<id>` para um bloco do corpo de `composite`;
-- `after:<id>` para um bloco de apoio.
+- `content:<id>` para uma instância de representação;
+- `response:<id>` para a instância de resposta;
+- `feedback:<id>` para uma instância de explicação posterior.
 
 Selecionar o card inteiro autoriza reparar seu conteúdo pedagógico. Identidade,
 caminho e posição permanecem fixos. O nível de card não cria outro card nem

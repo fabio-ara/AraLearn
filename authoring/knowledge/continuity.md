@@ -1,6 +1,6 @@
 # Continuidade didática
 
-Continuidade pertence ao documento v4, não a um cursor de execução.
+Continuidade pertence ao workspace autoral, não a um cursor de execução.
 
 ## Dependências
 

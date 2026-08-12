@@ -275,16 +275,7 @@
                       "position": 3,
                       "title": "Programa mínimo correto",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-m1-03-escolher-minimo-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Compare as opções com o esqueleto pedido.\n\nQual opção mostra um programa mínimo correto?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-m1-03-escolher-minimo-response",
                         "package": "aralearn.response.choice",
@@ -402,16 +393,7 @@
                       "position": 5,
                       "title": "Ordem das partes",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-m1-05-ordem-basica-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Escolha a organização que respeita a ordem do programa.\n\nQual sequência está correta?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-m1-05-ordem-basica-response",
                         "package": "aralearn.response.choice",
@@ -474,16 +456,7 @@
                       "position": 6,
                       "title": "Forma aceita de main",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-m1-06-variante-int-main-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Analise as formas de iniciar o bloco principal.\n\nQual opção usa uma forma aceita para iniciar o programa?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-m1-06-variante-int-main-response",
                         "package": "aralearn.response.choice",
@@ -544,16 +517,7 @@
                       "position": 7,
                       "title": "Síntese do esqueleto",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-m1-07-sintese-partes-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Em um programa mínimo desta lição, onde ficam os comandos `printf(\"Mensagem\");` e `getch();`?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-m1-07-sintese-partes-response",
                         "package": "aralearn.response.choice",
@@ -773,16 +737,7 @@
                       "position": 4,
                       "title": "Pontuação em include",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-m2-04-pontuacao-include-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual linha está pontuada corretamente para um cabeçalho?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-m2-04-pontuacao-include-response",
                         "package": "aralearn.response.choice",
@@ -906,16 +861,7 @@
                       "position": 6,
                       "title": "Cabeçalho e comando",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-m2-06-include-nao-comando-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual afirmação separa corretamente cabeçalho e comando nesta lição?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-m2-06-include-nao-comando-response",
                         "package": "aralearn.response.choice",
@@ -1380,16 +1326,7 @@
                       "position": 7,
                       "title": "Chave final no lugar certo",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-m3-07-erro-chave-antes-getch-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Observe o trecho e escolha a versão com a chave final no lugar correto.\n\nQual opção está correta?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-m3-07-erro-chave-antes-getch-response",
                         "package": "aralearn.response.choice",
@@ -1602,16 +1539,7 @@
                       "position": 2,
                       "title": "Linha de printf",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-m4-02-linha-printf-correta-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual linha escreve uma mensagem simples como comando dentro do bloco?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-m4-02-linha-printf-correta-response",
                         "package": "aralearn.response.choice",
@@ -1667,16 +1595,7 @@
                       "position": 3,
                       "title": "Linha de getch",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-m4-03-linha-getch-correta-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual linha está correta para o comando final dentro do bloco?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-m4-03-linha-getch-correta-response",
                         "package": "aralearn.response.choice",
@@ -1733,16 +1652,7 @@
                       "position": 4,
                       "title": "Linha sem ponto e vírgula",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-m4-04-linha-sem-ponto-final-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual linha não deve terminar com ponto e vírgula?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-m4-04-linha-sem-ponto-final-response",
                         "package": "aralearn.response.choice",
@@ -1976,16 +1886,7 @@
                       "position": 8,
                       "title": "Comandos com ponto e vírgula",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-m4-08-corrigir-dois-comandos-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Escolha a versão em que os comandos dentro do bloco estão completos.\n\nQual opção está correta?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-m4-08-corrigir-dois-comandos-response",
                         "package": "aralearn.response.choice",
@@ -2108,16 +2009,7 @@
                       "position": 2,
                       "title": "Escolha do programa completo",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-m5-02-escolher-programa-completo-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Escolha a versão completa e correta.\n\nQual opção está correta?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-m5-02-escolher-programa-completo-response",
                         "package": "aralearn.response.choice",
@@ -2393,16 +2285,7 @@
                       "position": 6,
                       "title": "Fechamento do bloco",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-m5-06-fechamento-correto-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Escolha o programa em que a chave final fecha o bloco após os comandos.\n\nQual opção tem o fechamento correto?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-m5-06-fechamento-correto-response",
                         "package": "aralearn.response.choice",
@@ -2463,16 +2346,7 @@
                       "position": 7,
                       "title": "Variação válida",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-m5-07-achar-programa-valido-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Escolha a variação válida do esqueleto.\n\nQual programa está válido para esta lição?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-m5-07-achar-programa-valido-response",
                         "package": "aralearn.response.choice",
@@ -2533,16 +2407,7 @@
                       "position": 8,
                       "title": "Síntese final",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-m5-08-sintese-final-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual conjunto de detalhes deve estar correto no esqueleto desta lição?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-m5-08-sintese-final-response",
                         "package": "aralearn.response.choice",
@@ -2840,16 +2705,7 @@
                       "position": 3,
                       "title": "Tipo para idade inteira",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-tipo-inteiro-idade-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "A variável idade deve guardar o valor 20. Qual tipo combina com esse valor?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-tipo-inteiro-idade-response",
                         "package": "aralearn.response.choice",
@@ -2905,16 +2761,7 @@
                       "position": 4,
                       "title": "Tipo para nota decimal",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-tipo-decimal-nota-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "A variável nota deve guardar o valor 8.5. Qual tipo combina com esse valor?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-tipo-decimal-nota-response",
                         "package": "aralearn.response.choice",
@@ -2970,16 +2817,7 @@
                       "position": 5,
                       "title": "Tipo para um caractere",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-tipo-caractere-conceito-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "A variável conceito deve guardar apenas o caractere A. Qual tipo combina com esse caso?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-tipo-caractere-conceito-response",
                         "package": "aralearn.response.choice",
@@ -3529,16 +3367,7 @@
                       "position": 7,
                       "title": "Declaração válida",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-escolher-declaracao-valida-int-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual alternativa declara corretamente uma variável inteira chamada idade?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-escolher-declaracao-valida-int-response",
                         "package": "aralearn.response.choice",
@@ -3595,16 +3424,7 @@
                       "position": 8,
                       "title": "Declaração de caractere",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-escolher-declaracao-valida-char-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual alternativa declara corretamente uma variável chamada conceito para um caractere?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-escolher-declaracao-valida-char-response",
                         "package": "aralearn.response.choice",
@@ -3953,16 +3773,7 @@
                       "position": 6,
                       "title": "Múltipla com inteiros",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-escolher-int-multipla-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual alternativa declara três variáveis inteiras chamadas a, b e soma?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-escolher-int-multipla-response",
                         "package": "aralearn.response.choice",
@@ -4019,16 +3830,7 @@
                       "position": 7,
                       "title": "Múltipla com decimais",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-escolher-float-multipla-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual alternativa declara nota1, nota2 e media como variáveis do tipo `float`?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-escolher-float-multipla-response",
                         "package": "aralearn.response.choice",
@@ -4485,16 +4287,7 @@
                       "position": 7,
                       "title": "Declaração ou atribuição",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-diferenciar-declaracao-atribuicao-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual alternativa é uma atribuição simples para a variável idade?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-diferenciar-declaracao-atribuicao-response",
                         "package": "aralearn.response.choice",
@@ -4551,16 +4344,7 @@
                       "position": 8,
                       "title": "Atribuição de caractere",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-escolher-atribuicao-char-valida-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual alternativa atribui corretamente o caractere B à variável letra?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-escolher-atribuicao-char-valida-response",
                         "package": "aralearn.response.choice",
@@ -5057,16 +4841,7 @@
                       "position": 9,
                       "title": "Revisão de variáveis e tipos",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-revisao-final-variaveis-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual alternativa mostra uma sequência correta de declaração e atribuição para um caractere?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-revisao-final-variaveis-response",
                         "package": "aralearn.response.choice",
@@ -5616,16 +5391,7 @@
                       "position": 8,
                       "title": "Revisão do printf com texto",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-printf-texto-revisao-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Em `printf(\"Aprovado\");`, qual trecho aparece na tela?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-printf-texto-revisao-response",
                         "package": "aralearn.response.choice",
@@ -6225,16 +5991,7 @@
                       "position": 11,
                       "title": "Associação de int",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-choice-formatador-int-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual associação está correta para mostrar uma variável `int` em `printf`?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-choice-formatador-int-response",
                         "package": "aralearn.response.choice",
@@ -6283,16 +6040,7 @@
                       "position": 12,
                       "title": "Associação de float",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-choice-formatador-float-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual associação está correta para mostrar uma variável `float` em `printf`?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-choice-formatador-float-response",
                         "package": "aralearn.response.choice",
@@ -6341,16 +6089,7 @@
                       "position": 13,
                       "title": "Associação de char",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-choice-formatador-char-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual associação está correta para mostrar uma variável `char` em `printf`?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-choice-formatador-char-response",
                         "package": "aralearn.response.choice",
@@ -7050,16 +6789,7 @@
                       "position": 3,
                       "title": "Comando de saída",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-choice-comando-mostra-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual comando mostra uma mensagem na tela?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-choice-comando-mostra-response",
                         "package": "aralearn.response.choice",
@@ -7108,16 +6838,7 @@
                       "position": 4,
                       "title": "Comando de entrada",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-choice-comando-le-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual comando lê um valor para a variável idade?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-choice-comando-le-response",
                         "package": "aralearn.response.choice",
@@ -7166,16 +6887,7 @@
                       "position": 5,
                       "title": "Onde usar &",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-choice-e-comercial-onde-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Em qual comando a variável idade deve aparecer como `&idade`?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-choice-e-comercial-onde-response",
                         "package": "aralearn.response.choice",
@@ -7224,16 +6936,7 @@
                       "position": 6,
                       "title": "Sem &",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-choice-sem-e-comercial-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Em qual linha a variável nota está correta sem &?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-choice-sem-e-comercial-response",
                         "package": "aralearn.response.choice",
@@ -7386,16 +7089,7 @@
                       "position": 9,
                       "title": "Ler e mostrar nota",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-code-par-entrada-saida-float-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Complete as duas linhas em ordem: primeiro ler, depois mostrar.\n\nQual par de comandos lê nota e depois mostra nota?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-code-par-entrada-saida-float-response",
                         "package": "aralearn.response.choice",
@@ -7601,16 +7295,7 @@
                       "position": 5,
                       "title": "Programa correto com idade",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-programa-escolher-int-correto-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Escolha o bloco que completa o programa para ler e mostrar idade.\n\nQual bloco usa `printf` e `scanf` corretamente para `int`?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-programa-escolher-int-correto-response",
                         "package": "aralearn.response.choice",
@@ -7668,16 +7353,7 @@
                       "position": 6,
                       "title": "Programa correto com nota",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-programa-escolher-float-correto-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Escolha o bloco que completa o programa para ler e mostrar nota.\n\nQual bloco usa `printf` e `scanf` corretamente para `float`?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-programa-escolher-float-correto-response",
                         "package": "aralearn.response.choice",
@@ -7735,16 +7411,7 @@
                       "position": 7,
                       "title": "Programa correto com conceito",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-programa-escolher-char-correto-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Escolha o bloco que completa o programa para ler e mostrar conceito.\n\nQual bloco usa `printf` e `scanf` corretamente para `char`?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-programa-escolher-char-correto-response",
                         "package": "aralearn.response.choice",
@@ -7922,16 +7589,7 @@
                       "position": 10,
                       "title": "Revisão final",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-programa-revisao-final-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual combinação está correta?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-programa-revisao-final-response",
                         "package": "aralearn.response.choice",
@@ -8614,16 +8272,7 @@
                       "position": 3,
                       "title": "Contagem de execuções",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-for-zero-03-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "No comando for (i = 0; i < 4; i++), quantas vezes o bloco executa?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-for-zero-03-response",
                         "package": "aralearn.response.choice",
@@ -8948,16 +8597,7 @@
                       "position": 4,
                       "title": "Valores assumidos",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-for-um-04-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "No comando for (i = 1; i <= 3; i++), quais valores de i aparecem?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-for-um-04-response",
                         "package": "aralearn.response.choice",
@@ -10383,16 +10023,7 @@
                       "position": 5,
                       "title": "Condição inicial falsa",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-while-esqueleto-05-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Se i vale 5 antes de while (i <= 3), quantas vezes o bloco executa?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-while-esqueleto-05-response",
                         "package": "aralearn.response.choice",
@@ -11165,16 +10796,7 @@
                       "position": 3,
                       "title": "Intervalo válido",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-while-validacao-03-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Para idade válida entre 0 e 120, qual teste representa valor inválido?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-while-validacao-03-response",
                         "package": "aralearn.response.choice",
@@ -12289,16 +11911,7 @@
                       "position": 5,
                       "title": "Ordem do teste",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-do-esqueleto-05-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Em qual parte do do while a condição é testada?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-do-esqueleto-05-response",
                         "package": "aralearn.response.choice",
@@ -12524,16 +12137,7 @@
                       "position": 4,
                       "title": "Comparar posição do teste",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-do-execucao-04-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual descrição combina com do while?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-do-execucao-04-response",
                         "package": "aralearn.response.choice",
@@ -13519,16 +13123,7 @@
                       "position": 5,
                       "title": "Corrigir forma completa",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-do-erros-05-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Escolha a forma correta para repetir enquanto opcao for diferente de 0.\n\nQual trecho está correto?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-do-erros-05-response",
                         "package": "aralearn.response.choice",
@@ -14459,16 +14054,7 @@
                       "position": 4,
                       "title": "Case específico ou default",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-default-04-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual alternativa corresponde ao ramo executado nesse caso?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-default-04-response",
                         "package": "aralearn.response.choice",
@@ -14860,16 +14446,7 @@
                       "position": 5,
                       "title": "Menu completo",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-menu-switch-05-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Escolha o trecho que completa corretamente o menu para opcao 1, opcao 2 e demais opções.\n\nQual trecho está correto?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-menu-switch-05-response",
                         "package": "aralearn.response.choice",
@@ -15875,16 +15452,7 @@
                       "position": 3,
                       "title": "Variável simples ou vetor",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-02-01-01-03-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual opção representa uma variável capaz de guardar cinco valores inteiros por posição?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-02-01-01-03-response",
                         "package": "aralearn.response.choice",
@@ -16017,16 +15585,7 @@
                       "position": 5,
                       "title": "Mesma linha de dados",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-02-01-01-05-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Um vetor de 4 posições com índices 0, 1, 2 e 3 permite acessar qual última posição?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-02-01-01-05-response",
                         "package": "aralearn.response.choice",
@@ -16184,16 +15743,7 @@
                       "position": 3,
                       "title": "Tamanho declarado",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-02-01-02-03-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual alternativa identifica o trecho que define o tamanho do vetor?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-02-01-02-03-response",
                         "package": "aralearn.response.choice",
@@ -16468,16 +16018,7 @@
                       "position": 3,
                       "title": "Tipo compatível",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-02-01-03-03-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual declaração combina com cinco notas que podem valer 6.5, 8.0 e 9.75?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-02-01-03-03-response",
                         "package": "aralearn.response.choice",
@@ -17122,16 +16663,7 @@
                       "position": 4,
                       "title": "Escolher acesso",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-02-01-05-04-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual expressão acessa a posição i de notas?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-02-01-05-04-response",
                         "package": "aralearn.response.choice",
@@ -17763,16 +17295,7 @@
                       "position": 3,
                       "title": "Índices visitados",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-02-02-01-03-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "No laço for (i = 0; i <= 4; i++), quais índices de v são percorridos?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-02-02-01-03-response",
                         "package": "aralearn.response.choice",
@@ -18123,16 +17646,7 @@
                       "position": 4,
                       "title": "Erro no scanf",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-02-02-02-04-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual linha lê corretamente a posição i de v?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-02-02-02-04-response",
                         "package": "aralearn.response.choice",
@@ -18394,16 +17908,7 @@
                       "position": 4,
                       "title": "Mostrar todas",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-02-02-03-04-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual trecho percorre todas as posições de `v[0]` a `v[4]` para exibir?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-02-02-03-04-response",
                         "package": "aralearn.response.choice",
@@ -18702,16 +18207,7 @@
                       "position": 4,
                       "title": "Sem & na exibição",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-02-02-04-04-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual linha exibe corretamente a posição i de v?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-02-02-04-04-response",
                         "package": "aralearn.response.choice",
@@ -20086,16 +19582,7 @@
                       "position": 5,
                       "title": "Evitar divisão errada",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-02-03-02-05-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Para um vetor de 5 posições, qual cálculo usa a quantidade correta?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-02-03-02-05-response",
                         "package": "aralearn.response.choice",
@@ -20987,16 +20474,7 @@
                       "position": 5,
                       "title": "Comparação correta",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-02-03-05-05-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual comparação verifica se a posição atual guarda valor acima da média?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-02-03-05-05-response",
                         "package": "aralearn.response.choice",
@@ -22056,16 +21534,7 @@
                       "position": 5,
                       "title": "Origem e destino",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-02-04-02-05-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual comando copia o valor de A na posição i para B na mesma posição?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-02-04-02-05-response",
                         "package": "aralearn.response.choice",
@@ -23076,16 +22545,7 @@
                       "position": 5,
                       "title": "Mesmo índice",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-02-04-05-05-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Se `codigo[0]` está associado a `nota[0]`, qual escolha preserva a associação no índice 2?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-02-04-05-05-response",
                         "package": "aralearn.response.choice",
@@ -23955,16 +23415,7 @@
                       "position": 5,
                       "title": "Valor e posição",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-matriz-valor-ou-posicao-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Em uma matriz M, a célula `M[2][1]` guarda o valor 3. Qual afirmação separa corretamente posição e valor?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-matriz-valor-ou-posicao-response",
                         "package": "aralearn.response.choice",
@@ -27870,16 +27321,7 @@
                       "position": 5,
                       "title": "Coluna da nota",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-notas-alunos-coluna-nota-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Em `notas[3][4]`, as colunas 0, 1 e 2 guardam notas e a coluna 3 guarda média quando ela for usada."
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-notas-alunos-coluna-nota-response",
                         "package": "aralearn.response.choice",
@@ -30215,16 +29657,7 @@
                       "position": 3,
                       "title": "String e número",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-04-01-01-03-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Considere `char nome[30];` e `int idade;`. Qual alternativa classifica corretamente `nome`?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-04-01-01-03-response",
                         "package": "aralearn.response.choice",
@@ -30547,16 +29980,7 @@
                       "position": 4,
                       "title": "Erro de caractere único",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-04-01-02-04-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Considere a declaração `char nome;`. Qual é o problema para guardar um nome?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-04-01-02-04-response",
                         "package": "aralearn.response.choice",
@@ -30835,16 +30259,7 @@
                       "position": 4,
                       "title": "Formatador de entrada",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-04-01-03-04-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "No comando `scanf(\"%s\", nome);`, o que `%s` indica?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-04-01-03-04-response",
                         "package": "aralearn.response.choice",
@@ -31427,16 +30842,7 @@
                       "position": 4,
                       "title": "Primeiro caractere",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-04-01-05-04-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual expressão acessa o primeiro caractere da string `nome`?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-04-01-05-04-response",
                         "package": "aralearn.response.choice",
@@ -31819,16 +31225,7 @@
                       "position": 5,
                       "title": "Erro provável",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-04-01-06-05-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual alternativa mistura string inteira com caractere isolado?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-04-01-06-05-response",
                         "package": "aralearn.response.choice",
@@ -32134,16 +31531,7 @@
                       "position": 3,
                       "title": "Papel da linha",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-04-02-01-03-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Em `char nomes[5][30];`, o que uma linha representa?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-04-02-01-03-response",
                         "package": "aralearn.response.choice",
@@ -32192,16 +31580,7 @@
                       "position": 4,
                       "title": "Papel da coluna",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-04-02-01-04-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Na expressão `nomes[2][1]`, o segundo índice indica o quê?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-04-02-01-04-response",
                         "package": "aralearn.response.choice",
@@ -32439,16 +31818,7 @@
                       "position": 3,
                       "title": "Primeiro tamanho",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-04-02-02-03-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Em `char nomes[5][30];`, o número 5 indica:"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-04-02-02-03-response",
                         "package": "aralearn.response.choice",
@@ -32497,16 +31867,7 @@
                       "position": 4,
                       "title": "Segundo tamanho",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-04-02-02-04-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Em `char nomes[5][30];`, o número 30 indica:"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-04-02-02-04-response",
                         "package": "aralearn.response.choice",
@@ -32715,16 +32076,7 @@
                       "position": 3,
                       "title": "Índice de linha",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-04-02-03-03-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "No comando `scanf(\"%s\", nomes[i]);`, o que o índice `i` seleciona?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-04-02-03-03-response",
                         "package": "aralearn.response.choice",
@@ -33030,16 +32382,7 @@
                       "position": 3,
                       "title": "Nome inteiro da linha",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-04-02-04-03-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Em uma lista `char nomes[5][30];`, o que `nomes[i]` representa em `printf(\"%s\", nomes[i]);`?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-04-02-04-03-response",
                         "package": "aralearn.response.choice",
@@ -33486,16 +32829,7 @@
                       "position": 5,
                       "title": "Nome inteiro ou caractere",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-04-02-05-05-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual expressão deve ser usada quando a intenção é exibir o nome inteiro da linha `i`?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-04-02-05-05-response",
                         "package": "aralearn.response.choice",
@@ -33688,16 +33022,7 @@
                       "position": 3,
                       "title": "Declaração insuficiente",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-04-02-06-03-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual é o problema de usar `char nomes[5];` para uma lista de cinco nomes?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-04-02-06-03-response",
                         "package": "aralearn.response.choice",
@@ -34232,16 +33557,7 @@
                       "position": 4,
                       "title": "Vizinhos no vetor",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-04-03-01-04-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Em um vetor `v`, qual par é comparado quando o índice interno é `j`?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-04-03-01-04-response",
                         "package": "aralearn.response.choice",
@@ -34467,16 +33783,7 @@
                       "position": 3,
                       "title": "Par comparado",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-04-03-02-03-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Em `v[5]`, se `j` vale 2, quais posições são comparadas por `v[j] > v[j + 1]`?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-04-03-02-03-response",
                         "package": "aralearn.response.choice",
@@ -35087,16 +34394,7 @@
                       "position": 3,
                       "title": "Papel do i",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-04-03-04-03-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "No trecho `for (i = 0; i <= 3; i++)`, qual é o papel de `i` no bubble sort de `v[5]`?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-04-03-04-03-response",
                         "package": "aralearn.response.choice",
@@ -35145,16 +34443,7 @@
                       "position": 4,
                       "title": "Papel do j",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-04-03-04-04-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "No laço `for (j = 0; j <= 3 - i; j++)`, qual é o papel de `j`?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-04-03-04-04-response",
                         "package": "aralearn.response.choice",
@@ -35506,16 +34795,7 @@
                       "position": 5,
                       "title": "Dois valores vizinhos",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-04-03-05-05-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Se os vizinhos são 8 e 6, e a ordem desejada é crescente, qual deve ser o par depois da troca?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-04-03-05-05-response",
                         "package": "aralearn.response.choice",
@@ -35766,16 +35046,7 @@
                       "position": 4,
                       "title": "Comparar índice",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-04-03-06-04-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual alternativa mostra o erro de comparar índice em vez de valor?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-04-03-06-04-response",
                         "package": "aralearn.response.choice",
@@ -36248,16 +35519,7 @@
                       "position": 4,
                       "title": "Troca durante ordenação",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-04-04-01-04-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Se a ordenação troca `notas[0]` com `notas[1]`, o que deve acontecer com o dado associado?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-04-04-01-04-response",
                         "package": "aralearn.response.choice",
@@ -36983,16 +36245,7 @@
                       "position": 5,
                       "title": "Campo que manda na ordem",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-04-04-03-05-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Se o trecho compara `codigos[j] > codigos[j + 1]`, qual dado manda na ordenação?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-04-04-03-05-response",
                         "package": "aralearn.response.choice",
@@ -37305,16 +36558,7 @@
                       "position": 4,
                       "title": "Mesmos índices na troca",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-04-04-04-04-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Se `notas[1]` troca com `notas[2]`, qual troca preserva a associação dos nomes?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-04-04-04-04-response",
                         "package": "aralearn.response.choice",
@@ -37684,16 +36928,7 @@
                       "position": 4,
                       "title": "Índice diferente",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-04-04-05-04-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual troca de nomes está errada se a troca de notas foi entre `notas[j]` e `notas[j + 1]`?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-04-04-05-04-response",
                         "package": "aralearn.response.choice",
@@ -38249,16 +37484,7 @@
                       "position": 4,
                       "title": "Ideia de struct",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-05-01-01-04-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "No contexto do exemplo de aluno, o que a `struct` permite fazer?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-05-01-01-04-response",
                         "package": "aralearn.response.choice",
@@ -39204,16 +38430,7 @@
                       "position": 2,
                       "title": "Antes do typedef",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-05-01-05-02-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Antes de apresentar `typedef`, qual declaração cria uma variável ALUNO do tipo `struct` CAD_ALUNO?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-05-01-05-02-response",
                         "package": "aralearn.response.choice",
@@ -39470,16 +38687,7 @@
                       "position": 2,
                       "title": "Campo idade",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-05-01-06-02-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual expressão acessa o campo IDADE da variável ALUNO?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-05-01-06-02-response",
                         "package": "aralearn.response.choice",
@@ -39905,16 +39113,7 @@
                       "position": 3,
                       "title": "Campo string",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-05-02-01-03-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual item identifica corretamente o alvo de `gets(ALUNO.NOME);`?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-05-02-01-03-response",
                         "package": "aralearn.response.choice",
@@ -40122,16 +39321,7 @@
                       "position": 3,
                       "title": "Endereço do campo inteiro",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-05-02-02-03-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Em `scanf(\"%d\", &ALUNO.IDADE);`, qual detalhe é necessário para leitura do campo inteiro?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-05-02-02-03-response",
                         "package": "aralearn.response.choice",
@@ -40382,16 +39572,7 @@
                       "position": 4,
                       "title": "Formato do float",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-05-02-03-04-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual formato deve ser usado para ler um campo `float` com `scanf`?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-05-02-03-04-response",
                         "package": "aralearn.response.choice",
@@ -40610,16 +39791,7 @@
                       "position": 3,
                       "title": "Sem endereço no puts",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-05-02-04-03-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual comando exibe o campo NOME sem usar `&`?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-05-02-04-03-response",
                         "package": "aralearn.response.choice",
@@ -41483,16 +40655,7 @@
                       "position": 2,
                       "title": "Declaração do vetor",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-05-03-01-02-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual declaração cria cinco registros CAD_ALUNO antes de `typedef`?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-05-03-01-02-response",
                         "package": "aralearn.response.choice",
@@ -41821,16 +40984,7 @@
                       "position": 3,
                       "title": "Idade do aluno x",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-05-03-02-03-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual expressão acessa o campo IDADE da posição `x` em `ALUNO[5]`?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-05-03-02-03-response",
                         "package": "aralearn.response.choice",
@@ -42367,16 +41521,7 @@
                       "position": 4,
                       "title": "Ordem dos índices",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-05-03-04-04-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Para um vetor de `struct` `ALUNO[5]` com campo `NOTA[3]`, qual expressão acessa a nota `i` do aluno `x`?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-05-03-04-04-response",
                         "package": "aralearn.response.choice",
@@ -45822,16 +44967,7 @@
                       "position": 5,
                       "title": "Função e tarefa",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-0601-ideia-05-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual frase descreve melhor uma função simples em C?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-0601-ideia-05-response",
                         "package": "aralearn.response.choice",
@@ -47376,16 +46512,7 @@
                       "position": 5,
                       "title": "Erro mais provável",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-0601-erros-05-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "A linha `void mensagem();` aparece antes do `main`, e dentro do `main` não existe `mensagem();`. Qual é o problema?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-0601-erros-05-response",
                         "package": "aralearn.response.choice",
@@ -49061,16 +48188,7 @@
                       "position": 5,
                       "title": "Parâmetro como cópia",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-0602-local-05-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Uma função recebe `void teste(int x)` e é chamada com `teste(n);`. Qual frase está correta no padrão de passagem por valor?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-0602-local-05-response",
                         "package": "aralearn.response.choice",
@@ -50173,16 +49291,7 @@
                       "position": 5,
                       "title": "Retorno direto",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-0603-return-05-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Observe as opções para uma função `int soma(int a, int b)`.\n\nQual corpo devolve a soma sem usar variável auxiliar?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-0603-return-05-response",
                         "package": "aralearn.response.choice",
@@ -52156,16 +51265,7 @@
                       "position": 5,
                       "title": "Limite da passagem por valor",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-0604-valor-05-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual situação descreve corretamente `void teste(int x)` chamada por `teste(numero);`?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-0604-valor-05-response",
                         "package": "aralearn.response.choice",
@@ -54861,16 +53961,7 @@
                       "position": 7,
                       "title": "Trecho correto para exibir",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-0701-02-escolha-exibicao-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual trecho exibe todos os valores de `int` `v[5]` já preenchido?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-0701-02-escolha-exibicao-response",
                         "package": "aralearn.response.choice",
@@ -55796,16 +54887,7 @@
                       "position": 7,
                       "title": "Trecho correto do menor",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-0701-04-trecho-menor-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual trecho atualiza corretamente o menor valor ao percorrer `v[i]`?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-0701-04-trecho-menor-response",
                         "package": "aralearn.response.choice",
@@ -58371,16 +57453,7 @@
                       "position": 7,
                       "title": "Nome inteiro ou caractere",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-0702-04-escolha-caractere-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual expressão acessa um único caractere da lista `char` `nomes[5][30]`?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-0702-04-escolha-caractere-response",
                         "package": "aralearn.response.choice",
@@ -60461,16 +59534,7 @@
                       "position": 7,
                       "title": "Declaração correta",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-0703-03-escolha-declaracao-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Depois de `typedef` `struct`{ `int` IDADE; `}` CAD_ALUNO;, qual declaração cria uma variável?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-0703-03-escolha-declaracao-response",
                         "package": "aralearn.response.choice",

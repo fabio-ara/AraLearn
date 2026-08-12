@@ -186,11 +186,22 @@ function reference({ revision = 7, includeCardContent = true } = {}) {
         includeCardContent
           ? {
             title: "Card A",
-            resource: "composite",
-            exercise: "none",
-            blocks: [{ id: "paragraph-a", kind: "paragraph", text: "A" }],
-            after: "",
-            afterBlocks: [{ id: "support-a", kind: "paragraph", text: "B" }]
+            role: "theory",
+            content: [{
+              id: "paragraph-a",
+              package: "aralearn.resource.paragraph",
+              version: "1.0.0",
+              data: { text: "A" }
+            }],
+            response: null,
+            feedback: [{
+              id: "support-a",
+              package: "aralearn.resource.paragraph",
+              version: "1.0.0",
+              data: { text: "B" }
+            }],
+            topics: [],
+            sources: []
           }
           : { title: "Card A" })
     ]
@@ -224,7 +235,7 @@ function continuity(overrides = {}) {
       entityPath: ["course-a", "module-a", "lesson-a", "micro-a", "card-a"],
       currentEntityPath: ["course-a", "module-a", "lesson-a", "micro-a", "card-a"],
       targetAvailable: true,
-      resourceTargetId: "body:paragraph-a",
+      resourceTargetId: "content:paragraph-a",
       body: "O exemplo está curto.",
       category: "coverage",
       severity: "medium",
@@ -382,18 +393,18 @@ test("achado de resource valida o target canônico atual antes de persistir", ()
     arguments: {
       entityType: "resource",
       entityPath: ["course-a", "module-a", "lesson-a", "micro-a", "card-a"],
-      resourceTargetId: "body:paragraph-a",
+      resourceTargetId: "content:paragraph-a",
       category: "coverage",
       severity: "high",
       summary: "Exemplo insuficiente.",
       proposedRepair: "Ampliar o exemplo."
     }
   };
-  assert.equal(validateFindingOperation(base).resourceTargetId, "body:paragraph-a");
+  assert.equal(validateFindingOperation(base).resourceTargetId, "content:paragraph-a");
   assert.throws(
     () => validateFindingOperation({
       ...base,
-      arguments: { ...base.arguments, resourceTargetId: "body:missing" }
+      arguments: { ...base.arguments, resourceTargetId: "content:missing" }
     }),
     ({ status, code }) => status === 422 && code === "authoring_finding_resource_not_found"
   );
@@ -828,7 +839,7 @@ test("engine usa o RPC compacto, traduz findings e conserva CAS/replay", async (
     arguments: {
       entityType: "resource",
       entityPath: ["course-a", "module-a", "lesson-a", "micro-a", "card-a"],
-      resourceTargetId: "body:paragraph-a",
+      resourceTargetId: "content:paragraph-a",
       category: "coverage",
       severity: "high",
       summary: "Exemplo insuficiente.",
@@ -908,7 +919,7 @@ test("engine traduz integralmente os cinco passos públicos do lifecycle de acha
     arguments: {
       entityType: "resource",
       entityPath: ["course-a", "module-a", "lesson-a", "micro-a", "card-a"],
-      resourceTargetId: "body:paragraph-a",
+      resourceTargetId: "content:paragraph-a",
       category: "coverage",
       severity: "high",
       summary: "Exemplo insuficiente.",
@@ -959,7 +970,7 @@ test("engine traduz integralmente os cinco passos públicos do lifecycle de acha
   assert.deepEqual(mutations[0].p_payload, {
     entityType: "resource",
     entityPath: ["course-a", "module-a", "lesson-a", "micro-a", "card-a"],
-    resourceTargetId: "body:paragraph-a",
+    resourceTargetId: "content:paragraph-a",
     category: "coverage",
     severity: "high",
     proposedRepair: "Ampliar o exemplo.",
@@ -1618,7 +1629,7 @@ test("brief usa limite UTF-8 e envelope resume mantém margem da Action", async 
     entityType: "resource",
     entityPath: longPath,
     currentEntityPath: longPath,
-    resourceTargetId: `body:${index}`,
+    resourceTargetId: `content:${index}`,
     targetAvailable: true,
     totalCount: index + 1,
     openCount: index + 1

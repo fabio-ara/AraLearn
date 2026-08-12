@@ -23,9 +23,7 @@ import {
 import {
   applyCardAssistanceBatchChangeSet,
   applyCardAssistanceChangeSet,
-  listCardMainResourceFieldNames,
-  listCardResourceTargets,
-  listCardResponseFieldNames
+  listCardResourceTargets
 } from "./cardAssistanceScope.js";
 import {
   assertBottomUpAssistanceOperationAuthorized,
@@ -280,26 +278,10 @@ function resolveHierarchy(projectDocument, scope) {
 }
 
 function selectedResourceValue(card, target) {
-  if (target.location === "main") {
-    return Object.fromEntries(
-      listCardMainResourceFieldNames(card)
-        .filter((fieldName) => Object.hasOwn(card, fieldName))
-        .map((fieldName) => [fieldName, clone(card[fieldName])])
-    );
-  }
-  if (target.location === "response") {
-    return Object.fromEntries(
-      listCardResponseFieldNames(card)
-        .filter((fieldName) => Object.hasOwn(card, fieldName))
-        .map((fieldName) => [fieldName, clone(card[fieldName])])
-    );
-  }
-  if (target.location === "after_text") return { text: String(card.after || "") };
-  const blocks = target.location === "body" ? card.blocks : card.afterBlocks;
-  return clone(
-    (Array.isArray(blocks) ? blocks : [])
-      .find((block) => text(block?.id) === target.blockId)
-  );
+  const instances = target.location === "response"
+    ? (card.response ? [card.response] : [])
+    : (Array.isArray(card[target.location]) ? card[target.location] : []);
+  return clone(instances.find((instance) => text(instance?.id) === target.blockId) || null);
 }
 
 function boundedProviderValue(value, maxCharacters) {
@@ -1597,8 +1579,8 @@ async function buildNewCard({
     onProgress,
     buildRequest: (feedback) => providerRequest({
       phase: "bottom_up_build_card",
-      system: "Construa um único card AraLearn v4 no schema exato fornecido.",
-      schemaName: `aralearn_bottom_up_card_${plan.representation.resource}_v1`,
+      system: "Construa um único card AraLearn usando apenas os packages e contratos exatos fornecidos.",
+      schemaName: "aralearn_bottom_up_package_card_v1",
       schema: {
         type: "object",
         additionalProperties: false,
@@ -1620,10 +1602,10 @@ async function buildNewCard({
           id,
           position,
           title: plan.title,
-          resource: plan.representation.resource,
-          kind: plan.representation.kind,
-          exercise: plan.representation.exercise,
-          requiredAlternative: clone(plan.representation.requiredAlternative || [])
+          role: plan.representation.role,
+          contentPackages: clone(plan.representation.content),
+          responsePackage: clone(plan.representation.response),
+          feedbackPackages: clone(plan.representation.feedback)
         },
         placementContext: {
           insertIndex: semanticInsertIndex,
@@ -1632,8 +1614,8 @@ async function buildNewCard({
         },
         resourceCatalog: buildCardRepresentationCatalog(),
         invariants: [
-          "Preserve literalmente id, position, resource, kind e exercise.",
-          "Use {gap:id} somente nos campos interativos e declare gaps.",
+          "Preserve literalmente id, position, role e as identidades de package determinadas pelo schema.",
+          "Em gap, use targetInstanceId e targetPath; não codifique lacunas dentro de strings.",
           "Não repita respostas de lacunas em conteúdo já visível.",
           "Produza somente este card."
         ]
@@ -1662,9 +1644,7 @@ async function buildNewCard({
       for (const [fieldName, expected] of Object.entries({
         id,
         position,
-        resource: plan.representation.resource,
-        kind: plan.representation.kind,
-        exercise: plan.representation.exercise
+        role: plan.representation.role
       })) {
         if (card[fieldName] !== expected) {
           fail(

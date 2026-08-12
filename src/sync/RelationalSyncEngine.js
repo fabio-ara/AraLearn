@@ -310,7 +310,7 @@ export class InvalidCourseRevisionError extends Error {
     super(
       reason === "content_hash_mismatch"
         ? "O hash da revisão baixada não corresponde ao manifesto."
-        : "A revisão publicada do curso não satisfaz o contrato AraLearn v4."
+        : "A revisão publicada do curso não satisfaz o contrato AraLearn corrente."
     );
     this.name = "InvalidCourseRevisionError";
     this.code = "invalid_course_revision";

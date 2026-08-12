@@ -206,16 +206,7 @@
                       "position": 3,
                       "title": "Proposta incompleta",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "micro-framework-nao-chatbot-card-03-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Uma área afirma: “já temos uma ferramenta de conversa, então já temos IA corporativa”. Qual resposta é mais adequada em uma reunião?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "micro-framework-nao-chatbot-card-03-response",
                         "package": "aralearn.response.choice",
@@ -779,16 +770,7 @@
                       "position": 3,
                       "title": "Reconhecer a fase",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "micro-fases-implantacao-card-03-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "A companhia já formou o comitê, fez diagnóstico inicial e passou a realizar encontros periódicos para analisar casos de prompts e agentes. Qual fase combina melhor com essa situação?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "micro-fases-implantacao-card-03-response",
                         "package": "aralearn.response.choice",
@@ -964,16 +946,7 @@
                       "position": 2,
                       "title": "Pedido genérico de agente",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "micro-papel-do-aluno-nas-reunioes-card-02-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Em uma reunião, uma área pede “um agente para ajudar o atendimento” sem explicar fonte, público ou dados. Qual intervenção é mais adequada?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "micro-papel-do-aluno-nas-reunioes-card-02-response",
                         "package": "aralearn.response.choice",
@@ -1027,16 +1000,7 @@
                       "position": 3,
                       "title": "Momento de pedir custo",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "micro-papel-do-aluno-nas-reunioes-card-03-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Uma proposta já definiu problema, público, fonte oficial, risco, ferramenta provável e responsável. O que faz sentido perguntar antes da aprovação do piloto?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "micro-papel-do-aluno-nas-reunioes-card-03-response",
                         "package": "aralearn.response.choice",
@@ -1229,16 +1193,7 @@
                       "position": 2,
                       "title": "Ganho com cuidado",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "micro-valor-e-risco-card-02-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Uma equipe técnica quer usar IA para resumir documentos longos e apontar pendências antes de reuniões. O ganho provável é alto. Qual cuidado é mais adequado?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "micro-valor-e-risco-card-02-response",
                         "package": "aralearn.response.choice",
@@ -1341,16 +1296,7 @@
                       "position": 4,
                       "title": "Frase segura",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "micro-valor-e-risco-card-04-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Em reunião, alguém diz que o caso deve avançar porque economiza tempo. Qual frase é mais segura?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "micro-valor-e-risco-card-04-response",
                         "package": "aralearn.response.choice",
@@ -1556,16 +1502,7 @@
                       "position": 3,
                       "title": "Caso crítico não é começo natural",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "micro-mapa-valor-risco-card-03-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Uma diretoria quer iniciar pela automação de uma ação sensível porque o impacto seria grande. Qual posição é mais adequada?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "micro-mapa-valor-risco-card-03-response",
                         "package": "aralearn.response.choice",
@@ -1824,16 +1761,7 @@
                       "position": 3,
                       "title": "Identificar o prompt",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "micro-ia-prompt-modelo-card-03-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Em um cenário, a pessoa digita: “Liste os documentos exigidos para abrir uma solicitação, usando somente a norma anexada”. O sistema devolve uma lista. O que é o prompt?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "micro-ia-prompt-modelo-card-03-response",
                         "package": "aralearn.response.choice",
@@ -2020,16 +1948,7 @@
                       "position": 3,
                       "title": "O que consome tokens",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "micro-token-e-custo-basico-card-03-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Um agente recebe uma pergunta com poucas palavras, recupera três trechos longos de normas e gera uma resposta detalhada. Qual afirmação é correta?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "micro-token-e-custo-basico-card-03-response",
                         "package": "aralearn.response.choice",
@@ -2219,16 +2138,7 @@
                       "position": 2,
                       "title": "Classificar o caso",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "micro-chatbot-agente-card-02-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Uma equipe quer uma conversa que apenas explique a ordem dos passos de um procedimento interno, usando um documento oficial. Qual classificação é mais adequada?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "micro-chatbot-agente-card-02-response",
                         "package": "aralearn.response.choice",
@@ -2331,16 +2241,7 @@
                       "position": 4,
                       "title": "Autonomia limitada",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "micro-chatbot-agente-card-04-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual frase descreve melhor um agente corporativo seguro?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "micro-chatbot-agente-card-04-response",
                         "package": "aralearn.response.choice",
@@ -2469,16 +2370,7 @@
                       "position": 2,
                       "title": "API e conector",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "micro-agente-ferramentas-card-02-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Um agente precisa verificar o status de uma solicitação em sistema autenticado, sem alterar dados. Qual controle é mínimo?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "micro-agente-ferramentas-card-02-response",
                         "package": "aralearn.response.choice",
@@ -2532,16 +2424,7 @@
                       "position": 3,
                       "title": "Execução de ação",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "micro-agente-ferramentas-card-03-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Um agente abrirá chamados em nome de usuários internos. Qual desenho é mais seguro?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "micro-agente-ferramentas-card-03-response",
                         "package": "aralearn.response.choice",
@@ -2774,16 +2657,7 @@
                       "position": 3,
                       "title": "Fonte ruim",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "micro-rag-em-linguagem-simples-card-03-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Um agente com RAG usa uma norma antiga que foi revogada. Qual risco continua existindo?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "micro-rag-em-linguagem-simples-card-03-response",
                         "package": "aralearn.response.choice",
@@ -3093,16 +2967,7 @@
                       "position": 3,
                       "title": "Escolha de busca",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "micro-chunk-embedding-indice-card-03-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Um usuário pergunta “como pedir reembolso de deslocamento” e a norma usa o termo “ressarcimento de transporte”. Qual tipo de busca pode ajudar mais que palavra exata isolada?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "micro-chunk-embedding-indice-card-03-response",
                         "package": "aralearn.response.choice",
@@ -3235,16 +3100,7 @@
                       "position": 2,
                       "title": "Resposta divergente",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "micro-rag-erros-provaveis-card-02-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Um chatbot responde orientação diferente da norma marcada como vigente no cenário. A investigação mostra que duas versões da norma estavam indexadas. Qual ação é mais adequada?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "micro-rag-erros-provaveis-card-02-response",
                         "package": "aralearn.response.choice",
@@ -3298,16 +3154,7 @@
                       "position": 3,
                       "title": "Permissão no RAG",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "micro-rag-erros-provaveis-card-03-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Um agente usa busca em documentos com níveis diferentes de acesso. Qual desenho é mais seguro?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "micro-rag-erros-provaveis-card-03-response",
                         "package": "aralearn.response.choice",
@@ -3822,16 +3669,7 @@
                       "position": 2,
                       "title": "Usuário anônimo",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "micro-classificacao-por-publico-card-02-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Um canal externo permitirá perguntas anônimas sobre documentos necessários para iniciar um processo. Qual controle é indispensável?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "micro-classificacao-por-publico-card-02-response",
                         "package": "aralearn.response.choice",
@@ -3885,16 +3723,7 @@
                       "position": 3,
                       "title": "Público interno autenticado",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "micro-classificacao-por-publico-card-03-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Um agente interno atende empregados autenticados e consulta apenas documentos gerais publicados pela área responsável. Qual risco ainda deve ser tratado?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "micro-classificacao-por-publico-card-03-response",
                         "package": "aralearn.response.choice",
@@ -4089,16 +3918,7 @@
                       "position": 2,
                       "title": "Regra geral ou caso individual",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "micro-dados-gerais-e-individuais-card-02-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Um empregado pergunta em canal interno: “Quais são as regras gerais para solicitar benefício educacional?”. O agente usa uma norma marcada como vigente no cenário, sem consultar dados pessoais. Como classificar?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "micro-dados-gerais-e-individuais-card-02-response",
                         "package": "aralearn.response.choice",
@@ -4152,16 +3972,7 @@
                       "position": 3,
                       "title": "Situação individual",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "micro-dados-gerais-e-individuais-card-03-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Uma pessoa pergunta: “Qual é o valor do meu benefício para o período identificado no sistema?”. O agente teria de consultar cadastro individual. Qual cuidado muda?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "micro-dados-gerais-e-individuais-card-03-response",
                         "package": "aralearn.response.choice",
@@ -4430,16 +4241,7 @@
                       "position": 3,
                       "title": "Ferramenta muda com o dado",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "micro-risco-por-dado-card-03-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Um caso usa apenas perguntas frequentes sobre regras gerais, com fonte oficial e público interno. Outro usa dados individuais com consulta autenticada. Qual conclusão é correta?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "micro-risco-por-dado-card-03-response",
                         "package": "aralearn.response.choice",
@@ -4717,16 +4519,7 @@
                       "position": 3,
                       "title": "Relatório sob demanda",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "micro-consultar-ou-executar-card-03-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Um agente gera um relatório de indicadores a partir de dados autorizados, sem alterar registros. Como classificar?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "micro-consultar-ou-executar-card-03-response",
                         "package": "aralearn.response.choice",
@@ -4913,16 +4706,7 @@
                       "position": 2,
                       "title": "Ação de baixo impacto",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "micro-acao-com-controles-card-02-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Um agente interno abrirá chamado de manutenção predial com descrição fornecida pelo usuário. Qual controle é adequado?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "micro-acao-com-controles-card-02-response",
                         "package": "aralearn.response.choice",
@@ -4976,16 +4760,7 @@
                       "position": 3,
                       "title": "Ação de alto impacto",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "micro-acao-com-controles-card-03-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Um agente pretende alterar cadastro funcional com efeitos financeiros. Qual decisão é mais segura?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "micro-acao-com-controles-card-03-response",
                         "package": "aralearn.response.choice",
@@ -5244,16 +5019,7 @@
                       "position": 3,
                       "title": "Copilot não é tudo",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "micro-m365-copilot-card-03-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Uma pessoa afirma: “Como a companhia tem Microsoft 365 Copilot, já temos framework corporativo de IA generativa”. Qual resposta é mais adequada?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "micro-m365-copilot-card-03-response",
                         "package": "aralearn.response.choice",
@@ -5438,16 +5204,7 @@
                       "position": 2,
                       "title": "Piloto simples",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "micro-agent-builder-copilot-studio-card-02-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Uma equipe quer um agente interno para responder checklist de procedimento de baixo risco, com fonte oficial e sem integração a sistemas. Qual caminho inicial pode ser suficiente?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "micro-agent-builder-copilot-studio-card-02-response",
                         "package": "aralearn.response.choice",
@@ -5501,16 +5258,7 @@
                       "position": 3,
                       "title": "DLP na prática",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "micro-agent-builder-copilot-studio-card-03-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Em Copilot Studio, uma área quer combinar um conector de documentos internos com um conector externo sem análise. Qual pergunta é essencial?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "micro-agent-builder-copilot-studio-card-03-response",
                         "package": "aralearn.response.choice",
@@ -5642,16 +5390,7 @@
                       "position": 2,
                       "title": "Escalar ou não",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "micro-copilot-studio-limites-card-02-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Um agente atenderá público externo, consultará situação individual autenticada e registrará solicitações. Qual decisão é mais adequada?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "micro-copilot-studio-limites-card-02-response",
                         "package": "aralearn.response.choice",
@@ -5705,16 +5444,7 @@
                       "position": 3,
                       "title": "Não demonizar a ferramenta",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "micro-copilot-studio-limites-card-03-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Um FAQ interno com normas gerais, fonte oficial, baixo risco e escopo departamental foi proposto em Copilot Studio. Qual avaliação é mais equilibrada?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "micro-copilot-studio-limites-card-03-response",
                         "package": "aralearn.response.choice",
@@ -6049,16 +5779,7 @@
                       "position": 4,
                       "title": "Quando faz sentido",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "micro-foundry-visao-geral-card-04-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Um agente precisará atender canal externo, usar RAG controlado, registrar traces, integrar sistema e passar por avaliação formal. Qual plataforma tende a entrar na análise?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "micro-foundry-visao-geral-card-04-response",
                         "package": "aralearn.response.choice",
@@ -6191,16 +5912,7 @@
                       "position": 2,
                       "title": "Caso crítico",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "micro-foundry-casos-adequados-card-02-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Um canal externo dará orientação personalizada a usuários autenticados e consultará status em sistema. Qual escolha inicial é mais prudente?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "micro-foundry-casos-adequados-card-02-response",
                         "package": "aralearn.response.choice",
@@ -6254,16 +5966,7 @@
                       "position": 3,
                       "title": "Caso que não exige tudo",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "micro-foundry-casos-adequados-card-03-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Uma área quer resumir minutas internas de baixo risco para apoiar trabalho individual. Qual posição é equilibrada?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "micro-foundry-casos-adequados-card-03-response",
                         "package": "aralearn.response.choice",
@@ -6584,16 +6287,7 @@
                       "position": 3,
                       "title": "Permissão no design",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "micro-entra-rbac-dlp-purview-card-03-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Um agente interno consultará documentos restritos. Qual pergunta deve aparecer antes da publicação?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "micro-entra-rbac-dlp-purview-card-03-response",
                         "package": "aralearn.response.choice",
@@ -6749,16 +6443,7 @@
                       "position": 2,
                       "title": "Canal público",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "micro-content-safety-card-02-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Um chatbot público pode receber mensagens ofensivas ou tentativas de induzir respostas perigosas. Qual camada ajuda a reduzir esse risco?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "micro-content-safety-card-02-response",
                         "package": "aralearn.response.choice",
@@ -6812,16 +6497,7 @@
                       "position": 3,
                       "title": "Limite da moderação",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "micro-content-safety-card-03-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Um agente usa Content Safety e responde regra desatualizada por causa de fonte antiga. Qual conclusão é correta?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "micro-content-safety-card-03-response",
                         "package": "aralearn.response.choice",
@@ -7054,16 +6730,7 @@
                       "position": 2,
                       "title": "Documento conflitante",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "micro-fonte-oficial-card-02-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "A gestão documental identifica duas versões de uma norma com orientações diferentes. Uma área quer usar as duas para treinar o agente. Qual decisão é correta?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "micro-fonte-oficial-card-02-response",
                         "package": "aralearn.response.choice",
@@ -7117,16 +6784,7 @@
                       "position": 3,
                       "title": "Dono da fonte",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "micro-fonte-oficial-card-03-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Um agente responderá dúvidas sobre norma administrativa. Quem deve validar o conteúdo funcional da fonte?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "micro-fonte-oficial-card-03-response",
                         "package": "aralearn.response.choice",
@@ -7314,16 +6972,7 @@
                       "position": 2,
                       "title": "Solicitação genérica",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "micro-pacote-minimo-area-card-02-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Uma área pede “um chatbot para responder tudo sobre procedimentos”, sem público, fonte, responsável, risco ou métrica. Qual resposta é adequada?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "micro-pacote-minimo-area-card-02-response",
                         "package": "aralearn.response.choice",
@@ -7377,16 +7026,7 @@
                       "position": 3,
                       "title": "Documento proibido",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "micro-pacote-minimo-area-card-03-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "A área informa que um rascunho interno contém orientações antigas e não deve ser usado. Como registrar isso no levantamento?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "micro-pacote-minimo-area-card-03-response",
                         "package": "aralearn.response.choice",
@@ -7586,16 +7226,7 @@
                       "position": 2,
                       "title": "Classificar fonte",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "micro-documento-dado-sistema-card-02-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Um agente precisa explicar regras de reembolso usando uma norma em PDF marcada como vigente no cenário. Que tipo de fonte é mais provável?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "micro-documento-dado-sistema-card-02-response",
                         "package": "aralearn.response.choice",
@@ -7649,16 +7280,7 @@
                       "position": 3,
                       "title": "Status atualizado",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "micro-documento-dado-sistema-card-03-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Um usuário quer saber o status mais recente de sua solicitação. A informação é atualizada continuamente no sistema responsável. Qual abordagem é mais adequada?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "micro-documento-dado-sistema-card-03-response",
                         "package": "aralearn.response.choice",
@@ -7859,16 +7481,7 @@
                       "position": 2,
                       "title": "Caso combinado",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "micro-rag-ou-api-card-02-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Um agente deve explicar a regra de prazo e também informar o status individual de uma solicitação autenticada. Qual desenho é mais adequado?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "micro-rag-ou-api-card-02-response",
                         "package": "aralearn.response.choice",
@@ -7922,16 +7535,7 @@
                       "position": 3,
                       "title": "Conector não é permissão automática",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "micro-rag-ou-api-card-03-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Uma equipe possui conector para um sistema. Qual afirmação é correta?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "micro-rag-ou-api-card-03-response",
                         "package": "aralearn.response.choice",
@@ -8135,16 +7739,7 @@
                       "position": 2,
                       "title": "Diagnóstico documental",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "micro-qualidade-base-card-02-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Um agente responde ora uma regra antiga, ora uma nova. A base contém documentos duplicados com datas diferentes. Qual causa é mais provável?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "micro-qualidade-base-card-02-response",
                         "package": "aralearn.response.choice",
@@ -8198,16 +7793,7 @@
                       "position": 3,
                       "title": "Metadados úteis",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "micro-qualidade-base-card-03-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Quais metadados ajudam a governar documentos usados por um agente?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "micro-qualidade-base-card-03-response",
                         "package": "aralearn.response.choice",
@@ -8404,16 +7990,7 @@
                       "position": 2,
                       "title": "Etapa ausente",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "micro-ciclo-atualizacao-fontes-card-02-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Uma equipe adicionou a norma nova ao índice, mas manteve a norma antiga recuperável e não testou perguntas críticas. Qual falha é mais relevante?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "micro-ciclo-atualizacao-fontes-card-02-response",
                         "package": "aralearn.response.choice",
@@ -8467,16 +8044,7 @@
                       "position": 3,
                       "title": "Responsável pela atualização",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "micro-ciclo-atualizacao-fontes-card-03-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Quem deve ser definido para manter uma fonte oficial usada por agente?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "micro-ciclo-atualizacao-fontes-card-03-response",
                         "package": "aralearn.response.choice",
@@ -8710,16 +8278,7 @@
                       "position": 2,
                       "title": "Classificar dado",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "micro-lgpd-dados-card-02-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Um agente responde: “Para solicitar o serviço, apresente documento A e preencha formulário B”, sem consultar pessoa específica. Qual classificação é mais adequada?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "micro-lgpd-dados-card-02-response",
                         "package": "aralearn.response.choice",
@@ -8773,16 +8332,7 @@
                       "position": 3,
                       "title": "Dado sensível",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "micro-lgpd-dados-card-03-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Um caso de uso quer responder informações individualizadas de saúde. Qual medida é mais adequada antes de piloto?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "micro-lgpd-dados-card-03-response",
                         "package": "aralearn.response.choice",
@@ -8958,16 +8508,7 @@
                       "position": 2,
                       "title": "Pergunta individual",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "micro-resposta-geral-ou-individual-card-02-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Uma pessoa pergunta em canal não autenticado: “Qual é o status do meu pedido?”. Qual resposta segura para o desenho do agente?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "micro-resposta-geral-ou-individual-card-02-response",
                         "package": "aralearn.response.choice",
@@ -9021,16 +8562,7 @@
                       "position": 3,
                       "title": "Regra geral segura",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "micro-resposta-geral-ou-individual-card-03-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Uma pessoa pergunta em canal público: “Quais etapas gerais existem para solicitar atendimento?”. A fonte oficial foi marcada como vigente no cenário. O que é adequado?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "micro-resposta-geral-ou-individual-card-03-response",
                         "package": "aralearn.response.choice",
@@ -9256,16 +8788,7 @@
                       "position": 3,
                       "title": "Erro de orientação",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "micro-chatbot-publico-card-03-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Um chatbot público responde algo diferente da fonte oficial sobre documentos exigidos. Qual ação é mais adequada?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "micro-chatbot-publico-card-03-response",
                         "package": "aralearn.response.choice",
@@ -9458,16 +8981,7 @@
                       "position": 2,
                       "title": "Publicação apressada",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "micro-controles-publicos-card-02-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Uma área quer publicar chatbot público sem testes, sem fallback humano e com documentos ainda em revisão. Qual decisão é correta?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "micro-controles-publicos-card-02-response",
                         "package": "aralearn.response.choice",
@@ -9521,16 +9035,7 @@
                       "position": 3,
                       "title": "Linguagem segura",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "micro-controles-publicos-card-03-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual resposta é mais segura quando a pergunta do usuário externo exige análise individual que o chatbot não pode fazer?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "micro-controles-publicos-card-03-response",
                         "package": "aralearn.response.choice",
@@ -9730,16 +9235,7 @@
                       "position": 2,
                       "title": "Trace necessário",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "micro-logs-traces-auditoria-card-02-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Um agente respondeu com fonte errada. A equipe precisa saber quais trechos foram recuperados e quais ferramentas foram chamadas. O que ajuda mais?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "micro-logs-traces-auditoria-card-02-response",
                         "package": "aralearn.response.choice",
@@ -9793,16 +9289,7 @@
                       "position": 3,
                       "title": "Log de ação",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "micro-logs-traces-auditoria-card-03-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Um agente abriu um chamado com dados equivocados. Qual registro é importante para auditoria?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "micro-logs-traces-auditoria-card-03-response",
                         "package": "aralearn.response.choice",
@@ -10001,16 +9488,7 @@
                       "position": 2,
                       "title": "Vazamento possível",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "micro-incidente-e-suspensao-card-02-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Um agente público exibiu trecho restrito a usuário externo. Qual resposta inicial é mais adequada?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "micro-incidente-e-suspensao-card-02-response",
                         "package": "aralearn.response.choice",
@@ -10064,16 +9542,7 @@
                       "position": 3,
                       "title": "Erro leve e controlado",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "micro-incidente-e-suspensao-card-03-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Um agente interno de baixo risco errou uma resposta de FAQ porque uma pergunta ficou ambígua, sem exposição de dados. Qual resposta pode ser proporcional?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "micro-incidente-e-suspensao-card-03-response",
                         "package": "aralearn.response.choice",
@@ -10327,16 +9796,7 @@
                       "position": 2,
                       "title": "Cálculo incompleto",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "micro-custo-nao-e-so-licenca-card-02-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Uma proposta de agente considera apenas licenças de usuários e ignora busca, embeddings, armazenamento, logs e ambiente de produção. Qual avaliação é correta?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "micro-custo-nao-e-so-licenca-card-02-response",
                         "package": "aralearn.response.choice",
@@ -10390,16 +9850,7 @@
                       "position": 3,
                       "title": "Pergunta de reunião",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "micro-custo-nao-e-so-licenca-card-03-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual pergunta ajuda a discutir custo sem inventar números?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "micro-custo-nao-e-so-licenca-card-03-response",
                         "package": "aralearn.response.choice",
@@ -10621,16 +10072,7 @@
                       "position": 3,
                       "title": "Custo por agente",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "micro-formulas-custo-card-03-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Um agente terá baixo número de usuários, mas usará muitos documentos, índice grande, logs detalhados e ambiente de produção. Qual alerta faz sentido?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "micro-formulas-custo-card-03-response",
                         "package": "aralearn.response.choice",
@@ -10838,16 +10280,7 @@
                       "position": 2,
                       "title": "Frase de equilíbrio",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "micro-comparativo-ferramentas-card-02-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Em uma reunião, há disputa entre “usar sempre a ferramenta mais simples” e “usar sempre a mais robusta”. Qual frase é mais adequada?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "micro-comparativo-ferramentas-card-02-response",
                         "package": "aralearn.response.choice",
@@ -10901,16 +10334,7 @@
                       "position": 3,
                       "title": "Observabilidade",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "micro-comparativo-ferramentas-card-03-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Um agente crítico precisa explicar cada resposta, registrar ferramentas chamadas e medir qualidade. Qual critério pesa mais?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "micro-comparativo-ferramentas-card-03-response",
                         "package": "aralearn.response.choice",
@@ -11179,16 +10603,7 @@
                       "position": 3,
                       "title": "Produtividade individual",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "micro-decisao-ferramenta-card-03-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Uma pessoa quer apoio para rascunhar uma apresentação interna a partir de documentos aos quais já tem acesso. Qual ferramenta tende a ser inicial?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "micro-decisao-ferramenta-card-03-response",
                         "package": "aralearn.response.choice",
@@ -11416,16 +10831,7 @@
                       "position": 3,
                       "title": "Escolher piloto",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "micro-piloto-bom-card-03-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual caso parece melhor primeiro piloto?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "micro-piloto-bom-card-03-response",
                         "package": "aralearn.response.choice",
@@ -12094,16 +11500,7 @@
                       "position": 3,
                       "title": "TI não valida tudo",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "micro-governanca-federada-card-03-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Uma área pede que a TI valide se uma resposta sobre regra de benefício está correta. Qual encaminhamento é mais adequado?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "micro-governanca-federada-card-03-response",
                         "package": "aralearn.response.choice",
@@ -12289,16 +11686,7 @@
                       "position": 2,
                       "title": "Fonte oficial",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "micro-quem-valida-o-que-card-02-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Quem deve confirmar que a norma usada pelo agente está marcada como vigente no cenário e autorizada?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "micro-quem-valida-o-que-card-02-response",
                         "package": "aralearn.response.choice",
@@ -12352,16 +11740,7 @@
                       "position": 3,
                       "title": "Custo e publicação",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "micro-quem-valida-o-que-card-03-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Um caso já foi validado funcionalmente, mas ainda não há ambiente, monitoramento nem estimativa de componentes de custo. Quem deve entrar na discussão?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "micro-quem-valida-o-que-card-03-response",
                         "package": "aralearn.response.choice",
@@ -12593,16 +11972,7 @@
                       "position": 2,
                       "title": "Etapa pulada",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "micro-ciclo-vida-agente-card-02-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Uma área define ferramenta, constrói agente e quer publicar, mas não fez testes com perguntas difíceis, fonte antiga, fora de escopo e dados proibidos. Qual etapa foi pulada?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "micro-ciclo-vida-agente-card-02-response",
                         "package": "aralearn.response.choice",
@@ -12705,16 +12075,7 @@
                       "position": 4,
                       "title": "Manutenção",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "micro-ciclo-vida-agente-card-04-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Uma fonte oficial muda depois que o agente já está publicado. Qual ação faz parte do ciclo de vida?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "micro-ciclo-vida-agente-card-04-response",
                         "package": "aralearn.response.choice",
@@ -12856,16 +12217,7 @@
                       "position": 2,
                       "title": "Teste ausente",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "micro-validacao-e-testes-card-02-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Um agente de FAQ interno foi testado apenas com perguntas perfeitas copiadas da fonte. O que falta?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "micro-validacao-e-testes-card-02-response",
                         "package": "aralearn.response.choice",
@@ -12919,16 +12271,7 @@
                       "position": 3,
                       "title": "Fallback",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "micro-validacao-e-testes-card-03-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Durante teste, o agente recebe pergunta fora do escopo e tenta inventar resposta. Qual correção é adequada?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "micro-validacao-e-testes-card-03-response",
                         "package": "aralearn.response.choice",
@@ -13136,16 +12479,7 @@
                       "position": 2,
                       "title": "Tema correto",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "micro-perguntas-por-tema-card-02-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "A pergunta “O público é interno, externo, autenticado ou anônimo?” ajuda principalmente a decidir qual tema?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "micro-perguntas-por-tema-card-02-response",
                         "package": "aralearn.response.choice",
@@ -13199,16 +12533,7 @@
                       "position": 3,
                       "title": "Pergunta incompleta",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "micro-perguntas-por-tema-card-03-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual pergunta é incompleta para aprovar um agente corporativo?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "micro-perguntas-por-tema-card-03-response",
                         "package": "aralearn.response.choice",
@@ -13335,16 +12660,7 @@
                       "position": 1,
                       "title": "Cenário: caso interno",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "micro-cenarios-de-reuniao-card-01-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Uma área técnica quer usar IA para resumir documentos e apontar pendências antes de reuniões internas. A fonte é interna e o público é uma equipe autenticada. Qual intervenção é adequada?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "micro-cenarios-de-reuniao-card-01-response",
                         "package": "aralearn.response.choice",
@@ -13398,16 +12714,7 @@
                       "position": 2,
                       "title": "Cenário: caso público",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "micro-cenarios-de-reuniao-card-02-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Um canal externo quer orientar público sobre documentos e etapas, com perguntas anônimas. Qual intervenção é melhor?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "micro-cenarios-de-reuniao-card-02-response",
                         "package": "aralearn.response.choice",
@@ -13461,16 +12768,7 @@
                       "position": 3,
                       "title": "Cenário: dado pessoal",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "micro-cenarios-de-reuniao-card-03-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Uma área de RH quer responder “qual é minha situação específica?” para empregados autenticados. Qual intervenção é adequada?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "micro-cenarios-de-reuniao-card-03-response",
                         "package": "aralearn.response.choice",
@@ -13825,16 +13123,7 @@
                       "position": 3,
                       "title": "Limite da formação",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "micro-trilha-senai-card-03-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Depois de fazer os cursos técnicos, o que ainda precisa ser levantado internamente antes de implantar um agente?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "micro-trilha-senai-card-03-response",
                         "package": "aralearn.response.choice",
@@ -14000,16 +13289,7 @@
                       "position": 2,
                       "title": "Proposta com lacuna",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "micro-prontidao-para-reuniao-card-02-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Uma proposta define problema, público, dados, risco, ferramenta e fonte oficial, mas não define quem corrige erros, quem monitora custo nem como atualizar a base. Qual decisão é mais adequada?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "micro-prontidao-para-reuniao-card-02-response",
                         "package": "aralearn.response.choice",

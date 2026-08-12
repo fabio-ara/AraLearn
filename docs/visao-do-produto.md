@@ -39,8 +39,8 @@ grupos pessoais sem alterar o catálogo. Quando tiver autoridade, pode reparar
 cards e resources ou solicitar cards e microssequências pelos escopos locais;
 para estruturas maiores, pede ao Chatbot ou Plugin que abra um workspace. O
 plano resultante aparece em `Trilhas`, e uma publicação oficial só muda por uma
-operação autorizada. Quando o conteúdo pede outra forma, o card pode usar qualquer
-um dos dezoito recursos canônicos, da escrita e do código a representações
+operação autorizada. Quando o conteúdo pede outra forma, o card pode combinar
+packages instalados, da escrita e do código a representações
 tabulares, espaciais, relacionais, linguísticas, sistêmicas e químicas.
 
 Essa escolha tem base didática. Sweller (1988) e Sweller, Van Merriënboer e Paas (1998) discutem como a carga cognitiva depende do modo como a informação é apresentada. Em temas técnicos, parte do esforço do estudante vem de reconstruir estrutura: onde está a linha da matriz, qual aresta liga dois vértices, que condição conduz a qual ramo do algoritmo. O AraLearn tenta tornar essa estrutura visível.

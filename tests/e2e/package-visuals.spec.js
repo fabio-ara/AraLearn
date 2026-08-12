@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 import { RESOURCE_PACKAGE_REGISTRY } from "../../src/resources/packages/index.js";
+import { renderPackageCardArticle } from "../../src/render/renderPackageCard.js";
 
 const STYLES = ["/styles-tokens.css", "/styles-shell-baseline.css", "/styles.css"];
 
@@ -64,8 +65,26 @@ const relationInstance = {
 
 function documentFor(instance, mode) {
   const html = RESOURCE_PACKAGE_REGISTRY.renderInstance(instance, "content");
+  return documentForHtml(html, mode);
+}
+
+function documentForHtml(html, mode) {
   const links = STYLES.map((href) => `<link rel="stylesheet" href="${href}">`).join("");
   return `<!doctype html><html lang="pt-BR" data-color-mode="${mode}"><head><meta name="viewport" content="width=device-width, initial-scale=1">${links}</head><body><main style="width:100%;max-width:420px;margin:0 auto;padding:16px">${html}</main></body></html>`;
+}
+
+function studyCardFor(instance) {
+  return {
+    id: `study-${instance.id}`,
+    position: 1,
+    title: "Card real de estudo",
+    role: "theory",
+    content: [instance],
+    response: null,
+    feedback: [],
+    topics: [],
+    sources: []
+  };
 }
 
 async function assertContained(page, selector, viewportWidth) {
@@ -89,6 +108,7 @@ for (const width of [360, 390, 412]) {
       await page.setContent(documentFor(graphInstance, mode));
       await expect(page.locator(".package-graph-node")).toHaveCount(6);
       await expect(page.locator(".package-graph-relations li")).toHaveCount(5);
+      await expect(page.locator(".package-graph-edge-index")).toHaveCount(0);
       await assertContained(page, ".package-graph-node, .package-graph-relations li", width);
       const nodes = await page.locator(".package-graph-node").evaluateAll((elements) => elements.map((element) => {
         const rect = element.getBoundingClientRect();
@@ -119,11 +139,36 @@ for (const width of [360, 390, 412]) {
         const left = element.querySelector(".package-relation-left").getBoundingClientRect();
         const verb = element.querySelector(".package-relation-verb").getBoundingClientRect();
         const right = element.querySelector(".package-relation-right").getBoundingClientRect();
-        return { leftRight: left.right, verbLeft: verb.left, verbRight: verb.right, rightLeft: right.left };
+        return { leftBottom: left.bottom, verbTop: verb.top, verbBottom: verb.bottom, rightTop: right.top };
       }));
       rows.forEach((row) => {
-        expect(row.leftRight).toBeLessThanOrEqual(row.verbLeft + 0.5);
-        expect(row.verbRight).toBeLessThanOrEqual(row.rightLeft + 0.5);
+        expect(row.leftBottom).toBeLessThanOrEqual(row.verbTop + 0.5);
+        expect(row.verbBottom).toBeLessThanOrEqual(row.rightTop + 0.5);
+      });
+      expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
+    });
+
+    test(`modo Estudo usa renderização segura de graph e relation_map em ${width}px no modo ${mode}`, async ({ page }) => {
+      await page.setViewportSize({ width, height: 900 });
+      await page.goto("/");
+      const html = [graphInstance, relationInstance]
+        .map((instance) => renderPackageCardArticle(studyCardFor(instance)))
+        .join("");
+      await page.setContent(documentForHtml(html, mode));
+      await expect(page.locator(".package-graph-edge-index")).toHaveCount(0);
+      await expect(page.locator(".package-graph-relations li")).toHaveCount(5);
+      await expect(page.locator(".package-relation-map svg")).toHaveCount(0);
+      await expect(page.locator(".package-relation-map .package-relation-row")).toHaveCount(4);
+      await assertContained(page, ".package-graph-relations li, .package-relation-map .package-relation-item, .package-relation-map .package-relation-verb", width);
+      const relationParts = await page.locator(".package-relation-map .package-relation-row").evaluateAll((elements) => elements.map((element) => {
+        const left = element.querySelector(".package-relation-left").getBoundingClientRect();
+        const verb = element.querySelector(".package-relation-verb").getBoundingClientRect();
+        const right = element.querySelector(".package-relation-right").getBoundingClientRect();
+        return { leftBottom: left.bottom, verbTop: verb.top, verbBottom: verb.bottom, rightTop: right.top };
+      }));
+      relationParts.forEach((row) => {
+        expect(row.leftBottom).toBeLessThanOrEqual(row.verbTop + 0.5);
+        expect(row.verbBottom).toBeLessThanOrEqual(row.rightTop + 0.5);
       });
       expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
     });

@@ -400,7 +400,7 @@ function composeNormalizedRows(rows) {
   if (!validation.ok) {
     fail(
       "invalid_workspace_parts_document",
-      "As partes não recompõem um contrato AraLearn v4 válido.",
+      "As partes não recompõem uma biblioteca AraLearn válida.",
       { errors: validation.errors }
     );
   }

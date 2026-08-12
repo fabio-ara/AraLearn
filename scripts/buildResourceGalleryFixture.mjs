@@ -8,6 +8,26 @@ import { RESOURCE_PACKAGE_REGISTRY } from "../src/resources/packages/index.js";
 const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
 const outputPath = path.resolve(scriptDirectory, "../tests/fixtures/package/project-resources-gallery.json");
 const paragraph = (id, text) => ({ id, package: "aralearn.resource.paragraph", version: "1.0.0", data: { text } });
+const responseContent = (manifest) => {
+  if (manifest.id === "aralearn.response.gap") {
+    return [paragraph("body-1", "Um protocolo define regras compartilhadas.")];
+  }
+  if (manifest.id === "aralearn.response.ordering") {
+    return [{
+      id: "body-1",
+      package: "aralearn.resource.sequence",
+      version: "1.0.0",
+      data: {
+        variant: "ordered_steps",
+        items: [
+          { id: "s1", label: "Preparar" },
+          { id: "s2", label: "Executar" }
+        ]
+      }
+    }];
+  }
+  return [paragraph(`context-${manifest.id}`, manifest.purpose)];
+};
 
 const cards = RESOURCE_PACKAGE_REGISTRY.listCatalog().map((manifest, index) => {
   const slot = manifest.slots.includes("content") ? "content" : "response";
@@ -23,7 +43,7 @@ const cards = RESOURCE_PACKAGE_REGISTRY.listCatalog().map((manifest, index) => {
     position: index + 1,
     title: manifest.label,
     role: slot === "content" ? "theory" : "practice",
-    content: slot === "content" ? [instance] : [paragraph(`context-${index + 1}`, manifest.purpose)],
+    content: slot === "content" ? [instance] : responseContent(manifest),
     response: slot === "response" ? instance : null,
     feedback: [paragraph(`feedback-${index + 1}`, manifest.accessibility)],
     topics: [],

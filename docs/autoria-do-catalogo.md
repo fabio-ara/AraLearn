@@ -1,6 +1,7 @@
 # Autoria e publicação
 
-O AraLearn publica cursos a partir do contrato JSON v4. A construção extensa
+O AraLearn publica cursos a partir de `aralearn.library.v1`, com cards por
+packages versionados. A construção extensa
 acontece num workspace composto acessado pelo gateway MCP. No aplicativo, a
 assistência bottom-up atua diretamente no curso privado próprio ou, para conta
 administrativa ou editorial, no curso oficial, sempre preservando a identidade

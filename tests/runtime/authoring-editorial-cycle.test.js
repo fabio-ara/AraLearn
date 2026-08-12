@@ -240,13 +240,10 @@ test("notas, achados e vínculos de correção permanecem inequívocos", () => {
   );
 });
 
-test("paragraph com gap usa marcador no texto e definição formal", () => {
-  assert.match(cardsAndResources, /"resource": "paragraph"/u);
-  assert.match(cardsAndResources, /"text": "P ∧ Q só é verdadeira quando \{gap:condition\}\."/u);
-  assert.match(cardsAndResources, /"id": "condition"/u);
-  assert.match(cardsAndResources, /servidor compila ambos ao salvar/iu);
-  assert.doesNotMatch(
-    cardsAndResources,
-    /paragraph[^\n]*\{[^}]*"question"/iu
-  );
+test("gap usa alvo textual formal e não marcador embutido", () => {
+  assert.match(cardsAndResources, /aralearn\.resource\.paragraph/u);
+  assert.match(cardsAndResources, /targetInstanceId/u);
+  assert.match(cardsAndResources, /targetPath/u);
+  assert.match(cardsAndResources, /não codifique lacunas em strings/iu);
+  assert.doesNotMatch(cardsAndResources, /\{gap:[^}]+\}/u);
 });

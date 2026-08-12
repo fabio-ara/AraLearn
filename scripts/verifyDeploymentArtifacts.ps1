@@ -19,8 +19,8 @@ $repositoryRoot = Resolve-AraLearnRepositoryRoot -ScriptRoot $PSScriptRoot
 $issues = [Collections.Generic.List[object]]::new()
 $reports = [Collections.Generic.List[object]]::new()
 $expectedAndroidApplicationId = 'com.aralearn.app'
-$expectedAndroidVersionCode = '158'
-$expectedAndroidVersionName = '0.0.16'
+$expectedAndroidVersionCode = '159'
+$expectedAndroidVersionName = '0.0.17'
 $expectedAndroidCertificateSha256 = 'c3d2ad6c97e44492c09d785d2d5e9f461eb6399914b196119e2cba0e5d271296'
 $requiredRuntimeModules = @(
   'src/assist/cardassistancescope.js',
@@ -31,8 +31,8 @@ $requiredRuntimeModules = @(
   'src/generation/runtime/cardassistancelaunchconfig.js',
   'src/generation/runtime/cardassistanceruntime.js',
   'src/generation/validation/cardassistancesemantics.js',
-  'src/resources/registry/authoring.js',
-  'src/resources/registry/index.js',
+  'src/resources/kernel/packageRegistry.js',
+  'src/resources/packages/index.js',
   'src/ui/authoringassistantpanel.js',
   'src/ui/cardassistanceuistate.js',
   'src/ui/oauthauthorizationconsent.js'

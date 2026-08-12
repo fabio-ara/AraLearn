@@ -4,6 +4,38 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 
 ## [Unreleased]
 
+## [0.0.17] - 2026-08-12
+
+### Changed
+
+- modo Estudo, edição, assistência, autoria MCP e Edge Runtime passam pelo
+  mesmo kernel e pelo registro versionado de packages, sem projeção para um
+  contrato anterior;
+- `graph` apresenta relações fora do desenho e `relation_map` materializa
+  correspondências em linhas DOM responsivas, inclusive no card completo;
+- os contratos de `choice`, `gap`, `ordering`, `flow` e `table` são
+  materializados exclusivamente por seus packages;
+- o backend publica um manifesto corrente achatado, sem cadeia de wrappers,
+  e reutiliza uma única raiz autoral oficial por curso do catálogo.
+
+### Fixed
+
+- enunciados de `choice` deixam de ser duplicados em `paragraph`;
+- rótulos de `graph` e `relation_map` deixam de se sobrepor a arestas,
+  conectores e outros elementos em larguras móveis;
+- a montagem de tabelas preserva multilinhas, contém a rolagem horizontal e
+  ocupa a largura disponível quando o conteúdo é curto.
+
+### Removed
+
+- renderer e normalizador monolíticos, contratos globais de resource,
+  projeções intermediárias e módulos auxiliares exclusivos do formato
+  abolido;
+- alvos antigos de observação e qualquer aceitação de cards fora do envelope
+  fechado `aralearn.library.v1`;
+- funções intermediárias do manifesto remoto e o recurso transitório de
+  reatribuição de raiz do catálogo.
+
 ## [0.0.16] - 2026-08-12
 
 ### Added

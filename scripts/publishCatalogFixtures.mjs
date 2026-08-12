@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 import { validateProjectDocument } from "../src/domain/aralearnProject.js";
 import { AuthoringWorkspaceEngine } from "../supabase/functions/_shared/aralearn-authoring/workspaceEngine.js";
 import { prepareCourseDocument } from "../supabase/functions/_shared/aralearn-authoring/canonical.js";
+import { selectCourseDocument } from "../supabase/functions/_shared/aralearn-authoring/workspaceModel.js";
 import {
   resolveSupabaseAdministrativeEnvironment,
   supabaseServerHeaders
@@ -63,11 +64,16 @@ export async function prepareFixture(fileName) {
     throw new Error(`${fileName} viola o contrato por packages: ${details}`);
   }
   const prepared = await prepareCourseDocument(project);
+  const publication = await prepareCourseDocument(
+    selectCourseDocument(prepared.document, prepared.course.id),
+    { requireReady: false }
+  );
   return {
     fileName,
     course: prepared.course,
     document: prepared.document,
-    hash: prepared.contentHash
+    hash: prepared.contentHash,
+    publicationHash: publication.contentHash
   };
 }
 
@@ -120,6 +126,7 @@ async function rpc(projectUrl, serverApiKey, functionName, payload, {
     lastError = new Error(
       `${functionName} falhou (HTTP ${response.status}): ${body?.message || body || "sem detalhes"}`
     );
+    lastError.status = response.status;
     if (!retryable || attempt === attempts) throw lastError;
     await wait(250 * attempt);
   }
@@ -157,6 +164,17 @@ export async function importPreparedCatalogFixture(fixture, {
   if (!publisher?.actorId) {
     throw new Error("Nenhum owner ou catalog_publisher ativo foi encontrado.");
   }
+  if (publish
+      && publisher.courseId
+      && publisher.currentRevisionHash === fixture.publicationHash) {
+    progress(`${fixture.fileName}: revisão ${fixture.publicationHash} já é a revisão oficial corrente`);
+    return {
+      courseId: publisher.courseId,
+      contentHash: fixture.publicationHash,
+      target: "catalog",
+      unchanged: true
+    };
+  }
   const principal = {
     actorId: publisher.actorId,
     authenticationKind: "administrative_batch",
@@ -169,8 +187,8 @@ export async function importPreparedCatalogFixture(fixture, {
     rpc: (functionName, payload, options) =>
       rpc(projectUrl, serverApiKey, functionName, payload, { fetchImpl, ...options })
   });
-  const workspaceId = deterministicUuid(
-    `aralearn:catalog-workspace:v4:${fixture.course.id}:${fixture.hash}`
+  const workspaceId = publisher.workspaceId || deterministicUuid(
+    `aralearn:catalog-workspace:packages-v1:${fixture.course.id}:${fixture.publicationHash}`
   );
   const publicationIntent = publisher.courseId
     ? {
@@ -178,24 +196,48 @@ export async function importPreparedCatalogFixture(fixture, {
         expectedContentHash: publisher.currentRevisionHash
       }
     : {};
-  progress(`${fixture.fileName}: materializando workspace canônico ${fixture.hash}`);
-  const current = await engine.createCanonicalCatalogWorkspace({
+  progress(`${fixture.fileName}: materializando workspace canônico ${fixture.publicationHash}`);
+  const workspaceArguments = {
     principal,
     workspaceId,
-    requestId: `catalog-workspace:${deterministicUuid(
-      `${fixture.course.id}:${fixture.hash}`
-    )}`,
+    requestId: "",
     title: `Catálogo: ${fixture.course.title}`,
-    brief: `Importação administrativa da fixture ${fixture.fileName}; hash canônico ${fixture.hash}.`,
+    brief: `Importação administrativa da fixture ${fixture.fileName}; hash canônico ${fixture.publicationHash}.`,
     document: fixture.document
-  });
+  };
+  if (!publisher.workspaceId) {
+    const cleanup = await engine.discardUnpublishedCatalogMaterialization({
+      principal,
+      workspaceId
+    });
+    if (cleanup?.discarded) {
+      progress(`${fixture.fileName}: materialização administrativa interrompida removida`);
+    }
+  }
+  let current;
+  if (publisher.workspaceId) {
+    current = await engine.replaceCanonicalCatalogWorkspace({
+      ...workspaceArguments,
+      requestId: `catalog-workspace:${deterministicUuid(
+        `packages-v1:${fixture.course.id}:${fixture.publicationHash}:${publisher.workspaceRevision}`
+      )}`,
+      expectedRevision: publisher.workspaceRevision
+    });
+  } else {
+    current = await engine.createCanonicalCatalogWorkspace({
+      ...workspaceArguments,
+      requestId: `catalog-workspace:${deterministicUuid(
+        `packages-v1:${fixture.course.id}:${fixture.publicationHash}`
+      )}`
+    });
+  }
   if (!publish) return current;
-  progress(`${fixture.fileName}: publicando revisão ${fixture.hash}`);
+  progress(`${fixture.fileName}: publicando revisão ${fixture.publicationHash}`);
   const published = await engine.publish({
     principal,
     workspaceId,
     requestId: `catalog-publish:${deterministicUuid(
-      `${fixture.course.id}:${fixture.hash}`
+      `packages-v1:${fixture.course.id}:${fixture.publicationHash}`
     )}`,
     expectedRevision: current.currentRevision || current.revision,
     courseId: fixture.course.id,
@@ -205,18 +247,11 @@ export async function importPreparedCatalogFixture(fixture, {
     expectedContentHash: publicationIntent.expectedContentHash || null,
     collectionId: publisher.collectionId || null
   });
-  await engine.delete({
-    principal,
-    workspaceId,
-    requestId: `catalog-cleanup:${deterministicUuid(
-      `${fixture.course.id}:${fixture.hash}`
-    )}`,
-    expectedRevision:
-      published.currentRevision
-      || published.revision
-      || current.currentRevision
-      || current.revision
-  });
+  if (published.contentHash !== fixture.publicationHash) {
+    throw new Error(
+      `A publicação devolveu ${published.contentHash || "hash ausente"}; esperado ${fixture.publicationHash}.`
+    );
+  }
   return published;
 }
 
@@ -246,7 +281,8 @@ export async function publishCatalogFixtures({
     return {
       fileName: fixture.fileName,
       contractKey: fixture.course.id,
-      hash: fixture.hash,
+      hash: fixture.publicationHash,
+      documentHash: fixture.hash,
       mode: apply ? (publish ? "published" : "draft") : "validated",
       ...(remote ? { remote } : {})
     };

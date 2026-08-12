@@ -587,7 +587,7 @@ function entityKey(value, label = "Entidade") {
 
 function courseIndex(course) {
   if (!isPlainObject(course)) {
-    throw stateError("O adaptador de progresso exige um curso v4 carregado.");
+    throw stateError("O repositório de progresso exige um curso corrente carregado.");
   }
   const courseKey = entityKey(course, "Curso");
   const indexedLessons = [];

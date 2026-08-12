@@ -265,7 +265,7 @@ A Action devolve caminhos em `error.issues` e orientação em `error.recovery`. 
 - Um card de prática mede uma decisão principal.
 - A prática é autossuficiente. O enunciado não depende de imagem, texto ou aula ausente.
 - Dados voláteis aparecem no próprio card: valores, nomes, trechos de código, tabelas, casos, coordenadas, opções e demais elementos particulares da questão não podem existir apenas em um card anterior. Conceitos e notações já ensinados podem ser mobilizados, mas o caso que será resolvido precisa estar completo.
-- Confira os dados necessários nos campos que a pessoa vê antes de responder, como enunciado, texto, código, rótulos, valores ou alternativas. Metadados, `after`, respostas e conteúdo oculto não tornam a prática autossuficiente.
+- Confira os dados necessários nos campos que a pessoa vê antes de responder, como enunciado, texto, código, rótulos, valores ou alternativas. Metadados, respostas e conteúdo oculto não tornam a prática autossuficiente.
 - Cada item de `microsequence.checks` precisa chegar a uma prática observável. Quando útil, `card.topics` liga o card aos IDs declarados em `lesson.topics`; não crie campos adicionais para resultados ou funções.
 - A diferença entre práticas próximas deve estar no conteúdo observável: caso, condição, representação, estratégia, erro provável ou grau de apoio.
 - Uma prática cobra uma decisão principal. Ela pode mobilizar pré-requisitos aprovados, mas não pode exigir que a pessoa reconstrua o caso a partir de posição, cor, legenda extensa, card anterior, feedback ou resposta oculta.
@@ -277,6 +277,7 @@ A Action devolve caminhos em `error.issues` e orientação em `error.recovery`. 
 - O enunciado não contém a resposta por repetição involuntária.
 - Alternativas erradas representam equívocos plausíveis e não simples absurdos.
 - No package de escolha, selecione resposta única ou múltipla conforme a evidência pretendida e verifique o conjunto exato de identificadores.
+- A pergunta de `aralearn.response.choice` é o único enunciado da escolha. Não copie a mesma pergunta para um `paragraph` de `content`; use `content: []` quando não houver cenário, dado ou representação adicional.
 - Use de 2 a 7 opções. Três alternativas costumam bastar; cinco só se justificam quando houver quatro distratores ou decisões realmente competitivos. Não infle a lista.
 - Detecte opções equivalentes, pistas gramaticais, diferença injustificada de extensão, repetição exclusiva do enunciado e alternativa parcialmente correta tratada como errada sem condição explícita.
 - O feedback explica a regra, o detalhe decisivo e o motivo do erro provável.
@@ -359,7 +360,7 @@ No contexto de autoria, identifique para cada fonte:
 - condições de uso;
 - indicação de estabilidade ou volatilidade.
 
-Esses dados pertencem ao catálogo de fontes ou ao contexto fornecido à autoria, não ao objeto do card. No documento v4, `card.sources` contém somente uma lista de identificadores textuais já autorizados. Não copie URL, título, data, trecho ou metadados bibliográficos para propriedades inventadas do card.
+Esses dados pertencem ao catálogo de fontes ou ao contexto fornecido à autoria, não ao objeto do card. Em `aralearn.library.v1`, `card.sources` contém somente uma lista de identificadores textuais já autorizados. Não copie URL, título, data, trecho ou metadados bibliográficos para propriedades inventadas do card.
 
 No `brief` do workspace, declare cada identificador aprovado com a forma `[source:id]` e escreva depois dela a identificação e o recorte necessários. Exemplo: `[source:prova-referencia] Prova fornecida pela pessoa autora, questões selecionadas para calibrar as práticas.` O servidor aceita em `card.sources` uma referência nova somente quando o mesmo identificador está declarado no `brief` ou já pertence ao conteúdo herdado pelo workspace.
 
@@ -484,7 +485,7 @@ Um card é um envelope fechado:
 }
 ```
 
-`role` aceita `theory` ou `practice`. Teoria tem `response: null`; prática usa exatamente uma instância de package no slot `response`. `content` e `feedback` podem combinar packages compatíveis. Cada instância declara id, package, versão semântica e `data` validado pelo contrato daquele package.
+`role` aceita `theory` ou `practice`. Teoria tem `response: null` e ao menos uma instância em `content`; prática usa exatamente uma instância de package no slot `response`. Uma prática exclusivamente discriminativa pode ter `content: []`: a pergunta pertence somente a `aralearn.response.choice` e nunca deve ser copiada para um `paragraph`. Quando há cenário, representação ou dados além da pergunta, `content` os materializa sem repetir o enunciado. `feedback` pode combinar packages compatíveis. Cada instância declara id, package, versão semântica e `data` validado pelo contrato daquele package.
 
 Não existe contrato monolítico de resources. Primeiro planeje a operação cognitiva, consulte o catálogo compacto, escolha os packages e só então obtenha o contrato da versão exata de cada escolha. Nunca invente campos ou coordenadas.
 
@@ -538,7 +539,7 @@ Esta verificação ocorre antes de construir os cards e volta a ser aplicada à 
 
 ## 5. Representações estruturadas
 
-Essas regras valem para qualquer recurso estruturado e também para blocos equivalentes dentro de `composite`.
+Essas regras valem para qualquer package estruturado e para composições com mais de uma instância em `content`.
 
 - Dê nome visível e inequívoco a cada entidade que o estudante precisa distinguir. Identificadores internos nunca carregam significado pedagógico.
 - Faça o enunciado declarar a tarefa de leitura: comparar, localizar, seguir, classificar, completar, calcular ou diagnosticar. “Observe” sozinho não define uma operação.
@@ -609,7 +610,7 @@ A revisão de microteorias é o ponto principal para o autor verificar seleção
 
 # Continuidade didática
 
-Continuidade pertence ao documento v4, não a um cursor de execução.
+Continuidade pertence ao workspace autoral, não a um cursor de execução.
 
 ## Dependências
 
@@ -1063,7 +1064,7 @@ A troca do artefato corrente é atômica. O banco conserva hash, contagens e o p
         "position": { "$ref": "#/$defs/position" },
         "title": { "$ref": "#/$defs/title" },
         "role": { "enum": ["theory", "practice"] },
-        "content": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/packageInstance" } },
+        "content": { "type": "array", "items": { "$ref": "#/$defs/packageInstance" } },
         "response": { "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/packageInstance" }] },
         "feedback": { "type": "array", "items": { "$ref": "#/$defs/packageInstance" } },
         "topics": { "$ref": "#/$defs/textList" },
@@ -1744,6 +1745,8 @@ A troca do artefato corrente é atômica. O banco conserva hash, contagens e o p
 O AraLearn usa `aralearn.library.v1`. A raiz contém `contract`, `courses` e, em recortes exportados, `scope`. Curso, módulo, lição e microssequência mantêm a organização pedagógica, os guides, tópicos e dependências já documentados.
 
 Cards não pertencem a uma união monolítica de resources. Cada card é um envelope com `id`, `position`, `title`, `role`, `content`, `response`, `feedback`, `topics` e `sources`. Cada item de conteúdo, resposta ou feedback é uma instância `{ id, package, version, data }`.
+
+Cards de teoria exigem ao menos uma instância em `content`. Cards de prática podem usar `content: []` quando a pergunta de um package de resposta constitui todo o material visível. Em uma escolha, a pergunta pertence somente a `aralearn.response.choice`; `paragraph` serve apenas para contexto adicional e não pode duplicar o mesmo enunciado.
 
 O kernel conhece apenas slots, identidade, versão, validação, renderização, texto acessível e avaliação. Cada package entrega seu próprio manifest, contrato autoral, schema, normalização, renderer e, quando ocupa `response`, avaliador. Adicionar um package compatível não altera o kernel.
 

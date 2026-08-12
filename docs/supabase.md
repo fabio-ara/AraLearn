@@ -251,7 +251,7 @@ mutações válidas do lote.
 cursos oficiais publicados. Coleções não concedem escrita a usuários comuns.
 `list_trail_items_v1` deriva a visão autenticada de `trail_items`, workspaces e
 seleções; grupos e posições pertencem à conta e não fazem parte do contrato
-JSON v4.
+`aralearn.library.v1`.
 
 O bootstrap hospedado retorna somente as seleções leves e o
 `highWaterSequence`. Para uma revisão endereçada por

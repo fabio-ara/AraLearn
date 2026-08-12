@@ -28,16 +28,16 @@ function context(level, itemIds = []) {
 }
 
 test("card distingue todos os resources do card inteiro", () => {
-  const target = context("card", ["body:a", "body:b"]);
+  const target = context("card", ["content:a", "content:b"]);
   let state = createBottomUpAssistanceUiState(target);
-  state = toggleBottomUpAssistanceItem(state, target, "body:a");
-  state = toggleBottomUpAssistanceItem(state, target, "body:b");
+  state = toggleBottomUpAssistanceItem(state, target, "content:a");
+  state = toggleBottomUpAssistanceItem(state, target, "content:b");
   assert.equal(state.kind, "items");
-  assert.deepEqual(state.selectedIds, ["body:a", "body:b"]);
+  assert.deepEqual(state.selectedIds, ["content:a", "content:b"]);
   assert.deepEqual(bottomUpAssistanceScopeInput(state, target), {
     level: "card",
     kind: "items",
-    targetIds: ["body:a", "body:b"]
+    targetIds: ["content:a", "content:b"]
   });
 
   state = toggleBottomUpAssistanceContainer(state, target);

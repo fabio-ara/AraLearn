@@ -614,7 +614,8 @@ set search_path = pg_catalog, private
 as $function$
 declare
   v_card jsonb;
-  v_suffix text;
+  v_slot text;
+  v_instance_id text;
 begin
   if p_entity_type = 'workspace' then
     return cardinality(p_entity_path) = 0 and p_resource_target_id is null;
@@ -634,35 +635,31 @@ begin
     and entity.entity_type = 'card'
     and entity.entity_id = p_entity_path[cardinality(p_entity_path)];
   if not found then return false; end if;
-  if p_resource_target_id = 'main' then
-    return nullif(btrim(v_card->>'resource'), '') is not null
-      and v_card->>'resource' <> 'composite';
+  v_slot := split_part(p_resource_target_id, ':', 1);
+  v_instance_id := substr(p_resource_target_id, char_length(v_slot) + 2);
+  if nullif(v_instance_id, '') is null
+     or v_slot not in ('content', 'response', 'feedback') then
+    return false;
   end if;
-  if p_resource_target_id = 'response' then
-    return v_card->>'resource' <> 'choice'
-      and v_card->>'exercise' = 'choice';
+  if v_slot = 'response' then
+    return jsonb_typeof(v_card->'response') = 'object'
+      and v_card->'response'->>'id' = v_instance_id
+      and nullif(btrim(v_card->'response'->>'package'), '') is not null;
   end if;
-  if p_resource_target_id = 'after:text' then return true; end if;
-  if p_resource_target_id like 'body:%' then
-    v_suffix := substr(p_resource_target_id, 6);
-    return v_card->>'resource' = 'composite'
-      and nullif(v_suffix, '') is not null
-      and jsonb_typeof(v_card->'blocks') = 'array'
+  if v_slot = 'content' then
+    return jsonb_typeof(v_card->'content') = 'array'
       and exists (
-        select 1 from jsonb_array_elements(v_card->'blocks') block
-        where block->>'id' = v_suffix
+        select 1 from jsonb_array_elements(v_card->'content') instance
+        where instance->>'id' = v_instance_id
+          and nullif(btrim(instance->>'package'), '') is not null
       );
   end if;
-  if p_resource_target_id like 'after:%' then
-    v_suffix := substr(p_resource_target_id, 7);
-    return nullif(v_suffix, '') is not null
-      and jsonb_typeof(v_card->'afterBlocks') = 'array'
-      and exists (
-        select 1 from jsonb_array_elements(v_card->'afterBlocks') block
-        where block->>'id' = v_suffix
-      );
-  end if;
-  return false;
+  return jsonb_typeof(v_card->'feedback') = 'array'
+    and exists (
+      select 1 from jsonb_array_elements(v_card->'feedback') instance
+      where instance->>'id' = v_instance_id
+        and nullif(btrim(instance->>'package'), '') is not null
+    );
 end;
 $function$;
 

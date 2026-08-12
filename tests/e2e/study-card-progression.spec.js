@@ -1182,11 +1182,7 @@ test("o runtime completo executa escolhas, lacunas, fluxograma, popup e anotaç�
             checks: ["o aluno conclui as interações"],
             errors: [],
             cards: [
-              card("card-choice", 1, "Escolha", "practice", [
-                packageInstance("choice-context", "aralearn.resource.paragraph", {
-                  text: "Qual é a resposta?"
-                })
-              ], packageInstance("choice-response", "aralearn.response.choice", {
+              card("card-choice", 1, "Escolha", "practice", [], packageInstance("choice-response", "aralearn.response.choice", {
                 question: "Qual é a resposta?",
                 options: [
                   { id: "certa", kind: "text", text: "Certa" },
@@ -1408,7 +1404,7 @@ test("o runtime completo executa escolhas, lacunas, fluxograma, popup e anotaç�
   await page.locator('[data-action="next-card"]').click();
   await expect(page.locator(".runtime-card-title")).toHaveText("Fluxograma");
 
-  await expect(page.getByText("Processar", { exact: true })).toBeVisible();
+  await expect(page.locator('[data-flow-kind="process"]')).toContainText("Processar");
   await page.locator('[data-action="next-card"]').click();
   await expect(page.locator(".runtime-card-title")).toHaveText("Popup");
 

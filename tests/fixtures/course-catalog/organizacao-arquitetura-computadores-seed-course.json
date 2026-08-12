@@ -268,16 +268,7 @@
                       "position": 3,
                       "title": "Problema central",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-01-03-problema-central-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Para executar RAG localmente em um smartphone, qual é o problema central?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-01-03-problema-central-response",
                         "package": "aralearn.response.choice",
@@ -531,16 +522,7 @@
                       "position": 7,
                       "title": "Erro provável",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-01-07-erro-modelo-menor-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Um colega diz: Basta usar um modelo menor e o problema do RAG no smartphone acaba. Qual resposta corrige melhor essa ideia?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-01-07-erro-modelo-menor-response",
                         "package": "aralearn.response.choice",
@@ -703,16 +685,7 @@
                       "position": 3,
                       "title": "Definição de RAG",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-02-03-definicao-rag-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual alternativa define RAG de forma adequada para esta unidade?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-02-03-definicao-rag-response",
                         "package": "aralearn.response.choice",
@@ -795,16 +768,7 @@
                       "position": 5,
                       "title": "Etapa do exemplo",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-02-05-etapa-correta-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "No exemplo Qual era o prazo daquele trabalho no PDF da disciplina?, qual ação pertence à etapa de recuperação?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-02-05-etapa-correta-response",
                         "package": "aralearn.response.choice",
@@ -907,16 +871,7 @@
                       "position": 7,
                       "title": "Confusão comum",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-02-07-rag-nao-e-chatbot-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual frase evita uma confusão comum ao explicar RAG?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-02-07-rag-nao-e-chatbot-response",
                         "package": "aralearn.response.choice",
@@ -1317,16 +1272,7 @@
                       "position": 4,
                       "title": "Top-k",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-03-04-o-que-e-topk-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Em busca vetorial, top-k significa:"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-03-04-o-que-e-topk-response",
                         "package": "aralearn.response.choice",
@@ -1409,16 +1355,7 @@
                       "position": 6,
                       "title": "Token e resposta",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-03-06-token-ttft-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual frase está correta?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-03-06-token-ttft-response",
                         "package": "aralearn.response.choice",
@@ -1700,16 +1637,7 @@
                       "position": 4,
                       "title": "O que a fórmula mede",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-04-04-o-que-mede-cosseno-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Na fórmula similaridade(q, d) = cos(q, d), o que a similaridade por cosseno mede neste contexto?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-04-04-o-que-mede-cosseno-response",
                         "package": "aralearn.response.choice",
@@ -1792,16 +1720,7 @@
                       "position": 6,
                       "title": "Menos tokens e TTFT",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-04-06-menos-token-ttft-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Considere TTFT ≈ T_busca + T_redução + T_inferência. Por que reduzir tokens enviados ao modelo pode reduzir TTFT?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-04-06-menos-token-ttft-response",
                         "package": "aralearn.response.choice",
@@ -1855,16 +1774,7 @@
                       "position": 7,
                       "title": "Energia e processamento",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-04-07-energia-cpu-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Na decomposição aproximada da energia total, qual parcela representa o custo principal do processamento?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-04-07-energia-cpu-response",
                         "package": "aralearn.response.choice",
@@ -2095,16 +2005,7 @@
                       "position": 2,
                       "title": "Particularidade do MobileRAG",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-05-02-particularidade-mobilerag-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual alternativa descreve a particularidade do MobileRAG?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-05-02-particularidade-mobilerag-response",
                         "package": "aralearn.response.choice",
@@ -2361,16 +2262,7 @@
                       "position": 6,
                       "title": "SCR no lugar correto",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-05-06-erro-scr-antes-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "No pipeline Consulta → Embedding → EcoVector → Documentos recuperados → SCR → sLM → Resposta, por que SCR não vem antes da busca?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-05-06-erro-scr-antes-response",
                         "package": "aralearn.response.choice",
@@ -2717,16 +2609,7 @@
                       "position": 5,
                       "title": "O que fica na RAM",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-06-05-o-que-fica-ram-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "No EcoVector, qual item fica na RAM para guiar a busca inicial?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-06-05-o-que-fica-ram-response",
                         "package": "aralearn.response.choice",
@@ -2780,16 +2663,7 @@
                       "position": 6,
                       "title": "Lista invertida",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-06-06-lista-invertida-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Neste contexto, o que é uma lista invertida?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-06-06-lista-invertida-response",
                         "package": "aralearn.response.choice",
@@ -2872,16 +2746,7 @@
                       "position": 8,
                       "title": "Memória aproximada",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-06-08-memoria-formula-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Na fórmula Memória RAM ≈ |C| × d_dim × 4 bytes, o que a expressão quer mostrar?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-06-08-memoria-formula-response",
                         "package": "aralearn.response.choice",
@@ -3197,16 +3062,7 @@
                       "position": 6,
                       "title": "Top-r e top-k",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-07-06-topr-topk-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual diferença está correta?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-07-06-topr-topk-response",
                         "package": "aralearn.response.choice",
@@ -3572,16 +3428,7 @@
                       "position": 3,
                       "title": "Frase segura",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-08-03-frase-segura-resultados-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual frase é mais segura para a apresentação dos resultados?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-08-03-frase-segura-resultados-response",
                         "package": "aralearn.response.choice",
@@ -3664,16 +3511,7 @@
                       "position": 5,
                       "title": "Flash também tem custo",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-08-05-flash-custo-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual frase corrige a ideia de que usar Flash resolve tudo?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-08-05-flash-custo-response",
                         "package": "aralearn.response.choice",
@@ -3727,16 +3565,7 @@
                       "position": 6,
                       "title": "Pergunta sobre precisão",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-08-06-pergunta-precisao-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Se alguém pergunta se SCR pode perder informação, qual resposta é mais adequada?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-08-06-pergunta-precisao-response",
                         "package": "aralearn.response.choice",
@@ -3950,16 +3779,7 @@
                       "position": 2,
                       "title": "Abertura segura",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-09-03-abertura-slide-1-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual frase é uma boa abertura para o slide 1?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-09-03-abertura-slide-1-response",
                         "package": "aralearn.response.choice",
@@ -4013,16 +3833,7 @@
                       "position": 3,
                       "title": "Slide 3: conceitos essenciais",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-09-04-slide-3-conceitos-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "O slide 3 deve apresentar embedding, busca vetorial, top-k, sLM, token, TTFT e I/O. Qual explicação está alinhada ao slide?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-09-04-slide-3-conceitos-response",
                         "package": "aralearn.response.choice",
@@ -4076,16 +3887,7 @@
                       "position": 4,
                       "title": "Slide 6: fórmula do EcoVector",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-09-05-slide-6-formula-eco-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "No slide 6, aparece c* = argmax_j sim(q, μ_j). Qual fala explica melhor a fórmula?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-09-05-slide-6-formula-eco-response",
                         "package": "aralearn.response.choice",
@@ -4139,16 +3941,7 @@
                       "position": 5,
                       "title": "Pergunta provável: precisão",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-09-06-pergunta-banca-precisao-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Pergunta: O método perde precisão ao reduzir conteúdo? Qual resposta é mais segura?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-09-06-pergunta-banca-precisao-response",
                         "package": "aralearn.response.choice",
@@ -4252,16 +4045,7 @@
                       "position": 7,
                       "title": "Conclusão alinhada à disciplina",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-09-08-conclusao-arquitetura-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual conclusão conecta melhor MobileRAG com Organização e Arquitetura de Computadores?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-09-08-conclusao-arquitetura-response",
                         "package": "aralearn.response.choice",
@@ -4580,16 +4364,7 @@
                       "position": 3,
                       "title": "Foco do artigo",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-m1-3-foco-artigo-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual descrição identifica melhor o foco do artigo?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-m1-3-foco-artigo-response",
                         "package": "aralearn.response.choice",
@@ -4860,16 +4635,7 @@
                       "position": 2,
                       "title": "Comparação central",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-m2-2-comparacao-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Em qual opção a diferença está corretamente descrita?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-m2-2-comparacao-response",
                         "package": "aralearn.response.choice",
@@ -5085,16 +4851,7 @@
                       "position": 5,
                       "title": "Além da velocidade",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-m2-5-erro-velocidade-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual frase evita reduzir a computação quântica a uma simples promessa de rapidez?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-m2-5-erro-velocidade-response",
                         "package": "aralearn.response.choice",
@@ -5309,16 +5066,7 @@
                       "position": 3,
                       "title": "Ler a fórmula",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-m3-3-formula-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "No estado |ψ⟩ = α|0⟩ + β|1⟩, o que α e β representam?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-m3-3-formula-response",
                         "package": "aralearn.response.choice",
@@ -5443,16 +5191,7 @@
                       "position": 5,
                       "title": "Amplitude não é saída",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-m3-5-amplitude-resultado-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Considere |ψ⟩ = α|0⟩ + β|1⟩. Qual afirmação está correta?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-m3-5-amplitude-resultado-response",
                         "package": "aralearn.response.choice",
@@ -5740,16 +5479,7 @@
                       "position": 5,
                       "title": "O que a medição entrega",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-m4-5-saida-classica-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Um qubit tem P(0) = 0,30 e P(1) = 0,70. Qual saída individual a medição pode entregar?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-m4-5-saida-classica-response",
                         "package": "aralearn.response.choice",
@@ -6129,16 +5859,7 @@
                       "position": 4,
                       "title": "O que as portas fazem",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-m5-4-transformam-amplitudes-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual afirmação descreve corretamente o papel das portas quânticas no circuito?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-m5-4-transformam-amplitudes-response",
                         "package": "aralearn.response.choice",
@@ -6192,16 +5913,7 @@
                       "position": 5,
                       "title": "Papel da CNOT",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-m5-5-cnot-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Para que serve a CNOT em um circuito introdutório com dois qubits?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-m5-5-cnot-response",
                         "package": "aralearn.response.choice",
@@ -6488,16 +6200,7 @@
                       "position": 4,
                       "title": "Papel da interferência",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-m6-4-interferencia-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "O que a interferência faz com as amplitudes durante o algoritmo?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-m6-4-interferencia-response",
                         "package": "aralearn.response.choice",
@@ -6942,16 +6645,7 @@
                       "position": 4,
                       "title": "Modelo e suporte físico",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-m7-4-modelo-nao-detalhe-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual afirmação relaciona modelo abstrato e realização física de modo correto?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-m7-4-modelo-nao-detalhe-response",
                         "package": "aralearn.response.choice",
@@ -7226,16 +6920,7 @@
                       "position": 3,
                       "title": "Interpretar BPP ⊆ BQP",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-m8-3-interpretar-inclusao-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "O que significa BPP ⊆ BQP no debate sobre eficiência?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-m8-3-interpretar-inclusao-response",
                         "package": "aralearn.response.choice",
@@ -7318,16 +7003,7 @@
                       "position": 5,
                       "title": "Distinguir crescimento",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-m8-5-poliexp-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Um custo que dobra repetidamente quando o tamanho da entrada aumenta ilustra melhor qual ideia?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-m8-5-poliexp-response",
                         "package": "aralearn.response.choice",
@@ -7591,16 +7267,7 @@
                       "position": 3,
                       "title": "Leitura instrumental",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-m9-3-identificar-instrumental-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual frase corresponde à interpretação instrumental?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-m9-3-identificar-instrumental-response",
                         "package": "aralearn.response.choice",
@@ -7754,16 +7421,7 @@
                       "position": 5,
                       "title": "Sem resposta imposta",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-m9-5-sem-resposta-unica-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual postura é adequada ao comparar interpretações do estado quântico?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-m9-5-sem-resposta-unica-response",
                         "package": "aralearn.response.choice",
@@ -8087,16 +7745,7 @@
                       "position": 4,
                       "title": "Problema da base preferida",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-m10-4-base-preferida-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual afirmação expressa o problema da base preferida?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-m10-4-base-preferida-response",
                         "package": "aralearn.response.choice",
@@ -8550,16 +8199,7 @@
                       "position": 4,
                       "title": "Papel do emaranhamento",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-m11-4-emaranhamento-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual afirmação expressa uma leitura cuidadosa do emaranhamento?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-m11-4-emaranhamento-response",
                         "package": "aralearn.response.choice",
@@ -8818,16 +8458,7 @@
                       "position": 3,
                       "title": "Leitura de Gottesman-Knill",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-m12-3-gottesman-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual é a leitura correta de Gottesman-Knill para discutir limites da vantagem quântica?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-m12-3-gottesman-response",
                         "package": "aralearn.response.choice",
@@ -9583,16 +9214,7 @@
                       "position": 3,
                       "title": "Reconhecer base 2",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-notacao-base-binaria-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual base usa apenas os símbolos 0 e 1?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-notacao-base-binaria-response",
                         "package": "aralearn.response.choice",
@@ -9724,16 +9346,7 @@
                       "position": 5,
                       "title": "Valor de 1011₂",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-notacao-valor-1011-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Use os pesos 8, 4, 2 e 1. Qual é o valor decimal de 1011₂?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-notacao-valor-1011-response",
                         "package": "aralearn.response.choice",
@@ -9836,16 +9449,7 @@
                       "position": 7,
                       "title": "Erro comum de peso",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-notacao-erro-peso-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Um aluno calculou 1001₂ como 8 + 4 + 1. Qual foi o erro?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-notacao-erro-peso-response",
                         "package": "aralearn.response.choice",
@@ -10031,16 +9635,7 @@
                       "position": 3,
                       "title": "Converter 13₁₀",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-dec-bin-13-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Use os pesos 8, 4, 2 e 1. Qual é 13₁₀ em binário?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-dec-bin-13-response",
                         "package": "aralearn.response.choice",
@@ -10094,16 +9689,7 @@
                       "position": 4,
                       "title": "Converter 19₁₀",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-dec-bin-19-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Use os pesos 16, 8, 4, 2 e 1. Qual é 19₁₀ em binário?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-dec-bin-19-response",
                         "package": "aralearn.response.choice",
@@ -10239,16 +9825,7 @@
                       "position": 6,
                       "title": "Converter 26₁₀",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-dec-bin-26-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Use os pesos 16, 8, 4, 2 e 1. Qual é 26₁₀ em binário?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-dec-bin-26-response",
                         "package": "aralearn.response.choice",
@@ -10302,16 +9879,7 @@
                       "position": 7,
                       "title": "Potência de 2",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-dec-bin-32-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual é 32₁₀ em binário?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-dec-bin-32-response",
                         "package": "aralearn.response.choice",
@@ -10459,16 +10027,7 @@
                       "position": 9,
                       "title": "Erro ao ler restos",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-dec-bin-erro-ordem-restos-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Na conversão de 13₁₀, os restos aparecem na ordem 1, 0, 1, 1 durante as divisões. Qual resultado evita o erro de ler na ordem errada?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-dec-bin-erro-ordem-restos-response",
                         "package": "aralearn.response.choice",
@@ -10673,16 +10232,7 @@
                       "position": 3,
                       "title": "Bits por dígito hexadecimal",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-hex-quantos-bits-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Quantos bits representam exatamente um dígito hexadecimal?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-hex-quantos-bits-response",
                         "package": "aralearn.response.choice",
@@ -10736,16 +10286,7 @@
                       "position": 4,
                       "title": "Converter 1111₂",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-hex-1111-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Usando A=10, B=11, C=12, D=13, E=14 e F=15, 1111₂ corresponde a qual valor hexadecimal?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-hex-1111-response",
                         "package": "aralearn.response.choice",
@@ -10799,16 +10340,7 @@
                       "position": 5,
                       "title": "Converter 1010₂",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-hex-1010-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Usando A=10, B=11, C=12, D=13, E=14 e F=15, 1010₂ corresponde a:"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-hex-1010-response",
                         "package": "aralearn.response.choice",
@@ -10936,16 +10468,7 @@
                       "position": 7,
                       "title": "Converter 0011 1110₂",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-hex-00111110-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Agrupe 0011 1110₂ em dois blocos: 0011₂ e 1110₂. Qual é o hexadecimal?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-hex-00111110-response",
                         "package": "aralearn.response.choice",
@@ -11152,16 +10675,7 @@
                       "position": 3,
                       "title": "Quando OR vale 1",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-or-condicao-saida-1-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Quando a saída de uma OR de duas entradas é 1?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-or-condicao-saida-1-response",
                         "package": "aralearn.response.choice",
@@ -11215,16 +10729,7 @@
                       "position": 4,
                       "title": "Calcular 0 OR 0",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-or-00-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual saída a tabela-verdade da OR associa a esse par de entradas?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-or-00-response",
                         "package": "aralearn.response.choice",
@@ -11278,16 +10783,7 @@
                       "position": 5,
                       "title": "Calcular 0 OR 1",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-or-01-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual saída a tabela-verdade da OR associa a esse par de entradas?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-or-01-response",
                         "package": "aralearn.response.choice",
@@ -11341,16 +10837,7 @@
                       "position": 6,
                       "title": "Calcular 1 OR 1",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-or-11-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual saída a tabela-verdade da OR associa a esse par de entradas?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-or-11-response",
                         "package": "aralearn.response.choice",
@@ -11614,16 +11101,7 @@
                       "position": 3,
                       "title": "Papel principal da CPU",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-cpu-papel-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual é o papel principal da CPU?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-cpu-papel-response",
                         "package": "aralearn.response.choice",
@@ -11677,16 +11155,7 @@
                       "position": 4,
                       "title": "Ordem do ciclo",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-cpu-ordem-ciclo-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual alternativa apresenta a ordem correta do ciclo básico de instrução?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-cpu-ordem-ciclo-response",
                         "package": "aralearn.response.choice",
@@ -11740,16 +11209,7 @@
                       "position": 5,
                       "title": "Memória em Von Neumann",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-cpu-von-neumann-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Na arquitetura de Von Neumann, onde ficam dados e instruções para a CPU acessar?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-cpu-von-neumann-response",
                         "package": "aralearn.response.choice",
@@ -11803,16 +11263,7 @@
                       "position": 6,
                       "title": "Etapa Decode",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-cpu-decode-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "No ciclo Buscar / Fetch, Decodificar / Decode e Executar / Execute, o que acontece na etapa Decode?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-cpu-decode-response",
                         "package": "aralearn.response.choice",
@@ -12081,16 +11532,7 @@
                       "position": 2,
                       "title": "Função do PC",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-pc-funcao-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Sabendo que PC significa Program Counter, qual informação ele guarda principalmente?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-pc-funcao-response",
                         "package": "aralearn.response.choice",
@@ -12144,16 +11586,7 @@
                       "position": 3,
                       "title": "Função da ULA",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-ula-funcao-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Sabendo que ULA significa Unidade Lógica e Aritmética, ela é responsável por:"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-ula-funcao-response",
                         "package": "aralearn.response.choice",
@@ -12207,16 +11640,7 @@
                       "position": 4,
                       "title": "Função do IR",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-ir-funcao-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Sabendo que IR é o registrador de instrução, qual informação ele guarda durante o ciclo de instrução?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-ir-funcao-response",
                         "package": "aralearn.response.choice",
@@ -12270,16 +11694,7 @@
                       "position": 5,
                       "title": "Função da UC",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-uc-funcao-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Sabendo que UC significa Unidade de Controle, qual função combina melhor com ela?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-uc-funcao-response",
                         "package": "aralearn.response.choice",
@@ -12740,16 +12155,7 @@
                       "position": 3,
                       "title": "Foco principal de RISC",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-risc-foco-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Sabendo que RISC prioriza instruções simples e previsíveis, qual é o foco principal dessa arquitetura?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-risc-foco-response",
                         "package": "aralearn.response.choice",
@@ -12803,16 +12209,7 @@
                       "position": 4,
                       "title": "Formato de instrução em RISC",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-risc-formato-fixo-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Sabendo que RISC costuma usar instruções simples e de formato previsível, qual característica ajuda o hardware a decodificá-las?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-risc-formato-fixo-response",
                         "package": "aralearn.response.choice",
@@ -12866,16 +12263,7 @@
                       "position": 5,
                       "title": "ARM e eficiência",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-risc-arm-energia-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Arquiteturas RISC, como ARM, costumam se destacar por eficiência energética em:"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-risc-arm-energia-response",
                         "package": "aralearn.response.choice",
@@ -12929,16 +12317,7 @@
                       "position": 6,
                       "title": "Reconhecer CISC",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-cisc-caracteristica-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Sabendo que CISC prioriza instruções mais complexas e versáteis, qual descrição combina melhor com CISC?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-cisc-caracteristica-response",
                         "package": "aralearn.response.choice",
@@ -13279,16 +12658,7 @@
                       "position": 4,
                       "title": "Limite do aumento de clock",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-clock-calor-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Por que aumentar continuamente a frequência de clock se tornou uma estratégia insustentável?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-clock-calor-response",
                         "package": "aralearn.response.choice",
@@ -13342,16 +12712,7 @@
                       "position": 5,
                       "title": "Definir superescalar",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-superescalar-definicao-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Processador superescalar é aquele que:"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-superescalar-definicao-response",
                         "package": "aralearn.response.choice",
@@ -13405,16 +12766,7 @@
                       "position": 6,
                       "title": "Identificar RAW",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-raw-definicao-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Sabendo que RAW significa Read After Write, quando esse problema ocorre?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-raw-definicao-response",
                         "package": "aralearn.response.choice",
@@ -13468,16 +12820,7 @@
                       "position": 7,
                       "title": "Superescalar ou multicore",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-superescalar-nao-multicore-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Um enunciado diz: 'múltiplas instruções de uma mesma thread no mesmo ciclo'. Qual conceito ele descreve melhor?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-superescalar-nao-multicore-response",
                         "package": "aralearn.response.choice",
@@ -13824,16 +13167,7 @@
                       "position": 4,
                       "title": "Critérios de Flynn",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-flynn-criterios-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "A Taxonomia de Flynn usa quais critérios?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-flynn-criterios-response",
                         "package": "aralearn.response.choice",
@@ -13887,16 +13221,7 @@
                       "position": 5,
                       "title": "Multicore em Flynn",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-flynn-multicore-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Sabendo que M = Multiple, I = Instruction e D = Data, processadores multicore comuns, com múltiplos fluxos de instruções e dados, se aproximam de:"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-flynn-multicore-response",
                         "package": "aralearn.response.choice",
@@ -13950,16 +13275,7 @@
                       "position": 6,
                       "title": "Mesma operação em muitos dados",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-flynn-gpu-simd-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Sabendo que S = Single, M = Multiple, I = Instruction e D = Data, uma GPU aplicando a mesma operação a muitos pixels se aproxima de:"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-flynn-gpu-simd-response",
                         "package": "aralearn.response.choice",
@@ -14013,16 +13329,7 @@
                       "position": 7,
                       "title": "Reconhecer SISD",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-flynn-sisd-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Sabendo que S = Single, M = Multiple, I = Instruction e D = Data, qual descrição define SISD?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-flynn-sisd-response",
                         "package": "aralearn.response.choice",
@@ -14076,16 +13383,7 @@
                       "position": 8,
                       "title": "Reconhecer MISD",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-flynn-misd-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Sabendo que S = Single, M = Multiple, I = Instruction e D = Data, na Taxonomia de Flynn, MISD significa:"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-flynn-misd-response",
                         "package": "aralearn.response.choice",
@@ -14139,16 +13437,7 @@
                       "position": 9,
                       "title": "Desafio de MIMD",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-flynn-desafio-mimd-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Em MIMD, qual desafio aparece porque há múltiplos fluxos trabalhando em paralelo?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-flynn-desafio-mimd-response",
                         "package": "aralearn.response.choice",
@@ -14360,16 +13649,7 @@
                       "position": 3,
                       "title": "Objetivo da identificação",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-hw-objetivo-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Programas podem identificar hardware para adaptar recursos disponíveis. Qual é um objetivo principal dessa identificação?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-hw-objetivo-response",
                         "package": "aralearn.response.choice",
@@ -14423,16 +13703,7 @@
                       "position": 4,
                       "title": "Identificação direta da CPU",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-hw-direta-cpuid-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Identificação direta obtém informação no próprio hardware ou por instrução específica. Qual opção representa identificação direta da CPU?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-hw-direta-cpuid-response",
                         "package": "aralearn.response.choice",
@@ -14486,16 +13757,7 @@
                       "position": 5,
                       "title": "Identificação indireta",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-hw-indireta-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Identificação indireta usa uma camada intermediária. Qual opção representa identificação indireta de hardware?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-hw-indireta-response",
                         "package": "aralearn.response.choice",
@@ -14549,16 +13811,7 @@
                       "position": 6,
                       "title": "Informações obtidas por CPUID",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-hw-cpuid-dados-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "CPUID é uma instrução de identificação da CPU. Quais informações ela pode revelar?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-hw-cpuid-dados-response",
                         "package": "aralearn.response.choice",
@@ -14612,16 +13865,7 @@
                       "position": 7,
                       "title": "Função do PCIe",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-hw-pcie-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "PCIe é um barramento de alta velocidade. Ele é projetado para conectar principalmente:"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-hw-pcie-response",
                         "package": "aralearn.response.choice",

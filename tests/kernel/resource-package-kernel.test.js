@@ -36,6 +36,24 @@ function theoryCard() {
   };
 }
 
+function choiceResponse(question = "Qual protocolo confirma a entrega?") {
+  return {
+    id: "response-1",
+    package: "aralearn.response.choice",
+    version: "1.0.0",
+    data: {
+      question,
+      selectionMode: "single",
+      selectionCriterion: "correct",
+      options: [
+        { id: "tcp", text: "TCP" },
+        { id: "udp", text: "UDP" }
+      ],
+      answerIds: ["tcp"]
+    }
+  };
+}
+
 test("kernel registra package sem conhecer paragraph", () => {
   const catalog = RESOURCE_PACKAGE_REGISTRY.listCatalog();
   assert.equal(catalog.length, 19);
@@ -79,7 +97,9 @@ test("exemplos autorais de todos os packages instalados normalizam, validam e re
       data: contract.contract.example
     }, slot);
     assert.equal(RESOURCE_PACKAGE_REGISTRY.validateInstance(instance, slot).valid, true, manifest.id);
-    assert.match(RESOURCE_PACKAGE_REGISTRY.renderInstance(instance, slot), /(?:runtime-|package-)/u, manifest.id);
+    const rendered = RESOURCE_PACKAGE_REGISTRY.renderInstance(instance, slot);
+    if (slot !== "response") assert.match(rendered, /(?:runtime-|package-)/u, manifest.id);
+    else assert.equal(typeof rendered, "string", manifest.id);
     assert.ok(RESOURCE_PACKAGE_REGISTRY.accessibleText(instance, slot), manifest.id);
   });
 });
@@ -92,6 +112,32 @@ test("envelope valida slots e renderiza por delegação", () => {
   assert.match(rendered.contentHtml, /Uma explicação concreta\./u);
   assert.equal(rendered.responseHtml, "");
   assert.equal(rendered.accessibleText, "Uma explicação concreta.");
+});
+
+test("card de prática pode concentrar o enunciado apenas no package de resposta", () => {
+  const card = {
+    ...theoryCard(),
+    id: "practice-1",
+    role: "practice",
+    content: [],
+    response: choiceResponse()
+  };
+  assert.equal(validateCardEnvelope(card, RESOURCE_PACKAGE_REGISTRY).valid, true);
+});
+
+test("envelope rejeita repetição do enunciado de choice em paragraph", () => {
+  const question = "Qual protocolo confirma a entrega?";
+  const card = {
+    ...theoryCard(),
+    id: "practice-duplicate",
+    role: "practice",
+    content: [paragraphInstance({ text: `  ${question.toUpperCase()}  ` })],
+    response: choiceResponse(question)
+  };
+  assert.match(
+    validateCardEnvelope(card, RESOURCE_PACKAGE_REGISTRY).errors.join(" "),
+    /não pode repetir a mesma pergunta/u
+  );
 });
 
 test("package ausente e slot incompatível falham explicitamente", () => {

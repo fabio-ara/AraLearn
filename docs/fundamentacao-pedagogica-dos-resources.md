@@ -19,13 +19,13 @@ extrínseca que não contribui para aprender.
 |---|---|---|---|
 | Carga cognitiva e atenção dividida | Informação que precisa ser integrada deve permanecer próxima | feedback localizado, anotações adjacentes, fórmula com leitura acessível, nenhum layout descrito por prosa | proximidade visual não garante compreensão |
 | Coerência, sinalização e contiguidade | Elementos relevantes devem ser destacados sem decoração concorrente | presets semânticos, highlights referenciados por ID, labels próximos, ausência de propriedades livres de estilo | sinalização excessiva também pode competir por atenção |
-| Múltiplas representações | Representações cumprem funções distintas e precisam ser coordenadas | objetivo e evidência em `goal`/`checks`, escolha direta de `resource`, `composite` apenas para coordenação inseparável | mais representações não são automaticamente melhores |
+| Múltiplas representações | Representações cumprem funções distintas e precisam ser coordenadas | objetivo e evidência em `goal`/`checks`, packages escolhidos antes da composição e múltiplas instâncias apenas para coordenação necessária | mais representações não são automaticamente melhores |
 | Notações relacionais | Entidades e relações precisam ser perceptualmente distinguíveis e semanticamente explícitas | `system_map` separa limites, grupos, componentes e conexões; links explicitam origem/destino e, quando necessário, direção/rótulo | princípios de notação não comprovam ganho de aprendizagem por si sós |
 | Representações químicas | Equações codificam lados, coeficientes, estados e tipos de seta; fenômeno químico também envolve níveis macro e submicroscópico | `reaction` preserva a equação simbólica e pode ser coordenado com outras representações | uma equação correta não demonstra fluência entre níveis representacionais |
 | Exemplos resolvidos e fading | Novatos se beneficiam de exemplo antes de resolução com apoio progressivamente menor | sequência observável de fundamento, exemplo resolvido, prática guiada e prática com menor apoio | expertise e natureza da tarefa alteram o apoio necessário |
 | Prática de recuperação | Recuperar favorece retenção posterior mais que apenas reler | microssequências combinam explicação, prática e retomada | reconhecimento simples pode ser insuficiente para alguns objetivos |
 | Espaçamento e intercalação | O intervalo e a discriminação entre operações importam | dependências explícitas, retomadas posteriores e intercalação de categorias confundíveis | não existe intervalo universal; variedade aleatória não equivale a intercalação |
-| Feedback corretivo | Conteúdo informacional, tarefa, momento e perfil moderam o efeito | confirmação antes da avaliação, feedback por opção e explicação causal ou próximo passo em `after` | feedback genérico, controlador ou apenas avaliativo pode ter pouco valor |
+| Feedback corretivo | Conteúdo informacional, tarefa, momento e perfil moderam o efeito | confirmação antes da avaliação, feedback por opção e explicação causal em packages no slot `feedback` | feedback genérico, controlador ou apenas avaliativo pode ter pouco valor |
 | Distratores funcionais | Opções não funcionais consomem tempo sem melhorar o item | 2 a 7 opções; quantidade deriva de equívocos plausíveis | perfil de prova pode justificar cinco somente quando há competição real |
 | Multiple-response | Mais de uma resposta pode exigir recuperação adicional | `selectionMode: multiple`, `answerIds` plural e exact-set scoring | marcação múltipla aumenta carga e deve corresponder ao objetivo |
 | Acessibilidade móvel | reflow, foco não oculto e alvos acionáveis preservam operação em telas estreitas | coluna móvel, controles por toque/teclado, confirmação, sem drag-and-drop | testes automatizados não substituem avaliação com usuários |
@@ -63,8 +63,9 @@ pode exigir esforço.
 Rexigel et al. (2024) revisaram comparações com mais de duas representações
 externas em STEM e encontraram resultados dependentes do comparador, do tipo de
 representação, do apoio e do contexto. A síntese reforça uma regra negativa
-importante: quantidade não é critério de qualidade. `composite` só se justifica
-quando a coordenação simultânea faz parte da tarefa; os dezoito recursos são
+importante: quantidade não é critério de qualidade. Múltiplas instâncias em
+`content` só se justificam quando a coordenação simultânea faz parte da tarefa;
+os packages são
 um repertório, não um checklist de variedade por curso.
 
 No AraLearn:
@@ -76,10 +77,10 @@ No AraLearn:
 - `linguistic_example` alinha forma, som, glosa e tradução;
 - `system_map` explicita pertencimento a limites e conexões entre componentes;
 - `reaction` preserva a gramática de uma equação química;
-- `composite` é reservado à tarefa que realmente exige coordenação.
+- múltiplos packages em `content` são reservados à tarefa que realmente exige coordenação.
 
-`goal`, `covers` e `checks` declaram a intenção antes da escolha de
-`card.resource`. A revisão pergunta se a estrutura preserva a evidência
+`goal`, `covers` e `checks` declaram a intenção antes da escolha dos packages.
+A revisão pergunta se a composição preserva a evidência
 desejada, não se a sequência apresenta variedade visual.
 
 ## Mapas, sistemas e notação visual
@@ -122,7 +123,7 @@ superficiais claras e relação explícita entre representação e texto. O
 `reaction` resolve a integridade do nível simbólico, mas não simula partículas
 nem observações macroscópicas. Quando transitar entre níveis fizer parte do
 objetivo, a autoria precisa coordenar representações separadas ou usar
-`composite`, com indicação explícita da correspondência.
+packages de representação, com indicação explícita da correspondência.
 
 Essa decisão evita duas conclusões indevidas: adicionar uma imagem molecular
 não garante coordenação representacional, e apresentar apenas uma equação
@@ -183,7 +184,7 @@ efeitos positivos e reduzir os negativos do teste de múltipla escolha. Daí:
 - a seleção não é avaliada a cada toque;
 - a pessoa confirma antes de receber o resultado;
 - feedback de opção explica a distinção local;
-- `after` explicita a causa, a regra ou o próximo passo e não apenas diz
+- o slot `feedback` explicita a causa, a regra ou o próximo passo e não apenas diz
   “correto”;
 - “ver resposta” distingue itens que deveriam e não deveriam ser marcados.
 
@@ -299,7 +300,7 @@ Uma avaliação futura pode separar pelo menos quatro dimensões:
    desempenho posterior.
 
 Comparações úteis incluem `choice` versus `gap` no lugar estrutural, exemplos
-com apoio fixo versus fading e representação única versus `composite`
+com apoio fixo versus fading e representação única versus composição de packages
 coordenado. A análise deve registrar conhecimentos prévios e evitar concluir
 causalidade a partir de métricas de uso.
 

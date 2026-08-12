@@ -554,16 +554,7 @@
                       "position": 5,
                       "title": "Formulação segura",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-formulacao-segura-vb-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual frase apresenta Visual Basic de modo mais seguro para a aula?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-formulacao-segura-vb-response",
                         "package": "aralearn.response.choice",
@@ -619,16 +610,7 @@
                       "position": 6,
                       "title": "Identificar VBA",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-identifica-vba-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Em uma apresentação, qual descrição identifica melhor o VBA?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-identifica-vba-response",
                         "package": "aralearn.response.choice",
@@ -685,16 +667,7 @@
                       "position": 7,
                       "title": "Identificar VB.NET",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-identifica-vbnet-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual alternativa descreve VB.NET sem confundir ambientes?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-identifica-vbnet-response",
                         "package": "aralearn.response.choice",
@@ -751,16 +724,7 @@
                       "position": 8,
                       "title": "Erro de tecnologia única",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-erro-tecnologia-unica-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Um colega diz: “Visual Basic é uma coisa só, então VBA e VB.NET são iguais.” Qual resposta corrige melhor?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-erro-tecnologia-unica-response",
                         "package": "aralearn.response.choice",
@@ -817,16 +781,7 @@
                       "position": 9,
                       "title": "Evitar resposta simplista",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-visual-basic-morreu-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Se perguntarem “Visual Basic morreu?”, qual resposta é mais segura?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-visual-basic-morreu-response",
                         "package": "aralearn.response.choice",
@@ -883,16 +838,7 @@
                       "position": 10,
                       "title": "Contexto do VB 6.0",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-contexto-vb6-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Na comparação da família, qual associação é correta para VB 6.0?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-contexto-vb6-response",
                         "package": "aralearn.response.choice",
@@ -1211,16 +1157,7 @@
                       "position": 6,
                       "title": "Procedimento ou instrução",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-procedimento-vs-instrucao-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "No código abaixo, o que é MsgBox \"Olá!\"?\n\nSub Saudacao()\n    MsgBox \"Olá!\"\nEnd Sub"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-procedimento-vs-instrucao-response",
                         "package": "aralearn.response.choice",
@@ -1276,16 +1213,7 @@
                       "position": 7,
                       "title": "Sub ou Function",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-sub-ou-function-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual alternativa descreve melhor a diferença entre Sub e Function?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-sub-ou-function-response",
                         "package": "aralearn.response.choice",
@@ -1341,16 +1269,7 @@
                       "position": 8,
                       "title": "Variável e tipo",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-variavel-e-tipo-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "No trecho Dim total As Double, qual é o nome da variável e qual é o tipo?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-variavel-e-tipo-response",
                         "package": "aralearn.response.choice",
@@ -1407,16 +1326,7 @@
                       "position": 9,
                       "title": "Controle e evento",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-controle-ou-evento-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "No nome cmdSalvar_Click, o que representa Click?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-controle-ou-evento-response",
                         "package": "aralearn.response.choice",
@@ -1473,16 +1383,7 @@
                       "position": 10,
                       "title": "Propriedade ou método",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-propriedade-ou-metodo-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Em um formulário, Caption = \"Salvar\" altera o texto mostrado em um botão. Que tipo de elemento é Caption?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-propriedade-ou-metodo-response",
                         "package": "aralearn.response.choice",
@@ -1538,16 +1439,7 @@
                       "position": 11,
                       "title": "UserForm, módulo e classe",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-userform-modulo-classe-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual associação está correta?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-userform-modulo-classe-response",
                         "package": "aralearn.response.choice",
@@ -1604,16 +1496,7 @@
                       "position": 12,
                       "title": "O que é IDE",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-ide-significado-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Para um aluno leigo, qual explicação de IDE é mais adequada?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-ide-significado-response",
                         "package": "aralearn.response.choice",
@@ -1908,16 +1791,7 @@
                       "position": 4,
                       "title": ".NET não é linguagem",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-dotnet-nao-linguagem-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual frase corrige melhor o erro “.NET é uma linguagem”?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-dotnet-nao-linguagem-response",
                         "package": "aralearn.response.choice",
@@ -1973,16 +1847,7 @@
                       "position": 5,
                       "title": "VBE e VS Code",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-vbe-vscode-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual alternativa diferencia corretamente VBE e VS Code?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-vbe-vscode-response",
                         "package": "aralearn.response.choice",
@@ -2038,16 +1903,7 @@
                       "position": 6,
                       "title": "VBA não é VB.NET",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-vba-vbnet-diferenca-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual resposta evita confundir VBA com VB.NET?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-vba-vbnet-diferenca-response",
                         "package": "aralearn.response.choice",
@@ -2104,16 +1960,7 @@
                       "position": 7,
                       "title": "Papel do Visual Studio",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-visual-studio-papel-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Para uma fala curta, qual é a descrição correta do Visual Studio?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-visual-studio-papel-response",
                         "package": "aralearn.response.choice",
@@ -2169,16 +2016,7 @@
                       "position": 8,
                       "title": "Papel do VBE",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-vbe-papel-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Em uma demonstração de macro no Office, onde o código VBA costuma ser editado?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-vbe-papel-response",
                         "package": "aralearn.response.choice",
@@ -2235,16 +2073,7 @@
                       "position": 9,
                       "title": "Plataforma ou linguagem",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-item-plataforma-linguagem-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual par está classificado corretamente?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-item-plataforma-linguagem-response",
                         "package": "aralearn.response.choice",
@@ -2552,16 +2381,7 @@
                       "position": 7,
                       "title": "Identificar Hello World em VBA",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-identificar-vba-hello-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual trecho é o Hello World em VBA dentro do Office?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-identificar-vba-hello-response",
                         "package": "aralearn.response.choice",
@@ -2617,16 +2437,7 @@
                       "position": 8,
                       "title": "Identificar VB.NET console",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-identificar-vbnet-console-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual trecho corresponde ao Hello World em VB.NET console?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-identificar-vbnet-console-response",
                         "package": "aralearn.response.choice",
@@ -2683,16 +2494,7 @@
                       "position": 9,
                       "title": "O que MsgBox faz",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-msgbox-faz-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "No trecho Sub HelloWorld()\n    MsgBox \"Hello, World!\"\nEnd Sub, o que MsgBox faz?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-msgbox-faz-response",
                         "package": "aralearn.response.choice",
@@ -2749,16 +2551,7 @@
                       "position": 10,
                       "title": "O que End Sub encerra",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-end-sub-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "No código Sub HelloWorld()\n    MsgBox \"Hello, World!\"\nEnd Sub, o que End Sub indica?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-end-sub-response",
                         "package": "aralearn.response.choice",
@@ -2815,16 +2608,7 @@
                       "position": 11,
                       "title": "Erro provável: comando de console",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-erro-console-no-vba-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Um aluno quer demonstrar VBA no Office e usa apenas Console.WriteLine(\"Hello, World!\"). Qual correção é mais adequada?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-erro-console-no-vba-response",
                         "package": "aralearn.response.choice",
@@ -2880,16 +2664,7 @@
                       "position": 12,
                       "title": "Erro provável: evento sem clique",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-erro-botao-depende-clique-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "No trecho Private Sub cmdHello_Click()\n    MsgBox \"Hello, World!\"\nEnd Sub, quando a mensagem aparece no modelo de evento?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-erro-botao-depende-clique-response",
                         "package": "aralearn.response.choice",
@@ -3192,16 +2967,7 @@
                       "position": 6,
                       "title": "O que é cmdSalvar",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-o-que-cmdsalvar-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "No procedimento Private Sub cmdSalvar_Click(), o que cmdSalvar representa?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-o-que-cmdsalvar-response",
                         "package": "aralearn.response.choice",
@@ -3257,16 +3023,7 @@
                       "position": 7,
                       "title": "O que é Click",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-o-que-click-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "No nome cmdSalvar_Click, o que Click representa?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-o-que-click-response",
                         "package": "aralearn.response.choice",
@@ -3322,16 +3079,7 @@
                       "position": 8,
                       "title": "Ambiente visual não é a linguagem",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-drag-drop-linguagem-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual frase evita confundir desenvolvimento visual com linguagem?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-drag-drop-linguagem-response",
                         "package": "aralearn.response.choice",
@@ -3387,16 +3135,7 @@
                       "position": 9,
                       "title": "Ação do evento",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-msgbox-no-evento-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "No código Private Sub cmdSalvar_Click()\n    MsgBox \"Salvo!\"\nEnd Sub, qual ação acontece quando o clique dispara o procedimento?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-msgbox-no-evento-response",
                         "package": "aralearn.response.choice",
@@ -3453,16 +3192,7 @@
                       "position": 10,
                       "title": "Evento não é botão",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-evento-nao-e-botao-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual afirmação está correta sobre botão e evento?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-evento-nao-e-botao-response",
                         "package": "aralearn.response.choice",
@@ -3749,16 +3479,7 @@
                       "position": 4,
                       "title": "Compilada ou interpretada?",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-compilada-interpretada-segura-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual resposta é mais segura para a pergunta “Visual Basic é compilada ou interpretada?”"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-compilada-interpretada-segura-response",
                         "package": "aralearn.response.choice",
@@ -3815,16 +3536,7 @@
                       "position": 5,
                       "title": "Execução do VBA",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-vba-execucao-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual afirmação sobre execução do VBA está correta?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-vba-execucao-response",
                         "package": "aralearn.response.choice",
@@ -3881,16 +3593,7 @@
                       "position": 6,
                       "title": "Área do VB.NET",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-vbnet-area-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual associação está correta para VB.NET?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-vbnet-area-response",
                         "package": "aralearn.response.choice",
@@ -3947,16 +3650,7 @@
                       "position": 7,
                       "title": "Área do VB 6.0",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-vb6-area-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual área de atuação combina melhor com VB 6.0?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-vb6-area-response",
                         "package": "aralearn.response.choice",
@@ -4013,16 +3707,7 @@
                       "position": 8,
                       "title": "Área do VBA",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-vba-area-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual área de atuação combina melhor com VBA?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-vba-area-response",
                         "package": "aralearn.response.choice",
@@ -4079,16 +3764,7 @@
                       "position": 9,
                       "title": "Linguagem de alto nível",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-nivel-alto-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Por que é seguro dizer que Visual Basic é uma linguagem de alto nível?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-nivel-alto-response",
                         "package": "aralearn.response.choice",
@@ -4144,16 +3820,7 @@
                       "position": 10,
                       "title": "Paradigma por versão",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-paradigma-versoes-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual classificação está mais adequada?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-paradigma-versoes-response",
                         "package": "aralearn.response.choice",
@@ -4209,16 +3876,7 @@
                       "position": 11,
                       "title": "Erro: VBA para .NET",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-erro-vba-dotnet-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual frase contém um erro técnico que deve ser evitado?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-erro-vba-dotnet-response",
                         "package": "aralearn.response.choice",
@@ -4274,16 +3932,7 @@
                       "position": 12,
                       "title": "Tipo de ambiente",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-tipo-ambiente-dispositivo-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Para responder sobre tipo de dispositivo ou ambiente, qual fala é mais segura?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-tipo-ambiente-dispositivo-response",
                         "package": "aralearn.response.choice",
@@ -4521,16 +4170,7 @@
                       "position": 5,
                       "title": "Identificar camelCase",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-identificar-camel-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual nome está em camelCase?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-identificar-camel-response",
                         "package": "aralearn.response.choice",
@@ -4590,16 +4230,7 @@
                       "position": 6,
                       "title": "Identificar PascalCase",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-identificar-pascal-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual nome está em PascalCase?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-identificar-pascal-response",
                         "package": "aralearn.response.choice",
@@ -4659,16 +4290,7 @@
                       "position": 7,
                       "title": "Identificar Hungarian notation",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-identificar-hungarian-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual nome mostra Hungarian notation por prefixo?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-identificar-hungarian-response",
                         "package": "aralearn.response.choice",
@@ -4724,16 +4346,7 @@
                       "position": 8,
                       "title": "Hungarian não é subtipo",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-hungarian-nao-subtipo-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual afirmação sobre Hungarian notation é correta?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-hungarian-nao-subtipo-response",
                         "package": "aralearn.response.choice",
@@ -4789,16 +4402,7 @@
                       "position": 9,
                       "title": "Escolher nome descritivo",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-melhor-nome-total-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Para guardar o total de um pedido, qual nome é mais claro?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-melhor-nome-total-response",
                         "package": "aralearn.response.choice",
@@ -4855,16 +4459,7 @@
                       "position": 10,
                       "title": "Prefixo de controle",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-prefixo-controle-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Em um formulário, qual nome sugere melhor um botão Salvar em estilo tradicional?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-prefixo-controle-response",
                         "package": "aralearn.response.choice",
@@ -5253,16 +4848,7 @@
                       "position": 8,
                       "title": "Função do Option Explicit",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-option-explicit-funcao-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual é a função de Option Explicit em VBA?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-option-explicit-funcao-response",
                         "package": "aralearn.response.choice",
@@ -5318,16 +4904,7 @@
                       "position": 9,
                       "title": "Detectar erro de digitação",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-detecta-totla-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "No trecho total = 100\ntotla = total + 50\nMsgBox total, qual problema é mais provável?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-detecta-totla-response",
                         "package": "aralearn.response.choice",
@@ -5383,16 +4960,7 @@
                       "position": 10,
                       "title": "Nome descritivo",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-nome-descritivo-pratica-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual nome de variável é melhor para guardar a quantidade de itens?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-nome-descritivo-pratica-response",
                         "package": "aralearn.response.choice",
@@ -5449,16 +5017,7 @@
                       "position": 11,
                       "title": "Separar responsabilidades",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-separar-responsabilidades-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual prática melhora a organização de uma macro que faz importação, cálculo e relatório?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-separar-responsabilidades-response",
                         "package": "aralearn.response.choice",
@@ -5514,16 +5073,7 @@
                       "position": 12,
                       "title": "Reconhecer tratamento em VBA",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-tratamento-erro-vba-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual trecho indica tratamento de erro no estilo VBA?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-tratamento-erro-vba-response",
                         "package": "aralearn.response.choice",
@@ -5579,16 +5129,7 @@
                       "position": 13,
                       "title": "Reconhecer Try...Catch",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-try-catch-vbnet-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Em qual contexto a estrutura Try...Catch é mais típica na apresentação?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-try-catch-vbnet-response",
                         "package": "aralearn.response.choice",
@@ -5645,16 +5186,7 @@
                       "position": 14,
                       "title": "Comentário útil",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-comentario-util-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual comentário é mais útil em uma macro de importação?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-comentario-util-response",
                         "package": "aralearn.response.choice",
@@ -5710,16 +5242,7 @@
                       "position": 15,
                       "title": "Documentar e versionar",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-documentar-versionar-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual prática é adequada quando há código exportado ou documentação da solução?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-documentar-versionar-response",
                         "package": "aralearn.response.choice",
@@ -6097,16 +5620,7 @@
                       "position": 5,
                       "title": "Uso de módulo",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-modulo-uso-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual descrição combina com um módulo VBA como modRelatorios?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-modulo-uso-response",
                         "package": "aralearn.response.choice",
@@ -6162,16 +5676,7 @@
                       "position": 6,
                       "title": "Uso de UserForm",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-userform-uso-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual descrição combina com frmCadastroCliente?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-userform-uso-response",
                         "package": "aralearn.response.choice",
@@ -6228,16 +5733,7 @@
                       "position": 7,
                       "title": "Uso de classe",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-classe-uso-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Em um projeto maior, o que clsCliente sugere?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-classe-uso-response",
                         "package": "aralearn.response.choice",
@@ -6293,16 +5789,7 @@
                       "position": 8,
                       "title": "Fonte para VBA",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-fonte-vba-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual fonte é mais adequada para consultar objetos e comandos do VBA no Office?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-fonte-vba-response",
                         "package": "aralearn.response.choice",
@@ -6358,16 +5845,7 @@
                       "position": 9,
                       "title": "Fonte para VB.NET",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-fonte-vbnet-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual fonte é mais adequada para consultar documentação de VB.NET?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-fonte-vbnet-response",
                         "package": "aralearn.response.choice",
@@ -6424,16 +5902,7 @@
                       "position": 10,
                       "title": "Documentação além do comentário",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-documentacao-nao-so-comentario-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual frase explica melhor documentação como boa prática?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-documentacao-nao-so-comentario-response",
                         "package": "aralearn.response.choice",
@@ -6675,16 +6144,7 @@
                       "position": 3,
                       "title": "Revisão: Visual Basic morreu?",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-revisao-morreu-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual resposta é melhor para “Visual Basic morreu?”"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-revisao-morreu-response",
                         "package": "aralearn.response.choice",
@@ -6741,16 +6201,7 @@
                       "position": 4,
                       "title": "Revisão: .NET é linguagem?",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-revisao-dotnet-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual resposta é correta para “.NET é linguagem?”"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-revisao-dotnet-response",
                         "package": "aralearn.response.choice",
@@ -6807,16 +6258,7 @@
                       "position": 5,
                       "title": "Revisão: VBE e VS Code",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-revisao-vbe-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Se alguém perguntar se VBE é o mesmo que VS Code, qual resposta é segura?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-revisao-vbe-response",
                         "package": "aralearn.response.choice",
@@ -6873,16 +6315,7 @@
                       "position": 6,
                       "title": "Revisão: VBA foi substituído?",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-revisao-vba-substituido-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual resposta é mais segura para “VBA foi substituído?”"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-revisao-vba-substituido-response",
                         "package": "aralearn.response.choice",
@@ -6939,16 +6372,7 @@
                       "position": 7,
                       "title": "Revisão: execução",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-revisao-execucao-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual resposta é melhor para “Afinal, VBA é compilado ou interpretado?”"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-revisao-execucao-response",
                         "package": "aralearn.response.choice",
@@ -7005,16 +6429,7 @@
                       "position": 8,
                       "title": "Revisão: Hello World em VBA",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-revisao-hello-vba-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual trecho é adequado para mostrar Hello World em VBA?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-revisao-hello-vba-response",
                         "package": "aralearn.response.choice",
@@ -7071,16 +6486,7 @@
                       "position": 9,
                       "title": "Revisão: evento de botão",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-revisao-evento-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "No nome cmdSalvar_Click, qual interpretação é correta?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-revisao-evento-response",
                         "package": "aralearn.response.choice",
@@ -7137,16 +6543,7 @@
                       "position": 10,
                       "title": "Revisão: Hungarian notation",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-revisao-hungarian-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual afirmação sobre txtNome, cmdSalvar e lblTotal está correta?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-revisao-hungarian-response",
                         "package": "aralearn.response.choice",
@@ -7203,16 +6600,7 @@
                       "position": 11,
                       "title": "Revisão: Option Explicit",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-revisao-option-explicit-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Por que Option Explicit deve aparecer nas boas práticas?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-revisao-option-explicit-response",
                         "package": "aralearn.response.choice",
@@ -7269,16 +6657,7 @@
                       "position": 12,
                       "title": "Revisão: documentação oficial",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-revisao-documentacao-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual par de fonte e finalidade está correto?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-revisao-documentacao-response",
                         "package": "aralearn.response.choice",
@@ -7335,16 +6714,7 @@
                       "position": 13,
                       "title": "Ordem dos tópicos centrais",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-revisao-ordem-apresentacao-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual ordem cria uma apresentação mais clara para um aluno leigo?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-revisao-ordem-apresentacao-response",
                         "package": "aralearn.response.choice",

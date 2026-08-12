@@ -2725,7 +2725,7 @@ const INDIVIDUAL_AUTHORING_WORKSPACE_MCP_TOOLS = Object.freeze([
   tool(
     "lerConteudoDoCurso",
     "Ler conteúdo de curso",
-    "Lê a árvore, uma entidade ou o documento v4 de um curso acessível.",
+    "Lê a árvore, uma entidade ou a biblioteca corrente de um curso acessível.",
     readSchema(["courseId"], { courseId: UUID, ...VIEW_PROPERTIES }),
     COURSE_READ_DATA_SCHEMA,
     { readOnlyHint: true }

@@ -5,93 +5,6 @@ import { RESOURCE_PACKAGE_REGISTRY } from "../resources/packages/index.js";
 
 export const CARD_REPAIR_SCOPES = Object.freeze(["card", "resources"]);
 
-const TEXTUAL_LEAF_FIELD_NAMES = new Set([
-  "accessibleText",
-  "after",
-  "code",
-  "coefficient",
-  "condition",
-  "connector",
-  "detail",
-  "expression",
-  "feedback",
-  "form",
-  "formula",
-  "gloss",
-  "init",
-  "ipa",
-  "label",
-  "match",
-  "name",
-  "note",
-  "prompt",
-  "question",
-  "reading",
-  "result",
-  "simplified",
-  "text",
-  "title",
-  "traditional",
-  "translation",
-  "unit",
-  "update",
-  "value"
-]);
-const TEXTUAL_PRIMITIVE_ARRAY_FIELDS = new Set([
-  "columns",
-  "conditions",
-  "pairList",
-  "rows",
-  "values"
-]);
-const PROTECTED_TEXTUAL_FIELD_NAMES = new Set([
-  "answer",
-  "answerIds",
-  "chartType",
-  "directed",
-  "distractors",
-  "entryType",
-  "exercise",
-  "from",
-  "gap",
-  "gaps",
-  "groupId",
-  "id",
-  "kind",
-  "language",
-  "languageTag",
-  "layout",
-  "misconceptionId",
-  "notation",
-  "open",
-  "parentId",
-  "practice",
-  "reactionType",
-  "resource",
-  "response",
-  "role",
-  "selectionCriterion",
-  "selectionMode",
-  "shape",
-  "sources",
-  "state",
-  "targetIds",
-  "textDirection",
-  "to",
-  "topics",
-  "type",
-  "variant",
-  "writingMode",
-  "alignment",
-  "acceptedAnswers"
-]);
-const FLOW_BINARY_BRANCH_KINDS = new Set([
-  "if_then",
-  "if_then_else",
-  "while",
-  "do_while",
-  "for"
-]);
 const MASKED_TEXT_VALUE = "__aralearn_authorized_text_leaf__";
 const TEXT_REBASE_CONFLICT_POLICIES = new Set(["reject", "local"]);
 
@@ -112,11 +25,6 @@ function validatePackageCard(card, path) {
 
 function same(left, right) {
   return canonicalStringify(left) === canonicalStringify(right);
-}
-
-function appendPath(base, key) {
-  if (typeof key === "number") return `${base}[${key}]`;
-  return base ? `${base}.${key}` : key;
 }
 
 function parsePath(path) {
@@ -155,128 +63,6 @@ function deletePath(target, path) {
   const parent = segments.reduce((value, segment) => value?.[segment], target);
   if (!parent || typeof parent !== "object") return;
   delete parent[last];
-}
-
-function sourceGapTokens(value) {
-  return typeof value === "string"
-    ? value.match(/\{gap:[^}]+\}|\[\[[\s\S]*?\]\]/gu) || []
-    : [];
-}
-
-function gapTextSegments(value) {
-  if (typeof value !== "string") return [];
-  return value
-    .split(/(\{gap:[^}]+\}|\[\[[\s\S]*?\]\])/gu)
-    .filter((_part, index) => index % 2 === 0);
-}
-
-function preservesGapTokenStructure(left, right) {
-  const leftTokens = sourceGapTokens(left);
-  const rightTokens = sourceGapTokens(right);
-  if (
-    leftTokens.length !== rightTokens.length ||
-    !leftTokens.every((token, index) => token === rightTokens[index])
-  ) return false;
-  if (!leftTokens.length) return true;
-
-  const leftSegments = gapTextSegments(left);
-  const rightSegments = gapTextSegments(right);
-  return leftSegments.length === rightSegments.length &&
-    leftSegments.every((segment, index) => !segment.trim() || rightSegments[index]?.trim());
-}
-
-function pathTerminalField(path) {
-  return String(path || "")
-    .split(".")
-    .at(-1)
-    ?.replace(/\[\d+\]$/u, "") || "";
-}
-
-function primitiveArrayIsTextual(path) {
-  const fieldName = pathTerminalField(path);
-  if (!TEXTUAL_PRIMITIVE_ARRAY_FIELDS.has(fieldName)) return false;
-  return !/^series\[\d+\]\.values(?:\[|$)/u.test(path);
-}
-
-function listTextualLeaves(
-  value,
-  {
-    basePath = "",
-    editableTopFields = null,
-    optional = false,
-    leaves = new Map()
-  } = {}
-) {
-  if (Array.isArray(value)) {
-    value.forEach((item, index) => {
-      const path = appendPath(basePath, index);
-      if (typeof item === "string" && primitiveArrayIsTextual(basePath)) {
-        leaves.set(path, { path, optional });
-        return;
-      }
-      if (item && typeof item === "object") {
-        listTextualLeaves(item, { basePath: path, leaves });
-      }
-    });
-    return leaves;
-  }
-  if (!value || typeof value !== "object") return leaves;
-
-  Object.entries(value).forEach(([fieldName, child]) => {
-    if (!basePath && editableTopFields && !editableTopFields.has(fieldName)) return;
-    if (PROTECTED_TEXTUAL_FIELD_NAMES.has(fieldName) || /Ids?$/u.test(fieldName)) return;
-    const path = appendPath(basePath, fieldName);
-    if (typeof child === "string" && TEXTUAL_LEAF_FIELD_NAMES.has(fieldName)) {
-      leaves.set(path, { path, optional });
-      return;
-    }
-    if (Array.isArray(child) || (child && typeof child === "object")) {
-      listTextualLeaves(child, { basePath: path, leaves });
-    }
-  });
-
-  if (Array.isArray(value.options) && (!editableTopFields || editableTopFields.has("options"))) {
-    value.options.forEach((option, index) => {
-      if (!option || typeof option !== "object" || Array.isArray(option)) return;
-      const path = appendPath(appendPath(basePath, "options"), index) + ".feedback";
-      leaves.set(path, { path, optional: true });
-    });
-  }
-  return leaves;
-}
-
-function listFlowBranchLabelLeaves(structure, basePath, leaves) {
-  const add = (path) => leaves.set(path, { path, optional: true });
-  const visitList = (items, path) => {
-    (Array.isArray(items) ? items : []).forEach((item, index) => {
-      visitNode(item, appendPath(path, index));
-    });
-  };
-  const addBinary = (path) => {
-    add(`${path}.branchLabels.yes`);
-    add(`${path}.branchLabels.no`);
-  };
-  const visitNode = (node, path) => {
-    if (!node || typeof node !== "object" || Array.isArray(node)) return;
-    if (FLOW_BINARY_BRANCH_KINDS.has(text(node.kind))) addBinary(path);
-    if (text(node.kind) === "switch_case") {
-      add(`${path}.branchLabels.default`);
-      (Array.isArray(node.cases) ? node.cases : []).forEach((item, index) => {
-        visitList(item?.body, `${path}.cases[${index}].body`);
-      });
-    }
-    if (text(node.kind) === "if_chain") {
-      (Array.isArray(node.cases) ? node.cases : []).forEach((item, index) => {
-        const casePath = `${path}.cases[${index}]`;
-        addBinary(casePath);
-        visitList(item?.thenBranch, `${casePath}.thenBranch`);
-      });
-    }
-    ["items", "thenBranch", "elseBranch", "body", "defaultBranch"].forEach((fieldName) => {
-      visitList(node[fieldName], `${path}.${fieldName}`);
-    });
-  };
-  visitNode(structure, basePath);
 }
 
 function fail(message, code = "INVALID_CARD_ASSISTANCE_SCOPE") {
@@ -511,22 +297,6 @@ export async function assertCardAssistanceScopeCurrent({
   return current;
 }
 
-export function listCardMainResourceFieldNames(card = {}) {
-  return card?.content?.length === 1
-    ? Object.keys(card.content[0]?.data || {})
-    : [];
-}
-
-export function listCardResponseFieldNames(card = {}) {
-  return Object.keys(card?.response?.data || {});
-}
-
-function addFlowBranchLeaves(value, basePath, leaves) {
-  const resourceType = text(value?.resource || value?.kind);
-  if (resourceType !== "flow" || !value?.structure) return;
-  listFlowBranchLabelLeaves(value.structure, appendPath(basePath, "structure"), leaves);
-}
-
 function addTargetTextualLeaves(card, target, leaves) {
   const instances = target.location === "response"
     ? (card.response ? [card.response] : [])
@@ -536,8 +306,12 @@ function addTargetTextualLeaves(card, target, leaves) {
   const basePath = target.location === "response"
     ? "response.data"
     : `${target.location}[${index}].data`;
-  listTextualLeaves(instances[index].data, { basePath, leaves });
-  addFlowBranchLeaves(instances[index].data, basePath, leaves);
+  RESOURCE_PACKAGE_REGISTRY.editableTargets(instances[index], target.location)
+    .forEach(({ path, optional = false }) => {
+      if (typeof readPath(instances[index].data, path) !== "string") return;
+      const qualifiedPath = `${basePath}.${path}`;
+      leaves.set(qualifiedPath, { path: qualifiedPath, optional });
+    });
 }
 
 function authorizedTextualLeaves(card, repairScope, targets) {
@@ -579,12 +353,6 @@ export function assertCardAssistanceTextBoundary(
     ) {
       fail(
         `O reparo tentou alterar a forma estrutural do campo textual ${path}.`,
-        "OUT_OF_SCOPE_CARD_ASSISTANCE_CHANGE"
-      );
-    }
-    if (!preservesGapTokenStructure(beforeValue, afterValue)) {
-      fail(
-        `O reparo tentou alterar uma lacuna ou sua resposta em ${path}.`,
         "OUT_OF_SCOPE_CARD_ASSISTANCE_CHANGE"
       );
     }
