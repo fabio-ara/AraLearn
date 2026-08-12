@@ -35,6 +35,8 @@ const SUBMISSION_ID = "50000000-0000-4000-8000-000000000001";
 const REMOVED_TOOL_NAMES = Object.freeze([
   "listarRecursosDeCard",
   "consultarRecursoDeCard",
+  "listarPackagesDeCard",
+  "consultarPackageDeCard",
   "listarColecoesDoCatalogo",
   "listarCursosDaColecao",
   "buscarCursosNoCatalogo",
@@ -64,7 +66,7 @@ test("registro externo fica abaixo do teto da Action e não conserva aliases ant
     assert.equal(authoringMcpToolDefinition(name), null, name);
   }
   for (const name of [
-    "consultarRecursosDeCard",
+    "consultarPackagesDeCard",
     "consultarCatalogo",
     "editarCatalogo",
     "retirarDoCatalogo",
@@ -84,7 +86,7 @@ test("grupos mantêm leitura e consequência separadas", () => {
       value
     ])
   );
-  assert.equal(annotations.consultarRecursosDeCard.readOnlyHint, true);
+  assert.equal(annotations.consultarPackagesDeCard.readOnlyHint, true);
   assert.equal(annotations.consultarCatalogo.readOnlyHint, true);
   assert.equal(annotations.editarCatalogo.destructiveHint, true);
   assert.equal(annotations.retirarDoCatalogo.destructiveHint, true);
@@ -120,16 +122,17 @@ test("grupos mantêm leitura e consequência separadas", () => {
   );
 });
 
-test("consulta agrupada de resources e catálogo roteia somente leituras compactas", () => {
+test("consulta agrupada de packages e catálogo roteia somente leituras compactas", () => {
   assert.equal(
-    mapAuthoringMcpToolCall("consultarRecursosDeCard", {}).path,
-    "/v1/contracts/resources"
+    mapAuthoringMcpToolCall("consultarPackagesDeCard", {}).path,
+    "/v1/packages"
   );
   assert.equal(
-    mapAuthoringMcpToolCall("consultarRecursosDeCard", {
-      resource: "paragraph"
+    mapAuthoringMcpToolCall("consultarPackagesDeCard", {
+      packageId: "aralearn.resource.paragraph",
+      version: "1.0.0"
     }).path,
-    "/v1/contracts/resources/paragraph"
+    "/v1/packages/aralearn.resource.paragraph?version=1.0.0"
   );
   assert.equal(
     mapAuthoringMcpToolCall("consultarCatalogo", {
@@ -375,7 +378,7 @@ test("discriminadores são obrigatórios, fechados e autorizados por capacidade"
 test("as 30 assinaturas públicas validam, roteiam e recusam kwargs não anunciados", () => {
   const calls = new Map([
     ["prepararAutoriaAraLearn", { intent: "inspect" }],
-    ["consultarRecursosDeCard", {}],
+    ["consultarPackagesDeCard", {}],
     ["listarCursosDaBibliotecaPessoal", {}],
     ["retirarCursoDasTrilhas", {
       requestId: WRITE.requestId,

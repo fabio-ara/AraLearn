@@ -907,17 +907,17 @@ test("jornada Dataprev atravessa Chatbot autoral e Plugin editorial sem snapshot
     intent: "create",
     targetEntity: "course",
     context: "Criar Dataprev: Teste, com o módulo autossuficiente Computação em Nuvem e Virtualização para iniciante, cobrindo integralmente a ementa da FGV: modelos e benefícios de nuvem, arquitetura, identidade e segurança, IaC, automação, Docker, Harbor, Clair, Kubernetes e a plataforma VMware; usar recursos variados e prática com gap.",
-    resourceIds: ["paragraph", "table"]
+    packageIds: ["aralearn.resource.paragraph", "aralearn.resource.table"]
   });
   assert.deepEqual(
     prepared.guidance.map(({ id }) => id),
     [
-      "operating-contract",
       "authoring-brief",
       "source-discipline",
       "incremental-materialization",
       "coverage-and-dimensioning",
       "microtheory-design",
+      "blueprint-before-materialization",
       "practice-design",
       "resource-selection"
     ]
@@ -950,11 +950,13 @@ test("jornada Dataprev atravessa Chatbot autoral e Plugin editorial sem snapshot
   });
   assert.equal(structured.revision, contextUpdated.revision + 1);
 
-  await actionCall(chatbot, "consultarRecursosDeCard", {
-    resource: "paragraph"
+  await actionCall(chatbot, "consultarPackagesDeCard", {
+    packageId: "aralearn.resource.paragraph",
+    version: "1.0.0"
   });
-  await actionCall(chatbot, "consultarRecursosDeCard", {
-    resource: "table"
+  await actionCall(chatbot, "consultarPackagesDeCard", {
+    packageId: "aralearn.resource.table",
+    version: "1.0.0"
   });
 
   const mixedCards = dataprevCards();

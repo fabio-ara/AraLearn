@@ -69,11 +69,12 @@ test("paragraph+gap compacto atravessa contrato, chamada MCP, gravação e relei
   assert.equal(contract.example.text.includes("{gap:condition}"), true);
   assert.equal(contract.authoringSchema.properties.gaps.type, "array");
 
-  const contractCall = mapAuthoringMcpToolCall("consultarRecursosDeCard", {
-    resource: "paragraph"
+  const contractCall = mapAuthoringMcpToolCall("consultarPackagesDeCard", {
+    packageId: "aralearn.resource.paragraph",
+    version: "1.0.0"
   });
   assert.equal(contractCall.method, "GET");
-  assert.equal(contractCall.path, "/v1/contracts/resources/paragraph");
+  assert.equal(contractCall.path, "/v1/packages/aralearn.resource.paragraph?version=1.0.0");
 
   const authoringCard = structuredClone(contract.example);
   const saveCall = mapAuthoringMcpToolCall("salvarCardsNaMicrossequencia", {

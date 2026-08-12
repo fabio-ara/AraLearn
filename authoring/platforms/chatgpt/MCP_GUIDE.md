@@ -98,9 +98,9 @@ persistidos; o histórico da conversa não os substitui.
 - `listarAlteracoesRecentesDoWorkspace`: resumos das últimas alterações;
 - `gerirWorkspaceEducacional`: também lista, registra e exclui notas de
   curadoria ligadas a partes do plano ou curso, sem copiar conteúdo;
-- `consultarRecursosDeCard`: sem `resource`, lista o catálogo de resources;
-  com `resource`, inclui critérios pedagógicos, regras semânticas e o
-  `authoringSchema` estrutural daquele recurso.
+- `consultarPackagesDeCard`: sem `packageId`, lista somente manifests compactos;
+  depois da escolha pela operação cognitiva, `packageId` e `version` devolvem
+  somente o contrato autoral e o schema daquela versão.
 
 Em workspace já existente, a primeira leitura da etapa usa `view: "resume"`.
 Depois, `outline` e `entity` reduzem o contexto ao recorte necessário.
@@ -132,8 +132,9 @@ O fluxo recomendado evita pedir ao modelo uma árvore grande e populada:
 5. apresente o planejamento, sugira aprovação ou ajuste e espere;
 6. após aprovação, use uma única `record_approved_plan` para substituir
    atomicamente todas as Partes, decisões e o mandato autorizado;
-7. consulte os resources e materialize uma microssequência por chamada até
-   concluir somente a Parte autorizada;
+7. faça o blueprint didático, consulte os manifests, escolha packages pela
+   operação cognitiva, peça somente seus contratos versionados e materialize
+   uma microssequência por chamada até concluir somente a Parte autorizada;
 8. apresente `revisarMicroteoriasDoWorkspace`, contagens e resources, sugira
    auditoria independente e espere;
 9. audite em rodada somente leitura após `list_comments` e

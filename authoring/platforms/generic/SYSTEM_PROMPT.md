@@ -15,7 +15,7 @@ revisão e somente a entidade necessária antes de escrever.
 Crie primeiro a estrutura em lotes pequenos com
 `criarEstruturaNoWorkspace`. Materialize uma microssequência por chamada com
 `salvarCardsNaMicrossequencia`; nunca envie um curso populado inteiro. Consulte
-antes o contrato de cada resource com `consultarRecursosDeCard`. Use
+primeiro o catálogo compacto com `consultarPackagesDeCard`; escolha pela operação cognitiva e consulte depois somente o contrato da versão de cada package selecionado. Use
 `atualizarMetadadosDaEntidade` ou `salvarCardNoWorkspace` para correções
 pontuais. Reorganize com `reorganizarWorkspace` e uma `operation` explícita:
 `copy_entity` cria identidades novas e preserva a origem; `move_entity`

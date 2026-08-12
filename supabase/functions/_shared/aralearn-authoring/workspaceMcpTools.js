@@ -1,4 +1,5 @@
 import { AuthoringApiError } from "./errors.js";
+import { RESOURCE_PACKAGE_REGISTRY } from "../aralearn/runtime/resources/packages/index.js";
 import { listResourceIds } from "../aralearn/runtime/resources/registry/index.js";
 
 const UUID = Object.freeze({ type: "string", format: "uuid" });
@@ -48,7 +49,10 @@ function fixedEntityPath(length) {
 const COURSE_PATH = fixedEntityPath(1);
 const MODULE_PATH = fixedEntityPath(2);
 const MICROSEQUENCE_PATH = fixedEntityPath(4);
-const AUTHORING_RESOURCE_IDS = Object.freeze([...listResourceIds()]);
+const AUTHORING_PACKAGE_IDS = Object.freeze(
+  RESOURCE_PACKAGE_REGISTRY.listCatalog().map(({ id }) => id)
+);
+const LEGACY_RESOURCE_IDS = Object.freeze([...listResourceIds()]);
 const MCP_SECURITY_SCHEMES = Object.freeze([
   Object.freeze({ type: "oauth2", scopes: Object.freeze(["openid"]) })
 ]);
@@ -322,45 +326,40 @@ const OPEN_CANONICAL_OBJECT = Object.freeze({
   additionalProperties: true,
   description: "Objeto canônico integral cujo formato depende da entidade ou documento solicitado."
 });
-const RESOURCE_SELECTION_SCHEMA = schema([
-  "useWhen", "avoidWhen", "variationAxes"
-], {
-  useWhen: STRING_LIST,
-  avoidWhen: STRING_LIST,
-  variationAxes: STRING_LIST
-});
-const RESOURCE_SUMMARY_SCHEMA = schema([
-  "resource",
+const PACKAGE_SUMMARY_SCHEMA = schema([
+  "id",
+  "version",
   "label",
   "purpose",
-  "operations",
-  "selection",
-  "exercises",
-  "gapTargets",
-  "structuredPracticeTargets"
+  "slots",
+  "cognitiveOperations",
+  "responseCompatibility",
+  "limitations",
+  "accessibility"
 ], {
-  resource: { type: "string", enum: AUTHORING_RESOURCE_IDS },
+  id: { type: "string", enum: AUTHORING_PACKAGE_IDS },
+  version: { type: "string", pattern: "^(?:0|[1-9][0-9]*)\\.(?:0|[1-9][0-9]*)\\.(?:0|[1-9][0-9]*)$" },
   label: NON_EMPTY_STRING,
   purpose: NON_EMPTY_STRING,
-  operations: STRING_LIST,
-  selection: RESOURCE_SELECTION_SCHEMA,
-  exercises: STRING_LIST,
-  gapTargets: STRING_LIST,
-  structuredPracticeTargets: STRING_LIST
+  slots: { type: "array", minItems: 1, uniqueItems: true, items: { type: "string", enum: ["content", "response", "feedback"] } },
+  cognitiveOperations: STRING_LIST,
+  responseCompatibility: STRING_LIST,
+  limitations: STRING_LIST,
+  accessibility: { type: "string" }
 });
-const RESOURCE_LIST_DATA_SCHEMA = schema(["contract", "resources"], {
-  contract: { const: "aralearn.authoring-resources.v4" },
-  resources: {
+const PACKAGE_LIST_DATA_SCHEMA = schema(["contract", "packages"], {
+  contract: { const: "aralearn.packages.v1" },
+  packages: {
     type: "array",
-    items: RESOURCE_SUMMARY_SCHEMA
+    items: PACKAGE_SUMMARY_SCHEMA
   }
 });
-const RESOURCE_DEFINITION_DATA_SCHEMA = schema(["contract", "definition"], {
-  contract: { const: "aralearn.authoring-resources.v4" },
+const PACKAGE_DEFINITION_DATA_SCHEMA = schema(["contract", "definition"], {
+  contract: { const: "aralearn.packages.v1" },
   definition: {
     type: "object",
     additionalProperties: true,
-    description: "Contrato autoral do resource, incluindo exemplo e authoringSchema próprios."
+    description: "Manifest, contrato autoral e schema da versão exata do package escolhido."
   }
 });
 const AUTHORING_GUIDANCE_SCHEMA = schema(["id", "title", "text"], {
@@ -368,9 +367,32 @@ const AUTHORING_GUIDANCE_SCHEMA = schema(["id", "title", "text"], {
   title: NON_EMPTY_STRING,
   text: NON_EMPTY_STRING
 });
-const AUTHORING_RESOURCE_CONTRACT_SCHEMA = schema(["resource", "tool"], {
-  resource: { type: "string", enum: AUTHORING_RESOURCE_IDS },
-  tool: { const: "consultarRecursosDeCard" }
+const AUTHORING_PACKAGE_CONTRACT_SCHEMA = schema(["packageId", "version", "tool"], {
+  packageId: { type: "string", enum: AUTHORING_PACKAGE_IDS },
+  version: { type: "string", pattern: "^(?:0|[1-9][0-9]*)\\.(?:0|[1-9][0-9]*)\\.(?:0|[1-9][0-9]*)$" },
+  tool: { const: "consultarPackagesDeCard" }
+});
+const PEDAGOGICAL_BLUEPRINT_SCHEMA = schema(["version", "principle", "requiredSections"], {
+  version: { const: 1 },
+  principle: NON_EMPTY_STRING,
+  requiredSections: {
+    type: "array",
+    minItems: 8,
+    uniqueItems: true,
+    items: {
+      type: "string",
+      enum: [
+        "learnerSituation",
+        "prerequisiteEvidence",
+        "conceptualLayers",
+        "theorySteps",
+        "practiceSteps",
+        "feedbackPlan",
+        "termLedger",
+        "packageCandidates"
+      ]
+    }
+  }
 });
 const STRUCTURAL_ENTITY_TYPE = Object.freeze({
   type: "string",
@@ -407,10 +429,11 @@ const AUTHORING_CONTEXT_DATA_SCHEMA = schema([
   "workflow",
   "recommendedTools",
   "guidance",
-  "resourceContracts",
+  "blueprintContract",
+  "packageContracts",
   "access"
 ], {
-  briefVersion: { const: 1 },
+  briefVersion: { const: 2 },
   intent: AUTHORING_INTENT,
   targetEntity: {
     type: ["string", "null"],
@@ -424,10 +447,11 @@ const AUTHORING_CONTEXT_DATA_SCHEMA = schema([
     maxItems: 8,
     items: AUTHORING_GUIDANCE_SCHEMA
   },
-  resourceContracts: {
+  blueprintContract: PEDAGOGICAL_BLUEPRINT_SCHEMA,
+  packageContracts: {
     type: "array",
-    maxItems: AUTHORING_RESOURCE_IDS.length,
-    items: AUTHORING_RESOURCE_CONTRACT_SCHEMA
+    maxItems: AUTHORING_PACKAGE_IDS.length,
+    items: AUTHORING_PACKAGE_CONTRACT_SCHEMA
   },
   access: AUTHORING_ACCESS_SCHEMA
 });
@@ -1307,7 +1331,7 @@ const WORKSPACE_MICROSEQUENCE_CARD_ITEM_SCHEMA = schema([
     type: "array",
     minItems: 1,
     uniqueItems: true,
-    items: { type: "string", enum: AUTHORING_RESOURCE_IDS }
+    items: { type: "string", enum: LEGACY_RESOURCE_IDS }
   },
   summary: {
     type: "string",
@@ -2491,35 +2515,36 @@ const INDIVIDUAL_AUTHORING_WORKSPACE_MCP_TOOLS = Object.freeze([
         maxLength: 8_000,
         description: "Resumo fiel do pedido e do contexto útil da conversa, sem credenciais."
       },
-      resourceIds: {
+      packageIds: {
         type: "array",
-        maxItems: AUTHORING_RESOURCE_IDS.length,
+        maxItems: AUTHORING_PACKAGE_IDS.length,
         uniqueItems: true,
-        items: { type: "string", enum: AUTHORING_RESOURCE_IDS }
+        items: { type: "string", enum: AUTHORING_PACKAGE_IDS }
       }
     }),
     AUTHORING_CONTEXT_DATA_SCHEMA,
     { readOnlyHint: true }
   ),
   tool(
-    "listarRecursosDeCard",
-    "Listar recursos de card",
-    "Lista os recursos v4 disponíveis e a finalidade didática de cada um.",
+    "listarPackagesDeCard",
+    "Listar packages de card",
+    "Lista manifests compactos dos packages disponíveis, sem enviar schemas ou exemplos.",
     readSchema(),
-    RESOURCE_LIST_DATA_SCHEMA,
+    PACKAGE_LIST_DATA_SCHEMA,
     { readOnlyHint: true }
   ),
   tool(
-    "consultarRecursoDeCard",
-    "Consultar recurso de card",
-    "Lê o contrato autoral e um exemplo válido do recurso informado.",
-    readSchema(["resource"], {
-      resource: {
+    "consultarPackageDeCard",
+    "Consultar package de card",
+    "Lê o contrato autoral e o schema da versão exata de um package já escolhido.",
+    readSchema(["packageId", "version"], {
+      packageId: {
         type: "string",
-        enum: AUTHORING_RESOURCE_IDS
-      }
+        enum: AUTHORING_PACKAGE_IDS
+      },
+      version: { type: "string", pattern: "^(?:0|[1-9][0-9]*)\\.(?:0|[1-9][0-9]*)\\.(?:0|[1-9][0-9]*)$" }
     }),
-    RESOURCE_DEFINITION_DATA_SCHEMA,
+    PACKAGE_DEFINITION_DATA_SCHEMA,
     { readOnlyHint: true }
   ),
   tool(
@@ -3250,23 +3275,21 @@ function groupedDataSchema(branches) {
   });
 }
 
-const RESOURCE_QUERY_TOOL = tool(
-  "consultarRecursosDeCard",
-  "Consultar recursos de card",
-  "Sem resource, lista os recursos v4; com resource, lê por padrão o contrato compacto. Use detail full somente para afterBlocks ou auditoria.",
+const PACKAGE_QUERY_TOOL = tool(
+  "consultarPackagesDeCard",
+  "Consultar packages de card",
+  "Sem packageId, lista somente manifests compactos; depois de escolher pela operação cognitiva, informe packageId e version para receber apenas o contrato específico.",
   readSchema([], {
-    resource: {
+    packageId: {
       type: "string",
-      enum: AUTHORING_RESOURCE_IDS
+      enum: AUTHORING_PACKAGE_IDS
     },
-    detail: {
-      type: "string",
-      enum: ["compact", "full"]
-    }
+    version: { type: "string", pattern: "^(?:0|[1-9][0-9]*)\\.(?:0|[1-9][0-9]*)\\.(?:0|[1-9][0-9]*)$" },
+    slot: { type: "string", enum: ["content", "response", "feedback"] }
   }),
   Object.freeze({
     type: "object",
-    anyOf: [RESOURCE_LIST_DATA_SCHEMA, RESOURCE_DEFINITION_DATA_SCHEMA]
+    anyOf: [PACKAGE_LIST_DATA_SCHEMA, PACKAGE_DEFINITION_DATA_SCHEMA]
   }),
   { readOnlyHint: true }
 );
@@ -3393,7 +3416,7 @@ const WORKSPACE_DELETE_TOOL = tool(
 );
 
 const CONSOLIDATED_REPLACEMENTS = new Map([
-  ["listarRecursosDeCard", RESOURCE_QUERY_TOOL],
+  ["listarPackagesDeCard", PACKAGE_QUERY_TOOL],
   ["listarColecoesDoCatalogo", CATALOG_QUERY_TOOL],
   ["criarColecaoNoCatalogo", CATALOG_EDIT_TOOL],
   ["retirarColecaoDoCatalogo", CATALOG_REMOVE_TOOL],
@@ -3401,7 +3424,7 @@ const CONSOLIDATED_REPLACEMENTS = new Map([
   ["excluirEntidadeDoWorkspace", WORKSPACE_DELETE_TOOL]
 ]);
 const CONSOLIDATED_REMOVALS = new Set([
-  "consultarRecursoDeCard",
+  "consultarPackageDeCard",
   "listarCursosDaColecao",
   "buscarCursosNoCatalogo",
   "atualizarColecaoDoCatalogo",
@@ -3447,7 +3470,7 @@ const CATALOG_MANAGE = new Set([
 ]);
 const AUTHORING_READ = new Set([
   "prepararAutoriaAraLearn",
-  "consultarRecursosDeCard",
+  "consultarPackagesDeCard",
   "lerConteudoDoCurso",
   "listarWorkspacesDeAutoria",
   "lerWorkspaceDeAutoria",
@@ -3875,8 +3898,22 @@ export function mapAuthoringMcpToolCall(name, rawArguments) {
   const definition = TOOL_BY_NAME.get(name);
   if (!definition) throw new AuthoringApiError(404, "unknown_tool", "Ferramenta inexistente.");
   let args = validateArguments(definition, rawArguments);
-  if (name === "consultarRecursosDeCard") {
-    name = args.resource ? "consultarRecursoDeCard" : "listarRecursosDeCard";
+  if (name === "consultarPackagesDeCard") {
+    if (Boolean(args.packageId) !== Boolean(args.version)) {
+      throw new AuthoringApiError(
+        422,
+        "invalid_tool_arguments",
+        "packageId e version precisam ser informados juntos."
+      );
+    }
+    if (args.packageId && args.slot) {
+      throw new AuthoringApiError(
+        422,
+        "invalid_tool_arguments",
+        "slot pertence somente à listagem compacta."
+      );
+    }
+    name = args.packageId ? "consultarPackageDeCard" : "listarPackagesDeCard";
   } else if (GROUPED_OPERATION_TARGETS[name]) {
     const targetName = GROUPED_OPERATION_TARGETS[name][args.operation];
     const operationArguments = { ...args };
@@ -3891,14 +3928,18 @@ export function mapAuthoringMcpToolCall(name, rawArguments) {
       requestId: null
     };
   }
-  if (name === "listarRecursosDeCard") {
-    return { method: "GET", path: "/v1/contracts/resources", body: null, requestId: null };
-  }
-  if (name === "consultarRecursoDeCard") {
-    const query = args.detail === "full" ? "?detail=full" : "";
+  if (name === "listarPackagesDeCard") {
     return {
       method: "GET",
-      path: `/v1/contracts/resources/${encode(args.resource)}${query}`,
+      path: `/v1/packages${args.slot ? `?slot=${encode(args.slot)}` : ""}`,
+      body: null,
+      requestId: null
+    };
+  }
+  if (name === "consultarPackageDeCard") {
+    return {
+      method: "GET",
+      path: `/v1/packages/${encode(args.packageId)}?version=${encode(args.version)}`,
       body: null,
       requestId: null
     };

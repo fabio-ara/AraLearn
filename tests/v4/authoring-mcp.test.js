@@ -14,9 +14,7 @@ import {
   authoringMcpToolsForPrincipal,
   mapAuthoringMcpToolCall
 } from "../../supabase/functions/_shared/aralearn-authoring/workspaceMcpTools.js";
-import {
-  listResourceIds
-} from "../../supabase/functions/_shared/aralearn/runtime/resources/registry/index.js";
+import { RESOURCE_PACKAGE_REGISTRY } from "../../supabase/functions/_shared/aralearn/runtime/resources/packages/index.js";
 
 const ORIGIN = "https://client.example";
 const OAUTH_TOKEN = "header.oauth-payload.signature";
@@ -196,21 +194,23 @@ test("MCP publica conhecimento e recupera um brief autoral curto", async () => {
     intent: "create",
     targetEntity: "lesson",
     context: "Criar uma lição sobre redes com práticas em fluxo e tabela.",
-    resourceIds: ["flow", "table"]
+    packageIds: ["aralearn.resource.flow", "aralearn.resource.table"]
   })));
   const prepared = (await body(preparedResponse)).result.structuredContent;
   assert.equal(prepared.ok, true);
   assert.equal(prepared.requestId, null);
-  assert.equal(prepared.data.briefVersion, 1);
+  assert.equal(prepared.data.briefVersion, 2);
   assert.equal(prepared.data.intent, "create");
   assert.ok(prepared.data.guidance.length >= 3);
   assert.ok(prepared.data.guidance.length <= 8);
   assert.ok(prepared.data.guidance.some(({ id }) => id === "resource-selection"));
   assert.ok(prepared.data.guidance.some(({ id }) => id === "source-discipline"));
-  assert.deepEqual(prepared.data.resourceContracts, [
-    { resource: "flow", tool: "consultarRecursosDeCard" },
-    { resource: "table", tool: "consultarRecursosDeCard" }
+  assert.deepEqual(prepared.data.packageContracts, [
+    { packageId: "aralearn.resource.flow", version: "1.0.0", tool: "consultarPackagesDeCard" },
+    { packageId: "aralearn.resource.table", version: "1.0.0", tool: "consultarPackagesDeCard" }
   ]);
+  assert.equal(prepared.data.blueprintContract.version, 1);
+  assert.ok(prepared.data.blueprintContract.requiredSections.includes("conceptualLayers"));
 
   const sourceAwareResponse = await handler()(request(toolCall("prepararAutoriaAraLearn", {
     intent: "revise",
@@ -255,66 +255,60 @@ test("nenhuma ferramenta publica data genérico no ramo de sucesso", () => {
   }
 });
 
-test("enum de resources do MCP deriva exatamente do registro canônico Edge", () => {
+test("enum de packages do MCP deriva exatamente do registro canônico Edge", () => {
   const definition = AUTHORING_WORKSPACE_MCP_TOOLS.find(
-    (entry) => entry.name === "consultarRecursosDeCard"
+    (entry) => entry.name === "consultarPackagesDeCard"
   );
-  assert.deepEqual(definition.inputSchema.properties.resource.enum, listResourceIds());
+  assert.deepEqual(
+    definition.inputSchema.properties.packageId.enum,
+    RESOURCE_PACKAGE_REGISTRY.listCatalog().map(({ id }) => id)
+  );
 });
 
-test("consulta detalhada devolve metadados e schema estrutural autoral", async () => {
-  const response = await handler()(request(toolCall("consultarRecursosDeCard", {
-    resource: "tree"
+test("consulta de versão exata devolve manifest e schema do package escolhido", async () => {
+  const response = await handler()(request(toolCall("consultarPackagesDeCard", {
+    packageId: "aralearn.resource.tree",
+    version: "1.0.0"
   })));
   const payload = await body(response);
   assert.equal(response.status, 200);
   assert.equal(payload.result.isError, false);
   const definition = payload.result.structuredContent.data.definition;
-  assert.equal(definition.resource, "tree");
-  assert.ok(definition.purpose);
-  assert.ok(definition.selection.useWhen.length);
-  assert.match(definition.schemaRole, /validação semântica/u);
-  assert.equal(definition.contractDetail, "compact");
-  assert.equal(
-    Object.hasOwn(definition.authoringSchema.properties, "afterBlocks"),
-    false
-  );
-  assert.deepEqual(definition.authoringSchema.properties.variant.enum, [
-    "filesystem",
-    "hierarchy",
-    "taxonomy",
-    "phylogeny",
-    "syntax",
-    "organization"
-  ]);
+  assert.equal(definition.package, "aralearn.resource.tree");
+  assert.equal(definition.version, "1.0.0");
+  assert.ok(definition.manifest.purpose);
+  assert.ok(definition.contract.intent);
+  assert.equal(definition.schema.properties.variant.enum.includes("filesystem"), true);
 });
 
-test("consulta de resource só envia o contrato integral quando solicitado", async () => {
+test("consulta lista manifests e só envia schema para package e versão escolhidos", async () => {
   const definition = AUTHORING_WORKSPACE_MCP_TOOLS.find(
-    (entry) => entry.name === "consultarRecursosDeCard"
+    (entry) => entry.name === "consultarPackagesDeCard"
   );
-  assert.deepEqual(definition.inputSchema.properties.detail.enum, [
-    "compact",
-    "full"
-  ]);
+  assert.equal(Object.hasOwn(definition.inputSchema.properties, "detail"), false);
 
-  const operation = mapAuthoringMcpToolCall("consultarRecursosDeCard", {
-    resource: "paragraph",
-    detail: "full"
+  const operation = mapAuthoringMcpToolCall("consultarPackagesDeCard", {
+    packageId: "aralearn.resource.paragraph",
+    version: "1.0.0"
   });
   assert.equal(
     operation.path,
-    "/v1/contracts/resources/paragraph?detail=full"
+    "/v1/packages/aralearn.resource.paragraph?version=1.0.0"
   );
 
-  const response = await handler()(request(toolCall("consultarRecursosDeCard", {
-    resource: "paragraph",
-    detail: "full"
+  const listedResponse = await handler()(request(toolCall("consultarPackagesDeCard", {})));
+  const listed = (await body(listedResponse)).result.structuredContent.data;
+  assert.equal(listed.contract, "aralearn.packages.v1");
+  assert.equal(Object.hasOwn(listed.packages[0], "schema"), false);
+
+  const response = await handler()(request(toolCall("consultarPackagesDeCard", {
+    packageId: "aralearn.resource.paragraph",
+    version: "1.0.0"
   })));
   const payload = await body(response);
-  const resource = payload.result.structuredContent.data.definition;
-  assert.equal(resource.contractDetail, "full");
-  assert.ok(resource.authoringSchema.properties.afterBlocks);
+  const packageDefinition = payload.result.structuredContent.data.definition;
+  assert.ok(packageDefinition.schema.properties.text);
+  assert.equal(Object.hasOwn(packageDefinition.schema.properties, "afterBlocks"), false);
 });
 
 test("matriz de escopos separa leitura, escrita e publicação", () => {

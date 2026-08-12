@@ -76,7 +76,7 @@ Campos opcionais comuns incluem `sources`, `topics`, `afterBlocks`,
 descritos em [cards-and-resources.md](cards-and-resources.md) e na documentação
 normativa do projeto.
 
-O `authoringSchema` devolvido por `consultarRecursosDeCard` quando recebe
+O `authoringSchema` legado devolvido pela rota v4 quando recebe
 `resource` descreve a entrada estrutural da autoria, inclusive `id`,
 `position`, `gaps` e combinações de `kind`/`exercise`. Por padrão, o transporte
 usa `detail: "compact"`: elimina expansões repetidas e omite apenas o campo
