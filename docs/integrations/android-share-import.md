@@ -1,8 +1,8 @@
 # Importação por compartilhamento no Android
 
 O APK pode receber um documento JSON do AraLearn por **Abrir com** ou
-**Compartilhar**. Esse caminho importa um projeto `aralearn.contract` v4 para o
-dispositivo; ele não transforma PDF ou DOCX em curso, não chama um modelo de
+**Compartilhar**. Esse caminho importa uma biblioteca `aralearn.library.v1`
+por packages para o dispositivo; ele não transforma PDF ou DOCX em curso, não chama um modelo de
 linguagem e não publica conteúdo.
 
 ## Como funciona
@@ -19,7 +19,7 @@ compatível. O host nativo:
   tela.
 
 A aplicação analisa o JSON, reconhece exclusivamente o formato público
-`aralearn.contract` v4 e abre uma confirmação com a origem e o formato
+`aralearn.library.v1` e abre uma confirmação com a origem e o formato
 detectado. **Importar** valida o documento e incorpora seus cursos ao projeto
 local; **Cancelar** não altera nada. JSON inválido, outra versão de contrato ou
 um formato desconhecido permanecem bloqueados.

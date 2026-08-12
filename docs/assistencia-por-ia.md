@@ -313,7 +313,7 @@ microssequência em lição vazia.
 Os cenários incluem sentinelas e instruções não confiáveis no contexto somente
 leitura. Depois de cada resposta, o harness prova por diff que somente os
 caminhos autorizados mudaram, confere identidade, posição e destino, valida o
-contrato v4 e realiza o round-trip relacional.
+envelope com packages e realiza o round-trip relacional.
 
 Há um teto não ampliável de 24 chamadas HTTP para a execução completa. Sem
 reconstruções, os seis cenários usam 19. O relatório ignorado pelo Git em

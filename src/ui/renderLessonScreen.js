@@ -9,7 +9,6 @@ import { readLessonProgressEntry } from "../storage/progressStore.js";
 import { renderUiIcon } from "./renderUiIcons.js";
 import { buildManualCardEditModel } from "./manualCardEdit.js";
 import {
-  isDraftMicrosequence,
   isRunnableMicrosequence,
   resolveMicrosequenceRuntimeIncluded
 } from "../model/microsequenceStatus.js";
@@ -609,18 +608,7 @@ function renderBottomUpAssistanceDock(editorSupport, level) {
   );
 }
 
-function isPlannedMicrosequence(microsequence) {
-  return isDraftMicrosequence(microsequence) && countCardsInMicrosequence(microsequence) === 0;
-}
-
-function renderMicrosequenceStateIcon(microsequence) {
-  if (!isPlannedMicrosequence(microsequence)) return "";
-  return (
-    '<span class="microsequence-state-icon is-draft" aria-label="Microssequência planejada" title="Microssequência planejada">' +
-    renderUiIcon("draft-state", "microsequence-state-icon-svg") +
-    "</span>"
-  );
-}
+function renderMicrosequenceStateIcon() { return ""; }
 
 function renderHierarchyItemCard({
   level,
@@ -963,7 +951,7 @@ function renderLessonScreenView({ course, lesson, moduleValue, progress, editorS
       };
       const cardCount = countCardsInMicrosequence(microsequence);
       const microsequenceCompleted = countCompletedCardsInMicrosequence(course, moduleValue, lesson, microsequence, progress);
-      const isPlanned = isPlannedMicrosequence(microsequence);
+      const isPlanned = cardCount === 0;
       const hasRuntimeCards = resolveMicrosequenceRuntimeIncluded(microsequence);
       const canPlay = isRunnableMicrosequence(microsequence) || hasRuntimeCards;
       const description = normalizeInlineText(microsequence.goal || "");
@@ -1235,7 +1223,19 @@ function renderMicrosequenceScreen({ course, lesson, microsequence, cards, selec
   );
   const resourceTargetIdsByRuntimeIndex = [];
   const popupResourceTargetIds = [];
-  if (activeCard?.resource === "composite") {
+  const packageCard = Array.isArray(activeCard?.content);
+  if (packageCard) {
+    activeCard.content.forEach((instance, index) => {
+      resourceTargetIdsByRuntimeIndex[index + 1] = instance?.id ? `content:${instance.id}` : "";
+    });
+    if (activeCard.response?.id) {
+      resourceTargetIdsByRuntimeIndex[activeCard.content.length + 1] =
+        `response:${activeCard.response.id}`;
+    }
+    activeCard.feedback.forEach((instance) => {
+      popupResourceTargetIds.push(instance?.id ? `feedback:${instance.id}` : "");
+    });
+  } else if (activeCard?.resource === "composite") {
     (Array.isArray(activeCard.blocks) ? activeCard.blocks : []).forEach((block, index) => {
       resourceTargetIdsByRuntimeIndex[index + 1] = block?.id ? `body:${block.id}` : "";
     });
@@ -1245,10 +1245,10 @@ function renderMicrosequenceScreen({ course, lesson, microsequence, cards, selec
       .find((target) => target?.location === "response");
     if (responseTarget) resourceTargetIdsByRuntimeIndex[2] = responseTarget.targetId;
   }
-  if (normalizeInlineText(activeCard?.after || "")) {
+  if (!packageCard && normalizeInlineText(activeCard?.after || "")) {
     popupResourceTargetIds.push("after:text");
   }
-  (Array.isArray(activeCard?.afterBlocks) ? activeCard.afterBlocks : []).forEach((block) => {
+  (!packageCard && Array.isArray(activeCard?.afterBlocks) ? activeCard.afterBlocks : []).forEach((block) => {
     popupResourceTargetIds.push(block?.id ? `after:${block.id}` : "");
   });
   const selectedResourceTargetIds = new Set(cardAssistanceState.resourceTargetIds);
@@ -1285,6 +1285,7 @@ function renderMicrosequenceScreen({ course, lesson, microsequence, cards, selec
     resourceSelectionEnabled: selectsResourcesInCard,
     resourceSelectionDisabled: Boolean(editorSupport.isSubmitting),
     resourceSelectionTargetIds: resourceTargetIdsByRuntimeIndex,
+    authoringSupportResourceTargetIds: popupResourceTargetIds,
     selectedResourceTargetIds: cardAssistanceState.resourceTargetIds,
     resourceSelectionLabels,
     manualEditingTargetId: cardEditorMode === "manual" && manualEditTargetId !== "card"

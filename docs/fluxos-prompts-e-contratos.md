@@ -130,7 +130,7 @@ também permanecem idênticas. Criar uma microssequência altera somente a nova
 subárvore e as posições estritamente necessárias das irmãs.
 
 Lacunas usam a linguagem formal `{gap:id}` e uma lista `gaps`. O compilador
-resolve os alvos e produz o card v4; não há parser de prosa, HTML ou campos
+resolve os alvos e produz o envelope de card; não há parser de prosa, HTML ou campos
 numerados.
 
 ## Validação e confirmação invisíveis
@@ -179,7 +179,7 @@ externa pelo Chatbot ou Plugin com MCP.
 A autoria por workspace usa a mesma linguagem JSON de resources. O agente
 escolhe um resource conhecido e preenche somente seus campos. O compilador
 confere referências, posições, lacunas e combinações de resource, tipo e
-exercício antes de traduzir a operação para o contrato v4.
+exercício antes de traduzir a operação para packages versionados.
 
 O workspace remoto pode organizar partes maiores e produzir uma publicação
 privada incompleta para teste. No chat, a revisão conceitual pode mostrar

@@ -1,4 +1,4 @@
-# Autoria AraLearn v4
+# Autoria AraLearn por packages
 
 Este diretório reúne instruções, conhecimento e contratos para duas escalas de
 autoria:
@@ -8,10 +8,11 @@ autoria:
 - a assistência por API no aplicativo repara recursos selecionados, repara um
   card inteiro ou cria exatamente um card.
 
-Esses fluxos compartilham o contrato `aralearn.contract` v4, mas não são
-fallbacks um do outro. Plugin MCP e Action do Chatbot usam o mesmo registro de
-ferramentas e o mesmo executor. Cada conexão usa o OAuth adequado ao cliente e
-as capacidades efetivas da conta AraLearn.
+Esses fluxos compartilham o envelope `aralearn.library.v1` e o registro de
+packages, sem contrato monolítico ou fallback de formato. Plugin MCP e Action
+do Chatbot usam o mesmo registro de ferramentas e o mesmo executor. Cada
+conexão usa o OAuth adequado ao cliente e as capacidades efetivas da conta
+AraLearn.
 
 ## Workspace composto
 
@@ -61,6 +62,8 @@ depois somente o recorte que realmente usará.
 
 Em correção pontual, o assistente pagina metadados curtos dos cards da
 microssequência, lê integralmente só o alvo e preserva seu id na substituição.
+Para criar conteúdo, consulta primeiro o catálogo de packages e só então o
+contrato exato de cada resource ou resposta escolhido.
 Uma mudança semântica altera somente as entidades afetadas. A revisão técnica
 controla concorrência e não representa aceitação pedagógica.
 
@@ -96,11 +99,11 @@ distribuir diretamente seu próprio curso.
 ## Pastas
 
 - `core/`: ciclo editorial, fluxo, estados, qualidade, fontes e segurança;
-- `knowledge/`: contrato, resources e decisões didáticas;
+- `knowledge/`: packages e decisões didáticas;
 - `platforms/`: instruções específicas;
 - `schemas/`: contratos fechados de workspace, mutação, eventos, publicação e
   revisão editorial;
-- `examples/`: exemplos do contrato v4.
+- `examples/`: exemplos de envelopes e operações de autoria.
 
 Execute `npm run authoring:packages` para regenerar os pacotes e
 `npm run test:authoring-packages` para validá-los.

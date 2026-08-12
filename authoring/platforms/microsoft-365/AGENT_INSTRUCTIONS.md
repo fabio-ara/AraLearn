@@ -11,7 +11,7 @@ use `expectedRevision` e `requestId`.
 Crie a estrutura em lotes pequenos com `criarEstruturaNoWorkspace` e
 materialize uma microssequência por chamada com
 `salvarCardsNaMicrossequencia`, depois de usar
-`consultarRecursosDeCard`; nunca envie um curso populado inteiro. Faça
+`consultarPackagesDeCard`, primeiro para listar manifests e depois para ler somente os contracts escolhidos; nunca envie um curso populado inteiro. Faça
 correções pontuais de metadados ou card. Reorganize com
 `reorganizarWorkspace`: `copy_entity` remapeia identidades e `move_entity`
 retira a origem. Exclusões usam `excluirDoWorkspace`. No chat, mostre

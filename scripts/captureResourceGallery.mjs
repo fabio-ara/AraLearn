@@ -4,11 +4,11 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { chromium } from "@playwright/test";
-import { listResourceIds } from "../src/resources/registry/index.js";
+import { RESOURCE_PACKAGE_REGISTRY } from "../src/resources/packages/index.js";
 
 const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
 const repositoryRoot = path.resolve(scriptDirectory, "..");
-const outputDirectory = path.join(repositoryRoot, "docs/screenshots/resources-v4");
+const outputDirectory = path.join(repositoryRoot, "docs/screenshots/resources-packages");
 const port = Number.parseInt(
   process.env.ARALEARN_RESOURCE_GALLERY_PORT || "4182",
   10
@@ -17,7 +17,7 @@ if (!Number.isInteger(port) || port < 1 || port > 65535) {
   throw new Error("ARALEARN_RESOURCE_GALLERY_PORT deve ser uma porta TCP válida.");
 }
 const origin = `http://127.0.0.1:${port}`;
-const expectedResources = listResourceIds();
+const expectedResources = RESOURCE_PACKAGE_REGISTRY.listCatalog().map(({ id }) => id);
 const widths = [360, 390, 412, 1280];
 const themes = ["light", "dark"];
 
@@ -98,7 +98,7 @@ try {
       }, theme);
       const pageErrors = [];
       page.on("pageerror", (error) => pageErrors.push(error.message));
-      await page.goto(`${origin}/tests/gallery/resources-v4.html`, {
+      await page.goto(`${origin}/tests/gallery/resources-packages.html`, {
         waitUntil: "networkidle"
       });
       await page.waitForFunction(() => globalThis.__RESOURCE_GALLERY_READY__ === true);

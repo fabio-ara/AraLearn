@@ -19,7 +19,7 @@ comando. O Storage recebe o artefato canônico imutável na publicação.
    `criarEstruturaNoWorkspace`;
 5. após a aprovação, use uma única `record_approved_plan` com todas as Partes
    por ids de microssequências, decisões e o mandato humano;
-6. consulte os resources usados com `consultarRecursosDeCard` e salve os cards
+6. consulte o catálogo compacto com `consultarPackagesDeCard`, escolha os packages pela operação cognitiva, solicite somente seus contratos versionados e salve os cards
    de uma microssequência por vez com `salvarCardsNaMicrossequencia`; nunca
    envie um curso populado inteiro;
 7. para corrigir, use `atualizarMetadadosDaEntidade` ou

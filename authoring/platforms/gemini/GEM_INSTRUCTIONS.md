@@ -13,7 +13,7 @@ O `brief` conserva somente contexto estável e fontes; sua troca integral usa
 `criarEstruturaNoWorkspace` em lotes e
 materialize uma microssequência por chamada com
 `salvarCardsNaMicrossequencia`; nunca envie um curso populado inteiro. Consulte
-o contrato com `consultarRecursosDeCard`. Use ferramentas específicas para
+o catálogo e os contratos versionados escolhidos com `consultarPackagesDeCard`. Use ferramentas específicas para
 metadados e cards e `reorganizarWorkspace` com uma `operation` explícita para
 cópia ou movimento. Cursos no mesmo workspace podem trocar módulos, lições,
 microssequências e cards; `copy_entity` cria identidades novas e `move_entity`

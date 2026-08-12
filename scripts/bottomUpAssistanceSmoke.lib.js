@@ -20,12 +20,18 @@ function card(id, position, content) {
   return {
     id,
     position,
-    resource: "paragraph",
-    kind: "theory",
-    exercise: "none",
     title: `Card ${position}`,
-    text: content,
-    after: ""
+    role: "theory",
+    content: [{
+      id: `${id}-text`,
+      package: "aralearn.resource.paragraph",
+      version: "1.0.0",
+      data: { text: content }
+    }],
+    response: null,
+    feedback: [],
+    topics: [],
+    sources: []
   };
 }
 
@@ -35,7 +41,7 @@ function microsequence(id, title, cards) {
     title,
     goal: `Compreender ${title}.`,
     role: "explain",
-    status: cards.length ? "generated" : "planned",
+    branchOf: null,
     dependsOn: [],
     covers: [],
     checks: [],
@@ -46,9 +52,8 @@ function microsequence(id, title, cards) {
 
 function projectFixture({ emptyLesson = false } = {}) {
   return {
-    contract: "aralearn.contract",
-    version: 4,
-    kind: "project",
+    contract: "aralearn.library.v1",
+    scope: "course",
     courses: [{
       id: BASE_SELECTION.courseKey,
       title: "Curso de smoke",
@@ -98,7 +103,7 @@ const SCENARIOS = [
     level: "card",
     kind: "items",
     selection: { ...BASE_SELECTION, microsequenceKey: "micro-a", cardKey: "card-a" },
-    targetIds: ["main"],
+    targetIds: ["content:card-a-text"],
     prompt: "Reescreva somente o parágrafo selecionado para deixá-lo mais claro e autocontido."
   },
   {

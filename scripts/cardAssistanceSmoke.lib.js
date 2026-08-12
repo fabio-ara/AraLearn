@@ -10,9 +10,8 @@ import {
 
 function projectFixture() {
   return {
-    contract: "aralearn.contract",
-    version: 4,
-    kind: "project",
+    contract: "aralearn.library.v1",
+    scope: "course",
     courses: [{
       id: "course-vetores",
       title: "Vetores",
@@ -43,19 +42,26 @@ function projectFixture() {
             title: "Coordenadas",
             goal: "Reconhecer as coordenadas de um vetor.",
             role: "explain",
-            status: "generated",
+            branchOf: null,
             dependsOn: [],
             covers: ["vetor 2D"],
             checks: ["ler coordenadas"],
+            errors: [],
             cards: [{
               id: "card-vetor",
               position: 1,
-              resource: "paragraph",
-              kind: "theory",
-              exercise: "none",
               title: "Par ordenado",
-              text: "O vetor (2, 3) tem coordenadas 2 e 3.",
-              after: ""
+              role: "theory",
+              content: [{
+                id: "card-vetor-text",
+                package: "aralearn.resource.paragraph",
+                version: "1.0.0",
+                data: { text: "O vetor (2, 3) tem coordenadas 2 e 3." }
+              }],
+              response: null,
+              feedback: [],
+              topics: ["vetor 2D"],
+              sources: []
             }]
           }]
         }]

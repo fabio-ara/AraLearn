@@ -90,7 +90,7 @@ recusa a medir.
 
 ## Alegações permitidas hoje
 
-- o artefato implementa dezoito resources estruturados sob contrato v4;
+- o artefato implementa resources estruturados em packages versionados;
 - autoria bottom-up e top-down usam escopos e persistências distintas;
 - workspaces são compostos por partes correntes e publicações explícitas;
 - estudo selecionado funciona offline após sincronização;

@@ -576,9 +576,8 @@ async function mountPanel(page, {
       const homeTrailItemId = "a2000000-0000-4000-8000-000000000010";
       homeRoot.innerHTML = renderHomeScreen({
         project: {
-          contract: "aralearn.course",
-          version: 4,
-          kind: "project",
+          contract: "aralearn.library.v1",
+          scope: "course",
           courses: probe.homeCourseVisible ? [{
             id: "course-official-home",
             title: "Curso oficial na home",

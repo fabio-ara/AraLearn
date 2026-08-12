@@ -1,15 +1,15 @@
 import { finalizeValidation, isPlainObject, pushError } from "../core/validation.js";
-import { validateCard } from "./cards.js";
+import { normalizeCardEnvelope, validateCardEnvelope } from "../resources/kernel/cardEnvelope.js";
+import { RESOURCE_PACKAGE_REGISTRY } from "../resources/packages/index.js";
 
-export const PROJECT_CONTRACT = "aralearn.contract";
-export const PROJECT_VERSION = 4;
+export const PROJECT_CONTRACT = "aralearn.library.v1";
+export const PROJECT_VERSION = 1;
 
 const PROJECT_SCOPES = new Set(["course", "module", "lesson", "microsequence"]);
 const MICROSEQUENCE_ROLES = new Set(["explain", "practice", "review", "support"]);
-const MICROSEQUENCE_STATUSES = new Set(["planned", "generated", "needs_review", "ready"]);
 const TOPIC_KINDS = new Set(["concept", "procedure", "representation", "term"]);
 
-const ROOT_FIELDS = new Set(["contract", "version", "kind", "scope", "courses"]);
+const ROOT_FIELDS = new Set(["contract", "scope", "courses"]);
 const COURSE_FIELDS = new Set(["id", "title", "goal", "modules"]);
 const MODULE_FIELDS = new Set(["id", "title", "guide", "lessons"]);
 const LESSON_FIELDS = new Set(["id", "title", "guide", "topics", "microsequences"]);
@@ -20,7 +20,6 @@ const MICROSEQUENCE_FIELDS = new Set([
   "title",
   "goal",
   "role",
-  "status",
   "branchOf",
   "dependsOn",
   "covers",
@@ -303,11 +302,6 @@ function validateMicrosequence(microsequence, path, errors) {
   if (role && !MICROSEQUENCE_ROLES.has(role)) {
     pushError(errors, `${path}.role`, `role de microssequência inválido: "${role}".`);
   }
-  const status = validateRequiredText(microsequence, "status", path, errors, "microsequence.status");
-  if (status && !MICROSEQUENCE_STATUSES.has(status)) {
-    pushError(errors, `${path}.status`, `status de microssequência inválido: "${status}".`);
-  }
-
   let branchOf = null;
   if (hasOwn(microsequence, "branchOf")) {
     if (microsequence.branchOf !== null && (!text(microsequence.branchOf) || typeof microsequence.branchOf !== "string")) {
@@ -324,25 +318,21 @@ function validateMicrosequence(microsequence, path, errors) {
       if (isPlainObject(card)) {
         validateRequiredText(card, "id", cardPath, errors, "card.id");
       }
-      const result = validateCard(card, cardPath);
-      if (!result.ok) {
-        result.errors.forEach((error) => errors.push(error));
+      const result = validateCardEnvelope(card, RESOURCE_PACKAGE_REGISTRY, cardPath);
+      if (!result.valid) {
+        result.errors.forEach((message) => pushError(errors, cardPath, message));
         return null;
       }
-      return result.value;
+      return normalizeCardEnvelope(card, RESOURCE_PACKAGE_REGISTRY);
     })
     .filter(Boolean);
-  if (status && status !== "planned" && !cards.length) {
-    pushError(errors, `${path}.cards`, "Microssequência materializada precisa ter cards.");
-  }
 
   return {
     id,
     title,
     goal,
     role,
-    status,
-    branchOf,
+    ...(branchOf ? { branchOf } : {}),
     dependsOn: validateStringList(microsequence, "dependsOn", path, errors),
     covers: validateStringList(microsequence, "covers", path, errors),
     checks: validateStringList(microsequence, "checks", path, errors),
@@ -422,12 +412,6 @@ export function validateProjectDocument(document) {
   if (document.contract !== PROJECT_CONTRACT) {
     pushError(errors, "$.contract", `Contrato esperado: "${PROJECT_CONTRACT}".`);
   }
-  if (document.version !== PROJECT_VERSION) {
-    pushError(errors, "$.version", `Versão esperada: ${PROJECT_VERSION}.`);
-  }
-  if (document.kind !== "project") {
-    pushError(errors, "$.kind", 'kind esperado: "project".');
-  }
   const scope = hasOwn(document, "scope") ? text(document.scope) : "";
   if (hasOwn(document, "scope") && (typeof document.scope !== "string" || !PROJECT_SCOPES.has(scope))) {
     pushError(errors, "$.scope", "scope inválido.");
@@ -441,8 +425,6 @@ export function validateProjectDocument(document) {
     .filter(Boolean);
   return finalizeValidation(errors, {
     contract: PROJECT_CONTRACT,
-    version: PROJECT_VERSION,
-    kind: "project",
     ...(scope ? { scope } : {}),
     courses
   });
@@ -451,8 +433,6 @@ export function validateProjectDocument(document) {
 export function createEmptyProjectDocument() {
   return {
     contract: PROJECT_CONTRACT,
-    version: PROJECT_VERSION,
-    kind: "project",
     courses: []
   };
 }

@@ -12,7 +12,7 @@ materialize uma microssequência por chamada com
 `salvarCardsNaMicrossequencia`. Nunca envie um curso populado inteiro.
 Após a aprovação, use uma única `record_approved_plan` com todas as Partes,
 decisões e o mandato; não deixe metade do plano dependente do chat.
-Consulte o contrato de cada resource com `consultarRecursosDeCard`. Faça
+Consulte o catálogo compacto e depois somente o contrato versionado de cada package escolhido com `consultarPackagesDeCard`. Faça
 correções pontuais com as ferramentas de metadados e card. Use
 `reorganizarWorkspace` com uma `operation` explícita; `copy_entity` cria novas
 identidades e `move_entity` retira a origem. Exclusões usam

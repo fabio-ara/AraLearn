@@ -1,4 +1,5 @@
 import { getChoiceOptionComparableValue, normalizeChoiceOption } from "./choiceOptions.js";
+import { buildTextGapToken } from "./textGaps.js";
 
 function text(value) {
   return typeof value === "string" ? value : "";
@@ -10,6 +11,97 @@ function clone(value) {
 
 function hasOwn(value, fieldName) {
   return Object.prototype.hasOwnProperty.call(value || {}, fieldName);
+}
+
+const PACKAGE_KIND = Object.freeze({
+  "annotated-text": "annotated_text",
+  "linguistic-example": "linguistic_example",
+  "relation-map": "relation_map",
+  "system-map": "system_map"
+});
+
+function resourceKind(packageId = "") {
+  const suffix = String(packageId).replace(/^aralearn\.resource\./u, "");
+  return PACKAGE_KIND[suffix] || suffix.replace(/-/gu, "_");
+}
+
+function contentBlock(instance) {
+  const kind = resourceKind(instance.package);
+  const data = clone(instance.data || {});
+  return kind === "paragraph"
+    ? { id: instance.id, kind, value: text(data.text), ...inheritTextMetadata({}, data) }
+    : { id: instance.id, kind, ...data };
+}
+
+function readPath(root, path) {
+  return String(path || "").split(".").filter(Boolean).reduce((value, segment) => {
+    const match = /^(.*)\[(\d+)\]$/u.exec(segment);
+    return match ? value?.[match[1]]?.[Number(match[2])] : value?.[segment];
+  }, root);
+}
+
+function writePath(root, path, value) {
+  const parts = String(path || "").split(".").filter(Boolean);
+  let target = root;
+  parts.slice(0, -1).forEach((segment) => {
+    const match = /^(.*)\[(\d+)\]$/u.exec(segment);
+    target = match ? target?.[match[1]]?.[Number(match[2])] : target?.[segment];
+  });
+  const last = parts.at(-1);
+  if (!target || !last) return;
+  const match = /^(.*)\[(\d+)\]$/u.exec(last);
+  if (match) target[match[1]][Number(match[2])] = value;
+  else target[last] = value;
+}
+
+function injectPackageGaps(instances, response) {
+  const cloned = instances.map((instance) => clone(instance));
+  for (const blank of response?.data?.blanks || []) {
+    const target = cloned.find((instance) => instance.id === blank.targetInstanceId);
+    if (!target) continue;
+    const current = String(readPath(target.data, blank.targetPath) ?? "");
+    const token = buildTextGapToken(blank.answer, blank.distractors || [], blank.acceptedAnswers || []);
+    writePath(target.data, blank.targetPath, current.includes(blank.answer)
+      ? current.replace(blank.answer, token)
+      : token);
+  }
+  return cloned;
+}
+
+export function projectPackageCardToRuntimeCard(card) {
+  if (!Array.isArray(card?.content)) return card;
+  const response = card.response || null;
+  const content = response?.package === "aralearn.response.gap"
+    ? injectPackageGaps(card.content, response)
+    : card.content.map((instance) => clone(instance));
+  const first = content[0];
+  const firstKind = resourceKind(first?.package);
+  const result = {
+    id: card.id,
+    position: card.position,
+    title: card.title,
+    kind: card.role === "theory" ? "theory" : "exercise",
+    exercise: response?.package === "aralearn.response.choice" ? "choice"
+      : response?.package === "aralearn.response.gap" ? "gap" : "none",
+    resource: content.length === 1 ? firstKind : "composite",
+    sources: clone(card.sources || []),
+    topics: clone(card.topics || [])
+  };
+  if (content.length === 1) {
+    if (firstKind === "paragraph") Object.assign(result, first.data, { text: first.data.text });
+    else Object.assign(result, clone(first.data));
+  } else {
+    result.blocks = content.map(contentBlock);
+  }
+  if (response?.package === "aralearn.response.choice") Object.assign(result, clone(response.data));
+  const feedback = (card.feedback || []).map(contentBlock);
+  if (feedback[0]?.kind === "paragraph") {
+    result.after = feedback.shift().value;
+  } else {
+    result.after = "";
+  }
+  if (feedback.length) result.afterBlocks = feedback;
+  return result;
 }
 
 function inheritTextMetadata(target, source, fallback = null) {
@@ -525,6 +617,7 @@ function buildExerciseResponseBlock(card) {
 }
 
 export function buildCardRuntime(card) {
+  if (Array.isArray(card?.content)) return buildCardRuntime(projectPackageCardToRuntimeCard(card));
   const exerciseMode = card?.kind === "exercise" ? text(card?.exercise).trim() : "none";
   const blocks = [
     inheritTextMetadata(buildHeadingBlock(card?.title), card),

@@ -810,7 +810,7 @@ textarea {
 
 .remote-assistant-surfaces {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 5px;
 }
 
@@ -892,6 +892,107 @@ textarea {
 
 .remote-assistant-status:empty {
   display: none;
+}
+
+.remote-assistant-calibration-intro,
+.remote-assistant-protected-core,
+.remote-assistant-calibration-field {
+  border: 1px solid var(--border-default);
+  border-radius: 10px;
+  background: var(--surface-subtle);
+}
+
+.remote-assistant-calibration-intro {
+  padding: 9px 10px;
+}
+
+.remote-assistant-calibration-intro p {
+  margin: 0;
+  color: var(--text-secondary);
+  font: 0.7rem/1.45 var(--font-ui);
+}
+
+.remote-assistant-calibration-intro .remote-assistant-calibration-preset {
+  color: var(--text-primary);
+  font-weight: 800;
+}
+
+.remote-assistant-protected-core {
+  padding: 8px 10px;
+  color: var(--text-secondary);
+  font: 0.7rem/1.45 var(--font-ui);
+}
+
+.remote-assistant-protected-core summary {
+  cursor: pointer;
+  color: var(--text-primary);
+  font-weight: 800;
+}
+
+.remote-assistant-protected-core ul {
+  display: grid;
+  gap: 8px;
+  margin: 9px 0 2px;
+  padding-left: 17px;
+}
+
+.remote-assistant-protected-core li span,
+.remote-assistant-calibration-help,
+.remote-assistant-calibration-effect {
+  display: block;
+}
+
+.remote-assistant-calibration-form {
+  display: grid;
+  gap: 7px;
+}
+
+.remote-assistant-calibration-field {
+  display: grid;
+  gap: 5px;
+  padding: 9px;
+}
+
+.remote-assistant-calibration-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--text-primary);
+  font: 0.73rem var(--font-ui);
+}
+
+.remote-assistant-calibration-heading small {
+  flex: 0 0 auto;
+  color: var(--action-primary-hover);
+  font: 700 0.64rem var(--font-ui);
+}
+
+.remote-assistant-calibration-help,
+.remote-assistant-calibration-effect {
+  color: var(--text-secondary);
+  font: 0.68rem/1.4 var(--font-ui);
+}
+
+.remote-assistant-calibration-field textarea {
+  width: 100%;
+  min-width: 0;
+  resize: vertical;
+  padding: 8px 9px;
+  border: 1px solid var(--input-border);
+  border-radius: 9px;
+  outline: none;
+  background: var(--input-surface);
+  color: var(--text-primary);
+  font: 0.72rem/1.45 var(--font-ui);
+}
+
+.remote-assistant-calibration-field textarea:focus {
+  border-color: var(--action-primary);
+}
+
+.remote-assistant-calibration-actions {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .remote-library-panel [data-local-draft-discard] {
@@ -1451,36 +1552,6 @@ input:-webkit-autofill:focus {
 .courses-home-screen .progress-meta-item-icon {
   width: 11px;
   height: 11px;
-}
-
-.microsequence-state-icon {
-  width: 18px;
-  height: 18px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex: 0 0 auto;
-  position: relative;
-  top: 1px;
-}
-
-.navigation-title-row .card-title .microsequence-state-icon {
-  margin-right: 0;
-}
-
-.microsequence-state-icon-svg {
-  width: 18px;
-  height: 18px;
-  display: block;
-}
-
-.microsequence-state-icon.is-draft,
-.microsequence-state-icon.is-ready {
-  color: var(--status-warning);
-}
-
-.microsequence-state-icon.is-excluded {
-  color: var(--status-danger);
 }
 
 .didactic-tag-row {
@@ -2825,6 +2896,183 @@ input:-webkit-autofill:focus {
 
 .runtime-relation-map-table {
   width: 100%;
+}
+
+/* Packages independentes: a geometria visual deriva dos dados sem receber pixels autorais. */
+.package-graph,
+.package-relation-map {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+
+.package-graph > svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: min(46dvh, 430px);
+  overflow: visible;
+  border-radius: 18px;
+  background: var(--resource-surface-subtle);
+}
+
+.package-graph-edge line {
+  stroke: var(--resource-border-strong);
+  stroke-width: 1.8;
+  vector-effect: non-scaling-stroke;
+}
+
+.package-graph-edge.is-highlighted line {
+  stroke: var(--resource-accent);
+  stroke-width: 3;
+}
+
+.package-graph marker path {
+  fill: var(--resource-border-strong);
+}
+
+.package-graph-node rect {
+  fill: var(--resource-surface);
+  stroke: var(--resource-border-strong);
+  stroke-width: 1.4;
+  vector-effect: non-scaling-stroke;
+}
+
+.package-graph-node.is-highlighted rect {
+  fill: var(--resource-accent-subtle);
+  stroke: var(--resource-accent);
+  stroke-width: 2.4;
+}
+
+.package-graph-node text {
+  fill: var(--resource-text);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.package-graph-edge-index circle {
+  fill: var(--resource-surface);
+  stroke: var(--resource-accent);
+  stroke-width: 1.5;
+  vector-effect: non-scaling-stroke;
+}
+
+.package-graph-edge-index text {
+  fill: var(--resource-text);
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.package-graph-relations,
+.package-relation-map-list {
+  display: grid;
+  gap: 7px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.package-graph-relations li {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr);
+  gap: 8px;
+  align-items: start;
+  color: var(--resource-text);
+  font-size: var(--type-xs);
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.package-graph-relation-number {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border: 1px solid var(--resource-accent);
+  border-radius: 999px;
+  background: var(--resource-surface);
+  font-size: 0.7rem;
+  font-weight: 800;
+}
+
+.package-relation-map-headings,
+.package-relation-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 54px minmax(0, 1fr);
+  gap: 7px;
+  align-items: center;
+}
+
+.package-relation-map-headings span {
+  color: var(--resource-text-secondary);
+  font-size: var(--type-xs);
+  font-weight: 800;
+  overflow-wrap: anywhere;
+}
+
+.package-relation-map-headings span:last-child {
+  grid-column: 3;
+  text-align: right;
+}
+
+.package-relation-row {
+  min-height: 54px;
+  padding: 7px;
+  border: 1px solid var(--resource-border);
+  border-radius: 12px;
+  background: var(--resource-surface-subtle);
+}
+
+.package-relation-row.is-highlighted {
+  border-color: var(--resource-accent);
+  box-shadow: inset 0 0 0 1px var(--resource-accent);
+}
+
+.package-relation-item {
+  min-width: 0;
+  padding: 8px;
+  border-radius: 9px;
+  background: var(--resource-surface);
+  color: var(--resource-text);
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.package-relation-right {
+  text-align: right;
+}
+
+.package-relation-verb {
+  display: grid;
+  place-items: center;
+  min-width: 0;
+  color: var(--resource-accent);
+  font-size: 1.1rem;
+  font-weight: 800;
+}
+
+.package-relation-verb small {
+  max-width: 54px;
+  color: var(--resource-text-secondary);
+  font-size: 0.58rem;
+  font-weight: 650;
+  line-height: 1.15;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 380px) {
+  .package-relation-map-headings,
+  .package-relation-row {
+    grid-template-columns: minmax(0, 1fr) 40px minmax(0, 1fr);
+    gap: 5px;
+  }
+
+  .package-relation-verb small {
+    max-width: 40px;
+  }
 }
 
 .runtime-plane-svg {

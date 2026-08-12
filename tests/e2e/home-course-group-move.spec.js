@@ -12,9 +12,8 @@ test("mover curso é descobrível, acessível e não repete a mutação", async 
   await page.evaluate(async ({ firstGroupId, secondGroupId, trailItemId, courseId }) => {
     const { createLessonEditorApp } = await import("/src/ui/lessonEditorApp.js");
     const project = {
-      contract: "aralearn.contract",
-      version: 4,
-      kind: "project",
+      contract: "aralearn.library.v1",
+      scope: "course",
       courses: [{
         id: courseId,
         title: "Curso para organizar",

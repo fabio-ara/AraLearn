@@ -12,9 +12,8 @@ function assertEquals(actual: unknown, expected: unknown): void {
 const actorId = "20000000-0000-4000-8000-000000000001";
 const courseId = "10000000-0000-4000-8000-000000000001";
 const document = {
-  contract: "aralearn.contract",
-  version: 4,
-  kind: "project",
+  contract: "aralearn.library.v1",
+  scope: "course",
   courses: []
 };
 const bytes = new TextEncoder().encode(canonicalJsonStringify(document));
@@ -39,7 +38,7 @@ function handler() {
           hash,
           bucket: "aralearn-course-revisions",
           objectKey,
-          artifactType: "aralearn.contract",
+          artifactType: "aralearn.library.v1",
           mediaType: "application/json",
           sizeBytes: bytes.byteLength
         });
@@ -64,7 +63,7 @@ function cachingHandler(storageReads: { value: number }) {
           hash,
           bucket: "aralearn-course-revisions",
           objectKey,
-          artifactType: "aralearn.contract",
+          artifactType: "aralearn.library.v1",
           mediaType: "application/json",
           sizeBytes: bytes.byteLength
         });

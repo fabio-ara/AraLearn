@@ -5,7 +5,7 @@ import {
 } from "./authoring.js";
 import { FLOWCHART_STRUCTURE_INPUT_SCHEMA } from "../../flowchart/flowchartStructure.js";
 
-export const RESOURCE_CONTRACT_VERSION = "aralearn.resources.v4";
+export const RESOURCE_CONTRACT_VERSION = "aralearn.runtime-resource-projection.v1";
 const MOBILE_CARD_BLOCK_LIMIT = 5;
 export const CARD_AFTER_BLOCKS_MAX_ITEMS = MOBILE_CARD_BLOCK_LIMIT;
 

@@ -115,7 +115,7 @@ jobs:
           eval "$(npx --yes supabase@2.109.1 status -o env)"
           set +a
           export ARALEARN_TEST_DATABASE_URL="$DB_URL"
-          node --test ./tests/v4/workspace-postgres-concurrency.test.js
+          node --test ./tests/runtime/workspace-postgres-concurrency.test.js
 
       # A jornada conserva um owner técnico da stack local. A fixture seguinte
       # usa essa autoridade para conceder somente o papel editorial necessário.

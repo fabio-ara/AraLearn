@@ -227,13 +227,12 @@ function normalizeWorkspaceAuthoringQueue(value, { trailItemId, workspaceId, cou
     throw new Error("A fila offline pertence a outra composição de workspace.");
   }
   const validation = validateProjectDocument({
-    contract: "aralearn.contract",
-    version: 4,
-    kind: "project",
+    contract: "aralearn.library.v1",
+    scope: "course",
     courses: [value.draftCourse]
   });
   if (!validation.ok || value.draftCourse.id !== normalizedCourseKey) {
-    throw new Error("O rascunho offline do workspace viola o contrato v4.");
+    throw new Error("O rascunho offline do workspace viola o contrato por packages.");
   }
   return {
     contract: WORKSPACE_AUTHORING_QUEUE_CONTRACT,
@@ -938,9 +937,8 @@ export class LearningSpaces {
     const userId = currentUserId(this.authClient);
     const revision = Number(response?.revision);
     const validation = validateProjectDocument({
-      contract: "aralearn.contract",
-      version: 4,
-      kind: "project",
+      contract: "aralearn.library.v1",
+      scope: "course",
       courses: [course]
     });
     if (!userId || !UUID_PATTERN.test(trailItemId) ||

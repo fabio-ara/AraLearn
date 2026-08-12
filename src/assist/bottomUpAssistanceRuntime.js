@@ -942,7 +942,7 @@ function validateProject(projectDocument) {
   if (!validation.ok) {
     const issue = validation.errors?.[0];
     fail(
-      `A alteração deixaria o contrato v4 inválido${issue?.path ? ` em ${issue.path}` : ""}${issue?.message ? `: ${issue.message}` : "."}`
+      `A alteração deixaria a projeção de runtime inválida${issue?.path ? ` em ${issue.path}` : ""}${issue?.message ? `: ${issue.message}` : "."}`
     );
   }
   return validation.value;

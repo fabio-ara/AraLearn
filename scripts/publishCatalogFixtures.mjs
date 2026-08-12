@@ -47,30 +47,6 @@ function assertFixtureName(fileName) {
   return fileName;
 }
 
-function publicProject(course) {
-  return { contract: "aralearn.contract", version: 4, kind: "project", courses: [course] };
-}
-
-export function assertPublicationReady(course, fileName = course?.id || "fixture") {
-  const pending = [];
-  for (const module of course?.modules || []) {
-    for (const lesson of module?.lessons || []) {
-      for (const microsequence of lesson?.microsequences || []) {
-        if (microsequence?.status !== "ready") {
-          pending.push(microsequence?.id || "sem-id");
-        }
-      }
-    }
-  }
-  if (pending.length) {
-    const preview = pending.slice(0, 5).join(", ");
-    const suffix = pending.length > 5 ? ` e mais ${pending.length - 5}` : "";
-    throw new Error(
-      `${fileName} não está pronta para publicação: ${pending.length} microssequência(s) sem status ready (${preview}${suffix}).`
-    );
-  }
-}
-
 function deterministicUuid(value) {
   const bytes = Buffer.from(createHash("sha256").update(value).digest("hex").slice(0, 32), "hex");
   bytes[6] = (bytes[6] & 0x0f) | 0x50;
@@ -80,15 +56,13 @@ function deterministicUuid(value) {
 }
 
 export async function prepareFixture(fileName) {
-  const course = await readJson(path.join(fixtureDirectory, assertFixtureName(fileName)));
-  const project = publicProject(course);
+  const project = await readJson(path.join(fixtureDirectory, assertFixtureName(fileName)));
   const contractValidation = validateProjectDocument(project);
   if (!contractValidation.ok) {
     const details = contractValidation.errors.map((entry) => `${entry.path}: ${entry.message}`).join("; ");
-    throw new Error(`${fileName} viola o contrato v4: ${details}`);
+    throw new Error(`${fileName} viola o contrato por packages: ${details}`);
   }
-  assertPublicationReady(course, fileName);
-  const prepared = await prepareCourseDocument(project, { requireReady: true });
+  const prepared = await prepareCourseDocument(project);
   return {
     fileName,
     course: prepared.course,

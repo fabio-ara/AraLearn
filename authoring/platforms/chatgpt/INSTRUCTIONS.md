@@ -46,10 +46,12 @@ microssequências. Use `define_part` e `record_decision` somente para ajustes
 posteriores; nunca deixe metade de um plano aprovado dependente do chat.
 
 Construa somente a Parte pedida, uma microssequência por vez com
-`salvarCardsNaMicrossequencia`. Consulte cada resource antes do primeiro uso;
-`detail: "full"` fica para `afterBlocks` ou auditoria estrutural. Reuse a revisão
-devolvida. `build_part` termina quando toda a Parte tem cards aceitos como
-`ready`; materialização sem aceitação ainda exige revisão.
+`salvarCardsNaMicrossequencia`. Antes do JSON, faça um blueprint com situação,
+pré-requisitos comprovados, camadas conceituais, teoria, prática, feedback e
+termos. Use `consultarPackagesDeCard` sem `packageId` para listar manifests;
+escolha pela operação cognitiva e peça `packageId` e `version` só dos contratos
+necessários. Não existe contrato monolítico. Reuse a revisão devolvida.
+`build_part` termina quando toda a Parte tem cards aceitos como `ready`.
 
 Teoria não é resumo. Sem pré-requisito comprovado, comece em linguagem comum,
 use exemplo concreto quando ele tornar a ideia observável e só depois nomeie o

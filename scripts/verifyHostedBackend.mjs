@@ -210,7 +210,7 @@ async function main() {
     publishableKey: process.env.ARALEARN_SUPABASE_PUBLISHABLE_KEY
   });
   process.stdout.write(
-    `Backend compatível: revisão ${result.schemaRevision}, contrato v${result.contractVersion}, ` +
+    `Backend compatível: revisão ${result.schemaRevision}, biblioteca v${result.contractVersion}, ` +
     `CORS de revisões aprovado para ${result.courseRevisionCorsOrigins.length} origens.\n`
   );
 }

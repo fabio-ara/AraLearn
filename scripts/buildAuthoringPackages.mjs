@@ -24,7 +24,7 @@ const CHATGPT_CORE_KNOWLEDGE_SOURCES = [
   "core/quality.md",
   "core/sources.md",
   "core/safety.md",
-  "knowledge/contract-v4.md",
+  "knowledge/packages.md",
   "knowledge/semantic-audit.md",
   "knowledge/term-ledger.md",
   "knowledge/continuity.md",
@@ -687,7 +687,7 @@ for (const platform of PLATFORMS) {
 
 const manifest = {
   artifact: "aralearn.authoring-packages",
-  version: 4,
+  version: 1,
   deterministicTimestamp: "1980-01-01T00:00:00.000Z",
   transport: "mcp+openapi-action",
   archives,

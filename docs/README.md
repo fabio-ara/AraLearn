@@ -53,5 +53,5 @@
 | Relação entre problema, hipótese, implementação e avaliação | [Matriz de rastreabilidade pedagógica](matriz-rastreabilidade-pedagogica.md) |
 | Planejar ciclos com participantes e separar resultados | [Protocolo de avaliação do artefato](protocolo-avaliacao-artefato.md) |
 | Delimitar a contribuição integrada sem alegar primazia | [Contribuição e originalidade](contribuicao-originalidade.md) |
-| Decisões, fases e critérios da refatoração v4 | [Refatoração do sistema de recursos](resource-system-refactor.md) |
+| Kernel, packages e critérios da arquitetura corrente | [Arquitetura](arquitetura.md) e [Recursos de card](recursos-de-card.md) |
 | Situação do projeto e próximas etapas | [Estado do projeto](estado-atual-e-roadmap.md) |

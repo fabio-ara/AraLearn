@@ -1,0 +1,205 @@
+{
+  "contract": "aralearn.library.v1",
+  "scope": "course",
+  "courses": [
+    {
+      "id": "course-fixture-visual",
+      "title": "Fixture Visual",
+      "goal": "Validar packages graph, matrix e plane na biblioteca.",
+      "modules": [
+        {
+          "id": "module-fixture-visual",
+          "title": "Visual",
+          "guide": {
+            "goal": "Cobrir recursos visuais simples.",
+            "include": [
+              "graph",
+              "matrix",
+              "plane"
+            ],
+            "exclude": [],
+            "notation": [
+              "Use rótulos curtos."
+            ],
+            "avoid": [
+              "Não depender de contexto externo."
+            ]
+          },
+          "lessons": [
+            {
+              "id": "lesson-fixture-visual",
+              "title": "Visual",
+              "guide": {
+                "goal": "Ler um grafo, uma matriz e um vetor simples.",
+                "include": [
+                  "graph",
+                  "matrix",
+                  "plane"
+                ],
+                "exclude": [],
+                "notation": [
+                  "Use rótulos curtos."
+                ],
+                "avoid": [
+                  "Não depender de contexto externo."
+                ]
+              },
+              "topics": [],
+              "microsequences": [
+                {
+                  "id": "micro-fixture-visual",
+                  "title": "Recursos visuais",
+                  "goal": "Reconhecer o elemento destacado.",
+                  "role": "explain",
+                  "branchOf": null,
+                  "dependsOn": [],
+                  "covers": [
+                    "graph",
+                    "matrix",
+                    "plane"
+                  ],
+                  "checks": [
+                    "o aluno identifica o elemento destacado"
+                  ],
+                  "errors": [],
+                  "cards": [
+                    {
+                      "id": "card-fixture-visual-flow",
+                      "position": 1,
+                      "title": "Grafo simples",
+                      "role": "theory",
+                      "content": [
+                        {
+                          "id": "card-fixture-visual-flow-content",
+                          "package": "aralearn.resource.graph",
+                          "version": "1.0.0",
+                          "data": {
+                            "prompt": "Observe o vértice destacado.",
+                            "layout": "path",
+                            "vertices": [
+                              {
+                                "id": "A",
+                                "label": "A"
+                              },
+                              {
+                                "id": "B",
+                                "label": "B"
+                              }
+                            ],
+                            "edges": [
+                              {
+                                "id": "edge-1",
+                                "from": "A",
+                                "to": "B",
+                                "label": "liga",
+                                "weight": "1",
+                                "directed": true
+                              }
+                            ],
+                            "highlight": {
+                              "vertices": [
+                                "A"
+                              ],
+                              "edges": [
+                                "edge-1"
+                              ]
+                            }
+                          }
+                        }
+                      ],
+                      "response": null,
+                      "feedback": [
+                        {
+                          "id": "card-fixture-visual-flow-feedback-text",
+                          "package": "aralearn.resource.paragraph",
+                          "version": "1.0.0",
+                          "data": {
+                            "text": "O vértice `A` está ligado a `B`."
+                          }
+                        }
+                      ],
+                      "topics": [],
+                      "sources": []
+                    },
+                    {
+                      "id": "card-fixture-visual-graph",
+                      "position": 2,
+                      "title": "Matriz identidade",
+                      "role": "theory",
+                      "content": [
+                        {
+                          "id": "card-fixture-visual-graph-content",
+                          "package": "aralearn.resource.matrix",
+                          "version": "1.0.0",
+                          "data": {
+                            "prompt": "Observe a diagonal principal.",
+                            "values": [
+                              [
+                                "1",
+                                "0"
+                              ],
+                              [
+                                "0",
+                                "1"
+                              ]
+                            ]
+                          }
+                        }
+                      ],
+                      "response": null,
+                      "feedback": [
+                        {
+                          "id": "card-fixture-visual-graph-feedback-text",
+                          "package": "aralearn.resource.paragraph",
+                          "version": "1.0.0",
+                          "data": {
+                            "text": "A diagonal principal fica com `1`."
+                          }
+                        }
+                      ],
+                      "topics": [],
+                      "sources": []
+                    },
+                    {
+                      "id": "card-fixture-visual-relation-map",
+                      "position": 3,
+                      "title": "Vetor no plano",
+                      "role": "theory",
+                      "content": [
+                        {
+                          "id": "card-fixture-visual-relation-map-content",
+                          "package": "aralearn.resource.plane",
+                          "version": "1.0.0",
+                          "data": {
+                            "prompt": "Observe o vetor v.",
+                            "vector": [
+                              2,
+                              1
+                            ]
+                          }
+                        }
+                      ],
+                      "response": null,
+                      "feedback": [
+                        {
+                          "id": "card-fixture-visual-relation-map-feedback-text",
+                          "package": "aralearn.resource.paragraph",
+                          "version": "1.0.0",
+                          "data": {
+                            "text": "O vetor aponta para `(2, 1)`."
+                          }
+                        }
+                      ],
+                      "topics": [],
+                      "sources": []
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

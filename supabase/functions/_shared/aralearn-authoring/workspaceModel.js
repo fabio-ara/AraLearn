@@ -1,5 +1,4 @@
 import { validateProjectDocument } from "../aralearn/runtime/domain/aralearnProject.js";
-import { listResourceIds } from "../aralearn/runtime/resources/registry/index.js";
 import { canonicalJsonStringify } from "./canonicalJson.js";
 import { AuthoringApiError } from "./errors.js";
 import {
@@ -41,11 +40,8 @@ const ENTITY_PATH_TYPES = Object.freeze([
   "microsequence",
   "card"
 ]);
-const CANONICAL_RESOURCE_IDS = new Set(listResourceIds());
 const THEORY_PROJECTION_OMITTED_FIELDS = new Set([
-  "id", "position", "resource", "kind", "exercise", "after", "afterBlocks",
-  "sources", "topics", "question", "selectionMode", "selectionCriterion",
-  "options", "answer", "answerIds", "gaps", "languageTag", "textDirection"
+  "id", "position", "role", "response", "feedback", "sources", "topics"
 ]);
 
 function text(value) {
@@ -140,7 +136,7 @@ function assertValidWorkspace(document) {
   if (!validation.ok) {
     workspaceError(
       "invalid_workspace_document",
-      "O workspace viola o contrato AraLearn v4.",
+      "O workspace viola o contrato AraLearn por packages.",
       { errors: validation.errors }
     );
   }
@@ -262,7 +258,7 @@ function theoryConceptualExcerpt(card) {
 
 function aggregateTheoryContent(cards) {
   return cards
-    .filter((card) => card.kind === "theory")
+    .filter((card) => card.role === "theory")
     .map(theoryConceptualExcerpt)
     .filter(Boolean)
     .join("\n\n");
@@ -270,10 +266,10 @@ function aggregateTheoryContent(cards) {
 
 function collectCardResources(cards) {
   return [...new Set(cards.flatMap((card) => [
-    card.resource,
-    ...(card.blocks || []).map((block) => block.kind),
-    ...(card.afterBlocks || []).map((block) => block.kind)
-  ]).map(text).filter((resource) => CANONICAL_RESOURCE_IDS.has(resource)))];
+    ...(card.content || []),
+    ...(card.response ? [card.response] : []),
+    ...(card.feedback || [])
+  ]).map((instance) => text(instance?.package)).filter(Boolean))];
 }
 
 function collectCardTopicLabels(cards, lessonTopics) {
@@ -289,9 +285,7 @@ function collectCardTopicLabels(cards, lessonTopics) {
 
 export function createEmptyAuthoringWorkspace() {
   return {
-    contract: "aralearn.contract",
-    version: 4,
-    kind: "project",
+    contract: "aralearn.library.v1",
     courses: []
   };
 }
@@ -330,7 +324,6 @@ export function buildWorkspaceOutline(document) {
             title: microsequence.title,
             goal: microsequence.goal,
             role: microsequence.role,
-            status: microsequence.status,
             cardCount: microsequence.cards.length
           };
           })
@@ -400,7 +393,6 @@ export function buildMicrotheoryReview(document, entityPath = null) {
             entityPath: [...lessonPath, microsequence.id],
             title: microsequence.title,
             goal: microsequence.goal,
-            status: microsequence.status,
             content: aggregateTheoryContent(microsequence.cards),
             covers: [...(microsequence.covers || [])],
             checks: [...(microsequence.checks || [])],
@@ -408,7 +400,7 @@ export function buildMicrotheoryReview(document, entityPath = null) {
             resources: collectCardResources(microsequence.cards),
             topics: collectCardTopicLabels(microsequence.cards, lesson.topics),
             practiceCount: microsequence.cards
-              .filter((card) => card.kind === "exercise").length
+              .filter((card) => card.role === "practice").length
           }))
         };
         })
@@ -559,13 +551,6 @@ export function mergeWorkspaceMicrosequences(document, {
       "Mova primeiro as microssequências para a mesma lição antes de juntá-las."
     );
   }
-  const readinessOrder = ["planned", "generated", "needs_review", "ready"];
-  target.entity.status = [target, ...sources]
-    .map((entry) => entry.entity.status)
-    .reduce((leastReady, status) =>
-      readinessOrder.indexOf(status) < readinessOrder.indexOf(leastReady)
-        ? status
-        : leastReady, "ready");
   for (const source of sources.sort((a, b) => a.index - b.index)) {
     target.entity.cards.push(...source.entity.cards);
     for (const field of ["covers", "checks", "errors", "dependsOn"]) {
@@ -609,9 +594,6 @@ export function splitWorkspaceMicrosequence(document, {
   const entity = clone(newMicrosequence);
   entity.cards = selectedCards;
   source.entity.cards = source.entity.cards.filter((card) => !selectedIds.has(card.id));
-  if (source.entity.cards.length === 0 && source.entity.status !== "planned") {
-    source.entity.status = "planned";
-  }
   normalizeCardPositions(source.entity);
   normalizeCardPositions(entity);
   insertAt(source.collection, entity, position == null ? source.index + 1 : position);
@@ -724,9 +706,8 @@ export function demoteCourseToModule(document, {
 export function selectCourseDocument(document, courseId) {
   const course = locate(document, "course", [courseId]).entity;
   return assertValidWorkspace({
-    contract: "aralearn.contract",
-    version: 4,
-    kind: "project",
+    contract: "aralearn.library.v1",
+    scope: "course",
     courses: [clone(course)]
   });
 }

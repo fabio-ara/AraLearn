@@ -80,7 +80,6 @@ function outlineMicrosequenceFromLocal(microsequence, path) {
       microsequence.id
     ],
     ...structuredClone(microsequenceMetadata(microsequence)),
-    status: microsequence.status,
     cards: [],
     cardCount: Array.isArray(microsequence.cards) ? microsequence.cards.length : 0
   };
@@ -594,9 +593,6 @@ export async function materializeContextualCourseDraft({
       }
     );
     revision = result.revision;
-    remoteMicrosequence.status = reconciledCards.cards.length
-      ? "ready"
-      : "planned";
     remoteMicrosequence.cardCount = reconciledCards.cards.length;
     remoteMicrosequence.cards = structuredClone(reconciledCards.cards);
   }

@@ -1,0 +1,942 @@
+{
+  "contract": "aralearn.library.v1",
+  "scope": "course",
+  "courses": [
+    {
+      "id": "course-resources-gallery",
+      "title": "Galeria de packages",
+      "goal": "Demonstrar os packages instalados em cards válidos.",
+      "modules": [
+        {
+          "id": "module-resources-gallery",
+          "title": "Representações canônicas",
+          "guide": {
+            "goal": "Comparar representações e interações disponíveis.",
+            "include": [
+              "packages instalados"
+            ],
+            "exclude": [],
+            "notation": [],
+            "avoid": []
+          },
+          "lessons": [
+            {
+              "id": "lesson-resources-gallery",
+              "title": "Um card por package",
+              "guide": {
+                "goal": "Inspecionar cada package em uma operação concreta.",
+                "include": [
+                  "catálogo de packages"
+                ],
+                "exclude": [],
+                "notation": [],
+                "avoid": []
+              },
+              "topics": [],
+              "microsequences": [
+                {
+                  "id": "micro-resources-gallery",
+                  "title": "Galeria completa",
+                  "goal": "Percorrer os packages instalados.",
+                  "role": "practice",
+                  "dependsOn": [],
+                  "covers": [],
+                  "checks": [
+                    "renderização",
+                    "interação",
+                    "responsividade"
+                  ],
+                  "errors": [],
+                  "cards": [
+                    {
+                      "id": "gallery-1",
+                      "position": 1,
+                      "title": "Texto explicado",
+                      "role": "theory",
+                      "content": [
+                        {
+                          "id": "instance-1",
+                          "package": "aralearn.resource.paragraph",
+                          "version": "1.0.0",
+                          "data": {
+                            "text": "O protocolo define regras para que duas partes troquem mensagens de forma previsível.",
+                            "languageTag": "pt-BR",
+                            "textDirection": "auto"
+                          }
+                        }
+                      ],
+                      "response": null,
+                      "feedback": [
+                        {
+                          "id": "feedback-1",
+                          "package": "aralearn.resource.paragraph",
+                          "version": "1.0.0",
+                          "data": {
+                            "text": "O próprio texto constitui a alternativa não visual."
+                          }
+                        }
+                      ],
+                      "topics": [],
+                      "sources": []
+                    },
+                    {
+                      "id": "gallery-2",
+                      "position": 2,
+                      "title": "Código",
+                      "role": "theory",
+                      "content": [
+                        {
+                          "id": "instance-2",
+                          "package": "aralearn.resource.code",
+                          "version": "1.0.0",
+                          "data": {
+                            "prompt": "Observe a condição antes do envio.",
+                            "language": "javascript",
+                            "code": "if (online) {\n  enviar();\n}"
+                          }
+                        }
+                      ],
+                      "response": null,
+                      "feedback": [
+                        {
+                          "id": "feedback-2",
+                          "package": "aralearn.resource.paragraph",
+                          "version": "1.0.0",
+                          "data": {
+                            "text": "Prompt, linguagem e código são expostos como texto selecionável."
+                          }
+                        }
+                      ],
+                      "topics": [],
+                      "sources": []
+                    },
+                    {
+                      "id": "gallery-3",
+                      "position": 3,
+                      "title": "Tabela",
+                      "role": "theory",
+                      "content": [
+                        {
+                          "id": "instance-3",
+                          "package": "aralearn.resource.table",
+                          "version": "1.0.0",
+                          "data": {
+                            "prompt": "Compare a finalidade.",
+                            "columns": [
+                              "Mecanismo",
+                              "Finalidade"
+                            ],
+                            "rows": [
+                              [
+                                "Get",
+                                "Consultar um valor"
+                              ]
+                            ]
+                          }
+                        }
+                      ],
+                      "response": null,
+                      "feedback": [
+                        {
+                          "id": "feedback-3",
+                          "package": "aralearn.resource.paragraph",
+                          "version": "1.0.0",
+                          "data": {
+                            "text": "Cabeçalhos e células usam semântica de tabela e leitura linear."
+                          }
+                        }
+                      ],
+                      "topics": [],
+                      "sources": []
+                    },
+                    {
+                      "id": "gallery-4",
+                      "position": 4,
+                      "title": "Sequência",
+                      "role": "theory",
+                      "content": [
+                        {
+                          "id": "instance-4",
+                          "package": "aralearn.resource.sequence",
+                          "version": "1.0.0",
+                          "data": {
+                            "prompt": "Acompanhe o envio.",
+                            "variant": "ordered_steps",
+                            "items": [
+                              {
+                                "id": "s1",
+                                "label": "Preparar mensagem"
+                              },
+                              {
+                                "id": "s2",
+                                "label": "Transmitir"
+                              }
+                            ]
+                          }
+                        }
+                      ],
+                      "response": null,
+                      "feedback": [
+                        {
+                          "id": "feedback-4",
+                          "package": "aralearn.resource.paragraph",
+                          "version": "1.0.0",
+                          "data": {
+                            "text": "A ordem visual também é a ordem do DOM e cada item tem posição textual."
+                          }
+                        }
+                      ],
+                      "topics": [],
+                      "sources": []
+                    },
+                    {
+                      "id": "gallery-5",
+                      "position": 5,
+                      "title": "Texto anotado",
+                      "role": "theory",
+                      "content": [
+                        {
+                          "id": "instance-5",
+                          "package": "aralearn.resource.annotated_text",
+                          "version": "1.0.0",
+                          "data": {
+                            "segments": [
+                              {
+                                "id": "s1",
+                                "text": "O cliente envia uma requisição."
+                              }
+                            ],
+                            "annotations": [
+                              {
+                                "id": "a1",
+                                "targetIds": [
+                                  "s1"
+                                ],
+                                "label": "Ação inicial",
+                                "note": "A comunicação começa no cliente."
+                              }
+                            ]
+                          }
+                        }
+                      ],
+                      "response": null,
+                      "feedback": [
+                        {
+                          "id": "feedback-5",
+                          "package": "aralearn.resource.paragraph",
+                          "version": "1.0.0",
+                          "data": {
+                            "text": "Anotações repetem textualmente os ids e rótulos dos trechos-alvo."
+                          }
+                        }
+                      ],
+                      "topics": [],
+                      "sources": []
+                    },
+                    {
+                      "id": "gallery-6",
+                      "position": 6,
+                      "title": "Exemplo linguístico",
+                      "role": "theory",
+                      "content": [
+                        {
+                          "id": "instance-6",
+                          "package": "aralearn.resource.linguistic_example",
+                          "version": "1.0.0",
+                          "data": {
+                            "languageTag": "pt-BR",
+                            "writingMode": "horizontal",
+                            "alignment": "word",
+                            "units": [
+                              {
+                                "id": "u1",
+                                "form": "casas",
+                                "gloss": "casa-PL",
+                                "translation": "mais de uma casa"
+                              }
+                            ]
+                          }
+                        }
+                      ],
+                      "response": null,
+                      "feedback": [
+                        {
+                          "id": "feedback-6",
+                          "package": "aralearn.resource.paragraph",
+                          "version": "1.0.0",
+                          "data": {
+                            "text": "Cada unidade é lida com forma, glosa e tradução na mesma ordem."
+                          }
+                        }
+                      ],
+                      "topics": [],
+                      "sources": []
+                    },
+                    {
+                      "id": "gallery-7",
+                      "position": 7,
+                      "title": "Escolha",
+                      "role": "practice",
+                      "content": [
+                        {
+                          "id": "context-7",
+                          "package": "aralearn.resource.paragraph",
+                          "version": "1.0.0",
+                          "data": {
+                            "text": "Pedir que o estudante discrimine uma ou mais alternativas plausíveis."
+                          }
+                        }
+                      ],
+                      "response": {
+                        "id": "instance-7",
+                        "package": "aralearn.response.choice",
+                        "version": "1.0.0",
+                        "data": {
+                          "question": "Qual protocolo fornece entrega confiável?",
+                          "selectionMode": "single",
+                          "selectionCriterion": "correct",
+                          "options": [
+                            {
+                              "id": "tcp",
+                              "kind": "text",
+                              "text": "TCP"
+                            },
+                            {
+                              "id": "udp",
+                              "kind": "text",
+                              "text": "UDP"
+                            }
+                          ],
+                          "answerIds": [
+                            "tcp"
+                          ]
+                        }
+                      },
+                      "feedback": [
+                        {
+                          "id": "feedback-7",
+                          "package": "aralearn.resource.paragraph",
+                          "version": "1.0.0",
+                          "data": {
+                            "text": "Alternativas usam fieldset, legend e controles nativos."
+                          }
+                        }
+                      ],
+                      "topics": [],
+                      "sources": []
+                    },
+                    {
+                      "id": "gallery-8",
+                      "position": 8,
+                      "title": "Lacuna",
+                      "role": "practice",
+                      "content": [
+                        {
+                          "id": "context-8",
+                          "package": "aralearn.resource.paragraph",
+                          "version": "1.0.0",
+                          "data": {
+                            "text": "Pedir recuperação ou discriminação exatamente no campo semântico declarado pelo conteúdo."
+                          }
+                        }
+                      ],
+                      "response": {
+                        "id": "instance-8",
+                        "package": "aralearn.response.gap",
+                        "version": "1.0.0",
+                        "data": {
+                          "prompt": "Complete o termo.",
+                          "blanks": [
+                            {
+                              "id": "protocol",
+                              "targetInstanceId": "body-1",
+                              "targetPath": "text:protocol",
+                              "responseMode": "text",
+                              "answer": "protocolo"
+                            }
+                          ]
+                        }
+                      },
+                      "feedback": [
+                        {
+                          "id": "feedback-8",
+                          "package": "aralearn.resource.paragraph",
+                          "version": "1.0.0",
+                          "data": {
+                            "text": "Cada lacuna tem prompt, rótulo e controle nativo próprios."
+                          }
+                        }
+                      ],
+                      "topics": [],
+                      "sources": []
+                    },
+                    {
+                      "id": "gallery-9",
+                      "position": 9,
+                      "title": "Ordenação",
+                      "role": "practice",
+                      "content": [
+                        {
+                          "id": "context-9",
+                          "package": "aralearn.resource.paragraph",
+                          "version": "1.0.0",
+                          "data": {
+                            "text": "Pedir que o estudante reconstrua uma ordem causal, temporal ou procedimental."
+                          }
+                        }
+                      ],
+                      "response": {
+                        "id": "instance-9",
+                        "package": "aralearn.response.ordering",
+                        "version": "1.0.0",
+                        "data": {
+                          "prompt": "Ordene as etapas.",
+                          "targetInstanceId": "body-1",
+                          "itemIds": [
+                            "s1",
+                            "s2"
+                          ],
+                          "answerOrder": [
+                            "s1",
+                            "s2"
+                          ]
+                        }
+                      },
+                      "feedback": [
+                        {
+                          "id": "feedback-9",
+                          "package": "aralearn.resource.paragraph",
+                          "version": "1.0.0",
+                          "data": {
+                            "text": "Oferece botões de mover e posição anunciada; arrastar nunca é obrigatório."
+                          }
+                        }
+                      ],
+                      "topics": [],
+                      "sources": []
+                    },
+                    {
+                      "id": "gallery-10",
+                      "position": 10,
+                      "title": "Árvore",
+                      "role": "theory",
+                      "content": [
+                        {
+                          "id": "instance-10",
+                          "package": "aralearn.resource.tree",
+                          "version": "1.0.0",
+                          "data": {
+                            "prompt": "Observe a classificação.",
+                            "variant": "taxonomy",
+                            "nodes": [
+                              {
+                                "id": "animalia",
+                                "label": "Animalia",
+                                "parentId": null
+                              },
+                              {
+                                "id": "chordata",
+                                "label": "Chordata",
+                                "parentId": "animalia"
+                              }
+                            ]
+                          }
+                        }
+                      ],
+                      "response": null,
+                      "feedback": [
+                        {
+                          "id": "feedback-10",
+                          "package": "aralearn.resource.paragraph",
+                          "version": "1.0.0",
+                          "data": {
+                            "text": "A hierarquia usa listas aninhadas na mesma ordem visual."
+                          }
+                        }
+                      ],
+                      "topics": [],
+                      "sources": []
+                    },
+                    {
+                      "id": "gallery-11",
+                      "position": 11,
+                      "title": "Matriz",
+                      "role": "theory",
+                      "content": [
+                        {
+                          "id": "instance-11",
+                          "package": "aralearn.resource.matrix",
+                          "version": "1.0.0",
+                          "data": {
+                            "prompt": "Observe a identidade.",
+                            "name": "I",
+                            "values": [
+                              [
+                                "1",
+                                "0"
+                              ],
+                              [
+                                "0",
+                                "1"
+                              ]
+                            ]
+                          }
+                        }
+                      ],
+                      "response": null,
+                      "feedback": [
+                        {
+                          "id": "feedback-11",
+                          "package": "aralearn.resource.paragraph",
+                          "version": "1.0.0",
+                          "data": {
+                            "text": "Cada matriz possui tabela semântica e ordem linear por linhas."
+                          }
+                        }
+                      ],
+                      "topics": [],
+                      "sources": []
+                    },
+                    {
+                      "id": "gallery-12",
+                      "position": 12,
+                      "title": "Reação",
+                      "role": "theory",
+                      "content": [
+                        {
+                          "id": "instance-12",
+                          "package": "aralearn.resource.reaction",
+                          "version": "1.0.0",
+                          "data": {
+                            "prompt": "Observe a formação de água.",
+                            "reactionType": "forward",
+                            "reactants": [
+                              {
+                                "id": "h",
+                                "formula": "H₂",
+                                "name": "hidrogênio",
+                                "coefficient": 2,
+                                "state": "g"
+                              },
+                              {
+                                "id": "o",
+                                "formula": "O₂",
+                                "name": "oxigênio",
+                                "state": "g"
+                              }
+                            ],
+                            "products": [
+                              {
+                                "id": "w",
+                                "formula": "H₂O",
+                                "name": "água",
+                                "coefficient": 2,
+                                "state": "l"
+                              }
+                            ],
+                            "conditions": []
+                          }
+                        }
+                      ],
+                      "response": null,
+                      "feedback": [
+                        {
+                          "id": "feedback-12",
+                          "package": "aralearn.resource.paragraph",
+                          "version": "1.0.0",
+                          "data": {
+                            "text": "A equação possui descrição textual com nomes, coeficientes e estados."
+                          }
+                        }
+                      ],
+                      "topics": [],
+                      "sources": []
+                    },
+                    {
+                      "id": "gallery-13",
+                      "position": 13,
+                      "title": "Fluxo",
+                      "role": "theory",
+                      "content": [
+                        {
+                          "id": "instance-13",
+                          "package": "aralearn.resource.flow",
+                          "version": "1.0.0",
+                          "data": {
+                            "prompt": "Acompanhe a decisão.",
+                            "structure": {
+                              "id": "root",
+                              "kind": "sequence",
+                              "items": [
+                                {
+                                  "id": "start",
+                                  "kind": "start",
+                                  "text": "Início"
+                                },
+                                {
+                                  "id": "decision",
+                                  "kind": "if_then",
+                                  "condition": "há conexão",
+                                  "thenBranch": [
+                                    {
+                                      "id": "send",
+                                      "kind": "process",
+                                      "text": "Enviar"
+                                    }
+                                  ]
+                                },
+                                {
+                                  "id": "end",
+                                  "kind": "end",
+                                  "text": "Fim"
+                                }
+                              ]
+                            }
+                          }
+                        }
+                      ],
+                      "response": null,
+                      "feedback": [
+                        {
+                          "id": "feedback-13",
+                          "package": "aralearn.resource.paragraph",
+                          "version": "1.0.0",
+                          "data": {
+                            "text": "A lógica é exposta também como árvore ordenada, independente do desenho."
+                          }
+                        }
+                      ],
+                      "topics": [],
+                      "sources": []
+                    },
+                    {
+                      "id": "gallery-14",
+                      "position": 14,
+                      "title": "Fórmula",
+                      "role": "theory",
+                      "content": [
+                        {
+                          "id": "instance-14",
+                          "package": "aralearn.resource.formula",
+                          "version": "1.0.0",
+                          "data": {
+                            "prompt": "Observe a potência.",
+                            "notation": "mathematics",
+                            "accessibleText": "x ao quadrado",
+                            "expression": {
+                              "type": "superscript",
+                              "base": {
+                                "type": "identifier",
+                                "value": "x"
+                              },
+                              "exponent": {
+                                "type": "number",
+                                "value": "2"
+                              }
+                            }
+                          }
+                        }
+                      ],
+                      "response": null,
+                      "feedback": [
+                        {
+                          "id": "feedback-14",
+                          "package": "aralearn.resource.paragraph",
+                          "version": "1.0.0",
+                          "data": {
+                            "text": "A expressão sempre exige descrição textual equivalente."
+                          }
+                        }
+                      ],
+                      "topics": [],
+                      "sources": []
+                    },
+                    {
+                      "id": "gallery-15",
+                      "position": 15,
+                      "title": "Plano cartesiano",
+                      "role": "theory",
+                      "content": [
+                        {
+                          "id": "instance-15",
+                          "package": "aralearn.resource.plane",
+                          "version": "1.0.0",
+                          "data": {
+                            "prompt": "Observe o vetor.",
+                            "vector": [
+                              2,
+                              1
+                            ]
+                          }
+                        }
+                      ],
+                      "response": null,
+                      "feedback": [
+                        {
+                          "id": "feedback-15",
+                          "package": "aralearn.resource.paragraph",
+                          "version": "1.0.0",
+                          "data": {
+                            "text": "Todos os pontos e vetores são descritos por coordenadas em texto."
+                          }
+                        }
+                      ],
+                      "topics": [],
+                      "sources": []
+                    },
+                    {
+                      "id": "gallery-16",
+                      "position": 16,
+                      "title": "Gráfico estatístico",
+                      "role": "theory",
+                      "content": [
+                        {
+                          "id": "instance-16",
+                          "package": "aralearn.resource.chart",
+                          "version": "1.0.0",
+                          "data": {
+                            "prompt": "Observe o crescimento.",
+                            "chartType": "line",
+                            "xAxis": {
+                              "label": "Tempo"
+                            },
+                            "yAxis": {
+                              "label": "Valor",
+                              "unit": "ms"
+                            },
+                            "series": [
+                              {
+                                "id": "s1",
+                                "name": "Latência",
+                                "values": [
+                                  [
+                                    "1",
+                                    10
+                                  ],
+                                  [
+                                    "2",
+                                    18
+                                  ],
+                                  [
+                                    "3",
+                                    25
+                                  ]
+                                ]
+                              }
+                            ]
+                          }
+                        }
+                      ],
+                      "response": null,
+                      "feedback": [
+                        {
+                          "id": "feedback-16",
+                          "package": "aralearn.resource.paragraph",
+                          "version": "1.0.0",
+                          "data": {
+                            "text": "Séries e valores são repetidos em descrição textual."
+                          }
+                        }
+                      ],
+                      "topics": [],
+                      "sources": []
+                    },
+                    {
+                      "id": "gallery-17",
+                      "position": 17,
+                      "title": "Mapa de sistema",
+                      "role": "theory",
+                      "content": [
+                        {
+                          "id": "instance-17",
+                          "package": "aralearn.resource.system_map",
+                          "version": "1.0.0",
+                          "data": {
+                            "prompt": "Observe o limite da aplicação.",
+                            "groups": [
+                              {
+                                "id": "app",
+                                "label": "Aplicação",
+                                "kind": "boundary",
+                                "parentId": null
+                              }
+                            ],
+                            "nodes": [
+                              {
+                                "id": "client",
+                                "label": "Cliente",
+                                "kind": "client",
+                                "groupId": null
+                              },
+                              {
+                                "id": "api",
+                                "label": "API",
+                                "kind": "service",
+                                "groupId": "app"
+                              }
+                            ],
+                            "links": [
+                              {
+                                "id": "request",
+                                "from": "client",
+                                "to": "api",
+                                "label": "requisição",
+                                "directed": true
+                              }
+                            ]
+                          }
+                        }
+                      ],
+                      "response": null,
+                      "feedback": [
+                        {
+                          "id": "feedback-17",
+                          "package": "aralearn.resource.paragraph",
+                          "version": "1.0.0",
+                          "data": {
+                            "text": "Grupos, componentes e conexões possuem uma lista textual completa."
+                          }
+                        }
+                      ],
+                      "topics": [],
+                      "sources": []
+                    },
+                    {
+                      "id": "gallery-18",
+                      "position": 18,
+                      "title": "Grafo",
+                      "role": "theory",
+                      "content": [
+                        {
+                          "id": "instance-18",
+                          "package": "aralearn.resource.graph",
+                          "version": "1.0.0",
+                          "data": {
+                            "prompt": "Observe como a estação consulta o agente.",
+                            "layout": "path",
+                            "vertices": [
+                              {
+                                "id": "station",
+                                "label": "Estação de gerência"
+                              },
+                              {
+                                "id": "agent",
+                                "label": "Agente no dispositivo"
+                              },
+                              {
+                                "id": "object",
+                                "label": "Objeto gerenciado"
+                              }
+                            ],
+                            "edges": [
+                              {
+                                "id": "request",
+                                "from": "station",
+                                "to": "agent",
+                                "label": "envia solicitação",
+                                "directed": true
+                              },
+                              {
+                                "id": "read",
+                                "from": "agent",
+                                "to": "object",
+                                "label": "consulta",
+                                "directed": true
+                              }
+                            ]
+                          }
+                        }
+                      ],
+                      "response": null,
+                      "feedback": [
+                        {
+                          "id": "feedback-18",
+                          "package": "aralearn.resource.paragraph",
+                          "version": "1.0.0",
+                          "data": {
+                            "text": "Vértices e relações são integralmente repetidos em texto; rótulos de arestas ficam em uma lista legível."
+                          }
+                        }
+                      ],
+                      "topics": [],
+                      "sources": []
+                    },
+                    {
+                      "id": "gallery-19",
+                      "position": 19,
+                      "title": "Mapa de relações",
+                      "role": "theory",
+                      "content": [
+                        {
+                          "id": "instance-19",
+                          "package": "aralearn.resource.relation_map",
+                          "version": "1.0.0",
+                          "data": {
+                            "prompt": "Relacione cada componente à responsabilidade que ele exerce.",
+                            "leftSet": {
+                              "label": "Componente",
+                              "items": [
+                                {
+                                  "id": "manager",
+                                  "label": "Gerente"
+                                },
+                                {
+                                  "id": "agent",
+                                  "label": "Agente"
+                                }
+                              ]
+                            },
+                            "rightSet": {
+                              "label": "Responsabilidade",
+                              "items": [
+                                {
+                                  "id": "request",
+                                  "label": "Envia a solicitação"
+                                },
+                                {
+                                  "id": "local",
+                                  "label": "Acessa o dado local"
+                                }
+                              ]
+                            },
+                            "relations": [
+                              {
+                                "id": "r1",
+                                "from": "manager",
+                                "to": "request",
+                                "label": "executa"
+                              },
+                              {
+                                "id": "r2",
+                                "from": "agent",
+                                "to": "local",
+                                "label": "executa"
+                              }
+                            ]
+                          }
+                        }
+                      ],
+                      "response": null,
+                      "feedback": [
+                        {
+                          "id": "feedback-19",
+                          "package": "aralearn.resource.paragraph",
+                          "version": "1.0.0",
+                          "data": {
+                            "text": "Cada correspondência é uma linha DOM completa; nenhuma informação depende da posição de uma seta."
+                          }
+                        }
+                      ],
+                      "topics": [],
+                      "sources": []
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

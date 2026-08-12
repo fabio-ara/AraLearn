@@ -3,7 +3,7 @@ import {
   RESOURCE_GAP_CAPABILITIES
 } from "../../core/resourceGaps.js";
 
-export const AUTHORING_RESOURCE_CONTRACT_VERSION = "aralearn.authoring-resources.v4";
+export const AUTHORING_RESOURCE_CONTRACT_VERSION = "aralearn.runtime-authoring-projection.v1";
 
 export const COMPOSITE_BLOCK_TYPES = Object.freeze([
   "heading",

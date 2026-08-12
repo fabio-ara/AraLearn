@@ -1,9 +1,6 @@
 import { validateProjectDocument } from "../aralearn/runtime/domain/aralearnProject.js";
-import {
-  AuthoringGapError,
-  compileAuthoringCardGaps
-} from "../aralearn/runtime/core/authoringGaps.js";
-import { canonicalJsonStringify } from "./canonicalJson.js";
+import { normalizeCardEnvelope, validateCardEnvelope } from "../aralearn/runtime/resources/kernel/cardEnvelope.js";
+import { RESOURCE_PACKAGE_REGISTRY } from "../aralearn/runtime/resources/packages/index.js";
 import { AuthoringApiError } from "./errors.js";
 import {
   invalidateReadyDescendants,
@@ -21,7 +18,6 @@ const ENTITY_TYPES = Object.freeze([
 const STRUCTURE_TYPES = new Set(ENTITY_TYPES.slice(0, 4));
 const STRUCTURE_PART_LIMIT = 40;
 const MICROSEQUENCE_ROLES = new Set(["explain", "practice", "review", "support"]);
-const MICROSEQUENCE_STATUSES = new Set(["planned", "generated", "needs_review", "ready"]);
 
 const CHILD_FIELD = Object.freeze({
   project: "courses",
@@ -65,7 +61,6 @@ const GUIDE_PART_FIELDS = Object.freeze([
 
 const MICROSEQUENCE_PART_FIELDS = Object.freeze([
   "role",
-  "status",
   "branchOf",
   "dependsOn",
   "covers",
@@ -132,7 +127,7 @@ function finalizeWorkspace(document) {
   if (!validation.ok) {
     fail(
       "invalid_workspace_document",
-      "O workspace viola o contrato AraLearn v4.",
+      "O workspace viola o contrato AraLearn por packages.",
       { errors: validation.errors }
     );
   }
@@ -147,20 +142,15 @@ function compileWorkspaceCard(card, basePath) {
       { path: basePath }
     );
   }
-  try {
-    return compileAuthoringCardGaps(card, basePath);
-  } catch (error) {
-    if (!(error instanceof AuthoringGapError)) throw error;
+  const result = validateCardEnvelope(card, RESOURCE_PACKAGE_REGISTRY, basePath);
+  if (!result.valid) {
     fail(
-      "invalid_authoring_gap",
-      error.message,
-      {
-        ...error.details,
-        path: error.path,
-        reason: error.reason
-      }
+      "invalid_workspace_card",
+      "O card não satisfaz o envelope e os contratos de seus packages.",
+      { path: basePath, errors: result.errors }
     );
   }
+  return normalizeCardEnvelope(card, RESOURCE_PACKAGE_REGISTRY);
 }
 
 function normalizedEntityPath(entityType, entityPath) {
@@ -388,18 +378,10 @@ function buildStructureEntity(part, partIndex) {
     partIndex
   );
   const role = part.role == null ? "explain" : text(part.role);
-  const status = part.status == null ? "planned" : text(part.status);
   if (!MICROSEQUENCE_ROLES.has(role)) {
     fail(
       "invalid_workspace_structure_part",
       `role de microssequência inválido: "${part.role}".`,
-      { partIndex, entityType }
-    );
-  }
-  if (!MICROSEQUENCE_STATUSES.has(status)) {
-    fail(
-      "invalid_workspace_structure_part",
-      `status de microssequência inválido: "${part.status}".`,
       { partIndex, entityType }
     );
   }
@@ -410,8 +392,7 @@ function buildStructureEntity(part, partIndex) {
       ...common,
       goal: requiredText(part.goal, "goal", { partIndex, entityType }),
       role,
-      status,
-      branchOf: part.branchOf == null ? null : clone(part.branchOf),
+      ...(part.branchOf == null ? {} : { branchOf: clone(part.branchOf) }),
       dependsOn: optionalStringList(part.dependsOn, "dependsOn", { partIndex }),
       covers: optionalStringList(part.covers, "covers", { partIndex }),
       checks: optionalStringList(part.checks, "checks", { partIndex }),
@@ -664,8 +645,7 @@ export function createWorkspaceStructure(document, { parts } = {}) {
 export function saveWorkspaceMicrosequenceCards(document, {
   microsequencePath,
   mode,
-  cards,
-  status
+  cards
 } = {}) {
   if (mode !== "append" && mode !== "replace") {
     fail("invalid_workspace_mode", "mode deve ser append ou replace.");
@@ -676,15 +656,6 @@ export function saveWorkspaceMicrosequenceCards(document, {
   if (mode === "append" && cards.length === 0) {
     fail("invalid_workspace_cards", "append exige ao menos um card.");
   }
-  if (!MICROSEQUENCE_STATUSES.has(status)) {
-    fail(
-      "invalid_workspace_status",
-      "status deve ser planned, generated, needs_review ou ready."
-    );
-  }
-  if (mode === "replace" && cards.length === 0 && status !== "planned") {
-    fail("invalid_workspace_status", "replace vazio exige status planned.");
-  }
 
   const compiledCards = cards.map((card, cardIndex) =>
     compileWorkspaceCard(card, `cards[${cardIndex}]`)
@@ -694,7 +665,6 @@ export function saveWorkspaceMicrosequenceCards(document, {
   located.entity.cards = mode === "append"
     ? [...located.entity.cards, ...compiledCards]
     : compiledCards;
-  located.entity.status = status;
   normalizeCardPositions(located.entity);
   return finalizeWorkspace(next);
 }
@@ -723,12 +693,10 @@ export function updateWorkspaceEntityMetadata(document, {
           "title", "goal", "include", "exclude", "notation", "avoid", "topics"
         ])
       : new Set([
-        "title", "goal", "role", "status", "branchOf",
+        "title", "goal", "role", "branchOf",
         "dependsOn", "covers", "checks", "errors"
       ]);
   const fields = Object.keys(changes);
-  const preserveExplicitReady = entityType === "microsequence"
-    && changes.status === "ready";
   const unknown = fields.find((field) => !allowed.has(field));
   if (unknown) {
     fail(
@@ -761,13 +729,6 @@ export function updateWorkspaceEntityMetadata(document, {
       entity.role = value;
       continue;
     }
-    if (field === "status") {
-      if (!MICROSEQUENCE_STATUSES.has(value)) {
-        fail("invalid_workspace_metadata_field", "status de microssequência inválido.");
-      }
-      entity.status = value;
-      continue;
-    }
     if (field === "branchOf") {
       entity.branchOf = value == null ? null : requiredText(value, field);
       continue;
@@ -784,7 +745,7 @@ export function updateWorkspaceEntityMetadata(document, {
     }
   }
   const semanticAfter = JSON.stringify(semanticMetadata(entityType, entity));
-  if (semanticBefore !== semanticAfter && !preserveExplicitReady) {
+  if (semanticBefore !== semanticAfter) {
     invalidateReadyDescendants(entityType, entity);
   }
   return finalizeWorkspace(next);
@@ -831,11 +792,8 @@ export function saveWorkspaceCard(document, { cardPath, card }) {
     );
   }
   replacement.position = currentPosition;
-  const changed = canonicalJsonStringify(microsequence.cards[index])
-    !== canonicalJsonStringify(replacement);
   microsequence.cards[index] = replacement;
   normalizeCardPositions(microsequence);
-  if (changed) microsequence.status = "ready";
   return finalizeWorkspace(next);
 }
 

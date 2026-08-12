@@ -6,7 +6,7 @@ const SECOND_GROUP_ID = "10000000-0000-4000-8000-000000000002";
 const ITEM_ID = "20000000-0000-4000-8000-000000000002";
 const WORKSPACE_ID = "30000000-0000-4000-8000-000000000003";
 const PROJECT_FIXTURE = JSON.parse(fs.readFileSync(
-  new URL("../fixtures/v4/project-minimal.json", import.meta.url),
+  new URL("../fixtures/package/project-minimal.json", import.meta.url),
   "utf8"
 ));
 
@@ -14,9 +14,14 @@ function workspacePartsForCourse(course) {
   const parts = [];
   const add = (entityType, entity, parentType, parentId, position) => {
     const content = structuredClone(entity);
-    for (const field of [
-      "id", "position", "modules", "lessons", "topics", "microsequences", "cards"
-    ]) delete content[field];
+    for (const field of ["id", "position"]) delete content[field];
+    const childFields = {
+      course: ["modules"],
+      module: ["lessons"],
+      lesson: ["topics", "microsequences"],
+      microsequence: ["cards"]
+    };
+    for (const field of childFields[entityType] || []) delete content[field];
     parts.push({ entityType, id: entity.id, parentType, parentId, position, content });
   };
   add("course", course, "project", "project", 0);
@@ -168,7 +173,7 @@ test("materialização aparece na Home única e muda de grupo pelo trailItemId",
     snapshot = populatedSnapshot;
     await controller.refresh();
     document.body.innerHTML = renderHomeScreen({
-      project: { contract: "aralearn.contract", version: 4, kind: "project", courses: [] },
+      project: { contract: "aralearn.library.v1", scope: "course", courses: [] },
       progress: createEmptyProgressDocument(),
       editorSupport: {
         trailSnapshot: controller.snapshot,
@@ -179,7 +184,7 @@ test("materialização aparece na Home única e muda de grupo pelo trailItemId",
     const workspaceAction = document.querySelector('[data-action="open-home-workspace"]')
       ?.getAttribute("data-workspace-id");
     document.body.innerHTML = renderHomeScreen({
-      project: { contract: "aralearn.contract", version: 4, kind: "project", courses: [] },
+      project: { contract: "aralearn.library.v1", scope: "course", courses: [] },
       progress: createEmptyProgressDocument(),
       editorSupport: {
         trailSnapshot: controller.snapshot,
@@ -242,12 +247,7 @@ test("Play recompõe a posição do card da linha remota e abre o runtime", asyn
   await page.goto("/");
   await page.evaluate(async ({ remoteSnapshot, remoteParts }) => {
     const { createLessonEditorApp } = await import("/src/ui/lessonEditorApp.js");
-    const emptyProject = {
-      contract: "aralearn.contract",
-      version: 4,
-      kind: "project",
-      courses: []
-    };
+    const emptyProject = { contract: "aralearn.library.v1", scope: "course", courses: [] };
     const root = document.createElement("main");
     document.body.replaceChildren(root);
     const storage = {
@@ -333,12 +333,7 @@ test("workspace usa a mesma capacidade no render e nos modos de autoria", async 
   await page.goto("/");
   await page.evaluate(async ({ initialSnapshot, remoteParts, exactCardPath }) => {
     const { createLessonEditorApp } = await import("/src/ui/lessonEditorApp.js");
-    const emptyProject = {
-      contract: "aralearn.contract",
-      version: 4,
-      kind: "project",
-      courses: []
-    };
+    const emptyProject = { contract: "aralearn.library.v1", scope: "course", courses: [] };
     const root = document.createElement("main");
     document.body.replaceChildren(root);
     let snapshot = structuredClone(initialSnapshot);
@@ -510,7 +505,7 @@ test("Home mantém eixo central e tipografia simétrica entre os seletores", asy
       origin: "private"
     };
     document.body.innerHTML = renderHomeScreen({
-      project: { contract: "aralearn.contract", version: 4, kind: "project", courses: [] },
+      project: { contract: "aralearn.library.v1", scope: "course", courses: [] },
       progress: { version: 1, lessons: {} },
       editorSupport: {
         trailSnapshot: snapshot,
@@ -543,9 +538,8 @@ test("editar curso mantém a Home e torna o próprio resumo editável", async ({
   const result = await page.evaluate(async () => {
     const { createLessonEditorApp } = await import("/src/ui/lessonEditorApp.js");
     const project = {
-      contract: "aralearn.contract",
-      version: 4,
-      kind: "project",
+      contract: "aralearn.library.v1",
+      scope: "course",
       courses: [{
         id: "course-inline-home",
         title: "Curso antes",
@@ -786,12 +780,7 @@ test("zerar curso de workspace carrega a composição antes de remover o progres
     const trailItemId = "29000000-0000-4000-8000-000000000029";
     const workspaceId = "30000000-0000-4000-8000-000000000030";
     const groupId = "31000000-0000-4000-8000-000000000031";
-    const emptyProject = {
-      contract: "aralearn.contract",
-      version: 4,
-      kind: "project",
-      courses: []
-    };
+    const emptyProject = { contract: "aralearn.library.v1", scope: "course", courses: [] };
     const snapshot = {
       space: "trails",
       groups: [{ id: groupId, title: "Estudos" }],

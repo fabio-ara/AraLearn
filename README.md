@@ -62,7 +62,7 @@ seleciona, copia, move, publica nem reorganiza conteúdo.
 - Plugin MCP para qualquer conversa e Chatbot personalizado com Action gerada
   do mesmo registro de ferramentas;
 - a mesma aplicação JavaScript na web e no APK Android;
-- contrato público `aralearn.contract` v4 para validação, ferramentas e integrações; o aplicativo não expõe botões genéricos de importar ou exportar cursos.
+- biblioteca `aralearn.library.v1` e packages independentes para validação, renderização, avaliação e autoria sob demanda.
 
 Por trás dessa experiência, cada publicação existe como um artefato JSON
 imutável no Supabase Storage. O PostgreSQL guarda metadados, vínculos, o hash
@@ -108,10 +108,10 @@ chat](docs/criar-cursos-pelo-chat.md). Ele explica a construção incremental, a
 revisão por microteorias, a presença automática em `Trilhas` e a submissão editorial sem exigir
 que a pessoa manipule JSON ou nomes de ferramentas.
 
-Cards produzidos por integrações usam uma linguagem JSON formal. Uma lacuna é marcada no campo exato do recurso e recebe uma definição estruturada de resposta. O servidor valida e compila essa forma para o contrato v4; não interpreta instruções em português como HTML ou posição visual. Assim, uma prática pode completar uma célula, um trecho de código, um nó, uma aresta, uma matriz ou um elemento de fórmula sem reduzir a atividade a uma pergunta genérica.
+Cards produzidos por integrações usam envelopes JSON formais. Uma lacuna declara a instância e o caminho exatos que completa; o servidor valida o envelope e os contratos versionados dos packages escolhidos, sem interpretar instruções em português como HTML ou posição visual.
 
-O contrato v4 oferece dezoito recursos. Escolhas podem ser simples ou
-múltiplas e são corrigidas pelo conjunto exato após confirmação da resposta do
+O registry oferece packages de conteúdo e resposta descobertos sob demanda.
+Escolhas podem ser simples ou múltiplas e são corrigidas pelo conjunto exato após confirmação da resposta do
 estudante. A assistência por API repara o card inteiro ou somente os resources
 selecionados. No nível da microssequência, selecionar todos os cards permite
 criar cards dentro dela; no nível da lição, selecionar todas as

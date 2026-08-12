@@ -1,4 +1,16 @@
 import { renderUiIcon } from "./renderUiIcons.js";
+import {
+  AUTHORING_CALIBRATION_STORAGE_KEY,
+  AUTHORING_DEFAULT_PRESET,
+  AUTHORING_PREFERENCE_DEFINITIONS,
+  PROTECTED_AUTHORING_CORE_MODULES,
+  authoringProfileDiff,
+  composeAuthoringPreferences,
+  createDefaultAuthoringProfile,
+  normalizeAuthoringProfile,
+  serializeAuthoringProfile,
+  validateAuthoringProfile
+} from "../authoring/instructionProfile.js";
 
 const ASSETS = Object.freeze({
   chatGptPrompt: "docs/downloads/authoring/aralearn-chatgpt-system-prompt.md",
@@ -100,7 +112,8 @@ export function createAuthoringAssistantPanel({
   getAccessToken = async () => null,
   documentValue = globalThis.document,
   navigatorValue = globalThis.navigator,
-  fetchImpl = globalThis.fetch
+  fetchImpl = globalThis.fetch,
+  storageValue = globalThis.localStorage
 } = {}) {
   if (!documentValue?.createElement) throw new TypeError("Documento obrigatório.");
 
@@ -114,6 +127,25 @@ export function createAuthoringAssistantPanel({
   let busy = false;
   let activeSurface = "chatbot";
   let oauthClient = null;
+  let calibrationProfile = createDefaultAuthoringProfile();
+
+  const readCalibration = () => {
+    try {
+      const stored = storageValue?.getItem?.(AUTHORING_CALIBRATION_STORAGE_KEY);
+      calibrationProfile = normalizeAuthoringProfile(stored ? JSON.parse(stored) : null);
+    } catch {
+      calibrationProfile = createDefaultAuthoringProfile();
+    }
+  };
+
+  const persistCalibration = () => {
+    const validation = validateAuthoringProfile(calibrationProfile);
+    if (!validation.valid) throw new TypeError(validation.errors.join(" "));
+    storageValue?.setItem?.(
+      AUTHORING_CALIBRATION_STORAGE_KEY,
+      JSON.stringify(calibrationProfile)
+    );
+  };
 
   const setStatus = (value) => {
     status = value;
@@ -273,6 +305,87 @@ export function createAuthoringAssistantPanel({
     ], "remote-assistant-plugin-values")
   ];
 
+  const renderCalibration = () => {
+    const fragment = documentValue.createDocumentFragment();
+
+    const intro = documentValue.createElement("section");
+    intro.className = "remote-assistant-calibration-intro";
+    const preset = documentValue.createElement("p");
+    preset.className = "remote-assistant-calibration-preset";
+    preset.textContent = `Preset: ${AUTHORING_DEFAULT_PRESET.title}`;
+    const precedence = documentValue.createElement("p");
+    precedence.textContent = "Núcleo protegido > conhecimento protegido > preferências pessoais.";
+    intro.append(preset, precedence);
+
+    const protectedGroup = documentValue.createElement("details");
+    protectedGroup.className = "remote-assistant-protected-core";
+    const protectedSummary = documentValue.createElement("summary");
+    protectedSummary.textContent = "Núcleo protegido — consultar";
+    const protectedList = documentValue.createElement("ul");
+    for (const module of PROTECTED_AUTHORING_CORE_MODULES) {
+      const item = documentValue.createElement("li");
+      const title = documentValue.createElement("strong");
+      title.textContent = module.title;
+      const description = documentValue.createElement("span");
+      description.textContent = module.text;
+      item.append(title, description);
+      protectedList.append(item);
+    }
+    protectedGroup.append(protectedSummary, protectedList);
+
+    const form = documentValue.createElement("form");
+    form.className = "remote-assistant-calibration-form";
+    form.dataset.assistantCalibrationForm = "";
+    const changedIds = new Set(authoringProfileDiff(calibrationProfile));
+    for (const definition of AUTHORING_PREFERENCE_DEFINITIONS) {
+      const field = documentValue.createElement("label");
+      field.className = "remote-assistant-calibration-field";
+      const heading = documentValue.createElement("span");
+      heading.className = "remote-assistant-calibration-heading";
+      const title = documentValue.createElement("strong");
+      title.textContent = definition.title;
+      const badge = documentValue.createElement("small");
+      badge.dataset.calibrationBadge = definition.id;
+      badge.textContent = changedIds.has(definition.id) ? "Personalizado" : "Preset";
+      heading.append(title, badge);
+      const help = documentValue.createElement("span");
+      help.className = "remote-assistant-calibration-help";
+      help.textContent = definition.help;
+      const textarea = documentValue.createElement("textarea");
+      textarea.name = definition.id;
+      textarea.rows = 4;
+      textarea.maxLength = 1600;
+      textarea.value = calibrationProfile.preferences[definition.id];
+      textarea.setAttribute("aria-label", definition.title);
+      const effect = documentValue.createElement("small");
+      effect.className = "remote-assistant-calibration-effect";
+      effect.textContent = definition.effect;
+      field.append(heading, help, textarea, effect);
+      form.append(field);
+    }
+
+    const actions = actionGrid([
+      actionButton(documentValue, {
+        action: "download-calibrated-instructions",
+        icon: "prompt",
+        label: "Instruções calibradas"
+      }),
+      actionButton(documentValue, {
+        action: "download-calibration-profile",
+        icon: "copy",
+        label: "Perfil JSON"
+      }),
+      actionButton(documentValue, {
+        action: "reset-calibration",
+        icon: "reposition",
+        label: "Restaurar preset"
+      })
+    ], "remote-assistant-calibration-actions");
+
+    fragment.append(intro, protectedGroup, form, actions);
+    return [fragment];
+  };
+
   const render = () => {
     const surfaces = documentValue.createElement("nav");
     surfaces.className = "remote-assistant-surfaces";
@@ -280,14 +393,21 @@ export function createAuthoringAssistantPanel({
     surfaces.setAttribute("aria-label", "Tipo de integração");
     surfaces.append(
       surfaceButton("chatbot", "Chatbot", "sparkles"),
-      surfaceButton("plugin", "Plugin", "key")
+      surfaceButton("plugin", "Plugin", "key"),
+      surfaceButton("calibration", "Calibração", "prompt")
     );
 
     const content = documentValue.createElement("section");
     content.className = "remote-assistant-surface-content";
     content.setAttribute("role", "tabpanel");
-    content.setAttribute("aria-label", activeSurface === "chatbot" ? "Chatbot" : "Plugin");
-    content.append(...(activeSurface === "chatbot" ? renderChatbot() : renderPlugin()));
+    const surfaceLabels = { chatbot: "Chatbot", plugin: "Plugin", calibration: "Calibração" };
+    content.setAttribute("aria-label", surfaceLabels[activeSurface]);
+    const surfaceRenderers = {
+      chatbot: renderChatbot,
+      plugin: renderPlugin,
+      calibration: renderCalibration
+    };
+    content.append(...surfaceRenderers[activeSurface]());
 
     const statusNode = documentValue.createElement("p");
     statusNode.className = "remote-assistant-status";
@@ -386,6 +506,57 @@ export function createAuthoringAssistantPanel({
       return;
     }
     if (action === "register-action-oauth") return;
+    if (action === "reset-calibration") {
+      calibrationProfile = createDefaultAuthoringProfile();
+      try {
+        persistCalibration();
+        status = "Preset restaurado.";
+      } catch {
+        status = "Não foi possível guardar o preset neste dispositivo.";
+      }
+      render();
+      return;
+    }
+    if (action === "download-calibration-profile") {
+      try {
+        persistCalibration();
+        saveTextFile({
+          content: serializeAuthoringProfile(calibrationProfile),
+          fileName: "CALIBRACAO-ARALEARN.json",
+          mimeType: "application/json;charset=utf-8",
+          documentValue
+        });
+        setStatus("Perfil salvo.");
+      } catch (error) {
+        setStatus(error instanceof Error ? error.message : "Não foi possível salvar o perfil.");
+      }
+      return;
+    }
+    if (action === "download-calibrated-instructions") {
+      busy = true;
+      setStatus("Compondo instruções…");
+      render();
+      try {
+        persistCalibration();
+        const response = await fetchImpl(assetUrl(MATERIALS.instructions.asset, documentValue), {
+          cache: "no-store"
+        });
+        if (!response?.ok) throw new Error("Não foi possível ler as instruções protegidas.");
+        const protectedInstructions = (await response.text()).trimEnd();
+        saveTextFile({
+          content: `${protectedInstructions}\n\n${composeAuthoringPreferences(calibrationProfile)}\n`,
+          fileName: "INSTRUCTIONS-CALIBRADAS.md",
+          documentValue
+        });
+        setStatus("Instruções calibradas salvas.");
+      } catch (error) {
+        setStatus(error instanceof Error ? error.message : "Não foi possível compor as instruções.");
+      } finally {
+        busy = false;
+        render();
+      }
+      return;
+    }
     if (action.startsWith("download-")) {
       const material = MATERIALS[action.slice("download-".length)];
       if (!material) return;
@@ -436,6 +607,26 @@ export function createAuthoringAssistantPanel({
     }
   });
 
+  element.addEventListener("input", (event) => {
+    const textarea = event.target.closest("[data-assistant-calibration-form] textarea");
+    if (!textarea) return;
+    calibrationProfile.preferences[textarea.name] = textarea.value;
+    const validation = validateAuthoringProfile(calibrationProfile);
+    try {
+      if (validation.valid) {
+        persistCalibration();
+        setStatus("Calibração guardada neste dispositivo.");
+      } else {
+        setStatus(validation.errors[0]);
+      }
+    } catch {
+      setStatus("A calibração continua nesta sessão, mas não pôde ser guardada.");
+    }
+    const changed = new Set(authoringProfileDiff(calibrationProfile));
+    const badge = element.querySelector(`[data-calibration-badge="${textarea.name}"]`);
+    if (badge) badge.textContent = changed.has(textarea.name) ? "Personalizado" : "Preset";
+  });
+
   element.addEventListener("submit", async (event) => {
     const form = event.target.closest("[data-assistant-oauth-setup-form], [data-assistant-oauth-link-form]");
     if (!form || busy) return;
@@ -470,6 +661,7 @@ export function createAuthoringAssistantPanel({
       void nextCatalogAccess;
       status = "";
       activeSurface = "chatbot";
+      readCalibration();
       render();
     },
     close() {
