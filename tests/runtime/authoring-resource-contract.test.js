@@ -19,7 +19,7 @@ import { listSupportedResourceTypes } from "../../src/domain/resources.js";
 
 test("catálogo autoral cobre exatamente os recursos aceitos pelo runtime", () => {
   const listed = listAuthoringResourceContracts();
-  assert.equal(AUTHORING_RESOURCE_CONTRACT_VERSION, "aralearn.authoring-resources.v4");
+  assert.equal(AUTHORING_RESOURCE_CONTRACT_VERSION, "aralearn.runtime-authoring-projection.v1");
   assert.deepEqual(
     listed.map((item) => item.resource),
     listSupportedResourceTypes()

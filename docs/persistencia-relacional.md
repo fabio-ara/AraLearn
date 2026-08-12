@@ -35,7 +35,7 @@ e o funcionamento offline sem transferir o custo de autoria para o banco remoto.
 
 ## Metadados pedagógicos
 
-O contrato v4 usa `guide` no módulo e na lição para delimitar objetivo,
+A biblioteca usa `guide` no módulo e na lição para delimitar objetivo,
 inclusões, exclusões, notação e cuidados. Cada tópico da lição declara `id`,
 `label`, `kind`, `checks` e `errors`. Cada microssequência declara `goal`,
 `role`, `status`, `dependsOn`, `covers`, `checks` e, quando necessário,
@@ -93,13 +93,13 @@ fixado quando necessário para uma submissão editorial.
 
 O dispositivo abre um banco por UUID de conta no namespace físico
 `aralearn-relational-v4-r3`. O endereço de e-mail não participa dessa identidade.
-Esse namespace é uma geração limpa do contrato v4: cópias locais de gerações
+Esse namespace é uma geração limpa da biblioteca por packages: cópias locais de gerações
 encerradas não são abertas, migradas nem disputadas. Após autenticar, a seleção
 e as revisões oficiais são reconstruídas pela sincronização remota.
 Namespaces de contratos anteriores não são abertos nem migrados. Uma conta não
 pode acessar os dados locais de outra.
 
-Uma revisão baixada que não passe na validação do contrato v4 ou na conferência
+Uma revisão baixada que não passe na validação do envelope e dos packages ou na conferência
 do hash é isolada daquele curso e removida da projeção local. A biblioteca
 continua abrindo os demais cursos; o leitor nunca reutiliza a revisão inválida.
 
@@ -182,7 +182,7 @@ mudanças. Grupos e estado pessoal usam as RPCs de Trilhas e são gravados por
 `trailItemId`; revisões oficiais ausentes são baixadas separadamente.
 
 Uma revisão é baixada apenas quando o hash mudou. Antes da troca, o dispositivo
-confere o contrato v4 e o SHA-256, projeta o documento em linhas locais e
+confere o envelope, os packages e o SHA-256, projeta o documento em linhas locais e
 substitui a cópia do curso na mesma transação do IndexedDB. Material incompleto
 ou inválido não substitui o que já está disponível.
 

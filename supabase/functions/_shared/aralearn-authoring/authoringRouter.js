@@ -1,10 +1,5 @@
 import { deterministicRequestUuid } from "./canonical.js";
 import { AuthoringApiError } from "./errors.js";
-import {
-  AUTHORING_RESOURCE_CONTRACT_VERSION,
-  getTransportAuthoringResourceContract,
-  listAuthoringResourceContracts
-} from "../aralearn/runtime/core/authoringResourceContract.js";
 import { RESOURCE_PACKAGE_REGISTRY } from "../aralearn/runtime/resources/packages/index.js";
 import {
   STANDARD_BODY_LIMIT,
@@ -731,16 +726,6 @@ export async function executeAuthoringRoute({
       requestId: value.requestId
     };
   }
-  if (route.name === "listAuthoringResources") {
-    assertAuthoringScope(principal, "read");
-    return {
-      data: {
-        contract: AUTHORING_RESOURCE_CONTRACT_VERSION,
-        resources: listAuthoringResourceContracts()
-      },
-      requestId: null
-    };
-  }
   if (route.name === "listPackages") {
     assertAuthoringScope(principal, "read");
     const slot = new URL(request.url).searchParams.get("slot") || "";
@@ -775,26 +760,6 @@ export async function executeAuthoringRoute({
       }
       throw error;
     }
-  }
-  if (route.name === "getAuthoringResource") {
-    assertAuthoringScope(principal, "read");
-    const detail = new URL(request.url).searchParams.get("detail") || "compact";
-    if (!new Set(["compact", "full"]).has(detail)) {
-      throw new AuthoringApiError(
-        422,
-        "invalid_parameter",
-        "detail deve ser compact ou full."
-      );
-    }
-    const definition = getTransportAuthoringResourceContract(
-      route.resource,
-      { detail }
-    );
-    if (!definition) throw new AuthoringApiError(404, "resource_not_found", "Recurso inexistente.");
-    return {
-      data: { contract: AUTHORING_RESOURCE_CONTRACT_VERSION, definition },
-      requestId: null
-    };
   }
   if (route.name === "listPersonalLibraryCourses") {
     assertAuthoringScope(principal, "read", "private");

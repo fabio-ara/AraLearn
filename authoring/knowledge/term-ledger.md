@@ -1,6 +1,6 @@
 # Vocabulário e termos
 
-Os termos ensinados ficam nos tópicos, guias e cards do contrato v4. Não há
+Os termos ensinados ficam nos tópicos, guias e cards da biblioteca. Não há
 registro operacional separado.
 
 Antes de usar um termo em instrução ou prática:

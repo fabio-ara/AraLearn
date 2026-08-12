@@ -32,7 +32,7 @@ Cepeda et al. (2008) mostram que o efeito do espaçamento depende do intervalo a
 
 Mayer (2009) contribui para a decisão de usar recursos como matriz, grafo, plano, tabela e fluxo. A representação visual entra quando preserva relações que o texto linear pode obscurecer.
 
-A matriz detalhada entre evidências, decisões do contrato v4 e limites de
+A matriz detalhada entre evidências, decisões dos packages e limites de
 inferência está em
 [Fundamentação pedagógica dos resources](fundamentacao-pedagogica-dos-resources.md).
 Ela inclui atenção dividida e contiguidade, DeFT, exemplos resolvidos e fading,

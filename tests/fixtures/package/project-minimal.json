@@ -5,7 +5,7 @@
     {
       "id": "course-fixture-minimal",
       "title": "Fixture Minimal",
-      "goal": "Validar o contrato v4 com um exemplo curto.",
+      "goal": "Validar a biblioteca por packages com um exemplo curto.",
       "modules": [
         {
           "id": "module-fixture-minimal",

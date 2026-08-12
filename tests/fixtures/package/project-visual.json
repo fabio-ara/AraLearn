@@ -5,7 +5,7 @@
     {
       "id": "course-fixture-visual",
       "title": "Fixture Visual",
-      "goal": "Validar recursos graph, matrix e plane no contrato v4.",
+      "goal": "Validar packages graph, matrix e plane na biblioteca.",
       "modules": [
         {
           "id": "module-fixture-visual",

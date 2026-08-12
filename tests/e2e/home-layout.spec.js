@@ -4,7 +4,7 @@ const GROUP_ID = "10000000-0000-4000-8000-000000000001";
 const ITEM_ID = "20000000-0000-4000-8000-000000000002";
 
 const LONG_TITLE = "Redes Locais: Base Prática para Administração de Servidores Linux";
-const LONG_ERROR = "A composição corrente viola o contrato v4 em " +
+const LONG_ERROR = "A composição corrente viola a biblioteca em " +
   "$.courses[0].modules[0].lessons[0].microsequences[0].cards[0].position: " +
   "position deve ser inteiro positivo.";
 

@@ -27,11 +27,6 @@ export function routeRequest(method, pathname) {
   }
   let match = path.match(/^\/v1\/packages\/(aralearn\.(?:resource|response)\.[a-z0-9._-]+)$/u);
   if (match && verb === "GET") return { name: "getPackage", packageId: match[1] };
-  if (verb === "GET" && path === "/v1/contracts/resources") {
-    return { name: "listAuthoringResources" };
-  }
-  match = path.match(/^\/v1\/contracts\/resources\/([a-z_]+)$/u);
-  if (match && verb === "GET") return { name: "getAuthoringResource", resource: match[1] };
   if (verb === "GET" && path === "/v1/library/courses") {
     return { name: "listPersonalLibraryCourses" };
   }

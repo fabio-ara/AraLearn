@@ -53,10 +53,14 @@
   previsíveis e da necessidade de retomada. Quando houver várias práticas,
   torne visível a variação de caso, representação, estratégia, erro provável ou
   grau de apoio.
-- O recurso escolhido corresponde à operação cognitiva. Considere os dezoito recursos do contrato v4: `paragraph`, `choice`, `composite`, `code`, `table`, `flow`, `tree`, `graph`, `relation_map`, `matrix`, `plane`, `formula`, `chart`, `sequence`, `annotated_text`, `linguistic_example`, `system_map` e `reaction`. Não reduza a autoria aos dois primeiros quando outro recurso preservar melhor o raciocínio.
-- A escolha fica materializada diretamente em `card.resource`. Confira se o
-  recurso preserva `microsequence.goal`, `covers` e `checks`; não acrescente
-  ao JSON um bloco paralelo de preferências de representação.
+- O recurso escolhido corresponde à operação cognitiva. Consulte primeiro o
+  catálogo compacto de packages instalados. Só depois de escolher recupere o
+  contrato da versão exata. Não reduza a autoria a texto e escolha quando
+  outro package preservar melhor o raciocínio.
+- A escolha fica materializada em uma instância de package de `card.content`,
+  `card.response` ou `card.feedback`. Confira se ela preserva
+  `microsequence.goal`, `covers` e `checks`; não acrescente ao JSON um bloco
+  paralelo de preferências de representação.
 - A diversidade de recursos decorre do conteúdo. Não estabeleça cota e não troque o formato apenas para variar a aparência.
 - A retomada de conhecimentos anteriores usa `dependsOn`, os tópicos da lição
   e conteúdo anterior visível. Um conceito só pode ser recuperado depois de uma
@@ -80,13 +84,21 @@
   condição, representação, estratégia, erro provável ou grau de apoio.
 - Uma prática cobra uma decisão principal. Ela pode mobilizar pré-requisitos aprovados, mas não pode exigir que a pessoa reconstrua o caso a partir de posição, cor, legenda extensa, card anterior, feedback ou resposta oculta.
 - Termo técnico, símbolo, sigla, unidade, papel, convenção ou relação nova recebe explicação suficiente antes de ser exigido. Expanda a sigla na primeira ocorrência e explique sua função, não apenas as letras. Para comando, utilitário ou palavra reservada, apresente forma literal, significado, função e ambiente; por exemplo, `pwd` significa `print working directory` e mostra o diretório de trabalho atual. Não use jargão mais avançado como explicação de uma lacuna conceitual.
-- Quando o estudante deve completar uma representação, a lacuna fica dentro do recurso correspondente. Use `{gap:id}` no campo estruturado e declare `id`, `response` e `answer` em `gaps`; `choice` acrescenta `distractors`, enquanto `text` pode acrescentar `acceptedAnswers`. Não descreva a posição em prosa.
+- Quando o estudante deve completar uma representação, use um package de
+  resposta compatível com o conteúdo. A lacuna, as alternativas ou os itens
+  ordenáveis pertencem ao contrato específico desse package; não descreva a
+  posição da resposta em prosa.
 - A lacuna mede a operação planejada e não pode ter a resposta exposta em título, enunciado, rótulo, outra opção, feedback antecipado, estrutura visível ou geometria derivada do mesmo card. O feedback explica a condição decisiva e não fornece a base que faltava para responder.
-- Prefira `response: "choice"` quando os distratores representam erros plausíveis. Use `response: "text"` somente quando a resposta puder ser normalizada sem exigir uma grafia arbitrariamente exata. Nesse modo, `acceptedAnswers` pode enumerar até oito variantes literais, distintas e auditáveis. Não use regex nem pressuponha equivalência semântica.
+- Prefira `aralearn.response.choice` quando os distratores representam erros
+  plausíveis. Use `aralearn.response.gap` somente quando a resposta puder ser
+  normalizada sem exigir grafia arbitrariamente exata. Variantes aceitas devem
+  ser literais, distintas e auditáveis. Não use regex nem pressuponha
+  equivalência semântica.
 - O título não entrega a resposta.
 - O enunciado não contém a resposta por repetição involuntária.
 - Alternativas erradas representam equívocos plausíveis e não simples absurdos.
-- Em `choice`, escolha `single` ou `multiple` e `correct`, `incorrect` ou `best` pela evidência pretendida. Use `answerIds` plural e verifique o conjunto exato.
+- No package de escolha, selecione resposta única ou múltipla conforme a
+  evidência pretendida e verifique o conjunto exato de identificadores.
 - Use de 2 a 7 opções. Três alternativas costumam bastar; cinco só se justificam quando houver quatro distratores ou decisões realmente competitivos. Não infle a lista.
 - Detecte opções equivalentes, pistas gramaticais, diferença injustificada de extensão, repetição exclusiva do enunciado e alternativa parcialmente correta tratada como errada sem condição explícita.
 - O feedback explica a regra, o detalhe decisivo e o motivo do erro provável.
@@ -128,8 +140,8 @@
 O contrato persistido não possui campos extras de auditoria. A revisão combina
 validação automática e inspeção do conteúdo:
 
-1. valide o projeto e cada card contra o contrato v4, sem propriedades
-   desconhecidas;
+1. valide o envelope do projeto e cada instância contra o contrato exato do
+   package versionado, sem propriedades desconhecidas;
 2. compare `lesson.topics`, `microsequence.goal`, `role`, `covers`, `checks`,
    `errors` e `dependsOn` com os cards realmente presentes;
 3. leia a sequência na ordem em que a pessoa estudará e confirme que base,

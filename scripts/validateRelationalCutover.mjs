@@ -983,7 +983,7 @@ async function main() {
   assertContains(
     defaultCatalogCollection.source,
     /function\s+public\.resolve_catalog_artifact_publisher_v4\s*\([\s\S]+collection\.contract_key\s*=\s*'outros'/iu,
-    "A publicação inicial não resolve uma coleção padrão no contrato v4."
+    "A publicação inicial não resolve uma coleção padrão na biblioteca por packages."
   );
   assertContains(
     actionOAuth.source,

@@ -84,7 +84,7 @@ select is(
 select is(
   public.get_aralearn_runtime_manifest() ->> 'contractVersion',
   '4',
-  'o manifesto anuncia o contrato v4'
+  'o manifesto anuncia a biblioteca por packages'
 );
 
 select ok(

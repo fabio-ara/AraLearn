@@ -2943,7 +2943,7 @@ const INDIVIDUAL_AUTHORING_WORKSPACE_MCP_TOOLS = Object.freeze([
         type: "string",
         minLength: 2,
         maxLength: 40_000,
-        description: "Objeto JSON completo de um único card v4."
+        description: "Envelope JSON completo de um único card com packages."
       }
     }),
     WORKSPACE_REVISION_DATA_SCHEMA

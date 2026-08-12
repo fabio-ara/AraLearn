@@ -198,7 +198,7 @@ const secondManifest = await readFile(path.join(OUTPUT, "manifest.json"), "utf8"
 assert.equal(secondManifest, firstManifest, "Pacotes de autoria devem ser determinísticos.");
 
 const manifest = JSON.parse(secondManifest);
-assert.equal(manifest.version, 4);
+assert.equal(manifest.version, 1);
 assert.equal(manifest.transport, "mcp+openapi-action");
 assert.equal(manifest.archives.length, 6);
 assert.ok(manifest.archives.every((archive) => /^[a-f0-9]{64}$/u.test(archive.sha256)));

@@ -24,7 +24,7 @@ const runtimeManifest = JSON.parse(
   )
 );
 
-test("implantação reconhece os resources especializados sem alterar o contrato v4", () => {
+test("implantação reconhece os resources especializados sem alterar o kernel", () => {
   for (const resource of SPECIALIZED_RESOURCES) {
     assert.match(
       migration,

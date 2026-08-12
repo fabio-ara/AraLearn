@@ -2,7 +2,7 @@
 
 ## Finalidade e limites
 
-Este documento registra a base teórica usada no desenho do contrato v4 dos
+Este documento registra a base teórica usada no desenho dos packages de
 cards. Ele serve à documentação do artefato técnico e à futura dissertação, mas
 não transforma decisões de engenharia em evidência de eficácia educacional.
 Resultados de aprendizagem do AraLearn ainda precisam ser investigados com

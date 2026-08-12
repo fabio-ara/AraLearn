@@ -96,11 +96,11 @@ distribuir diretamente seu próprio curso.
 ## Pastas
 
 - `core/`: ciclo editorial, fluxo, estados, qualidade, fontes e segurança;
-- `knowledge/`: contrato, resources e decisões didáticas;
+- `knowledge/`: packages e decisões didáticas;
 - `platforms/`: instruções específicas;
 - `schemas/`: contratos fechados de workspace, mutação, eventos, publicação e
   revisão editorial;
-- `examples/`: exemplos do contrato v4.
+- `examples/`: exemplos de envelopes e operações de autoria.
 
 Execute `npm run authoring:packages` para regenerar os pacotes e
 `npm run test:authoring-packages` para validá-los.
