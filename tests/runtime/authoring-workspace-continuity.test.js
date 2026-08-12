@@ -35,7 +35,7 @@ const PRINCIPAL = { actorId: ACTOR_ID, authenticationKind: "oauth" };
 async function mutationFixture() {
   const document = JSON.parse(await readFile(
     new URL(
-      "../../docs/examples/aralearn-contract.logic-plane-matrix-course.json",
+      "../fixtures/package/project-visual.json",
       import.meta.url
     ),
     "utf8"
@@ -44,25 +44,35 @@ async function mutationFixture() {
   lesson.microsequences[0].cards[0] = {
     id: "card-composite-targets",
     position: lesson.microsequences[0].cards[0].position,
-    resource: "composite",
-    kind: "theory",
-    exercise: "none",
     title: "Regra e código",
-    blocks: [
+    role: "theory",
+    content: [
       {
-        kind: "paragraph",
-        value: "Complete a condição.",
-        id: "instruction"
+        id: "instruction",
+        package: "aralearn.resource.paragraph",
+        version: "1.0.0",
+        data: { text: "Complete a condição." }
       },
       {
-        kind: "code",
-        prompt: "Complete a condição.",
-        language: "python",
-        code: "if nota >= 6:\n    aprovar()",
-        id: "code"
+        id: "code",
+        package: "aralearn.resource.code",
+        version: "1.0.0",
+        data: {
+          prompt: "Complete a condição.",
+          language: "python",
+          code: "if nota >= 6:\n    aprovar()"
+        }
       }
     ],
-    after: "Feedback explicativo."
+    response: null,
+    feedback: [{
+      id: "feedback",
+      package: "aralearn.resource.paragraph",
+      version: "1.0.0",
+      data: { text: "Feedback explicativo." }
+    }],
+    topics: [],
+    sources: []
   };
   lesson.microsequences[0].cards[1] = {
     ...structuredClone(lesson.microsequences[0].cards[0]),
@@ -73,7 +83,6 @@ async function mutationFixture() {
   const cloned = structuredClone(lesson.microsequences[0]);
   cloned.id = "micro-merge-source";
   cloned.title = "Origem da junção";
-  cloned.status = "planned";
   cloned.cards = [];
   lesson.microsequences.push(cloned);
   const moveTargetLesson = structuredClone(lesson);
@@ -1216,7 +1225,6 @@ test("split e merge entregam remapeamento compacto na mesma commit", async () =>
   const splitMicrosequence = structuredClone(source);
   splitMicrosequence.id = "micro-split-new";
   splitMicrosequence.title = "Nova microssequência";
-  splitMicrosequence.status = "needs_review";
   splitMicrosequence.cards = [];
   await engine.mutate({
     principal: PRINCIPAL,
@@ -1307,7 +1315,7 @@ test("split e merge entregam remapeamento compacto na mesma commit", async () =>
   const targetCardPath = [...sourcePath, targetCard.id];
   const peerCardPath = [...sourcePath, peerCard.id];
   const correctedTargetCard = structuredClone(targetCard);
-  correctedTargetCard.blocks[0].value = "Condição explicada com precisão.";
+  correctedTargetCard.content[0].data.text = "Condição explicada com precisão.";
   await engine.mutate({
     principal: PRINCIPAL,
     workspaceId: WORKSPACE_ID,
@@ -1319,7 +1327,7 @@ test("split e merge entregam remapeamento compacto na mesma commit", async () =>
   assert.deepEqual(rpcCalls[4].p_summary.changedCardPaths, [targetCardPath]);
   assert.deepEqual(rpcCalls[4].p_summary.resourceTargets, [{
     cardPath: targetCardPath,
-    targetId: "body:instruction"
+    targetId: "content:instruction"
   }]);
   assert.equal(rpcCalls[4].p_summary.changedCardPathsTruncated, false);
   assert.equal(rpcCalls[4].p_summary.resourceTargetsTruncated, false);
@@ -1333,7 +1341,7 @@ test("split e merge entregam remapeamento compacto na mesma commit", async () =>
   );
 
   const correctedPeerCard = structuredClone(peerCard);
-  correctedPeerCard.blocks[0].value = "Outra condição corrigida.";
+  correctedPeerCard.content[0].data.text = "Outra condição corrigida.";
   await engine.mutate({
     principal: PRINCIPAL,
     workspaceId: WORKSPACE_ID,
@@ -1344,7 +1352,7 @@ test("split e merge entregam remapeamento compacto na mesma commit", async () =>
   });
   assert.deepEqual(rpcCalls[5].p_summary.resourceTargets, [{
     cardPath: peerCardPath,
-    targetId: "body:instruction"
+    targetId: "content:instruction"
   }]);
 
   const retitledTargetCard = structuredClone(targetCard);
@@ -1389,7 +1397,7 @@ test("split e merge entregam remapeamento compacto na mesma commit", async () =>
   ));
 
   const reorderedTargetCard = structuredClone(targetCard);
-  reorderedTargetCard.blocks.reverse();
+  reorderedTargetCard.content.reverse();
   await engine.mutate({
     principal: PRINCIPAL,
     workspaceId: WORKSPACE_ID,
@@ -1400,7 +1408,7 @@ test("split e merge entregam remapeamento compacto na mesma commit", async () =>
   });
   assert.deepEqual(
     rpcCalls[7].p_summary.resourceTargets.map(({ targetId }) => targetId),
-    ["body:code", "body:instruction"]
+    ["content:code", "content:instruction"]
   );
   assert.deepEqual(rpcCalls[7].p_summary.cardShellChangedPaths, []);
 

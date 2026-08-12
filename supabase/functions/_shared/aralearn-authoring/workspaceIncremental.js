@@ -1,7 +1,6 @@
 import { validateProjectDocument } from "../aralearn/runtime/domain/aralearnProject.js";
 import { normalizeCardEnvelope, validateCardEnvelope } from "../aralearn/runtime/resources/kernel/cardEnvelope.js";
 import { RESOURCE_PACKAGE_REGISTRY } from "../aralearn/runtime/resources/packages/index.js";
-import { canonicalJsonStringify } from "./canonicalJson.js";
 import { AuthoringApiError } from "./errors.js";
 import {
   invalidateReadyDescendants,
@@ -793,11 +792,8 @@ export function saveWorkspaceCard(document, { cardPath, card }) {
     );
   }
   replacement.position = currentPosition;
-  const changed = canonicalJsonStringify(microsequence.cards[index])
-    !== canonicalJsonStringify(replacement);
   microsequence.cards[index] = replacement;
   normalizeCardPositions(microsequence);
-  if (changed) microsequence.status = "ready";
   return finalizeWorkspace(next);
 }
 

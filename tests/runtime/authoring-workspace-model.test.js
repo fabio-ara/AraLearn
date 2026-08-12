@@ -18,7 +18,7 @@ import {
 
 async function fixture() {
   return JSON.parse(await readFile(
-    new URL("../../docs/examples/aralearn-contract.logic-plane-matrix-course.json", import.meta.url),
+    new URL("../fixtures/package/project-visual.json", import.meta.url),
     "utf8"
   ));
 }
@@ -79,7 +79,7 @@ test("workspace lista a árvore e projeta somente microteoria no chat", async ()
   assert.equal(Object.hasOwn(outlinedMicrosequence, "cards"), false);
   const microtheory = review.courses[0].modules[0].lessons[0].microtheories[0];
   const theoryCards = firstPath(project).microsequence.cards
-    .filter((card) => card.kind === "theory");
+    .filter((card) => card.role === "theory");
   assert.equal(typeof microtheory.content, "string");
   assert.ok(microtheory.content.length > 0);
   assert.equal(Array.isArray(microtheory.content), false);
@@ -88,12 +88,12 @@ test("workspace lista a árvore e projeta somente microteoria no chat", async ()
   });
   assert.equal(
     microtheory.practiceCount,
-    firstPath(project).microsequence.cards.filter((card) => card.kind === "exercise").length
+    firstPath(project).microsequence.cards.filter((card) => card.role === "practice").length
   );
   assert.deepEqual(microtheory.covers, firstPath(project).microsequence.covers);
   assert.deepEqual(microtheory.checks, firstPath(project).microsequence.checks);
   assert.deepEqual(microtheory.errors, firstPath(project).microsequence.errors || []);
-  assert.deepEqual(microtheory.resources, ["paragraph", "graph", "plane", "matrix"]);
+  assert.ok(microtheory.resources.every((resource) => resource.startsWith("aralearn.")));
   assert.deepEqual(microtheory.topics, []);
 
   const selected = buildMicrotheoryReview(project, firstPath(project).microsequencePath);
@@ -120,16 +120,16 @@ test("projeção de composite humaniza blocos, tópicos e resources", async () =
   microsequence.cards = [{
     id: "card-composite-teoria",
     position: 1,
-    resource: "composite",
-    kind: "theory",
-    exercise: "none",
     title: "Modelo em blocos",
+    role: "theory",
     topics: ["topic-composite"],
-    blocks: [
-      { id: "heading-interno", kind: "heading", value: "Visão geral" },
-      { id: "paragraph-interno", kind: "paragraph", value: "A relação central é verificável." }
+    content: [
+      { id: "heading-interno", package: "aralearn.resource.paragraph", version: "1.0.0", data: { text: "Visão geral" } },
+      { id: "paragraph-interno", package: "aralearn.resource.paragraph", version: "1.0.0", data: { text: "A relação central é verificável." } }
     ],
-    after: "Continuação fora da projeção."
+    response: null,
+    feedback: [],
+    sources: []
   }];
 
   const projected = buildMicrotheoryReview(project)
@@ -137,7 +137,7 @@ test("projeção de composite humaniza blocos, tópicos e resources", async () =
   assert.match(projected.content, /Visão geral/u);
   assert.match(projected.content, /A relação central é verificável\./u);
   assert.doesNotMatch(projected.content, /heading-interno|paragraph-interno|\{|\}/u);
-  assert.deepEqual(projected.resources, ["composite", "paragraph"]);
+  assert.deepEqual(projected.resources, ["aralearn.resource.paragraph"]);
   assert.deepEqual(projected.topics, [lesson.topics[0].label]);
 });
 
@@ -181,7 +181,7 @@ test("renomear, mover, inserir e excluir são mutações isoladas", async () => 
     entityPath: lessonPath
   });
   assert.equal(deleted.courses[0].modules[0].lessons.length, 1);
-  assert.equal(validateAuthoringWorkspace(deleted).contract, "aralearn.contract");
+  assert.equal(validateAuthoringWorkspace(deleted).contract, "aralearn.library.v1");
 });
 
 test("juntar e separar microssequências preserva cards e normaliza posições", async () => {
@@ -190,7 +190,6 @@ test("juntar e separar microssequências preserva cards e normaliza posições",
   const extra = structuredClone(microsequence);
   extra.id = "micro-workspace-extra";
   extra.title = "Prática adicional";
-  extra.status = "needs_review";
   extra.dependsOn = [microsequence.id];
   extra.cards = extra.cards.map((card, index) => ({
     ...card,
@@ -208,14 +207,13 @@ test("juntar e separar microssequências preserva cards e normaliza posições",
   });
   const mergedMicro = firstPath(merged).microsequence;
   assert.equal(mergedMicro.cards.length, microsequence.cards.length + extra.cards.length);
-  assert.equal(mergedMicro.status, "needs_review");
+  assert.equal(Object.hasOwn(mergedMicro, "status"), false);
   assert.deepEqual(mergedMicro.cards.map((card) => card.position), mergedMicro.cards.map((_, index) => index + 1));
 
   const newMicrosequence = {
     ...structuredClone(microsequence),
     id: "micro-workspace-split",
     title: "Recorte conceitual",
-    status: "ready",
     cards: []
   };
   const selectedIds = mergedMicro.cards.slice(-2).map((card) => card.id);

@@ -551,13 +551,6 @@ export function mergeWorkspaceMicrosequences(document, {
       "Mova primeiro as microssequências para a mesma lição antes de juntá-las."
     );
   }
-  const readinessOrder = ["planned", "generated", "needs_review", "ready"];
-  target.entity.status = [target, ...sources]
-    .map((entry) => entry.entity.status)
-    .reduce((leastReady, status) =>
-      readinessOrder.indexOf(status) < readinessOrder.indexOf(leastReady)
-        ? status
-        : leastReady, "ready");
   for (const source of sources.sort((a, b) => a.index - b.index)) {
     target.entity.cards.push(...source.entity.cards);
     for (const field of ["covers", "checks", "errors", "dependsOn"]) {
@@ -601,9 +594,6 @@ export function splitWorkspaceMicrosequence(document, {
   const entity = clone(newMicrosequence);
   entity.cards = selectedCards;
   source.entity.cards = source.entity.cards.filter((card) => !selectedIds.has(card.id));
-  if (source.entity.cards.length === 0 && source.entity.status !== "planned") {
-    source.entity.status = "planned";
-  }
   normalizeCardPositions(source.entity);
   normalizeCardPositions(entity);
   insertAt(source.collection, entity, position == null ? source.index + 1 : position);

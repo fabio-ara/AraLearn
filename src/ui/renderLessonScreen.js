@@ -9,7 +9,6 @@ import { readLessonProgressEntry } from "../storage/progressStore.js";
 import { renderUiIcon } from "./renderUiIcons.js";
 import { buildManualCardEditModel } from "./manualCardEdit.js";
 import {
-  isDraftMicrosequence,
   isRunnableMicrosequence,
   resolveMicrosequenceRuntimeIncluded
 } from "../model/microsequenceStatus.js";
@@ -609,18 +608,7 @@ function renderBottomUpAssistanceDock(editorSupport, level) {
   );
 }
 
-function isPlannedMicrosequence(microsequence) {
-  return isDraftMicrosequence(microsequence) && countCardsInMicrosequence(microsequence) === 0;
-}
-
-function renderMicrosequenceStateIcon(microsequence) {
-  if (!isPlannedMicrosequence(microsequence)) return "";
-  return (
-    '<span class="microsequence-state-icon is-draft" aria-label="Microssequência planejada" title="Microssequência planejada">' +
-    renderUiIcon("draft-state", "microsequence-state-icon-svg") +
-    "</span>"
-  );
-}
+function renderMicrosequenceStateIcon() { return ""; }
 
 function renderHierarchyItemCard({
   level,
@@ -963,7 +951,7 @@ function renderLessonScreenView({ course, lesson, moduleValue, progress, editorS
       };
       const cardCount = countCardsInMicrosequence(microsequence);
       const microsequenceCompleted = countCompletedCardsInMicrosequence(course, moduleValue, lesson, microsequence, progress);
-      const isPlanned = isPlannedMicrosequence(microsequence);
+      const isPlanned = cardCount === 0;
       const hasRuntimeCards = resolveMicrosequenceRuntimeIncluded(microsequence);
       const canPlay = isRunnableMicrosequence(microsequence) || hasRuntimeCards;
       const description = normalizeInlineText(microsequence.goal || "");

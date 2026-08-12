@@ -293,16 +293,12 @@ function validateMutationArguments(operation, rawArguments) {
   if (operation === "save_microsequence_cards") {
     only(
       argumentsValue,
-      ["microsequencePath", "mode", "cards", "status"],
+      ["microsequencePath", "mode", "cards"],
       "arguments"
     );
     const mode = String(argumentsValue.mode || "");
-    const status = String(argumentsValue.status || "");
     if (!["append", "replace"].includes(mode)) {
       fail("invalid_workspace_mode", "mode deve ser append ou replace.");
-    }
-    if (!["planned", "generated", "needs_review", "ready"].includes(status)) {
-      fail("invalid_workspace_status", "status de materialização é inválido.");
     }
     if (!Array.isArray(argumentsValue.cards)
         || argumentsValue.cards.length > 500
@@ -317,12 +313,6 @@ function validateMutationArguments(operation, rawArguments) {
           : "replace aceita de 0 a 500 cards."
       );
     }
-    if (mode === "replace" && argumentsValue.cards.length === 0 && status !== "planned") {
-      fail(
-        "invalid_workspace_status",
-        "replace vazio exige status planned."
-      );
-    }
     return {
       microsequencePath: workspaceEntityPath(
         argumentsValue.microsequencePath,
@@ -330,14 +320,13 @@ function validateMutationArguments(operation, rawArguments) {
         4
       ),
       mode,
-      cards: structuredClone(argumentsValue.cards),
-      status
+      cards: structuredClone(argumentsValue.cards)
     };
   }
   if (operation === "update_metadata") {
     only(argumentsValue, [
       "entityType", "entityPath", "title", "goal", "include", "exclude",
-      "notation", "avoid", "role", "status", "branchOf",
+      "notation", "avoid", "role", "branchOf",
       "dependsOn", "covers", "checks", "errors", "topics"
     ], "arguments");
     const entityType = workspaceEntityType(argumentsValue.entityType);
@@ -361,7 +350,7 @@ function validateMutationArguments(operation, rawArguments) {
             "title", "goal", "include", "exclude", "notation", "avoid", "topics"
           ])
         : new Set([
-          "title", "goal", "role", "status", "branchOf",
+          "title", "goal", "role", "branchOf",
           "dependsOn", "covers", "checks", "errors"
         ]);
     const invalidField = fieldNames.find((field) => !allowed.has(field));
@@ -393,12 +382,6 @@ function validateMutationArguments(operation, rawArguments) {
           fail("invalid_workspace_metadata_field", "role é inválido.");
         }
         normalized.role = role;
-      } else if (field === "status") {
-        const status = String(argumentsValue.status || "");
-        if (!["planned", "generated", "needs_review", "ready"].includes(status)) {
-          fail("invalid_workspace_metadata_field", "status é inválido.");
-        }
-        normalized.status = status;
       } else if (field === "branchOf") {
         normalized.branchOf = argumentsValue.branchOf == null
           ? null
@@ -511,7 +494,7 @@ function validateMutationArguments(operation, rawArguments) {
       "arguments.newMicrosequence"
     );
     only(newMicrosequence, [
-      "id", "title", "goal", "role", "status", "branchOf",
+      "id", "title", "goal", "role", "branchOf",
       "dependsOn", "covers", "checks", "errors", "cards"
     ], "arguments.newMicrosequence");
     if (Array.isArray(newMicrosequence.cards) && newMicrosequence.cards.length > 0) {
@@ -522,13 +505,11 @@ function validateMutationArguments(operation, rawArguments) {
       );
     }
     const splitRole = String(newMicrosequence.role || "");
-    const splitStatus = String(newMicrosequence.status || "");
     if (!["explain", "practice", "review", "support"].includes(splitRole)
-        || !["planned", "generated", "needs_review", "ready"].includes(splitStatus)
         || !Array.isArray(newMicrosequence.cards)) {
       fail(
         "invalid_workspace_split",
-        "newMicrosequence deve declarar role, status e cards vazios válidos."
+        "newMicrosequence deve declarar role e cards vazios válidos."
       );
     }
     return {
@@ -538,7 +519,6 @@ function validateMutationArguments(operation, rawArguments) {
         title: requiredText(newMicrosequence, "title", 300),
         goal: requiredText(newMicrosequence, "goal", 2_000),
         role: splitRole,
-        status: splitStatus,
         branchOf: newMicrosequence.branchOf == null
           ? null
           : workspaceId(newMicrosequence.branchOf, "newMicrosequence.branchOf"),

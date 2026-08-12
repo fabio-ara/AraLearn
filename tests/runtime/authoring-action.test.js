@@ -10,8 +10,7 @@ import {
 } from "../../supabase/functions/_shared/aralearn-authoring/errors.js";
 import {
   buildMicrotheoryReview,
-  buildWorkspaceOutline,
-  createEmptyAuthoringWorkspace
+  buildWorkspaceOutline
 } from "../../supabase/functions/_shared/aralearn-authoring/workspaceModel.js";
 import {
   flattenWorkspaceDocument
@@ -66,14 +65,10 @@ function request(name, body = {}, { authenticated = true, origin = ORIGIN } = {}
 }
 
 async function catalogProject(fileName) {
-  const course = JSON.parse(await readFile(
+  return JSON.parse(await readFile(
     new URL(`../../supabase/fixtures/catalog/${fileName}`, import.meta.url),
     "utf8"
   ));
-  return {
-    ...createEmptyAuthoringWorkspace(),
-    courses: [course]
-  };
 }
 
 function workspaceRead(project, view, entityPath) {

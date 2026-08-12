@@ -8,15 +8,14 @@ test("a microssequência substitui seus cards diretamente", () => {
     id: "micro-2",
     title: "Segunda etapa",
     goal: "Continuar",
-    status: "generated",
     role: "practice",
     dependsOn: [],
     covers: [],
     checks: [],
     cards: []
   };
-  const next = replaceMicrosequenceCards(microsequence, [{ id: "card-1", position: 1 }], "generated");
+  const next = replaceMicrosequenceCards(microsequence, [{ id: "card-1", position: 1 }]);
 
-  assert.equal(next.status, "generated");
+  assert.equal(Object.hasOwn(next, "status"), false);
   assert.deepEqual(next.cards, [{ id: "card-1", position: 1 }]);
 });

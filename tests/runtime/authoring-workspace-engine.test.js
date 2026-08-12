@@ -25,7 +25,7 @@ const SUBMISSION_ID = "44444444-4444-4444-8444-444444444444";
 
 async function fixture() {
   return JSON.parse(await readFile(
-    new URL("../../docs/examples/aralearn-contract.logic-plane-matrix-course.json", import.meta.url),
+    new URL("../fixtures/package/project-visual.json", import.meta.url),
     "utf8"
   ));
 }
@@ -73,7 +73,7 @@ function assertLeanRows(rows) {
   for (const row of rows) {
     assert.equal(Object.hasOwn(row, "artifact"), false);
     assert.equal(Object.hasOwn(row, "snapshot"), false);
-    for (const field of forbidden) {
+    for (const field of forbidden.filter((field) => field !== "topics" || row.entityType !== "card")) {
       assert.equal(
         Object.hasOwn(row.content, field),
         false,
@@ -528,9 +528,7 @@ test("append confirma no resumo que posições foram normalizadas", async () => 
 test("import registra intenção própria e envia somente rows novas", async () => {
   const source = await fixture();
   const empty = {
-    contract: "aralearn.contract",
-    version: 4,
-    kind: "project",
+    contract: "aralearn.library.v1",
     courses: []
   };
   let committed = null;

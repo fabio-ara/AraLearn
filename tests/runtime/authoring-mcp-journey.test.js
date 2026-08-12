@@ -54,7 +54,7 @@ function outputValidator(name) {
 
 async function sourceCourse() {
   return JSON.parse(await readFile(
-    new URL("../../docs/examples/aralearn-contract.logic-plane-matrix-course.json", import.meta.url),
+    new URL("../fixtures/package/project-visual.json", import.meta.url),
     "utf8"
   ));
 }

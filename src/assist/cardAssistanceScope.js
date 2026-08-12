@@ -1,29 +1,10 @@
 import { canonicalStringify } from "../persistence/canonicalCourseHash.js";
-import { validateCard } from "../domain/cards.js";
 import { validateProjectDocument } from "../domain/aralearnProject.js";
-import { getCompositeBlockLabel, getResourceLabel } from "../domain/resources.js";
-import { getCardResourceDefinition } from "../resources/registry/index.js";
+import { normalizeCardEnvelope, validateCardEnvelope } from "../resources/kernel/cardEnvelope.js";
+import { RESOURCE_PACKAGE_REGISTRY } from "../resources/packages/index.js";
 
 export const CARD_REPAIR_SCOPES = Object.freeze(["card", "resources"]);
 
-const PRESERVED_CARD_FIELDS = Object.freeze([
-  "id",
-  "position",
-  "resource",
-  "kind",
-  "exercise",
-  "title",
-  "after",
-  "sources",
-  "topics"
-]);
-const CONTEXTUAL_CHOICE_FIELDS = new Set([
-  "question",
-  "selectionMode",
-  "selectionCriterion",
-  "options",
-  "answerIds"
-]);
 const TEXTUAL_LEAF_FIELD_NAMES = new Set([
   "accessibleText",
   "after",
@@ -120,6 +101,13 @@ function text(value) {
 
 function clone(value) {
   return structuredClone(value);
+}
+
+function validatePackageCard(card, path) {
+  const result = validateCardEnvelope(card, RESOURCE_PACKAGE_REGISTRY, path);
+  return result.valid
+    ? { ok: true, value: normalizeCardEnvelope(card, RESOURCE_PACKAGE_REGISTRY), errors: [] }
+    : { ok: false, value: null, errors: result.errors.map((message) => ({ path, message })) };
 }
 
 function same(left, right) {
@@ -362,75 +350,24 @@ export function resolveCardAssistanceContext(projectDocument = {}, selection = {
   };
 }
 
-function resourceTargetId(location, id = "") {
-  if (location === "main") return "main";
-  if (location === "response") return "response";
-  if (location === "after_text") return "after:text";
-  return `${location}:${text(id)}`;
-}
-
-function resourceTargetLabel(location, resourceType, index) {
-  const base = getCompositeBlockLabel(
-    resourceType,
-    getResourceLabel(resourceType, resourceType === "heading" ? "Título" : "Recurso")
-  );
-  if (location === "main") return base;
-  if (location === "response") return "Prática de escolha";
-  if (location === "after_text") return "Texto posterior";
-  return `${base} ${index + 1}`;
+function packageLabel(packageId) {
+  return RESOURCE_PACKAGE_REGISTRY.listCatalog().find(({ id }) => id === packageId)?.label
+    || packageId;
 }
 
 export function listCardResourceTargets(card = {}) {
   if (!card || typeof card !== "object" || Array.isArray(card) || !text(card.id)) return [];
-  const targets = [];
-  if (text(card.resource) === "composite") {
-    (Array.isArray(card.blocks) ? card.blocks : []).forEach((block, index) => {
-      const blockId = text(block?.id);
-      if (!blockId) return;
-      targets.push({
-        targetId: resourceTargetId("body", blockId),
-        location: "body",
-        blockId,
-        resourceType: text(block.kind),
-        label: resourceTargetLabel("body", text(block.kind), index)
-      });
-    });
-  } else {
-    targets.push({
-      targetId: resourceTargetId("main"),
-      location: "main",
-      blockId: "",
-      resourceType: text(card.resource),
-      label: resourceTargetLabel("main", text(card.resource), 0)
-    });
-  }
-  if (listCardResponseFieldNames(card).length) {
-    targets.push({
-      targetId: resourceTargetId("response"),
-      location: "response",
-      blockId: "",
-      resourceType: "choice",
-      label: resourceTargetLabel("response", "choice", 0)
-    });
-  }
-  targets.push({
-    targetId: resourceTargetId("after_text"),
-    location: "after_text",
-    blockId: "",
-    resourceType: "paragraph",
-    label: resourceTargetLabel("after_text", "paragraph", 0)
-  });
-  (Array.isArray(card.afterBlocks) ? card.afterBlocks : []).forEach((block, index) => {
-    const blockId = text(block?.id);
-    if (!blockId) return;
-    targets.push({
-      targetId: resourceTargetId("after", blockId),
-      location: "after",
-      blockId,
-      resourceType: text(block.kind),
-      label: `${resourceTargetLabel("after", text(block.kind), index)} · apoio`
-    });
-  });
+  const targets = [
+    ...(card.content || []).map((instance, index) => ({ instance, slot: "content", index })),
+    ...(card.response ? [{ instance: card.response, slot: "response", index: 0 }] : []),
+    ...(card.feedback || []).map((instance, index) => ({ instance, slot: "feedback", index }))
+  ].filter(({ instance }) => text(instance?.id) && text(instance?.package)).map(({ instance, slot, index }) => ({
+    targetId: `${slot}:${instance.id}`,
+    location: slot,
+    blockId: instance.id,
+    resourceType: instance.package,
+    label: `${packageLabel(instance.package)}${slot === "feedback" ? " · feedback" : ""}${index ? ` ${index + 1}` : ""}`
+  }));
   if (new Set(targets.map((target) => target.targetId)).size !== targets.length) {
     fail(
       "O card contém identidades de recurso ambíguas.",
@@ -575,27 +512,13 @@ export async function assertCardAssistanceScopeCurrent({
 }
 
 export function listCardMainResourceFieldNames(card = {}) {
-  const definition = getCardResourceDefinition(text(card.resource));
-  const protectedFields = new Set([...PRESERVED_CARD_FIELDS, "afterBlocks"]);
-  return Object.keys(definition?.cardSchema?.properties || {})
-    .filter((fieldName) =>
-      !protectedFields.has(fieldName) &&
-      (
-        text(card.resource) === "choice" ||
-        !CONTEXTUAL_CHOICE_FIELDS.has(fieldName)
-      )
-    );
+  return card?.content?.length === 1
+    ? Object.keys(card.content[0]?.data || {})
+    : [];
 }
 
 export function listCardResponseFieldNames(card = {}) {
-  if (text(card.resource) === "choice" || text(card.exercise) !== "choice") {
-    return [];
-  }
-  const properties = getCardResourceDefinition(text(card.resource))
-    ?.cardSchema?.properties || {};
-  return [...CONTEXTUAL_CHOICE_FIELDS].filter((fieldName) =>
-    Object.hasOwn(properties, fieldName)
-  );
+  return Object.keys(card?.response?.data || {});
 }
 
 function addFlowBranchLeaves(value, basePath, leaves) {
@@ -605,30 +528,16 @@ function addFlowBranchLeaves(value, basePath, leaves) {
 }
 
 function addTargetTextualLeaves(card, target, leaves) {
-  if (target.location === "main") {
-    const editableTopFields = new Set(listCardMainResourceFieldNames(card));
-    listTextualLeaves(card, { editableTopFields, leaves });
-    if (editableTopFields.has("structure")) addFlowBranchLeaves(card, "", leaves);
-    return;
-  }
-  if (target.location === "response") {
-    listTextualLeaves(card, {
-      editableTopFields: new Set(listCardResponseFieldNames(card)),
-      leaves
-    });
-    return;
-  }
-  if (target.location === "after_text") {
-    leaves.set("after", { path: "after", optional: false });
-    return;
-  }
-  const fieldName = target.location === "body" ? "blocks" : "afterBlocks";
-  const blocks = Array.isArray(card[fieldName]) ? card[fieldName] : [];
-  const blockIndex = blocks.findIndex((block) => text(block?.id) === target.blockId);
-  if (blockIndex < 0) return;
-  const basePath = `${fieldName}[${blockIndex}]`;
-  listTextualLeaves(blocks[blockIndex], { basePath, leaves });
-  addFlowBranchLeaves(blocks[blockIndex], basePath, leaves);
+  const instances = target.location === "response"
+    ? (card.response ? [card.response] : [])
+    : Array.isArray(card[target.location]) ? card[target.location] : [];
+  const index = instances.findIndex((instance) => text(instance?.id) === target.blockId);
+  if (index < 0) return;
+  const basePath = target.location === "response"
+    ? "response.data"
+    : `${target.location}[${index}].data`;
+  listTextualLeaves(instances[index].data, { basePath, leaves });
+  addFlowBranchLeaves(instances[index].data, basePath, leaves);
 }
 
 function authorizedTextualLeaves(card, repairScope, targets) {
@@ -707,8 +616,8 @@ export function projectCardAssistanceTextChange(
   proposedCard,
   { repairScope = "card", targets = [] } = {}
 ) {
-  const beforeValidation = validateCard(beforeCard, "$.assistance.beforeCard");
-  const proposedValidation = validateCard(proposedCard, "$.assistance.proposedCard");
+  const beforeValidation = validatePackageCard(beforeCard, "$.assistance.beforeCard");
+  const proposedValidation = validatePackageCard(proposedCard, "$.assistance.proposedCard");
   if (!proposedValidation.ok) {
     fail("O reparo textual contém um card inválido.", "INVALID_CARD_ASSISTANCE_RESULT");
   }
@@ -736,7 +645,7 @@ export function projectCardAssistanceTextChange(
         );
       }
     });
-  const projectedValidation = validateCard(projected, "$.assistance.projectedCard");
+  const projectedValidation = validatePackageCard(projected, "$.assistance.projectedCard");
   if (!projectedValidation.ok) {
     fail("O reparo textual projetado deixou o card inválido.", "INVALID_CARD_ASSISTANCE_RESULT");
   }
@@ -813,7 +722,7 @@ export function rebaseCardAssistanceTextChange({
     });
   if (conflictPaths.length) throwTextRebaseConflict(conflictPaths);
 
-  const validation = validateCard(rebased, "$.assistance.rebasedCard");
+  const validation = validatePackageCard(rebased, "$.assistance.rebasedCard");
   if (!validation.ok) {
     throwTextRebaseConflict(
       ["$validation"],
@@ -828,7 +737,7 @@ export function rebaseCardAssistanceTextChange({
 }
 
 function validateProposedCard(card, path) {
-  const validation = validateCard(card, path);
+  const validation = validatePackageCard(card, path);
   if (!validation.ok) {
     const issue = validation.errors?.[0];
     fail(

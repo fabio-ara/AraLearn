@@ -36,6 +36,7 @@ import {
   cardAssistanceSemanticFindingKey,
   validateCardAssistanceSemantics
 } from "../validation/cardAssistanceSemantics.js";
+import { RESOURCE_PACKAGE_REGISTRY } from "../../resources/packages/index.js";
 
 const MAX_USER_REQUEST_CHARACTERS = 12000;
 const MAX_PROVIDER_PROMPT_CHARACTERS = 64000;
@@ -1190,6 +1191,105 @@ async function generateResourceRepair({
   });
 }
 
+function exactPackageInstanceSchema(instance) {
+  return {
+    type: "object",
+    additionalProperties: false,
+    required: ["id", "package", "version", "data"],
+    properties: {
+      id: { const: instance.id },
+      package: { const: instance.package },
+      version: { const: instance.version },
+      data: RESOURCE_PACKAGE_REGISTRY.getAuthoringContract(
+        instance.package,
+        instance.version
+      ).schema
+    }
+  };
+}
+
+function exactPackageInstanceListSchema(instances) {
+  const list = Array.isArray(instances) ? instances : [];
+  return {
+    type: "array",
+    minItems: list.length,
+    maxItems: list.length,
+    items: list.length === 1
+      ? exactPackageInstanceSchema(list[0])
+      : { anyOf: list.map(exactPackageInstanceSchema) }
+  };
+}
+
+function packageCardRepairSchema(card) {
+  return {
+    type: "object",
+    additionalProperties: false,
+    required: ["card"],
+    properties: {
+      card: {
+        type: "object",
+        additionalProperties: false,
+        required: ["id", "position", "title", "role", "content", "response", "feedback", "topics", "sources"],
+        properties: {
+          id: { const: card.id },
+          position: { const: card.position },
+          title: { type: "string", minLength: 1 },
+          role: { const: card.role },
+          content: exactPackageInstanceListSchema(card.content),
+          response: card.response ? exactPackageInstanceSchema(card.response) : { type: "null" },
+          feedback: exactPackageInstanceListSchema(card.feedback),
+          topics: { const: card.topics },
+          sources: { const: card.sources }
+        }
+      }
+    }
+  };
+}
+
+async function generatePackageCardRepair({
+  provider,
+  modelId,
+  contextPacket,
+  userRequest,
+  context,
+  snapshot,
+  onProgress
+}) {
+  const repairScope = snapshot.target.repairScope;
+  const targets = snapshot.target.resources || [];
+  return callStructuredWithValidation({
+    provider,
+    modelId,
+    buildRequest: (feedback) => ({
+      phase: "package_card_assistance_repair",
+      system: "Repare somente as folhas textuais autorizadas do card. Preserve identidades, packages, versões, estrutura e respostas formais. Responda somente no schema.",
+      prompt: serializeAssistanceEnvelope({
+        contract: "aralearn.package-card-assistance.v1",
+        userRequest: normalizedUserRequest(userRequest),
+        repairScope,
+        selectedPackageTargets: targets.map(({ targetId }) => targetId),
+        writableTextPaths: listCardAssistanceTextPaths(context.card, { repairScope, targets }),
+        currentCard: context.card,
+        readOnlyContext: contextPacket,
+        validationFeedback: feedback.slice(-1)
+      }),
+      schemaName: "aralearn_package_card_repair_v1",
+      schema: packageCardRepairSchema(context.card),
+      temperature: feedback.length ? 0 : 0.1,
+      maxTokens: 5200
+    }),
+    validate: (value) => {
+      assertPlainObject(value?.card, "O reparo não devolveu o card.");
+      return projectCardAssistanceTextChange(context.card, value.card, {
+        repairScope,
+        targets
+      });
+    },
+    onProgress,
+    reconstructionBudget: { remaining: 1 }
+  });
+}
+
 export async function generateCardAssistanceChangeSet({
   projectDocument = {},
   selection = {},
@@ -1217,6 +1317,34 @@ export async function generateCardAssistanceChangeSet({
       ? snapshot.target.resources.map((target) => target.targetId)
       : []
   });
+  if (Array.isArray(context.card?.content)) {
+    const card = await generatePackageCardRepair({
+      provider,
+      modelId,
+      contextPacket,
+      userRequest: request.promptText,
+      context,
+      snapshot,
+      onProgress
+    });
+    const changeSet = {
+      contract: "aralearn.card-assistance-change.v1",
+      operation: snapshot.target.operation,
+      card
+    };
+    await applyCardAssistanceChangeSet({
+      projectDocument,
+      selection,
+      snapshot,
+      changeSet
+    });
+    return {
+      contract: "aralearn.card-assistance-generated-change.v1",
+      snapshot,
+      changeSet,
+      diagnostics: { modelId, contextContract: contextPacket.contract }
+    };
+  }
   const generated =
     snapshot.target.operation === "repair" &&
     snapshot.target.repairScope === "resources"

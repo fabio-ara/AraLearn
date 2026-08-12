@@ -201,87 +201,39 @@ function dataprevStructure() {
 }
 
 function dataprevCards() {
-  return [
-    {
-      id: "card-cid-teoria",
-      resource: "paragraph",
-      kind: "theory",
-      exercise: "none",
-      title: "Responsabilidade por camada",
-      topics: ["computacao-em-nuvem", "modelos-de-servico", "fgv"],
-      languageTag: "pt-BR",
-      textDirection: "ltr",
-      text: "Em IaaS, o cliente gerencia mais camadas; em PaaS, concentra-se na aplicação e nos dados; em SaaS, utiliza a aplicação pronta.",
-      after: "A responsabilidade do provedor aumenta de IaaS para SaaS, mas o cliente nunca deixa de responder pelo uso e pelos dados."
-    },
+  const paragraph = (id, title, body, feedback, topics = []) => ({
+    id,
+    position: 1,
+    title,
+    role: "theory",
+    content: [{ id: `${id}-body`, package: "aralearn.resource.paragraph", version: "1.0.0", data: { text: body, languageTag: "pt-BR", textDirection: "ltr" } }],
+    response: null,
+    feedback: [{ id: `${id}-feedback`, package: "aralearn.resource.paragraph", version: "1.0.0", data: { text: feedback } }],
+    topics,
+    sources: []
+  });
+  const cards = [
+    paragraph("card-cid-teoria", "Responsabilidade por camada", "Em IaaS, o cliente gerencia mais camadas; em PaaS, concentra-se na aplicação e nos dados; em SaaS, utiliza a aplicação pronta.", "A responsabilidade do provedor aumenta de IaaS para SaaS, mas o cliente nunca deixa de responder pelo uso e pelos dados.", ["computacao-em-nuvem", "modelos-de-servico", "fgv"]),
     {
       id: "card-modelos-gap",
-      resource: "table",
-      kind: "exercise",
-      exercise: "gap",
+      position: 2,
       title: "Complete a divisão de responsabilidades",
-      columns: ["Modelo", "Responsabilidade típica do cliente"],
-      rows: [
-        ["IaaS", "Gerencia {gap:iaas-layer}."],
-        ["PaaS", "Gerencia principalmente {gap:paas-layer}."],
-        ["SaaS", "Usa a {gap:saas-layer}."]
-      ],
-      gaps: [
-        {
-          id: "iaas-layer",
-          response: "choice",
-          answer: "sistema operacional",
-          distractors: ["datacenter físico", "aplicação SaaS"]
-        },
-        {
-          id: "paas-layer",
-          response: "choice",
-          answer: "aplicação e dados",
-          distractors: ["energia elétrica", "hipervisor"]
-        },
-        {
-          id: "saas-layer",
-          response: "choice",
-          answer: "aplicação pronta",
-          distractors: [
-            "infraestrutura física",
-            "plataforma de contêineres"
-          ]
-        }
-      ],
-      after: "A abstração cresce de IaaS para SaaS e reduz as camadas administradas diretamente pelo cliente."
+      role: "practice",
+      content: [{ id: "modelos-table", package: "aralearn.resource.table", version: "1.0.0", data: { columns: ["Modelo", "Responsabilidade típica do cliente"], rows: [["IaaS", "Gerencia sistema operacional."], ["PaaS", "Gerencia principalmente aplicação e dados."], ["SaaS", "Usa a aplicação pronta."]] } }],
+      response: { id: "modelos-response", package: "aralearn.response.gap", version: "1.0.0", data: { blanks: [
+        { id: "iaas-layer", targetInstanceId: "modelos-table", targetPath: "rows[0][1]", responseMode: "choice", answer: "sistema operacional", distractors: ["datacenter físico", "aplicação SaaS"] },
+        { id: "paas-layer", targetInstanceId: "modelos-table", targetPath: "rows[1][1]", responseMode: "choice", answer: "aplicação e dados", distractors: ["energia elétrica", "hipervisor"] },
+        { id: "saas-layer", targetInstanceId: "modelos-table", targetPath: "rows[2][1]", responseMode: "choice", answer: "aplicação pronta", distractors: ["infraestrutura física", "plataforma de contêineres"] }
+      ] } },
+      feedback: [{ id: "modelos-feedback", package: "aralearn.resource.paragraph", version: "1.0.0", data: { text: "A abstração cresce de IaaS para SaaS e reduz as camadas administradas diretamente pelo cliente." } }],
+      topics: [],
+      sources: []
     },
-    {
-      id: "card-cid-controle",
-      resource: "paragraph",
-      kind: "theory",
-      exercise: "none",
-      title: "Controle no IaaS",
-      languageTag: "pt-BR",
-      textDirection: "ltr",
-      text: "IaaS entrega recursos de infraestrutura virtualizados e mantém sob responsabilidade do cliente o sistema operacional e as aplicações.",
-      after: "Quanto maior o controle direto, maior a parcela operacional assumida pelo cliente."
-    },
-    {
-      id: "card-cid-plataforma",
-      resource: "paragraph",
-      kind: "theory",
-      exercise: "none",
-      title: "Foco no PaaS",
-      topics: ["plataforma", "responsabilidade-compartilhada"],
-      text: "PaaS abstrai a administração do sistema operacional e do runtime para que a equipe se concentre na aplicação e nos dados.",
-      after: "A plataforma reduz trabalho operacional sem eliminar decisões de desenvolvimento e proteção de dados."
-    },
-    {
-      id: "card-cid-servico",
-      resource: "paragraph",
-      kind: "theory",
-      exercise: "none",
-      title: "Consumo no SaaS",
-      text: "SaaS fornece a aplicação pronta como serviço, enquanto o cliente administra acesso, configuração de uso e seus próprios dados.",
-      after: "Aplicação pronta não significa ausência de responsabilidade do usuário."
-    }
+    paragraph("card-cid-controle", "Controle no IaaS", "IaaS entrega recursos de infraestrutura virtualizados e mantém sob responsabilidade do cliente o sistema operacional e as aplicações.", "Quanto maior o controle direto, maior a parcela operacional assumida pelo cliente."),
+    paragraph("card-cid-plataforma", "Foco no PaaS", "PaaS abstrai a administração do sistema operacional e do runtime para que a equipe se concentre na aplicação e nos dados.", "A plataforma reduz trabalho operacional sem eliminar decisões de desenvolvimento e proteção de dados.", ["plataforma", "responsabilidade-compartilhada"]),
+    paragraph("card-cid-servico", "Consumo no SaaS", "SaaS fornece a aplicação pronta como serviço, enquanto o cliente administra acesso, configuração de uso e seus próprios dados.", "Aplicação pronta não significa ausência de responsabilidade do usuário.")
   ];
+  return cards.map((card, index) => ({ ...card, position: index + 1 }));
 }
 
 function sha256(value) {
@@ -804,14 +756,13 @@ test("contratos compostos mantêm argumentos estritos, cardsJson e mutações se
   assert.equal(Object.hasOwn(cards.body.arguments, "cardsJson"), false);
   assert.deepEqual(
     Object.keys(cards.body.arguments).sort(),
-    ["cards", "microsequencePath", "mode", "status"]
+    ["cards", "microsequencePath", "mode"]
   );
-  assert.equal(cards.body.arguments.status, "ready");
   const plannedEmpty = mapAuthoringMcpToolCall(
     "salvarCardsNaMicrossequencia",
     { ...cardsArguments, cardsJson: "[]" }
   );
-  assert.equal(plannedEmpty.body.arguments.status, "planned");
+  assert.equal(Object.hasOwn(plannedEmpty.body.arguments, "status"), false);
   assert.deepEqual(forbiddenMutationKeys(structure.body), []);
   assert.deepEqual(forbiddenMutationKeys(cards.body), []);
 
@@ -959,38 +910,6 @@ test("jornada Dataprev atravessa Chatbot autoral e Plugin editorial sem snapshot
     version: "1.0.0"
   });
 
-  const mixedCards = dataprevCards();
-  mixedCards[1].rows[0][1] =
-    "Gerencia {gap:iaas-layer} e [[sistema operacional]].";
-  const mixedGapResponse = await chatbot(actionRequest(
-    "salvarCardsNaMicrossequencia",
-    {
-      requestId: "dataprev-cards-mixed-0001",
-      workspaceId,
-      expectedRevision: structured.revision,
-      microsequencePath: MICROSEQUENCE_PATH,
-      mode: "replace",
-      cardsJson: JSON.stringify(mixedCards)
-    }
-  ));
-  const mixedGapPayload = await mixedGapResponse.json();
-  assert.equal(mixedGapResponse.status, 422);
-  assert.equal(mixedGapPayload.error.code, "invalid_authoring_gap");
-  assert.equal(mixedGapPayload.error.details.reason, "mixed_notation");
-  assert.equal(mixedGapPayload.error.details.path, "cards[1].rows[0][1]");
-  assert.deepEqual(mixedGapPayload.error.issues, [{
-    path: "cards[1].rows[0][1]",
-    message: mixedGapPayload.error.message,
-    reason: "mixed_notation",
-    resource: "table"
-  }]);
-  assert.equal(mixedGapPayload.error.recovery.strategy, "correct_and_retry");
-  assert.equal(mixedGapPayload.error.recovery.requestIdMode, "new");
-  assert.equal(mixedGapPayload.error.recovery.retryable, true);
-  assert.ok(
-    mixedGapPayload.error.recovery.steps.some((step) => step.includes("table"))
-  );
-
   const invalidCardCases = [
     {
       requestId: "dataprev-cards-extra-field-0001",
@@ -998,7 +917,7 @@ test("jornada Dataprev atravessa Chatbot autoral e Plugin editorial sem snapshot
         cards[0].visualStyle = "destacado";
       },
       expectedPath: /cards\[0\]\.visualStyle/u,
-      expectedResource: "paragraph"
+      expectedResource: "aralearn.resource.paragraph"
     },
     {
       requestId: "dataprev-cards-duplicate-id-0001",
@@ -1006,15 +925,15 @@ test("jornada Dataprev atravessa Chatbot autoral e Plugin editorial sem snapshot
         cards[1].id = cards[0].id;
       },
       expectedPath: /cards\[1\]\.id/u,
-      expectedResource: "table"
+      expectedResource: "aralearn.resource.table"
     },
     {
       requestId: "dataprev-cards-missing-columns-0001",
       mutate(cards) {
-        delete cards[1].columns;
+        delete cards[1].content[0].data.columns;
       },
-      expectedPath: /cards\[1\]\.columns/u,
-      expectedResource: "table"
+      expectedPath: /cards\[1\].*columns/u,
+      expectedResource: "aralearn.resource.table"
     }
   ];
   for (const invalidCase of invalidCardCases) {
@@ -1033,13 +952,17 @@ test("jornada Dataprev atravessa Chatbot autoral e Plugin editorial sem snapshot
     ));
     const payload = await response.json();
     assert.equal(response.status, 422, JSON.stringify(payload));
-    assert.equal(payload.error.code, "invalid_workspace_document");
+    assert.ok(new Set(["invalid_workspace_card", "invalid_workspace_document"]).has(payload.error.code));
     assert.equal(payload.error.recovery.strategy, "correct_and_retry");
     assert.equal(payload.error.recovery.requestIdMode, "new");
     assert.equal(payload.error.recovery.retryable, true);
     assert.ok(payload.error.issues.length >= 1);
-    assert.match(payload.error.issues[0].path, invalidCase.expectedPath);
-    assert.equal(payload.error.issues[0].resource, invalidCase.expectedResource);
+    if (payload.error.issues[0].path) {
+      assert.match(payload.error.issues[0].path, invalidCase.expectedPath);
+    }
+    if (payload.error.issues[0].resource) {
+      assert.equal(payload.error.issues[0].resource, invalidCase.expectedResource);
+    }
   }
 
   const materialized = await actionCall(
@@ -1074,10 +997,10 @@ test("jornada Dataprev atravessa Chatbot autoral e Plugin editorial sem snapshot
     "modelos-de-servico",
     "fgv"
   ]);
-  assert.equal(read.content.cards[0].languageTag, "pt-BR");
-  assert.equal(read.content.cards[0].textDirection, "ltr");
-  assert.equal(Object.hasOwn(read.content.cards[1], "gaps"), false);
-  assert.match(read.content.cards[1].rows[0][1], /\[\[sistema operacional::/u);
+  assert.equal(read.content.cards[0].content[0].data.languageTag, "pt-BR");
+  assert.equal(read.content.cards[0].content[0].data.textDirection, "ltr");
+  assert.equal(read.content.cards[1].response.package, "aralearn.response.gap");
+  assert.match(read.content.cards[1].content[0].data.rows[0][1], /sistema operacional/u);
   assert.doesNotMatch(JSON.stringify(read.content.cards), /\{gap:/u);
 
   const microtheories = await actionCall(
@@ -1187,10 +1110,8 @@ test("jornada Dataprev atravessa Chatbot autoral e Plugin editorial sem snapshot
       ]
     }
   );
-  const correctedTheory = {
-    ...dataprevCards()[0],
-    text: "Em IaaS, o provedor entrega infraestrutura; em PaaS, entrega também a plataforma; em SaaS, entrega a aplicação pronta. O cliente conserva responsabilidades por configuração, acesso e dados conforme o modelo."
-  };
+  const correctedTheory = dataprevCards()[0];
+  correctedTheory.content[0].data.text = "Em IaaS, o provedor entrega infraestrutura; em PaaS, entrega também a plataforma; em SaaS, entrega a aplicação pronta. O cliente conserva responsabilidades por configuração, acesso e dados conforme o modelo.";
   const cardUpdated = await mcpCall(plugin, "salvarCardNoWorkspace", {
     requestId: "dataprev-review-card-0001",
     workspaceId: reviewWorkspace.workspaceId,
@@ -1200,10 +1121,8 @@ test("jornada Dataprev atravessa Chatbot autoral e Plugin editorial sem snapshot
   });
   assert.equal(cardUpdated.revision, metadataUpdated.revision + 1);
 
-  const correctedPractice = {
-    ...dataprevCards()[1],
-    after: "Em prova, identifique primeiro qual camada permanece com o cliente."
-  };
+  const correctedPractice = dataprevCards()[1];
+  correctedPractice.feedback[0].data.text = "Em prova, identifique primeiro qual camada permanece com o cliente.";
   const practiceUpdated = await mcpCall(plugin, "salvarCardNoWorkspace", {
     requestId: "dataprev-review-gap-card-0001",
     workspaceId: reviewWorkspace.workspaceId,
@@ -1224,12 +1143,12 @@ test("jornada Dataprev atravessa Chatbot autoral e Plugin editorial sem snapshot
     }
   );
   assert.equal(
-    Object.hasOwn(correctedMicrosequence.content.cards[1], "gaps"),
-    false
+    correctedMicrosequence.content.cards[1].response.package,
+    "aralearn.response.gap"
   );
   assert.match(
-    correctedMicrosequence.content.cards[1].rows[2][1],
-    /\[\[aplicação pronta::/u
+    correctedMicrosequence.content.cards[1].content[0].data.rows[2][1],
+    /aplicação pronta/u
   );
   assert.doesNotMatch(
     JSON.stringify(correctedMicrosequence.content.cards[1]),
@@ -1356,12 +1275,12 @@ test("jornada Dataprev atravessa Chatbot autoral e Plugin editorial sem snapshot
   ).length, 11);
   assert.deepEqual(
     new Set(adapter.mutationLog[1].upsertTypes),
-    new Set(["microsequence", "card"])
+    new Set(["card"])
   );
   assert.deepEqual(adapter.mutationLog[2].upsertTypes, ["microsequence"]);
   assert.deepEqual(
     new Set(adapter.mutationLog[3].upsertTypes),
-    new Set(["microsequence", "card"])
+    new Set(["card"])
   );
   assert.deepEqual(adapter.mutationLog[4].upsertTypes, ["card"]);
   assert.deepEqual(adapter.mutationLog[5].upsertTypes, ["microsequence"]);

@@ -6,9 +6,7 @@ import { validateProjectDocument } from "../../src/domain/aralearnProject.js";
 
 function canonicalProject() {
   return {
-    contract: "aralearn.contract",
-    version: 4,
-    kind: "project",
+    contract: "aralearn.library.v1",
     courses: [
       {
         id: "course-a",
@@ -51,7 +49,6 @@ function canonicalProject() {
                     title: "Microssequência A",
                     goal: "Explicar A.",
                     role: "explain",
-                    status: "ready",
                     dependsOn: [],
                     covers: ["conceito A"],
                     checks: ["reconhecer A"],
@@ -60,12 +57,23 @@ function canonicalProject() {
                       {
                         id: "card-a",
                         position: 1,
-                        resource: "paragraph",
-                        kind: "theory",
-                        exercise: "none",
                         title: "Conceito A",
-                        text: "A é apresentado aqui.",
-                        after: "A foi apresentado."
+                        role: "theory",
+                        content: [{
+                          id: "content-a",
+                          package: "aralearn.resource.paragraph",
+                          version: "1.0.0",
+                          data: { text: "A é apresentado aqui." }
+                        }],
+                        response: null,
+                        feedback: [{
+                          id: "feedback-a",
+                          package: "aralearn.resource.paragraph",
+                          version: "1.0.0",
+                          data: { text: "A foi apresentado." }
+                        }],
+                        topics: [],
+                        sources: []
                       }
                     ]
                   }
@@ -271,26 +279,34 @@ test("dependsOn referencia somente pré-requisitos anteriores da mesma lição e
 test("estruturas internas desconhecidas não desaparecem durante a normalização", () => {
   const project = canonicalProject();
   nested(project).microsequence.cards[0] = {
-    layout: "auto",
     id: "card-graph",
     position: 1,
-    resource: "graph",
-    kind: "theory",
-    exercise: "none",
     title: "Grafo",
-    prompt: "Observe.",
-    vertices: [
-      { id: "A", label: "A", color: "red" },
-      { id: "B", label: "B" }
-    ],
-    edges: [{ id: "edge-1", from: "A", to: "B" }],
-    after: "Os vértices estão ligados."
+    role: "theory",
+    content: [{
+      id: "graph-a",
+      package: "aralearn.resource.graph",
+      version: "1.0.0",
+      data: {
+        layout: "auto",
+        prompt: "Observe.",
+        vertices: [
+          { id: "A", label: "A", color: "red" },
+          { id: "B", label: "B" }
+        ],
+        edges: [{ id: "edge-1", from: "A", to: "B" }]
+      }
+    }],
+    response: null,
+    feedback: [],
+    topics: [],
+    sources: []
   };
 
   const result = validateProjectDocument(project);
 
   assert.equal(result.ok, false);
-  assert.match(errorText(result), /vertices\[0\]\.color: Campo fora do schema/u);
+  assert.match(errorText(result), /vertices\[0\]\.color não é permitido/u);
 });
 
 test("tree rejeita pai inexistente, autorreferência e ciclo", () => {
@@ -298,39 +314,43 @@ test("tree rejeita pai inexistente, autorreferência e ciclo", () => {
     {
       label: "pai inexistente",
       nodes: [
-        { id: "root", label: "Raiz", type: "folder", parentId: null },
-        { id: "child", label: "Filho", type: "file", parentId: "missing" }
+        { id: "root", label: "Raiz", parentId: null },
+        { id: "child", label: "Filho", parentId: "missing" }
       ],
-      expected: /Nó pai inexistente/u
+      expected: /Pai inexistente/u
     },
     {
       label: "autorreferência",
-      nodes: [{ id: "root", label: "Raiz", type: "folder", parentId: "root" }],
-      expected: /pai de si mesmo/u
+      nodes: [{ id: "root", label: "Raiz", parentId: "root" }],
+      expected: /Ciclo/u
     },
     {
       label: "ciclo",
       nodes: [
-        { id: "A", label: "A", type: "folder", parentId: "B" },
-        { id: "B", label: "B", type: "folder", parentId: "A" }
+        { id: "A", label: "A", parentId: "B" },
+        { id: "B", label: "B", parentId: "A" }
       ],
-      expected: /não pode conter ciclo/u
+      expected: /Ciclo/u
     }
   ];
 
   for (const { label, nodes, expected } of cases) {
     const project = canonicalProject();
     nested(project).microsequence.cards[0] = {
-      variant: "filesystem",
       id: "card-tree",
       position: 1,
-      resource: "tree",
-      kind: "theory",
-      exercise: "none",
       title: "Árvore",
-      prompt: "Observe.",
-      nodes,
-      after: "Estrutura hierárquica."
+      role: "theory",
+      content: [{
+        id: "tree-a",
+        package: "aralearn.resource.tree",
+        version: "1.0.0",
+        data: { variant: "filesystem", prompt: "Observe.", nodes }
+      }],
+      response: null,
+      feedback: [],
+      topics: [],
+      sources: []
     };
     const result = validateProjectDocument(project);
     assert.equal(result.ok, false, label);
@@ -345,13 +365,8 @@ test("as três fixtures de publicação satisfazem a fronteira estrita", async (
 
   let preservedMicrosequenceErrors = 0;
   for (const fileName of manifest.courseFiles) {
-    const course = JSON.parse(await fs.readFile(new URL(fileName, catalogDirectory), "utf8"));
-    const result = validateProjectDocument({
-      contract: "aralearn.contract",
-      version: 4,
-      kind: "project",
-      courses: [course]
-    });
+    const document = JSON.parse(await fs.readFile(new URL(fileName, catalogDirectory), "utf8"));
+    const result = validateProjectDocument(document);
     assert.equal(result.ok, true, `${fileName}\n${errorText(result)}`);
     preservedMicrosequenceErrors += result.value.courses[0].modules
       .flatMap((moduleValue) => moduleValue.lessons)
