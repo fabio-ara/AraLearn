@@ -514,7 +514,11 @@ async function runJourney() {
       intent: "create",
       targetEntity: "course",
       context: "Criar Dataprev: Teste para iniciante, com módulo de Computação em Nuvem e Virtualização no estilo FGV e práticas com lacunas.",
-      resourceIds: ["paragraph", "table"]
+      packageIds: [
+        "aralearn.resource.paragraph",
+        "aralearn.resource.table",
+        "aralearn.response.gap"
+      ]
     }
   );
   assert.equal(authorPreparation.access.profile, "private_author");
