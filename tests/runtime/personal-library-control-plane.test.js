@@ -6,7 +6,7 @@ import {
   mapAuthoringMcpToolCall
 } from "../../supabase/functions/_shared/aralearn-authoring/workspaceMcpTools.js";
 import { routeRequest } from "../../supabase/functions/_shared/aralearn-authoring/protocol.js";
-import { executeAuthoringRoute } from "../../supabase/functions/_shared/aralearn-authoring/routerV4.js";
+import { executeAuthoringRoute } from "../../supabase/functions/_shared/aralearn-authoring/authoringRouter.js";
 import { SupabaseAuthoringAdapter } from "../../supabase/functions/_shared/aralearn-authoring/supabaseAdapter.js";
 
 const ACTOR_ID = "10000000-0000-4000-8000-000000000001";

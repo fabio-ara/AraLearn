@@ -4,8 +4,8 @@
   "courses": [
     {
       "id": "course-resources-gallery",
-      "title": "Galeria de resources v4",
-      "goal": "Demonstrar os dezoito recursos canônicos em cards válidos.",
+      "title": "Galeria de packages",
+      "goal": "Demonstrar os packages instalados em cards válidos.",
       "modules": [
         {
           "id": "module-resources-gallery",
@@ -13,7 +13,7 @@
           "guide": {
             "goal": "Comparar representações e interações disponíveis.",
             "include": [
-              "resources v4"
+              "packages instalados"
             ],
             "exclude": [],
             "notation": [],
@@ -22,11 +22,11 @@
           "lessons": [
             {
               "id": "lesson-resources-gallery",
-              "title": "Um card por resource",
+              "title": "Um card por package",
               "guide": {
-                "goal": "Inspecionar cada resource em uma operação didática concreta.",
+                "goal": "Inspecionar cada package em uma operação concreta.",
                 "include": [
-                  "dezoito recursos"
+                  "catálogo de packages"
                 ],
                 "exclude": [],
                 "notation": [],
@@ -37,30 +37,10 @@
                 {
                   "id": "micro-resources-gallery",
                   "title": "Galeria completa",
-                  "goal": "Percorrer todos os recursos do contrato v4.",
+                  "goal": "Percorrer os packages instalados.",
                   "role": "practice",
-                  "branchOf": null,
                   "dependsOn": [],
-                  "covers": [
-                    "paragraph",
-                    "choice",
-                    "composite",
-                    "code",
-                    "table",
-                    "flow",
-                    "tree",
-                    "graph",
-                    "relation_map",
-                    "matrix",
-                    "plane",
-                    "formula",
-                    "chart",
-                    "sequence",
-                    "annotated_text",
-                    "linguistic_example",
-                    "system_map",
-                    "reaction"
-                  ],
+                  "covers": [],
                   "checks": [
                     "renderização",
                     "interação",
@@ -69,48 +49,30 @@
                   "errors": [],
                   "cards": [
                     {
-                      "id": "gallery-paragraph",
+                      "id": "gallery-1",
                       "position": 1,
-                      "title": "Conjunção",
-                      "role": "practice",
+                      "title": "Texto explicado",
+                      "role": "theory",
                       "content": [
                         {
-                          "id": "gallery-paragraph-content",
+                          "id": "instance-1",
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
-                            "text": "P ∧ Q só é verdadeira quando P e Q são verdadeiras."
+                            "text": "O protocolo define regras para que duas partes troquem mensagens de forma previsível.",
+                            "languageTag": "pt-BR",
+                            "textDirection": "auto"
                           }
                         }
                       ],
-                      "response": {
-                        "id": "gallery-paragraph-response",
-                        "package": "aralearn.response.gap",
-                        "version": "1.0.0",
-                        "data": {
-                          "prompt": "Conjunção",
-                          "blanks": [
-                            {
-                              "id": "blank-1",
-                              "targetInstanceId": "gallery-paragraph-content",
-                              "targetPath": "text",
-                              "responseMode": "choice",
-                              "answer": "P e Q são verdadeiras",
-                              "distractors": [
-                                "apenas P é verdadeira",
-                                "ao menos uma é verdadeira"
-                              ]
-                            }
-                          ]
-                        }
-                      },
+                      "response": null,
                       "feedback": [
                         {
-                          "id": "gallery-paragraph-feedback-text",
+                          "id": "feedback-1",
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
-                            "text": "Feedback explicativo."
+                            "text": "O próprio texto constitui a alternativa não visual."
                           }
                         }
                       ],
@@ -118,57 +80,30 @@
                       "sources": []
                     },
                     {
-                      "id": "gallery-choice",
+                      "id": "gallery-2",
                       "position": 2,
-                      "title": "Operador de atribuição",
-                      "role": "practice",
+                      "title": "Código",
+                      "role": "theory",
                       "content": [
                         {
-                          "id": "gallery-choice-context",
-                          "package": "aralearn.resource.paragraph",
+                          "id": "instance-2",
+                          "package": "aralearn.resource.code",
                           "version": "1.0.0",
                           "data": {
-                            "text": "Qual operador atribui um valor em C?"
+                            "prompt": "Observe a condição antes do envio.",
+                            "language": "javascript",
+                            "code": "if (online) {\n  enviar();\n}"
                           }
                         }
                       ],
-                      "response": {
-                        "id": "gallery-choice-response",
-                        "package": "aralearn.response.choice",
-                        "version": "1.0.0",
-                        "data": {
-                          "question": "Qual operador atribui um valor em C?",
-                          "selectionMode": "single",
-                          "selectionCriterion": "correct",
-                          "options": [
-                            {
-                              "id": "assign",
-                              "kind": "text",
-                              "text": "="
-                            },
-                            {
-                              "id": "equal",
-                              "kind": "text",
-                              "text": "=="
-                            },
-                            {
-                              "id": "different",
-                              "kind": "text",
-                              "text": "!="
-                            }
-                          ],
-                          "answerIds": [
-                            "assign"
-                          ]
-                        }
-                      },
+                      "response": null,
                       "feedback": [
                         {
-                          "id": "gallery-choice-feedback-text",
+                          "id": "feedback-2",
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
-                            "text": "Feedback explicativo."
+                            "text": "Prompt, linguagem e código são expostos como texto selecionável."
                           }
                         }
                       ],
@@ -176,167 +111,38 @@
                       "sources": []
                     },
                     {
-                      "id": "gallery-composite",
+                      "id": "gallery-3",
                       "position": 3,
-                      "title": "Regra e código",
-                      "role": "practice",
+                      "title": "Tabela",
+                      "role": "theory",
                       "content": [
                         {
-                          "id": "gallery-composite-content-instruction",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Complete a condição."
-                          }
-                        },
-                        {
-                          "id": "gallery-composite-content-code",
-                          "package": "aralearn.resource.code",
-                          "version": "1.0.0",
-                          "data": {
-                            "prompt": "Complete a condição.",
-                            "language": "python",
-                            "code": "if nota >= 6:\n    aprovar()"
-                          }
-                        }
-                      ],
-                      "response": {
-                        "id": "gallery-composite-response",
-                        "package": "aralearn.response.gap",
-                        "version": "1.0.0",
-                        "data": {
-                          "prompt": "Regra e código",
-                          "blanks": [
-                            {
-                              "id": "blank-1",
-                              "targetInstanceId": "gallery-composite-content-code",
-                              "targetPath": "code",
-                              "responseMode": "choice",
-                              "answer": "nota >= 6",
-                              "distractors": [
-                                "nota < 6",
-                                "nota = 0"
-                              ]
-                            }
-                          ]
-                        }
-                      },
-                      "feedback": [
-                        {
-                          "id": "gallery-composite-feedback-text",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Feedback explicativo."
-                          }
-                        }
-                      ],
-                      "topics": [],
-                      "sources": []
-                    },
-                    {
-                      "id": "gallery-code",
-                      "position": 4,
-                      "title": "Condição em Python",
-                      "role": "practice",
-                      "content": [
-                        {
-                          "id": "gallery-code-content",
-                          "package": "aralearn.resource.code",
-                          "version": "1.0.0",
-                          "data": {
-                            "prompt": "Complete a comparação.",
-                            "language": "python",
-                            "code": "if nota >= 6:\n    print(\"aprovado\")"
-                          }
-                        }
-                      ],
-                      "response": {
-                        "id": "gallery-code-response",
-                        "package": "aralearn.response.gap",
-                        "version": "1.0.0",
-                        "data": {
-                          "prompt": "Condição em Python",
-                          "blanks": [
-                            {
-                              "id": "blank-1",
-                              "targetInstanceId": "gallery-code-content",
-                              "targetPath": "code",
-                              "responseMode": "text",
-                              "answer": "nota >= 6",
-                              "acceptedAnswers": [
-                                "nota>=6"
-                              ]
-                            }
-                          ]
-                        }
-                      },
-                      "feedback": [
-                        {
-                          "id": "gallery-code-feedback-text",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Feedback explicativo."
-                          }
-                        }
-                      ],
-                      "topics": [],
-                      "sources": []
-                    },
-                    {
-                      "id": "gallery-table",
-                      "position": 5,
-                      "title": "Tabela-verdade",
-                      "role": "practice",
-                      "content": [
-                        {
-                          "id": "gallery-table-content",
+                          "id": "instance-3",
                           "package": "aralearn.resource.table",
                           "version": "1.0.0",
                           "data": {
+                            "prompt": "Compare a finalidade.",
                             "columns": [
-                              "P",
-                              "Q",
-                              "P ∧ Q"
+                              "Mecanismo",
+                              "Finalidade"
                             ],
                             "rows": [
                               [
-                                "V",
-                                "V",
-                                "V"
+                                "Get",
+                                "Consultar um valor"
                               ]
                             ]
                           }
                         }
                       ],
-                      "response": {
-                        "id": "gallery-table-response",
-                        "package": "aralearn.response.gap",
-                        "version": "1.0.0",
-                        "data": {
-                          "prompt": "Tabela-verdade",
-                          "blanks": [
-                            {
-                              "id": "blank-1",
-                              "targetInstanceId": "gallery-table-content",
-                              "targetPath": "rows[0][2]",
-                              "responseMode": "choice",
-                              "answer": "V",
-                              "distractors": [
-                                "F"
-                              ]
-                            }
-                          ]
-                        }
-                      },
+                      "response": null,
                       "feedback": [
                         {
-                          "id": "gallery-table-feedback-text",
+                          "id": "feedback-3",
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
-                            "text": "Feedback explicativo."
+                            "text": "Cabeçalhos e células usam semântica de tabela e leitura linear."
                           }
                         }
                       ],
@@ -344,595 +150,39 @@
                       "sources": []
                     },
                     {
-                      "id": "gallery-flow",
-                      "position": 6,
-                      "title": "Decisão",
-                      "role": "practice",
+                      "id": "gallery-4",
+                      "position": 4,
+                      "title": "Sequência",
+                      "role": "theory",
                       "content": [
                         {
-                          "id": "gallery-flow-content",
-                          "package": "aralearn.resource.flow",
-                          "version": "1.0.0",
-                          "data": {
-                            "structure": {
-                              "id": "root",
-                              "kind": "sequence",
-                              "items": [
-                                {
-                                  "id": "decision",
-                                  "kind": "if_then",
-                                  "condition": "nota >= 6",
-                                  "thenBranch": [
-                                    {
-                                      "id": "output",
-                                      "kind": "output",
-                                      "text": "Exibir aprovado"
-                                    }
-                                  ]
-                                }
-                              ]
-                            }
-                          }
-                        }
-                      ],
-                      "response": {
-                        "id": "gallery-flow-response",
-                        "package": "aralearn.response.gap",
-                        "version": "1.0.0",
-                        "data": {
-                          "prompt": "Decisão",
-                          "blanks": [
-                            {
-                              "id": "blank-1",
-                              "targetInstanceId": "gallery-flow-content",
-                              "targetPath": "structure.items[0].condition",
-                              "responseMode": "choice",
-                              "answer": "nota >= 6",
-                              "distractors": [
-                                "nota < 6"
-                              ]
-                            }
-                          ]
-                        }
-                      },
-                      "feedback": [
-                        {
-                          "id": "gallery-flow-feedback-text",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Feedback explicativo."
-                          }
-                        }
-                      ],
-                      "topics": [],
-                      "sources": []
-                    },
-                    {
-                      "id": "gallery-tree",
-                      "position": 7,
-                      "title": "Classificação",
-                      "role": "practice",
-                      "content": [
-                        {
-                          "id": "gallery-tree-content",
-                          "package": "aralearn.resource.tree",
-                          "version": "1.0.0",
-                          "data": {
-                            "prompt": "Complete o táxon.",
-                            "variant": "taxonomy",
-                            "nodes": [
-                              {
-                                "id": "root",
-                                "label": "Animalia",
-                                "parentId": null
-                              },
-                              {
-                                "id": "child",
-                                "label": "Chordata",
-                                "parentId": "root"
-                              }
-                            ]
-                          }
-                        }
-                      ],
-                      "response": {
-                        "id": "gallery-tree-response",
-                        "package": "aralearn.response.gap",
-                        "version": "1.0.0",
-                        "data": {
-                          "prompt": "Classificação",
-                          "blanks": [
-                            {
-                              "id": "blank-1",
-                              "targetInstanceId": "gallery-tree-content",
-                              "targetPath": "nodes[1].label",
-                              "responseMode": "choice",
-                              "answer": "Chordata",
-                              "distractors": [
-                                "Plantae",
-                                "Fungi"
-                              ]
-                            }
-                          ]
-                        }
-                      },
-                      "feedback": [
-                        {
-                          "id": "gallery-tree-feedback-text",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Feedback explicativo."
-                          }
-                        }
-                      ],
-                      "topics": [],
-                      "sources": []
-                    },
-                    {
-                      "id": "gallery-graph",
-                      "position": 8,
-                      "title": "Peso da aresta",
-                      "role": "practice",
-                      "content": [
-                        {
-                          "id": "gallery-graph-content",
-                          "package": "aralearn.resource.graph",
-                          "version": "1.0.0",
-                          "data": {
-                            "prompt": "Complete o peso.",
-                            "layout": "path",
-                            "vertices": [
-                              {
-                                "id": "a",
-                                "label": "A"
-                              },
-                              {
-                                "id": "b",
-                                "label": "B"
-                              }
-                            ],
-                            "edges": [
-                              {
-                                "id": "edge-1",
-                                "from": "a",
-                                "to": "b",
-                                "weight": "7",
-                                "directed": true
-                              }
-                            ]
-                          }
-                        }
-                      ],
-                      "response": {
-                        "id": "gallery-graph-response",
-                        "package": "aralearn.response.gap",
-                        "version": "1.0.0",
-                        "data": {
-                          "prompt": "Peso da aresta",
-                          "blanks": [
-                            {
-                              "id": "blank-1",
-                              "targetInstanceId": "gallery-graph-content",
-                              "targetPath": "edges[0].weight",
-                              "responseMode": "text",
-                              "answer": "7"
-                            }
-                          ]
-                        }
-                      },
-                      "feedback": [
-                        {
-                          "id": "gallery-graph-feedback-text",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Feedback explicativo."
-                          }
-                        }
-                      ],
-                      "topics": [],
-                      "sources": []
-                    },
-                    {
-                      "id": "gallery-relation-map",
-                      "position": 9,
-                      "title": "Imagem da relação",
-                      "role": "practice",
-                      "content": [
-                        {
-                          "id": "gallery-relation-map-content",
-                          "package": "aralearn.resource.relation_map",
-                          "version": "1.0.0",
-                          "data": {
-                            "prompt": "Complete o elemento relacionado.",
-                            "leftSet": {
-                              "label": "U",
-                              "items": [
-                                {
-                                  "id": "a",
-                                  "label": "A"
-                                }
-                              ]
-                            },
-                            "rightSet": {
-                              "label": "V",
-                              "items": [
-                                {
-                                  "id": "one",
-                                  "label": "1"
-                                }
-                              ]
-                            },
-                            "relations": [
-                              {
-                                "id": "relation-1",
-                                "from": "a",
-                                "to": "one"
-                              }
-                            ]
-                          }
-                        }
-                      ],
-                      "response": {
-                        "id": "gallery-relation-map-response",
-                        "package": "aralearn.response.gap",
-                        "version": "1.0.0",
-                        "data": {
-                          "prompt": "Imagem da relação",
-                          "blanks": [
-                            {
-                              "id": "blank-1",
-                              "targetInstanceId": "gallery-relation-map-content",
-                              "targetPath": "rightSet.items[0].label",
-                              "responseMode": "choice",
-                              "answer": "1",
-                              "distractors": [
-                                "2"
-                              ]
-                            }
-                          ]
-                        }
-                      },
-                      "feedback": [
-                        {
-                          "id": "gallery-relation-map-feedback-text",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Feedback explicativo."
-                          }
-                        }
-                      ],
-                      "topics": [],
-                      "sources": []
-                    },
-                    {
-                      "id": "gallery-matrix",
-                      "position": 10,
-                      "title": "Soma matricial",
-                      "role": "practice",
-                      "content": [
-                        {
-                          "id": "gallery-matrix-content",
-                          "package": "aralearn.resource.matrix",
-                          "version": "1.0.0",
-                          "data": {
-                            "values": [
-                              [
-                                "1",
-                                "2"
-                              ],
-                              [
-                                "3",
-                                "4"
-                              ]
-                            ]
-                          }
-                        }
-                      ],
-                      "response": {
-                        "id": "gallery-matrix-response",
-                        "package": "aralearn.response.gap",
-                        "version": "1.0.0",
-                        "data": {
-                          "prompt": "Soma matricial",
-                          "blanks": [
-                            {
-                              "id": "blank-1",
-                              "targetInstanceId": "gallery-matrix-content",
-                              "targetPath": "values[1][1]",
-                              "responseMode": "text",
-                              "answer": "4"
-                            }
-                          ]
-                        }
-                      },
-                      "feedback": [
-                        {
-                          "id": "gallery-matrix-feedback-text",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Feedback explicativo."
-                          }
-                        }
-                      ],
-                      "topics": [],
-                      "sources": []
-                    },
-                    {
-                      "id": "gallery-plane",
-                      "position": 11,
-                      "title": "Soma de vetores",
-                      "role": "practice",
-                      "content": [
-                        {
-                          "id": "gallery-plane-content",
-                          "package": "aralearn.resource.plane",
-                          "version": "1.0.0",
-                          "data": {
-                            "sum": [
-                              [
-                                1,
-                                2
-                              ],
-                              [
-                                2,
-                                1
-                              ]
-                            ],
-                            "result": "(3, 3)"
-                          }
-                        }
-                      ],
-                      "response": {
-                        "id": "gallery-plane-response",
-                        "package": "aralearn.response.gap",
-                        "version": "1.0.0",
-                        "data": {
-                          "prompt": "Soma de vetores",
-                          "blanks": [
-                            {
-                              "id": "blank-1",
-                              "targetInstanceId": "gallery-plane-content",
-                              "targetPath": "result",
-                              "responseMode": "choice",
-                              "answer": "(3, 3)",
-                              "distractors": [
-                                "(2, 2)",
-                                "(3, 1)"
-                              ]
-                            }
-                          ]
-                        }
-                      },
-                      "feedback": [
-                        {
-                          "id": "gallery-plane-feedback-text",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Feedback explicativo."
-                          }
-                        }
-                      ],
-                      "topics": [],
-                      "sources": []
-                    },
-                    {
-                      "id": "gallery-formula",
-                      "position": 12,
-                      "title": "Operador",
-                      "role": "practice",
-                      "content": [
-                        {
-                          "id": "gallery-formula-content",
-                          "package": "aralearn.resource.formula",
-                          "version": "1.0.0",
-                          "data": {
-                            "prompt": "Complete o operador.",
-                            "notation": "mathematics",
-                            "accessibleText": "x + y",
-                            "expression": {
-                              "type": "row",
-                              "children": [
-                                {
-                                  "type": "identifier",
-                                  "value": "x"
-                                },
-                                {
-                                  "type": "operator",
-                                  "value": "+"
-                                },
-                                {
-                                  "type": "identifier",
-                                  "value": "y"
-                                }
-                              ]
-                            }
-                          }
-                        }
-                      ],
-                      "response": {
-                        "id": "gallery-formula-response",
-                        "package": "aralearn.response.gap",
-                        "version": "1.0.0",
-                        "data": {
-                          "prompt": "Operador",
-                          "blanks": [
-                            {
-                              "id": "blank-1",
-                              "targetInstanceId": "gallery-formula-content",
-                              "targetPath": "accessibleText",
-                              "responseMode": "choice",
-                              "answer": "+",
-                              "distractors": [
-                                "−"
-                              ]
-                            },
-                            {
-                              "id": "blank-2",
-                              "targetInstanceId": "gallery-formula-content",
-                              "targetPath": "expression.children[1].value",
-                              "responseMode": "choice",
-                              "answer": "+",
-                              "distractors": [
-                                "−"
-                              ]
-                            }
-                          ]
-                        }
-                      },
-                      "feedback": [
-                        {
-                          "id": "gallery-formula-feedback-text",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Feedback explicativo."
-                          }
-                        }
-                      ],
-                      "topics": [],
-                      "sources": []
-                    },
-                    {
-                      "id": "gallery-chart",
-                      "position": 13,
-                      "title": "Concentração por mês",
-                      "role": "practice",
-                      "content": [
-                        {
-                          "id": "gallery-chart-content",
-                          "package": "aralearn.resource.chart",
-                          "version": "1.0.0",
-                          "data": {
-                            "prompt": "Compare a tendência mensal.",
-                            "chartType": "line",
-                            "xAxis": {
-                              "label": "Mês"
-                            },
-                            "yAxis": {
-                              "label": "Concentração",
-                              "unit": "µg/m³"
-                            },
-                            "series": [
-                              {
-                                "id": "station-a",
-                                "name": "Estação A",
-                                "values": [
-                                  [
-                                    "Jan",
-                                    18
-                                  ],
-                                  [
-                                    "Fev",
-                                    22
-                                  ],
-                                  [
-                                    "Mar",
-                                    31
-                                  ]
-                                ]
-                              }
-                            ]
-                          }
-                        }
-                      ],
-                      "response": {
-                        "id": "gallery-chart-response",
-                        "package": "aralearn.response.gap",
-                        "version": "1.0.0",
-                        "data": {
-                          "prompt": "Concentração por mês",
-                          "blanks": [
-                            {
-                              "id": "blank-1",
-                              "targetInstanceId": "gallery-chart-content",
-                              "targetPath": "series[0].name",
-                              "responseMode": "choice",
-                              "answer": "Estação A",
-                              "distractors": [
-                                "Estação B",
-                                "Média móvel"
-                              ]
-                            }
-                          ]
-                        }
-                      },
-                      "feedback": [
-                        {
-                          "id": "gallery-chart-feedback-text",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Feedback explicativo."
-                          }
-                        }
-                      ],
-                      "topics": [],
-                      "sources": []
-                    },
-                    {
-                      "id": "gallery-sequence",
-                      "position": 14,
-                      "title": "Ciclo de investigação",
-                      "role": "practice",
-                      "content": [
-                        {
-                          "id": "gallery-sequence-content",
+                          "id": "instance-4",
                           "package": "aralearn.resource.sequence",
                           "version": "1.0.0",
                           "data": {
-                            "prompt": "Acompanhe a ordem das etapas.",
-                            "variant": "cycle",
+                            "prompt": "Acompanhe o envio.",
+                            "variant": "ordered_steps",
                             "items": [
                               {
-                                "id": "observe",
-                                "label": "Observar"
+                                "id": "s1",
+                                "label": "Preparar mensagem"
                               },
                               {
-                                "id": "hypothesis",
-                                "label": "Formular hipótese"
-                              },
-                              {
-                                "id": "test",
-                                "label": "Testar"
+                                "id": "s2",
+                                "label": "Transmitir"
                               }
                             ]
                           }
                         }
                       ],
-                      "response": {
-                        "id": "gallery-sequence-response",
-                        "package": "aralearn.response.gap",
-                        "version": "1.0.0",
-                        "data": {
-                          "prompt": "Ciclo de investigação",
-                          "blanks": [
-                            {
-                              "id": "blank-1",
-                              "targetInstanceId": "gallery-sequence-content",
-                              "targetPath": "items[1].label",
-                              "responseMode": "choice",
-                              "answer": "Formular hipótese",
-                              "distractors": [
-                                "Publicar conclusão",
-                                "Ignorar evidências"
-                              ]
-                            }
-                          ]
-                        }
-                      },
+                      "response": null,
                       "feedback": [
                         {
-                          "id": "gallery-sequence-feedback-text",
+                          "id": "feedback-4",
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
-                            "text": "Feedback explicativo."
+                            "text": "A ordem visual também é a ordem do DOM e cada item tem posição textual."
                           }
                         }
                       ],
@@ -940,21 +190,20 @@
                       "sources": []
                     },
                     {
-                      "id": "gallery-annotated-text",
-                      "position": 15,
-                      "title": "Modalidade normativa",
-                      "role": "practice",
+                      "id": "gallery-5",
+                      "position": 5,
+                      "title": "Texto anotado",
+                      "role": "theory",
                       "content": [
                         {
-                          "id": "gallery-annotated-text-content",
+                          "id": "instance-5",
                           "package": "aralearn.resource.annotated_text",
                           "version": "1.0.0",
                           "data": {
-                            "prompt": "Relacione a forma verbal à obrigação.",
                             "segments": [
                               {
                                 "id": "s1",
-                                "text": "O controlador deverá comunicar o incidente."
+                                "text": "O cliente envia uma requisição."
                               }
                             ],
                             "annotations": [
@@ -963,41 +212,21 @@
                                 "targetIds": [
                                   "s1"
                                 ],
-                                "label": "dever jurídico",
-                                "note": "A forma verbal estabelece obrigação."
+                                "label": "Ação inicial",
+                                "note": "A comunicação começa no cliente."
                               }
                             ]
                           }
                         }
                       ],
-                      "response": {
-                        "id": "gallery-annotated-text-response",
-                        "package": "aralearn.response.gap",
-                        "version": "1.0.0",
-                        "data": {
-                          "prompt": "Modalidade normativa",
-                          "blanks": [
-                            {
-                              "id": "blank-1",
-                              "targetInstanceId": "gallery-annotated-text-content",
-                              "targetPath": "annotations[0].label",
-                              "responseMode": "choice",
-                              "answer": "dever jurídico",
-                              "distractors": [
-                                "faculdade",
-                                "descrição neutra"
-                              ]
-                            }
-                          ]
-                        }
-                      },
+                      "response": null,
                       "feedback": [
                         {
-                          "id": "gallery-annotated-text-feedback-text",
+                          "id": "feedback-5",
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
-                            "text": "Feedback explicativo."
+                            "text": "Anotações repetem textualmente os ids e rótulos dos trechos-alvo."
                           }
                         }
                       ],
@@ -1005,59 +234,38 @@
                       "sources": []
                     },
                     {
-                      "id": "gallery-linguistic-example",
-                      "position": 16,
-                      "title": "Saudação",
-                      "role": "practice",
+                      "id": "gallery-6",
+                      "position": 6,
+                      "title": "Exemplo linguístico",
+                      "role": "theory",
                       "content": [
                         {
-                          "id": "gallery-linguistic-example-content",
+                          "id": "instance-6",
                           "package": "aralearn.resource.linguistic_example",
                           "version": "1.0.0",
                           "data": {
-                            "prompt": "Compare forma, leitura e tradução.",
-                            "languageTag": "zh-Hans",
+                            "languageTag": "pt-BR",
                             "writingMode": "horizontal",
                             "alignment": "word",
                             "units": [
                               {
                                 "id": "u1",
-                                "form": "你好",
-                                "gloss": "você bom",
-                                "translation": "olá"
+                                "form": "casas",
+                                "gloss": "casa-PL",
+                                "translation": "mais de uma casa"
                               }
                             ]
                           }
                         }
                       ],
-                      "response": {
-                        "id": "gallery-linguistic-example-response",
-                        "package": "aralearn.response.gap",
-                        "version": "1.0.0",
-                        "data": {
-                          "prompt": "Saudação",
-                          "blanks": [
-                            {
-                              "id": "blank-1",
-                              "targetInstanceId": "gallery-linguistic-example-content",
-                              "targetPath": "units[0].translation",
-                              "responseMode": "choice",
-                              "answer": "olá",
-                              "distractors": [
-                                "adeus",
-                                "obrigado"
-                              ]
-                            }
-                          ]
-                        }
-                      },
+                      "response": null,
                       "feedback": [
                         {
-                          "id": "gallery-linguistic-example-feedback-text",
+                          "id": "feedback-6",
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
-                            "text": "Feedback explicativo."
+                            "text": "Cada unidade é lida com forma, glosa e tradução na mesma ordem."
                           }
                         }
                       ],
@@ -1065,29 +273,492 @@
                       "sources": []
                     },
                     {
-                      "id": "gallery-system-map",
-                      "position": 17,
-                      "title": "Limite de implantação",
+                      "id": "gallery-7",
+                      "position": 7,
+                      "title": "Escolha",
                       "role": "practice",
                       "content": [
                         {
-                          "id": "gallery-system-map-content",
-                          "package": "aralearn.resource.system_map",
+                          "id": "context-7",
+                          "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
-                            "prompt": "Identifique o componente dentro da zona de aplicação.",
-                            "groups": [
+                            "text": "Pedir que o estudante discrimine uma ou mais alternativas plausíveis."
+                          }
+                        }
+                      ],
+                      "response": {
+                        "id": "instance-7",
+                        "package": "aralearn.response.choice",
+                        "version": "1.0.0",
+                        "data": {
+                          "question": "Qual protocolo fornece entrega confiável?",
+                          "selectionMode": "single",
+                          "selectionCriterion": "correct",
+                          "options": [
+                            {
+                              "id": "tcp",
+                              "kind": "text",
+                              "text": "TCP"
+                            },
+                            {
+                              "id": "udp",
+                              "kind": "text",
+                              "text": "UDP"
+                            }
+                          ],
+                          "answerIds": [
+                            "tcp"
+                          ]
+                        }
+                      },
+                      "feedback": [
+                        {
+                          "id": "feedback-7",
+                          "package": "aralearn.resource.paragraph",
+                          "version": "1.0.0",
+                          "data": {
+                            "text": "Alternativas usam fieldset, legend e controles nativos."
+                          }
+                        }
+                      ],
+                      "topics": [],
+                      "sources": []
+                    },
+                    {
+                      "id": "gallery-8",
+                      "position": 8,
+                      "title": "Lacuna",
+                      "role": "practice",
+                      "content": [
+                        {
+                          "id": "context-8",
+                          "package": "aralearn.resource.paragraph",
+                          "version": "1.0.0",
+                          "data": {
+                            "text": "Pedir recuperação ou discriminação exatamente no campo semântico declarado pelo conteúdo."
+                          }
+                        }
+                      ],
+                      "response": {
+                        "id": "instance-8",
+                        "package": "aralearn.response.gap",
+                        "version": "1.0.0",
+                        "data": {
+                          "prompt": "Complete o termo.",
+                          "blanks": [
+                            {
+                              "id": "protocol",
+                              "targetInstanceId": "body-1",
+                              "targetPath": "text:protocol",
+                              "responseMode": "text",
+                              "answer": "protocolo"
+                            }
+                          ]
+                        }
+                      },
+                      "feedback": [
+                        {
+                          "id": "feedback-8",
+                          "package": "aralearn.resource.paragraph",
+                          "version": "1.0.0",
+                          "data": {
+                            "text": "Cada lacuna tem prompt, rótulo e controle nativo próprios."
+                          }
+                        }
+                      ],
+                      "topics": [],
+                      "sources": []
+                    },
+                    {
+                      "id": "gallery-9",
+                      "position": 9,
+                      "title": "Ordenação",
+                      "role": "practice",
+                      "content": [
+                        {
+                          "id": "context-9",
+                          "package": "aralearn.resource.paragraph",
+                          "version": "1.0.0",
+                          "data": {
+                            "text": "Pedir que o estudante reconstrua uma ordem causal, temporal ou procedimental."
+                          }
+                        }
+                      ],
+                      "response": {
+                        "id": "instance-9",
+                        "package": "aralearn.response.ordering",
+                        "version": "1.0.0",
+                        "data": {
+                          "prompt": "Ordene as etapas.",
+                          "targetInstanceId": "body-1",
+                          "itemIds": [
+                            "s1",
+                            "s2"
+                          ],
+                          "answerOrder": [
+                            "s1",
+                            "s2"
+                          ]
+                        }
+                      },
+                      "feedback": [
+                        {
+                          "id": "feedback-9",
+                          "package": "aralearn.resource.paragraph",
+                          "version": "1.0.0",
+                          "data": {
+                            "text": "Oferece botões de mover e posição anunciada; arrastar nunca é obrigatório."
+                          }
+                        }
+                      ],
+                      "topics": [],
+                      "sources": []
+                    },
+                    {
+                      "id": "gallery-10",
+                      "position": 10,
+                      "title": "Árvore",
+                      "role": "theory",
+                      "content": [
+                        {
+                          "id": "instance-10",
+                          "package": "aralearn.resource.tree",
+                          "version": "1.0.0",
+                          "data": {
+                            "prompt": "Observe a classificação.",
+                            "variant": "taxonomy",
+                            "nodes": [
                               {
-                                "id": "region",
-                                "label": "Região",
-                                "kind": "region",
+                                "id": "animalia",
+                                "label": "Animalia",
                                 "parentId": null
                               },
                               {
-                                "id": "application-zone",
-                                "label": "Zona de aplicação",
-                                "kind": "zone",
-                                "parentId": "region"
+                                "id": "chordata",
+                                "label": "Chordata",
+                                "parentId": "animalia"
+                              }
+                            ]
+                          }
+                        }
+                      ],
+                      "response": null,
+                      "feedback": [
+                        {
+                          "id": "feedback-10",
+                          "package": "aralearn.resource.paragraph",
+                          "version": "1.0.0",
+                          "data": {
+                            "text": "A hierarquia usa listas aninhadas na mesma ordem visual."
+                          }
+                        }
+                      ],
+                      "topics": [],
+                      "sources": []
+                    },
+                    {
+                      "id": "gallery-11",
+                      "position": 11,
+                      "title": "Matriz",
+                      "role": "theory",
+                      "content": [
+                        {
+                          "id": "instance-11",
+                          "package": "aralearn.resource.matrix",
+                          "version": "1.0.0",
+                          "data": {
+                            "prompt": "Observe a identidade.",
+                            "name": "I",
+                            "values": [
+                              [
+                                "1",
+                                "0"
+                              ],
+                              [
+                                "0",
+                                "1"
+                              ]
+                            ]
+                          }
+                        }
+                      ],
+                      "response": null,
+                      "feedback": [
+                        {
+                          "id": "feedback-11",
+                          "package": "aralearn.resource.paragraph",
+                          "version": "1.0.0",
+                          "data": {
+                            "text": "Cada matriz possui tabela semântica e ordem linear por linhas."
+                          }
+                        }
+                      ],
+                      "topics": [],
+                      "sources": []
+                    },
+                    {
+                      "id": "gallery-12",
+                      "position": 12,
+                      "title": "Reação",
+                      "role": "theory",
+                      "content": [
+                        {
+                          "id": "instance-12",
+                          "package": "aralearn.resource.reaction",
+                          "version": "1.0.0",
+                          "data": {
+                            "prompt": "Observe a formação de água.",
+                            "reactionType": "forward",
+                            "reactants": [
+                              {
+                                "id": "h",
+                                "formula": "H₂",
+                                "name": "hidrogênio",
+                                "coefficient": 2,
+                                "state": "g"
+                              },
+                              {
+                                "id": "o",
+                                "formula": "O₂",
+                                "name": "oxigênio",
+                                "state": "g"
+                              }
+                            ],
+                            "products": [
+                              {
+                                "id": "w",
+                                "formula": "H₂O",
+                                "name": "água",
+                                "coefficient": 2,
+                                "state": "l"
+                              }
+                            ],
+                            "conditions": []
+                          }
+                        }
+                      ],
+                      "response": null,
+                      "feedback": [
+                        {
+                          "id": "feedback-12",
+                          "package": "aralearn.resource.paragraph",
+                          "version": "1.0.0",
+                          "data": {
+                            "text": "A equação possui descrição textual com nomes, coeficientes e estados."
+                          }
+                        }
+                      ],
+                      "topics": [],
+                      "sources": []
+                    },
+                    {
+                      "id": "gallery-13",
+                      "position": 13,
+                      "title": "Fluxo",
+                      "role": "theory",
+                      "content": [
+                        {
+                          "id": "instance-13",
+                          "package": "aralearn.resource.flow",
+                          "version": "1.0.0",
+                          "data": {
+                            "prompt": "Acompanhe a decisão.",
+                            "structure": {
+                              "id": "root",
+                              "kind": "sequence",
+                              "items": [
+                                {
+                                  "id": "start",
+                                  "kind": "start",
+                                  "text": "Início"
+                                },
+                                {
+                                  "id": "decision",
+                                  "kind": "if_then",
+                                  "condition": "há conexão",
+                                  "thenBranch": [
+                                    {
+                                      "id": "send",
+                                      "kind": "process",
+                                      "text": "Enviar"
+                                    }
+                                  ]
+                                },
+                                {
+                                  "id": "end",
+                                  "kind": "end",
+                                  "text": "Fim"
+                                }
+                              ]
+                            }
+                          }
+                        }
+                      ],
+                      "response": null,
+                      "feedback": [
+                        {
+                          "id": "feedback-13",
+                          "package": "aralearn.resource.paragraph",
+                          "version": "1.0.0",
+                          "data": {
+                            "text": "A lógica é exposta também como árvore ordenada, independente do desenho."
+                          }
+                        }
+                      ],
+                      "topics": [],
+                      "sources": []
+                    },
+                    {
+                      "id": "gallery-14",
+                      "position": 14,
+                      "title": "Fórmula",
+                      "role": "theory",
+                      "content": [
+                        {
+                          "id": "instance-14",
+                          "package": "aralearn.resource.formula",
+                          "version": "1.0.0",
+                          "data": {
+                            "prompt": "Observe a potência.",
+                            "notation": "mathematics",
+                            "accessibleText": "x ao quadrado",
+                            "expression": {
+                              "type": "superscript",
+                              "base": {
+                                "type": "identifier",
+                                "value": "x"
+                              },
+                              "exponent": {
+                                "type": "number",
+                                "value": "2"
+                              }
+                            }
+                          }
+                        }
+                      ],
+                      "response": null,
+                      "feedback": [
+                        {
+                          "id": "feedback-14",
+                          "package": "aralearn.resource.paragraph",
+                          "version": "1.0.0",
+                          "data": {
+                            "text": "A expressão sempre exige descrição textual equivalente."
+                          }
+                        }
+                      ],
+                      "topics": [],
+                      "sources": []
+                    },
+                    {
+                      "id": "gallery-15",
+                      "position": 15,
+                      "title": "Plano cartesiano",
+                      "role": "theory",
+                      "content": [
+                        {
+                          "id": "instance-15",
+                          "package": "aralearn.resource.plane",
+                          "version": "1.0.0",
+                          "data": {
+                            "prompt": "Observe o vetor.",
+                            "vector": [
+                              2,
+                              1
+                            ]
+                          }
+                        }
+                      ],
+                      "response": null,
+                      "feedback": [
+                        {
+                          "id": "feedback-15",
+                          "package": "aralearn.resource.paragraph",
+                          "version": "1.0.0",
+                          "data": {
+                            "text": "Todos os pontos e vetores são descritos por coordenadas em texto."
+                          }
+                        }
+                      ],
+                      "topics": [],
+                      "sources": []
+                    },
+                    {
+                      "id": "gallery-16",
+                      "position": 16,
+                      "title": "Gráfico estatístico",
+                      "role": "theory",
+                      "content": [
+                        {
+                          "id": "instance-16",
+                          "package": "aralearn.resource.chart",
+                          "version": "1.0.0",
+                          "data": {
+                            "prompt": "Observe o crescimento.",
+                            "chartType": "line",
+                            "xAxis": {
+                              "label": "Tempo"
+                            },
+                            "yAxis": {
+                              "label": "Valor",
+                              "unit": "ms"
+                            },
+                            "series": [
+                              {
+                                "id": "s1",
+                                "name": "Latência",
+                                "values": [
+                                  [
+                                    "1",
+                                    10
+                                  ],
+                                  [
+                                    "2",
+                                    18
+                                  ],
+                                  [
+                                    "3",
+                                    25
+                                  ]
+                                ]
+                              }
+                            ]
+                          }
+                        }
+                      ],
+                      "response": null,
+                      "feedback": [
+                        {
+                          "id": "feedback-16",
+                          "package": "aralearn.resource.paragraph",
+                          "version": "1.0.0",
+                          "data": {
+                            "text": "Séries e valores são repetidos em descrição textual."
+                          }
+                        }
+                      ],
+                      "topics": [],
+                      "sources": []
+                    },
+                    {
+                      "id": "gallery-17",
+                      "position": 17,
+                      "title": "Mapa de sistema",
+                      "role": "theory",
+                      "content": [
+                        {
+                          "id": "instance-17",
+                          "package": "aralearn.resource.system_map",
+                          "version": "1.0.0",
+                          "data": {
+                            "prompt": "Observe o limite da aplicação.",
+                            "groups": [
+                              {
+                                "id": "app",
+                                "label": "Aplicação",
+                                "kind": "boundary",
+                                "parentId": null
                               }
                             ],
                             "nodes": [
@@ -1098,65 +769,32 @@
                                 "groupId": null
                               },
                               {
-                                "id": "orders-api",
-                                "label": "API de pedidos",
+                                "id": "api",
+                                "label": "API",
                                 "kind": "service",
-                                "groupId": "application-zone"
-                              },
-                              {
-                                "id": "orders-db",
-                                "label": "Banco de pedidos",
-                                "kind": "database",
-                                "groupId": "application-zone"
+                                "groupId": "app"
                               }
                             ],
                             "links": [
                               {
                                 "id": "request",
                                 "from": "client",
-                                "to": "orders-api",
+                                "to": "api",
                                 "label": "requisição",
-                                "directed": true
-                              },
-                              {
-                                "id": "persist",
-                                "from": "orders-api",
-                                "to": "orders-db",
-                                "label": "persistência",
                                 "directed": true
                               }
                             ]
                           }
                         }
                       ],
-                      "response": {
-                        "id": "gallery-system-map-response",
-                        "package": "aralearn.response.gap",
-                        "version": "1.0.0",
-                        "data": {
-                          "prompt": "Limite de implantação",
-                          "blanks": [
-                            {
-                              "id": "blank-1",
-                              "targetInstanceId": "gallery-system-map-content",
-                              "targetPath": "nodes[1].label",
-                              "responseMode": "choice",
-                              "answer": "API de pedidos",
-                              "distractors": [
-                                "Fila externa",
-                                "Cliente móvel"
-                              ]
-                            }
-                          ]
-                        }
-                      },
+                      "response": null,
                       "feedback": [
                         {
-                          "id": "gallery-system-map-feedback-text",
+                          "id": "feedback-17",
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
-                            "text": "Feedback explicativo."
+                            "text": "Grupos, componentes e conexões possuem uma lista textual completa."
                           }
                         }
                       ],
@@ -1164,75 +802,128 @@
                       "sources": []
                     },
                     {
-                      "id": "gallery-reaction",
+                      "id": "gallery-18",
                       "position": 18,
-                      "title": "Formação de água",
-                      "role": "practice",
+                      "title": "Grafo",
+                      "role": "theory",
                       "content": [
                         {
-                          "id": "gallery-reaction-content",
-                          "package": "aralearn.resource.reaction",
+                          "id": "instance-18",
+                          "package": "aralearn.resource.graph",
                           "version": "1.0.0",
                           "data": {
-                            "prompt": "Complete o coeficiente estequiométrico indicado.",
-                            "reactionType": "forward",
-                            "reactants": [
+                            "prompt": "Observe como a estação consulta o agente.",
+                            "layout": "path",
+                            "vertices": [
                               {
-                                "id": "hydrogen",
-                                "formula": "H2",
-                                "name": "hidrogênio",
-                                "coefficient": "2",
-                                "state": "g"
+                                "id": "station",
+                                "label": "Estação de gerência"
                               },
                               {
-                                "id": "oxygen",
-                                "formula": "O2",
-                                "name": "oxigênio",
-                                "coefficient": 1,
-                                "state": "g"
-                              }
-                            ],
-                            "products": [
+                                "id": "agent",
+                                "label": "Agente no dispositivo"
+                              },
                               {
-                                "id": "water",
-                                "formula": "H2O",
-                                "name": "água",
-                                "coefficient": 2,
-                                "state": "l"
+                                "id": "object",
+                                "label": "Objeto gerenciado"
                               }
                             ],
-                            "conditions": []
+                            "edges": [
+                              {
+                                "id": "request",
+                                "from": "station",
+                                "to": "agent",
+                                "label": "envia solicitação",
+                                "directed": true
+                              },
+                              {
+                                "id": "read",
+                                "from": "agent",
+                                "to": "object",
+                                "label": "consulta",
+                                "directed": true
+                              }
+                            ]
                           }
                         }
                       ],
-                      "response": {
-                        "id": "gallery-reaction-response",
-                        "package": "aralearn.response.gap",
-                        "version": "1.0.0",
-                        "data": {
-                          "prompt": "Formação de água",
-                          "blanks": [
-                            {
-                              "id": "blank-1",
-                              "targetInstanceId": "gallery-reaction-content",
-                              "targetPath": "reactants[0].coefficient",
-                              "responseMode": "choice",
-                              "answer": "2",
-                              "distractors": [
-                                "1",
-                                "3"
-                              ]
-                            }
-                          ]
-                        }
-                      },
+                      "response": null,
                       "feedback": [
                         {
-                          "id": "gallery-reaction-feedback-text",
+                          "id": "feedback-18",
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
-                            "text": "Feedback explicativo."
+                            "text": "Vértices e relações são integralmente repetidos em texto; rótulos de arestas ficam em uma lista legível."
+                          }
+                        }
+                      ],
+                      "topics": [],
+                      "sources": []
+                    },
+                    {
+                      "id": "gallery-19",
+                      "position": 19,
+                      "title": "Mapa de relações",
+                      "role": "theory",
+                      "content": [
+                        {
+                          "id": "instance-19",
+                          "package": "aralearn.resource.relation_map",
+                          "version": "1.0.0",
+                          "data": {
+                            "prompt": "Relacione cada componente à responsabilidade que ele exerce.",
+                            "leftSet": {
+                              "label": "Componente",
+                              "items": [
+                                {
+                                  "id": "manager",
+                                  "label": "Gerente"
+                                },
+                                {
+                                  "id": "agent",
+                                  "label": "Agente"
+                                }
+                              ]
+                            },
+                            "rightSet": {
+                              "label": "Responsabilidade",
+                              "items": [
+                                {
+                                  "id": "request",
+                                  "label": "Envia a solicitação"
+                                },
+                                {
+                                  "id": "local",
+                                  "label": "Acessa o dado local"
+                                }
+                              ]
+                            },
+                            "relations": [
+                              {
+                                "id": "r1",
+                                "from": "manager",
+                                "to": "request",
+                                "label": "executa"
+                              },
+                              {
+                                "id": "r2",
+                                "from": "agent",
+                                "to": "local",
+                                "label": "executa"
+                              }
+                            ]
+                          }
+                        }
+                      ],
+                      "response": null,
+                      "feedback": [
+                        {
+                          "id": "feedback-19",
+                          "package": "aralearn.resource.paragraph",
+                          "version": "1.0.0",
+                          "data": {
+                            "text": "Cada correspondência é uma linha DOM completa; nenhuma informação depende da posição de uma seta."
                           }
                         }
                       ],

@@ -1,5 +1,5 @@
 import { routeRequest } from "./protocol.js";
-import { executeAuthoringRoute } from "./routerV4.js";
+import { executeAuthoringRoute } from "./authoringRouter.js";
 import { prepareAuthoringContext } from "./authoringKnowledge.js";
 import {
   authoringMcpToolsForPrincipal,

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { executeAuthoringRoute } from "../../supabase/functions/_shared/aralearn-authoring/routerV4.js";
+import { executeAuthoringRoute } from "../../supabase/functions/_shared/aralearn-authoring/authoringRouter.js";
 import { SupabaseAuthoringAdapter } from "../../supabase/functions/_shared/aralearn-authoring/supabaseAdapter.js";
 import { workspaceRoute } from "../../supabase/functions/_shared/aralearn-authoring/workspaceProtocol.js";
 

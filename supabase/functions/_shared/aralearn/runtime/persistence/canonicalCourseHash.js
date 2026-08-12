@@ -4,15 +4,14 @@ import { RelationalMappingError } from "./relationalSchema.js";
 
 function projectForCourse(course) {
   return {
-    contract: "aralearn.contract",
-    version: 4,
-    kind: "project",
+    contract: "aralearn.library.v1",
+    scope: "course",
     courses: [structuredClone(course)]
   };
 }
 
 function asSingleCourseProject(value) {
-  if (value?.contract === "aralearn.contract" && value?.version === 4 && value?.kind === "project") {
+  if (value?.contract === "aralearn.library.v1") {
     if (!Array.isArray(value.courses) || value.courses.length !== 1) {
       throw new RelationalMappingError("O hash de curso exige exatamente um curso.");
     }
@@ -33,7 +32,7 @@ function sortJsonValue(value) {
 }
 
 /**
- * Canonicalizes a public v4 course through the relational round-trip. This makes
+ * Canonicalizes a package course through the relational round-trip. This makes
  * harmless representational differences (for example an omitted option kind)
  * converge before hashing while preserving every mapped domain field.
  */

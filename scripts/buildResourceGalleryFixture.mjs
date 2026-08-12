@@ -2,81 +2,58 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { compileAuthoringCardGaps } from "../src/core/authoringGaps.js";
 import { validateProjectDocument } from "../src/domain/aralearnProject.js";
-import {
-  getAuthoringResourceContract,
-  listResourceIds
-} from "../src/resources/registry/index.js";
+import { RESOURCE_PACKAGE_REGISTRY } from "../src/resources/packages/index.js";
 
 const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
-const outputPath = path.resolve(
-  scriptDirectory,
-  "../tests/fixtures/package/project-resources-gallery.json"
-);
+const outputPath = path.resolve(scriptDirectory, "../tests/fixtures/package/project-resources-gallery.json");
+const paragraph = (id, text) => ({ id, package: "aralearn.resource.paragraph", version: "1.0.0", data: { text } });
 
-const cards = listResourceIds().map((resource, index) => {
-  const example = getAuthoringResourceContract(resource)?.example;
-  if (!example) {
-    throw new Error(`O recurso ${resource} não possui exemplo autoral canônico.`);
-  }
-  return compileAuthoringCardGaps({
-    ...structuredClone(example),
-    id: `gallery-${resource.replaceAll("_", "-")}`,
+const cards = RESOURCE_PACKAGE_REGISTRY.listCatalog().map((manifest, index) => {
+  const slot = manifest.slots.includes("content") ? "content" : "response";
+  const contract = RESOURCE_PACKAGE_REGISTRY.getAuthoringContract(manifest.id, manifest.version);
+  const instance = RESOURCE_PACKAGE_REGISTRY.normalizeInstance({
+    id: `instance-${index + 1}`,
+    package: manifest.id,
+    version: manifest.version,
+    data: contract.contract.example
+  }, slot);
+  return {
+    id: `gallery-${index + 1}`,
     position: index + 1,
-    after: example.after || "Observe como a representação sustenta a operação didática."
-  });
+    title: manifest.label,
+    role: slot === "content" ? "theory" : "practice",
+    content: slot === "content" ? [instance] : [paragraph(`context-${index + 1}`, manifest.purpose)],
+    response: slot === "response" ? instance : null,
+    feedback: [paragraph(`feedback-${index + 1}`, manifest.accessibility)],
+    topics: [],
+    sources: []
+  };
 });
 
 const project = {
-  contract: "aralearn.contract",
-  version: 4,
-  kind: "project",
+  contract: "aralearn.library.v1",
+  scope: "course",
   courses: [{
     id: "course-resources-gallery",
-    title: "Galeria de resources v4",
-    goal: "Demonstrar os dezoito recursos canônicos em cards válidos.",
+    title: "Galeria de packages",
+    goal: "Demonstrar os packages instalados em cards válidos.",
     modules: [{
       id: "module-resources-gallery",
       title: "Representações canônicas",
-      guide: {
-        goal: "Comparar representações e interações disponíveis.",
-        include: ["resources v4"],
-        exclude: [],
-        notation: [],
-        avoid: []
-      },
+      guide: { goal: "Comparar representações e interações disponíveis.", include: ["packages instalados"], exclude: [], notation: [], avoid: [] },
       lessons: [{
         id: "lesson-resources-gallery",
-        title: "Um card por resource",
-        guide: {
-          goal: "Inspecionar cada resource em uma operação didática concreta.",
-          include: ["dezoito recursos"],
-          exclude: [],
-          notation: [],
-          avoid: []
-        },
+        title: "Um card por package",
+        guide: { goal: "Inspecionar cada package em uma operação concreta.", include: ["catálogo de packages"], exclude: [], notation: [], avoid: [] },
         topics: [],
-        microsequences: [{
-          id: "micro-resources-gallery",
-          title: "Galeria completa",
-          goal: "Percorrer todos os recursos do contrato v4.",
-          role: "practice",
-          status: "generated",
-          dependsOn: [],
-          covers: listResourceIds(),
-          checks: ["renderização", "interação", "responsividade"],
-          cards
-        }]
+        microsequences: [{ id: "micro-resources-gallery", title: "Galeria completa", goal: "Percorrer os packages instalados.", role: "practice", dependsOn: [], covers: [], checks: ["renderização", "interação", "responsividade"], errors: [], cards }]
       }]
     }]
   }]
 };
 
 const validation = validateProjectDocument(project);
-if (!validation.ok) {
-  throw new Error(`Fixture de galeria inválida:\n${JSON.stringify(validation.errors, null, 2)}`);
-}
-
+if (!validation.ok) throw new Error(`Fixture de galeria inválida:\n${JSON.stringify(validation.errors, null, 2)}`);
 fs.writeFileSync(outputPath, `${JSON.stringify(validation.value, null, 2)}\n`, "utf8");
-console.log(`Galeria v4 gerada em ${outputPath} (${cards.length} cards).`);
+console.log(`Galeria de packages gerada em ${outputPath} (${cards.length} cards).`);

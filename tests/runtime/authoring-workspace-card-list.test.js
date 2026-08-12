@@ -6,7 +6,7 @@ import { AuthoringApiError } from "../../supabase/functions/_shared/aralearn-aut
 import {
   prepareAuthoringContext
 } from "../../supabase/functions/_shared/aralearn-authoring/authoringKnowledge.js";
-import { executeAuthoringRoute } from "../../supabase/functions/_shared/aralearn-authoring/routerV4.js";
+import { executeAuthoringRoute } from "../../supabase/functions/_shared/aralearn-authoring/authoringRouter.js";
 import { SupabaseAuthoringAdapter } from "../../supabase/functions/_shared/aralearn-authoring/supabaseAdapter.js";
 import {
   AUTHORING_WORKSPACE_MCP_TOOLS,

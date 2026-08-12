@@ -22,9 +22,6 @@ import {
 } from "./workspaceParts.js";
 import { sha256Hex } from "./security.js";
 import {
-  getCardResourceDefinition
-} from "../aralearn/runtime/resources/registry/index.js";
-import {
   applyContinuityStateOperation,
   buildWorkspaceResumeProjection,
   CONTINUITY_FINDING_OPERATIONS,
@@ -240,13 +237,6 @@ function findingMutationProjection(value, operation) {
   };
 }
 
-const PRESERVED_CARD_RESOURCE_FIELDS = new Set([
-  "id", "position", "resource", "kind", "exercise", "title", "after",
-  "sources", "topics", "afterBlocks"
-]);
-const CONTEXTUAL_CHOICE_FIELDS = new Set([
-  "question", "selectionMode", "selectionCriterion", "options", "answerIds"
-]);
 const CONTENT_MUTATION_OPERATIONS = new Set([
   "save_microsequence_cards", "save_card"
 ]);
@@ -255,66 +245,18 @@ const SUMMARY_RESOURCE_TARGET_LIMIT = 10;
 const SUMMARY_PATH_BYTES = 10 * 1_024;
 const SUMMARY_EVIDENCE_BYTES = 6 * 1_024;
 
-function cardMainResourceFieldNames(card) {
-  if (card.resource === "composite") return ["blocks"];
-  const properties = getCardResourceDefinition(card.resource)
-    ?.cardSchema?.properties || {};
-  return Object.keys(properties).filter((fieldName) =>
-    !PRESERVED_CARD_RESOURCE_FIELDS.has(fieldName)
-    && (card.resource === "choice"
-      || !CONTEXTUAL_CHOICE_FIELDS.has(fieldName)));
-}
-
-function cardResponseResourceFieldNames(card) {
-  if (card.resource === "choice" || card.exercise !== "choice") return [];
-  const properties = getCardResourceDefinition(card.resource)
-    ?.cardSchema?.properties || {};
-  return [...CONTEXTUAL_CHOICE_FIELDS].filter((fieldName) =>
-    Object.hasOwn(properties, fieldName));
-}
-
 function cardResourceTargetSnapshots(card) {
   if (!card || typeof card !== "object" || Array.isArray(card)) return new Map();
   const snapshots = new Map();
-  if (card.resource === "composite") {
-    for (const [position, block] of (
-      Array.isArray(card.blocks) ? card.blocks : []
-    ).entries()) {
-      if (typeof block?.id === "string" && block.id.trim()) {
-        snapshots.set(`body:${block.id.trim()}`, { position, block });
-      }
-    }
-  } else {
-    const fieldNames = cardMainResourceFieldNames(card);
-    snapshots.set("main", Object.fromEntries(fieldNames
-      .filter((fieldName) => Object.hasOwn(card, fieldName))
-      .map((fieldName) => [fieldName, card[fieldName]])));
-  }
-  const responseFieldNames = cardResponseResourceFieldNames(card);
-  if (responseFieldNames.length > 0) {
-    snapshots.set("response", Object.fromEntries(responseFieldNames
-      .filter((fieldName) => Object.hasOwn(card, fieldName))
-      .map((fieldName) => [fieldName, card[fieldName]])));
-  }
-  snapshots.set("after:text", card.after ?? "");
-  for (const [position, block] of (
-    Array.isArray(card.afterBlocks) ? card.afterBlocks : []
-  ).entries()) {
-    if (typeof block?.id === "string" && block.id.trim()) {
-      snapshots.set(`after:${block.id.trim()}`, { position, block });
-    }
-  }
+  (card.content || []).forEach((instance, position) => snapshots.set(`content:${instance.id}`, { position, instance }));
+  if (card.response) snapshots.set(`response:${card.response.id}`, { position: 0, instance: card.response });
+  (card.feedback || []).forEach((instance, position) => snapshots.set(`feedback:${instance.id}`, { position, instance }));
   return snapshots;
 }
 
 function cardShellSnapshot(card) {
   if (!card || typeof card !== "object" || Array.isArray(card)) return null;
-  const resourceFields = new Set([
-    ...cardMainResourceFieldNames(card),
-    ...cardResponseResourceFieldNames(card),
-    "after",
-    "afterBlocks"
-  ]);
+  const resourceFields = new Set(["content", "response", "feedback"]);
   return Object.fromEntries(Object.entries(card).filter(([fieldName]) =>
     !resourceFields.has(fieldName)));
 }

@@ -1,6 +1,5 @@
 import { AuthoringApiError } from "./errors.js";
 import { RESOURCE_PACKAGE_REGISTRY } from "../aralearn/runtime/resources/packages/index.js";
-import { listResourceIds } from "../aralearn/runtime/resources/registry/index.js";
 
 const UUID = Object.freeze({ type: "string", format: "uuid" });
 const ID = Object.freeze({ type: "string", minLength: 1, maxLength: 240, pattern: "\\S" });
@@ -52,7 +51,6 @@ const MICROSEQUENCE_PATH = fixedEntityPath(4);
 const AUTHORING_PACKAGE_IDS = Object.freeze(
   RESOURCE_PACKAGE_REGISTRY.listCatalog().map(({ id }) => id)
 );
-const LEGACY_RESOURCE_IDS = Object.freeze([...listResourceIds()]);
 const MCP_SECURITY_SCHEMES = Object.freeze([
   Object.freeze({ type: "oauth2", scopes: Object.freeze(["openid"]) })
 ]);
@@ -1345,16 +1343,16 @@ const WORKSPACE_EVENTS_DATA_SCHEMA = schema(["items"], {
   }
 });
 const WORKSPACE_MICROSEQUENCE_CARD_ITEM_SCHEMA = schema([
-  "id", "position", "kind", "resources", "summary"
+  "id", "position", "role", "packages", "summary"
 ], {
   id: ID,
   position: REVISION,
-  kind: { type: "string", enum: ["theory", "exercise"] },
-  resources: {
+  role: { type: "string", enum: ["theory", "practice"] },
+  packages: {
     type: "array",
     minItems: 1,
     uniqueItems: true,
-    items: { type: "string", enum: LEGACY_RESOURCE_IDS }
+    items: { type: "string", enum: AUTHORING_PACKAGE_IDS }
   },
   summary: {
     type: "string",
@@ -3821,8 +3819,6 @@ function mutation(name, args) {
             title,
             goal,
             role,
-            status: "needs_review",
-            branchOf: null,
             dependsOn: [],
             covers,
             checks,
