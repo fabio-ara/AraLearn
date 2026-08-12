@@ -36,7 +36,7 @@ function theoryCard() {
 
 test("kernel registra package sem conhecer paragraph", () => {
   const catalog = RESOURCE_PACKAGE_REGISTRY.listCatalog();
-  assert.equal(catalog.length, 9);
+  assert.equal(catalog.length, 12);
   assert.equal(catalog[0].id, "aralearn.resource.paragraph");
   assert.equal(Object.hasOwn(catalog[0], "schema"), false);
   assert.equal(Object.hasOwn(catalog[0], "example"), false);

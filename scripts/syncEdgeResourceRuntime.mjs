@@ -46,6 +46,9 @@ const files = [
   , ["src/resources/packages/choice-response/index.js", "resources/packages/choice-response/index.js"]
   , ["src/resources/packages/gap-response/index.js", "resources/packages/gap-response/index.js"]
   , ["src/resources/packages/ordering-response/index.js", "resources/packages/ordering-response/index.js"]
+  , ["src/resources/packages/tree/index.js", "resources/packages/tree/index.js"]
+  , ["src/resources/packages/matrix/index.js", "resources/packages/matrix/index.js"]
+  , ["src/resources/packages/reaction/index.js", "resources/packages/reaction/index.js"]
 ];
 
 const checkOnly = process.argv.includes("--check");

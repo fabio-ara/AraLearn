@@ -8,6 +8,9 @@ import { linguisticExamplePackage } from "./linguistic-example/index.js";
 import { choiceResponsePackage } from "./choice-response/index.js";
 import { gapResponsePackage } from "./gap-response/index.js";
 import { orderingResponsePackage } from "./ordering-response/index.js";
+import { treePackage } from "./tree/index.js";
+import { matrixPackage } from "./matrix/index.js";
+import { reactionPackage } from "./reaction/index.js";
 
 export const RESOURCE_PACKAGE_REGISTRY = createPackageRegistry([
   paragraphPackage,
@@ -19,6 +22,9 @@ export const RESOURCE_PACKAGE_REGISTRY = createPackageRegistry([
   choiceResponsePackage,
   gapResponsePackage,
   orderingResponsePackage
+  , treePackage
+  , matrixPackage
+  , reactionPackage
 ]);
 
 export {
@@ -31,4 +37,7 @@ export {
   orderingResponsePackage,
   sequencePackage,
   tablePackage
+  , treePackage
+  , matrixPackage
+  , reactionPackage
 };
