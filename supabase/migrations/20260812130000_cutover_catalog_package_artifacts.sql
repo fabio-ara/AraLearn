@@ -17,7 +17,32 @@ do $cutover_catalog_package_artifacts$
 declare
   v_item record;
   v_course public.courses%rowtype;
+  v_applicable_count integer;
 begin
+  select count(*) into v_applicable_count
+  from public.courses course
+  join (values
+    ('course-microsoft-azure-ai-fundamentals-ai900', 'b8c8f262-7625-58bd-9b0a-a729e9f19bab'::uuid, '0c0ad7756935ecc2c508b2b41a600af0e0873ed3d92c0d7f6c8bea0f0b4aea6e'),
+    ('course-dataprev-2026-analista-processamento-seguranca-informacao', 'f9bdbc51-d579-5ca3-b2b3-3b1812207d57'::uuid, '445f0f89bcc1f19de4b5b5cc63931ceab3d61074c6c5d3f9e29c179a35384c06'),
+    ('course-fundamentos-ia-analise-dados', '39c5f199-8713-51cd-8071-8a241f2e00c8'::uuid, '429f63b2fd7555f388e119e94d9d80c77fb8faaf6a1d4752a617455c1b849f18')
+  ) as expected(contract_key, course_id, previous_hash)
+    on course.id = expected.course_id
+   and course.contract_key = expected.contract_key
+   and course.current_revision_hash = expected.previous_hash
+   and course.revision_artifact_hash = expected.previous_hash
+   and course.content_hash = expected.previous_hash;
+
+  -- O bloco abaixo é uma troca CAS de artefatos já enviados ao Storage
+  -- hospedado. Em uma instalação limpa, o seed é aplicado depois das
+  -- migrations e não há estado remoto a trocar.
+  if v_applicable_count = 0 then
+    return;
+  end if;
+  if v_applicable_count <> 3 then
+    raise exception 'Estado parcial impede o corte por packages (% de 3 cursos).', v_applicable_count
+      using errcode = '40001';
+  end if;
+
   for v_item in
     select * from (values
       (
