@@ -53,7 +53,9 @@ const files = [
   ["src/resources/packages/formula/index.js", "resources/packages/formula/index.js"],
   ["src/resources/packages/plane/index.js", "resources/packages/plane/index.js"],
   ["src/resources/packages/chart/index.js", "resources/packages/chart/index.js"],
-  ["src/resources/packages/system-map/index.js", "resources/packages/system-map/index.js"]
+  ["src/resources/packages/system-map/index.js", "resources/packages/system-map/index.js"],
+  ["src/resources/packages/graph/index.js", "resources/packages/graph/index.js"],
+  ["src/resources/packages/relation-map/index.js", "resources/packages/relation-map/index.js"]
 ];
 
 const checkOnly = process.argv.includes("--check");

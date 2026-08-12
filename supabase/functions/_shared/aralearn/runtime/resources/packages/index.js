@@ -16,6 +16,8 @@ import { formulaPackage } from "./formula/index.js";
 import { planePackage } from "./plane/index.js";
 import { chartPackage } from "./chart/index.js";
 import { systemMapPackage } from "./system-map/index.js";
+import { graphPackage } from "./graph/index.js";
+import { relationMapPackage } from "./relation-map/index.js";
 
 export const RESOURCE_PACKAGE_REGISTRY = createPackageRegistry([
   paragraphPackage,
@@ -34,7 +36,9 @@ export const RESOURCE_PACKAGE_REGISTRY = createPackageRegistry([
   formulaPackage,
   planePackage,
   chartPackage,
-  systemMapPackage
+  systemMapPackage,
+  graphPackage,
+  relationMapPackage
 ]);
 
 export {
@@ -54,5 +58,7 @@ export {
   formulaPackage,
   planePackage,
   chartPackage,
-  systemMapPackage
+  systemMapPackage,
+  graphPackage,
+  relationMapPackage
 };

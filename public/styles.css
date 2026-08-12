@@ -2827,6 +2827,183 @@ input:-webkit-autofill:focus {
   width: 100%;
 }
 
+/* Packages independentes: a geometria visual deriva dos dados sem receber pixels autorais. */
+.package-graph,
+.package-relation-map {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+
+.package-graph > svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: min(46dvh, 430px);
+  overflow: visible;
+  border-radius: 18px;
+  background: var(--resource-surface-subtle);
+}
+
+.package-graph-edge line {
+  stroke: var(--resource-border-strong);
+  stroke-width: 1.8;
+  vector-effect: non-scaling-stroke;
+}
+
+.package-graph-edge.is-highlighted line {
+  stroke: var(--resource-accent);
+  stroke-width: 3;
+}
+
+.package-graph marker path {
+  fill: var(--resource-border-strong);
+}
+
+.package-graph-node rect {
+  fill: var(--resource-surface);
+  stroke: var(--resource-border-strong);
+  stroke-width: 1.4;
+  vector-effect: non-scaling-stroke;
+}
+
+.package-graph-node.is-highlighted rect {
+  fill: var(--resource-accent-subtle);
+  stroke: var(--resource-accent);
+  stroke-width: 2.4;
+}
+
+.package-graph-node text {
+  fill: var(--resource-text);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.package-graph-edge-index circle {
+  fill: var(--resource-surface);
+  stroke: var(--resource-accent);
+  stroke-width: 1.5;
+  vector-effect: non-scaling-stroke;
+}
+
+.package-graph-edge-index text {
+  fill: var(--resource-text);
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.package-graph-relations,
+.package-relation-map-list {
+  display: grid;
+  gap: 7px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.package-graph-relations li {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr);
+  gap: 8px;
+  align-items: start;
+  color: var(--resource-text);
+  font-size: var(--type-xs);
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.package-graph-relation-number {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border: 1px solid var(--resource-accent);
+  border-radius: 999px;
+  background: var(--resource-surface);
+  font-size: 0.7rem;
+  font-weight: 800;
+}
+
+.package-relation-map-headings,
+.package-relation-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 54px minmax(0, 1fr);
+  gap: 7px;
+  align-items: center;
+}
+
+.package-relation-map-headings span {
+  color: var(--resource-text-secondary);
+  font-size: var(--type-xs);
+  font-weight: 800;
+  overflow-wrap: anywhere;
+}
+
+.package-relation-map-headings span:last-child {
+  grid-column: 3;
+  text-align: right;
+}
+
+.package-relation-row {
+  min-height: 54px;
+  padding: 7px;
+  border: 1px solid var(--resource-border);
+  border-radius: 12px;
+  background: var(--resource-surface-subtle);
+}
+
+.package-relation-row.is-highlighted {
+  border-color: var(--resource-accent);
+  box-shadow: inset 0 0 0 1px var(--resource-accent);
+}
+
+.package-relation-item {
+  min-width: 0;
+  padding: 8px;
+  border-radius: 9px;
+  background: var(--resource-surface);
+  color: var(--resource-text);
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.package-relation-right {
+  text-align: right;
+}
+
+.package-relation-verb {
+  display: grid;
+  place-items: center;
+  min-width: 0;
+  color: var(--resource-accent);
+  font-size: 1.1rem;
+  font-weight: 800;
+}
+
+.package-relation-verb small {
+  max-width: 54px;
+  color: var(--resource-text-secondary);
+  font-size: 0.58rem;
+  font-weight: 650;
+  line-height: 1.15;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 380px) {
+  .package-relation-map-headings,
+  .package-relation-row {
+    grid-template-columns: minmax(0, 1fr) 40px minmax(0, 1fr);
+    gap: 5px;
+  }
+
+  .package-relation-verb small {
+    max-width: 40px;
+  }
+}
+
 .runtime-plane-svg {
   width: min(100%, 328px);
   max-height: min(46dvh, 420px);
