@@ -2863,7 +2863,7 @@ const INDIVIDUAL_AUTHORING_WORKSPACE_MCP_TOOLS = Object.freeze([
   tool(
     "salvarCardsNaMicrossequencia",
     "Salvar cards da microssequência",
-    "Materializa uma microssequência e valida a estrutura, não a aprovação pedagógica. append exige cards e acrescenta; replace substitui e aceita vazio somente como planned.",
+    "Materializa uma microssequência imediatamente renderizável. append acrescenta cards; replace substitui e também pode esvaziar a sequência.",
     writeSchema([
       "workspaceId", "expectedRevision", "microsequencePath",
       "mode", "cardsJson"
@@ -3762,19 +3762,18 @@ function mutation(name, args) {
       throw new AuthoringApiError(
         422,
         "invalid_tool_arguments",
-        "cardsJson deve conter uma lista JSON válida de cards v4."
+        "cardsJson deve conter uma lista JSON válida de envelopes com packages."
       );
     }
     if (!Array.isArray(cards)) {
       throw new AuthoringApiError(
         422,
         "invalid_tool_arguments",
-        "cardsJson deve conter uma lista JSON de cards v4."
+        "cardsJson deve conter uma lista JSON de envelopes com packages."
       );
     }
     delete operationArguments.cardsJson;
     operationArguments.cards = cards;
-    operationArguments.status = cards.length ? "ready" : "planned";
   }
   if (name === "salvarCardNoWorkspace") {
     let card;
@@ -3784,7 +3783,7 @@ function mutation(name, args) {
       throw new AuthoringApiError(
         422,
         "invalid_tool_arguments",
-        "cardJson deve conter um objeto JSON válido de card v4."
+        "cardJson deve conter um envelope JSON válido de card com packages."
       );
     }
     if (!card || typeof card !== "object" || Array.isArray(card)) {

@@ -185,13 +185,12 @@ export class HomeTrailsController {
     let course;
     if (response?.draftCourse) {
       const validation = validateProjectDocument({
-        contract: "aralearn.contract",
-        version: 4,
-        kind: "project",
+        contract: "aralearn.library.v1",
+        scope: "course",
         courses: [response.draftCourse]
       });
       if (!validation.ok) {
-        throw new Error("O rascunho offline deste curso viola o contrato v4.");
+        throw new Error("O rascunho offline deste curso viola o contrato por packages.");
       }
       course = structuredClone(validation.value.courses[0]);
     } else {

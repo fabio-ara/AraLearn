@@ -5,9 +5,8 @@ import { sha256Hex } from "./security.js";
 
 function projectForCourse(course) {
   return {
-    contract: "aralearn.contract",
-    version: 4,
-    kind: "project",
+    contract: "aralearn.library.v1",
+    scope: "course",
     courses: [structuredClone(course)]
   };
 }
@@ -18,7 +17,7 @@ function assertOneCourse(document) {
     throw new AuthoringApiError(
       422,
       "invalid_course_contract",
-      "O curso viola o contrato público AraLearn v4.",
+      "O curso viola o contrato público por packages.",
       { errors: validation.errors }
     );
   }
@@ -49,31 +48,11 @@ async function sha256Uuid(value) {
 }
 
 export async function deterministicRequestUuid(value) {
-  return sha256Uuid(`aralearn:authoring:v4:${String(value)}`);
+  return sha256Uuid(`aralearn:authoring:v1:${String(value)}`);
 }
 
-export async function prepareCourseDocument(document, {
-  requireReady = false
-} = {}) {
+export async function prepareCourseDocument(document) {
   const course = assertOneCourse(document);
-  if (requireReady) {
-    const pending = [];
-    for (const moduleValue of course.modules) {
-      for (const lesson of moduleValue.lessons) {
-        for (const microsequence of lesson.microsequences) {
-          if (microsequence.status !== "ready") pending.push(microsequence.id);
-        }
-      }
-    }
-    if (pending.length) {
-      throw new AuthoringApiError(
-        409,
-        "course_incomplete",
-        "O curso ainda contém microssequências não aprovadas.",
-        { microsequenceIds: pending.slice(0, 100), total: pending.length }
-      );
-    }
-  }
   const revisionDocument = projectForCourse(course);
   return {
     document: revisionDocument,

@@ -664,7 +664,7 @@ Os fundamentos acadêmicos dessas decisões estão em [Fundamentação pedagógi
 
 ## Galeria visual e responsiva
 
-A galeria executável está em `tests/gallery/resources-v4.html`, alimentada pela fixture `tests/fixtures/v4/project-resources-gallery.json`. Ela usa o renderer real e contém um card de cada um dos dezoito resources.
+A galeria executável está em `tests/gallery/resources-v4.html`, alimentada pela fixture `tests/fixtures/package/project-resources-gallery.json`. Ela usa o renderer real e contém um card de cada um dos dezoito resources.
 
 `npm run resources:gallery:visual` reconstrói a fixture, verifica overflow em 360, 390, 412 e 1280 px e atualiza as capturas versionadas nos dois temas:
 

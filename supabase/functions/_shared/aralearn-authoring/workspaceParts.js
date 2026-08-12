@@ -111,7 +111,7 @@ function validatedDocument(document) {
   if (!validation.ok) {
     fail(
       "invalid_workspace_parts_document",
-      "O documento viola o contrato AraLearn v4.",
+      "O documento viola o contrato AraLearn por packages.",
       { errors: validation.errors }
     );
   }
@@ -485,7 +485,6 @@ export function buildWorkspaceOutlineFromRows(rows) {
                   title: requiredContentText(microsequence, "title"),
                   goal: requiredContentText(microsequence, "goal"),
                   role: requiredContentText(microsequence, "role"),
-                  status: requiredContentText(microsequence, "status"),
                   cardCount: children(
                     "microsequence",
                     microsequence.entityId,

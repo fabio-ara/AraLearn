@@ -30,7 +30,9 @@ function theoryCard() {
     role: "theory",
     content: [paragraphInstance()],
     response: null,
-    feedback: []
+    feedback: [],
+    topics: [],
+    sources: []
   };
 }
 

@@ -8,7 +8,7 @@ import { contractToRelationalRows } from "../../src/persistence/contractToRelati
 import { relationalRowsToContract } from "../../src/persistence/relationalRowsToContract.js";
 import { renderCardRuntimeArticle } from "../../src/render/renderCardRuntime.js";
 
-const fixtureUrl = new URL("../fixtures/v4/project-visual.json", import.meta.url);
+const fixtureUrl = new URL("../fixtures/package/project-visual.json", import.meta.url);
 
 const multilingualSample = [
   "Português: ação, educação e São Paulo.",

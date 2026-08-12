@@ -95,7 +95,7 @@ irmãs que preservem a ordem relativa existente.
 | Cobertura automatizada | incluía o motor legado | suíte v4 integral executada por `npm test` |
 | Catálogos de geração independentes | presentes | removidos |
 
-A suíte é descoberta automaticamente em `tests/v4`; por isso, uma contagem
+A suíte é descoberta automaticamente em `tests/runtime`; por isso, uma contagem
 fixa neste documento ficaria obsoleta a cada cenário acrescentado. A cobertura
 vigente inclui contratos, round-trip, renderização, acessibilidade, lacunas,
 persistência, autoria atômica e providers.

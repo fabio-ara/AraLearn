@@ -10,7 +10,7 @@ import {
   serializeEditableNode
 } from "../../src/ui/manualCardEdit.js";
 
-const fixtureUrl = new URL("../fixtures/v4/project-resources-gallery.json", import.meta.url);
+const fixtureUrl = new URL("../fixtures/package/project-resources-gallery.json", import.meta.url);
 
 function galleryCards() {
   const project = JSON.parse(fs.readFileSync(fixtureUrl, "utf8"));

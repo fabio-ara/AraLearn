@@ -404,6 +404,12 @@ function buildStarterCard(kind = "paragraph") {
 }
 
 export function getContractCardKind(card) {
+  if (Array.isArray(card?.content) && card.content[0]?.package) {
+    const suffix = String(card.content[0].package).replace(/^aralearn\.resource\./u, "");
+    return ({ "annotated-text": "annotated_text", "linguistic-example": "linguistic_example", "relation-map": "relation_map", "system-map": "system_map" })[suffix]
+      || suffix.replace(/-/gu, "_")
+      || "paragraph";
+  }
   return text(typeof card === "string" ? card : card?.resource) || "paragraph";
 }
 

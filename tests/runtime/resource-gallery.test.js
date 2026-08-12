@@ -6,7 +6,7 @@ import { validateProjectDocument } from "../../src/domain/aralearnProject.js";
 import { renderCardRuntimeBlocksWithDock } from "../../src/render/renderCardRuntime.js";
 import { listResourceIds } from "../../src/resources/registry/index.js";
 
-const fixtureUrl = new URL("../fixtures/v4/project-resources-gallery.json", import.meta.url);
+const fixtureUrl = new URL("../fixtures/package/project-resources-gallery.json", import.meta.url);
 
 function galleryCards(project) {
   return project.courses[0].modules[0].lessons[0].microsequences[0].cards;

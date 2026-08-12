@@ -7,7 +7,7 @@ const TRAIL_ITEM_ID = "93000000-0000-4000-8000-000000000093";
 const WORKSPACE_ID = "94000000-0000-4000-8000-000000000094";
 const REMOTE_STATE_KEY = "aralearn.e2e.workspace-offline-authoring.remote";
 const PROJECT_FIXTURE = JSON.parse(fs.readFileSync(
-  new URL("../fixtures/v4/project-minimal.json", import.meta.url),
+  new URL("../fixtures/package/project-minimal.json", import.meta.url),
   "utf8"
 ));
 

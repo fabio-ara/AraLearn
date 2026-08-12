@@ -948,7 +948,7 @@ test("os documentos públicos de exemplo usam o contrato v4", () => {
 });
 
 test("todos os fixtures v4 validam no contrato atual", () => {
-  const fixturesDir = path.resolve(__dirname, "../fixtures/v4");
+  const fixturesDir = path.resolve(__dirname, "../fixtures/package");
   const fileNames = fs.readdirSync(fixturesDir).filter((fileName) => fileName.endsWith(".json")).sort();
   assert.ok(fileNames.length >= 2);
   fileNames.forEach((fileName) => {

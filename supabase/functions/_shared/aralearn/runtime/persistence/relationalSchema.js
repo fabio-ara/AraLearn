@@ -1,5 +1,3 @@
-import { listResourceIds } from "../resources/registry/index.js";
-
 export const RELATIONAL_ROW_COLLECTIONS = Object.freeze([
   "projectMeta",
   "courses",
@@ -15,29 +13,7 @@ export const RELATIONAL_ROW_COLLECTIONS = Object.freeze([
   "cards",
   "cardSources",
   "cardTopics",
-  "blocks",
-  "options",
-  "nodes",
-  "edges",
-  "cells",
-  "matrixItems",
-  "points",
-  "lines",
-  "highlights",
-  "flowNodes",
-  "flowCases",
-  "flowPractices",
-  "flowPracticeEntries",
-  "flowPracticeOptions",
-  "flowPracticeVariants",
-  "flowShapeOptions"
-]);
-
-export const CARD_RESOURCES = Object.freeze(listResourceIds());
-
-export const COMPOSITE_BLOCK_KINDS = Object.freeze([
-  "heading",
-  ...CARD_RESOURCES.filter((resource) => resource !== "composite")
+  "packageInstances"
 ]);
 
 export const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;

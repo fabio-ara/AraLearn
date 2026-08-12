@@ -18,7 +18,9 @@ export function validateCardEnvelope(card, registry, path = "$.card") {
   if (!card || typeof card !== "object" || Array.isArray(card)) {
     return { valid: false, errors: [`${path} precisa ser um objeto.`] };
   }
-  const allowedKeys = new Set(["id", "position", "title", "role", "content", "response", "feedback"]);
+  const allowedKeys = new Set([
+    "id", "position", "title", "role", "content", "response", "feedback", "topics", "sources"
+  ]);
   Object.keys(card).forEach((key) => {
     if (!allowedKeys.has(key)) errors.push(`${path}.${key} não pertence ao envelope.`);
   });
@@ -30,6 +32,13 @@ export function validateCardEnvelope(card, registry, path = "$.card") {
     errors.push(`${path}.content precisa de ao menos uma instância.`);
   }
   if (!Array.isArray(card.feedback)) errors.push(`${path}.feedback precisa ser uma lista.`);
+  for (const field of ["topics", "sources"]) {
+    if (!Array.isArray(card[field]) || card[field].some((item) => !text(item))) {
+      errors.push(`${path}.${field} precisa ser uma lista de textos não vazios.`);
+    } else if (new Set(card[field]).size !== card[field].length) {
+      errors.push(`${path}.${field} não aceita duplicatas.`);
+    }
+  }
   if (card.role === "theory" && card.response !== null) {
     errors.push(`${path}.response precisa ser null em card de teoria.`);
   }
@@ -62,7 +71,9 @@ export function normalizeCardEnvelope(card, registry) {
     role: text(card?.role),
     content: list(card?.content).map((instance) => registry.normalizeInstance(instance, "content")),
     response: card?.response ? registry.normalizeInstance(card.response, "response") : null,
-    feedback: list(card?.feedback).map((instance) => registry.normalizeInstance(instance, "feedback"))
+    feedback: list(card?.feedback).map((instance) => registry.normalizeInstance(instance, "feedback")),
+    topics: [...new Set(list(card?.topics).map(text).filter(Boolean))],
+    sources: [...new Set(list(card?.sources).map(text).filter(Boolean))]
   };
   const validation = validateCardEnvelope(normalized, registry);
   if (!validation.valid) throw new TypeError(validation.errors.join(" "));

@@ -11,7 +11,7 @@ import { relationalRowsToContract } from "../../src/persistence/relationalRowsTo
 import { validateRelationalCourse } from "../../src/persistence/validateRelationalCourse.js";
 import { renderCardRuntimeArticle, renderRuntimeBlockList } from "../../src/render/renderCardRuntime.js";
 
-const fixtureUrl = new URL("../fixtures/v4/project-visual.json", import.meta.url);
+const fixtureUrl = new URL("../fixtures/package/project-visual.json", import.meta.url);
 
 async function projectWithTextMetadata() {
   const project = JSON.parse(await fs.readFile(fixtureUrl, "utf8"));

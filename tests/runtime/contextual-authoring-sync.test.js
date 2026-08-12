@@ -14,7 +14,7 @@ import {
 } from "../../src/ui/lessonEditorApp.js";
 
 const project = JSON.parse(fs.readFileSync(
-  new URL("../fixtures/v4/project-minimal.json", import.meta.url),
+  new URL("../fixtures/package/project-minimal.json", import.meta.url),
   "utf8"
 ));
 const path = {

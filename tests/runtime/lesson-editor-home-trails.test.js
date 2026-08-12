@@ -7,7 +7,7 @@ import { homeTrailSnapshotForProject } from "../support/homeTrailSnapshot.js";
 
 function fixtureProject() {
   return JSON.parse(fs.readFileSync(
-    new URL("../fixtures/v4/project-minimal.json", import.meta.url),
+    new URL("../fixtures/package/project-minimal.json", import.meta.url),
     "utf8"
   ));
 }

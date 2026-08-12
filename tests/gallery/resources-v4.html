@@ -95,7 +95,7 @@
   <script type="module">
     import { renderCardRuntimeBlocksWithDock } from "/src/render/renderCardRuntime.js";
 
-    const response = await fetch("/tests/fixtures/v4/project-resources-gallery.json");
+    const response = await fetch("/tests/fixtures/package/project-resources-gallery.json");
     if (!response.ok) throw new Error("Não foi possível carregar a fixture da galeria.");
     const project = await response.json();
     const cards = project.courses[0].modules[0].lessons[0].microsequences[0].cards;

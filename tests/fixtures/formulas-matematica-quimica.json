@@ -1,223 +1,312 @@
 {
-  "id": "course-fixture-formulas",
-  "title": "Fórmulas matemáticas e químicas",
-  "goal": "Validar fórmulas estruturadas no contrato AraLearn v4.",
-  "modules": [
+  "contract": "aralearn.library.v1",
+  "scope": "course",
+  "courses": [
     {
-      "id": "module-fixture-formulas",
-      "title": "Notação",
-      "guide": {
-        "goal": "Representar fórmulas com estrutura e leitura acessível.",
-        "include": [
-          "fração",
-          "raiz",
-          "fórmula química"
-        ],
-        "exclude": [],
-        "notation": [
-          "Use símbolos Unicode na AST de fórmula."
-        ],
-        "avoid": [
-          "Não inserir HTML, MathML ou LaTeX no conteúdo."
-        ]
-      },
-      "lessons": [
+      "id": "course-fixture-formulas",
+      "title": "Fórmulas matemáticas e químicas",
+      "goal": "Validar fórmulas estruturadas no contrato AraLearn v4.",
+      "modules": [
         {
-          "id": "lesson-fixture-formulas",
-          "title": "Expressões estruturadas",
+          "id": "module-fixture-formulas",
+          "title": "Notação",
           "guide": {
-            "goal": "Ler fórmulas matemáticas e químicas sem depender de marcação fornecida pelo autor.",
+            "goal": "Representar fórmulas com estrutura e leitura acessível.",
             "include": [
-              "estrutura da expressão",
-              "leitura textual"
+              "fração",
+              "raiz",
+              "fórmula química"
             ],
             "exclude": [],
             "notation": [
-              "Use mathematics ou chemistry."
+              "Use símbolos Unicode na AST de fórmula."
             ],
             "avoid": [
-              "Não depender de imagem para comunicar a fórmula."
+              "Não inserir HTML, MathML ou LaTeX no conteúdo."
             ]
           },
-          "topics": [],
-          "microsequences": [
+          "lessons": [
             {
-              "id": "micro-fixture-formulas",
-              "title": "Fórmulas",
-              "goal": "Reconhecer a estrutura de uma expressão e sua leitura.",
-              "role": "explain",
-              "status": "ready",
-              "dependsOn": [],
-              "covers": [
-                "fórmula matemática",
-                "fórmula química"
-              ],
-              "checks": [
-                "o estudante relaciona a apresentação visual à leitura textual"
-              ],
-              "cards": [
+              "id": "lesson-fixture-formulas",
+              "title": "Expressões estruturadas",
+              "guide": {
+                "goal": "Ler fórmulas matemáticas e químicas sem depender de marcação fornecida pelo autor.",
+                "include": [
+                  "estrutura da expressão",
+                  "leitura textual"
+                ],
+                "exclude": [],
+                "notation": [
+                  "Use mathematics ou chemistry."
+                ],
+                "avoid": [
+                  "Não depender de imagem para comunicar a fórmula."
+                ]
+              },
+              "topics": [],
+              "microsequences": [
                 {
-                  "id": "card-formula-matematica",
-                  "position": 1,
-                  "resource": "formula",
-                  "kind": "theory",
-                  "exercise": "none",
-                  "title": "Fração e raiz",
-                  "prompt": "Observe a estrutura da igualdade.",
-                  "notation": "mathematics",
-                  "accessibleText": "x é igual a um dividido pela raiz cúbica de y.",
-                  "expression": {
-                    "type": "row",
-                    "children": [
-                      {
-                        "type": "identifier",
-                        "value": "x"
-                      },
-                      {
-                        "type": "operator",
-                        "value": "="
-                      },
-                      {
-                        "type": "fraction",
-                        "numerator": {
-                          "type": "number",
-                          "value": "1"
-                        },
-                        "denominator": {
-                          "type": "root",
-                          "radicand": {
-                            "type": "identifier",
-                            "value": "y"
-                          },
-                          "index": {
-                            "type": "number",
-                            "value": "3"
+                  "id": "micro-fixture-formulas",
+                  "title": "Fórmulas",
+                  "goal": "Reconhecer a estrutura de uma expressão e sua leitura.",
+                  "role": "explain",
+                  "branchOf": null,
+                  "dependsOn": [],
+                  "covers": [
+                    "fórmula matemática",
+                    "fórmula química"
+                  ],
+                  "checks": [
+                    "o estudante relaciona a apresentação visual à leitura textual"
+                  ],
+                  "errors": [],
+                  "cards": [
+                    {
+                      "id": "card-formula-matematica",
+                      "position": 1,
+                      "title": "Fração e raiz",
+                      "role": "theory",
+                      "content": [
+                        {
+                          "id": "card-formula-matematica-content",
+                          "package": "aralearn.resource.formula",
+                          "version": "1.0.0",
+                          "data": {
+                            "prompt": "Observe a estrutura da igualdade.",
+                            "notation": "mathematics",
+                            "accessibleText": "x é igual a um dividido pela raiz cúbica de y.",
+                            "expression": {
+                              "type": "row",
+                              "children": [
+                                {
+                                  "type": "identifier",
+                                  "value": "x"
+                                },
+                                {
+                                  "type": "operator",
+                                  "value": "="
+                                },
+                                {
+                                  "type": "fraction",
+                                  "numerator": {
+                                    "type": "number",
+                                    "value": "1"
+                                  },
+                                  "denominator": {
+                                    "type": "root",
+                                    "radicand": {
+                                      "type": "identifier",
+                                      "value": "y"
+                                    },
+                                    "index": {
+                                      "type": "number",
+                                      "value": "3"
+                                    }
+                                  }
+                                }
+                              ]
+                            }
                           }
                         }
-                      }
-                    ]
-                  },
-                  "after": "A AST preserva a relação entre numerador, denominador, radicando e índice."
-                },
-                {
-                  "id": "card-formula-quimica",
-                  "position": 2,
-                  "resource": "formula",
-                  "kind": "theory",
-                  "exercise": "none",
-                  "title": "Água",
-                  "prompt": "Observe a posição do índice.",
-                  "notation": "chemistry",
-                  "accessibleText": "H dois O.",
-                  "expression": {
-                    "type": "row",
-                    "children": [
-                      {
-                        "type": "subscript",
-                        "base": {
-                          "type": "identifier",
-                          "value": "H"
-                        },
-                        "subscript": {
-                          "type": "number",
-                          "value": "2"
+                      ],
+                      "response": null,
+                      "feedback": [
+                        {
+                          "id": "card-formula-matematica-feedback-text",
+                          "package": "aralearn.resource.paragraph",
+                          "version": "1.0.0",
+                          "data": {
+                            "text": "A AST preserva a relação entre numerador, denominador, radicando e índice."
+                          }
                         }
-                      },
-                      {
-                        "type": "identifier",
-                        "value": "O"
-                      }
-                    ]
-                  },
-                  "after": "O índice 2 se aplica ao hidrogênio."
-                },
-                {
-                  "id": "card-formula-escolha",
-                  "position": 3,
-                  "resource": "formula",
-                  "kind": "exercise",
-                  "exercise": "choice",
-                  "title": "Leia a potência",
-                  "prompt": "Observe a expressão.",
-                  "notation": "mathematics",
-                  "accessibleText": "alfa ao quadrado.",
-                  "expression": {
-                    "type": "superscript",
-                    "base": {
-                      "type": "identifier",
-                      "value": "α"
-                    },
-                    "exponent": {
-                      "type": "number",
-                      "value": "2"
-                    }
-                  },
-                  "question": "Qual descrição corresponde à expressão mostrada?",
-                  "options": [
-                    {
-                      "id": "a",
-                      "text": "alfa ao quadrado"
+                      ],
+                      "topics": [],
+                      "sources": []
                     },
                     {
-                      "id": "b",
-                      "text": "alfa dividido por dois"
-                    },
-                    {
-                      "id": "c",
-                      "text": "raiz quadrada de alfa"
-                    }
-                  ],
-                  "after": "O expoente aparece acima e à direita da base.",
-                  "selectionMode": "single",
-                  "selectionCriterion": "correct",
-                  "answerIds": [
-                    "a"
-                  ]
-                },
-                {
-                  "id": "card-formula-composta",
-                  "position": 4,
-                  "resource": "composite",
-                  "kind": "theory",
-                  "exercise": "none",
-                  "title": "Fórmula no contexto",
-                  "blocks": [
-                    {
-                      "kind": "paragraph",
-                      "value": "A igualdade pode aparecer junto de uma explicação.",
-                      "id": "paragraph-1"
-                    },
-                    {
-                      "kind": "formula",
-                      "prompt": "Observe os delimitadores.",
-                      "notation": "mathematics",
-                      "accessibleText": "abre parêntese, beta mais um, fecha parêntese.",
-                      "expression": {
-                        "type": "fenced",
-                        "open": "(",
-                        "close": ")",
-                        "content": {
-                          "type": "row",
-                          "children": [
-                            {
-                              "type": "identifier",
-                              "value": "β"
-                            },
-                            {
-                              "type": "operator",
-                              "value": "+"
-                            },
-                            {
-                              "type": "number",
-                              "value": "1"
+                      "id": "card-formula-quimica",
+                      "position": 2,
+                      "title": "Água",
+                      "role": "theory",
+                      "content": [
+                        {
+                          "id": "card-formula-quimica-content",
+                          "package": "aralearn.resource.formula",
+                          "version": "1.0.0",
+                          "data": {
+                            "prompt": "Observe a posição do índice.",
+                            "notation": "chemistry",
+                            "accessibleText": "H dois O.",
+                            "expression": {
+                              "type": "row",
+                              "children": [
+                                {
+                                  "type": "subscript",
+                                  "base": {
+                                    "type": "identifier",
+                                    "value": "H"
+                                  },
+                                  "subscript": {
+                                    "type": "number",
+                                    "value": "2"
+                                  }
+                                },
+                                {
+                                  "type": "identifier",
+                                  "value": "O"
+                                }
+                              ]
                             }
+                          }
+                        }
+                      ],
+                      "response": null,
+                      "feedback": [
+                        {
+                          "id": "card-formula-quimica-feedback-text",
+                          "package": "aralearn.resource.paragraph",
+                          "version": "1.0.0",
+                          "data": {
+                            "text": "O índice 2 se aplica ao hidrogênio."
+                          }
+                        }
+                      ],
+                      "topics": [],
+                      "sources": []
+                    },
+                    {
+                      "id": "card-formula-escolha",
+                      "position": 3,
+                      "title": "Leia a potência",
+                      "role": "practice",
+                      "content": [
+                        {
+                          "id": "card-formula-escolha-content",
+                          "package": "aralearn.resource.formula",
+                          "version": "1.0.0",
+                          "data": {
+                            "prompt": "Observe a expressão.",
+                            "notation": "mathematics",
+                            "accessibleText": "alfa ao quadrado.",
+                            "expression": {
+                              "type": "superscript",
+                              "base": {
+                                "type": "identifier",
+                                "value": "α"
+                              },
+                              "exponent": {
+                                "type": "number",
+                                "value": "2"
+                              }
+                            }
+                          }
+                        }
+                      ],
+                      "response": {
+                        "id": "card-formula-escolha-response",
+                        "package": "aralearn.response.choice",
+                        "version": "1.0.0",
+                        "data": {
+                          "question": "Qual descrição corresponde à expressão mostrada?",
+                          "selectionMode": "single",
+                          "selectionCriterion": "correct",
+                          "options": [
+                            {
+                              "id": "a",
+                              "kind": "text",
+                              "text": "alfa ao quadrado"
+                            },
+                            {
+                              "id": "b",
+                              "kind": "text",
+                              "text": "alfa dividido por dois"
+                            },
+                            {
+                              "id": "c",
+                              "kind": "text",
+                              "text": "raiz quadrada de alfa"
+                            }
+                          ],
+                          "answerIds": [
+                            "a"
                           ]
                         }
                       },
-                      "id": "formula-1"
+                      "feedback": [
+                        {
+                          "id": "card-formula-escolha-feedback-text",
+                          "package": "aralearn.resource.paragraph",
+                          "version": "1.0.0",
+                          "data": {
+                            "text": "O expoente aparece acima e à direita da base."
+                          }
+                        }
+                      ],
+                      "topics": [],
+                      "sources": []
+                    },
+                    {
+                      "id": "card-formula-composta",
+                      "position": 4,
+                      "title": "Fórmula no contexto",
+                      "role": "theory",
+                      "content": [
+                        {
+                          "id": "card-formula-composta-content-paragraph-1",
+                          "package": "aralearn.resource.paragraph",
+                          "version": "1.0.0",
+                          "data": {
+                            "text": "A igualdade pode aparecer junto de uma explicação."
+                          }
+                        },
+                        {
+                          "id": "card-formula-composta-content-formula-1",
+                          "package": "aralearn.resource.formula",
+                          "version": "1.0.0",
+                          "data": {
+                            "prompt": "Observe os delimitadores.",
+                            "notation": "mathematics",
+                            "accessibleText": "abre parêntese, beta mais um, fecha parêntese.",
+                            "expression": {
+                              "type": "fenced",
+                              "open": "(",
+                              "close": ")",
+                              "content": {
+                                "type": "row",
+                                "children": [
+                                  {
+                                    "type": "identifier",
+                                    "value": "β"
+                                  },
+                                  {
+                                    "type": "operator",
+                                    "value": "+"
+                                  },
+                                  {
+                                    "type": "number",
+                                    "value": "1"
+                                  }
+                                ]
+                              }
+                            }
+                          }
+                        }
+                      ],
+                      "response": null,
+                      "feedback": [
+                        {
+                          "id": "card-formula-composta-feedback-text",
+                          "package": "aralearn.resource.paragraph",
+                          "version": "1.0.0",
+                          "data": {
+                            "text": "O bloco de fórmula continua granular dentro do card composto."
+                          }
+                        }
+                      ],
+                      "topics": [],
+                      "sources": []
                     }
-                  ],
-                  "after": "O bloco de fórmula continua granular dentro do card composto."
+                  ]
                 }
               ]
             }

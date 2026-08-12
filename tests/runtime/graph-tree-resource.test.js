@@ -12,7 +12,7 @@ import { relationalRowsToContract } from "../../src/persistence/relationalRowsTo
 import { validateRelationalCourse } from "../../src/persistence/validateRelationalCourse.js";
 import { renderCardRuntimeBlocks } from "../../src/render/renderCardRuntime.js";
 
-const visualFixtureUrl = new URL("../fixtures/v4/project-visual.json", import.meta.url);
+const visualFixtureUrl = new URL("../fixtures/package/project-visual.json", import.meta.url);
 
 function graphCard(overrides = {}) {
   return {

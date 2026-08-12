@@ -7,7 +7,7 @@ import { RelationalProjectRepository } from "../../../src/persistence/Relational
 export const TEST_USER_ID = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
 
 export const minimalProjectFixture = JSON.parse(fs.readFileSync(
-  new URL("../../fixtures/v4/project-minimal.json", import.meta.url),
+  new URL("../../fixtures/package/project-minimal.json", import.meta.url),
   "utf8"
 ));
 

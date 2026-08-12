@@ -6,7 +6,7 @@ const SECOND_GROUP_ID = "10000000-0000-4000-8000-000000000002";
 const ITEM_ID = "20000000-0000-4000-8000-000000000002";
 const WORKSPACE_ID = "30000000-0000-4000-8000-000000000003";
 const PROJECT_FIXTURE = JSON.parse(fs.readFileSync(
-  new URL("../fixtures/v4/project-minimal.json", import.meta.url),
+  new URL("../fixtures/package/project-minimal.json", import.meta.url),
   "utf8"
 ));
 

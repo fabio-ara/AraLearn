@@ -196,97 +196,15 @@ export const RELATIONAL_STORE_DEFINITIONS = Object.freeze({
   },
   cardSources: { keyPath: "id", indexes: positionedChildIndexes("CardId", "cardId") },
   cardTopics: { keyPath: "id", indexes: positionedChildIndexes("CardId", "cardId") },
-  blocks: {
+  packageInstances: {
     keyPath: "id",
     indexes: [
       index("byCardId", "cardId"),
-      index("byCardRegionPosition", ["cardId", "region", "position"]),
+      index("byCardSlotPosition", ["cardId", "slot", "position"]),
+      index("byPackage", ["packageId", "packageVersion"]),
       ...COMMON_ENTITY_INDEXES
     ]
   },
-  options: {
-    keyPath: "id",
-    indexes: [
-      index("byCardId", "cardId"),
-      index("byBlockId", "blockId"),
-      index("byBlockPosition", ["blockId", "position"]),
-      index("byBlockContractKey", ["blockId", "contractKey"]),
-      ...COMMON_ENTITY_INDEXES
-    ]
-  },
-  nodes: {
-    keyPath: "id",
-    indexes: [
-      index("byBlockId", "blockId"),
-      index("byBlockPosition", ["blockId", "position"]),
-      index("byParentNodeId", "parentNodeId"),
-      ...COMMON_ENTITY_INDEXES
-    ]
-  },
-  edges: {
-    keyPath: "id",
-    indexes: [
-      index("byBlockId", "blockId"),
-      index("byBlockPosition", ["blockId", "position"]),
-      index("byFromNodeId", "fromNodeId"),
-      index("byToNodeId", "toNodeId"),
-      ...COMMON_ENTITY_INDEXES
-    ]
-  },
-  cells: {
-    keyPath: "id",
-    indexes: [
-      index("byBlockId", "blockId"),
-      index("byMatrixItemId", "matrixItemId"),
-      index("byBlockPosition", ["blockId", "position"]),
-      index("byBlockCell", ["blockId", "cellKind", "rowIndex", "columnIndex"]),
-      ...COMMON_ENTITY_INDEXES
-    ]
-  },
-  matrixItems: { keyPath: "id", indexes: positionedChildIndexes("BlockId", "blockId") },
-  points: { keyPath: "id", indexes: positionedChildIndexes("BlockId", "blockId") },
-  lines: {
-    keyPath: "id",
-    indexes: [
-      index("byBlockId", "blockId"),
-      index("byBlockPosition", ["blockId", "position"]),
-      index("byFromPointId", "fromPointId"),
-      index("byToPointId", "toPointId"),
-      ...COMMON_ENTITY_INDEXES
-    ]
-  },
-  highlights: {
-    keyPath: "id",
-    indexes: [
-      index("byBlockId", "blockId"),
-      index("byMatrixItemId", "matrixItemId"),
-      index("byBlockPosition", ["blockId", "position"]),
-      ...COMMON_ENTITY_INDEXES
-    ]
-  },
-  flowNodes: {
-    keyPath: "id",
-    indexes: [
-      index("byBlockId", "blockId"),
-      index("byParentNodeId", "parentNodeId"),
-      index("byParentCaseId", "parentCaseId"),
-      index("byBlockPosition", ["blockId", "position"]),
-      ...COMMON_ENTITY_INDEXES
-    ]
-  },
-  flowCases: { keyPath: "id", indexes: positionedChildIndexes("FlowNodeId", "flowNodeId") },
-  flowPractices: {
-    keyPath: "id",
-    indexes: [
-      index("byOwnerId", "ownerId"),
-      index("byOwner", ["ownerType", "ownerId"]),
-      ...COMMON_ENTITY_INDEXES
-    ]
-  },
-  flowPracticeEntries: { keyPath: "id", indexes: positionedChildIndexes("PracticeId", "practiceId") },
-  flowPracticeOptions: { keyPath: "id", indexes: positionedChildIndexes("EntryId", "entryId") },
-  flowPracticeVariants: { keyPath: "id", indexes: positionedChildIndexes("EntryId", "entryId") },
-  flowShapeOptions: { keyPath: "id", indexes: positionedChildIndexes("PracticeId", "practiceId") },
   courseSelections: {
     keyPath: "id",
     indexes: [
@@ -364,9 +282,7 @@ function validateOfficialCourseGraph(normalizedRows) {
   assertValidRelationalCourse({
     projectMeta: [{
       id: projectId,
-      contract: "aralearn.contract",
-      version: 4,
-      kind: "project",
+      contract: "aralearn.library.v1",
       scope: hasScope ? course.contractScope : null,
       hasScope,
       updatedAt: null,

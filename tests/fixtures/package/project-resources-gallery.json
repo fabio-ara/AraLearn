@@ -1,0 +1,1251 @@
+{
+  "contract": "aralearn.library.v1",
+  "scope": "course",
+  "courses": [
+    {
+      "id": "course-resources-gallery",
+      "title": "Galeria de resources v4",
+      "goal": "Demonstrar os dezoito recursos canônicos em cards válidos.",
+      "modules": [
+        {
+          "id": "module-resources-gallery",
+          "title": "Representações canônicas",
+          "guide": {
+            "goal": "Comparar representações e interações disponíveis.",
+            "include": [
+              "resources v4"
+            ],
+            "exclude": [],
+            "notation": [],
+            "avoid": []
+          },
+          "lessons": [
+            {
+              "id": "lesson-resources-gallery",
+              "title": "Um card por resource",
+              "guide": {
+                "goal": "Inspecionar cada resource em uma operação didática concreta.",
+                "include": [
+                  "dezoito recursos"
+                ],
+                "exclude": [],
+                "notation": [],
+                "avoid": []
+              },
+              "topics": [],
+              "microsequences": [
+                {
+                  "id": "micro-resources-gallery",
+                  "title": "Galeria completa",
+                  "goal": "Percorrer todos os recursos do contrato v4.",
+                  "role": "practice",
+                  "branchOf": null,
+                  "dependsOn": [],
+                  "covers": [
+                    "paragraph",
+                    "choice",
+                    "composite",
+                    "code",
+                    "table",
+                    "flow",
+                    "tree",
+                    "graph",
+                    "relation_map",
+                    "matrix",
+                    "plane",
+                    "formula",
+                    "chart",
+                    "sequence",
+                    "annotated_text",
+                    "linguistic_example",
+                    "system_map",
+                    "reaction"
+                  ],
+                  "checks": [
+                    "renderização",
+                    "interação",
+                    "responsividade"
+                  ],
+                  "errors": [],
+                  "cards": [
+                    {
+                      "id": "gallery-paragraph",
+                      "position": 1,
+                      "title": "Conjunção",
+                      "role": "practice",
+                      "content": [
+                        {
+                          "id": "gallery-paragraph-content",
+                          "package": "aralearn.resource.paragraph",
+                          "version": "1.0.0",
+                          "data": {
+                            "text": "P ∧ Q só é verdadeira quando P e Q são verdadeiras."
+                          }
+                        }
+                      ],
+                      "response": {
+                        "id": "gallery-paragraph-response",
+                        "package": "aralearn.response.gap",
+                        "version": "1.0.0",
+                        "data": {
+                          "prompt": "Conjunção",
+                          "blanks": [
+                            {
+                              "id": "blank-1",
+                              "targetInstanceId": "gallery-paragraph-content",
+                              "targetPath": "text",
+                              "responseMode": "choice",
+                              "answer": "P e Q são verdadeiras",
+                              "distractors": [
+                                "apenas P é verdadeira",
+                                "ao menos uma é verdadeira"
+                              ]
+                            }
+                          ]
+                        }
+                      },
+                      "feedback": [
+                        {
+                          "id": "gallery-paragraph-feedback-text",
+                          "package": "aralearn.resource.paragraph",
+                          "version": "1.0.0",
+                          "data": {
+                            "text": "Feedback explicativo."
+                          }
+                        }
+                      ],
+                      "topics": [],
+                      "sources": []
+                    },
+                    {
+                      "id": "gallery-choice",
+                      "position": 2,
+                      "title": "Operador de atribuição",
+                      "role": "practice",
+                      "content": [
+                        {
+                          "id": "gallery-choice-context",
+                          "package": "aralearn.resource.paragraph",
+                          "version": "1.0.0",
+                          "data": {
+                            "text": "Qual operador atribui um valor em C?"
+                          }
+                        }
+                      ],
+                      "response": {
+                        "id": "gallery-choice-response",
+                        "package": "aralearn.response.choice",
+                        "version": "1.0.0",
+                        "data": {
+                          "question": "Qual operador atribui um valor em C?",
+                          "selectionMode": "single",
+                          "selectionCriterion": "correct",
+                          "options": [
+                            {
+                              "id": "assign",
+                              "kind": "text",
+                              "text": "="
+                            },
+                            {
+                              "id": "equal",
+                              "kind": "text",
+                              "text": "=="
+                            },
+                            {
+                              "id": "different",
+                              "kind": "text",
+                              "text": "!="
+                            }
+                          ],
+                          "answerIds": [
+                            "assign"
+                          ]
+                        }
+                      },
+                      "feedback": [
+                        {
+                          "id": "gallery-choice-feedback-text",
+                          "package": "aralearn.resource.paragraph",
+                          "version": "1.0.0",
+                          "data": {
+                            "text": "Feedback explicativo."
+                          }
+                        }
+                      ],
+                      "topics": [],
+                      "sources": []
+                    },
+                    {
+                      "id": "gallery-composite",
+                      "position": 3,
+                      "title": "Regra e código",
+                      "role": "practice",
+                      "content": [
+                        {
+                          "id": "gallery-composite-content-instruction",
+                          "package": "aralearn.resource.paragraph",
+                          "version": "1.0.0",
+                          "data": {
+                            "text": "Complete a condição."
+                          }
+                        },
+                        {
+                          "id": "gallery-composite-content-code",
+                          "package": "aralearn.resource.code",
+                          "version": "1.0.0",
+                          "data": {
+                            "prompt": "Complete a condição.",
+                            "language": "python",
+                            "code": "if nota >= 6:\n    aprovar()"
+                          }
+                        }
+                      ],
+                      "response": {
+                        "id": "gallery-composite-response",
+                        "package": "aralearn.response.gap",
+                        "version": "1.0.0",
+                        "data": {
+                          "prompt": "Regra e código",
+                          "blanks": [
+                            {
+                              "id": "blank-1",
+                              "targetInstanceId": "gallery-composite-content-code",
+                              "targetPath": "code",
+                              "responseMode": "choice",
+                              "answer": "nota >= 6",
+                              "distractors": [
+                                "nota < 6",
+                                "nota = 0"
+                              ]
+                            }
+                          ]
+                        }
+                      },
+                      "feedback": [
+                        {
+                          "id": "gallery-composite-feedback-text",
+                          "package": "aralearn.resource.paragraph",
+                          "version": "1.0.0",
+                          "data": {
+                            "text": "Feedback explicativo."
+                          }
+                        }
+                      ],
+                      "topics": [],
+                      "sources": []
+                    },
+                    {
+                      "id": "gallery-code",
+                      "position": 4,
+                      "title": "Condição em Python",
+                      "role": "practice",
+                      "content": [
+                        {
+                          "id": "gallery-code-content",
+                          "package": "aralearn.resource.code",
+                          "version": "1.0.0",
+                          "data": {
+                            "prompt": "Complete a comparação.",
+                            "language": "python",
+                            "code": "if nota >= 6:\n    print(\"aprovado\")"
+                          }
+                        }
+                      ],
+                      "response": {
+                        "id": "gallery-code-response",
+                        "package": "aralearn.response.gap",
+                        "version": "1.0.0",
+                        "data": {
+                          "prompt": "Condição em Python",
+                          "blanks": [
+                            {
+                              "id": "blank-1",
+                              "targetInstanceId": "gallery-code-content",
+                              "targetPath": "code",
+                              "responseMode": "text",
+                              "answer": "nota >= 6",
+                              "acceptedAnswers": [
+                                "nota>=6"
+                              ]
+                            }
+                          ]
+                        }
+                      },
+                      "feedback": [
+                        {
+                          "id": "gallery-code-feedback-text",
+                          "package": "aralearn.resource.paragraph",
+                          "version": "1.0.0",
+                          "data": {
+                            "text": "Feedback explicativo."
+                          }
+                        }
+                      ],
+                      "topics": [],
+                      "sources": []
+                    },
+                    {
+                      "id": "gallery-table",
+                      "position": 5,
+                      "title": "Tabela-verdade",
+                      "role": "practice",
+                      "content": [
+                        {
+                          "id": "gallery-table-content",
+                          "package": "aralearn.resource.table",
+                          "version": "1.0.0",
+                          "data": {
+                            "columns": [
+                              "P",
+                              "Q",
+                              "P ∧ Q"
+                            ],
+                            "rows": [
+                              [
+                                "V",
+                                "V",
+                                "V"
+                              ]
+                            ]
+                          }
+                        }
+                      ],
+                      "response": {
+                        "id": "gallery-table-response",
+                        "package": "aralearn.response.gap",
+                        "version": "1.0.0",
+                        "data": {
+                          "prompt": "Tabela-verdade",
+                          "blanks": [
+                            {
+                              "id": "blank-1",
+                              "targetInstanceId": "gallery-table-content",
+                              "targetPath": "rows[0][2]",
+                              "responseMode": "choice",
+                              "answer": "V",
+                              "distractors": [
+                                "F"
+                              ]
+                            }
+                          ]
+                        }
+                      },
+                      "feedback": [
+                        {
+                          "id": "gallery-table-feedback-text",
+                          "package": "aralearn.resource.paragraph",
+                          "version": "1.0.0",
+                          "data": {
+                            "text": "Feedback explicativo."
+                          }
+                        }
+                      ],
+                      "topics": [],
+                      "sources": []
+                    },
+                    {
+                      "id": "gallery-flow",
+                      "position": 6,
+                      "title": "Decisão",
+                      "role": "practice",
+                      "content": [
+                        {
+                          "id": "gallery-flow-content",
+                          "package": "aralearn.resource.flow",
+                          "version": "1.0.0",
+                          "data": {
+                            "structure": {
+                              "id": "root",
+                              "kind": "sequence",
+                              "items": [
+                                {
+                                  "id": "decision",
+                                  "kind": "if_then",
+                                  "condition": "nota >= 6",
+                                  "thenBranch": [
+                                    {
+                                      "id": "output",
+                                      "kind": "output",
+                                      "text": "Exibir aprovado"
+                                    }
+                                  ]
+                                }
+                              ]
+                            }
+                          }
+                        }
+                      ],
+                      "response": {
+                        "id": "gallery-flow-response",
+                        "package": "aralearn.response.gap",
+                        "version": "1.0.0",
+                        "data": {
+                          "prompt": "Decisão",
+                          "blanks": [
+                            {
+                              "id": "blank-1",
+                              "targetInstanceId": "gallery-flow-content",
+                              "targetPath": "structure.items[0].condition",
+                              "responseMode": "choice",
+                              "answer": "nota >= 6",
+                              "distractors": [
+                                "nota < 6"
+                              ]
+                            }
+                          ]
+                        }
+                      },
+                      "feedback": [
+                        {
+                          "id": "gallery-flow-feedback-text",
+                          "package": "aralearn.resource.paragraph",
+                          "version": "1.0.0",
+                          "data": {
+                            "text": "Feedback explicativo."
+                          }
+                        }
+                      ],
+                      "topics": [],
+                      "sources": []
+                    },
+                    {
+                      "id": "gallery-tree",
+                      "position": 7,
+                      "title": "Classificação",
+                      "role": "practice",
+                      "content": [
+                        {
+                          "id": "gallery-tree-content",
+                          "package": "aralearn.resource.tree",
+                          "version": "1.0.0",
+                          "data": {
+                            "prompt": "Complete o táxon.",
+                            "variant": "taxonomy",
+                            "nodes": [
+                              {
+                                "id": "root",
+                                "label": "Animalia",
+                                "parentId": null
+                              },
+                              {
+                                "id": "child",
+                                "label": "Chordata",
+                                "parentId": "root"
+                              }
+                            ]
+                          }
+                        }
+                      ],
+                      "response": {
+                        "id": "gallery-tree-response",
+                        "package": "aralearn.response.gap",
+                        "version": "1.0.0",
+                        "data": {
+                          "prompt": "Classificação",
+                          "blanks": [
+                            {
+                              "id": "blank-1",
+                              "targetInstanceId": "gallery-tree-content",
+                              "targetPath": "nodes[1].label",
+                              "responseMode": "choice",
+                              "answer": "Chordata",
+                              "distractors": [
+                                "Plantae",
+                                "Fungi"
+                              ]
+                            }
+                          ]
+                        }
+                      },
+                      "feedback": [
+                        {
+                          "id": "gallery-tree-feedback-text",
+                          "package": "aralearn.resource.paragraph",
+                          "version": "1.0.0",
+                          "data": {
+                            "text": "Feedback explicativo."
+                          }
+                        }
+                      ],
+                      "topics": [],
+                      "sources": []
+                    },
+                    {
+                      "id": "gallery-graph",
+                      "position": 8,
+                      "title": "Peso da aresta",
+                      "role": "practice",
+                      "content": [
+                        {
+                          "id": "gallery-graph-content",
+                          "package": "aralearn.resource.graph",
+                          "version": "1.0.0",
+                          "data": {
+                            "prompt": "Complete o peso.",
+                            "layout": "path",
+                            "vertices": [
+                              {
+                                "id": "a",
+                                "label": "A"
+                              },
+                              {
+                                "id": "b",
+                                "label": "B"
+                              }
+                            ],
+                            "edges": [
+                              {
+                                "id": "edge-1",
+                                "from": "a",
+                                "to": "b",
+                                "weight": "7",
+                                "directed": true
+                              }
+                            ]
+                          }
+                        }
+                      ],
+                      "response": {
+                        "id": "gallery-graph-response",
+                        "package": "aralearn.response.gap",
+                        "version": "1.0.0",
+                        "data": {
+                          "prompt": "Peso da aresta",
+                          "blanks": [
+                            {
+                              "id": "blank-1",
+                              "targetInstanceId": "gallery-graph-content",
+                              "targetPath": "edges[0].weight",
+                              "responseMode": "text",
+                              "answer": "7"
+                            }
+                          ]
+                        }
+                      },
+                      "feedback": [
+                        {
+                          "id": "gallery-graph-feedback-text",
+                          "package": "aralearn.resource.paragraph",
+                          "version": "1.0.0",
+                          "data": {
+                            "text": "Feedback explicativo."
+                          }
+                        }
+                      ],
+                      "topics": [],
+                      "sources": []
+                    },
+                    {
+                      "id": "gallery-relation-map",
+                      "position": 9,
+                      "title": "Imagem da relação",
+                      "role": "practice",
+                      "content": [
+                        {
+                          "id": "gallery-relation-map-content",
+                          "package": "aralearn.resource.relation_map",
+                          "version": "1.0.0",
+                          "data": {
+                            "prompt": "Complete o elemento relacionado.",
+                            "leftSet": {
+                              "label": "U",
+                              "items": [
+                                {
+                                  "id": "a",
+                                  "label": "A"
+                                }
+                              ]
+                            },
+                            "rightSet": {
+                              "label": "V",
+                              "items": [
+                                {
+                                  "id": "one",
+                                  "label": "1"
+                                }
+                              ]
+                            },
+                            "relations": [
+                              {
+                                "id": "relation-1",
+                                "from": "a",
+                                "to": "one"
+                              }
+                            ]
+                          }
+                        }
+                      ],
+                      "response": {
+                        "id": "gallery-relation-map-response",
+                        "package": "aralearn.response.gap",
+                        "version": "1.0.0",
+                        "data": {
+                          "prompt": "Imagem da relação",
+                          "blanks": [
+                            {
+                              "id": "blank-1",
+                              "targetInstanceId": "gallery-relation-map-content",
+                              "targetPath": "rightSet.items[0].label",
+                              "responseMode": "choice",
+                              "answer": "1",
+                              "distractors": [
+                                "2"
+                              ]
+                            }
+                          ]
+                        }
+                      },
+                      "feedback": [
+                        {
+                          "id": "gallery-relation-map-feedback-text",
+                          "package": "aralearn.resource.paragraph",
+                          "version": "1.0.0",
+                          "data": {
+                            "text": "Feedback explicativo."
+                          }
+                        }
+                      ],
+                      "topics": [],
+                      "sources": []
+                    },
+                    {
+                      "id": "gallery-matrix",
+                      "position": 10,
+                      "title": "Soma matricial",
+                      "role": "practice",
+                      "content": [
+                        {
+                          "id": "gallery-matrix-content",
+                          "package": "aralearn.resource.matrix",
+                          "version": "1.0.0",
+                          "data": {
+                            "values": [
+                              [
+                                "1",
+                                "2"
+                              ],
+                              [
+                                "3",
+                                "4"
+                              ]
+                            ]
+                          }
+                        }
+                      ],
+                      "response": {
+                        "id": "gallery-matrix-response",
+                        "package": "aralearn.response.gap",
+                        "version": "1.0.0",
+                        "data": {
+                          "prompt": "Soma matricial",
+                          "blanks": [
+                            {
+                              "id": "blank-1",
+                              "targetInstanceId": "gallery-matrix-content",
+                              "targetPath": "values[1][1]",
+                              "responseMode": "text",
+                              "answer": "4"
+                            }
+                          ]
+                        }
+                      },
+                      "feedback": [
+                        {
+                          "id": "gallery-matrix-feedback-text",
+                          "package": "aralearn.resource.paragraph",
+                          "version": "1.0.0",
+                          "data": {
+                            "text": "Feedback explicativo."
+                          }
+                        }
+                      ],
+                      "topics": [],
+                      "sources": []
+                    },
+                    {
+                      "id": "gallery-plane",
+                      "position": 11,
+                      "title": "Soma de vetores",
+                      "role": "practice",
+                      "content": [
+                        {
+                          "id": "gallery-plane-content",
+                          "package": "aralearn.resource.plane",
+                          "version": "1.0.0",
+                          "data": {
+                            "sum": [
+                              [
+                                1,
+                                2
+                              ],
+                              [
+                                2,
+                                1
+                              ]
+                            ],
+                            "result": "(3, 3)"
+                          }
+                        }
+                      ],
+                      "response": {
+                        "id": "gallery-plane-response",
+                        "package": "aralearn.response.gap",
+                        "version": "1.0.0",
+                        "data": {
+                          "prompt": "Soma de vetores",
+                          "blanks": [
+                            {
+                              "id": "blank-1",
+                              "targetInstanceId": "gallery-plane-content",
+                              "targetPath": "result",
+                              "responseMode": "choice",
+                              "answer": "(3, 3)",
+                              "distractors": [
+                                "(2, 2)",
+                                "(3, 1)"
+                              ]
+                            }
+                          ]
+                        }
+                      },
+                      "feedback": [
+                        {
+                          "id": "gallery-plane-feedback-text",
+                          "package": "aralearn.resource.paragraph",
+                          "version": "1.0.0",
+                          "data": {
+                            "text": "Feedback explicativo."
+                          }
+                        }
+                      ],
+                      "topics": [],
+                      "sources": []
+                    },
+                    {
+                      "id": "gallery-formula",
+                      "position": 12,
+                      "title": "Operador",
+                      "role": "practice",
+                      "content": [
+                        {
+                          "id": "gallery-formula-content",
+                          "package": "aralearn.resource.formula",
+                          "version": "1.0.0",
+                          "data": {
+                            "prompt": "Complete o operador.",
+                            "notation": "mathematics",
+                            "accessibleText": "x + y",
+                            "expression": {
+                              "type": "row",
+                              "children": [
+                                {
+                                  "type": "identifier",
+                                  "value": "x"
+                                },
+                                {
+                                  "type": "operator",
+                                  "value": "+"
+                                },
+                                {
+                                  "type": "identifier",
+                                  "value": "y"
+                                }
+                              ]
+                            }
+                          }
+                        }
+                      ],
+                      "response": {
+                        "id": "gallery-formula-response",
+                        "package": "aralearn.response.gap",
+                        "version": "1.0.0",
+                        "data": {
+                          "prompt": "Operador",
+                          "blanks": [
+                            {
+                              "id": "blank-1",
+                              "targetInstanceId": "gallery-formula-content",
+                              "targetPath": "accessibleText",
+                              "responseMode": "choice",
+                              "answer": "+",
+                              "distractors": [
+                                "−"
+                              ]
+                            },
+                            {
+                              "id": "blank-2",
+                              "targetInstanceId": "gallery-formula-content",
+                              "targetPath": "expression.children[1].value",
+                              "responseMode": "choice",
+                              "answer": "+",
+                              "distractors": [
+                                "−"
+                              ]
+                            }
+                          ]
+                        }
+                      },
+                      "feedback": [
+                        {
+                          "id": "gallery-formula-feedback-text",
+                          "package": "aralearn.resource.paragraph",
+                          "version": "1.0.0",
+                          "data": {
+                            "text": "Feedback explicativo."
+                          }
+                        }
+                      ],
+                      "topics": [],
+                      "sources": []
+                    },
+                    {
+                      "id": "gallery-chart",
+                      "position": 13,
+                      "title": "Concentração por mês",
+                      "role": "practice",
+                      "content": [
+                        {
+                          "id": "gallery-chart-content",
+                          "package": "aralearn.resource.chart",
+                          "version": "1.0.0",
+                          "data": {
+                            "prompt": "Compare a tendência mensal.",
+                            "chartType": "line",
+                            "xAxis": {
+                              "label": "Mês"
+                            },
+                            "yAxis": {
+                              "label": "Concentração",
+                              "unit": "µg/m³"
+                            },
+                            "series": [
+                              {
+                                "id": "station-a",
+                                "name": "Estação A",
+                                "values": [
+                                  [
+                                    "Jan",
+                                    18
+                                  ],
+                                  [
+                                    "Fev",
+                                    22
+                                  ],
+                                  [
+                                    "Mar",
+                                    31
+                                  ]
+                                ]
+                              }
+                            ]
+                          }
+                        }
+                      ],
+                      "response": {
+                        "id": "gallery-chart-response",
+                        "package": "aralearn.response.gap",
+                        "version": "1.0.0",
+                        "data": {
+                          "prompt": "Concentração por mês",
+                          "blanks": [
+                            {
+                              "id": "blank-1",
+                              "targetInstanceId": "gallery-chart-content",
+                              "targetPath": "series[0].name",
+                              "responseMode": "choice",
+                              "answer": "Estação A",
+                              "distractors": [
+                                "Estação B",
+                                "Média móvel"
+                              ]
+                            }
+                          ]
+                        }
+                      },
+                      "feedback": [
+                        {
+                          "id": "gallery-chart-feedback-text",
+                          "package": "aralearn.resource.paragraph",
+                          "version": "1.0.0",
+                          "data": {
+                            "text": "Feedback explicativo."
+                          }
+                        }
+                      ],
+                      "topics": [],
+                      "sources": []
+                    },
+                    {
+                      "id": "gallery-sequence",
+                      "position": 14,
+                      "title": "Ciclo de investigação",
+                      "role": "practice",
+                      "content": [
+                        {
+                          "id": "gallery-sequence-content",
+                          "package": "aralearn.resource.sequence",
+                          "version": "1.0.0",
+                          "data": {
+                            "prompt": "Acompanhe a ordem das etapas.",
+                            "variant": "cycle",
+                            "items": [
+                              {
+                                "id": "observe",
+                                "label": "Observar"
+                              },
+                              {
+                                "id": "hypothesis",
+                                "label": "Formular hipótese"
+                              },
+                              {
+                                "id": "test",
+                                "label": "Testar"
+                              }
+                            ]
+                          }
+                        }
+                      ],
+                      "response": {
+                        "id": "gallery-sequence-response",
+                        "package": "aralearn.response.gap",
+                        "version": "1.0.0",
+                        "data": {
+                          "prompt": "Ciclo de investigação",
+                          "blanks": [
+                            {
+                              "id": "blank-1",
+                              "targetInstanceId": "gallery-sequence-content",
+                              "targetPath": "items[1].label",
+                              "responseMode": "choice",
+                              "answer": "Formular hipótese",
+                              "distractors": [
+                                "Publicar conclusão",
+                                "Ignorar evidências"
+                              ]
+                            }
+                          ]
+                        }
+                      },
+                      "feedback": [
+                        {
+                          "id": "gallery-sequence-feedback-text",
+                          "package": "aralearn.resource.paragraph",
+                          "version": "1.0.0",
+                          "data": {
+                            "text": "Feedback explicativo."
+                          }
+                        }
+                      ],
+                      "topics": [],
+                      "sources": []
+                    },
+                    {
+                      "id": "gallery-annotated-text",
+                      "position": 15,
+                      "title": "Modalidade normativa",
+                      "role": "practice",
+                      "content": [
+                        {
+                          "id": "gallery-annotated-text-content",
+                          "package": "aralearn.resource.annotated_text",
+                          "version": "1.0.0",
+                          "data": {
+                            "prompt": "Relacione a forma verbal à obrigação.",
+                            "segments": [
+                              {
+                                "id": "s1",
+                                "text": "O controlador deverá comunicar o incidente."
+                              }
+                            ],
+                            "annotations": [
+                              {
+                                "id": "a1",
+                                "targetIds": [
+                                  "s1"
+                                ],
+                                "label": "dever jurídico",
+                                "note": "A forma verbal estabelece obrigação."
+                              }
+                            ]
+                          }
+                        }
+                      ],
+                      "response": {
+                        "id": "gallery-annotated-text-response",
+                        "package": "aralearn.response.gap",
+                        "version": "1.0.0",
+                        "data": {
+                          "prompt": "Modalidade normativa",
+                          "blanks": [
+                            {
+                              "id": "blank-1",
+                              "targetInstanceId": "gallery-annotated-text-content",
+                              "targetPath": "annotations[0].label",
+                              "responseMode": "choice",
+                              "answer": "dever jurídico",
+                              "distractors": [
+                                "faculdade",
+                                "descrição neutra"
+                              ]
+                            }
+                          ]
+                        }
+                      },
+                      "feedback": [
+                        {
+                          "id": "gallery-annotated-text-feedback-text",
+                          "package": "aralearn.resource.paragraph",
+                          "version": "1.0.0",
+                          "data": {
+                            "text": "Feedback explicativo."
+                          }
+                        }
+                      ],
+                      "topics": [],
+                      "sources": []
+                    },
+                    {
+                      "id": "gallery-linguistic-example",
+                      "position": 16,
+                      "title": "Saudação",
+                      "role": "practice",
+                      "content": [
+                        {
+                          "id": "gallery-linguistic-example-content",
+                          "package": "aralearn.resource.linguistic_example",
+                          "version": "1.0.0",
+                          "data": {
+                            "prompt": "Compare forma, leitura e tradução.",
+                            "languageTag": "zh-Hans",
+                            "writingMode": "horizontal",
+                            "alignment": "word",
+                            "units": [
+                              {
+                                "id": "u1",
+                                "form": "你好",
+                                "gloss": "você bom",
+                                "translation": "olá"
+                              }
+                            ]
+                          }
+                        }
+                      ],
+                      "response": {
+                        "id": "gallery-linguistic-example-response",
+                        "package": "aralearn.response.gap",
+                        "version": "1.0.0",
+                        "data": {
+                          "prompt": "Saudação",
+                          "blanks": [
+                            {
+                              "id": "blank-1",
+                              "targetInstanceId": "gallery-linguistic-example-content",
+                              "targetPath": "units[0].translation",
+                              "responseMode": "choice",
+                              "answer": "olá",
+                              "distractors": [
+                                "adeus",
+                                "obrigado"
+                              ]
+                            }
+                          ]
+                        }
+                      },
+                      "feedback": [
+                        {
+                          "id": "gallery-linguistic-example-feedback-text",
+                          "package": "aralearn.resource.paragraph",
+                          "version": "1.0.0",
+                          "data": {
+                            "text": "Feedback explicativo."
+                          }
+                        }
+                      ],
+                      "topics": [],
+                      "sources": []
+                    },
+                    {
+                      "id": "gallery-system-map",
+                      "position": 17,
+                      "title": "Limite de implantação",
+                      "role": "practice",
+                      "content": [
+                        {
+                          "id": "gallery-system-map-content",
+                          "package": "aralearn.resource.system_map",
+                          "version": "1.0.0",
+                          "data": {
+                            "prompt": "Identifique o componente dentro da zona de aplicação.",
+                            "groups": [
+                              {
+                                "id": "region",
+                                "label": "Região",
+                                "kind": "region",
+                                "parentId": null
+                              },
+                              {
+                                "id": "application-zone",
+                                "label": "Zona de aplicação",
+                                "kind": "zone",
+                                "parentId": "region"
+                              }
+                            ],
+                            "nodes": [
+                              {
+                                "id": "client",
+                                "label": "Cliente",
+                                "kind": "client",
+                                "groupId": null
+                              },
+                              {
+                                "id": "orders-api",
+                                "label": "API de pedidos",
+                                "kind": "service",
+                                "groupId": "application-zone"
+                              },
+                              {
+                                "id": "orders-db",
+                                "label": "Banco de pedidos",
+                                "kind": "database",
+                                "groupId": "application-zone"
+                              }
+                            ],
+                            "links": [
+                              {
+                                "id": "request",
+                                "from": "client",
+                                "to": "orders-api",
+                                "label": "requisição",
+                                "directed": true
+                              },
+                              {
+                                "id": "persist",
+                                "from": "orders-api",
+                                "to": "orders-db",
+                                "label": "persistência",
+                                "directed": true
+                              }
+                            ]
+                          }
+                        }
+                      ],
+                      "response": {
+                        "id": "gallery-system-map-response",
+                        "package": "aralearn.response.gap",
+                        "version": "1.0.0",
+                        "data": {
+                          "prompt": "Limite de implantação",
+                          "blanks": [
+                            {
+                              "id": "blank-1",
+                              "targetInstanceId": "gallery-system-map-content",
+                              "targetPath": "nodes[1].label",
+                              "responseMode": "choice",
+                              "answer": "API de pedidos",
+                              "distractors": [
+                                "Fila externa",
+                                "Cliente móvel"
+                              ]
+                            }
+                          ]
+                        }
+                      },
+                      "feedback": [
+                        {
+                          "id": "gallery-system-map-feedback-text",
+                          "package": "aralearn.resource.paragraph",
+                          "version": "1.0.0",
+                          "data": {
+                            "text": "Feedback explicativo."
+                          }
+                        }
+                      ],
+                      "topics": [],
+                      "sources": []
+                    },
+                    {
+                      "id": "gallery-reaction",
+                      "position": 18,
+                      "title": "Formação de água",
+                      "role": "practice",
+                      "content": [
+                        {
+                          "id": "gallery-reaction-content",
+                          "package": "aralearn.resource.reaction",
+                          "version": "1.0.0",
+                          "data": {
+                            "prompt": "Complete o coeficiente estequiométrico indicado.",
+                            "reactionType": "forward",
+                            "reactants": [
+                              {
+                                "id": "hydrogen",
+                                "formula": "H2",
+                                "name": "hidrogênio",
+                                "coefficient": "2",
+                                "state": "g"
+                              },
+                              {
+                                "id": "oxygen",
+                                "formula": "O2",
+                                "name": "oxigênio",
+                                "coefficient": 1,
+                                "state": "g"
+                              }
+                            ],
+                            "products": [
+                              {
+                                "id": "water",
+                                "formula": "H2O",
+                                "name": "água",
+                                "coefficient": 2,
+                                "state": "l"
+                              }
+                            ],
+                            "conditions": []
+                          }
+                        }
+                      ],
+                      "response": {
+                        "id": "gallery-reaction-response",
+                        "package": "aralearn.response.gap",
+                        "version": "1.0.0",
+                        "data": {
+                          "prompt": "Formação de água",
+                          "blanks": [
+                            {
+                              "id": "blank-1",
+                              "targetInstanceId": "gallery-reaction-content",
+                              "targetPath": "reactants[0].coefficient",
+                              "responseMode": "choice",
+                              "answer": "2",
+                              "distractors": [
+                                "1",
+                                "3"
+                              ]
+                            }
+                          ]
+                        }
+                      },
+                      "feedback": [
+                        {
+                          "id": "gallery-reaction-feedback-text",
+                          "package": "aralearn.resource.paragraph",
+                          "version": "1.0.0",
+                          "data": {
+                            "text": "Feedback explicativo."
+                          }
+                        }
+                      ],
+                      "topics": [],
+                      "sources": []
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

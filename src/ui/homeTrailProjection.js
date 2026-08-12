@@ -302,20 +302,21 @@ export function courseFromWorkspaceParts(result, item) {
   const course = entityFor("course", courseKey)?.entity || null;
   if (!course) throw new Error("A composição corrente do curso não foi encontrada.");
   const validation = validateProjectDocument({
-    contract: "aralearn.contract",
-    version: 4,
-    kind: "project",
+    contract: "aralearn.library.v1",
+    scope: "course",
     courses: [course]
   });
   if (!validation.ok) {
     const first = validation.errors[0];
-    throw new Error(`A composição corrente viola o contrato v4 em ${first.path}: ${first.message}`);
+    throw new Error(`A composição corrente viola o contrato por packages em ${first.path}: ${first.message}`);
   }
   return structuredClone(validation.value.courses[0]);
 }
 
 export function mergeWorkspaceCourse(project, course, replacedIdentities = []) {
-  const source = project && typeof project === "object" ? project : { version: 4, courses: [] };
+  const source = project && typeof project === "object"
+    ? project
+    : { contract: "aralearn.library.v1", courses: [] };
   const replaced = new Set([course?.id, ...array(replacedIdentities)].map(text).filter(Boolean));
   return {
     ...source,

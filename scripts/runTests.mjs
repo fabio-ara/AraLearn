@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const testDirectories = [
   path.resolve(__dirname, "../tests/kernel"),
-  path.resolve(__dirname, "../tests/v4")
+  path.resolve(__dirname, "../tests/runtime")
 ];
 
 const files = testDirectories.flatMap((testsDir) => fs.readdirSync(testsDir)

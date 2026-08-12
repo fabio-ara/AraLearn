@@ -284,7 +284,7 @@ test("prática formal de rótulo deriva a resposta da aresta e executa choice e 
 });
 
 test("forma e rótulo formais preservam o round-trip relacional", async () => {
-  const fixtureUrl = new URL("../fixtures/v4/project-visual.json", import.meta.url);
+  const fixtureUrl = new URL("../fixtures/package/project-visual.json", import.meta.url);
   const project = JSON.parse(await readFile(fixtureUrl, "utf8"));
   const microsequence =
     project.courses[0].modules[0].lessons[0].microsequences[0];

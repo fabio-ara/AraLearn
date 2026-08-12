@@ -12,7 +12,7 @@ import {
 const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
 const outputPath = path.resolve(
   scriptDirectory,
-  "../tests/fixtures/v4/project-resources-gallery.json"
+  "../tests/fixtures/package/project-resources-gallery.json"
 );
 
 const cards = listResourceIds().map((resource, index) => {

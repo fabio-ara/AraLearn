@@ -12,7 +12,7 @@ import { listManualCardEditablePaths } from "../../src/ui/manualCardEdit.js";
 import { renderCardRuntimeBlocks } from "../../src/render/renderCardRuntime.js";
 import { listResourceIds } from "../../src/resources/registry/index.js";
 
-const fixtureUrl = new URL("../fixtures/v4/project-resources-gallery.json", import.meta.url);
+const fixtureUrl = new URL("../fixtures/package/project-resources-gallery.json", import.meta.url);
 
 const VISIBLE_MANUAL_PATHS = Object.freeze({
   paragraph: Object.freeze({
