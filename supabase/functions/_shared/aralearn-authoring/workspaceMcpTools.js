@@ -2799,7 +2799,7 @@ const INDIVIDUAL_AUTHORING_WORKSPACE_MCP_TOOLS = Object.freeze([
   tool(
     "listarCardsDaMicrossequencia",
     "Listar cards da microssequência",
-    "No workspace, localiza cards por id, posição, kind, resource e resumo. Para mostrar ou auditar práticas, releia como entidade só os alvos pedidos; abra ou importe antes uma publicação.",
+    "No workspace, localiza cards por id, posição, papel pedagógico, packages e resumo. Para mostrar ou auditar práticas, releia como entidade só os alvos pedidos; abra ou importe antes uma publicação.",
     pairedCursorReadSchema(
       ["workspaceId", "microsequencePath"],
       {

@@ -322,6 +322,9 @@ async function main() {
   const packageCutoverCleanup = migrations.find(({ fileName }) =>
     fileName === "20260812131000_remove_package_cutover_workspaces.sql"
   );
+  const packageCardListProjection = migrations.find(({ fileName }) =>
+    fileName === "20260812132000_package_card_list_projection.sql"
+  );
   const relationalRemoval = migrations.find(({ fileName }) =>
     fileName === "20260728020000_remove_relational_course_legacy.sql"
   );
@@ -762,6 +765,16 @@ async function main() {
     /delete\s+from\s+private\.authoring_workspaces[\s\S]+20260812131000/iu,
     "Os workspaces transitórios do corte não são removidos."
   );
+  if (
+    !packageCardListProjection.source.includes(
+      "list_authoring_workspace_microsequence_cards_v5"
+    )
+    || !packageCardListProjection.source.includes("'role', page.content ->> 'role'")
+    || !packageCardListProjection.source.includes("'packages', page.packages")
+    || !packageCardListProjection.source.includes("package-card-list-projection-v1")
+  ) {
+    fail("A lista paginada de cards não projeta role e packages do envelope corrente.");
+  }
   assertContains(
     authoringContinuityVolatility.source,
     /alter\s+function\s+private\.valid_authoring_continuity_v1\(jsonb\)\s+stable[\s\S]+alter\s+function\s+private\.normalize_authoring_continuity_v1\([\s\S]+\)\s+stable[\s\S]+alter\s+function\s+private\.remap_authoring_continuity_v1\([\s\S]+\)\s+stable/iu,
@@ -1138,7 +1151,7 @@ async function main() {
     path.join(repositoryRoot, "supabase", "runtime-manifest.json"),
     "utf8"
   ));
-  if (runtimeManifest.schemaRevision !== "20260812131000" || runtimeManifest.contractVersion !== 1) {
+  if (runtimeManifest.schemaRevision !== "20260812132000" || runtimeManifest.contractVersion !== 1) {
     fail("O manifesto estático não aponta para a biblioteca por packages corrente.");
   }
   for (const feature of [
@@ -1155,7 +1168,8 @@ async function main() {
     "resumable-authoring-continuity-v1",
     "package-library-v1",
     "package-contract-discovery-v1",
-    "catalog-package-artifact-cutover-v1"
+    "catalog-package-artifact-cutover-v1",
+    "package-card-list-projection-v1"
   ]) {
     if (!runtimeManifest.requiredFeatures.includes(feature)) {
       fail(`O manifesto estático não exige ${feature}.`);
@@ -1176,7 +1190,7 @@ async function main() {
     }
   }
   console.log(
-    `Corte validado até ${packageCutoverCleanup.fileName}: biblioteca e catálogo por packages, continuidade autoral corrente, Trilhas e Coleções alfabéticas, estado pessoal compacto, observações situadas, workspaces educacionais, OAuth/MCP/Action e uma revisão corrente por curso.`
+    `Corte validado até ${packageCardListProjection.fileName}: biblioteca e catálogo por packages, continuidade autoral corrente, Trilhas e Coleções alfabéticas, estado pessoal compacto, observações situadas, workspaces educacionais, OAuth/MCP/Action e uma revisão corrente por curso.`
   );
 }
 

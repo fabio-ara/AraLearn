@@ -200,7 +200,7 @@ const KNOWLEDGE_CHUNKS = Object.freeze([
     keywords: [
       "card", "corrigir", "reparar", "resource", "mover", "copiar"
     ],
-    text: "Para localizar um card sem carregar o curso, use listarCardsDaMicrossequencia com o caminho de quatro ids e percorra o cursor quando necessário. A lista traz somente id, posição, kind, resource e resumo curto. Depois leia como entidade apenas o card escolhido e envie seu objeto integral por salvarCardNoWorkspace, preservando id e posição. Essa listagem existe somente em workspace; abra ou importe antes um curso disponível. Informe em linguagem humana quais unidades foram alteradas; revisão técnica não equivale a aprovação pedagógica."
+    text: "Para localizar um card sem carregar o curso, use listarCardsDaMicrossequencia com o caminho de quatro ids e percorra o cursor quando necessário. A lista traz somente id, posição, papel pedagógico, packages e resumo curto. Depois leia como entidade apenas o card escolhido e envie seu objeto integral por salvarCardNoWorkspace, preservando id e posição. Essa listagem existe somente em workspace; abra ou importe antes um curso disponível. Informe em linguagem humana quais unidades foram alteradas; revisão técnica não equivale a aprovação pedagógica."
   }),
   Object.freeze({
     id: "independent-pedagogical-audit",

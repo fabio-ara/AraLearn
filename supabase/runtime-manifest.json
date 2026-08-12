@@ -1,5 +1,5 @@
 {
-  "schemaRevision": "20260812131000",
+  "schemaRevision": "20260812132000",
   "contractVersion": 1,
   "requiredFeatures": [
     "lean-shared-catalog",
@@ -63,6 +63,7 @@
     "resumable-authoring-continuity-v1",
     "package-library-v1",
     "package-contract-discovery-v1",
-    "catalog-package-artifact-cutover-v1"
+    "catalog-package-artifact-cutover-v1",
+    "package-card-list-projection-v1"
   ]
 }

@@ -189,8 +189,8 @@ test("adapter chama uma RPC relacional direta, sem compor documento nem abrir St
       items: [{
         id: "card-5",
         position: 5,
-        kind: "exercise",
-        resources: ["paragraph"],
+        role: "practice",
+        packages: ["aralearn.resource.paragraph", "aralearn.response.choice"],
         summary: "Recuperação ativa"
       }],
       hasMore: false,
@@ -222,16 +222,16 @@ test("adapter chama uma RPC relacional direta, sem compor documento nem abrir St
   }]);
 });
 
-test("migration pagina rows correntes e não projeta o conteúdo integral do card", async () => {
+test("migration pagina cards por role e packages sem projetar o conteúdo integral", async () => {
   const source = await readFile(
     new URL(
-      "../../supabase/migrations/20260730140000_composed_authoring_and_catalog_review.sql",
+      "../../supabase/migrations/20260812132000_package_card_list_projection.sql",
       import.meta.url
     ),
     "utf8"
   );
   const match = source.match(
-    /create function public\.list_authoring_workspace_microsequence_cards_v5\([\s\S]+?\n\$function\$;/iu
+    /create or replace function public\.list_authoring_workspace_microsequence_cards_v5\([\s\S]+?\n\$function\$;/iu
   );
   assert.ok(match);
   const functionSource = match[0];
@@ -240,11 +240,13 @@ test("migration pagina rows correntes e não projeta o conteúdo integral do car
     /from private\.authoring_workspace_entities card/iu
   );
   assert.match(functionSource, /limit p_limit \+ 1/iu);
-  assert.match(functionSource, /'resources', jsonb_build_array/iu);
+  assert.match(functionSource, /'role', page\.content ->> 'role'/iu);
+  assert.match(functionSource, /'packages', page\.packages/iu);
+  assert.match(functionSource, /jsonb_array_elements\(/iu);
   assert.match(functionSource, /'summary', page\.summary/iu);
   assert.doesNotMatch(functionSource, /'content'\s*,\s*page\.content/iu);
   assert.match(
     source,
-    /'list_authoring_workspace_microsequence_cards_v5'/u
+    /package-card-list-projection-v1/u
   );
 });
