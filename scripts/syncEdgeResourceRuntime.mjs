@@ -37,7 +37,12 @@ const files = [
   ["src/resources/kernel/schemaValidation.js", "resources/kernel/schemaValidation.js"],
   ["src/resources/sdk/html.js", "resources/sdk/html.js"],
   ["src/resources/packages/index.js", "resources/packages/index.js"],
-  ["src/resources/packages/paragraph/index.js", "resources/packages/paragraph/index.js"]
+  ["src/resources/packages/paragraph/index.js", "resources/packages/paragraph/index.js"],
+  ["src/resources/packages/code/index.js", "resources/packages/code/index.js"],
+  ["src/resources/packages/table/index.js", "resources/packages/table/index.js"],
+  ["src/resources/packages/sequence/index.js", "resources/packages/sequence/index.js"],
+  ["src/resources/packages/annotated-text/index.js", "resources/packages/annotated-text/index.js"],
+  ["src/resources/packages/linguistic-example/index.js", "resources/packages/linguistic-example/index.js"]
 ];
 
 const checkOnly = process.argv.includes("--check");

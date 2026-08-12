@@ -119,8 +119,10 @@ export function createPackageRegistry(packageDefinitions = []) {
     }
     const schemaValidation = validatePackageSchema(instance.data, definition.schema);
     if (!schemaValidation.valid) errors.push(schemaValidation.error);
-    const semanticErrors = definition.validate(instance.data);
-    if (Array.isArray(semanticErrors)) errors.push(...semanticErrors.filter(Boolean).map(String));
+    if (schemaValidation.valid) {
+      const semanticErrors = definition.validate(instance.data);
+      if (Array.isArray(semanticErrors)) errors.push(...semanticErrors.filter(Boolean).map(String));
+    }
     return { valid: errors.length === 0, errors };
   }
 

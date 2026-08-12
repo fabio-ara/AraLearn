@@ -36,7 +36,7 @@ function theoryCard() {
 
 test("kernel registra package sem conhecer paragraph", () => {
   const catalog = RESOURCE_PACKAGE_REGISTRY.listCatalog();
-  assert.equal(catalog.length, 1);
+  assert.equal(catalog.length, 6);
   assert.equal(catalog[0].id, "aralearn.resource.paragraph");
   assert.equal(Object.hasOwn(catalog[0], "schema"), false);
   assert.equal(Object.hasOwn(catalog[0], "example"), false);
@@ -50,6 +50,21 @@ test("contrato completo é obtido somente para o package escolhido", () => {
   assert.equal(contract.package, "aralearn.resource.paragraph");
   assert.deepEqual(contract.contract.required, ["text"]);
   assert.equal(contract.schema.properties.text.type, "string");
+});
+
+test("exemplos autorais de todos os packages instalados normalizam, validam e renderizam", () => {
+  RESOURCE_PACKAGE_REGISTRY.listCatalog().forEach((manifest, index) => {
+    const contract = RESOURCE_PACKAGE_REGISTRY.getAuthoringContract(manifest.id, manifest.version);
+    const instance = RESOURCE_PACKAGE_REGISTRY.normalizeInstance({
+      id: `example-${index + 1}`,
+      package: manifest.id,
+      version: manifest.version,
+      data: contract.contract.example
+    }, "content");
+    assert.equal(RESOURCE_PACKAGE_REGISTRY.validateInstance(instance, "content").valid, true, manifest.id);
+    assert.match(RESOURCE_PACKAGE_REGISTRY.renderInstance(instance, "content"), /runtime-/u, manifest.id);
+    assert.ok(RESOURCE_PACKAGE_REGISTRY.accessibleText(instance, "content"), manifest.id);
+  });
 });
 
 test("envelope valida slots e renderiza por delegação", () => {
