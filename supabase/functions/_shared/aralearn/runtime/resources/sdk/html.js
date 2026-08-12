@@ -19,6 +19,33 @@ export function packageTextAttributes(value) {
   return (languageTag ? ` lang="${escapePackageAttribute(languageTag)}"` : "") + ` dir="${direction}"`;
 }
 
+const GAP_MARKER = /\uE000([^\uE001]+)\uE001/gu;
+
+export function createPackageGapMarker(value) {
+  return `\uE000${encodeURIComponent(JSON.stringify(value))}\uE001`;
+}
+
+function readPackageGapMarker(value) {
+  try {
+    return JSON.parse(decodeURIComponent(value));
+  } catch {
+    return null;
+  }
+}
+
+function renderPackageGapMarker(marker) {
+  if (!marker) return "";
+  const blockKey = escapePackageAttribute(marker.blockKey);
+  const blankIndex = escapePackageAttribute(marker.index);
+  const current = String(marker.value ?? "");
+  const classes = `runtime-text-gap-blank ${marker.code ? "runtime-code-gap-blank" : "runtime-paragraph-gap-blank"}`;
+  if (marker.responseMode === "choice") {
+    const label = current ? `Editar resposta: ${current}` : "Escolher resposta";
+    return `<span class="${classes} runtime-text-gap-choice-blank" role="button" tabindex="0" dir="auto" data-text-gap-choice="true" data-action="text-gap-open-choice" data-complete-block-key="${blockKey}" data-complete-blank-index="${blankIndex}" data-empty="${current ? "false" : "true"}" title="${escapePackageAttribute(label)}" aria-label="${escapePackageAttribute(label)}">${escapePackageHtml(current)}</span>`;
+  }
+  return `<span class="${classes}" contenteditable="true" role="textbox" spellcheck="false" dir="auto" inputmode="text" enterkeyhint="done" autocapitalize="off" autocorrect="off" aria-multiline="false" data-text-gap-field="true" data-action="complete-input" data-complete-block-key="${blockKey}" data-complete-blank-index="${blankIndex}" data-empty="${current ? "false" : "true"}" aria-label="Preencher resposta${current ? `: ${escapePackageAttribute(current)}` : ""}">${escapePackageHtml(current)}</span>`;
+}
+
 function renderInlineMarkup(value) {
   return escapePackageHtml(value)
     .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
@@ -26,18 +53,47 @@ function renderInlineMarkup(value) {
     .replace(/\n/g, "<br>");
 }
 
-export function renderPackageInline(value) {
+function renderPackageInlineText(value, state) {
   const segments = String(value || "").split("`");
   let inCode = false;
   let html = "";
   segments.forEach((segment, index) => {
-    html += inCode ? escapePackageHtml(segment).replace(/\n/g, "<br>") : renderInlineMarkup(segment);
+    const code = state ? state.inCode : inCode;
+    html += code ? escapePackageHtml(segment).replace(/\n/g, "<br>") : renderInlineMarkup(segment);
     if (index < segments.length - 1) {
-      html += inCode ? "</code>" : "<code>";
-      inCode = !inCode;
+      html += code ? "</code>" : "<code>";
+      if (state) state.inCode = !code;
+      else inCode = !inCode;
     }
   });
-  return html + (inCode ? "</code>" : "");
+  return html;
+}
+
+export function renderPackageInline(value) {
+  const source = String(value || "");
+  const state = { inCode: false };
+  let cursor = 0;
+  let html = "";
+  for (const match of source.matchAll(GAP_MARKER)) {
+    html += renderPackageInlineText(source.slice(cursor, match.index), state);
+    html += renderPackageGapMarker(readPackageGapMarker(match[1]));
+    cursor = Number(match.index) + match[0].length;
+  }
+  html += renderPackageInlineText(source.slice(cursor), state);
+  return html + (state.inCode ? "</code>" : "");
+}
+
+export function renderPackageCode(value) {
+  const source = String(value || "");
+  let cursor = 0;
+  let html = "";
+  for (const match of source.matchAll(GAP_MARKER)) {
+    html += escapePackageHtml(source.slice(cursor, match.index));
+    const marker = readPackageGapMarker(match[1]);
+    html += renderPackageGapMarker(marker ? { ...marker, code: true } : null);
+    cursor = Number(match.index) + match[0].length;
+  }
+  return html + escapePackageHtml(source.slice(cursor));
 }
 
 export function renderPackageProse(value, metadata = {}) {
@@ -48,7 +104,7 @@ export function renderPackageProse(value, metadata = {}) {
   const attrs = packageTextAttributes(metadata);
   const flushParagraph = () => {
     if (!paragraph.length) return;
-    blocks.push(`<p class="runtime-markdown-paragraph"${attrs}>${renderPackageInline(paragraph.join(" "))}</p>`);
+    blocks.push(`<p class="runtime-markdown-paragraph"${attrs}>${renderPackageInline(paragraph.join("\n"))}</p>`);
     paragraph = [];
   };
   const flushList = () => {

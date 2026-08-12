@@ -14,26 +14,11 @@ import {
   detectCodexCliSetupPlatform
 } from "./codexCliSetup.js";
 import {
-  getRuntimePopupButtonEntry,
-  resolveRuntimeFlowchartProjection
-} from "../render/renderCardRuntime.js";
-import { buildResourceGapModel } from "../core/resourceGaps.js";
-import { resolveCardRuntime } from "../core/cardRuntime.js";
+  getPackageFeedbackEntry,
+  getPackageResponseEntry
+} from "../render/renderPackageCard.js";
+import { RESOURCE_PACKAGE_REGISTRY } from "../resources/packages/index.js";
 import { getCorrectExerciseOptionIds, getExerciseOptionStableId } from "../core/exerciseOptions.js";
-import {
-  normalizeTextGapResponse,
-  textGapResponseMatches
-} from "../core/textGaps.js";
-import {
-  createFlowchartExerciseState,
-  fillFlowchartExerciseAnswer,
-  flowchartLinkUsesLabelChoiceBlank,
-  flowchartNodeUsesTextChoiceBlank,
-  flowchartProjectionHasPractice,
-  resetFlowchartExerciseState,
-  validateFlowchartExerciseState
-} from "../flowchart/flowchartExercise.js";
-import { computeFlowchartAutoFitScale } from "../flowchart/flowchartViewport.js";
 import {
   buildCourseNavigationState,
   buildLessonNavigationState,
@@ -263,10 +248,6 @@ function assistApiKeyFamily(model = "") {
   return "";
 }
 
-function clampFlowchartScale(value) {
-  return Math.max(0.45, Math.min(2.4, Number(value || 1)));
-}
-
 export function claimContextualAuthoringSyncAttempt(syncState = {}) {
   if (syncState.running === true) {
     syncState.trailingAttemptRequested = true;
@@ -354,12 +335,7 @@ export function createLessonEditorApp({
     cardCommentExists: false,
     cardCommentError: "",
     cardCommentSaving: false,
-    flowchartProjectionByBlockKey: {},
-    flowchartPracticeByBlockKey: {},
-    activeFlowchartPrompt: null,
-    flowchartPinch: null,
-    choiceExerciseByBlockKey: {},
-    completeExerciseByBlockKey: {},
+    responseExerciseByBlockKey: {},
     activeTextGapPrompt: null,
     cardExerciseLoadVersion: 0,
     continuePopup: null,
@@ -735,13 +711,9 @@ export function createLessonEditorApp({
     throw error;
   }
 
-  function invalidateRuntimeExerciseState() {
-    state.flowchartProjectionByBlockKey = {};
-    state.flowchartPracticeByBlockKey = {};
-    state.choiceExerciseByBlockKey = {};
-    state.completeExerciseByBlockKey = {};
+  function invalidateResponseExerciseState() {
+    state.responseExerciseByBlockKey = {};
     state.continuePopup = null;
-    state.activeFlowchartPrompt = null;
     state.activeTextGapPrompt = null;
     state.cardExerciseLoadVersion += 1;
   }
@@ -755,7 +727,6 @@ export function createLessonEditorApp({
 
   function setProject(nextProject) {
     state.project = nextProject;
-    state.flowchartProjectionByBlockKey = {};
     if (homeTrailsController) {
       state.trailPersonalStorageByItemId.forEach((personalStorage, trailItemId) => {
         const reference = homeTrailsController.courseRefs.get(trailItemId);
@@ -1594,7 +1565,6 @@ export function createLessonEditorApp({
     syncAssistDraft();
     state.cardCommentOpen = false;
     state.continuePopup = null;
-    state.activeFlowchartPrompt = null;
     state.activeTextGapPrompt = null;
     state.cardExerciseLoadVersion += 1;
     render({ preserveState: false });
@@ -1640,7 +1610,6 @@ export function createLessonEditorApp({
     syncAssistDraft();
     state.cardCommentOpen = false;
     state.continuePopup = null;
-    state.activeFlowchartPrompt = null;
     state.activeTextGapPrompt = null;
     state.cardExerciseLoadVersion += 1;
     render({ preserveState: false });
@@ -1700,7 +1669,6 @@ export function createLessonEditorApp({
     }
 
     state.continuePopup = null;
-    state.activeFlowchartPrompt = null;
     state.activeTextGapPrompt = null;
     state.cardExerciseLoadVersion += 1;
     syncAssistDraft();
@@ -1712,7 +1680,6 @@ export function createLessonEditorApp({
       return;
     }
     state.continuePopup = null;
-    state.activeFlowchartPrompt = null;
     state.activeTextGapPrompt = null;
     if (rerender) {
       render({ preserveState: true });
@@ -1799,80 +1766,6 @@ export function createLessonEditorApp({
     });
   }
 
-  function findFirstIncompleteFlowchartTarget(projection, exerciseState) {
-    const exercise = createFlowchartExerciseState(projection, exerciseState);
-    const nodes = Array.isArray(projection?.nodes) ? projection.nodes : [];
-    const links = Array.isArray(projection?.links) ? projection.links : [];
-
-    for (const node of nodes) {
-      if (!node?.id) continue;
-
-      if (node.shapeBlank) {
-        const currentShape = String(exercise.shapes?.[node.id] || "").trim();
-        if (!currentShape) {
-          return { kind: "shape", targetId: node.id, focusMode: "prompt" };
-        }
-      }
-
-      if (node.textBlank) {
-        const currentText = String(exercise.texts?.[node.id] || "").trim();
-        if (!currentText) {
-          return {
-            kind: "text",
-            targetId: node.id,
-            focusMode: flowchartNodeUsesTextChoiceBlank(node) ? "prompt" : "input"
-          };
-        }
-      }
-    }
-
-    for (const link of links) {
-      if (!link?.id || !link.labelBlank) continue;
-      const currentLabel = String(exercise.labels?.[link.id] || "").trim();
-      if (!currentLabel) {
-        return {
-          kind: "label",
-          targetId: link.id,
-          focusMode: flowchartLinkUsesLabelChoiceBlank(link) ? "prompt" : "input"
-        };
-      }
-    }
-
-    return null;
-  }
-
-  function focusFirstIncompleteFlowchartTarget(blockKey, projection, exerciseState) {
-    const target = findFirstIncompleteFlowchartTarget(projection, exerciseState);
-    if (!target) {
-      return false;
-    }
-
-    if (target.focusMode === "prompt") {
-      state.activeFlowchartPrompt = {
-        blockKey,
-        kind: target.kind,
-        targetId: target.targetId
-      };
-      queueExerciseFocus(
-        "[data-flowchart-prompt='true'] .runtime-flow-shape-option, [data-flowchart-prompt='true'] .token-option"
-      );
-      return true;
-    }
-
-    state.activeFlowchartPrompt = null;
-    queueExerciseFocus(
-      "[data-flowchart-inline-input='true'][data-flowchart-block-key=\"" +
-        blockKey +
-        "\"][data-flowchart-choice-kind=\"" +
-        target.kind +
-        "\"][data-flowchart-target-id=\"" +
-        target.targetId +
-        "\"]",
-      { caretToEnd: true }
-    );
-    return true;
-  }
-
   function focusFirstIncompleteChoice(blockKey) {
     queueExerciseFocus(
       "[data-action=\"choice-toggle\"][data-choice-block-key=\"" + blockKey + "\"]"
@@ -1886,18 +1779,19 @@ export function createLessonEditorApp({
       return false;
     }
 
-    const exercise = state.completeExerciseByBlockKey[blockKey] || { values: [], feedback: null };
+    const exercise = state.responseExerciseByBlockKey[blockKey] || { values: [], feedback: null };
     const values = Array.isArray(exercise.values) ? exercise.values : [];
-    const parts = listTextGapPartsForBlock(entry.block);
-    const firstMissing = parts.find((part) => !String(values[part.index] ?? "").trim());
-    if (!firstMissing) {
+    const blanks = Array.isArray(entry.block?.blanks) ? entry.block.blanks : [];
+    const blankIndex = blanks.findIndex((_, index) => !String(values[index] ?? "").trim());
+    if (blankIndex < 0) {
       return false;
     }
 
-    if (Array.isArray(firstMissing.options) && firstMissing.options.length) {
+    const blank = blanks[blankIndex];
+    if (blank?.responseMode === "choice" && Array.isArray(blank.options) && blank.options.length) {
       state.activeTextGapPrompt = {
         blockKey,
-        blankIndex: Number(firstMissing.index)
+        blankIndex
       };
       queueExerciseFocus("[data-text-gap-prompt='true'] .token-option");
       return true;
@@ -1908,7 +1802,7 @@ export function createLessonEditorApp({
       "[data-text-gap-field='true'][data-complete-block-key=\"" +
         blockKey +
         "\"][data-complete-blank-index=\"" +
-        firstMissing.index +
+        blankIndex +
         "\"]"
     );
     return true;
@@ -1920,7 +1814,7 @@ export function createLessonEditorApp({
     stepCard(1);
   }
 
-  function isCurrentContinuePopupOpen(popupEntry = getCurrentPopupRuntimeButtonEntry()) {
+  function isCurrentContinuePopupOpen(popupEntry = getCurrentPackageFeedbackEntry()) {
     return (
       !!popupEntry &&
       !!state.continuePopup &&
@@ -1948,26 +1842,9 @@ export function createLessonEditorApp({
     // No modo de estudo, o card só pode avançar quando os exercícios do card atual
     // estiverem completos e validados como corretos.
     if (delta > 0) {
-      const flowcharts = getCurrentCardRuntimeFlowcharts();
-      for (const entry of flowcharts) {
-        const projection = getStableFlowchartProjection(entry);
-        if (!projection || !flowchartProjectionHasPractice(projection)) continue;
-        const result = validateFlowchartExerciseState(projection, state.flowchartPracticeByBlockKey[entry.blockKey]);
-        state.flowchartPracticeByBlockKey[entry.blockKey] = result.state;
-        // Só bloqueia avanço quando há exercício e ele não está correto.
-        if (result.status !== "correct") {
-          if (result.status === "incomplete") {
-            notifyIncompleteExercise("Preencha todas as lacunas do fluxograma.");
-            focusFirstIncompleteFlowchartTarget(entry.blockKey, projection, result.state);
-          }
-          render({ preserveState: true });
-          return;
-        }
-      }
-
-      const choices = getCurrentCardRuntimeChoiceBlocks();
+      const choices = getCurrentCardChoiceResponse();
       for (const entry of choices) {
-        const exercise = state.choiceExerciseByBlockKey[entry.blockKey] || { selected: [], feedback: null };
+        const exercise = state.responseExerciseByBlockKey[entry.blockKey] || { selected: [], feedback: null };
         if (exercise.feedback !== "correct") {
           // Força feedback para impedir avanço silencioso.
           const status = validateChoice(entry.blockKey, { renderCorrect: false });
@@ -1977,9 +1854,9 @@ export function createLessonEditorApp({
         }
       }
 
-      const completes = getCurrentCardRuntimeCompleteBlocks();
+      const completes = getCurrentCardGapResponse();
       for (const entry of completes) {
-        const exercise = state.completeExerciseByBlockKey[entry.blockKey] || { values: [], feedback: null };
+        const exercise = state.responseExerciseByBlockKey[entry.blockKey] || { values: [], feedback: null };
         if (exercise.feedback !== "correct") {
           const status = validateComplete(entry.blockKey, { renderCorrect: false });
           if (status !== "correct") {
@@ -1988,7 +1865,16 @@ export function createLessonEditorApp({
         }
       }
 
-      const popupEntry = getCurrentPopupRuntimeButtonEntry();
+      const orderings = getCurrentCardOrderingResponse();
+      for (const entry of orderings) {
+        const exercise = state.responseExerciseByBlockKey[entry.blockKey] || { order: [], feedback: null };
+        if (exercise.feedback !== "correct") {
+          const status = validateOrdering(entry.blockKey, { renderCorrect: false });
+          if (status !== "correct") return;
+        }
+      }
+
+      const popupEntry = getCurrentPackageFeedbackEntry();
       const popupIsOpen = isCurrentContinuePopupOpen(popupEntry);
 
       if (popupEntry && !popupIsOpen) {
@@ -1996,51 +1882,12 @@ export function createLessonEditorApp({
           buildCardPathKey(state.selection),
           popupEntry.blockKey
         );
-        state.activeFlowchartPrompt = null;
         state.activeTextGapPrompt = null;
         render({ preserveState: true });
         return;
       }
 
       if (popupIsOpen) {
-        const popupFlowcharts = getCurrentPopupRuntimeFlowcharts();
-        for (const entry of popupFlowcharts) {
-          const projection = getStableFlowchartProjection(entry);
-          if (!projection || !flowchartProjectionHasPractice(projection)) continue;
-          const result = validateFlowchartExerciseState(projection, state.flowchartPracticeByBlockKey[entry.blockKey]);
-          state.flowchartPracticeByBlockKey[entry.blockKey] = result.state;
-          if (result.status !== "correct") {
-            if (result.status === "incomplete") {
-              notifyIncompleteExercise("Preencha todas as lacunas do fluxograma.");
-              focusFirstIncompleteFlowchartTarget(entry.blockKey, projection, result.state);
-            }
-            render({ preserveState: true });
-            return;
-          }
-        }
-
-        const popupChoices = getCurrentPopupRuntimeChoiceBlocks();
-        for (const entry of popupChoices) {
-          const exercise = state.choiceExerciseByBlockKey[entry.blockKey] || { selected: [], feedback: null };
-          if (exercise.feedback !== "correct") {
-            const status = validateChoice(entry.blockKey, { renderCorrect: false });
-            if (status !== "correct") {
-              return;
-            }
-          }
-        }
-
-        const popupCompletes = getCurrentPopupRuntimeCompleteBlocks();
-        for (const entry of popupCompletes) {
-          const exercise = state.completeExerciseByBlockKey[entry.blockKey] || { values: [], feedback: null };
-          if (exercise.feedback !== "correct") {
-            const status = validateComplete(entry.blockKey, { renderCorrect: false });
-            if (status !== "correct") {
-              return;
-            }
-          }
-        }
-
         closeContinuePopup({ rerender: false });
       }
     }
@@ -2668,7 +2515,7 @@ export function createLessonEditorApp({
       state.assistDraft.manualDraft = null;
       state.assistDraft.assistance = createCardAssistanceUiState(state.selection);
       queueAuthoringFocus("card-title");
-      invalidateRuntimeExerciseState();
+      invalidateResponseExerciseState();
       await persistProgressReset(
         `card:${requestedSelection.courseKey}:${committedMicrosequence.cards[committedIndex].id}`,
         () => resetCardProgress(
@@ -2752,7 +2599,7 @@ export function createLessonEditorApp({
     state.assistDraft.assistance = createCardAssistanceUiState(state.selection);
     queueAuthoringFocus("card-title");
     void attemptContextualAuthoringSync();
-    invalidateRuntimeExerciseState();
+    invalidateResponseExerciseState();
     await persistProgressReset(
       `card:${requestedSelection.courseKey}:${targetMicrosequence.cards[targetIndex].id}`,
       () => resetCardProgress(
@@ -2899,7 +2746,7 @@ export function createLessonEditorApp({
       );
       state.assistDraft.localStateCourseKey = undo.courseKey;
       void attemptContextualAuthoringSync();
-      invalidateRuntimeExerciseState();
+      invalidateResponseExerciseState();
       await persistProgressReset(
         `lesson:${undo.courseKey}:${undo.lessonKey}`,
         () => resetLessonProgress(undo.courseKey, undo.moduleKey, undo.lessonKey)
@@ -3453,98 +3300,6 @@ export function createLessonEditorApp({
     }
   }
 
-  function setFlowchartViewportScale(scrollNode, nextScale, anchorClientX = null, anchorClientY = null) {
-    if (!scrollNode) {
-      return;
-    }
-
-    const previousScale = Number(scrollNode.getAttribute("data-flowchart-scale") || 1);
-    const safeScale = clampFlowchartScale(nextScale);
-    const baseWidth = Number(scrollNode.getAttribute("data-flowchart-base-width") || 0);
-    const baseHeight = Number(scrollNode.getAttribute("data-flowchart-base-height") || 0);
-    const stage = scrollNode.querySelector("[data-flowchart-stage='true']");
-    const canvas = scrollNode.querySelector("[data-flowchart-canvas='true']");
-    const valueButton = scrollNode.parentElement?.querySelector("[data-action='flowchart-zoom-reset']");
-    let anchorContentX = null;
-    let anchorContentY = null;
-
-    if (
-      Number.isFinite(Number(anchorClientX)) &&
-      Number.isFinite(Number(anchorClientY)) &&
-      previousScale > 0
-    ) {
-      const rect = scrollNode.getBoundingClientRect();
-      anchorContentX = (scrollNode.scrollLeft + (Number(anchorClientX) - rect.left)) / previousScale;
-      anchorContentY = (scrollNode.scrollTop + (Number(anchorClientY) - rect.top)) / previousScale;
-    }
-
-    scrollNode.setAttribute("data-flowchart-scale", safeScale.toFixed(3));
-    if (canvas) {
-      canvas.style.transform = `scale(${safeScale.toFixed(3)})`;
-    }
-    if (stage && baseWidth > 0 && baseHeight > 0) {
-      stage.style.width = `${Math.max(1, Math.round(baseWidth * safeScale))}px`;
-      stage.style.height = `${Math.max(1, Math.round(baseHeight * safeScale))}px`;
-    }
-    if (valueButton) {
-      valueButton.textContent = `${Math.round(safeScale * 100)}%`;
-    }
-    if (
-      anchorContentX !== null &&
-      anchorContentY !== null &&
-      Number.isFinite(anchorContentX) &&
-      Number.isFinite(anchorContentY)
-    ) {
-      const rect = scrollNode.getBoundingClientRect();
-      scrollNode.scrollLeft = Math.max(0, anchorContentX * safeScale - (Number(anchorClientX) - rect.left));
-      scrollNode.scrollTop = Math.max(0, anchorContentY * safeScale - (Number(anchorClientY) - rect.top));
-    }
-  }
-
-  function autoFitFlowchartViewport(scrollNode) {
-    if (!scrollNode || scrollNode.getAttribute("data-flowchart-autofit") === "true") {
-      return;
-    }
-
-    const baseWidth = Number(scrollNode.getAttribute("data-flowchart-base-width") || 0);
-    const baseHeight = Number(scrollNode.getAttribute("data-flowchart-base-height") || 0);
-    const preferredScale = Number(scrollNode.getAttribute("data-flowchart-scale") || 1);
-
-    if (!(baseWidth > 0 && baseHeight > 0)) {
-      return;
-    }
-
-    const targetScale = computeFlowchartAutoFitScale({
-      viewportWidth: scrollNode.clientWidth,
-      viewportHeight: scrollNode.clientHeight,
-      baseWidth,
-      baseHeight,
-      preferredScale,
-      padding: 12,
-      minScale: 0.2,
-      maxScale: 1.2
-    });
-
-    setFlowchartViewportScale(scrollNode, targetScale);
-    scrollNode.setAttribute("data-flowchart-autofit", "true");
-  }
-
-  function getTouchDistance(touchA, touchB) {
-    if (!touchA || !touchB) {
-      return 0;
-    }
-    const dx = touchA.clientX - touchB.clientX;
-    const dy = touchA.clientY - touchB.clientY;
-    return Math.sqrt(dx * dx + dy * dy);
-  }
-
-  function getTouchMidpoint(touchA, touchB) {
-    return {
-      x: (touchA.clientX + touchB.clientX) / 2,
-      y: (touchA.clientY + touchB.clientY) / 2
-    };
-  }
-
   function autosizeTextGapField(node) {
     if (!node || (node.tagName !== "TEXTAREA" && node.tagName !== "INPUT")) {
       return;
@@ -3567,46 +3322,8 @@ export function createLessonEditorApp({
     return raw.trim();
   }
 
-  function getCurrentCardRuntimeBlocks(card = getRenderContext().card) {
-    const runtime = resolveCardRuntime(card);
-    return Array.isArray(runtime?.blocks) ? runtime.blocks : [];
-  }
-
-  function collectRuntimeBlockEntries(blocks, blockKeyPrefix, predicate) {
-    return (Array.isArray(blocks) ? blocks : [])
-      .map((block, index) => ({
-        block,
-        blockKey: `${blockKeyPrefix}::${index}`
-      }))
-      .filter((entry) => predicate(entry.block));
-  }
-
-  function getTextGapAnswersForBlock(block) {
-    if (!block || typeof block !== "object") {
-      return [];
-    }
-    if (block.exerciseMode !== undefined && block.exerciseMode !== "gap") {
-      return [];
-    }
-    return buildResourceGapModel(block).answers;
-  }
-
-  function blockUsesTextGapExercise(block) {
-    return getTextGapAnswersForBlock(block).length > 0;
-  }
-
-  function listTextGapPartsForBlock(block) {
-    if (!block || typeof block !== "object") {
-      return [];
-    }
-    if (block.exerciseMode !== undefined && block.exerciseMode !== "gap") {
-      return [];
-    }
-    return buildResourceGapModel(block).tokens;
-  }
-
-  function getCurrentPopupRuntimeButtonEntry(card = getRenderContext().card) {
-    const popupEntry = getRuntimePopupButtonEntry(card);
+  function getCurrentPackageFeedbackEntry(card = getRenderContext().card) {
+    const popupEntry = getPackageFeedbackEntry(card);
     if (!popupEntry) {
       return null;
     }
@@ -3617,65 +3334,25 @@ export function createLessonEditorApp({
     };
   }
 
-  function getCurrentCardRuntimeFlowcharts(card = getRenderContext().card) {
-    if (!card) {
-      return [];
-    }
-
-    return collectRuntimeBlockEntries(
-      getCurrentCardRuntimeBlocks(card),
-      buildCardPathKey(state.selection),
-      (block) => block?.kind === "flow"
-    );
+  function getCurrentCardChoiceResponse(card = getRenderContext().card) {
+    const entry = getPackageResponseEntry(card, buildCardPathKey(state.selection));
+    return entry?.instance?.package === "aralearn.response.choice" ? [entry] : [];
   }
 
-  function getCurrentFlowchartEntry(blockKey) {
-    return (
-      [
-        ...getCurrentCardRuntimeFlowcharts(),
-        ...getCurrentPopupRuntimeFlowcharts()
-      ].find((entry) => entry.blockKey === blockKey) || null
-    );
+  function getCurrentCardGapResponse(card = getRenderContext().card) {
+    const entry = getPackageResponseEntry(card, buildCardPathKey(state.selection));
+    return entry?.instance?.package === "aralearn.response.gap" ? [entry] : [];
   }
 
-  function getStableFlowchartProjection(entry) {
-    if (!entry?.blockKey) return null;
-    const cached = state.flowchartProjectionByBlockKey[entry.blockKey];
-    if (cached) return cached;
-    const projection = resolveRuntimeFlowchartProjection(entry.block);
-    if (projection) state.flowchartProjectionByBlockKey[entry.blockKey] = projection;
-    return projection;
-  }
-
-  function getCurrentCardRuntimeChoiceBlocks(card = getRenderContext().card) {
-    if (!card) {
-      return [];
-    }
-
-    return collectRuntimeBlockEntries(
-      getCurrentCardRuntimeBlocks(card),
-      buildCardPathKey(state.selection),
-      (block) => block?.kind === "choice"
-    );
-  }
-
-  function getCurrentCardRuntimeCompleteBlocks(card = getRenderContext().card) {
-    if (!card) {
-      return [];
-    }
-
-    return collectRuntimeBlockEntries(
-      getCurrentCardRuntimeBlocks(card),
-      buildCardPathKey(state.selection),
-      (block) => blockUsesTextGapExercise(block)
-    );
+  function getCurrentCardOrderingResponse(card = getRenderContext().card) {
+    const entry = getPackageResponseEntry(card, buildCardPathKey(state.selection));
+    return entry?.instance?.package === "aralearn.response.ordering" ? [entry] : [];
   }
 
   function getCurrentChoiceEntry(blockKey) {
     return (
       [
-        ...getCurrentCardRuntimeChoiceBlocks(),
-        ...getCurrentPopupRuntimeChoiceBlocks()
+        ...getCurrentCardChoiceResponse()
       ].find((entry) => entry.blockKey === blockKey) || null
     );
   }
@@ -3683,64 +3360,21 @@ export function createLessonEditorApp({
   function getCurrentCompleteEntry(blockKey) {
     return (
       [
-        ...getCurrentCardRuntimeCompleteBlocks(),
-        ...getCurrentPopupRuntimeCompleteBlocks()
+        ...getCurrentCardGapResponse()
       ].find((entry) => entry.blockKey === blockKey) || null
     );
   }
 
-  function getCurrentPopupRuntimeFlowcharts(card = getRenderContext().card) {
-    const popupEntry = getCurrentPopupRuntimeButtonEntry(card);
-    if (!popupEntry) {
-      return [];
-    }
-
-    return collectRuntimeBlockEntries(
-      popupEntry.block.popupBlocks,
-      `${popupEntry.blockKey}::popup`,
-      (block) => block?.kind === "flow"
-    );
-  }
-
-  function getCurrentPopupRuntimeChoiceBlocks(card = getRenderContext().card) {
-    const popupEntry = getCurrentPopupRuntimeButtonEntry(card);
-    if (!popupEntry) {
-      return [];
-    }
-
-    return collectRuntimeBlockEntries(
-      popupEntry.block.popupBlocks,
-      `${popupEntry.blockKey}::popup`,
-      (block) => block?.kind === "choice"
-    );
-  }
-
-  function getCurrentPopupRuntimeCompleteBlocks(card = getRenderContext().card) {
-    const popupEntry = getCurrentPopupRuntimeButtonEntry(card);
-    if (!popupEntry) {
-      return [];
-    }
-
-    return collectRuntimeBlockEntries(
-      popupEntry.block.popupBlocks,
-      `${popupEntry.blockKey}::popup`,
-      (block) => blockUsesTextGapExercise(block)
-    );
-  }
-
   function ensureCurrentChoiceExerciseState() {
-    const choices = [
-      ...getCurrentCardRuntimeChoiceBlocks(),
-      ...getCurrentPopupRuntimeChoiceBlocks()
-    ];
+    const choices = getCurrentCardChoiceResponse();
     const runtimeOptions = {
       blockKeyPrefix: buildCardPathKey(state.selection),
-      choiceExerciseStateByBlockKey: {},
+      responseStateByBlockKey: {},
       exerciseShuffleSeed: `${buildCardPathKey(state.selection)}::load::${state.cardExerciseLoadVersion}`
     };
 
     choices.forEach((entry) => {
-      const current = state.choiceExerciseByBlockKey[entry.blockKey];
+      const current = state.responseExerciseByBlockKey[entry.blockKey];
       const selected = Array.isArray(current?.selected)
         ? current.selected.map((item) => {
             if (Number.isInteger(item)) {
@@ -3751,37 +3385,53 @@ export function createLessonEditorApp({
             return value || null;
           }).filter(Boolean)
         : [];
-      state.choiceExerciseByBlockKey[entry.blockKey] = {
+      state.responseExerciseByBlockKey[entry.blockKey] = {
         selected,
         feedback: current?.feedback || null
       };
-      runtimeOptions.choiceExerciseStateByBlockKey[entry.blockKey] = state.choiceExerciseByBlockKey[entry.blockKey];
+      runtimeOptions.responseStateByBlockKey[entry.blockKey] = state.responseExerciseByBlockKey[entry.blockKey];
     });
 
     return runtimeOptions;
   }
 
   function ensureCurrentCompleteExerciseState() {
-    const completes = [
-      ...getCurrentCardRuntimeCompleteBlocks(),
-      ...getCurrentPopupRuntimeCompleteBlocks()
-    ];
+    const completes = getCurrentCardGapResponse();
     const runtimeOptions = {
       blockKeyPrefix: buildCardPathKey(state.selection),
-      completeExerciseStateByBlockKey: {},
-      textGapExerciseStateByBlockKey: {}
+      responseStateByBlockKey: {}
     };
 
     completes.forEach((entry) => {
-      const current = state.completeExerciseByBlockKey[entry.blockKey];
-      state.completeExerciseByBlockKey[entry.blockKey] = {
+      const current = state.responseExerciseByBlockKey[entry.blockKey];
+      state.responseExerciseByBlockKey[entry.blockKey] = {
         values: Array.isArray(current?.values) ? current.values : [],
         feedback: current?.feedback || null
       };
-      runtimeOptions.completeExerciseStateByBlockKey[entry.blockKey] = state.completeExerciseByBlockKey[entry.blockKey];
-      runtimeOptions.textGapExerciseStateByBlockKey[entry.blockKey] = state.completeExerciseByBlockKey[entry.blockKey];
+      runtimeOptions.responseStateByBlockKey[entry.blockKey] = state.responseExerciseByBlockKey[entry.blockKey];
     });
 
+    return runtimeOptions;
+  }
+
+  function ensureCurrentOrderingExerciseState() {
+    const runtimeOptions = {
+      blockKeyPrefix: buildCardPathKey(state.selection),
+      responseStateByBlockKey: {}
+    };
+    getCurrentCardOrderingResponse().forEach((entry) => {
+      const current = state.responseExerciseByBlockKey[entry.blockKey];
+      const itemIds = Array.isArray(entry.block?.itemIds) ? entry.block.itemIds.map(String) : [];
+      let order = Array.isArray(current?.order) ? current.order.slice() : [];
+      if (order.length !== itemIds.length || order.some((id) => !itemIds.includes(id))) {
+        order = itemIds.length > 1 ? [...itemIds.slice(1), itemIds[0]] : itemIds;
+      }
+      state.responseExerciseByBlockKey[entry.blockKey] = {
+        order,
+        feedback: current?.feedback || null
+      };
+      runtimeOptions.responseStateByBlockKey[entry.blockKey] = state.responseExerciseByBlockKey[entry.blockKey];
+    });
     return runtimeOptions;
   }
 
@@ -3792,7 +3442,7 @@ export function createLessonEditorApp({
     }
 
     ensureCurrentChoiceExerciseState();
-    const exercise = state.choiceExerciseByBlockKey[blockKey] || { selected: [], feedback: null };
+    const exercise = state.responseExerciseByBlockKey[blockKey] || { selected: [], feedback: null };
     const selected = new Set(Array.isArray(exercise.selected) ? exercise.selected : []);
     const normalizedOptionId = String(optionId || "").trim();
     if (!normalizedOptionId) {
@@ -3808,7 +3458,7 @@ export function createLessonEditorApp({
       selected.delete(normalizedOptionId);
     }
 
-    state.choiceExerciseByBlockKey[blockKey] = {
+    state.responseExerciseByBlockKey[blockKey] = {
       selected: Array.from(selected),
       feedback: null
     };
@@ -3818,10 +3468,10 @@ export function createLessonEditorApp({
 
   function tryAgainChoice(blockKey) {
     ensureCurrentChoiceExerciseState();
-    if (!state.choiceExerciseByBlockKey[blockKey]) {
+    if (!state.responseExerciseByBlockKey[blockKey]) {
       return;
     }
-    state.choiceExerciseByBlockKey[blockKey] = {
+    state.responseExerciseByBlockKey[blockKey] = {
       selected: [],
       feedback: null
     };
@@ -3837,7 +3487,7 @@ export function createLessonEditorApp({
     const correct = getCorrectExerciseOptionIds(entry.block?.options, entry.block?.answerIds);
 
     ensureCurrentChoiceExerciseState();
-    state.choiceExerciseByBlockKey[blockKey] = {
+    state.responseExerciseByBlockKey[blockKey] = {
       selected: correct,
       feedback: "correct"
     };
@@ -3851,30 +3501,21 @@ export function createLessonEditorApp({
     }
 
     ensureCurrentChoiceExerciseState();
-    const exercise = state.choiceExerciseByBlockKey[blockKey] || { selected: [], feedback: null };
+    const exercise = state.responseExerciseByBlockKey[blockKey] || { selected: [], feedback: null };
     const selected = new Set(Array.isArray(exercise.selected) ? exercise.selected : []);
-    const options = Array.isArray(entry.block?.options) ? entry.block.options : [];
-    const correct = new Set(getCorrectExerciseOptionIds(options, entry.block?.answerIds));
-
     if (!selected.size) {
-      state.choiceExerciseByBlockKey[blockKey] = { ...exercise, feedback: "incomplete" };
+      state.responseExerciseByBlockKey[blockKey] = { ...exercise, feedback: "incomplete" };
       notifyIncompleteExercise("Selecione pelo menos uma resposta.");
       focusFirstIncompleteChoice(blockKey);
       render({ preserveState: true });
       return "incomplete";
     }
 
-    let ok = selected.size === correct.size;
-    if (ok) {
-      for (const idx of selected) {
-        if (!correct.has(idx)) {
-          ok = false;
-          break;
-        }
-      }
-    }
+    const ok = RESOURCE_PACKAGE_REGISTRY.evaluateResponse(entry.instance, {
+      selectedIds: [...selected]
+    }).correct;
 
-    state.choiceExerciseByBlockKey[blockKey] = { ...exercise, feedback: ok ? "correct" : "wrong" };
+    state.responseExerciseByBlockKey[blockKey] = { ...exercise, feedback: ok ? "correct" : "wrong" };
     if (!ok || renderCorrect) {
       render({ preserveState: true });
     }
@@ -3888,7 +3529,7 @@ export function createLessonEditorApp({
     }
 
     ensureCurrentCompleteExerciseState();
-    const exercise = state.completeExerciseByBlockKey[blockKey] || { values: [], feedback: null };
+    const exercise = state.responseExerciseByBlockKey[blockKey] || { values: [], feedback: null };
     const index = Number.parseInt(String(blankIndex), 10);
     if (!Number.isFinite(index) || index < 0) {
       return;
@@ -3900,7 +3541,7 @@ export function createLessonEditorApp({
     }
     values[index] = String(value ?? "");
     const hadFeedback = exercise.feedback !== null;
-    state.completeExerciseByBlockKey[blockKey] = { values, feedback: null };
+    state.responseExerciseByBlockKey[blockKey] = { values, feedback: null };
     if (rerender) {
       render({ preserveState: true });
       return;
@@ -3916,10 +3557,10 @@ export function createLessonEditorApp({
 
   function openTextGapChoicePrompt(blockKey, blankIndex) {
     ensureCurrentCompleteExerciseState();
-    const currentExercise = state.completeExerciseByBlockKey[blockKey] || { values: [], feedback: null };
+    const currentExercise = state.responseExerciseByBlockKey[blockKey] || { values: [], feedback: null };
     const currentValues = Array.isArray(currentExercise.values) ? currentExercise.values : [];
     if (currentExercise.feedback) {
-      state.completeExerciseByBlockKey[blockKey] = {
+      state.responseExerciseByBlockKey[blockKey] = {
         values: currentValues.slice(),
         feedback: null
       };
@@ -3939,10 +3580,10 @@ export function createLessonEditorApp({
 
   function tryAgainComplete(blockKey) {
     ensureCurrentCompleteExerciseState();
-    if (!state.completeExerciseByBlockKey[blockKey]) {
+    if (!state.responseExerciseByBlockKey[blockKey]) {
       return;
     }
-    state.completeExerciseByBlockKey[blockKey] = { values: [], feedback: null };
+    state.responseExerciseByBlockKey[blockKey] = { values: [], feedback: null };
     if (state.activeTextGapPrompt?.blockKey === blockKey) {
       state.activeTextGapPrompt = null;
     }
@@ -3955,11 +3596,10 @@ export function createLessonEditorApp({
       return;
     }
 
-    const gapModel = buildResourceGapModel(entry.block);
-    const answers = gapModel.answers;
+    const answers = (entry.block?.blanks || []).map((blank) => String(blank?.answer || ""));
 
     ensureCurrentCompleteExerciseState();
-    state.completeExerciseByBlockKey[blockKey] = { values: answers, feedback: "correct" };
+    state.responseExerciseByBlockKey[blockKey] = { values: answers, feedback: "correct" };
     if (state.activeTextGapPrompt?.blockKey === blockKey) {
       state.activeTextGapPrompt = null;
     }
@@ -3973,231 +3613,108 @@ export function createLessonEditorApp({
     }
 
     ensureCurrentCompleteExerciseState();
-    const exercise = state.completeExerciseByBlockKey[blockKey] || { values: [], feedback: null };
+    const exercise = state.responseExerciseByBlockKey[blockKey] || { values: [], feedback: null };
     const values = Array.isArray(exercise.values) ? exercise.values : [];
-    const gapModel = buildResourceGapModel(entry.block);
-    const answers = gapModel.answers;
-    const tokens = gapModel.tokens;
+    const blanks = Array.isArray(entry.block?.blanks) ? entry.block.blanks : [];
+    const answers = blanks.map((blank) => String(blank?.answer || ""));
 
     if (!answers.length) {
-      state.completeExerciseByBlockKey[blockKey] = { ...exercise, feedback: "correct" };
+      state.responseExerciseByBlockKey[blockKey] = { ...exercise, feedback: "correct" };
       if (renderCorrect) {
         render({ preserveState: true });
       }
       return "correct";
     }
 
-    const normalizedValues = answers.map((_, idx) => normalizeTextGapResponse(values[idx]));
+    const normalizedValues = answers.map((_, idx) => String(values[idx] ?? "").normalize("NFC").trim());
     if (normalizedValues.some((value) => !value)) {
-      state.completeExerciseByBlockKey[blockKey] = { ...exercise, feedback: "incomplete" };
+      state.responseExerciseByBlockKey[blockKey] = { ...exercise, feedback: "incomplete" };
       notifyIncompleteExercise("Preencha todas as lacunas.");
       focusFirstIncompleteTextGap(blockKey);
       render({ preserveState: true });
       return "incomplete";
     }
 
-    const ok = normalizedValues.every((value, idx) =>
-      textGapResponseMatches(tokens[idx], value)
-    );
-    state.completeExerciseByBlockKey[blockKey] = { ...exercise, feedback: ok ? "correct" : "wrong" };
+    const evaluation = RESOURCE_PACKAGE_REGISTRY.evaluateResponse(entry.instance, {
+      values: Object.fromEntries(blanks.map((blank, index) => [blank.id, normalizedValues[index]]))
+    });
+    const ok = evaluation.correct;
+    state.responseExerciseByBlockKey[blockKey] = { ...exercise, feedback: ok ? "correct" : "wrong" };
     if (!ok || renderCorrect) {
       render({ preserveState: true });
     }
     return ok ? "correct" : "wrong";
   }
 
-  function ensureCurrentFlowchartPracticeState() {
-    const flowcharts = [
-      ...getCurrentCardRuntimeFlowcharts(),
-      ...getCurrentPopupRuntimeFlowcharts()
-    ];
-    const runtimeOptions = {
-      blockKeyPrefix: buildCardPathKey(state.selection),
-      enableFlowchartPractice: true,
-      flowchartProjectionByBlockKey: {},
-      flowchartExerciseStateByBlockKey: {},
-      activeFlowchartPrompt: null
-    };
-
-    flowcharts.forEach((entry) => {
-      const projection = getStableFlowchartProjection(entry);
-      state.flowchartPracticeByBlockKey[entry.blockKey] = createFlowchartExerciseState(
-        projection,
-        state.flowchartPracticeByBlockKey[entry.blockKey]
-      );
-      runtimeOptions.flowchartProjectionByBlockKey[entry.blockKey] = projection;
-      runtimeOptions.flowchartExerciseStateByBlockKey[entry.blockKey] = state.flowchartPracticeByBlockKey[entry.blockKey];
-    });
-
-    if (state.activeFlowchartPrompt && runtimeOptions.flowchartExerciseStateByBlockKey[state.activeFlowchartPrompt.blockKey]) {
-      runtimeOptions.activeFlowchartPrompt = state.activeFlowchartPrompt;
-    } else {
-      state.activeFlowchartPrompt = null;
-    }
-
-    return runtimeOptions;
+  function getCurrentOrderingEntry(blockKey) {
+    return getCurrentCardOrderingResponse().find((entry) => entry.blockKey === blockKey) || null;
   }
 
-  function ensureCurrentCardRuntimeOptions() {
-    const flowchartOptions = ensureCurrentFlowchartPracticeState();
+  function moveOrderingItem(blockKey, itemId, direction) {
+    const entry = getCurrentOrderingEntry(blockKey);
+    if (!entry) return;
+    ensureCurrentOrderingExerciseState();
+    const exercise = state.responseExerciseByBlockKey[blockKey];
+    const order = exercise.order.slice();
+    const index = order.indexOf(itemId);
+    const target = direction === "up" ? index - 1 : index + 1;
+    if (index < 0 || target < 0 || target >= order.length) return;
+    [order[index], order[target]] = [order[target], order[index]];
+    state.responseExerciseByBlockKey[blockKey] = { order, feedback: null };
+    render({ preserveState: true });
+  }
+
+  function validateOrdering(blockKey, { renderCorrect = true } = {}) {
+    const entry = getCurrentOrderingEntry(blockKey);
+    if (!entry) return null;
+    ensureCurrentOrderingExerciseState();
+    const exercise = state.responseExerciseByBlockKey[blockKey];
+    const evaluation = RESOURCE_PACKAGE_REGISTRY.evaluateResponse(entry.instance, {
+      order: exercise.order
+    });
+    state.responseExerciseByBlockKey[blockKey] = {
+      ...exercise,
+      feedback: evaluation.correct ? "correct" : "wrong"
+    };
+    if (!evaluation.correct || renderCorrect) render({ preserveState: true });
+    return evaluation.correct ? "correct" : "wrong";
+  }
+
+  function viewOrderingAnswer(blockKey) {
+    const entry = getCurrentOrderingEntry(blockKey);
+    if (!entry) return;
+    state.responseExerciseByBlockKey[blockKey] = {
+      order: entry.block.answerOrder.slice(),
+      feedback: "correct"
+    };
+    render({ preserveState: true });
+  }
+
+  function tryOrderingAgain(blockKey) {
+    const entry = getCurrentOrderingEntry(blockKey);
+    if (!entry) return;
+    const itemIds = entry.block.itemIds.map(String);
+    state.responseExerciseByBlockKey[blockKey] = {
+      order: itemIds.length > 1 ? [...itemIds.slice(1), itemIds[0]] : itemIds,
+      feedback: null
+    };
+    render({ preserveState: true });
+  }
+
+  function ensureCurrentPackageCardOptions() {
     const choiceOptions = ensureCurrentChoiceExerciseState();
     const completeOptions = ensureCurrentCompleteExerciseState();
+    const orderingOptions = ensureCurrentOrderingExerciseState();
     return {
-      ...flowchartOptions,
-      ...choiceOptions,
-      ...completeOptions,
-      choiceExerciseStateByBlockKey: {
-        ...(flowchartOptions.choiceExerciseStateByBlockKey || {}),
-        ...(choiceOptions.choiceExerciseStateByBlockKey || {})
-      },
-      completeExerciseStateByBlockKey: {
-        ...(completeOptions.completeExerciseStateByBlockKey || {})
-      },
-      textGapExerciseStateByBlockKey: {
-        ...(completeOptions.textGapExerciseStateByBlockKey || {})
+      blockKeyPrefix: buildCardPathKey(state.selection),
+      responseStateByBlockKey: {
+        ...(choiceOptions.responseStateByBlockKey || {}),
+        ...(completeOptions.responseStateByBlockKey || {}),
+        ...(orderingOptions.responseStateByBlockKey || {})
       },
       activeTextGapPrompt: state.activeTextGapPrompt,
-      exerciseShuffleSeed: choiceOptions.exerciseShuffleSeed || flowchartOptions.exerciseShuffleSeed || "runtime"
+      exerciseShuffleSeed: choiceOptions.exerciseShuffleSeed || "package"
     };
-  }
-
-  function openFlowchartPrompt(blockKey, kind, targetId) {
-    if (!blockKey || !kind || !targetId) {
-      return;
-    }
-    ensureCurrentFlowchartPracticeState();
-    const current = state.flowchartPracticeByBlockKey[blockKey] || null;
-    if (current?.feedback) {
-      current.feedback = null;
-    }
-    const currentValue =
-      kind === "shape"
-        ? String(current?.shapes?.[targetId] || "").trim()
-        : kind === "label"
-          ? String(current?.labels?.[targetId] || "").trim()
-          : String(current?.texts?.[targetId] || "").trim();
-
-    // Ao clicar novamente numa lacuna já preenchida, o valor atual deve ser removido.
-    if (currentValue) {
-      setFlowchartPracticeValue(blockKey, kind, targetId, null, {
-        closePrompt: false,
-        rerender: false
-      });
-    }
-
-    state.activeFlowchartPrompt = {
-      blockKey,
-      kind,
-      targetId
-    };
-    render({ preserveState: true });
-  }
-
-  function closeFlowchartPrompt() {
-    if (!state.activeFlowchartPrompt) {
-      return;
-    }
-    state.activeFlowchartPrompt = null;
-    render({ preserveState: true });
-  }
-
-  function setFlowchartPracticeValue(blockKey, choiceKind, targetId, value, { closePrompt = false, rerender = true } = {}) {
-    const entry = getCurrentFlowchartEntry(blockKey);
-    if (!entry || !targetId || !choiceKind) {
-      return;
-    }
-
-    const exercise = createFlowchartExerciseState(
-      getStableFlowchartProjection(entry),
-      state.flowchartPracticeByBlockKey[blockKey]
-    );
-    if (choiceKind === "shape") {
-      exercise.shapes[targetId] = value;
-    } else if (choiceKind === "label") {
-      exercise.labels[targetId] = value;
-    } else {
-      exercise.texts[targetId] = value;
-    }
-    exercise.feedback = null;
-    state.flowchartPracticeByBlockKey[blockKey] = exercise;
-    if (closePrompt) {
-      state.activeFlowchartPrompt = null;
-    }
-    if (rerender) {
-      render({ preserveState: true });
-    }
-  }
-
-  function clearFlowchartPracticeValue(blockKey, choiceKind, targetId) {
-    setFlowchartPracticeValue(blockKey, choiceKind, targetId, null, {
-      closePrompt: true,
-      rerender: true
-    });
-  }
-
-  function checkFlowchartPractice(blockKey) {
-    const entry = getCurrentFlowchartEntry(blockKey);
-    if (!entry) {
-      return;
-    }
-
-    const result = validateFlowchartExerciseState(
-      getStableFlowchartProjection(entry),
-      state.flowchartPracticeByBlockKey[blockKey]
-    );
-    state.flowchartPracticeByBlockKey[blockKey] = result.state;
-    if (result.status === "incomplete") {
-      notifyIncompleteExercise("Preencha todas as lacunas do fluxograma.");
-      focusFirstIncompleteFlowchartTarget(
-        blockKey,
-        getStableFlowchartProjection(entry),
-        result.state
-      );
-    }
-    render({ preserveState: true });
-  }
-
-  function resetFlowchartPractice(blockKey) {
-    const entry = getCurrentFlowchartEntry(blockKey);
-    if (!entry) {
-      return;
-    }
-
-    state.flowchartPracticeByBlockKey[blockKey] = resetFlowchartExerciseState(
-      getStableFlowchartProjection(entry),
-      state.flowchartPracticeByBlockKey[blockKey]
-    );
-    state.activeFlowchartPrompt = null;
-    render({ preserveState: true });
-  }
-
-  function viewFlowchartPracticeAnswer(blockKey) {
-    const entry = getCurrentFlowchartEntry(blockKey);
-    if (!entry) {
-      return;
-    }
-
-    state.flowchartPracticeByBlockKey[blockKey] = fillFlowchartExerciseAnswer(
-      getStableFlowchartProjection(entry),
-      state.flowchartPracticeByBlockKey[blockKey]
-    );
-    state.activeFlowchartPrompt = null;
-    render({ preserveState: true });
-  }
-
-  function tryFlowchartPracticeAgain(blockKey) {
-    const entry = getCurrentFlowchartEntry(blockKey);
-    if (!entry) {
-      return;
-    }
-
-    const exercise = createFlowchartExerciseState(
-      getStableFlowchartProjection(entry),
-      state.flowchartPracticeByBlockKey[blockKey]
-    );
-    exercise.feedback = null;
-    state.flowchartPracticeByBlockKey[blockKey] = exercise;
-    render({ preserveState: true });
   }
 
   function getRenderContext() {
@@ -4620,7 +4137,7 @@ export function createLessonEditorApp({
       state.assistDraft.localState = normalizeCardAssistanceLocalState(saved.localState || {});
       state.assistDraft.localStateCourseKey = requestedSelection.courseKey;
       restoreSelectionInsideLesson(requestedSelection);
-      invalidateRuntimeExerciseState();
+      invalidateResponseExerciseState();
       await persistProgressReset(
         `lesson:${requestedSelection.courseKey}:${requestedSelection.lessonKey}`,
         () => resetLessonProgress(
@@ -4691,7 +4208,7 @@ export function createLessonEditorApp({
       state.assistDraft.localState = normalizeCardAssistanceLocalState(saved.localState || {});
       state.assistDraft.localStateCourseKey = undo.courseKey;
       restoreSelectionInsideLesson(undo);
-      invalidateRuntimeExerciseState();
+      invalidateResponseExerciseState();
       await persistProgressReset(
         `lesson:${undo.courseKey}:${undo.lessonKey}`,
         () => resetLessonProgress(undo.courseKey, undo.moduleKey, undo.lessonKey)
@@ -4912,7 +4429,7 @@ export function createLessonEditorApp({
               target.cardKey
             )
           );
-          invalidateRuntimeExerciseState();
+          invalidateResponseExerciseState();
         }
         if (saved?.pending !== true) await refreshHomeTrails();
       } else {
@@ -4971,7 +4488,7 @@ export function createLessonEditorApp({
               target.cardKey
             )
           );
-          invalidateRuntimeExerciseState();
+          invalidateResponseExerciseState();
         } else {
           if (typeof storage.saveProjectWithCardAssistanceState !== "function") {
             throw new Error("Não foi possível salvar a alteração neste dispositivo.");
@@ -5078,9 +4595,9 @@ export function createLessonEditorApp({
         })
       : null;
     const context = getRenderContext();
-    const rendersCardRuntime = state.view === "microsequence";
-    const currentCardRuntimeOptions = rendersCardRuntime
-      ? ensureCurrentCardRuntimeOptions()
+    const rendersPackageCard = state.view === "microsequence";
+    const currentPackageCardOptions = rendersPackageCard
+      ? ensureCurrentPackageCardOptions()
       : {};
     const needsAllCoursePermissions = state.view === "courses";
     const permissionCourses = needsAllCoursePermissions
@@ -5122,7 +4639,7 @@ export function createLessonEditorApp({
           canKeepLocal: false,
           canDiscardLocal: false
         });
-    if (rendersCardRuntime) {
+    if (rendersPackageCard) {
       state.assistDraft.assistance = reconcileCardAssistanceUiState(
         state.assistDraft.assistance,
         { selection: state.selection, card: context.card, cards: context.cards }
@@ -5223,7 +4740,7 @@ export function createLessonEditorApp({
               }
             : null,
           cardAssistanceState: state.assistDraft.assistance,
-          cardResourceTargets: rendersCardRuntime
+          cardResourceTargets: rendersPackageCard
             ? listCardResourceTargets(context.card).filter((target) =>
                 target.location !== "after_text" || text(context.card?.after).trim()
               )
@@ -5249,7 +4766,7 @@ export function createLessonEditorApp({
           ),
           isSubmitting: state.assistDraft.isSubmitting,
           hasApiKey: Boolean(state.assistConfig.apiKey || state.assistConfig.providerSecret),
-          cardRuntimeOptions: currentCardRuntimeOptions,
+          packageCardOptions: currentPackageCardOptions,
           continuePopup: {
             open:
               !!state.continuePopup &&
@@ -5287,8 +4804,6 @@ export function createLessonEditorApp({
       ".runtime-resource-edit-target[data-manual-target-id]"
     );
     if (manualResourceEditor) {
-      manualResourceEditor.querySelectorAll("[data-flowchart-scroll='true']")
-        .forEach((scrollNode) => autoFitFlowchartViewport(scrollNode));
       activateManualCardEdit(
         manualResourceEditor,
         state.assistDraft.manualDraft?.targetId === manualResourceEditor.dataset.manualTargetId
@@ -5842,7 +5357,7 @@ export function createLessonEditorApp({
         const blockKey = node.getAttribute("data-choice-block-key");
         const optionId = node.getAttribute("data-choice-option-id");
         if (!blockKey || optionId === null) return;
-        const current = state.choiceExerciseByBlockKey[blockKey];
+      const current = state.responseExerciseByBlockKey[blockKey];
         const selected = Array.isArray(current?.selected) ? current.selected : [];
         const isSelected = selected.includes(optionId);
         setChoiceSelection(blockKey, optionId, !isSelected);
@@ -6007,124 +5522,29 @@ export function createLessonEditorApp({
         validateComplete(blockKey);
       });
     });
-
-    root.querySelectorAll("[data-action='flowchart-open-shape']").forEach((node) => {
-      node.addEventListener("click", (event) => {
-        event.preventDefault();
-        event.stopPropagation();
-        openFlowchartPrompt(
-          node.getAttribute("data-flowchart-block-key"),
-          "shape",
-          node.getAttribute("data-flowchart-target-id")
+    root.querySelectorAll("[data-action='ordering-move']").forEach((node) => {
+      node.addEventListener("click", () => {
+        moveOrderingItem(
+          node.getAttribute("data-response-block-key"),
+          node.getAttribute("data-ordering-item-id"),
+          node.getAttribute("data-ordering-direction")
         );
       });
     });
-    root.querySelectorAll("[data-action='flowchart-open-text']").forEach((node) => {
-      node.addEventListener("click", (event) => {
-        event.preventDefault();
-        event.stopPropagation();
-        openFlowchartPrompt(
-          node.getAttribute("data-flowchart-block-key"),
-          "text",
-          node.getAttribute("data-flowchart-target-id")
-        );
-      });
+    root.querySelectorAll("[data-action='ordering-validate']").forEach((node) => {
+      node.addEventListener("click", () => validateOrdering(
+        node.getAttribute("data-response-block-key")
+      ));
     });
-    root.querySelectorAll("[data-action='flowchart-open-label']").forEach((node) => {
-      node.addEventListener("click", (event) => {
-        event.preventDefault();
-        event.stopPropagation();
-        openFlowchartPrompt(
-          node.getAttribute("data-flowchart-block-key"),
-          "label",
-          node.getAttribute("data-flowchart-target-id")
-        );
-      });
+    root.querySelectorAll("[data-action='ordering-view-answer']").forEach((node) => {
+      node.addEventListener("click", () => viewOrderingAnswer(
+        node.getAttribute("data-response-block-key")
+      ));
     });
-    root.querySelectorAll("[data-action='flowchart-set-shape']").forEach((node) => {
-      node.addEventListener("click", (event) => {
-        event.preventDefault();
-        event.stopPropagation();
-        setFlowchartPracticeValue(
-          node.getAttribute("data-flowchart-block-key"),
-          "shape",
-          node.getAttribute("data-flowchart-target-id"),
-          node.getAttribute("data-flowchart-value"),
-          { closePrompt: true, rerender: true }
-        );
-      });
-    });
-    root.querySelectorAll("[data-action='flowchart-set-text']").forEach((node) => {
-      node.addEventListener("click", (event) => {
-        event.preventDefault();
-        event.stopPropagation();
-        setFlowchartPracticeValue(
-          node.getAttribute("data-flowchart-block-key"),
-          "text",
-          node.getAttribute("data-flowchart-target-id"),
-          node.getAttribute("data-flowchart-value"),
-          { closePrompt: true, rerender: true }
-        );
-      });
-    });
-    root.querySelectorAll("[data-action='flowchart-set-label']").forEach((node) => {
-      node.addEventListener("click", (event) => {
-        event.preventDefault();
-        event.stopPropagation();
-        setFlowchartPracticeValue(
-          node.getAttribute("data-flowchart-block-key"),
-          "label",
-          node.getAttribute("data-flowchart-target-id"),
-          node.getAttribute("data-flowchart-value"),
-          { closePrompt: true, rerender: true }
-        );
-      });
-    });
-    root.querySelectorAll("[data-action='flowchart-clear-choice']").forEach((node) => {
-      node.addEventListener("click", (event) => {
-        event.preventDefault();
-        event.stopPropagation();
-        clearFlowchartPracticeValue(
-          node.getAttribute("data-flowchart-block-key"),
-          node.getAttribute("data-flowchart-choice-kind"),
-          node.getAttribute("data-flowchart-target-id")
-        );
-      });
-    });
-    root.querySelectorAll("[data-action='flowchart-check']").forEach((node) => {
-      node.addEventListener("click", (event) => {
-        event.preventDefault();
-        event.stopPropagation();
-        checkFlowchartPractice(node.getAttribute("data-flowchart-block-key"));
-      });
-    });
-    root.querySelectorAll("[data-action='flowchart-reset']").forEach((node) => {
-      node.addEventListener("click", (event) => {
-        event.preventDefault();
-        event.stopPropagation();
-        resetFlowchartPractice(node.getAttribute("data-flowchart-block-key"));
-      });
-    });
-    root.querySelectorAll("[data-action='flowchart-view-answer']").forEach((node) => {
-      node.addEventListener("click", (event) => {
-        event.preventDefault();
-        event.stopPropagation();
-        viewFlowchartPracticeAnswer(node.getAttribute("data-flowchart-block-key"));
-      });
-    });
-    root.querySelectorAll("[data-action='flowchart-try-again']").forEach((node) => {
-      node.addEventListener("click", (event) => {
-        event.preventDefault();
-        event.stopPropagation();
-        tryFlowchartPracticeAgain(node.getAttribute("data-flowchart-block-key"));
-      });
-    });
-    root.querySelectorAll("[data-action='flowchart-close-prompt']").forEach((node) => {
-      node.addEventListener("click", (event) => {
-        event.preventDefault();
-        event.stopPropagation();
-        closeFlowchartPrompt();
-      });
+    root.querySelectorAll("[data-action='ordering-try-again']").forEach((node) => {
+      node.addEventListener("click", () => tryOrderingAgain(
+        node.getAttribute("data-response-block-key")
+      ));
     });
 
     root.querySelectorAll("[data-action='open-card-index']").forEach((node) => {
@@ -6220,143 +5640,6 @@ export function createLessonEditorApp({
       assistMicrosequenceTitleInput.addEventListener("change", commitAssistMicrosequenceTitle);
       assistMicrosequenceTitleInput.addEventListener("blur", commitAssistMicrosequenceTitle);
     }
-    root.querySelectorAll("[data-flowchart-inline-input='true']").forEach((node) => {
-      node.addEventListener("click", () => {
-        node.focus();
-        if (typeof node.setSelectionRange === "function") {
-          const size = String(node.value || "").length;
-          node.setSelectionRange(size, size);
-        }
-      });
-      node.addEventListener("input", () => {
-        setFlowchartPracticeValue(
-          node.getAttribute("data-flowchart-block-key"),
-          node.getAttribute("data-flowchart-choice-kind"),
-          node.getAttribute("data-flowchart-target-id"),
-          node.value,
-          { closePrompt: false, rerender: false }
-        );
-      });
-      node.addEventListener("keydown", (event) => {
-        if (event.key === "Enter") {
-          event.preventDefault();
-          node.blur();
-        }
-      });
-    });
-    root.querySelector(".app-shell")?.addEventListener("click", (event) => {
-      if (!state.activeFlowchartPrompt) {
-        return;
-      }
-      const target = event.target;
-      if (!(target instanceof Element)) {
-        return;
-      }
-      const insidePrompt = target.closest("[data-flowchart-prompt='true']");
-      const promptTrigger = target.closest(
-        "[data-action='flowchart-open-shape'], [data-action='flowchart-open-text'], [data-action='flowchart-open-label']"
-      );
-      if (!insidePrompt && !promptTrigger) {
-        closeFlowchartPrompt();
-      }
-    });
-
-    root.querySelectorAll("[data-flowchart-scroll='true']").forEach((scrollNode) => {
-      autoFitFlowchartViewport(scrollNode);
-      if (scrollNode.getAttribute("data-flowchart-centered") !== "true") {
-        const stage = scrollNode.querySelector("[data-flowchart-stage='true']");
-        const stageWidth = stage ? stage.offsetWidth : 0;
-        const stageHeight = stage ? stage.offsetHeight : 0;
-        if (stageWidth > 0 && stageHeight > 0) {
-          scrollNode.scrollLeft = 0;
-          scrollNode.scrollTop = 0;
-          scrollNode.setAttribute("data-flowchart-centered", "true");
-        }
-      }
-
-      scrollNode.addEventListener(
-        "wheel",
-        (event) => {
-          if (!(event.ctrlKey || event.metaKey)) {
-            return;
-          }
-          event.preventDefault();
-          const currentScale = Number(scrollNode.getAttribute("data-flowchart-scale") || 1);
-          const factor = event.deltaY < 0 ? 1.12 : 1 / 1.12;
-          setFlowchartViewportScale(scrollNode, currentScale * factor, event.clientX, event.clientY);
-        },
-        { passive: false }
-      );
-      scrollNode.addEventListener(
-        "touchstart",
-        (event) => {
-          if (!event.touches || event.touches.length < 2) {
-            return;
-          }
-          const touchA = event.touches[0];
-          const touchB = event.touches[1];
-          state.flowchartPinch = {
-            scrollNode,
-            startScale: Number(scrollNode.getAttribute("data-flowchart-scale") || 1),
-            startDistance: getTouchDistance(touchA, touchB)
-          };
-          event.preventDefault();
-        },
-        { passive: false }
-      );
-      scrollNode.addEventListener(
-        "touchmove",
-        (event) => {
-          if (!state.flowchartPinch || state.flowchartPinch.scrollNode !== scrollNode || !event.touches || event.touches.length < 2) {
-            return;
-          }
-          const touchA = event.touches[0];
-          const touchB = event.touches[1];
-          const distance = getTouchDistance(touchA, touchB);
-          if (!distance || !state.flowchartPinch.startDistance) {
-            return;
-          }
-          const midpoint = getTouchMidpoint(touchA, touchB);
-          const nextScale = state.flowchartPinch.startScale * (distance / state.flowchartPinch.startDistance);
-          setFlowchartViewportScale(scrollNode, nextScale, midpoint.x, midpoint.y);
-          event.preventDefault();
-        },
-        { passive: false }
-      );
-      const finishPinch = () => {
-        if (state.flowchartPinch?.scrollNode === scrollNode) {
-          state.flowchartPinch = null;
-        }
-      };
-      scrollNode.addEventListener("touchend", finishPinch);
-      scrollNode.addEventListener("touchcancel", finishPinch);
-    });
-
-    root.querySelectorAll("[data-action='flowchart-zoom-in']").forEach((node) => {
-      node.addEventListener("click", () => {
-        const scrollNode = node.closest(".runtime-flow-board-shell")?.querySelector("[data-flowchart-scroll='true']");
-        if (!scrollNode) return;
-        const currentScale = Number(scrollNode.getAttribute("data-flowchart-scale") || 1);
-        setFlowchartViewportScale(scrollNode, currentScale + 0.1);
-      });
-    });
-    root.querySelectorAll("[data-action='flowchart-zoom-out']").forEach((node) => {
-      node.addEventListener("click", () => {
-        const scrollNode = node.closest(".runtime-flow-board-shell")?.querySelector("[data-flowchart-scroll='true']");
-        if (!scrollNode) return;
-        const currentScale = Number(scrollNode.getAttribute("data-flowchart-scale") || 1);
-        setFlowchartViewportScale(scrollNode, currentScale - 0.1);
-      });
-    });
-    root.querySelectorAll("[data-action='flowchart-zoom-reset']").forEach((node) => {
-      node.addEventListener("click", () => {
-        const scrollNode = node.closest(".runtime-flow-board-shell")?.querySelector("[data-flowchart-scroll='true']");
-        if (!scrollNode) return;
-        const defaultScale = Number(node.getAttribute("data-flowchart-default-scale") || 1);
-        setFlowchartViewportScale(scrollNode, defaultScale);
-      });
-    });
-
     const assistModelInputs = root.querySelectorAll("[data-field='assist-model']");
     const assistApiKey = root.querySelector("[data-field='assist-api-key']");
     const providerConfigBaseUrl = root.querySelector("[data-field='provider-config-base-url']");

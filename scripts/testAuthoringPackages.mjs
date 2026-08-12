@@ -336,9 +336,12 @@ for (const obsoleteRule of [
 }
 assert.match(coreKnowledge, /workspace-mutation\.schema\.json/u);
 assert.match(resourceKnowledge, /consultarRecursosDeCard/u);
-assert.match(resourceKnowledge, /"resource": "paragraph"/u);
-assert.match(resourceKnowledge, /\{gap:condition\}/u);
-assert.match(resourceKnowledge, /servidor compila ambos ao salvar/iu);
+assert.match(resourceKnowledge, /aralearn\.resource\.paragraph/u);
+assert.match(resourceKnowledge, /targetInstanceId/u);
+assert.match(resourceKnowledge, /targetPath/u);
+assert.match(resourceKnowledge, /não codifique lacunas em strings/iu);
+assert.doesNotMatch(resourceKnowledge, /\{gap:[^}]+\}/u);
+assert.match(resourceKnowledge, /Não existe renderer antigo, projeção de card, compatibilidade ou fallback de formato/iu);
 assert.match(coreKnowledge, /chat é descartável/iu);
 assert.match(
   coreKnowledge,

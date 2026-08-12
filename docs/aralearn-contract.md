@@ -9,6 +9,12 @@ envelope com `id`, `position`, `title`, `role`, `content`, `response`,
 `feedback`, `topics` e `sources`. Cada item de conteúdo, resposta ou feedback
 é uma instância `{ id, package, version, data }`.
 
+Cards de teoria exigem ao menos uma instância em `content`. Cards de prática
+podem usar `content: []` quando a pergunta de um package de resposta constitui
+todo o material visível. Em uma escolha, a pergunta pertence somente a
+`aralearn.response.choice`; `paragraph` serve apenas para contexto adicional e
+não pode duplicar o mesmo enunciado.
+
 O kernel conhece apenas slots, identidade, versão, validação, renderização,
 texto acessível e avaliação. Cada package entrega seu próprio manifest,
 contrato autoral, schema, normalização, renderer e, quando ocupa `response`,

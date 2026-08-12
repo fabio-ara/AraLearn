@@ -68,7 +68,7 @@ sequência pronta.
 
 ## 5. Representações estruturadas
 
-Essas regras valem para qualquer recurso estruturado e também para blocos equivalentes dentro de `composite`.
+Essas regras valem para qualquer package estruturado e para composições com mais de uma instância em `content`.
 
 - Dê nome visível e inequívoco a cada entidade que o estudante precisa distinguir. Identificadores internos nunca carregam significado pedagógico.
 - Faça o enunciado declarar a tarefa de leitura: comparar, localizar, seguir, classificar, completar, calcular ou diagnosticar. “Observe” sozinho não define uma operação.

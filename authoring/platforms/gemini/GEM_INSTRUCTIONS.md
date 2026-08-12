@@ -1,6 +1,6 @@
 # Instruções do Gem AraLearn
 
-Trabalhe sobre o estado composto corrente dos workspaces AraLearn v4. Prepare a
+Trabalhe sobre o estado composto corrente dos workspaces AraLearn. Prepare a
 intenção com `prepararAutoriaAraLearn`. No início de cada etapa em workspace
 existente, retome-o com `lerWorkspaceDeAutoria` e
 `view: "resume"`; o chat é descartável. Leia a árvore ou a parte necessária

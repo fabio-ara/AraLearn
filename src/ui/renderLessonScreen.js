@@ -1,10 +1,10 @@
 import { renderHomeScreen } from "./renderHomeScreen.js";
-import { readCardText } from "../core/cardRuntime.js";
+import { readPackageCardText } from "../render/renderPackageCard.js";
 import {
-  getRuntimePopupButtonEntry,
-  renderCardRuntimeBlocksWithDock,
-  renderPopupButtonDock
-} from "../render/renderCardRuntime.js";
+  getPackageFeedbackEntry,
+  renderPackageCardBlocksWithDock,
+  renderPackageFeedback
+} from "../render/renderPackageCard.js";
 import { readLessonProgressEntry } from "../storage/progressStore.js";
 import { renderUiIcon } from "./renderUiIcons.js";
 import { buildManualCardEditModel } from "./manualCardEdit.js";
@@ -183,7 +183,7 @@ function getLessonDescription(lesson) {
 
   for (const microsequence of lesson.microsequences || []) {
     for (const card of cardsOfMicrosequence(microsequence)) {
-      const text = normalizeInlineText(readCardText(card));
+      const text = normalizeInlineText(readPackageCardText(card));
       if (text) {
         return truncateText(text);
       }
@@ -335,9 +335,8 @@ function entityMode(editorSupport, level) {
   return "view";
 }
 
-function authoringCapability(permissions, capability, legacyFallback = true) {
-  if (typeof permissions?.[capability] === "boolean") return permissions[capability];
-  return legacyFallback && permissions?.canAuthorContent === true;
+function authoringCapability(permissions, capability) {
+  return permissions?.[capability] === true;
 }
 
 function permittedEntityMode(editorSupport, level, { canEdit = false, canAi = false } = {}) {
@@ -1204,8 +1203,7 @@ function renderMicrosequenceScreen({ course, lesson, microsequence, cards, selec
     lessonStudyCount ? (displayedCardNumber / lessonStudyCount) * 100 : 0
   );
   const displayedCard = activeCard;
-  const bodyText = readCardText(displayedCard);
-  const popupEntry = displayedCard ? getRuntimePopupButtonEntry(displayedCard) : null;
+  const popupEntry = displayedCard ? getPackageFeedbackEntry(displayedCard) : null;
   const popupBlockKey = editorSupport.continuePopup?.blockKey || `runtime-block::${popupEntry?.index ?? 0}`;
   const selectedCardKeys = Array.isArray(cardAssistanceState.selectedCardKeys)
     ? cardAssistanceState.selectedCardKeys
@@ -1221,36 +1219,6 @@ function renderMicrosequenceScreen({ course, lesson, microsequence, cards, selec
     selectedCardKeys.length === 1 &&
     selectedCardKeys[0] === activeCard?.id
   );
-  const resourceTargetIdsByRuntimeIndex = [];
-  const popupResourceTargetIds = [];
-  const packageCard = Array.isArray(activeCard?.content);
-  if (packageCard) {
-    activeCard.content.forEach((instance, index) => {
-      resourceTargetIdsByRuntimeIndex[index + 1] = instance?.id ? `content:${instance.id}` : "";
-    });
-    if (activeCard.response?.id) {
-      resourceTargetIdsByRuntimeIndex[activeCard.content.length + 1] =
-        `response:${activeCard.response.id}`;
-    }
-    activeCard.feedback.forEach((instance) => {
-      popupResourceTargetIds.push(instance?.id ? `feedback:${instance.id}` : "");
-    });
-  } else if (activeCard?.resource === "composite") {
-    (Array.isArray(activeCard.blocks) ? activeCard.blocks : []).forEach((block, index) => {
-      resourceTargetIdsByRuntimeIndex[index + 1] = block?.id ? `body:${block.id}` : "";
-    });
-  } else if (activeCard) {
-    resourceTargetIdsByRuntimeIndex[1] = "main";
-    const responseTarget = (editorSupport.cardResourceTargets || [])
-      .find((target) => target?.location === "response");
-    if (responseTarget) resourceTargetIdsByRuntimeIndex[2] = responseTarget.targetId;
-  }
-  if (!packageCard && normalizeInlineText(activeCard?.after || "")) {
-    popupResourceTargetIds.push("after:text");
-  }
-  (!packageCard && Array.isArray(activeCard?.afterBlocks) ? activeCard.afterBlocks : []).forEach((block) => {
-    popupResourceTargetIds.push(block?.id ? `after:${block.id}` : "");
-  });
   const selectedResourceTargetIds = new Set(cardAssistanceState.resourceTargetIds);
   const resourceSelectionLabels = Object.fromEntries(
     (editorSupport.cardResourceTargets || []).map((target) => {
@@ -1279,28 +1247,25 @@ function renderMicrosequenceScreen({ course, lesson, microsequence, cards, selec
           : null
       )
     : "";
-  const runtime = renderCardRuntimeBlocksWithDock(displayedCard, {
+  const runtime = renderPackageCardBlocksWithDock(displayedCard, {
     omitRepeatedHeading: true,
-    fallbackText: bodyText,
     resourceSelectionEnabled: selectsResourcesInCard,
     resourceSelectionDisabled: Boolean(editorSupport.isSubmitting),
-    resourceSelectionTargetIds: resourceTargetIdsByRuntimeIndex,
-    authoringSupportResourceTargetIds: popupResourceTargetIds,
     selectedResourceTargetIds: cardAssistanceState.resourceTargetIds,
     resourceSelectionLabels,
     manualEditingTargetId: cardEditorMode === "manual" && manualEditTargetId !== "card"
       ? manualEditTargetId
       : "",
-    ...(editorSupport.cardRuntimeOptions || {})
+    ...(editorSupport.packageCardOptions || {})
   });
   const continuePopup =
     popupEntry && editorSupport.continuePopup?.open
-      ? renderPopupButtonDock(popupEntry.block, {
-          ...(editorSupport.cardRuntimeOptions || {}),
+      ? renderPackageFeedback(popupEntry, {
+          card: displayedCard,
+          ...(editorSupport.packageCardOptions || {}),
           blockKeyPrefix: `${popupBlockKey}::popup`,
           resourceSelectionEnabled: selectsResourcesInCard,
           resourceSelectionDisabled: Boolean(editorSupport.isSubmitting),
-          resourceSelectionTargetIds: popupResourceTargetIds,
           selectedResourceTargetIds: cardAssistanceState.resourceTargetIds,
           resourceSelectionLabels,
           manualEditingTargetId: cardEditorMode === "manual" && manualEditTargetId !== "card"

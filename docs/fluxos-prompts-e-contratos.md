@@ -68,14 +68,11 @@ redundância ou mover texto permanecem reparos de conteúdo.
 
 ### Reparo de resources
 
-Cada resource recebe uma identidade de alvo:
+Cada instância de package recebe uma identidade de alvo:
 
-- `main` para o resource principal de card simples;
-- `response` para a prática contextual por escolha em resource que não seja
-  `choice`;
-- `after:text` para o texto posterior canônico;
-- `body:<id>` para um bloco do corpo de `composite`;
-- `after:<id>` para um resource de apoio.
+- `content:<id>` para uma instância de representação;
+- `response:<id>` para a instância de resposta;
+- `feedback:<id>` para uma instância de explicação posterior.
 
 O serviço devolve exatamente uma substituição para cada `targetId` autorizado.
 O valor de cada alvo existe em `writableTargets` e é omitido da representação
@@ -86,7 +83,7 @@ para coerência, sem autoridade de escrita.
 {
   "replacements": [
     {
-      "targetId": "body:exemplo-1",
+      "targetId": "content:exemplo-1",
       "value": {
         "id": "exemplo-1",
         "kind": "paragraph",
@@ -204,12 +201,12 @@ O fluxo externo separa três responsabilidades:
 - instruções curtas mantêm o procedimento estável;
 - `prepararAutoriaAraLearn` recupera até oito unidades relevantes para a
   intenção e o nível estrutural;
-- `consultarRecursosDeCard`, com o campo `resource`, entrega o schema exato
-  somente quando esse resource será usado.
+- `consultarPackagesDeCard`, com `packageId` e `version`, entrega o schema exato
+  somente quando esse package será usado.
 
 A recuperação é lexical e determinística. Não usa embedding remoto, banco
 vetorial nem texto integral da conversa. Esse RAG leve reduz contexto e evita
-pedir ao modelo que memorize todos os campos dos dezoito resources. O modelo
+pedir ao modelo que memorize os campos dos packages instalados. O modelo
 decide conteúdo e representação; operações focadas, schemas e validadores
 decidem o que pode ser salvo.
 

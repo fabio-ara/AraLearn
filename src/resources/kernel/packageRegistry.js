@@ -159,10 +159,36 @@ export function createPackageRegistry(packageDefinitions = []) {
       return normalized;
     },
     validateInstance,
+    validateCardRelations(card) {
+      if (!card?.response) return [];
+      const definition = get(card.response.package, card.response.version);
+      if (typeof definition?.validateCard !== "function") return [];
+      const errors = definition.validateCard(clone(card));
+      return Array.isArray(errors) ? errors.filter(Boolean).map(String) : [];
+    },
+    prepareCardForSemantics(card) {
+      if (!card?.response) return clone(card);
+      const definition = get(card.response.package, card.response.version);
+      return typeof definition?.prepareCardForSemantics === "function"
+        ? definition.prepareCardForSemantics(clone(card))
+        : clone(card);
+    },
     renderInstance(instance, slot, options = {}) {
       const validation = validateInstance(instance, slot);
       if (!validation.valid) throw new TypeError(validation.errors.join(" "));
-      return requirePackage(instance.package, instance.version).render(instance.data, options);
+      const definition = requirePackage(instance.package, instance.version);
+      const response = options?.cardResponse;
+      const responseDefinition = response
+        ? get(response.package, response.version)
+        : null;
+      const renderData = slot === "content" && typeof responseDefinition?.prepareContentInstance === "function"
+        ? responseDefinition.prepareContentInstance(
+            clone(instance),
+            clone(response.data),
+            options
+          )
+        : clone(instance.data);
+      return definition.render(renderData, options);
     },
     accessibleText(instance, slot) {
       const validation = validateInstance(instance, slot);

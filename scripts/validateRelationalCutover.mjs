@@ -325,6 +325,27 @@ async function main() {
   const packageCardListProjection = migrations.find(({ fileName }) =>
     fileName === "20260812132000_package_card_list_projection.sql"
   );
+  const packageObservationTargets = migrations.find(({ fileName }) =>
+    fileName === "20260812140000_package_observation_targets.sql"
+  );
+  const catalogRootReuse = migrations.find(({ fileName }) =>
+    fileName === "20260812160000_reuse_catalog_authoring_root.sql"
+  );
+  const strictCatalogRootReuse = migrations.find(({ fileName }) =>
+    fileName === "20260812161000_strict_catalog_root_reuse.sql"
+  );
+  const currentCatalogRootResolution = migrations.find(({ fileName }) =>
+    fileName === "20260812162000_resolve_current_catalog_root.sql"
+  );
+  const discardCatalogMaterialization = migrations.find(({ fileName }) =>
+    fileName === "20260812163000_discard_unpublished_catalog_materialization.sql"
+  );
+  const flatRuntimeManifest = migrations.find(({ fileName }) =>
+    fileName === "20260812164000_flat_runtime_manifest.sql"
+  );
+  const removedRuntimeManifestWrappers = migrations.find(({ fileName }) =>
+    fileName === "20260812164100_remove_runtime_manifest_wrappers.sql"
+  );
   const relationalRemoval = migrations.find(({ fileName }) =>
     fileName === "20260728020000_remove_relational_course_legacy.sql"
   );
@@ -1151,7 +1172,41 @@ async function main() {
     path.join(repositoryRoot, "supabase", "runtime-manifest.json"),
     "utf8"
   ));
-  if (runtimeManifest.schemaRevision !== "20260812132000" || runtimeManifest.contractVersion !== 1) {
+  if (!packageObservationTargets ||
+      !packageObservationTargets.source.includes("package-observation-targets-v1") ||
+      !/v_slot\s+not\s+in\s*\(\s*'content'\s*,\s*'response'\s*,\s*'feedback'\s*\)/iu.test(packageObservationTargets.source)) {
+    fail("Os alvos de observação não foram cortados para os slots dos packages.");
+  }
+  if (!catalogRootReuse
+      || !catalogRootReuse.source.includes("catalog-authoring-root-reuse-v1")
+      || !catalogRootReuse.source.includes("replace_catalog_authoring_document_v1")) {
+    fail("O catálogo não reutiliza sua raiz autoral corrente.");
+  }
+  if (!strictCatalogRootReuse
+      || !strictCatalogRootReuse.source.includes("strict-catalog-root-reuse-v1")
+      || strictCatalogRootReuse.source.includes("publication.target = 'catalog'\n      and (")) {
+    fail("A raiz oficial corrente ainda possui um caminho alternativo de transferência.");
+  }
+  if (!currentCatalogRootResolution
+      || !currentCatalogRootResolution.source.includes("current-catalog-root-resolution-v1")
+      || !currentCatalogRootResolution.source.includes("v_workspace_owner_id")) {
+    fail("O publicador não resolve a raiz oficial independentemente do ator corrente.");
+  }
+  if (!discardCatalogMaterialization
+      || !discardCatalogMaterialization.source.includes("discard-unpublished-catalog-materialization-v1")
+      || !discardCatalogMaterialization.source.includes("Uma raiz publicada nao pode ser descartada")) {
+    fail("Materializações administrativas interrompidas não têm limpeza estrita.");
+  }
+  if (!flatRuntimeManifest
+      || !flatRuntimeManifest.source.includes("flat-runtime-manifest-v1")
+      || !flatRuntimeManifest.source.includes("drop function if exists public.get_aralearn_runtime_manifest_before")) {
+    fail("O manifesto remoto ainda depende da cadeia histórica de wrappers.");
+  }
+  if (!removedRuntimeManifestWrappers
+      || !removedRuntimeManifestWrappers.source.includes("Wrappers historicos do manifesto ainda existem")) {
+    fail("A remoção física dos wrappers históricos do manifesto não é verificada.");
+  }
+  if (runtimeManifest.schemaRevision !== "20260812164000" || runtimeManifest.contractVersion !== 1) {
     fail("O manifesto estático não aponta para a biblioteca por packages corrente.");
   }
   for (const feature of [
@@ -1169,7 +1224,13 @@ async function main() {
     "package-library-v1",
     "package-contract-discovery-v1",
     "catalog-package-artifact-cutover-v1",
-    "package-card-list-projection-v1"
+    "package-card-list-projection-v1",
+    "package-observation-targets-v1",
+    "catalog-authoring-root-reuse-v1",
+    "strict-catalog-root-reuse-v1",
+    "current-catalog-root-resolution-v1",
+    "discard-unpublished-catalog-materialization-v1",
+    "flat-runtime-manifest-v1"
   ]) {
     if (!runtimeManifest.requiredFeatures.includes(feature)) {
       fail(`O manifesto estático não exige ${feature}.`);
@@ -1183,14 +1244,15 @@ async function main() {
     "non-punitive-study-projections-v1",
     "workspace-comment-aggregates-v1",
     "integrated-trails-v1",
-    "catalog-collection-ordering-v1"
+    "catalog-collection-ordering-v1",
+    "catalog-root-rebinding-v1"
   ]) {
     if (runtimeManifest.requiredFeatures.includes(retiredFeature)) {
       fail(`O manifesto estático ainda anuncia ${retiredFeature}.`);
     }
   }
   console.log(
-    `Corte validado até ${packageCardListProjection.fileName}: biblioteca e catálogo por packages, continuidade autoral corrente, Trilhas e Coleções alfabéticas, estado pessoal compacto, observações situadas, workspaces educacionais, OAuth/MCP/Action e uma revisão corrente por curso.`
+    `Corte validado até ${flatRuntimeManifest.fileName}: biblioteca e catálogo por packages, manifesto remoto achatado, continuidade autoral corrente, alvos de observação package-native, raiz autoral oficial única e reutilizável, limpeza estrita de materializações interrompidas, Trilhas e Coleções alfabéticas, estado pessoal compacto, workspaces educacionais, OAuth/MCP/Action e uma revisão corrente por curso.`
   );
 }
 

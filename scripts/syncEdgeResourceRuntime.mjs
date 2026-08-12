@@ -13,15 +13,8 @@ const edgeRuntimeRoot = path.join(
 );
 
 const files = [
-  ["src/core/authoringResourceContract.js", "core/authoringResourceContract.js"],
-  ["src/core/authoringGaps.js", "core/authoringGaps.js"],
-  ["src/core/choiceOptions.js", "core/choiceOptions.js"],
-  ["src/core/resourceGaps.js", "core/resourceGaps.js"],
-  ["src/core/textGaps.js", "core/textGaps.js"],
+  ["src/core/exerciseOptions.js", "core/exerciseOptions.js"],
   ["src/domain/aralearnProject.js", "domain/aralearnProject.js"],
-  ["src/domain/cardExerciseSupport.js", "domain/cardExerciseSupport.js"],
-  ["src/domain/cards.js", "domain/cards.js"],
-  ["src/domain/resources.js", "domain/resources.js"],
   ["src/domain/formulaExpression.js", "domain/formulaExpression.js"],
   ["src/flowchart/flowchartStructure.js", "flowchart/flowchartStructure.js"],
   ["src/persistence/contractToRelationalRows.js", "persistence/contractToRelationalRows.js"],
@@ -29,8 +22,6 @@ const files = [
   ["src/persistence/relationalSchema.js", "persistence/relationalSchema.js"],
   ["src/persistence/relationalRowsToContract.js", "persistence/relationalRowsToContract.js"],
   ["src/persistence/validateRelationalCourse.js", "persistence/validateRelationalCourse.js"],
-  ["src/resources/registry/index.js", "resources/registry/index.js"],
-  ["src/resources/registry/authoring.js", "resources/registry/authoring.js"],
   ["src/resources/kernel/cardEnvelope.js", "resources/kernel/cardEnvelope.js"],
   ["src/resources/kernel/courseContract.js", "resources/kernel/courseContract.js"],
   ["src/resources/kernel/packageRegistry.js", "resources/kernel/packageRegistry.js"],

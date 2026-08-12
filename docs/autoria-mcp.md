@@ -3,7 +3,7 @@
 O gateway MCP é a superfície de autoria extensa do AraLearn. Ele permite ler,
 criar, complementar, reorganizar e publicar cursos sem entregar acesso direto
 ao banco ou ao Storage. O estado atual é um workspace composto no PostgreSQL;
-o documento v4 é recomposto para leitura, validação e publicação.
+`aralearn.library.v1` é recomposto para leitura, validação e publicação.
 
 ## Transporte e autenticação
 
@@ -104,10 +104,10 @@ lidos depois com `outline` ou `entity`; nada é inferido das mensagens antigas.
 
 ## Modelo de workspace
 
-Um workspace contém zero ou mais cursos v4 e pode reunir conteúdo de cursos
+Um workspace contém zero ou mais cursos AraLearn e pode reunir conteúdo de cursos
 existentes. PostgreSQL mantém uma linha corrente por projeto, curso, módulo,
 lição, tópico, microssequência e card. Os campos de pai e posição formam a
-árvore; o servidor recompõe o documento v4 quando necessário.
+árvore; o servidor recompõe `aralearn.library.v1` quando necessário.
 
 Cada gravação:
 
@@ -208,12 +208,12 @@ suas microssequências; as operações unitárias servem a ajustes posteriores.
 
 O registro canônico tem 30 ferramentas tanto no MCP quanto na Action. Oito
 nomes concentram famílias relacionadas com contratos fechados. Sete usam
-`operation`; a consulta de resources alterna entre lista e detalhe pela
-presença de `resource`:
+`operation`; a consulta de packages alterna entre lista e detalhe pela
+presença de `packageId`:
 
 | Ferramenta | Operações |
 | --- | --- |
-| `consultarRecursosDeCard` | sem `resource`, lista; com `resource`, consulta o contrato compacto; `detail: "full"` inclui `afterBlocks` |
+| `consultarPackagesDeCard` | sem `packageId`, lista manifests compactos; com `packageId` e `version`, consulta o contrato exato |
 | `consultarCatalogo` | `list_collections`, `list_collection_courses`, `search_courses` |
 | `editarCatalogo` | `create_collection`, `update_collection`, `move_course` |
 | `retirarDoCatalogo` | `retire_collection`, `remove_course` |
@@ -266,15 +266,14 @@ podem apontar para o mesmo reparo confirmado, mas uma operação nunca substitui
 a outra.
 
 Esse agrupamento não transforma o backend em uma mutação genérica. Cada valor
-de `operation` seleciona uma entrada fechada; em resources, a presença do campo
+de `operation` seleciona uma entrada fechada; em packages, a presença do campo
 seleciona a consulta detalhada. Retiradas e exclusões continuam separadas das
 edições comuns. Nomes individuais antigos não fazem parte da superfície
 pública.
 
-O detalhe padrão evita repetir no contexto do modelo os mesmos blocos e níveis
-recursivos. O contrato `full` permanece disponível para autoria de
-`afterBlocks` e diagnóstico; a persistência valida sempre o schema canônico
-integral, independentemente do nível transportado.
+O catálogo evita repetir no contexto do modelo todos os schemas. O contrato
+completo é entregue somente para o package e a versão escolhidos; a
+persistência valida o envelope e cada instância pelo mesmo registro canônico.
 
 No MCP, `destructiveHint` conserva a semântica normativa do protocolo para
 mutações não aditivas. Na Action, o metadado próprio de consequência marca
@@ -444,10 +443,10 @@ As outras famílias de sucesso também são explícitas:
   arquivamento e idempotência.
 
 O arquivo distribuído
-`authoring/schemas/workspace-envelope.schema.json` valida somente o envelope do
-documento v4 (`contract`, `version`, `kind`, `scope` e `courses`). Ele não é o
+`authoring/schemas/workspace-envelope.schema.json` valida somente o envelope de
+`aralearn.library.v1` (`contract`, `scope` e `courses`). Ele não é o
 `outputSchema` das ferramentas MCP nem substitui os contratos canônicos da
-árvore pedagógica e dos dezoito `resources`.
+árvore pedagógica e dos packages instalados.
 
 ## Trilhas e publicação editorial
 

@@ -40,9 +40,10 @@ export const tablePackage = Object.freeze({
   },
   render(data) {
     const caption = data.caption ? `<caption>${renderPackageInline(data.caption)}</caption>` : "";
-    const head = `<thead><tr>${data.columns.map((column) => `<th scope="col">${renderPackageInline(column)}</th>`).join("")}</tr></thead>`;
-    const body = `<tbody>${data.rows.map((row) => `<tr>${row.map((cell) => `<td>${renderPackageProse(cell)}</td>`).join("")}</tr>`).join("")}</tbody>`;
-    return `<div class="runtime-block runtime-table-block">${data.prompt ? renderPackageProse(data.prompt) : ""}<div class="runtime-table-scroll"><table class="runtime-table">${caption}${head}${body}</table></div></div>`;
+    const head = `<thead><tr>${data.columns.map((column) => `<th scope="col"><div class="runtime-table-cell-content">${renderPackageInline(column)}</div></th>`).join("")}</tr></thead>`;
+    const body = `<tbody>${data.rows.map((row) => `<tr>${row.map((cell) => `<td><div class="runtime-table-cell-content">${renderPackageProse(cell)}</div></td>`).join("")}</tr>`).join("")}</tbody>`;
+    const layout = ["compact", "wide"].includes(data.layout) ? ` is-layout-${data.layout}` : "";
+    return `<div class="runtime-block runtime-table-block">${data.prompt ? renderPackageProse(data.prompt) : ""}<div class="runtime-table-wrap${layout}"><div class="runtime-table-frame"><table class="runtime-table">${caption}${head}${body}</table></div></div></div>`;
   },
   accessibleText(data) { return [data.prompt, ...data.columns, ...data.rows.flat()].filter(Boolean).join(". "); },
   editableTargets(data) {

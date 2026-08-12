@@ -8,21 +8,21 @@ Escolha o recurso pela operação que o estudante precisa realizar:
 
 | Operação | Recursos mais prováveis |
 |---|---|
-| compreender uma definição ou distinção | `paragraph`, `choice`, `composite` |
+| compreender uma definição ou distinção | `paragraph`, `choice` ou combinação justificada de packages |
 | acompanhar execução, sintaxe ou comando | `code`, `flow`, `table` |
 | comparar casos ou valores | `table`, `matrix`, `choice` |
 | reconhecer hierarquia ou classificação | `tree`, `relation_map` |
 | analisar conexões, dependências ou rotas | `graph`, `relation_map`, `flow` |
 | distinguir limites, subsistemas e integrações | `system_map`, `graph`, `flow` |
 | raciocinar com coordenadas, vetores ou distância | `plane`, `matrix`, `formula` |
-| ler notação matemática | `formula`, `matrix`, `composite` |
-| ler ou balancear uma equação de reação | `reaction`, `formula`, `composite` |
+| ler notação matemática | `formula`, `matrix` ou combinação justificada de packages |
+| ler ou balancear uma equação de reação | `reaction`, `formula` ou combinação justificada de packages |
 
 O recurso visual permanece no próprio card de prática. Não descreva um diagrama ausente nem peça que a pessoa se lembre dos valores apresentados anteriormente.
 
 Registre o objetivo e a evidência em `microsequence.goal` e
 `microsequence.checks`, delimite o recorte em `microsequence.covers` e
-materialize a escolha diretamente em `card.resource`. A tabela acima orienta a
+materialize a escolha diretamente em instâncias de package nos slots do card. A tabela acima orienta a
 análise, mas não escolhe o recurso de modo automático e não autoriza metadados
 adicionais fora do contrato.
 

@@ -7,16 +7,18 @@ function fixture() {
   const card = {
     id: "card-a",
     position: 1,
-    resource: "composite",
-    kind: "theory",
-    exercise: "none",
     title: "Conjunção",
-    blocks: [{
+    role: "theory",
+    content: [{
       id: "paragraph-a",
-      kind: "paragraph",
-      value: "P e Q precisam ser verdadeiras."
+      package: "aralearn.resource.paragraph",
+      version: "1.0.0",
+      data: { text: "P e Q precisam ser verdadeiras." }
     }],
-    after: ""
+    response: null,
+    feedback: [],
+    topics: [],
+    sources: []
   };
   const microsequence = {
     id: "micro-a",
@@ -62,7 +64,11 @@ function editorSupport(canAuthorContent, extra = {}, canComment = false) {
       canAuthorContent,
       canComment,
       canEdit: canAuthorContent,
-      canDelete: canAuthorContent
+      canDelete: canAuthorContent,
+      canEditMetadata: canAuthorContent,
+      canEditCards: canAuthorContent,
+      canUseBottomUpAi: canAuthorContent,
+      canUseCardAi: canAuthorContent
     },
     entityModes: {},
     ...extra
@@ -137,12 +143,12 @@ test("edição de resource permanece inline e não abre o painel de observaçõe
         repairScope: "resources",
         wholeCardSelected: false,
         selectedCardKeys: [values.card.id],
-        resourceTargetIds: ["body:paragraph-a"]
+        resourceTargetIds: ["content:paragraph-a"]
       },
       cardResourceTargets: [{
-        targetId: "body:paragraph-a",
-        location: "body",
-        resourceType: "paragraph",
+        targetId: "content:paragraph-a",
+        location: "content",
+        resourceType: "aralearn.resource.paragraph",
         label: "Parágrafo 1"
       }]
     })
@@ -155,19 +161,19 @@ test("edição de resource permanece inline e não abre o painel de observaçõe
         repairScope: "resources",
         wholeCardSelected: false,
         selectedCardKeys: [values.card.id],
-        resourceTargetIds: ["body:paragraph-a"]
+        resourceTargetIds: ["content:paragraph-a"]
       },
       cardResourceTargets: [{
-        targetId: "body:paragraph-a",
-        location: "body",
-        resourceType: "paragraph",
+        targetId: "content:paragraph-a",
+        location: "content",
+        resourceType: "aralearn.resource.paragraph",
         label: "Parágrafo 1"
       }]
     })
   });
 
   assert.doesNotMatch(authorHtml, /data-action="open-resource-observation"/u);
-  assert.match(authorHtml, /data-resource-edit-target="body:paragraph-a"/u);
+  assert.match(authorHtml, /data-resource-edit-target="content:paragraph-a"/u);
   assert.doesNotMatch(readerHtml, /data-action="open-resource-observation"/u);
   assert.doesNotMatch(readerHtml, /data-manual-target-id/u);
 });

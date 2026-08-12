@@ -31,12 +31,18 @@ function fixture() {
             cards: [{
               id: "card-a",
               position: 1,
-              resource: "paragraph",
-              kind: "theory",
-              exercise: "none",
               title: "Card A",
-              text: "Texto.",
-              after: ""
+              role: "theory",
+              content: [{
+                id: "paragraph-a",
+                package: "aralearn.resource.paragraph",
+                version: "1.0.0",
+                data: { text: "Texto." }
+              }],
+              response: null,
+              feedback: [],
+              topics: [],
+              sources: []
             }]
           }, {
             id: "micro-b",
@@ -75,7 +81,11 @@ function support(overrides = {}) {
     coursePermissions: {
       canAuthorContent: true,
       canEdit: true,
-      canDelete: true
+      canDelete: true,
+      canEditMetadata: true,
+      canEditCards: true,
+      canUseBottomUpAi: true,
+      canUseCardAi: true
     },
     entityModes: { course: "view", module: "view", lesson: "view", microsequence: "view" },
     bottomUpAssistance: null,
@@ -178,7 +188,11 @@ test("catálogo sem autoridade vê apenas conteúdo, sem controles ou aviso", ()
       coursePermissions: {
         canAuthorContent: false,
         canEdit: false,
-        canDelete: false
+        canDelete: false,
+        canEditMetadata: false,
+        canEditCards: false,
+        canUseBottomUpAi: false,
+        canUseCardAi: false
       },
       entityModes: { lesson: "ai" }
     })

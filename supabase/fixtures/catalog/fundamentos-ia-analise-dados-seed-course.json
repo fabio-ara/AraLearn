@@ -328,16 +328,7 @@
                       "position": 3,
                       "title": "Tipagem em Python",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-a01-01-tipagem-dinamica-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual alternativa descreve melhor a tipagem de variáveis em Python?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-a01-01-tipagem-dinamica-response",
                         "package": "aralearn.response.choice",
@@ -565,16 +556,7 @@
                       "position": 7,
                       "title": "Erro por ordem de execução",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-a01-01-erro-ordem-variavel-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual script evita usar uma variável antes de criá-la?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-a01-01-erro-ordem-variavel-response",
                         "package": "aralearn.response.choice",
@@ -978,16 +960,7 @@
                       "position": 7,
                       "title": "Função de exibição",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-a01-02-print-nao-guarda-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual frase está correta sobre `print(media)`?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-a01-02-print-nao-guarda-response",
                         "package": "aralearn.response.choice",
@@ -1155,16 +1128,7 @@
                       "position": 3,
                       "title": "Identificar argumento",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-a01-03-identificar-argumento-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Na chamada `type(temperatura)`, qual parte é o argumento?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-a01-03-identificar-argumento-response",
                         "package": "aralearn.response.choice",
@@ -2249,16 +2213,7 @@
                       "position": 7,
                       "title": "Erro provável de sintaxe",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-a01-05-erro-dois-pontos-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual linha está pronta para abrir um bloco condicional em Python?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-a01-05-erro-dois-pontos-response",
                         "package": "aralearn.response.choice",
@@ -3068,16 +3023,7 @@
                       "position": 7,
                       "title": "Escolher estrutura de repetição",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-a01-07-while-ou-for-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual estrutura é mais direta para mostrar os números de `1` a `10` uma única vez?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-a01-07-while-ou-for-response",
                         "package": "aralearn.response.choice",
@@ -3939,16 +3885,7 @@
                       "position": 5,
                       "title": "Argumento em método",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-a02-00-argumento-append-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Na chamada `temperaturas.append(85)`, qual parte é o argumento passado para o método?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-a02-00-argumento-append-response",
                         "package": "aralearn.response.choice",
@@ -4002,16 +3939,7 @@
                       "position": 6,
                       "title": "Medir ou modificar",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-a02-00-efeito-retorno-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual alternativa diferencia corretamente `len(temperaturas)` e `temperaturas.append(85)`?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-a02-00-efeito-retorno-response",
                         "package": "aralearn.response.choice",
@@ -4492,16 +4420,7 @@
                       "position": 8,
                       "title": "Particularidade de `pop()` em lista",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-a02-01-pop-lista-particularidade-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Em uma lista, o que significa `temperaturas.pop(1)`?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-a02-01-pop-lista-particularidade-response",
                         "package": "aralearn.response.choice",
@@ -4716,16 +4635,7 @@
                       "position": 3,
                       "title": "Tupla não altera por índice",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-a02-02-tupla-imutavel-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual afirmação está correta sobre `status = (\"normal\", \"atenção\", \"crítico\")`?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-a02-02-tupla-imutavel-response",
                         "package": "aralearn.response.choice",
@@ -5030,16 +4940,7 @@
                       "position": 9,
                       "title": "Escolher a estrutura",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-a02-02-estrutura-uso-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual estrutura é mais adequada para guardar códigos únicos de máquinas, descartando repetidos?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-a02-02-estrutura-uso-response",
                         "package": "aralearn.response.choice",
@@ -5442,16 +5343,7 @@
                       "position": 8,
                       "title": "Dicionário não é lista",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-a02-03-erro-indice-dicionario-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual linha acessa corretamente a temperatura no dicionário `maquina`?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-a02-03-erro-indice-dicionario-response",
                         "package": "aralearn.response.choice",
@@ -5782,16 +5674,7 @@
                       "position": 6,
                       "title": "Guardar resultado de cálculo",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-a02-04-print-vs-calculo-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual linha guarda a média em uma variável para uso posterior?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-a02-04-print-vs-calculo-response",
                         "package": "aralearn.response.choice",
@@ -6545,16 +6428,7 @@
                       "position": 10,
                       "title": "Laço com pares",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-a02-05-linha-chave-valor-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual trecho percorre corretamente chave e valor de um dicionário?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-a02-05-linha-chave-valor-response",
                         "package": "aralearn.response.choice",
@@ -7252,16 +7126,7 @@
                       "position": 3,
                       "title": "Identificar parâmetro",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-a02-07-identificar-parametro-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "No código `def mostrar_status(status):`, qual parte é o parâmetro?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-a02-07-identificar-parametro-response",
                         "package": "aralearn.response.choice",
@@ -7435,16 +7300,7 @@
                       "position": 6,
                       "title": "Definir antes de chamar",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-a02-07-ordem-def-chamada-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual sequência respeita a ordem básica de definição e chamada?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-a02-07-ordem-def-chamada-response",
                         "package": "aralearn.response.choice",
@@ -7766,16 +7622,7 @@
                       "position": 5,
                       "title": "Escolher `print()` ou `return`",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-a02-08-qual-devolve-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual alternativa devolve valor para uso posterior?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-a02-08-qual-devolve-response",
                         "package": "aralearn.response.choice",
@@ -8951,16 +8798,7 @@
                       "position": 4,
                       "title": "Alias correto",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-a03-01-identificar-alias-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Em `import pandas as pd`, qual parte é o alias?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-a03-01-identificar-alias-response",
                         "package": "aralearn.response.choice",
@@ -9534,16 +9372,7 @@
                       "position": 3,
                       "title": "Previsão da média",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-a03-03-prever-media-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Para `temperaturas = np.array([68, 72, 75, 81, 90])`, qual é o resultado de `np.mean(temperaturas)`?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-a03-03-prever-media-response",
                         "package": "aralearn.response.choice",
@@ -9597,16 +9426,7 @@
                       "position": 4,
                       "title": "Máximo e mínimo",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-a03-03-max-min-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual alternativa interpreta corretamente `np.max(temperaturas)` e `np.min(temperaturas)`?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-a03-03-max-min-response",
                         "package": "aralearn.response.choice",
@@ -9916,16 +9736,7 @@
                       "position": 4,
                       "title": "Somar não é inserir",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-a03-04-erro-append-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual frase diferencia `temperaturas + 2` de inserir um item em uma lista?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-a03-04-erro-append-response",
                         "package": "aralearn.response.choice",
@@ -10195,16 +10006,7 @@
                       "position": 4,
                       "title": "Chaves como nomes de coluna",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-a03-05-chave-coluna-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "No dicionário `dados`, o que acontece com a chave `\"temperatura\"` ao criar `pd.DataFrame(dados)`?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-a03-05-chave-coluna-response",
                         "package": "aralearn.response.choice",
@@ -10435,16 +10237,7 @@
                       "position": 3,
                       "title": "Caminho como texto",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-a03-06-caminho-com-aspas-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Por que `\"dataset_aula3_numpy_pandas.csv\"` fica entre aspas em `pd.read_csv()`?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-a03-06-caminho-com-aspas-response",
                         "package": "aralearn.response.choice",
@@ -10837,16 +10630,7 @@
                       "position": 4,
                       "title": "Formato da base",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-a03-07-interpretar-shape-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual interpretação é correta para `df.shape = (40, 6)`?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-a03-07-interpretar-shape-response",
                         "package": "aralearn.response.choice",
@@ -11246,16 +11030,7 @@
                       "position": 5,
                       "title": "Uma coluna ou tabela recortada",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-a03-08-series-dataframe-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual alternativa diferencia corretamente `df[\"temperatura_c\"]` e `df[[\"setor\", \"temperatura_c\"]]`?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-a03-08-series-dataframe-response",
                         "package": "aralearn.response.choice",
@@ -11879,16 +11654,7 @@
                       "position": 4,
                       "title": "Comparação de igualdade",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-a03-10-igualdade-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual frase diferencia corretamente `=` e `==` em filtros?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-a03-10-igualdade-response",
                         "package": "aralearn.response.choice",
@@ -12697,16 +12463,7 @@
                       "position": 5,
                       "title": "Função de `describe()`",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-a03-12-describe-sentido-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual afirmação descreve melhor `df.describe()` nesta aula?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-a03-12-describe-sentido-response",
                         "package": "aralearn.response.choice",
@@ -13041,16 +12798,7 @@
                       "position": 5,
                       "title": "Interpretação do agrupamento",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-a03-13-interpretar-groupby-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual interpretação é coerente com a tabela de médias por setor?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-a03-13-interpretar-groupby-response",
                         "package": "aralearn.response.choice",
@@ -13973,16 +13721,7 @@
                       "position": 3,
                       "title": "Reconhecer linha, coluna e célula",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-a04-01-linha-coluna-celula-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Em uma tabela de inspeções, qual alternativa descreve corretamente `produto`?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-a04-01-linha-coluna-celula-response",
                         "package": "aralearn.response.choice",
@@ -14145,16 +13884,7 @@
                       "position": 6,
                       "title": "Registro de inspeção",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-a04-01-registro-inspecao-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "No dataset de referência, o que uma linha representa melhor?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-a04-01-registro-inspecao-response",
                         "package": "aralearn.response.choice",
@@ -14413,16 +14143,7 @@
                       "position": 5,
                       "title": "Argumento e retorno",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-a04-02-argumento-retorno-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Na linha `df = pd.read_excel(arquivo)`, qual afirmação está correta?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-a04-02-argumento-retorno-response",
                         "package": "aralearn.response.choice",
@@ -14788,16 +14509,7 @@
                       "position": 5,
                       "title": "Reconhecer colunas reais",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-a04-03-colunas-reais-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual conjunto contém somente colunas reais do dataset de referência?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-a04-03-colunas-reais-response",
                         "package": "aralearn.response.choice",
@@ -15122,16 +14834,7 @@
                       "position": 4,
                       "title": "Evitar média sem sentido",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-a04-04-media-identificador-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual coluna é numérica, mas deve ser tratada como identificador?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-a04-04-media-identificador-response",
                         "package": "aralearn.response.choice",
@@ -15234,16 +14937,7 @@
                       "position": 6,
                       "title": "Resultado textual binário",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-a04-04-aprovado-binario-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual interpretação é mais adequada para `aprovado`, com valores `SIM` e `NAO`?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-a04-04-aprovado-binario-response",
                         "package": "aralearn.response.choice",
@@ -15502,16 +15196,7 @@
                       "position": 5,
                       "title": "Atribuir o resultado convertido",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-a04-05-atribuicao-correta-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual alternativa converte a coluna e guarda o resultado de volta em `df`?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-a04-05-atribuicao-correta-response",
                         "package": "aralearn.response.choice",
@@ -15569,16 +15254,7 @@
                       "position": 6,
                       "title": "Função correta para datas",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-a04-05-pd-to-datetime-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual função do Pandas é adequada para converter uma coluna para tipo temporal?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-a04-05-pd-to-datetime-response",
                         "package": "aralearn.response.choice",
@@ -15960,16 +15636,7 @@
                       "position": 6,
                       "title": "Interpretar resultado de qualidade",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-a04-06-interpretar-ausentes-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Se `df.isna().sum()` aponta `31` em `observacao`, qual interpretação é mais adequada?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-a04-06-interpretar-ausentes-response",
                         "package": "aralearn.response.choice",
@@ -16417,16 +16084,7 @@
                       "position": 7,
                       "title": "Resultado da comparação",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-a04-07-mascara-retorno-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "O que a expressão `df[\"defeitos_encontrados\"] >= 10` produz?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-a04-07-mascara-retorno-response",
                         "package": "aralearn.response.choice",
@@ -16774,16 +16432,7 @@
                       "position": 6,
                       "title": "Escolher métrica adequada",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-a04-08-escolher-metrica-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual pergunta combina melhor com `df[\"defeitos_encontrados\"].mean()`?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-a04-08-escolher-metrica-response",
                         "package": "aralearn.response.choice",
@@ -16837,16 +16486,7 @@
                       "position": 7,
                       "title": "Retorno de `describe()`",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-a04-08-retorno-describe-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual afirmação descreve melhor `df[\"defeitos_encontrados\"].describe()`?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-a04-08-retorno-describe-response",
                         "package": "aralearn.response.choice",
@@ -17253,16 +16893,7 @@
                       "position": 7,
                       "title": "Interpretar ranking",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-a04-09-interpretar-ranking-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Se o ranking por `lote` mostra um lote com maior média de `defeitos_encontrados`, qual interpretação é mais cuidadosa?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-a04-09-interpretar-ranking-response",
                         "package": "aralearn.response.choice",
@@ -17613,16 +17244,7 @@
                       "position": 5,
                       "title": "Detectar não é corrigir",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-a04-10-detectar-vs-corrigir-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual afirmação respeita o escopo da Aula 4?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-a04-10-detectar-vs-corrigir-response",
                         "package": "aralearn.response.choice",
@@ -17725,16 +17347,7 @@
                       "position": 7,
                       "title": "Interpretação final",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-a04-10-interpretacao-final-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Depois de calcular média de defeitos por `produto`, qual decisão analítica é mais adequada?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-a04-10-interpretacao-final-response",
                         "package": "aralearn.response.choice",
@@ -18077,16 +17690,7 @@
                       "position": 3,
                       "title": "Abrir não é confiar",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-a05-01-03-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual frase representa melhor a etapa inicial de uma análise responsável?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-a05-01-03-response",
                         "package": "aralearn.response.choice",
@@ -18259,16 +17863,7 @@
                       "position": 6,
                       "title": "Tratamento como etapa analítica",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-a05-01-06-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Por que tratar dados não é apenas embelezar a base?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-a05-01-06-response",
                         "package": "aralearn.response.choice",
@@ -18483,16 +18078,7 @@
                       "position": 4,
                       "title": "O que a variável guarda",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-a05-02-04-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Depois de `df = pd.read_csv(\"dataset_aula5_intermediario.csv\")`, o que `df` guarda?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-a05-02-04-response",
                         "package": "aralearn.response.choice",
@@ -19024,16 +18610,7 @@
                       "position": 6,
                       "title": "Retorno de `isnull().sum()`",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-a05-03-06-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual descrição está correta para `df.isnull().sum()`?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-a05-03-06-response",
                         "package": "aralearn.response.choice",
@@ -19136,16 +18713,7 @@
                       "position": 8,
                       "title": "Erro comum com `True`",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-a05-03-08-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Em `df.isnull()`, o que significa `True`?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-a05-03-08-response",
                         "package": "aralearn.response.choice",
@@ -19405,16 +18973,7 @@
                       "position": 5,
                       "title": "Duplicata não é valor repetido isolado",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-a05-04-05-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual situação descreve melhor uma duplicata para `df.duplicated()`?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-a05-04-05-response",
                         "package": "aralearn.response.choice",
@@ -19682,16 +19241,7 @@
                       "position": 5,
                       "title": "Dois usos de `df`",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-a05-05-05-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "No comando `df[df.isnull().any(axis=1)]`, por que `df` aparece duas vezes?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-a05-05-05-response",
                         "package": "aralearn.response.choice",
@@ -20042,16 +19592,7 @@
                       "position": 6,
                       "title": "Erro de atribuição",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-a05-06-06-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual trecho mantém a sequência correta de tratamento?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-a05-06-06-response",
                         "package": "aralearn.response.choice",
@@ -20341,16 +19882,7 @@
                       "position": 6,
                       "title": "Lado direito e lado esquerdo",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-a05-07-06-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "No comando completo de conversão, qual parte salva o resultado de volta no `DataFrame`?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-a05-07-06-response",
                         "package": "aralearn.response.choice",
@@ -20709,16 +20241,7 @@
                       "position": 6,
                       "title": "Média não é para texto",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-a05-08-06-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual decisão evita um erro comum no preenchimento?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-a05-08-06-response",
                         "package": "aralearn.response.choice",
@@ -20978,16 +20501,7 @@
                       "position": 5,
                       "title": "`unique()` não conta frequência",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-a05-09-05-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual afirmação está correta sobre `df_tratado[\"status\"].unique()`?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-a05-09-05-response",
                         "package": "aralearn.response.choice",
@@ -21323,16 +20837,7 @@
                       "position": 6,
                       "title": "Salvar sem sobrescrever a base bruta",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-a05-10-06-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual prática é mais segura ao salvar a versão tratada?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-a05-10-06-response",
                         "package": "aralearn.response.choice",
@@ -21673,16 +21178,7 @@
                       "position": 7,
                       "title": "Pandas DataFrame versus Spark DataFrame",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-a05-11-07-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual comparação está correta?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-a05-11-07-response",
                         "package": "aralearn.response.choice",
@@ -22210,16 +21706,7 @@
                       "position": 2,
                       "title": "Escolher comando pelo problema",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-a05-13-02-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual comando é adequado para contar ausentes por coluna?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-a05-13-02-response",
                         "package": "aralearn.response.choice",
@@ -22273,16 +21760,7 @@
                       "position": 3,
                       "title": "Ordem de conversão e preenchimento",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-a05-13-03-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Para `tempo_ciclo`, qual ordem é mais coerente com o fluxo da aula?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-a05-13-03-response",
                         "package": "aralearn.response.choice",
@@ -22532,16 +22010,7 @@
                       "position": 7,
                       "title": "Transferir o padrão para outra coluna numérica",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-a05-13-07-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Se uma nova coluna numérica vier como texto com alguns valores inválidos, qual padrão é mais adequado antes de calcular média?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-a05-13-07-response",
                         "package": "aralearn.response.choice",
@@ -22981,16 +22450,7 @@
                       "position": 4,
                       "title": "Escolha pela pergunta",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "a06-00-c04-escolha-setor-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Para responder `Quantos registros há por setor?`, qual escolha é mais coerente?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "a06-00-c04-escolha-setor-response",
                         "package": "aralearn.response.choice",
@@ -23384,16 +22844,7 @@
                       "position": 6,
                       "title": "Atributo ou método",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "a06-01-c06-shape-atributo-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual alternativa explica corretamente `df.shape`?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "a06-01-c06-shape-atributo-response",
                         "package": "aralearn.response.choice",
@@ -23646,16 +23097,7 @@
                       "position": 3,
                       "title": "Escolha para distribuição numérica",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "a06-02-c03-escolha-histograma-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "A pergunta é `Como os valores de tempo de ciclo se distribuem?`. Qual gráfico responde melhor?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "a06-02-c03-escolha-histograma-response",
                         "package": "aralearn.response.choice",
@@ -23709,16 +23151,7 @@
                       "position": 4,
                       "title": "Quando usar linha",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "a06-02-c04-linha-cautela-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual afirmação é responsável sobre um gráfico de linha com `id_registro` no eixo `x`?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "a06-02-c04-linha-cautela-response",
                         "package": "aralearn.response.choice",
@@ -24011,16 +23444,7 @@
                       "position": 5,
                       "title": "Erro comum em barras",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "a06-03-c05-erro-index-values-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual erro acontece ao inverter `contagem_setor.index` e `contagem_setor.values` em `plt.bar()`?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "a06-03-c05-erro-index-values-response",
                         "package": "aralearn.response.choice",
@@ -24202,16 +23626,7 @@
                       "position": 3,
                       "title": "Interpretação cautelosa",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "a06-04-c03-interpretacao-linha-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual interpretação é mais responsável para esse gráfico?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "a06-04-c03-interpretacao-linha-response",
                         "package": "aralearn.response.choice",
@@ -24517,16 +23932,7 @@
                       "position": 4,
                       "title": "Frequência no histograma",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "a06-05-c04-interpretar-hist-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Em `plt.hist(df[\"temperatura_c\"], bins=10)`, o que o eixo `y` representa?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "a06-05-c04-interpretar-hist-response",
                         "package": "aralearn.response.choice",
@@ -24709,16 +24115,7 @@
                       "position": 3,
                       "title": "Leitura dos eixos",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "a06-06-c03-eixos-scatter-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "No código `plt.scatter(df[\"temperatura_c\"], df[\"producao_dia\"])`, qual leitura está correta?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "a06-06-c03-eixos-scatter-response",
                         "package": "aralearn.response.choice",
@@ -24772,16 +24169,7 @@
                       "position": 4,
                       "title": "Conclusão responsável",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "a06-06-c04-causalidade-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual frase evita uma conclusão causal exagerada?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "a06-06-c04-causalidade-response",
                         "package": "aralearn.response.choice",
@@ -25020,16 +24408,7 @@
                       "position": 4,
                       "title": "Papel de `data` e `x`",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "a06-07-c04-data-x-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Em `sns.countplot(data=df, x=\"setor\")`, o que `x=\"setor\"` indica?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "a06-07-c04-data-x-response",
                         "package": "aralearn.response.choice",
@@ -25268,16 +24647,7 @@
                       "position": 4,
                       "title": "Interpretação do boxplot",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "a06-08-c04-erro-boxplot-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual afirmação sobre o boxplot é correta?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "a06-08-c04-erro-boxplot-response",
                         "package": "aralearn.response.choice",
@@ -25509,16 +24879,7 @@
                       "position": 4,
                       "title": "Nome de coluna como string",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "a06-09-c04-erro-aspas-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Por que `x=\"tempo_ciclo_s\"` usa aspas em `sns.histplot(data=df, x=\"tempo_ciclo_s\")`?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "a06-09-c04-erro-aspas-response",
                         "package": "aralearn.response.choice",
@@ -25756,16 +25117,7 @@
                       "position": 4,
                       "title": "Função de `hue`",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "a06-10-c04-hue-nao-e-eixo-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual afirmação descreve corretamente `hue=\"falha\"`?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "a06-10-c04-hue-nao-e-eixo-response",
                         "package": "aralearn.response.choice",
@@ -26173,16 +25525,7 @@
                       "position": 6,
                       "title": "Escolha adequada de gráfico",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "a06-11-c06-escolha-final-pratica-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Para comparar a distribuição de `tempo_ciclo_s` entre `Usinagem`, `Montagem` e `Inspeção`, qual gráfico é mais adequado?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "a06-11-c06-escolha-final-pratica-response",
                         "package": "aralearn.response.choice",
@@ -26323,16 +25666,7 @@
                       "position": 2,
                       "title": "Interpretação válida",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "a06-12-c02-interpretacao-valida-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Após um `sns.scatterplot(data=df, x=\"producao_dia\", y=\"consumo_kwh\", hue=\"falha\")`, qual frase é mais adequada?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "a06-12-c02-interpretacao-valida-response",
                         "package": "aralearn.response.choice",
@@ -26386,16 +25720,7 @@
                       "position": 3,
                       "title": "Três gráficos para a atividade final",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "a06-12-c03-escolher-tres-graficos-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual conjunto cobre contagem, distribuição e relação entre variáveis usando colunas reais?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "a06-12-c03-escolher-tres-graficos-response",
                         "package": "aralearn.response.choice",
@@ -26498,16 +25823,7 @@
                       "position": 5,
                       "title": "Checklist de interpretação",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "a06-12-c05-eixos-e-limite-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual sequência representa uma interpretação responsável?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "a06-12-c05-eixos-e-limite-response",
                         "package": "aralearn.response.choice",
@@ -27048,16 +26364,7 @@
                       "position": 5,
                       "title": "Tipo de variável",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-a07-01-05-tipo-variavel-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual classificação está correta para as colunas da base?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-a07-01-05-tipo-variavel-response",
                         "package": "aralearn.response.choice",
@@ -27166,16 +26473,7 @@
                       "position": 7,
                       "title": "Escolher a coluna antes da estatística",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-a07-01-07-coluna-para-falha-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Para responder “qual proporção de registros teve falha?”, qual coluna do CSV deve ser usada?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-a07-01-07-coluna-para-falha-response",
                         "package": "aralearn.response.choice",
@@ -27390,16 +26688,7 @@
                       "position": 4,
                       "title": "Escolher a métrica pelo objetivo",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-a07-02-04-escolha-metrica-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Para saber se a `temperatura_c` varia muito entre registros, qual família de medida é mais adequada?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-a07-02-04-escolha-metrica-response",
                         "package": "aralearn.response.choice",
@@ -27508,16 +26797,7 @@
                       "position": 6,
                       "title": "A pergunta define a métrica",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-a07-02-06-pergunta-define-metrica-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Um relatório quer saber o valor central de `tempo_ciclo_s` depois de ordenar os `80` registros. Qual medida responde melhor?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-a07-02-06-pergunta-define-metrica-response",
                         "package": "aralearn.response.choice",
@@ -27799,16 +27079,7 @@
                       "position": 5,
                       "title": "Interpretação da mediana",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-a07-03-05-interpretar-mediana-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "O que a mediana representa em uma coluna numérica?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-a07-03-05-interpretar-mediana-response",
                         "package": "aralearn.response.choice",
@@ -27862,16 +27133,7 @@
                       "position": 6,
                       "title": "Interpretar centro da temperatura",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-a07-03-06-interpretar-centro-temperatura-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "No CSV, a média de `temperatura_c` é aproximadamente `71.63` e a mediana é `71.90`. Qual interpretação é mais segura?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-a07-03-06-interpretar-centro-temperatura-response",
                         "package": "aralearn.response.choice",
@@ -27925,16 +27187,7 @@
                       "position": 7,
                       "title": "Evitar confusão entre média e mediana",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-a07-03-07-erro-mediana-metade-media-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual frase corrige o erro de dizer que “mediana é metade da média”?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-a07-03-07-erro-mediana-metade-media-response",
                         "package": "aralearn.response.choice",
@@ -28094,16 +27347,7 @@
                       "position": 3,
                       "title": "Interpretar `falha = 0`",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-a07-04-03-falha-zero-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Se a moda da coluna `falha` é `0`, qual interpretação é adequada?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-a07-04-03-falha-zero-response",
                         "package": "aralearn.response.choice",
@@ -28278,16 +27522,7 @@
                       "position": 6,
                       "title": "Moda de `setor` em contexto",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-a07-04-06-moda-setor-contexto-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Se `df[\"setor\"].mode()[0]` retorna `Usinagem`, o que esse resultado revela sobre o CSV?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-a07-04-06-moda-setor-contexto-response",
                         "package": "aralearn.response.choice",
@@ -28494,16 +27729,7 @@
                       "position": 3,
                       "title": "Interpretar amplitude",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-a07-05-03-interpretacao-amplitude-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual afirmação interpreta corretamente a amplitude de `temperatura_c`?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-a07-05-03-interpretacao-amplitude-response",
                         "package": "aralearn.response.choice",
@@ -28620,16 +27846,7 @@
                       "position": 5,
                       "title": "Amplitude de produção em contexto",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-a07-05-05-amplitude-producao-contexto-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "A amplitude de `producao_dia` é `79`. Qual leitura é adequada?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-a07-05-05-amplitude-producao-contexto-response",
                         "package": "aralearn.response.choice",
@@ -28868,16 +28085,7 @@
                       "position": 4,
                       "title": "Ler dispersão",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-a07-06-04-interpretar-desvio-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Entre duas colunas na mesma unidade, o que indica maior desvio padrão?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-a07-06-04-interpretar-desvio-response",
                         "package": "aralearn.response.choice",
@@ -28931,16 +28139,7 @@
                       "position": 5,
                       "title": "Unidade de variância e desvio",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-a07-06-05-unidades-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual comparação está correta?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-a07-06-05-unidades-response",
                         "package": "aralearn.response.choice",
@@ -28994,16 +28193,7 @@
                       "position": 6,
                       "title": "Desvio padrão não é erro de medição",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-a07-06-06-desvio-nao-e-erro-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "O desvio padrão de `producao_dia` é aproximadamente `25.28`. Qual interpretação está correta?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-a07-06-06-desvio-nao-e-erro-response",
                         "package": "aralearn.response.choice",
@@ -29057,16 +28247,7 @@
                       "position": 7,
                       "title": "Escolher medida na unidade original",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-a07-06-07-escolher-medida-na-unidade-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Para comunicar a variação típica de `tempo_ciclo_s` ainda em segundos, qual medida é mais adequada?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-a07-06-07-escolher-medida-na-unidade-response",
                         "package": "aralearn.response.choice",
@@ -29284,16 +28465,7 @@
                       "position": 4,
                       "title": "Q2 e mediana",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-a07-07-04-q2-mediana-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual interpretação de `df['temperatura_c'].quantile(0.50)` está correta?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-a07-07-04-q2-mediana-response",
                         "package": "aralearn.response.choice",
@@ -29479,16 +28651,7 @@
                       "position": 7,
                       "title": "Interpretar percentil 90",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-a07-07-07-interpretar-p90-producao-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "O percentil 90 de `producao_dia` é aproximadamente `158.10`. Qual leitura é adequada?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-a07-07-07-interpretar-p90-producao-response",
                         "package": "aralearn.response.choice",
@@ -29749,16 +28912,7 @@
                       "position": 4,
                       "title": "Decimal e porcentagem",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-a07-08-04-decimal-porcentagem-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Se a proporção é `0.2375`, qual porcentagem corresponde a esse valor?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-a07-08-04-decimal-porcentagem-response",
                         "package": "aralearn.response.choice",
@@ -29944,16 +29098,7 @@
                       "position": 7,
                       "title": "Por que a média de `falha` funciona",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-a07-08-07-media-binaria-falha-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Por que `df[\"falha\"].mean()` calcula a probabilidade observada de falha?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-a07-08-07-media-binaria-falha-response",
                         "package": "aralearn.response.choice",
@@ -30126,16 +29271,7 @@
                       "position": 3,
                       "title": "Ler o histograma",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-a07-09-03-leitura-visual-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual interpretação é adequada para um histograma de `temperatura_c`?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-a07-09-03-leitura-visual-response",
                         "package": "aralearn.response.choice",
@@ -30268,16 +29404,7 @@
                       "position": 5,
                       "title": "Histograma não é linha do tempo",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-a07-09-05-histograma-nao-temporal-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual interpretação evita confundir histograma com gráfico temporal?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-a07-09-05-histograma-nao-temporal-response",
                         "package": "aralearn.response.choice",
@@ -30673,16 +29800,7 @@
                       "position": 5,
                       "title": "Conferir proporção",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-a07-10-05-probabilidade-exercicio-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "A expressão `(df['temperatura_c'] > 74).mean()` retorna `0.3125`. Qual leitura está correta?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-a07-10-05-probabilidade-exercicio-response",
                         "package": "aralearn.response.choice",
@@ -30736,16 +29854,7 @@
                       "position": 6,
                       "title": "Cenário: variação do tempo de ciclo",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-a07-10-06-cenario-medida-tempo-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Um supervisor quer resumir a variação típica de `tempo_ciclo_s` em segundos. Qual comando responde à pergunta?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-a07-10-06-cenario-medida-tempo-response",
                         "package": "aralearn.response.choice",
@@ -31070,16 +30179,7 @@
                       "position": 4,
                       "title": "Diagnosticar erro provável",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-a07-11-04-diagnostico-erros-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Um aluno escreveu `df['temperatura_c'].quantile(90)`. Qual correção preserva a intenção de percentil 90?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-a07-11-04-diagnostico-erros-response",
                         "package": "aralearn.response.choice",
@@ -31260,16 +30360,7 @@
                       "position": 3,
                       "title": "Média e mediana próximas",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-a07-12-03-media-mediana-proximas-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Se a média de `temperatura_c` fica perto de `71.63` e a mediana perto de `71.90`, qual interpretação é mais adequada?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-a07-12-03-media-mediana-proximas-response",
                         "package": "aralearn.response.choice",
@@ -31323,16 +30414,7 @@
                       "position": 4,
                       "title": "Evitar conclusão exagerada",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-a07-12-04-limite-conclusao-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual frase respeita o limite da estatística descritiva nesta aula?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-a07-12-04-limite-conclusao-response",
                         "package": "aralearn.response.choice",
@@ -31504,16 +30586,7 @@
                       "position": 2,
                       "title": "Escolher o pacote de métricas",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-a07-13-02-escolher-pacote-metricas-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual pacote de métricas atende ao cenário sem trocar coluna nem tipo de medida?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-a07-13-02-escolher-pacote-metricas-response",
                         "package": "aralearn.response.choice",
@@ -31681,16 +30754,7 @@
                       "position": 5,
                       "title": "Interpretação segura do desafio",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "card-a07-13-05-interpretacao-segura-desafio-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Após calcular média e mediana de temperatura próximas, desvio de produção em torno de `25.28` e probabilidade de falha de `22.50%`, qual conclusão é adequada?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "card-a07-13-05-interpretacao-segura-desafio-response",
                         "package": "aralearn.response.choice",
@@ -32059,16 +31123,7 @@
                       "position": 3,
                       "title": "Pergunta adequada ao bloco",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "a08-01-c03-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual pergunta combina melhor com o início da EDA?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "a08-01-c03-response",
                         "package": "aralearn.response.choice",
@@ -32812,16 +31867,7 @@
                       "position": 6,
                       "title": "Dimensão conferida",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "a08-03-c06-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Após `print(df.shape)`, o resultado conferido é `(120, 9)`. O que isso significa?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "a08-03-c06-response",
                         "package": "aralearn.response.choice",
@@ -33004,16 +32050,7 @@
                       "position": 3,
                       "title": "Mediana em `describe()`",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "a08-04-c03-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "No resumo de `temperatura_c`, `50%` está próximo de `74.06`. Qual leitura é adequada?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "a08-04-c03-response",
                         "package": "aralearn.response.choice",
@@ -33062,16 +32099,7 @@
                       "position": 4,
                       "title": "Extremos e cautela",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "a08-04-c04-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "`consumo_kwh` tem mínimo próximo de `69.07` e máximo `205.0`. Qual frase é mais responsável?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "a08-04-c04-response",
                         "package": "aralearn.response.choice",
@@ -33314,16 +32342,7 @@
                       "position": 3,
                       "title": "`0` em `falha` não é ausente",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "a08-05-c03-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "A coluna `falha` usa `0` e `1`. O que significa `0` nesse contexto?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "a08-05-c03-response",
                         "package": "aralearn.response.choice",
@@ -33436,16 +32455,7 @@
                       "position": 5,
                       "title": "Evitar tratamento desnecessário",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "a08-05-c05-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Depois de confirmar `0` nulos em todas as colunas, qual ação combina com a EDA da aula?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "a08-05-c05-response",
                         "package": "aralearn.response.choice",
@@ -33729,16 +32739,7 @@
                       "position": 5,
                       "title": "Taxa aproximada de falha",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "a08-06-c05-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "`falha` tem 23 registros com `1` em 120 linhas. Qual taxa aproximada corresponde a essa contagem?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "a08-06-c05-response",
                         "package": "aralearn.response.choice",
@@ -33787,16 +32788,7 @@
                       "position": 6,
                       "title": "Erro provável em `falha`",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "a08-06-c06-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual comparação deve ser evitada neste dataset?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "a08-06-c06-response",
                         "package": "aralearn.response.choice",
@@ -34064,16 +33056,7 @@
                       "position": 5,
                       "title": "Leitura do eixo",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "a08-07-c05-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Em um histograma de `consumo_kwh`, o que a altura de uma barra indica?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "a08-07-c05-response",
                         "package": "aralearn.response.choice",
@@ -34354,16 +33337,7 @@
                       "position": 4,
                       "title": "Associação positiva",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "a08-08-c04-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "A correlação entre `consumo_kwh` e `falha` é aproximadamente `0.342`. Qual leitura é adequada?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "a08-08-c04-response",
                         "package": "aralearn.response.choice",
@@ -34412,16 +33386,7 @@
                       "position": 5,
                       "title": "Correlação negativa fraca",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "a08-08-c05-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "`temperatura_c` e `consumo_kwh` têm correlação aproximada de `-0.146`. O que isso sugere?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "a08-08-c05-response",
                         "package": "aralearn.response.choice",
@@ -34699,16 +33664,7 @@
                       "position": 4,
                       "title": "Leitura de heatmap",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "a08-09-c04-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Ao ler um heatmap de correlação, qual procedimento é adequado?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "a08-09-c04-response",
                         "package": "aralearn.response.choice",
@@ -35061,16 +34017,7 @@
                       "position": 5,
                       "title": "Interpretação com sobreposição",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "a08-10-c05-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Se pontos com `falha=0` e `falha=1` aparecem misturados na dispersão, qual interpretação é responsável?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "a08-10-c05-response",
                         "package": "aralearn.response.choice",
@@ -35119,16 +34066,7 @@
                       "position": 6,
                       "title": "O que `hue` faz",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "a08-10-c06-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "No `sns.scatterplot()`, qual é a função de `hue=\"falha\"`?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "a08-10-c06-response",
                         "package": "aralearn.response.choice",
@@ -35384,16 +34322,7 @@
                       "position": 5,
                       "title": "Leitura de ponto extremo",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "a08-11-c05-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Em um boxplot, um ponto aparece fora dos bigodes. Qual frase é mais adequada?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "a08-11-c05-response",
                         "package": "aralearn.response.choice",
@@ -35442,16 +34371,7 @@
                       "position": 6,
                       "title": "Boxplot não é histograma",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "a08-11-c06-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual diferença está correta?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "a08-11-c06-response",
                         "package": "aralearn.response.choice",
@@ -35955,16 +34875,7 @@
                       "position": 8,
                       "title": "Variável adequada para IQR",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "a08-12-c08-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual escolha é mais adequada para praticar IQR nesta aula?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "a08-12-c08-response",
                         "package": "aralearn.response.choice",
@@ -36269,16 +35180,7 @@
                       "position": 6,
                       "title": "Contagem não é taxa",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "a08-13-c06-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual comando calcula taxa de falha por `setor`?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "a08-13-c06-response",
                         "package": "aralearn.response.choice",
@@ -36327,16 +35229,7 @@
                       "position": 7,
                       "title": "Interpretação por turno",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "a08-13-c07-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "A taxa de falha por `turno` é aproximadamente `A`: `25.8%`, `B`: `15.6%`, `C`: `18.2%`. Qual frase é responsável?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "a08-13-c07-response",
                         "package": "aralearn.response.choice",
@@ -36523,16 +35416,7 @@
                       "position": 3,
                       "title": "Comparação visual entre grupos",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "a08-14-c03-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "No boxplot por `setor`, o que pode ser comparado de forma apropriada?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "a08-14-c03-response",
                         "package": "aralearn.response.choice",
@@ -36627,16 +35511,7 @@
                       "position": 5,
                       "title": "Limite da conclusão por grupo",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "a08-14-c05-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual frase mantém cautela após observar diferenças entre setores?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "a08-14-c05-response",
                         "package": "aralearn.response.choice",
@@ -36925,16 +35800,7 @@
                       "position": 4,
                       "title": "Escolha de três gráficos",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "a08-15-c04-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual conjunto de três gráficos cobre distribuição, relação e grupo?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "a08-15-c04-response",
                         "package": "aralearn.response.choice",
@@ -37122,16 +35988,7 @@
                       "position": 7,
                       "title": "Erro a evitar no relatório",
                       "role": "practice",
-                      "content": [
-                        {
-                          "id": "a08-15-c07-context",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Qual item representa um erro provável no projeto final?"
-                          }
-                        }
-                      ],
+                      "content": [],
                       "response": {
                         "id": "a08-15-c07-response",
                         "package": "aralearn.response.choice",

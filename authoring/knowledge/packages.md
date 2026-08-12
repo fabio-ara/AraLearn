@@ -29,9 +29,13 @@ Um card é um envelope fechado:
 }
 ```
 
-`role` aceita `theory` ou `practice`. Teoria tem `response: null`; prática usa
-exatamente uma instância de package no slot `response`. `content` e `feedback`
-podem combinar packages compatíveis. Cada instância declara id, package, versão
+`role` aceita `theory` ou `practice`. Teoria tem `response: null` e ao menos uma
+instância em `content`; prática usa exatamente uma instância de package no slot
+`response`. Uma prática exclusivamente discriminativa pode ter `content: []`:
+a pergunta pertence somente a `aralearn.response.choice` e nunca deve ser
+copiada para um `paragraph`. Quando há cenário, representação ou dados além da
+pergunta, `content` os materializa sem repetir o enunciado. `feedback` pode
+combinar packages compatíveis. Cada instância declara id, package, versão
 semântica e `data` validado pelo contrato daquele package.
 
 Não existe contrato monolítico de resources. Primeiro planeje a operação

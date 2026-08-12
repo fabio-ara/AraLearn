@@ -11,7 +11,8 @@ conexão.
 ## Conteúdo e organização
 
 A árvore didática é formada por curso, módulo, lição, microssequência e card. O
-JSON v4 validado é a forma canônica de intercâmbio e publicação. Uma revisão
+`aralearn.library.v1`, com cards compostos por packages versionados, é a forma
+canônica de intercâmbio e publicação. Uma revisão
 publicada possui hash SHA-256 e não é alterada depois de gravada.
 
 Há duas representações remotas com finalidades diferentes:
@@ -205,10 +206,10 @@ Também não existe pacote SharePoint/SPFx. O aplicativo protege a navegação c
 
 | Área | Responsabilidade |
 | --- | --- |
-| `src/domain/` | Entidades e regras do domínio. |
-| `src/contract/` | Contrato JSON v4 e validação. |
+| `src/domain/` e `src/resources/kernel/` | Entidades, envelope da biblioteca, kernel de cards e validação. |
+| `src/resources/packages/` | Manifests, contratos, schemas e renderers independentes. |
 | `src/model/` | Dados preparados para apresentação. |
-| `src/render/` | Renderização dos cards. |
+| `src/render/` | Composição única dos packages no card. |
 | `src/ui/` | Telas de acesso, biblioteca, estudo e autoria pessoal. |
 | `src/persistence/` | Normalização, montagem e transações locais. |
 | `src/supabase/` | Configuração pública, autenticação e catálogo. |

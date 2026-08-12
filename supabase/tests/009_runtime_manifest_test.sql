@@ -1,6 +1,6 @@
 begin;
 
-select plan(49);
+select plan(50);
 
 select has_function(
   'public',
@@ -77,8 +77,24 @@ select hasnt_function(
 
 select is(
   public.get_aralearn_runtime_manifest() ->> 'schemaRevision',
-  '20260812132000',
+  '20260812164000',
   'a revisão corresponde à migration mais recente exigida'
+);
+
+select is(
+  (
+    select count(*)
+    from pg_proc procedure_value
+    join pg_namespace namespace_value
+      on namespace_value.oid = procedure_value.pronamespace
+    where namespace_value.nspname = 'public'
+      and (
+        procedure_value.proname like 'get_aralearn_runtime_manifest_before_%'
+        or procedure_value.proname like 'get_aralearn_runtime_manifest_without_%'
+      )
+  ),
+  0::bigint,
+  'o manifesto corrente não conserva wrappers de revisões anteriores'
 );
 
 select is(
@@ -231,8 +247,9 @@ select function_privs_are(
 );
 
 select ok(
-  (public.get_aralearn_runtime_manifest() -> 'features') ? 'workspace-cursor-pagination',
-  'o manifesto anuncia paginação completa dos workspaces'
+  (public.get_aralearn_runtime_manifest() -> 'features')
+    ? 'workspace-event-cursor-pagination',
+  'o manifesto anuncia paginação dos eventos de workspace'
 );
 
 select ok(

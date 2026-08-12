@@ -1,6 +1,6 @@
 ---
 name: aralearn-authoring
-description: Constrói, reorganiza, revisa e publica cursos AraLearn v4 por MCP.
+description: Constrói, reorganiza, revisa e publica cursos AraLearn por packages via MCP.
 ---
 
 # AraLearn Authoring

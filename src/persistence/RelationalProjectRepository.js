@@ -188,7 +188,7 @@ function validationError(result) {
   const details = (result.errors || [])
     .map((entry) => `${entry.path}: ${entry.message}`)
     .join("; ");
-  const error = new Error(`Documento AraLearn v4 inválido${details ? `: ${details}` : "."}`);
+  const error = new Error(`Biblioteca AraLearn inválida${details ? `: ${details}` : "."}`);
   error.details = result.errors || [];
   return error;
 }

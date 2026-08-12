@@ -48,10 +48,11 @@ Também estão disponíveis:
   calculados a partir das observações correntes, sem histórico ou telemetria;
 - sistema visual único em claro e escuro, sem paleta paralela, glifos de
   interface ou CSS do editor e do painel de submissão já substituídos;
-- dezoito recursos de card: `paragraph`, `choice`, `composite`, `code`,
-  `table`, `flow`, `tree`, `graph`, `relation_map`, `matrix`, `plane`,
-  `formula`, `chart`, `sequence`, `annotated_text`, `linguistic_example`,
-  `system_map` e `reaction`.
+- dezenove packages independentes: dezesseis representações, entre elas
+  `paragraph`, `code`, `table`, `flow`, `tree`, `graph`, `relation_map`,
+  `matrix`, `plane`, `formula`, `chart`, `sequence`, `annotated_text`,
+  `linguistic_example`, `system_map` e `reaction`, e três respostas:
+  `choice`, `gap` e `ordering`.
 
 ## Trabalho de estabilização
 

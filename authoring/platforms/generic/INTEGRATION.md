@@ -7,7 +7,7 @@ da conta e devolve `structuredContent`.
 ## Estado e ciclo mínimo
 
 O PostgreSQL conserva uma entidade corrente por projeto, curso, módulo, lição,
-tópico, microssequência e card. O servidor compõe o documento v4 quando
+tópico, microssequência e card. O servidor compõe `aralearn.library.v1` quando
 precisa ler, validar ou publicar e grava somente as partes modificadas por cada
 comando. O Storage recebe o artefato canônico imutável na publicação.
 

@@ -337,21 +337,16 @@ function findingIds(continuity) {
 
 function cardResourceTargetIds(card) {
   const targets = [];
-  if (card?.resource === "composite") {
-    for (const block of Array.isArray(card.blocks) ? card.blocks : []) {
-      const blockId = typeof block?.id === "string" ? block.id.trim() : "";
-      if (blockId) targets.push(`body:${blockId}`);
-    }
-  } else if (typeof card?.resource === "string" && card.resource.trim()) {
-    targets.push("main");
+  const append = (instance, slot) => {
+    const instanceId = typeof instance?.id === "string" ? instance.id.trim() : "";
+    if (instanceId) targets.push(`${slot}:${instanceId}`);
+  };
+  for (const instance of Array.isArray(card?.content) ? card.content : []) {
+    append(instance, "content");
   }
-  if (card?.resource !== "choice" && card?.exercise === "choice") {
-    targets.push("response");
-  }
-  targets.push("after:text");
-  for (const block of Array.isArray(card?.afterBlocks) ? card.afterBlocks : []) {
-    const blockId = typeof block?.id === "string" ? block.id.trim() : "";
-    if (blockId) targets.push(`after:${blockId}`);
+  if (card?.response) append(card.response, "response");
+  for (const instance of Array.isArray(card?.feedback) ? card.feedback : []) {
+    append(instance, "feedback");
   }
   return new Set(targets);
 }

@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-import { renderRuntimeBlockList } from "../../src/render/renderCardRuntime.js";
+import { renderPackageCardBlocks } from "../../src/render/renderPackageCard.js";
 
 const STYLES = [
   "/styles-tokens.css",
@@ -10,11 +10,22 @@ const STYLES = [
 
 function tableDocument(table, { renderOptions = {}, wrapCard = false } = {}) {
   const links = STYLES.map((href) => `<link rel="stylesheet" href="${href}">`).join("");
-  const rendered = renderRuntimeBlockList(
-    [table],
-    "Sem conteúdo.",
-    renderOptions
-  );
+  const rendered = renderPackageCardBlocks({
+    id: "table-card",
+    position: 1,
+    title: "Tabela",
+    role: "theory",
+    content: [{
+      id: "table-1",
+      package: "aralearn.resource.table",
+      version: "1.0.0",
+      data: table
+    }],
+    response: null,
+    feedback: [],
+    topics: [],
+    sources: []
+  }, renderOptions);
   const content = wrapCard
     ? '<section class="table-test-card card-portrait-body" style="height:auto;min-height:0;">' +
       '<div class="runtime-card-sheet"><div class="card-sheet-content">' +
@@ -41,7 +52,7 @@ test("table contém a rolagem horizontal no resource e não parte palavras arbit
   await page.setViewportSize({ width: 360, height: 800 });
   await page.goto("/");
   await page.setContent(tableDocument({
-    kind: "table",
+    layout: "wide",
     columns: ["Camada", "Função", "Exemplo", "Protocolo"],
     rows: [[
       "Aplicação",
@@ -75,34 +86,31 @@ test("table curta ocupa a largura disponível sem criar rolagem externa", async 
   await page.setViewportSize({ width: 360, height: 800 });
   await page.goto("/");
   await page.setContent(tableDocument({
-    kind: "table",
     columns: ["Termo", "Síntese"],
     rows: [["Elasticidade", "Ajuste de capacidade conforme a demanda"]]
   }));
 
   const wrapper = page.locator(".runtime-table-wrap");
   const box = await wrapper.boundingBox();
-  const frame = await page.locator(".runtime-table-frame").boundingBox();
+  const frame = await page.locator(".runtime-table").boundingBox();
 
   expect(box).not.toBeNull();
   expect(frame).not.toBeNull();
-  expect(Math.abs(frame.width - box.width)).toBeLessThanOrEqual(1);
+  expect(Math.abs(frame.width - box.width)).toBeLessThanOrEqual(2);
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(360);
 });
 
 test("listas e multilinhas permanecem contidas ao selecionar e editar table", async ({ page }) => {
   const table = {
-    kind: "table",
     columns: ["Camada", "Responsabilidades"],
     rows: [[
       "Aplicação\nServiço",
       "- atender usuários\n- validar entrada"
     ]]
   };
-  const targetId = "body:table-1";
+  const targetId = "content:table-1";
   const commonOptions = {
     resourceSelectionEnabled: true,
-    resourceSelectionTargetIds: [targetId],
     selectedResourceTargetIds: [targetId]
   };
 

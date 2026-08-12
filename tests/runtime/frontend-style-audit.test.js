@@ -57,9 +57,9 @@ test("front-end consolidado permanece reproduzível e usa somente decisões sem�
   assert.ok(report.tokens.customPropertyDeclarations >= 50);
   assert.equal(report.shellBaseline.literalColors.hex, 0);
   assert.equal(report.shellBaseline.literalColors.rgb, 0);
-  assert.equal(report.cardRuntime.literalColors.hex, 0);
-  assert.equal(report.cardRuntime.literalColors.rgb, 0);
-  assert.equal(report.cardRuntime.numericHtmlEntities, 0);
+  assert.equal(report.packageRenderer.literalColors.hex, 0);
+  assert.equal(report.packageRenderer.literalColors.rgb, 0);
+  assert.equal(report.packageRenderer.numericHtmlEntities, 0);
   assert.equal(report.runtimeStyles.rulesWithLiteralColors, 0);
   assert.equal(report.uiMarkup.numericHtmlEntities, 0);
   assert.equal(report.legacySubmissionSelectors, 0);

@@ -751,11 +751,11 @@ test("observações exigem o caminho estrutural completo do alvo", () => {
     payload: {
       entityType: "resource",
       entityPath: ["course-a", "module-a", "lesson-a", "micro-a", "card-a"],
-      resourceTargetId: "body:paragraph-1",
+      resourceTargetId: "content:paragraph-1",
       body: "Rever este recurso."
     }
   });
-  assert.equal(valid.payload.resourceTargetId, "body:paragraph-1");
+  assert.equal(valid.payload.resourceTargetId, "content:paragraph-1");
   assert.throws(() => validateWorkspaceObservationActionPayload({
     requestId: "observation:course:1",
     operation: "create",
@@ -831,7 +831,7 @@ test("PostgreSQL aceita o caminho exato da observação e recusa ancestral forja
       [USER_ID, "observation:resource:1", WORKSPACE_ID, JSON.stringify({
         entityType: "resource",
         entityPath: ["course-a", "module-a", "lesson-a", "micro-a", "card-a"],
-        resourceTargetId: "body:paragraph-1",
+        resourceTargetId: "content:paragraph-1",
         body: "Rever."
       })]
     );

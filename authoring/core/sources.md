@@ -17,7 +17,7 @@ No contexto de autoria, identifique para cada fonte:
 - indicação de estabilidade ou volatilidade.
 
 Esses dados pertencem ao catálogo de fontes ou ao contexto fornecido à autoria,
-não ao objeto do card. No documento v4, `card.sources` contém somente uma lista
+não ao objeto do card. Em `aralearn.library.v1`, `card.sources` contém somente uma lista
 de identificadores textuais já autorizados. Não copie URL, título, data, trecho
 ou metadados bibliográficos para propriedades inventadas do card.
 

@@ -279,7 +279,7 @@
                       "role": "practice",
                       "content": [
                         {
-                          "id": "context-7",
+                          "id": "context-aralearn.response.choice",
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
@@ -332,11 +332,11 @@
                       "role": "practice",
                       "content": [
                         {
-                          "id": "context-8",
+                          "id": "body-1",
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
-                            "text": "Pedir recuperação ou discriminação exatamente no campo semântico declarado pelo conteúdo."
+                            "text": "Um protocolo define regras compartilhadas."
                           }
                         }
                       ],
@@ -377,11 +377,21 @@
                       "role": "practice",
                       "content": [
                         {
-                          "id": "context-9",
-                          "package": "aralearn.resource.paragraph",
+                          "id": "body-1",
+                          "package": "aralearn.resource.sequence",
                           "version": "1.0.0",
                           "data": {
-                            "text": "Pedir que o estudante reconstrua uma ordem causal, temporal ou procedimental."
+                            "variant": "ordered_steps",
+                            "items": [
+                              {
+                                "id": "s1",
+                                "label": "Preparar"
+                              },
+                              {
+                                "id": "s2",
+                                "label": "Executar"
+                              }
+                            ]
                           }
                         }
                       ],

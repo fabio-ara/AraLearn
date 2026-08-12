@@ -13,6 +13,10 @@ function list(value) {
   return Array.isArray(value) ? value : [];
 }
 
+function comparablePrompt(value) {
+  return String(value ?? "").replace(/\s+/gu, " ").trim().toLocaleLowerCase("pt-BR");
+}
+
 export function validateCardEnvelope(card, registry, path = "$.card") {
   const errors = [];
   if (!card || typeof card !== "object" || Array.isArray(card)) {
@@ -28,8 +32,10 @@ export function validateCardEnvelope(card, registry, path = "$.card") {
   if (!Number.isInteger(card.position) || card.position < 1) errors.push(`${path}.position precisa ser inteiro positivo.`);
   if (!text(card.title)) errors.push(`${path}.title é obrigatório.`);
   if (!CARD_ROLES.includes(card.role)) errors.push(`${path}.role precisa ser theory ou practice.`);
-  if (!Array.isArray(card.content) || card.content.length === 0) {
-    errors.push(`${path}.content precisa de ao menos uma instância.`);
+  if (!Array.isArray(card.content)) {
+    errors.push(`${path}.content precisa ser uma lista.`);
+  } else if (card.role === "theory" && card.content.length === 0) {
+    errors.push(`${path}.content precisa de ao menos uma instância em card de teoria.`);
   }
   if (!Array.isArray(card.feedback)) errors.push(`${path}.feedback precisa ser uma lista.`);
   for (const field of ["topics", "sources"]) {
@@ -44,6 +50,16 @@ export function validateCardEnvelope(card, registry, path = "$.card") {
   }
   if (card.role === "practice" && (!card.response || typeof card.response !== "object")) {
     errors.push(`${path}.response é obrigatório em card de prática.`);
+  }
+  if (card.response?.package === "aralearn.response.choice") {
+    const question = comparablePrompt(card.response.data?.question);
+    const repeatsQuestion = list(card.content).some((instance) => (
+      instance?.package === "aralearn.resource.paragraph" &&
+      comparablePrompt(instance.data?.text) === question
+    ));
+    if (question && repeatsQuestion) {
+      errors.push(`${path}.content não pode repetir a mesma pergunta de response.choice.`);
+    }
   }
   const ids = new Set();
   const validateSlot = (instance, slot, instancePath) => {
@@ -60,6 +76,11 @@ export function validateCardEnvelope(card, registry, path = "$.card") {
   list(card.content).forEach((instance, index) => validateSlot(instance, "content", `${path}.content[${index}]`));
   if (card.response && typeof card.response === "object") validateSlot(card.response, "response", `${path}.response`);
   list(card.feedback).forEach((instance, index) => validateSlot(instance, "feedback", `${path}.feedback[${index}]`));
+  if (errors.length === 0) {
+    (registry?.validateCardRelations?.(card) || []).forEach((error) => {
+      errors.push(`${path}: ${error}`);
+    });
+  }
   return { valid: errors.length === 0, errors };
 }
 

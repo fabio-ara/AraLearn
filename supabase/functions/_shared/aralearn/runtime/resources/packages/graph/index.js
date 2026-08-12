@@ -84,12 +84,11 @@ function renderNode(vertex, position, highlighted) {
   return `<g class="package-graph-node${highlighted ? " is-highlighted" : ""}" data-graph-node="${escapePackageAttribute(vertex.id)}"><rect x="${position.x - 43}" y="${position.y - 25}" width="86" height="50" rx="12"/><text x="${position.x}" y="${y}" text-anchor="middle">${lines.map((line, index) => `<tspan x="${position.x}" dy="${index ? 16 : 0}">${escapePackageHtml(line)}</tspan>`).join("")}</text></g>`;
 }
 
-function renderEdge(edge, index, positions, highlighted) {
+function renderEdge(edge, positions, highlighted) {
   const from = positions.get(edge.from);
   const to = positions.get(edge.to);
   if (!from || !to) return "";
-  const marker = edge.label || edge.weight ? `<g class="package-graph-edge-index" transform="translate(${(from.x + to.x) / 2} ${(from.y + to.y) / 2})"><circle r="10"/><text text-anchor="middle" y="4">${index + 1}</text></g>` : "";
-  return `<g class="package-graph-edge${highlighted ? " is-highlighted" : ""}" data-graph-edge="${escapePackageAttribute(edge.id)}"><line x1="${from.x}" y1="${from.y}" x2="${to.x}" y2="${to.y}"${edge.directed ? " marker-end=\"url(#package-graph-arrow)\"" : ""}/>${marker}</g>`;
+  return `<g class="package-graph-edge${highlighted ? " is-highlighted" : ""}" data-graph-edge="${escapePackageAttribute(edge.id)}"><line x1="${from.x}" y1="${from.y}" x2="${to.x}" y2="${to.y}"${edge.directed ? " marker-end=\"url(#package-graph-arrow)\"" : ""}/></g>`;
 }
 
 export const graphPackage = Object.freeze({
@@ -157,7 +156,7 @@ export const graphPackage = Object.freeze({
     const highlightedVertices = new Set(data.highlight?.vertices || []);
     const highlightedEdges = new Set(data.highlight?.edges || []);
     const names = new Map(data.vertices.map(({ id, label }) => [id, label]));
-    return `<div class="runtime-block runtime-graph-block package-graph" data-layout="${layout}" data-density="${data.vertices.length > 8 || data.edges.length > 12 ? "high" : "normal"}">${renderPackageProse(data.prompt)}<svg viewBox="0 0 320 ${height}" role="img" aria-label="${escapePackageAttribute(graphAccessibleText(data))}"><defs><marker id="package-graph-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z"/></marker></defs>${data.edges.map((edge, index) => renderEdge(edge, index, positions, highlightedEdges.has(edge.id))).join("")}${data.vertices.map((vertex) => renderNode(vertex, positions.get(vertex.id), highlightedVertices.has(vertex.id))).join("")}</svg><ol class="package-graph-relations" aria-label="Relações do grafo">${data.edges.map((edge, index) => `<li><span class="package-graph-relation-number">${index + 1}</span><span><strong>${renderPackageInline(names.get(edge.from))}</strong> ${edge.directed ? "→" : "—"} <strong>${renderPackageInline(names.get(edge.to))}</strong>${edge.label || edge.weight ? `: ${renderPackageInline(edge.label || String(edge.weight))}` : ""}</span></li>`).join("")}</ol></div>`;
+    return `<div class="runtime-block runtime-graph-block package-graph" data-layout="${layout}" data-density="${data.vertices.length > 8 || data.edges.length > 12 ? "high" : "normal"}">${renderPackageProse(data.prompt)}<svg viewBox="0 0 320 ${height}" role="img" aria-label="${escapePackageAttribute(graphAccessibleText(data))}"><defs><marker id="package-graph-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z"/></marker></defs>${data.edges.map((edge) => renderEdge(edge, positions, highlightedEdges.has(edge.id))).join("")}${data.vertices.map((vertex) => renderNode(vertex, positions.get(vertex.id), highlightedVertices.has(vertex.id))).join("")}</svg><ol class="package-graph-relations" aria-label="Relações do grafo">${data.edges.map((edge, index) => `<li><span class="package-graph-relation-number">${index + 1}</span><span><strong>${renderPackageInline(names.get(edge.from))}</strong> ${edge.directed ? "→" : "—"} <strong>${renderPackageInline(names.get(edge.to))}</strong>${edge.label || edge.weight ? `: ${renderPackageInline(edge.label || String(edge.weight))}` : ""}</span></li>`).join("")}</ol></div>`;
   },
   accessibleText(data) { return graphAccessibleText(data); },
   editableTargets(data) { return [{ path: "prompt", label: "Editar orientação" }, ...data.vertices.map((_, index) => ({ path: `vertices[${index}].label`, label: `Editar vértice ${index + 1}` })), ...data.edges.map((_, index) => ({ path: `edges[${index}].label`, label: `Editar relação ${index + 1}` }))]; }

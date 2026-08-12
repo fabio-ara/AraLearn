@@ -298,7 +298,7 @@
         "position": { "$ref": "#/$defs/position" },
         "title": { "$ref": "#/$defs/title" },
         "role": { "enum": ["theory", "practice"] },
-        "content": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/packageInstance" } },
+        "content": { "type": "array", "items": { "$ref": "#/$defs/packageInstance" } },
         "response": { "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/packageInstance" }] },
         "feedback": { "type": "array", "items": { "$ref": "#/$defs/packageInstance" } },
         "topics": { "$ref": "#/$defs/textList" },

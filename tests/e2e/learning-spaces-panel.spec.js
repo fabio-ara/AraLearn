@@ -1132,7 +1132,7 @@ test("alvo contextual abre a observação da entidade e preserva o resource exat
     entityType: "resource",
     entityPath: ["course-plan", "module-plan", "lesson-plan", "micro-plan", "card-plan"],
     title: "Parágrafo 1",
-    resourceTargetId: "body:paragraph-1"
+    resourceTargetId: "content:paragraph-1"
   }));
   expect(resourceOpened).toBe(true);
 
@@ -1144,7 +1144,7 @@ test("alvo contextual abre a observação da entidade e preserva o resource exat
     "data-entity-path",
     '["course-plan","module-plan","lesson-plan","micro-plan","card-plan"]'
   );
-  await expect(resourceForm).toHaveAttribute("data-resource-target-id", "body:paragraph-1");
+  await expect(resourceForm).toHaveAttribute("data-resource-target-id", "content:paragraph-1");
   if (process.env.ARALEARN_VISUAL_AUDIT === "1") {
     await page.screenshot({ path: ".pages/v9-audit/v9-resource-observation.png" });
   }
@@ -1162,7 +1162,7 @@ test("alvo contextual abre a observação da entidade e preserva o resource exat
     workspaceId: WORKSPACE_ID,
     entityType: "resource",
     entityPath: ["course-plan", "module-plan", "lesson-plan", "micro-plan", "card-plan"],
-    resourceTargetId: "body:paragraph-1",
+    resourceTargetId: "content:paragraph-1",
     body: "Rever o exemplo deste parágrafo."
   });
   expect(call.requestId).toMatch(/^[0-9a-f-]{36}$/u);

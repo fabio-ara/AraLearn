@@ -480,11 +480,7 @@ async function setupDatabase() {
         ($1,'lesson','lesson-a','module','module-a',0,'{"title":"Lição"}'::jsonb),
         ($1,'microsequence','micro-a','lesson','lesson-a',0,'{"title":"Micro"}'::jsonb),
         ($1,'card','card-a','microsequence','micro-a',1,
-          '{
-            "title":"Card","resource":"composite","exercise":"none",
-            "blocks":[{"id":"paragraph-a","kind":"paragraph","text":"A"}],
-            "after":"","afterBlocks":[{"id":"support-a","kind":"paragraph","text":"B"}]
-          }'::jsonb)
+          '{"title":"Card","role":"theory","content":[{"id":"paragraph-a","package":"aralearn.resource.paragraph","version":"1.0.0","data":{"text":"A"}}],"response":null,"feedback":[{"id":"support-a","package":"aralearn.resource.paragraph","version":"1.0.0","data":{"text":"B"}}],"topics":[],"sources":[]}'::jsonb)
     `, [workspaceId]);
     await database.query(`
       insert into private.authoring_workspace_entities(
@@ -1331,9 +1327,9 @@ test("reauditoria focal conserva o recorte após excluir micro, card ou resource
         workspace_id,entity_type,entity_id,parent_type,parent_id,position,content
       ) values
         ($1,'card','card-p1','microsequence','m01',1,
-          '{"title":"P1","resource":"composite","exercise":"none","blocks":[{"id":"p","kind":"paragraph","text":"P1"}]}'::jsonb),
+          '{"title":"P1","role":"theory","content":[{"id":"p","package":"aralearn.resource.paragraph","version":"1.0.0","data":{"text":"P1"}}],"response":null,"feedback":[],"topics":[],"sources":[]}'::jsonb),
         ($1,'card','card-p2','microsequence','m13',1,
-          '{"title":"P2","resource":"paragraph","text":"P2"}'::jsonb)
+          '{"title":"P2","role":"theory","content":[{"id":"p2","package":"aralearn.resource.paragraph","version":"1.0.0","data":{"text":"P2"}}],"response":null,"feedback":[],"topics":[],"sources":[]}'::jsonb)
     `, [WORKSPACE_A]);
     await updateContinuity(database, {
       requestId: "continuity:audit:deleted-targets", payloadHash: hash("1"),
@@ -1360,7 +1356,7 @@ test("reauditoria focal conserva o recorte após excluir micro, card ou resource
       payload: {
         entityType: "resource",
         entityPath: ["course-a", "module-a", "lesson-a", "m01", "card-p1"],
-        resourceTargetId: "body:p",
+        resourceTargetId: "content:p",
         body: "Excluir o resource.", category: "accuracy", severity: "medium",
         proposedRepair: "Excluir o resource junto do card."
       }
@@ -1553,7 +1549,7 @@ test("mandatos repair, audit e restructure fecham o escopo do commit inteiro", a
       payload: {
         entityType: "resource",
         entityPath: ["course-a", "module-a", "lesson-a", "micro-a", "card-a"],
-        resourceTargetId: "body:paragraph-a",
+        resourceTargetId: "content:paragraph-a",
         body: "Corrigir somente o parágrafo.", category: "accuracy",
         severity: "high", proposedRepair: "Reescrever o parágrafo."
       }
@@ -1585,13 +1581,18 @@ test("mandatos repair, audit e restructure fecham o escopo do commit inteiro", a
           entityType: "card", entityId: "card-a", parentType: "microsequence",
           parentId: "micro-a", position: 1, version: 1,
           content: {
-            title: "Card", resource: "composite",
-            blocks: [{ id: "paragraph-a", kind: "paragraph", text: "Reparado" }]
+            title: "Card", role: "theory",
+            content: [{ id: "paragraph-a", package: "aralearn.resource.paragraph", version: "1.0.0", data: { text: "Reparado" } }],
+            response: null, feedback: [], topics: [], sources: []
           }
         }, {
           entityType: "card", entityId: "card-b", parentType: "microsequence",
           parentId: "micro-a", position: 2,
-          content: { title: "Card B", resource: "paragraph", text: "Extra" }
+          content: {
+            title: "Card B", role: "theory",
+            content: [{ id: "paragraph-b", package: "aralearn.resource.paragraph", version: "1.0.0", data: { text: "Extra" } }],
+            response: null, feedback: [], topics: [], sources: []
+          }
         }], deletes: []
       },
       summary: {
@@ -1600,7 +1601,7 @@ test("mandatos repair, audit e restructure fecham o escopo do commit inteiro", a
         targetPaths: [cardAPath, cardBPath], targetPathsTruncated: false,
         changedCardPaths: [cardAPath, cardBPath], changedCardPathsTruncated: false,
         cardShellChangedPaths: [cardBPath], cardShellChangedPathsTruncated: false,
-        resourceTargets: [{ cardPath: cardAPath, targetId: "body:paragraph-a" }],
+        resourceTargets: [{ cardPath: cardAPath, targetId: "content:paragraph-a" }],
         resourceTargetsTruncated: false
       }
     };
@@ -1650,7 +1651,7 @@ test("mandatos repair, audit e restructure fecham o escopo do commit inteiro", a
         created: 0, updated: 1, deleted: 0,
         operationFamily: "content",
         changedCardPaths: [cardAPath], targetPaths: [cardAPath],
-        resourceTargets: [{ cardPath: cardAPath, targetId: "body:paragraph-a" }]
+        resourceTargets: [{ cardPath: cardAPath, targetId: "content:paragraph-a" }]
       }
     });
     assert.equal(repaired.revision, 5);
@@ -1809,11 +1810,11 @@ test("commit registra handoff pendente apenas nos achados efetivamente tocados",
           entityType: "card", entityId: "card-a", parentType: "microsequence",
           parentId: "micro-a", position: 1, version: 1,
           content: {
-            title: "Card reparado", resource: "composite", exercise: "none",
-            blocks: [{ id: "paragraph-a", kind: "paragraph", text: "A" }],
-            after: "", afterBlocks: [{
-              id: "support-a", kind: "paragraph", text: "B"
-            }]
+            title: "Card reparado", role: "theory",
+            content: [{ id: "paragraph-a", package: "aralearn.resource.paragraph", version: "1.0.0", data: { text: "A" } }],
+            response: null,
+            feedback: [{ id: "support-a", package: "aralearn.resource.paragraph", version: "1.0.0", data: { text: "B" } }],
+            topics: [], sources: []
           }
         }], deletes: []
       },
@@ -1927,7 +1928,11 @@ test("handoff pendente sobrevive à queda e confirma correção sem receipt expi
             entityType: "card", entityId: cardId, parentType: "microsequence",
             parentId: "micro-a", position: cardId === "card-a" ? 1 : 2,
             version: 1,
-            content: { title: `Card ${cardId}`, resource: "paragraph", text: "Revisto" }
+            content: {
+              title: `Card ${cardId}`, role: "theory",
+              content: [{ id: `paragraph-${cardId}`, package: "aralearn.resource.paragraph", version: "1.0.0", data: { text: "Revisto" } }],
+              response: null, feedback: [], topics: [], sources: []
+            }
           }],
           deletes: []
         },
@@ -2132,11 +2137,11 @@ test("finding de card não autoriza mutação em microssequência ancestral", as
           entityType: "card", entityId: "card-a", parentType: "microsequence",
           parentId: "micro-a", position: 1, version: 1,
           content: {
-            title: "Card revisto", resource: "composite", exercise: "none",
-            blocks: [{ id: "paragraph-a", kind: "paragraph", text: "A" }],
-            after: "", afterBlocks: [{
-              id: "support-a", kind: "paragraph", text: "B"
-            }]
+            title: "Card revisto", role: "theory",
+            content: [{ id: "paragraph-a", package: "aralearn.resource.paragraph", version: "1.0.0", data: { text: "A" } }],
+            response: null,
+            feedback: [{ id: "support-a", package: "aralearn.resource.paragraph", version: "1.0.0", data: { text: "B" } }],
+            topics: [], sources: []
           }
         }], deletes: []
       },
@@ -2935,7 +2940,7 @@ test("finding percorre auditoria, decisão, correção confirmada e reauditoria"
       payload: {
         entityType: "resource",
         entityPath: ["course-a", "module-a", "lesson-a", "micro-a", "card-a"],
-        resourceTargetId: "body:missing",
+        resourceTargetId: "content:missing",
         body: "O exemplo está incompleto.",
         category: "coverage",
         severity: "high",
@@ -2980,7 +2985,7 @@ test("finding percorre auditoria, decisão, correção confirmada e reauditoria"
       payload: {
         entityType: "resource",
         entityPath: ["course-a", "module-a", "lesson-a", "micro-a", "card-a"],
-        resourceTargetId: "body:paragraph-a",
+        resourceTargetId: "content:paragraph-a",
         body: "O exemplo está incompleto.",
         category: "coverage",
         severity: "high",
@@ -3124,14 +3129,14 @@ test("finding percorre auditoria, decisão, correção confirmada e reauditoria"
             'operation','save_card','targetPaths',jsonb_build_array(
               jsonb_build_array('course-a','module-a','lesson-a','micro-a','card-a')
             ),'targetPathsTruncated',false,
-            'resourceTargetIds',jsonb_build_array('body:paragraph-a'),
+            'resourceTargetIds',jsonb_build_array('content:paragraph-a'),
             'changedCardPaths',jsonb_build_array(jsonb_build_array(
               'course-a','module-a','lesson-a','micro-a','card-a'
             )),'changedCardPathsTruncated',false,
             'resourceTargets',jsonb_build_array(jsonb_build_object(
               'cardPath',jsonb_build_array(
                 'course-a','module-a','lesson-a','micro-a','card-a'
-              ),'targetId','body:paragraph-a'
+              ),'targetId','content:paragraph-a'
             )),'resourceTargetsTruncated',false
           )
         ))
@@ -3143,14 +3148,14 @@ test("finding percorre auditoria, decisão, correção confirmada e reauditoria"
         'operation','save_card','targetPaths',jsonb_build_array(
           jsonb_build_array('course-a','module-a','lesson-a','micro-a','card-a')
         ),'targetPathsTruncated',false,
-        'resourceTargetIds',jsonb_build_array('body:paragraph-a'),
+        'resourceTargetIds',jsonb_build_array('content:paragraph-a'),
         'changedCardPaths',jsonb_build_array(jsonb_build_array(
           'course-a','module-a','lesson-a','micro-a','card-a'
         )),'changedCardPathsTruncated',false,
         'resourceTargets',jsonb_build_array(jsonb_build_object(
           'cardPath',jsonb_build_array(
             'course-a','module-a','lesson-a','micro-a','card-a'
-          ),'targetId','body:paragraph-a'
+          ),'targetId','content:paragraph-a'
         )),'resourceTargetsTruncated',false
       ),$2)
     `, [WORKSPACE_A, ACTOR]);
@@ -3545,7 +3550,7 @@ test("finding de resource exige o resourceTargetId exato no mesmo card", async (
       payload: {
         entityType: "resource",
         entityPath: ["course-a", "module-a", "lesson-a", "micro-a", "card-a"],
-        resourceTargetId: "body:paragraph-a",
+        resourceTargetId: "content:paragraph-a",
         body: "Corrigir o parágrafo.", category: "accuracy", severity: "high",
         proposedRepair: "Reescrever o parágrafo."
       }
@@ -3607,7 +3612,7 @@ test("finding de resource exige o resourceTargetId exato no mesmo card", async (
     }
     await addCorrection({
       revision: 5, requestId: "correction:resource:truncated",
-      resourceTargets: [{ cardPath: path, targetId: "body:paragraph-a" }],
+      resourceTargets: [{ cardPath: path, targetId: "content:paragraph-a" }],
       resourceTargetsTruncated: true
     });
     await assert.rejects(manageFinding(database, {
@@ -3620,7 +3625,7 @@ test("finding de resource exige o resourceTargetId exato no mesmo card", async (
     }), (error) => error.code === "23514");
     await addCorrection({
       revision: 6, requestId: "correction:resource:wrong",
-      resourceTargets: [{ cardPath: otherPath, targetId: "body:paragraph-a" }]
+      resourceTargets: [{ cardPath: otherPath, targetId: "content:paragraph-a" }]
     });
     await assert.rejects(manageFinding(database, {
       requestId: "finding:resource:wrong",
@@ -3633,8 +3638,8 @@ test("finding de resource exige o resourceTargetId exato no mesmo card", async (
     await addCorrection({
       revision: 7, requestId: "correction:resource:right",
       resourceTargets: [
-        { cardPath: otherPath, targetId: "body:paragraph-a" },
-        { cardPath: path, targetId: "body:paragraph-a" }
+        { cardPath: otherPath, targetId: "content:paragraph-a" },
+        { cardPath: path, targetId: "content:paragraph-a" }
       ]
     });
     const linked = await manageFinding(database, {
@@ -3661,7 +3666,7 @@ test("listagem filtra, pagina, isola workspace e resolve o caminho corrente", as
     `, [ACTOR, "note:resource:0001", WORKSPACE_A, JSON.stringify({
       entityType: "resource",
       entityPath: ["course-a", "module-a", "lesson-a", "micro-a", "card-a"],
-      resourceTargetId: "after:support-a",
+      resourceTargetId: "feedback:support-a",
       body: "Rever o apoio."
     })]);
     assert.equal(validNote.operation, "create");

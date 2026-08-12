@@ -2,7 +2,8 @@
 
 O Supabase guarda o estado compartilhado. O IndexedDB mantém, em cada
 dispositivo, uma projeção relacional para estudo sem conexão. Cursos oficiais
-selecionados vêm de uma publicação JSON v4 imutável no Storage; planos e cursos
+selecionados vêm de uma publicação `aralearn.library.v1` imutável no Storage;
+planos e cursos
 em materialização são compostos diretamente das partes correntes do workspace
 no PostgreSQL.
 
@@ -29,16 +30,16 @@ Quando o curso é publicado, essa árvore deixa de depender das linhas de autori
 para ser estudada: o servidor materializa um documento canônico no Storage. A
 publicação não é decomposta numa segunda árvore de tabelas remotas.
 
-Depois do download e da validação, o IndexedDB projeta fórmulas, blocos, nós,
-opções e demais estruturas em tabelas locais. Isso preserva o runtime relacional
-e o funcionamento offline sem transferir o custo de autoria para o banco remoto.
+Depois do download e da validação, o IndexedDB projeta o envelope e as
+instâncias de package em tabelas locais. Isso preserva o funcionamento offline
+sem transferir o custo de autoria para o banco remoto.
 
 ## Metadados pedagógicos
 
 A biblioteca usa `guide` no módulo e na lição para delimitar objetivo,
 inclusões, exclusões, notação e cuidados. Cada tópico da lição declara `id`,
 `label`, `kind`, `checks` e `errors`. Cada microssequência declara `goal`,
-`role`, `status`, `dependsOn`, `covers`, `checks` e, quando necessário,
+`role`, `dependsOn`, `covers`, `checks` e, quando necessário,
 `errors`.
 
 `dependsOn` referencia somente microssequências da mesma lição, por identidade
@@ -48,7 +49,7 @@ recursos também conservam ids estáveis no documento.
 
 A aplicação aceita apenas campos, identificadores e referências definidos pelo
 contrato. Ela não aproxima rótulos, não converte frases livres em relações e
-não mantém um plano pedagógico paralelo ao documento v4.
+não mantém um plano pedagógico paralelo a `aralearn.library.v1`.
 
 Para artefatos publicados, o PostgreSQL conserva hashes, ponteiros e metadados;
 texto e estrutura dos cards não recebem uma segunda cópia relacional. No
@@ -57,7 +58,7 @@ arquivo integral a cada alteração.
 
 A consulta paginada de cards de uma microssequência usa diretamente o índice
 de filhos de `authoring_workspace_entities`. Ela devolve somente identidade,
-posição, `kind`, resource, título resumido e a revisão corrente. Não compõe o
+posição, `role`, packages, título resumido e a revisão corrente. Não compõe o
 documento, não baixa Storage e não duplica conteúdo. O card integral é lido
 como entidade apenas quando uma operação pontual realmente precisa dele.
 

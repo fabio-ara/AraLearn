@@ -61,7 +61,7 @@ confere o pedido já confirmado
 → bloqueia o workspace
 → compara a revisão global e as partes tocadas
 → aplica a menor mudança
-→ recompõe e valida o documento v4
+→ recompõe e valida `aralearn.library.v1`
 → avança a revisão
 → grava o recibo e um resumo curto
 ```
