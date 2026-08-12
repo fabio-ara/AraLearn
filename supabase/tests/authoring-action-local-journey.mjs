@@ -157,48 +157,68 @@ function cards({ revised = false } = {}) {
   return [
     {
       id: "card-responsabilidade-camadas",
-      resource: "paragraph",
-      kind: "theory",
-      exercise: "none",
+      position: 1,
       title: "Responsabilidade por camada",
-      text: revised
-        ? "Em IaaS, o cliente administra sistema operacional, aplicações e dados; em PaaS, concentra-se na aplicação e nos dados; em SaaS, utiliza a aplicação pronta. A classificação decorre das camadas gerenciadas, não do fornecedor."
-        : "Em IaaS, o cliente administra mais camadas; em PaaS, concentra-se na aplicação e nos dados; em SaaS, utiliza a aplicação pronta.",
-      after: "A responsabilidade do provedor aumenta de IaaS para SaaS, mas o cliente conserva deveres sobre acesso, configuração e dados."
+      role: "theory",
+      content: [{
+        id: "card-responsabilidade-camadas-text",
+        package: "aralearn.resource.paragraph",
+        version: "1.0.0",
+        data: {
+          text: revised
+            ? "Em IaaS, o cliente administra sistema operacional, aplicações e dados; em PaaS, concentra-se na aplicação e nos dados; em SaaS, utiliza a aplicação pronta. A classificação decorre das camadas gerenciadas, não do fornecedor."
+            : "Em IaaS, o cliente administra mais camadas; em PaaS, concentra-se na aplicação e nos dados; em SaaS, utiliza a aplicação pronta."
+        }
+      }],
+      response: null,
+      feedback: [{
+        id: "card-responsabilidade-camadas-feedback",
+        package: "aralearn.resource.paragraph",
+        version: "1.0.0",
+        data: { text: "A responsabilidade do provedor aumenta de IaaS para SaaS, mas o cliente conserva deveres sobre acesso, configuração e dados." }
+      }],
+      topics: [],
+      sources: []
     },
     {
       id: "card-modelos-gap",
-      resource: "table",
-      kind: "exercise",
-      exercise: "gap",
+      position: 2,
       title: "Complete a divisão de responsabilidades",
-      columns: ["Modelo", "Responsabilidade típica do cliente"],
-      rows: [
-        ["IaaS", "Gerencia {gap:iaas-layer}."],
-        ["PaaS", "Gerencia principalmente {gap:paas-layer}."],
-        ["SaaS", "Usa a {gap:saas-layer}."]
-      ],
-      gaps: [
-        {
-          id: "iaas-layer",
-          response: "choice",
-          answer: "sistema operacional",
-          distractors: ["datacenter físico", "aplicação SaaS"]
-        },
-        {
-          id: "paas-layer",
-          response: "choice",
-          answer: "aplicação e dados",
-          distractors: ["energia elétrica", "hipervisor"]
-        },
-        {
-          id: "saas-layer",
-          response: "choice",
-          answer: "aplicação pronta",
-          distractors: ["infraestrutura física", "plataforma de contêineres"]
+      role: "practice",
+      content: [{
+        id: "card-modelos-gap-table",
+        package: "aralearn.resource.table",
+        version: "1.0.0",
+        data: {
+          columns: ["Modelo", "Responsabilidade típica do cliente"],
+          rows: [
+            ["IaaS", "Gerencia sistema operacional."],
+            ["PaaS", "Gerencia principalmente aplicação e dados."],
+            ["SaaS", "Usa a aplicação pronta."]
+          ]
         }
-      ],
-      after: "A abstração cresce de IaaS para SaaS e reduz as camadas administradas diretamente pelo cliente."
+      }],
+      response: {
+        id: "card-modelos-gap-response",
+        package: "aralearn.response.gap",
+        version: "1.0.0",
+        data: {
+          prompt: "Complete a tabela.",
+          blanks: [
+            { id: "iaas-layer", targetInstanceId: "card-modelos-gap-table", targetPath: "rows[0][1]", responseMode: "choice", answer: "sistema operacional", distractors: ["datacenter físico", "aplicação SaaS"] },
+            { id: "paas-layer", targetInstanceId: "card-modelos-gap-table", targetPath: "rows[1][1]", responseMode: "choice", answer: "aplicação e dados", distractors: ["energia elétrica", "hipervisor"] },
+            { id: "saas-layer", targetInstanceId: "card-modelos-gap-table", targetPath: "rows[2][1]", responseMode: "choice", answer: "aplicação pronta", distractors: ["infraestrutura física", "plataforma de contêineres"] }
+          ]
+        }
+      },
+      feedback: [{
+        id: "card-modelos-gap-feedback",
+        package: "aralearn.resource.paragraph",
+        version: "1.0.0",
+        data: { text: "A abstração cresce de IaaS para SaaS e reduz as camadas administradas diretamente pelo cliente." }
+      }],
+      topics: [],
+      sources: []
     }
   ];
 }
@@ -560,12 +580,17 @@ async function runJourney() {
   };
   assert.equal(Object.hasOwn(partial, "completionState"), false);
 
-  await action(state.authorToken, "consultarRecursosDeCard", {
-    resource: "paragraph"
-  });
-  await action(state.authorToken, "consultarRecursosDeCard", {
-    resource: "table"
-  });
+  await action(state.authorToken, "consultarPackagesDeCard", {});
+  for (const packageId of [
+    "aralearn.resource.paragraph",
+    "aralearn.resource.table",
+    "aralearn.response.gap"
+  ]) {
+    await action(state.authorToken, "consultarPackagesDeCard", {
+      packageId,
+      version: "1.0.0"
+    });
+  }
 
   const materialized = await action(
     state.authorToken,
@@ -604,7 +629,11 @@ async function runJourney() {
     }
   );
   assert.equal(secondCardPage.items.length, 1);
-  assert.deepEqual(secondCardPage.items[0].resources, ["table"]);
+  assert.deepEqual(secondCardPage.items[0].packages, [
+    "aralearn.resource.table",
+    "aralearn.response.gap",
+    "aralearn.resource.paragraph"
+  ]);
   assert.equal(secondCardPage.hasMore, false);
 
   const microsequence = await action(
@@ -619,11 +648,11 @@ async function runJourney() {
     }
   );
   assert.equal(microsequence.content.cards.length, 2);
-  assert.equal(
-    Object.hasOwn(microsequence.content.cards[1], "gaps"),
-    false
+  assert.equal(microsequence.content.cards[1].response.package, "aralearn.response.gap");
+  assert.match(
+    microsequence.content.cards[1].content[0].data.rows[0][1],
+    /sistema operacional/u
   );
-  assert.match(microsequence.content.cards[1].rows[0][1], /\[\[/u);
   assert.doesNotMatch(
     JSON.stringify(microsequence.content.cards[1]),
     /\{gap:/u
@@ -659,7 +688,10 @@ async function runJourney() {
   );
   assert.equal(storedCourse.revisionHash, complete.contentHash);
   assert.equal(storedCourse.content.cards.length, 2);
-  assert.match(storedCourse.content.cards[1].rows[2][1], /\[\[/u);
+  assert.match(
+    storedCourse.content.cards[1].content[0].data.rows[2][1],
+    /aplicação pronta/u
+  );
 
   const firstSubmission = await action(
     state.authorToken,
