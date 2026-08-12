@@ -3788,7 +3788,7 @@ function mutation(name, args) {
       throw new AuthoringApiError(
         422,
         "invalid_tool_arguments",
-        "cardJson deve conter um único objeto JSON de card v4."
+        "cardJson deve conter um único envelope JSON de card com packages."
       );
     }
     delete operationArguments.cardJson;
@@ -3819,6 +3819,7 @@ function mutation(name, args) {
             title,
             goal,
             role,
+            branchOf: null,
             dependsOn: [],
             covers,
             checks,

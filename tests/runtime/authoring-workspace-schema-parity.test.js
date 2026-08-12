@@ -37,12 +37,21 @@ test("schemas distribuídos aceitam exatamente as mutações produzidas pelo MCP
   const validateSchema = ajv.compile(await schema("workspace-mutation.schema.json"));
   const card = {
     id: "card-a",
-    resource: "paragraph",
-    kind: "theory",
-    exercise: "none",
+    position: 0,
     title: "Conceito",
-    text: "Explicação conceitual.",
-    after: "Síntese."
+    role: "theory",
+    content: [{
+      id: "card-a-content",
+      package: "aralearn.resource.paragraph",
+      version: "1.0.0",
+      data: {
+        text: "Explicação conceitual."
+      }
+    }],
+    response: null,
+    feedback: [],
+    topics: [],
+    sources: []
   };
   const cases = [
     ["criarEstruturaNoWorkspace", {

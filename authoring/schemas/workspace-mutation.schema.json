@@ -289,55 +289,41 @@
       }
     },
     "cardInput": {
-      "description": "Card v4 completo. Os campos específicos são fechados e validados pelo authoringSchema canônico do resource indicado.",
+      "description": "Envelope completo; cada instância é validada pelo contrato versionado do package.",
       "type": "object",
-      "minProperties": 5,
-      "required": ["id", "resource", "kind", "exercise", "title"],
+      "additionalProperties": false,
+      "required": ["id", "position", "title", "role", "content", "response", "feedback", "topics", "sources"],
       "properties": {
         "id": { "$ref": "#/$defs/id" },
         "position": { "$ref": "#/$defs/position" },
-        "resource": {
-          "enum": [
-            "paragraph",
-            "choice",
-            "composite",
-            "code",
-            "table",
-            "flow",
-            "tree",
-            "graph",
-            "relation_map",
-            "matrix",
-            "plane",
-            "formula",
-            "chart",
-            "sequence",
-            "annotated_text",
-            "linguistic_example",
-            "system_map",
-            "reaction"
-          ]
-        },
-        "kind": {
-          "enum": ["theory", "exercise"]
-        },
-        "exercise": {
-          "enum": ["none", "gap", "choice"]
-        },
-        "title": { "$ref": "#/$defs/title" }
+        "title": { "$ref": "#/$defs/title" },
+        "role": { "enum": ["theory", "practice"] },
+        "content": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/packageInstance" } },
+        "response": { "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/packageInstance" }] },
+        "feedback": { "type": "array", "items": { "$ref": "#/$defs/packageInstance" } },
+        "topics": { "$ref": "#/$defs/textList" },
+        "sources": { "$ref": "#/$defs/textList" }
+      }
+    },
+    "packageInstance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "package", "version", "data"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "package": { "type": "string", "pattern": "^aralearn\\.(resource|response)\\." },
+        "version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$" },
+        "data": { "type": "object" }
       }
     },
     "saveMicrosequenceCardsArguments": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["microsequencePath", "mode", "cards", "status"],
+      "required": ["microsequencePath", "mode", "cards"],
       "properties": {
         "microsequencePath": { "$ref": "#/$defs/microsequencePath" },
         "mode": {
           "enum": ["append", "replace"]
-        },
-        "status": {
-          "enum": ["planned", "generated", "needs_review", "ready"]
         },
         "cards": {
           "type": "array",
@@ -354,15 +340,6 @@
           },
           "then": {
             "properties": { "cards": { "type": "array", "minItems": 1 } }
-          }
-        },
-        {
-          "if": {
-            "properties": { "cards": { "type": "array", "maxItems": 0 } },
-            "required": ["cards"]
-          },
-          "then": {
-            "properties": { "status": { "type": "string", "const": "planned" } }
           }
         }
       ]

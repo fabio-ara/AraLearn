@@ -155,27 +155,18 @@ test("criação estrutural limita cada lote a 40 partes", () => {
   }));
 });
 
-test("replace aceita lista vazia somente como planned e append continua não vazio", () => {
+test("replace aceita lista vazia sem status e append continua não vazio", () => {
   const emptyReplace = validate("save_microsequence_cards", {
     microsequencePath: ["course-a", "module-a", "lesson-a", "micro-a"],
     mode: "replace",
-    cards: [],
-    status: "planned"
+    cards: []
   });
   assert.deepEqual(emptyReplace.arguments.cards, []);
-  assert.equal(emptyReplace.arguments.status, "planned");
-
-  rejects("invalid_workspace_status", () => validate("save_microsequence_cards", {
-    microsequencePath: ["course-a", "module-a", "lesson-a", "micro-a"],
-    mode: "replace",
-    cards: [],
-    status: "ready"
-  }));
+  assert.equal(Object.hasOwn(emptyReplace.arguments, "status"), false);
   rejects("invalid_workspace_cards", () => validate("save_microsequence_cards", {
     microsequencePath: ["course-a", "module-a", "lesson-a", "micro-a"],
     mode: "append",
-    cards: [],
-    status: "planned"
+    cards: []
   }));
 });
 
@@ -187,7 +178,6 @@ test("divisão recusa cards implícitos e normaliza a lista explícita", () => {
       title: "Microssequência B",
       goal: "Separar os cards selecionados.",
       role: "practice",
-      status: "needs_review",
       branchOf: null,
       dependsOn: [],
       covers: [],
@@ -204,7 +194,6 @@ test("divisão recusa cards implícitos e normaliza a lista explícita", () => {
       title: "Microssequência B",
       goal: "Separar os cards selecionados.",
       role: "practice",
-      status: "needs_review",
       branchOf: null,
       dependsOn: [],
       covers: [],

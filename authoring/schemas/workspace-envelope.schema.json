@@ -1,21 +1,14 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://fabio-ara.github.io/AraLearn/authoring/schemas/workspace-envelope.schema.json",
-  "title": "Envelope de workspace AraLearn v4",
-  "description": "Valida somente o envelope do documento composto. A árvore pedagógica é validada pelo contrato v4 canônico e pelos schemas de cada resource; eventos recentes pertencem ao plano de controle e não entram no documento.",
+  "title": "Biblioteca AraLearn por packages",
+  "description": "Valida a raiz. Cards e instâncias são validados pelos contratos versionados dos packages instalados.",
   "type": "object",
   "additionalProperties": false,
-  "required": ["contract", "version", "kind", "courses"],
+  "required": ["contract", "courses"],
   "properties": {
-    "contract": { "const": "aralearn.contract" },
-    "version": { "const": 4 },
-    "kind": { "const": "project" },
-    "scope": {
-      "enum": ["course", "module", "lesson", "microsequence"]
-    },
-    "courses": {
-      "type": "array",
-      "description": "Árvore opaca neste envelope; cada curso e seus descendentes devem passar pela validação integral do contrato v4."
-    }
+    "contract": { "const": "aralearn.library.v1" },
+    "scope": { "enum": ["course", "module", "lesson", "microsequence"] },
+    "courses": { "type": "array" }
   }
 }
