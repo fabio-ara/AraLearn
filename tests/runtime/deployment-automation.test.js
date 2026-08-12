@@ -139,8 +139,8 @@ function packApk(
 
 function writeAndroidToolMocks(temporaryRoot, {
   applicationId = "com.aralearn.app",
-  versionCode = "156",
-  versionName = "0.0.14",
+  versionCode = "158",
+  versionName = "0.0.16",
   certificate = "c3d2ad6c97e44492c09d785d2d5e9f461eb6399914b196119e2cba0e5d271296"
 } = {}) {
   const aaptPath = path.join(temporaryRoot, "aapt.cmd");
@@ -426,8 +426,8 @@ test("verificador exige APK e runtime atual nos destinos finais", () => {
   assert.match(source, /artifact\.required-authoring-asset/u);
   assert.match(source, /artifact\.static-authoring-api/u);
   assert.match(source, /app-release\.apk/u);
-  assert.match(source, /expectedAndroidVersionCode = '156'/u);
-  assert.match(source, /expectedAndroidVersionName = '0\.0\.14'/u);
+  assert.match(source, /expectedAndroidVersionCode = '158'/u);
+  assert.match(source, /expectedAndroidVersionName = '0\.0\.16'/u);
   assert.match(source, /expectedAndroidApplicationId = 'com\.aralearn\.app'/u);
   assert.match(source, /expectedAndroidCertificateSha256/u);
 });
