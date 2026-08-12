@@ -77,13 +77,13 @@ select hasnt_function(
 
 select is(
   public.get_aralearn_runtime_manifest() ->> 'schemaRevision',
-  '20260809010000',
+  '20260812131000',
   'a revisão corresponde à migration mais recente exigida'
 );
 
 select is(
   public.get_aralearn_runtime_manifest() ->> 'contractVersion',
-  '4',
+  '1',
   'o manifesto anuncia a biblioteca por packages'
 );
 

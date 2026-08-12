@@ -35,8 +35,8 @@ test("implantação reconhece os resources especializados sem alterar o kernel",
     );
   }
   assert.match(migration, /'schemaRevision', '20260729060000'/u);
-  assert.equal(runtimeManifest.schemaRevision, "20260809010000");
-  assert.equal(runtimeManifest.contractVersion, 4);
+  assert.equal(runtimeManifest.schemaRevision, "20260812131000");
+  assert.equal(runtimeManifest.contractVersion, 1);
 });
 
 test("corpus cobre tipos semânticos de mapa de sistema e reação", () => {

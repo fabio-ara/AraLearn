@@ -313,6 +313,15 @@ async function main() {
   const authoringContinuityVolatility = migrations.find(({ fileName }) =>
     fileName === "20260809011000_align_authoring_continuity_volatility.sql"
   );
+  const packageLibrary = migrations.find(({ fileName }) =>
+    fileName === "20260812120000_package_library_contract.sql"
+  );
+  const catalogPackageCutover = migrations.find(({ fileName }) =>
+    fileName === "20260812130000_cutover_catalog_package_artifacts.sql"
+  );
+  const packageCutoverCleanup = migrations.find(({ fileName }) =>
+    fileName === "20260812131000_remove_package_cutover_workspaces.sql"
+  );
   const relationalRemoval = migrations.find(({ fileName }) =>
     fileName === "20260728020000_remove_relational_course_legacy.sql"
   );
@@ -739,6 +748,21 @@ async function main() {
     "A continuidade autoral não possui um único estado corrente validado."
   );
   assertContains(
+    packageLibrary.source,
+    /20260812120000[\s\S]+contractVersion[\s\S]+package-library-v1[\s\S]+package-contract-discovery-v1/iu,
+    "O manifesto não anuncia a biblioteca e a descoberta de packages."
+  );
+  assertContains(
+    catalogPackageCutover.source,
+    /package_library_cutover_audit[\s\S]+previous_revision_hash[\s\S]+package_revision_hash[\s\S]+current_revision_hash\s+is\s+distinct\s+from[\s\S]+catalog-package-artifact-cutover-v1/iu,
+    "O corte remoto não registra backup lógico, CAS e artefatos por packages."
+  );
+  assertContains(
+    packageCutoverCleanup.source,
+    /delete\s+from\s+private\.authoring_workspaces[\s\S]+20260812131000/iu,
+    "Os workspaces transitórios do corte não são removidos."
+  );
+  assertContains(
     authoringContinuityVolatility.source,
     /alter\s+function\s+private\.valid_authoring_continuity_v1\(jsonb\)\s+stable[\s\S]+alter\s+function\s+private\.normalize_authoring_continuity_v1\([\s\S]+\)\s+stable[\s\S]+alter\s+function\s+private\.remap_authoring_continuity_v1\([\s\S]+\)\s+stable/iu,
     "Os helpers de continuidade autoral ainda anunciam volatilidade incompatível."
@@ -1114,8 +1138,8 @@ async function main() {
     path.join(repositoryRoot, "supabase", "runtime-manifest.json"),
     "utf8"
   ));
-  if (runtimeManifest.schemaRevision !== "20260809010000") {
-    fail("O manifesto estático não aponta para a continuidade autoral corrente.");
+  if (runtimeManifest.schemaRevision !== "20260812131000" || runtimeManifest.contractVersion !== 1) {
+    fail("O manifesto estático não aponta para a biblioteca por packages corrente.");
   }
   for (const feature of [
     "stable-trail-item-identity-v1",
@@ -1128,7 +1152,10 @@ async function main() {
     "unified-trails-clean-cutover-v1",
     "alphabetic-trails-v1",
     "alphabetic-catalog-v1",
-    "resumable-authoring-continuity-v1"
+    "resumable-authoring-continuity-v1",
+    "package-library-v1",
+    "package-contract-discovery-v1",
+    "catalog-package-artifact-cutover-v1"
   ]) {
     if (!runtimeManifest.requiredFeatures.includes(feature)) {
       fail(`O manifesto estático não exige ${feature}.`);
@@ -1149,7 +1176,7 @@ async function main() {
     }
   }
   console.log(
-    `Corte validado até ${authoringContinuityVolatility.fileName}: continuidade autoral corrente, Trilhas e Coleções alfabéticas, estado pessoal compacto, observações situadas, workspaces educacionais, OAuth/MCP/Action e uma revisão corrente por curso.`
+    `Corte validado até ${packageCutoverCleanup.fileName}: biblioteca e catálogo por packages, continuidade autoral corrente, Trilhas e Coleções alfabéticas, estado pessoal compacto, observações situadas, workspaces educacionais, OAuth/MCP/Action e uma revisão corrente por curso.`
   );
 }
 

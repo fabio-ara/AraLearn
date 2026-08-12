@@ -1,6 +1,6 @@
 {
-  "schemaRevision": "20260809010000",
-  "contractVersion": 4,
+  "schemaRevision": "20260812131000",
+  "contractVersion": 1,
   "requiredFeatures": [
     "lean-shared-catalog",
     "artifact-offline-replica",
@@ -60,6 +60,9 @@
     "situated-trail-observations-v1",
     "workspace-trail-observations-v1",
     "unified-trails-clean-cutover-v1",
-    "resumable-authoring-continuity-v1"
+    "resumable-authoring-continuity-v1",
+    "package-library-v1",
+    "package-contract-discovery-v1",
+    "catalog-package-artifact-cutover-v1"
   ]
 }
