@@ -1554,36 +1554,6 @@ input:-webkit-autofill:focus {
   height: 11px;
 }
 
-.microsequence-state-icon {
-  width: 18px;
-  height: 18px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex: 0 0 auto;
-  position: relative;
-  top: 1px;
-}
-
-.navigation-title-row .card-title .microsequence-state-icon {
-  margin-right: 0;
-}
-
-.microsequence-state-icon-svg {
-  width: 18px;
-  height: 18px;
-  display: block;
-}
-
-.microsequence-state-icon.is-draft,
-.microsequence-state-icon.is-ready {
-  color: var(--status-warning);
-}
-
-.microsequence-state-icon.is-excluded {
-  color: var(--status-danger);
-}
-
 .didactic-tag-row {
   display: flex;
   flex-wrap: wrap;

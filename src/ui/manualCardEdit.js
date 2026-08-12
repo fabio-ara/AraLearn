@@ -1,5 +1,7 @@
 import { validateCard } from "../domain/cards.js";
 import { buildResourceGapModel } from "../core/resourceGaps.js";
+import { validateCardEnvelope } from "../resources/kernel/cardEnvelope.js";
+import { RESOURCE_PACKAGE_REGISTRY } from "../resources/packages/index.js";
 import {
   listCardMainResourceFieldNames,
   listCardResponseFieldNames
@@ -120,8 +122,44 @@ function text(value) {
   return typeof value === "string" ? value : "";
 }
 
+function packageResourceKind(packageId = "") {
+  return String(packageId)
+    .replace(/^aralearn\.(?:resource|response)\./u, "")
+    .replace(/-/gu, "_");
+}
+
+function resolvePackageTarget(card, requested) {
+  const slots = {
+    content: Array.isArray(card.content) ? card.content : [],
+    feedback: Array.isArray(card.feedback) ? card.feedback : [],
+    response: card.response ? [card.response] : []
+  };
+  const [slot, ...idParts] = requested.split(":");
+  const instanceId = idParts.join(":");
+  if (!Object.hasOwn(slots, slot) || !instanceId) return null;
+  const instance = slots[slot].find((candidate) => text(candidate?.id) === instanceId);
+  if (!instance) return null;
+  const kind = packageResourceKind(instance.package);
+  return {
+    value: instance.data,
+    collection: `package:${slot}`,
+    package: instance.package,
+    editableFields: new Set(EDITABLE_FIELDS_BY_RESOURCE[kind] || [])
+  };
+}
+
 function resolveTarget(card, targetId) {
   const requested = text(targetId).trim();
+  if (Array.isArray(card?.content)) {
+    if (requested === "card") {
+      return {
+        value: card,
+        collection: "card",
+        editableFields: new Set(["title"])
+      };
+    }
+    return resolvePackageTarget(card, requested);
+  }
   if (requested.startsWith("body:")) {
     const id = requested.slice(5);
     const index = (card.blocks || []).findIndex((block) => text(block?.id) === id);
@@ -376,7 +414,7 @@ export function buildManualCardEditModel(card = {}, targetId = "card") {
   const pathFields = listResolvedEditableLeaves(resolved);
   return {
     targetId,
-    targetKind: text(resolved.value?.kind || resolved.value?.resource),
+    targetKind: text(resolved.package || resolved.value?.kind || resolved.value?.resource),
     pathFields,
     fields: pathFields
       .filter((field) => !field.path.includes(".") && !field.path.includes("["))
@@ -435,7 +473,19 @@ export function applyManualCardEdit(card = {}, targetId = "card", values = {}) {
     });
   });
 
-  const validation = validateCard(nextCard, "$.manualEdit.card");
+  const packageValidation = Array.isArray(nextCard?.content)
+    ? validateCardEnvelope(nextCard, RESOURCE_PACKAGE_REGISTRY, "$.manualEdit.card")
+    : null;
+  const validation = packageValidation
+    ? {
+        ok: packageValidation.valid,
+        value: nextCard,
+        errors: packageValidation.errors.map((message) => ({
+          path: "$.manualEdit.card",
+          message
+        }))
+      }
+    : validateCard(nextCard, "$.manualEdit.card");
   if (!validation.ok) {
     const issue = validation.errors?.[0];
     throw new Error(

@@ -600,46 +600,64 @@ const dataprevStructurePayload = {
 const dataprevCards = [
   {
     id: "card-modelos-teoria",
-    resource: "paragraph",
-    kind: "theory",
-    exercise: "none",
+    position: 1,
     title: "Responsabilidade por camada",
-    text: "Em IaaS, o cliente gerencia mais camadas; em PaaS, concentra-se na aplicação e nos dados; em SaaS, utiliza a aplicação pronta.",
-    after: "A responsabilidade do provedor aumenta de IaaS para SaaS."
+    role: "theory",
+    content: [{
+      id: "card-modelos-teoria-text",
+      package: "aralearn.resource.paragraph",
+      version: "1.0.0",
+      data: { text: "Em IaaS, o cliente gerencia mais camadas; em PaaS, concentra-se na aplicação e nos dados; em SaaS, utiliza a aplicação pronta." }
+    }],
+    response: null,
+    feedback: [{
+      id: "card-modelos-teoria-feedback",
+      package: "aralearn.resource.paragraph",
+      version: "1.0.0",
+      data: { text: "A responsabilidade do provedor aumenta de IaaS para SaaS." }
+    }],
+    topics: ["IaaS", "PaaS", "SaaS"],
+    sources: []
   },
   {
     id: "card-modelos-gap",
-    resource: "table",
-    kind: "exercise",
-    exercise: "gap",
+    position: 2,
     title: "Complete a divisão de responsabilidades",
-    columns: ["Modelo", "Responsabilidade típica do cliente"],
-    rows: [
-      ["IaaS", "Gerencia {gap:iaas-layer}."],
-      ["PaaS", "Gerencia principalmente {gap:paas-layer}."],
-      ["SaaS", "Usa a {gap:saas-layer}."]
-    ],
-    gaps: [
-      {
-        id: "iaas-layer",
-        response: "choice",
-        answer: "sistema operacional",
-        distractors: ["datacenter físico", "aplicação SaaS"]
-      },
-      {
-        id: "paas-layer",
-        response: "choice",
-        answer: "aplicação e dados",
-        distractors: ["energia elétrica", "hipervisor"]
-      },
-      {
-        id: "saas-layer",
-        response: "choice",
-        answer: "aplicação pronta",
-        distractors: ["infraestrutura física", "plataforma de contêineres"]
+    role: "practice",
+    content: [{
+      id: "card-modelos-gap-table",
+      package: "aralearn.resource.table",
+      version: "1.0.0",
+      data: {
+        columns: ["Modelo", "Responsabilidade típica do cliente"],
+        rows: [
+          ["IaaS", "Gerencia o sistema operacional."],
+          ["PaaS", "Gerencia principalmente a aplicação e os dados."],
+          ["SaaS", "Usa a aplicação pronta."]
+        ]
       }
-    ],
-    after: "A abstração cresce de IaaS para SaaS."
+    }],
+    response: {
+      id: "card-modelos-gap-response",
+      package: "aralearn.response.gap",
+      version: "1.0.0",
+      data: {
+        prompt: "Complete a tabela.",
+        blanks: [
+          { id: "iaas-layer", targetInstanceId: "card-modelos-gap-table", targetPath: "rows[0][1]", responseMode: "choice", answer: "sistema operacional", distractors: ["datacenter físico", "aplicação SaaS"] },
+          { id: "paas-layer", targetInstanceId: "card-modelos-gap-table", targetPath: "rows[1][1]", responseMode: "choice", answer: "aplicação e dados", distractors: ["energia elétrica", "hipervisor"] },
+          { id: "saas-layer", targetInstanceId: "card-modelos-gap-table", targetPath: "rows[2][1]", responseMode: "choice", answer: "aplicação pronta", distractors: ["infraestrutura física", "plataforma de contêineres"] }
+        ]
+      }
+    },
+    feedback: [{
+      id: "card-modelos-gap-feedback",
+      package: "aralearn.resource.paragraph",
+      version: "1.0.0",
+      data: { text: "A abstração cresce de IaaS para SaaS." }
+    }],
+    topics: ["IaaS", "PaaS", "SaaS"],
+    sources: []
   }
 ];
 const dataprevCardsPayload = {

@@ -121,7 +121,7 @@ for (const expected of [
 }
 
 const fixture = JSON.parse(await readFile(
-  new URL("../../docs/examples/aralearn-contract.logic-plane-matrix-course.json", import.meta.url),
+  new URL("../../tests/fixtures/package/project-minimal.json", import.meta.url),
   "utf8"
 ));
 const workspaceRequestId = randomUUID();
@@ -189,7 +189,6 @@ try {
         title: microsequence.title,
         goal: microsequence.goal,
         role: microsequence.role,
-        status: "planned",
         dependsOn: microsequence.dependsOn,
         covers: microsequence.covers,
         checks: microsequence.checks
@@ -197,26 +196,20 @@ try {
     ]
   });
   workspaceRevision = structured.revision;
-  await tool("consultarRecursosDeCard", { resource: "paragraph" });
+  const packageCatalog = await tool("consultarPackagesDeCard", { slot: "content" });
+  assert.equal(packageCatalog.packages.some(({ id }) => id === "aralearn.resource.paragraph"), true);
+  const paragraphContract = await tool("consultarPackagesDeCard", {
+    packageId: "aralearn.resource.paragraph",
+    version: "1.0.0"
+  });
+  assert.equal(paragraphContract.definition.manifest.id, "aralearn.resource.paragraph");
   const authoringCards = structuredClone(microsequence.cards);
-  const gapCard = authoringCards.find(
-    ({ id }) => id === "card-logic-gap"
-  );
-  gapCard.text =
-    "A conjunção é verdadeira quando {gap:truth-condition}.";
-  gapCard.gaps = [{
-    id: "truth-condition",
-    response: "choice",
-    answer: "as duas são verdadeiras",
-    distractors: ["só P é verdadeira", "só Q é verdadeira"]
-  }];
   const materialized = await tool("salvarCardsNaMicrossequencia", {
     requestId: randomUUID(),
     workspaceId,
     expectedRevision: structured.revision,
     microsequencePath,
     mode: "replace",
-    status: "ready",
     cardsJson: JSON.stringify(authoringCards)
   });
   workspaceRevision = materialized.revision;

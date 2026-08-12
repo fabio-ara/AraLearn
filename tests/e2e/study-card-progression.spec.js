@@ -13,15 +13,10 @@ const PROJECT_KEY = process.env.ARALEARN_SUPABASE_PUBLISHABLE_KEY || "sb_publish
 const EXAMPLE_ROWS = contractToRelationalRows(createExampleProjectDocument());
 
 function largeCourseRows() {
-  return contractToRelationalRows({
-    contract: "aralearn.contract",
-    version: 4,
-    kind: "project",
-    courses: [JSON.parse(readFileSync(new URL(
-      "../../supabase/fixtures/catalog/dataprev-analista-processamento-seed-course.json",
-      import.meta.url
-    ), "utf8"))]
-  });
+  return contractToRelationalRows(JSON.parse(readFileSync(new URL(
+    "../../supabase/fixtures/catalog/dataprev-analista-processamento-seed-course.json",
+    import.meta.url
+  ), "utf8")));
 }
 
 async function expectSvgControlsCentered(page, selector = "button[title][aria-label]") {
@@ -1144,89 +1139,110 @@ test("sair em uma aba fecha imediatamente o documento nas demais abas", async ({
 });
 
 test("o runtime completo executa escolhas, lacunas, fluxograma, popup e anotação", async ({ page }) => {
+  const packageInstance = (id, packageId, data) => ({
+    id,
+    package: packageId,
+    version: "1.0.0",
+    data
+  });
+  const card = (id, position, title, role, content, response = null, feedback = []) => ({
+    id, position, title, role, content, response, feedback, topics: [], sources: []
+  });
+  const runtimeGuide = {
+    goal: "Exercitar o runtime por packages.",
+    include: ["escolha", "lacuna", "fluxo", "feedback"],
+    exclude: [],
+    notation: ["Use exemplos curtos."],
+    avoid: ["Não depender de contexto externo."]
+  };
   const project = {
-    version: 4,
+    contract: "aralearn.library.v1",
+    scope: "course",
     courses: [{
       id: "course-runtime",
       title: "Curso de runtime",
+      goal: "Validar interações do runtime por packages.",
       modules: [{
         id: "module-runtime",
         title: "Módulo de runtime",
+        guide: runtimeGuide,
         lessons: [{
           id: "lesson-runtime",
           title: "Lição de runtime",
+          guide: runtimeGuide,
+          topics: [],
           microsequences: [{
             id: "micro-runtime",
             title: "Microssequência de runtime",
-            status: "ready",
-            cards: [{
-              id: "card-choice",
-              title: "Escolha",
-              resource: "choice",
-              question: "Qual é a resposta?",
-              options: [
-                { id: "certa", text: "Certa" },
-                { id: "errada", text: "Errada" }
-              ],
-              selectionMode: "single",
-              selectionCriterion: "correct",
-              answerIds: ["certa"]
-            }, {
-              id: "card-choice-gap",
-              title: "Lacuna de opção",
-              resource: "composite",
-              kind: "exercise",
-              exercise: "gap",
-              blocks: [{ id: "paragraph-1", kind: "paragraph", value: "Escolha [[certo::certo|errado]]." }]
-            }, {
-              id: "card-free-gap",
-              title: "Lacuna livre",
-              resource: "composite",
-              kind: "exercise",
-              exercise: "gap",
-              blocks: [{ id: "paragraph-1", kind: "paragraph", value: "Escreva [[livre  agora]]." }]
-            }, {
-              id: "card-flow",
-              title: "Fluxograma",
-              resource: "flow",
-              prompt: "Complete.",
-              structure: {
-                kind: "sequence",
-                items: [{ kind: "start" }, {
-                  kind: "process",
-                  text: "Processar",
-                  practice: {
-                    text: {
-                      blank: true,
-                      mode: "choice",
-                      options: ["Processar", "Ignorar"]
-                    }
-                  }
-                }, { kind: "end" }]
-              }
-            }, {
-              id: "card-popup",
-              title: "Popup",
-              resource: "paragraph",
-              text: "Confirme para continuar.",
-              afterBlocks: [{
-                id: "choice-1",
-                kind: "choice",
-                question: "Entendeu?",
+            goal: "Usar escolhas, lacunas, fluxo e feedback.",
+            role: "practice",
+            branchOf: null,
+            dependsOn: [],
+            covers: ["runtime"],
+            checks: ["o aluno conclui as interações"],
+            errors: [],
+            cards: [
+              card("card-choice", 1, "Escolha", "practice", [
+                packageInstance("choice-context", "aralearn.resource.paragraph", {
+                  text: "Qual é a resposta?"
+                })
+              ], packageInstance("choice-response", "aralearn.response.choice", {
+                question: "Qual é a resposta?",
                 options: [
-                  { id: "sim", text: "Sim" },
-                  { id: "nao", text: "Não" }
+                  { id: "certa", kind: "text", text: "Certa" },
+                  { id: "errada", kind: "text", text: "Errada" }
                 ],
                 selectionMode: "single",
                 selectionCriterion: "correct",
-                answerIds: ["sim"]
-              }]
-            }, {
-              id: "card-final",
-              title: "Concluído",
-              resource: "paragraph",
-              text: "Fim."
-            }]
+                answerIds: ["certa"]
+              })),
+              card("card-choice-gap", 2, "Lacuna de opção", "practice", [
+                packageInstance("choice-gap-text", "aralearn.resource.paragraph", {
+                  text: "Escolha certo."
+                })
+              ], packageInstance("choice-gap-response", "aralearn.response.gap", {
+                prompt: "Complete.",
+                blanks: [{
+                  id: "choice-gap", targetInstanceId: "choice-gap-text", targetPath: "text",
+                  responseMode: "choice", answer: "certo", distractors: ["errado"]
+                }]
+              })),
+              card("card-free-gap", 3, "Lacuna livre", "practice", [
+                packageInstance("free-gap-text", "aralearn.resource.paragraph", {
+                  text: "Escreva livre  agora."
+                })
+              ], packageInstance("free-gap-response", "aralearn.response.gap", {
+                prompt: "Complete.",
+                blanks: [{
+                  id: "free-gap", targetInstanceId: "free-gap-text", targetPath: "text",
+                  responseMode: "text", answer: "livre  agora"
+                }]
+              })),
+              card("card-flow", 4, "Fluxograma", "theory", [
+                packageInstance("flow-content", "aralearn.resource.flow", {
+                  prompt: "Acompanhe a sequência.",
+                  structure: {
+                    id: "flow-root", kind: "sequence", items: [
+                      { id: "flow-start", kind: "start", text: "Início" },
+                      { id: "flow-process", kind: "process", text: "Processar" },
+                      { id: "flow-end", kind: "end", text: "Fim" }
+                    ]
+                  }
+                })
+              ]),
+              card("card-popup", 5, "Popup", "theory", [
+                packageInstance("popup-content", "aralearn.resource.paragraph", {
+                  text: "Confirme para continuar."
+                })
+              ], null, [
+                packageInstance("popup-feedback", "aralearn.resource.paragraph", {
+                  text: "A confirmação preserva o avanço local."
+                })
+              ]),
+              card("card-final", 6, "Concluído", "theory", [
+                packageInstance("final-content", "aralearn.resource.paragraph", { text: "Fim." })
+              ])
+            ]
           }]
         }]
       }]
@@ -1392,16 +1408,14 @@ test("o runtime completo executa escolhas, lacunas, fluxograma, popup e anotaç�
   await page.locator('[data-action="next-card"]').click();
   await expect(page.locator(".runtime-card-title")).toHaveText("Fluxograma");
 
-  await page.getByRole("button", { name: "Escolher texto" }).click();
-  await expect(page.locator("[data-flowchart-prompt='true']")).toBeVisible();
-  await page.locator('[data-action="flowchart-set-text"][data-flowchart-value="Processar"]').click();
+  await expect(page.getByText("Processar", { exact: true })).toBeVisible();
   await page.locator('[data-action="next-card"]').click();
   await expect(page.locator(".runtime-card-title")).toHaveText("Popup");
 
   await page.locator('[data-action="next-card"]').click();
   const popup = page.locator(".study-continue-popup");
   await expect(popup).toBeVisible();
-  await popup.locator('[data-action="choice-toggle"][data-choice-option-id="sim"]').click();
+  await expect(popup).toContainText("A confirmação preserva o avanço local.");
   await cdp.send("Emulation.setCPUThrottlingRate", { rate: 6 });
   const popupNextPerformance = await measurePlayToPaint(
     popup.locator('[data-action="continue-popup-next"]')

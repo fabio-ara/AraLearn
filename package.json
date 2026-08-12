@@ -1,6 +1,6 @@
 {
   "name": "aralearn",
-  "version": "0.0.15",
+  "version": "0.0.16",
   "private": true,
   "description": "Aplicativo de estudo offline em microssequências.",
   "type": "module",
@@ -26,7 +26,6 @@
     "resources:sync-edge": "node ./scripts/syncEdgeResourceRuntime.mjs",
     "authoring:access": "node ./scripts/manageAuthoringAccess.mjs",
     "test:authoring-packages": "node ./scripts/testAuthoringPackages.mjs",
-    "harness:card-assistance": "node ./scripts/runCardAssistanceHarness.js",
     "smoke:deepseek:real": "node ./scripts/runDeepSeekCardAssistanceSmoke.js",
     "smoke:deepseek:bottom-up:real": "node ./scripts/runDeepSeekBottomUpRealSmoke.js",
     "smoke:gemini:real": "node ./scripts/runGeminiCardAssistanceSmoke.js",

@@ -323,9 +323,8 @@ test("consentimento OAuth identifica cliente, permissões e conclui a autorizaç
 
 test("Home distingue a origem dos cursos por ícones acessíveis sem expor estados técnicos", async ({ page }) => {
   const project = {
-    contract: "aralearn.contract",
-    version: 4,
-    kind: "project",
+    contract: "aralearn.library.v1",
+    scope: "course",
     courses: [{
       id: "course-catalog",
       title: "Fundamentos oficiais",

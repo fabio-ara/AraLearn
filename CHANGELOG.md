@@ -4,6 +4,47 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 
 ## [Unreleased]
 
+## [0.0.16] - 2026-08-12
+
+### Added
+
+- kernel de cards independente dos packages de conteúdo, resposta e feedback,
+  com catálogo compacto e contrato versionado consultado somente após a escolha
+  pedagógica do resource;
+- calibração autoral mínima em quatro blocos declarativos, com preset seguro,
+  edição offline e precedência explícita sem tornar o núcleo do motor editável;
+- avaliador de blueprint pedagógico para impedir teoria condensada, siglas sem
+  referente, prática sem preparação e quantidade de cards definida por custo;
+- galeria visual package-native e cobertura mobile dos 19 packages instalados.
+
+### Changed
+
+- biblioteca, cursos oficiais, autoria incremental, Action e MCP passam a usar
+  exclusivamente `aralearn.library.v1` e instâncias `id/package/version/data`;
+- `graph` e `relation_map` foram reconstruídos com layout determinístico,
+  alternativa textual integral e rótulos contidos em telas estreitas;
+- assistência e edição manual de cards operam diretamente nas folhas textuais
+  dos packages, preservando identidade, versão, estrutura e respostas formais;
+- materiais do Chatbot orientam progressão do zero, explicação em camadas,
+  escolha cognitiva de resources e prática abundante conforme a microssequência.
+
+### Fixed
+
+- tema, retomada, feedback e avanço respondem localmente mesmo quando uma
+  requisição remota fica pendurada;
+- retomada deixa de exigir alternância de processo para reabilitar o card;
+- expressões técnicas seguidas de sigla, como `Transmission Control Protocol
+  (TCP)`, deixam de receber destaque parcial ambíguo;
+- edição offline de feedback sobrevive à recarga e sincroniza sem converter o
+  card para a representação anterior.
+
+### Removed
+
+- contrato monolítico v4, estados burocráticos de publicação na
+  microssequência, rotas globais de resource e fallback de assistência para
+  cards antigos;
+- harness antigo de assistência e galeria visual dependente do documento v4.
+
 ## [0.0.14] - 2026-08-01
 
 ### Added

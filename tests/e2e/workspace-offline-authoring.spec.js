@@ -50,15 +50,14 @@ async function bootWorkspaceApp(page, { reset = false } = {}) {
       const parts = [];
       const add = (entityType, entity, parentType = null, parentId = null, position = 0) => {
         const content = structuredClone(entity);
-        for (const key of [
-          "id",
-          "position",
-          "modules",
-          "lessons",
-          "topics",
-          "microsequences",
-          "cards"
-        ]) delete content[key];
+        for (const key of ["id", "position"]) delete content[key];
+        const childFields = {
+          course: ["modules"],
+          module: ["lessons"],
+          lesson: ["topics", "microsequences"],
+          microsequence: ["cards"]
+        };
+        for (const key of childFields[entityType] || []) delete content[key];
         parts.push({ entityType, id: entityId(entity), parentType, parentId, position, content });
       };
       add("course", course);
@@ -188,12 +187,7 @@ async function bootWorkspaceApp(page, { reset = false } = {}) {
       getSession: () => ({ user: { id: userId } })
     };
     const learningSpaces = new LearningSpaces({ catalog, authClient });
-    const emptyProject = {
-      contract: "aralearn.contract",
-      version: 4,
-      kind: "project",
-      courses: []
-    };
+    const emptyProject = { contract: "aralearn.library.v1", scope: "course", courses: [] };
     const storage = {
       loadProject: () => structuredClone(emptyProject),
       loadProgress: () => ({ version: 1, lessons: {} }),
@@ -311,14 +305,17 @@ function cardMode(page, mode) {
   );
 }
 
-async function selectAfterForManualEdit(page) {
-  await cardMode(page, "edit").click();
+async function selectFeedbackForManualEdit(page) {
+  if (await cardMode(page, "edit").getAttribute("aria-pressed") !== "true") {
+    await cardMode(page, "edit").click();
+  }
   await expect(page.locator(".workbench-surface")).toHaveClass(/is-editing/u);
-  await page.locator(
-    '[data-action="toggle-card-assistance-resource"][data-resource-target-id="after:text"]'
-  ).click();
+  await page.getByRole("region", { name: "Explicações do card" })
+    .getByRole("button", { name: /Selecionar/u })
+    .click();
   const field = page.locator(
-    '[data-resource-edit-target="after:text"] [data-manual-edit-path="after"]'
+    '[data-resource-edit-target="feedback:card-fixture-minimal-regra-feedback-text"] ' +
+    '[data-manual-edit-path="text"]'
   );
   await expect(field).toBeEditable();
   return field;
@@ -345,7 +342,7 @@ test("workspace preserva edição textual offline e sincroniza a fila após reca
     '[data-action="delete-course-direct"]'
   ].join(","))).toHaveCount(0);
 
-  const afterField = await selectAfterForManualEdit(page);
+  const afterField = await selectFeedbackForManualEdit(page);
   await afterField.fill(EDITED_AFTER);
   await page.locator('[data-action="save-manual-card-edit"]').click();
   await expect(page.locator(".card-assistance-message")).toContainText(
@@ -358,7 +355,7 @@ test("workspace preserva edição textual offline e sincroniza a fila após reca
     const card = queue.draftCourse.modules[0].lessons[0].microsequences[0].cards[0];
     return {
       requestId: queue.operations[0].requestId,
-      after: card.after,
+      after: card.feedback[0].data.text,
       cardIds: queue.draftCourse.modules[0].lessons[0].microsequences[0].cards
         .map((value) => value.id),
       positions: queue.draftCourse.modules[0].lessons[0].microsequences[0].cards
@@ -387,7 +384,8 @@ test("workspace preserva edição textual offline e sincroniza a fila após reca
     const queue = await globalThis.__workspaceOfflineAuthoringProbe.queue();
     return {
       requestId: queue.operations[0].requestId,
-      after: queue.draftCourse.modules[0].lessons[0].microsequences[0].cards[0].after
+      after: queue.draftCourse.modules[0].lessons[0].microsequences[0].cards[0]
+        .feedback[0].data.text
     };
   });
   expect(afterReload).toEqual({
@@ -399,7 +397,7 @@ test("workspace preserva edição textual offline e sincroniza a fila após reca
   await expect(cardMode(page, "edit")).toBeVisible();
   await expect(cardMode(page, "ai")).toHaveCount(0);
 
-  const restoredField = await selectAfterForManualEdit(page);
+  const restoredField = await selectFeedbackForManualEdit(page);
   await expect(restoredField).toContainText(EDITED_AFTER);
   const geometry = await restoredField.evaluate((node) => {
     const box = node.getBoundingClientRect();
@@ -430,7 +428,8 @@ test("workspace preserva edição textual offline e sincroniza a fila após reca
       queue,
       writeRequestId: remote.writes[0].requestId,
       revision: remote.revision,
-      after: remote.course.modules[0].lessons[0].microsequences[0].cards[0].after,
+      after: remote.course.modules[0].lessons[0].microsequences[0].cards[0]
+        .feedback[0].data.text,
       ids: remote.course.modules[0].lessons[0].microsequences[0].cards
         .map((value) => value.id),
       positions: remote.course.modules[0].lessons[0].microsequences[0].cards
@@ -444,6 +443,6 @@ test("workspace preserva edição textual offline e sincroniza a fila após reca
   expect(synchronized.ids).toEqual(beforeReload.cardIds);
   expect(synchronized.positions).toEqual(beforeReload.positions);
   await expect(page.locator(".runtime-card-sheet")).toBeVisible();
-  const synchronizedField = await selectAfterForManualEdit(page);
+  const synchronizedField = await selectFeedbackForManualEdit(page);
   await expect(synchronizedField).toContainText(EDITED_AFTER);
 });

@@ -7,8 +7,8 @@
     {
       "file": "aralearn-authoring-core.zip",
       "platform": null,
-      "bytes": 224036,
-      "sha256": "4ad88ed7e60a6235f521471c88e6d0f5027f2bc3b8c31b1b049595348f6a117c",
+      "bytes": 224209,
+      "sha256": "2064c5ec01f8c1d861b4bf5f9b3312152da3858af2445c21733e94d08566e189",
       "files": [
         {
           "path": "aralearn-authoring/core/editorial-cycle.md",
@@ -132,8 +132,8 @@
         },
         {
           "path": "aralearn-authoring/README.md",
-          "bytes": 5588,
-          "sha256": "951a984548839092824bef291f4b085c20394f2813302db4fd24ff98bed7e890"
+          "bytes": 5761,
+          "sha256": "a2f089d671c2eff5fc21b700e520903f00bdf31522767b544fcb1b7a3ca4d5f0"
         },
         {
           "path": "aralearn-authoring/schemas/catalog-review.schema.json",
@@ -165,8 +165,8 @@
     {
       "file": "aralearn-authoring-chatgpt.zip",
       "platform": "chatgpt",
-      "bytes": 463896,
-      "sha256": "04993329e4d4cd5a0088ac40a4c38a1d5d8c46f3be9565f1df1025f3f0468e68",
+      "bytes": 464076,
+      "sha256": "9df4fe906f100f5ca2263b8fee945ed3c048874f9648c2e8bf2eea9994deb8c5",
       "files": [
         {
           "path": "aralearn-authoring/core/editorial-cycle.md",
@@ -325,8 +325,8 @@
         },
         {
           "path": "aralearn-authoring/README.md",
-          "bytes": 5483,
-          "sha256": "403a0a19ddf994f1de3615a4bfb8e2bfcca03341c17b39cb6f724954589038a0"
+          "bytes": 5663,
+          "sha256": "9a8e35bc0d064bf97a1f6e02554868072b1a3a2b0d271fdb595a7263306357a9"
         },
         {
           "path": "aralearn-authoring/schemas/catalog-review.schema.json",
@@ -358,8 +358,8 @@
     {
       "file": "aralearn-authoring-gemini.zip",
       "platform": "gemini",
-      "bytes": 229929,
-      "sha256": "1ec7c59ac143a9b36b2dd82e46b3a32b415601b66888337e91086dd64782f48f",
+      "bytes": 230102,
+      "sha256": "5f7fb62a612c8282252395990accfa467a9c049275dc4d43ad4f90a25044be84",
       "files": [
         {
           "path": "aralearn-authoring/core/editorial-cycle.md",
@@ -498,8 +498,8 @@
         },
         {
           "path": "aralearn-authoring/README.md",
-          "bytes": 5588,
-          "sha256": "951a984548839092824bef291f4b085c20394f2813302db4fd24ff98bed7e890"
+          "bytes": 5761,
+          "sha256": "a2f089d671c2eff5fc21b700e520903f00bdf31522767b544fcb1b7a3ca4d5f0"
         },
         {
           "path": "aralearn-authoring/schemas/catalog-review.schema.json",
@@ -531,8 +531,8 @@
     {
       "file": "aralearn-authoring-microsoft-365.zip",
       "platform": "microsoft-365",
-      "bytes": 230979,
-      "sha256": "24e4685f2eac0bb0a10d62bad4312158afe84707e0bd37bb0835a5dd292a780b",
+      "bytes": 231152,
+      "sha256": "38ec404d662473cab2a8e2d0fdab6e2c0222af9289104af61b8072bed413bbb9",
       "files": [
         {
           "path": "aralearn-authoring/core/editorial-cycle.md",
@@ -676,8 +676,8 @@
         },
         {
           "path": "aralearn-authoring/README.md",
-          "bytes": 5588,
-          "sha256": "951a984548839092824bef291f4b085c20394f2813302db4fd24ff98bed7e890"
+          "bytes": 5761,
+          "sha256": "a2f089d671c2eff5fc21b700e520903f00bdf31522767b544fcb1b7a3ca4d5f0"
         },
         {
           "path": "aralearn-authoring/schemas/catalog-review.schema.json",
@@ -709,8 +709,8 @@
     {
       "file": "aralearn-authoring-claude.zip",
       "platform": "claude",
-      "bytes": 230332,
-      "sha256": "4cdcebf5eb568b79dd4c13fb167202d213c739b96988be2f837990713418bb7e",
+      "bytes": 230505,
+      "sha256": "b46860ce7746ccb21e1f4c87c14aa5a6e4f24f64f0c9b5e8518b2dc4629ebb05",
       "files": [
         {
           "path": "aralearn-authoring/core/editorial-cycle.md",
@@ -849,8 +849,8 @@
         },
         {
           "path": "aralearn-authoring/README.md",
-          "bytes": 5588,
-          "sha256": "951a984548839092824bef291f4b085c20394f2813302db4fd24ff98bed7e890"
+          "bytes": 5761,
+          "sha256": "a2f089d671c2eff5fc21b700e520903f00bdf31522767b544fcb1b7a3ca4d5f0"
         },
         {
           "path": "aralearn-authoring/schemas/catalog-review.schema.json",
@@ -882,8 +882,8 @@
     {
       "file": "aralearn-authoring-generic.zip",
       "platform": "generic",
-      "bytes": 232115,
-      "sha256": "1405d1a53020016db97c2849b1742b8ccdd457e7141c422132143dafd39a6a12",
+      "bytes": 232288,
+      "sha256": "f2df78808772df2e9993f12562890c07e3a1f572f35684f0a4b05de158eccb17",
       "files": [
         {
           "path": "aralearn-authoring/core/editorial-cycle.md",
@@ -1017,8 +1017,8 @@
         },
         {
           "path": "aralearn-authoring/README.md",
-          "bytes": 5588,
-          "sha256": "951a984548839092824bef291f4b085c20394f2813302db4fd24ff98bed7e890"
+          "bytes": 5761,
+          "sha256": "a2f089d671c2eff5fc21b700e520903f00bdf31522767b544fcb1b7a3ca4d5f0"
         },
         {
           "path": "aralearn-authoring/schemas/catalog-review.schema.json",

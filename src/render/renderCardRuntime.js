@@ -4443,10 +4443,11 @@ function getPopupBlocksFromCard(card) {
 
 function renderAuthoringSupportResources(card, renderOptions = {}) {
   if (renderOptions.resourceSelectionEnabled !== true) return "";
+  const packageCard = Array.isArray(card?.content);
   const normalizedAfter = normalizeInlineText(card?.after || "");
   const popupBlocks = getPopupBlocksFromCard(card);
   const afterBlocks = normalizedAfter ? popupBlocks.slice(1) : popupBlocks;
-  const blocks = [{
+  const legacyBlocks = [{
     kind: "paragraph",
     value: String(card?.after ?? ""),
     exerciseMode: "none",
@@ -4455,12 +4456,18 @@ function renderAuthoringSupportResources(card, renderOptions = {}) {
     manualEditPlaceholder: "Adicionar explicação posterior",
     authoringEmptyLabel: "Adicionar explicação posterior"
   }, ...afterBlocks];
-  const targetIds = [
+  const legacyTargetIds = [
     "after:text",
     ...(Array.isArray(card?.afterBlocks) ? card.afterBlocks : []).map((block) =>
       block?.id ? `after:${block.id}` : ""
     )
   ];
+  const blocks = packageCard ? popupBlocks : legacyBlocks;
+  const targetIds = packageCard
+    ? (Array.isArray(renderOptions.authoringSupportResourceTargetIds)
+        ? renderOptions.authoringSupportResourceTargetIds
+        : [])
+    : legacyTargetIds;
   return (
     '<section class="runtime-authoring-support-resources" aria-label="Explicações do card">' +
     '<span class="runtime-authoring-support-title">Explicações</span>' +
@@ -4476,6 +4483,7 @@ function renderAuthoringSupportResources(card, renderOptions = {}) {
 function paragraphManualEditPath(renderOptions = {}) {
   if (renderOptions.manualEditSourceTargetId === "main") return "text";
   if (renderOptions.manualEditSourceTargetId === "after:text") return "after";
+  if (/^(?:content|feedback):/u.test(renderOptions.manualEditSourceTargetId || "")) return "text";
   return "value";
 }
 

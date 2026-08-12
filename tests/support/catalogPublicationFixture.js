@@ -11,10 +11,9 @@ const courseFixtures = new Map(
   ]))
 );
 const projectFixture = {
-  contract: "aralearn.contract",
-  version: 4,
-  kind: "project",
-  courses: manifestFixture.courseFiles.map((fileName) => courseFixtures.get(fileName))
+  contract: "aralearn.library.v1",
+  scope: "course",
+  courses: manifestFixture.courseFiles.flatMap((fileName) => courseFixtures.get(fileName).courses)
 };
 
 export function getCatalogFixtureProject() {
@@ -29,5 +28,5 @@ export function getCatalogCourseFixture(fileName) {
   if (!courseFixtures.has(fileName)) {
     throw new Error(`Curso ausente das fixtures de publicação: "${fileName}".`);
   }
-  return structuredClone(courseFixtures.get(fileName));
+  return structuredClone(courseFixtures.get(fileName).courses[0]);
 }

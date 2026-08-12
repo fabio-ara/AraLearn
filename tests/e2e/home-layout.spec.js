@@ -47,7 +47,7 @@ async function renderConstrainedHome(page, viewportWidth) {
     };
     document.body.innerHTML = '<div id="app-root"><div class="app-shell">' +
       renderHomeScreen({
-        project: { contract: "aralearn.contract", version: 4, kind: "project", courses: [] },
+        project: { contract: "aralearn.library.v1", scope: "course", courses: [] },
         progress: { version: 1, lessons: {} },
         editorSupport: {
           trailSnapshot: snapshot,

@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Galeria de packages do AraLearn</title>
+    <script>
+      document.documentElement.dataset.colorMode =
+        localStorage.getItem("aralearn.ui.theme") || "light";
+    </script>
+    <link rel="stylesheet" href="/public/styles-tokens.css">
+    <link rel="stylesheet" href="/public/styles-shell-baseline.css">
+    <link rel="stylesheet" href="/public/styles.css">
+    <style>
+      body { margin: 0; background: var(--surface-page); color: var(--text-primary); }
+      .resource-gallery { width: min(100%, 420px); margin: 0 auto; padding: 16px; box-sizing: border-box; }
+      .resource-gallery-card { box-sizing: border-box; width: 100%; min-width: 0; margin: 0 0 18px; padding: 14px; overflow: hidden; border: 1px solid var(--border-subtle); border-radius: 16px; background: var(--surface-card); }
+      .resource-gallery-card > h2 { margin: 0 0 12px; font-size: 1rem; overflow-wrap: anywhere; }
+      @media (min-width: 800px) {
+        .resource-gallery { width: min(100%, 1120px); max-width: 1120px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+        .resource-gallery-card { margin: 0; }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="resource-gallery" aria-label="Galeria de packages"></main>
+    <script type="module">
+      import { RESOURCE_PACKAGE_REGISTRY } from "/src/resources/packages/index.js";
+
+      const response = await fetch("/tests/fixtures/package/project-resources-gallery.json", {
+        cache: "no-store"
+      });
+      if (!response.ok) throw new Error("Não foi possível carregar a fixture da galeria.");
+      const library = await response.json();
+      const cards = library.courses[0].modules[0].lessons[0].microsequences[0].cards;
+      const gallery = document.querySelector(".resource-gallery");
+      cards.forEach((card) => {
+        const instance = card.content.find(({ package: packageId }) =>
+          packageId !== "aralearn.resource.paragraph"
+        ) || card.response || card.content[0];
+        const slot = card.response === instance ? "response" : "content";
+        const article = document.createElement("article");
+        article.className = "resource-gallery-card";
+        article.dataset.resource = instance.package;
+        article.innerHTML = `<h2>${card.title}</h2>${RESOURCE_PACKAGE_REGISTRY.renderInstance(instance, slot)}`;
+        gallery.append(article);
+      });
+      globalThis.__RESOURCE_GALLERY_READY__ = true;
+    </script>
+  </body>
+</html>
