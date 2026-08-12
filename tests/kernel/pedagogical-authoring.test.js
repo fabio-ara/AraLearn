@@ -147,6 +147,17 @@ test("MCP expõe blueprint, catálogo compacto e somente contrato versionado esc
     packageIds: ["aralearn.resource.graph"]
   });
   assert.equal(context.blueprintContract.version, 1);
+  assert.deepEqual(context.calibrationContract.precedence, [
+    "protected_core",
+    "protected_knowledge",
+    "user_preferences"
+  ]);
+  assert.deepEqual(context.calibrationContract.editablePreferenceIds, [
+    "tone-and-approach",
+    "examples-and-context",
+    "practice-variation",
+    "terminology-and-notation"
+  ]);
   assert.ok(context.guidance.some(({ id }) => id === "blueprint-before-materialization"));
   assert.deepEqual(context.packageContracts, [{
     packageId: "aralearn.resource.graph",

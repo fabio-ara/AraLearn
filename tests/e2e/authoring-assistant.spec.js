@@ -146,6 +146,64 @@ test("Plugin oferece somente os valores necessários à criação", async ({ pag
   await expect(page.locator(".remote-assistant-step")).toHaveCount(0);
 });
 
+test("Calibração expõe detalhes editáveis, preserva o núcleo e funciona offline", async ({ page }) => {
+  await page.goto("/");
+  await page.evaluate(async () => {
+    const { createAuthoringAssistantPanel } = await import("/src/ui/AuthoringAssistantPanel.js?calibration-lote-5");
+    const saved = [];
+    window.AndroidHost = {
+      saveExportFile(content, fileName, mimeType) {
+        saved.push({ content, fileName, mimeType });
+        return true;
+      }
+    };
+    const panel = createAuthoringAssistantPanel({
+      fetchImpl: async () => new Response("# Núcleo protegido", { status: 200 })
+    });
+    document.body.replaceChildren(panel.element);
+    window.assistantCalibrationTest = { panel, saved };
+    await panel.open();
+  });
+
+  await page.getByRole("tab", { name: "Abrir Calibração" }).click();
+  await expect(page.getByText("Preset: AraLearn — progressivo e denso")).toBeVisible();
+  await expect(page.locator("[data-assistant-calibration-form] textarea")).toHaveCount(4);
+  await expect(page.locator(".remote-assistant-protected-core textarea")).toHaveCount(0);
+  await page.getByRole("textbox", { name: "Exemplos e contexto" }).fill(
+    "Use primeiro um exemplo de rede doméstica e depois amplie para uma organização."
+  );
+  await expect(page.locator('[data-calibration-badge="examples-and-context"]')).toHaveText("Personalizado");
+  await expect(page.locator("[data-assistant-status]")).toContainText("guardada neste dispositivo");
+
+  await page.evaluate(async () => {
+    window.assistantCalibrationTest.panel.close();
+    await window.assistantCalibrationTest.panel.open();
+  });
+  await page.getByRole("tab", { name: "Abrir Calibração" }).click();
+  await expect(page.getByRole("textbox", { name: "Exemplos e contexto" })).toHaveValue(
+    "Use primeiro um exemplo de rede doméstica e depois amplie para uma organização."
+  );
+
+  await page.getByRole("button", { name: "Instruções calibradas" }).click();
+  await expect.poll(() => page.evaluate(() => window.assistantCalibrationTest.saved.length)).toBe(1);
+  await expect.poll(() => page.evaluate(() => {
+    const saved = window.assistantCalibrationTest.saved[0];
+    const bytes = Uint8Array.from(atob(saved.content), (character) => character.charCodeAt(0));
+    return { fileName: saved.fileName, content: new TextDecoder().decode(bytes) };
+  })).toEqual({
+    fileName: "INSTRUCTIONS-CALIBRADAS.md",
+    content: expect.stringMatching(/# Núcleo protegido[\s\S]*núcleo pedagógico protegido[\s\S]*rede doméstica/iu)
+  });
+
+  await page.getByRole("button", { name: "Restaurar preset" }).click();
+  await expect(page.locator('[data-calibration-badge="examples-and-context"]')).toHaveText("Preset");
+  await expect(page.locator("[data-assistants-panel]")).toHaveCSS("overflow-x", "visible");
+  const overflow = await page.locator("[data-assistants-panel]").evaluate(
+    (element) => element.scrollWidth > element.clientWidth + 1
+  );
+  expect(overflow).toBe(false);
+});
+
 test("Chatbot cria OAuth antes de salvar o GPT e o vincula em seguida", async ({ page }) => {
   await page.goto("/");
   await page.evaluate(async () => {

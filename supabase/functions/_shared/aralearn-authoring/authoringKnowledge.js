@@ -1,5 +1,11 @@
 import { RESOURCE_PACKAGE_REGISTRY } from "../aralearn/runtime/resources/packages/index.js";
-import { composeProtectedAuthoringCore } from "./authoringInstructionModules.js";
+import {
+  AUTHORING_CALIBRATION_VERSION,
+  AUTHORING_DEFAULT_PRESET,
+  AUTHORING_PREFERENCE_DEFINITIONS,
+  PROTECTED_AUTHORING_CORE_MODULES,
+  composeProtectedAuthoringCore
+} from "../aralearn/runtime/authoring/instructionProfile.js";
 
 const PACKAGE_VERSION_BY_ID = new Map(
   RESOURCE_PACKAGE_REGISTRY.listCatalog().map(({ id, version }) => [id, version])
@@ -536,6 +542,13 @@ export function prepareAuthoringContext({
       version: 1,
       principle: "Planeje a progressão e as operações cognitivas antes de escolher packages ou materializar cards.",
       requiredSections: [...BLUEPRINT_REQUIRED_SECTIONS]
+    },
+    calibrationContract: {
+      version: AUTHORING_CALIBRATION_VERSION,
+      presetId: AUTHORING_DEFAULT_PRESET.id,
+      precedence: ["protected_core", "protected_knowledge", "user_preferences"],
+      protectedModuleIds: PROTECTED_AUTHORING_CORE_MODULES.map(({ id }) => id),
+      editablePreferenceIds: AUTHORING_PREFERENCE_DEFINITIONS.map(({ id }) => id)
     },
     packageContracts: packageIds.map((packageId) => ({
       packageId,

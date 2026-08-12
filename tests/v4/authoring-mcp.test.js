@@ -211,6 +211,11 @@ test("MCP publica conhecimento e recupera um brief autoral curto", async () => {
   ]);
   assert.equal(prepared.data.blueprintContract.version, 1);
   assert.ok(prepared.data.blueprintContract.requiredSections.includes("conceptualLayers"));
+  assert.deepEqual(prepared.data.calibrationContract.precedence, [
+    "protected_core",
+    "protected_knowledge",
+    "user_preferences"
+  ]);
 
   const sourceAwareResponse = await handler()(request(toolCall("prepararAutoriaAraLearn", {
     intent: "revise",

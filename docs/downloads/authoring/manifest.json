@@ -165,8 +165,8 @@
     {
       "file": "aralearn-authoring-chatgpt.zip",
       "platform": "chatgpt",
-      "bytes": 530028,
-      "sha256": "b93ad07fb4d4b5dc64d13ee0e795718a90893fb13cc43b9b6572805630a7e42b",
+      "bytes": 530049,
+      "sha256": "4b3e6be2dec1f4c25b8727c9f0a02e6e5d2b4899ca470f296133bc71d75290ff",
       "files": [
         {
           "path": "aralearn-authoring/core/editorial-cycle.md",
@@ -285,8 +285,8 @@
         },
         {
           "path": "aralearn-authoring/platforms/chatgpt/ACTION_OPENAPI.yaml",
-          "bytes": 84353,
-          "sha256": "2b7add8d74733318a63125bc79c208627e96e52b956c25cac52973c67ff124cd"
+          "bytes": 84374,
+          "sha256": "bf5cefa950997212e58e1c0b9229c1fc16ed1617a583bb37d34f889a2a6e595d"
         },
         {
           "path": "aralearn-authoring/platforms/chatgpt/INSTRUCTIONS.md",
@@ -1066,8 +1066,8 @@
     },
     {
       "file": "aralearn-chatgpt-action-openapi.yaml",
-      "bytes": 84353,
-      "sha256": "2b7add8d74733318a63125bc79c208627e96e52b956c25cac52973c67ff124cd"
+      "bytes": 84374,
+      "sha256": "bf5cefa950997212e58e1c0b9229c1fc16ed1617a583bb37d34f889a2a6e595d"
     }
   ]
 }

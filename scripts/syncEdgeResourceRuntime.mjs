@@ -56,7 +56,8 @@ const files = [
   ["src/resources/packages/system-map/index.js", "resources/packages/system-map/index.js"],
   ["src/resources/packages/graph/index.js", "resources/packages/graph/index.js"],
   ["src/resources/packages/relation-map/index.js", "resources/packages/relation-map/index.js"],
-  ["src/authoring/pedagogicalBlueprint.js", "authoring/pedagogicalBlueprint.js"]
+  ["src/authoring/pedagogicalBlueprint.js", "authoring/pedagogicalBlueprint.js"],
+  ["src/authoring/instructionProfile.js", "authoring/instructionProfile.js"]
 ];
 
 const checkOnly = process.argv.includes("--check");

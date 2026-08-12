@@ -430,6 +430,7 @@ const AUTHORING_CONTEXT_DATA_SCHEMA = schema([
   "recommendedTools",
   "guidance",
   "blueprintContract",
+  "calibrationContract",
   "packageContracts",
   "access"
 ], {
@@ -448,6 +449,28 @@ const AUTHORING_CONTEXT_DATA_SCHEMA = schema([
     items: AUTHORING_GUIDANCE_SCHEMA
   },
   blueprintContract: PEDAGOGICAL_BLUEPRINT_SCHEMA,
+  calibrationContract: schema([
+    "version",
+    "presetId",
+    "precedence",
+    "protectedModuleIds",
+    "editablePreferenceIds"
+  ], {
+    version: { const: 1 },
+    presetId: { const: "aralearn-progressive-dense" },
+    precedence: {
+      type: "array",
+      prefixItems: [
+        { const: "protected_core" },
+        { const: "protected_knowledge" },
+        { const: "user_preferences" }
+      ],
+      minItems: 3,
+      maxItems: 3
+    },
+    protectedModuleIds: STRING_LIST,
+    editablePreferenceIds: STRING_LIST
+  }),
   packageContracts: {
     type: "array",
     maxItems: AUTHORING_PACKAGE_IDS.length,
