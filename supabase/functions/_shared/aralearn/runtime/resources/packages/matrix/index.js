@@ -1,6 +1,11 @@
-import { renderPackageInline, renderPackageProse } from "../../sdk/html.js";
+import { escapePackageAttribute, renderPackageInline, renderPackageProse } from "../../sdk/html.js";
 
-function renderMatrix(values, name = "") { return `<div class="package-matrix-value">${name ? `<strong>${renderPackageInline(name)}</strong>` : ""}<table aria-label="Matriz ${renderPackageInline(name)}"><tbody>${values.map((row) => `<tr>${row.map((cell) => `<td>${renderPackageInline(cell)}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`; }
+function renderMatrix(values, name = "") {
+  const dimensions = `${values.length} por ${values[0]?.length || 0}`;
+  const accessibleName = name ? `Matriz ${name}, ${dimensions}` : `Matriz ${dimensions}`;
+  const body = values.map((row) => `<tr>${row.map((cell) => `<td><span>${renderPackageInline(cell)}</span></td>`).join("")}</tr>`).join("");
+  return `<div class="runtime-matrix-item">${name ? `<div class="runtime-matrix-name">${renderPackageInline(name)} =</div>` : ""}<div class="runtime-matrix-shell" role="img" aria-label="${escapePackageAttribute(accessibleName)}"><div class="runtime-matrix-bracket is-left" aria-hidden="true"></div><div class="runtime-matrix-grid"><table class="runtime-matrix-table" aria-hidden="true"><tbody>${body}</tbody></table></div><div class="runtime-matrix-bracket is-right" aria-hidden="true"></div></div></div>`;
+}
 
 export const matrixPackage = Object.freeze({
   manifest: Object.freeze({ id: "aralearn.resource.matrix", version: "1.0.0", label: "Matriz", purpose: "Representar valores por linha e coluna e operações entre matrizes.", slots: Object.freeze(["content", "feedback"]), cognitiveOperations: Object.freeze(["inspect-matrix", "calculate-matrix", "compare-matrices"]), responseCompatibility: Object.freeze(["aralearn.response.gap", "aralearn.response.choice"]), limitations: Object.freeze(["Não use como tabela de atributos." ]), accessibility: "Cada matriz possui tabela semântica e ordem linear por linhas." }),
@@ -8,7 +13,12 @@ export const matrixPackage = Object.freeze({
   schema: Object.freeze({ type: "object", additionalProperties: false, properties: { prompt: { type: "string" }, name: { type: "string" }, values: { type: "array", minItems: 1, items: { type: "array", minItems: 1, items: { anyOf: [{ type: "string" }, { type: "number" }] } } }, sequence: { type: "array", minItems: 1, items: { type: "object", additionalProperties: false, required: ["values"], properties: { name: { type: "string" }, connector: { type: "string" }, values: { type: "array", minItems: 1, items: { type: "array", minItems: 1, items: { anyOf: [{ type: "string" }, { type: "number" }] } } } } } } } }),
   normalize(data) { const normalizeValues = (values) => (values || []).map((row) => row.map(String)); return { ...(data?.prompt ? { prompt: String(data.prompt).trim() } : {}), ...(data?.name ? { name: String(data.name).trim() } : {}), ...(data?.values ? { values: normalizeValues(data.values) } : {}), ...(data?.sequence ? { sequence: data.sequence.map((item) => ({ ...(item?.name ? { name: String(item.name) } : {}), ...(item?.connector ? { connector: String(item.connector) } : {}), values: normalizeValues(item.values) })) } : {}) }; },
   validate(data) { const sets = [...(data.values ? [data.values] : []), ...(data.sequence || []).map(({ values }) => values)]; const errors = []; if (sets.length === 0 || (data.values && data.sequence)) errors.push("Matrix exige values ou sequence, exclusivamente."); if (sets.some((values) => values.some((row) => row.length !== values[0].length))) errors.push("Linhas da matriz precisam ter o mesmo comprimento."); return errors; },
-  render(data) { const visual = data.values ? renderMatrix(data.values, data.name) : data.sequence.map((item, index) => `${index ? `<span class="package-matrix-connector">${renderPackageInline(item.connector || "→")}</span>` : ""}${renderMatrix(item.values, item.name)}`).join(""); return `<div class="runtime-block runtime-matrix-block">${data.prompt ? renderPackageProse(data.prompt) : ""}<div class="package-matrix-sequence">${visual}</div></div>`; },
+  render(data) {
+    const sequence = data.values
+      ? renderMatrix(data.values, data.name)
+      : data.sequence.map((item, index) => `<div class="runtime-matrix-sequence-group">${index ? `<div class="runtime-matrix-sequence-operator" aria-hidden="true">${renderPackageInline(item.connector || "→")}</div>` : ""}${renderMatrix(item.values, item.name)}</div>`).join("");
+    return `<div class="runtime-block runtime-matrix-block">${data.prompt ? `<div class="runtime-matrix-prompt">${renderPackageProse(data.prompt)}</div>` : ""}<div class="runtime-matrix-wrap"><div class="runtime-matrix-equation${data.sequence ? " is-sequence" : ""}">${sequence}</div></div></div>`;
+  },
   accessibleText(data) { const sets = data.values ? [{ name: data.name, values: data.values }] : data.sequence; return sets.map((item) => `${item.name || "Matriz"}: ${item.values.map((row) => row.join(", ")).join("; ")}`).join(". "); },
   editableTargets() { return []; }
 });

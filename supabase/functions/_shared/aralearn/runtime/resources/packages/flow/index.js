@@ -9,9 +9,10 @@ function flowChildren(node) {
   return groups.flatMap((value) => Array.isArray(value) ? value : []);
 }
 
-function nodeSummary(node) { return node.text || node.condition || node.initialization || node.match || node.kind; }
-function renderFlowNode(node) { const children = flowChildren(node); return `<li data-flow-kind="${node.kind}"><span><strong>${renderPackageInline(node.kind)}</strong>: ${renderPackageInline(nodeSummary(node))}</span>${children.length ? `<ol>${children.map(renderFlowNode).join("")}</ol>` : ""}</li>`; }
-function flattenFlow(node, output = []) { if (!node) return output; output.push(`${node.kind}: ${nodeSummary(node)}`); flowChildren(node).forEach((child) => flattenFlow(child, output)); return output; }
+const FLOW_KIND_LABELS = Object.freeze({ sequence: "Sequência", start: "Início", end: "Fim", process: "Processo", if_then: "Decisão", if_then_else: "Decisão", switch: "Escolha", while: "Enquanto", for: "Repetição", do_while: "Repita" });
+function nodeSummary(node) { return node.text || node.condition || node.initialization || node.match || ""; }
+function renderFlowNode(node) { const children = flowChildren(node); const label = FLOW_KIND_LABELS[node.kind] || node.kind; const summary = nodeSummary(node); return `<li class="package-flow-node" data-flow-kind="${node.kind}"><div class="package-flow-node-card${summary ? "" : " is-label-only"}"><span class="package-flow-kind">${renderPackageInline(label)}</span>${summary ? `<span class="package-flow-summary">${renderPackageInline(summary)}</span>` : ""}</div>${children.length ? `<ol class="package-flow-children">${children.map(renderFlowNode).join("")}</ol>` : ""}</li>`; }
+function flattenFlow(node, output = []) { if (!node) return output; output.push(`${FLOW_KIND_LABELS[node.kind] || node.kind}: ${nodeSummary(node) || FLOW_KIND_LABELS[node.kind] || node.kind}`); flowChildren(node).forEach((child) => flattenFlow(child, output)); return output; }
 
 export const flowPackage = Object.freeze({
   manifest: Object.freeze({ id: "aralearn.resource.flow", version: "1.0.0", label: "Fluxo", purpose: "Representar sequência, decisão, ramificação e repetição a partir de lógica declarativa.", slots: Object.freeze(["content", "feedback"]), cognitiveOperations: Object.freeze(["trace-control-flow", "decide", "recognize-loop", "predict-path"]), responseCompatibility: Object.freeze(["aralearn.response.gap", "aralearn.response.choice", "aralearn.response.ordering"]), limitations: Object.freeze(["Use sequence quando não houver ramificação.", "A geometria é derivada e nunca autoral." ]), accessibility: "A lógica é exposta também como árvore ordenada, independente do desenho." }),

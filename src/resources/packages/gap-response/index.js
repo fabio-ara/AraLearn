@@ -1,6 +1,7 @@
 import {
   createPackageGapMarker,
   escapePackageAttribute,
+  renderPackageActionIcon,
   renderPackageInline
 } from "../../sdk/html.js";
 
@@ -40,18 +41,12 @@ function countOccurrences(value, search) {
   return count;
 }
 
-function actionIcon(kind) {
-  return kind === "answer"
-    ? '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z"/><circle cx="12" cy="12" r="2.5"/></svg>'
-    : '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12a8 8 0 1 0 2.3-5.7L4 8.6M4 4v4.6h4.6"/></svg>';
-}
-
 function feedbackHtml(blockKey, feedback) {
   if (!feedback) return "";
   const key = escapePackageAttribute(blockKey);
   if (feedback === "correct") return `<div class="inline-feedback ok" data-complete-feedback-block-key="${key}"><p class="tiny">Correto.</p></div>`;
   if (feedback === "incomplete") return `<div class="inline-feedback warn" data-complete-feedback-block-key="${key}"><p class="tiny">Complete todas as lacunas.</p></div>`;
-  return `<div class="inline-feedback err has-actions" data-complete-feedback-block-key="${key}"><p class="tiny">Incorreto. Tente novamente.</p><div class="feedback-icons"><button class="icon-pill" type="button" data-action="complete-view-answer" data-complete-block-key="${key}" title="Ver resposta" aria-label="Ver resposta">${actionIcon("answer")}</button><button class="icon-pill primary" type="button" data-action="complete-try-again" data-complete-block-key="${key}" title="Tentar de novo" aria-label="Tentar de novo">${actionIcon("retry")}</button></div></div>`;
+  return `<div class="inline-feedback err has-actions" data-complete-feedback-block-key="${key}"><p class="tiny">Incorreto. Tente novamente.</p><div class="feedback-icons"><button class="icon-pill" type="button" data-action="complete-view-answer" data-complete-block-key="${key}" title="Ver resposta" aria-label="Ver resposta">${renderPackageActionIcon("answer")}</button><button class="icon-pill primary" type="button" data-action="complete-try-again" data-complete-block-key="${key}" title="Tentar de novo" aria-label="Tentar de novo">${renderPackageActionIcon("retry")}</button></div></div>`;
 }
 
 function choicePrompt(data, options) {

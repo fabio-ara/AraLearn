@@ -1,17 +1,16 @@
-import { escapePackageAttribute, renderPackageInline, renderPackageProse } from "../../sdk/html.js";
-
-function actionIcon(kind) {
-  return kind === "answer"
-    ? '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z"/><circle cx="12" cy="12" r="2.5"/></svg>'
-    : '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12a8 8 0 1 0 2.3-5.7L4 8.6M4 4v4.6h4.6"/></svg>';
-}
+import {
+  escapePackageAttribute,
+  renderPackageActionIcon,
+  renderPackageInline,
+  renderPackageProse
+} from "../../sdk/html.js";
 
 function feedbackHtml(blockKey, feedback) {
   if (!feedback) return "";
   const key = escapePackageAttribute(blockKey);
   if (feedback === "correct") return `<div class="inline-feedback ok"><p class="tiny">Correto.</p></div>`;
   if (feedback === "incomplete") return `<div class="inline-feedback warn"><p class="tiny">Organize todos os itens.</p></div>`;
-  return `<div class="inline-feedback err has-actions"><p class="tiny">A ordem ainda não está correta.</p><div class="feedback-icons"><button class="icon-pill" type="button" data-action="ordering-view-answer" data-response-block-key="${key}" title="Ver resposta" aria-label="Ver resposta">${actionIcon("answer")}</button><button class="icon-pill primary" type="button" data-action="ordering-try-again" data-response-block-key="${key}" title="Tentar de novo" aria-label="Tentar de novo">${actionIcon("retry")}</button></div></div>`;
+  return `<div class="inline-feedback err has-actions"><p class="tiny">A ordem ainda não está correta.</p><div class="feedback-icons"><button class="icon-pill" type="button" data-action="ordering-view-answer" data-response-block-key="${key}" title="Ver resposta" aria-label="Ver resposta">${renderPackageActionIcon("answer")}</button><button class="icon-pill primary" type="button" data-action="ordering-try-again" data-response-block-key="${key}" title="Tentar de novo" aria-label="Tentar de novo">${renderPackageActionIcon("retry")}</button></div></div>`;
 }
 
 function itemLabels(data, options) {

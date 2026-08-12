@@ -1,7 +1,10 @@
 import { expect, test } from "@playwright/test";
 
 import { RESOURCE_PACKAGE_REGISTRY } from "../../src/resources/packages/index.js";
-import { renderPackageCardArticle } from "../../src/render/renderPackageCard.js";
+import {
+  renderPackageCardArticle,
+  renderPackageCardBlocks
+} from "../../src/render/renderPackageCard.js";
 
 const STYLES = ["/styles-tokens.css", "/styles-shell-baseline.css", "/styles.css"];
 
@@ -61,6 +64,63 @@ const relationInstance = {
       { id: "r4", from: "events", to: "records", label: "permite" }
     ]
   }
+};
+
+const matrixInstance = {
+  id: "matrix-test",
+  package: "aralearn.resource.matrix",
+  version: "1.0.0",
+  data: {
+    prompt: "Compare os campos que individualizam cada comunicação.",
+    name: "Fluxos",
+    values: [
+      ["Fluxo", "Origem", "Transporte", "Porta de origem", "Porta de destino"],
+      ["F1", "192.0.2.10", "TCP", "51000", "443"],
+      ["F2", "192.0.2.10", "TCP", "51001", "443"]
+    ]
+  }
+};
+
+const treeInstance = {
+  id: "tree-test",
+  package: "aralearn.resource.tree",
+  version: "1.0.0",
+  data: {
+    prompt: "Observe os níveis de um nome de documentação.",
+    variant: "hierarchy",
+    nodes: [
+      { id: "root", label: "raiz lógica", parentId: null },
+      { id: "test", label: "test", parentId: "root" },
+      { id: "example", label: "example", parentId: "test" },
+      { id: "app", label: "app", parentId: "example" }
+    ]
+  }
+};
+
+const wrongChoiceCard = {
+  id: "choice-test",
+  position: 1,
+  title: "Escolha",
+  role: "practice",
+  content: [],
+  response: {
+    id: "choice-answer",
+    package: "aralearn.response.choice",
+    version: "1.0.0",
+    data: {
+      question: "Qual protocolo entrega um fluxo confiável?",
+      selectionMode: "single",
+      selectionCriterion: "correct",
+      options: [
+        { id: "tcp", text: "TCP" },
+        { id: "dns", text: "DNS" }
+      ],
+      answerIds: ["tcp"]
+    }
+  },
+  feedback: [],
+  topics: [],
+  sources: []
 };
 
 function documentFor(instance, mode) {
@@ -170,6 +230,46 @@ for (const width of [360, 390, 412]) {
         expect(row.leftBottom).toBeLessThanOrEqual(row.verbTop + 0.5);
         expect(row.verbBottom).toBeLessThanOrEqual(row.rightTop + 0.5);
       });
+      expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
+    });
+
+    test(`choice, matrix e tree preservam estado e riqueza visual em ${width}px no modo ${mode}`, async ({ page }) => {
+      await page.setViewportSize({ width, height: 900 });
+      await page.goto("/");
+      const choicePrefix = "visual-choice";
+      const choiceKey = `${choicePrefix}::response:${wrongChoiceCard.response.id}`;
+      const html = [
+        renderPackageCardBlocks(wrongChoiceCard, {
+          blockKeyPrefix: choicePrefix,
+          responseStateByBlockKey: {
+            [choiceKey]: { selected: ["dns"], feedback: "wrong" }
+          }
+        }),
+        renderPackageCardArticle(studyCardFor(matrixInstance)),
+        renderPackageCardArticle(studyCardFor(treeInstance))
+      ].join("");
+      await page.setContent(documentForHtml(html, mode));
+
+      const tcp = page.locator('[data-choice-option-id="tcp"]');
+      const dns = page.locator('[data-choice-option-id="dns"]');
+      await expect(tcp).not.toHaveClass(/expected-selection|selected-correct/u);
+      await expect(dns).toHaveClass(/selected-incorrect/u);
+      await expect(page.locator(".runtime-feedback-icon")).toHaveCount(2);
+      const iconStyles = await page.locator(".runtime-feedback-icon").evaluateAll((icons) => icons.map((icon) => ({
+        fill: getComputedStyle(icon).fill,
+        stroke: getComputedStyle(icon).stroke,
+        color: getComputedStyle(icon.closest("button")).color
+      })));
+      iconStyles.forEach(({ fill, stroke, color }) => {
+        expect(fill).toBe("none");
+        expect(stroke).toBe(color);
+      });
+
+      await expect(page.locator(".runtime-matrix-bracket")).toHaveCount(2);
+      await expect(page.locator(".runtime-matrix-table td")).toHaveCount(15);
+      await expect(page.locator(".runtime-tree-entry")).toHaveCount(4);
+      await expect(page.locator('.runtime-tree-item[aria-level="4"]')).toHaveCount(1);
+      await assertContained(page, ".runtime-tree-structure, .runtime-tree-entry", width);
       expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
     });
   }

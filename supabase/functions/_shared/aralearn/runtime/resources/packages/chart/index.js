@@ -1,6 +1,6 @@
-import { escapePackageAttribute, renderPackageInline, renderPackageProse } from "../../sdk/html.js";
+import { escapePackageAttribute, escapePackageHtml, renderPackageInline, renderPackageProse } from "../../sdk/html.js";
 
-function numericPoints(data) { return data.series.flatMap((series) => series.values.map(([x, y]) => ({ series: series.name, x, y: Number(y) })).filter(({ y }) => Number.isFinite(y))); }
+function numericPoints(data) { return data.series.flatMap((series, seriesIndex) => series.values.map(([x, y], pointIndex) => ({ series: series.name, seriesIndex, pointIndex, x, y: Number(y) })).filter(({ y }) => Number.isFinite(y))); }
 function chartAccessibleText(data) { return `${data.prompt || "Gráfico."} Eixo x: ${data.xAxis.label}. Eixo y: ${data.yAxis.label}${data.yAxis.unit ? ` em ${data.yAxis.unit}` : ""}. ${data.series.map((series) => `${series.name}: ${series.values.map(([x, y]) => `${x}, ${y}`).join("; ")}`).join(". ")}`; }
 
 export const chartPackage = Object.freeze({
@@ -10,6 +10,27 @@ export const chartPackage = Object.freeze({
   schema: Object.freeze({ type: "object", additionalProperties: false, required: ["chartType", "xAxis", "yAxis", "series"], properties: { prompt: { type: "string" }, chartType: { type: "string", enum: ["bar", "line", "scatter", "histogram", "boxplot"] }, xAxis: { type: "object", additionalProperties: false, required: ["label"], properties: { label: { type: "string" }, unit: { type: "string" } } }, yAxis: { type: "object", additionalProperties: false, required: ["label"], properties: { label: { type: "string" }, unit: { type: "string" } } }, series: { type: "array", minItems: 1, maxItems: 6, items: { type: "object", additionalProperties: false, required: ["id", "name", "values"], properties: { id: { type: "string" }, name: { type: "string" }, values: { type: "array", minItems: 1, items: { type: "array", minItems: 2, maxItems: 2, prefixItems: [{ anyOf: [{ type: "string" }, { type: "number" }] }, { type: "number" }] } } } } } } }),
   normalize(data) { return { ...(data?.prompt ? { prompt: String(data.prompt).trim() } : {}), chartType: String(data?.chartType || "line"), xAxis: structuredClone(data?.xAxis), yAxis: structuredClone(data?.yAxis), series: (data?.series || []).map((series) => ({ id: String(series?.id || "").trim(), name: String(series?.name || "").trim(), values: (series?.values || []).map(([x, y]) => [x, Number(y)]) })) }; },
   validate(data) { const ids = data.series.map(({ id }) => id); return new Set(ids).size === ids.length ? [] : ["Séries precisam de ids únicos."]; },
-  render(data) { const points = numericPoints(data); const max = Math.max(1, ...points.map(({ y }) => y)); const categories = [...new Set(points.map(({ x }) => String(x)))]; return `<div class="runtime-block runtime-chart-block">${data.prompt ? renderPackageProse(data.prompt) : ""}<svg class="package-chart" viewBox="0 0 120 82" role="img" aria-label="${escapePackageAttribute(chartAccessibleText(data))}"><line x1="12" y1="68" x2="112" y2="68"/><line x1="12" y1="8" x2="12" y2="68"/>${points.map((point, index) => { const x = 18 + (categories.indexOf(String(point.x)) * (88 / Math.max(1, categories.length - 1))); const y = 68 - (point.y / max) * 54; return `<circle class="package-chart-point tone-${index % 6}" cx="${x}" cy="${y}" r="3"><title>${renderPackageInline(`${point.series}: ${point.x}, ${point.y}`)}</title></circle>`; }).join("")}</svg><p class="package-chart-axis">${renderPackageInline(data.xAxis.label)} · ${renderPackageInline(data.yAxis.label)}${data.yAxis.unit ? ` (${renderPackageInline(data.yAxis.unit)})` : ""}</p></div>`; },
+  render(data) {
+    const points = numericPoints(data);
+    const maximum = Math.max(1, ...points.map(({ y }) => y));
+    const minimum = Math.min(0, ...points.map(({ y }) => y));
+    const range = Math.max(1, maximum - minimum);
+    const categories = [...new Set(points.map(({ x }) => String(x)))];
+    const xPosition = (value, seriesIndex = 0) => 18 + (categories.indexOf(String(value)) * (88 / Math.max(1, categories.length - 1))) + (data.chartType === "bar" ? (seriesIndex - (data.series.length - 1) / 2) * Math.min(7, 12 / data.series.length) : 0);
+    const yPosition = (value) => 67 - ((value - minimum) / range) * 52;
+    const grid = [0, 0.25, 0.5, 0.75, 1].map((ratio) => `<line class="package-chart-grid" x1="13" y1="${15 + ratio * 52}" x2="112" y2="${15 + ratio * 52}"/>`).join("");
+    const seriesMarkup = data.series.map((series, seriesIndex) => {
+      const seriesPoints = points.filter((point) => point.seriesIndex === seriesIndex);
+      if (data.chartType === "bar" || data.chartType === "histogram") {
+        const width = Math.max(3, Math.min(9, 38 / Math.max(1, categories.length * data.series.length)));
+        return seriesPoints.map((point) => { const x = xPosition(point.x, seriesIndex) - width / 2; const y = yPosition(Math.max(0, point.y)); const baseline = yPosition(0); return `<rect class="package-chart-mark tone-${seriesIndex % 6}" x="${x}" y="${Math.min(y, baseline)}" width="${width}" height="${Math.max(1, Math.abs(baseline - y))}"><title>${escapePackageHtml(`${point.series}: ${point.x}, ${point.y}`)}</title></rect>`; }).join("");
+      }
+      const coordinates = seriesPoints.map((point) => `${xPosition(point.x)},${yPosition(point.y)}`).join(" ");
+      return `${data.chartType === "line" && seriesPoints.length > 1 ? `<polyline class="package-chart-line tone-${seriesIndex % 6}" points="${coordinates}"/>` : ""}${seriesPoints.map((point) => `<circle class="package-chart-point tone-${seriesIndex % 6}" cx="${xPosition(point.x)}" cy="${yPosition(point.y)}" r="3"><title>${escapePackageHtml(`${point.series}: ${point.x}, ${point.y}`)}</title></circle>`).join("")}`;
+    }).join("");
+    const ticks = categories.map((category) => `<text class="package-chart-tick" x="${xPosition(category)}" y="76">${escapePackageHtml(category)}</text>`).join("");
+    const legend = data.series.map((series, index) => `<li><span class="package-chart-swatch tone-${index % 6}" aria-hidden="true"></span>${renderPackageInline(series.name)}</li>`).join("");
+    return `<div class="runtime-block runtime-chart-block">${data.prompt ? renderPackageProse(data.prompt) : ""}<figure class="package-chart-figure"><svg class="package-chart" viewBox="0 0 120 82" role="img" aria-label="${escapePackageAttribute(chartAccessibleText(data))}">${grid}<line class="package-chart-axis-line" x1="13" y1="67" x2="112" y2="67"/><line class="package-chart-axis-line" x1="13" y1="14" x2="13" y2="67"/>${seriesMarkup}${ticks}</svg><figcaption><span>${renderPackageInline(data.xAxis.label)} · ${renderPackageInline(data.yAxis.label)}${data.yAxis.unit ? ` (${renderPackageInline(data.yAxis.unit)})` : ""}</span><ul class="package-chart-legend">${legend}</ul></figcaption></figure></div>`;
+  },
   accessibleText(data) { return chartAccessibleText(data); }, editableTargets(data) { return data.series.map((_, index) => ({ path: `series[${index}].name`, label: `Editar série ${index + 1}` })); }
 });

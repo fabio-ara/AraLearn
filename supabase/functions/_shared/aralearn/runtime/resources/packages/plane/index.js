@@ -1,7 +1,7 @@
-import { escapePackageAttribute, renderPackageProse } from "../../sdk/html.js";
+import { escapePackageAttribute, escapePackageHtml, renderPackageProse } from "../../sdk/html.js";
 
 function pair(value) { return Array.isArray(value) && value.length === 2 ? value.map(Number) : null; }
-function collectVectors(data) { return [data.vector, ...(data.vectors || []), ...(data.sum || []), ...(data.distance || [])].map(pair).filter((value) => value?.every(Number.isFinite)); }
+function collectVectors(data) { return [data.vector, ...(data.vectors || []), ...(data.sum || []), ...(data.distance || []), ...(Array.isArray(data.result) ? [data.result] : [])].map(pair).filter((value) => value?.every(Number.isFinite)); }
 function planeAccessibleText(data) { return `${data.prompt || "Plano cartesiano."} ${collectVectors(data).map((value, index) => `Vetor ${index + 1}: (${value.join(", ")})`).join(". ")}`; }
 
 export const planePackage = Object.freeze({
@@ -10,6 +10,12 @@ export const planePackage = Object.freeze({
   schema: Object.freeze({ type: "object", additionalProperties: false, properties: { prompt: { type: "string" }, x: { type: "array", minItems: 2, maxItems: 2, items: { type: "number" } }, y: { type: "array", minItems: 2, maxItems: 2, items: { type: "number" } }, vector: { type: "array", minItems: 2, maxItems: 2, items: { type: "number" } }, vectors: { type: "array", items: { type: "array", minItems: 2, maxItems: 2, items: { type: "number" } } }, sum: { type: "array", items: { type: "array", minItems: 2, maxItems: 2, items: { type: "number" } } }, distance: { type: "array", minItems: 2, maxItems: 2, items: { type: "array", minItems: 2, maxItems: 2, items: { type: "number" } } }, result: { anyOf: [{ type: "string" }, { type: "array", minItems: 2, maxItems: 2, items: { type: "number" } }] } } }),
   normalize(data) { const copyPair = (value) => value ? value.map(Number) : undefined; return { ...(data?.prompt ? { prompt: String(data.prompt).trim() } : {}), ...Object.fromEntries(["x", "y", "vector"].filter((key) => data?.[key]).map((key) => [key, copyPair(data[key])])), ...Object.fromEntries(["vectors", "sum", "distance"].filter((key) => data?.[key]).map((key) => [key, data[key].map(copyPair)])), ...(data?.result !== undefined ? { result: Array.isArray(data.result) ? copyPair(data.result) : String(data.result) } : {}) }; },
   validate(data) { return collectVectors(data).length || data.x || data.y ? [] : ["Plane precisa de ponto ou vetor."]; },
-  render(data) { const vectors = collectVectors(data); const max = Math.max(1, ...vectors.flatMap((value) => value.map(Math.abs))); const point = ([x, y]) => [50 + (x / max) * 38, 50 - (y / max) * 38]; return `<div class="runtime-block runtime-plane-block">${data.prompt ? renderPackageProse(data.prompt) : ""}<svg class="package-plane" viewBox="0 0 100 100" role="img" aria-label="${escapePackageAttribute(planeAccessibleText(data))}"><line x1="8" y1="50" x2="92" y2="50"/><line x1="50" y1="92" x2="50" y2="8"/>${vectors.map((vector, index) => { const [x, y] = point(vector); return `<line class="package-plane-vector tone-${index % 4}" x1="50" y1="50" x2="${x}" y2="${y}"/><circle cx="${x}" cy="${y}" r="2"/>`; }).join("")}</svg></div>`; },
+  render(data) {
+    const vectors = collectVectors(data);
+    const max = Math.max(1, ...vectors.flatMap((value) => value.map(Math.abs)));
+    const point = ([x, y]) => [50 + (x / max) * 36, 50 - (y / max) * 36];
+    const grid = [18, 34, 66, 82].map((position) => `<line class="package-plane-grid" x1="${position}" y1="8" x2="${position}" y2="92"/><line class="package-plane-grid" x1="8" y1="${position}" x2="92" y2="${position}"/>`).join("");
+    return `<div class="runtime-block runtime-plane-block">${data.prompt ? renderPackageProse(data.prompt) : ""}<figure class="package-plane-figure"><svg class="package-plane" viewBox="0 0 100 100" role="img" aria-label="${escapePackageAttribute(planeAccessibleText(data))}">${grid}<line class="package-plane-axis" x1="7" y1="50" x2="93" y2="50"/><line class="package-plane-axis" x1="50" y1="93" x2="50" y2="7"/><path class="package-plane-axis-arrow" d="M93 50l-4-2.5v5zM50 7l-2.5 4h5z"/><text class="package-plane-axis-label" x="91" y="47">x</text><text class="package-plane-axis-label" x="53" y="10">y</text>${vectors.map((vector, index) => { const [x, y] = point(vector); return `<g class="package-plane-vector tone-${index % 4}"><line x1="50" y1="50" x2="${x}" y2="${y}"/><circle cx="${x}" cy="${y}" r="2.8"/><text x="${Math.min(88, x + 3)}" y="${Math.max(10, y - 3)}">${escapePackageHtml(`(${vector.join(", ")})`)}</text></g>`; }).join("")}</svg></figure></div>`;
+  },
   accessibleText(data) { return planeAccessibleText(data); }, editableTargets() { return []; }
 });
