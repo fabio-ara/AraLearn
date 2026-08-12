@@ -4,12 +4,15 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const testsDir = path.resolve(__dirname, "../tests/v4");
+const testDirectories = [
+  path.resolve(__dirname, "../tests/kernel"),
+  path.resolve(__dirname, "../tests/v4")
+];
 
-const files = fs.readdirSync(testsDir)
+const files = testDirectories.flatMap((testsDir) => fs.readdirSync(testsDir)
   .filter((fileName) => fileName.endsWith(".test.js"))
   .sort()
-  .map((fileName) => path.join(testsDir, fileName));
+  .map((fileName) => path.join(testsDir, fileName)));
 
 const result = spawnSync(process.execPath, ["--test", ...files], {
   stdio: "inherit"

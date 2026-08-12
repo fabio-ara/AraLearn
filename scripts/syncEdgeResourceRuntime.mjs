@@ -30,7 +30,14 @@ const files = [
   ["src/persistence/relationalRowsToContract.js", "persistence/relationalRowsToContract.js"],
   ["src/persistence/validateRelationalCourse.js", "persistence/validateRelationalCourse.js"],
   ["src/resources/registry/index.js", "resources/registry/index.js"],
-  ["src/resources/registry/authoring.js", "resources/registry/authoring.js"]
+  ["src/resources/registry/authoring.js", "resources/registry/authoring.js"],
+  ["src/resources/kernel/cardEnvelope.js", "resources/kernel/cardEnvelope.js"],
+  ["src/resources/kernel/courseContract.js", "resources/kernel/courseContract.js"],
+  ["src/resources/kernel/packageRegistry.js", "resources/kernel/packageRegistry.js"],
+  ["src/resources/kernel/schemaValidation.js", "resources/kernel/schemaValidation.js"],
+  ["src/resources/sdk/html.js", "resources/sdk/html.js"],
+  ["src/resources/packages/index.js", "resources/packages/index.js"],
+  ["src/resources/packages/paragraph/index.js", "resources/packages/paragraph/index.js"]
 ];
 
 const checkOnly = process.argv.includes("--check");
