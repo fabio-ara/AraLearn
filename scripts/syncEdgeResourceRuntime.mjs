@@ -43,6 +43,9 @@ const files = [
   ["src/resources/packages/sequence/index.js", "resources/packages/sequence/index.js"],
   ["src/resources/packages/annotated-text/index.js", "resources/packages/annotated-text/index.js"],
   ["src/resources/packages/linguistic-example/index.js", "resources/packages/linguistic-example/index.js"]
+  , ["src/resources/packages/choice-response/index.js", "resources/packages/choice-response/index.js"]
+  , ["src/resources/packages/gap-response/index.js", "resources/packages/gap-response/index.js"]
+  , ["src/resources/packages/ordering-response/index.js", "resources/packages/ordering-response/index.js"]
 ];
 
 const checkOnly = process.argv.includes("--check");

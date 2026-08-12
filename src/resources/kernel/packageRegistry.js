@@ -55,6 +55,9 @@ export function assertPackageDefinition(definition) {
       throw new TypeError(`${manifest.id} precisa implementar ${method}().`);
     }
   }
+  if (manifest.slots.includes("response") && typeof definition.evaluate !== "function") {
+    throw new TypeError(`${manifest.id} ocupa response e precisa implementar evaluate().`);
+  }
   return true;
 }
 
@@ -170,6 +173,11 @@ export function createPackageRegistry(packageDefinitions = []) {
       const validation = validateInstance(instance, slot);
       if (!validation.valid) throw new TypeError(validation.errors.join(" "));
       return clone(requirePackage(instance.package, instance.version).editableTargets(instance.data));
+    },
+    evaluateResponse(instance, answer) {
+      const validation = validateInstance(instance, "response");
+      if (!validation.valid) throw new TypeError(validation.errors.join(" "));
+      return clone(requirePackage(instance.package, instance.version).evaluate(instance.data, clone(answer)));
     }
   });
 }
