@@ -11,6 +11,11 @@ import { orderingResponsePackage } from "./ordering-response/index.js";
 import { treePackage } from "./tree/index.js";
 import { matrixPackage } from "./matrix/index.js";
 import { reactionPackage } from "./reaction/index.js";
+import { flowPackage } from "./flow/index.js";
+import { formulaPackage } from "./formula/index.js";
+import { planePackage } from "./plane/index.js";
+import { chartPackage } from "./chart/index.js";
+import { systemMapPackage } from "./system-map/index.js";
 
 export const RESOURCE_PACKAGE_REGISTRY = createPackageRegistry([
   paragraphPackage,
@@ -21,10 +26,15 @@ export const RESOURCE_PACKAGE_REGISTRY = createPackageRegistry([
   linguisticExamplePackage,
   choiceResponsePackage,
   gapResponsePackage,
-  orderingResponsePackage
-  , treePackage
-  , matrixPackage
-  , reactionPackage
+  orderingResponsePackage,
+  treePackage,
+  matrixPackage,
+  reactionPackage,
+  flowPackage,
+  formulaPackage,
+  planePackage,
+  chartPackage,
+  systemMapPackage
 ]);
 
 export {
@@ -36,8 +46,13 @@ export {
   paragraphPackage,
   orderingResponsePackage,
   sequencePackage,
-  tablePackage
-  , treePackage
-  , matrixPackage
-  , reactionPackage
+  tablePackage,
+  treePackage,
+  matrixPackage,
+  reactionPackage,
+  flowPackage,
+  formulaPackage,
+  planePackage,
+  chartPackage,
+  systemMapPackage
 };

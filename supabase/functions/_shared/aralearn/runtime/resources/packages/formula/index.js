@@ -1,0 +1,25 @@
+import { FORMULA_EXPRESSION_INPUT_SCHEMA, isFormulaNotation, validateFormulaExpression } from "../../../domain/formulaExpression.js";
+import { escapePackageAttribute, renderPackageInline, renderPackageProse } from "../../sdk/html.js";
+
+function expressionText(node) {
+  if (!node || typeof node !== "object") return "";
+  if (Object.hasOwn(node, "value")) return String(node.value);
+  if (Array.isArray(node.children)) return node.children.map(expressionText).join(" ");
+  if (node.type === "fraction") return `(${expressionText(node.numerator)})/(${expressionText(node.denominator)})`;
+  if (node.type === "root") return `raiz de ${expressionText(node.radicand)}`;
+  if (node.type === "superscript") return `${expressionText(node.base)}^${expressionText(node.exponent)}`;
+  if (node.type === "subscript") return `${expressionText(node.base)}_${expressionText(node.subscript)}`;
+  if (node.type === "subsup") return `${expressionText(node.base)}_${expressionText(node.subscript)}^${expressionText(node.superscript)}`;
+  if (node.type === "fenced") return `${node.open}${expressionText(node.content)}${node.close}`;
+  return Object.values(node).filter((value) => value && typeof value === "object").map(expressionText).join(" ");
+}
+
+export const formulaPackage = Object.freeze({
+  manifest: Object.freeze({ id: "aralearn.resource.formula", version: "1.0.0", label: "Fórmula", purpose: "Representar expressão matemática ou química estruturada com leitura acessível explícita.", slots: Object.freeze(["content", "feedback"]), cognitiveOperations: Object.freeze(["read-formula", "transform-expression", "identify-operator", "calculate"]), responseCompatibility: Object.freeze(["aralearn.response.gap", "aralearn.response.choice"]), limitations: Object.freeze(["accessibleText não pode apenas repetir símbolos incompreensíveis." ]), accessibility: "A expressão sempre exige descrição textual equivalente." }),
+  authoringContract: Object.freeze({ intent: "Declare AST, notação e leitura acessível equivalentes.", required: Object.freeze(["notation", "accessibleText", "expression"]), optional: Object.freeze(["prompt"]), rules: Object.freeze(["A ordem da descrição acompanha a AST."]), example: Object.freeze({ prompt: "Observe a potência.", notation: "mathematics", accessibleText: "x ao quadrado", expression: { type: "superscript", base: { type: "identifier", value: "x" }, exponent: { type: "number", value: "2" } } }) }),
+  schema: Object.freeze({ type: "object", additionalProperties: false, required: ["notation", "accessibleText", "expression"], properties: { prompt: { type: "string" }, notation: { type: "string", enum: ["mathematics", "chemistry"] }, accessibleText: { type: "string", minLength: 1 }, expression: FORMULA_EXPRESSION_INPUT_SCHEMA } }),
+  normalize(data) { return { ...(data?.prompt ? { prompt: String(data.prompt).trim() } : {}), notation: String(data?.notation || "mathematics"), accessibleText: String(data?.accessibleText || "").trim(), expression: structuredClone(data?.expression) }; },
+  validate(data) { const errors = []; if (!isFormulaNotation(data.notation)) errors.push("Notação inválida."); const result = validateFormulaExpression(data.expression); if (!result.ok) errors.push(...result.errors.map((error) => `${error.path}: ${error.message}`)); return errors; },
+  render(data) { return `<div class="runtime-block runtime-formula-block">${data.prompt ? renderPackageProse(data.prompt) : ""}<div class="package-formula" role="img" aria-label="${escapePackageAttribute(data.accessibleText)}"><code>${renderPackageInline(expressionText(data.expression))}</code></div></div>`; },
+  accessibleText(data) { return data.accessibleText; }, editableTargets() { return [{ path: "accessibleText", label: "Editar descrição acessível" }]; }
+});

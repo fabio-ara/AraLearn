@@ -16,9 +16,10 @@ function resolvePointer(root, pointer) {
 function validateNode(value, schema, root, path, depth = 0) {
   if (depth > 80) return `${path} excedeu a profundidade do schema.`;
   if (!schema || typeof schema !== "object") return "";
+  const referenceRoot = schema.$id ? schema : root;
   if (schema.$ref) {
-    const resolved = resolvePointer(root, schema.$ref);
-    return resolved ? validateNode(value, resolved, root, path, depth + 1) : `${path} usa referência inexistente.`;
+    const resolved = resolvePointer(referenceRoot, schema.$ref);
+    return resolved ? validateNode(value, resolved, referenceRoot, path, depth + 1) : `${path} usa referência inexistente.`;
   }
   if (Object.hasOwn(schema, "const") && !Object.is(value, schema.const)) {
     return `${path} precisa ser ${JSON.stringify(schema.const)}.`;
@@ -29,17 +30,17 @@ function validateNode(value, schema, root, path, depth = 0) {
   for (const keyword of ["allOf"]) {
     if (Array.isArray(schema[keyword])) {
       for (const branch of schema[keyword]) {
-        const error = validateNode(value, branch, root, path, depth + 1);
+        const error = validateNode(value, branch, referenceRoot, path, depth + 1);
         if (error) return error;
       }
     }
   }
   if (Array.isArray(schema.anyOf)) {
-    const valid = schema.anyOf.some((branch) => !validateNode(value, branch, root, path, depth + 1));
+    const valid = schema.anyOf.some((branch) => !validateNode(value, branch, referenceRoot, path, depth + 1));
     if (!valid) return `${path} não satisfaz nenhuma forma permitida.`;
   }
   if (Array.isArray(schema.oneOf)) {
-    const matches = schema.oneOf.filter((branch) => !validateNode(value, branch, root, path, depth + 1)).length;
+    const matches = schema.oneOf.filter((branch) => !validateNode(value, branch, referenceRoot, path, depth + 1)).length;
     if (matches !== 1) return `${path} precisa satisfazer exatamente uma forma.`;
   }
   const expectedTypes = Array.isArray(schema.type) ? schema.type : schema.type ? [schema.type] : [];
@@ -67,13 +68,13 @@ function validateNode(value, schema, root, path, depth = 0) {
     }
     if (Array.isArray(schema.prefixItems)) {
       for (let index = 0; index < Math.min(value.length, schema.prefixItems.length); index += 1) {
-        const error = validateNode(value[index], schema.prefixItems[index], root, `${path}[${index}]`, depth + 1);
+        const error = validateNode(value[index], schema.prefixItems[index], referenceRoot, `${path}[${index}]`, depth + 1);
         if (error) return error;
       }
     }
     if (schema.items && typeof schema.items === "object") {
       for (let index = 0; index < value.length; index += 1) {
-        const error = validateNode(value[index], schema.items, root, `${path}[${index}]`, depth + 1);
+        const error = validateNode(value[index], schema.items, referenceRoot, `${path}[${index}]`, depth + 1);
         if (error) return error;
       }
     }
@@ -89,7 +90,7 @@ function validateNode(value, schema, root, path, depth = 0) {
     }
     for (const [key, childSchema] of Object.entries(properties)) {
       if (!Object.hasOwn(value, key)) continue;
-      const error = validateNode(value[key], childSchema, root, `${path}.${key}`, depth + 1);
+      const error = validateNode(value[key], childSchema, referenceRoot, `${path}.${key}`, depth + 1);
       if (error) return error;
     }
   }

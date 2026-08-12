@@ -42,13 +42,18 @@ const files = [
   ["src/resources/packages/table/index.js", "resources/packages/table/index.js"],
   ["src/resources/packages/sequence/index.js", "resources/packages/sequence/index.js"],
   ["src/resources/packages/annotated-text/index.js", "resources/packages/annotated-text/index.js"],
-  ["src/resources/packages/linguistic-example/index.js", "resources/packages/linguistic-example/index.js"]
-  , ["src/resources/packages/choice-response/index.js", "resources/packages/choice-response/index.js"]
-  , ["src/resources/packages/gap-response/index.js", "resources/packages/gap-response/index.js"]
-  , ["src/resources/packages/ordering-response/index.js", "resources/packages/ordering-response/index.js"]
-  , ["src/resources/packages/tree/index.js", "resources/packages/tree/index.js"]
-  , ["src/resources/packages/matrix/index.js", "resources/packages/matrix/index.js"]
-  , ["src/resources/packages/reaction/index.js", "resources/packages/reaction/index.js"]
+  ["src/resources/packages/linguistic-example/index.js", "resources/packages/linguistic-example/index.js"],
+  ["src/resources/packages/choice-response/index.js", "resources/packages/choice-response/index.js"],
+  ["src/resources/packages/gap-response/index.js", "resources/packages/gap-response/index.js"],
+  ["src/resources/packages/ordering-response/index.js", "resources/packages/ordering-response/index.js"],
+  ["src/resources/packages/tree/index.js", "resources/packages/tree/index.js"],
+  ["src/resources/packages/matrix/index.js", "resources/packages/matrix/index.js"],
+  ["src/resources/packages/reaction/index.js", "resources/packages/reaction/index.js"],
+  ["src/resources/packages/flow/index.js", "resources/packages/flow/index.js"],
+  ["src/resources/packages/formula/index.js", "resources/packages/formula/index.js"],
+  ["src/resources/packages/plane/index.js", "resources/packages/plane/index.js"],
+  ["src/resources/packages/chart/index.js", "resources/packages/chart/index.js"],
+  ["src/resources/packages/system-map/index.js", "resources/packages/system-map/index.js"]
 ];
 
 const checkOnly = process.argv.includes("--check");
