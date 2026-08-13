@@ -30,7 +30,8 @@ test("conteúdo primário dos resources compartilha a escala tipográfica do tex
     ".runtime-tree-node-label",
     ".runtime-matrix-item",
     ".package-graph-relations li",
-    ".package-chart-figure figcaption",
+    ".package-chart-legend",
+    ".package-plane-legend",
     ".package-system-node strong",
     ".package-formula math",
     ".package-reaction-equation",
@@ -51,14 +52,5 @@ test("metadados acadêmicos compactos usam apenas os degraus tipográficos secun
     ".runtime-interlinear-abbreviations"
   ]) assertUsesType(selector, "sm");
 
-  assert.match(
-    styles,
-    /\.package-plane,\n\.package-chart\s*\{[^}]*--resource-svg-label-size:\s*5px/u,
-    "plano e gráfico precisam declarar uma escala secundária em unidades do viewBox"
-  );
-  assert.match(
-    styles,
-    /\.package-plane-axis-label,\n\.package-plane-vector text,\n\.package-chart-tick\s*\{[^}]*font-size:\s*var\(--resource-svg-label-size\)/u,
-    "rótulos SVG precisam usar a escala percebida compartilhada"
-  );
+  assert.doesNotMatch(styles, /--resource-svg-label-size/u, "Vega deriva a tipografia interna sem token SVG artesanal");
 });

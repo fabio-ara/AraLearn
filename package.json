@@ -57,6 +57,8 @@
     "yaml": "^2.9.0"
   },
   "dependencies": {
-    "@viz-js/viz": "^3.27.0"
+    "@viz-js/viz": "^3.27.0",
+    "vega": "^6.3.1",
+    "vega-lite": "^6.4.3"
   }
 }

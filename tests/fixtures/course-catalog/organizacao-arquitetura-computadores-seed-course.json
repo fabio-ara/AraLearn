@@ -1521,15 +1521,45 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "O plano mostra dois vetores saindo da origem. Para resolver, use a ideia: vetores com direções parecidas sugerem textos com significados próximos.",
-                            "vectors": [
-                              [
-                                3,
-                                2
-                              ],
-                              [
-                                4,
-                                3
+                            "xAxis": {
+                              "label": "Coordenada x",
+                              "domain": [
+                                -1.5,
+                                4.5
                               ]
+                            },
+                            "yAxis": {
+                              "label": "Coordenada y",
+                              "domain": [
+                                -1.5,
+                                3.5
+                              ]
+                            },
+                            "vectors": [
+                              {
+                                "id": "v1",
+                                "label": "q",
+                                "from": [
+                                  0,
+                                  0
+                                ],
+                                "to": [
+                                  3,
+                                  2
+                                ]
+                              },
+                              {
+                                "id": "v2",
+                                "label": "d",
+                                "from": [
+                                  0,
+                                  0
+                                ],
+                                "to": [
+                                  4,
+                                  3
+                                ]
+                              }
                             ]
                           }
                         }

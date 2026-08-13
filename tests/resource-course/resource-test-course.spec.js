@@ -360,6 +360,67 @@ test("formula combina texto e notação avançada na mesma escala tipográfica",
   expect(sizes.formula).toBe(sizes.prose);
 });
 
+test("plano cartesiano complexo preserva eixos, objetos e rótulos sem colisão", async ({ page }) => {
+  await openModule(page, 11);
+  await expect(page.locator(".package-plane-canvas[data-vega-status='ready']")).toBeVisible();
+  const geometry = await page.locator(".package-plane-canvas").evaluate((canvas) => {
+    const expected = new Set(["e₁", "e₂", "Ae₁", "Ae₂", "p", "Ap"]);
+    const labels = [...canvas.querySelectorAll("svg text")]
+      .filter((element) => expected.has(element.textContent.trim()))
+      .map((element) => ({ text: element.textContent.trim(), rect: element.getBoundingClientRect() }));
+    const overlaps = [];
+    for (let leftIndex = 0; leftIndex < labels.length; leftIndex += 1) {
+      for (let rightIndex = leftIndex + 1; rightIndex < labels.length; rightIndex += 1) {
+        const left = labels[leftIndex];
+        const right = labels[rightIndex];
+        if (left.rect.left < right.rect.right && left.rect.right > right.rect.left &&
+            left.rect.top < right.rect.bottom && left.rect.bottom > right.rect.top) {
+          overlaps.push([left.text, right.text]);
+        }
+      }
+    }
+    return {
+      labels: labels.map(({ text }) => text),
+      overlaps,
+      documentOverflow: document.documentElement.scrollWidth - document.documentElement.clientWidth
+    };
+  });
+  expect(geometry.labels.sort()).toEqual(["Ae₁", "Ae₂", "Ap", "e₁", "e₂", "p"].sort());
+  expect(geometry.overlaps).toEqual([]);
+  expect(geometry.documentOverflow).toBeLessThanOrEqual(1);
+  await expect(page.locator(".package-plane-canvas svg")).toContainText("Coordenada x");
+  await expect(page.locator(".package-plane-canvas svg")).toContainText("Coordenada y");
+  await expect(page.locator(".package-plane-legend li")).toHaveCount(8);
+});
+
+test("gráfico acadêmico mostra escala logarítmica, incerteza e referência sem legenda solta", async ({ page }) => {
+  await openModule(page, 12);
+  const canvas = page.locator(".package-chart-canvas[data-vega-status='ready']");
+  await expect(canvas).toBeVisible();
+  await expect(canvas).toContainText("Concorrência (requisições simultâneas)");
+  await expect(canvas).toContainText("Latência no percentil 95 (ms)");
+  await expect(canvas).toContainText("Limite operacional");
+  await expect(page.locator(".package-chart-uncertainty")).toHaveText("Intervalo de confiança de 95%");
+  await expect(page.locator(".package-chart-legend li")).toHaveCount(2);
+  await expect(page.locator(".package-chart-caption")).toContainText("bootstrap percentil");
+  await expect(page.locator(".package-chart-figure > span")).toHaveCount(0);
+  const geometry = await canvas.evaluate((element) => ({
+    svgWidth: element.querySelector("svg").getBoundingClientRect().width,
+    canvasWidth: element.getBoundingClientRect().width,
+    documentOverflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    verticalIntervals: [...element.querySelectorAll("svg line")].filter((line) => {
+      const x1 = Number(line.getAttribute("x1"));
+      const x2 = Number(line.getAttribute("x2"));
+      const y1 = Number(line.getAttribute("y1"));
+      const y2 = Number(line.getAttribute("y2"));
+      return Math.abs(x1 - x2) < 0.1 && Math.abs(y1 - y2) > 4;
+    }).length
+  }));
+  expect(geometry.svgWidth).toBeLessThanOrEqual(geometry.canvasWidth + 1);
+  expect(geometry.documentOverflow).toBeLessThanOrEqual(1);
+  expect(geometry.verticalIntervals).toBeGreaterThanOrEqual(12);
+});
+
 test("ordenação é resposta independente e o Play é o único controle de confirmação", async ({ page }) => {
   await openModule(page, 26);
   await expect(page.locator(".package-ordering-response li")).toHaveCount(3);

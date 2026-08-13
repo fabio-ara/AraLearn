@@ -100,6 +100,46 @@ referências pertencem a `database_schema`.
 A revisão pergunta se a composição preserva a evidência
 desejada, não se a sequência apresenta variedade visual.
 
+## Gráficos estatísticos e plano cartesiano
+
+`chart` não recebe coordenadas de tela nem uma legenda textual improvisada. O
+contrato declara tipo, domínio, escala e unidade de cada eixo; séries contêm
+pontos nomeados e podem incluir limites inferior e superior já calculados. A
+autoria também nomeia a medida de incerteza e a nota metodológica. O package
+compila essa semântica em Vega-Lite e Vega no próprio navegador. Vega-Lite
+deriva eixos, escalas e marcas a partir dos campos e admite escalas contínuas,
+temporais e discretas, domínios explícitos, camadas, regras de referência e
+barras de erro com limites preagregados
+([escalas](https://vega.github.io/vega-lite/docs/scale.html),
+[barras de erro](https://vega.github.io/vega-lite/docs/errorbar.html),
+[regras](https://vega.github.io/vega-lite/docs/rule.html)).
+
+O exemplo canônico não pretende simular um artigo real. Ele é identificado
+como sintético e funciona como teste de estresse: duas séries, seis níveis de
+concorrência em escala logarítmica, doze intervalos de confiança, limiar
+operacional e nota de método. Isso permite inspecionar no celular problemas que
+três pontos igualmente espaçados ocultavam. `chart` permanece deliberadamente
+limitado a linhas, dispersão e barras. Distribuição, histograma, boxplot,
+regressão, múltiplos painéis ou diagnóstico de modelo exigem packages próprios,
+em vez de serem imitados por esse contrato.
+
+`plane` diferencia ponto, vetor aplicado e trajetória ou região. Cada vetor
+declara origem e extremidade; cada caminho conserva a ordem dos pontos; os
+eixos têm domínio e unidade próprios. A geometria também é compilada por
+Vega-Lite, enquanto o contrato permanece em linguagem matemática de alto nível.
+O exemplo canônico coordena base canônica, imagens de vetores por uma
+transformação linear, ponto e imagem do ponto, quadrado unitário e região
+transformada. Assim, exercita valores negativos, múltiplos rótulos, escalas e
+objetos sobrepostos sem reduzir o plano a “um vetor saindo da origem”.
+
+Essa abrangência não transforma `plane` em renderer universal. Campos
+vetoriais densos, contornos, superfícies, três dimensões e objetos especializados
+precisam de packages próprios; por exemplo, bibliotecas científicas tratam
+campos vetoriais como uma operação específica de `quiver`, não como um conjunto
+genérico de pontos ([Matplotlib, `quiver`](https://matplotlib.org/stable/api/quiver_api.html)).
+O critério é preservar a convenção acadêmica do objeto, não anunciar suporte a
+qualquer visualização usada em graduação ou pesquisa.
+
 ## Mapas, sistemas e notação visual
 
 Novak e Cañas (2006) descrevem mapas conceituais como conceitos conectados por

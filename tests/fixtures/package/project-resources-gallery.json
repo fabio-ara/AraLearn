@@ -648,7 +648,7 @@
                     {
                       "id": "gallery-13",
                       "position": 13,
-                      "title": "Fluxo",
+                      "title": "Fluxograma",
                       "role": "theory",
                       "content": [
                         {
@@ -656,7 +656,7 @@
                           "package": "aralearn.resource.flow",
                           "version": "1.0.0",
                           "data": {
-                            "prompt": "Acompanhe a decisão.",
+                            "prompt": "Acompanhe os dois caminhos possíveis.",
                             "structure": {
                               "id": "root",
                               "kind": "sequence",
@@ -667,14 +667,26 @@
                                   "text": "Início"
                                 },
                                 {
+                                  "id": "read",
+                                  "kind": "input",
+                                  "text": "Ler credenciais"
+                                },
+                                {
                                   "id": "decision",
-                                  "kind": "if_then",
-                                  "condition": "há conexão",
+                                  "kind": "if_then_else",
+                                  "condition": "Credenciais válidas?",
                                   "thenBranch": [
                                     {
-                                      "id": "send",
+                                      "id": "open",
                                       "kind": "process",
-                                      "text": "Enviar"
+                                      "text": "Abrir sessão"
+                                    }
+                                  ],
+                                  "elseBranch": [
+                                    {
+                                      "id": "error",
+                                      "kind": "output",
+                                      "text": "Exibir erro"
                                     }
                                   ]
                                 },
@@ -695,7 +707,7 @@
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
-                            "text": "A lógica é exposta também como árvore ordenada, independente do desenho."
+                            "text": "O fluxograma visual possui uma descrição linear equivalente para tecnologia assistiva."
                           }
                         }
                       ],
@@ -713,19 +725,124 @@
                           "package": "aralearn.resource.formula",
                           "version": "1.0.0",
                           "data": {
-                            "prompt": "Observe a potência.",
+                            "prompt": "Em teoria de campos, uma ação pode ser definida por uma integral sobre uma região. Leia a expressão e identifique a integral, a derivada parcial, a contração entre índices tensoriais e a função aplicada.",
                             "notation": "mathematics",
-                            "accessibleText": "x ao quadrado",
+                            "accessibleText": "A ação S de u é a integral sobre ômega de um meio vezes a derivada parcial da componente u índice i em relação à coordenada x índice j, contraída com o tensor T índices superiores i e j, mais f de u, em relação ao volume V.",
                             "expression": {
-                              "type": "superscript",
-                              "base": {
-                                "type": "identifier",
-                                "value": "x"
-                              },
-                              "exponent": {
-                                "type": "number",
-                                "value": "2"
-                              }
+                              "type": "row",
+                              "children": [
+                                {
+                                  "type": "function",
+                                  "name": "S",
+                                  "arguments": [
+                                    {
+                                      "type": "identifier",
+                                      "value": "u"
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "operator",
+                                  "value": "="
+                                },
+                                {
+                                  "type": "integral",
+                                  "kind": "single",
+                                  "lower": {
+                                    "type": "identifier",
+                                    "value": "Ω"
+                                  },
+                                  "variable": {
+                                    "type": "identifier",
+                                    "value": "V"
+                                  },
+                                  "integrand": {
+                                    "type": "fenced",
+                                    "open": "[",
+                                    "close": "]",
+                                    "content": {
+                                      "type": "row",
+                                      "children": [
+                                        {
+                                          "type": "fraction",
+                                          "numerator": {
+                                            "type": "number",
+                                            "value": "1"
+                                          },
+                                          "denominator": {
+                                            "type": "number",
+                                            "value": "2"
+                                          }
+                                        },
+                                        {
+                                          "type": "operator",
+                                          "value": "·"
+                                        },
+                                        {
+                                          "type": "derivative",
+                                          "kind": "partial",
+                                          "expression": {
+                                            "type": "tensor",
+                                            "symbol": "u",
+                                            "lowerIndices": [
+                                              {
+                                                "type": "identifier",
+                                                "value": "i"
+                                              }
+                                            ]
+                                          },
+                                          "variables": [
+                                            {
+                                              "symbol": {
+                                                "type": "tensor",
+                                                "symbol": "x",
+                                                "lowerIndices": [
+                                                  {
+                                                    "type": "identifier",
+                                                    "value": "j"
+                                                  }
+                                                ]
+                                              }
+                                            }
+                                          ]
+                                        },
+                                        {
+                                          "type": "operator",
+                                          "value": "·"
+                                        },
+                                        {
+                                          "type": "tensor",
+                                          "symbol": "T",
+                                          "upperIndices": [
+                                            {
+                                              "type": "identifier",
+                                              "value": "i"
+                                            },
+                                            {
+                                              "type": "identifier",
+                                              "value": "j"
+                                            }
+                                          ]
+                                        },
+                                        {
+                                          "type": "operator",
+                                          "value": "+"
+                                        },
+                                        {
+                                          "type": "function",
+                                          "name": "f",
+                                          "arguments": [
+                                            {
+                                              "type": "identifier",
+                                              "value": "u"
+                                            }
+                                          ]
+                                        }
+                                      ]
+                                    }
+                                  }
+                                }
+                              ]
                             }
                           }
                         }
@@ -755,10 +872,136 @@
                           "package": "aralearn.resource.plane",
                           "version": "1.0.0",
                           "data": {
-                            "prompt": "Observe o vetor.",
-                            "vector": [
-                              2,
-                              1
+                            "prompt": "Compare a base canônica com sua imagem pela transformação linear A e observe a região transformada.",
+                            "xAxis": {
+                              "label": "Coordenada x",
+                              "domain": [
+                                -2.5,
+                                3.5
+                              ]
+                            },
+                            "yAxis": {
+                              "label": "Coordenada y",
+                              "domain": [
+                                -1.5,
+                                3.8
+                              ]
+                            },
+                            "points": [
+                              {
+                                "id": "p",
+                                "label": "p",
+                                "at": [
+                                  1.5,
+                                  -0.5
+                                ]
+                              },
+                              {
+                                "id": "ap",
+                                "label": "Ap",
+                                "at": [
+                                  3.5,
+                                  0.5
+                                ]
+                              }
+                            ],
+                            "vectors": [
+                              {
+                                "id": "e1",
+                                "label": "e₁",
+                                "from": [
+                                  0,
+                                  0
+                                ],
+                                "to": [
+                                  1,
+                                  0
+                                ]
+                              },
+                              {
+                                "id": "e2",
+                                "label": "e₂",
+                                "from": [
+                                  0,
+                                  0
+                                ],
+                                "to": [
+                                  0,
+                                  1
+                                ]
+                              },
+                              {
+                                "id": "ae1",
+                                "label": "Ae₁",
+                                "from": [
+                                  0,
+                                  0
+                                ],
+                                "to": [
+                                  2,
+                                  1
+                                ]
+                              },
+                              {
+                                "id": "ae2",
+                                "label": "Ae₂",
+                                "from": [
+                                  0,
+                                  0
+                                ],
+                                "to": [
+                                  -1,
+                                  2
+                                ]
+                              }
+                            ],
+                            "paths": [
+                              {
+                                "id": "unit",
+                                "label": "Quadrado unitário",
+                                "closed": true,
+                                "points": [
+                                  [
+                                    0,
+                                    0
+                                  ],
+                                  [
+                                    1,
+                                    0
+                                  ],
+                                  [
+                                    1,
+                                    1
+                                  ],
+                                  [
+                                    0,
+                                    1
+                                  ]
+                                ]
+                              },
+                              {
+                                "id": "image",
+                                "label": "Imagem A(Q)",
+                                "closed": true,
+                                "points": [
+                                  [
+                                    0,
+                                    0
+                                  ],
+                                  [
+                                    2,
+                                    1
+                                  ],
+                                  [
+                                    1,
+                                    3
+                                  ],
+                                  [
+                                    -1,
+                                    2
+                                  ]
+                                ]
+                              }
                             ]
                           }
                         }
@@ -770,7 +1013,7 @@
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
-                            "text": "Todos os pontos e vetores são descritos por coordenadas em texto."
+                            "text": "Eixos, domínios, pontos, vetores e trajetórias possuem descrição textual equivalente."
                           }
                         }
                       ],
@@ -788,35 +1031,125 @@
                           "package": "aralearn.resource.chart",
                           "version": "1.0.0",
                           "data": {
-                            "prompt": "Observe o crescimento.",
+                            "prompt": "Compare o comportamento das duas arquiteturas. Os pontos representam médias de 30 execuções independentes e as barras verticais mostram a incerteza da estimativa.",
                             "chartType": "line",
                             "xAxis": {
-                              "label": "Tempo"
+                              "label": "Concorrência",
+                              "type": "quantitative",
+                              "unit": "requisições simultâneas",
+                              "scale": "log",
+                              "domain": [
+                                8,
+                                256
+                              ]
                             },
                             "yAxis": {
-                              "label": "Valor",
-                              "unit": "ms"
+                              "label": "Latência no percentil 95",
+                              "type": "quantitative",
+                              "unit": "ms",
+                              "domain": [
+                                80,
+                                540
+                              ]
+                            },
+                            "uncertainty": {
+                              "label": "Intervalo de confiança de 95%"
                             },
                             "series": [
                               {
-                                "id": "s1",
-                                "name": "Latência",
+                                "id": "central",
+                                "name": "Controle centralizado",
                                 "values": [
-                                  [
-                                    "1",
-                                    10
-                                  ],
-                                  [
-                                    "2",
-                                    18
-                                  ],
-                                  [
-                                    "3",
-                                    25
-                                  ]
+                                  {
+                                    "x": 8,
+                                    "y": 104,
+                                    "lower": 96,
+                                    "upper": 113
+                                  },
+                                  {
+                                    "x": 16,
+                                    "y": 128,
+                                    "lower": 118,
+                                    "upper": 139
+                                  },
+                                  {
+                                    "x": 32,
+                                    "y": 169,
+                                    "lower": 156,
+                                    "upper": 184
+                                  },
+                                  {
+                                    "x": 64,
+                                    "y": 238,
+                                    "lower": 220,
+                                    "upper": 259
+                                  },
+                                  {
+                                    "x": 128,
+                                    "y": 352,
+                                    "lower": 324,
+                                    "upper": 384
+                                  },
+                                  {
+                                    "x": 256,
+                                    "y": 486,
+                                    "lower": 445,
+                                    "upper": 531
+                                  }
+                                ]
+                              },
+                              {
+                                "id": "adaptive",
+                                "name": "Particionamento adaptativo",
+                                "values": [
+                                  {
+                                    "x": 8,
+                                    "y": 101,
+                                    "lower": 94,
+                                    "upper": 109
+                                  },
+                                  {
+                                    "x": 16,
+                                    "y": 116,
+                                    "lower": 107,
+                                    "upper": 126
+                                  },
+                                  {
+                                    "x": 32,
+                                    "y": 142,
+                                    "lower": 131,
+                                    "upper": 154
+                                  },
+                                  {
+                                    "x": 64,
+                                    "y": 181,
+                                    "lower": 167,
+                                    "upper": 197
+                                  },
+                                  {
+                                    "x": 128,
+                                    "y": 244,
+                                    "lower": 225,
+                                    "upper": 265
+                                  },
+                                  {
+                                    "x": 256,
+                                    "y": 329,
+                                    "lower": 301,
+                                    "upper": 360
+                                  }
                                 ]
                               }
-                            ]
+                            ],
+                            "referenceLines": [
+                              {
+                                "id": "sla",
+                                "label": "Limite operacional",
+                                "axis": "y",
+                                "value": 300
+                              }
+                            ],
+                            "caption": "Dados sintéticos para inspeção do resource; IC de 95% calculado por bootstrap percentil."
                           }
                         }
                       ],
@@ -827,7 +1160,7 @@
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
-                            "text": "Séries e valores são repetidos em descrição textual."
+                            "text": "Eixos, séries, valores, intervalos e nota metodológica possuem descrição textual equivalente."
                           }
                         }
                       ],

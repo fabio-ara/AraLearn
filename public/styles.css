@@ -3249,107 +3249,91 @@ input:-webkit-autofill:focus {
   padding: 10px;
 }
 
-.package-plane,
-.package-chart {
-  --resource-svg-label-size: 5px;
-  display: block;
+.package-plane-canvas,
+.package-chart-canvas {
   width: 100%;
-  height: auto;
-  color: var(--resource-text);
+  min-width: 0;
+  min-height: 220px;
+  overflow: hidden;
 }
 
-.package-plane-grid,
-.package-chart-grid {
-  stroke: color-mix(in srgb, var(--resource-border) 54%, transparent);
-  stroke-width: 0.55;
-  vector-effect: non-scaling-stroke;
+.package-plane-canvas {
+  min-height: 250px;
 }
 
-.package-plane-axis,
-.package-chart-axis-line {
-  stroke: var(--resource-border-strong);
-  stroke-width: 1.35;
-  vector-effect: non-scaling-stroke;
+.package-plane-canvas .vega-embed,
+.package-plane-canvas svg,
+.package-chart-canvas .vega-embed,
+.package-chart-canvas svg {
+  display: block;
+  max-width: 100%;
 }
 
-.package-plane-axis-arrow {
-  fill: var(--resource-border-strong);
-}
-
-.package-plane-axis-label,
-.package-plane-vector text,
-.package-chart-tick {
-  fill: var(--resource-text-secondary);
-  font-size: var(--resource-svg-label-size);
-  font-weight: 700;
-}
-
-.package-plane-vector line,
-.package-chart-line {
-  fill: none;
-  stroke: var(--resource-accent);
-  stroke-width: 2.2;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  vector-effect: non-scaling-stroke;
-}
-
-.package-plane-vector circle,
-.package-chart-point,
-.package-chart-mark,
-.package-chart-swatch {
-  fill: var(--resource-accent);
-  stroke: var(--resource-surface);
-  stroke-width: 1.2;
-  vector-effect: non-scaling-stroke;
-}
-
-.package-plane-vector.tone-1 line,
-.package-chart-line.tone-1 { stroke: color-mix(in srgb, var(--resource-accent) 62%, var(--resource-text)); }
-.package-plane-vector.tone-2 line,
-.package-chart-line.tone-2 { stroke: color-mix(in srgb, var(--resource-accent) 58%, var(--status-success)); }
-.package-plane-vector.tone-3 line,
-.package-chart-line.tone-3 { stroke: color-mix(in srgb, var(--resource-accent) 64%, var(--status-warning)); }
-.package-plane-vector.tone-1 circle,
-.package-chart-point.tone-1,
-.package-chart-mark.tone-1,
-.package-chart-swatch.tone-1 { fill: color-mix(in srgb, var(--resource-accent) 62%, var(--resource-text)); }
-.package-plane-vector.tone-2 circle,
-.package-chart-point.tone-2,
-.package-chart-mark.tone-2,
-.package-chart-swatch.tone-2 { fill: color-mix(in srgb, var(--resource-accent) 58%, var(--status-success)); }
-.package-plane-vector.tone-3 circle,
-.package-chart-point.tone-3,
-.package-chart-mark.tone-3,
-.package-chart-swatch.tone-3 { fill: color-mix(in srgb, var(--resource-accent) 64%, var(--status-warning)); }
-
-.package-chart-figure figcaption {
-  display: grid;
-  gap: 7px;
-  margin-top: 5px;
+.package-chart-uncertainty,
+.package-chart-caption {
+  margin: 6px 0 0;
   color: var(--resource-text-secondary);
-  font-size: var(--type-base);
+  font-size: var(--type-sm);
+  line-height: var(--leading-snug);
 }
 
-.package-chart-legend {
+.package-chart-legend,
+.package-plane-legend {
   display: flex;
   flex-wrap: wrap;
   gap: 5px 12px;
-  margin: 0;
+  margin: 0 0 7px;
   padding: 0;
   list-style: none;
+  color: var(--resource-text);
 }
 
-.package-chart-legend li {
+.package-chart-legend {
+  font-size: var(--type-base);
+}
+
+.package-plane-legend {
+  font-size: var(--type-base);
+}
+
+.package-chart-legend li,
+.package-plane-legend li {
   display: inline-flex;
   align-items: center;
   gap: 5px;
+  min-width: 0;
 }
 
-.package-chart-swatch {
+.package-plane-legend li span:last-child {
+  color: var(--resource-text-secondary);
+  font-size: var(--type-sm);
+}
+
+.package-chart-swatch,
+.package-plane-swatch {
   width: 9px;
   height: 9px;
   border-radius: 999px;
+  flex: 0 0 auto;
+  background: var(--resource-accent);
+}
+
+.package-chart-swatch.tone-1,
+.package-plane-swatch.tone-1 { background: color-mix(in srgb, var(--resource-accent) 62%, var(--resource-text)); }
+.package-chart-swatch.tone-2,
+.package-plane-swatch.tone-2 { background: color-mix(in srgb, var(--resource-accent) 58%, var(--status-success)); }
+.package-chart-swatch.tone-3,
+.package-plane-swatch.tone-3 { background: color-mix(in srgb, var(--resource-accent) 64%, var(--status-warning)); }
+.package-chart-swatch.tone-4,
+.package-plane-swatch.tone-4 { background: color-mix(in srgb, var(--resource-accent) 52%, var(--status-error)); }
+.package-chart-swatch.tone-5,
+.package-plane-swatch.tone-5 { background: color-mix(in srgb, var(--resource-accent) 48%, var(--status-info)); }
+
+.package-chart-layout-error,
+.package-plane-layout-error {
+  margin: 8px 0 0;
+  color: var(--status-error);
+  font-size: var(--type-sm);
 }
 
 .package-system-map {

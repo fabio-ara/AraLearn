@@ -165,11 +165,16 @@ test("recursos visuais extraídos preservam representação própria em vez de t
     id: "plane",
     package: "aralearn.resource.plane",
     version: "1.0.0",
-    data: { prompt: "Observe o vetor.", vector: [2, 1] }
+    data: {
+      prompt: "Observe o vetor.",
+      xAxis: { label: "Coordenada x", domain: [-1, 3] },
+      yAxis: { label: "Coordenada y", domain: [-1, 2] },
+      vectors: [{ id: "v", label: "v", from: [0, 0], to: [2, 1] }]
+    }
   });
-  assert.match(planeHtml, /package-plane-grid/u);
-  assert.match(planeHtml, /package-plane-axis-arrow/u);
-  assert.match(planeHtml, /\(2, 1\)/u);
+  assert.match(planeHtml, /package-plane-canvas/u);
+  assert.match(planeHtml, /package-plane-legend/u);
+  assert.match(planeHtml, /data-plane-data/u);
 
   const chartHtml = render({
     id: "chart",
@@ -178,13 +183,15 @@ test("recursos visuais extraídos preservam representação própria em vez de t
     data: {
       prompt: "Observe o crescimento.",
       chartType: "line",
-      xAxis: { label: "Tempo" },
-      yAxis: { label: "Latência", unit: "ms" },
-      series: [{ id: "latency", name: "Latência", values: [["1", 10], ["2", 18], ["3", 25]] }]
+      xAxis: { label: "Tempo", type: "quantitative" },
+      yAxis: { label: "Latência", unit: "ms", type: "quantitative" },
+      uncertainty: { label: "Intervalo de confiança de 95%" },
+      series: [{ id: "latency", name: "Latência", values: [{ x: 1, y: 10, lower: 8, upper: 12 }, { x: 2, y: 18, lower: 15, upper: 21 }, { x: 3, y: 25, lower: 21, upper: 29 }] }]
     }
   });
-  assert.match(chartHtml, /package-chart-line/u);
+  assert.match(chartHtml, /package-chart-canvas/u);
   assert.match(chartHtml, /package-chart-legend/u);
+  assert.match(chartHtml, /Intervalo de confiança/u);
 
   const formulaHtml = render({
     id: "formula",

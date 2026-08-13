@@ -172,9 +172,33 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "Observe o vetor v.",
-                            "vector": [
-                              2,
-                              1
+                            "xAxis": {
+                              "label": "Coordenada x",
+                              "domain": [
+                                -1.5,
+                                2.5
+                              ]
+                            },
+                            "yAxis": {
+                              "label": "Coordenada y",
+                              "domain": [
+                                -1.5,
+                                1.5
+                              ]
+                            },
+                            "vectors": [
+                              {
+                                "id": "v1",
+                                "label": "v",
+                                "from": [
+                                  0,
+                                  0
+                                ],
+                                "to": [
+                                  2,
+                                  1
+                                ]
+                              }
                             ]
                           }
                         }

@@ -8742,23 +8742,53 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "Cada ponto representa uma casa: eixo horizontal para área e eixo vertical para preço. O padrão sugere que casas maiores tendem a ter preço maior. Pontos: A=(1, 2), B=(2, 3), C=(3, 5), D=(4, 6).",
-                            "vectors": [
-                              [
-                                1,
-                                2
-                              ],
-                              [
-                                2,
-                                3
-                              ],
-                              [
-                                3,
+                            "xAxis": {
+                              "label": "Área da casa",
+                              "domain": [
+                                0,
                                 5
-                              ],
-                              [
-                                4,
-                                6
                               ]
+                            },
+                            "yAxis": {
+                              "label": "Preço",
+                              "domain": [
+                                0,
+                                7
+                              ]
+                            },
+                            "points": [
+                              {
+                                "id": "p1",
+                                "label": "A",
+                                "at": [
+                                  1,
+                                  2
+                                ]
+                              },
+                              {
+                                "id": "p2",
+                                "label": "B",
+                                "at": [
+                                  2,
+                                  3
+                                ]
+                              },
+                              {
+                                "id": "p3",
+                                "label": "C",
+                                "at": [
+                                  3,
+                                  5
+                                ]
+                              },
+                              {
+                                "id": "p4",
+                                "label": "D",
+                                "at": [
+                                  4,
+                                  6
+                                ]
+                              }
                             ]
                           }
                         }
@@ -9841,31 +9871,69 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "Os pontos próximos no plano representam clientes com comportamento semelhante. Os grupos visuais sugerem segmentos que ainda precisam ser interpretados pelo negócio. Pontos: A1=(1, 1), A2=(1.4, 1.2), A3=(1.2, 1.6), B1=(4, 4), B2=(4.3, 4.2), B3=(3.8, 4.5).",
-                            "vectors": [
-                              [
-                                1,
-                                1
-                              ],
-                              [
-                                1.4,
-                                1.2
-                              ],
-                              [
-                                1.2,
-                                1.6
-                              ],
-                              [
-                                4,
-                                4
-                              ],
-                              [
-                                4.3,
-                                4.2
-                              ],
-                              [
-                                3.8,
-                                4.5
+                            "xAxis": {
+                              "label": "Característica 1",
+                              "domain": [
+                                0,
+                                5
                               ]
+                            },
+                            "yAxis": {
+                              "label": "Característica 2",
+                              "domain": [
+                                0,
+                                7
+                              ]
+                            },
+                            "points": [
+                              {
+                                "id": "p1",
+                                "label": "A1",
+                                "at": [
+                                  1,
+                                  1
+                                ]
+                              },
+                              {
+                                "id": "p2",
+                                "label": "A2",
+                                "at": [
+                                  1.4,
+                                  1.2
+                                ]
+                              },
+                              {
+                                "id": "p3",
+                                "label": "A3",
+                                "at": [
+                                  1.2,
+                                  1.6
+                                ]
+                              },
+                              {
+                                "id": "p4",
+                                "label": "B1",
+                                "at": [
+                                  4,
+                                  4
+                                ]
+                              },
+                              {
+                                "id": "p5",
+                                "label": "B2",
+                                "at": [
+                                  4.3,
+                                  4.2
+                                ]
+                              },
+                              {
+                                "id": "p6",
+                                "label": "B3",
+                                "at": [
+                                  3.8,
+                                  4.5
+                                ]
+                              }
                             ]
                           }
                         }

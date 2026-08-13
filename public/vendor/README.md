@@ -1,4 +1,4 @@
-# Dependência de diagramação
+# Dependências de diagramação e visualização
 
 `viz-global.js` é a distribuição para navegador do Viz.js 3.27.0, compilação
 WebAssembly do Graphviz 14.1.5 publicada sob licença MIT. A distribuição inclui
@@ -11,3 +11,12 @@ em seu cabeçalho.
 
 O arquivo é mantido localmente para que fluxogramas continuem disponíveis sem
 conexão e para que site e APK usem exatamente o mesmo renderer.
+
+`vega.min.js` e `vega-lite.min.js` são as distribuições para navegador de
+Vega 6.3.1 e Vega-Lite 6.4.3. Elas compilam e materializam gráficos
+estatísticos e planos cartesianos a partir dos contratos semânticos dos
+packages. Os arquivos também permanecem locais e disponíveis offline; o
+formato Vega-Lite não é exposto à autoria.
+
+- Vega: https://github.com/vega/vega
+- Vega-Lite: https://github.com/vega/vega-lite

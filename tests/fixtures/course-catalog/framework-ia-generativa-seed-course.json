@@ -1381,23 +1381,53 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "Eixo horizontal representa valor institucional de 1 a 5; eixo vertical representa risco de 1 a 5. Pontos: checklist interno=(3,1), FAQ com fonte oficial=(4,2), atendimento público anônimo=(5,4), alteração de cadastro=(4,5).",
-                            "vectors": [
-                              [
-                                3,
-                                1
-                              ],
-                              [
-                                4,
-                                2
-                              ],
-                              [
-                                5,
-                                4
-                              ],
-                              [
-                                4,
-                                5
+                            "xAxis": {
+                              "label": "Valor institucional",
+                              "domain": [
+                                0,
+                                6
                               ]
+                            },
+                            "yAxis": {
+                              "label": "Risco",
+                              "domain": [
+                                0,
+                                6
+                              ]
+                            },
+                            "points": [
+                              {
+                                "id": "p1",
+                                "label": "checklist interno",
+                                "at": [
+                                  3,
+                                  1
+                                ]
+                              },
+                              {
+                                "id": "p2",
+                                "label": "FAQ com fonte oficial",
+                                "at": [
+                                  4,
+                                  2
+                                ]
+                              },
+                              {
+                                "id": "p3",
+                                "label": "atendimento público anônimo",
+                                "at": [
+                                  5,
+                                  4
+                                ]
+                              },
+                              {
+                                "id": "p4",
+                                "label": "alteração de cadastro",
+                                "at": [
+                                  4,
+                                  5
+                                ]
+                              }
                             ]
                           }
                         }
@@ -1428,23 +1458,53 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "Eixo horizontal representa valor de 1 a 5; eixo vertical representa risco de 1 a 5. Pontos: checklist interno=(3,1), FAQ interno com fonte oficial=(4,2), canal público anônimo=(5,4), agente que altera cadastro=(4,5).",
-                            "vectors": [
-                              [
-                                3,
-                                1
-                              ],
-                              [
-                                4,
-                                2
-                              ],
-                              [
-                                5,
-                                4
-                              ],
-                              [
-                                4,
-                                5
+                            "xAxis": {
+                              "label": "Valor institucional",
+                              "domain": [
+                                0,
+                                6
                               ]
+                            },
+                            "yAxis": {
+                              "label": "Risco",
+                              "domain": [
+                                0,
+                                6
+                              ]
+                            },
+                            "points": [
+                              {
+                                "id": "p1",
+                                "label": "checklist interno",
+                                "at": [
+                                  3,
+                                  1
+                                ]
+                              },
+                              {
+                                "id": "p2",
+                                "label": "FAQ interno com fonte oficial",
+                                "at": [
+                                  4,
+                                  2
+                                ]
+                              },
+                              {
+                                "id": "p3",
+                                "label": "canal público anônimo",
+                                "at": [
+                                  5,
+                                  4
+                                ]
+                              },
+                              {
+                                "id": "p4",
+                                "label": "agente que altera cadastro",
+                                "at": [
+                                  4,
+                                  5
+                                ]
+                              }
                             ]
                           }
                         }
@@ -10966,23 +11026,53 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "Eixo horizontal representa valor de 1 a 5; eixo vertical representa risco de 1 a 5. Pontos: trilhas da escola corporativa=(4,2), FAQ financeiro interno=(3,2), atendimento público amplo=(5,4), alteração cadastral=(4,5).",
-                            "vectors": [
-                              [
-                                4,
-                                2
-                              ],
-                              [
-                                3,
-                                2
-                              ],
-                              [
-                                5,
-                                4
-                              ],
-                              [
-                                4,
-                                5
+                            "xAxis": {
+                              "label": "Valor institucional",
+                              "domain": [
+                                0,
+                                6
                               ]
+                            },
+                            "yAxis": {
+                              "label": "Risco",
+                              "domain": [
+                                0,
+                                6
+                              ]
+                            },
+                            "points": [
+                              {
+                                "id": "p1",
+                                "label": "trilhas da escola corporativa",
+                                "at": [
+                                  4,
+                                  2
+                                ]
+                              },
+                              {
+                                "id": "p2",
+                                "label": "FAQ financeiro interno",
+                                "at": [
+                                  3,
+                                  2
+                                ]
+                              },
+                              {
+                                "id": "p3",
+                                "label": "atendimento público amplo",
+                                "at": [
+                                  5,
+                                  4
+                                ]
+                              },
+                              {
+                                "id": "p4",
+                                "label": "alteração cadastral",
+                                "at": [
+                                  4,
+                                  5
+                                ]
+                              }
                             ]
                           }
                         }
@@ -11013,23 +11103,53 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "Eixo horizontal é valor; eixo vertical é risco. Pontos: trilhas da escola corporativa=(4,2), FAQ financeiro interno=(3,2), atendimento público amplo=(5,4), alteração cadastral=(4,5).",
-                            "vectors": [
-                              [
-                                4,
-                                2
-                              ],
-                              [
-                                3,
-                                2
-                              ],
-                              [
-                                5,
-                                4
-                              ],
-                              [
-                                4,
-                                5
+                            "xAxis": {
+                              "label": "Valor institucional",
+                              "domain": [
+                                0,
+                                6
                               ]
+                            },
+                            "yAxis": {
+                              "label": "Risco",
+                              "domain": [
+                                0,
+                                6
+                              ]
+                            },
+                            "points": [
+                              {
+                                "id": "p1",
+                                "label": "trilhas da escola corporativa",
+                                "at": [
+                                  4,
+                                  2
+                                ]
+                              },
+                              {
+                                "id": "p2",
+                                "label": "FAQ financeiro interno",
+                                "at": [
+                                  3,
+                                  2
+                                ]
+                              },
+                              {
+                                "id": "p3",
+                                "label": "atendimento público amplo",
+                                "at": [
+                                  5,
+                                  4
+                                ]
+                              },
+                              {
+                                "id": "p4",
+                                "label": "alteração cadastral",
+                                "at": [
+                                  4,
+                                  5
+                                ]
+                              }
                             ]
                           }
                         }

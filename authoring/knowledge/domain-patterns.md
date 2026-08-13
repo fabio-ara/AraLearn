@@ -48,6 +48,16 @@ adicionais fora do contrato.
 
 - Introduza cada símbolo, domínio, unidade e convenção antes do primeiro uso exigido.
 - Use `formula` para a estrutura simbólica, `plane` para relações espaciais, `matrix` para posição e transformação e `table` para dados observados.
+- Em `chart`, declare o tipo de cada eixo, unidades, domínio e escala. Use
+  `lower`/`upper` somente para limites já calculados e nomeie em
+  `uncertainty.label` o que eles significam, como intervalo de confiança de
+  95%. Use `referenceLines` apenas quando o limiar tiver origem conceitual ou
+  metodológica explícita. Não fabrique precisão, incerteza ou observação
+  empírica; dados de demonstração são identificados como sintéticos.
+- Em `plane`, declare domínios e diferencie `points`, `vectors` e `paths`.
+  Vetor tem `from` e `to`; trajetória conserva a ordem; região fechada usa
+  `closed`. Não use esse package para campo vetorial denso, contorno, superfície
+  tridimensional ou outro objeto que necessite package disciplinar próprio.
 - Em `formula`, descreva a expressão pelos nós semânticos do contrato. Prefira
   `integral`, `derivative`, `tensor`, `function` e `large_operator` a sequências
   de caracteres que imitem a notação. Não envie LaTeX, HTML ou MathML; o

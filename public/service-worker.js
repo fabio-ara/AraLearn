@@ -9,6 +9,8 @@ const SHELL = [
   "./styles-tokens.css",
   "./styles-shell-baseline.css",
   "./styles.css",
+  "./vendor/vega.min.js",
+  "./vendor/vega-lite.min.js",
   "./vendor/viz-global.js",
   "./main.js",
   "./assets/brand/aralearn-mark.png"

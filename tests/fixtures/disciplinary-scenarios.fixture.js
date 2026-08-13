@@ -195,10 +195,9 @@ const scenarios = [
         exercise: "choice",
         title: "Extremidade do vetor",
         prompt: "O vetor v parte da origem e tem componentes (3, -2).",
-        x: [-1, 4],
-        y: [-3, 2],
-        vector: [3, -2],
-        result: [3, -2],
+        xAxis: { label: "Coordenada x", domain: [-1, 4] },
+        yAxis: { label: "Coordenada y", domain: [-3, 2] },
+        vectors: [{ id: "v", label: "v", from: [0, 0], to: [3, -2] }],
         question: "Em qual ponto termina v quando sua origem é (0, 0)?",
         options: options("(3, -2)", "(-2, 3)", "(3, 2)"),
         selectionMode: "single",
@@ -431,16 +430,15 @@ const scenarios = [
         title: "Anomalia térmica anual",
         prompt: "Observe a evolução da anomalia térmica média entre 2022 e 2025.",
         chartType: "line",
-        xAxis: { label: "Ano", unit: "ano" },
-        yAxis: { label: "Anomalia", unit: "°C" },
+        xAxis: { label: "Ano", unit: "ano", type: "quantitative", domain: [2022, 2025] },
+        yAxis: { label: "Anomalia", unit: "°C", type: "quantitative", domain: [0, 1] },
         series: [
           {
             id: "serie-anomalia",
             name: "Anomalia térmica",
-            values: [["2022", 0.2], ["2023", 0.4], ["2024", 0.7], ["2025", 0.8]]
+            values: [{ x: 2022, y: 0.2 }, { x: 2023, y: 0.4 }, { x: 2024, y: 0.7 }, { x: 2025, y: 0.8 }]
           }
         ],
-        highlight: { points: [["serie-anomalia", "2025"]] },
         after: "A série cresce em todos os intervalos e atinge 0,8 °C em 2025."
       }
     ],
