@@ -48,6 +48,12 @@ adicionais fora do contrato.
 
 - Introduza cada símbolo, domínio, unidade e convenção antes do primeiro uso exigido.
 - Use `formula` para a estrutura simbólica, `plane` para relações espaciais, `matrix` para posição e transformação e `table` para dados observados.
+- Em `formula`, descreva a expressão pelos nós semânticos do contrato. Prefira
+  `integral`, `derivative`, `tensor`, `function` e `large_operator` a sequências
+  de caracteres que imitem a notação. Não envie LaTeX, HTML ou MathML; o
+  renderer compõe a forma acadêmica. A prosa que situa ou explica a expressão
+  fica em `prompt` ou em um `paragraph` separado, e a leitura acessível
+  verbaliza limites, variáveis, ordens e índices.
 - Use `truth_table` para valorações e conectivos, `relation_map` para uma
   relação binária e `set_diagram` para regiões de Venn/Euler. Não use
   `matrix` como tabela com cabeçalhos.
@@ -77,6 +83,10 @@ adicionais fora do contrato.
   topologia abstrata, `packet_layout` para campos de protocolo,
   `state_machine` para comportamento dependente do estado, `flow` para
   decisão procedural, `table` para configuração e `code` para comandos.
+- Em `flow`, declare a lógica, não a geometria: terminais são `start`/`end`,
+  entrada ou saída usa `input`/`output`, transformação usa `process` e decisões
+  usam as estruturas condicionais com ramos nomeados. O renderer deriva os
+  símbolos e conectores convencionais do fluxograma.
 - Diferencie observação, diagnóstico e ação. Uma evidência isolada não prova uma causa sem as condições correspondentes.
 - Não apresente credenciais reais, dados pessoais, endereços internos nem comandos destrutivos sem ambiente seguro e finalidade didática explícita.
 - Distratores podem representar camada errada, direção invertida, máscara incompatível, porta inadequada ou interpretação incorreta de log.

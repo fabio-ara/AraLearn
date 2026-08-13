@@ -15,14 +15,16 @@ test("o workbench da microssequência zera o padding externo inferior para não 
   );
 });
 
-test("o flow semântico não captura o gesto vertical principal no Android", () => {
+test("o fluxograma não captura o gesto vertical principal no Android", () => {
   const styles = fs.readFileSync(new URL("../../public/styles.css", import.meta.url), "utf8");
   const renderer = fs.readFileSync(
     new URL("../../src/resources/packages/flow/index.js", import.meta.url),
     "utf8"
   );
 
-  assert.match(renderer, /package-flow-tree/u);
+  assert.match(renderer, /package-flowchart/u);
+  assert.match(renderer, /package-flow-shape/u);
+  assert.doesNotMatch(renderer, /package-flow-tree|package-flow-node-card/u);
   assert.doesNotMatch(renderer, /touch-action|pointerdown|pointermove/iu);
   assert.doesNotMatch(styles, /\.runtime-flow-board/u);
 });

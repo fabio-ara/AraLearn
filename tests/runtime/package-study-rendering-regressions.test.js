@@ -220,10 +220,14 @@ test("recursos visuais extraídos preservam representação própria em vez de t
     id: "flow",
     package: "aralearn.resource.flow",
     version: "1.0.0",
-    data: { structure: { id: "root", kind: "sequence", items: [{ id: "start", kind: "start", text: "Início" }, { id: "end", kind: "end", text: "Fim" }] } }
+    data: { structure: { id: "root", kind: "sequence", items: [{ id: "start", kind: "start", text: "Início" }, { id: "read", kind: "input", text: "Ler dados" }, { id: "choice", kind: "if_then_else", condition: "Dados válidos?", branchLabels: { yes: "Sim", no: "Não" }, thenBranch: [{ id: "save", kind: "process", text: "Salvar" }], elseBranch: [{ id: "warn", kind: "output", text: "Exibir erro" }] }, { id: "end", kind: "end", text: "Fim" }] } }
   });
-  assert.match(flowHtml, /package-flow-node-card/u);
-  assert.match(flowHtml, /package-flow-kind/u);
+  assert.match(flowHtml, /package-flowchart/u);
+  assert.match(flowHtml, /package-flow-shape is-terminal/u);
+  assert.match(flowHtml, /package-flow-shape is-input-output/u);
+  assert.match(flowHtml, /package-flow-shape is-decision/u);
+  assert.match(flowHtml, /package-flow-branches/u);
+  assert.doesNotMatch(flowHtml, /package-flow-tree|package-flow-node-card/u);
 
   const systemMapHtml = render({
     id: "system",

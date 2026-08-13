@@ -103,6 +103,18 @@ ligação preserva pai e filho. Nos demais packages, unidades, eixos, ordem,
 notação, grupos e direção necessários precisam estar declarados nos campos
 semânticos do contrato.
 
+`flow` não é uma árvore indentada. Sua raiz lógica é uma sequência e o
+renderer materializa terminais arredondados, processos retangulares,
+entrada/saída em paralelogramos, decisões em losangos, conectores orientados e
+junções. A autoria nunca declara coordenadas ou arestas.
+
+`formula` recebe uma AST semântica, não uma string de notação. Integrais,
+derivadas, tensores, funções, somatórios, produtos, limites, frações, raízes,
+índices e cercas usam os respectivos nós do contrato. Use `prompt` ou
+`paragraph` para a explicação em prosa; tokens textuais dentro da AST servem
+somente a conectores matemáticos curtos. A leitura acessível acompanha a mesma
+estrutura e não pode se limitar a repetir símbolos.
+
 ## Validação
 
 Antes de gravar:

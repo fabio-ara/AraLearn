@@ -1974,7 +1974,7 @@
         },
         {
           "id": "resource-test-10-module",
-          "title": "Fluxo",
+          "title": "Fluxograma",
           "guide": {
             "goal": "Avaliar aralearn.resource.flow somente nas modalidades declaradas pelo próprio package.",
             "include": [
@@ -1984,7 +1984,10 @@
               "adaptação artificial de outra operação cognitiva"
             ],
             "notation": [
-              "símbolos de início, processo e decisão distinguíveis",
+              "terminais arredondados",
+              "processos retangulares",
+              "entrada e saída em paralelogramo",
+              "decisões em losango",
               "ramos nomeados",
               "fluxo orientado"
             ],
@@ -1995,7 +1998,7 @@
           "lessons": [
             {
               "id": "resource-test-10-lesson",
-              "title": "Fluxo",
+              "title": "Fluxograma",
               "guide": {
                 "goal": "Avaliar aralearn.resource.flow somente nas modalidades declaradas pelo próprio package.",
                 "include": [
@@ -2005,7 +2008,10 @@
                   "práticas universais presumidas"
                 ],
                 "notation": [
-                  "símbolos de início, processo e decisão distinguíveis",
+                  "terminais arredondados",
+                  "processos retangulares",
+                  "entrada e saída em paralelogramo",
+                  "decisões em losango",
                   "ramos nomeados",
                   "fluxo orientado"
                 ],
@@ -2017,7 +2023,7 @@
               "microsequences": [
                 {
                   "id": "resource-test-10-microsequence",
-                  "title": "Fluxo",
+                  "title": "Fluxograma",
                   "goal": "Avaliar aralearn.resource.flow somente nas modalidades declaradas pelo próprio package.",
                   "role": "practice",
                   "dependsOn": [],
@@ -2040,7 +2046,7 @@
                           "package": "aralearn.resource.flow",
                           "version": "1.0.0",
                           "data": {
-                            "prompt": "Acompanhe a decisão.",
+                            "prompt": "Acompanhe os dois caminhos possíveis.",
                             "structure": {
                               "id": "root",
                               "kind": "sequence",
@@ -2051,14 +2057,26 @@
                                   "text": "Início"
                                 },
                                 {
+                                  "id": "read",
+                                  "kind": "input",
+                                  "text": "Ler credenciais"
+                                },
+                                {
                                   "id": "decision",
-                                  "kind": "if_then",
-                                  "condition": "há conexão",
+                                  "kind": "if_then_else",
+                                  "condition": "Credenciais válidas?",
                                   "thenBranch": [
                                     {
-                                      "id": "send",
+                                      "id": "open",
                                       "kind": "process",
-                                      "text": "Enviar"
+                                      "text": "Abrir sessão"
+                                    }
+                                  ],
+                                  "elseBranch": [
+                                    {
+                                      "id": "error",
+                                      "kind": "output",
+                                      "text": "Exibir erro"
                                     }
                                   ]
                                 },
@@ -2088,7 +2106,7 @@
                           "package": "aralearn.resource.flow",
                           "version": "1.0.0",
                           "data": {
-                            "prompt": "Acompanhe a decisão.",
+                            "prompt": "Acompanhe os dois caminhos possíveis.",
                             "structure": {
                               "id": "root",
                               "kind": "sequence",
@@ -2099,14 +2117,26 @@
                                   "text": "Início"
                                 },
                                 {
+                                  "id": "read",
+                                  "kind": "input",
+                                  "text": "Ler credenciais"
+                                },
+                                {
                                   "id": "decision",
-                                  "kind": "if_then",
-                                  "condition": "há conexão",
+                                  "kind": "if_then_else",
+                                  "condition": "Credenciais válidas?",
                                   "thenBranch": [
                                     {
-                                      "id": "send",
+                                      "id": "open",
                                       "kind": "process",
-                                      "text": "Enviar"
+                                      "text": "Abrir sessão"
+                                    }
+                                  ],
+                                  "elseBranch": [
+                                    {
+                                      "id": "error",
+                                      "kind": "output",
+                                      "text": "Exibir erro"
                                     }
                                   ]
                                 },
@@ -2156,7 +2186,7 @@
                           "package": "aralearn.resource.flow",
                           "version": "1.0.0",
                           "data": {
-                            "prompt": "Acompanhe a decisão.",
+                            "prompt": "Acompanhe os dois caminhos possíveis.",
                             "structure": {
                               "id": "root",
                               "kind": "sequence",
@@ -2167,14 +2197,26 @@
                                   "text": "Início"
                                 },
                                 {
+                                  "id": "read",
+                                  "kind": "input",
+                                  "text": "Ler credenciais"
+                                },
+                                {
                                   "id": "decision",
-                                  "kind": "if_then",
-                                  "condition": "há conexão",
+                                  "kind": "if_then_else",
+                                  "condition": "Credenciais válidas?",
                                   "thenBranch": [
                                     {
-                                      "id": "send",
+                                      "id": "open",
                                       "kind": "process",
-                                      "text": "Enviar"
+                                      "text": "Abrir sessão"
+                                    }
+                                  ],
+                                  "elseBranch": [
+                                    {
+                                      "id": "error",
+                                      "kind": "output",
+                                      "text": "Exibir erro"
                                     }
                                   ]
                                 },
@@ -2283,19 +2325,124 @@
                           "package": "aralearn.resource.formula",
                           "version": "1.0.0",
                           "data": {
-                            "prompt": "Observe a potência.",
+                            "prompt": "Em teoria de campos, uma ação pode ser definida por uma integral sobre uma região. Leia a expressão e identifique a integral, a derivada parcial, a contração entre índices tensoriais e a função aplicada.",
                             "notation": "mathematics",
-                            "accessibleText": "x ao quadrado",
+                            "accessibleText": "A ação S de u é a integral sobre ômega de um meio vezes a derivada parcial da componente u índice i em relação à coordenada x índice j, contraída com o tensor T índices superiores i e j, mais f de u, em relação ao volume V.",
                             "expression": {
-                              "type": "superscript",
-                              "base": {
-                                "type": "identifier",
-                                "value": "x"
-                              },
-                              "exponent": {
-                                "type": "number",
-                                "value": "2"
-                              }
+                              "type": "row",
+                              "children": [
+                                {
+                                  "type": "function",
+                                  "name": "S",
+                                  "arguments": [
+                                    {
+                                      "type": "identifier",
+                                      "value": "u"
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "operator",
+                                  "value": "="
+                                },
+                                {
+                                  "type": "integral",
+                                  "kind": "single",
+                                  "lower": {
+                                    "type": "identifier",
+                                    "value": "Ω"
+                                  },
+                                  "variable": {
+                                    "type": "identifier",
+                                    "value": "V"
+                                  },
+                                  "integrand": {
+                                    "type": "fenced",
+                                    "open": "[",
+                                    "close": "]",
+                                    "content": {
+                                      "type": "row",
+                                      "children": [
+                                        {
+                                          "type": "fraction",
+                                          "numerator": {
+                                            "type": "number",
+                                            "value": "1"
+                                          },
+                                          "denominator": {
+                                            "type": "number",
+                                            "value": "2"
+                                          }
+                                        },
+                                        {
+                                          "type": "operator",
+                                          "value": "·"
+                                        },
+                                        {
+                                          "type": "derivative",
+                                          "kind": "partial",
+                                          "expression": {
+                                            "type": "tensor",
+                                            "symbol": "u",
+                                            "lowerIndices": [
+                                              {
+                                                "type": "identifier",
+                                                "value": "i"
+                                              }
+                                            ]
+                                          },
+                                          "variables": [
+                                            {
+                                              "symbol": {
+                                                "type": "tensor",
+                                                "symbol": "x",
+                                                "lowerIndices": [
+                                                  {
+                                                    "type": "identifier",
+                                                    "value": "j"
+                                                  }
+                                                ]
+                                              }
+                                            }
+                                          ]
+                                        },
+                                        {
+                                          "type": "operator",
+                                          "value": "·"
+                                        },
+                                        {
+                                          "type": "tensor",
+                                          "symbol": "T",
+                                          "upperIndices": [
+                                            {
+                                              "type": "identifier",
+                                              "value": "i"
+                                            },
+                                            {
+                                              "type": "identifier",
+                                              "value": "j"
+                                            }
+                                          ]
+                                        },
+                                        {
+                                          "type": "operator",
+                                          "value": "+"
+                                        },
+                                        {
+                                          "type": "function",
+                                          "name": "f",
+                                          "arguments": [
+                                            {
+                                              "type": "identifier",
+                                              "value": "u"
+                                            }
+                                          ]
+                                        }
+                                      ]
+                                    }
+                                  }
+                                }
+                              ]
                             }
                           }
                         }

@@ -11,7 +11,12 @@ export const FORMULA_NODE_TYPES = Object.freeze([
   "superscript",
   "subscript",
   "subsup",
-  "fenced"
+  "fenced",
+  "function",
+  "integral",
+  "derivative",
+  "tensor",
+  "large_operator"
 ]);
 
 const FORMULA_NODE_TYPE_SET = new Set(FORMULA_NODE_TYPES);
@@ -48,6 +53,12 @@ function formulaObjectSchema(type, requiredFields, properties) {
 }
 
 const FORMULA_REFERENCE = Object.freeze({ $ref: "#/$defs/node" });
+const FORMULA_NODE_LIST_INPUT_SCHEMA = Object.freeze({
+  type: "array",
+  minItems: 1,
+  maxItems: 16,
+  items: FORMULA_REFERENCE
+});
 
 /**
  * Linguagem autoral canônica da AST de fórmulas.
@@ -102,11 +113,55 @@ export const FORMULA_EXPRESSION_INPUT_SCHEMA = Object.freeze({
             close: { const: close },
             content: FORMULA_REFERENCE
           })
-        )
+        ),
+        formulaObjectSchema("function", ["name", "arguments"], {
+          name: FORMULA_TOKEN_INPUT_SCHEMA,
+          arguments: FORMULA_NODE_LIST_INPUT_SCHEMA
+        }),
+        formulaObjectSchema("integral", ["kind", "integrand", "variable"], {
+          kind: { type: "string", enum: ["single", "double", "triple", "contour", "surface", "volume"] },
+          integrand: FORMULA_REFERENCE,
+          variable: FORMULA_REFERENCE,
+          lower: FORMULA_REFERENCE,
+          upper: FORMULA_REFERENCE
+        }),
+        formulaObjectSchema("derivative", ["kind", "expression", "variables"], {
+          kind: { type: "string", enum: ["ordinary", "partial"] },
+          expression: FORMULA_REFERENCE,
+          variables: {
+            type: "array",
+            minItems: 1,
+            maxItems: 8,
+            items: { $ref: "#/$defs/derivativeVariable" }
+          }
+        }),
+        {
+          ...formulaObjectSchema("tensor", ["symbol"], {
+            symbol: FORMULA_TOKEN_INPUT_SCHEMA,
+            lowerIndices: FORMULA_NODE_LIST_INPUT_SCHEMA,
+            upperIndices: FORMULA_NODE_LIST_INPUT_SCHEMA
+          }),
+          anyOf: [{ required: ["lowerIndices"] }, { required: ["upperIndices"] }]
+        },
+        formulaObjectSchema("large_operator", ["operator", "body"], {
+          operator: { type: "string", enum: ["sum", "product", "limit"] },
+          body: FORMULA_REFERENCE,
+          lower: FORMULA_REFERENCE,
+          upper: FORMULA_REFERENCE
+        })
       ]
+    },
+    derivativeVariable: {
+      type: "object",
+      additionalProperties: false,
+      required: ["symbol"],
+      properties: {
+        symbol: FORMULA_REFERENCE,
+        order: { type: "integer", minimum: 1, maximum: 9 }
+      }
     }
   },
-  description: "AST determinística de fórmula matemática ou química."
+  description: "AST determinística de fórmula matemática ou química, com nós semânticos para funções, integrais, derivadas, tensores e operadores grandes."
 });
 
 function containsForbiddenControl(value) {
@@ -231,6 +286,68 @@ function validateNode(node, path, errors, state, depth) {
     validateChild(node.base, `${path}.base`, errors, state, depth + 1);
     validateChild(node.subscript, `${path}.subscript`, errors, state, depth + 1);
     validateChild(node.superscript, `${path}.superscript`, errors, state, depth + 1);
+    return;
+  }
+
+  if (type === "function") {
+    validateFields(node, ["type", "name", "arguments"], path, errors);
+    validateToken(node.name, `${path}.name`, errors, "Nome da função");
+    if (!Array.isArray(node.arguments) || !node.arguments.length) {
+      addError(errors, `${path}.arguments`, "function precisa de ao menos um argumento.");
+      return;
+    }
+    node.arguments.forEach((child, index) => validateChild(child, `${path}.arguments[${index}]`, errors, state, depth + 1));
+    return;
+  }
+
+  if (type === "integral") {
+    validateFields(node, ["type", "kind", "integrand", "variable", "lower", "upper"], path, errors);
+    if (!["single", "double", "triple", "contour", "surface", "volume"].includes(node.kind)) addError(errors, `${path}.kind`, "Tipo de integral inválido.");
+    validateChild(node.integrand, `${path}.integrand`, errors, state, depth + 1);
+    validateChild(node.variable, `${path}.variable`, errors, state, depth + 1);
+    if (node.lower !== undefined) validateChild(node.lower, `${path}.lower`, errors, state, depth + 1);
+    if (node.upper !== undefined) validateChild(node.upper, `${path}.upper`, errors, state, depth + 1);
+    return;
+  }
+
+  if (type === "derivative") {
+    validateFields(node, ["type", "kind", "expression", "variables"], path, errors);
+    if (!["ordinary", "partial"].includes(node.kind)) addError(errors, `${path}.kind`, "Tipo de derivada inválido.");
+    validateChild(node.expression, `${path}.expression`, errors, state, depth + 1);
+    if (!Array.isArray(node.variables) || !node.variables.length) {
+      addError(errors, `${path}.variables`, "derivative precisa de ao menos uma variável.");
+      return;
+    }
+    node.variables.forEach((variable, index) => {
+      const variablePath = `${path}.variables[${index}]`;
+      if (!isPlainObject(variable)) {
+        addError(errors, variablePath, "Variável de derivação precisa ser objeto.");
+        return;
+      }
+      validateFields(variable, ["symbol", "order"], variablePath, errors);
+      validateChild(variable.symbol, `${variablePath}.symbol`, errors, state, depth + 1);
+      if (variable.order !== undefined && (!Number.isInteger(variable.order) || variable.order < 1 || variable.order > 9)) addError(errors, `${variablePath}.order`, "Ordem precisa ser inteiro entre 1 e 9.");
+    });
+    return;
+  }
+
+  if (type === "tensor") {
+    validateFields(node, ["type", "symbol", "lowerIndices", "upperIndices"], path, errors);
+    validateToken(node.symbol, `${path}.symbol`, errors, "Símbolo do tensor");
+    const lower = Array.isArray(node.lowerIndices) ? node.lowerIndices : [];
+    const upper = Array.isArray(node.upperIndices) ? node.upperIndices : [];
+    if (!lower.length && !upper.length) addError(errors, path, "tensor precisa de índice inferior ou superior.");
+    lower.forEach((child, index) => validateChild(child, `${path}.lowerIndices[${index}]`, errors, state, depth + 1));
+    upper.forEach((child, index) => validateChild(child, `${path}.upperIndices[${index}]`, errors, state, depth + 1));
+    return;
+  }
+
+  if (type === "large_operator") {
+    validateFields(node, ["type", "operator", "body", "lower", "upper"], path, errors);
+    if (!["sum", "product", "limit"].includes(node.operator)) addError(errors, `${path}.operator`, "Operador grande inválido.");
+    validateChild(node.body, `${path}.body`, errors, state, depth + 1);
+    if (node.lower !== undefined) validateChild(node.lower, `${path}.lower`, errors, state, depth + 1);
+    if (node.upper !== undefined) validateChild(node.upper, `${path}.upper`, errors, state, depth + 1);
     return;
   }
 

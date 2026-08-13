@@ -142,6 +142,30 @@ test("reaction materializa escolha e digitação dentro da equação química", 
   await expect(page.locator(".inline-feedback")).toHaveCount(0);
 });
 
+test("flow usa convenções de fluxograma e não a estrutura visual de tree", async ({ page }) => {
+  await openModule(page, 9);
+  await expect(page.locator(".package-flowchart")).toBeVisible();
+  await expect(page.locator(".package-flow-shape.is-terminal")).toHaveCount(2);
+  await expect(page.locator(".package-flow-shape.is-input-output")).toHaveCount(2);
+  await expect(page.locator(".package-flow-shape.is-decision")).toHaveCount(1);
+  await expect(page.locator(".package-flow-branches")).toHaveCount(1);
+  await expect(page.locator(".runtime-tree-structure, .package-flow-tree")).toHaveCount(0);
+});
+
+test("formula combina texto e notação avançada na mesma escala tipográfica", async ({ page }) => {
+  await openModule(page, 10);
+  await expect(page.locator(".runtime-formula-block > p")).toContainText("teoria de campos");
+  await expect(page.locator(".package-formula math")).toBeVisible();
+  await expect(page.locator(".package-formula math mfrac")).toHaveCount(2);
+  await expect(page.locator(".package-formula math msub")).toHaveCount(3);
+  await expect(page.locator(".package-formula math msup")).toHaveCount(1);
+  const sizes = await page.evaluate(() => ({
+    prose: getComputedStyle(document.querySelector(".runtime-formula-block > p")).fontSize,
+    formula: getComputedStyle(document.querySelector(".package-formula math")).fontSize
+  }));
+  expect(sizes.formula).toBe(sizes.prose);
+});
+
 test("ordenação é resposta independente e o Play é o único controle de confirmação", async ({ page }) => {
   await openModule(page, 26);
   await expect(page.locator(".package-ordering-response li")).toHaveCount(3);

@@ -2092,7 +2092,7 @@ input:-webkit-autofill:focus {
   background: var(--resource-surface-sunken);
   color: var(--resource-text);
   font-family: "Cascadia Code", "Consolas", "SFMono-Regular", "Cascadia Mono", monospace;
-  font-size: 0.84rem;
+  font-size: var(--type-base);
   line-height: 1.58;
   overflow-x: auto;
 }
@@ -2121,7 +2121,7 @@ input:-webkit-autofill:focus {
   color: var(--text-primary);
   text-align: left;
   cursor: pointer;
-  font-size: var(--type-sm);
+  font-size: var(--type-base);
   line-height: var(--leading-normal);
   transition: border-color 0.18s ease, background 0.18s ease, transform 0.05s ease;
 }
@@ -2220,7 +2220,7 @@ input:-webkit-autofill:focus {
   background: var(--resource-surface-sunken);
   color: var(--resource-text);
   font-family: "Cascadia Code", "Consolas", "SFMono-Regular", "Cascadia Mono", monospace;
-  font-size: 0.82rem;
+  font-size: var(--type-base);
   line-height: 1.56;
   white-space: pre-wrap;
   overflow-x: auto;
@@ -2358,7 +2358,7 @@ input:-webkit-autofill:focus {
   border-radius: 10px;
   background: var(--resource-surface-subtle);
   color: var(--resource-text);
-  font-size: var(--type-xs);
+  font-size: var(--type-base);
 }
 
 .package-matching-response label > span {
@@ -2407,7 +2407,7 @@ input:-webkit-autofill:focus {
   padding: 8px 10px;
   border-bottom: 1px solid var(--resource-border-strong);
   color: var(--resource-text-secondary);
-  font-size: var(--type-xs);
+  font-size: var(--type-base);
   text-align: center;
 }
 
@@ -2427,7 +2427,7 @@ input:-webkit-autofill:focus {
   border-bottom: 1px solid var(--resource-border);
   background: var(--resource-surface);
   color: var(--resource-text);
-  font-size: var(--type-xs);
+  font-size: var(--type-base);
 }
 
 .package-relation-row:last-child {
@@ -2471,7 +2471,7 @@ input:-webkit-autofill:focus {
   margin: 0;
   padding: 8px 10px;
   border-top: 1px solid var(--resource-border);
-  font-size: var(--type-xs);
+  font-size: var(--type-base);
   overflow-wrap: anywhere;
 }
 
@@ -2552,7 +2552,7 @@ input:-webkit-autofill:focus {
   inset-block-start: 2px;
   inset-inline-start: 3px;
   color: var(--resource-text-secondary);
-  font-size: 0.58rem;
+  font-size: var(--type-xs);
 }
 
 .package-packet-legend,
@@ -2570,7 +2570,7 @@ input:-webkit-autofill:focus {
   border-radius: 9px;
   background: var(--resource-surface-subtle);
   color: var(--resource-text);
-  font-size: var(--type-xs);
+  font-size: var(--type-base);
 }
 
 .package-packet-legend small {
@@ -2607,7 +2607,7 @@ input:-webkit-autofill:focus {
   padding: 8px 10px;
   background: var(--resource-surface-subtle);
   color: var(--resource-text);
-  font-size: var(--type-sm);
+  font-size: var(--type-base);
 }
 
 .package-schema-relations ul,
@@ -2626,13 +2626,13 @@ input:-webkit-autofill:focus {
   align-items: baseline;
   padding: 5px;
   color: var(--resource-text);
-  font-size: var(--type-xs);
+  font-size: var(--type-base);
 }
 
 .package-schema-key {
   min-height: 1em;
   color: var(--resource-accent);
-  font-size: 0.62rem;
+  font-size: var(--type-base);
   font-weight: 800;
 }
 
@@ -2653,7 +2653,7 @@ input:-webkit-autofill:focus {
   border-radius: 9px;
   background: var(--resource-surface-subtle);
   color: var(--resource-text);
-  font-size: var(--type-xs);
+  font-size: var(--type-base);
 }
 
 .package-schema-references small,
@@ -2677,7 +2677,7 @@ input:-webkit-autofill:focus {
 .package-memory-direction {
   margin: 0;
   color: var(--resource-text-secondary);
-  font-size: var(--type-xs);
+  font-size: var(--type-sm);
 }
 
 .package-network-segments article {
@@ -2688,13 +2688,13 @@ input:-webkit-autofill:focus {
   border-radius: 8px;
   background: var(--resource-surface-subtle);
   color: var(--resource-text);
-  font-size: var(--type-xs);
+  font-size: var(--type-base);
 }
 
 .package-network-segments article > span {
   grid-row: span 2;
   color: var(--resource-accent);
-  font-size: 0.62rem;
+  font-size: var(--type-sm);
   font-weight: 800;
   text-transform: uppercase;
 }
@@ -2731,14 +2731,14 @@ input:-webkit-autofill:focus {
   border: 1px solid var(--resource-accent);
   border-radius: 999px;
   color: var(--resource-text);
-  font-size: 0.66rem;
+  font-size: var(--type-base);
 }
 
 .package-set-diagram figcaption {
   display: grid;
   gap: 7px;
   color: var(--resource-text);
-  font-size: var(--type-xs);
+  font-size: var(--type-base);
 }
 
 .package-set-diagram figcaption ol {
@@ -2786,7 +2786,7 @@ input:-webkit-autofill:focus {
   place-items: center;
   padding: 7px 5px;
   color: var(--resource-text-secondary);
-  font-size: 0.66rem;
+  font-size: var(--type-sm);
 }
 
 .package-memory-stack li > div {
@@ -2802,7 +2802,7 @@ input:-webkit-autofill:focus {
 
 .package-memory-stack li small {
   color: var(--resource-text-secondary);
-  font-size: 0.62rem;
+  font-size: var(--type-sm);
   text-transform: uppercase;
 }
 
@@ -2863,7 +2863,7 @@ input:-webkit-autofill:focus {
   word-break: normal;
   hyphens: auto;
   white-space: normal;
-  font-size: 0.9rem;
+  font-size: var(--type-base);
   line-height: 1.42;
   background: color-mix(in srgb, var(--resource-surface-subtle) 92%, transparent);
 }
@@ -2893,7 +2893,7 @@ input:-webkit-autofill:focus {
 .runtime-table-wrap.is-layout-compact .runtime-table td {
   min-width: 4.75rem;
   padding: 8px 9px;
-  font-size: 0.84rem;
+  font-size: var(--type-base);
 }
 
 .runtime-table-wrap.is-layout-wide .runtime-table-frame {
@@ -2948,7 +2948,7 @@ input:-webkit-autofill:focus {
     radial-gradient(circle at top, color-mix(in srgb, var(--resource-surface-subtle) 8%, transparent), transparent 62%);
   color: var(--resource-text);
   font-family: var(--font-display);
-  font-size: 0.94rem;
+  font-size: var(--type-base);
   font-weight: 700;
   line-height: var(--leading-snug);
   letter-spacing: 0.08em;
@@ -3039,7 +3039,7 @@ input:-webkit-autofill:focus {
   background: var(--resource-accent-subtle);
   color: var(--resource-accent);
   font-family: var(--font-ui);
-  font-size: 0.68rem;
+  font-size: var(--type-sm);
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -3049,7 +3049,7 @@ input:-webkit-autofill:focus {
 .runtime-tree-node-label {
   min-width: 0;
   color: var(--resource-text);
-  font-size: 0.92rem;
+  font-size: var(--type-base);
   line-height: 1.42;
   overflow-wrap: anywhere;
   word-break: break-word;
@@ -3088,7 +3088,7 @@ input:-webkit-autofill:focus {
   align-items: center;
   flex: 0 0 auto;
   color: var(--resource-text);
-  font-size: 1.08rem;
+  font-size: var(--type-base);
   font-weight: 400;
 }
 
@@ -3115,7 +3115,7 @@ input:-webkit-autofill:focus {
 }
 
 .runtime-matrix-sequence-operator {
-  font-size: 1.18rem;
+  font-size: var(--type-base);
 }
 
 .runtime-plane-block,
@@ -3176,7 +3176,7 @@ input:-webkit-autofill:focus {
 
 .package-graph-node text {
   fill: var(--resource-text);
-  font-size: 11px;
+  font-size: var(--type-sm);
   font-weight: 700;
 }
 
@@ -3194,7 +3194,7 @@ input:-webkit-autofill:focus {
   gap: 8px;
   align-items: start;
   color: var(--resource-text);
-  font-size: var(--type-xs);
+  font-size: var(--type-base);
   line-height: 1.45;
   overflow-wrap: anywhere;
 }
@@ -3207,7 +3207,7 @@ input:-webkit-autofill:focus {
   border: 1px solid var(--resource-accent);
   border-radius: 999px;
   background: var(--resource-surface);
-  font-size: 0.7rem;
+  font-size: var(--type-sm);
   font-weight: 800;
 }
 
@@ -3239,6 +3239,7 @@ input:-webkit-autofill:focus {
 
 .package-plane,
 .package-chart {
+  --resource-svg-label-size: 5px;
   display: block;
   width: 100%;
   height: auto;
@@ -3267,7 +3268,7 @@ input:-webkit-autofill:focus {
 .package-plane-vector text,
 .package-chart-tick {
   fill: var(--resource-text-secondary);
-  font-size: 5px;
+  font-size: var(--resource-svg-label-size);
   font-weight: 700;
 }
 
@@ -3315,7 +3316,7 @@ input:-webkit-autofill:focus {
   gap: 7px;
   margin-top: 5px;
   color: var(--resource-text-secondary);
-  font-size: var(--type-xs);
+  font-size: var(--type-base);
 }
 
 .package-chart-legend {
@@ -3383,7 +3384,7 @@ input:-webkit-autofill:focus {
 .package-system-group > header span,
 .package-system-node-kind {
   color: var(--resource-text-secondary);
-  font-size: 0.62rem;
+  font-size: var(--type-sm);
   font-weight: 750;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -3392,7 +3393,7 @@ input:-webkit-autofill:focus {
 .package-system-group > header h4 {
   margin: 0;
   color: var(--resource-text);
-  font-size: 0.82rem;
+  font-size: var(--type-base);
 }
 
 .package-system-node {
@@ -3408,7 +3409,7 @@ input:-webkit-autofill:focus {
 }
 
 .package-system-node strong {
-  font-size: 0.76rem;
+  font-size: var(--type-base);
   line-height: 1.25;
 }
 
@@ -3427,7 +3428,7 @@ input:-webkit-autofill:focus {
   align-items: start;
   min-width: 0;
   color: var(--resource-text);
-  font-size: var(--type-xs);
+  font-size: var(--type-base);
   line-height: 1.35;
 }
 
@@ -3464,7 +3465,7 @@ input:-webkit-autofill:focus {
 .package-formula math {
   max-width: 100%;
   color: inherit;
-  font-size: clamp(1.45rem, 8vw, 2.25rem);
+  font-size: var(--type-base);
 }
 
 .package-reaction {
@@ -3477,7 +3478,7 @@ input:-webkit-autofill:focus {
 .package-reaction-equation {
   min-width: max-content;
   color: var(--resource-text);
-  font-size: 1.12rem;
+  font-size: var(--type-base);
   font-weight: 400;
 }
 
@@ -3488,7 +3489,7 @@ input:-webkit-autofill:focus {
 
 .package-reaction-state {
   color: var(--resource-text-secondary);
-  font-size: 0.75rem;
+  font-size: var(--type-sm);
 }
 
 .package-reaction-plus,
@@ -3503,7 +3504,7 @@ input:-webkit-autofill:focus {
 
 .package-reaction-arrow-condition {
   color: var(--resource-text-secondary);
-  font-size: 0.72rem;
+  font-size: var(--type-sm);
 }
 
 .package-reaction-conditions {
@@ -3512,64 +3513,199 @@ input:-webkit-autofill:focus {
   gap: 5px 8px;
   margin: 0;
   color: var(--resource-text-secondary);
-  font-size: var(--type-xs);
+  font-size: var(--type-base);
 }
 
-.package-flow-tree,
-.package-flow-children {
-  display: grid;
-  gap: 7px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.package-flow-tree {
-  min-width: 0;
-  padding: 10px;
+.package-flowchart {
+  max-width: 100%;
+  padding: 14px 10px;
+  overflow-x: auto;
   border: 1px solid var(--resource-border);
   border-radius: 15px;
   background: var(--resource-surface-subtle);
 }
 
-.package-flow-children {
-  position: relative;
-  margin: 7px 0 0 18px;
-  padding-left: 14px;
-  border-left: 2px solid color-mix(in srgb, var(--resource-accent) 52%, var(--resource-border));
-}
-
-.package-flow-node-card {
-  display: grid;
-  grid-template-columns: minmax(70px, auto) minmax(0, 1fr);
-  gap: 8px;
+.package-flow-sequence,
+.package-flow-loop {
+  display: flex;
+  flex-direction: column;
   align-items: center;
   min-width: 0;
-  padding: 8px 9px;
-  border: 1px solid var(--resource-border);
-  border-radius: 10px;
+}
+
+.package-flow-shape {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: min(190px, 72vw);
+  min-height: 46px;
+  padding: 10px 16px;
+  border: 1px solid var(--resource-border-strong);
   background: var(--resource-surface);
-}
-
-.package-flow-node-card.is-label-only {
-  grid-template-columns: minmax(0, 1fr);
-}
-
-.package-flow-kind {
-  color: var(--resource-accent);
-  font-size: 0.67rem;
-  font-weight: 800;
-  letter-spacing: 0.035em;
-  text-transform: uppercase;
-}
-
-.package-flow-summary {
-  min-width: 0;
   color: var(--resource-text);
-  font-size: 0.78rem;
-  font-weight: 650;
-  line-height: 1.3;
+  font-size: var(--type-base);
+  line-height: 1.35;
+  text-align: center;
   overflow-wrap: anywhere;
+}
+
+.package-flow-shape.is-terminal {
+  border-radius: 999px;
+}
+
+.package-flow-shape.is-input-output {
+  width: min(210px, 75vw);
+  transform: skew(-8deg);
+}
+
+.package-flow-shape.is-input-output > span {
+  transform: skew(8deg);
+}
+
+.package-flow-shape.is-decision {
+  width: min(210px, 76vw);
+  min-height: 92px;
+  padding-inline: 38px;
+  border: 0;
+  clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%);
+  background: var(--resource-border-strong);
+}
+
+.package-flow-shape.is-decision::before {
+  position: absolute;
+  z-index: -1;
+  inset: 1px;
+  clip-path: inherit;
+  background: var(--resource-surface);
+  content: "";
+}
+
+.package-flow-connector {
+  position: relative;
+  display: block;
+  width: 14px;
+  height: 28px;
+  flex: 0 0 28px;
+}
+
+.package-flow-connector::before,
+.package-flow-branch-line::before {
+  position: absolute;
+  inset: 0 auto 5px 50%;
+  border-left: 1px solid var(--resource-accent);
+  content: "";
+}
+
+.package-flow-connector::after,
+.package-flow-branch-line::after {
+  position: absolute;
+  bottom: 0;
+  left: calc(50% - 4px);
+  width: 0;
+  height: 0;
+  border-top: 6px solid var(--resource-accent);
+  border-right: 4px solid transparent;
+  border-left: 4px solid transparent;
+  content: "";
+}
+
+.package-flow-decision {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: min(100%, 440px);
+  min-width: 280px;
+}
+
+.package-flow-branch-rail {
+  width: 50%;
+  height: 20px;
+  border-right: 1px solid var(--resource-accent);
+  border-bottom: 1px solid var(--resource-accent);
+  border-left: 1px solid var(--resource-accent);
+}
+
+.package-flow-branches {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(120px, 1fr));
+  gap: 12px;
+  width: 100%;
+}
+
+.package-flow-branches.is-multiple {
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+}
+
+.package-flow-branch {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 0;
+}
+
+.package-flow-branch-label {
+  max-width: 100%;
+  padding: 2px 6px;
+  color: var(--resource-accent);
+  font-size: var(--type-sm);
+  font-weight: 700;
+  line-height: 1.25;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+
+.package-flow-branch-line {
+  position: relative;
+  width: 14px;
+  height: 23px;
+  flex: 0 0 23px;
+}
+
+.package-flow-branch .package-flow-shape {
+  width: min(100%, 180px);
+  min-height: 44px;
+  padding: 9px 10px;
+}
+
+.package-flow-continuation,
+.package-flow-loop-return {
+  padding: 7px 8px;
+  color: var(--resource-text-secondary);
+  font-size: var(--type-sm);
+  line-height: 1.3;
+  text-align: center;
+}
+
+.package-flow-loop-return {
+  margin-top: 7px;
+  border-top: 1px dashed var(--resource-accent);
+  color: var(--resource-accent);
+}
+
+.package-flow-merge {
+  position: relative;
+  width: 50%;
+  height: 28px;
+  border-top: 1px solid var(--resource-accent);
+}
+
+.package-flow-merge span {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  height: 23px;
+  border-left: 1px solid var(--resource-accent);
+}
+
+.package-flow-merge span::after {
+  position: absolute;
+  bottom: -1px;
+  left: -4px;
+  border-top: 6px solid var(--resource-accent);
+  border-right: 4px solid transparent;
+  border-left: 4px solid transparent;
+  content: "";
 }
 
 .runtime-flow-block {
@@ -4496,7 +4632,7 @@ input:-webkit-autofill:focus {
 .runtime-annotated-text-source {
   margin: 0;
   color: var(--resource-text);
-  font-size: 1rem;
+  font-size: var(--type-base);
   line-height: 1.8;
 }
 
@@ -4581,7 +4717,7 @@ input:-webkit-autofill:focus {
 
 .runtime-annotation-copy q {
   color: var(--resource-text-secondary);
-  font-size: var(--type-xs);
+  font-size: var(--type-sm);
 }
 
 .runtime-annotation-copy .runtime-markdown-paragraph {
@@ -4643,7 +4779,7 @@ input:-webkit-autofill:focus {
   gap: 5px 14px;
   margin: 0;
   color: var(--resource-text-secondary);
-  font-size: var(--type-xs);
+  font-size: var(--type-sm);
 }
 
 .runtime-interlinear-abbreviations div {
