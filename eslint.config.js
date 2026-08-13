@@ -11,7 +11,8 @@ export default [
       "playwright-report/**",
       "test-results/**",
       "tests/fixtures/**",
-      "tests/reports/**"
+      "tests/reports/**",
+      "public/vendor/**"
     ]
   },
   {

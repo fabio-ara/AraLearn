@@ -8,6 +8,7 @@ const SHELL = [
   "./styles-tokens.css",
   "./styles-shell-baseline.css",
   "./styles.css",
+  "./vendor/elk.bundled.js",
   "./main.js",
   "./assets/brand/aralearn-mark.png"
 ];

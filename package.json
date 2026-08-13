@@ -55,5 +55,8 @@
     "fake-indexeddb": "^6.2.5",
     "globals": "^17.7.0",
     "yaml": "^2.9.0"
+  },
+  "dependencies": {
+    "elkjs": "^0.11.1"
   }
 }

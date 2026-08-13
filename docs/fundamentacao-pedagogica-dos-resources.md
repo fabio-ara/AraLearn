@@ -123,6 +123,23 @@ resposta. Um mapa de conceitos continua melhor representado por `graph` ou
 `tree` quando não houver semântica de sistema; um processo com condição
 continua sendo `flow`.
 
+## Fluxogramas e complexidade estrutural
+
+`flow` conserva uma AST de controle, e não coordenadas. O package compila essa
+estrutura em grafo de fluxo de controle e usa ELK Layered para posicionar os
+símbolos e obter rotas ortogonais. Rótulos como **Sim** e **Não** pertencem à
+aresta correspondente; convergências passam por uma única junção; e retornos de
+laço ocupam uma faixa lateral própria. A continuação posterior ao laço recebe
+uma restrição somente de diagramação para permanecer depois do corpo, sem criar
+uma etapa fictícia no conteúdo nem uma aresta visual adicional.
+
+O desenho permanece legível no exemplo pequeno e pode crescer conforme o
+algoritmo. Uma decisão binária comum cabe na largura móvel; estruturas maiores
+conservam as dimensões mínimas dos símbolos e usam uma viewport horizontal
+local, sem provocar overflow na página. O renderer continua sendo único: falha
+de diagramação é explícita e não ativa árvore textual, geometria manual ou
+outro fallback visual.
+
 ## Equações e múltiplas representações químicas
 
 A IUPAC define a equação de reação química como representação simbólica com

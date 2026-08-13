@@ -132,6 +132,9 @@ export function assertPackageDefinition(definition) {
       throw new TypeError(`${manifest.id} precisa implementar ${method}().`);
     }
   }
+  if (definition.hydrate !== undefined && typeof definition.hydrate !== "function") {
+    throw new TypeError(`${manifest.id}.hydrate precisa ser uma função.`);
+  }
   if (manifest.slots.includes("content") && typeof definition.practiceTargets !== "function") {
     throw new TypeError(`${manifest.id} ocupa content e precisa implementar practiceTargets().`);
   }
@@ -299,6 +302,22 @@ export function createPackageRegistry(packageDefinitions = []) {
           )
         : clone(instance.data);
       return definition.render(renderData, options);
+    },
+    async hydrate(root) {
+      if (!root?.querySelectorAll) return;
+      const instances = [
+        ...(root.matches?.(".package-instance") ? [root] : []),
+        ...root.querySelectorAll(".package-instance")
+      ];
+      await Promise.all(instances.map(async (instanceRoot) => {
+        const definition = get(
+          instanceRoot.getAttribute("data-package"),
+          instanceRoot.getAttribute("data-package-version")
+        );
+        if (typeof definition?.hydrate === "function") {
+          await definition.hydrate(instanceRoot);
+        }
+      }));
     },
     accessibleText(instance, slot) {
       const validation = validateInstance(instance, slot);

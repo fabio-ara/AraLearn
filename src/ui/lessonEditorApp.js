@@ -4945,6 +4945,13 @@ export function createLessonEditorApp({
         : "") +
       "</div>";
 
+    void RESOURCE_PACKAGE_REGISTRY.hydrate(root).catch((error) => {
+      root.dispatchEvent(new CustomEvent("aralearn:package-hydration-error", {
+        bubbles: true,
+        detail: { error }
+      }));
+    });
+
     const manualResourceEditor = root.querySelector(
       ".runtime-resource-edit-target[data-manual-target-id]"
     );

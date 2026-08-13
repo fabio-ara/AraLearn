@@ -410,6 +410,32 @@ test("adicionar package de fixture não exige alteração no kernel", () => {
   );
 });
 
+test("kernel delega hidratação opcional apenas ao package da instância", async () => {
+  const hydrated = [];
+  const fixture = {
+    ...paragraphPackage,
+    manifest: {
+      ...paragraphPackage.manifest,
+      id: "aralearn.resource.hydrated",
+      label: "Hidratado"
+    },
+    async hydrate(root) {
+      hydrated.push(root);
+    }
+  };
+  const registry = createPackageRegistry([paragraphPackage, fixture]);
+  const instanceRoot = {
+    getAttribute(name) {
+      return name === "data-package" ? fixture.manifest.id : fixture.manifest.version;
+    }
+  };
+  await registry.hydrate({
+    matches() { return false; },
+    querySelectorAll() { return [instanceRoot]; }
+  });
+  assert.deepEqual(hydrated, [instanceRoot]);
+});
+
 test("texto técnico não transforma expansão com sigla em literal parcial", () => {
   const card = theoryCard();
   card.content[0].data.text = "Transmission Control Protocol (TCP) transporta segmentos.";

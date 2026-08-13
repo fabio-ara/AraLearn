@@ -1988,8 +1988,9 @@
               "processos retangulares",
               "entrada e saída em paralelogramo",
               "decisões em losango",
-              "ramos nomeados",
-              "fluxo orientado"
+              "ramos nomeados na própria aresta",
+              "fluxo orientado",
+              "junções explícitas"
             ],
             "avoid": [
               "usar a forma quando ela não acrescenta significado"
@@ -2012,8 +2013,9 @@
                   "processos retangulares",
                   "entrada e saída em paralelogramo",
                   "decisões em losango",
-                  "ramos nomeados",
-                  "fluxo orientado"
+                  "ramos nomeados na própria aresta",
+                  "fluxo orientado",
+                  "junções explícitas"
                 ],
                 "avoid": [
                   "lacuna fora da representação"

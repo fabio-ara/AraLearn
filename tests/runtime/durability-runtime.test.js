@@ -43,6 +43,12 @@ const trailStateMigration = read(
   "supabase/migrations/20260807220000_trail_personal_state.sql"
 );
 
+test("motor de diagramação de fluxogramas integra o shell offline e o staging integral", () => {
+  assert.match(serviceWorker, /\.\/vendor\/elk\.bundled\.js/u);
+  assert.match(staging, /copyTree\(path\.join\(repositoryRoot, "public"\), publicDestination\)/u);
+  assert.equal(fs.existsSync(new URL("../../public/vendor/elk.bundled.js", import.meta.url)), true);
+});
+
 test("runtime torna a durabilidade local visível e faz flush nos caminhos de saída", () => {
   assert.match(main, /repository\.onDurabilityChange/u);
   assert.match(main, /data-local-durability-retry/u);

@@ -223,10 +223,12 @@ test("recursos visuais extraídos preservam representação própria em vez de t
     data: { structure: { id: "root", kind: "sequence", items: [{ id: "start", kind: "start", text: "Início" }, { id: "read", kind: "input", text: "Ler dados" }, { id: "choice", kind: "if_then_else", condition: "Dados válidos?", branchLabels: { yes: "Sim", no: "Não" }, thenBranch: [{ id: "save", kind: "process", text: "Salvar" }], elseBranch: [{ id: "warn", kind: "output", text: "Exibir erro" }] }, { id: "end", kind: "end", text: "Fim" }] } }
   });
   assert.match(flowHtml, /package-flowchart/u);
-  assert.match(flowHtml, /package-flow-shape is-terminal/u);
-  assert.match(flowHtml, /package-flow-shape is-input-output/u);
-  assert.match(flowHtml, /package-flow-shape is-decision/u);
-  assert.match(flowHtml, /package-flow-branches/u);
+  assert.match(flowHtml, /package-flow-node is-terminal/u);
+  assert.match(flowHtml, /package-flow-node is-input-output/u);
+  assert.match(flowHtml, /package-flow-node is-decision/u);
+  assert.match(flowHtml, /package-flow-node is-merge/u);
+  assert.match(flowHtml, /data-flow-edge-label-id="[^"]+">Sim/u);
+  assert.match(flowHtml, /data-flow-edge-label-id="[^"]+">Não/u);
   assert.doesNotMatch(flowHtml, /package-flow-tree|package-flow-node-card/u);
 
   const systemMapHtml = render({

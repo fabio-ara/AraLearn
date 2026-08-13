@@ -34,7 +34,7 @@ test("conteúdo primário dos resources compartilha a escala tipográfica do tex
     ".package-system-node strong",
     ".package-formula math",
     ".package-reaction-equation",
-    ".package-flow-shape",
+    ".package-flow-node",
     ".runtime-annotated-text-source"
   ]) assertUsesType(selector, "base");
 
@@ -47,7 +47,7 @@ test("metadados acadêmicos compactos usam apenas os degraus tipográficos secun
     ".package-graph-node text",
     ".package-system-group > header span,\n.package-system-node-kind",
     ".package-reaction-state",
-    ".package-flow-branch-label",
+    ".package-flow-edge-label",
     ".runtime-interlinear-abbreviations"
   ]) assertUsesType(selector, "sm");
 

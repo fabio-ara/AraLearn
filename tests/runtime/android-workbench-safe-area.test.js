@@ -23,7 +23,8 @@ test("o fluxograma não captura o gesto vertical principal no Android", () => {
   );
 
   assert.match(renderer, /package-flowchart/u);
-  assert.match(renderer, /package-flow-shape/u);
+  assert.match(renderer, /package-flow-node/u);
+  assert.match(renderer, /"elk\.edgeRouting": "ORTHOGONAL"/u);
   assert.doesNotMatch(renderer, /package-flow-tree|package-flow-node-card/u);
   assert.doesNotMatch(renderer, /touch-action|pointerdown|pointermove/iu);
   assert.doesNotMatch(styles, /\.runtime-flow-board/u);

@@ -170,11 +170,129 @@ test("reaction materializa escolha e digitação dentro da equação química", 
 test("flow usa convenções de fluxograma e não a estrutura visual de tree", async ({ page }) => {
   await openModule(page, 9);
   await expect(page.locator(".package-flowchart")).toBeVisible();
-  await expect(page.locator(".package-flow-shape.is-terminal")).toHaveCount(2);
-  await expect(page.locator(".package-flow-shape.is-input-output")).toHaveCount(2);
-  await expect(page.locator(".package-flow-shape.is-decision")).toHaveCount(1);
-  await expect(page.locator(".package-flow-branches")).toHaveCount(1);
+  await expect(page.locator('[data-flow-layout-status="ready"]')).toHaveCount(1);
+  await expect(page.locator(".package-flow-node.is-terminal")).toHaveCount(2);
+  await expect(page.locator(".package-flow-node.is-input-output")).toHaveCount(2);
+  await expect(page.locator(".package-flow-node.is-decision")).toHaveCount(1);
+  await expect(page.locator(".package-flow-node.is-merge")).toHaveCount(1);
+  await expect(page.locator(".package-flow-edge-label")).toHaveText(["Sim", "Não"]);
+  await expect(page.locator(".package-flow-edge-path")).toHaveCount(7);
+  const topology = await page.locator(".package-flow-canvas").evaluate((canvas) => {
+    const end = canvas.querySelector('[data-flow-kind="end"]')?.getAttribute("data-flow-node-id");
+    const incoming = [...canvas.querySelectorAll("[data-flow-edge-id]")]
+      .filter((edge) => edge.getAttribute("data-flow-target") === end);
+    const nodes = [...canvas.querySelectorAll(".package-flow-node:not(.is-merge)")]
+      .map((node) => ({ id: node.getAttribute("data-flow-node-id"), rect: node.getBoundingClientRect() }));
+    const labels = [...canvas.querySelectorAll(".package-flow-edge-label")]
+      .map((label) => ({ id: label.textContent.trim(), rect: label.getBoundingClientRect() }));
+    const overlaps = [];
+    for (let leftIndex = 0; leftIndex < nodes.length; leftIndex += 1) {
+      for (let rightIndex = leftIndex + 1; rightIndex < nodes.length; rightIndex += 1) {
+        const left = nodes[leftIndex];
+        const right = nodes[rightIndex];
+        if (left.rect.left < right.rect.right && left.rect.right > right.rect.left &&
+            left.rect.top < right.rect.bottom && left.rect.bottom > right.rect.top) {
+          overlaps.push([left.id, right.id]);
+        }
+      }
+    }
+    const labelOverlaps = labels.flatMap((label) => nodes
+      .filter((node) => label.rect.left < node.rect.right && label.rect.right > node.rect.left &&
+        label.rect.top < node.rect.bottom && label.rect.bottom > node.rect.top)
+      .map((node) => [label.id, node.id]));
+    return { incomingToEnd: incoming.length, overlaps, labelOverlaps };
+  });
+  expect(topology.incomingToEnd).toBe(1);
+  expect(topology.overlaps).toEqual([]);
+  expect(topology.labelOverlaps).toEqual([]);
   await expect(page.locator(".runtime-tree-structure, .package-flow-tree")).toHaveCount(0);
+});
+
+test("flow complexo diagrama laço e decisão aninhada sem sobrepor nós", async ({ page }) => {
+  await page.evaluate(async () => {
+    const { flowPackage } = await import("/src/resources/packages/flow/index.js");
+    const host = document.createElement("section");
+    host.id = "complex-flow-fixture";
+    host.className = "package-instance";
+    host.dataset.package = "aralearn.resource.flow";
+    host.dataset.packageVersion = "1.0.0";
+    host.innerHTML = flowPackage.render({
+      prompt: "Acompanhe o processamento completo.",
+      structure: {
+        kind: "sequence",
+        items: [
+          { id: "start", kind: "start", text: "Início" },
+          { id: "read", kind: "input", text: "Ler quantidade de registros" },
+          {
+            id: "loop",
+            kind: "while",
+            condition: "Ainda há registros?",
+            branchLabels: { yes: "Sim", no: "Não" },
+            body: [
+              { id: "load", kind: "input", text: "Ler próximo registro" },
+              {
+                id: "valid",
+                kind: "if_then_else",
+                condition: "Registro é válido?",
+                branchLabels: { yes: "Sim", no: "Não" },
+                thenBranch: [
+                  { id: "calculate", kind: "process", text: "Calcular subtotal" },
+                  { id: "accumulate", kind: "process", text: "Acumular resultado" }
+                ],
+                elseBranch: [{ id: "warn", kind: "output", text: "Registrar inconsistência" }]
+              },
+              { id: "advance", kind: "process", text: "Avançar posição" }
+            ]
+          },
+          { id: "result", kind: "output", text: "Exibir resultado final" },
+          {
+            id: "confirm",
+            kind: "do_while",
+            condition: "Exportação ainda não foi confirmada?",
+            branchLabels: { yes: "Sim", no: "Não" },
+            body: [{ id: "request-confirmation", kind: "process", text: "Solicitar confirmação" }]
+          },
+          { id: "end", kind: "end", text: "Fim" }
+        ]
+      }
+    }, { instanceId: "complex-flow-test" });
+    document.body.replaceChildren(host);
+    await flowPackage.hydrate(host);
+  });
+
+  await expect(page.locator('#complex-flow-fixture [data-flow-layout-status="ready"]')).toBeVisible();
+  await expect(page.locator("#complex-flow-fixture .package-flow-node.is-decision")).toHaveCount(3);
+  await expect(page.locator("#complex-flow-fixture .package-flow-edge-path.is-loop")).toHaveCount(2);
+  const geometry = await page.locator("#complex-flow-fixture .package-flow-canvas").evaluate((canvas) => {
+    const nodes = [...canvas.querySelectorAll(".package-flow-node:not(.is-merge)")]
+      .map((node) => ({ id: node.getAttribute("data-flow-source-id"), rect: node.getBoundingClientRect() }));
+    const labels = [...canvas.querySelectorAll(".package-flow-edge-label")]
+      .map((label) => ({ id: label.textContent.trim(), rect: label.getBoundingClientRect() }));
+    const overlaps = [];
+    for (let leftIndex = 0; leftIndex < nodes.length; leftIndex += 1) {
+      for (let rightIndex = leftIndex + 1; rightIndex < nodes.length; rightIndex += 1) {
+        const left = nodes[leftIndex];
+        const right = nodes[rightIndex];
+        if (left.rect.left < right.rect.right && left.rect.right > right.rect.left &&
+            left.rect.top < right.rect.bottom && left.rect.bottom > right.rect.top) {
+          overlaps.push([left.id, right.id]);
+        }
+      }
+    }
+    return {
+      overlaps,
+      labelOverlaps: labels.flatMap((label) => nodes
+        .filter((node) => label.rect.left < node.rect.right && label.rect.right > node.rect.left &&
+          label.rect.top < node.rect.bottom && label.rect.bottom > node.rect.top)
+        .map((node) => [label.id, node.id])),
+      width: canvas.getBoundingClientRect().width,
+      height: canvas.getBoundingClientRect().height
+    };
+  });
+  expect(geometry.overlaps).toEqual([]);
+  expect(geometry.labelOverlaps).toEqual([]);
+  expect(geometry.width).toBeGreaterThan(300);
+  expect(geometry.height).toBeGreaterThan(700);
 });
 
 test("formula combina texto e notação avançada na mesma escala tipográfica", async ({ page }) => {
