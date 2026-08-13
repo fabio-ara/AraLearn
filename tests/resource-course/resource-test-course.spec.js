@@ -396,6 +396,20 @@ test("plano cartesiano complexo preserva eixos, objetos e rótulos sem colisão"
     const figureLuminance = luminance(figureColor);
     const swatchColors = [...canvas.closest("figure").querySelectorAll(".package-plane-swatch")]
       .map((swatch) => getComputedStyle(swatch).backgroundColor);
+    const vectorShafts = [...canvas.querySelectorAll('svg g.mark-rule.role-mark line[x2][y2]')];
+    const arrowMarkers = vectorShafts.map((shaft) => {
+      const markerId = /^url\(#(.+)\)$/u.exec(shaft.getAttribute("marker-end") || "")?.[1];
+      const marker = markerId ? canvas.querySelector(`svg marker[id="${markerId}"]`) : null;
+      return {
+        markerEnd: shaft.getAttribute("marker-end"),
+        orient: marker?.getAttribute("orient"),
+        refX: marker?.getAttribute("refX"),
+        refY: marker?.getAttribute("refY"),
+        head: marker?.querySelector("path")?.getAttribute("d"),
+        headColor: marker?.querySelector("path")?.getAttribute("fill"),
+        shaftColor: shaft.getAttribute("stroke")
+      };
+    });
     const contrasts = swatchColors.map((color) => {
       const swatchLuminance = luminance(parseColor(color));
       return (Math.max(figureLuminance, swatchLuminance) + 0.05) / (Math.min(figureLuminance, swatchLuminance) + 0.05);
@@ -405,6 +419,8 @@ test("plano cartesiano complexo preserva eixos, objetos e rótulos sem colisão"
       overlaps,
       swatchColors,
       contrasts,
+      arrowMarkers,
+      detachedTriangleMarks: canvas.querySelectorAll('g.mark-symbol path[d^="M0,-4.899"]').length,
       documentOverflow: document.documentElement.scrollWidth - document.documentElement.clientWidth
     };
   });
@@ -412,6 +428,11 @@ test("plano cartesiano complexo preserva eixos, objetos e rótulos sem colisão"
   expect(geometry.overlaps).toEqual([]);
   expect(new Set(geometry.swatchColors).size).toBe(2);
   expect(Math.min(...geometry.contrasts)).toBeGreaterThanOrEqual(3);
+  expect(geometry.arrowMarkers).toHaveLength(4);
+  expect(geometry.arrowMarkers.every(({ markerEnd, orient, refX, refY, head, headColor, shaftColor }) =>
+    markerEnd && orient === "auto" && refX === "9" && refY === "4.5" &&
+    head === "M0 0 L9 4.5 L0 9 Z" && headColor === shaftColor)).toBe(true);
+  expect(geometry.detachedTriangleMarks).toBe(0);
   expect(geometry.documentOverflow).toBeLessThanOrEqual(1);
   await expect(page.locator(".package-plane-canvas svg")).toContainText("Coordenada x");
   await expect(page.locator(".package-plane-canvas svg")).toContainText("Coordenada y");

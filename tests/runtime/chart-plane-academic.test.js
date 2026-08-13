@@ -66,9 +66,7 @@ test("plane acadêmico diferencia pontos, vetores aplicados e regiões em domín
   assert.equal(specification.width, "container");
   assert.ok(specification.layer.some(({ mark }) => mark?.type === "rule"));
   assert.ok(specification.layer.some(({ mark, encoding }) => mark?.type === "line" && !mark?.point && encoding?.strokeDash?.field === "tone"));
-  const arrowheads = specification.layer.filter(({ mark }) => mark?.type === "point" && mark?.shape === "triangle-up");
-  assert.equal(arrowheads.length, data.vectors.length);
-  assert.ok(arrowheads.every(({ mark }) => Math.hypot(mark.xOffset, mark.yOffset) > 4.8));
+  assert.equal(specification.layer.filter(({ mark }) => mark?.shape === "triangle-up").length, 0);
   assert.ok(specification.layer.some(({ mark, encoding }) => mark?.type === "point" && mark?.shape === "circle" && !encoding?.shape));
 });
 
