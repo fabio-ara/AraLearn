@@ -1681,32 +1681,47 @@ const WORKSPACE_PUBLICATION_DATA_SCHEMA = schema([
   idempotent: { type: "boolean" },
   unchanged: { type: "boolean" }
 });
-const CATALOG_REVIEW_ITEM_SCHEMA = schema([
-  "submissionId", "courseId", "sourceRevisionHash", "title",
-  "status", "authorNote", "reviewerNote",
-  "claimExpiresAt", "submittedAt", "decidedAt", "updatedAt"
-], {
-  submissionId: UUID,
-  courseId: UUID,
-  sourceRevisionHash: SHA256,
-  title: NON_EMPTY_STRING,
-  status: {
-    type: "string",
-    enum: [
-      "submitted", "in_review", "changes_requested",
-      "rejected", "accepted", "withdrawn", "superseded"
-    ]
-  },
-  authorNote: { type: ["string", "null"] },
-  authorId: NULLABLE_UUID,
-  reviewerId: NULLABLE_UUID,
-  reviewWorkspaceId: NULLABLE_UUID,
-  claimExpiresAt: NULLABLE_DATE_TIME,
-  reviewerNote: { type: ["string", "null"] },
-  officialCourseId: NULLABLE_UUID,
-  submittedAt: DATE_TIME,
-  decidedAt: NULLABLE_DATE_TIME,
-  updatedAt: DATE_TIME
+const CATALOG_REVIEW_ITEM_SCHEMA = Object.freeze({
+  ...schema([
+    "submissionId", "courseId", "sourceRevisionHash", "title",
+    "status", "authorNote", "reviewerNote",
+    "claimExpiresAt", "submittedAt", "decidedAt", "updatedAt"
+  ], {
+    submissionId: UUID,
+    courseId: NULLABLE_UUID,
+    sourceRevisionHash: SHA256,
+    title: NON_EMPTY_STRING,
+    status: {
+      type: "string",
+      enum: [
+        "submitted", "in_review", "changes_requested",
+        "rejected", "accepted", "withdrawn", "superseded"
+      ]
+    },
+    authorNote: { type: ["string", "null"] },
+    authorId: NULLABLE_UUID,
+    reviewerId: NULLABLE_UUID,
+    reviewWorkspaceId: NULLABLE_UUID,
+    claimExpiresAt: NULLABLE_DATE_TIME,
+    reviewerNote: { type: ["string", "null"] },
+    officialCourseId: NULLABLE_UUID,
+    submittedAt: DATE_TIME,
+    decidedAt: NULLABLE_DATE_TIME,
+    updatedAt: DATE_TIME
+  }),
+  allOf: [{
+    if: {
+      properties: {
+        status: {
+          enum: ["submitted", "in_review", "changes_requested"]
+        }
+      },
+      required: ["status"]
+    },
+    then: {
+      properties: { courseId: UUID }
+    }
+  }]
 });
 const CATALOG_REVIEW_CURSOR_SCHEMA = schema([
   "beforeSubmittedAt", "beforeId"

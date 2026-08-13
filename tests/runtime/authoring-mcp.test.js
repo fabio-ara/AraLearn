@@ -889,7 +889,7 @@ test("revisões editoriais usam cursor keyset completo e resposta pequena", () =
       view: "mine",
       items: [{
         submissionId: COURSE_ID,
-        courseId: WORKSPACE_ID,
+        courseId: null,
         sourceRevisionHash: "b".repeat(64),
         title: "Curso substituído",
         status: "superseded",
@@ -908,6 +908,21 @@ test("revisões editoriais usam cursor keyset completo e resposta pequena", () =
     validate(closed),
     true,
     JSON.stringify(validate.errors, null, 2)
+  );
+  assert.doesNotThrow(() => validateAuthoringMcpToolOutput(
+    "listarRevisoesEditoriais",
+    closed
+  ));
+
+  const activeWithoutSource = structuredClone(closed);
+  activeWithoutSource.data.items[0].status = "changes_requested";
+  assert.equal(validate(activeWithoutSource), false);
+  assert.throws(
+    () => validateAuthoringMcpToolOutput(
+      "listarRevisoesEditoriais",
+      activeWithoutSource
+    ),
+    (error) => error?.code === "invalid_tool_arguments"
   );
 });
 
