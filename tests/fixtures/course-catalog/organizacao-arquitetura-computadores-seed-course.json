@@ -2522,7 +2522,7 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "Cada vértice representa um centróide. Cada centróide representa um cluster. As arestas indicam vizinhança entre representantes parecidos; o desenho deve ser gerado pelo app a partir da estrutura.",
-                            "layout": "network",
+                            "layout": "auto",
                             "vertices": [
                               {
                                 "id": "mu1",
@@ -2545,28 +2545,26 @@
                               {
                                 "id": "edge-1",
                                 "from": "mu1",
-                                "to": "mu2",
-                                "directed": true
+                                "to": "mu2"
                               },
                               {
                                 "id": "edge-2",
                                 "from": "mu2",
-                                "to": "mu3",
-                                "directed": true
+                                "to": "mu3"
                               },
                               {
                                 "id": "edge-3",
                                 "from": "mu2",
-                                "to": "mu4",
-                                "directed": true
+                                "to": "mu4"
                               },
                               {
                                 "id": "edge-4",
                                 "from": "mu3",
-                                "to": "mu4",
-                                "directed": true
+                                "to": "mu4"
                               }
-                            ]
+                            ],
+                            "name": "G",
+                            "directed": true
                           }
                         }
                       ],
@@ -8036,7 +8034,7 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "A rede mostra relações entre explicação, base, medição e emaranhamento.",
-                            "layout": "path",
+                            "layout": "auto",
                             "vertices": [
                               {
                                 "id": "mw",
@@ -8067,34 +8065,31 @@
                               {
                                 "id": "edge-1",
                                 "from": "mw",
-                                "to": "base",
-                                "directed": true
+                                "to": "base"
                               },
                               {
                                 "id": "edge-2",
                                 "from": "base",
-                                "to": "med",
-                                "directed": true
+                                "to": "med"
                               },
                               {
                                 "id": "edge-3",
                                 "from": "med",
-                                "to": "mbm",
-                                "directed": true
+                                "to": "mbm"
                               },
                               {
                                 "id": "edge-4",
                                 "from": "ent",
-                                "to": "vant",
-                                "directed": true
+                                "to": "vant"
                               },
                               {
                                 "id": "edge-5",
                                 "from": "mbm",
-                                "to": "vant",
-                                "directed": true
+                                "to": "vant"
                               }
-                            ]
+                            ],
+                            "name": "G",
+                            "directed": true
                           }
                         }
                       ],
@@ -8124,7 +8119,7 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "Observe a rede: muitos mundos liga-se ao problema da base preferida; o modelo baseado em medições liga medição ao processamento.",
-                            "layout": "path",
+                            "layout": "auto",
                             "vertices": [
                               {
                                 "id": "mw",
@@ -8151,28 +8146,26 @@
                               {
                                 "id": "edge-1",
                                 "from": "mw",
-                                "to": "bp",
-                                "directed": true
+                                "to": "bp"
                               },
                               {
                                 "id": "edge-2",
                                 "from": "mbm",
-                                "to": "med",
-                                "directed": true
+                                "to": "med"
                               },
                               {
                                 "id": "edge-3",
                                 "from": "med",
-                                "to": "exp",
-                                "directed": true
+                                "to": "exp"
                               },
                               {
                                 "id": "edge-4",
                                 "from": "bp",
-                                "to": "exp",
-                                "directed": true
+                                "to": "exp"
                               }
-                            ]
+                            ],
+                            "name": "G",
+                            "directed": true
                           }
                         }
                       ],

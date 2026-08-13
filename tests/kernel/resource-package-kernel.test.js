@@ -56,7 +56,7 @@ function choiceResponse(question = "Qual protocolo confirma a entrega?") {
 
 test("kernel registra package sem conhecer paragraph", () => {
   const catalog = RESOURCE_PACKAGE_REGISTRY.listCatalog();
-  assert.equal(catalog.length, 28);
+  assert.equal(catalog.length, 30);
   assert.equal(catalog[0].id, "aralearn.resource.paragraph");
   assert.equal(Object.hasOwn(catalog[0], "schema"), false);
   assert.equal(Object.hasOwn(catalog[0], "example"), false);
@@ -111,6 +111,37 @@ test("code e table declaram lacunas dentro da representação", () => {
     const targets = RESOURCE_PACKAGE_REGISTRY.practiceTargets(instance);
     assert.equal(targets[0].path, expectedPath);
     assert.equal(targets.some(({ path }) => path === "prompt"), false);
+  });
+});
+
+test("diagramas acadêmicos expõem somente texto e preservam estrutura autoral", () => {
+  const packageIds = [
+    "aralearn.resource.graph",
+    "aralearn.resource.software_system_context",
+    "aralearn.resource.software_container",
+    "aralearn.resource.system_internal_block"
+  ];
+  const structuralSegment = /(?:^|\.)(?:id|from|to|fromPort|toPort|partId|kind|direction|flowDirection|layout|directed)(?:$|\[)/u;
+
+  packageIds.forEach((packageId) => {
+    const contract = RESOURCE_PACKAGE_REGISTRY.getAuthoringContract(packageId, "1.0.0");
+    const instance = RESOURCE_PACKAGE_REGISTRY.normalizeInstance({
+      id: `authoring-${packageId}`,
+      package: packageId,
+      version: "1.0.0",
+      data: contract.contract.example
+    }, "content");
+    const editable = RESOURCE_PACKAGE_REGISTRY.editableTargets(instance, "content");
+    const practice = RESOURCE_PACKAGE_REGISTRY.practiceTargets(instance);
+
+    assert.ok(editable.length > 0, packageId);
+    assert.ok(practice.length > 0, packageId);
+    editable.forEach(({ path }) => assert.doesNotMatch(path, structuralSegment, `${packageId}: ${path}`));
+    practice.forEach(({ path, modes }) => {
+      assert.doesNotMatch(path, structuralSegment, `${packageId}: ${path}`);
+      assert.ok(modes.includes("gap"), `${packageId}: ${path}`);
+      assert.ok(modes.includes("typing"), `${packageId}: ${path}`);
+    });
   });
 });
 

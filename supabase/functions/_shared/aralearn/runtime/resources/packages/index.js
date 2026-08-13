@@ -15,7 +15,9 @@ import { flowPackage } from "./flow/index.js";
 import { formulaPackage } from "./formula/index.js";
 import { planePackage } from "./plane/index.js";
 import { chartPackage } from "./chart/index.js";
-import { systemMapPackage } from "./system-map/index.js";
+import { softwareSystemContextPackage } from "./software-system-context/index.js";
+import { softwareContainerPackage } from "./software-container/index.js";
+import { systemInternalBlockPackage } from "./system-internal-block/index.js";
 import { graphPackage } from "./graph/index.js";
 import { relationMapPackage } from "./relation-map/index.js";
 import { algorithmTracePackage } from "./algorithm-trace/index.js";
@@ -45,7 +47,9 @@ export const RESOURCE_PACKAGE_REGISTRY = createPackageRegistry([
   formulaPackage,
   planePackage,
   chartPackage,
-  systemMapPackage,
+  softwareSystemContextPackage,
+  softwareContainerPackage,
+  systemInternalBlockPackage,
   graphPackage,
   relationMapPackage,
   algorithmTracePackage,
@@ -76,7 +80,9 @@ export {
   formulaPackage,
   planePackage,
   chartPackage,
-  systemMapPackage,
+  softwareSystemContextPackage,
+  softwareContainerPackage,
+  systemInternalBlockPackage,
   graphPackage,
   relationMapPackage,
   algorithmTracePackage,

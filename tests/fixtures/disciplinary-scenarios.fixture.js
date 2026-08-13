@@ -153,6 +153,8 @@ const scenarios = [
     cards: [
       {
         layout: "auto",
+        name: "G",
+        directed: false,
         id: "card-redes-grafo",
         resource: "graph",
         kind: "exercise",
@@ -529,80 +531,58 @@ const scenarios = [
     goal: "Preservar limites, pertencimento e conexões de uma arquitetura lógica.",
     cards: [
       {
-        id: "card-arquitetura-mapa-sistema",
-        resource: "system_map",
+        id: "card-arquitetura-conteineres",
+        resource: "software_container",
         kind: "theory",
         exercise: "none",
         title: "Fluxo de uma solicitação",
-        prompt: "Observe os componentes, seus limites e as conexões identificadas.",
-        groups: [
-          {
-            id: "rede-producao",
-            label: "Rede de produção",
-            kind: "network",
-            parentId: null
-          },
-          {
-            id: "espaco-aplicacao",
-            label: "Espaço da aplicação",
-            kind: "namespace",
-            parentId: "rede-producao"
-          }
-        ],
-        nodes: [
-          {
-            id: "cliente-web",
-            label: "Cliente web",
-            kind: "client",
-            groupId: null
-          },
+        prompt: "Observe as unidades executáveis e os armazenamentos dentro da fronteira do sistema.",
+        system: { id: "pedidos", label: "Sistema de pedidos", description: "Recebe e persiste pedidos." },
+        people: [{ id: "cliente-web", label: "Cliente web", description: "Envia pedidos pela interface pública." }],
+        externalSystems: [],
+        containers: [
           {
             id: "gateway-publico",
             label: "Gateway público",
-            kind: "gateway",
-            groupId: "rede-producao"
+            kind: "application",
+            technology: "Gateway HTTP",
+            responsibility: "Termina HTTPS e encaminha requisições autorizadas."
           },
           {
             id: "servico-pedidos",
             label: "Serviço de pedidos",
-            kind: "service",
-            groupId: "espaco-aplicacao"
+            kind: "application",
+            technology: "Aplicação de serviço",
+            responsibility: "Valida e processa pedidos."
           },
           {
             id: "banco-pedidos",
             label: "Banco de pedidos",
-            kind: "database",
-            groupId: "espaco-aplicacao"
+            kind: "data_store",
+            technology: "Banco relacional",
+            responsibility: "Persiste o estado transacional dos pedidos."
           }
         ],
-        links: [
+        relationships: [
           {
             id: "entrada",
             from: "cliente-web",
             to: "gateway-publico",
-            label: "HTTPS",
-            directed: true
+            label: "envia pedido por HTTPS"
           },
           {
             id: "roteamento",
             from: "gateway-publico",
             to: "servico-pedidos",
-            label: "requisição",
-            directed: true
+            label: "encaminha requisição"
           },
           {
             id: "persistencia",
             from: "servico-pedidos",
             to: "banco-pedidos",
-            label: "gravação",
-            directed: true
+            label: "grava transação"
           }
         ],
-        highlight: {
-          groupIds: ["espaco-aplicacao"],
-          nodeIds: ["servico-pedidos"],
-          linkIds: ["roteamento"]
-        },
         after: "A solicitação atravessa o gateway, chega ao serviço dentro do espaço da aplicação e então alcança o banco."
       }
     ],

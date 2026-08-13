@@ -20,7 +20,7 @@ extrínseca que não contribui para aprender.
 | Carga cognitiva e atenção dividida | Informação que precisa ser integrada deve permanecer próxima | feedback localizado, anotações adjacentes, fórmula com leitura acessível, nenhum layout descrito por prosa | proximidade visual não garante compreensão |
 | Coerência, sinalização e contiguidade | Elementos relevantes devem ser destacados sem decoração concorrente | presets semânticos, highlights referenciados por ID, labels próximos, ausência de propriedades livres de estilo | sinalização excessiva também pode competir por atenção |
 | Múltiplas representações | Representações cumprem funções distintas e precisam ser coordenadas | objetivo e evidência em `goal`/`checks`, packages escolhidos antes da composição e múltiplas instâncias apenas para coordenação necessária | mais representações não são automaticamente melhores |
-| Notações relacionais | Entidades e relações precisam ser perceptualmente distinguíveis e semanticamente explícitas | `system_map` separa limites, grupos, componentes e conexões; links explicitam origem/destino e, quando necessário, direção/rótulo | princípios de notação não comprovam ganho de aprendizagem por si sós |
+| Notações relacionais | Entidades e relações precisam ser perceptualmente distinguíveis e semanticamente explícitas | `graph` preserva a gramática nó-aresta matemática; os três packages de sistemas separam contexto C4, contêineres C4 e composição interna SysML | princípios de notação não comprovam ganho de aprendizagem por si sós |
 | Representações químicas | Equações codificam lados, coeficientes, estados e tipos de seta; fenômeno químico também envolve níveis macro e submicroscópico | `reaction` preserva a equação simbólica e pode ser coordenado com outras representações | uma equação correta não demonstra fluência entre níveis representacionais |
 | Exemplos resolvidos e fading | Novatos se beneficiam de exemplo antes de resolução com apoio progressivamente menor | sequência observável de fundamento, exemplo resolvido, prática guiada e prática com menor apoio | expertise e natureza da tarefa alteram o apoio necessário |
 | Prática de recuperação | Recuperar favorece retenção posterior mais que apenas reler | microssequências combinam explicação, prática e retomada | reconhecimento simples pode ser insuficiente para alguns objetivos |
@@ -77,7 +77,9 @@ No AraLearn:
   navegação bidirecional entre evidência e explicação;
 - `interlinear_gloss` alinha forma segmentada e glosa morfema a morfema,
   separa a tradução livre e explicita abreviações gramaticais;
-- `system_map` explicita pertencimento a limites e conexões entre componentes;
+- `software_system_context`, `software_container` e `system_internal_block`
+  distinguem, respectivamente, fronteira externa, unidades executáveis internas
+  e composição por partes, portas e conectores;
 - `reaction` preserva a gramática de uma equação química;
 - `truth_table`, `set_diagram` e `relation_map` distinguem valoração
   lógica, regiões de conjuntos e pares de uma relação binária;
@@ -154,23 +156,49 @@ qualquer visualização usada em graduação ou pesquisa.
 Novak e Cañas (2006) descrevem mapas conceituais como conceitos conectados por
 relações nomeadas e organizados em torno de uma pergunta de foco. Essa fonte
 apoia a exigência geral de rótulos relacionais explícitos e de um propósito de
-leitura, mas `system_map` não é sinônimo de mapa conceitual: ele representa
-limites operacionais, grupos, componentes e conexões, sem afirmar que cada nó
-seja um conceito ou que cada ligação forme uma proposição conceitual.
+leitura, mas não autoriza usar `graph` como mapa conceitual genérico. No
+AraLearn, `graph` representa o objeto matemático nó-aresta; mapas conceituais
+precisarão de package próprio se esse gesto cognitivo entrar no catálogo.
 
 Moody (2009) propõe princípios para notações visuais cognitivamente eficazes,
 como discriminação perceptual, transparência semântica e gerenciamento da
 complexidade. O trabalho é uma teoria de desenho no domínio de engenharia de
-software. No AraLearn, ele orienta escolhas conservadoras: tipos de componente
-têm convenções consistentes, o rótulo visível não é substituído por cor ou
-posição e agrupamentos preservam limites sem receber geometria da LLM. Essa
-transferência é uma justificativa de design, não evidência de que um
-`system_map` melhora aprendizagem em qualquer disciplina.
+software. No AraLearn, ele orienta escolhas conservadoras: tipos têm
+convenções consistentes, o rótulo visível não é substituído por cor ou posição
+e a LLM não fornece geometria.
 
-O recurso deve ser escolhido somente quando pertencimento e limite alterarem a
-resposta. Um mapa de conceitos continua melhor representado por `graph` ou
-`tree` quando não houver semântica de sistema; um processo com condição
-continua sendo `flow`.
+O antigo `system_map` genérico foi abolido porque misturava níveis e notações.
+`software_system_context` e `software_container` seguem as finalidades e os
+níveis do modelo C4: o primeiro situa pessoas e sistemas externos em torno de
+um único sistema em foco; o segundo abre essa fronteira apenas para aplicações
+e armazenamentos executáveis ou implantáveis. `system_internal_block` usa a
+gramática de diagrama interno de bloco do SysML, na qual partes tipadas expõem
+portas e conectores. Os contratos não recebem coordenadas: Graphviz/Viz.js
+calcula posições, recorta arestas nos nós e reduz cruzamentos.
+
+O renderer preserva a geometria natural calculada pelo motor. Quando uma
+estrutura acadêmica não cabe com texto legível na largura móvel, o diagrama
+ganha uma viewport horizontal focada no objeto inicial e uma instrução curta
+de navegação; o documento externo não sofre overflow. O CSS não altera família
+nem tamanho tipográfico depois da diagramação, porque isso invalidaria as
+caixas usadas pelo Graphviz. Lacunas e digitação substituem somente rótulos
+declarados pelo package; edição manual e assistência por API recebem as mesmas
+folhas textuais, enquanto ids, referências, tipos, direções e topologia ficam
+protegidos como contexto estrutural.
+
+Esses packages não são intercambiáveis. Um processo com condição permanece
+`flow`; equipamentos e enlaces permanecem `network_topology`; relações entre
+dois conjuntos permanecem `relation_map`; e topologia matemática abstrata
+permanece `graph`.
+
+Em teoria dos grafos, cruzamentos não tornam um desenho automaticamente
+inválido: planaridade é uma propriedade específica, e grafos não planares
+existem. Ainda assim, cruzamentos, curvas desnecessárias e rótulos sobrepostos
+prejudicam a leitura. `graph` entrega a topologia completa aos engines do
+Graphviz, selecionados por estrutura, em vez de posicionar vértices ou arestas
+artesanalmente. Grafos densos devem ser divididos ou apresentados por outra
+representação matemática, como matriz de adjacência, quando essa for a operação
+pedagógica pretendida.
 
 ## Fluxogramas e complexidade estrutural
 
@@ -427,6 +455,9 @@ apresentados como resultados já demonstrados pela literatura.
   <https://api-docs.deepseek.com/guides/json_mode/>
 - Graphviz. *dot*. <https://graphviz.org/docs/layouts/dot/>
 - Viz.js. *Graphviz in the browser*. <https://github.com/mdaines/viz-js>
+- Brown, S. *The C4 model: diagrams*. <https://c4model.com/diagrams>
+- Object Management Group. *SysML v1 specification*.
+  <https://www.omg.org/sysml/sysmlv1/>
 - W3C. *Web Content Accessibility Guidelines 2.2*. <https://www.w3.org/TR/WCAG22/>
 - W3C WAI. *Understanding SC 1.4.10: Reflow*. <https://www.w3.org/WAI/WCAG22/Understanding/reflow>
 - W3C WAI. *Understanding SC 2.5.8: Target Size (Minimum)*.
@@ -483,6 +514,9 @@ apresentados como resultados já demonstrados pela literatura.
   S. S. (2019). Microlearning in health professions education: Scoping review.
   *JMIR Medical Education, 5*(2), e13997.
   <https://doi.org/10.2196/13997>
+- Huang, W., Eades, P., & Hong, S.-H. (2014). Larger crossing angles make
+  graphs easier to read. *Journal of Visual Languages & Computing, 25*(4),
+  452–465. <https://doi.org/10.1016/j.jvlc.2014.03.001>
 - Kalyuga, S., Ayres, P., Chandler, P., & Sweller, J. (2003). The expertise
   reversal effect. *Educational Psychologist, 38*(1), 23–31.
   <https://doi.org/10.1207/S15326985EP3801_4>

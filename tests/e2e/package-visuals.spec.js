@@ -13,23 +13,23 @@ const graphInstance = {
   package: "aralearn.resource.graph",
   version: "1.0.0",
   data: {
-    prompt: "Acompanhe a comunicação entre componentes.",
-    layout: "network",
+    prompt: "Observe os dois ciclos ligados por uma ponte.",
+    name: "G",
+    directed: false,
+    layout: "force",
     vertices: [
-      { id: "station", label: "Estação central de gerência" },
-      { id: "agent", label: "Agente no dispositivo monitorado" },
-      { id: "object", label: "Objeto gerenciado" },
-      { id: "events", label: "Coletor de eventos assíncronos" },
-      { id: "history", label: "Armazenamento histórico" },
-      { id: "operator", label: "Operador responsável" }
+      { id: "v1", label: "v₁" }, { id: "v2", label: "v₂" },
+      { id: "v3", label: "v₃" }, { id: "v4", label: "v₄" },
+      { id: "v5", label: "v₅" }, { id: "v6", label: "v₆" },
+      { id: "v7", label: "v₇" }, { id: "v8", label: "v₈" }
     ],
     edges: [
-      { id: "request", from: "station", to: "agent", label: "envia solicitação de leitura", directed: true },
-      { id: "read", from: "agent", to: "object", label: "consulta localmente", directed: true },
-      { id: "trap", from: "agent", to: "events", label: "notifica mudança", directed: true },
-      { id: "store", from: "events", to: "history", label: "registra ocorrência", directed: true },
-      { id: "inspect", from: "operator", to: "history", label: "analisa tendência", directed: true }
-    ]
+      { id: "e12", from: "v1", to: "v2" }, { id: "e23", from: "v2", to: "v3" }, { id: "e31", from: "v3", to: "v1" },
+      { id: "bridge", from: "v3", to: "v4", label: "ponte" },
+      { id: "e45", from: "v4", to: "v5" }, { id: "e56", from: "v5", to: "v6" }, { id: "e64", from: "v6", to: "v4" },
+      { id: "e47", from: "v4", to: "v7" }, { id: "e78", from: "v7", to: "v8" }
+    ],
+    highlight: { vertices: ["v3", "v4"], edges: ["bridge"] }
   }
 };
 
@@ -65,6 +65,15 @@ const relationInstance = {
     ]
   }
 };
+
+const systemDiagramInstances = [
+  "aralearn.resource.software_system_context",
+  "aralearn.resource.software_container",
+  "aralearn.resource.system_internal_block"
+].map((packageId, index) => {
+  const contract = RESOURCE_PACKAGE_REGISTRY.getAuthoringContract(packageId, "1.0.0");
+  return { id: `system-diagram-${index + 1}`, package: packageId, version: "1.0.0", data: contract.contract.example };
+});
 
 const matrixInstance = {
   id: "matrix-test",
@@ -123,13 +132,25 @@ const wrongChoiceCard = {
 };
 
 function documentFor(instance, mode) {
-  const html = RESOURCE_PACKAGE_REGISTRY.renderInstance(instance, "content");
+  const html = renderHydratableInstance(instance);
   return documentForHtml(html, mode);
+}
+
+function renderHydratableInstance(instance) {
+  const content = RESOURCE_PACKAGE_REGISTRY.renderInstance(instance, "content");
+  return `<section class="package-instance" data-package="${instance.package}" data-package-version="${instance.version}">${content}</section>`;
 }
 
 function documentForHtml(html, mode) {
   const links = STYLES.map((href) => `<link rel="stylesheet" href="${href}">`).join("");
-  return `<!doctype html><html lang="pt-BR" data-color-mode="${mode}"><head><meta name="viewport" content="width=device-width, initial-scale=1">${links}</head><body><main style="width:100%;max-width:420px;margin:0 auto;padding:16px">${html}</main></body></html>`;
+  return `<!doctype html><html lang="pt-BR" data-color-mode="${mode}"><head><meta name="viewport" content="width=device-width, initial-scale=1">${links}</head><body><main style="box-sizing:border-box;width:100%;max-width:420px;margin:0 auto;padding:16px">${html}</main></body></html>`;
+}
+
+async function hydratePackages(page) {
+  await page.evaluate(async () => {
+    const { RESOURCE_PACKAGE_REGISTRY } = await import("/src/resources/packages/index.js");
+    await RESOURCE_PACKAGE_REGISTRY.hydrate(document);
+  });
 }
 
 function studyCardFor(instance) {
@@ -164,12 +185,14 @@ for (const width of [360, 390, 412]) {
     test(`graph preserva rótulos e limites em ${width}px no modo ${mode}`, async ({ page }) => {
       await page.setViewportSize({ width, height: 900 });
       await page.goto("/");
+      expect(await page.evaluate(() => window.innerWidth)).toBe(width);
       await page.setContent(documentFor(graphInstance, mode));
-      await expect(page.locator(".package-graph-node")).toHaveCount(6);
-      await expect(page.locator(".package-graph-relations li")).toHaveCount(5);
-      await expect(page.locator(".package-graph-edge-index")).toHaveCount(0);
-      await assertContained(page, ".package-graph-node, .package-graph-relations li", width);
-      const nodes = await page.locator(".package-graph-node").evaluateAll((elements) => elements.map((element) => {
+      await hydratePackages(page);
+      await expect(page.locator(".package-math-graph-vertex")).toHaveCount(8);
+      await expect(page.locator(".package-math-graph-edge")).toHaveCount(9);
+      await expect(page.locator(".package-math-graph-svg")).toHaveCount(1);
+      await assertContained(page, ".package-math-graph-canvas", width);
+      const nodes = await page.locator(".package-math-graph-vertex").evaluateAll((elements) => elements.map((element) => {
         const rect = element.getBoundingClientRect();
         return { left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom };
       }));
@@ -183,9 +206,8 @@ for (const width of [360, 390, 412]) {
         }
       }
       expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
-      const labels = await page.locator(".package-graph-relations").innerText();
-      expect(labels).toContain("envia solicitação de leitura");
-      expect(labels).toContain("Agente no dispositivo monitorado");
+      await expect(page.locator("#graph-edge-bridge text")).toHaveText("ponte");
+      await expect(page.locator(".package-math-graph figcaption")).toContainText("|V| = 8");
     });
 
     test(`relation_map alinha cada origem às imagens sem duplicar a relação em ${width}px no modo ${mode}`, async ({ page }) => {
@@ -207,13 +229,14 @@ for (const width of [360, 390, 412]) {
         .map((instance) => renderPackageCardArticle(studyCardFor(instance)))
         .join("");
       await page.setContent(documentForHtml(html, mode));
-      await expect(page.locator(".package-graph-edge-index")).toHaveCount(0);
-      await expect(page.locator(".package-graph-relations li")).toHaveCount(5);
+      await hydratePackages(page);
+      await expect(page.locator(".package-math-graph-vertex")).toHaveCount(8);
+      await expect(page.locator(".package-math-graph-edge")).toHaveCount(9);
       await expect(page.locator(".package-relation-map svg")).toHaveCount(0);
       await expect(page.locator(".package-relation-map .package-relation-row")).toHaveCount(4);
       await expect(page.locator(".package-relation-map .package-relation-targets > li")).toHaveCount(4);
       await expect(page.locator(".package-relation-map .package-relation-pairs")).toHaveCount(0);
-      await assertContained(page, ".package-graph-relations li, .package-relation-map .package-relation-row, .package-relation-map .package-relation-targets > li", width);
+      await assertContained(page, ".package-math-graph-canvas, .package-relation-map .package-relation-row, .package-relation-map .package-relation-targets > li", width);
       expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
     });
 
@@ -257,4 +280,70 @@ for (const width of [360, 390, 412]) {
       expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
     });
   }
+}
+
+for (const mode of ["light", "dark"]) {
+  test(`diagramas acadêmicos de sistema preservam objetos e rótulos no modo ${mode}`, async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 1000 });
+    await page.goto("/");
+    const markup = systemDiagramInstances.map(renderHydratableInstance).join("");
+    await page.setContent(documentForHtml(markup, mode));
+    await hydratePackages(page);
+    await expect(page.locator(".package-system-diagram-svg")).toHaveCount(3);
+    await expect(page.locator(".package-system-diagram-layout-error:visible")).toHaveCount(0);
+    await expect(page.locator(".package-system-context-node")).toHaveCount(5);
+    await expect(page.locator(".package-software-container-node")).toHaveCount(7);
+    await expect(page.locator(".package-system-internal-part")).toHaveCount(3);
+    await expect(page.locator(".package-system-internal-connector")).toHaveCount(3);
+    await assertContained(page, ".package-system-diagram-canvas", 390);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+
+    const figures = page.locator(".package-system-diagram");
+    for (let figureIndex = 0; figureIndex < await figures.count(); figureIndex += 1) {
+      const figure = figures.nth(figureIndex);
+      const labelState = await figure.locator('[data-system-object-kind="node"] text').evaluateAll((labels) => labels.map((label) => ({
+        text: label.textContent.trim(),
+        visibility: getComputedStyle(label).visibility,
+        fill: getComputedStyle(label).fill
+      })));
+      expect(labelState.length).toBeGreaterThan(0);
+      labelState.forEach(({ text, visibility, fill }) => {
+        expect(text.length).toBeGreaterThan(0);
+        expect(visibility).toBe("visible");
+        expect(fill).not.toBe("rgba(0, 0, 0, 0)");
+      });
+
+      const viewportState = await figure.evaluate((element) => {
+        const canvas = element.querySelector(".package-system-diagram-canvas");
+        const focus = element.dataset.systemDiagramFocusId
+          ? element.querySelector(`#${CSS.escape(element.dataset.systemDiagramFocusId)}`)
+          : null;
+        const canvasRect = canvas.getBoundingClientRect();
+        const focusRect = focus?.getBoundingClientRect();
+        return {
+          overflow: canvas.scrollWidth > canvas.clientWidth + 1,
+          hintVisible: !element.querySelector(".package-system-diagram-pan-hint").hidden,
+          focusContained: !focusRect || (focusRect.left >= canvasRect.left - 1 && focusRect.right <= canvasRect.right + 1)
+        };
+      });
+      expect(viewportState.hintVisible).toBe(viewportState.overflow);
+      expect(viewportState.focusContained).toBe(true);
+
+      const overlaps = await figure.locator('[data-system-object-kind="node"]').evaluateAll((nodes) => {
+        const boxes = nodes.map((node) => node.getBoundingClientRect());
+        const collisions = [];
+        for (let leftIndex = 0; leftIndex < boxes.length; leftIndex += 1) {
+          for (let rightIndex = leftIndex + 1; rightIndex < boxes.length; rightIndex += 1) {
+            const left = boxes[leftIndex];
+            const right = boxes[rightIndex];
+            const width = Math.max(0, Math.min(left.right, right.right) - Math.max(left.left, right.left));
+            const height = Math.max(0, Math.min(left.bottom, right.bottom) - Math.max(left.top, right.top));
+            if (width * height > 0.5) collisions.push([leftIndex, rightIndex]);
+          }
+        }
+        return collisions;
+      });
+      expect(overlaps).toEqual([]);
+    }
+  });
 }

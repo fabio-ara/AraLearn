@@ -42,25 +42,29 @@ test("modo Estudo não repete enunciado idêntico de paragraph e choice", () => 
   }), /não pode repetir/u);
 });
 
-test("modo Estudo mantém rótulos de arestas fora do desenho do graph", () => {
+test("modo Estudo entrega o grafo matemático ao Graphviz sem coordenadas autorais", () => {
   const html = renderPackageCardBlocks(cardWith({
     id: "graph",
     package: "aralearn.resource.graph",
     version: "1.0.0",
     data: {
       prompt: "Observe o caminho.",
-      layout: "path",
+      name: "D",
+      directed: true,
+      layout: "hierarchical",
       vertices: [
         { id: "station", label: "Estação central de gerência" },
         { id: "agent", label: "Agente no dispositivo monitorado" }
       ],
-      edges: [{ id: "request", from: "station", to: "agent", label: "envia solicitação de leitura", directed: true }]
+      edges: [{ id: "request", from: "station", to: "agent", label: "envia solicitação de leitura" }]
     }
   }));
-  assert.doesNotMatch(html, /package-graph-edge-index/u);
-  assert.match(html, /package-graph-relations/u);
+  assert.match(html, /package-math-graph/u);
+  assert.match(html, /data-graphviz-engine="dot"/u);
+  assert.match(html, /digraph/u);
   assert.match(html, /Estação central de gerência/u);
   assert.match(html, /envia solicitação de leitura/u);
+  assert.doesNotMatch(html, /data-x=|data-y=|viewBox="0 0 320/u);
 });
 
 test("modo Estudo materializa relation_map em linhas sem SVG nem setas sobre rótulos", () => {
@@ -239,19 +243,23 @@ test("recursos visuais extraídos preservam representação própria em vez de t
   assert.match(flowHtml, /label=&quot;Não&quot;/u);
   assert.doesNotMatch(flowHtml, /package-flow-tree|package-flow-node-card/u);
 
-  const systemMapHtml = render({
+  const systemContextHtml = render({
     id: "system",
-    package: "aralearn.resource.system_map",
+    package: "aralearn.resource.software_system_context",
     version: "1.0.0",
     data: {
-      groups: [{ id: "app", label: "Aplicação", kind: "boundary", parentId: null }],
-      nodes: [{ id: "client", label: "Cliente", kind: "client", groupId: null }, { id: "api", label: "API", kind: "service", groupId: "app" }],
-      links: [{ id: "request", from: "client", to: "api", label: "requisição", directed: true }]
+      prompt: "Observe o contexto.",
+      system: { id: "app", label: "Aplicação", description: "Processa solicitações." },
+      people: [{ id: "client", label: "Cliente", description: "Solicita uma operação." }],
+      externalSystems: [{ id: "identity", label: "Identidade", description: "Autentica a sessão." }],
+      relationships: [{ id: "request", from: "client", to: "app", label: "solicita operação" }, { id: "auth", from: "app", to: "identity", label: "valida sessão" }]
     }
   });
-  assert.match(systemMapHtml, /package-system-ungrouped/u);
-  assert.match(systemMapHtml, /package-system-group/u);
-  assert.match(systemMapHtml, /package-system-link-number/u);
+  assert.match(systemContextHtml, /package-system-diagram/u);
+  assert.match(systemContextHtml, /data-system-diagram-engine="dot"/u);
+  assert.match(systemContextHtml, /system-node-client/u);
+  assert.match(systemContextHtml, /system-edge-request/u);
+  assert.doesNotMatch(systemContextHtml, /package-system-map|package-system-group/u);
 });
 
 test("texto anotado ancora notas nos trechos sem revelar ids internos", () => {

@@ -75,7 +75,7 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "Observe o vértice destacado.",
-                            "layout": "path",
+                            "layout": "auto",
                             "vertices": [
                               {
                                 "id": "A",
@@ -91,9 +91,7 @@
                                 "id": "edge-1",
                                 "from": "A",
                                 "to": "B",
-                                "label": "liga",
-                                "weight": "1",
-                                "directed": true
+                                "label": "liga"
                               }
                             ],
                             "highlight": {
@@ -103,7 +101,9 @@
                               "edges": [
                                 "edge-1"
                               ]
-                            }
+                            },
+                            "name": "G",
+                            "directed": true
                           }
                         }
                       ],

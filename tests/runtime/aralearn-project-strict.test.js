@@ -288,6 +288,8 @@ test("estruturas internas desconhecidas não desaparecem durante a normalizaçã
       package: "aralearn.resource.graph",
       version: "1.0.0",
       data: {
+        name: "G",
+        directed: false,
         layout: "auto",
         prompt: "Observe.",
         vertices: [

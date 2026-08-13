@@ -887,10 +887,21 @@
                                 3.8
                               ]
                             },
+                            "groups": [
+                              {
+                                "id": "original",
+                                "label": "Objeto original"
+                              },
+                              {
+                                "id": "image",
+                                "label": "Imagem por A"
+                              }
+                            ],
                             "points": [
                               {
                                 "id": "p",
                                 "label": "p",
+                                "group": "original",
                                 "at": [
                                   1.5,
                                   -0.5
@@ -899,6 +910,7 @@
                               {
                                 "id": "ap",
                                 "label": "Ap",
+                                "group": "image",
                                 "at": [
                                   3.5,
                                   0.5
@@ -909,6 +921,7 @@
                               {
                                 "id": "e1",
                                 "label": "e₁",
+                                "group": "original",
                                 "from": [
                                   0,
                                   0
@@ -921,6 +934,7 @@
                               {
                                 "id": "e2",
                                 "label": "e₂",
+                                "group": "original",
                                 "from": [
                                   0,
                                   0
@@ -933,6 +947,7 @@
                               {
                                 "id": "ae1",
                                 "label": "Ae₁",
+                                "group": "image",
                                 "from": [
                                   0,
                                   0
@@ -945,6 +960,7 @@
                               {
                                 "id": "ae2",
                                 "label": "Ae₂",
+                                "group": "image",
                                 "from": [
                                   0,
                                   0
@@ -958,7 +974,8 @@
                             "paths": [
                               {
                                 "id": "unit",
-                                "label": "Quadrado unitário",
+                                "label": "Q",
+                                "group": "original",
                                 "closed": true,
                                 "points": [
                                   [
@@ -981,7 +998,8 @@
                               },
                               {
                                 "id": "image",
-                                "label": "Imagem A(Q)",
+                                "label": "A(Q)",
+                                "group": "image",
                                 "closed": true,
                                 "points": [
                                   [
@@ -1170,44 +1188,68 @@
                     {
                       "id": "gallery-17",
                       "position": 17,
-                      "title": "Mapa de sistema",
+                      "title": "Contexto de sistema de software",
                       "role": "theory",
                       "content": [
                         {
                           "id": "instance-17",
-                          "package": "aralearn.resource.system_map",
+                          "package": "aralearn.resource.software_system_context",
                           "version": "1.0.0",
                           "data": {
-                            "prompt": "Observe o limite da aplicação.",
-                            "groups": [
+                            "prompt": "Observe quem interage com o ambiente de aprendizagem e quais serviços permanecem fora de sua fronteira.",
+                            "system": {
+                              "id": "aralearn",
+                              "label": "AraLearn",
+                              "description": "Organiza autoria e estudo de cursos em microssequências."
+                            },
+                            "people": [
                               {
-                                "id": "app",
-                                "label": "Aplicação",
-                                "kind": "boundary",
-                                "parentId": null
-                              }
-                            ],
-                            "nodes": [
-                              {
-                                "id": "client",
-                                "label": "Cliente",
-                                "kind": "client",
-                                "groupId": null
+                                "id": "student",
+                                "label": "Estudante",
+                                "description": "Estuda, pratica e registra seu progresso."
                               },
                               {
-                                "id": "api",
-                                "label": "API",
-                                "kind": "service",
-                                "groupId": "app"
+                                "id": "author",
+                                "label": "Autor-pesquisador",
+                                "description": "Planeja, revisa e investiga os cursos."
                               }
                             ],
-                            "links": [
+                            "externalSystems": [
                               {
-                                "id": "request",
-                                "from": "client",
-                                "to": "api",
-                                "label": "requisição",
-                                "directed": true
+                                "id": "identity",
+                                "label": "Serviço de identidade",
+                                "description": "Autentica contas e emite sessões."
+                              },
+                              {
+                                "id": "model",
+                                "label": "Serviço de modelo",
+                                "description": "Auxilia revisões textuais solicitadas pelo usuário."
+                              }
+                            ],
+                            "relationships": [
+                              {
+                                "id": "studies",
+                                "from": "student",
+                                "to": "aralearn",
+                                "label": "estuda e pratica"
+                              },
+                              {
+                                "id": "authors",
+                                "from": "author",
+                                "to": "aralearn",
+                                "label": "cria e audita cursos"
+                              },
+                              {
+                                "id": "auth",
+                                "from": "aralearn",
+                                "to": "identity",
+                                "label": "solicita autenticação"
+                              },
+                              {
+                                "id": "assist",
+                                "from": "aralearn",
+                                "to": "model",
+                                "label": "solicita assistência textual"
                               }
                             ]
                           }
@@ -1220,7 +1262,7 @@
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
-                            "text": "Grupos, componentes e conexões possuem uma lista textual completa."
+                            "text": "O sistema, as pessoas, os sistemas externos e todas as relações possuem descrição textual equivalente."
                           }
                         }
                       ],
@@ -1230,44 +1272,107 @@
                     {
                       "id": "gallery-18",
                       "position": 18,
-                      "title": "Grafo",
+                      "title": "Contêineres de software",
                       "role": "theory",
                       "content": [
                         {
                           "id": "instance-18",
-                          "package": "aralearn.resource.graph",
+                          "package": "aralearn.resource.software_container",
                           "version": "1.0.0",
                           "data": {
-                            "prompt": "Observe como a estação consulta o agente.",
-                            "layout": "path",
-                            "vertices": [
+                            "prompt": "Observe como a interface, o trabalho local e a persistência cooperam sem confundir responsabilidades.",
+                            "system": {
+                              "id": "aralearn",
+                              "label": "AraLearn",
+                              "description": "Ambiente móvel de autoria e estudo."
+                            },
+                            "containers": [
                               {
-                                "id": "station",
-                                "label": "Estação de gerência"
+                                "id": "web",
+                                "label": "Aplicação Web",
+                                "kind": "application",
+                                "technology": "JavaScript no navegador",
+                                "responsibility": "Renderiza autoria, estudo e recursos interativos."
                               },
                               {
-                                "id": "agent",
-                                "label": "Agente no dispositivo"
+                                "id": "worker",
+                                "label": "Service Worker",
+                                "kind": "application",
+                                "technology": "Web Worker",
+                                "responsibility": "Mantém ativos locais e navegação sem conexão."
                               },
                               {
-                                "id": "object",
-                                "label": "Objeto gerenciado"
+                                "id": "local",
+                                "label": "Base local",
+                                "kind": "data_store",
+                                "technology": "IndexedDB",
+                                "responsibility": "Guarda cursos, progresso e operações pendentes."
+                              },
+                              {
+                                "id": "sync",
+                                "label": "API de sincronização",
+                                "kind": "application",
+                                "technology": "Edge runtime",
+                                "responsibility": "Valida e sincroniza alterações autorizadas."
+                              },
+                              {
+                                "id": "files",
+                                "label": "Armazenamento de objetos",
+                                "kind": "file_store",
+                                "technology": "Storage",
+                                "responsibility": "Mantém artefatos imutáveis e econômicos."
                               }
                             ],
-                            "edges": [
+                            "people": [
                               {
-                                "id": "request",
-                                "from": "station",
-                                "to": "agent",
-                                "label": "envia solicitação",
-                                "directed": true
+                                "id": "learner",
+                                "label": "Estudante-autor",
+                                "description": "Estuda e modifica os próprios cursos."
+                              }
+                            ],
+                            "externalSystems": [
+                              {
+                                "id": "identity",
+                                "label": "Identidade",
+                                "description": "Autentica a conta e a sessão."
+                              }
+                            ],
+                            "relationships": [
+                              {
+                                "id": "uses",
+                                "from": "learner",
+                                "to": "web",
+                                "label": "usa"
+                              },
+                              {
+                                "id": "cache",
+                                "from": "web",
+                                "to": "worker",
+                                "label": "solicita ativos"
                               },
                               {
                                 "id": "read",
-                                "from": "agent",
-                                "to": "object",
-                                "label": "consulta",
-                                "directed": true
+                                "from": "web",
+                                "to": "local",
+                                "label": "lê e grava estado"
+                              },
+                              {
+                                "id": "publish",
+                                "from": "web",
+                                "to": "sync",
+                                "label": "envia alterações"
+                              },
+                              {
+                                "id": "objects",
+                                "from": "sync",
+                                "to": "files",
+                                "label": "grava artefatos"
+                              },
+                              {
+                                "id": "login",
+                                "from": "web",
+                                "to": "identity",
+                                "label": "valida sessão"
                               }
                             ]
                           }
@@ -1280,7 +1385,7 @@
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
-                            "text": "Vértices e relações são integralmente repetidos em texto; rótulos de arestas ficam em uma lista legível."
+                            "text": "Fronteira, contêineres, tecnologias, responsabilidades e relações possuem descrição textual equivalente."
                           }
                         }
                       ],
@@ -1290,11 +1395,251 @@
                     {
                       "id": "gallery-19",
                       "position": 19,
-                      "title": "Mapa de relações",
+                      "title": "Diagrama interno de bloco",
                       "role": "theory",
                       "content": [
                         {
                           "id": "instance-19",
+                          "package": "aralearn.resource.system_internal_block",
+                          "version": "1.0.0",
+                          "data": {
+                            "prompt": "Acompanhe dados de sensores e comandos de atuação pelas interfaces internas do controlador.",
+                            "block": {
+                              "id": "controller",
+                              "label": "Controlador ambiental"
+                            },
+                            "parts": [
+                              {
+                                "id": "sensorHub",
+                                "label": "Concentrador",
+                                "type": "SensorHub"
+                              },
+                              {
+                                "id": "control",
+                                "label": "Lógica de controle",
+                                "type": "ControlUnit"
+                              },
+                              {
+                                "id": "actuator",
+                                "label": "Acionamento",
+                                "type": "ActuatorDriver"
+                              }
+                            ],
+                            "ports": [
+                              {
+                                "id": "samplesOut",
+                                "partId": "sensorHub",
+                                "label": "amostras",
+                                "itemType": "SampleFrame",
+                                "direction": "out"
+                              },
+                              {
+                                "id": "samplesIn",
+                                "partId": "control",
+                                "label": "telemetria",
+                                "itemType": "SampleFrame",
+                                "direction": "in"
+                              },
+                              {
+                                "id": "commandOut",
+                                "partId": "control",
+                                "label": "comando",
+                                "itemType": "ControlCommand",
+                                "direction": "out"
+                              },
+                              {
+                                "id": "commandIn",
+                                "partId": "actuator",
+                                "label": "referência",
+                                "itemType": "ControlCommand",
+                                "direction": "in"
+                              },
+                              {
+                                "id": "statusOut",
+                                "partId": "actuator",
+                                "label": "estado",
+                                "itemType": "ActuatorStatus",
+                                "direction": "out"
+                              },
+                              {
+                                "id": "statusIn",
+                                "partId": "control",
+                                "label": "retorno",
+                                "itemType": "ActuatorStatus",
+                                "direction": "in"
+                              }
+                            ],
+                            "connectors": [
+                              {
+                                "id": "telemetry",
+                                "fromPort": "samplesOut",
+                                "toPort": "samplesIn",
+                                "label": "transporta amostras calibradas",
+                                "flowDirection": "forward"
+                              },
+                              {
+                                "id": "command",
+                                "fromPort": "commandOut",
+                                "toPort": "commandIn",
+                                "label": "envia referência de atuação",
+                                "flowDirection": "forward"
+                              },
+                              {
+                                "id": "feedback",
+                                "fromPort": "statusOut",
+                                "toPort": "statusIn",
+                                "label": "retorna estado observado",
+                                "flowDirection": "forward"
+                              }
+                            ]
+                          }
+                        }
+                      ],
+                      "response": null,
+                      "feedback": [
+                        {
+                          "id": "feedback-19",
+                          "package": "aralearn.resource.paragraph",
+                          "version": "1.0.0",
+                          "data": {
+                            "text": "Bloco, partes, portas, tipos de item, direções e conectores possuem descrição textual equivalente."
+                          }
+                        }
+                      ],
+                      "topics": [],
+                      "sources": []
+                    },
+                    {
+                      "id": "gallery-20",
+                      "position": 20,
+                      "title": "Grafo matemático",
+                      "role": "theory",
+                      "content": [
+                        {
+                          "id": "instance-20",
+                          "package": "aralearn.resource.graph",
+                          "version": "1.0.0",
+                          "data": {
+                            "prompt": "Observe os dois ciclos ligados por uma ponte e identifique os vértices de articulação.",
+                            "name": "G",
+                            "directed": false,
+                            "layout": "auto",
+                            "vertices": [
+                              {
+                                "id": "v1",
+                                "label": "v1"
+                              },
+                              {
+                                "id": "v2",
+                                "label": "v2"
+                              },
+                              {
+                                "id": "v3",
+                                "label": "v3"
+                              },
+                              {
+                                "id": "v4",
+                                "label": "v4"
+                              },
+                              {
+                                "id": "v5",
+                                "label": "v5"
+                              },
+                              {
+                                "id": "v6",
+                                "label": "v6"
+                              },
+                              {
+                                "id": "v7",
+                                "label": "v7"
+                              },
+                              {
+                                "id": "v8",
+                                "label": "v8"
+                              }
+                            ],
+                            "edges": [
+                              {
+                                "id": "e12",
+                                "from": "v1",
+                                "to": "v2"
+                              },
+                              {
+                                "id": "e23",
+                                "from": "v2",
+                                "to": "v3"
+                              },
+                              {
+                                "id": "e31",
+                                "from": "v3",
+                                "to": "v1"
+                              },
+                              {
+                                "id": "bridge",
+                                "from": "v3",
+                                "to": "v4",
+                                "label": "ponte"
+                              },
+                              {
+                                "id": "e45",
+                                "from": "v4",
+                                "to": "v5"
+                              },
+                              {
+                                "id": "e56",
+                                "from": "v5",
+                                "to": "v6"
+                              },
+                              {
+                                "id": "e64",
+                                "from": "v6",
+                                "to": "v4"
+                              },
+                              {
+                                "id": "e47",
+                                "from": "v4",
+                                "to": "v7"
+                              },
+                              {
+                                "id": "e78",
+                                "from": "v7",
+                                "to": "v8"
+                              }
+                            ],
+                            "highlight": {
+                              "vertices": [
+                                "v3",
+                                "v4"
+                              ],
+                              "edges": [
+                                "bridge"
+                              ]
+                            }
+                          }
+                        }
+                      ],
+                      "response": null,
+                      "feedback": [
+                        {
+                          "id": "feedback-20",
+                          "package": "aralearn.resource.paragraph",
+                          "version": "1.0.0",
+                          "data": {
+                            "text": "Vértices, cardinalidades e arestas possuem descrição textual equivalente."
+                          }
+                        }
+                      ],
+                      "topics": [],
+                      "sources": []
+                    },
+                    {
+                      "id": "gallery-21",
+                      "position": 21,
+                      "title": "Mapa de relações",
+                      "role": "theory",
+                      "content": [
+                        {
+                          "id": "instance-21",
                           "package": "aralearn.resource.relation_map",
                           "version": "1.0.0",
                           "data": {
@@ -1345,7 +1690,7 @@
                       "response": null,
                       "feedback": [
                         {
-                          "id": "feedback-19",
+                          "id": "feedback-21",
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
@@ -1357,13 +1702,13 @@
                       "sources": []
                     },
                     {
-                      "id": "gallery-20",
-                      "position": 20,
+                      "id": "gallery-22",
+                      "position": 22,
                       "title": "Rastreamento de algoritmo",
                       "role": "theory",
                       "content": [
                         {
-                          "id": "instance-20",
+                          "id": "instance-22",
                           "package": "aralearn.resource.algorithm_trace",
                           "version": "1.0.0",
                           "data": {
@@ -1398,7 +1743,7 @@
                       "response": null,
                       "feedback": [
                         {
-                          "id": "feedback-20",
+                          "id": "feedback-22",
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
@@ -1410,13 +1755,13 @@
                       "sources": []
                     },
                     {
-                      "id": "gallery-21",
-                      "position": 21,
+                      "id": "gallery-23",
+                      "position": 23,
                       "title": "Esquema relacional",
                       "role": "theory",
                       "content": [
                         {
-                          "id": "instance-21",
+                          "id": "instance-23",
                           "package": "aralearn.resource.database_schema",
                           "version": "1.0.0",
                           "data": {
@@ -1475,7 +1820,7 @@
                       "response": null,
                       "feedback": [
                         {
-                          "id": "feedback-21",
+                          "id": "feedback-23",
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
@@ -1487,13 +1832,13 @@
                       "sources": []
                     },
                     {
-                      "id": "gallery-22",
-                      "position": 22,
+                      "id": "gallery-24",
+                      "position": 24,
                       "title": "Mapa de memória",
                       "role": "theory",
                       "content": [
                         {
-                          "id": "instance-22",
+                          "id": "instance-24",
                           "package": "aralearn.resource.memory_layout",
                           "version": "1.0.0",
                           "data": {
@@ -1524,7 +1869,7 @@
                       "response": null,
                       "feedback": [
                         {
-                          "id": "feedback-22",
+                          "id": "feedback-24",
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
@@ -1536,13 +1881,13 @@
                       "sources": []
                     },
                     {
-                      "id": "gallery-23",
-                      "position": 23,
+                      "id": "gallery-25",
+                      "position": 25,
                       "title": "Topologia de rede",
                       "role": "theory",
                       "content": [
                         {
-                          "id": "instance-23",
+                          "id": "instance-25",
                           "package": "aralearn.resource.network_topology",
                           "version": "1.0.0",
                           "data": {
@@ -1597,7 +1942,7 @@
                       "response": null,
                       "feedback": [
                         {
-                          "id": "feedback-23",
+                          "id": "feedback-25",
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
@@ -1609,13 +1954,13 @@
                       "sources": []
                     },
                     {
-                      "id": "gallery-24",
-                      "position": 24,
+                      "id": "gallery-26",
+                      "position": 26,
                       "title": "Layout de pacote",
                       "role": "theory",
                       "content": [
                         {
-                          "id": "instance-24",
+                          "id": "instance-26",
                           "package": "aralearn.resource.packet_layout",
                           "version": "1.0.0",
                           "data": {
@@ -1641,7 +1986,7 @@
                       "response": null,
                       "feedback": [
                         {
-                          "id": "feedback-24",
+                          "id": "feedback-26",
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
@@ -1653,13 +1998,13 @@
                       "sources": []
                     },
                     {
-                      "id": "gallery-25",
-                      "position": 25,
+                      "id": "gallery-27",
+                      "position": 27,
                       "title": "Diagrama de conjuntos",
                       "role": "theory",
                       "content": [
                         {
-                          "id": "instance-25",
+                          "id": "instance-27",
                           "package": "aralearn.resource.set_diagram",
                           "version": "1.0.0",
                           "data": {
@@ -1709,7 +2054,7 @@
                       "response": null,
                       "feedback": [
                         {
-                          "id": "feedback-25",
+                          "id": "feedback-27",
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
@@ -1721,13 +2066,13 @@
                       "sources": []
                     },
                     {
-                      "id": "gallery-26",
-                      "position": 26,
+                      "id": "gallery-28",
+                      "position": 28,
                       "title": "Máquina de estados",
                       "role": "theory",
                       "content": [
                         {
-                          "id": "instance-26",
+                          "id": "instance-28",
                           "package": "aralearn.resource.state_machine",
                           "version": "1.0.0",
                           "data": {
@@ -1777,7 +2122,7 @@
                       "response": null,
                       "feedback": [
                         {
-                          "id": "feedback-26",
+                          "id": "feedback-28",
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
@@ -1789,13 +2134,13 @@
                       "sources": []
                     },
                     {
-                      "id": "gallery-27",
-                      "position": 27,
+                      "id": "gallery-29",
+                      "position": 29,
                       "title": "Tabela-verdade",
                       "role": "theory",
                       "content": [
                         {
-                          "id": "instance-27",
+                          "id": "instance-29",
                           "package": "aralearn.resource.truth_table",
                           "version": "1.0.0",
                           "data": {
@@ -1830,7 +2175,7 @@
                       "response": null,
                       "feedback": [
                         {
-                          "id": "feedback-27",
+                          "id": "feedback-29",
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
@@ -1842,8 +2187,8 @@
                       "sources": []
                     },
                     {
-                      "id": "gallery-28",
-                      "position": 28,
+                      "id": "gallery-30",
+                      "position": 30,
                       "title": "Encaixe de correspondências",
                       "role": "practice",
                       "content": [
@@ -1857,7 +2202,7 @@
                         }
                       ],
                       "response": {
-                        "id": "instance-28",
+                        "id": "instance-30",
                         "package": "aralearn.response.matching",
                         "version": "1.0.0",
                         "data": {
@@ -1897,7 +2242,7 @@
                       },
                       "feedback": [
                         {
-                          "id": "feedback-28",
+                          "id": "feedback-30",
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {

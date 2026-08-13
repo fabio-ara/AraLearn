@@ -1380,10 +1380,14 @@ test("o runtime completo executa escolhas, lacunas, fluxograma, popup e anota√ß√
   await expect(choiceGap).toHaveText("certo");
   await choiceGap.focus();
   await choiceGap.press("Space");
+  await expect(choiceGap).toHaveText("");
+  await expect(choiceGap).toHaveAttribute("data-empty", "true");
+  await expect(page.locator("[data-text-gap-prompt='true']")).toHaveCount(0);
+  await choiceGap.press("Enter");
   await expect(page.locator("[data-text-gap-prompt='true']")).toBeVisible();
-  await expect(
-    page.locator('[data-action="text-gap-set-choice"][data-text-gap-value="certo"]')
-  ).toHaveClass(/active/u);
+  await expect(page.locator(
+    '[data-action="text-gap-set-choice"][data-text-gap-value="certo"]'
+  )).not.toHaveClass(/active/u);
   await page.locator('[data-action="text-gap-set-choice"][data-text-gap-value="certo"]').click();
   await page.locator('[data-action="next-card"]').click();
   await expect(page.locator(".runtime-card-title")).toHaveText("Lacuna livre");

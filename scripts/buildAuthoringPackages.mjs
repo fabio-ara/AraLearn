@@ -449,7 +449,7 @@ function buildChatGptActionOpenApi() {
     info: {
       title: "AraLearn — autoria de cursos",
       version: "4.0.0",
-      description: "Lê cursos acessíveis e cria, amplia, revisa, reorganiza, exclui e publica cursos ou partes de cursos AraLearn por operações atômicas."
+      description: "Opera cursos AraLearn atomicamente."
     },
     servers: [{
       url: `${PUBLIC_SUPABASE_URL}/functions/v1/aralearn-authoring-action`
@@ -470,8 +470,8 @@ function buildChatGptActionOpenApi() {
               authorizationUrl: `${PUBLIC_SUPABASE_URL}/functions/v1/aralearn-authoring-action/oauth/authorize`,
               tokenUrl: `${PUBLIC_SUPABASE_URL}/functions/v1/aralearn-authoring-action/oauth/token`,
               scopes: {
-                openid: "Confirmar a identidade da conta AraLearn.",
-                email: "Identificar a conta conectada."
+                openid: "Identidade.",
+                email: "Conta."
               }
             }
           }

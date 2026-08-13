@@ -12,8 +12,11 @@ Escolha o recurso pela operação que o estudante precisa realizar:
 | acompanhar execução, sintaxe ou comando | `code`, `algorithm_trace`, `flow` |
 | comparar casos, registros ou valores | `table`, `chart`, `choice` |
 | reconhecer hierarquia ou classificação | `tree`, `matching` |
-| analisar conexões, dependências ou rotas | `graph`, `network_topology`, `flow` |
-| distinguir limites, subsistemas e integrações | `system_map`, `graph`, `flow` |
+| analisar adjacência, caminhos, ciclos ou conectividade abstrata | `graph` |
+| analisar equipamentos, segmentos ou rotas de rede | `network_topology` |
+| situar pessoas e sistemas externos em relação a um software | `software_system_context` |
+| distinguir aplicações e armazenamentos internos de um software | `software_container` |
+| analisar partes, portas e conectores internos de um bloco | `system_internal_block` |
 | raciocinar com coordenadas, vetores ou distância | `plane`, `matrix`, `formula` |
 | ler notação matemática | `formula`, `matrix` ou combinação justificada de packages |
 | ler ou balancear uma equação de reação | `reaction`, `formula` ou combinação justificada de packages |
@@ -94,9 +97,12 @@ adicionais fora do contrato.
 
 - Apresente a função observável antes da abstração: por exemplo, mostre a associação entre um nome e um endereço antes de introduzir hierarquia, registros distribuídos e resolução de nomes. Defina cada termo na primeira ocorrência e contraste serviços próximos somente depois que ambos tiverem função clara.
 - Declare topologia, endereçamento, estado inicial, equipamento ou serviço e versão quando necessários.
-- Use `system_map` quando limites e pertencimento a subsistemas importarem,
-  `network_topology` para equipamentos, segmentos e enlaces, `graph` para
-  topologia abstrata, `packet_layout` para campos de protocolo,
+- Use `software_system_context` para a fronteira externa de um sistema de
+  software, `software_container` para unidades executáveis e armazenamentos
+  dentro dessa fronteira e `system_internal_block` para partes, portas e
+  conectores de engenharia de sistemas. Use `network_topology` para
+  equipamentos, segmentos e enlaces, `graph` somente para topologia matemática
+  abstrata, `packet_layout` para campos de protocolo,
   `state_machine` para comportamento dependente do estado, `flow` para
   decisão procedural, `table` para configuração e `code` para comandos.
 - Em `flow`, declare a lógica, não a geometria: terminais são `start`/`end`,

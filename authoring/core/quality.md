@@ -133,9 +133,9 @@
 
 - Todo recurso estruturado deixa explícitos o objeto, a relação e a operação de leitura. A posição, a cor, um identificador interno ou uma legenda distante não podem ser a única forma de entender um dado necessário.
 - Entidades que precisam ser distinguidas possuem nomes visíveis e inequívocos. Rótulos, unidades, direção, ordem, escala e destaque necessários aparecem no próprio card.
-- Em `graph`, vértices representam entidades ou papéis estáveis e arestas representam relações nomeáveis. Direção só é usada quando altera a interpretação. Componentes independentes são distinguidos no enunciado ou separados em cards; uma legenda não pode exigir que a pessoa adivinhe a correspondência entre abreviação e papel.
+- Em `graph`, círculos representam vértices abstratos e linhas representam arestas; setas só aparecem em dígrafos. O objeto é matemático: adjacência, caminho, ciclo, grau, ponte e conectividade justificam seu uso. Componentes de software, equipamentos, estados e conceitos exigem packages próprios.
 - Em `flow`, cada ramo torna explícitas condição e consequência. Em `tree`, a ligação preserva leitura pai-filho. Em `relation_map`, os conjuntos e a natureza do pareamento são claros. Em `matrix`, `plane` e `formula`, unidades, eixos, ordem, notação e convenções necessárias aparecem antes da decisão.
-- Em `system_map`, grupos correspondem a limites ou regiões identificáveis, componentes declaram pertencimento e conexões têm origem, destino, direção e rótulo quando semanticamente necessários. Não use a posição visual como única evidência de pertencimento.
+- Em `software_system_context`, há um único sistema em foco, pessoas e sistemas externos; nenhum componente interno é admitido. Em `software_container`, a fronteira reúne aplicações e armazenamentos implantáveis, cada qual com tecnologia e responsabilidade. Em `system_internal_block`, partes tipadas expõem portas e conectores segundo a gramática de diagrama interno do SysML. Não use posição ou cor como única evidência semântica.
 - Em `reaction`, reagentes e produtos ocupam lados distintos, coeficientes e estados pertencem à espécie correta e a seta/condição corresponde ao fenômeno descrito. Uma equação simbólica não substitui representação macroscópica ou submicroscópica quando a coordenação entre níveis é o objetivo.
 
 ## Revisão antes de aceitar

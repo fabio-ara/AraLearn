@@ -3,6 +3,12 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 
 const styles = fs.readFileSync(new URL("../../public/styles.css", import.meta.url), "utf8").replace(/\r\n?/gu, "\n");
+const graphvizPackageSources = [
+  "../../src/resources/packages/graph/index.js",
+  "../../src/resources/packages/software-system-context/index.js",
+  "../../src/resources/packages/software-container/index.js",
+  "../../src/resources/packages/system-internal-block/index.js"
+].map((path) => fs.readFileSync(new URL(path, import.meta.url), "utf8"));
 
 function escapeRegExp(value) {
   return value.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&");
@@ -29,10 +35,10 @@ test("conteúdo primário dos resources compartilha a escala tipográfica do tex
     ".runtime-table th,\n.runtime-table td",
     ".runtime-tree-node-label",
     ".runtime-matrix-item",
-    ".package-graph-relations li",
+    ".package-math-graph-label-content",
     ".package-chart-legend",
     ".package-plane-legend",
-    ".package-system-node strong",
+    ".package-system-diagram-node-content",
     ".package-formula math",
     ".package-reaction-equation",
     ".package-flow-node",
@@ -45,12 +51,22 @@ test("conteúdo primário dos resources compartilha a escala tipográfica do tex
 test("metadados acadêmicos compactos usam apenas os degraus tipográficos secundários", () => {
   for (const selector of [
     ".runtime-tree-node-chip",
-    ".package-graph-node text",
-    ".package-system-group > header span,\n.package-system-node-kind",
     ".package-reaction-state",
     ".package-flow-edge-label",
     ".runtime-interlinear-abbreviations"
   ]) assertUsesType(selector, "sm");
 
   assert.doesNotMatch(styles, /--resource-svg-label-size/u, "Vega deriva a tipografia interna sem token SVG artesanal");
+});
+
+test("Graphviz calcula caixas e trajetórias com a mesma tipografia que permanece na renderização", () => {
+  assert.doesNotMatch(
+    styles,
+    /\.package-(?:math-graph|system-diagram)-svg\s+text\s*\{[^}]*(?:font-size|font-family)\s*:/u,
+    "CSS não pode trocar a métrica tipográfica depois que o Graphviz calcula a geometria"
+  );
+  for (const source of graphvizPackageSources) {
+    assert.match(source, /fontname=\\"Arial\\"/u);
+    assert.match(source, /edge \[fontname=\\"Arial\\", fontsize=\\"1[34]\\"/u);
+  }
 });

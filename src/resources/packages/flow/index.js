@@ -1,6 +1,16 @@
 import { FLOWCHART_STRUCTURE_INPUT_SCHEMA, normalizeFlowchartStructure, validateFlowchartStructureContract } from "../../../flowchart/flowchartStructure.js";
 import { escapePackageAttribute, renderPackageInline, renderPackageProse } from "../../sdk/html.js";
 import { academicProfile } from "../../sdk/academic.js";
+import {
+  appendGraphvizForeignLabel,
+  dotAttributes,
+  dotQuote,
+  graphvizGroupById,
+  hasGraphvizGap,
+  plainGraphvizLabel,
+  renderGraphvizSvg,
+  unionGraphvizTextBounds
+} from "../../sdk/graphviz.js";
 
 const FLOW_KIND_LABELS = Object.freeze({
   sequence: "Sequência", start: "Início", end: "Fim", input: "Entrada",
@@ -11,8 +21,6 @@ const FLOW_KIND_LABELS = Object.freeze({
 });
 
 const GAP_MARKER = /\uE000[^\uE001]+\uE001/gu;
-const SVG_NAMESPACE = "http://www.w3.org/2000/svg";
-let vizInstancePromise = null;
 
 function flowChildren(node) {
   if (!node || typeof node !== "object") return [];
@@ -199,35 +207,6 @@ function shapeClass(kind) {
   return "process";
 }
 
-function plainGraphvizLabel(value) {
-  return String(value || "")
-    .replace(GAP_MARKER, "________")
-    .replace(/\*\*([^*]+)\*\*/gu, "$1")
-    .replace(/\*([^*]+)\*/gu, "$1")
-    .replace(/`([^`]+)`/gu, "$1")
-    .replace(/\s+/gu, " ")
-    .trim() || " ";
-}
-
-function hasGapMarker(value) {
-  GAP_MARKER.lastIndex = 0;
-  return GAP_MARKER.test(String(value || ""));
-}
-
-function dotQuote(value) {
-  return `"${String(value ?? "")
-    .replace(/\\/gu, "\\\\")
-    .replace(/"/gu, '\\"')
-    .replace(/\r?\n/gu, "\\n")}"`;
-}
-
-function dotAttributes(attributes) {
-  return `[${Object.entries(attributes)
-    .filter(([, value]) => value !== undefined && value !== null && value !== "")
-    .map(([key, value]) => `${key}=${dotQuote(value)}`)
-    .join(", ")}]`;
-}
-
 function graphvizNodeAttributes(node) {
   const shape = shapeClass(node.kind);
   const common = {
@@ -302,63 +281,6 @@ function renderFlowGraph(structure) {
   return `<div class="package-flowchart" role="group" aria-label="Fluxograma"><div class="package-flow-canvas" data-flow-layout-status="pending" aria-busy="true" data-flow-graph="${escapePackageAttribute(encodedGraph)}" data-flow-graphviz-source="${escapePackageAttribute(source)}"></div>${templates}${edgeSpecs}<p class="package-flow-layout-error" hidden>Não foi possível diagramar o fluxograma.</p></div>`;
 }
 
-function vizAssetUrl() {
-  const stylesheet = [...document.querySelectorAll('link[rel="stylesheet"]')]
-    .map((link) => link.href)
-    .find((href) => /(?:^|\/)styles\.css(?:$|\?)/u.test(href));
-  return stylesheet
-    ? new URL("vendor/viz-global.js", stylesheet).href
-    : new URL("public/vendor/viz-global.js", document.baseURI).href;
-}
-
-function loadVizInstance() {
-  if (vizInstancePromise) return vizInstancePromise;
-  vizInstancePromise = new Promise((resolve, reject) => {
-    if (globalThis.Viz?.instance) {
-      resolve(globalThis.Viz.instance());
-      return;
-    }
-    const script = document.createElement("script");
-    script.src = vizAssetUrl();
-    script.async = true;
-    script.addEventListener("load", () => globalThis.Viz?.instance
-      ? resolve(globalThis.Viz.instance())
-      : reject(new Error("Viz.js não inicializou.")));
-    script.addEventListener("error", () => reject(new Error("Viz.js não pôde ser carregado.")));
-    document.head.append(script);
-  }).then((value) => value);
-  return vizInstancePromise;
-}
-
-function groupByGraphvizId(svg, id) {
-  return [...svg.querySelectorAll("g")].find((group) => group.id === id) || null;
-}
-
-function unionTextBounds(elements) {
-  return elements.reduce((bounds, element) => {
-    const box = element.getBBox();
-    if (!bounds) return { x: box.x, y: box.y, right: box.x + box.width, bottom: box.y + box.height };
-    return {
-      x: Math.min(bounds.x, box.x),
-      y: Math.min(bounds.y, box.y),
-      right: Math.max(bounds.right, box.x + box.width),
-      bottom: Math.max(bounds.bottom, box.y + box.height)
-    };
-  }, null);
-}
-
-function appendForeignLabel(group, template, bounds, className) {
-  if (!group || !template || !bounds) return;
-  const foreignObject = document.createElementNS(SVG_NAMESPACE, "foreignObject");
-  foreignObject.setAttribute("x", String(bounds.x));
-  foreignObject.setAttribute("y", String(bounds.y));
-  foreignObject.setAttribute("width", String(Math.max(1, bounds.width)));
-  foreignObject.setAttribute("height", String(Math.max(1, bounds.height)));
-  foreignObject.setAttribute("class", className);
-  foreignObject.append(template.content.cloneNode(true));
-  group.append(foreignObject);
-}
-
 function nodeLabelBounds(group) {
   const shape = group.querySelector("ellipse, polygon, path");
   if (!shape) return null;
@@ -378,11 +300,11 @@ function nodeLabelBounds(group) {
 
 function replaceGraphvizLabels(chart, svg, graph) {
   graph.nodes.filter((node) => node.kind !== "merge").forEach((node) => {
-    const group = groupByGraphvizId(svg, node.id);
-    if (hasGapMarker(node.label)) {
+    const group = graphvizGroupById(svg, node.id);
+    if (hasGraphvizGap(node.label)) {
       const template = chart.querySelector(`template[data-flow-node-template="${CSS.escape(node.id)}"]`);
       group?.querySelectorAll("text").forEach((text) => { text.style.visibility = "hidden"; });
-      appendForeignLabel(group, template, nodeLabelBounds(group), "package-flow-node-label");
+      appendGraphvizForeignLabel(group, template, nodeLabelBounds(group), "package-flow-node-label");
     }
     if (group) {
       group.dataset.flowNodeId = node.id;
@@ -391,19 +313,19 @@ function replaceGraphvizLabels(chart, svg, graph) {
     }
   });
   graph.edges.filter((edge) => edge.visible && edge.label).forEach((edge) => {
-    const group = groupByGraphvizId(svg, edge.id);
+    const group = graphvizGroupById(svg, edge.id);
     const texts = [...(group?.querySelectorAll("text") || [])];
     texts.forEach((text) => text.classList.add("package-flow-edge-label"));
-    if (!hasGapMarker(edge.label)) return;
-    const box = unionTextBounds(texts);
+    if (!hasGraphvizGap(edge.label)) return;
+    const box = unionGraphvizTextBounds(texts);
     const template = chart.querySelector(`template[data-flow-edge-template="${CSS.escape(edge.id)}"]`);
     texts.forEach((text) => { text.style.visibility = "hidden"; });
     if (box) {
-      const width = Math.max(48, (box.right - box.x) + 16);
-      const height = Math.max(24, (box.bottom - box.y) + 8);
-      appendForeignLabel(group, template, {
-        x: box.x + ((box.right - box.x) - width) / 2,
-        y: box.y + ((box.bottom - box.y) - height) / 2,
+      const width = Math.max(48, box.width + 16);
+      const height = Math.max(24, box.height + 8);
+      appendGraphvizForeignLabel(group, template, {
+        x: box.x + (box.width - width) / 2,
+        y: box.y + (box.height - height) / 2,
         width,
         height
       }, "package-flow-edge-label");
@@ -418,13 +340,7 @@ async function layoutFlowchart(chart) {
     const source = canvas.dataset.flowGraphvizSource;
     if (!source) throw new Error("Fluxograma sem fonte Graphviz.");
     const graph = JSON.parse(decodeURIComponent(canvas.dataset.flowGraph || ""));
-    const viz = await loadVizInstance();
-    const svg = viz.renderSVGElement(source, { engine: "dot" });
-    svg.classList.add("package-flow-svg");
-    const viewBox = svg.viewBox.baseVal;
-    svg.setAttribute("width", String(viewBox.width));
-    svg.setAttribute("height", String(viewBox.height));
-    canvas.replaceChildren(svg);
+    const svg = await renderGraphvizSvg(canvas, { source, engine: "dot", className: "package-flow-svg" });
     replaceGraphvizLabels(chart, svg, graph);
     canvas.dataset.flowLayoutStatus = "ready";
     canvas.setAttribute("aria-busy", "false");

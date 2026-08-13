@@ -8,6 +8,14 @@ async function openModule(page, moduleIndex, cardIndex = 0) {
   await page.locator(`[data-action="open-microsequence-card"][data-card-index="${cardIndex}"]`).click();
 }
 
+async function openModuleByKey(page, moduleKey, cardIndex = 0) {
+  await page.locator('[data-action="open-course"]').click();
+  await page.locator(`[data-action="open-module"][data-module-key="${moduleKey}"]`).click();
+  await page.locator('[data-action="open-lesson"]').click();
+  await page.locator('[data-action="open-microsequence-overview"]').click();
+  await page.locator(`[data-action="open-microsequence-card"][data-card-index="${cardIndex}"]`).click();
+}
+
 test.beforeEach(async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 900 });
   await page.goto("/teste-recursos");
@@ -17,14 +25,14 @@ test.beforeEach(async ({ page }) => {
   await page.waitForFunction(() => globalThis.__RESOURCE_TEST_COURSE_READY__ === true);
 });
 
-test("curso separa 24 representações dos quatro packages de resposta", async ({ page }) => {
+test("curso separa 26 representações dos quatro packages de resposta", async ({ page }) => {
   await expect(page.locator('[data-action="open-course"]')).toBeVisible();
   await page.locator('[data-action="open-course"]').click();
-  await expect(page.locator('[data-action="open-module"]')).toHaveCount(28);
-  await expect(page.locator('[data-action="open-module"]').nth(24)).toHaveAttribute("data-module-key", "response-choice-test-module");
-  await expect(page.locator('[data-action="open-module"]').nth(25)).toHaveAttribute("data-module-key", "response-gap-test-module");
-  await expect(page.locator('[data-action="open-module"]').nth(26)).toHaveAttribute("data-module-key", "response-ordering-test-module");
-  await expect(page.locator('[data-action="open-module"]').nth(27)).toHaveAttribute("data-module-key", "response-matching-test-module");
+  await expect(page.locator('[data-action="open-module"]')).toHaveCount(30);
+  await expect(page.locator('[data-action="open-module"]').nth(26)).toHaveAttribute("data-module-key", "response-choice-test-module");
+  await expect(page.locator('[data-action="open-module"]').nth(27)).toHaveAttribute("data-module-key", "response-gap-test-module");
+  await expect(page.locator('[data-action="open-module"]').nth(28)).toHaveAttribute("data-module-key", "response-ordering-test-module");
+  await expect(page.locator('[data-action="open-module"]').nth(29)).toHaveAttribute("data-module-key", "response-matching-test-module");
 });
 
 test("paragraph usa alternativas sob demanda e segundo toque esvazia a lacuna", async ({ page }) => {
@@ -45,7 +53,7 @@ test("paragraph usa alternativas sob demanda e segundo toque esvazia a lacuna", 
 });
 
 test("cada lacuna abre somente as próprias alternativas", async ({ page }) => {
-  await openModule(page, 25);
+  await openModuleByKey(page, "response-gap-test-module");
   const blanks = page.locator('[data-action="text-gap-open-choice"]');
   await expect(blanks).toHaveCount(2);
   await expect(page.locator('[data-action="text-gap-set-choice"]')).toHaveCount(0);
@@ -516,7 +524,7 @@ test("gráfico acadêmico mostra escala logarítmica, incerteza e referência se
 });
 
 test("ordenação é resposta independente e o Play é o único controle de confirmação", async ({ page }) => {
-  await openModule(page, 26);
+  await openModuleByKey(page, "response-ordering-test-module");
   await expect(page.locator(".package-ordering-response li")).toHaveCount(3);
   await expect(page.getByRole("button", { name: "Conferir" })).toHaveCount(0);
   await page.locator('[data-action="next-card"]').click();
