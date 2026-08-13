@@ -392,7 +392,8 @@
                                 "from": "flash",
                                 "to": "io"
                               }
-                            ]
+                            ],
+                            "name": "R"
                           }
                         }
                       ],
@@ -1249,7 +1250,8 @@
                                 "from": "io",
                                 "to": "dados"
                               }
-                            ]
+                            ],
+                            "name": "R"
                           }
                         }
                       ],
@@ -3378,7 +3380,8 @@
                                 "from": "bat",
                                 "to": "lim"
                               }
-                            ]
+                            ],
+                            "name": "R"
                           }
                         }
                       ],
@@ -4369,7 +4372,8 @@
                                 "from": "filosofia",
                                 "to": "sentido"
                               }
-                            ]
+                            ],
+                            "name": "R"
                           }
                         }
                       ],
@@ -4490,7 +4494,8 @@
                                 "from": "e2",
                                 "to": "engenharia"
                               }
-                            ]
+                            ],
+                            "name": "R"
                           }
                         }
                       ],
@@ -4774,7 +4779,8 @@
                                 "from": "saida",
                                 "to": "interpreta"
                               }
-                            ]
+                            ],
+                            "name": "R"
                           }
                         }
                       ],
@@ -5700,7 +5706,8 @@
                                 "from": "CNOT",
                                 "to": "correlaciona"
                               }
-                            ]
+                            ],
+                            "name": "R"
                           }
                         }
                       ],
@@ -5835,7 +5842,8 @@
                                 "from": "CNOT",
                                 "to": "correlaciona"
                               }
-                            ]
+                            ],
+                            "name": "R"
                           }
                         }
                       ],
@@ -6569,7 +6577,8 @@
                                 "from": "medicoes",
                                 "to": "pergunta"
                               }
-                            ]
+                            ],
+                            "name": "R"
                           }
                         }
                       ],
@@ -6775,7 +6784,8 @@
                                 "from": "portas",
                                 "to": "circuitos"
                               }
-                            ]
+                            ],
+                            "name": "R"
                           }
                         }
                       ],
@@ -7272,7 +7282,8 @@
                                 "from": "info",
                                 "to": "informa"
                               }
-                            ]
+                            ],
+                            "name": "R"
                           }
                         }
                       ],
@@ -7397,7 +7408,8 @@
                                 "from": "medicao",
                                 "to": "saida"
                               }
-                            ]
+                            ],
+                            "name": "R"
                           }
                         }
                       ],
@@ -7586,7 +7598,8 @@
                                 "from": "transformar",
                                 "to": "alterar"
                               }
-                            ]
+                            ],
+                            "name": "R"
                           }
                         }
                       ],
@@ -7721,7 +7734,8 @@
                                 "from": "transformar",
                                 "to": "alterar"
                               }
-                            ]
+                            ],
+                            "name": "R"
                           }
                         }
                       ],
@@ -8458,7 +8472,8 @@
                                 "from": "ent",
                                 "to": "importante"
                               }
-                            ]
+                            ],
+                            "name": "R"
                           }
                         }
                       ],
@@ -8689,7 +8704,8 @@
                                 "from": "erros",
                                 "to": "correcao"
                               }
-                            ]
+                            ],
+                            "name": "R"
                           }
                         }
                       ],
@@ -11532,7 +11548,8 @@
                                 "from": "reg",
                                 "to": "rap"
                               }
-                            ]
+                            ],
+                            "name": "R"
                           }
                         }
                       ],
@@ -11865,7 +11882,8 @@
                               "rightItems": [
                                 "prox"
                               ]
-                            }
+                            },
+                            "name": "R"
                           }
                         }
                       ],
@@ -12016,7 +12034,8 @@
                               "rightItems": [
                                 "calc"
                               ]
-                            }
+                            },
+                            "name": "R"
                           }
                         }
                       ],
@@ -13167,7 +13186,8 @@
                                 "from": "mimd",
                                 "to": "muitosmuitos"
                               }
-                            ]
+                            ],
+                            "name": "R"
                           }
                         }
                       ],
@@ -13649,7 +13669,8 @@
                                 "from": "pcie",
                                 "to": "alta"
                               }
-                            ]
+                            ],
+                            "name": "R"
                           }
                         }
                       ],
@@ -14099,7 +14120,8 @@
                               "rightItems": [
                                 "alta"
                               ]
-                            }
+                            },
+                            "name": "R"
                           }
                         }
                       ],

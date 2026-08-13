@@ -58,10 +58,9 @@ test("a prática depende de teoria e cobra apenas tópicos previamente ensinados
   });
 });
 
-test("as representações especializadas não são substituídas por tabelas ou diagramas genéricos", () => {
+test("representações especializadas só aparecem quando a estrutura não cabe em recurso mais simples", () => {
   const contentPackages = new Set(cards.flatMap(({ content }) => content.map(({ package: packageId }) => packageId)));
   [
-    "aralearn.resource.algorithm_trace",
     "aralearn.resource.entity_relationship",
     "aralearn.resource.database_schema",
     "aralearn.resource.packet_layout",
@@ -74,7 +73,8 @@ test("as representações especializadas não são substituídas por tabelas ou 
     moduleValue.id,
     new Set(moduleValue.lessons.flatMap(({ microsequences: values }) => values).flatMap(({ cards: values }) => values).flatMap(packagesIn))
   ]));
-  assert.equal(modulePackages["ifsp-algorithms"].has("aralearn.resource.table"), false);
+  assert.equal(modulePackages["ifsp-algorithms"].has("aralearn.resource.table"), true);
+  assert.equal(modulePackages["ifsp-algorithms"].has("aralearn.resource.algorithm_trace"), false);
   assert.equal(modulePackages["dataprev-bpmn"].has("aralearn.resource.flow"), false);
   assert.equal(modulePackages["dataprev-networking"].has("aralearn.resource.graph"), false);
 });

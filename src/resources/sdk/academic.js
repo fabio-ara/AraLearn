@@ -17,12 +17,21 @@ export function academicProfile({
   technologies,
   practiceModes
 }) {
+  const preservedStructure = freezeTextList(conventions);
+  const onlyWhen = freezeTextList(appropriateWhen);
+  const useSimplerRepresentationWhen = freezeTextList(avoidWhen);
   return Object.freeze({
     domains: freezeTextList(domains),
     knowledgeObjects: freezeTextList(knowledgeObjects),
-    conventions: freezeTextList(conventions),
-    appropriateWhen: freezeTextList(appropriateWhen),
-    avoidWhen: freezeTextList(avoidWhen),
+    conventions: preservedStructure,
+    appropriateWhen: onlyWhen,
+    avoidWhen: useSimplerRepresentationWhen,
+    admission: Object.freeze({
+      preservedStructure,
+      onlyWhen,
+      useSimplerRepresentationWhen,
+      decisionRule: "Escolha ou crie este package somente quando uma representação mais simples perder a estrutura declarada."
+    }),
     technologies: freezeTextList(technologies),
     practiceModes: freezeTextList(practiceModes),
     authoring: DEFAULT_AUTHORING

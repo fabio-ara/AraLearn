@@ -71,8 +71,7 @@ um repertório, não um checklist de variedade por curso.
 No AraLearn:
 
 - `table`, `matrix`, `chart` e `plane` não são estilos de parágrafo;
-- `tree`, `graph`, `flow` e `sequence` distinguem hierarquia, rede, decisão e
-  ordem;
+- `tree`, `graph` e `flow` distinguem hierarquia, topologia abstrata e decisão;
 - `annotated_text` ancora comentários em trechos identificáveis e mantém a
   navegação bidirecional entre evidência e explicação;
 - `interlinear_gloss` alinha forma segmentada e glosa morfema a morfema,
@@ -83,10 +82,9 @@ No AraLearn:
 - `reaction` preserva a gramática de uma equação química;
 - `truth_table`, `set_diagram` e `relation_map` distinguem valoração
   lógica, regiões de conjuntos e pares de uma relação binária;
-- `algorithm_trace`, `entity_relationship`, `database_schema`,
-  `memory_layout` e `call_stack` preservam, respectivamente, estado de
-  execução, modelo conceitual, esquema lógico com chaves, intervalos de
-  endereços e ativações de funções;
+- `entity_relationship`, `database_schema`, `memory_layout` e `call_stack`
+  preservam, respectivamente, modelo conceitual, esquema lógico com chaves,
+  intervalos de endereços e ativações de funções;
 - `packet_layout`, `network_topology` e `state_machine` distinguem campos
   contíguos de protocolo, equipamentos/enlaces e comportamento dependente de
   estado;
@@ -94,6 +92,17 @@ No AraLearn:
   `bpmn_process` preserva participantes, raias, atividades, gateways e a
   distinção normativa entre fluxo de sequência e fluxo de mensagem;
 - múltiplos packages em `content` são reservados à tarefa que realmente exige coordenação.
+
+`set_diagram` não é uma lista cercada por círculos. O contrato distingue
+explicitamente Venn, que conserva todas as regiões lógicas possíveis, de
+Euler, cuja topologia conserva somente inclusões e interseções existentes.
+O autor declara conjuntos, símbolos e pertencimento; `@upsetjs/venn.js`
+calcula os contornos sem receber coordenadas. Símbolos curtos permanecem junto
+das curvas e marcadores numerados ancoram cada região a uma descrição completa,
+evitando comprimir rótulos longos dentro das sobreposições. Para simples
+classificação sem sobreposição vence uma resposta de encaixe ou uma tabela;
+para mais de três conjuntos, Venn/Euler deixa de ser admitido e uma futura
+representação de interseções precisa de package próprio.
 
 Cada package de conteúdo expõe folhas textuais selecionáveis e pode ser
 composto com resposta por lacuna/digitação ou encaixe. A prática fica no

@@ -9,7 +9,7 @@ Escolha o recurso pela operação que o estudante precisa realizar:
 | Operação | Recursos mais prováveis |
 |---|---|
 | compreender uma definição ou distinção | `paragraph`, `choice` ou combinação justificada de packages |
-| acompanhar execução, sintaxe ou comando | `code`, `algorithm_trace`, `flow` |
+| acompanhar execução, sintaxe ou comando | `code`, `table`, `flow` |
 | comparar casos, registros ou valores | `table`, `chart`, `choice` |
 | reconhecer hierarquia ou classificação | `tree`, `matching` |
 | analisar adjacência, caminhos, ciclos ou conectividade abstrata | `graph` |
@@ -41,9 +41,12 @@ adicionais fora do contrato.
 - Use alternativas quando o objetivo for prever saída, encontrar defeito, escolher consulta ou distinguir efeitos colaterais.
 - Preserve indentação, linguagem, versão e ambiente relevantes. SQL precisa indicar o esquema mínimo, as linhas necessárias e o dialeto quando isso mudar a resposta.
 - Faça o estudante acompanhar o estado: valores de variáveis, pilha, resultado intermediário, linhas afetadas ou fluxo de controle.
-- Use `algorithm_trace` para mudanças de variáveis por passo,
-  `database_schema` para chaves e referências e `memory_layout` para
-  endereços e segmentos. Uma tabela genérica não substitui essas convenções.
+- Para mudanças de variáveis por passo, use `table` somente quando a leitura
+  cruzada entre passos e variáveis for suficiente; coordene-a com `code` quando
+  a linha executada também fizer parte da explicação. Não existe package de
+  rastreamento enquanto não houver uma representação sincronizada que acrescente
+  algo demonstrável à tabela. Use `database_schema` para chaves e referências e
+  `memory_layout` para endereços e segmentos.
 - Um fragmento executável não deve depender de arquivo, biblioteca ou tabela que não esteja declarada no card.
 - Distratores devem representar erros reais: atribuição em lugar de comparação, índice incorreto, junção inadequada, filtro aplicado no estágio errado, mutação inesperada ou tratamento incompleto de ausência.
 

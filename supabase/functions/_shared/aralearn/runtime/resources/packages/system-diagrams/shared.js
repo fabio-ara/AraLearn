@@ -26,7 +26,7 @@ export function renderSystemDiagramFigure({
 function nodeBounds(group) {
   if (!group) return null;
   const box = group.getBBox();
-  return { x: box.x + 7, y: box.y + 5, width: Math.max(1, box.width - 14), height: Math.max(1, box.height - 10) };
+  return { x: box.x + 7, y: box.y + 1, width: Math.max(1, box.width - 14), height: Math.max(1, box.height - 2) };
 }
 
 function replaceLabel(figure, svg, label) {

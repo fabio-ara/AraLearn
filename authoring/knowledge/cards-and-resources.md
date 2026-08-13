@@ -89,14 +89,22 @@ interpretação. Não force um grafo para representar uma simples sequência ou
 lista.
 
 Em `relation_map`, deixe explícitos domínio, contradomínio e pares ordenados.
-O renderer apresenta cada elemento uma única vez e enumera a relação sem
-cruzar rótulos. Use `set_diagram` quando interseção, união ou pertencimento
-simultâneo for o objeto.
+O renderer apresenta os dois conjuntos e uma seta sem rótulo para cada par; a
+notação extensional complementar registra os pares sem disputar espaço com as
+arestas. Use-o somente quando imagem, preimagem ou cardinalidade fizer parte
+do raciocínio. Use `table` ou `matching` para uma simples correspondência e
+`set_diagram` quando interseção, união ou pertencimento simultâneo for o objeto.
+Nesse package, escolha `venn` quando todas as combinações lógicas precisam
+permanecer visíveis e `euler` quando a ausência de uma região é parte da
+topologia observada. Declare conjuntos, símbolos curtos e pertencimento; não
+declare círculos, coordenadas ou tamanhos. Mais de três conjuntos exigem outra
+representação, não um diagrama ilegível comprimido.
 
 `matrix` é reservado a arranjos algébricos de escalares ou expressões, sem
 cabeçalhos de atributos nem grade de registros. Para dados tabulares use
-`table`; para esquema relacional use `database_schema`; para execução
-variável por passo use `algorithm_trace`.
+`table`; para esquema relacional use `database_schema`. Mudanças de variáveis
+por passo permanecem em `table` enquanto não houver uma representação
+sincronizada de execução que preserve estrutura adicional.
 
 Em `flow`, cada decisão explicita condição e consequência. Em `tree`, a
 ligação preserva pai e filho. Nos demais packages, unidades, eixos, ordem,

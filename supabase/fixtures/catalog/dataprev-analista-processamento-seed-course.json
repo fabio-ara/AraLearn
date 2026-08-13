@@ -9028,6 +9028,7 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "Associe os itens.",
+                            "name": "R",
                             "leftSet": {
                               "label": "Elementos 1",
                               "items": [
@@ -11575,6 +11576,7 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "Compare os pares.",
+                            "name": "R",
                             "leftSet": {
                               "label": "Elementos 2",
                               "items": [
@@ -12708,6 +12710,7 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "Conecte os elementos.",
+                            "name": "R",
                             "leftSet": {
                               "label": "Elementos 3",
                               "items": [
@@ -13533,6 +13536,7 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "Identifique as relações.",
+                            "name": "R",
                             "leftSet": {
                               "label": "Elementos 4",
                               "items": [
@@ -17174,6 +17178,7 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "Mapeie as correspondências.",
+                            "name": "R",
                             "leftSet": {
                               "label": "Elementos 5",
                               "items": [
@@ -21097,6 +21102,7 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "Examine as associações.",
+                            "name": "R",
                             "leftSet": {
                               "label": "Elementos 6",
                               "items": [
@@ -32658,6 +32664,7 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "Observe as relações entre tipo de operação e mecanismo no recorte de 2026-07-10.",
+                            "name": "R",
                             "leftSet": {
                               "label": "Operações",
                               "items": [
@@ -33981,6 +33988,7 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "Considere o servidor WS-LOCAL-01 em grupo de trabalho, conforme o estado registrado em 11 de julho de 2026.",
+                            "name": "R",
                             "leftSet": {
                               "label": "Identidades locais",
                               "items": [
@@ -34011,14 +34019,12 @@
                               {
                                 "id": "relation-1",
                                 "from": "id-ana",
-                                "to": "cap-membro",
-                                "label": "associação"
+                                "to": "cap-membro"
                               },
                               {
                                 "id": "relation-2",
                                 "from": "id-operadores",
-                                "to": "cap-logon",
-                                "label": "atribuição de direito"
+                                "to": "cap-logon"
                               }
                             ]
                           }
@@ -35914,6 +35920,7 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "Use as relações registradas para um ambiente Windows Server 2022 em 11 de julho de 2026.",
+                            "name": "R",
                             "leftSet": {
                               "label": "Problemas observados",
                               "items": [
@@ -36359,6 +36366,7 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "Observe as correspondências usadas para cadastrar pessoas.",
+                            "name": "R",
                             "leftSet": {
                               "label": "Elemento",
                               "items": [
@@ -38102,6 +38110,7 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "Mapa de associações e acesso registrado em 2026-07-11.",
+                            "name": "R",
                             "leftSet": {
                               "label": "Identidades e grupos de origem",
                               "items": [
@@ -38140,26 +38149,22 @@
                               {
                                 "id": "relation-1",
                                 "from": "id-ana",
-                                "to": "grp-leitura",
-                                "label": "via GG-Analistas-BR"
+                                "to": "grp-leitura"
                               },
                               {
                                 "id": "relation-2",
                                 "from": "id-beto",
-                                "to": "grp-leitura",
-                                "label": "via GG-Analistas-BR"
+                                "to": "grp-leitura"
                               },
                               {
                                 "id": "relation-3",
                                 "from": "grp-analistas",
-                                "to": "grp-leitura",
-                                "label": "membro"
+                                "to": "grp-leitura"
                               },
                               {
                                 "id": "relation-4",
                                 "from": "grp-analistas",
-                                "to": "res-rel",
-                                "label": "acesso por cadeia de grupos"
+                                "to": "res-rel"
                               }
                             ]
                           }
@@ -40171,6 +40176,7 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "Observe as correspondências entre drives e tipos de item.",
+                            "name": "R",
                             "leftSet": {
                               "label": "Drives",
                               "items": [
@@ -41993,6 +41999,7 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "Observe as quatro ações administrativas e as operações associadas.",
+                            "name": "R",
                             "leftSet": {
                               "label": "Ações",
                               "items": [
@@ -44611,6 +44618,7 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "Observe as correspondências entre mecanismo e efeito.",
+                            "name": "R",
                             "leftSet": {
                               "label": "Mecanismo",
                               "items": [
@@ -45318,6 +45326,7 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "As relações mostram o efeito primário de quatro operações.",
+                            "name": "R",
                             "leftSet": {
                               "label": "Operação",
                               "items": [
@@ -47150,6 +47159,7 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "Observe quatro componentes e quatro eventos operacionais.",
+                            "name": "R",
                             "leftSet": {
                               "label": "Componentes",
                               "items": [
@@ -48182,6 +48192,7 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "Compare solicitações e volumes disponíveis.",
+                            "name": "R",
                             "leftSet": {
                               "label": "PVCs",
                               "items": [
@@ -55506,6 +55517,7 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "Observe quatro camadas equivalentes em dois sistemas. A ligação destacada exemplifica uma relação lógica entre pares.",
+                            "name": "R",
                             "leftSet": {
                               "label": "Sistema A",
                               "items": [
@@ -56780,6 +56792,7 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "Relacione cada camada superior à função central mostrada no outro conjunto.",
+                            "name": "R",
                             "leftSet": {
                               "label": "Camadas",
                               "items": [
@@ -57893,6 +57906,7 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "Observe as correspondências funcionais.",
+                            "name": "R",
                             "leftSet": {
                               "label": "Camadas",
                               "items": [
@@ -60655,6 +60669,7 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "Observe como cada requisito se liga à propriedade decisiva.",
+                            "name": "R",
                             "leftSet": {
                               "label": "Requisito",
                               "items": [
@@ -61537,6 +61552,7 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "Observe as correspondências entre elemento e função.",
+                            "name": "R",
                             "leftSet": {
                               "label": "Elemento",
                               "items": [
@@ -61984,6 +62000,7 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "Observe a correspondência pela operação principal.",
+                            "name": "R",
                             "leftSet": {
                               "label": "Necessidade",
                               "items": [
@@ -63476,6 +63493,7 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "Acompanhe as correspondências entre papel e responsabilidade.",
+                            "name": "R",
                             "leftSet": {
                               "label": "Elemento",
                               "items": [
@@ -64002,6 +64020,7 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "Observe as responsabilidades disponíveis.",
+                            "name": "R",
                             "leftSet": {
                               "label": "Papel",
                               "items": [
@@ -64644,6 +64663,7 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "Observe a relação entre cada tipo de aviso e o retorno esperado.",
+                            "name": "R",
                             "leftSet": {
                               "label": "Notificação",
                               "items": [
@@ -65036,6 +65056,7 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "Relacione os grupos selecionados às respectivas funções.",
+                            "name": "R",
                             "leftSet": {
                               "label": "Grupo RMON",
                               "items": [
@@ -65805,6 +65826,7 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "Relacione cada necessidade ao mecanismo mais direto.",
+                            "name": "R",
                             "leftSet": {
                               "label": "Necessidade",
                               "items": [
@@ -66625,6 +66647,7 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "Relacione cada operação ao efeito imediato.",
+                            "name": "R",
                             "leftSet": {
                               "label": "Operações",
                               "items": [
@@ -67051,6 +67074,7 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "Um técnico associou operações a efeitos; uma relação está ausente.",
+                            "name": "R",
                             "leftSet": {
                               "label": "Operações",
                               "items": [
@@ -67428,6 +67452,7 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "Compare a categoria de cada item.",
+                            "name": "R",
                             "leftSet": {
                               "label": "Itens",
                               "items": [
@@ -67859,6 +67884,7 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "As correspondências separam objeto, função e técnica.",
+                            "name": "R",
                             "leftSet": {
                               "label": "Conceitos",
                               "items": [
@@ -68243,6 +68269,7 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "Relacione cada termo ao escopo predominante.",
+                            "name": "R",
                             "leftSet": {
                               "label": "Termos",
                               "items": [
@@ -68694,6 +68721,7 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "Duas associações já estão estabelecidas.",
+                            "name": "R",
                             "leftSet": {
                               "label": "Elementos",
                               "items": [
@@ -69092,6 +69120,7 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "Mapa conceitual com referência 2026-07-17.",
+                            "name": "R",
                             "leftSet": {
                               "label": "Recursos",
                               "items": [
@@ -69565,6 +69594,7 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "Referência 2026-07-17: complete o mapa de funções.",
+                            "name": "R",
                             "leftSet": {
                               "label": "Capacidades",
                               "items": [
@@ -70193,6 +70223,7 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "Observe as correspondências já estabelecidas e complete a função ainda sem ligação.",
+                            "name": "R",
                             "leftSet": {
                               "label": "Função",
                               "items": [
@@ -70753,6 +70784,7 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "Três métodos já estão ligados às suas funções. Complete a correspondência restante.",
+                            "name": "R",
                             "leftSet": {
                               "label": "Método",
                               "items": [
@@ -71231,6 +71263,7 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "Complete as funções dos componentes H.323 descritos em março de 2022.",
+                            "name": "R",
                             "leftSet": {
                               "label": "Componente",
                               "items": [
@@ -72269,6 +72302,7 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "Observe as relações completas entre elementos e categorias.",
+                            "name": "R",
                             "leftSet": {
                               "label": "Elemento",
                               "items": [

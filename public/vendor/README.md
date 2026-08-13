@@ -20,3 +20,11 @@ formato Vega-Lite não é exposto à autoria.
 
 - Vega: https://github.com/vega/vega
 - Vega-Lite: https://github.com/vega/vega-lite
+
+`venn.esm.js` é a distribuição ESM de `@upsetjs/venn.js` 2.0.0, usada
+somente para calcular contornos e regiões de diagramas de Venn e Euler. O
+AraLearn renderiza sua própria camada semântica e mantém a biblioteca local
+para preservar o funcionamento offline.
+
+- venn.js: https://upset.js.org/venn.js/
+- Licença: https://github.com/upsetjs/venn.js/blob/main/LICENSE

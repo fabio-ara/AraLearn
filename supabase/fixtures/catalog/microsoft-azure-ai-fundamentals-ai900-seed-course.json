@@ -1529,6 +1529,7 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "Observe o mapa de relações de \"Cenário → serviço\".",
+                            "name": "R",
                             "leftSet": {
                               "label": "Cenários",
                               "items": [
@@ -4432,6 +4433,7 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "Observe o mapa de relações de \"Risco e análise adequada\".",
+                            "name": "R",
                             "leftSet": {
                               "label": "Conjunto A",
                               "items": [
@@ -7590,6 +7592,7 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "Observe o mapa de relações de \"Colunas como entrada ou alvo\".",
+                            "name": "R",
                             "leftSet": {
                               "label": "Colunas",
                               "items": [
@@ -12429,6 +12432,7 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "Observe o mapa de relações de \"Tipo de problema e métrica\".",
+                            "name": "R",
                             "leftSet": {
                               "label": "Conjunto A",
                               "items": [
@@ -13805,6 +13809,7 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "Observe o mapa de relações de \"Artefato e função\".",
+                            "name": "R",
                             "leftSet": {
                               "label": "Serviços",
                               "items": [
@@ -16417,6 +16422,7 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "Observe o mapa de relações de \"Studio ligado ao workload\".",
+                            "name": "R",
                             "leftSet": {
                               "label": "Conjunto A",
                               "items": [
@@ -18265,6 +18271,7 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "Observe o mapa de relações de \"Workload para serviço recomendado\".",
+                            "name": "R",
                             "leftSet": {
                               "label": "Cenários",
                               "items": [
@@ -19795,6 +19802,7 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "Observe o mapa de relações de \"Tarefa visual por cenário\".",
+                            "name": "R",
                             "leftSet": {
                               "label": "Cenários",
                               "items": [
@@ -21125,6 +21133,7 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "Observe o mapa de relações de \"Necessidade e caminho provável\".",
+                            "name": "R",
                             "leftSet": {
                               "label": "Cenários",
                               "items": [
@@ -21717,6 +21726,7 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "Observe o mapa de relações de \"Etapa e serviço\".",
+                            "name": "R",
                             "leftSet": {
                               "label": "Conjunto A",
                               "items": [
@@ -22338,6 +22348,7 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "Observe o mapa de relações de \"Cenário e decisão provável\".",
+                            "name": "R",
                             "leftSet": {
                               "label": "Cenários",
                               "items": [
@@ -23044,6 +23055,7 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "Observe o mapa de relações de \"Cenário para capacidade\".",
+                            "name": "R",
                             "leftSet": {
                               "label": "Conjunto A",
                               "items": [
@@ -25529,6 +25541,7 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "Observe o mapa de relações de \"Cenário para operação Face\".",
+                            "name": "R",
                             "leftSet": {
                               "label": "Conjunto A",
                               "items": [
@@ -27640,6 +27653,7 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "Observe o mapa de relações de \"Cenário para modelo\".",
+                            "name": "R",
                             "leftSet": {
                               "label": "Cenários",
                               "items": [
@@ -29887,6 +29901,7 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "Observe o mapa de relações de \"Entrada para serviço\".",
+                            "name": "R",
                             "leftSet": {
                               "label": "Cenários",
                               "items": [
@@ -32086,6 +32101,7 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "Observe o mapa de relações de \"Cenário e capacidade\".",
+                            "name": "R",
                             "leftSet": {
                               "label": "Conjunto A",
                               "items": [
@@ -33249,6 +33265,7 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "Observe o mapa de relações de \"Tipo de dado e capacidade\".",
+                            "name": "R",
                             "leftSet": {
                               "label": "Conjunto A",
                               "items": [
@@ -35295,6 +35312,7 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "Observe o mapa de relações de \"Fontes para knowledge base\".",
+                            "name": "R",
                             "leftSet": {
                               "label": "Conjunto A",
                               "items": [
@@ -36592,6 +36610,7 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "Observe o mapa de relações de \"Utterance para intent e entity\".",
+                            "name": "R",
                             "leftSet": {
                               "label": "Conjunto A",
                               "items": [
@@ -37408,6 +37427,7 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "Observe o mapa de relações de \"Cenário para serviço\".",
+                            "name": "R",
                             "leftSet": {
                               "label": "Conjunto A",
                               "items": [
@@ -39936,6 +39956,7 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "Observe o mapa de relações de \"Entrada e saída determinam o serviço\".",
+                            "name": "R",
                             "leftSet": {
                               "label": "Conjunto A",
                               "items": [
@@ -41999,6 +42020,7 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "Observe o mapa de relações de \"Cenário integrado → escolha\".",
+                            "name": "R",
                             "leftSet": {
                               "label": "Conjunto A",
                               "items": [
@@ -44821,6 +44843,7 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "Observe o mapa de relações de \"Problema de busca → técnica provável\".",
+                            "name": "R",
                             "leftSet": {
                               "label": "Conjunto A",
                               "items": [

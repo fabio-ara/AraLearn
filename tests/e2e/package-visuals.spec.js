@@ -39,6 +39,8 @@ const relationInstance = {
   version: "1.0.0",
   data: {
     prompt: "Relacione cada grupo à sua finalidade principal.",
+    name: "R",
+    relationMeaning: "tem como finalidade",
     leftSet: {
       label: "Grupo de monitoramento",
       items: [
@@ -58,10 +60,10 @@ const relationInstance = {
       ]
     },
     relations: [
-      { id: "r1", from: "statistics", to: "counters", label: "permite" },
-      { id: "r2", from: "history", to: "samples", label: "permite" },
-      { id: "r3", from: "alarms", to: "conditions", label: "permite" },
-      { id: "r4", from: "events", to: "records", label: "permite" }
+      { id: "r1", from: "statistics", to: "counters" },
+      { id: "r2", from: "history", to: "samples" },
+      { id: "r3", from: "alarms", to: "conditions" },
+      { id: "r4", from: "events", to: "records" }
     ]
   }
 };
@@ -210,15 +212,29 @@ for (const width of [360, 390, 412]) {
       await expect(page.locator(".package-math-graph figcaption")).toContainText("|V| = 8");
     });
 
-    test(`relation_map alinha cada origem às imagens sem duplicar a relação em ${width}px no modo ${mode}`, async ({ page }) => {
+    test(`relation_map materializa dois conjuntos e cada par sem sobrepor rótulos em ${width}px no modo ${mode}`, async ({ page }) => {
       await page.setViewportSize({ width, height: 900 });
       await page.goto("/");
       await page.setContent(documentFor(relationInstance, mode));
-      await expect(page.locator(".package-relation-mapping > header strong")).toHaveCount(2);
-      await expect(page.locator(".package-relation-row")).toHaveCount(4);
-      await expect(page.locator(".package-relation-targets > li")).toHaveCount(4);
-      await expect(page.locator(".package-relation-pairs")).toHaveCount(0);
-      await assertContained(page, ".package-relation-mapping, .package-relation-row, .package-relation-targets > li", width);
+      await hydratePackages(page);
+      await expect(page.locator(".package-relation-map-set")).toHaveCount(2);
+      await expect(page.locator(".package-relation-map-node")).toHaveCount(8);
+      await expect(page.locator(".package-relation-map-edge")).toHaveCount(4);
+      await expect(page.locator(".package-relation-map-edge text")).toHaveCount(0);
+      const relationNodes = await page.locator(".package-relation-map-node").evaluateAll((elements) => elements.map((element) => {
+        const rect = element.getBoundingClientRect();
+        return { left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom };
+      }));
+      for (let leftIndex = 0; leftIndex < relationNodes.length; leftIndex += 1) {
+        for (let rightIndex = leftIndex + 1; rightIndex < relationNodes.length; rightIndex += 1) {
+          const left = relationNodes[leftIndex];
+          const right = relationNodes[rightIndex];
+          const overlapWidth = Math.max(0, Math.min(left.right, right.right) - Math.max(left.left, right.left));
+          const overlapHeight = Math.max(0, Math.min(left.bottom, right.bottom) - Math.max(left.top, right.top));
+          expect(overlapWidth * overlapHeight).toBeLessThanOrEqual(0.5);
+        }
+      }
+      await assertContained(page, ".package-relation-map .package-system-diagram-canvas", width);
       expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
     });
 
@@ -232,11 +248,11 @@ for (const width of [360, 390, 412]) {
       await hydratePackages(page);
       await expect(page.locator(".package-math-graph-vertex")).toHaveCount(8);
       await expect(page.locator(".package-math-graph-edge")).toHaveCount(9);
-      await expect(page.locator(".package-relation-map svg")).toHaveCount(0);
-      await expect(page.locator(".package-relation-map .package-relation-row")).toHaveCount(4);
-      await expect(page.locator(".package-relation-map .package-relation-targets > li")).toHaveCount(4);
-      await expect(page.locator(".package-relation-map .package-relation-pairs")).toHaveCount(0);
-      await assertContained(page, ".package-math-graph-canvas, .package-relation-map .package-relation-row, .package-relation-map .package-relation-targets > li", width);
+      await expect(page.locator(".package-relation-map .package-system-diagram-svg")).toHaveCount(1);
+      await expect(page.locator(".package-relation-map .package-relation-map-set")).toHaveCount(2);
+      await expect(page.locator(".package-relation-map .package-relation-map-node")).toHaveCount(8);
+      await expect(page.locator(".package-relation-map .package-relation-map-edge")).toHaveCount(4);
+      await assertContained(page, ".package-math-graph-canvas, .package-relation-map .package-system-diagram-frame", width);
       expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
     });
 

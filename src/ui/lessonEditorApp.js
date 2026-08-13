@@ -1678,8 +1678,9 @@ export function createLessonEditorApp({
     state.continuePopup = null;
     state.activeTextGapPrompt = null;
     state.cardExerciseLoadVersion += 1;
-    syncAssistDraft();
-    render({ preserveState: true });
+    // Um novo card possui foco e posição de leitura próprios. Capturar e
+    // restaurar toda a árvore anterior aqui só alonga o caminho crítico do Play.
+    render({ preserveState: false });
   }
 
   function closeContinuePopup({ rerender = true } = {}) {
@@ -1849,7 +1850,8 @@ export function createLessonEditorApp({
     // No modo de estudo, o card só pode avançar quando os exercícios do card atual
     // estiverem completos e validados como corretos.
     if (delta > 0) {
-      const choices = getCurrentCardChoiceResponse();
+      const currentCard = getRenderContext().card;
+      const choices = getCurrentCardChoiceResponse(currentCard);
       for (const entry of choices) {
         const exercise = state.responseExerciseByBlockKey[entry.blockKey] || { selected: [], feedback: null };
         if (exercise.feedback !== "correct") {
@@ -1861,7 +1863,7 @@ export function createLessonEditorApp({
         }
       }
 
-      const completes = getCurrentCardGapResponse();
+      const completes = getCurrentCardGapResponse(currentCard);
       for (const entry of completes) {
         const exercise = state.responseExerciseByBlockKey[entry.blockKey] || { values: [], feedback: null };
         if (exercise.feedback !== "correct") {
@@ -1872,7 +1874,7 @@ export function createLessonEditorApp({
         }
       }
 
-      const orderings = getCurrentCardOrderingResponse();
+      const orderings = getCurrentCardOrderingResponse(currentCard);
       for (const entry of orderings) {
         const exercise = state.responseExerciseByBlockKey[entry.blockKey] || { order: [], feedback: null };
         if (exercise.feedback !== "correct") {
@@ -1881,7 +1883,7 @@ export function createLessonEditorApp({
         }
       }
 
-      const matchings = getCurrentCardMatchingResponse();
+      const matchings = getCurrentCardMatchingResponse(currentCard);
       for (const entry of matchings) {
         const exercise = state.responseExerciseByBlockKey[entry.blockKey] || { matches: {}, feedback: null };
         if (exercise.feedback !== "correct") {
@@ -1890,7 +1892,7 @@ export function createLessonEditorApp({
         }
       }
 
-      const popupEntry = getCurrentPackageFeedbackEntry();
+      const popupEntry = getCurrentPackageFeedbackEntry(currentCard);
       const popupIsOpen = isCurrentContinuePopupOpen(popupEntry);
 
       if (popupEntry && !popupIsOpen) {
@@ -4813,6 +4815,7 @@ export function createLessonEditorApp({
       : null;
     const context = getRenderContext();
     const rendersPackageCard = state.view === "microsequence";
+    const rendersCardAssistance = rendersPackageCard && state.microsequenceMode === "assist";
     const currentPackageCardOptions = rendersPackageCard
       ? ensureCurrentPackageCardOptions()
       : {};
@@ -4856,7 +4859,7 @@ export function createLessonEditorApp({
           canKeepLocal: false,
           canDiscardLocal: false
         });
-    if (rendersPackageCard) {
+    if (rendersCardAssistance) {
       state.assistDraft.assistance = reconcileCardAssistanceUiState(
         state.assistDraft.assistance,
         { selection: state.selection, card: context.card, cards: context.cards }
@@ -4867,7 +4870,7 @@ export function createLessonEditorApp({
       card: context.card,
       cards: context.cards
     };
-    const cardAssistanceRequestReady = canSubmitCardAssistanceRequest({
+    const cardAssistanceRequestReady = rendersCardAssistance && canSubmitCardAssistanceRequest({
       promptText: state.assistDraft.promptText,
       isSubmitting: state.assistDraft.isSubmitting,
       selectionReady: cardAssistanceSelectionIsReady(
@@ -4957,19 +4960,21 @@ export function createLessonEditorApp({
               }
             : null,
           cardAssistanceState: state.assistDraft.assistance,
-          cardResourceTargets: rendersPackageCard
+          cardResourceTargets: rendersCardAssistance
             ? listCardResourceTargets(context.card).filter((target) =>
                 target.location !== "after_text" || text(context.card?.after).trim()
               )
             : [],
           manualCardEditDraft: state.assistDraft.manualDraft,
           cardAssistanceComposerOpen: state.assistDraft.composerOpen,
-          cardAssistanceConversation: normalizeCardAssistanceConversation(
-            state.assistDraft.conversationByReferenceKey.get(
-              cardAssistanceConversationKey(state.selection)
-            ),
-            state.selection
-          ).turns,
+          cardAssistanceConversation: rendersCardAssistance
+            ? normalizeCardAssistanceConversation(
+                state.assistDraft.conversationByReferenceKey.get(
+                  cardAssistanceConversationKey(state.selection)
+                ),
+                state.selection
+              ).turns
+            : [],
           cardAssistanceRequestReady,
           assistPromptLabel: "O que precisa ser reparado?",
           assistSubmitLabel: "Enviar reparo",

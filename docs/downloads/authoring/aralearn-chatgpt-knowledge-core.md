@@ -304,6 +304,7 @@ A Action devolve caminhos em `error.issues` e orientação em `error.recovery`. 
 
 ## Leitura de representações estruturadas
 
+- Um package especializado só é justificável quando preserva uma estrutura que seria perdida em `paragraph`, `table` ou package existente. Consulte `academic.admission`; aparência diferente ou variedade não são evidência.
 - Todo recurso estruturado deixa explícitos o objeto, a relação e a operação de leitura. A posição, a cor, um identificador interno ou uma legenda distante não podem ser a única forma de entender um dado necessário.
 - Entidades que precisam ser distinguidas possuem nomes visíveis e inequívocos. Rótulos, unidades, direção, ordem, escala e destaque necessários aparecem no próprio card.
 - Em `graph`, círculos representam vértices abstratos e linhas representam arestas; setas só aparecem em dígrafos. O objeto é matemático: adjacência, caminho, ciclo, grau, ponte e conectividade justificam seu uso. Componentes de software, equipamentos, estados e conceitos exigem packages próprios.
@@ -488,6 +489,8 @@ Um card é um envelope fechado:
 `role` aceita `theory` ou `practice`. Teoria tem `response: null` e ao menos uma instância em `content`; prática usa exatamente uma instância de package no slot `response`. Uma prática exclusivamente discriminativa pode ter `content: []`: a pergunta pertence somente a `aralearn.response.choice` e nunca deve ser copiada para um `paragraph`. Quando há cenário, representação ou dados além da pergunta, `content` os materializa sem repetir o enunciado. `feedback` pode combinar packages compatíveis. Cada instância declara id, package, versão semântica e `data` validado pelo contrato daquele package.
 
 Não existe contrato monolítico de resources. Primeiro planeje a operação cognitiva, consulte o catálogo compacto, escolha os packages e só então obtenha o contrato da versão exata de cada escolha. Nunca invente campos ou coordenadas.
+
+Antes de escolher um package especializado, leia `academic.admission`. Use-o somente se `preservedStructure` for necessária à operação e `onlyWhen` for verdadeira neste card. Se alguma condição de `useSimplerRepresentationWhen` for satisfeita, prefira `paragraph`, `table`, uma resposta independente ou outro package já instalado. Diversidade visual não é motivo de seleção.
 
 Microssequências sem cards continuam no planejamento. Com cards, ficam imediatamente renderizáveis e estudáveis. Não envie status de publicação, conclusão ou prontidão.
 

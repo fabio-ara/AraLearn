@@ -19,6 +19,7 @@
     <main class="resource-test-matrix" aria-label="Matriz visual dos resources"></main>
     <script type="module">
       import { renderPackageCardBlocks } from "/src/render/renderPackageCard.js";
+      import { RESOURCE_PACKAGE_REGISTRY } from "/src/resources/packages/index.js";
 
       const response = await fetch("/tests/fixtures/package/resource-test-course.json", {
         cache: "no-store"
@@ -27,17 +28,27 @@
       const library = await response.json();
       const modules = library.courses[0].modules;
       const matrix = document.querySelector(".resource-test-matrix");
+      const filledState = new URLSearchParams(location.search).get("state") === "filled";
       modules.forEach((moduleValue) => {
         const cards = moduleValue.lessons[0].microsequences[0].cards;
         cards.forEach((card) => {
+          const blockKeyPrefix = `resource-matrix:${card.id}`;
+          const responseKey = card.response?.id
+            ? `${blockKeyPrefix}::response:${card.response.id}`
+            : "";
+          const responseStateByBlockKey = filledState && card.response?.package === "aralearn.response.gap"
+            ? { [responseKey]: { values: card.response.data.blanks.map((blank) => blank.answer) } }
+            : {};
           const article = document.createElement("article");
           article.className = "resource-test-card";
           article.dataset.package = card.content[0]?.package || card.response?.package || "unknown";
           article.dataset.modality = card.title;
-          article.innerHTML = `<h2>${moduleValue.title} · ${card.title}</h2>${renderPackageCardBlocks(card)}`;
+          article.dataset.testState = filledState ? "filled" : "initial";
+          article.innerHTML = `<h2>${moduleValue.title} · ${card.title}</h2>${renderPackageCardBlocks(card, { blockKeyPrefix, responseStateByBlockKey })}`;
           matrix.append(article);
         });
       });
+      await RESOURCE_PACKAGE_REGISTRY.hydrate(matrix);
       globalThis.__RESOURCE_TEST_MATRIX_READY__ = true;
     </script>
   </body>

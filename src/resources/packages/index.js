@@ -2,7 +2,6 @@ import { createPackageRegistry } from "../kernel/packageRegistry.js";
 import { paragraphPackage } from "./paragraph/index.js";
 import { codePackage } from "./code/index.js";
 import { tablePackage } from "./table/index.js";
-import { sequencePackage } from "./sequence/index.js";
 import { annotatedTextPackage } from "./annotated-text/index.js";
 import { bpmnProcessPackage } from "./bpmn-process/index.js";
 import { interlinearGlossPackage } from "./interlinear-gloss/index.js";
@@ -21,7 +20,6 @@ import { softwareContainerPackage } from "./software-container/index.js";
 import { systemInternalBlockPackage } from "./system-internal-block/index.js";
 import { graphPackage } from "./graph/index.js";
 import { relationMapPackage } from "./relation-map/index.js";
-import { algorithmTracePackage } from "./algorithm-trace/index.js";
 import { databaseSchemaPackage } from "./database-schema/index.js";
 import { memoryLayoutPackage } from "./memory-layout/index.js";
 import { networkTopologyPackage } from "./network-topology/index.js";
@@ -38,7 +36,6 @@ export const RESOURCE_PACKAGE_REGISTRY = createPackageRegistry([
   paragraphPackage,
   codePackage,
   tablePackage,
-  sequencePackage,
   annotatedTextPackage,
   bpmnProcessPackage,
   interlinearGlossPackage,
@@ -57,7 +54,6 @@ export const RESOURCE_PACKAGE_REGISTRY = createPackageRegistry([
   systemInternalBlockPackage,
   graphPackage,
   relationMapPackage,
-  algorithmTracePackage,
   databaseSchemaPackage,
   memoryLayoutPackage,
   networkTopologyPackage,
@@ -80,7 +76,6 @@ export {
   interlinearGlossPackage,
   paragraphPackage,
   orderingResponsePackage,
-  sequencePackage,
   tablePackage,
   treePackage,
   matrixPackage,
@@ -94,7 +89,6 @@ export {
   systemInternalBlockPackage,
   graphPackage,
   relationMapPackage,
-  algorithmTracePackage,
   databaseSchemaPackage,
   memoryLayoutPackage,
   networkTopologyPackage,

@@ -13,18 +13,7 @@ const responseContent = (manifest) => {
     return [paragraph("body-1", "Um protocolo define regras compartilhadas.")];
   }
   if (manifest.id === "aralearn.response.ordering") {
-    return [{
-      id: "body-1",
-      package: "aralearn.resource.sequence",
-      version: "1.0.0",
-      data: {
-        variant: "ordered_steps",
-        items: [
-          { id: "s1", label: "Preparar" },
-          { id: "s2", label: "Executar" }
-        ]
-      }
-    }];
+    return [paragraph("body-1", "Organize as etapas do procedimento na ordem em que devem ser executadas.")];
   }
   return [paragraph(`context-${manifest.id}`, manifest.purpose)];
 };

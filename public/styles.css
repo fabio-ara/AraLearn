@@ -2442,100 +2442,11 @@ input:-webkit-autofill:focus {
   font: inherit;
 }
 
-.package-relation-mapping ol,
-.package-relation-targets,
 .package-packet-legend,
 .package-memory-stack {
   margin: 0;
   padding: 0;
   list-style: none;
-}
-
-.package-relation-mapping {
-  overflow: hidden;
-  border: 1px solid var(--resource-border-strong);
-  border-radius: 12px;
-  background: var(--resource-surface-subtle);
-}
-
-.package-relation-mapping > header,
-.package-relation-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 24px minmax(0, 1fr);
-  gap: 7px;
-  align-items: center;
-}
-
-.package-relation-mapping > header {
-  padding: 8px 10px;
-  border-bottom: 1px solid var(--resource-border-strong);
-  color: var(--resource-text-secondary);
-  font-size: var(--type-base);
-  text-align: center;
-}
-
-.package-relation-mapping > header strong,
-.package-relation-source,
-.package-relation-targets strong {
-  min-width: 0;
-  overflow-wrap: anywhere;
-}
-
-.package-relation-mapping > ol {
-  display: grid;
-}
-
-.package-relation-row {
-  padding: 8px 10px;
-  border-bottom: 1px solid var(--resource-border);
-  background: var(--resource-surface);
-  color: var(--resource-text);
-  font-size: var(--type-base);
-}
-
-.package-relation-row:last-child {
-  border-bottom: 0;
-}
-
-.package-relation-row.is-highlighted,
-.package-relation-targets li.is-highlighted {
-  box-shadow: inset 3px 0 0 var(--resource-accent);
-}
-
-.package-relation-arrow {
-  color: var(--resource-accent);
-  font-weight: 700;
-  text-align: center;
-}
-
-.package-relation-targets {
-  display: grid;
-  gap: 5px;
-}
-
-.package-relation-targets li {
-  min-width: 0;
-}
-
-.package-relation-targets small {
-  display: block;
-  margin-top: 2px;
-  color: var(--resource-text-secondary);
-  overflow-wrap: anywhere;
-}
-
-.package-relation-targets .is-empty,
-.package-relation-unpaired {
-  color: var(--resource-text-secondary);
-  font-style: italic;
-}
-
-.package-relation-unpaired {
-  margin: 0;
-  padding: 8px 10px;
-  border-top: 1px solid var(--resource-border);
-  font-size: var(--type-base);
-  overflow-wrap: anywhere;
 }
 
 .package-truth-table .runtime-table th.is-derived,
@@ -2545,7 +2456,6 @@ input:-webkit-autofill:focus {
 }
 
 .package-packet-layout,
-.package-algorithm-trace,
 .package-database-schema,
 .package-bpmn-process,
 .package-state-machine,
@@ -2760,19 +2670,14 @@ input:-webkit-autofill:focus {
   color: var(--resource-text-secondary);
 }
 
-.package-algorithm-trace .runtime-table th[scope="row"] {
-  min-width: 135px;
-  text-align: start;
-}
-
-.package-algorithm-trace .runtime-table th[scope="row"] > * {
-  display: block;
-}
-
 .package-set-canvas {
   position: relative;
-  max-width: 280px;
+  width: min(100%, 300px);
   margin-inline: auto;
+  border: 1px solid var(--resource-border);
+  border-radius: 12px;
+  background: var(--resource-surface-subtle);
+  overflow: hidden;
 }
 
 .package-set-canvas svg {
@@ -2781,27 +2686,79 @@ input:-webkit-autofill:focus {
   height: auto;
 }
 
-.package-set-canvas ellipse {
-  fill: color-mix(in srgb, var(--resource-accent-subtle) 34%, transparent);
+.package-set-shape {
+  fill: color-mix(in srgb, var(--resource-accent-subtle) 28%, transparent);
   stroke: var(--resource-accent);
-  stroke-width: 1.3;
+  stroke-width: 1.25;
   vector-effect: non-scaling-stroke;
 }
 
-.package-set-labels {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  justify-content: center;
-  margin-block-start: -5px;
+.package-set-shape.tone-1 {
+  fill: color-mix(in srgb, var(--resource-warning-subtle) 38%, transparent);
+  stroke: var(--resource-warning);
 }
 
-.package-set-labels span {
-  padding: 3px 7px;
-  border: 1px solid var(--resource-accent);
-  border-radius: 999px;
-  color: var(--resource-text);
+.package-set-shape.tone-2 {
+  fill: color-mix(in srgb, var(--resource-correct-subtle) 34%, transparent);
+  stroke: var(--resource-correct);
+}
+
+.package-set-name {
+  fill: var(--resource-text);
+  font-family: var(--font-ui);
   font-size: var(--type-base);
+  font-weight: 700;
+  paint-order: stroke;
+  stroke: var(--resource-surface-subtle);
+  stroke-width: 4px;
+  stroke-linejoin: round;
+}
+
+.package-set-region-marker circle {
+  fill: var(--resource-surface);
+  stroke: var(--resource-accent);
+  stroke-width: 1.4;
+  vector-effect: non-scaling-stroke;
+}
+
+.package-set-region-marker text {
+  fill: var(--resource-text);
+  font-family: var(--font-ui);
+  font-size: var(--type-xs);
+  font-weight: 750;
+}
+
+.package-set-key {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  justify-content: center;
+  margin: 0;
+}
+
+.package-set-key > div {
+  display: flex;
+  gap: 4px;
+  align-items: baseline;
+  color: var(--resource-text-secondary);
+  font-size: var(--type-sm);
+}
+
+.package-set-key dt {
+  color: var(--resource-accent);
+  font-weight: 750;
+}
+
+.package-set-key .tone-1 dt {
+  color: var(--resource-warning);
+}
+
+.package-set-key .tone-2 dt {
+  color: var(--resource-correct);
+}
+
+.package-set-key dd {
+  margin: 0;
 }
 
 .package-set-diagram figcaption {
@@ -2821,16 +2778,34 @@ input:-webkit-autofill:focus {
 
 .package-set-diagram figcaption li {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-columns: 24px minmax(0, 1fr) minmax(0, 1fr);
   gap: 3px 8px;
+  align-items: center;
   padding: 7px;
   border-radius: 8px;
   background: var(--resource-surface-subtle);
 }
 
+.package-set-diagram figcaption li > b {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border: 1px solid var(--resource-accent);
+  border-radius: 50%;
+  color: var(--resource-text);
+  font-size: var(--type-xs);
+}
+
 .package-set-diagram figcaption li small {
-  grid-column: 1 / -1;
+  grid-column: 2 / -1;
   color: var(--resource-text-secondary);
+}
+
+.package-set-layout-error {
+  margin: 0;
+  color: var(--resource-error);
+  font-size: var(--type-sm);
 }
 
 .package-memory-stack {
@@ -3193,7 +3168,6 @@ input:-webkit-autofill:focus {
 .runtime-plane-block,
 .runtime-matrix-block,
 .runtime-graph-block,
-.runtime-relation-map-block,
 .runtime-formula-block {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
@@ -3315,27 +3289,49 @@ input:-webkit-autofill:focus {
 }
 
 .package-system-diagram-edge-label > span {
-  display: flex;
+  display: block;
   width: 100%;
   height: 100%;
-  align-items: center;
-  justify-content: center;
+  align-content: center;
   color: var(--resource-text);
   font-size: var(--type-sm);
-  line-height: var(--leading-snug);
+  line-height: 1.15;
   text-align: center;
+  white-space: normal;
+  overflow-wrap: normal;
+}
+
+/* Graphviz mede o texto final antes de o controle interativo ser materializado.
+   Dentro do SVG, a lacuna deve conservar essa métrica e nunca se decompor em
+   uma coluna de caracteres por causa do algoritmo de quebra de texto do HTML. */
+.package-system-diagram-node-label .runtime-text-gap-blank,
+.package-system-diagram-edge-label .runtime-text-gap-blank {
+  display: inline-block;
+  max-width: 100%;
+  vertical-align: middle;
+}
+
+.package-system-diagram-edge-label .runtime-text-gap-blank {
+  white-space: nowrap;
+  overflow-wrap: normal;
 }
 
 .package-system-diagram-node-content {
   flex-direction: column;
-  gap: 2px;
-  padding: 2px;
+  gap: 1px;
+  padding: 0;
+  line-height: 1.15;
 }
 
 .package-system-diagram-node-content :is(small, em) {
   color: var(--resource-text-secondary);
   font-size: var(--type-xs);
   font-style: normal;
+}
+
+.package-system-diagram-node-content code {
+  font-size: var(--type-xs);
+  line-height: 1.15;
 }
 
 .package-bpmn-node .package-system-diagram-node-content :is(small, strong) {
@@ -3370,6 +3366,45 @@ input:-webkit-autofill:focus {
   stroke: var(--resource-border-strong);
   stroke-width: 1.15px;
   vector-effect: non-scaling-stroke;
+}
+
+.package-system-diagram-svg .package-relation-map-set > polygon {
+  fill: color-mix(in srgb, var(--resource-surface-subtle) 72%, transparent);
+  stroke: var(--resource-border-strong);
+  stroke-width: 1.15px;
+  vector-effect: non-scaling-stroke;
+}
+
+.package-system-diagram-svg .package-relation-map-node ellipse {
+  fill: var(--resource-surface);
+  stroke: var(--resource-border-strong);
+  stroke-width: 1.15px;
+  vector-effect: non-scaling-stroke;
+}
+
+.package-system-diagram-svg .package-relation-map-node.is-highlighted ellipse {
+  fill: var(--resource-accent-subtle);
+  stroke: var(--resource-accent);
+  stroke-width: 1.6px;
+}
+
+.package-system-diagram-svg .package-relation-map-edge path {
+  fill: none;
+  stroke: var(--resource-border-strong);
+  stroke-width: 1.15px;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+
+.package-system-diagram-svg .package-relation-map-edge polygon {
+  fill: var(--resource-accent);
+  stroke: var(--resource-accent);
+}
+
+.package-system-diagram-svg .package-relation-map-edge.is-highlighted path {
+  stroke: var(--resource-accent);
+  stroke-width: 1.8px;
 }
 
 .package-system-diagram-svg .package-state-machine-state.is-accepting :is(ellipse, polygon, path) {
@@ -3416,7 +3451,7 @@ input:-webkit-autofill:focus {
   align-content: center;
   color: var(--resource-text);
   font-size: var(--type-base);
-  line-height: var(--leading-snug);
+  line-height: 1.15;
   text-align: start;
 }
 
@@ -3438,7 +3473,7 @@ input:-webkit-autofill:focus {
   align-content: center;
   color: var(--resource-text);
   font-size: var(--type-base);
-  line-height: var(--leading-snug);
+  line-height: 1.15;
   text-align: start;
 }
 
@@ -6670,68 +6705,6 @@ input:-webkit-autofill:focus {
   font-size: var(--type-xs);
   overflow-wrap: anywhere;
 }
-.runtime-sequence-list {
-  display: grid;
-  gap: 0;
-  margin: 12px 0 0;
-  padding: 0;
-  list-style: none;
-}
-
-.runtime-sequence-list > li {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  gap: 10px;
-  position: relative;
-  padding: 0 0 20px;
-}
-
-.runtime-sequence-list > li:last-child {
-  padding-bottom: 0;
-}
-
-.runtime-sequence-position {
-  display: grid;
-  place-items: center;
-  align-self: start;
-  width: 28px;
-  height: 28px;
-  border: 1px solid var(--resource-border);
-  border-radius: 50%;
-  color: var(--resource-accent);
-  font-size: var(--type-xs);
-  font-weight: 700;
-}
-
-.runtime-sequence-content {
-  min-width: 0;
-  padding-top: 3px;
-}
-
-.runtime-sequence-content > p {
-  margin: 4px 0 0;
-  color: var(--resource-text-muted);
-}
-
-.runtime-sequence-connector {
-  position: absolute;
-  inset-block-end: 1px;
-  inset-inline-start: 8px;
-  width: 12px;
-  color: var(--resource-text-muted);
-  line-height: 18px;
-  text-align: center;
-}
-
-.runtime-sequence-list > li:not(:last-child)::after {
-  content: "";
-  position: absolute;
-  inset-block-start: 29px;
-  inset-block-end: 17px;
-  inset-inline-start: 13px;
-  border-inline-start: 1px solid var(--resource-border);
-}
-
 .package-ordering-response ol {
   display: grid;
   gap: 8px;

@@ -52,9 +52,9 @@ O JSON descreve significado; o renderer do package decide geometria e dimensiona
 
 Em `graph`, vértices são entidades estáveis e relações são apresentadas sem sobrepor rótulos às arestas. Use direção somente quando ela mudar a interpretação. Não force um grafo para representar uma simples sequência ou lista.
 
-Em `relation_map`, deixe explícitos domínio, contradomínio e pares ordenados. O renderer apresenta cada elemento uma única vez e enumera a relação sem cruzar rótulos. Use `set_diagram` quando interseção, união ou pertencimento simultâneo for o objeto.
+Em `relation_map`, deixe explícitos domínio, contradomínio e pares ordenados. O renderer apresenta os dois conjuntos e uma seta sem rótulo para cada par; a notação extensional complementar registra os pares sem disputar espaço com as arestas. Use-o somente quando imagem, preimagem ou cardinalidade fizer parte do raciocínio. Use `table` ou `matching` para uma simples correspondência e `set_diagram` quando interseção, união ou pertencimento simultâneo for o objeto. Nesse package, escolha `venn` quando todas as combinações lógicas precisam permanecer visíveis e `euler` quando a ausência de uma região é parte da topologia observada. Declare conjuntos, símbolos curtos e pertencimento; não declare círculos, coordenadas ou tamanhos. Mais de três conjuntos exigem outra representação, não um diagrama ilegível comprimido.
 
-`matrix` é reservado a arranjos algébricos de escalares ou expressões, sem cabeçalhos de atributos nem grade de registros. Para dados tabulares use `table`; para esquema relacional use `database_schema`; para execução variável por passo use `algorithm_trace`.
+`matrix` é reservado a arranjos algébricos de escalares ou expressões, sem cabeçalhos de atributos nem grade de registros. Para dados tabulares use `table`; para esquema relacional use `database_schema`. Mudanças de variáveis por passo permanecem em `table` enquanto não houver uma representação sincronizada de execução que preserve estrutura adicional.
 
 Em `flow`, cada decisão explicita condição e consequência. Em `tree`, a ligação preserva pai e filho. Nos demais packages, unidades, eixos, ordem, notação, grupos e direção necessários precisam estar declarados nos campos semânticos do contrato.
 
@@ -89,7 +89,7 @@ Escolha o recurso pela operação que o estudante precisa realizar:
 | Operação | Recursos mais prováveis |
 |---|---|
 | compreender uma definição ou distinção | `paragraph`, `choice` ou combinação justificada de packages |
-| acompanhar execução, sintaxe ou comando | `code`, `algorithm_trace`, `flow` |
+| acompanhar execução, sintaxe ou comando | `code`, `table`, `flow` |
 | comparar casos, registros ou valores | `table`, `chart`, `choice` |
 | reconhecer hierarquia ou classificação | `tree`, `matching` |
 | analisar adjacência, caminhos, ciclos ou conectividade abstrata | `graph` |
@@ -117,7 +117,7 @@ Registre o objetivo e a evidência em `microsequence.goal` e `microsequence.chec
 - Use alternativas quando o objetivo for prever saída, encontrar defeito, escolher consulta ou distinguir efeitos colaterais.
 - Preserve indentação, linguagem, versão e ambiente relevantes. SQL precisa indicar o esquema mínimo, as linhas necessárias e o dialeto quando isso mudar a resposta.
 - Faça o estudante acompanhar o estado: valores de variáveis, pilha, resultado intermediário, linhas afetadas ou fluxo de controle.
-- Use `algorithm_trace` para mudanças de variáveis por passo, `database_schema` para chaves e referências e `memory_layout` para endereços e segmentos. Uma tabela genérica não substitui essas convenções.
+- Para mudanças de variáveis por passo, use `table` somente quando a leitura cruzada entre passos e variáveis for suficiente; coordene-a com `code` quando a linha executada também fizer parte da explicação. Não existe package de rastreamento enquanto não houver uma representação sincronizada que acrescente algo demonstrável à tabela. Use `database_schema` para chaves e referências e `memory_layout` para endereços e segmentos.
 - Um fragmento executável não deve depender de arquivo, biblioteca ou tabela que não esteja declarada no card.
 - Distratores devem representar erros reais: atribuição em lugar de comparação, índice incorreto, junção inadequada, filtro aplicado no estágio errado, mutação inesperada ou tratamento incompleto de ausência.
 
@@ -198,9 +198,9 @@ Antes de aprovar, verifique:
 
 Packages são módulos independentes compatíveis com o kernel. O catálogo compacto informa identidade, versão, finalidade, operações cognitivas, slots, áreas, objetos de conhecimento, convenções acadêmicas, adequações, contraindicações, tecnologias, modalidades de prática, compatibilidades, limitações e acessibilidade. O contrato completo só é devolvido para package e versão escolhidos.
 
-Os packages de conteúdo instalados incluem texto explicado, código, tabela, sequência, texto anotado, glosa interlinear, árvore, matriz, reação, fluxo, fórmula, plano, gráfico, mapa de sistema, grafo, mapa de relações, tabela-verdade, layout de pacote, rastreamento de algoritmo, esquema relacional, máquina de estados, topologia de rede, diagrama de conjuntos e mapa de memória. Os packages de resposta instalados cobrem escolha, lacuna, ordenação e encaixe/classificação. A lista vigente é sempre derivada do registry; documentação não é fonte paralela de enumeração.
+Os packages de conteúdo instalados incluem texto explicado, código, tabela, texto anotado, glosa interlinear, árvore, matriz, reação, fluxo, fórmula, plano, gráfico, mapa de sistema, grafo, mapa de relações, tabela-verdade, layout de pacote, esquema relacional, máquina de estados, topologia de rede, diagrama de conjuntos e mapa de memória. Os packages de resposta instalados cobrem escolha, lacuna, ordenação e encaixe/classificação. A lista vigente é sempre derivada do registry; documentação não é fonte paralela de enumeração.
 
-`graph` recebe vértices e arestas sem coordenadas. O package calcula a geometria móvel e mantém os rótulos completos numa lista semântica fora das arestas. `relation_map` recebe domínio, contradomínio e pares ordenados; apresenta cada elemento uma única vez e explicita a relação sem cruzar texto. `matrix` representa somente arranjos algébricos, sem herdar a grade de uma tabela de registros.
+`graph` recebe vértices e arestas sem coordenadas. O package calcula a geometria móvel e mantém os rótulos completos numa lista semântica fora das arestas. `relation_map` recebe domínio, contradomínio e pares ordenados; apresenta cada elemento uma única vez, usa uma seta sem rótulo por par e complementa o desenho com notação extensional, sem cruzar texto. `matrix` representa somente arranjos algébricos, sem herdar a grade de uma tabela de registros.
 
 Na autoria, escolha pelo trabalho cognitivo e não para variar visualmente. Explique referências e termos antes de exigir interpretação. Divida uma ideia quando densidade, número de relações ou carga verbal tornarem o recurso difícil de ler em 360 px.
 

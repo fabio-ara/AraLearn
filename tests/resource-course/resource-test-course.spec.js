@@ -116,7 +116,7 @@ test("table recebe alternativa e digitação dentro de células", async ({ page 
 });
 
 test("texto anotado liga trecho e nota nos dois sentidos sem ids internos", async ({ page }) => {
-  await openModule(page, 4);
+  await openModuleByKey(page, "resource-test-4-module");
   await expect(page.locator(".runtime-annotated-text-segment")).toHaveCount(2);
   await expect(page.locator(".runtime-annotated-text-notes")).not.toContainText("Trechos:");
   await page.locator(".runtime-annotated-text-segment").first().click();
@@ -127,7 +127,7 @@ test("texto anotado liga trecho e nota nos dois sentidos sem ids internos", asyn
 });
 
 test("BPMN preserva participantes, raias, gateways e fluxos em um caso não trivial", async ({ page }) => {
-  await openModule(page, 5);
+  await openModuleByKey(page, "resource-test-5-module");
   await expect(page.locator('[data-graphviz-status="ready"]')).toHaveCount(1);
   await expect(page.locator(".package-bpmn-participant")).toHaveCount(2);
   await expect(page.locator(".package-bpmn-lane")).toHaveCount(3);
@@ -192,7 +192,7 @@ test("BPMN preserva participantes, raias, gateways e fluxos em um caso não triv
 
 test("frame BPMN mantém as duas rolagens ao alcance e não captura o gesto feito fora dele", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 700 });
-  await openModule(page, 5);
+  await openModuleByKey(page, "resource-test-5-module");
   const frame = page.locator('.package-bpmn-process [data-resource-scroll-frame="diagram"]');
   const card = page.locator(".card-sheet-content");
   await expect(frame).toHaveAttribute("data-graphviz-status", "ready");
@@ -249,7 +249,7 @@ test("frame BPMN mantém as duas rolagens ao alcance e não captura o gesto feit
 });
 
 test("contêineres de software preservam todo rótulo na exposição e após preencher a lacuna", async ({ page }) => {
-  await openModule(page, 15);
+  await openModuleByKey(page, "resource-test-15-module");
   await expect(page.locator('.runtime-software-container-block [data-graphviz-status="ready"]')).toHaveCount(1);
 
   const staticLabels = await page.locator(".package-software-container-node").evaluateAll((nodes) => nodes.map((node) => {
@@ -311,7 +311,7 @@ test("contêineres de software preservam todo rótulo na exposição e após pre
 });
 
 test("glosa interlinear preserva alinhamento, tradução e legenda", async ({ page }) => {
-  await openModule(page, 6);
+  await openModuleByKey(page, "resource-test-6-module");
   await expect(page.locator(".runtime-interlinear-unit")).toHaveCount(6);
   await expect(page.locator(".runtime-interlinear-form").nth(1)).toHaveText("abur-u-n");
   await expect(page.locator(".runtime-interlinear-unit-gloss").nth(1)).toHaveText("they-OBL-GEN");
@@ -323,7 +323,7 @@ test("glosa interlinear preserva alinhamento, tradução e legenda", async ({ pa
 });
 
 test("matrix usa MathML com peso normal e lacuna na entrada", async ({ page }) => {
-  await openModule(page, 8);
+  await openModuleByKey(page, "resource-test-8-module");
   await expect(page.locator(".runtime-matrix-item math.runtime-matrix-values mtable")).toHaveCount(1);
   await expect(page.locator(".runtime-matrix-item math.runtime-matrix-values mtr")).toHaveCount(3);
   await expect(page.locator(".runtime-matrix-name")).toHaveText("I");
@@ -356,7 +356,7 @@ test("matrix usa MathML com peso normal e lacuna na entrada", async ({ page }) =
 });
 
 test("reaction materializa escolha e digitação dentro da equação química", async ({ page }) => {
-  await openModule(page, 9);
+  await openModuleByKey(page, "resource-test-9-module");
   const spacing = await page.locator(".package-reaction-equation").evaluate((equation) => {
     const species = [...equation.querySelectorAll(".package-reaction-species")];
     const coefficient = equation.querySelector(".package-reaction-coefficient").getBoundingClientRect();
@@ -390,7 +390,7 @@ test("reaction materializa escolha e digitação dentro da equação química", 
 });
 
 test("flow usa convenções de fluxograma e não a estrutura visual de tree", async ({ page }) => {
-  await openModule(page, 10);
+  await openModuleByKey(page, "resource-test-10-module");
   await expect(page.locator(".package-flowchart")).toBeVisible();
   await expect(page.locator('[data-flow-layout-status="ready"]')).toHaveCount(1);
   await expect(page.locator(".package-flow-node.is-terminal")).toHaveCount(2);
@@ -534,7 +534,7 @@ test("flow complexo diagrama laço e decisão aninhada sem sobrepor nós", async
 });
 
 test("formula combina texto e notação avançada na mesma escala tipográfica", async ({ page }) => {
-  await openModule(page, 11);
+  await openModuleByKey(page, "resource-test-11-module");
   await expect(page.locator(".runtime-formula-block > p")).toContainText("teoria de campos");
   await expect(page.locator(".package-formula math")).toBeVisible();
   await expect(page.locator(".package-formula math mfrac")).toHaveCount(2);
@@ -576,7 +576,7 @@ test("plano cartesiano complexo preserva eixos, objetos e rótulos sem colisão"
   await page.evaluate(() => localStorage.setItem("aralearn.ui.theme", "dark"));
   await page.reload();
   await page.waitForFunction(() => globalThis.__RESOURCE_TEST_COURSE_READY__ === true);
-  await openModule(page, 12);
+  await openModuleByKey(page, "resource-test-12-module");
   await expect(page.locator(".package-plane-canvas[data-vega-status='ready']")).toBeVisible();
   const geometry = await page.locator(".package-plane-canvas").evaluate((canvas) => {
     const expected = new Set(["e₁", "e₂", "Ae₁", "Ae₂", "p", "Ap"]);
@@ -698,7 +698,7 @@ test("plano cartesiano complexo preserva eixos, objetos e rótulos sem colisão"
 });
 
 test("gráfico acadêmico mostra escala logarítmica, incerteza e referência sem legenda solta", async ({ page }) => {
-  await openModule(page, 13);
+  await openModuleByKey(page, "resource-test-13-module");
   const canvas = page.locator(".package-chart-canvas[data-vega-status='ready']");
   await expect(canvas).toBeVisible();
   await expect(canvas).toContainText("Concorrência (requisições simultâneas)");

@@ -82,6 +82,16 @@ function assertAcademicManifest(manifest) {
   ]) {
     assertNonEmptyList(academic[field], `${manifest.id}.manifest.academic.${field}`);
   }
+  const admission = academic.admission;
+  if (!admission || typeof admission !== "object" || Array.isArray(admission)) {
+    throw new TypeError(`${manifest.id}.manifest.academic precisa de admission.`);
+  }
+  for (const field of ["preservedStructure", "onlyWhen", "useSimplerRepresentationWhen"]) {
+    assertNonEmptyList(admission[field], `${manifest.id}.manifest.academic.admission.${field}`);
+  }
+  if (!text(admission.decisionRule)) {
+    throw new TypeError(`${manifest.id}.manifest.academic.admission precisa de decisionRule.`);
+  }
   if (academic.practiceModes.some((mode) => !PRACTICE_MODES.includes(mode))) {
     throw new TypeError(`${manifest.id} declara modalidade de prática desconhecida.`);
   }

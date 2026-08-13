@@ -11,6 +11,7 @@ const SHELL = [
   "./styles.css",
   "./vendor/vega.min.js",
   "./vendor/vega-lite.min.js",
+  "./vendor/venn.esm.js",
   "./vendor/viz-global.js",
   "./main.js",
   "./assets/brand/aralearn-mark.png"

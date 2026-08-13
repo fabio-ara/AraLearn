@@ -42,6 +42,12 @@ Não existe contrato monolítico de resources. Primeiro planeje a operação
 cognitiva, consulte o catálogo compacto, escolha os packages e só então obtenha
 o contrato da versão exata de cada escolha. Nunca invente campos ou coordenadas.
 
+Antes de escolher um package especializado, leia `academic.admission`. Use-o
+somente se `preservedStructure` for necessária à operação e `onlyWhen` for
+verdadeira neste card. Se alguma condição de `useSimplerRepresentationWhen`
+for satisfeita, prefira `paragraph`, `table`, uma resposta independente ou
+outro package já instalado. Diversidade visual não é motivo de seleção.
+
 Microssequências sem cards continuam no planejamento. Com cards, ficam
 imediatamente renderizáveis e estudáveis. Não envie status de publicação,
 conclusão ou prontidão.

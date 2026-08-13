@@ -598,249 +598,6 @@
         },
         {
           "id": "resource-test-4-module",
-          "title": "Sequência",
-          "guide": {
-            "goal": "Avaliar aralearn.resource.sequence somente nas modalidades declaradas pelo próprio package.",
-            "include": [
-              "representação canônica e interação declarada"
-            ],
-            "exclude": [
-              "adaptação artificial de outra operação cognitiva"
-            ],
-            "notation": [
-              "ordem de leitura explícita",
-              "etapas identificáveis",
-              "ciclo fechado quando aplicável"
-            ],
-            "avoid": [
-              "usar a forma quando ela não acrescenta significado"
-            ]
-          },
-          "lessons": [
-            {
-              "id": "resource-test-4-lesson",
-              "title": "Sequência",
-              "guide": {
-                "goal": "Avaliar aralearn.resource.sequence somente nas modalidades declaradas pelo próprio package.",
-                "include": [
-                  "exposição e práticas semanticamente suportadas"
-                ],
-                "exclude": [
-                  "práticas universais presumidas"
-                ],
-                "notation": [
-                  "ordem de leitura explícita",
-                  "etapas identificáveis",
-                  "ciclo fechado quando aplicável"
-                ],
-                "avoid": [
-                  "lacuna fora da representação"
-                ]
-              },
-              "topics": [],
-              "microsequences": [
-                {
-                  "id": "resource-test-4-microsequence",
-                  "title": "Sequência",
-                  "goal": "Avaliar aralearn.resource.sequence somente nas modalidades declaradas pelo próprio package.",
-                  "role": "practice",
-                  "dependsOn": [],
-                  "covers": [],
-                  "checks": [
-                    "sem sobreposição",
-                    "alvo de prática dentro da representação",
-                    "Play como confirmação"
-                  ],
-                  "errors": [],
-                  "cards": [
-                    {
-                      "id": "resource-test-4-exposition",
-                      "position": 1,
-                      "title": "Exposição",
-                      "role": "theory",
-                      "content": [
-                        {
-                          "id": "resource-test-4-exposition-content",
-                          "package": "aralearn.resource.sequence",
-                          "version": "1.0.0",
-                          "data": {
-                            "prompt": "Acompanhe uma resolução DNS iterativa depois que o nome completo e o papel do resolvedor já foram apresentados.",
-                            "variant": "ordered_steps",
-                            "items": [
-                              {
-                                "id": "query",
-                                "label": "Receber a consulta do cliente",
-                                "detail": "O resolvedor verifica primeiro seu cache."
-                              },
-                              {
-                                "id": "root",
-                                "label": "Consultar um servidor raiz",
-                                "detail": "A resposta encaminha para o domínio de topo apropriado."
-                              },
-                              {
-                                "id": "tld",
-                                "label": "Consultar o servidor do domínio de topo",
-                                "detail": "A resposta indica servidores autoritativos do domínio."
-                              },
-                              {
-                                "id": "authoritative",
-                                "label": "Consultar o servidor autoritativo",
-                                "detail": "O registro solicitado é devolvido com seu TTL."
-                              },
-                              {
-                                "id": "answer",
-                                "label": "Armazenar e devolver a resposta",
-                                "detail": "O cache evita repetir imediatamente todo o percurso."
-                              }
-                            ]
-                          }
-                        }
-                      ],
-                      "response": null,
-                      "feedback": [],
-                      "topics": [],
-                      "sources": []
-                    },
-                    {
-                      "id": "resource-test-4-choice",
-                      "position": 2,
-                      "title": "Lacuna com alternativas",
-                      "role": "practice",
-                      "content": [
-                        {
-                          "id": "resource-test-4-choice-content",
-                          "package": "aralearn.resource.sequence",
-                          "version": "1.0.0",
-                          "data": {
-                            "prompt": "Acompanhe uma resolução DNS iterativa depois que o nome completo e o papel do resolvedor já foram apresentados.",
-                            "variant": "ordered_steps",
-                            "items": [
-                              {
-                                "id": "query",
-                                "label": "Receber a consulta do cliente",
-                                "detail": "O resolvedor verifica primeiro seu cache."
-                              },
-                              {
-                                "id": "root",
-                                "label": "Consultar um servidor raiz",
-                                "detail": "A resposta encaminha para o domínio de topo apropriado."
-                              },
-                              {
-                                "id": "tld",
-                                "label": "Consultar o servidor do domínio de topo",
-                                "detail": "A resposta indica servidores autoritativos do domínio."
-                              },
-                              {
-                                "id": "authoritative",
-                                "label": "Consultar o servidor autoritativo",
-                                "detail": "O registro solicitado é devolvido com seu TTL."
-                              },
-                              {
-                                "id": "answer",
-                                "label": "Armazenar e devolver a resposta",
-                                "detail": "O cache evita repetir imediatamente todo o percurso."
-                              }
-                            ]
-                          }
-                        }
-                      ],
-                      "response": {
-                        "id": "resource-test-4-choice-response",
-                        "package": "aralearn.response.gap",
-                        "version": "1.0.0",
-                        "data": {
-                          "blanks": [
-                            {
-                              "id": "blank-1",
-                              "targetInstanceId": "resource-test-4-choice-content",
-                              "targetPath": "items[0].label",
-                              "label": "Lacuna na etapa 1",
-                              "responseMode": "choice",
-                              "answer": "consulta",
-                              "distractors": [
-                                "não consulta",
-                                "outro consulta"
-                              ]
-                            }
-                          ]
-                        }
-                      },
-                      "feedback": [],
-                      "topics": [],
-                      "sources": []
-                    },
-                    {
-                      "id": "resource-test-4-text",
-                      "position": 3,
-                      "title": "Lacuna com digitação",
-                      "role": "practice",
-                      "content": [
-                        {
-                          "id": "resource-test-4-text-content",
-                          "package": "aralearn.resource.sequence",
-                          "version": "1.0.0",
-                          "data": {
-                            "prompt": "Acompanhe uma resolução DNS iterativa depois que o nome completo e o papel do resolvedor já foram apresentados.",
-                            "variant": "ordered_steps",
-                            "items": [
-                              {
-                                "id": "query",
-                                "label": "Receber a consulta do cliente",
-                                "detail": "O resolvedor verifica primeiro seu cache."
-                              },
-                              {
-                                "id": "root",
-                                "label": "Consultar um servidor raiz",
-                                "detail": "A resposta encaminha para o domínio de topo apropriado."
-                              },
-                              {
-                                "id": "tld",
-                                "label": "Consultar o servidor do domínio de topo",
-                                "detail": "A resposta indica servidores autoritativos do domínio."
-                              },
-                              {
-                                "id": "authoritative",
-                                "label": "Consultar o servidor autoritativo",
-                                "detail": "O registro solicitado é devolvido com seu TTL."
-                              },
-                              {
-                                "id": "answer",
-                                "label": "Armazenar e devolver a resposta",
-                                "detail": "O cache evita repetir imediatamente todo o percurso."
-                              }
-                            ]
-                          }
-                        }
-                      ],
-                      "response": {
-                        "id": "resource-test-4-text-response",
-                        "package": "aralearn.response.gap",
-                        "version": "1.0.0",
-                        "data": {
-                          "blanks": [
-                            {
-                              "id": "blank-1",
-                              "targetInstanceId": "resource-test-4-text-content",
-                              "targetPath": "items[0].label",
-                              "label": "Lacuna na etapa 1",
-                              "responseMode": "text",
-                              "answer": "consulta"
-                            }
-                          ]
-                        }
-                      },
-                      "feedback": [],
-                      "topics": [],
-                      "sources": []
-                    }
-                  ]
-                }
-              ]
-            }
-          ]
-        },
-        {
-          "id": "resource-test-5-module",
           "title": "Texto anotado",
           "guide": {
             "goal": "Avaliar aralearn.resource.annotated_text somente nas modalidades declaradas pelo próprio package.",
@@ -861,7 +618,7 @@
           },
           "lessons": [
             {
-              "id": "resource-test-5-lesson",
+              "id": "resource-test-4-lesson",
               "title": "Texto anotado",
               "guide": {
                 "goal": "Avaliar aralearn.resource.annotated_text somente nas modalidades declaradas pelo próprio package.",
@@ -883,7 +640,7 @@
               "topics": [],
               "microsequences": [
                 {
-                  "id": "resource-test-5-microsequence",
+                  "id": "resource-test-4-microsequence",
                   "title": "Texto anotado",
                   "goal": "Avaliar aralearn.resource.annotated_text somente nas modalidades declaradas pelo próprio package.",
                   "role": "practice",
@@ -897,13 +654,13 @@
                   "errors": [],
                   "cards": [
                     {
-                      "id": "resource-test-5-exposition",
+                      "id": "resource-test-4-exposition",
                       "position": 1,
                       "title": "Exposição",
                       "role": "theory",
                       "content": [
                         {
-                          "id": "resource-test-5-exposition-content",
+                          "id": "resource-test-4-exposition-content",
                           "package": "aralearn.resource.annotated_text",
                           "version": "1.0.0",
                           "data": {
@@ -959,13 +716,13 @@
                       "sources": []
                     },
                     {
-                      "id": "resource-test-5-choice",
+                      "id": "resource-test-4-choice",
                       "position": 2,
                       "title": "Lacuna com alternativas",
                       "role": "practice",
                       "content": [
                         {
-                          "id": "resource-test-5-choice-content",
+                          "id": "resource-test-4-choice-content",
                           "package": "aralearn.resource.annotated_text",
                           "version": "1.0.0",
                           "data": {
@@ -1016,14 +773,14 @@
                         }
                       ],
                       "response": {
-                        "id": "resource-test-5-choice-response",
+                        "id": "resource-test-4-choice-response",
                         "package": "aralearn.response.gap",
                         "version": "1.0.0",
                         "data": {
                           "blanks": [
                             {
                               "id": "blank-1",
-                              "targetInstanceId": "resource-test-5-choice-content",
+                              "targetInstanceId": "resource-test-4-choice-content",
                               "targetPath": "segments[1].text",
                               "label": "Lacuna no trecho anotado 2",
                               "responseMode": "choice",
@@ -1041,13 +798,13 @@
                       "sources": []
                     },
                     {
-                      "id": "resource-test-5-text",
+                      "id": "resource-test-4-text",
                       "position": 3,
                       "title": "Lacuna com digitação",
                       "role": "practice",
                       "content": [
                         {
-                          "id": "resource-test-5-text-content",
+                          "id": "resource-test-4-text-content",
                           "package": "aralearn.resource.annotated_text",
                           "version": "1.0.0",
                           "data": {
@@ -1098,14 +855,14 @@
                         }
                       ],
                       "response": {
-                        "id": "resource-test-5-text-response",
+                        "id": "resource-test-4-text-response",
                         "package": "aralearn.response.gap",
                         "version": "1.0.0",
                         "data": {
                           "blanks": [
                             {
                               "id": "blank-1",
-                              "targetInstanceId": "resource-test-5-text-content",
+                              "targetInstanceId": "resource-test-4-text-content",
                               "targetPath": "segments[1].text",
                               "label": "Lacuna no trecho anotado 2",
                               "responseMode": "text",
@@ -1125,7 +882,7 @@
           ]
         },
         {
-          "id": "resource-test-6-module",
+          "id": "resource-test-5-module",
           "title": "Processo BPMN",
           "guide": {
             "goal": "Avaliar aralearn.resource.bpmn_process somente nas modalidades declaradas pelo próprio package.",
@@ -1149,7 +906,7 @@
           },
           "lessons": [
             {
-              "id": "resource-test-6-lesson",
+              "id": "resource-test-5-lesson",
               "title": "Processo BPMN",
               "guide": {
                 "goal": "Avaliar aralearn.resource.bpmn_process somente nas modalidades declaradas pelo próprio package.",
@@ -1174,7 +931,7 @@
               "topics": [],
               "microsequences": [
                 {
-                  "id": "resource-test-6-microsequence",
+                  "id": "resource-test-5-microsequence",
                   "title": "Processo BPMN",
                   "goal": "Avaliar aralearn.resource.bpmn_process somente nas modalidades declaradas pelo próprio package.",
                   "role": "practice",
@@ -1188,13 +945,13 @@
                   "errors": [],
                   "cards": [
                     {
-                      "id": "resource-test-6-exposition",
+                      "id": "resource-test-5-exposition",
                       "position": 1,
                       "title": "Exposição",
                       "role": "theory",
                       "content": [
                         {
-                          "id": "resource-test-6-exposition-content",
+                          "id": "resource-test-5-exposition-content",
                           "package": "aralearn.resource.bpmn_process",
                           "version": "1.0.0",
                           "data": {
@@ -1359,13 +1116,13 @@
                       "sources": []
                     },
                     {
-                      "id": "resource-test-6-choice",
+                      "id": "resource-test-5-choice",
                       "position": 2,
                       "title": "Lacuna com alternativas",
                       "role": "practice",
                       "content": [
                         {
-                          "id": "resource-test-6-choice-content",
+                          "id": "resource-test-5-choice-content",
                           "package": "aralearn.resource.bpmn_process",
                           "version": "1.0.0",
                           "data": {
@@ -1525,14 +1282,14 @@
                         }
                       ],
                       "response": {
-                        "id": "resource-test-6-choice-response",
+                        "id": "resource-test-5-choice-response",
                         "package": "aralearn.response.gap",
                         "version": "1.0.0",
                         "data": {
                           "blanks": [
                             {
                               "id": "blank-1",
-                              "targetInstanceId": "resource-test-6-choice-content",
+                              "targetInstanceId": "resource-test-5-choice-content",
                               "targetPath": "nodes[1].label",
                               "label": "Lacuna no elemento BPMN 2",
                               "responseMode": "choice",
@@ -1550,13 +1307,13 @@
                       "sources": []
                     },
                     {
-                      "id": "resource-test-6-text",
+                      "id": "resource-test-5-text",
                       "position": 3,
                       "title": "Lacuna com digitação",
                       "role": "practice",
                       "content": [
                         {
-                          "id": "resource-test-6-text-content",
+                          "id": "resource-test-5-text-content",
                           "package": "aralearn.resource.bpmn_process",
                           "version": "1.0.0",
                           "data": {
@@ -1716,14 +1473,14 @@
                         }
                       ],
                       "response": {
-                        "id": "resource-test-6-text-response",
+                        "id": "resource-test-5-text-response",
                         "package": "aralearn.response.gap",
                         "version": "1.0.0",
                         "data": {
                           "blanks": [
                             {
                               "id": "blank-1",
-                              "targetInstanceId": "resource-test-6-text-content",
+                              "targetInstanceId": "resource-test-5-text-content",
                               "targetPath": "nodes[1].label",
                               "label": "Lacuna no elemento BPMN 2",
                               "responseMode": "text",
@@ -1743,7 +1500,7 @@
           ]
         },
         {
-          "id": "resource-test-7-module",
+          "id": "resource-test-6-module",
           "title": "Glosa interlinear",
           "guide": {
             "goal": "Avaliar aralearn.resource.interlinear_gloss somente nas modalidades declaradas pelo próprio package.",
@@ -1765,7 +1522,7 @@
           },
           "lessons": [
             {
-              "id": "resource-test-7-lesson",
+              "id": "resource-test-6-lesson",
               "title": "Glosa interlinear",
               "guide": {
                 "goal": "Avaliar aralearn.resource.interlinear_gloss somente nas modalidades declaradas pelo próprio package.",
@@ -1788,7 +1545,7 @@
               "topics": [],
               "microsequences": [
                 {
-                  "id": "resource-test-7-microsequence",
+                  "id": "resource-test-6-microsequence",
                   "title": "Glosa interlinear",
                   "goal": "Avaliar aralearn.resource.interlinear_gloss somente nas modalidades declaradas pelo próprio package.",
                   "role": "practice",
@@ -1802,13 +1559,13 @@
                   "errors": [],
                   "cards": [
                     {
-                      "id": "resource-test-7-exposition",
+                      "id": "resource-test-6-exposition",
                       "position": 1,
                       "title": "Exposição",
                       "role": "theory",
                       "content": [
                         {
-                          "id": "resource-test-7-exposition-content",
+                          "id": "resource-test-6-exposition-content",
                           "package": "aralearn.resource.interlinear_gloss",
                           "version": "1.0.0",
                           "data": {
@@ -1875,13 +1632,13 @@
                       "sources": []
                     },
                     {
-                      "id": "resource-test-7-choice",
+                      "id": "resource-test-6-choice",
                       "position": 2,
                       "title": "Lacuna com alternativas",
                       "role": "practice",
                       "content": [
                         {
-                          "id": "resource-test-7-choice-content",
+                          "id": "resource-test-6-choice-content",
                           "package": "aralearn.resource.interlinear_gloss",
                           "version": "1.0.0",
                           "data": {
@@ -1943,14 +1700,14 @@
                         }
                       ],
                       "response": {
-                        "id": "resource-test-7-choice-response",
+                        "id": "resource-test-6-choice-response",
                         "package": "aralearn.response.gap",
                         "version": "1.0.0",
                         "data": {
                           "blanks": [
                             {
                               "id": "blank-1",
-                              "targetInstanceId": "resource-test-7-choice-content",
+                              "targetInstanceId": "resource-test-6-choice-content",
                               "targetPath": "units[0].form",
                               "label": "Lacuna na forma 1",
                               "responseMode": "choice",
@@ -1968,13 +1725,13 @@
                       "sources": []
                     },
                     {
-                      "id": "resource-test-7-text",
+                      "id": "resource-test-6-text",
                       "position": 3,
                       "title": "Lacuna com digitação",
                       "role": "practice",
                       "content": [
                         {
-                          "id": "resource-test-7-text-content",
+                          "id": "resource-test-6-text-content",
                           "package": "aralearn.resource.interlinear_gloss",
                           "version": "1.0.0",
                           "data": {
@@ -2036,14 +1793,14 @@
                         }
                       ],
                       "response": {
-                        "id": "resource-test-7-text-response",
+                        "id": "resource-test-6-text-response",
                         "package": "aralearn.response.gap",
                         "version": "1.0.0",
                         "data": {
                           "blanks": [
                             {
                               "id": "blank-1",
-                              "targetInstanceId": "resource-test-7-text-content",
+                              "targetInstanceId": "resource-test-6-text-content",
                               "targetPath": "units[0].form",
                               "label": "Lacuna na forma 1",
                               "responseMode": "text",
@@ -2063,7 +1820,7 @@
           ]
         },
         {
-          "id": "resource-test-8-module",
+          "id": "resource-test-7-module",
           "title": "Árvore enraizada",
           "guide": {
             "goal": "Avaliar aralearn.resource.tree somente nas modalidades declaradas pelo próprio package.",
@@ -2085,7 +1842,7 @@
           },
           "lessons": [
             {
-              "id": "resource-test-8-lesson",
+              "id": "resource-test-7-lesson",
               "title": "Árvore enraizada",
               "guide": {
                 "goal": "Avaliar aralearn.resource.tree somente nas modalidades declaradas pelo próprio package.",
@@ -2108,7 +1865,7 @@
               "topics": [],
               "microsequences": [
                 {
-                  "id": "resource-test-8-microsequence",
+                  "id": "resource-test-7-microsequence",
                   "title": "Árvore enraizada",
                   "goal": "Avaliar aralearn.resource.tree somente nas modalidades declaradas pelo próprio package.",
                   "role": "practice",
@@ -2122,13 +1879,13 @@
                   "errors": [],
                   "cards": [
                     {
-                      "id": "resource-test-8-exposition",
+                      "id": "resource-test-7-exposition",
                       "position": 1,
                       "title": "Exposição",
                       "role": "theory",
                       "content": [
                         {
-                          "id": "resource-test-8-exposition-content",
+                          "id": "resource-test-7-exposition-content",
                           "package": "aralearn.resource.tree",
                           "version": "1.0.0",
                           "data": {
@@ -2185,13 +1942,13 @@
                       "sources": []
                     },
                     {
-                      "id": "resource-test-8-choice",
+                      "id": "resource-test-7-choice",
                       "position": 2,
                       "title": "Lacuna com alternativas",
                       "role": "practice",
                       "content": [
                         {
-                          "id": "resource-test-8-choice-content",
+                          "id": "resource-test-7-choice-content",
                           "package": "aralearn.resource.tree",
                           "version": "1.0.0",
                           "data": {
@@ -2243,14 +2000,14 @@
                         }
                       ],
                       "response": {
-                        "id": "resource-test-8-choice-response",
+                        "id": "resource-test-7-choice-response",
                         "package": "aralearn.response.gap",
                         "version": "1.0.0",
                         "data": {
                           "blanks": [
                             {
                               "id": "blank-1",
-                              "targetInstanceId": "resource-test-8-choice-content",
+                              "targetInstanceId": "resource-test-7-choice-content",
                               "targetPath": "nodes[0].label",
                               "label": "Lacuna no nó 1",
                               "responseMode": "choice",
@@ -2268,13 +2025,13 @@
                       "sources": []
                     },
                     {
-                      "id": "resource-test-8-text",
+                      "id": "resource-test-7-text",
                       "position": 3,
                       "title": "Lacuna com digitação",
                       "role": "practice",
                       "content": [
                         {
-                          "id": "resource-test-8-text-content",
+                          "id": "resource-test-7-text-content",
                           "package": "aralearn.resource.tree",
                           "version": "1.0.0",
                           "data": {
@@ -2326,14 +2083,14 @@
                         }
                       ],
                       "response": {
-                        "id": "resource-test-8-text-response",
+                        "id": "resource-test-7-text-response",
                         "package": "aralearn.response.gap",
                         "version": "1.0.0",
                         "data": {
                           "blanks": [
                             {
                               "id": "blank-1",
-                              "targetInstanceId": "resource-test-8-text-content",
+                              "targetInstanceId": "resource-test-7-text-content",
                               "targetPath": "nodes[0].label",
                               "label": "Lacuna no nó 1",
                               "responseMode": "text",
@@ -2353,7 +2110,7 @@
           ]
         },
         {
-          "id": "resource-test-9-module",
+          "id": "resource-test-8-module",
           "title": "Matriz",
           "guide": {
             "goal": "Avaliar aralearn.resource.matrix somente nas modalidades declaradas pelo próprio package.",
@@ -2374,7 +2131,7 @@
           },
           "lessons": [
             {
-              "id": "resource-test-9-lesson",
+              "id": "resource-test-8-lesson",
               "title": "Matriz",
               "guide": {
                 "goal": "Avaliar aralearn.resource.matrix somente nas modalidades declaradas pelo próprio package.",
@@ -2396,7 +2153,7 @@
               "topics": [],
               "microsequences": [
                 {
-                  "id": "resource-test-9-microsequence",
+                  "id": "resource-test-8-microsequence",
                   "title": "Matriz",
                   "goal": "Avaliar aralearn.resource.matrix somente nas modalidades declaradas pelo próprio package.",
                   "role": "practice",
@@ -2410,13 +2167,13 @@
                   "errors": [],
                   "cards": [
                     {
-                      "id": "resource-test-9-exposition",
+                      "id": "resource-test-8-exposition",
                       "position": 1,
                       "title": "Exposição",
                       "role": "theory",
                       "content": [
                         {
-                          "id": "resource-test-9-exposition-content",
+                          "id": "resource-test-8-exposition-content",
                           "package": "aralearn.resource.matrix",
                           "version": "1.0.0",
                           "data": {
@@ -2449,13 +2206,13 @@
                       "sources": []
                     },
                     {
-                      "id": "resource-test-9-choice",
+                      "id": "resource-test-8-choice",
                       "position": 2,
                       "title": "Lacuna com alternativas",
                       "role": "practice",
                       "content": [
                         {
-                          "id": "resource-test-9-choice-content",
+                          "id": "resource-test-8-choice-content",
                           "package": "aralearn.resource.matrix",
                           "version": "1.0.0",
                           "data": {
@@ -2483,14 +2240,14 @@
                         }
                       ],
                       "response": {
-                        "id": "resource-test-9-choice-response",
+                        "id": "resource-test-8-choice-response",
                         "package": "aralearn.response.gap",
                         "version": "1.0.0",
                         "data": {
                           "blanks": [
                             {
                               "id": "blank-1",
-                              "targetInstanceId": "resource-test-9-choice-content",
+                              "targetInstanceId": "resource-test-8-choice-content",
                               "targetPath": "values[0][0]",
                               "label": "Lacuna na entrada 1, 1, 1",
                               "responseMode": "choice",
@@ -2508,13 +2265,13 @@
                       "sources": []
                     },
                     {
-                      "id": "resource-test-9-text",
+                      "id": "resource-test-8-text",
                       "position": 3,
                       "title": "Lacuna com digitação",
                       "role": "practice",
                       "content": [
                         {
-                          "id": "resource-test-9-text-content",
+                          "id": "resource-test-8-text-content",
                           "package": "aralearn.resource.matrix",
                           "version": "1.0.0",
                           "data": {
@@ -2542,14 +2299,14 @@
                         }
                       ],
                       "response": {
-                        "id": "resource-test-9-text-response",
+                        "id": "resource-test-8-text-response",
                         "package": "aralearn.response.gap",
                         "version": "1.0.0",
                         "data": {
                           "blanks": [
                             {
                               "id": "blank-1",
-                              "targetInstanceId": "resource-test-9-text-content",
+                              "targetInstanceId": "resource-test-8-text-content",
                               "targetPath": "values[0][0]",
                               "label": "Lacuna na entrada 1, 1, 1",
                               "responseMode": "text",
@@ -2569,7 +2326,7 @@
           ]
         },
         {
-          "id": "resource-test-10-module",
+          "id": "resource-test-9-module",
           "title": "Reação",
           "guide": {
             "goal": "Avaliar aralearn.resource.reaction somente nas modalidades declaradas pelo próprio package.",
@@ -2590,7 +2347,7 @@
           },
           "lessons": [
             {
-              "id": "resource-test-10-lesson",
+              "id": "resource-test-9-lesson",
               "title": "Reação",
               "guide": {
                 "goal": "Avaliar aralearn.resource.reaction somente nas modalidades declaradas pelo próprio package.",
@@ -2612,7 +2369,7 @@
               "topics": [],
               "microsequences": [
                 {
-                  "id": "resource-test-10-microsequence",
+                  "id": "resource-test-9-microsequence",
                   "title": "Reação",
                   "goal": "Avaliar aralearn.resource.reaction somente nas modalidades declaradas pelo próprio package.",
                   "role": "practice",
@@ -2626,13 +2383,13 @@
                   "errors": [],
                   "cards": [
                     {
-                      "id": "resource-test-10-exposition",
+                      "id": "resource-test-9-exposition",
                       "position": 1,
                       "title": "Exposição",
                       "role": "theory",
                       "content": [
                         {
-                          "id": "resource-test-10-exposition-content",
+                          "id": "resource-test-9-exposition-content",
                           "package": "aralearn.resource.reaction",
                           "version": "1.0.0",
                           "data": {
@@ -2672,13 +2429,13 @@
                       "sources": []
                     },
                     {
-                      "id": "resource-test-10-choice",
+                      "id": "resource-test-9-choice",
                       "position": 2,
                       "title": "Lacuna com alternativas",
                       "role": "practice",
                       "content": [
                         {
-                          "id": "resource-test-10-choice-content",
+                          "id": "resource-test-9-choice-content",
                           "package": "aralearn.resource.reaction",
                           "version": "1.0.0",
                           "data": {
@@ -2713,14 +2470,14 @@
                         }
                       ],
                       "response": {
-                        "id": "resource-test-10-choice-response",
+                        "id": "resource-test-9-choice-response",
                         "package": "aralearn.response.gap",
                         "version": "1.0.0",
                         "data": {
                           "blanks": [
                             {
                               "id": "blank-1",
-                              "targetInstanceId": "resource-test-10-choice-content",
+                              "targetInstanceId": "resource-test-9-choice-content",
                               "targetPath": "reactants[0].coefficient",
                               "label": "Lacuna no coeficiente 1 de reagente",
                               "responseMode": "choice",
@@ -2738,13 +2495,13 @@
                       "sources": []
                     },
                     {
-                      "id": "resource-test-10-text",
+                      "id": "resource-test-9-text",
                       "position": 3,
                       "title": "Lacuna com digitação",
                       "role": "practice",
                       "content": [
                         {
-                          "id": "resource-test-10-text-content",
+                          "id": "resource-test-9-text-content",
                           "package": "aralearn.resource.reaction",
                           "version": "1.0.0",
                           "data": {
@@ -2779,14 +2536,14 @@
                         }
                       ],
                       "response": {
-                        "id": "resource-test-10-text-response",
+                        "id": "resource-test-9-text-response",
                         "package": "aralearn.response.gap",
                         "version": "1.0.0",
                         "data": {
                           "blanks": [
                             {
                               "id": "blank-1",
-                              "targetInstanceId": "resource-test-10-text-content",
+                              "targetInstanceId": "resource-test-9-text-content",
                               "targetPath": "reactants[0].coefficient",
                               "label": "Lacuna no coeficiente 1 de reagente",
                               "responseMode": "text",
@@ -2806,7 +2563,7 @@
           ]
         },
         {
-          "id": "resource-test-11-module",
+          "id": "resource-test-10-module",
           "title": "Fluxograma",
           "guide": {
             "goal": "Avaliar aralearn.resource.flow somente nas modalidades declaradas pelo próprio package.",
@@ -2831,7 +2588,7 @@
           },
           "lessons": [
             {
-              "id": "resource-test-11-lesson",
+              "id": "resource-test-10-lesson",
               "title": "Fluxograma",
               "guide": {
                 "goal": "Avaliar aralearn.resource.flow somente nas modalidades declaradas pelo próprio package.",
@@ -2857,7 +2614,7 @@
               "topics": [],
               "microsequences": [
                 {
-                  "id": "resource-test-11-microsequence",
+                  "id": "resource-test-10-microsequence",
                   "title": "Fluxograma",
                   "goal": "Avaliar aralearn.resource.flow somente nas modalidades declaradas pelo próprio package.",
                   "role": "practice",
@@ -2871,13 +2628,13 @@
                   "errors": [],
                   "cards": [
                     {
-                      "id": "resource-test-11-exposition",
+                      "id": "resource-test-10-exposition",
                       "position": 1,
                       "title": "Exposição",
                       "role": "theory",
                       "content": [
                         {
-                          "id": "resource-test-11-exposition-content",
+                          "id": "resource-test-10-exposition-content",
                           "package": "aralearn.resource.flow",
                           "version": "1.0.0",
                           "data": {
@@ -2931,13 +2688,13 @@
                       "sources": []
                     },
                     {
-                      "id": "resource-test-11-choice",
+                      "id": "resource-test-10-choice",
                       "position": 2,
                       "title": "Lacuna com alternativas",
                       "role": "practice",
                       "content": [
                         {
-                          "id": "resource-test-11-choice-content",
+                          "id": "resource-test-10-choice-content",
                           "package": "aralearn.resource.flow",
                           "version": "1.0.0",
                           "data": {
@@ -2986,14 +2743,14 @@
                         }
                       ],
                       "response": {
-                        "id": "resource-test-11-choice-response",
+                        "id": "resource-test-10-choice-response",
                         "package": "aralearn.response.gap",
                         "version": "1.0.0",
                         "data": {
                           "blanks": [
                             {
                               "id": "blank-1",
-                              "targetInstanceId": "resource-test-11-choice-content",
+                              "targetInstanceId": "resource-test-10-choice-content",
                               "targetPath": "structure.items[0].text",
                               "label": "Lacuna em text",
                               "responseMode": "choice",
@@ -3011,13 +2768,13 @@
                       "sources": []
                     },
                     {
-                      "id": "resource-test-11-text",
+                      "id": "resource-test-10-text",
                       "position": 3,
                       "title": "Lacuna com digitação",
                       "role": "practice",
                       "content": [
                         {
-                          "id": "resource-test-11-text-content",
+                          "id": "resource-test-10-text-content",
                           "package": "aralearn.resource.flow",
                           "version": "1.0.0",
                           "data": {
@@ -3066,14 +2823,14 @@
                         }
                       ],
                       "response": {
-                        "id": "resource-test-11-text-response",
+                        "id": "resource-test-10-text-response",
                         "package": "aralearn.response.gap",
                         "version": "1.0.0",
                         "data": {
                           "blanks": [
                             {
                               "id": "blank-1",
-                              "targetInstanceId": "resource-test-11-text-content",
+                              "targetInstanceId": "resource-test-10-text-content",
                               "targetPath": "structure.items[0].text",
                               "label": "Lacuna em text",
                               "responseMode": "text",
@@ -3093,7 +2850,7 @@
           ]
         },
         {
-          "id": "resource-test-12-module",
+          "id": "resource-test-11-module",
           "title": "Fórmula",
           "guide": {
             "goal": "Avaliar aralearn.resource.formula somente nas modalidades declaradas pelo próprio package.",
@@ -3114,7 +2871,7 @@
           },
           "lessons": [
             {
-              "id": "resource-test-12-lesson",
+              "id": "resource-test-11-lesson",
               "title": "Fórmula",
               "guide": {
                 "goal": "Avaliar aralearn.resource.formula somente nas modalidades declaradas pelo próprio package.",
@@ -3136,7 +2893,7 @@
               "topics": [],
               "microsequences": [
                 {
-                  "id": "resource-test-12-microsequence",
+                  "id": "resource-test-11-microsequence",
                   "title": "Fórmula",
                   "goal": "Avaliar aralearn.resource.formula somente nas modalidades declaradas pelo próprio package.",
                   "role": "practice",
@@ -3150,13 +2907,13 @@
                   "errors": [],
                   "cards": [
                     {
-                      "id": "resource-test-12-exposition",
+                      "id": "resource-test-11-exposition",
                       "position": 1,
                       "title": "Exposição",
                       "role": "theory",
                       "content": [
                         {
-                          "id": "resource-test-12-exposition-content",
+                          "id": "resource-test-11-exposition-content",
                           "package": "aralearn.resource.formula",
                           "version": "1.0.0",
                           "data": {
@@ -3294,7 +3051,7 @@
           ]
         },
         {
-          "id": "resource-test-13-module",
+          "id": "resource-test-12-module",
           "title": "Plano cartesiano",
           "guide": {
             "goal": "Avaliar aralearn.resource.plane somente nas modalidades declaradas pelo próprio package.",
@@ -3316,7 +3073,7 @@
           },
           "lessons": [
             {
-              "id": "resource-test-13-lesson",
+              "id": "resource-test-12-lesson",
               "title": "Plano cartesiano",
               "guide": {
                 "goal": "Avaliar aralearn.resource.plane somente nas modalidades declaradas pelo próprio package.",
@@ -3339,7 +3096,7 @@
               "topics": [],
               "microsequences": [
                 {
-                  "id": "resource-test-13-microsequence",
+                  "id": "resource-test-12-microsequence",
                   "title": "Plano cartesiano",
                   "goal": "Avaliar aralearn.resource.plane somente nas modalidades declaradas pelo próprio package.",
                   "role": "practice",
@@ -3353,13 +3110,13 @@
                   "errors": [],
                   "cards": [
                     {
-                      "id": "resource-test-13-exposition",
+                      "id": "resource-test-12-exposition",
                       "position": 1,
                       "title": "Exposição",
                       "role": "theory",
                       "content": [
                         {
-                          "id": "resource-test-13-exposition-content",
+                          "id": "resource-test-12-exposition-content",
                           "package": "aralearn.resource.plane",
                           "version": "1.0.0",
                           "data": {
@@ -3527,7 +3284,7 @@
           ]
         },
         {
-          "id": "resource-test-14-module",
+          "id": "resource-test-13-module",
           "title": "Gráfico estatístico",
           "guide": {
             "goal": "Avaliar aralearn.resource.chart somente nas modalidades declaradas pelo próprio package.",
@@ -3549,7 +3306,7 @@
           },
           "lessons": [
             {
-              "id": "resource-test-14-lesson",
+              "id": "resource-test-13-lesson",
               "title": "Gráfico estatístico",
               "guide": {
                 "goal": "Avaliar aralearn.resource.chart somente nas modalidades declaradas pelo próprio package.",
@@ -3572,7 +3329,7 @@
               "topics": [],
               "microsequences": [
                 {
-                  "id": "resource-test-14-microsequence",
+                  "id": "resource-test-13-microsequence",
                   "title": "Gráfico estatístico",
                   "goal": "Avaliar aralearn.resource.chart somente nas modalidades declaradas pelo próprio package.",
                   "role": "practice",
@@ -3586,13 +3343,13 @@
                   "errors": [],
                   "cards": [
                     {
-                      "id": "resource-test-14-exposition",
+                      "id": "resource-test-13-exposition",
                       "position": 1,
                       "title": "Exposição",
                       "role": "theory",
                       "content": [
                         {
-                          "id": "resource-test-14-exposition-content",
+                          "id": "resource-test-13-exposition-content",
                           "package": "aralearn.resource.chart",
                           "version": "1.0.0",
                           "data": {
@@ -3724,13 +3481,13 @@
                       "sources": []
                     },
                     {
-                      "id": "resource-test-14-choice",
+                      "id": "resource-test-13-choice",
                       "position": 2,
                       "title": "Lacuna com alternativas",
                       "role": "practice",
                       "content": [
                         {
-                          "id": "resource-test-14-choice-content",
+                          "id": "resource-test-13-choice-content",
                           "package": "aralearn.resource.chart",
                           "version": "1.0.0",
                           "data": {
@@ -3857,14 +3614,14 @@
                         }
                       ],
                       "response": {
-                        "id": "resource-test-14-choice-response",
+                        "id": "resource-test-13-choice-response",
                         "package": "aralearn.response.gap",
                         "version": "1.0.0",
                         "data": {
                           "blanks": [
                             {
                               "id": "blank-1",
-                              "targetInstanceId": "resource-test-14-choice-content",
+                              "targetInstanceId": "resource-test-13-choice-content",
                               "targetPath": "series[0].name",
                               "label": "Lacuna na série 1",
                               "responseMode": "choice",
@@ -3882,13 +3639,13 @@
                       "sources": []
                     },
                     {
-                      "id": "resource-test-14-text",
+                      "id": "resource-test-13-text",
                       "position": 3,
                       "title": "Lacuna com digitação",
                       "role": "practice",
                       "content": [
                         {
-                          "id": "resource-test-14-text-content",
+                          "id": "resource-test-13-text-content",
                           "package": "aralearn.resource.chart",
                           "version": "1.0.0",
                           "data": {
@@ -4015,14 +3772,14 @@
                         }
                       ],
                       "response": {
-                        "id": "resource-test-14-text-response",
+                        "id": "resource-test-13-text-response",
                         "package": "aralearn.response.gap",
                         "version": "1.0.0",
                         "data": {
                           "blanks": [
                             {
                               "id": "blank-1",
-                              "targetInstanceId": "resource-test-14-text-content",
+                              "targetInstanceId": "resource-test-13-text-content",
                               "targetPath": "series[0].name",
                               "label": "Lacuna na série 1",
                               "responseMode": "text",
@@ -4042,7 +3799,7 @@
           ]
         },
         {
-          "id": "resource-test-15-module",
+          "id": "resource-test-14-module",
           "title": "Contexto de sistema de software",
           "guide": {
             "goal": "Avaliar aralearn.resource.software_system_context somente nas modalidades declaradas pelo próprio package.",
@@ -4064,7 +3821,7 @@
           },
           "lessons": [
             {
-              "id": "resource-test-15-lesson",
+              "id": "resource-test-14-lesson",
               "title": "Contexto de sistema de software",
               "guide": {
                 "goal": "Avaliar aralearn.resource.software_system_context somente nas modalidades declaradas pelo próprio package.",
@@ -4087,7 +3844,7 @@
               "topics": [],
               "microsequences": [
                 {
-                  "id": "resource-test-15-microsequence",
+                  "id": "resource-test-14-microsequence",
                   "title": "Contexto de sistema de software",
                   "goal": "Avaliar aralearn.resource.software_system_context somente nas modalidades declaradas pelo próprio package.",
                   "role": "practice",
@@ -4101,13 +3858,13 @@
                   "errors": [],
                   "cards": [
                     {
-                      "id": "resource-test-15-exposition",
+                      "id": "resource-test-14-exposition",
                       "position": 1,
                       "title": "Exposição",
                       "role": "theory",
                       "content": [
                         {
-                          "id": "resource-test-15-exposition-content",
+                          "id": "resource-test-14-exposition-content",
                           "package": "aralearn.resource.software_system_context",
                           "version": "1.0.0",
                           "data": {
@@ -4176,13 +3933,13 @@
                       "sources": []
                     },
                     {
-                      "id": "resource-test-15-choice",
+                      "id": "resource-test-14-choice",
                       "position": 2,
                       "title": "Lacuna com alternativas",
                       "role": "practice",
                       "content": [
                         {
-                          "id": "resource-test-15-choice-content",
+                          "id": "resource-test-14-choice-content",
                           "package": "aralearn.resource.software_system_context",
                           "version": "1.0.0",
                           "data": {
@@ -4246,14 +4003,14 @@
                         }
                       ],
                       "response": {
-                        "id": "resource-test-15-choice-response",
+                        "id": "resource-test-14-choice-response",
                         "package": "aralearn.response.gap",
                         "version": "1.0.0",
                         "data": {
                           "blanks": [
                             {
                               "id": "blank-1",
-                              "targetInstanceId": "resource-test-15-choice-content",
+                              "targetInstanceId": "resource-test-14-choice-content",
                               "targetPath": "system.label",
                               "label": "Lacuna em nome do sistema em foco",
                               "responseMode": "choice",
@@ -4271,13 +4028,13 @@
                       "sources": []
                     },
                     {
-                      "id": "resource-test-15-text",
+                      "id": "resource-test-14-text",
                       "position": 3,
                       "title": "Lacuna com digitação",
                       "role": "practice",
                       "content": [
                         {
-                          "id": "resource-test-15-text-content",
+                          "id": "resource-test-14-text-content",
                           "package": "aralearn.resource.software_system_context",
                           "version": "1.0.0",
                           "data": {
@@ -4341,14 +4098,14 @@
                         }
                       ],
                       "response": {
-                        "id": "resource-test-15-text-response",
+                        "id": "resource-test-14-text-response",
                         "package": "aralearn.response.gap",
                         "version": "1.0.0",
                         "data": {
                           "blanks": [
                             {
                               "id": "blank-1",
-                              "targetInstanceId": "resource-test-15-text-content",
+                              "targetInstanceId": "resource-test-14-text-content",
                               "targetPath": "system.label",
                               "label": "Lacuna em nome do sistema em foco",
                               "responseMode": "text",
@@ -4368,7 +4125,7 @@
           ]
         },
         {
-          "id": "resource-test-16-module",
+          "id": "resource-test-15-module",
           "title": "Contêineres de software",
           "guide": {
             "goal": "Avaliar aralearn.resource.software_container somente nas modalidades declaradas pelo próprio package.",
@@ -4390,7 +4147,7 @@
           },
           "lessons": [
             {
-              "id": "resource-test-16-lesson",
+              "id": "resource-test-15-lesson",
               "title": "Contêineres de software",
               "guide": {
                 "goal": "Avaliar aralearn.resource.software_container somente nas modalidades declaradas pelo próprio package.",
@@ -4413,7 +4170,7 @@
               "topics": [],
               "microsequences": [
                 {
-                  "id": "resource-test-16-microsequence",
+                  "id": "resource-test-15-microsequence",
                   "title": "Contêineres de software",
                   "goal": "Avaliar aralearn.resource.software_container somente nas modalidades declaradas pelo próprio package.",
                   "role": "practice",
@@ -4427,13 +4184,13 @@
                   "errors": [],
                   "cards": [
                     {
-                      "id": "resource-test-16-exposition",
+                      "id": "resource-test-15-exposition",
                       "position": 1,
                       "title": "Exposição",
                       "role": "theory",
                       "content": [
                         {
-                          "id": "resource-test-16-exposition-content",
+                          "id": "resource-test-15-exposition-content",
                           "package": "aralearn.resource.software_container",
                           "version": "1.0.0",
                           "data": {
@@ -4541,13 +4298,13 @@
                       "sources": []
                     },
                     {
-                      "id": "resource-test-16-choice",
+                      "id": "resource-test-15-choice",
                       "position": 2,
                       "title": "Lacuna com alternativas",
                       "role": "practice",
                       "content": [
                         {
-                          "id": "resource-test-16-choice-content",
+                          "id": "resource-test-15-choice-content",
                           "package": "aralearn.resource.software_container",
                           "version": "1.0.0",
                           "data": {
@@ -4650,14 +4407,14 @@
                         }
                       ],
                       "response": {
-                        "id": "resource-test-16-choice-response",
+                        "id": "resource-test-15-choice-response",
                         "package": "aralearn.response.gap",
                         "version": "1.0.0",
                         "data": {
                           "blanks": [
                             {
                               "id": "blank-1",
-                              "targetInstanceId": "resource-test-16-choice-content",
+                              "targetInstanceId": "resource-test-15-choice-content",
                               "targetPath": "containers[0].label",
                               "label": "Lacuna em contêiner 1",
                               "responseMode": "choice",
@@ -4675,13 +4432,13 @@
                       "sources": []
                     },
                     {
-                      "id": "resource-test-16-text",
+                      "id": "resource-test-15-text",
                       "position": 3,
                       "title": "Lacuna com digitação",
                       "role": "practice",
                       "content": [
                         {
-                          "id": "resource-test-16-text-content",
+                          "id": "resource-test-15-text-content",
                           "package": "aralearn.resource.software_container",
                           "version": "1.0.0",
                           "data": {
@@ -4784,14 +4541,14 @@
                         }
                       ],
                       "response": {
-                        "id": "resource-test-16-text-response",
+                        "id": "resource-test-15-text-response",
                         "package": "aralearn.response.gap",
                         "version": "1.0.0",
                         "data": {
                           "blanks": [
                             {
                               "id": "blank-1",
-                              "targetInstanceId": "resource-test-16-text-content",
+                              "targetInstanceId": "resource-test-15-text-content",
                               "targetPath": "containers[0].label",
                               "label": "Lacuna em contêiner 1",
                               "responseMode": "text",
@@ -4811,7 +4568,7 @@
           ]
         },
         {
-          "id": "resource-test-17-module",
+          "id": "resource-test-16-module",
           "title": "Diagrama interno de bloco",
           "guide": {
             "goal": "Avaliar aralearn.resource.system_internal_block somente nas modalidades declaradas pelo próprio package.",
@@ -4834,7 +4591,7 @@
           },
           "lessons": [
             {
-              "id": "resource-test-17-lesson",
+              "id": "resource-test-16-lesson",
               "title": "Diagrama interno de bloco",
               "guide": {
                 "goal": "Avaliar aralearn.resource.system_internal_block somente nas modalidades declaradas pelo próprio package.",
@@ -4858,7 +4615,7 @@
               "topics": [],
               "microsequences": [
                 {
-                  "id": "resource-test-17-microsequence",
+                  "id": "resource-test-16-microsequence",
                   "title": "Diagrama interno de bloco",
                   "goal": "Avaliar aralearn.resource.system_internal_block somente nas modalidades declaradas pelo próprio package.",
                   "role": "practice",
@@ -4872,13 +4629,13 @@
                   "errors": [],
                   "cards": [
                     {
-                      "id": "resource-test-17-exposition",
+                      "id": "resource-test-16-exposition",
                       "position": 1,
                       "title": "Exposição",
                       "role": "theory",
                       "content": [
                         {
-                          "id": "resource-test-17-exposition-content",
+                          "id": "resource-test-16-exposition-content",
                           "package": "aralearn.resource.system_internal_block",
                           "version": "1.0.0",
                           "data": {
@@ -4980,13 +4737,13 @@
                       "sources": []
                     },
                     {
-                      "id": "resource-test-17-choice",
+                      "id": "resource-test-16-choice",
                       "position": 2,
                       "title": "Lacuna com alternativas",
                       "role": "practice",
                       "content": [
                         {
-                          "id": "resource-test-17-choice-content",
+                          "id": "resource-test-16-choice-content",
                           "package": "aralearn.resource.system_internal_block",
                           "version": "1.0.0",
                           "data": {
@@ -5083,14 +4840,14 @@
                         }
                       ],
                       "response": {
-                        "id": "resource-test-17-choice-response",
+                        "id": "resource-test-16-choice-response",
                         "package": "aralearn.response.gap",
                         "version": "1.0.0",
                         "data": {
                           "blanks": [
                             {
                               "id": "blank-1",
-                              "targetInstanceId": "resource-test-17-choice-content",
+                              "targetInstanceId": "resource-test-16-choice-content",
                               "targetPath": "connectors[0].label",
                               "label": "Lacuna no conector 1",
                               "responseMode": "choice",
@@ -5108,13 +4865,13 @@
                       "sources": []
                     },
                     {
-                      "id": "resource-test-17-text",
+                      "id": "resource-test-16-text",
                       "position": 3,
                       "title": "Lacuna com digitação",
                       "role": "practice",
                       "content": [
                         {
-                          "id": "resource-test-17-text-content",
+                          "id": "resource-test-16-text-content",
                           "package": "aralearn.resource.system_internal_block",
                           "version": "1.0.0",
                           "data": {
@@ -5211,14 +4968,14 @@
                         }
                       ],
                       "response": {
-                        "id": "resource-test-17-text-response",
+                        "id": "resource-test-16-text-response",
                         "package": "aralearn.response.gap",
                         "version": "1.0.0",
                         "data": {
                           "blanks": [
                             {
                               "id": "blank-1",
-                              "targetInstanceId": "resource-test-17-text-content",
+                              "targetInstanceId": "resource-test-16-text-content",
                               "targetPath": "connectors[0].label",
                               "label": "Lacuna no conector 1",
                               "responseMode": "text",
@@ -5238,7 +4995,7 @@
           ]
         },
         {
-          "id": "resource-test-18-module",
+          "id": "resource-test-17-module",
           "title": "Grafo matemático",
           "guide": {
             "goal": "Avaliar aralearn.resource.graph somente nas modalidades declaradas pelo próprio package.",
@@ -5261,7 +5018,7 @@
           },
           "lessons": [
             {
-              "id": "resource-test-18-lesson",
+              "id": "resource-test-17-lesson",
               "title": "Grafo matemático",
               "guide": {
                 "goal": "Avaliar aralearn.resource.graph somente nas modalidades declaradas pelo próprio package.",
@@ -5285,7 +5042,7 @@
               "topics": [],
               "microsequences": [
                 {
-                  "id": "resource-test-18-microsequence",
+                  "id": "resource-test-17-microsequence",
                   "title": "Grafo matemático",
                   "goal": "Avaliar aralearn.resource.graph somente nas modalidades declaradas pelo próprio package.",
                   "role": "practice",
@@ -5299,13 +5056,13 @@
                   "errors": [],
                   "cards": [
                     {
-                      "id": "resource-test-18-exposition",
+                      "id": "resource-test-17-exposition",
                       "position": 1,
                       "title": "Exposição",
                       "role": "theory",
                       "content": [
                         {
-                          "id": "resource-test-18-exposition-content",
+                          "id": "resource-test-17-exposition-content",
                           "package": "aralearn.resource.graph",
                           "version": "1.0.0",
                           "data": {
@@ -5413,13 +5170,13 @@
                       "sources": []
                     },
                     {
-                      "id": "resource-test-18-choice",
+                      "id": "resource-test-17-choice",
                       "position": 2,
                       "title": "Lacuna com alternativas",
                       "role": "practice",
                       "content": [
                         {
-                          "id": "resource-test-18-choice-content",
+                          "id": "resource-test-17-choice-content",
                           "package": "aralearn.resource.graph",
                           "version": "1.0.0",
                           "data": {
@@ -5522,14 +5279,14 @@
                         }
                       ],
                       "response": {
-                        "id": "resource-test-18-choice-response",
+                        "id": "resource-test-17-choice-response",
                         "package": "aralearn.response.gap",
                         "version": "1.0.0",
                         "data": {
                           "blanks": [
                             {
                               "id": "blank-1",
-                              "targetInstanceId": "resource-test-18-choice-content",
+                              "targetInstanceId": "resource-test-17-choice-content",
                               "targetPath": "vertices[0].label",
                               "label": "Lacuna em rótulo do vértice 1",
                               "responseMode": "choice",
@@ -5547,13 +5304,13 @@
                       "sources": []
                     },
                     {
-                      "id": "resource-test-18-text",
+                      "id": "resource-test-17-text",
                       "position": 3,
                       "title": "Lacuna com digitação",
                       "role": "practice",
                       "content": [
                         {
-                          "id": "resource-test-18-text-content",
+                          "id": "resource-test-17-text-content",
                           "package": "aralearn.resource.graph",
                           "version": "1.0.0",
                           "data": {
@@ -5656,14 +5413,14 @@
                         }
                       ],
                       "response": {
-                        "id": "resource-test-18-text-response",
+                        "id": "resource-test-17-text-response",
                         "package": "aralearn.response.gap",
                         "version": "1.0.0",
                         "data": {
                           "blanks": [
                             {
                               "id": "blank-1",
-                              "targetInstanceId": "resource-test-18-text-content",
+                              "targetInstanceId": "resource-test-17-text-content",
                               "targetPath": "vertices[0].label",
                               "label": "Lacuna em rótulo do vértice 1",
                               "responseMode": "text",
@@ -5683,8 +5440,8 @@
           ]
         },
         {
-          "id": "resource-test-19-module",
-          "title": "Mapa de relações",
+          "id": "resource-test-18-module",
+          "title": "Diagrama de relação",
           "guide": {
             "goal": "Avaliar aralearn.resource.relation_map somente nas modalidades declaradas pelo próprio package.",
             "include": [
@@ -5694,9 +5451,10 @@
               "adaptação artificial de outra operação cognitiva"
             ],
             "notation": [
-              "domínio e contradomínio nomeados",
-              "cada elemento do domínio ocupa uma única linha",
-              "as imagens relacionadas permanecem alinhadas ao elemento de origem"
+              "dois conjuntos delimitados",
+              "elementos individualizados",
+              "seta por par ordenado",
+              "notação extensional complementar"
             ],
             "avoid": [
               "usar a forma quando ela não acrescenta significado"
@@ -5704,8 +5462,8 @@
           },
           "lessons": [
             {
-              "id": "resource-test-19-lesson",
-              "title": "Mapa de relações",
+              "id": "resource-test-18-lesson",
+              "title": "Diagrama de relação",
               "guide": {
                 "goal": "Avaliar aralearn.resource.relation_map somente nas modalidades declaradas pelo próprio package.",
                 "include": [
@@ -5715,9 +5473,10 @@
                   "práticas universais presumidas"
                 ],
                 "notation": [
-                  "domínio e contradomínio nomeados",
-                  "cada elemento do domínio ocupa uma única linha",
-                  "as imagens relacionadas permanecem alinhadas ao elemento de origem"
+                  "dois conjuntos delimitados",
+                  "elementos individualizados",
+                  "seta por par ordenado",
+                  "notação extensional complementar"
                 ],
                 "avoid": [
                   "lacuna fora da representação"
@@ -5726,8 +5485,8 @@
               "topics": [],
               "microsequences": [
                 {
-                  "id": "resource-test-19-microsequence",
-                  "title": "Mapa de relações",
+                  "id": "resource-test-18-microsequence",
+                  "title": "Diagrama de relação",
                   "goal": "Avaliar aralearn.resource.relation_map somente nas modalidades declaradas pelo próprio package.",
                   "role": "practice",
                   "dependsOn": [],
@@ -5740,17 +5499,19 @@
                   "errors": [],
                   "cards": [
                     {
-                      "id": "resource-test-19-exposition",
+                      "id": "resource-test-18-exposition",
                       "position": 1,
                       "title": "Exposição",
                       "role": "theory",
                       "content": [
                         {
-                          "id": "resource-test-19-exposition-content",
+                          "id": "resource-test-18-exposition-content",
                           "package": "aralearn.resource.relation_map",
                           "version": "1.0.0",
                           "data": {
-                            "prompt": "Examine a relação R de A em B e observe que a pertence a duas imagens, enquanto d não possui preimagem.",
+                            "prompt": "Examine a relação R de A em B: a possui duas imagens e 4 não possui preimagem.",
+                            "name": "R",
+                            "relationMeaning": "relaciona-se a",
                             "leftSet": {
                               "label": "Domínio A",
                               "items": [
@@ -5793,26 +5554,22 @@
                               {
                                 "id": "a1",
                                 "from": "a",
-                                "to": "one",
-                                "label": "(a, 1) ∈ R"
+                                "to": "one"
                               },
                               {
                                 "id": "a2",
                                 "from": "a",
-                                "to": "two",
-                                "label": "(a, 2) ∈ R"
+                                "to": "two"
                               },
                               {
                                 "id": "b2",
                                 "from": "b",
-                                "to": "two",
-                                "label": "(b, 2) ∈ R"
+                                "to": "two"
                               },
                               {
                                 "id": "c3",
                                 "from": "c",
-                                "to": "three",
-                                "label": "(c, 3) ∈ R"
+                                "to": "three"
                               }
                             ],
                             "highlight": {
@@ -5834,17 +5591,19 @@
                       "sources": []
                     },
                     {
-                      "id": "resource-test-19-choice",
+                      "id": "resource-test-18-choice",
                       "position": 2,
                       "title": "Lacuna com alternativas",
                       "role": "practice",
                       "content": [
                         {
-                          "id": "resource-test-19-choice-content",
+                          "id": "resource-test-18-choice-content",
                           "package": "aralearn.resource.relation_map",
                           "version": "1.0.0",
                           "data": {
-                            "prompt": "Examine a relação R de A em B e observe que a pertence a duas imagens, enquanto d não possui preimagem.",
+                            "prompt": "Examine a relação R de A em B: a possui duas imagens e 4 não possui preimagem.",
+                            "name": "R",
+                            "relationMeaning": "relaciona-se a",
                             "leftSet": {
                               "label": "Domínio A",
                               "items": [
@@ -5887,26 +5646,22 @@
                               {
                                 "id": "a1",
                                 "from": "a",
-                                "to": "one",
-                                "label": "(a, 1) ∈ R"
+                                "to": "one"
                               },
                               {
                                 "id": "a2",
                                 "from": "a",
-                                "to": "two",
-                                "label": "(a, 2) ∈ R"
+                                "to": "two"
                               },
                               {
                                 "id": "b2",
                                 "from": "b",
-                                "to": "two",
-                                "label": "(b, 2) ∈ R"
+                                "to": "two"
                               },
                               {
                                 "id": "c3",
                                 "from": "c",
-                                "to": "three",
-                                "label": "(c, 3) ∈ R"
+                                "to": "three"
                               }
                             ],
                             "highlight": {
@@ -5923,14 +5678,14 @@
                         }
                       ],
                       "response": {
-                        "id": "resource-test-19-choice-response",
+                        "id": "resource-test-18-choice-response",
                         "package": "aralearn.response.gap",
                         "version": "1.0.0",
                         "data": {
                           "blanks": [
                             {
                               "id": "blank-1",
-                              "targetInstanceId": "resource-test-19-choice-content",
+                              "targetInstanceId": "resource-test-18-choice-content",
                               "targetPath": "leftSet.items[0].label",
                               "label": "Lacuna no domínio 1",
                               "responseMode": "choice",
@@ -5948,17 +5703,19 @@
                       "sources": []
                     },
                     {
-                      "id": "resource-test-19-text",
+                      "id": "resource-test-18-text",
                       "position": 3,
                       "title": "Lacuna com digitação",
                       "role": "practice",
                       "content": [
                         {
-                          "id": "resource-test-19-text-content",
+                          "id": "resource-test-18-text-content",
                           "package": "aralearn.resource.relation_map",
                           "version": "1.0.0",
                           "data": {
-                            "prompt": "Examine a relação R de A em B e observe que a pertence a duas imagens, enquanto d não possui preimagem.",
+                            "prompt": "Examine a relação R de A em B: a possui duas imagens e 4 não possui preimagem.",
+                            "name": "R",
+                            "relationMeaning": "relaciona-se a",
                             "leftSet": {
                               "label": "Domínio A",
                               "items": [
@@ -6001,26 +5758,22 @@
                               {
                                 "id": "a1",
                                 "from": "a",
-                                "to": "one",
-                                "label": "(a, 1) ∈ R"
+                                "to": "one"
                               },
                               {
                                 "id": "a2",
                                 "from": "a",
-                                "to": "two",
-                                "label": "(a, 2) ∈ R"
+                                "to": "two"
                               },
                               {
                                 "id": "b2",
                                 "from": "b",
-                                "to": "two",
-                                "label": "(b, 2) ∈ R"
+                                "to": "two"
                               },
                               {
                                 "id": "c3",
                                 "from": "c",
-                                "to": "three",
-                                "label": "(c, 3) ∈ R"
+                                "to": "three"
                               }
                             ],
                             "highlight": {
@@ -6037,14 +5790,14 @@
                         }
                       ],
                       "response": {
-                        "id": "resource-test-19-text-response",
+                        "id": "resource-test-18-text-response",
                         "package": "aralearn.response.gap",
                         "version": "1.0.0",
                         "data": {
                           "blanks": [
                             {
                               "id": "blank-1",
-                              "targetInstanceId": "resource-test-19-text-content",
+                              "targetInstanceId": "resource-test-18-text-content",
                               "targetPath": "leftSet.items[0].label",
                               "label": "Lacuna no domínio 1",
                               "responseMode": "text",
@@ -6064,298 +5817,7 @@
           ]
         },
         {
-          "id": "resource-test-20-module",
-          "title": "Rastreamento de algoritmo",
-          "guide": {
-            "goal": "Avaliar aralearn.resource.algorithm_trace somente nas modalidades declaradas pelo próprio package.",
-            "include": [
-              "representação canônica e interação declarada"
-            ],
-            "exclude": [
-              "adaptação artificial de outra operação cognitiva"
-            ],
-            "notation": [
-              "um passo por linha",
-              "variáveis em colunas estáveis",
-              "mudança de estado identificável"
-            ],
-            "avoid": [
-              "usar a forma quando ela não acrescenta significado"
-            ]
-          },
-          "lessons": [
-            {
-              "id": "resource-test-20-lesson",
-              "title": "Rastreamento de algoritmo",
-              "guide": {
-                "goal": "Avaliar aralearn.resource.algorithm_trace somente nas modalidades declaradas pelo próprio package.",
-                "include": [
-                  "exposição e práticas semanticamente suportadas"
-                ],
-                "exclude": [
-                  "práticas universais presumidas"
-                ],
-                "notation": [
-                  "um passo por linha",
-                  "variáveis em colunas estáveis",
-                  "mudança de estado identificável"
-                ],
-                "avoid": [
-                  "lacuna fora da representação"
-                ]
-              },
-              "topics": [],
-              "microsequences": [
-                {
-                  "id": "resource-test-20-microsequence",
-                  "title": "Rastreamento de algoritmo",
-                  "goal": "Avaliar aralearn.resource.algorithm_trace somente nas modalidades declaradas pelo próprio package.",
-                  "role": "practice",
-                  "dependsOn": [],
-                  "covers": [],
-                  "checks": [
-                    "sem sobreposição",
-                    "alvo de prática dentro da representação",
-                    "Play como confirmação"
-                  ],
-                  "errors": [],
-                  "cards": [
-                    {
-                      "id": "resource-test-20-exposition",
-                      "position": 1,
-                      "title": "Exposição",
-                      "role": "theory",
-                      "content": [
-                        {
-                          "id": "resource-test-20-exposition-content",
-                          "package": "aralearn.resource.algorithm_trace",
-                          "version": "1.0.0",
-                          "data": {
-                            "prompt": "Acompanhe a busca binária por 23 no vetor [4, 8, 15, 16, 23, 42] e observe por que metade do intervalo pode ser descartada a cada comparação.",
-                            "variables": [
-                              "início",
-                              "fim",
-                              "meio",
-                              "valor[meio]"
-                            ],
-                            "steps": [
-                              {
-                                "id": "s0",
-                                "action": "Inicializar intervalo de busca",
-                                "values": [
-                                  "0",
-                                  "5",
-                                  "2",
-                                  "15"
-                                ],
-                                "condition": "15 < 23",
-                                "output": "descartar posições 0..2"
-                              },
-                              {
-                                "id": "s1",
-                                "action": "Mover o início para meio + 1",
-                                "values": [
-                                  "3",
-                                  "5",
-                                  "4",
-                                  "23"
-                                ],
-                                "condition": "23 = 23",
-                                "output": "encontrado no índice 4"
-                              },
-                              {
-                                "id": "s2",
-                                "action": "Encerrar e devolver a posição",
-                                "values": [
-                                  "3",
-                                  "5",
-                                  "4",
-                                  "23"
-                                ],
-                                "condition": "resultado definido",
-                                "output": "4"
-                              }
-                            ]
-                          }
-                        }
-                      ],
-                      "response": null,
-                      "feedback": [],
-                      "topics": [],
-                      "sources": []
-                    },
-                    {
-                      "id": "resource-test-20-choice",
-                      "position": 2,
-                      "title": "Lacuna com alternativas",
-                      "role": "practice",
-                      "content": [
-                        {
-                          "id": "resource-test-20-choice-content",
-                          "package": "aralearn.resource.algorithm_trace",
-                          "version": "1.0.0",
-                          "data": {
-                            "prompt": "Acompanhe a busca binária por 23 no vetor [4, 8, 15, 16, 23, 42] e observe por que metade do intervalo pode ser descartada a cada comparação.",
-                            "variables": [
-                              "início",
-                              "fim",
-                              "meio",
-                              "valor[meio]"
-                            ],
-                            "steps": [
-                              {
-                                "id": "s0",
-                                "action": "Inicializar intervalo de busca",
-                                "values": [
-                                  "0",
-                                  "5",
-                                  "2",
-                                  "15"
-                                ],
-                                "condition": "15 < 23",
-                                "output": "descartar posições 0..2"
-                              },
-                              {
-                                "id": "s1",
-                                "action": "Mover o início para meio + 1",
-                                "values": [
-                                  "3",
-                                  "5",
-                                  "4",
-                                  "23"
-                                ],
-                                "condition": "23 = 23",
-                                "output": "encontrado no índice 4"
-                              },
-                              {
-                                "id": "s2",
-                                "action": "Encerrar e devolver a posição",
-                                "values": [
-                                  "3",
-                                  "5",
-                                  "4",
-                                  "23"
-                                ],
-                                "condition": "resultado definido",
-                                "output": "4"
-                              }
-                            ]
-                          }
-                        }
-                      ],
-                      "response": {
-                        "id": "resource-test-20-choice-response",
-                        "package": "aralearn.response.gap",
-                        "version": "1.0.0",
-                        "data": {
-                          "blanks": [
-                            {
-                              "id": "blank-1",
-                              "targetInstanceId": "resource-test-20-choice-content",
-                              "targetPath": "steps[0].action",
-                              "label": "Lacuna na ação 1",
-                              "responseMode": "choice",
-                              "answer": "Inicializar",
-                              "distractors": [
-                                "não Inicializar",
-                                "outro Inicializar"
-                              ]
-                            }
-                          ]
-                        }
-                      },
-                      "feedback": [],
-                      "topics": [],
-                      "sources": []
-                    },
-                    {
-                      "id": "resource-test-20-text",
-                      "position": 3,
-                      "title": "Lacuna com digitação",
-                      "role": "practice",
-                      "content": [
-                        {
-                          "id": "resource-test-20-text-content",
-                          "package": "aralearn.resource.algorithm_trace",
-                          "version": "1.0.0",
-                          "data": {
-                            "prompt": "Acompanhe a busca binária por 23 no vetor [4, 8, 15, 16, 23, 42] e observe por que metade do intervalo pode ser descartada a cada comparação.",
-                            "variables": [
-                              "início",
-                              "fim",
-                              "meio",
-                              "valor[meio]"
-                            ],
-                            "steps": [
-                              {
-                                "id": "s0",
-                                "action": "Inicializar intervalo de busca",
-                                "values": [
-                                  "0",
-                                  "5",
-                                  "2",
-                                  "15"
-                                ],
-                                "condition": "15 < 23",
-                                "output": "descartar posições 0..2"
-                              },
-                              {
-                                "id": "s1",
-                                "action": "Mover o início para meio + 1",
-                                "values": [
-                                  "3",
-                                  "5",
-                                  "4",
-                                  "23"
-                                ],
-                                "condition": "23 = 23",
-                                "output": "encontrado no índice 4"
-                              },
-                              {
-                                "id": "s2",
-                                "action": "Encerrar e devolver a posição",
-                                "values": [
-                                  "3",
-                                  "5",
-                                  "4",
-                                  "23"
-                                ],
-                                "condition": "resultado definido",
-                                "output": "4"
-                              }
-                            ]
-                          }
-                        }
-                      ],
-                      "response": {
-                        "id": "resource-test-20-text-response",
-                        "package": "aralearn.response.gap",
-                        "version": "1.0.0",
-                        "data": {
-                          "blanks": [
-                            {
-                              "id": "blank-1",
-                              "targetInstanceId": "resource-test-20-text-content",
-                              "targetPath": "steps[0].action",
-                              "label": "Lacuna na ação 1",
-                              "responseMode": "text",
-                              "answer": "Inicializar"
-                            }
-                          ]
-                        }
-                      },
-                      "feedback": [],
-                      "topics": [],
-                      "sources": []
-                    }
-                  ]
-                }
-              ]
-            }
-          ]
-        },
-        {
-          "id": "resource-test-21-module",
+          "id": "resource-test-19-module",
           "title": "Esquema relacional",
           "guide": {
             "goal": "Avaliar aralearn.resource.database_schema somente nas modalidades declaradas pelo próprio package.",
@@ -6377,7 +5839,7 @@
           },
           "lessons": [
             {
-              "id": "resource-test-21-lesson",
+              "id": "resource-test-19-lesson",
               "title": "Esquema relacional",
               "guide": {
                 "goal": "Avaliar aralearn.resource.database_schema somente nas modalidades declaradas pelo próprio package.",
@@ -6400,7 +5862,7 @@
               "topics": [],
               "microsequences": [
                 {
-                  "id": "resource-test-21-microsequence",
+                  "id": "resource-test-19-microsequence",
                   "title": "Esquema relacional",
                   "goal": "Avaliar aralearn.resource.database_schema somente nas modalidades declaradas pelo próprio package.",
                   "role": "practice",
@@ -6414,13 +5876,13 @@
                   "errors": [],
                   "cards": [
                     {
-                      "id": "resource-test-21-exposition",
+                      "id": "resource-test-19-exposition",
                       "position": 1,
                       "title": "Exposição",
                       "role": "theory",
                       "content": [
                         {
-                          "id": "resource-test-21-exposition-content",
+                          "id": "resource-test-19-exposition-content",
                           "package": "aralearn.resource.database_schema",
                           "version": "1.0.0",
                           "data": {
@@ -6570,13 +6032,13 @@
                       "sources": []
                     },
                     {
-                      "id": "resource-test-21-choice",
+                      "id": "resource-test-19-choice",
                       "position": 2,
                       "title": "Lacuna com alternativas",
                       "role": "practice",
                       "content": [
                         {
-                          "id": "resource-test-21-choice-content",
+                          "id": "resource-test-19-choice-content",
                           "package": "aralearn.resource.database_schema",
                           "version": "1.0.0",
                           "data": {
@@ -6721,14 +6183,14 @@
                         }
                       ],
                       "response": {
-                        "id": "resource-test-21-choice-response",
+                        "id": "resource-test-19-choice-response",
                         "package": "aralearn.response.gap",
                         "version": "1.0.0",
                         "data": {
                           "blanks": [
                             {
                               "id": "blank-1",
-                              "targetInstanceId": "resource-test-21-choice-content",
+                              "targetInstanceId": "resource-test-19-choice-content",
                               "targetPath": "relations[0].name",
                               "label": "Lacuna na relação 1",
                               "responseMode": "choice",
@@ -6746,13 +6208,13 @@
                       "sources": []
                     },
                     {
-                      "id": "resource-test-21-text",
+                      "id": "resource-test-19-text",
                       "position": 3,
                       "title": "Lacuna com digitação",
                       "role": "practice",
                       "content": [
                         {
-                          "id": "resource-test-21-text-content",
+                          "id": "resource-test-19-text-content",
                           "package": "aralearn.resource.database_schema",
                           "version": "1.0.0",
                           "data": {
@@ -6897,14 +6359,14 @@
                         }
                       ],
                       "response": {
-                        "id": "resource-test-21-text-response",
+                        "id": "resource-test-19-text-response",
                         "package": "aralearn.response.gap",
                         "version": "1.0.0",
                         "data": {
                           "blanks": [
                             {
                               "id": "blank-1",
-                              "targetInstanceId": "resource-test-21-text-content",
+                              "targetInstanceId": "resource-test-19-text-content",
                               "targetPath": "relations[0].name",
                               "label": "Lacuna na relação 1",
                               "responseMode": "text",
@@ -6924,7 +6386,7 @@
           ]
         },
         {
-          "id": "resource-test-22-module",
+          "id": "resource-test-20-module",
           "title": "Mapa de memória",
           "guide": {
             "goal": "Avaliar aralearn.resource.memory_layout somente nas modalidades declaradas pelo próprio package.",
@@ -6946,7 +6408,7 @@
           },
           "lessons": [
             {
-              "id": "resource-test-22-lesson",
+              "id": "resource-test-20-lesson",
               "title": "Mapa de memória",
               "guide": {
                 "goal": "Avaliar aralearn.resource.memory_layout somente nas modalidades declaradas pelo próprio package.",
@@ -6969,7 +6431,7 @@
               "topics": [],
               "microsequences": [
                 {
-                  "id": "resource-test-22-microsequence",
+                  "id": "resource-test-20-microsequence",
                   "title": "Mapa de memória",
                   "goal": "Avaliar aralearn.resource.memory_layout somente nas modalidades declaradas pelo próprio package.",
                   "role": "practice",
@@ -6983,13 +6445,13 @@
                   "errors": [],
                   "cards": [
                     {
-                      "id": "resource-test-22-exposition",
+                      "id": "resource-test-20-exposition",
                       "position": 1,
                       "title": "Exposição",
                       "role": "theory",
                       "content": [
                         {
-                          "id": "resource-test-22-exposition-content",
+                          "id": "resource-test-20-exposition-content",
                           "package": "aralearn.resource.memory_layout",
                           "version": "1.0.0",
                           "data": {
@@ -7063,13 +6525,13 @@
                       "sources": []
                     },
                     {
-                      "id": "resource-test-22-choice",
+                      "id": "resource-test-20-choice",
                       "position": 2,
                       "title": "Lacuna com alternativas",
                       "role": "practice",
                       "content": [
                         {
-                          "id": "resource-test-22-choice-content",
+                          "id": "resource-test-20-choice-content",
                           "package": "aralearn.resource.memory_layout",
                           "version": "1.0.0",
                           "data": {
@@ -7138,14 +6600,14 @@
                         }
                       ],
                       "response": {
-                        "id": "resource-test-22-choice-response",
+                        "id": "resource-test-20-choice-response",
                         "package": "aralearn.response.gap",
                         "version": "1.0.0",
                         "data": {
                           "blanks": [
                             {
                               "id": "blank-1",
-                              "targetInstanceId": "resource-test-22-choice-content",
+                              "targetInstanceId": "resource-test-20-choice-content",
                               "targetPath": "segments[0].label",
                               "label": "Lacuna no segmento 1",
                               "responseMode": "choice",
@@ -7163,13 +6625,13 @@
                       "sources": []
                     },
                     {
-                      "id": "resource-test-22-text",
+                      "id": "resource-test-20-text",
                       "position": 3,
                       "title": "Lacuna com digitação",
                       "role": "practice",
                       "content": [
                         {
-                          "id": "resource-test-22-text-content",
+                          "id": "resource-test-20-text-content",
                           "package": "aralearn.resource.memory_layout",
                           "version": "1.0.0",
                           "data": {
@@ -7238,14 +6700,14 @@
                         }
                       ],
                       "response": {
-                        "id": "resource-test-22-text-response",
+                        "id": "resource-test-20-text-response",
                         "package": "aralearn.response.gap",
                         "version": "1.0.0",
                         "data": {
                           "blanks": [
                             {
                               "id": "blank-1",
-                              "targetInstanceId": "resource-test-22-text-content",
+                              "targetInstanceId": "resource-test-20-text-content",
                               "targetPath": "segments[0].label",
                               "label": "Lacuna no segmento 1",
                               "responseMode": "text",
@@ -7265,7 +6727,7 @@
           ]
         },
         {
-          "id": "resource-test-23-module",
+          "id": "resource-test-21-module",
           "title": "Topologia de rede",
           "guide": {
             "goal": "Avaliar aralearn.resource.network_topology somente nas modalidades declaradas pelo próprio package.",
@@ -7287,7 +6749,7 @@
           },
           "lessons": [
             {
-              "id": "resource-test-23-lesson",
+              "id": "resource-test-21-lesson",
               "title": "Topologia de rede",
               "guide": {
                 "goal": "Avaliar aralearn.resource.network_topology somente nas modalidades declaradas pelo próprio package.",
@@ -7310,7 +6772,7 @@
               "topics": [],
               "microsequences": [
                 {
-                  "id": "resource-test-23-microsequence",
+                  "id": "resource-test-21-microsequence",
                   "title": "Topologia de rede",
                   "goal": "Avaliar aralearn.resource.network_topology somente nas modalidades declaradas pelo próprio package.",
                   "role": "practice",
@@ -7324,13 +6786,13 @@
                   "errors": [],
                   "cards": [
                     {
-                      "id": "resource-test-23-exposition",
+                      "id": "resource-test-21-exposition",
                       "position": 1,
                       "title": "Exposição",
                       "role": "theory",
                       "content": [
                         {
-                          "id": "resource-test-23-exposition-content",
+                          "id": "resource-test-21-exposition-content",
                           "package": "aralearn.resource.network_topology",
                           "version": "1.0.0",
                           "data": {
@@ -7419,13 +6881,13 @@
                       "sources": []
                     },
                     {
-                      "id": "resource-test-23-choice",
+                      "id": "resource-test-21-choice",
                       "position": 2,
                       "title": "Lacuna com alternativas",
                       "role": "practice",
                       "content": [
                         {
-                          "id": "resource-test-23-choice-content",
+                          "id": "resource-test-21-choice-content",
                           "package": "aralearn.resource.network_topology",
                           "version": "1.0.0",
                           "data": {
@@ -7509,14 +6971,14 @@
                         }
                       ],
                       "response": {
-                        "id": "resource-test-23-choice-response",
+                        "id": "resource-test-21-choice-response",
                         "package": "aralearn.response.gap",
                         "version": "1.0.0",
                         "data": {
                           "blanks": [
                             {
                               "id": "blank-1",
-                              "targetInstanceId": "resource-test-23-choice-content",
+                              "targetInstanceId": "resource-test-21-choice-content",
                               "targetPath": "devices[0].label",
                               "label": "Lacuna no equipamento 1",
                               "responseMode": "choice",
@@ -7534,13 +6996,13 @@
                       "sources": []
                     },
                     {
-                      "id": "resource-test-23-text",
+                      "id": "resource-test-21-text",
                       "position": 3,
                       "title": "Lacuna com digitação",
                       "role": "practice",
                       "content": [
                         {
-                          "id": "resource-test-23-text-content",
+                          "id": "resource-test-21-text-content",
                           "package": "aralearn.resource.network_topology",
                           "version": "1.0.0",
                           "data": {
@@ -7624,14 +7086,14 @@
                         }
                       ],
                       "response": {
-                        "id": "resource-test-23-text-response",
+                        "id": "resource-test-21-text-response",
                         "package": "aralearn.response.gap",
                         "version": "1.0.0",
                         "data": {
                           "blanks": [
                             {
                               "id": "blank-1",
-                              "targetInstanceId": "resource-test-23-text-content",
+                              "targetInstanceId": "resource-test-21-text-content",
                               "targetPath": "devices[0].label",
                               "label": "Lacuna no equipamento 1",
                               "responseMode": "text",
@@ -7651,7 +7113,7 @@
           ]
         },
         {
-          "id": "resource-test-24-module",
+          "id": "resource-test-22-module",
           "title": "Layout de pacote",
           "guide": {
             "goal": "Avaliar aralearn.resource.packet_layout somente nas modalidades declaradas pelo próprio package.",
@@ -7674,7 +7136,7 @@
           },
           "lessons": [
             {
-              "id": "resource-test-24-lesson",
+              "id": "resource-test-22-lesson",
               "title": "Layout de pacote",
               "guide": {
                 "goal": "Avaliar aralearn.resource.packet_layout somente nas modalidades declaradas pelo próprio package.",
@@ -7698,7 +7160,7 @@
               "topics": [],
               "microsequences": [
                 {
-                  "id": "resource-test-24-microsequence",
+                  "id": "resource-test-22-microsequence",
                   "title": "Layout de pacote",
                   "goal": "Avaliar aralearn.resource.packet_layout somente nas modalidades declaradas pelo próprio package.",
                   "role": "practice",
@@ -7712,13 +7174,13 @@
                   "errors": [],
                   "cards": [
                     {
-                      "id": "resource-test-24-exposition",
+                      "id": "resource-test-22-exposition",
                       "position": 1,
                       "title": "Exposição",
                       "role": "theory",
                       "content": [
                         {
-                          "id": "resource-test-24-exposition-content",
+                          "id": "resource-test-22-exposition-content",
                           "package": "aralearn.resource.packet_layout",
                           "version": "1.0.0",
                           "data": {
@@ -7796,13 +7258,13 @@
                       "sources": []
                     },
                     {
-                      "id": "resource-test-24-choice",
+                      "id": "resource-test-22-choice",
                       "position": 2,
                       "title": "Lacuna com alternativas",
                       "role": "practice",
                       "content": [
                         {
-                          "id": "resource-test-24-choice-content",
+                          "id": "resource-test-22-choice-content",
                           "package": "aralearn.resource.packet_layout",
                           "version": "1.0.0",
                           "data": {
@@ -7875,14 +7337,14 @@
                         }
                       ],
                       "response": {
-                        "id": "resource-test-24-choice-response",
+                        "id": "resource-test-22-choice-response",
                         "package": "aralearn.response.gap",
                         "version": "1.0.0",
                         "data": {
                           "blanks": [
                             {
                               "id": "blank-1",
-                              "targetInstanceId": "resource-test-24-choice-content",
+                              "targetInstanceId": "resource-test-22-choice-content",
                               "targetPath": "fields[0].label",
                               "label": "Lacuna no campo 1",
                               "responseMode": "choice",
@@ -7900,13 +7362,13 @@
                       "sources": []
                     },
                     {
-                      "id": "resource-test-24-text",
+                      "id": "resource-test-22-text",
                       "position": 3,
                       "title": "Lacuna com digitação",
                       "role": "practice",
                       "content": [
                         {
-                          "id": "resource-test-24-text-content",
+                          "id": "resource-test-22-text-content",
                           "package": "aralearn.resource.packet_layout",
                           "version": "1.0.0",
                           "data": {
@@ -7979,14 +7441,14 @@
                         }
                       ],
                       "response": {
-                        "id": "resource-test-24-text-response",
+                        "id": "resource-test-22-text-response",
                         "package": "aralearn.response.gap",
                         "version": "1.0.0",
                         "data": {
                           "blanks": [
                             {
                               "id": "blank-1",
-                              "targetInstanceId": "resource-test-24-text-content",
+                              "targetInstanceId": "resource-test-22-text-content",
                               "targetPath": "fields[0].label",
                               "label": "Lacuna no campo 1",
                               "responseMode": "text",
@@ -8006,7 +7468,7 @@
           ]
         },
         {
-          "id": "resource-test-25-module",
+          "id": "resource-test-23-module",
           "title": "Diagrama de conjuntos",
           "guide": {
             "goal": "Avaliar aralearn.resource.set_diagram somente nas modalidades declaradas pelo próprio package.",
@@ -8020,7 +7482,8 @@
               "contorno por conjunto",
               "interseções por sobreposição",
               "universo explícito quando necessário",
-              "elementos vinculados à região exata"
+              "marcador ancorado à região exata",
+              "distinção explícita entre Venn e Euler"
             ],
             "avoid": [
               "usar a forma quando ela não acrescenta significado"
@@ -8028,7 +7491,7 @@
           },
           "lessons": [
             {
-              "id": "resource-test-25-lesson",
+              "id": "resource-test-23-lesson",
               "title": "Diagrama de conjuntos",
               "guide": {
                 "goal": "Avaliar aralearn.resource.set_diagram somente nas modalidades declaradas pelo próprio package.",
@@ -8042,7 +7505,8 @@
                   "contorno por conjunto",
                   "interseções por sobreposição",
                   "universo explícito quando necessário",
-                  "elementos vinculados à região exata"
+                  "marcador ancorado à região exata",
+                  "distinção explícita entre Venn e Euler"
                 ],
                 "avoid": [
                   "lacuna fora da representação"
@@ -8051,7 +7515,7 @@
               "topics": [],
               "microsequences": [
                 {
-                  "id": "resource-test-25-microsequence",
+                  "id": "resource-test-23-microsequence",
                   "title": "Diagrama de conjuntos",
                   "goal": "Avaliar aralearn.resource.set_diagram somente nas modalidades declaradas pelo próprio package.",
                   "role": "practice",
@@ -8065,29 +7529,33 @@
                   "errors": [],
                   "cards": [
                     {
-                      "id": "resource-test-25-exposition",
+                      "id": "resource-test-23-exposition",
                       "position": 1,
                       "title": "Exposição",
                       "role": "theory",
                       "content": [
                         {
-                          "id": "resource-test-25-exposition-content",
+                          "id": "resource-test-23-exposition-content",
                           "package": "aralearn.resource.set_diagram",
                           "version": "1.0.0",
                           "data": {
-                            "prompt": "Classifique as linguagens por paradigma e observe as interseções; os nomes ficam na legenda das regiões para não sobrecarregar o desenho.",
+                            "prompt": "Classifique as linguagens por paradigma e observe quais pertencem simultaneamente a mais de um conjunto.",
+                            "kind": "venn",
                             "universeLabel": "Linguagens analisadas",
                             "sets": [
                               {
                                 "id": "imperative",
+                                "symbol": "I",
                                 "label": "Imperativas"
                               },
                               {
                                 "id": "object",
+                                "symbol": "O",
                                 "label": "Orientadas a objetos"
                               },
                               {
                                 "id": "functional",
+                                "symbol": "F",
                                 "label": "Funcionais"
                               }
                             ],
@@ -8144,29 +7612,33 @@
                       "sources": []
                     },
                     {
-                      "id": "resource-test-25-choice",
+                      "id": "resource-test-23-choice",
                       "position": 2,
                       "title": "Lacuna com alternativas",
                       "role": "practice",
                       "content": [
                         {
-                          "id": "resource-test-25-choice-content",
+                          "id": "resource-test-23-choice-content",
                           "package": "aralearn.resource.set_diagram",
                           "version": "1.0.0",
                           "data": {
-                            "prompt": "Classifique as linguagens por paradigma e observe as interseções; os nomes ficam na legenda das regiões para não sobrecarregar o desenho.",
+                            "prompt": "Classifique as linguagens por paradigma e observe quais pertencem simultaneamente a mais de um conjunto.",
+                            "kind": "venn",
                             "universeLabel": "Linguagens analisadas",
                             "sets": [
                               {
                                 "id": "imperative",
+                                "symbol": "I",
                                 "label": "Imperativas"
                               },
                               {
                                 "id": "object",
+                                "symbol": "O",
                                 "label": "Orientadas a objetos"
                               },
                               {
                                 "id": "functional",
+                                "symbol": "F",
                                 "label": "Funcionais"
                               }
                             ],
@@ -8218,14 +7690,14 @@
                         }
                       ],
                       "response": {
-                        "id": "resource-test-25-choice-response",
+                        "id": "resource-test-23-choice-response",
                         "package": "aralearn.response.gap",
                         "version": "1.0.0",
                         "data": {
                           "blanks": [
                             {
                               "id": "blank-1",
-                              "targetInstanceId": "resource-test-25-choice-content",
+                              "targetInstanceId": "resource-test-23-choice-content",
                               "targetPath": "regions[0].items[0]",
                               "label": "Lacuna no elemento 1.1",
                               "responseMode": "choice",
@@ -8243,29 +7715,33 @@
                       "sources": []
                     },
                     {
-                      "id": "resource-test-25-text",
+                      "id": "resource-test-23-text",
                       "position": 3,
                       "title": "Lacuna com digitação",
                       "role": "practice",
                       "content": [
                         {
-                          "id": "resource-test-25-text-content",
+                          "id": "resource-test-23-text-content",
                           "package": "aralearn.resource.set_diagram",
                           "version": "1.0.0",
                           "data": {
-                            "prompt": "Classifique as linguagens por paradigma e observe as interseções; os nomes ficam na legenda das regiões para não sobrecarregar o desenho.",
+                            "prompt": "Classifique as linguagens por paradigma e observe quais pertencem simultaneamente a mais de um conjunto.",
+                            "kind": "venn",
                             "universeLabel": "Linguagens analisadas",
                             "sets": [
                               {
                                 "id": "imperative",
+                                "symbol": "I",
                                 "label": "Imperativas"
                               },
                               {
                                 "id": "object",
+                                "symbol": "O",
                                 "label": "Orientadas a objetos"
                               },
                               {
                                 "id": "functional",
+                                "symbol": "F",
                                 "label": "Funcionais"
                               }
                             ],
@@ -8317,14 +7793,14 @@
                         }
                       ],
                       "response": {
-                        "id": "resource-test-25-text-response",
+                        "id": "resource-test-23-text-response",
                         "package": "aralearn.response.gap",
                         "version": "1.0.0",
                         "data": {
                           "blanks": [
                             {
                               "id": "blank-1",
-                              "targetInstanceId": "resource-test-25-text-content",
+                              "targetInstanceId": "resource-test-23-text-content",
                               "targetPath": "regions[0].items[0]",
                               "label": "Lacuna no elemento 1.1",
                               "responseMode": "text",
@@ -8344,7 +7820,7 @@
           ]
         },
         {
-          "id": "resource-test-26-module",
+          "id": "resource-test-24-module",
           "title": "Diagrama de estados",
           "guide": {
             "goal": "Avaliar aralearn.resource.state_machine somente nas modalidades declaradas pelo próprio package.",
@@ -8366,7 +7842,7 @@
           },
           "lessons": [
             {
-              "id": "resource-test-26-lesson",
+              "id": "resource-test-24-lesson",
               "title": "Diagrama de estados",
               "guide": {
                 "goal": "Avaliar aralearn.resource.state_machine somente nas modalidades declaradas pelo próprio package.",
@@ -8389,7 +7865,7 @@
               "topics": [],
               "microsequences": [
                 {
-                  "id": "resource-test-26-microsequence",
+                  "id": "resource-test-24-microsequence",
                   "title": "Diagrama de estados",
                   "goal": "Avaliar aralearn.resource.state_machine somente nas modalidades declaradas pelo próprio package.",
                   "role": "practice",
@@ -8403,13 +7879,13 @@
                   "errors": [],
                   "cards": [
                     {
-                      "id": "resource-test-26-exposition",
+                      "id": "resource-test-24-exposition",
                       "position": 1,
                       "title": "Exposição",
                       "role": "theory",
                       "content": [
                         {
-                          "id": "resource-test-26-exposition-content",
+                          "id": "resource-test-24-exposition-content",
                           "package": "aralearn.resource.state_machine",
                           "version": "1.0.0",
                           "data": {
@@ -8504,13 +7980,13 @@
                       "sources": []
                     },
                     {
-                      "id": "resource-test-26-choice",
+                      "id": "resource-test-24-choice",
                       "position": 2,
                       "title": "Lacuna com alternativas",
                       "role": "practice",
                       "content": [
                         {
-                          "id": "resource-test-26-choice-content",
+                          "id": "resource-test-24-choice-content",
                           "package": "aralearn.resource.state_machine",
                           "version": "1.0.0",
                           "data": {
@@ -8600,14 +8076,14 @@
                         }
                       ],
                       "response": {
-                        "id": "resource-test-26-choice-response",
+                        "id": "resource-test-24-choice-response",
                         "package": "aralearn.response.gap",
                         "version": "1.0.0",
                         "data": {
                           "blanks": [
                             {
                               "id": "blank-1",
-                              "targetInstanceId": "resource-test-26-choice-content",
+                              "targetInstanceId": "resource-test-24-choice-content",
                               "targetPath": "states[0].label",
                               "label": "Lacuna no estado 1",
                               "responseMode": "choice",
@@ -8625,13 +8101,13 @@
                       "sources": []
                     },
                     {
-                      "id": "resource-test-26-text",
+                      "id": "resource-test-24-text",
                       "position": 3,
                       "title": "Lacuna com digitação",
                       "role": "practice",
                       "content": [
                         {
-                          "id": "resource-test-26-text-content",
+                          "id": "resource-test-24-text-content",
                           "package": "aralearn.resource.state_machine",
                           "version": "1.0.0",
                           "data": {
@@ -8721,14 +8197,14 @@
                         }
                       ],
                       "response": {
-                        "id": "resource-test-26-text-response",
+                        "id": "resource-test-24-text-response",
                         "package": "aralearn.response.gap",
                         "version": "1.0.0",
                         "data": {
                           "blanks": [
                             {
                               "id": "blank-1",
-                              "targetInstanceId": "resource-test-26-text-content",
+                              "targetInstanceId": "resource-test-24-text-content",
                               "targetPath": "states[0].label",
                               "label": "Lacuna no estado 1",
                               "responseMode": "text",
@@ -8748,7 +8224,7 @@
           ]
         },
         {
-          "id": "resource-test-27-module",
+          "id": "resource-test-25-module",
           "title": "Tabela-verdade",
           "guide": {
             "goal": "Avaliar aralearn.resource.truth_table somente nas modalidades declaradas pelo próprio package.",
@@ -8769,7 +8245,7 @@
           },
           "lessons": [
             {
-              "id": "resource-test-27-lesson",
+              "id": "resource-test-25-lesson",
               "title": "Tabela-verdade",
               "guide": {
                 "goal": "Avaliar aralearn.resource.truth_table somente nas modalidades declaradas pelo próprio package.",
@@ -8791,7 +8267,7 @@
               "topics": [],
               "microsequences": [
                 {
-                  "id": "resource-test-27-microsequence",
+                  "id": "resource-test-25-microsequence",
                   "title": "Tabela-verdade",
                   "goal": "Avaliar aralearn.resource.truth_table somente nas modalidades declaradas pelo próprio package.",
                   "role": "practice",
@@ -8805,13 +8281,13 @@
                   "errors": [],
                   "cards": [
                     {
-                      "id": "resource-test-27-exposition",
+                      "id": "resource-test-25-exposition",
                       "position": 1,
                       "title": "Exposição",
                       "role": "theory",
                       "content": [
                         {
-                          "id": "resource-test-27-exposition-content",
+                          "id": "resource-test-25-exposition-content",
                           "package": "aralearn.resource.truth_table",
                           "version": "1.0.0",
                           "data": {
@@ -8885,13 +8361,13 @@
                       "sources": []
                     },
                     {
-                      "id": "resource-test-27-choice",
+                      "id": "resource-test-25-choice",
                       "position": 2,
                       "title": "Lacuna com alternativas",
                       "role": "practice",
                       "content": [
                         {
-                          "id": "resource-test-27-choice-content",
+                          "id": "resource-test-25-choice-content",
                           "package": "aralearn.resource.truth_table",
                           "version": "1.0.0",
                           "data": {
@@ -8960,14 +8436,14 @@
                         }
                       ],
                       "response": {
-                        "id": "resource-test-27-choice-response",
+                        "id": "resource-test-25-choice-response",
                         "package": "aralearn.response.gap",
                         "version": "1.0.0",
                         "data": {
                           "blanks": [
                             {
                               "id": "blank-1",
-                              "targetInstanceId": "resource-test-27-choice-content",
+                              "targetInstanceId": "resource-test-25-choice-content",
                               "targetPath": "rows[0].values[0]",
                               "label": "Lacuna na valoração 1.1",
                               "responseMode": "choice",
@@ -8985,13 +8461,13 @@
                       "sources": []
                     },
                     {
-                      "id": "resource-test-27-text",
+                      "id": "resource-test-25-text",
                       "position": 3,
                       "title": "Lacuna com digitação",
                       "role": "practice",
                       "content": [
                         {
-                          "id": "resource-test-27-text-content",
+                          "id": "resource-test-25-text-content",
                           "package": "aralearn.resource.truth_table",
                           "version": "1.0.0",
                           "data": {
@@ -9060,14 +8536,14 @@
                         }
                       ],
                       "response": {
-                        "id": "resource-test-27-text-response",
+                        "id": "resource-test-25-text-response",
                         "package": "aralearn.response.gap",
                         "version": "1.0.0",
                         "data": {
                           "blanks": [
                             {
                               "id": "blank-1",
-                              "targetInstanceId": "resource-test-27-text-content",
+                              "targetInstanceId": "resource-test-25-text-content",
                               "targetPath": "rows[0].values[0]",
                               "label": "Lacuna na valoração 1.1",
                               "responseMode": "text",
@@ -9087,7 +8563,7 @@
           ]
         },
         {
-          "id": "resource-test-28-module",
+          "id": "resource-test-26-module",
           "title": "Modelo entidade-relacionamento",
           "guide": {
             "goal": "Avaliar aralearn.resource.entity_relationship somente nas modalidades declaradas pelo próprio package.",
@@ -9110,7 +8586,7 @@
           },
           "lessons": [
             {
-              "id": "resource-test-28-lesson",
+              "id": "resource-test-26-lesson",
               "title": "Modelo entidade-relacionamento",
               "guide": {
                 "goal": "Avaliar aralearn.resource.entity_relationship somente nas modalidades declaradas pelo próprio package.",
@@ -9134,7 +8610,7 @@
               "topics": [],
               "microsequences": [
                 {
-                  "id": "resource-test-28-microsequence",
+                  "id": "resource-test-26-microsequence",
                   "title": "Modelo entidade-relacionamento",
                   "goal": "Avaliar aralearn.resource.entity_relationship somente nas modalidades declaradas pelo próprio package.",
                   "role": "practice",
@@ -9148,13 +8624,13 @@
                   "errors": [],
                   "cards": [
                     {
-                      "id": "resource-test-28-exposition",
+                      "id": "resource-test-26-exposition",
                       "position": 1,
                       "title": "Exposição",
                       "role": "theory",
                       "content": [
                         {
-                          "id": "resource-test-28-exposition-content",
+                          "id": "resource-test-26-exposition-content",
                           "package": "aralearn.resource.entity_relationship",
                           "version": "1.0.0",
                           "data": {
@@ -9257,13 +8733,13 @@
                       "sources": []
                     },
                     {
-                      "id": "resource-test-28-choice",
+                      "id": "resource-test-26-choice",
                       "position": 2,
                       "title": "Lacuna com alternativas",
                       "role": "practice",
                       "content": [
                         {
-                          "id": "resource-test-28-choice-content",
+                          "id": "resource-test-26-choice-content",
                           "package": "aralearn.resource.entity_relationship",
                           "version": "1.0.0",
                           "data": {
@@ -9361,14 +8837,14 @@
                         }
                       ],
                       "response": {
-                        "id": "resource-test-28-choice-response",
+                        "id": "resource-test-26-choice-response",
                         "package": "aralearn.response.gap",
                         "version": "1.0.0",
                         "data": {
                           "blanks": [
                             {
                               "id": "blank-1",
-                              "targetInstanceId": "resource-test-28-choice-content",
+                              "targetInstanceId": "resource-test-26-choice-content",
                               "targetPath": "entities[0].name",
                               "label": "Lacuna na entidade 1",
                               "responseMode": "choice",
@@ -9386,13 +8862,13 @@
                       "sources": []
                     },
                     {
-                      "id": "resource-test-28-text",
+                      "id": "resource-test-26-text",
                       "position": 3,
                       "title": "Lacuna com digitação",
                       "role": "practice",
                       "content": [
                         {
-                          "id": "resource-test-28-text-content",
+                          "id": "resource-test-26-text-content",
                           "package": "aralearn.resource.entity_relationship",
                           "version": "1.0.0",
                           "data": {
@@ -9490,14 +8966,14 @@
                         }
                       ],
                       "response": {
-                        "id": "resource-test-28-text-response",
+                        "id": "resource-test-26-text-response",
                         "package": "aralearn.response.gap",
                         "version": "1.0.0",
                         "data": {
                           "blanks": [
                             {
                               "id": "blank-1",
-                              "targetInstanceId": "resource-test-28-text-content",
+                              "targetInstanceId": "resource-test-26-text-content",
                               "targetPath": "entities[0].name",
                               "label": "Lacuna na entidade 1",
                               "responseMode": "text",
@@ -9517,7 +8993,7 @@
           ]
         },
         {
-          "id": "resource-test-29-module",
+          "id": "resource-test-27-module",
           "title": "Tabela de transição",
           "guide": {
             "goal": "Avaliar aralearn.resource.state_transition_table somente nas modalidades declaradas pelo próprio package.",
@@ -9539,7 +9015,7 @@
           },
           "lessons": [
             {
-              "id": "resource-test-29-lesson",
+              "id": "resource-test-27-lesson",
               "title": "Tabela de transição",
               "guide": {
                 "goal": "Avaliar aralearn.resource.state_transition_table somente nas modalidades declaradas pelo próprio package.",
@@ -9562,7 +9038,7 @@
               "topics": [],
               "microsequences": [
                 {
-                  "id": "resource-test-29-microsequence",
+                  "id": "resource-test-27-microsequence",
                   "title": "Tabela de transição",
                   "goal": "Avaliar aralearn.resource.state_transition_table somente nas modalidades declaradas pelo próprio package.",
                   "role": "practice",
@@ -9576,13 +9052,13 @@
                   "errors": [],
                   "cards": [
                     {
-                      "id": "resource-test-29-exposition",
+                      "id": "resource-test-27-exposition",
                       "position": 1,
                       "title": "Exposição",
                       "role": "theory",
                       "content": [
                         {
-                          "id": "resource-test-29-exposition-content",
+                          "id": "resource-test-27-exposition-content",
                           "package": "aralearn.resource.state_transition_table",
                           "version": "1.0.0",
                           "data": {
@@ -9664,13 +9140,13 @@
                       "sources": []
                     },
                     {
-                      "id": "resource-test-29-choice",
+                      "id": "resource-test-27-choice",
                       "position": 2,
                       "title": "Lacuna com alternativas",
                       "role": "practice",
                       "content": [
                         {
-                          "id": "resource-test-29-choice-content",
+                          "id": "resource-test-27-choice-content",
                           "package": "aralearn.resource.state_transition_table",
                           "version": "1.0.0",
                           "data": {
@@ -9747,14 +9223,14 @@
                         }
                       ],
                       "response": {
-                        "id": "resource-test-29-choice-response",
+                        "id": "resource-test-27-choice-response",
                         "package": "aralearn.response.gap",
                         "version": "1.0.0",
                         "data": {
                           "blanks": [
                             {
                               "id": "blank-1",
-                              "targetInstanceId": "resource-test-29-choice-content",
+                              "targetInstanceId": "resource-test-27-choice-content",
                               "targetPath": "states[0].label",
                               "label": "Lacuna no estado 1",
                               "responseMode": "choice",
@@ -9772,13 +9248,13 @@
                       "sources": []
                     },
                     {
-                      "id": "resource-test-29-text",
+                      "id": "resource-test-27-text",
                       "position": 3,
                       "title": "Lacuna com digitação",
                       "role": "practice",
                       "content": [
                         {
-                          "id": "resource-test-29-text-content",
+                          "id": "resource-test-27-text-content",
                           "package": "aralearn.resource.state_transition_table",
                           "version": "1.0.0",
                           "data": {
@@ -9855,14 +9331,14 @@
                         }
                       ],
                       "response": {
-                        "id": "resource-test-29-text-response",
+                        "id": "resource-test-27-text-response",
                         "package": "aralearn.response.gap",
                         "version": "1.0.0",
                         "data": {
                           "blanks": [
                             {
                               "id": "blank-1",
-                              "targetInstanceId": "resource-test-29-text-content",
+                              "targetInstanceId": "resource-test-27-text-content",
                               "targetPath": "states[0].label",
                               "label": "Lacuna no estado 1",
                               "responseMode": "text",
@@ -9882,7 +9358,7 @@
           ]
         },
         {
-          "id": "resource-test-30-module",
+          "id": "resource-test-28-module",
           "title": "Pilha de chamadas",
           "guide": {
             "goal": "Avaliar aralearn.resource.call_stack somente nas modalidades declaradas pelo próprio package.",
@@ -9904,7 +9380,7 @@
           },
           "lessons": [
             {
-              "id": "resource-test-30-lesson",
+              "id": "resource-test-28-lesson",
               "title": "Pilha de chamadas",
               "guide": {
                 "goal": "Avaliar aralearn.resource.call_stack somente nas modalidades declaradas pelo próprio package.",
@@ -9927,7 +9403,7 @@
               "topics": [],
               "microsequences": [
                 {
-                  "id": "resource-test-30-microsequence",
+                  "id": "resource-test-28-microsequence",
                   "title": "Pilha de chamadas",
                   "goal": "Avaliar aralearn.resource.call_stack somente nas modalidades declaradas pelo próprio package.",
                   "role": "practice",
@@ -9941,13 +9417,13 @@
                   "errors": [],
                   "cards": [
                     {
-                      "id": "resource-test-30-exposition",
+                      "id": "resource-test-28-exposition",
                       "position": 1,
                       "title": "Exposição",
                       "role": "theory",
                       "content": [
                         {
-                          "id": "resource-test-30-exposition-content",
+                          "id": "resource-test-28-exposition-content",
                           "package": "aralearn.resource.call_stack",
                           "version": "1.0.0",
                           "data": {
@@ -10008,13 +9484,13 @@
                       "sources": []
                     },
                     {
-                      "id": "resource-test-30-choice",
+                      "id": "resource-test-28-choice",
                       "position": 2,
                       "title": "Lacuna com alternativas",
                       "role": "practice",
                       "content": [
                         {
-                          "id": "resource-test-30-choice-content",
+                          "id": "resource-test-28-choice-content",
                           "package": "aralearn.resource.call_stack",
                           "version": "1.0.0",
                           "data": {
@@ -10070,14 +9546,14 @@
                         }
                       ],
                       "response": {
-                        "id": "resource-test-30-choice-response",
+                        "id": "resource-test-28-choice-response",
                         "package": "aralearn.response.gap",
                         "version": "1.0.0",
                         "data": {
                           "blanks": [
                             {
                               "id": "blank-1",
-                              "targetInstanceId": "resource-test-30-choice-content",
+                              "targetInstanceId": "resource-test-28-choice-content",
                               "targetPath": "frames[0].functionName",
                               "label": "Lacuna na função 1",
                               "responseMode": "choice",
@@ -10095,13 +9571,13 @@
                       "sources": []
                     },
                     {
-                      "id": "resource-test-30-text",
+                      "id": "resource-test-28-text",
                       "position": 3,
                       "title": "Lacuna com digitação",
                       "role": "practice",
                       "content": [
                         {
-                          "id": "resource-test-30-text-content",
+                          "id": "resource-test-28-text-content",
                           "package": "aralearn.resource.call_stack",
                           "version": "1.0.0",
                           "data": {
@@ -10157,14 +9633,14 @@
                         }
                       ],
                       "response": {
-                        "id": "resource-test-30-text-response",
+                        "id": "resource-test-28-text-response",
                         "package": "aralearn.response.gap",
                         "version": "1.0.0",
                         "data": {
                           "blanks": [
                             {
                               "id": "blank-1",
-                              "targetInstanceId": "resource-test-30-text-content",
+                              "targetInstanceId": "resource-test-28-text-content",
                               "targetPath": "frames[0].functionName",
                               "label": "Lacuna na função 1",
                               "responseMode": "text",

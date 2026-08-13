@@ -176,68 +176,11 @@
                     {
                       "id": "gallery-4",
                       "position": 4,
-                      "title": "Sequência",
-                      "role": "theory",
-                      "content": [
-                        {
-                          "id": "instance-4",
-                          "package": "aralearn.resource.sequence",
-                          "version": "1.0.0",
-                          "data": {
-                            "prompt": "Acompanhe uma resolução DNS iterativa depois que o nome completo e o papel do resolvedor já foram apresentados.",
-                            "variant": "ordered_steps",
-                            "items": [
-                              {
-                                "id": "query",
-                                "label": "Receber a consulta do cliente",
-                                "detail": "O resolvedor verifica primeiro seu cache."
-                              },
-                              {
-                                "id": "root",
-                                "label": "Consultar um servidor raiz",
-                                "detail": "A resposta encaminha para o domínio de topo apropriado."
-                              },
-                              {
-                                "id": "tld",
-                                "label": "Consultar o servidor do domínio de topo",
-                                "detail": "A resposta indica servidores autoritativos do domínio."
-                              },
-                              {
-                                "id": "authoritative",
-                                "label": "Consultar o servidor autoritativo",
-                                "detail": "O registro solicitado é devolvido com seu TTL."
-                              },
-                              {
-                                "id": "answer",
-                                "label": "Armazenar e devolver a resposta",
-                                "detail": "O cache evita repetir imediatamente todo o percurso."
-                              }
-                            ]
-                          }
-                        }
-                      ],
-                      "response": null,
-                      "feedback": [
-                        {
-                          "id": "feedback-4",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "A ordem visual também é a ordem do DOM e cada item tem posição textual."
-                          }
-                        }
-                      ],
-                      "topics": [],
-                      "sources": []
-                    },
-                    {
-                      "id": "gallery-5",
-                      "position": 5,
                       "title": "Texto anotado",
                       "role": "theory",
                       "content": [
                         {
-                          "id": "instance-5",
+                          "id": "instance-4",
                           "package": "aralearn.resource.annotated_text",
                           "version": "1.0.0",
                           "data": {
@@ -290,7 +233,7 @@
                       "response": null,
                       "feedback": [
                         {
-                          "id": "feedback-5",
+                          "id": "feedback-4",
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
@@ -302,13 +245,13 @@
                       "sources": []
                     },
                     {
-                      "id": "gallery-6",
-                      "position": 6,
+                      "id": "gallery-5",
+                      "position": 5,
                       "title": "Processo BPMN",
                       "role": "theory",
                       "content": [
                         {
-                          "id": "instance-6",
+                          "id": "instance-5",
                           "package": "aralearn.resource.bpmn_process",
                           "version": "1.0.0",
                           "data": {
@@ -470,7 +413,7 @@
                       "response": null,
                       "feedback": [
                         {
-                          "id": "feedback-6",
+                          "id": "feedback-5",
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
@@ -482,13 +425,13 @@
                       "sources": []
                     },
                     {
-                      "id": "gallery-7",
-                      "position": 7,
+                      "id": "gallery-6",
+                      "position": 6,
                       "title": "Glosa interlinear",
                       "role": "theory",
                       "content": [
                         {
-                          "id": "instance-7",
+                          "id": "instance-6",
                           "package": "aralearn.resource.interlinear_gloss",
                           "version": "1.0.0",
                           "data": {
@@ -552,7 +495,7 @@
                       "response": null,
                       "feedback": [
                         {
-                          "id": "feedback-7",
+                          "id": "feedback-6",
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
@@ -564,8 +507,8 @@
                       "sources": []
                     },
                     {
-                      "id": "gallery-8",
-                      "position": 8,
+                      "id": "gallery-7",
+                      "position": 7,
                       "title": "Escolha",
                       "role": "practice",
                       "content": [
@@ -579,7 +522,7 @@
                         }
                       ],
                       "response": {
-                        "id": "instance-8",
+                        "id": "instance-7",
                         "package": "aralearn.response.choice",
                         "version": "1.0.0",
                         "data": {
@@ -605,7 +548,7 @@
                       },
                       "feedback": [
                         {
-                          "id": "feedback-8",
+                          "id": "feedback-7",
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
@@ -617,8 +560,8 @@
                       "sources": []
                     },
                     {
-                      "id": "gallery-9",
-                      "position": 9,
+                      "id": "gallery-8",
+                      "position": 8,
                       "title": "Lacuna",
                       "role": "practice",
                       "content": [
@@ -632,7 +575,7 @@
                         }
                       ],
                       "response": {
-                        "id": "instance-9",
+                        "id": "instance-8",
                         "package": "aralearn.response.gap",
                         "version": "1.0.0",
                         "data": {
@@ -650,7 +593,7 @@
                       },
                       "feedback": [
                         {
-                          "id": "feedback-9",
+                          "id": "feedback-8",
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
@@ -662,32 +605,22 @@
                       "sources": []
                     },
                     {
-                      "id": "gallery-10",
-                      "position": 10,
+                      "id": "gallery-9",
+                      "position": 9,
                       "title": "Ordenação",
                       "role": "practice",
                       "content": [
                         {
                           "id": "body-1",
-                          "package": "aralearn.resource.sequence",
+                          "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
-                            "variant": "ordered_steps",
-                            "items": [
-                              {
-                                "id": "s1",
-                                "label": "Preparar"
-                              },
-                              {
-                                "id": "s2",
-                                "label": "Executar"
-                              }
-                            ]
+                            "text": "Organize as etapas do procedimento na ordem em que devem ser executadas."
                           }
                         }
                       ],
                       "response": {
-                        "id": "instance-10",
+                        "id": "instance-9",
                         "package": "aralearn.response.ordering",
                         "version": "2.0.0",
                         "data": {
@@ -710,7 +643,7 @@
                       },
                       "feedback": [
                         {
-                          "id": "feedback-10",
+                          "id": "feedback-9",
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
@@ -722,13 +655,13 @@
                       "sources": []
                     },
                     {
-                      "id": "gallery-11",
-                      "position": 11,
+                      "id": "gallery-10",
+                      "position": 10,
                       "title": "Árvore enraizada",
                       "role": "theory",
                       "content": [
                         {
-                          "id": "instance-11",
+                          "id": "instance-10",
                           "package": "aralearn.resource.tree",
                           "version": "1.0.0",
                           "data": {
@@ -782,7 +715,7 @@
                       "response": null,
                       "feedback": [
                         {
-                          "id": "feedback-11",
+                          "id": "feedback-10",
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
@@ -794,13 +727,13 @@
                       "sources": []
                     },
                     {
-                      "id": "gallery-12",
-                      "position": 12,
+                      "id": "gallery-11",
+                      "position": 11,
                       "title": "Matriz",
                       "role": "theory",
                       "content": [
                         {
-                          "id": "instance-12",
+                          "id": "instance-11",
                           "package": "aralearn.resource.matrix",
                           "version": "1.0.0",
                           "data": {
@@ -830,7 +763,7 @@
                       "response": null,
                       "feedback": [
                         {
-                          "id": "feedback-12",
+                          "id": "feedback-11",
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
@@ -842,13 +775,13 @@
                       "sources": []
                     },
                     {
-                      "id": "gallery-13",
-                      "position": 13,
+                      "id": "gallery-12",
+                      "position": 12,
                       "title": "Reação",
                       "role": "theory",
                       "content": [
                         {
-                          "id": "instance-13",
+                          "id": "instance-12",
                           "package": "aralearn.resource.reaction",
                           "version": "1.0.0",
                           "data": {
@@ -885,7 +818,7 @@
                       "response": null,
                       "feedback": [
                         {
-                          "id": "feedback-13",
+                          "id": "feedback-12",
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
@@ -897,13 +830,13 @@
                       "sources": []
                     },
                     {
-                      "id": "gallery-14",
-                      "position": 14,
+                      "id": "gallery-13",
+                      "position": 13,
                       "title": "Fluxograma",
                       "role": "theory",
                       "content": [
                         {
-                          "id": "instance-14",
+                          "id": "instance-13",
                           "package": "aralearn.resource.flow",
                           "version": "1.0.0",
                           "data": {
@@ -954,7 +887,7 @@
                       "response": null,
                       "feedback": [
                         {
-                          "id": "feedback-14",
+                          "id": "feedback-13",
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
@@ -966,13 +899,13 @@
                       "sources": []
                     },
                     {
-                      "id": "gallery-15",
-                      "position": 15,
+                      "id": "gallery-14",
+                      "position": 14,
                       "title": "Fórmula",
                       "role": "theory",
                       "content": [
                         {
-                          "id": "instance-15",
+                          "id": "instance-14",
                           "package": "aralearn.resource.formula",
                           "version": "1.0.0",
                           "data": {
@@ -1101,7 +1034,7 @@
                       "response": null,
                       "feedback": [
                         {
-                          "id": "feedback-15",
+                          "id": "feedback-14",
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
@@ -1113,13 +1046,13 @@
                       "sources": []
                     },
                     {
-                      "id": "gallery-16",
-                      "position": 16,
+                      "id": "gallery-15",
+                      "position": 15,
                       "title": "Plano cartesiano",
                       "role": "theory",
                       "content": [
                         {
-                          "id": "instance-16",
+                          "id": "instance-15",
                           "package": "aralearn.resource.plane",
                           "version": "1.0.0",
                           "data": {
@@ -1278,7 +1211,7 @@
                       "response": null,
                       "feedback": [
                         {
-                          "id": "feedback-16",
+                          "id": "feedback-15",
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
@@ -1290,13 +1223,13 @@
                       "sources": []
                     },
                     {
-                      "id": "gallery-17",
-                      "position": 17,
+                      "id": "gallery-16",
+                      "position": 16,
                       "title": "Gráfico estatístico",
                       "role": "theory",
                       "content": [
                         {
-                          "id": "instance-17",
+                          "id": "instance-16",
                           "package": "aralearn.resource.chart",
                           "version": "1.0.0",
                           "data": {
@@ -1425,7 +1358,7 @@
                       "response": null,
                       "feedback": [
                         {
-                          "id": "feedback-17",
+                          "id": "feedback-16",
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
@@ -1437,13 +1370,13 @@
                       "sources": []
                     },
                     {
-                      "id": "gallery-18",
-                      "position": 18,
+                      "id": "gallery-17",
+                      "position": 17,
                       "title": "Contexto de sistema de software",
                       "role": "theory",
                       "content": [
                         {
-                          "id": "instance-18",
+                          "id": "instance-17",
                           "package": "aralearn.resource.software_system_context",
                           "version": "1.0.0",
                           "data": {
@@ -1509,7 +1442,7 @@
                       "response": null,
                       "feedback": [
                         {
-                          "id": "feedback-18",
+                          "id": "feedback-17",
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
@@ -1521,13 +1454,13 @@
                       "sources": []
                     },
                     {
-                      "id": "gallery-19",
-                      "position": 19,
+                      "id": "gallery-18",
+                      "position": 18,
                       "title": "Contêineres de software",
                       "role": "theory",
                       "content": [
                         {
-                          "id": "instance-19",
+                          "id": "instance-18",
                           "package": "aralearn.resource.software_container",
                           "version": "1.0.0",
                           "data": {
@@ -1632,7 +1565,7 @@
                       "response": null,
                       "feedback": [
                         {
-                          "id": "feedback-19",
+                          "id": "feedback-18",
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
@@ -1644,13 +1577,13 @@
                       "sources": []
                     },
                     {
-                      "id": "gallery-20",
-                      "position": 20,
+                      "id": "gallery-19",
+                      "position": 19,
                       "title": "Diagrama interno de bloco",
                       "role": "theory",
                       "content": [
                         {
-                          "id": "instance-20",
+                          "id": "instance-19",
                           "package": "aralearn.resource.system_internal_block",
                           "version": "1.0.0",
                           "data": {
@@ -1749,7 +1682,7 @@
                       "response": null,
                       "feedback": [
                         {
-                          "id": "feedback-20",
+                          "id": "feedback-19",
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
@@ -1761,13 +1694,13 @@
                       "sources": []
                     },
                     {
-                      "id": "gallery-21",
-                      "position": 21,
+                      "id": "gallery-20",
+                      "position": 20,
                       "title": "Grafo matemático",
                       "role": "theory",
                       "content": [
                         {
-                          "id": "instance-21",
+                          "id": "instance-20",
                           "package": "aralearn.resource.graph",
                           "version": "1.0.0",
                           "data": {
@@ -1872,7 +1805,7 @@
                       "response": null,
                       "feedback": [
                         {
-                          "id": "feedback-21",
+                          "id": "feedback-20",
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
@@ -1884,17 +1817,19 @@
                       "sources": []
                     },
                     {
-                      "id": "gallery-22",
-                      "position": 22,
-                      "title": "Mapa de relações",
+                      "id": "gallery-21",
+                      "position": 21,
+                      "title": "Diagrama de relação",
                       "role": "theory",
                       "content": [
                         {
-                          "id": "instance-22",
+                          "id": "instance-21",
                           "package": "aralearn.resource.relation_map",
                           "version": "1.0.0",
                           "data": {
-                            "prompt": "Examine a relação R de A em B e observe que a pertence a duas imagens, enquanto d não possui preimagem.",
+                            "prompt": "Examine a relação R de A em B: a possui duas imagens e 4 não possui preimagem.",
+                            "name": "R",
+                            "relationMeaning": "relaciona-se a",
                             "leftSet": {
                               "label": "Domínio A",
                               "items": [
@@ -1937,26 +1872,22 @@
                               {
                                 "id": "a1",
                                 "from": "a",
-                                "to": "one",
-                                "label": "(a, 1) ∈ R"
+                                "to": "one"
                               },
                               {
                                 "id": "a2",
                                 "from": "a",
-                                "to": "two",
-                                "label": "(a, 2) ∈ R"
+                                "to": "two"
                               },
                               {
                                 "id": "b2",
                                 "from": "b",
-                                "to": "two",
-                                "label": "(b, 2) ∈ R"
+                                "to": "two"
                               },
                               {
                                 "id": "c3",
                                 "from": "c",
-                                "to": "three",
-                                "label": "(c, 3) ∈ R"
+                                "to": "three"
                               }
                             ],
                             "highlight": {
@@ -1975,11 +1906,11 @@
                       "response": null,
                       "feedback": [
                         {
-                          "id": "feedback-22",
+                          "id": "feedback-21",
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
-                            "text": "Cada elemento do domínio é seguido pelas imagens que lhe correspondem; a leitura não depende de linhas desenhadas."
+                            "text": "A descrição textual enumera os conjuntos e todos os pares da relação; o desenho não é a única fonte de informação."
                           }
                         }
                       ],
@@ -1987,86 +1918,13 @@
                       "sources": []
                     },
                     {
-                      "id": "gallery-23",
-                      "position": 23,
-                      "title": "Rastreamento de algoritmo",
-                      "role": "theory",
-                      "content": [
-                        {
-                          "id": "instance-23",
-                          "package": "aralearn.resource.algorithm_trace",
-                          "version": "1.0.0",
-                          "data": {
-                            "prompt": "Acompanhe a busca binária por 23 no vetor [4, 8, 15, 16, 23, 42] e observe por que metade do intervalo pode ser descartada a cada comparação.",
-                            "variables": [
-                              "início",
-                              "fim",
-                              "meio",
-                              "valor[meio]"
-                            ],
-                            "steps": [
-                              {
-                                "id": "s0",
-                                "action": "Inicializar intervalo de busca",
-                                "values": [
-                                  "0",
-                                  "5",
-                                  "2",
-                                  "15"
-                                ],
-                                "condition": "15 < 23",
-                                "output": "descartar posições 0..2"
-                              },
-                              {
-                                "id": "s1",
-                                "action": "Mover o início para meio + 1",
-                                "values": [
-                                  "3",
-                                  "5",
-                                  "4",
-                                  "23"
-                                ],
-                                "condition": "23 = 23",
-                                "output": "encontrado no índice 4"
-                              },
-                              {
-                                "id": "s2",
-                                "action": "Encerrar e devolver a posição",
-                                "values": [
-                                  "3",
-                                  "5",
-                                  "4",
-                                  "23"
-                                ],
-                                "condition": "resultado definido",
-                                "output": "4"
-                              }
-                            ]
-                          }
-                        }
-                      ],
-                      "response": null,
-                      "feedback": [
-                        {
-                          "id": "feedback-23",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Cada passo é uma linha com ação, valores das variáveis e saída."
-                          }
-                        }
-                      ],
-                      "topics": [],
-                      "sources": []
-                    },
-                    {
-                      "id": "gallery-24",
-                      "position": 24,
+                      "id": "gallery-22",
+                      "position": 22,
                       "title": "Esquema relacional",
                       "role": "theory",
                       "content": [
                         {
-                          "id": "instance-24",
+                          "id": "instance-22",
                           "package": "aralearn.resource.database_schema",
                           "version": "1.0.0",
                           "data": {
@@ -2213,7 +2071,7 @@
                       "response": null,
                       "feedback": [
                         {
-                          "id": "feedback-24",
+                          "id": "feedback-22",
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
@@ -2225,13 +2083,13 @@
                       "sources": []
                     },
                     {
-                      "id": "gallery-25",
-                      "position": 25,
+                      "id": "gallery-23",
+                      "position": 23,
                       "title": "Mapa de memória",
                       "role": "theory",
                       "content": [
                         {
-                          "id": "instance-25",
+                          "id": "instance-23",
                           "package": "aralearn.resource.memory_layout",
                           "version": "1.0.0",
                           "data": {
@@ -2302,7 +2160,7 @@
                       "response": null,
                       "feedback": [
                         {
-                          "id": "feedback-25",
+                          "id": "feedback-23",
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
@@ -2314,13 +2172,13 @@
                       "sources": []
                     },
                     {
-                      "id": "gallery-26",
-                      "position": 26,
+                      "id": "gallery-24",
+                      "position": 24,
                       "title": "Topologia de rede",
                       "role": "theory",
                       "content": [
                         {
-                          "id": "instance-26",
+                          "id": "instance-24",
                           "package": "aralearn.resource.network_topology",
                           "version": "1.0.0",
                           "data": {
@@ -2406,7 +2264,7 @@
                       "response": null,
                       "feedback": [
                         {
-                          "id": "feedback-26",
+                          "id": "feedback-24",
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
@@ -2418,13 +2276,13 @@
                       "sources": []
                     },
                     {
-                      "id": "gallery-27",
-                      "position": 27,
+                      "id": "gallery-25",
+                      "position": 25,
                       "title": "Layout de pacote",
                       "role": "theory",
                       "content": [
                         {
-                          "id": "instance-27",
+                          "id": "instance-25",
                           "package": "aralearn.resource.packet_layout",
                           "version": "1.0.0",
                           "data": {
@@ -2499,7 +2357,7 @@
                       "response": null,
                       "feedback": [
                         {
-                          "id": "feedback-27",
+                          "id": "feedback-25",
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
@@ -2511,29 +2369,33 @@
                       "sources": []
                     },
                     {
-                      "id": "gallery-28",
-                      "position": 28,
+                      "id": "gallery-26",
+                      "position": 26,
                       "title": "Diagrama de conjuntos",
                       "role": "theory",
                       "content": [
                         {
-                          "id": "instance-28",
+                          "id": "instance-26",
                           "package": "aralearn.resource.set_diagram",
                           "version": "1.0.0",
                           "data": {
-                            "prompt": "Classifique as linguagens por paradigma e observe as interseções; os nomes ficam na legenda das regiões para não sobrecarregar o desenho.",
+                            "prompt": "Classifique as linguagens por paradigma e observe quais pertencem simultaneamente a mais de um conjunto.",
+                            "kind": "venn",
                             "universeLabel": "Linguagens analisadas",
                             "sets": [
                               {
                                 "id": "imperative",
+                                "symbol": "I",
                                 "label": "Imperativas"
                               },
                               {
                                 "id": "object",
+                                "symbol": "O",
                                 "label": "Orientadas a objetos"
                               },
                               {
                                 "id": "functional",
+                                "symbol": "F",
                                 "label": "Funcionais"
                               }
                             ],
@@ -2587,11 +2449,11 @@
                       "response": null,
                       "feedback": [
                         {
-                          "id": "feedback-28",
+                          "id": "feedback-26",
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
-                            "text": "As regiões são enumeradas por pertencimento; o desenho não é a única fonte de informação."
+                            "text": "Cada marcador liga uma região visual a uma descrição textual completa; o desenho nunca é a única fonte de informação."
                           }
                         }
                       ],
@@ -2599,13 +2461,13 @@
                       "sources": []
                     },
                     {
-                      "id": "gallery-29",
-                      "position": 29,
+                      "id": "gallery-27",
+                      "position": 27,
                       "title": "Diagrama de estados",
                       "role": "theory",
                       "content": [
                         {
-                          "id": "instance-29",
+                          "id": "instance-27",
                           "package": "aralearn.resource.state_machine",
                           "version": "1.0.0",
                           "data": {
@@ -2697,7 +2559,7 @@
                       "response": null,
                       "feedback": [
                         {
-                          "id": "feedback-29",
+                          "id": "feedback-27",
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
@@ -2709,13 +2571,13 @@
                       "sources": []
                     },
                     {
-                      "id": "gallery-30",
-                      "position": 30,
+                      "id": "gallery-28",
+                      "position": 28,
                       "title": "Tabela-verdade",
                       "role": "theory",
                       "content": [
                         {
-                          "id": "instance-30",
+                          "id": "instance-28",
                           "package": "aralearn.resource.truth_table",
                           "version": "1.0.0",
                           "data": {
@@ -2786,7 +2648,7 @@
                       "response": null,
                       "feedback": [
                         {
-                          "id": "feedback-30",
+                          "id": "feedback-28",
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
@@ -2798,8 +2660,8 @@
                       "sources": []
                     },
                     {
-                      "id": "gallery-31",
-                      "position": 31,
+                      "id": "gallery-29",
+                      "position": 29,
                       "title": "Encaixe de correspondências",
                       "role": "practice",
                       "content": [
@@ -2813,7 +2675,7 @@
                         }
                       ],
                       "response": {
-                        "id": "instance-31",
+                        "id": "instance-29",
                         "package": "aralearn.response.matching",
                         "version": "1.0.0",
                         "data": {
@@ -2853,7 +2715,7 @@
                       },
                       "feedback": [
                         {
-                          "id": "feedback-31",
+                          "id": "feedback-29",
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
@@ -2865,13 +2727,13 @@
                       "sources": []
                     },
                     {
-                      "id": "gallery-32",
-                      "position": 32,
+                      "id": "gallery-30",
+                      "position": 30,
                       "title": "Modelo entidade-relacionamento",
                       "role": "theory",
                       "content": [
                         {
-                          "id": "instance-32",
+                          "id": "instance-30",
                           "package": "aralearn.resource.entity_relationship",
                           "version": "1.0.0",
                           "data": {
@@ -2971,7 +2833,7 @@
                       "response": null,
                       "feedback": [
                         {
-                          "id": "feedback-32",
+                          "id": "feedback-30",
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
@@ -2983,13 +2845,13 @@
                       "sources": []
                     },
                     {
-                      "id": "gallery-33",
-                      "position": 33,
+                      "id": "gallery-31",
+                      "position": 31,
                       "title": "Tabela de transição",
                       "role": "theory",
                       "content": [
                         {
-                          "id": "instance-33",
+                          "id": "instance-31",
                           "package": "aralearn.resource.state_transition_table",
                           "version": "1.0.0",
                           "data": {
@@ -3068,7 +2930,7 @@
                       "response": null,
                       "feedback": [
                         {
-                          "id": "feedback-33",
+                          "id": "feedback-31",
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
@@ -3080,13 +2942,13 @@
                       "sources": []
                     },
                     {
-                      "id": "gallery-34",
-                      "position": 34,
+                      "id": "gallery-32",
+                      "position": 32,
                       "title": "Pilha de chamadas",
                       "role": "theory",
                       "content": [
                         {
-                          "id": "instance-34",
+                          "id": "instance-32",
                           "package": "aralearn.resource.call_stack",
                           "version": "1.0.0",
                           "data": {
@@ -3144,7 +3006,7 @@
                       "response": null,
                       "feedback": [
                         {
-                          "id": "feedback-34",
+                          "id": "feedback-32",
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {

@@ -48,13 +48,14 @@ Também estão disponíveis:
   calculados a partir das observações correntes, sem histórico ou telemetria;
 - sistema visual único em claro e escuro, sem paleta paralela, glifos de
   interface ou CSS do editor e do painel de submissão já substituídos;
-- trinta packages independentes: vinte e seis representações, entre elas
+- trinta e dois packages independentes: vinte e oito representações, entre elas
   `paragraph`, `code`, `table`, `flow`, `tree`, `graph`, `relation_map`,
-  `matrix`, `plane`, `formula`, `chart`, `sequence`, `annotated_text`,
+  `matrix`, `plane`, `formula`, `chart`, `annotated_text`,
   `interlinear_gloss`, `software_system_context`, `software_container`,
   `system_internal_block`, `reaction`, `truth_table`,
-  `packet_layout`, `algorithm_trace`, `database_schema`, `state_machine`,
-  `network_topology`, `set_diagram` e `memory_layout`, e quatro respostas:
+  `packet_layout`, `database_schema`, `state_machine`, `network_topology`,
+  `set_diagram`, `memory_layout`, `entity_relationship`,
+  `state_transition_table` e `call_stack`, e quatro respostas:
   `choice`, `gap`, `ordering` e `matching`.
 
 ## Trabalho de estabilização

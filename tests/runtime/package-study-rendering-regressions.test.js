@@ -67,22 +67,27 @@ test("modo Estudo entrega o grafo matemático ao Graphviz sem coordenadas autora
   assert.doesNotMatch(html, /data-x=|data-y=|viewBox="0 0 320/u);
 });
 
-test("modo Estudo materializa relation_map em linhas sem SVG nem setas sobre rótulos", () => {
+test("modo Estudo materializa relation_map como diagrama sem rótulos sobre arestas", () => {
   const html = renderPackageCardBlocks(cardWith({
     id: "relations",
     package: "aralearn.resource.relation_map",
     version: "1.0.0",
     data: {
       prompt: "Relacione os componentes.",
+      name: "R",
+      relationMeaning: "cumpre",
       leftSet: { label: "Componente", items: [{ id: "agent", label: "Agente instalado no dispositivo monitorado" }] },
       rightSet: { label: "Responsabilidade", items: [{ id: "read", label: "Acessar o objeto gerenciado localmente" }] },
-      relations: [{ id: "r1", from: "agent", to: "read", label: "executa" }]
+      relations: [{ id: "r1", from: "agent", to: "read" }]
     }
   }));
   assert.doesNotMatch(html, /<svg/u);
   assert.match(html, /package-relation-map/u);
+  assert.match(html, /data-system-diagram-engine="dot"/u);
+  assert.match(html, /digraph/u);
   assert.match(html, /Agente instalado no dispositivo monitorado/u);
   assert.match(html, /Acessar o objeto gerenciado localmente/u);
+  assert.doesNotMatch(html, />executa</u);
 });
 
 test("choice incorreto não revela a alternativa esperada antes de Ver resposta", () => {

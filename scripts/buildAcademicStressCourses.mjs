@@ -69,8 +69,25 @@ function moduleValue({ id, title, goal, topics, microsequences }) {
 }
 
 const algorithmCode = example("ifsp-alg-code", "aralearn.resource.code");
-const algorithmTrace = example("ifsp-alg-trace", "aralearn.resource.algorithm_trace");
-const algorithmGapContent = example("ifsp-alg-gap-content", "aralearn.resource.algorithm_trace");
+function algorithmTrace(id) {
+  return normalizeInstance({
+    id,
+    packageId: "aralearn.resource.table",
+    data: {
+      prompt: "Acompanhe a busca binária por 23 no vetor [4, 8, 15, 16, 23, 42]. A tabela registra o estado depois de cada ação.",
+      caption: "Estado da busca binária por passo",
+      layout: "wide",
+      columns: ["Ação executada", "início", "fim", "meio", "valor[meio]", "Condição", "Saída"],
+      rows: [
+        ["Inicializar o intervalo", "0", "5", "2", "15", "15 < 23", "Descartar posições 0 a 2"],
+        ["Mover início para meio + 1", "3", "5", "4", "23", "23 = 23", "Encontrado no índice 4"],
+        ["Encerrar e devolver a posição", "3", "5", "4", "23", "Resultado definido", "4"]
+      ]
+    }
+  });
+}
+const algorithmTraceCard = algorithmTrace("ifsp-alg-trace");
+const algorithmGapContent = algorithmTrace("ifsp-alg-gap-content");
 const algorithms = moduleValue({
   id: "ifsp-algorithms",
   title: "Algoritmos: do problema à execução",
@@ -84,10 +101,10 @@ const algorithms = moduleValue({
     ] }),
     microsequence({ id: "alg-representation", title: "Do procedimento ao estado", goal: "Ler código e rastreamento como representações complementares.", role: "explain", dependsOn: ["alg-foundation"], covers: ["alg-state", "alg-binary"], cards: [
       card({ id: "alg-4", position: 1, title: "O procedimento em Python", content: [algorithmCode], topics: ["alg-binary"], sources: [SOURCES.ifspPpc] }),
-      card({ id: "alg-5", position: 2, title: "O mesmo procedimento em execução", content: [algorithmTrace], topics: ["alg-state", "alg-binary"], sources: [SOURCES.ifspPpc] })
+      card({ id: "alg-5", position: 2, title: "O mesmo procedimento em execução", content: [algorithmTraceCard], topics: ["alg-state", "alg-binary"], sources: [SOURCES.ifspPpc] })
     ] }),
     microsequence({ id: "alg-practice", title: "Reconstruir e transferir", goal: "Praticar estado, ordem e invariantes em situações já fundamentadas.", role: "practice", dependsOn: ["alg-representation"], covers: ["alg-state", "alg-binary"], cards: [
-      card({ id: "alg-6", position: 1, title: "Complete o estado", content: [algorithmGapContent], response: gap("alg-6-response", algorithmGapContent.id, "steps[1].values[2]", "4", "text"), feedbackItems: [feedback("alg-6-feedback", "O índice central é 4 depois que o início passa a 3 e o fim permanece 5.")], topics: ["alg-state"], sources: [SOURCES.ifspPpc] }),
+      card({ id: "alg-6", position: 1, title: "Complete o estado", content: [algorithmGapContent], response: gap("alg-6-response", algorithmGapContent.id, "rows[1][3]", "4", "text"), feedbackItems: [feedback("alg-6-feedback", "O índice central é 4 depois que o início passa a 3 e o fim permanece 5.")], topics: ["alg-state"], sources: [SOURCES.ifspPpc] }),
       card({ id: "alg-7", position: 2, title: "Reconstrua uma iteração", content: [], response: ordering("alg-7-response", "Ordene os gestos de uma iteração da busca binária.", [{ id: "middle", label: "Calcular o índice central do intervalo" }, { id: "compare", label: "Comparar o valor central com o alvo" }, { id: "reduce", label: "Reduzir o intervalo conforme a comparação" }], ["middle", "compare", "reduce"]), feedbackItems: [feedback("alg-7-feedback", "Primeiro se escolhe o centro; a comparação fornece a informação que permite reduzir o intervalo.")], topics: ["alg-binary"], sources: [SOURCES.ifspPpc] }),
       card({ id: "alg-8", position: 3, title: "Condição de uso", content: [], response: choice("alg-8-response", "Em qual situação a busca binária pode descartar metade dos candidatos com segurança?", [{ id: "ordered", text: "Os valores estão ordenados segundo o mesmo critério da comparação." }, { id: "distinct", text: "Todos os valores são necessariamente diferentes." }, { id: "short", text: "A lista contém menos de dez valores." }, { id: "memory", text: "A lista ocupa posições contíguas de memória." }], ["ordered"]), feedbackItems: [feedback("alg-8-feedback", "A ordenação é o fundamento lógico do descarte; tamanho, unicidade e posição física não bastam.")], topics: ["alg-binary"], sources: [SOURCES.ifspPpc] })
     ] })

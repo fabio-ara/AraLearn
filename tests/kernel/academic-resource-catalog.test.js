@@ -13,9 +13,19 @@ test("todo resource de conteúdo declara fundamento acadêmico e limites de uso"
     assert.ok(manifest.academic.conventions.length > 0, `${manifest.id}: conventions`);
     assert.ok(manifest.academic.appropriateWhen.length > 0, `${manifest.id}: appropriateWhen`);
     assert.ok(manifest.academic.avoidWhen.length > 0, `${manifest.id}: avoidWhen`);
+    assert.deepEqual(manifest.academic.admission.preservedStructure, manifest.academic.conventions, `${manifest.id}: preservedStructure`);
+    assert.deepEqual(manifest.academic.admission.onlyWhen, manifest.academic.appropriateWhen, `${manifest.id}: onlyWhen`);
+    assert.deepEqual(manifest.academic.admission.useSimplerRepresentationWhen, manifest.academic.avoidWhen, `${manifest.id}: simpler alternative`);
+    assert.match(manifest.academic.admission.decisionRule, /representação mais simples/u, `${manifest.id}: decisionRule`);
     assert.ok(manifest.academic.practiceModes.includes("exposition"), `${manifest.id}: exposition`);
     assert.ok(manifest.limitations.length > 0, `${manifest.id}: limitations`);
   });
+});
+
+test("catálogo não reinstala packages que apenas ornamentavam lista ou tabela", () => {
+  const ids = new Set(contentCatalog.map(({ id }) => id));
+  assert.equal(ids.has("aralearn.resource.sequence"), false);
+  assert.equal(ids.has("aralearn.resource.algorithm_trace"), false);
 });
 
 test("contratos de diagramas automáticos descrevem semântica, não geometria", () => {
@@ -51,4 +61,25 @@ test("catálogo mantém separadas intenções que antes competiam por um diagram
     "aralearn.resource.memory_layout",
     "aralearn.resource.call_stack"
   ].forEach((id) => assert.ok(ids.has(id), id));
+});
+
+test("diagrama de conjuntos distingue Venn de Euler sem receber geometria autoral", () => {
+  const packageId = "aralearn.resource.set_diagram";
+  const manifest = contentCatalog.find(({ id }) => id === packageId);
+  const contract = RESOURCE_PACKAGE_REGISTRY.getAuthoringContract(packageId, manifest.version);
+  assert.deepEqual(contract.contract.required, ["kind", "sets", "regions"]);
+  assert.deepEqual(contract.schema.properties.kind.enum, ["venn", "euler"]);
+  assert.doesNotMatch(JSON.stringify(contract), /"(?:x|y|radius|coordinates)"\s*:/iu);
+  assert.match(contract.manifest.purpose, /Venn|Euler/u);
+  assert.match(contract.manifest.academic.admission.decisionRule, /representação mais simples/u);
+  const instance = RESOURCE_PACKAGE_REGISTRY.normalizeInstance({
+    id: "set-diagram-academic-example",
+    package: packageId,
+    version: manifest.version,
+    data: contract.contract.example
+  }, "content");
+  const rendered = RESOURCE_PACKAGE_REGISTRY.renderInstance(instance, "content");
+  assert.match(rendered, /data-set-diagram=/u);
+  assert.match(rendered, /package-set-region-marker|package-set-key/u);
+  assert.doesNotMatch(rendered, /package-set-labels/u);
 });

@@ -131,6 +131,9 @@
 
 ## Leitura de representações estruturadas
 
+- Um package especializado só é justificável quando preserva uma estrutura que
+  seria perdida em `paragraph`, `table` ou package existente. Consulte
+  `academic.admission`; aparência diferente ou variedade não são evidência.
 - Todo recurso estruturado deixa explícitos o objeto, a relação e a operação de leitura. A posição, a cor, um identificador interno ou uma legenda distante não podem ser a única forma de entender um dado necessário.
 - Entidades que precisam ser distinguidas possuem nomes visíveis e inequívocos. Rótulos, unidades, direção, ordem, escala e destaque necessários aparecem no próprio card.
 - Em `graph`, círculos representam vértices abstratos e linhas representam arestas; setas só aparecem em dígrafos. O objeto é matemático: adjacência, caminho, ciclo, grau, ponte e conectividade justificam seu uso. Componentes de software, equipamentos, estados e conceitos exigem packages próprios.
