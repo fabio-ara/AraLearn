@@ -22,11 +22,11 @@ Também estão disponíveis:
   autoral concorrente;
 - edição manual simples e assistência bottom-up por API no card, na
   microssequência e na lição, sem atuar em módulo ou curso;
-- seleção direta por contorno, com reparo de resources ou card inteiro, criação
-  de cards somente no recipiente de microssequência e criação de no máximo uma
-  microssequência no recipiente de lição;
-- validação interna, gravação direta do resultado e uma única reversão compacta,
-  sem guardar pedido, contexto montado ou resposta do provider;
+- seleção direta por contorno, com edição textual de instâncias ou recomposição
+  do card inteiro, criação de cards somente no recipiente de microssequência e
+  criação de no máximo uma microssequência no recipiente de lição;
+- conversa de card com até oito turnos e nove versões locais para desfazer,
+  refazer e restaurar, sem persistir pedido, contexto ou resposta do provider;
 - observação situada no card, com cinco categorias, texto curto, sincronização
   offline e retorno do responsável; `Trilhas` permite acompanhar o workspace
   sem copiar o card ou guardar histórico da conversa;
@@ -48,11 +48,9 @@ Também estão disponíveis:
   calculados a partir das observações correntes, sem histórico ou telemetria;
 - sistema visual único em claro e escuro, sem paleta paralela, glifos de
   interface ou CSS do editor e do painel de submissão já substituídos;
-- dezenove packages independentes: dezesseis representações, entre elas
-  `paragraph`, `code`, `table`, `flow`, `tree`, `graph`, `relation_map`,
-  `matrix`, `plane`, `formula`, `chart`, `sequence`, `annotated_text`,
-  `linguistic_example`, `system_map` e `reaction`, e três respostas:
-  `choice`, `gap` e `ordering`.
+- catálogo derivado automaticamente dos packages independentes, organizado por
+  famílias e facetas e consultado progressivamente sem acoplar novos renderers
+  ao kernel ou a uma enumeração documental.
 
 ## Trabalho de estabilização
 
@@ -61,11 +59,12 @@ As próximas verificações concentram-se no uso cotidiano: retomada sem conexã
 ## Edição contextual durante o estudo
 
 O conteúdo renderizado continua sendo a superfície principal. **Editar** torna
-campos autorizados editáveis no próprio resource; **IA** permite selecionar por
-contorno e mostra o pedido junto ao conteúdo. Não há JSON, tela duplicada nem
-etapa de conferência separada.
+campos autorizados editáveis na própria instância; **IA** permite selecionar
+por contorno e mostra a conversa junto ao conteúdo. Não há JSON, tela duplicada
+nem etapa de conferência separada.
 
-No card, a assistência repara resources ou o conteúdo pedagógico integral. Na
+No card, a assistência edita somente os textos selecionados ou recompõe o
+conteúdo pedagógico integral por meio do catálogo. Na
 microssequência, alguns cards limitam a mudança a esses cards; todos os cards
 concedem também o recipiente e permitem criar cards dentro dele. Na lição, uma
 microssequência autoriza trabalhar em seus cards, enquanto todas concedem o
@@ -73,10 +72,12 @@ recipiente e permitem criar no máximo uma nova microssequência. O fluxo local
 não atua em módulo ou curso.
 
 Pedido, contexto e resposta do provider não são persistidos. Depois de schema,
-semântica e compare-and-swap, o resultado aparece diretamente e somente a
-última mudança conserva uma inversa compacta para **Desfazer**. Curso privado
-próprio mantém sua identidade; curso oficial só é editável por conta
-administrativa ou editorial e mantém sua continuidade. Não há fork automático.
+semântica e compare-and-swap, o resultado aparece diretamente. A conversa do
+card mantém até oito turnos e nove versões exatas para desfazer, refazer ou
+restaurar durante a sessão; um `no-op` conserva a explicação sem criar versão.
+Curso privado próprio mantém sua identidade; curso oficial só é editável por
+conta administrativa ou editorial e mantém sua continuidade. Não há fork
+automático.
 
 ## Observações pedagógicas situadas
 

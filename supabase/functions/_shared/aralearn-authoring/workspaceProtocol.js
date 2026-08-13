@@ -28,6 +28,8 @@ const STRUCTURE_MICROSEQUENCE_FIELDS = Object.freeze([
   "role", "branchOf", "dependsOn", "covers", "checks", "errors"
 ]);
 const STRUCTURE_PART_LIMIT = 40;
+const PACKAGE_ID_PATTERN = /^aralearn\.(?:resource|response)\.[a-z0-9_]+$/u;
+const SEMVER_PATTERN = /^(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)$/u;
 
 function fail(code, message, details = undefined) {
   throw new AuthoringApiError(422, code, message, details);
@@ -892,7 +894,9 @@ function continuityPartArgument(rawValue, label) {
 
 function continuityDecisionArgument(rawValue, label) {
   const value = object(rawValue, label);
-  only(value, ["id", "summary", "entityType", "entityId"], label);
+  only(value, [
+    "id", "summary", "entityType", "entityId", "representationSelection"
+  ], label);
   const entityType = optionalText(value, "entityType", 30);
   const entityId = optionalText(value, "entityId", 240);
   if ((entityType == null) !== (entityId == null)
@@ -902,10 +906,69 @@ function continuityDecisionArgument(rawValue, label) {
       `${label}.entityType e ${label}.entityId devem identificar juntos uma entidade.`
     );
   }
+  let representationSelection;
+  if (value.representationSelection != null) {
+    const selection = object(
+      value.representationSelection,
+      `${label}.representationSelection`
+    );
+    only(selection, [
+      "intent", "chosen", "fit", "desiredResource", "catalogVersion",
+      "limitations", "chatDisclosure"
+    ], `${label}.representationSelection`);
+    const chosen = object(selection.chosen, `${label}.representationSelection.chosen`);
+    only(chosen, ["packageId", "version"], `${label}.representationSelection.chosen`);
+    const fit = requiredText(selection, "fit", 20);
+    if (!new Set(["canonical", "versatile", "substitute"]).has(fit)) {
+      fail("invalid_authoring_decision", `${label}.representationSelection.fit é inválido.`);
+    }
+    const desiredResource = optionalText(selection, "desiredResource", 1_000);
+    const chatDisclosure = optionalText(selection, "chatDisclosure", 1_000);
+    if (fit === "substitute" && (!desiredResource || !chatDisclosure)) {
+      fail(
+        "invalid_authoring_decision",
+        `${label}.representationSelection substituto exige desiredResource e chatDisclosure.`
+      );
+    }
+    if (fit !== "substitute" && chatDisclosure) {
+      fail(
+        "invalid_authoring_decision",
+        `${label}.representationSelection.chatDisclosure pertence somente a substitute.`
+      );
+    }
+    if (!new Set(["microsequence", "card"]).has(entityType)) {
+      fail(
+        "invalid_authoring_decision_target",
+        `${label}.representationSelection deve estar ligada a card ou microssequência.`
+      );
+    }
+    const packageId = requiredText(chosen, "packageId", 160);
+    const version = requiredText(chosen, "version", 40);
+    if (!PACKAGE_ID_PATTERN.test(packageId) || !SEMVER_PATTERN.test(version)) {
+      fail(
+        "invalid_authoring_decision",
+        `${label}.representationSelection.chosen deve identificar uma versão exata de package.`
+      );
+    }
+    representationSelection = {
+      intent: requiredText(selection, "intent", 1_000),
+      chosen: { packageId, version },
+      fit,
+      desiredResource,
+      catalogVersion: requiredText(selection, "catalogVersion", 80),
+      limitations: stringList(
+        selection.limitations,
+        `${label}.representationSelection.limitations`,
+        { maximum: 12 }
+      ),
+      chatDisclosure
+    };
+  }
   return {
     id: requiredText(value, "id", 240),
     summary: requiredText(value, "summary", 1_000),
-    ...(entityType ? { entityType, entityId } : {})
+    ...(entityType ? { entityType, entityId } : {}),
+    ...(representationSelection ? { representationSelection } : {})
   };
 }
 

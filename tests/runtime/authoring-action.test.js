@@ -75,6 +75,17 @@ function workspaceRead(project, view, entityPath) {
   return {
     workspaceId: WORKSPACE_ID,
     title: project.courses[0].title,
+    purpose: "",
+    workspaceKind: "personal",
+    visibility: "private",
+    role: "owner",
+    capabilities: {
+      author: true,
+      review: true,
+      comment: true,
+      publish: true,
+      manage: true
+    },
     revision: 1,
     currentRevision: 1,
     entityCount: flattenWorkspaceDocument(project).length,
@@ -84,6 +95,7 @@ function workspaceRead(project, view, entityPath) {
     updatedAt: "2026-07-30T12:00:00.000Z",
     idempotent: false,
     brief: "",
+    publications: [],
     view,
     content: view === "microtheories"
       ? buildMicrotheoryReview(project, entityPath)
@@ -331,6 +343,33 @@ test("Action recupera conhecimento pelo mesmo contrato da ferramenta MCP", async
   assert.ok(payload.data.guidance.some(({ id }) => id === "structural-editing"));
 });
 
+test("Action encaminha intenção e facetas para a biblioteca única de resources", async () => {
+  const searchedResponse = await handler()(request(
+    "consultarBibliotecaDeResources",
+    {
+      operation: "search",
+      query: "glosa interlinear",
+      disciplineIds: ["discipline.language"],
+      structureIds: ["structure.interlinear"],
+      operationIds: ["operation.identify"],
+      limit: 3
+    }
+  ));
+  const searched = await searchedResponse.json();
+  assert.equal(searchedResponse.status, 200);
+  assert.equal(searched.ok, true);
+  assert.equal(searched.data.operation, "search");
+  assert.equal(
+    searched.data.result.candidates[0].packageId,
+    "aralearn.resource.interlinear_gloss"
+  );
+  assert.ok(
+    searched.data.result.candidates[0].matched.includes(
+      "structure:structure.interlinear"
+    )
+  );
+});
+
 test("Action atravessa o executor compartilhado e preserva expectedRevision", async () => {
   let received = null;
   const response = await handler(adapter({
@@ -338,8 +377,13 @@ test("Action atravessa o executor compartilhado e preserva expectedRevision", as
       received = options;
       return {
         workspaceId: WORKSPACE_ID,
+        title: "Curso revisto",
         revision: 8,
-        currentRevision: 8
+        currentRevision: 8,
+        entityCount: 1,
+        createdAt: "2026-08-01T12:00:00.000Z",
+        updatedAt: "2026-08-01T12:01:00.000Z",
+        idempotent: false
       };
     }
   }))(request("reorganizarWorkspace", {

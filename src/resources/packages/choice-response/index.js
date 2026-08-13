@@ -1,5 +1,11 @@
-import { escapePackageAttribute, renderPackageInline, renderPackageProse } from "../../sdk/html.js";
+import {
+  escapePackageAttribute,
+  renderPackageActionIcon,
+  renderPackageInline,
+  renderPackageProse
+} from "../../sdk/html.js";
 import { shuffleExerciseOptions } from "../../../core/exerciseOptions.js";
+import { academicProfile } from "../../sdk/academic.js";
 
 function optionValue(option) {
   return option.kind === "code" ? `${option.language}:${option.code}` : option.text;
@@ -12,18 +18,12 @@ function instruction(data) {
     : "Selecione a alternativa correta.";
 }
 
-function actionIcon(kind) {
-  return kind === "answer"
-    ? '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z"/><circle cx="12" cy="12" r="2.5"/></svg>'
-    : '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12a8 8 0 1 0 2.3-5.7L4 8.6M4 4v4.6h4.6"/></svg>';
-}
-
 function responseFeedback(blockKey, feedback) {
   if (!feedback) return "";
   if (feedback === "correct") return '<div class="inline-feedback ok"><p class="tiny">Correto.</p></div>';
   if (feedback === "incomplete") return '<div class="inline-feedback warn"><p class="tiny">Selecione pelo menos uma resposta.</p></div>';
   const key = escapePackageAttribute(blockKey);
-  return `<div class="inline-feedback err has-actions"><p class="tiny">As respostas marcadas não correspondem ao conjunto esperado.</p><div class="feedback-icons"><button class="icon-pill" type="button" data-action="choice-view-answer" data-choice-block-key="${key}" title="Ver resposta" aria-label="Ver resposta">${actionIcon("answer")}</button><button class="icon-pill primary" type="button" data-action="choice-try-again" data-choice-block-key="${key}" title="Tentar de novo" aria-label="Tentar de novo">${actionIcon("retry")}</button></div></div>`;
+  return `<div class="inline-feedback err has-actions"><p class="tiny">As respostas marcadas não correspondem ao conjunto esperado.</p><div class="feedback-icons"><button class="icon-pill" type="button" data-action="choice-view-answer" data-choice-block-key="${key}" title="Ver resposta" aria-label="Ver resposta">${renderPackageActionIcon("answer")}</button><button class="icon-pill primary" type="button" data-action="choice-try-again" data-choice-block-key="${key}" title="Tentar de novo" aria-label="Tentar de novo">${renderPackageActionIcon("retry")}</button></div></div>`;
 }
 
 export const choiceResponsePackage = Object.freeze({
@@ -31,6 +31,7 @@ export const choiceResponsePackage = Object.freeze({
     id: "aralearn.response.choice", version: "1.0.0", label: "Escolha",
     purpose: "Pedir que o estudante discrimine uma ou mais alternativas plausíveis.", slots: Object.freeze(["response"]),
     cognitiveOperations: Object.freeze(["discriminate", "select-best", "identify-set", "diagnose-misconception"]),
+    academic: academicProfile({ domains: ["transversal"], knowledgeObjects: ["alternativas", "distratores", "conjunto de respostas"], conventions: ["enunciado único", "distratores plausíveis", "confirmação antes do feedback"], appropriateWhen: ["discriminar opções é a operação desejada"], avoidWhen: ["o estudante deve produzir a resposta sem pistas"], technologies: ["HTML semântico", "ARIA"], practiceModes: ["selection"], content: false }),
     responseCompatibility: Object.freeze([]), limitations: Object.freeze(["Não use quando recordar ou produzir a resposta for a operação desejada."]),
     accessibility: "Alternativas usam fieldset, legend e controles nativos."
   }),
@@ -60,18 +61,18 @@ export const choiceResponsePackage = Object.freeze({
       : shuffleExerciseOptions(items, `${options.exerciseShuffleSeed || "runtime"}::${blockKey}`);
     const optionsHtml = displayed.map(({ option }) => {
       const checked = selected.has(option.id);
-      const evaluated = feedback === "correct" || feedback === "wrong";
+      const evaluatedCorrect = feedback === "correct";
+      const evaluatedWrong = feedback === "wrong";
       const shouldBeChecked = expected.has(option.id);
       const classes = [
         checked ? "active" : "",
-        evaluated && checked && shouldBeChecked ? "selected-correct" : "",
-        evaluated && checked && !shouldBeChecked ? "selected-incorrect" : "",
-        evaluated && !checked && shouldBeChecked ? "expected-selection" : ""
+        evaluatedCorrect && checked && shouldBeChecked ? "selected-correct" : "",
+        evaluatedWrong && checked && !shouldBeChecked ? "selected-incorrect" : ""
       ].filter(Boolean).join(" ");
       const value = option.kind === "code"
         ? `<pre class="multiple-choice-code"><code data-language="${escapePackageAttribute(option.language)}">${renderPackageInline(option.code)}</code></pre>`
         : renderPackageInline(option.text);
-      const optionFeedback = evaluated && option.feedback
+      const optionFeedback = checked && (evaluatedCorrect || evaluatedWrong) && option.feedback
         ? `<div class="multiple-choice-option-feedback">${renderPackageProse(option.feedback)}</div>`
         : "";
       return `<button class="multiple-choice-option${classes ? ` ${classes}` : ""}" type="button" data-action="choice-toggle" data-choice-block-key="${escapePackageAttribute(blockKey)}" data-choice-option-id="${escapePackageAttribute(option.id)}" role="${data.selectionMode === "single" ? "radio" : "checkbox"}" aria-checked="${checked ? "true" : "false"}"><span class="multiple-choice-mark">${checked ? '<span class="multiple-choice-dot" aria-hidden="true"></span>' : ""}</span><span class="multiple-choice-label"><span>${value}</span>${optionFeedback}</span></button>`;

@@ -392,7 +392,8 @@
                                 "from": "flash",
                                 "to": "io"
                               }
-                            ]
+                            ],
+                            "name": "R"
                           }
                         }
                       ],
@@ -1249,7 +1250,8 @@
                                 "from": "io",
                                 "to": "dados"
                               }
-                            ]
+                            ],
+                            "name": "R"
                           }
                         }
                       ],
@@ -1521,15 +1523,45 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "O plano mostra dois vetores saindo da origem. Para resolver, use a ideia: vetores com direções parecidas sugerem textos com significados próximos.",
-                            "vectors": [
-                              [
-                                3,
-                                2
-                              ],
-                              [
-                                4,
-                                3
+                            "xAxis": {
+                              "label": "Coordenada x",
+                              "domain": [
+                                -1.5,
+                                4.5
                               ]
+                            },
+                            "yAxis": {
+                              "label": "Coordenada y",
+                              "domain": [
+                                -1.5,
+                                3.5
+                              ]
+                            },
+                            "vectors": [
+                              {
+                                "id": "v1",
+                                "label": "q",
+                                "from": [
+                                  0,
+                                  0
+                                ],
+                                "to": [
+                                  3,
+                                  2
+                                ]
+                              },
+                              {
+                                "id": "v2",
+                                "label": "d",
+                                "from": [
+                                  0,
+                                  0
+                                ],
+                                "to": [
+                                  4,
+                                  3
+                                ]
+                              }
                             ]
                           }
                         }
@@ -2492,7 +2524,7 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "Cada vértice representa um centróide. Cada centróide representa um cluster. As arestas indicam vizinhança entre representantes parecidos; o desenho deve ser gerado pelo app a partir da estrutura.",
-                            "layout": "network",
+                            "layout": "auto",
                             "vertices": [
                               {
                                 "id": "mu1",
@@ -2515,28 +2547,26 @@
                               {
                                 "id": "edge-1",
                                 "from": "mu1",
-                                "to": "mu2",
-                                "directed": true
+                                "to": "mu2"
                               },
                               {
                                 "id": "edge-2",
                                 "from": "mu2",
-                                "to": "mu3",
-                                "directed": true
+                                "to": "mu3"
                               },
                               {
                                 "id": "edge-3",
                                 "from": "mu2",
-                                "to": "mu4",
-                                "directed": true
+                                "to": "mu4"
                               },
                               {
                                 "id": "edge-4",
                                 "from": "mu3",
-                                "to": "mu4",
-                                "directed": true
+                                "to": "mu4"
                               }
-                            ]
+                            ],
+                            "name": "G",
+                            "directed": true
                           }
                         }
                       ],
@@ -3350,7 +3380,8 @@
                                 "from": "bat",
                                 "to": "lim"
                               }
-                            ]
+                            ],
+                            "name": "R"
                           }
                         }
                       ],
@@ -4341,7 +4372,8 @@
                                 "from": "filosofia",
                                 "to": "sentido"
                               }
-                            ]
+                            ],
+                            "name": "R"
                           }
                         }
                       ],
@@ -4462,7 +4494,8 @@
                                 "from": "e2",
                                 "to": "engenharia"
                               }
-                            ]
+                            ],
+                            "name": "R"
                           }
                         }
                       ],
@@ -4746,7 +4779,8 @@
                                 "from": "saida",
                                 "to": "interpreta"
                               }
-                            ]
+                            ],
+                            "name": "R"
                           }
                         }
                       ],
@@ -5672,7 +5706,8 @@
                                 "from": "CNOT",
                                 "to": "correlaciona"
                               }
-                            ]
+                            ],
+                            "name": "R"
                           }
                         }
                       ],
@@ -5807,7 +5842,8 @@
                                 "from": "CNOT",
                                 "to": "correlaciona"
                               }
-                            ]
+                            ],
+                            "name": "R"
                           }
                         }
                       ],
@@ -6541,7 +6577,8 @@
                                 "from": "medicoes",
                                 "to": "pergunta"
                               }
-                            ]
+                            ],
+                            "name": "R"
                           }
                         }
                       ],
@@ -6747,7 +6784,8 @@
                                 "from": "portas",
                                 "to": "circuitos"
                               }
-                            ]
+                            ],
+                            "name": "R"
                           }
                         }
                       ],
@@ -7244,7 +7282,8 @@
                                 "from": "info",
                                 "to": "informa"
                               }
-                            ]
+                            ],
+                            "name": "R"
                           }
                         }
                       ],
@@ -7369,7 +7408,8 @@
                                 "from": "medicao",
                                 "to": "saida"
                               }
-                            ]
+                            ],
+                            "name": "R"
                           }
                         }
                       ],
@@ -7558,7 +7598,8 @@
                                 "from": "transformar",
                                 "to": "alterar"
                               }
-                            ]
+                            ],
+                            "name": "R"
                           }
                         }
                       ],
@@ -7693,7 +7734,8 @@
                                 "from": "transformar",
                                 "to": "alterar"
                               }
-                            ]
+                            ],
+                            "name": "R"
                           }
                         }
                       ],
@@ -8006,7 +8048,7 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "A rede mostra relações entre explicação, base, medição e emaranhamento.",
-                            "layout": "path",
+                            "layout": "auto",
                             "vertices": [
                               {
                                 "id": "mw",
@@ -8037,34 +8079,31 @@
                               {
                                 "id": "edge-1",
                                 "from": "mw",
-                                "to": "base",
-                                "directed": true
+                                "to": "base"
                               },
                               {
                                 "id": "edge-2",
                                 "from": "base",
-                                "to": "med",
-                                "directed": true
+                                "to": "med"
                               },
                               {
                                 "id": "edge-3",
                                 "from": "med",
-                                "to": "mbm",
-                                "directed": true
+                                "to": "mbm"
                               },
                               {
                                 "id": "edge-4",
                                 "from": "ent",
-                                "to": "vant",
-                                "directed": true
+                                "to": "vant"
                               },
                               {
                                 "id": "edge-5",
                                 "from": "mbm",
-                                "to": "vant",
-                                "directed": true
+                                "to": "vant"
                               }
-                            ]
+                            ],
+                            "name": "G",
+                            "directed": true
                           }
                         }
                       ],
@@ -8094,7 +8133,7 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "Observe a rede: muitos mundos liga-se ao problema da base preferida; o modelo baseado em medições liga medição ao processamento.",
-                            "layout": "path",
+                            "layout": "auto",
                             "vertices": [
                               {
                                 "id": "mw",
@@ -8121,28 +8160,26 @@
                               {
                                 "id": "edge-1",
                                 "from": "mw",
-                                "to": "bp",
-                                "directed": true
+                                "to": "bp"
                               },
                               {
                                 "id": "edge-2",
                                 "from": "mbm",
-                                "to": "med",
-                                "directed": true
+                                "to": "med"
                               },
                               {
                                 "id": "edge-3",
                                 "from": "med",
-                                "to": "exp",
-                                "directed": true
+                                "to": "exp"
                               },
                               {
                                 "id": "edge-4",
                                 "from": "bp",
-                                "to": "exp",
-                                "directed": true
+                                "to": "exp"
                               }
-                            ]
+                            ],
+                            "name": "G",
+                            "directed": true
                           }
                         }
                       ],
@@ -8435,7 +8472,8 @@
                                 "from": "ent",
                                 "to": "importante"
                               }
-                            ]
+                            ],
+                            "name": "R"
                           }
                         }
                       ],
@@ -8666,7 +8704,8 @@
                                 "from": "erros",
                                 "to": "correcao"
                               }
-                            ]
+                            ],
+                            "name": "R"
                           }
                         }
                       ],
@@ -11509,7 +11548,8 @@
                                 "from": "reg",
                                 "to": "rap"
                               }
-                            ]
+                            ],
+                            "name": "R"
                           }
                         }
                       ],
@@ -11842,7 +11882,8 @@
                               "rightItems": [
                                 "prox"
                               ]
-                            }
+                            },
+                            "name": "R"
                           }
                         }
                       ],
@@ -11993,7 +12034,8 @@
                               "rightItems": [
                                 "calc"
                               ]
-                            }
+                            },
+                            "name": "R"
                           }
                         }
                       ],
@@ -13144,7 +13186,8 @@
                                 "from": "mimd",
                                 "to": "muitosmuitos"
                               }
-                            ]
+                            ],
+                            "name": "R"
                           }
                         }
                       ],
@@ -13626,7 +13669,8 @@
                                 "from": "pcie",
                                 "to": "alta"
                               }
-                            ]
+                            ],
+                            "name": "R"
                           }
                         }
                       ],
@@ -14076,7 +14120,8 @@
                               "rightItems": [
                                 "alta"
                               ]
-                            }
+                            },
+                            "name": "R"
                           }
                         }
                       ],

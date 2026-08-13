@@ -13,8 +13,9 @@ pelo conteúdo continua sendo da pessoa autora.
 
 A ponte local recebe uma operação estruturada de revisão do aplicativo,
 encaminha a solicitação ao Codex CLI e devolve a resposta para validação. Ela
-repara resources ou o card inteiro; nos escopos autorizados de microssequência
-e lição, constrói cards ou no máximo uma nova microssequência.
+edita caminhos textuais ou recompõe o card inteiro pelo catálogo; nos escopos
+autorizados de microssequência e lição, constrói cards ou no máximo uma nova
+microssequência.
 
 Planejamento e autoria extensa de cursos não passam por esta ponte. Esse
 trabalho pertence ao Chatbot personalizado ou ao Plugin.
@@ -37,7 +38,7 @@ http://127.0.0.1:4183/health
 
 - `card_assistance_representation`;
 - `card_assistance_build`;
-- `card_assistance_resource_repair`;
+- `card_assistance_text_edit`;
 - `bottom_up_plan_cards`;
 - `bottom_up_build_card`;
 - `bottom_up_create_microsequence`.

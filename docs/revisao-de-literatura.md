@@ -44,7 +44,7 @@ e trabalhos sobre atenção dividida ajudam a justificar contiguidade,
 segmentação e escolha de representações. Essas teorias não autorizam concluir
 que qualquer diagrama, card curto ou interface minimalista reduz carga.
 
-O contrato de dezoito `resources` trata forma como parte do conteúdo quando a
+O catálogo extensível de packages trata forma como parte do conteúdo quando a
 operação depende de estrutura tabular, espacial, hierárquica, relacional,
 linguística, sistêmica ou química. A revisão específica, incluindo evidências
 contrárias e limites de transferência, está em [Fundamentação pedagógica dos
@@ -84,7 +84,8 @@ RAG combina geração e recuperação de informação (Lewis et al., 2020). O MC
 AraLearn emprega recuperação lexical estreita de instruções e contratos; isso
 reduz contexto repetido, mas não garante factualidade pedagógica. A assistência
 bottom-up recebe alvo delimitado, usa saída estruturada, valida a mudança e a
-registra diretamente com uma única reversão disponível.
+registra diretamente. No card, uma conversa curta conserva versões locais para
+desfazer, refazer e restaurar sem persistir o diálogo no curso.
 
 A orientação da UNESCO (2023) enfatiza abordagem centrada nas pessoas,
 proteção de dados, adequação pedagógica e responsabilidade humana. No AraLearn,

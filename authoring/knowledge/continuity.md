@@ -51,3 +51,23 @@ corrente do workspace. `expectedRevision` impede que uma decisão antiga
 sobrescreva reorganização mais recente. O feed de alterações guarda resumos
 recentes para orientar a conversa, sem snapshots comparáveis nem restauração
 de versões anteriores.
+
+## Decisões de representação
+
+Uma escolha de `resource` que precise sobreviver à conversa é registrada por
+`record_decision`, ligada à microssequência planejada ou ao card já
+materializado. A decisão conserva `representationSelection` com:
+
+- `intent`: a intenção didática e representacional em linguagem clara;
+- `chosen`: `packageId` e versão exata efetivamente usados;
+- `fit`: `canonical`, `versatile` ou `substitute`;
+- `desiredResource`: a representação ideal ainda desejada, ou `null`;
+- `catalogVersion`: a versão do catálogo consultado;
+- `limitations`: perdas conhecidas da escolha; e
+- `chatDisclosure`: a observação breve comunicada ao usuário quando houve
+  substituição, ou `null`.
+
+`substitute` exige `desiredResource` e `chatDisclosure`, mas nunca impede a
+materialização: usa-se a melhor aproximação disponível e preserva-se a intenção
+para uma revisão futura. Esse metadado pertence à continuidade do workspace;
+não é inserido no envelope público do card nem no conteúdo estudado.

@@ -290,11 +290,16 @@ async function openFirstWorkspaceCard(page) {
   await page.locator('[data-action="open-course"]').click();
   await expect(page.locator('[data-action="open-module"]')).toBeVisible();
   await page.locator('[data-action="open-module"]').click();
-  await page.locator('[data-action="open-lesson"]').click();
-  await page.locator('[data-action="open-microsequence-overview"]').click();
-  await page.locator(
-    '[data-action="open-microsequence-card"][data-card-index="0"]'
-  ).click();
+  if (!await page.locator(".runtime-card-sheet").isVisible()) {
+    const lesson = page.locator('[data-action="open-lesson"]').first();
+    if (await lesson.isVisible()) await lesson.click();
+    const overview = page.locator('[data-action="open-microsequence-overview"]').first();
+    if (await overview.isVisible()) await overview.click();
+    const card = page.locator(
+      '[data-action="open-microsequence-card"][data-card-index="0"]'
+    ).first();
+    if (await card.isVisible()) await card.click();
+  }
   await expect(page.locator(".runtime-card-sheet")).toBeVisible();
 }
 

@@ -1,4 +1,5 @@
 import { renderPackageInline, renderPackageProse } from "../../sdk/html.js";
+import { academicProfile } from "../../sdk/academic.js";
 
 export const tablePackage = Object.freeze({
   manifest: Object.freeze({
@@ -6,6 +7,7 @@ export const tablePackage = Object.freeze({
     purpose: "Comparar atributos repetidos ou consultar valores organizados por linhas e colunas.",
     slots: Object.freeze(["content", "feedback"]),
     cognitiveOperations: Object.freeze(["compare-fields", "lookup", "classify", "contrast-cases"]),
+    academic: academicProfile({ domains: ["transversal", "estatística descritiva"], knowledgeObjects: ["registros homogêneos", "atributos comparáveis"], conventions: ["cabeçalhos explícitos", "unidade declarada", "uma observação por linha"], appropriateWhen: ["os mesmos atributos são comparados entre casos"], avoidWhen: ["os valores formam uma matriz algébrica", "há apenas uma lista sem comparação bidimensional"], technologies: ["tabela HTML semântica"], practiceModes: ["exposition", "gap", "typing", "selection", "classification"] }),
     responseCompatibility: Object.freeze(["aralearn.response.gap", "aralearn.response.choice"]),
     limitations: Object.freeze(["Não introduz sozinha siglas, números ou categorias ainda não explicados.", "Evite tabelas densas em primeiro contato."]),
     accessibility: "Cabeçalhos e células usam semântica de tabela e leitura linear."
@@ -14,7 +16,7 @@ export const tablePackage = Object.freeze({
     intent: "Declare uma comparação pequena, com cabeçalhos autoexplicativos e contexto anterior.",
     required: Object.freeze(["columns", "rows"]), optional: Object.freeze(["prompt", "caption", "layout"]),
     rules: Object.freeze(["Cada linha tem a mesma quantidade de células que columns.", "Explique antes toda sigla usada."]),
-    example: Object.freeze({ prompt: "Compare a finalidade.", columns: ["Mecanismo", "Finalidade"], rows: [["Get", "Consultar um valor"]] })
+    example: Object.freeze({ prompt: "Compare mecanismos de controle de congestionamento depois de estudar janela de congestionamento, perda e atraso.", caption: "Sinais e respostas típicas; detalhes dependem do algoritmo e da implementação.", layout: "wide", columns: ["Mecanismo", "Sinal observado", "Resposta principal", "Efeito esperado"], rows: [["Slow start", "Início da conexão ou reinício após timeout", "Crescimento exponencial de cwnd por RTT", "Descobrir rapidamente a capacidade disponível"], ["Congestion avoidance", "cwnd alcança ssthresh", "Crescimento aproximadamente linear", "Sondar capacidade com mais cautela"], ["Fast retransmit", "ACKs duplicados", "Retransmitir antes do timeout", "Reduzir o tempo de recuperação"], ["Timeout", "Ausência de confirmação dentro do RTO", "Reduzir cwnd e reiniciar crescimento", "Responder a indício forte de perda"]] })
   }),
   schema: Object.freeze({
     type: "object", additionalProperties: false, required: ["columns", "rows"],
@@ -52,5 +54,12 @@ export const tablePackage = Object.freeze({
       ...data.columns.map((_, index) => ({ path: `columns[${index}]`, label: `Editar cabeçalho ${index + 1}` })),
       ...data.rows.flatMap((row, rowIndex) => row.map((_, columnIndex) => ({ path: `rows[${rowIndex}][${columnIndex}]`, label: `Editar célula ${rowIndex + 1}, ${columnIndex + 1}` })))
     ];
+  },
+  practiceTargets(data) {
+    return data.rows.flatMap((row, rowIndex) => row.map((_, columnIndex) => ({
+      path: `rows[${rowIndex}][${columnIndex}]`,
+      label: `Lacuna na célula ${rowIndex + 1}, ${columnIndex + 1}`,
+      modes: ["gap", "typing"]
+    })));
   }
 });

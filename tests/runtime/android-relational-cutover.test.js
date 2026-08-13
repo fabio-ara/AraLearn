@@ -82,8 +82,8 @@ test("a rede remota exige HTTPS e o cleartext fica restrito ao desenvolvimento l
 });
 
 test("o build Android recebe apenas configuração pública e não adiciona SDK Supabase nativo", () => {
-  assert.match(gradle, /versionCode = 159/u);
-  assert.match(gradle, /versionName = "0\.0\.17"/u);
+  assert.match(gradle, /versionCode = 160/u);
+  assert.match(gradle, /versionName = "0\.0\.18"/u);
   assert.match(gradle, /System\.getenv\("ARALEARN_SUPABASE_URL"\)/u);
   assert.match(gradle, /System\.getenv\("ARALEARN_SUPABASE_PUBLISHABLE_KEY"\)/u);
   assert.match(gradle, /System\.getenv\("ARALEARN_ASSIST_ALLOWED_ORIGINS"\)/u);
@@ -126,7 +126,8 @@ test("o shell web limita a limpeza de cache e não persiste callbacks de autenti
 
   assert.match(serviceWorker, /__ARALEARN_CACHE_REVISION__/u);
   assert.doesNotMatch(serviceWorker, /0\.0\.11-r1/u);
-  assert.match(serviceWorker, /key\.startsWith\(CACHE_PREFIX\) && key !== CACHE_NAME/u);
+  assert.match(serviceWorker, /const CACHE_PREFIX = "aralearn-shell-v2-"/u);
+  assert.match(serviceWorker, /OBSOLETE_CACHE_PREFIXES\.some\(\(prefix\) => key\.startsWith\(prefix\)\)/u);
   assert.match(serviceWorker, /response\.ok && !new URL\(request\.url\)\.search/u);
   assert.match(serviceWorker, /\.\/frame-guard\.js/u);
   assert.match(serviceWorker, /\.\/theme-bootstrap\.js/u);

@@ -12,7 +12,7 @@ export function isCodexCardAssistancePhase(value) {
   return [
     "card_assistance_representation",
     "card_assistance_build",
-    "card_assistance_resource_repair",
+    "card_assistance_text_edit",
     "bottom_up_operation",
     "bottom_up_targets",
     "bottom_up_move",

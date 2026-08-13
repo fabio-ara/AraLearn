@@ -70,11 +70,15 @@ continuam resolvidas no banco.
 2. prepare um pedido de criação com `prepararAutoriaAraLearn`;
 3. crie um workspace vazio;
 4. leia o `outline`;
-5. insira uma estrutura v4 pequena;
-6. renomeie e mova entidades usando a revisão atual;
-7. consulte as microteorias de uma lição;
-8. confira que o plano apareceu em Trilhas sem publicação;
-9. materialize cards, abra o curso na biblioteca e teste o conteúdo pronto.
+5. percorra `explore`, `search`, `inspect` e `contracts` em
+   `consultarBibliotecaDeResources`;
+6. componha um card, execute `validate_card` e `audit_representation` e confira
+   que `preview_card` informa `rendered: false`;
+7. insira uma estrutura canônica pequena e materialize os cards validados;
+8. renomeie e mova entidades usando a revisão atual;
+9. consulte as microteorias de uma lição;
+10. confira que o plano apareceu em Trilhas sem publicação;
+11. abra o curso na biblioteca e teste o conteúdo pronto.
 
 Confirme que o chat mostra microteorias, não despeja todas as práticas e que
 uma revisão antiga produz conflito sem sobrescrever a atual.

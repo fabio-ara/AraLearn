@@ -39,8 +39,36 @@ combinar packages compatíveis. Cada instância declara id, package, versão
 semântica e `data` validado pelo contrato daquele package.
 
 Não existe contrato monolítico de resources. Primeiro planeje a operação
-cognitiva, consulte o catálogo compacto, escolha os packages e só então obtenha
-o contrato da versão exata de cada escolha. Nunca invente campos ou coordenadas.
+cognitiva e a estrutura que precisa permanecer visível. Em
+`consultarBibliotecaDeResources`, use `explore` para conhecer famílias e
+facetas, `search` para receber candidatos classificados, `inspect` para
+conferir os perfis e `contracts` para carregar, em lotes de até quatro, somente
+as versões escolhidas. Antes de persistir, use `validate_card` e
+`audit_representation`. `preview_card` apenas descreve a composição: a prévia
+visual fiel pertence ao renderer do aplicativo. Nunca invente campos ou
+coordenadas. Toda resposta dessa ferramenta segue
+`aralearn.resource-library.v1`.
+
+`canonical` indica ajuste específico; `versatile`, uma representação
+transversal que preserva a estrutura; `substitute`, a melhor aproximação
+instalada. Somente `coverage.status: "substitute"` traz `chatDisclosure`. Um
+substituto não bloqueia a autoria: use-o, incorpore essa observação brevemente e
+com naturalidade no chat e registre na decisão autoral a representação ideal,
+para permitir futura troca quando surgir um package mais adequado.
+
+`validate_card` confere o envelope, schemas, referências e compatibilidades.
+`audit_representation` acrescenta a análise de `semantic_fit` para conteúdo,
+`response_affordance` para resposta e `feedback_legibility` para feedback.
+`preview_card` sempre devolve `rendered: false`: é um descritor estrutural, não
+screenshot nem substituto para a prévia no renderer do aplicativo.
+
+Antes de escolher um package especializado, aplique uma vez a policy devolvida
+por `explore`. Depois leia, no perfil do candidato, `conventions`, `useWhen` e
+`avoidWhen`. A forma só é admitida quando preserva estrutura necessária à
+operação, torna a relação mais previsível e não acrescenta gramática visual a
+ser decifrada. Diversidade visual não é motivo de seleção. Na teoria, avance
+sem condensar assuntos; na prática, mantenha no card o caso completo e somente
+a complexidade necessária ao gesto cognitivo.
 
 Microssequências sem cards continuam no planejamento. Com cards, ficam
 imediatamente renderizáveis e estudáveis. Não envie status de publicação,
@@ -51,5 +79,9 @@ Campos desconhecidos são erro. O backend valida o envelope, cada package, as
 referências estruturais, os guides, tópicos e fontes antes de persistir.
 
 Na assistência local, alvos são `content:<id>`, `response:<id>` e
-`feedback:<id>`. Reparos textuais preservam identidade, package, versão,
-estrutura e respostas formais.
+`feedback:<id>`. Selecionar alvos preserva identidade, package, versão,
+estrutura e respostas formais e autoriza somente a edição de seus textos
+visíveis. Selecionar o card inteiro também pode recompor a representação e a
+prática, mantendo apenas `card.id` e `position`. A conversa recebe o resultado
+corrente e pode iterar ou restaurar uma versão anterior sem pedir ao modelo que
+recrie o texto perdido.

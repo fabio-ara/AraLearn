@@ -4,11 +4,31 @@ O package representa a estrutura sobre a qual o estudante raciocina. Escolha-o
 pela operação exigida, não pela aparência, por uma cota de variedade nem pela
 facilidade de geração.
 
-O catálogo MCP é a fonte de verdade sobre os packages instalados. Consulte-o
-antes de escolher. Ele informa finalidade, operações cognitivas, slots e
-compatibilidades sem enviar todos os schemas. Depois do planejamento, consulte
-somente o contrato da versão exata de cada package escolhido. O catálogo pode
-crescer sem alterar estas instruções.
+Uma representação visual não recebe um card auxiliar para ensinar uma
+gramática inventada pela interface. O contexto disciplinar apresenta os
+conceitos e convenções necessários em progressão; o package materializa essas
+relações de forma canônica e mais direta que prosa, tabela ou outra alternativa
+mais simples. Se isso não ocorrer, a seleção ou o package está errado.
+
+O catálogo MCP é a fonte de verdade sobre os packages instalados. Use somente
+`consultarBibliotecaDeResources`: `explore` apresenta famílias e facetas;
+`search` procura pela intenção e classifica a cobertura; `inspect` compara até
+oito perfis; `contracts` carrega no máximo quatro versões exatas por chamada.
+Compare finalidade, operações, área, objeto, convenções, contraindicações,
+modalidades, slots e compatibilidades com o gesto cognitivo planejado; não
+escolha apenas pelo nome. O catálogo pode crescer sem alterar estas instruções.
+
+Depois de compor o envelope, chame `validate_card` e então
+`audit_representation`. A primeira operação confere estrutura, referências e
+compatibilidade; a segunda separa a adequação semântica do conteúdo, a
+possibilidade de resposta e a legibilidade do feedback. `preview_card` apenas
+descreve a composição e sempre informa `rendered: false`; Graphviz, Vega,
+viewport e screenshot pertencem ao renderer real do aplicativo.
+
+`canonical` é o ajuste específico e `versatile` é uma convenção transversal
+adequada. `substitute` é a melhor aproximação disponível e nunca bloqueia a
+autoria: prossiga e inclua o `chatDisclosure` devolvido em uma linha natural no
+chat, sem inseri-lo no conteúdo estudado.
 
 ## Composição do card
 
@@ -35,20 +55,25 @@ Use o manifest recuperado por MCP para comparar a operação cognitiva com a
 finalidade do package. Em termos gerais:
 
 - texto explicativo pede `aralearn.resource.paragraph`;
-- código, tabela, fórmula, reação, gráfico quantitativo, sequência, fluxo,
-  árvore, grafo, matriz, plano, mapa de sistema, mapa de relações, exemplo
-  linguístico e texto anotado pedem seus packages estruturais específicos;
+- código, tabela, fórmula, reação, gráfico quantitativo, fluxo,
+  árvore, grafo, matriz, plano, diagramas de software, mapa de relações, diagrama de
+  conjuntos, tabela-verdade, cabeçalho de pacote,
+  esquema relacional, máquina de estados, topologia de rede, mapa de memória,
+  glosa interlinear e texto anotado pedem seus packages estruturais
+  específicos;
 - discriminação por alternativas pede `aralearn.response.choice`;
 - recuperação dentro de um campo textual visível pede
   `aralearn.response.gap`;
 - reconstrução de uma ordem pede `aralearn.response.ordering`.
+- reconstrução de pares ou classificação pede
+  `aralearn.response.matching`.
 
 Essa orientação não substitui o catálogo. Nunca memorize um schema, invente
 campos, use coordenadas de tela ou presuma que todos os packages aceitam toda
 resposta. A combinação é válida somente quando manifest, contrato e validação
 do package concordam.
 
-## Lacunas e ordenação
+## Lacunas, ordenação e encaixe
 
 Uma lacuna declara `targetInstanceId` e `targetPath` para um campo textual real
 de uma instância em `content`. A resposta precisa ocorrer nesse campo e será
@@ -60,6 +85,12 @@ Uma ordenação aponta para uma instância de conteúdo que preserve a sequênci
 declara os identificadores na ordem correta. Os itens visíveis vêm da
 representação alvo. Não duplique a sequência no enunciado nem use a posição
 visual como resposta implícita.
+
+Um encaixe declara origens, destinos e pares corretos. Ele pode reconstruir
+uma bijeção ou classificar várias origens na mesma categoria. A interface usa
+controles nativos acessíveis; arrastar nunca é obrigatório. Nenhuma modalidade
+é universal: use somente `responseCompatibility` e `practiceTargets` do
+contrato exato e confirme a composição com `validate_card`.
 
 ## Representações visuais
 
@@ -73,14 +104,40 @@ sobrepor rótulos às arestas. Use direção somente quando ela mudar a
 interpretação. Não force um grafo para representar uma simples sequência ou
 lista.
 
-Em `relation_map`, deixe explícitos os dois conjuntos e a natureza de cada
-pareamento. O renderer apresenta relações como linhas legíveis; não dependa de
-setas atravessando textos ou de caixas com largura fixa.
+Em `relation_map`, deixe explícitos domínio, contradomínio e pares ordenados.
+O renderer apresenta os dois conjuntos e uma seta sem rótulo para cada par; a
+notação extensional complementar registra os pares sem disputar espaço com as
+arestas. Use-o somente quando imagem, preimagem ou cardinalidade fizer parte
+do raciocínio. Use `table` ou `matching` para uma simples correspondência e
+`set_diagram` quando interseção, união ou pertencimento simultâneo for o objeto.
+Nesse package, escolha `venn` quando todas as combinações lógicas precisam
+permanecer visíveis e `euler` quando a ausência de uma região é parte da
+topologia observada. Declare conjuntos, símbolos curtos e pertencimento; não
+declare círculos, coordenadas ou tamanhos. Mais de três conjuntos exigem outra
+representação, não um diagrama ilegível comprimido.
+
+`matrix` é reservado a arranjos algébricos de escalares ou expressões, sem
+cabeçalhos de atributos nem grade de registros. Para dados tabulares use
+`table`; para esquema relacional use `database_schema`. Mudanças de variáveis
+por passo permanecem em `table` enquanto não houver uma representação
+sincronizada de execução que preserve estrutura adicional.
 
 Em `flow`, cada decisão explicita condição e consequência. Em `tree`, a
 ligação preserva pai e filho. Nos demais packages, unidades, eixos, ordem,
 notação, grupos e direção necessários precisam estar declarados nos campos
 semânticos do contrato.
+
+`flow` não é uma árvore indentada. Sua raiz lógica é uma sequência e o
+renderer materializa terminais arredondados, processos retangulares,
+entrada/saída em paralelogramos, decisões em losangos, conectores orientados e
+junções. A autoria nunca declara coordenadas ou arestas.
+
+`formula` recebe uma AST semântica, não uma string de notação. Integrais,
+derivadas, tensores, funções, somatórios, produtos, limites, frações, raízes,
+índices e cercas usam os respectivos nós do contrato. Use `prompt` ou
+`paragraph` para a explicação em prosa; tokens textuais dentro da AST servem
+somente a conectores matemáticos curtos. A leitura acessível acompanha a mesma
+estrutura e não pode se limitar a repetir símbolos.
 
 ## Validação
 

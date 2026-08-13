@@ -153,6 +153,8 @@ const scenarios = [
     cards: [
       {
         layout: "auto",
+        name: "G",
+        directed: false,
         id: "card-redes-grafo",
         resource: "graph",
         kind: "exercise",
@@ -195,10 +197,9 @@ const scenarios = [
         exercise: "choice",
         title: "Extremidade do vetor",
         prompt: "O vetor v parte da origem e tem componentes (3, -2).",
-        x: [-1, 4],
-        y: [-3, 2],
-        vector: [3, -2],
-        result: [3, -2],
+        xAxis: { label: "Coordenada x", domain: [-1, 4] },
+        yAxis: { label: "Coordenada y", domain: [-3, 2] },
+        vectors: [{ id: "v", label: "v", from: [0, 0], to: [3, -2] }],
         question: "Em qual ponto termina v quando sua origem é (0, 0)?",
         options: options("(3, -2)", "(-2, 3)", "(3, 2)"),
         selectionMode: "single",
@@ -431,16 +432,15 @@ const scenarios = [
         title: "Anomalia térmica anual",
         prompt: "Observe a evolução da anomalia térmica média entre 2022 e 2025.",
         chartType: "line",
-        xAxis: { label: "Ano", unit: "ano" },
-        yAxis: { label: "Anomalia", unit: "°C" },
+        xAxis: { label: "Ano", unit: "ano", type: "quantitative", domain: [2022, 2025] },
+        yAxis: { label: "Anomalia", unit: "°C", type: "quantitative", domain: [0, 1] },
         series: [
           {
             id: "serie-anomalia",
             name: "Anomalia térmica",
-            values: [["2022", 0.2], ["2023", 0.4], ["2024", 0.7], ["2025", 0.8]]
+            values: [{ x: 2022, y: 0.2 }, { x: 2023, y: 0.4 }, { x: 2024, y: 0.7 }, { x: 2025, y: 0.8 }]
           }
         ],
-        highlight: { points: [["serie-anomalia", "2025"]] },
         after: "A série cresce em todos os intervalos e atinge 0,8 °C em 2025."
       }
     ],
@@ -502,18 +502,23 @@ const scenarios = [
     cards: [
       {
         id: "card-exemplo-linguistico",
-        resource: "linguistic_example",
+        resource: "interlinear_gloss",
         kind: "theory",
         exercise: "none",
         title: "Exemplo interlinear em português",
         prompt: "Compare as unidades da oração com suas glosas.",
         languageTag: "pt-BR",
-        writingMode: "horizontal",
-        alignment: "word",
         units: [
-          { id: "unidade-1", form: "As", gloss: "DET.PL", translation: "as" },
-          { id: "unidade-2", form: "crianças", gloss: "criança.PL", translation: "crianças" },
-          { id: "unidade-3", form: "brincam", gloss: "brincar.PRS.3PL", translation: "brincam" }
+          { id: "unidade-1", form: "A-s", gloss: "DET-PL" },
+          { id: "unidade-2", form: "criança-s", gloss: "criança-PL" },
+          { id: "unidade-3", form: "brinc-a-m", gloss: "brincar-PRS-3PL" }
+        ],
+        translation: "As crianças brincam.",
+        abbreviations: [
+          { code: "DET", meaning: "determinante" },
+          { code: "PL", meaning: "plural" },
+          { code: "PRS", meaning: "presente" },
+          { code: "3PL", meaning: "terceira pessoa do plural" }
         ],
         after: "A segmentação mantém cada forma alinhada à glosa e à tradução."
       }
@@ -526,80 +531,58 @@ const scenarios = [
     goal: "Preservar limites, pertencimento e conexões de uma arquitetura lógica.",
     cards: [
       {
-        id: "card-arquitetura-mapa-sistema",
-        resource: "system_map",
+        id: "card-arquitetura-conteineres",
+        resource: "software_container",
         kind: "theory",
         exercise: "none",
         title: "Fluxo de uma solicitação",
-        prompt: "Observe os componentes, seus limites e as conexões identificadas.",
-        groups: [
-          {
-            id: "rede-producao",
-            label: "Rede de produção",
-            kind: "network",
-            parentId: null
-          },
-          {
-            id: "espaco-aplicacao",
-            label: "Espaço da aplicação",
-            kind: "namespace",
-            parentId: "rede-producao"
-          }
-        ],
-        nodes: [
-          {
-            id: "cliente-web",
-            label: "Cliente web",
-            kind: "client",
-            groupId: null
-          },
+        prompt: "Observe as unidades executáveis e os armazenamentos dentro da fronteira do sistema.",
+        system: { id: "pedidos", label: "Sistema de pedidos", description: "Recebe e persiste pedidos." },
+        people: [{ id: "cliente-web", label: "Cliente web", description: "Envia pedidos pela interface pública." }],
+        externalSystems: [],
+        containers: [
           {
             id: "gateway-publico",
             label: "Gateway público",
-            kind: "gateway",
-            groupId: "rede-producao"
+            kind: "application",
+            technology: "Gateway HTTP",
+            responsibility: "Termina HTTPS e encaminha requisições autorizadas."
           },
           {
             id: "servico-pedidos",
             label: "Serviço de pedidos",
-            kind: "service",
-            groupId: "espaco-aplicacao"
+            kind: "application",
+            technology: "Aplicação de serviço",
+            responsibility: "Valida e processa pedidos."
           },
           {
             id: "banco-pedidos",
             label: "Banco de pedidos",
-            kind: "database",
-            groupId: "espaco-aplicacao"
+            kind: "data_store",
+            technology: "Banco relacional",
+            responsibility: "Persiste o estado transacional dos pedidos."
           }
         ],
-        links: [
+        relationships: [
           {
             id: "entrada",
             from: "cliente-web",
             to: "gateway-publico",
-            label: "HTTPS",
-            directed: true
+            label: "envia pedido por HTTPS"
           },
           {
             id: "roteamento",
             from: "gateway-publico",
             to: "servico-pedidos",
-            label: "requisição",
-            directed: true
+            label: "encaminha requisição"
           },
           {
             id: "persistencia",
             from: "servico-pedidos",
             to: "banco-pedidos",
-            label: "gravação",
-            directed: true
+            label: "grava transação"
           }
         ],
-        highlight: {
-          groupIds: ["espaco-aplicacao"],
-          nodeIds: ["servico-pedidos"],
-          linkIds: ["roteamento"]
-        },
         after: "A solicitação atravessa o gateway, chega ao serviço dentro do espaço da aplicação e então alcança o banco."
       }
     ],

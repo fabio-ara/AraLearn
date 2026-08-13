@@ -20,7 +20,7 @@ extrínseca que não contribui para aprender.
 | Carga cognitiva e atenção dividida | Informação que precisa ser integrada deve permanecer próxima | feedback localizado, anotações adjacentes, fórmula com leitura acessível, nenhum layout descrito por prosa | proximidade visual não garante compreensão |
 | Coerência, sinalização e contiguidade | Elementos relevantes devem ser destacados sem decoração concorrente | presets semânticos, highlights referenciados por ID, labels próximos, ausência de propriedades livres de estilo | sinalização excessiva também pode competir por atenção |
 | Múltiplas representações | Representações cumprem funções distintas e precisam ser coordenadas | objetivo e evidência em `goal`/`checks`, packages escolhidos antes da composição e múltiplas instâncias apenas para coordenação necessária | mais representações não são automaticamente melhores |
-| Notações relacionais | Entidades e relações precisam ser perceptualmente distinguíveis e semanticamente explícitas | `system_map` separa limites, grupos, componentes e conexões; links explicitam origem/destino e, quando necessário, direção/rótulo | princípios de notação não comprovam ganho de aprendizagem por si sós |
+| Notações relacionais | Entidades e relações precisam ser perceptualmente distinguíveis e semanticamente explícitas | `graph` preserva a gramática nó-aresta matemática; os três packages de sistemas separam contexto C4, contêineres C4 e composição interna SysML | princípios de notação não comprovam ganho de aprendizagem por si sós |
 | Representações químicas | Equações codificam lados, coeficientes, estados e tipos de seta; fenômeno químico também envolve níveis macro e submicroscópico | `reaction` preserva a equação simbólica e pode ser coordenado com outras representações | uma equação correta não demonstra fluência entre níveis representacionais |
 | Exemplos resolvidos e fading | Novatos se beneficiam de exemplo antes de resolução com apoio progressivamente menor | sequência observável de fundamento, exemplo resolvido, prática guiada e prática com menor apoio | expertise e natureza da tarefa alteram o apoio necessário |
 | Prática de recuperação | Recuperar favorece retenção posterior mais que apenas reler | microssequências combinam explicação, prática e retomada | reconhecimento simples pode ser insuficiente para alguns objetivos |
@@ -71,40 +71,198 @@ um repertório, não um checklist de variedade por curso.
 No AraLearn:
 
 - `table`, `matrix`, `chart` e `plane` não são estilos de parágrafo;
-- `tree`, `graph`, `flow` e `sequence` distinguem hierarquia, rede, decisão e
-  ordem;
-- `annotated_text` liga evidência e comentário;
-- `linguistic_example` alinha forma, som, glosa e tradução;
-- `system_map` explicita pertencimento a limites e conexões entre componentes;
+- `tree`, `graph` e `flow` distinguem hierarquia, topologia abstrata e decisão;
+- `annotated_text` ancora comentários em trechos identificáveis e mantém a
+  navegação bidirecional entre evidência e explicação;
+- `interlinear_gloss` alinha forma segmentada e glosa morfema a morfema,
+  separa a tradução livre e explicita abreviações gramaticais;
+- `software_system_context`, `software_container` e `system_internal_block`
+  distinguem, respectivamente, fronteira externa, unidades executáveis internas
+  e composição por partes, portas e conectores;
 - `reaction` preserva a gramática de uma equação química;
+- `truth_table`, `set_diagram` e `relation_map` distinguem valoração
+  lógica, regiões de conjuntos e pares de uma relação binária;
+- `entity_relationship`, `database_schema`, `memory_layout` e `call_stack`
+  preservam, respectivamente, modelo conceitual, esquema lógico com chaves,
+  intervalos de endereços e ativações de funções;
+- `packet_layout`, `network_topology` e `state_machine` distinguem campos
+  contíguos de protocolo, equipamentos/enlaces e comportamento dependente de
+  estado;
+- `state_transition_table` torna explícita a função de transição, enquanto
+  `bpmn_process` preserva participantes, raias, atividades, gateways e a
+  distinção normativa entre fluxo de sequência e fluxo de mensagem;
 - múltiplos packages em `content` são reservados à tarefa que realmente exige coordenação.
+
+`set_diagram` não é uma lista cercada por círculos. O contrato distingue
+explicitamente Venn, que conserva todas as regiões lógicas possíveis, de
+Euler, cuja topologia conserva somente inclusões e interseções existentes.
+O autor declara conjuntos, símbolos e pertencimento; `@upsetjs/venn.js`
+calcula os contornos sem receber coordenadas. Símbolos curtos permanecem junto
+das curvas e marcadores numerados ancoram cada região a uma descrição completa,
+evitando comprimir rótulos longos dentro das sobreposições. Para simples
+classificação sem sobreposição vence uma resposta de encaixe ou uma tabela;
+para mais de três conjuntos, Venn/Euler deixa de ser admitido e uma futura
+representação de interseções precisa de package próprio.
+
+Cada package de conteúdo expõe folhas textuais selecionáveis e pode ser
+composto com resposta por lacuna/digitação ou encaixe. A prática fica no
+package de resposta: essa separação impede que a interação descaracterize a
+notação acadêmica do objeto. `matrix`, por exemplo, não recebe cabeçalhos de
+atributos nem grade tabular; registros pertencem a `table`, enquanto chaves e
+referências pertencem a `database_schema`.
 
 `goal`, `covers` e `checks` declaram a intenção antes da escolha dos packages.
 A revisão pergunta se a composição preserva a evidência
 desejada, não se a sequência apresenta variedade visual.
+
+## Gráficos estatísticos e plano cartesiano
+
+`chart` não recebe coordenadas de tela nem uma legenda textual improvisada. O
+contrato declara tipo, domínio, escala e unidade de cada eixo; séries contêm
+pontos nomeados e podem incluir limites inferior e superior já calculados. A
+autoria também nomeia a medida de incerteza e a nota metodológica. O package
+compila essa semântica em Vega-Lite e Vega no próprio navegador. Vega-Lite
+deriva eixos, escalas e marcas a partir dos campos e admite escalas contínuas,
+temporais e discretas, domínios explícitos, camadas, regras de referência e
+barras de erro com limites preagregados
+([escalas](https://vega.github.io/vega-lite/docs/scale.html),
+[barras de erro](https://vega.github.io/vega-lite/docs/errorbar.html),
+[regras](https://vega.github.io/vega-lite/docs/rule.html)).
+
+O exemplo canônico não pretende simular um artigo real. Ele é identificado
+como sintético e funciona como teste de estresse: duas séries, seis níveis de
+concorrência em escala logarítmica, doze intervalos de confiança, limiar
+operacional e nota de método. Isso permite inspecionar no celular problemas que
+três pontos igualmente espaçados ocultavam. `chart` permanece deliberadamente
+limitado a linhas, dispersão e barras. Distribuição, histograma, boxplot,
+regressão, múltiplos painéis ou diagnóstico de modelo exigem packages próprios,
+em vez de serem imitados por esse contrato.
+
+`plane` diferencia ponto, vetor aplicado e trajetória ou região. Cada vetor
+declara origem e extremidade; cada caminho conserva a ordem dos pontos; os
+eixos têm domínio e unidade próprios. A geometria também é compilada por
+Vega-Lite, enquanto o contrato permanece em linguagem matemática de alto nível.
+Categorias comparáveis podem ser declaradas em `groups`. A legenda apresenta
+essas categorias e agrega os objetos que pertencem a cada uma, em vez de criar
+uma entrada desconexa para cada ponto, vetor e região. O renderer usa uma
+paleta de dados própria para cada tema e repete a distinção por traço e forma;
+cor nunca é o único canal para reconhecer um grupo.
+Tipo geométrico e categoria são dimensões independentes: pontos permanecem
+circulares em qualquer grupo, vetores são reconhecidos pela ponta de seta e
+trajetórias ou regiões pelo contorno. A ponta termina na coordenada `to`; ela
+não usa a extremidade como centro e não avança além do valor declarado.
+O exemplo canônico coordena base canônica, imagens de vetores por uma
+transformação linear, ponto e imagem do ponto, quadrado unitário e região
+transformada. Assim, exercita valores negativos, múltiplos rótulos, escalas e
+objetos sobrepostos sem reduzir o plano a “um vetor saindo da origem”.
+
+Essa abrangência não transforma `plane` em renderer universal. Campos
+vetoriais densos, contornos, superfícies, três dimensões e objetos especializados
+precisam de packages próprios; por exemplo, bibliotecas científicas tratam
+campos vetoriais como uma operação específica de `quiver`, não como um conjunto
+genérico de pontos ([Matplotlib, `quiver`](https://matplotlib.org/stable/api/quiver_api.html)).
+O critério é preservar a convenção acadêmica do objeto, não anunciar suporte a
+qualquer visualização usada em graduação ou pesquisa.
 
 ## Mapas, sistemas e notação visual
 
 Novak e Cañas (2006) descrevem mapas conceituais como conceitos conectados por
 relações nomeadas e organizados em torno de uma pergunta de foco. Essa fonte
 apoia a exigência geral de rótulos relacionais explícitos e de um propósito de
-leitura, mas `system_map` não é sinônimo de mapa conceitual: ele representa
-limites operacionais, grupos, componentes e conexões, sem afirmar que cada nó
-seja um conceito ou que cada ligação forme uma proposição conceitual.
+leitura, mas não autoriza usar `graph` como mapa conceitual genérico. No
+AraLearn, `graph` representa o objeto matemático nó-aresta; mapas conceituais
+precisarão de package próprio se esse gesto cognitivo entrar no catálogo.
 
 Moody (2009) propõe princípios para notações visuais cognitivamente eficazes,
 como discriminação perceptual, transparência semântica e gerenciamento da
 complexidade. O trabalho é uma teoria de desenho no domínio de engenharia de
-software. No AraLearn, ele orienta escolhas conservadoras: tipos de componente
-têm convenções consistentes, o rótulo visível não é substituído por cor ou
-posição e agrupamentos preservam limites sem receber geometria da LLM. Essa
-transferência é uma justificativa de design, não evidência de que um
-`system_map` melhora aprendizagem em qualquer disciplina.
+software. No AraLearn, ele orienta escolhas conservadoras: tipos têm
+convenções consistentes, o rótulo visível não é substituído por cor ou posição
+e a LLM não fornece geometria.
 
-O recurso deve ser escolhido somente quando pertencimento e limite alterarem a
-resposta. Um mapa de conceitos continua melhor representado por `graph` ou
-`tree` quando não houver semântica de sistema; um processo com condição
-continua sendo `flow`.
+O antigo `system_map` genérico foi abolido porque misturava níveis e notações.
+`software_system_context` e `software_container` seguem as finalidades e os
+níveis do modelo C4: o primeiro situa pessoas e sistemas externos em torno de
+um único sistema em foco; o segundo abre essa fronteira apenas para aplicações
+e armazenamentos executáveis ou implantáveis. `system_internal_block` usa a
+gramática de diagrama interno de bloco do SysML, na qual partes tipadas expõem
+portas e conectores. Os contratos não recebem coordenadas: Graphviz/Viz.js
+calcula posições, recorta arestas nos nós e reduz cruzamentos. No contexto C4,
+a leitura móvel progride verticalmente de pessoas para o sistema em foco e,
+depois, para sistemas externos. Tipos são metadados tipográficos discretos;
+o nome do objeto recebe a ênfase principal e sua responsabilidade permanece em
+texto corrente. Colchetes só aparecem quando integram uma convenção formal do
+domínio.
+
+O renderer preserva a geometria natural calculada pelo motor. Diagramas
+Graphviz, grafos e fluxogramas usam um frame local com altura limitada e
+rolagem nativa nos dois eixos quando a estrutura excede o espaço disponível.
+A barra horizontal permanece, assim, no limite inferior do frame, sem exigir
+que a pessoa percorra toda a altura do desenho. Dentro do frame, o gesto move o
+diagrama; fora dele, move o card. Não há instrução visual autorreferente para
+um gesto convencional, o enquadramento vertical começa pelo início da
+representação e o documento externo não sofre overflow. O CSS não altera família
+nem tamanho tipográfico depois da diagramação, porque isso invalidaria as
+caixas usadas pelo Graphviz. Rótulos estáticos com tipo, nome, tecnologia e
+descrição são tabelas tipográficas do próprio Graphviz: o mesmo conteúdo que
+determina a largura e a altura do nó é o que permanece visível na exposição.
+Não se substitui depois da diagramação um rótulo estático por HTML com métricas
+diferentes. Lacunas e digitação substituem somente rótulos
+declarados pelo package; edição manual e assistência por API recebem as mesmas
+folhas textuais, enquanto ids, referências, tipos, direções e topologia ficam
+protegidos como contexto estrutural.
+
+Esses packages não são intercambiáveis. Um processo com condição permanece
+`flow` quando o objeto é um algoritmo; um processo de negócio entre
+responsabilidades permanece `bpmn_process`; equipamentos e enlaces permanecem `network_topology`; relações entre
+dois conjuntos permanecem `relation_map`; e topologia matemática abstrata
+permanece `graph`.
+
+`bpmn_process` cobre deliberadamente um subconjunto didático de BPMN 2.0:
+participantes ou pools, raias, eventos, tarefas, gateways exclusivos e
+paralelos, fluxo de sequência e fluxo de mensagem. A distinção não é estética:
+fluxo de sequência ordena atividades dentro de um participante, enquanto
+fluxo de mensagem comunica participantes distintos. Coreografia, conversação
+e a notação completa de eventos precisam de packages próprios quando forem o
+objeto de aprendizagem. O contrato declara semântica e responsabilidade; o
+Graphviz calcula clusters, posições e rotas. A especificação normativa e os
+exemplos da OMG são as referências de gramática visual, não um fluxograma
+genérico com raias (<https://www.omg.org/spec/BPMN/2.0/>). No leitor móvel, a
+progressão principal é diagramada de cima para baixo. A largura natural não é
+comprimida: processos ou rótulos extensos usam rolagem local. Em práticas, o
+Graphviz recebe antecipadamente a resposta válida mais larga de cada lacuna;
+assim, a atividade é dimensionada antes da resposta aparecer e o texto
+interativo não pode ser recortado quando a lacuna é preenchida.
+
+Em teoria dos grafos, cruzamentos não tornam um desenho automaticamente
+inválido: planaridade é uma propriedade específica, e grafos não planares
+existem. Ainda assim, cruzamentos, curvas desnecessárias e rótulos sobrepostos
+prejudicam a leitura. `graph` entrega a topologia completa aos engines do
+Graphviz, selecionados por estrutura, em vez de posicionar vértices ou arestas
+artesanalmente. Grafos densos devem ser divididos ou apresentados por outra
+representação matemática, como matriz de adjacência, quando essa for a operação
+pedagógica pretendida.
+
+## Fluxogramas e complexidade estrutural
+
+`flow` conserva uma AST de controle, e não coordenadas. O package compila essa
+estrutura em grafo de fluxo de controle e entrega a geometria ao algoritmo
+`dot` do Graphviz, executado localmente por Viz.js. O motor escolhe posições,
+dimensões e rotas a partir da topologia completa. Rótulos como **Sim** e
+**Não** pertencem à aresta correspondente; convergências passam por uma única
+junção; e retornos de laço são arestas semanticamente distintas. Restrições
+invisíveis podem ordenar a leitura sem criar etapa fictícia no conteúdo nem
+aresta visual adicional.
+
+O desenho permanece legível no exemplo pequeno e pode crescer conforme o
+algoritmo. Não existe obrigação de comprimir um algoritmo na largura móvel:
+estruturas maiores conservam as dimensões calculadas pelo Graphviz e usam o
+frame bidirecional local, inicialmente posicionado no início do fluxo, sem
+provocar overflow na página. Textos expositivos permanecem no próprio SVG e
+participam da medição do motor; somente uma lacuna interativa troca o rótulo
+correspondente por HTML ancorado ao símbolo calculado. O renderer continua
+sendo único: falha de diagramação é explícita e não ativa árvore textual,
+geometria manual ou outro fallback visual.
 
 ## Equações e múltiplas representações químicas
 
@@ -114,6 +272,25 @@ símbolos de conexão com significados distintos. Isso fundamenta a separação
 estrutural de `reactants`, `products`, `coefficient` e `reactionType` em
 `reaction`. O contrato também conserva `state` e `conditions` como contexto
 explícito, em vez de embuti-los numa string livre.
+
+Fórmula, matriz e reação usam MathML para as estruturas matemáticas e
+químicas. Como o Chromium móvel não expande delimitadores sem engrossar seus
+glifos, `formula` e `matrix` compartilham delimitadores vetoriais de traço fino
+e não escalável. Em `formula`, cada delimitador acompanha a caixa real do
+conteúdo agrupado; em `matrix`, acompanha exatamente a altura da grade. A AST
+e as entradas continuam em MathML, sem dimensão fornecida pelo autor.
+`reaction` explicita o espaço fino entre coeficiente e espécie e espaços
+laterais em torno de sinais e setas. A interação de lacuna permanece no package
+e só pode atingir uma entrada ou componente químico efetivamente visível. O
+kernel simula essa composição ao validar o card e recusa alvos que não
+materializem um controle interativo.
+
+`interlinear_gloss` segue a finalidade das Leipzig Glossing Rules: preservar
+correspondência entre unidades e fronteiras de morfemas, sem fabricar
+alinhamento por espaços. A tradução livre pertence ao exemplo inteiro, e a
+legenda introduz abreviações antes que o estudante precise inferi-las. O
+exemplo canônico de teste reproduz a estrutura do exemplo lezguiano das regras,
+com seis unidades, múltiplas fronteiras morfológicas e quatro abreviações.
 
 Nyachwaya e Wood (2014), ao avaliar representações em livros de físico-química,
 retomam os níveis macroscópico, submicroscópico e simbólico associados a
@@ -226,7 +403,10 @@ interna de 44 × 44 CSS px para linhas de resposta, superior ao mínimo AA,
 porque o cenário de uso inclui uma mão, movimento e atenção fragmentada.
 
 Recursos bidimensionais podem ter viewport próprio quando a relação espacial é
-essencial, mas o texto ao redor deve refluir. A pessoa precisa conseguir
+essencial, mas o texto ao redor deve refluir. O frame usa rolagem nativa e
+`touch-action: pan-x pan-y`: não registra manipuladores artesanais que capturem
+o toque. O limite de `48dvh`, até 430 px, mantém as duas barras ao alcance e
+preserva área externa suficiente para rolar o card. A pessoa precisa conseguir
 interromper, fechar e retomar no ponto corrente preservado no IndexedDB. A
 resposta em elaboração existe apenas enquanto a tela do card está aberta; o
 AraLearn não conserva tentativas, resultados ou histórico de respostas.
@@ -307,8 +487,8 @@ causalidade a partir de métricas de uso.
 Para cada regra didática, a avaliação deve registrar cinco campos: fonte,
 população e tarefa estudadas, força/limite da evidência, inferência feita pelo
 AraLearn e métrica que poderá refutá-la. Reparo direto, fingerprint, validação
-interna, reversão compacta e controle de escopo pertencem à confiabilidade de
-software; expor só microteorias no chat e permitir o teste incremental da
+interna, versões locais limitadas e controle de escopo pertencem à
+confiabilidade de software; expor só microteorias no chat e permitir o teste incremental da
 composição corrente em `Trilhas` são hipóteses de produto. Não devem ser
 apresentados como resultados já demonstrados pela literatura.
 
@@ -319,13 +499,21 @@ apresentados como resultados já demonstrados pela literatura.
   <https://developers.openai.com/api/docs/guides/structured-outputs>
 - DeepSeek. *JSON Output*.
   <https://api-docs.deepseek.com/guides/json_mode/>
-- Eclipse Layout Kernel. *ELK Layered*. <https://eclipse.dev/elk/reference/algorithms/org-eclipse-elk-layered.html>
+- Graphviz. *dot*. <https://graphviz.org/docs/layouts/dot/>
+- Viz.js. *Graphviz in the browser*. <https://github.com/mdaines/viz-js>
+- Brown, S. *The C4 model: diagrams*. <https://c4model.com/diagrams>
+- Object Management Group. *SysML v1 specification*.
+  <https://www.omg.org/sysml/sysmlv1/>
 - W3C. *Web Content Accessibility Guidelines 2.2*. <https://www.w3.org/TR/WCAG22/>
 - W3C WAI. *Understanding SC 1.4.10: Reflow*. <https://www.w3.org/WAI/WCAG22/Understanding/reflow>
 - W3C WAI. *Understanding SC 2.5.8: Target Size (Minimum)*.
   <https://www.w3.org/WAI/WCAG22/Understanding/target-size-minimum>
 - IUPAC. *Compendium of Chemical Terminology: chemical reaction equation*.
   <https://doi.org/10.1351/goldbook.C01034>
+- Max Planck Institute for Evolutionary Anthropology & Leipzig University.
+  *The Leipzig Glossing Rules*.
+  <https://www.eva.mpg.de/lingua/resources/glossing-rules.php>
+- W3C. *MathML Core*. <https://www.w3.org/TR/mathml-core/>
 
 ## Referências acadêmicas
 
@@ -372,6 +560,9 @@ apresentados como resultados já demonstrados pela literatura.
   S. S. (2019). Microlearning in health professions education: Scoping review.
   *JMIR Medical Education, 5*(2), e13997.
   <https://doi.org/10.2196/13997>
+- Huang, W., Eades, P., & Hong, S.-H. (2014). Larger crossing angles make
+  graphs easier to read. *Journal of Visual Languages & Computing, 25*(4),
+  452–465. <https://doi.org/10.1016/j.jvlc.2014.03.001>
 - Kalyuga, S., Ayres, P., Chandler, P., & Sweller, J. (2003). The expertise
   reversal effect. *Educational Psychologist, 38*(1), 23–31.
   <https://doi.org/10.1207/S15326985EP3801_4>

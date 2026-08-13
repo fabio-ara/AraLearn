@@ -24,9 +24,9 @@ não pode alcançar outro alvo.
 
 | Nível | Seleção | Operações máximas |
 | --- | --- | --- |
-| Card | Resources | Substituir exatamente os resources selecionados |
-| Card | Card inteiro | Reparar o conteúdo pedagógico do card |
-| Microssequência | Alguns cards | Reparar, remover ou mover os cards selecionados |
+| Card | Instâncias de packages | `edit_text` nos caminhos textuais selecionados |
+| Card | Card inteiro | `edit_text`, `recompose_card` ou `restore_version` |
+| Microssequência | Alguns cards | Atualizar, remover ou mover os cards selecionados |
 | Microssequência | Todos os cards | As anteriores e criar cards nessa microssequência |
 | Lição | Uma microssequência | Alterar seus cards e criar cards dentro dela |
 | Lição | Algumas microssequências | Alterar somente as subárvores selecionadas |
@@ -66,7 +66,7 @@ portanto um pedido incompatível com a seleção falha sem ser convertido na
 pedido liga explicitamente o verbo à entidade selecionada; menções a remover
 redundância ou mover texto permanecem reparos de conteúdo.
 
-### Reparo de resources
+### Edição de card por conversa
 
 Cada instância de package recebe uma identidade de alvo:
 
@@ -74,39 +74,43 @@ Cada instância de package recebe uma identidade de alvo:
 - `response:<id>` para a instância de resposta;
 - `feedback:<id>` para uma instância de explicação posterior.
 
-O serviço devolve exatamente uma substituição para cada `targetId` autorizado.
-O valor de cada alvo existe em `writableTargets` e é omitido da representação
-do card em `readOnlyContext`; resources irmãos permanecem nessa representação
-para coerência, sem autoridade de escrita.
+Em `edit_text`, o valor de cada alvo existe em `writableTargets` com seu caminho
+textual fechado e é omitido do card em `readOnlyContext`; instâncias irmãs
+permanecem nessa representação para coerência, sem autoridade de escrita. O
+serviço devolve somente os pares de caminho e valor que deseja alterar.
 
 ```json
 {
-  "replacements": [
+  "message": "Tornei a explicação autocontida.",
+  "edits": [
     {
-      "targetId": "content:exemplo-1",
-      "value": {
-        "id": "exemplo-1",
-        "kind": "paragraph",
-        "value": "Exemplo corrigido e autocontido."
-      },
-      "gaps": []
+      "path": "content[0].data.text",
+      "value": "Exemplo corrigido e autocontido."
     }
   ]
 }
 ```
 
-O compilador preserva o card e todos os resources não selecionados.
-Identidades, tipo e posição não podem ser trocados nessa operação. O card
-inteiro é outro escopo e não usa `targetId`.
+O compilador aplica o patch ao card congelado e prova que ele reconstrói
+exatamente o resultado proposto. Identidades, packages, versões, estrutura,
+respostas formais e posição não podem mudar nessa operação. Selecionar o card
+inteiro amplia os caminhos textuais graváveis, mas uma troca de representação
+exige `recompose_card`.
+
+A conversa conserva até oito turnos e nove versões exatas do card durante a
+sessão. Cada turno seguinte recebe apenas a ancestralidade ativa. `no-op`
+preserva a explicação do assistente sem criar versão; falha não entra na
+conversa. `restore_version` move o cursor para um snapshot existente sem nova
+chamada ao provider. Pedido, resposta e versões não são persistidos.
 
 ### Cards e microssequências
 
-Reparar um card inteiro usa duas etapas curtas:
+Recompor um card inteiro usa duas etapas curtas:
 
-1. `card_assistance_representation` escolhe uma combinação permitida de
-   `resource`, `kind` e `exercise`;
-2. `card_assistance_build` recebe o schema exato dessa combinação e constrói o
-   conteúdo autorizado.
+1. `card_assistance_representation` escolhe no catálogo uma composição com uma
+   ou mais instâncias de conteúdo e, na prática, uma resposta compatível;
+2. `card_assistance_build` recebe somente os contratos exatos da composição
+   escolhida e constrói o card autorizado.
 
 A representação atual é preferida quando a instrução não exige troca. Criar
 cards é uma operação distinta e só ocorre quando a seleção concedeu autoridade
@@ -126,9 +130,8 @@ conteúdo e ordem relativa. No nível de lição, microssequências não selecio
 também permanecem idênticas. Criar uma microssequência altera somente a nova
 subárvore e as posições estritamente necessárias das irmãs.
 
-Lacunas usam a linguagem formal `{gap:id}` e uma lista `gaps`. O compilador
-resolve os alvos e produz o envelope de card; não há parser de prosa, HTML ou campos
-numerados.
+Lacunas usam `targetInstanceId` e `targetPath`. O compilador resolve o alvo no
+envelope de card; não há marcador em prosa, parser de HTML ou campo numerado.
 
 ## Validação e confirmação invisíveis
 
@@ -139,11 +142,11 @@ representação ou escopo.
 
 Antes de confirmar, o AraLearn valida:
 
-- o schema exato do resource;
-- combinações de `resource`, `kind` e `exercise`;
+- o envelope com `role`, `content`, `response` e `feedback`;
+- cada `{ id, package, version, data }` segundo seu slot e schema exato;
 - identidades, posições e dependências;
 - lacunas e opções de resposta;
-- referências internas de resources visuais;
+- `responseCompatibility`, `practiceTargets` e referências internas;
 - o contrato integral do fragmento resultante;
 - a ausência de alterações fora da autoridade selecionada.
 
@@ -152,9 +155,10 @@ continuar vigente, o servidor ou repositório local confirma o change set em
 uma única transação e a própria superfície renderizada mostra o resultado, sem
 etapa intermediária ou painel de validação.
 
-Somente a última confirmação bem-sucedida conserva a inversa mínima necessária
-ao botão **Desfazer**. Uma nova escrita substitui esse registro. Não se guarda
-uma cópia integral do curso nem um histórico de respostas do serviço.
+No card, **Desfazer**, **Refazer** e a restauração percorrem o histórico volátil
+da conversa. Uma nova edição depois de desfazer abre um ramo ativo e descarta o
+refazer abandonado. Esse histórico não é cópia do curso nem substitui a
+proveniência autoral.
 
 ## Autoridade do conteúdo
 
@@ -173,10 +177,11 @@ externa pelo Chatbot ou Plugin com MCP.
 
 ## Linguagem formal da autoria externa
 
-A autoria por workspace usa a mesma linguagem JSON de resources. O agente
-escolhe um resource conhecido e preenche somente seus campos. O compilador
-confere referências, posições, lacunas e combinações de resource, tipo e
-exercício antes de traduzir a operação para packages versionados.
+A autoria por workspace usa diretamente o envelope de packages versionados. O
+agente primeiro escolhe pelo catálogo, carrega somente os contratos exatos e
+preenche seus campos; não existe tradução de um contrato monolítico anterior.
+O compilador confere slots, schemas, referências, posições, lacunas e
+compatibilidades antes da gravação.
 
 O workspace remoto pode organizar partes maiores e produzir uma publicação
 privada incompleta para teste. No chat, a revisão conceitual pode mostrar
@@ -201,8 +206,21 @@ O fluxo externo separa três responsabilidades:
 - instruções curtas mantêm o procedimento estável;
 - `prepararAutoriaAraLearn` recupera até oito unidades relevantes para a
   intenção e o nível estrutural;
-- `consultarPackagesDeCard`, com `packageId` e `version`, entrega o schema exato
-  somente quando esse package será usado.
+- a única `consultarBibliotecaDeResources` conduz a descoberta e a verificação
+  progressivas sob `aralearn.resource-library.v1`.
+
+O agente usa `explore` para conhecer famílias e facetas, `search` para buscar
+pela intenção, `inspect` para comparar até oito perfis e `contracts` para
+carregar no máximo quatro versões exatas por chamada. Só então compõe o card,
+executa `validate_card` e usa `audit_representation` para distinguir
+`semantic_fit`, `response_affordance` e `feedback_legibility` antes de salvar.
+Não existe chamada de lista global nem contrato que reúna todos os schemas.
+
+`search` classifica a cobertura como `canonical`, `versatile` ou `substitute`.
+Um `substitute` não é erro nem bloqueio: o agente prossegue com o melhor
+candidato, comunica brevemente o `chatDisclosure` e preserva a representação
+ideal numa decisão autoral. `preview_card` devolve um descritor com
+`rendered: false`; não produz screenshot nem simula o renderer do aplicativo.
 
 A recuperação é lexical e determinística. Não usa embedding remoto, banco
 vetorial nem texto integral da conversa. Esse RAG leve reduz contexto e evita

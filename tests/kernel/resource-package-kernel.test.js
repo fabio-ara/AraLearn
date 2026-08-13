@@ -11,7 +11,8 @@ import {
 } from "../../src/resources/kernel/courseContract.js";
 import { createPackageRegistry } from "../../src/resources/kernel/packageRegistry.js";
 import { validatePackageSchema } from "../../src/resources/kernel/schemaValidation.js";
-import { paragraphPackage, RESOURCE_PACKAGE_REGISTRY } from "../../src/resources/packages/index.js";
+import { gapResponsePackage, paragraphPackage, RESOURCE_PACKAGE_REGISTRY } from "../../src/resources/packages/index.js";
+import { plainGraphvizLabel } from "../../src/resources/sdk/graphviz.js";
 
 function paragraphInstance(overrides = {}) {
   return {
@@ -56,17 +57,281 @@ function choiceResponse(question = "Qual protocolo confirma a entrega?") {
 
 test("kernel registra package sem conhecer paragraph", () => {
   const catalog = RESOURCE_PACKAGE_REGISTRY.listCatalog();
-  assert.equal(catalog.length, 19);
+  assert.ok(catalog.length > 0);
+  assert.equal(new Set(catalog.map(({ id, version }) => `${id}@${version}`)).size, catalog.length);
   assert.equal(catalog[0].id, "aralearn.resource.paragraph");
   assert.equal(Object.hasOwn(catalog[0], "schema"), false);
   assert.equal(Object.hasOwn(catalog[0], "example"), false);
+  catalog.forEach((manifest) => {
+    assert.ok(manifest.academic.domains.length, manifest.id);
+    assert.ok(manifest.academic.knowledgeObjects.length, manifest.id);
+    assert.ok(manifest.academic.conventions.length, manifest.id);
+    assert.ok(manifest.academic.appropriateWhen.length, manifest.id);
+    assert.ok(manifest.academic.avoidWhen.length, manifest.id);
+    assert.equal(manifest.academic.authoring.manualTextEditing, true, manifest.id);
+    assert.equal(manifest.academic.authoring.aiSelection, true, manifest.id);
+    assert.equal(manifest.academic.authoring.structureEditing, false, manifest.id);
+    if (manifest.slots.includes("content")) {
+      assert.ok(manifest.academic.practiceModes.includes("exposition"), manifest.id);
+      const contract = RESOURCE_PACKAGE_REGISTRY.getAuthoringContract(manifest.id, manifest.version);
+      const instance = RESOURCE_PACKAGE_REGISTRY.normalizeInstance({
+        id: `selection-${manifest.id}`,
+        package: manifest.id,
+        version: manifest.version,
+        data: contract.contract.example
+      }, "content");
+      const targets = RESOURCE_PACKAGE_REGISTRY.editableTargets(instance, "content");
+      assert.ok(targets.length, `${manifest.id} precisa expor texto selecionável.`);
+      targets.forEach((target) => {
+        assert.ok(target.path, manifest.id);
+        assert.ok(target.label, manifest.id);
+      });
+      const practiceTargets = RESOURCE_PACKAGE_REGISTRY.practiceTargets(instance);
+      practiceTargets.forEach((target) => {
+        assert.notEqual(target.path, "prompt", `${manifest.id} não pode usar o enunciado como lacuna.`);
+        assert.ok(target.modes.length, manifest.id);
+        target.modes.forEach((mode) => assert.ok(["gap", "typing"].includes(mode), manifest.id));
+      });
+    }
+  });
 });
 
-test("packages de resposta avaliam escolha exata, lacuna e ordenação", () => {
+test("code e table declaram lacunas dentro da representação", () => {
+  const cases = [
+    ["aralearn.resource.code", "code"],
+    ["aralearn.resource.table", "rows[0][0]"]
+  ];
+  cases.forEach(([packageId, expectedPath], index) => {
+    const manifest = RESOURCE_PACKAGE_REGISTRY.listCatalog().find(({ id }) => id === packageId);
+    const contract = RESOURCE_PACKAGE_REGISTRY.getAuthoringContract(packageId, manifest.version);
+    const instance = RESOURCE_PACKAGE_REGISTRY.normalizeInstance({
+      id: `practice-target-${index}`,
+      package: packageId,
+      version: manifest.version,
+      data: contract.contract.example
+    }, "content");
+    const targets = RESOURCE_PACKAGE_REGISTRY.practiceTargets(instance);
+    assert.equal(targets[0].path, expectedPath);
+    assert.equal(targets.some(({ path }) => path === "prompt"), false);
+  });
+});
+
+test("lacuna reserva no Graphviz a resposta válida mais larga antes de ser preenchida", () => {
+  const instance = {
+    id: "bpmn-1",
+    data: { nodes: [{ label: "Enviar solicitação" }] }
+  };
+  const prepared = gapResponsePackage.prepareContentInstance(instance, {
+    blanks: [{
+      id: "blank-1",
+      targetInstanceId: "bpmn-1",
+      targetPath: "nodes[0].label",
+      answer: "solicitação",
+      acceptedAnswers: ["pedido formal"],
+      responseMode: "choice"
+    }]
+  }, { responseBlockKey: "response-1", responseState: { values: {} } });
+  assert.equal(plainGraphvizLabel(prepared.nodes[0].label), "Enviar pedido formal");
+});
+
+test("diagramas acadêmicos expõem somente texto e preservam estrutura autoral", () => {
+  const packageIds = [
+    "aralearn.resource.graph",
+    "aralearn.resource.software_system_context",
+    "aralearn.resource.software_container",
+    "aralearn.resource.system_internal_block"
+  ];
+  const structuralSegment = /(?:^|\.)(?:id|from|to|fromPort|toPort|partId|kind|direction|flowDirection|layout|directed)(?:$|\[)/u;
+
+  packageIds.forEach((packageId) => {
+    const contract = RESOURCE_PACKAGE_REGISTRY.getAuthoringContract(packageId, "1.0.0");
+    const instance = RESOURCE_PACKAGE_REGISTRY.normalizeInstance({
+      id: `authoring-${packageId}`,
+      package: packageId,
+      version: "1.0.0",
+      data: contract.contract.example
+    }, "content");
+    const editable = RESOURCE_PACKAGE_REGISTRY.editableTargets(instance, "content");
+    const practice = RESOURCE_PACKAGE_REGISTRY.practiceTargets(instance);
+
+    assert.ok(editable.length > 0, packageId);
+    assert.ok(practice.length > 0, packageId);
+    editable.forEach(({ path }) => assert.doesNotMatch(path, structuralSegment, `${packageId}: ${path}`));
+    practice.forEach(({ path, modes }) => {
+      assert.doesNotMatch(path, structuralSegment, `${packageId}: ${path}`);
+      assert.ok(modes.includes("gap"), `${packageId}: ${path}`);
+      assert.ok(modes.includes("typing"), `${packageId}: ${path}`);
+    });
+  });
+});
+
+test("gap rejeita campo editável que o package não declarou para prática", () => {
+  const content = {
+    id: "code-content",
+    package: "aralearn.resource.code",
+    version: "1.0.0",
+    data: { prompt: "Explique TCP.", language: "javascript", code: "const protocol = 'TCP';" }
+  };
+  const response = {
+    id: "invalid-gap",
+    package: "aralearn.response.gap",
+    version: "1.0.0",
+    data: { blanks: [{ id: "bad", targetInstanceId: content.id, targetPath: "prompt", responseMode: "text", answer: "TCP" }] }
+  };
+  const card = { ...theoryCard(), id: "invalid-target", role: "practice", content: [content], response };
+  assert.match(
+    validateCardEnvelope(card, RESOURCE_PACKAGE_REGISTRY).errors.join(" "),
+    /campo não declarado pelo package/u
+  );
+});
+
+test("todo alvo de prática do catálogo materializa a lacuna dentro do resource", () => {
+  const readPath = (root, path) => (
+    (String(path).match(/[^.[\]]+|\[(\d+)\]/gu) || [])
+      .map((segment) => segment.startsWith("[") ? Number(segment.slice(1, -1)) : segment)
+      .reduce((current, segment) => current?.[segment], root)
+  );
+  RESOURCE_PACKAGE_REGISTRY.listCatalog({ slot: "content" }).forEach((manifest, index) => {
+    const contract = RESOURCE_PACKAGE_REGISTRY.getAuthoringContract(manifest.id, manifest.version);
+    const content = RESOURCE_PACKAGE_REGISTRY.normalizeInstance({
+      id: `render-target-${index}`,
+      package: manifest.id,
+      version: manifest.version,
+      data: contract.contract.example
+    }, "content");
+    const target = RESOURCE_PACKAGE_REGISTRY.practiceTargets(content)[0];
+    if (!target) return;
+    const answer = readPath(content.data, target.path);
+    const responseMode = target.modes.includes("gap") ? "choice" : "text";
+    const response = RESOURCE_PACKAGE_REGISTRY.normalizeInstance({
+      id: `render-gap-${index}`,
+      package: "aralearn.response.gap",
+      version: "1.0.0",
+      data: {
+        blanks: [{
+          id: "target",
+          targetInstanceId: content.id,
+          targetPath: target.path,
+          responseMode,
+          answer,
+          ...(responseMode === "choice" ? { distractors: [`outro ${answer}`] } : {})
+        }]
+      }
+    }, "response");
+    const practiceCard = {
+      ...theoryCard(),
+      id: `render-practice-${index}`,
+      role: "practice",
+      content: [content],
+      response
+    };
+    const validation = validateCardEnvelope(practiceCard, RESOURCE_PACKAGE_REGISTRY);
+    assert.equal(validation.valid, true, `${manifest.id}: ${validation.errors.join(" ")}`);
+    const rendered = renderCardEnvelope(practiceCard, RESOURCE_PACKAGE_REGISTRY, {
+      cardResponse: response,
+      responseBlockKey: `gap-${index}`,
+      blockKey: `gap-${index}`,
+      responseState: { values: [] }
+    });
+    assert.match(rendered.contentHtml, /data-action="(?:text-gap-open-choice|complete-input)"/u, manifest.id);
+  });
+});
+
+test("kernel rejeita alvo declarado que o renderer mantém invisível", () => {
+  const hiddenTargetPackage = {
+    ...paragraphPackage,
+    manifest: {
+      ...paragraphPackage.manifest,
+      id: "aralearn.resource.hidden_target_fixture"
+    },
+    authoringContract: {
+      ...paragraphPackage.authoringContract,
+      example: { text: "Texto visível.", hidden: "resposta" }
+    },
+    schema: {
+      ...paragraphPackage.schema,
+      required: ["text", "hidden"],
+      properties: {
+        ...paragraphPackage.schema.properties,
+        hidden: { type: "string", minLength: 1 }
+      }
+    },
+    normalize(data) {
+      return { text: String(data?.text || "").trim(), hidden: String(data?.hidden || "").trim() };
+    },
+    practiceTargets() {
+      return [{ path: "hidden", label: "Alvo invisível", modes: ["gap", "typing"] }];
+    }
+  };
+  const registry = createPackageRegistry([hiddenTargetPackage, gapResponsePackage]);
+  const content = registry.normalizeInstance({
+    id: "hidden-content",
+    package: hiddenTargetPackage.manifest.id,
+    version: hiddenTargetPackage.manifest.version,
+    data: hiddenTargetPackage.authoringContract.example
+  }, "content");
+  const response = registry.normalizeInstance({
+    id: "hidden-response",
+    package: "aralearn.response.gap",
+    version: "1.0.0",
+    data: { blanks: [{ id: "hidden", targetInstanceId: content.id, targetPath: "hidden", responseMode: "text", answer: "resposta" }] }
+  }, "response");
+  const result = validateCardEnvelope({
+    ...theoryCard(), id: "hidden-card", role: "practice", content: [content], response
+  }, registry);
+  assert.equal(result.valid, false);
+  assert.match(result.errors.join(" "), /não materializa um controle visível/u);
+});
+
+test("lacunas múltiplas no mesmo campo não corrompem os marcadores umas das outras", () => {
+  const content = RESOURCE_PACKAGE_REGISTRY.normalizeInstance({
+    id: "code-with-overlapping-marker-terms",
+    package: "aralearn.resource.code",
+    version: "1.0.0",
+    data: {
+      prompt: "Complete o trecho.",
+      language: "python",
+      code: "contagem_setor = df[\"setor\"].value_counts()\nplt.bar(contagem_setor.index, contagem_setor.values)"
+    }
+  }, "content");
+  const answers = ["setor", "value_counts()", "index", "values"];
+  const response = RESOURCE_PACKAGE_REGISTRY.normalizeInstance({
+    id: "code-with-four-gaps",
+    package: "aralearn.response.gap",
+    version: "1.0.0",
+    data: {
+      blanks: answers.map((answer, index) => ({
+        id: `blank-${index + 1}`,
+        targetInstanceId: content.id,
+        targetPath: "code",
+        responseMode: "choice",
+        answer,
+        distractors: [`distrator-${index + 1}`]
+      }))
+    }
+  }, "response");
+  const card = {
+    ...theoryCard(), id: "multiple-gaps-card", role: "practice", content: [content], response
+  };
+  const validation = validateCardEnvelope(card, RESOURCE_PACKAGE_REGISTRY);
+  assert.equal(validation.valid, true, validation.errors.join(" "));
+  const rendered = renderCardEnvelope(card, RESOURCE_PACKAGE_REGISTRY, {
+    cardResponse: response,
+    responseBlockKey: "multiple-gaps",
+    blockKey: "multiple-gaps",
+    responseState: { values: [] }
+  });
+  answers.forEach((_, index) => {
+    assert.match(rendered.contentHtml, new RegExp(`data-complete-blank-index="${index}"`, "u"));
+  });
+});
+
+test("packages de resposta avaliam escolha, lacuna, ordenação e encaixe", () => {
   const cases = [
     ["aralearn.response.choice", { selectedIds: ["tcp"] }],
     ["aralearn.response.gap", { values: { protocol: "protocolo" } }],
-    ["aralearn.response.ordering", { order: ["s1", "s2"] }]
+    ["aralearn.response.ordering", { order: ["s1", "s2"] }],
+    ["aralearn.response.matching", { matches: { tcp: "transport", ip: "network" } }]
   ];
   cases.forEach(([packageId, answer], index) => {
     const manifest = RESOURCE_PACKAGE_REGISTRY.listCatalog().find(({ id }) => id === packageId);
@@ -74,6 +339,24 @@ test("packages de resposta avaliam escolha exata, lacuna e ordenação", () => {
     const instance = RESOURCE_PACKAGE_REGISTRY.normalizeInstance({ id: `response-${index}`, package: packageId, version: manifest.version, data: contract.contract.example }, "response");
     assert.equal(RESOURCE_PACKAGE_REGISTRY.evaluateResponse(instance, answer).correct, true, packageId);
   });
+});
+
+test("ordering possui blocos próprios e não depende da estrutura de conteúdo", () => {
+  const contract = RESOURCE_PACKAGE_REGISTRY.getAuthoringContract(
+    "aralearn.response.ordering",
+    "2.0.0"
+  );
+  assert.deepEqual(contract.contract.required, ["prompt", "items", "answerOrder"]);
+  assert.equal(Object.hasOwn(contract.schema.properties, "targetInstanceId"), false);
+  assert.equal(Object.hasOwn(contract.schema.properties, "itemIds"), false);
+  const instance = RESOURCE_PACKAGE_REGISTRY.normalizeInstance({
+    id: "ordering-independent",
+    package: "aralearn.response.ordering",
+    version: "2.0.0",
+    data: contract.contract.example
+  }, "response");
+  const card = { ...theoryCard(), role: "practice", response: instance };
+  assert.equal(validateCardEnvelope(card, RESOURCE_PACKAGE_REGISTRY).valid, true);
 });
 
 test("contrato completo é obtido somente para o package escolhido", () => {
@@ -84,6 +367,11 @@ test("contrato completo é obtido somente para o package escolhido", () => {
   assert.equal(contract.package, "aralearn.resource.paragraph");
   assert.deepEqual(contract.contract.required, ["text"]);
   assert.equal(contract.schema.properties.text.type, "string");
+  assert.deepEqual(contract.practiceTargets, [{
+    path: "text",
+    label: "Lacuna na explicação",
+    modes: ["gap", "typing"]
+  }]);
 });
 
 test("exemplos autorais de todos os packages instalados normalizam, validam e renderizam", () => {
@@ -171,6 +459,32 @@ test("adicionar package de fixture não exige alteração no kernel", () => {
     registry.listCatalog().map(({ id }) => id),
     ["aralearn.resource.paragraph", "aralearn.resource.fixture"]
   );
+});
+
+test("kernel delega hidratação opcional apenas ao package da instância", async () => {
+  const hydrated = [];
+  const fixture = {
+    ...paragraphPackage,
+    manifest: {
+      ...paragraphPackage.manifest,
+      id: "aralearn.resource.hydrated",
+      label: "Hidratado"
+    },
+    async hydrate(root) {
+      hydrated.push(root);
+    }
+  };
+  const registry = createPackageRegistry([paragraphPackage, fixture]);
+  const instanceRoot = {
+    getAttribute(name) {
+      return name === "data-package" ? fixture.manifest.id : fixture.manifest.version;
+    }
+  };
+  await registry.hydrate({
+    matches() { return false; },
+    querySelectorAll() { return [instanceRoot]; }
+  });
+  assert.deepEqual(hydrated, [instanceRoot]);
 });
 
 test("texto técnico não transforma expansão com sigla em literal parcial", () => {

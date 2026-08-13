@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Matriz visual do curso Teste de Recursos</title>
+    <script src="/public/theme-bootstrap.js"></script>
+    <link rel="stylesheet" href="/public/styles-tokens.css">
+    <link rel="stylesheet" href="/public/styles-shell-baseline.css">
+    <link rel="stylesheet" href="/public/styles.css">
+    <style>
+      body { margin: 0; background: var(--surface-page); color: var(--text-primary); }
+      .resource-test-matrix { box-sizing: border-box; width: min(100%, 420px); margin: 0 auto; padding: 12px; }
+      .resource-test-card { box-sizing: border-box; width: 100%; min-width: 0; margin: 0 0 12px; padding: 12px; overflow: hidden; border: 1px solid var(--border-subtle); border-radius: 14px; background: var(--surface-card); }
+      .resource-test-card > h2 { margin: 0 0 10px; font-size: var(--type-sm); overflow-wrap: anywhere; }
+    </style>
+  </head>
+  <body>
+    <main class="resource-test-matrix" aria-label="Matriz visual dos resources"></main>
+    <script type="module">
+      import { renderPackageCardBlocks } from "/src/render/renderPackageCard.js";
+      import { RESOURCE_PACKAGE_REGISTRY } from "/src/resources/packages/index.js";
+
+      const response = await fetch("/tests/fixtures/package/resource-test-course.json", {
+        cache: "no-store"
+      });
+      if (!response.ok) throw new Error("Não foi possível carregar o curso de teste.");
+      const library = await response.json();
+      const modules = library.courses[0].modules;
+      const matrix = document.querySelector(".resource-test-matrix");
+      const filledState = new URLSearchParams(location.search).get("state") === "filled";
+      modules.forEach((moduleValue) => {
+        const cards = moduleValue.lessons[0].microsequences[0].cards;
+        cards.forEach((card) => {
+          const blockKeyPrefix = `resource-matrix:${card.id}`;
+          const responseKey = card.response?.id
+            ? `${blockKeyPrefix}::response:${card.response.id}`
+            : "";
+          const responseStateByBlockKey = filledState && card.response?.package === "aralearn.response.gap"
+            ? { [responseKey]: { values: card.response.data.blanks.map((blank) => blank.answer) } }
+            : {};
+          const article = document.createElement("article");
+          article.className = "resource-test-card";
+          article.dataset.package = card.content[0]?.package || card.response?.package || "unknown";
+          article.dataset.modality = card.title;
+          article.dataset.testState = filledState ? "filled" : "initial";
+          article.innerHTML = `<h2>${moduleValue.title} · ${card.title}</h2>${renderPackageCardBlocks(card, { blockKeyPrefix, responseStateByBlockKey })}`;
+          matrix.append(article);
+        });
+      });
+      await RESOURCE_PACKAGE_REGISTRY.hydrate(matrix);
+      globalThis.__RESOURCE_TEST_MATRIX_READY__ = true;
+    </script>
+  </body>
+</html>

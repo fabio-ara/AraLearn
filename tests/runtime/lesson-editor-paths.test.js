@@ -6,7 +6,14 @@ import {
   findLessonCardEntryIndex,
   findSelectedCard
 } from "../../src/ui/lessonEditorPaths.js";
-import { resolveExactCardSelection } from "../../src/ui/lessonEditorNavigation.js";
+import {
+  buildStudyModuleNavigationState,
+  resolveExactCardSelection
+} from "../../src/ui/lessonEditorNavigation.js";
+import {
+  createEmptyProgressDocument,
+  writeLessonProgressEntry
+} from "../../src/storage/progressStore.js";
 
 function buildMicrosequence(id, cards, status = "ready") {
   return {
@@ -83,4 +90,79 @@ test("atalho contextual só resolve quando todo o caminho ainda aponta para o me
     null
   );
   assert.equal(resolveExactCardSelection(project, ["course", "card"]), null);
+});
+
+function buildNavigationProject(lessons) {
+  return {
+    courses: [{
+      id: "course",
+      modules: [{ id: "module", lessons }]
+    }]
+  };
+}
+
+test("módulo com uma única lição entra diretamente no primeiro card pendente", () => {
+  const cards = [{ id: "card-a" }, { id: "card-b" }, { id: "card-c" }];
+  const lesson = {
+    id: "lesson",
+    microsequences: [buildMicrosequence("micro", cards)]
+  };
+  const project = buildNavigationProject([lesson]);
+  const progress = writeLessonProgressEntry(
+    createEmptyProgressDocument(),
+    { courseKey: "course", moduleKey: "module", lessonKey: "lesson" },
+    cards,
+    0
+  );
+
+  assert.deepEqual(
+    buildStudyModuleNavigationState(project, progress, {
+      courseKey: "course",
+      moduleKey: "module"
+    }),
+    {
+      selection: {
+        courseKey: "course",
+        moduleKey: "module",
+        lessonKey: "lesson",
+        microsequenceKey: "micro",
+        cardKey: "card-b",
+        cardIndex: 1
+      },
+      view: "microsequence"
+    }
+  );
+});
+
+test("módulo com várias lições preserva a tela de lições", () => {
+  const project = buildNavigationProject([
+    { id: "lesson-a", microsequences: [buildMicrosequence("micro-a", [{ id: "card-a" }])] },
+    { id: "lesson-b", microsequences: [buildMicrosequence("micro-b", [{ id: "card-b" }])] }
+  ]);
+
+  const navigation = buildStudyModuleNavigationState(
+    project,
+    createEmptyProgressDocument(),
+    { courseKey: "course", moduleKey: "module" }
+  );
+
+  assert.equal(navigation.view, "module");
+  assert.equal(navigation.selection.lessonKey, "lesson-a");
+});
+
+test("módulo de lição ainda planejada pula somente a camada redundante", () => {
+  const project = buildNavigationProject([{
+    id: "lesson",
+    microsequences: [buildMicrosequence("micro-planned", [], "planned")]
+  }]);
+
+  const navigation = buildStudyModuleNavigationState(
+    project,
+    createEmptyProgressDocument(),
+    { courseKey: "course", moduleKey: "module" }
+  );
+
+  assert.equal(navigation.view, "lesson");
+  assert.equal(navigation.selection.lessonKey, "lesson");
+  assert.equal(navigation.selection.cardKey, null);
 });

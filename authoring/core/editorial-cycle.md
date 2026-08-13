@@ -31,10 +31,13 @@ estável e fontes, nunca esses registros.
 
 ## Construção
 
-Construa somente a parte pedida, uma microssequência por chamada. Consulte os
-resources antes do primeiro uso. Ao terminar, apresente microteorias,
-quantidades de práticas, resources, termos e decisões de escopo, sem despejar
-JSON ou todas as práticas.
+Construa somente a parte pedida, uma microssequência por chamada. Para escolher
+resources, percorra `explore`, `search`, `inspect` e `contracts` na única
+`consultarBibliotecaDeResources`; valide o card e audite sua representação
+antes de salvar. Um `substitute` não bloqueia a construção: preserve a intenção
+ideal e comunique a aproximação em uma linha natural. Ao terminar, apresente
+microteorias, quantidades de práticas, resources, termos e decisões de escopo,
+sem despejar JSON ou todas as práticas.
 
 ## Auditoria
 

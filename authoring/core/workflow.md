@@ -134,14 +134,18 @@ Materialize exatamente uma microssequência por vez:
 
 1. leia o objetivo, os guias, os tópicos, as dependências e o contexto
    pertinente;
-2. selecione os resources pela operação cognitiva;
-3. consulte o contrato de cada resource antes do primeiro uso;
+2. use `consultarBibliotecaDeResources` com `explore`, `search` e `inspect`
+   para escolher os resources pela operação cognitiva e pela estrutura;
+3. use `contracts` em lotes de até quatro versões exatas e componha o card sem
+   inventar campos;
 4. produza uma microteoria pequena e base suficiente;
 5. produza práticas variadas, autocontidas e verificáveis que consolidem a
    mesma microteoria;
-6. use `salvarCardsNaMicrossequencia` para validar e salvar o conjunto daquela
-   unidade;
-7. releia o recorte necessário antes de avançar.
+6. passe cada composição por `validate_card` e `audit_representation`; se a
+   busca devolver `substitute`, prossiga com a aproximação e use seu
+   `chatDisclosure` brevemente no chat;
+7. use `salvarCardsNaMicrossequencia` para salvar o conjunto daquela unidade;
+8. releia o recorte necessário antes de avançar.
 
 Essa composição reduz o tamanho de cada chamada e limita uma eventual correção
 à unidade afetada, sem transformar cada card em um fluxo isolado.

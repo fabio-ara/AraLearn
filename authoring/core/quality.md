@@ -53,10 +53,19 @@
   previsíveis e da necessidade de retomada. Quando houver várias práticas,
   torne visível a variação de caso, representação, estratégia, erro provável ou
   grau de apoio.
-- O recurso escolhido corresponde à operação cognitiva. Consulte primeiro o
-  catálogo compacto de packages instalados. Só depois de escolher recupere o
-  contrato da versão exata. Não reduza a autoria a texto e escolha quando
-  outro package preservar melhor o raciocínio.
+- O recurso escolhido corresponde à operação cognitiva. Em
+  `consultarBibliotecaDeResources`, percorra `explore`, `search`, `inspect` e
+  `contracts`, estes em lotes de até quatro versões exatas. Use `validate_card`
+  e depois `audit_representation`: a auditoria distingue `semantic_fit` no
+  conteúdo, `response_affordance` na resposta e `feedback_legibility` no
+  feedback. Não reduza a autoria a texto e escolha quando outro package
+  preservar melhor o raciocínio.
+- A ausência de package canônico não paralisa a produção. `canonical` é o
+  ajuste específico e `versatile` preserva a estrutura por uma convenção
+  transversal. Se `coverage.status` for `substitute`, use o melhor candidato,
+  incorpore brevemente o `chatDisclosure` devolvido e registre a representação
+  desejada na decisão autoral. Não esconda a perda nem transforme a observação
+  em burocracia.
 - A escolha fica materializada em uma instância de package de `card.content`,
   `card.response` ou `card.feedback`. Confira se ela preserva
   `microsequence.goal`, `covers` e `checks`; não acrescente ao JSON um bloco
@@ -71,6 +80,14 @@
 
 ## Construção dos cards
 
+- Um card de teoria realiza um avanço conceitual identificável. Não concentre
+  definição, mecanismo, exceções, comparação, exemplo e consequências numa
+  única representação para economizar cards. Distribua a explicação em
+  aproximações sucessivas até cobrir o escopo e a profundidade planejados.
+- Dividir a teoria não significa resumir. Cada card oferece a fundamentação
+  necessária para compreender seu avanço, sem premissas ocultas; o card
+  seguinte acrescenta uma camada, em vez de pressupor que a pessoa preencherá
+  as lacunas recorrendo a outra fonte.
 - Um card de prática mede uma decisão principal.
 - A prática é autossuficiente. O enunciado não depende de imagem, texto ou aula ausente.
 - Dados voláteis aparecem no próprio card: valores, nomes, trechos de código, tabelas, casos, coordenadas, opções e demais elementos particulares da questão não podem existir apenas em um card anterior. Conceitos e notações já ensinados podem ser mobilizados, mas o caso que será resolvido precisa estar completo.
@@ -83,6 +100,10 @@
 - A diferença entre práticas próximas deve estar no conteúdo observável: caso,
   condição, representação, estratégia, erro provável ou grau de apoio.
 - Uma prática cobra uma decisão principal. Ela pode mobilizar pré-requisitos aprovados, mas não pode exigir que a pessoa reconstrua o caso a partir de posição, cor, legenda extensa, card anterior, feedback ou resposta oculta.
+- Um card de prática pode reunir mais dados e elementos visuais que um card de
+  teoria quando o contexto completo for necessário à decisão. Essa densidade
+  precisa servir ao gesto cognitivo principal; não autoriza inventário de
+  assuntos, ornamentação ou relações irrelevantes.
 - Termo técnico, símbolo, sigla, unidade, papel, convenção ou relação nova recebe explicação suficiente antes de ser exigido. Expanda a sigla na primeira ocorrência e explique sua função, não apenas as letras. Para comando, utilitário ou palavra reservada, apresente forma literal, significado, função e ambiente; por exemplo, `pwd` significa `print working directory` e mostra o diretório de trabalho atual. Não use jargão mais avançado como explicação de uma lacuna conceitual.
 - Quando o estudante deve completar uma representação, use um package de
   resposta compatível com o conteúdo. A lacuna, as alternativas ou os itens
@@ -131,11 +152,20 @@
 
 ## Leitura de representações estruturadas
 
+- Um package especializado só é justificável quando preserva uma estrutura que
+  seria perdida em `paragraph`, `table` ou package existente. Aplique a policy
+  devolvida por `explore`; aparência diferente ou variedade não são evidência.
+- A representação escolhida precisa tornar a relação relevante mais imediata
+  e previsível pelas convenções da área do que seria em prosa ou numa forma
+  mais simples. Se a pessoa precisar decifrar a interface, cruzar uma legenda
+  distante ou aprender uma gramática criada pelo renderer, rejeite a escolha,
+  decomponha o conteúdo ou corrija o package. Não acrescente um tutorial visual
+  para compensar uma representação inadequada.
 - Todo recurso estruturado deixa explícitos o objeto, a relação e a operação de leitura. A posição, a cor, um identificador interno ou uma legenda distante não podem ser a única forma de entender um dado necessário.
 - Entidades que precisam ser distinguidas possuem nomes visíveis e inequívocos. Rótulos, unidades, direção, ordem, escala e destaque necessários aparecem no próprio card.
-- Em `graph`, vértices representam entidades ou papéis estáveis e arestas representam relações nomeáveis. Direção só é usada quando altera a interpretação. Componentes independentes são distinguidos no enunciado ou separados em cards; uma legenda não pode exigir que a pessoa adivinhe a correspondência entre abreviação e papel.
+- Em `graph`, círculos representam vértices abstratos e linhas representam arestas; setas só aparecem em dígrafos. O objeto é matemático: adjacência, caminho, ciclo, grau, ponte e conectividade justificam seu uso. Componentes de software, equipamentos, estados e conceitos exigem packages próprios.
 - Em `flow`, cada ramo torna explícitas condição e consequência. Em `tree`, a ligação preserva leitura pai-filho. Em `relation_map`, os conjuntos e a natureza do pareamento são claros. Em `matrix`, `plane` e `formula`, unidades, eixos, ordem, notação e convenções necessárias aparecem antes da decisão.
-- Em `system_map`, grupos correspondem a limites ou regiões identificáveis, componentes declaram pertencimento e conexões têm origem, destino, direção e rótulo quando semanticamente necessários. Não use a posição visual como única evidência de pertencimento.
+- Em `software_system_context`, há um único sistema em foco, pessoas e sistemas externos; nenhum componente interno é admitido. Em `software_container`, a fronteira reúne aplicações e armazenamentos implantáveis, cada qual com tecnologia e responsabilidade. Em `system_internal_block`, partes tipadas expõem portas e conectores segundo a gramática de diagrama interno do SysML. Não use posição ou cor como única evidência semântica.
 - Em `reaction`, reagentes e produtos ocupam lados distintos, coeficientes e estados pertencem à espécie correta e a seta/condição corresponde ao fenômeno descrito. Uma equação simbólica não substitui representação macroscópica ou submicroscópica quando a coordenação entre níveis é o objetivo.
 
 ## Revisão antes de aceitar

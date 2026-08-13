@@ -1,4 +1,5 @@
 import { escapePackageHtml, renderPackageCode, renderPackageProse } from "../../sdk/html.js";
+import { academicProfile } from "../../sdk/academic.js";
 
 export const codePackage = Object.freeze({
   manifest: Object.freeze({
@@ -6,6 +7,7 @@ export const codePackage = Object.freeze({
     purpose: "Apresentar código cuja sintaxe, indentação e execução mental são relevantes.",
     slots: Object.freeze(["content", "feedback"]),
     cognitiveOperations: Object.freeze(["inspect-code", "trace", "compare-implementations", "explain-syntax"]),
+    academic: academicProfile({ domains: ["programação", "engenharia de software", "bancos de dados"], knowledgeObjects: ["trecho de programa", "consulta", "configuração textual"], conventions: ["fonte monoespaçada", "indentação preservada", "linguagem identificada"], appropriateWhen: ["a sintaxe e a execução mental fazem parte da aprendizagem"], avoidWhen: ["pseudocódigo ou prosa expressam melhor a ideia"], technologies: ["HTML semântico", "texto pré-formatado"], practiceModes: ["exposition", "gap", "typing", "selection"] }),
     responseCompatibility: Object.freeze(["aralearn.response.gap", "aralearn.response.choice"]),
     limitations: Object.freeze(["Não executa o programa.", "Não substitui a explicação do contexto e do efeito do código."]),
     accessibility: "Prompt, linguagem e código são expostos como texto selecionável."
@@ -15,7 +17,7 @@ export const codePackage = Object.freeze({
     required: Object.freeze(["prompt", "language", "code"]),
     optional: Object.freeze(["languageTag", "textDirection"]),
     rules: Object.freeze(["Preserve indentação.", "Não use código como decoração."]),
-    example: Object.freeze({ prompt: "Observe a condição antes do envio.", language: "javascript", code: "if (online) {\n  enviar();\n}" })
+    example: Object.freeze({ prompt: "Leia a busca binária e acompanhe como os limites eliminam metade do vetor a cada iteração.", language: "python", code: "def busca_binaria(valores, alvo):\n    inicio, fim = 0, len(valores) - 1\n    while inicio <= fim:\n        meio = (inicio + fim) // 2\n        if valores[meio] == alvo:\n            return meio\n        if valores[meio] < alvo:\n            inicio = meio + 1\n        else:\n            fim = meio - 1\n    return -1" })
   }),
   schema: Object.freeze({
     type: "object", additionalProperties: false, required: ["prompt", "language", "code"],
@@ -40,5 +42,6 @@ export const codePackage = Object.freeze({
     return `<div class="runtime-block runtime-code-block">${renderPackageProse(data.prompt, data)}<pre><code class="language-${escapePackageHtml(data.language)}">${renderPackageCode(data.code)}</code></pre></div>`;
   },
   accessibleText(data) { return `${data.prompt} Código ${data.language}: ${data.code}`; },
-  editableTargets() { return [{ path: "prompt", label: "Editar orientação" }, { path: "code", label: "Editar código", preserveWhitespace: true }]; }
+  editableTargets() { return [{ path: "prompt", label: "Editar orientação" }, { path: "code", label: "Editar código", preserveWhitespace: true }]; },
+  practiceTargets() { return [{ path: "code", label: "Lacuna no código", modes: ["gap", "typing"] }]; }
 });

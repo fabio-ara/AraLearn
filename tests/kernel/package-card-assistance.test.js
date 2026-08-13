@@ -61,29 +61,61 @@ test("projeção textual preserva identidade, package, versão e resposta", asyn
   });
 });
 
-test("geração estruturada usa schema exato do package e aplica reparo", async () => {
+test("edit_text envia patch compacto e aplica somente folhas autorizadas", async () => {
   const { document, card, selection } = await context();
   let requestSeen;
   const provider = {
     async generateStructured(request) {
       requestSeen = request;
-      const repaired = structuredClone(card);
-      repaired.content[0].data.text = "Texto progressivo e situado.";
-      return { value: { card: repaired } };
+      return {
+        value: {
+          message: "Reorganizei a explicação para situar o conceito antes da regra.",
+          edits: [{
+            path: "content[0].data.text",
+            value: "Texto progressivo e situado."
+          }]
+        }
+      };
     }
   };
   const result = await generateCardAssistanceChangeSet({
     projectDocument: document,
     selection,
-    request: { operation: "repair", repairScope: "card", promptText: "Torne a explicação mais clara." },
+    request: {
+      operation: "edit_text",
+      scope: "card",
+      promptText: "Torne a explicação mais clara.",
+      conversationTurns: [{
+        turn: 1,
+        userRequest: "Situe primeiro o problema.",
+        assistantResponse: "Situei o problema antes da explicação.",
+        appliedTo: ["card"],
+      }]
+    },
     provider,
     modelId: "test-model"
   });
-  assert.equal(requestSeen.schemaName, "aralearn_package_card_repair_v1");
+  assert.equal(requestSeen.schemaName, "aralearn_card_assistance_text_patch_v2");
+  assert.deepEqual(requestSeen.schema.required, ["message", "edits"]);
+  const requestEnvelope = JSON.parse(requestSeen.prompt);
+  assert.equal(requestEnvelope.priorConversation[0].userRequest, "Situe primeiro o problema.");
+  assert.equal(requestEnvelope.userRequest, "Torne a explicação mais clara.");
+  assert.equal(requestEnvelope.currentCard, undefined);
+  assert.equal(requestEnvelope.writableText[0].path, "content[0].data.text");
+  assert.equal(requestEnvelope.readOnlyContext.cards.current.content[0].data, undefined);
   assert.equal(result.changeSet.card.content[0].data.text, "Texto progressivo e situado.");
+  assert.deepEqual(result.changeSet.textPatch, [{
+    path: "content[0].data.text",
+    value: "Texto progressivo e situado."
+  }]);
+  assert.equal(result.changeSet.operation, "edit_text");
+  assert.equal(
+    result.assistantMessage,
+    "Reorganizei a explicação para situar o conceito antes da regra."
+  );
   const snapshot = await buildCardAssistanceScopeSnapshot(document, selection, {
-    operation: "repair",
-    repairScope: "resources",
+    operation: "edit_text",
+    scope: "resources",
     resourceTargetIds: [`content:${card.content[0].id}`]
   });
   assert.equal(snapshot.target.resources[0].resourceType, "aralearn.resource.paragraph");

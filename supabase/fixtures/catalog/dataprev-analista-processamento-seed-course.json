@@ -5400,7 +5400,7 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "A topologia mostra uma solicitação saindo do cliente e uma resposta retornando do servidor.",
-                            "layout": "network",
+                            "layout": "auto",
                             "vertices": [
                               {
                                 "id": "cliente",
@@ -5419,28 +5419,26 @@
                               {
                                 "id": "edge-1",
                                 "from": "cliente",
-                                "to": "rede",
-                                "directed": true
+                                "to": "rede"
                               },
                               {
                                 "id": "edge-2",
                                 "from": "rede",
-                                "to": "servidor",
-                                "directed": true
+                                "to": "servidor"
                               },
                               {
                                 "id": "edge-3",
                                 "from": "servidor",
-                                "to": "rede",
-                                "directed": true
+                                "to": "rede"
                               },
                               {
                                 "id": "edge-4",
                                 "from": "rede",
-                                "to": "cliente",
-                                "directed": true
+                                "to": "cliente"
                               }
-                            ]
+                            ],
+                            "name": "G",
+                            "directed": true
                           }
                         }
                       ],
@@ -6218,7 +6216,7 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "A topologia separa acesso externo, controle de tráfego e acesso sem fio.",
-                            "layout": "path",
+                            "layout": "auto",
                             "vertices": [
                               {
                                 "id": "internet",
@@ -6245,28 +6243,26 @@
                               {
                                 "id": "edge-1",
                                 "from": "internet",
-                                "to": "fw",
-                                "directed": true
+                                "to": "fw"
                               },
                               {
                                 "id": "edge-2",
                                 "from": "fw",
-                                "to": "rede",
-                                "directed": true
+                                "to": "rede"
                               },
                               {
                                 "id": "edge-3",
                                 "from": "rede",
-                                "to": "ap",
-                                "directed": true
+                                "to": "ap"
                               },
                               {
                                 "id": "edge-4",
                                 "from": "ap",
-                                "to": "estacao",
-                                "directed": true
+                                "to": "estacao"
                               }
-                            ]
+                            ],
+                            "name": "G",
+                            "directed": true
                           }
                         }
                       ],
@@ -6823,7 +6819,7 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "O cliente não acessa o serviço diretamente; a requisição passa pelo intermediário.",
-                            "layout": "network",
+                            "layout": "auto",
                             "vertices": [
                               {
                                 "id": "cliente",
@@ -6842,28 +6838,26 @@
                               {
                                 "id": "edge-1",
                                 "from": "cliente",
-                                "to": "proxy",
-                                "directed": true
+                                "to": "proxy"
                               },
                               {
                                 "id": "edge-2",
                                 "from": "proxy",
-                                "to": "internet",
-                                "directed": true
+                                "to": "internet"
                               },
                               {
                                 "id": "edge-3",
                                 "from": "internet",
-                                "to": "proxy",
-                                "directed": true
+                                "to": "proxy"
                               },
                               {
                                 "id": "edge-4",
                                 "from": "proxy",
-                                "to": "cliente",
-                                "directed": true
+                                "to": "cliente"
                               }
-                            ]
+                            ],
+                            "name": "G",
+                            "directed": true
                           }
                         }
                       ],
@@ -6893,7 +6887,7 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "A comunicação remota passa por um túnel antes de chegar à rede corporativa.",
-                            "layout": "network",
+                            "layout": "auto",
                             "vertices": [
                               {
                                 "id": "usuario",
@@ -6912,28 +6906,26 @@
                               {
                                 "id": "edge-1",
                                 "from": "usuario",
-                                "to": "vpn",
-                                "directed": true
+                                "to": "vpn"
                               },
                               {
                                 "id": "edge-2",
                                 "from": "vpn",
-                                "to": "corp",
-                                "directed": true
+                                "to": "corp"
                               },
                               {
                                 "id": "edge-3",
                                 "from": "corp",
-                                "to": "vpn",
-                                "directed": true
+                                "to": "vpn"
                               },
                               {
                                 "id": "edge-4",
                                 "from": "vpn",
-                                "to": "usuario",
-                                "directed": true
+                                "to": "usuario"
                               }
-                            ]
+                            ],
+                            "name": "G",
+                            "directed": true
                           }
                         }
                       ],
@@ -7146,7 +7138,7 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "Observe a separação entre serviço exposto e rede interna.",
-                            "layout": "path",
+                            "layout": "auto",
                             "vertices": [
                               {
                                 "id": "internet",
@@ -7173,28 +7165,26 @@
                               {
                                 "id": "edge-1",
                                 "from": "internet",
-                                "to": "fw1",
-                                "directed": true
+                                "to": "fw1"
                               },
                               {
                                 "id": "edge-2",
                                 "from": "fw1",
-                                "to": "dmz",
-                                "directed": true
+                                "to": "dmz"
                               },
                               {
                                 "id": "edge-3",
                                 "from": "dmz",
-                                "to": "fw2",
-                                "directed": true
+                                "to": "fw2"
                               },
                               {
                                 "id": "edge-4",
                                 "from": "fw2",
-                                "to": "interna",
-                                "directed": true
+                                "to": "interna"
                               }
-                            ]
+                            ],
+                            "name": "G",
+                            "directed": true
                           }
                         }
                       ],
@@ -9038,6 +9028,7 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "Associe os itens.",
+                            "name": "R",
                             "leftSet": {
                               "label": "Elementos 1",
                               "items": [
@@ -10552,7 +10543,7 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "Representação simplificada de interceptação entre cliente e servidor.",
-                            "layout": "star",
+                            "layout": "auto",
                             "vertices": [
                               {
                                 "id": "cliente",
@@ -10571,16 +10562,16 @@
                               {
                                 "id": "edge-1",
                                 "from": "cliente",
-                                "to": "atacante",
-                                "directed": true
+                                "to": "atacante"
                               },
                               {
                                 "id": "edge-2",
                                 "from": "atacante",
-                                "to": "servidor",
-                                "directed": true
+                                "to": "servidor"
                               }
-                            ]
+                            ],
+                            "name": "G",
+                            "directed": true
                           }
                         }
                       ],
@@ -11585,6 +11576,7 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "Compare os pares.",
+                            "name": "R",
                             "leftSet": {
                               "label": "Elementos 2",
                               "items": [
@@ -12718,6 +12710,7 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "Conecte os elementos.",
+                            "name": "R",
                             "leftSet": {
                               "label": "Elementos 3",
                               "items": [
@@ -13543,6 +13536,7 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "Identifique as relações.",
+                            "name": "R",
                             "leftSet": {
                               "label": "Elementos 4",
                               "items": [
@@ -17184,6 +17178,7 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "Mapeie as correspondências.",
+                            "name": "R",
                             "leftSet": {
                               "label": "Elementos 5",
                               "items": [
@@ -21107,6 +21102,7 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "Examine as associações.",
+                            "name": "R",
                             "leftSet": {
                               "label": "Elementos 6",
                               "items": [
@@ -31526,7 +31522,7 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "As arestas indicam dependências ou ativações registradas em 2026-07-10.",
-                            "layout": "network",
+                            "layout": "auto",
                             "vertices": [
                               {
                                 "id": "g-target",
@@ -31554,24 +31550,23 @@
                                 "id": "edge-1",
                                 "from": "g-target",
                                 "to": "g-service",
-                                "label": "wants",
-                                "directed": true
+                                "label": "wants"
                               },
                               {
                                 "id": "edge-2",
                                 "from": "g-timer",
                                 "to": "g-service",
-                                "label": "activates",
-                                "directed": true
+                                "label": "activates"
                               },
                               {
                                 "id": "edge-3",
                                 "from": "g-socket",
                                 "to": "g-api",
-                                "label": "activates",
-                                "directed": true
+                                "label": "activates"
                               }
-                            ]
+                            ],
+                            "name": "G",
+                            "directed": true
                           }
                         }
                       ],
@@ -32205,7 +32200,7 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "As conexões representam o percurso e a consulta de nome em 2026-07-10.",
-                            "layout": "path",
+                            "layout": "auto",
                             "vertices": [
                               {
                                 "id": "net-host",
@@ -32233,31 +32228,29 @@
                                 "id": "edge-1",
                                 "from": "net-host",
                                 "to": "net-gw",
-                                "label": "rota padrão",
-                                "directed": true
+                                "label": "rota padrão"
                               },
                               {
                                 "id": "edge-2",
                                 "from": "net-gw",
                                 "to": "net-remote",
-                                "label": "encaminha",
-                                "directed": true
+                                "label": "encaminha"
                               },
                               {
                                 "id": "edge-3",
                                 "from": "net-host",
                                 "to": "net-dns",
-                                "label": "consulta nome",
-                                "directed": true
+                                "label": "consulta nome"
                               },
                               {
                                 "id": "edge-4",
                                 "from": "net-remote",
                                 "to": "net-service",
-                                "label": "alcança porta",
-                                "directed": true
+                                "label": "alcança porta"
                               }
-                            ]
+                            ],
+                            "name": "G",
+                            "directed": true
                           }
                         }
                       ],
@@ -32671,6 +32664,7 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "Observe as relações entre tipo de operação e mecanismo no recorte de 2026-07-10.",
+                            "name": "R",
                             "leftSet": {
                               "label": "Operações",
                               "items": [
@@ -33994,6 +33988,7 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "Considere o servidor WS-LOCAL-01 em grupo de trabalho, conforme o estado registrado em 11 de julho de 2026.",
+                            "name": "R",
                             "leftSet": {
                               "label": "Identidades locais",
                               "items": [
@@ -34024,14 +34019,12 @@
                               {
                                 "id": "relation-1",
                                 "from": "id-ana",
-                                "to": "cap-membro",
-                                "label": "associação"
+                                "to": "cap-membro"
                               },
                               {
                                 "id": "relation-2",
                                 "from": "id-operadores",
-                                "to": "cap-logon",
-                                "label": "atribuição de direito"
+                                "to": "cap-logon"
                               }
                             ]
                           }
@@ -34984,7 +34977,7 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "Observe as dependências de WS-CLIENT-01 em 11 de julho de 2026, sem inferir estado a partir da posição dos elementos.",
-                            "layout": "star",
+                            "layout": "auto",
                             "vertices": [
                               {
                                 "id": "net-client",
@@ -35012,31 +35005,29 @@
                                 "id": "edge-1",
                                 "from": "net-dhcp",
                                 "to": "net-client",
-                                "label": "concede endereço e opções",
-                                "directed": true
+                                "label": "concede endereço e opções"
                               },
                               {
                                 "id": "edge-2",
                                 "from": "net-client",
                                 "to": "net-gateway",
-                                "label": "usa como próximo salto para tráfego fora da sub-rede",
-                                "directed": true
+                                "label": "usa como próximo salto para tráfego fora da sub-rede"
                               },
                               {
                                 "id": "edge-3",
                                 "from": "net-client",
                                 "to": "net-dns",
-                                "label": "consulta nomes",
-                                "directed": true
+                                "label": "consulta nomes"
                               },
                               {
                                 "id": "edge-4",
                                 "from": "net-client",
                                 "to": "net-app",
-                                "label": "acessa por IP ou nome",
-                                "directed": true
+                                "label": "acessa por IP ou nome"
                               }
-                            ]
+                            ],
+                            "name": "G",
+                            "directed": true
                           }
                         }
                       ],
@@ -35929,6 +35920,7 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "Use as relações registradas para um ambiente Windows Server 2022 em 11 de julho de 2026.",
+                            "name": "R",
                             "leftSet": {
                               "label": "Problemas observados",
                               "items": [
@@ -36374,6 +36366,7 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "Observe as correspondências usadas para cadastrar pessoas.",
+                            "name": "R",
                             "leftSet": {
                               "label": "Elemento",
                               "items": [
@@ -37469,7 +37462,7 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "Cenário de 2026-07-11: duas localidades, suas sub-redes e um enlace WAN.",
-                            "layout": "network",
+                            "layout": "auto",
                             "vertices": [
                               {
                                 "id": "site-bsb",
@@ -37501,38 +37494,35 @@
                                 "id": "edge-1",
                                 "from": "net-bsb",
                                 "to": "site-bsb",
-                                "label": "associada a",
-                                "directed": true
+                                "label": "associada a"
                               },
                               {
                                 "id": "edge-2",
                                 "from": "dc-bsb",
                                 "to": "site-bsb",
-                                "label": "localizado em",
-                                "directed": true
+                                "label": "localizado em"
                               },
                               {
                                 "id": "edge-3",
                                 "from": "net-sp",
                                 "to": "site-sp",
-                                "label": "associada a",
-                                "directed": true
+                                "label": "associada a"
                               },
                               {
                                 "id": "edge-4",
                                 "from": "dc-sp",
                                 "to": "site-sp",
-                                "label": "localizado em",
-                                "directed": true
+                                "label": "localizado em"
                               },
                               {
                                 "id": "edge-5",
                                 "from": "site-bsb",
                                 "to": "site-sp",
-                                "label": "enlace WAN",
-                                "directed": true
+                                "label": "enlace WAN"
                               }
-                            ]
+                            ],
+                            "name": "G",
+                            "directed": true
                           }
                         }
                       ],
@@ -37711,7 +37701,7 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "Topologia documentada em 2026-07-11 para dois sites do domínio `br.empresa.example`.",
-                            "layout": "network",
+                            "layout": "auto",
                             "vertices": [
                               {
                                 "id": "client-bsb",
@@ -37751,66 +37741,59 @@
                                 "id": "edge-1",
                                 "from": "client-bsb",
                                 "to": "sub-bsb",
-                                "label": "endereço pertence à sub-rede",
-                                "directed": true
+                                "label": "endereço pertence à sub-rede"
                               },
                               {
                                 "id": "edge-2",
                                 "from": "client-bsb",
                                 "to": "dns-bsb",
-                                "label": "consulta serviço do domínio",
-                                "directed": true
+                                "label": "consulta serviço do domínio"
                               },
                               {
                                 "id": "edge-3",
                                 "from": "dns-bsb",
                                 "to": "dc-bsb2",
-                                "label": "indica controlador para o cliente",
-                                "directed": true
+                                "label": "indica controlador para o cliente"
                               },
                               {
                                 "id": "edge-4",
                                 "from": "sub-bsb",
                                 "to": "site-bsb",
-                                "label": "sub-rede associada ao site",
-                                "directed": true
+                                "label": "sub-rede associada ao site"
                               },
                               {
                                 "id": "edge-5",
                                 "from": "dc-bsb2",
                                 "to": "site-bsb",
-                                "label": "controlador localizado no site",
-                                "directed": true
+                                "label": "controlador localizado no site"
                               },
                               {
                                 "id": "edge-6",
                                 "from": "sub-sp",
                                 "to": "site-sp",
-                                "label": "sub-rede associada ao site",
-                                "directed": true
+                                "label": "sub-rede associada ao site"
                               },
                               {
                                 "id": "edge-7",
                                 "from": "dc-sp2",
                                 "to": "site-sp",
-                                "label": "controlador localizado no site",
-                                "directed": true
+                                "label": "controlador localizado no site"
                               },
                               {
                                 "id": "edge-8",
                                 "from": "dc-bsb2",
                                 "to": "dc-sp2",
-                                "label": "replica alterações para",
-                                "directed": true
+                                "label": "replica alterações para"
                               },
                               {
                                 "id": "edge-9",
                                 "from": "dc-sp2",
                                 "to": "dc-bsb2",
-                                "label": "replica alterações para",
-                                "directed": true
+                                "label": "replica alterações para"
                               }
-                            ]
+                            ],
+                            "name": "G",
+                            "directed": true
                           }
                         }
                       ],
@@ -38127,6 +38110,7 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "Mapa de associações e acesso registrado em 2026-07-11.",
+                            "name": "R",
                             "leftSet": {
                               "label": "Identidades e grupos de origem",
                               "items": [
@@ -38165,26 +38149,22 @@
                               {
                                 "id": "relation-1",
                                 "from": "id-ana",
-                                "to": "grp-leitura",
-                                "label": "via GG-Analistas-BR"
+                                "to": "grp-leitura"
                               },
                               {
                                 "id": "relation-2",
                                 "from": "id-beto",
-                                "to": "grp-leitura",
-                                "label": "via GG-Analistas-BR"
+                                "to": "grp-leitura"
                               },
                               {
                                 "id": "relation-3",
                                 "from": "grp-analistas",
-                                "to": "grp-leitura",
-                                "label": "membro"
+                                "to": "grp-leitura"
                               },
                               {
                                 "id": "relation-4",
                                 "from": "grp-analistas",
-                                "to": "res-rel",
-                                "label": "acesso por cadeia de grupos"
+                                "to": "res-rel"
                               }
                             ]
                           }
@@ -38652,7 +38632,7 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "Relações registradas em 2026-07-11 entre duas florestas e um servidor de arquivos.",
-                            "layout": "path",
+                            "layout": "auto",
                             "vertices": [
                               {
                                 "id": "forest-a",
@@ -38680,31 +38660,29 @@
                                 "id": "edge-1",
                                 "from": "user-a",
                                 "to": "forest-a",
-                                "label": "identidade pertence a",
-                                "directed": true
+                                "label": "identidade pertence a"
                               },
                               {
                                 "id": "edge-2",
                                 "from": "forest-b",
                                 "to": "forest-a",
-                                "label": "confia para autenticação",
-                                "directed": true
+                                "label": "confia para autenticação"
                               },
                               {
                                 "id": "edge-3",
                                 "from": "user-a",
                                 "to": "srv-b",
-                                "label": "solicita leitura",
-                                "directed": true
+                                "label": "solicita leitura"
                               },
                               {
                                 "id": "edge-4",
                                 "from": "acl-b",
                                 "to": "srv-b",
-                                "label": "controla permissão",
-                                "directed": true
+                                "label": "controla permissão"
                               }
-                            ]
+                            ],
+                            "name": "G",
+                            "directed": true
                           }
                         }
                       ],
@@ -40198,6 +40176,7 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "Observe as correspondências entre drives e tipos de item.",
+                            "name": "R",
                             "leftSet": {
                               "label": "Drives",
                               "items": [
@@ -42020,6 +41999,7 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "Observe as quatro ações administrativas e as operações associadas.",
+                            "name": "R",
                             "leftSet": {
                               "label": "Ações",
                               "items": [
@@ -43061,7 +43041,7 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "As setas mostram quem inicia cada troca no ciclo.",
-                            "layout": "network",
+                            "layout": "auto",
                             "vertices": [
                               {
                                 "id": "srv",
@@ -43085,52 +43065,47 @@
                                 "id": "edge-1",
                                 "from": "ag1",
                                 "to": "srv",
-                                "label": "solicita catálogo",
-                                "directed": true
+                                "label": "solicita catálogo"
                               },
                               {
                                 "id": "edge-2",
                                 "from": "srv",
                                 "to": "ag1",
-                                "label": "entrega catálogo",
-                                "directed": true
+                                "label": "entrega catálogo"
                               },
                               {
                                 "id": "edge-3",
                                 "from": "ag1",
                                 "to": "srv",
-                                "label": "envia relatório",
-                                "directed": true
+                                "label": "envia relatório"
                               },
                               {
                                 "id": "edge-4",
                                 "from": "ag2",
                                 "to": "srv",
-                                "label": "solicita catálogo",
-                                "directed": true
+                                "label": "solicita catálogo"
                               },
                               {
                                 "id": "edge-5",
                                 "from": "srv",
                                 "to": "ag2",
-                                "label": "entrega catálogo",
-                                "directed": true
+                                "label": "entrega catálogo"
                               },
                               {
                                 "id": "edge-6",
                                 "from": "ag2",
                                 "to": "srv",
-                                "label": "envia relatório",
-                                "directed": true
+                                "label": "envia relatório"
                               },
                               {
                                 "id": "edge-7",
                                 "from": "ctl",
                                 "to": "srv",
-                                "label": "publica definição",
-                                "directed": true
+                                "label": "publica definição"
                               }
-                            ]
+                            ],
+                            "name": "G",
+                            "directed": true
                           }
                         }
                       ],
@@ -44643,6 +44618,7 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "Observe as correspondências entre mecanismo e efeito.",
+                            "name": "R",
                             "leftSet": {
                               "label": "Mecanismo",
                               "items": [
@@ -45350,6 +45326,7 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "As relações mostram o efeito primário de quatro operações.",
+                            "name": "R",
                             "leftSet": {
                               "label": "Operação",
                               "items": [
@@ -45939,7 +45916,7 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "Observe os recursos usados por dois serviços na mesma bridge.",
-                            "layout": "path",
+                            "layout": "auto",
                             "vertices": [
                               {
                                 "id": "host",
@@ -45963,24 +45940,23 @@
                                 "id": "edge-1",
                                 "from": "host",
                                 "to": "web",
-                                "label": "publicação 8080→80",
-                                "directed": true
+                                "label": "publicação 8080→80"
                               },
                               {
                                 "id": "edge-2",
                                 "from": "web",
                                 "to": "db",
-                                "label": "rede appnet: db:5432",
-                                "directed": true
+                                "label": "rede appnet: db:5432"
                               },
                               {
                                 "id": "edge-3",
                                 "from": "db",
                                 "to": "vol",
-                                "label": "mount /var/lib/db",
-                                "directed": true
+                                "label": "mount /var/lib/db"
                               }
-                            ]
+                            ],
+                            "name": "G",
+                            "directed": true
                           }
                         }
                       ],
@@ -47183,6 +47159,7 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "Observe quatro componentes e quatro eventos operacionais.",
+                            "name": "R",
                             "leftSet": {
                               "label": "Componentes",
                               "items": [
@@ -47737,7 +47714,7 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "Siga o tráfego para `app.exemplo/relatorios` no namespace `dados`.",
-                            "layout": "network",
+                            "layout": "auto",
                             "vertices": [
                               {
                                 "id": "v1",
@@ -47765,31 +47742,29 @@
                                 "id": "edge-1",
                                 "from": "v1",
                                 "to": "v2",
-                                "label": "host e path",
-                                "directed": true
+                                "label": "host e path"
                               },
                               {
                                 "id": "edge-2",
                                 "from": "v2",
                                 "to": "v3",
-                                "label": "backend Service",
-                                "directed": true
+                                "label": "backend Service"
                               },
                               {
                                 "id": "edge-3",
                                 "from": "v3",
                                 "to": "v4",
-                                "label": "selector e targetPort",
-                                "directed": true
+                                "label": "selector e targetPort"
                               },
                               {
                                 "id": "edge-4",
                                 "from": "v3",
                                 "to": "v5",
-                                "label": "selector e targetPort",
-                                "directed": true
+                                "label": "selector e targetPort"
                               }
-                            ]
+                            ],
+                            "name": "G",
+                            "directed": true
                           }
                         }
                       ],
@@ -48217,6 +48192,7 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "Compare solicitações e volumes disponíveis.",
+                            "name": "R",
                             "leftSet": {
                               "label": "PVCs",
                               "items": [
@@ -48768,7 +48744,7 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "Observe a autorização no namespace `relatorios`.",
-                            "layout": "path",
+                            "layout": "auto",
                             "vertices": [
                               {
                                 "id": "g1",
@@ -48796,31 +48772,29 @@
                                 "id": "edge-1",
                                 "from": "g1",
                                 "to": "g2",
-                                "label": "executa como",
-                                "directed": true
+                                "label": "executa como"
                               },
                               {
                                 "id": "edge-2",
                                 "from": "g3",
                                 "to": "g2",
-                                "label": "declara como sujeito",
-                                "directed": true
+                                "label": "declara como sujeito"
                               },
                               {
                                 "id": "edge-3",
                                 "from": "g3",
                                 "to": "g4",
-                                "label": "referencia",
-                                "directed": true
+                                "label": "referencia"
                               },
                               {
                                 "id": "edge-4",
                                 "from": "g4",
                                 "to": "g5",
-                                "label": "permite get e list",
-                                "directed": true
+                                "label": "permite get e list"
                               }
-                            ]
+                            ],
+                            "name": "G",
+                            "directed": true
                           }
                         }
                       ],
@@ -50622,7 +50596,7 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "Observe as conexões internas e o enlace entre as unidades.",
-                            "layout": "network",
+                            "layout": "auto",
                             "vertices": [
                               {
                                 "id": "n1",
@@ -50654,38 +50628,35 @@
                                 "id": "edge-1",
                                 "from": "n1",
                                 "to": "ng",
-                                "label": "enlace local",
-                                "directed": true
+                                "label": "enlace local"
                               },
                               {
                                 "id": "edge-2",
                                 "from": "n2",
                                 "to": "ng",
-                                "label": "enlace local",
-                                "directed": true
+                                "label": "enlace local"
                               },
                               {
                                 "id": "edge-3",
                                 "from": "s1",
                                 "to": "sg",
-                                "label": "enlace local",
-                                "directed": true
+                                "label": "enlace local"
                               },
                               {
                                 "id": "edge-4",
                                 "from": "s2",
                                 "to": "sg",
-                                "label": "enlace local",
-                                "directed": true
+                                "label": "enlace local"
                               },
                               {
                                 "id": "edge-5",
                                 "from": "ng",
                                 "to": "sg",
-                                "label": "enlace entre cidades",
-                                "directed": true
+                                "label": "enlace entre cidades"
                               }
-                            ]
+                            ],
+                            "name": "G",
+                            "directed": true
                           }
                         }
                       ],
@@ -51026,7 +50997,7 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "Compare os dois grupos pelas ligações entre seus nós.",
-                            "layout": "network",
+                            "layout": "auto",
                             "vertices": [
                               {
                                 "id": "p-a",
@@ -51058,29 +51029,25 @@
                                 "id": "edge-1",
                                 "from": "p-a",
                                 "to": "p-b",
-                                "label": "ligação direta",
-                                "directed": true
+                                "label": "ligação direta"
                               },
                               {
                                 "id": "edge-2",
                                 "from": "e-c",
                                 "to": "e-1",
-                                "label": "enlace periférico",
-                                "directed": true
+                                "label": "enlace periférico"
                               },
                               {
                                 "id": "edge-3",
                                 "from": "e-c",
                                 "to": "e-2",
-                                "label": "enlace periférico",
-                                "directed": true
+                                "label": "enlace periférico"
                               },
                               {
                                 "id": "edge-4",
                                 "from": "e-c",
                                 "to": "e-3",
-                                "label": "enlace periférico",
-                                "directed": true
+                                "label": "enlace periférico"
                               }
                             ],
                             "highlight": {
@@ -51088,7 +51055,9 @@
                                 "e-c"
                               ],
                               "edges": []
-                            }
+                            },
+                            "name": "G",
+                            "directed": true
                           }
                         }
                       ],
@@ -51122,7 +51091,7 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "Observe o enlace principal no primeiro grupo e o circuito fechado no segundo.",
-                            "layout": "network",
+                            "layout": "auto",
                             "vertices": [
                               {
                                 "id": "bb-a",
@@ -51166,59 +51135,53 @@
                                 "id": "edge-1",
                                 "from": "bb-a",
                                 "to": "bb-b",
-                                "label": "backbone compartilhado",
-                                "directed": true
+                                "label": "backbone compartilhado"
                               },
                               {
                                 "id": "edge-2",
                                 "from": "b-1",
                                 "to": "bb-a",
-                                "label": "derivação",
-                                "directed": true
+                                "label": "derivação"
                               },
                               {
                                 "id": "edge-3",
                                 "from": "b-2",
                                 "to": "bb-a",
-                                "label": "derivação",
-                                "directed": true
+                                "label": "derivação"
                               },
                               {
                                 "id": "edge-4",
                                 "from": "b-3",
                                 "to": "bb-b",
-                                "label": "derivação",
-                                "directed": true
+                                "label": "derivação"
                               },
                               {
                                 "id": "edge-5",
                                 "from": "r-1",
                                 "to": "r-2",
-                                "label": "vizinho",
-                                "directed": true
+                                "label": "vizinho"
                               },
                               {
                                 "id": "edge-6",
                                 "from": "r-2",
                                 "to": "r-3",
-                                "label": "vizinho",
-                                "directed": true
+                                "label": "vizinho"
                               },
                               {
                                 "id": "edge-7",
                                 "from": "r-3",
                                 "to": "r-4",
-                                "label": "vizinho",
-                                "directed": true
+                                "label": "vizinho"
                               },
                               {
                                 "id": "edge-8",
                                 "from": "r-4",
                                 "to": "r-1",
-                                "label": "fecha o circuito",
-                                "directed": true
+                                "label": "fecha o circuito"
                               }
-                            ]
+                            ],
+                            "name": "G",
+                            "directed": true
                           }
                         }
                       ],
@@ -51252,7 +51215,7 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "Compare a hierarquia sem ciclos com a rede que contém redundância parcial.",
-                            "layout": "network",
+                            "layout": "auto",
                             "vertices": [
                               {
                                 "id": "t-r",
@@ -51287,46 +51250,41 @@
                               {
                                 "id": "edge-1",
                                 "from": "t-r",
-                                "to": "t-a",
-                                "directed": true
+                                "to": "t-a"
                               },
                               {
                                 "id": "edge-2",
                                 "from": "t-r",
-                                "to": "t-b",
-                                "directed": true
+                                "to": "t-b"
                               },
                               {
                                 "id": "edge-3",
                                 "from": "m-a",
-                                "to": "m-b",
-                                "directed": true
+                                "to": "m-b"
                               },
                               {
                                 "id": "edge-4",
                                 "from": "m-b",
-                                "to": "m-c",
-                                "directed": true
+                                "to": "m-c"
                               },
                               {
                                 "id": "edge-5",
                                 "from": "m-c",
-                                "to": "m-d",
-                                "directed": true
+                                "to": "m-d"
                               },
                               {
                                 "id": "edge-6",
                                 "from": "m-d",
-                                "to": "m-a",
-                                "directed": true
+                                "to": "m-a"
                               },
                               {
                                 "id": "edge-7",
                                 "from": "m-b",
-                                "to": "m-d",
-                                "directed": true
+                                "to": "m-d"
                               }
-                            ]
+                            ],
+                            "name": "G",
+                            "directed": true
                           }
                         }
                       ],
@@ -51425,7 +51383,7 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "Observe apenas quais pares de nós estão conectados.",
-                            "layout": "star",
+                            "layout": "auto",
                             "vertices": [
                               {
                                 "id": "c",
@@ -51452,26 +51410,22 @@
                               {
                                 "id": "edge-1",
                                 "from": "c",
-                                "to": "n1",
-                                "directed": true
+                                "to": "n1"
                               },
                               {
                                 "id": "edge-2",
                                 "from": "c",
-                                "to": "n2",
-                                "directed": true
+                                "to": "n2"
                               },
                               {
                                 "id": "edge-3",
                                 "from": "c",
-                                "to": "n3",
-                                "directed": true
+                                "to": "n3"
                               },
                               {
                                 "id": "edge-4",
                                 "from": "c",
-                                "to": "n4",
-                                "directed": true
+                                "to": "n4"
                               }
                             ],
                             "highlight": {
@@ -51479,7 +51433,9 @@
                                 "c"
                               ],
                               "edges": []
-                            }
+                            },
+                            "name": "G",
+                            "directed": true
                           }
                         }
                       ],
@@ -51547,7 +51503,7 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "Analise os enlaces e verifique a presença de rotas alternativas.",
-                            "layout": "network",
+                            "layout": "auto",
                             "vertices": [
                               {
                                 "id": "a",
@@ -51574,40 +51530,36 @@
                               {
                                 "id": "edge-1",
                                 "from": "a",
-                                "to": "b",
-                                "directed": true
+                                "to": "b"
                               },
                               {
                                 "id": "edge-2",
                                 "from": "b",
-                                "to": "c",
-                                "directed": true
+                                "to": "c"
                               },
                               {
                                 "id": "edge-3",
                                 "from": "c",
-                                "to": "d",
-                                "directed": true
+                                "to": "d"
                               },
                               {
                                 "id": "edge-4",
                                 "from": "d",
-                                "to": "a",
-                                "directed": true
+                                "to": "a"
                               },
                               {
                                 "id": "edge-5",
                                 "from": "b",
-                                "to": "d",
-                                "directed": true
+                                "to": "d"
                               },
                               {
                                 "id": "edge-6",
                                 "from": "d",
-                                "to": "e",
-                                "directed": true
+                                "to": "e"
                               }
-                            ]
+                            ],
+                            "name": "G",
+                            "directed": true
                           }
                         }
                       ],
@@ -51765,7 +51717,7 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "Observe a estrutura local e a ligação entre as cidades.",
-                            "layout": "network",
+                            "layout": "auto",
                             "vertices": [
                               {
                                 "id": "ac",
@@ -51797,38 +51749,35 @@
                                 "id": "edge-1",
                                 "from": "ac",
                                 "to": "a1",
-                                "label": "cabo",
-                                "directed": true
+                                "label": "cabo"
                               },
                               {
                                 "id": "edge-2",
                                 "from": "ac",
                                 "to": "ap",
-                                "label": "cabo",
-                                "directed": true
+                                "label": "cabo"
                               },
                               {
                                 "id": "edge-3",
                                 "from": "ap",
                                 "to": "am",
-                                "label": "rádio",
-                                "directed": true
+                                "label": "rádio"
                               },
                               {
                                 "id": "edge-4",
                                 "from": "bc",
                                 "to": "b1",
-                                "label": "enlace local",
-                                "directed": true
+                                "label": "enlace local"
                               },
                               {
                                 "id": "edge-5",
                                 "from": "ac",
                                 "to": "bc",
-                                "label": "enlace entre cidades",
-                                "directed": true
+                                "label": "enlace entre cidades"
                               }
-                            ]
+                            ],
+                            "name": "G",
+                            "directed": true
                           }
                         },
                         {
@@ -52405,7 +52354,7 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "A marcação indica o enlace indisponível na estrutura.",
-                            "layout": "star",
+                            "layout": "auto",
                             "vertices": [
                               {
                                 "id": "c",
@@ -52432,27 +52381,23 @@
                               {
                                 "id": "edge-1",
                                 "from": "c",
-                                "to": "n1",
-                                "directed": true
+                                "to": "n1"
                               },
                               {
                                 "id": "edge-2",
                                 "from": "c",
-                                "to": "n2",
-                                "directed": true
+                                "to": "n2"
                               },
                               {
                                 "id": "edge-3",
                                 "from": "c",
-                                "to": "n3",
-                                "directed": true
+                                "to": "n3"
                               },
                               {
                                 "id": "edge-4",
                                 "from": "c",
                                 "to": "n4",
-                                "label": "indisponível",
-                                "directed": true
+                                "label": "indisponível"
                               }
                             ],
                             "highlight": {
@@ -52460,7 +52405,9 @@
                               "edges": [
                                 "edge-4"
                               ]
-                            }
+                            },
+                            "name": "G",
+                            "directed": true
                           }
                         }
                       ],
@@ -52529,7 +52476,7 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "O enlace marcado como indisponível não pode ser usado.",
-                            "layout": "network",
+                            "layout": "auto",
                             "vertices": [
                               {
                                 "id": "a",
@@ -52557,38 +52504,32 @@
                                 "id": "edge-1",
                                 "from": "a",
                                 "to": "b",
-                                "label": "indisponível",
-                                "directed": true
+                                "label": "indisponível"
                               },
                               {
                                 "id": "edge-2",
                                 "from": "a",
-                                "to": "c",
-                                "directed": true
+                                "to": "c"
                               },
                               {
                                 "id": "edge-3",
                                 "from": "b",
-                                "to": "d",
-                                "directed": true
+                                "to": "d"
                               },
                               {
                                 "id": "edge-4",
                                 "from": "c",
-                                "to": "d",
-                                "directed": true
+                                "to": "d"
                               },
                               {
                                 "id": "edge-5",
                                 "from": "d",
-                                "to": "e",
-                                "directed": true
+                                "to": "e"
                               },
                               {
                                 "id": "edge-6",
                                 "from": "b",
-                                "to": "c",
-                                "directed": true
+                                "to": "c"
                               }
                             ],
                             "highlight": {
@@ -52596,7 +52537,9 @@
                               "edges": [
                                 "edge-1"
                               ]
-                            }
+                            },
+                            "name": "G",
+                            "directed": true
                           }
                         }
                       ],
@@ -52916,7 +52859,7 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "Observe o tráfego entrando pela porta P1 e as réplicas enviadas às outras portas.",
-                            "layout": "star",
+                            "layout": "auto",
                             "vertices": [
                               {
                                 "id": "host-a",
@@ -52944,29 +52887,25 @@
                                 "id": "edge-1",
                                 "from": "host-a",
                                 "to": "hub",
-                                "label": "entrada por P1",
-                                "directed": true
+                                "label": "entrada por P1"
                               },
                               {
                                 "id": "edge-2",
                                 "from": "hub",
                                 "to": "host-b",
-                                "label": "réplica por P2",
-                                "directed": true
+                                "label": "réplica por P2"
                               },
                               {
                                 "id": "edge-3",
                                 "from": "hub",
                                 "to": "host-c",
-                                "label": "réplica por P3",
-                                "directed": true
+                                "label": "réplica por P3"
                               },
                               {
                                 "id": "edge-4",
                                 "from": "hub",
                                 "to": "host-d",
-                                "label": "réplica por P4",
-                                "directed": true
+                                "label": "réplica por P4"
                               }
                             ],
                             "highlight": {
@@ -52974,7 +52913,9 @@
                               "edges": [
                                 "edge-1"
                               ]
-                            }
+                            },
+                            "name": "G",
+                            "directed": true
                           }
                         }
                       ],
@@ -53295,7 +53236,7 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "Os quatro hosts estão na VLAN 30 e cada um usa um enlace próprio com o switch.",
-                            "layout": "star",
+                            "layout": "auto",
                             "vertices": [
                               {
                                 "id": "sw",
@@ -53323,29 +53264,25 @@
                                 "id": "edge-1",
                                 "from": "h1",
                                 "to": "sw",
-                                "label": "segmento 1",
-                                "directed": true
+                                "label": "segmento 1"
                               },
                               {
                                 "id": "edge-2",
                                 "from": "h2",
                                 "to": "sw",
-                                "label": "segmento 2",
-                                "directed": true
+                                "label": "segmento 2"
                               },
                               {
                                 "id": "edge-3",
                                 "from": "h3",
                                 "to": "sw",
-                                "label": "segmento 3",
-                                "directed": true
+                                "label": "segmento 3"
                               },
                               {
                                 "id": "edge-4",
                                 "from": "h4",
                                 "to": "sw",
-                                "label": "segmento 4",
-                                "directed": true
+                                "label": "segmento 4"
                               }
                             ],
                             "highlight": {
@@ -53353,7 +53290,9 @@
                                 "sw"
                               ],
                               "edges": []
-                            }
+                            },
+                            "name": "G",
+                            "directed": true
                           }
                         }
                       ],
@@ -53448,7 +53387,7 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "Cada host usa um enlace Ethernet half-duplex exclusivo até uma porta do switch.",
-                            "layout": "star",
+                            "layout": "auto",
                             "vertices": [
                               {
                                 "id": "sw",
@@ -53476,29 +53415,25 @@
                                 "id": "edge-1",
                                 "from": "a",
                                 "to": "sw",
-                                "label": "half-duplex 1",
-                                "directed": true
+                                "label": "half-duplex 1"
                               },
                               {
                                 "id": "edge-2",
                                 "from": "b",
                                 "to": "sw",
-                                "label": "half-duplex 2",
-                                "directed": true
+                                "label": "half-duplex 2"
                               },
                               {
                                 "id": "edge-3",
                                 "from": "c",
                                 "to": "sw",
-                                "label": "half-duplex 3",
-                                "directed": true
+                                "label": "half-duplex 3"
                               },
                               {
                                 "id": "edge-4",
                                 "from": "d",
                                 "to": "sw",
-                                "label": "half-duplex 4",
-                                "directed": true
+                                "label": "half-duplex 4"
                               }
                             ],
                             "highlight": {
@@ -53509,7 +53444,9 @@
                                 "edge-3",
                                 "edge-4"
                               ]
-                            }
+                            },
+                            "name": "G",
+                            "directed": true
                           }
                         }
                       ],
@@ -53832,7 +53769,7 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "Duas redes locais distintas estão ligadas por um roteador central.",
-                            "layout": "network",
+                            "layout": "auto",
                             "vertices": [
                               {
                                 "id": "a1",
@@ -53867,40 +53804,34 @@
                               {
                                 "id": "edge-1",
                                 "from": "a1",
-                                "to": "sa",
-                                "directed": true
+                                "to": "sa"
                               },
                               {
                                 "id": "edge-2",
                                 "from": "a2",
-                                "to": "sa",
-                                "directed": true
+                                "to": "sa"
                               },
                               {
                                 "id": "edge-3",
                                 "from": "sa",
                                 "to": "r",
-                                "label": "interface LAN A",
-                                "directed": true
+                                "label": "interface LAN A"
                               },
                               {
                                 "id": "edge-4",
                                 "from": "r",
                                 "to": "sb",
-                                "label": "interface LAN B",
-                                "directed": true
+                                "label": "interface LAN B"
                               },
                               {
                                 "id": "edge-5",
                                 "from": "sb",
-                                "to": "b1",
-                                "directed": true
+                                "to": "b1"
                               },
                               {
                                 "id": "edge-6",
                                 "from": "sb",
-                                "to": "b2",
-                                "directed": true
+                                "to": "b2"
                               }
                             ],
                             "highlight": {
@@ -53908,7 +53839,9 @@
                                 "r"
                               ],
                               "edges": []
-                            }
+                            },
+                            "name": "G",
+                            "directed": true
                           }
                         }
                       ],
@@ -54002,7 +53935,7 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "O destaque mostra um broadcast iniciado na LAN A; o roteador central não o repassa como broadcast à LAN B.",
-                            "layout": "path",
+                            "layout": "auto",
                             "vertices": [
                               {
                                 "id": "a1",
@@ -54030,28 +53963,24 @@
                                 "id": "edge-1",
                                 "from": "a1",
                                 "to": "sa",
-                                "label": "broadcast na LAN A",
-                                "directed": true
+                                "label": "broadcast na LAN A"
                               },
                               {
                                 "id": "edge-2",
                                 "from": "sa",
                                 "to": "r",
-                                "label": "fronteira",
-                                "directed": true
+                                "label": "fronteira"
                               },
                               {
                                 "id": "edge-3",
                                 "from": "r",
                                 "to": "sb",
-                                "label": "outra rede",
-                                "directed": true
+                                "label": "outra rede"
                               },
                               {
                                 "id": "edge-4",
                                 "from": "sb",
-                                "to": "b1",
-                                "directed": true
+                                "to": "b1"
                               }
                             ],
                             "highlight": {
@@ -54060,7 +53989,9 @@
                                 "sa"
                               ],
                               "edges": []
-                            }
+                            },
+                            "name": "G",
+                            "directed": true
                           }
                         }
                       ],
@@ -54250,7 +54181,7 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "O switch central mantém dois grupos lógicos, identificados nos próprios hosts.",
-                            "layout": "star",
+                            "layout": "auto",
                             "vertices": [
                               {
                                 "id": "sw",
@@ -54278,29 +54209,25 @@
                                 "id": "edge-1",
                                 "from": "h10a",
                                 "to": "sw",
-                                "label": "VLAN 10",
-                                "directed": true
+                                "label": "VLAN 10"
                               },
                               {
                                 "id": "edge-2",
                                 "from": "h10b",
                                 "to": "sw",
-                                "label": "VLAN 10",
-                                "directed": true
+                                "label": "VLAN 10"
                               },
                               {
                                 "id": "edge-3",
                                 "from": "h20a",
                                 "to": "sw",
-                                "label": "VLAN 20",
-                                "directed": true
+                                "label": "VLAN 20"
                               },
                               {
                                 "id": "edge-4",
                                 "from": "h20b",
                                 "to": "sw",
-                                "label": "VLAN 20",
-                                "directed": true
+                                "label": "VLAN 20"
                               }
                             ],
                             "highlight": {
@@ -54309,7 +54236,9 @@
                                 "h10b"
                               ],
                               "edges": []
-                            }
+                            },
+                            "name": "G",
+                            "directed": true
                           }
                         }
                       ],
@@ -54455,7 +54384,7 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "Uma ligação trunk transporta as VLANs 10 e 20 entre dois switches.",
-                            "layout": "network",
+                            "layout": "auto",
                             "vertices": [
                               {
                                 "id": "a10",
@@ -54487,36 +54416,31 @@
                                 "id": "edge-1",
                                 "from": "a10",
                                 "to": "s1",
-                                "label": "acesso VLAN 10",
-                                "directed": true
+                                "label": "acesso VLAN 10"
                               },
                               {
                                 "id": "edge-2",
                                 "from": "a20",
                                 "to": "s1",
-                                "label": "acesso VLAN 20",
-                                "directed": true
+                                "label": "acesso VLAN 20"
                               },
                               {
                                 "id": "edge-3",
                                 "from": "s1",
                                 "to": "s2",
-                                "label": "trunk: VLANs 10 e 20",
-                                "directed": true
+                                "label": "trunk: VLANs 10 e 20"
                               },
                               {
                                 "id": "edge-4",
                                 "from": "s2",
                                 "to": "b10",
-                                "label": "acesso VLAN 10",
-                                "directed": true
+                                "label": "acesso VLAN 10"
                               },
                               {
                                 "id": "edge-5",
                                 "from": "s2",
                                 "to": "b20",
-                                "label": "acesso VLAN 20",
-                                "directed": true
+                                "label": "acesso VLAN 20"
                               }
                             ],
                             "highlight": {
@@ -54524,7 +54448,9 @@
                               "edges": [
                                 "edge-3"
                               ]
-                            }
+                            },
+                            "name": "G",
+                            "directed": true
                           }
                         }
                       ],
@@ -55591,6 +55517,7 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "Observe quatro camadas equivalentes em dois sistemas. A ligação destacada exemplifica uma relação lógica entre pares.",
+                            "name": "R",
                             "leftSet": {
                               "label": "Sistema A",
                               "items": [
@@ -56324,7 +56251,7 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "Observe duas redes locais unidas por um elemento central.",
-                            "layout": "star",
+                            "layout": "auto",
                             "vertices": [
                               {
                                 "id": "a1",
@@ -56352,29 +56279,25 @@
                                 "id": "edge-1",
                                 "from": "a1",
                                 "to": "r",
-                                "label": "enlace local A",
-                                "directed": true
+                                "label": "enlace local A"
                               },
                               {
                                 "id": "edge-2",
                                 "from": "a2",
                                 "to": "r",
-                                "label": "enlace local A",
-                                "directed": true
+                                "label": "enlace local A"
                               },
                               {
                                 "id": "edge-3",
                                 "from": "r",
                                 "to": "b1",
-                                "label": "enlace local B",
-                                "directed": true
+                                "label": "enlace local B"
                               },
                               {
                                 "id": "edge-4",
                                 "from": "r",
                                 "to": "b2",
-                                "label": "enlace local B",
-                                "directed": true
+                                "label": "enlace local B"
                               }
                             ],
                             "highlight": {
@@ -56382,7 +56305,9 @@
                                 "r"
                               ],
                               "edges": []
-                            }
+                            },
+                            "name": "G",
+                            "directed": true
                           }
                         }
                       ],
@@ -56867,6 +56792,7 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "Relacione cada camada superior à função central mostrada no outro conjunto.",
+                            "name": "R",
                             "leftSet": {
                               "label": "Camadas",
                               "items": [
@@ -57980,6 +57906,7 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "Observe as correspondências funcionais.",
+                            "name": "R",
                             "leftSet": {
                               "label": "Camadas",
                               "items": [
@@ -58770,12 +58697,18 @@
                       "content": [
                         {
                           "id": "dataprev-redes-l04-ms03-c02-content",
-                          "package": "aralearn.resource.matrix",
+                          "package": "aralearn.resource.table",
                           "version": "1.0.0",
                           "data": {
                             "prompt": "Compare os octetos de 192.0.2.10/24 e 192.0.2.200/24.",
-                            "name": "Endereços",
-                            "values": [
+                            "caption": "Comparação dos octetos dos endereços",
+                            "columns": [
+                              "Primeiro octeto",
+                              "Segundo octeto",
+                              "Terceiro octeto",
+                              "Quarto octeto"
+                            ],
+                            "rows": [
                               [
                                 "192",
                                 "0",
@@ -60736,6 +60669,7 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "Observe como cada requisito se liga à propriedade decisiva.",
+                            "name": "R",
                             "leftSet": {
                               "label": "Requisito",
                               "items": [
@@ -61301,19 +61235,19 @@
                       "content": [
                         {
                           "id": "dataprev-redes-l05-ms02-portas-c05-content",
-                          "package": "aralearn.resource.matrix",
+                          "package": "aralearn.resource.table",
                           "version": "1.0.0",
                           "data": {
                             "prompt": "Compare os campos que individualizam cada comunicação.",
-                            "name": "Fluxos",
-                            "values": [
-                              [
-                                "Fluxo",
-                                "Origem",
-                                "Transporte",
-                                "Porta de origem",
-                                "Porta de destino"
-                              ],
+                            "caption": "Campos que distinguem os fluxos",
+                            "columns": [
+                              "Fluxo",
+                              "Origem",
+                              "Transporte",
+                              "Porta de origem",
+                              "Porta de destino"
+                            ],
+                            "rows": [
                               [
                                 "F1",
                                 "192.0.2.10",
@@ -61618,6 +61552,7 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "Observe as correspondências entre elemento e função.",
+                            "name": "R",
                             "leftSet": {
                               "label": "Elemento",
                               "items": [
@@ -62065,6 +62000,7 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "Observe a correspondência pela operação principal.",
+                            "name": "R",
                             "leftSet": {
                               "label": "Necessidade",
                               "items": [
@@ -63465,7 +63401,7 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "Observe a direção funcional entre os componentes.",
-                            "layout": "network",
+                            "layout": "auto",
                             "vertices": [
                               {
                                 "id": "g-estacao",
@@ -63493,38 +63429,35 @@
                                 "id": "edge-1",
                                 "from": "g-estacao",
                                 "to": "g-gerente",
-                                "label": "executa",
-                                "directed": true
+                                "label": "executa"
                               },
                               {
                                 "id": "edge-2",
                                 "from": "g-gerente",
                                 "to": "g-agente",
-                                "label": "envia solicitação",
-                                "directed": true
+                                "label": "envia solicitação"
                               },
                               {
                                 "id": "edge-3",
                                 "from": "g-agente",
                                 "to": "g-objeto",
-                                "label": "acessa",
-                                "directed": true
+                                "label": "acessa"
                               },
                               {
                                 "id": "edge-4",
                                 "from": "g-agente",
                                 "to": "g-gerente",
-                                "label": "devolve resposta",
-                                "directed": true
+                                "label": "devolve resposta"
                               },
                               {
                                 "id": "edge-5",
                                 "from": "g-agente",
                                 "to": "g-dispositivo",
-                                "label": "atua no",
-                                "directed": true
+                                "label": "atua no"
                               }
-                            ]
+                            ],
+                            "name": "G",
+                            "directed": true
                           }
                         }
                       ],
@@ -63560,6 +63493,7 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "Acompanhe as correspondências entre papel e responsabilidade.",
+                            "name": "R",
                             "leftSet": {
                               "label": "Elemento",
                               "items": [
@@ -63822,7 +63756,7 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "Observe as três setas entre a estação e o dispositivo.",
-                            "layout": "network",
+                            "layout": "auto",
                             "vertices": [
                               {
                                 "id": "d-estacao",
@@ -63838,24 +63772,23 @@
                                 "id": "edge-1",
                                 "from": "d-estacao",
                                 "to": "d-dispositivo",
-                                "label": "pedido de leitura",
-                                "directed": true
+                                "label": "pedido de leitura"
                               },
                               {
                                 "id": "edge-2",
                                 "from": "d-dispositivo",
                                 "to": "d-estacao",
-                                "label": "valor devolvido",
-                                "directed": true
+                                "label": "valor devolvido"
                               },
                               {
                                 "id": "edge-3",
                                 "from": "d-dispositivo",
                                 "to": "d-estacao",
-                                "label": "aviso de evento",
-                                "directed": true
+                                "label": "aviso de evento"
                               }
-                            ]
+                            ],
+                            "name": "G",
+                            "directed": true
                           }
                         }
                       ],
@@ -64087,6 +64020,7 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "Observe as responsabilidades disponíveis.",
+                            "name": "R",
                             "leftSet": {
                               "label": "Papel",
                               "items": [
@@ -64729,6 +64663,7 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "Observe a relação entre cada tipo de aviso e o retorno esperado.",
+                            "name": "R",
                             "leftSet": {
                               "label": "Notificação",
                               "items": [
@@ -64991,7 +64926,7 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "Observe onde os dados são coletados e onde são consumidos.",
-                            "layout": "network",
+                            "layout": "auto",
                             "vertices": [
                               {
                                 "id": "r-segmento",
@@ -65011,24 +64946,23 @@
                                 "id": "edge-1",
                                 "from": "r-segmento",
                                 "to": "r-probe",
-                                "label": "tráfego observado",
-                                "directed": true
+                                "label": "tráfego observado"
                               },
                               {
                                 "id": "edge-2",
                                 "from": "r-probe",
                                 "to": "r-estacao",
-                                "label": "dados consultados",
-                                "directed": true
+                                "label": "dados consultados"
                               },
                               {
                                 "id": "edge-3",
                                 "from": "r-probe",
                                 "to": "r-estacao",
-                                "label": "evento produzido",
-                                "directed": true
+                                "label": "evento produzido"
                               }
-                            ]
+                            ],
+                            "name": "G",
+                            "directed": true
                           }
                         }
                       ],
@@ -65122,6 +65056,7 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "Relacione os grupos selecionados às respectivas funções.",
+                            "name": "R",
                             "leftSet": {
                               "label": "Grupo RMON",
                               "items": [
@@ -65437,12 +65372,17 @@
                       "content": [
                         {
                           "id": "dataprev-redes-l06-ms03-rmon-c08-content",
-                          "package": "aralearn.resource.matrix",
+                          "package": "aralearn.resource.table",
                           "version": "1.0.0",
                           "data": {
                             "prompt": "Cada linha registra um horário e duas contagens do segmento.",
-                            "name": "Amostras do segmento",
-                            "values": [
+                            "caption": "Amostras do segmento por horário",
+                            "columns": [
+                              "Horário",
+                              "Octetos observados",
+                              "Erros observados"
+                            ],
+                            "rows": [
                               [
                                 "08:00",
                                 "1200",
@@ -65886,6 +65826,7 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "Relacione cada necessidade ao mecanismo mais direto.",
+                            "name": "R",
                             "leftSet": {
                               "label": "Necessidade",
                               "items": [
@@ -66353,7 +66294,7 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "Observe os componentes disponíveis.",
-                            "layout": "path",
+                            "layout": "auto",
                             "vertices": [
                               {
                                 "id": "z-estacao",
@@ -66377,24 +66318,23 @@
                                 "id": "edge-1",
                                 "from": "z-estacao",
                                 "to": "z-agente",
-                                "label": "solicitação",
-                                "directed": true
+                                "label": "solicitação"
                               },
                               {
                                 "id": "edge-2",
                                 "from": "z-agente",
                                 "to": "z-objeto",
-                                "label": "acesso local",
-                                "directed": true
+                                "label": "acesso local"
                               },
                               {
                                 "id": "edge-3",
                                 "from": "z-probe",
                                 "to": "z-estacao",
-                                "label": "dados e evento",
-                                "directed": true
+                                "label": "dados e evento"
                               }
-                            ]
+                            ],
+                            "name": "G",
+                            "directed": true
                           }
                         }
                       ],
@@ -66707,6 +66647,7 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "Relacione cada operação ao efeito imediato.",
+                            "name": "R",
                             "leftSet": {
                               "label": "Operações",
                               "items": [
@@ -67031,7 +66972,7 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "As setas mostram a ordem necessária entre operações.",
-                            "layout": "network",
+                            "layout": "auto",
                             "vertices": [
                               {
                                 "id": "td-g1",
@@ -67055,17 +66996,17 @@
                                 "id": "edge-1",
                                 "from": "td-g1",
                                 "to": "td-g2",
-                                "label": "antes de",
-                                "directed": true
+                                "label": "antes de"
                               },
                               {
                                 "id": "edge-2",
                                 "from": "td-g2",
                                 "to": "td-g3",
-                                "label": "antes de",
-                                "directed": true
+                                "label": "antes de"
                               }
-                            ]
+                            ],
+                            "name": "G",
+                            "directed": true
                           }
                         }
                       ],
@@ -67133,6 +67074,7 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "Um técnico associou operações a efeitos; uma relação está ausente.",
+                            "name": "R",
                             "leftSet": {
                               "label": "Operações",
                               "items": [
@@ -67510,6 +67452,7 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "Compare a categoria de cada item.",
+                            "name": "R",
                             "leftSet": {
                               "label": "Itens",
                               "items": [
@@ -67833,7 +67776,7 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "As arestas representam o percurso entre os nós.",
-                            "layout": "path",
+                            "layout": "auto",
                             "vertices": [
                               {
                                 "id": "v-g1",
@@ -67857,24 +67800,23 @@
                                 "id": "edge-1",
                                 "from": "v-g1",
                                 "to": "v-g2",
-                                "label": "envia voz empacotada",
-                                "directed": true
+                                "label": "envia voz empacotada"
                               },
                               {
                                 "id": "edge-2",
                                 "from": "v-g2",
                                 "to": "v-g3",
-                                "label": "entrega voz empacotada",
-                                "directed": true
+                                "label": "entrega voz empacotada"
                               },
                               {
                                 "id": "edge-3",
                                 "from": "v-g4",
                                 "to": "v-g1",
-                                "label": "coordena",
-                                "directed": true
+                                "label": "coordena"
                               }
-                            ]
+                            ],
+                            "name": "G",
+                            "directed": true
                           }
                         }
                       ],
@@ -67942,6 +67884,7 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "As correspondências separam objeto, função e técnica.",
+                            "name": "R",
                             "leftSet": {
                               "label": "Conceitos",
                               "items": [
@@ -68326,6 +68269,7 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "Relacione cada termo ao escopo predominante.",
+                            "name": "R",
                             "leftSet": {
                               "label": "Termos",
                               "items": [
@@ -68657,7 +68601,7 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "As conexões indicam dependências do serviço.",
-                            "layout": "path",
+                            "layout": "auto",
                             "vertices": [
                               {
                                 "id": "ti-g1",
@@ -68685,31 +68629,29 @@
                                 "id": "edge-1",
                                 "from": "ti-g1",
                                 "to": "ti-g2",
-                                "label": "solicita chamada",
-                                "directed": true
+                                "label": "solicita chamada"
                               },
                               {
                                 "id": "edge-2",
                                 "from": "ti-g2",
                                 "to": "ti-g3",
-                                "label": "coordena uso",
-                                "directed": true
+                                "label": "coordena uso"
                               },
                               {
                                 "id": "edge-3",
                                 "from": "ti-g3",
                                 "to": "ti-g4",
-                                "label": "entrega tráfego",
-                                "directed": true
+                                "label": "entrega tráfego"
                               },
                               {
                                 "id": "edge-4",
                                 "from": "ti-g4",
                                 "to": "ti-g5",
-                                "label": "interliga",
-                                "directed": true
+                                "label": "interliga"
                               }
-                            ]
+                            ],
+                            "name": "G",
+                            "directed": true
                           }
                         }
                       ],
@@ -68779,6 +68721,7 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "Duas associações já estão estabelecidas.",
+                            "name": "R",
                             "leftSet": {
                               "label": "Elementos",
                               "items": [
@@ -69177,6 +69120,7 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "Mapa conceitual com referência 2026-07-17.",
+                            "name": "R",
                             "leftSet": {
                               "label": "Recursos",
                               "items": [
@@ -69528,7 +69472,7 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "Estrutura conceitual datada de 2026-07-17.",
-                            "layout": "star",
+                            "layout": "auto",
                             "vertices": [
                               {
                                 "id": "uc-g1",
@@ -69556,31 +69500,29 @@
                                 "id": "edge-1",
                                 "from": "uc-g1",
                                 "to": "uc-g5",
-                                "label": "orienta",
-                                "directed": true
+                                "label": "orienta"
                               },
                               {
                                 "id": "edge-2",
                                 "from": "uc-g2",
                                 "to": "uc-g5",
-                                "label": "compõe",
-                                "directed": true
+                                "label": "compõe"
                               },
                               {
                                 "id": "edge-3",
                                 "from": "uc-g3",
                                 "to": "uc-g5",
-                                "label": "compõe",
-                                "directed": true
+                                "label": "compõe"
                               },
                               {
                                 "id": "edge-4",
                                 "from": "uc-g4",
                                 "to": "uc-g5",
-                                "label": "compõe",
-                                "directed": true
+                                "label": "compõe"
                               }
-                            ]
+                            ],
+                            "name": "G",
+                            "directed": true
                           }
                         }
                       ],
@@ -69652,6 +69594,7 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "Referência 2026-07-17: complete o mapa de funções.",
+                            "name": "R",
                             "leftSet": {
                               "label": "Capacidades",
                               "items": [
@@ -70280,6 +70223,7 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "Observe as correspondências já estabelecidas e complete a função ainda sem ligação.",
+                            "name": "R",
                             "leftSet": {
                               "label": "Função",
                               "items": [
@@ -70840,6 +70784,7 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "Três métodos já estão ligados às suas funções. Complete a correspondência restante.",
+                            "name": "R",
                             "leftSet": {
                               "label": "Método",
                               "items": [
@@ -71318,6 +71263,7 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "Complete as funções dos componentes H.323 descritos em março de 2022.",
+                            "name": "R",
                             "leftSet": {
                               "label": "Componente",
                               "items": [
@@ -72356,6 +72302,7 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "Observe as relações completas entre elementos e categorias.",
+                            "name": "R",
                             "leftSet": {
                               "label": "Elemento",
                               "items": [
@@ -72523,7 +72470,7 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "Em março de 2022, observe uma conferência H.323 em que dois terminais usam uma entidade multiponto; um gateway liga o sistema a outro ambiente.",
-                            "layout": "network",
+                            "layout": "auto",
                             "vertices": [
                               {
                                 "id": "v-ta",
@@ -72551,31 +72498,29 @@
                                 "id": "edge-1",
                                 "from": "v-ta",
                                 "to": "v-mcu",
-                                "label": "mídia",
-                                "directed": true
+                                "label": "mídia"
                               },
                               {
                                 "id": "edge-2",
                                 "from": "v-tb",
                                 "to": "v-mcu",
-                                "label": "mídia",
-                                "directed": true
+                                "label": "mídia"
                               },
                               {
                                 "id": "edge-3",
                                 "from": "v-mcu",
                                 "to": "v-gw",
-                                "label": "comunicação",
-                                "directed": true
+                                "label": "comunicação"
                               },
                               {
                                 "id": "edge-4",
                                 "from": "v-gw",
                                 "to": "v-ext",
-                                "label": "interfuncionamento",
-                                "directed": true
+                                "label": "interfuncionamento"
                               }
-                            ]
+                            ],
+                            "name": "G",
+                            "directed": true
                           }
                         }
                       ],

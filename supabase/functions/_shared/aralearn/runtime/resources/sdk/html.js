@@ -11,6 +11,16 @@ export function escapePackageAttribute(value) {
   return escapePackageHtml(value).replace(/\r?\n/g, "&#10;");
 }
 
+export function renderPackageActionIcon(kind) {
+  if (kind === "answer") {
+    return '<svg class="runtime-feedback-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z"/><circle cx="12" cy="12" r="2.5"/></svg>';
+  }
+  if (kind === "retry") {
+    return '<svg class="runtime-feedback-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 12a8 8 0 1 0 2.3-5.7L4 8.6M4 4v4.6h4.6"/></svg>';
+  }
+  throw new RangeError(`Ícone de ação desconhecido: ${String(kind || "ausente")}.`);
+}
+
 export function packageTextAttributes(value) {
   const languageTag = typeof value?.languageTag === "string" ? value.languageTag.trim() : "";
   const direction = ["auto", "ltr", "rtl"].includes(value?.textDirection)

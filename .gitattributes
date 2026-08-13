@@ -1,0 +1,3 @@
+src/resources/packages/generated.js text eol=lf
+supabase/fixtures/catalog/aralearn-catalogo-recursos-course.json text eol=lf
+supabase/functions/_shared/aralearn/runtime/resources/packages/generated.js text eol=lf

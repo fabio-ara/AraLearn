@@ -11,7 +11,7 @@ const BRIDGE_TOKEN = "aralearn-codex-bridge-token-tests-2026";
 const CARD_PHASES = Object.freeze([
   "card_assistance_representation",
   "card_assistance_build",
-  "card_assistance_resource_repair"
+  "card_assistance_text_edit"
 ]);
 const BOTTOM_UP_PHASES = Object.freeze([
   "bottom_up_operation",

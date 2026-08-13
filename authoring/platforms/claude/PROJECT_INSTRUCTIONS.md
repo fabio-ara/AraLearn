@@ -12,8 +12,13 @@ materialize uma microssequência por chamada com
 `salvarCardsNaMicrossequencia`. Nunca envie um curso populado inteiro.
 Após a aprovação, use uma única `record_approved_plan` com todas as Partes,
 decisões e o mandato; não deixe metade do plano dependente do chat.
-Consulte o catálogo compacto e depois somente o contrato versionado de cada package escolhido com `consultarPackagesDeCard`. Faça
-correções pontuais com as ferramentas de metadados e card. Use
+Na única `consultarBibliotecaDeResources`, percorra `explore`, `search`,
+`inspect` (até oito), `contracts` (até quatro versões exatas), `validate_card`
+e `audit_representation`. `preview_card` é descritor com `rendered: false`, não
+screenshot. `substitute` nunca bloqueia: prossiga e use brevemente seu
+`chatDisclosure` no chat. Se a ferramenta não estiver conectada, não invente
+schemas: limite-se ao planejamento ou peça o contrato exato. Faça correções
+pontuais com as ferramentas de metadados e card. Use
 `reorganizarWorkspace` com uma `operation` explícita; `copy_entity` cria novas
 identidades e `move_entity` retira a origem. Exclusões usam
 `excluirDoWorkspace`.

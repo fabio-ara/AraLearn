@@ -196,19 +196,76 @@ async function bootAuthoring(page) {
     const assistProvider = {
       async generateStructured(request) {
         probe.providerCalls.push({ phase: request.phase, prompt: request.prompt });
-        if (request.phase !== "package_card_assistance_repair") {
+        const envelope = JSON.parse(request.prompt);
+        if (request.phase === "card_assistance_representation") {
+          const candidate = envelope.candidates.find(({ id }) => (
+            id.includes("aralearn.resource.code") &&
+            id.endsWith("+theory")
+          ));
+          if (!candidate) throw new Error("O catálogo não ofereceu Código expositivo.");
+          return { value: { candidateId: candidate.id } };
+        }
+        if (request.phase === "card_assistance_build") {
+          const contentSpec = envelope.selectedComposition.resources.find(
+            ({ slot }) => slot === "content"
+          );
+          return {
+            value: {
+              message: "Troquei a prosa por um exemplo curto de código.",
+              card: {
+                id: "card-a",
+                position: 1,
+                title: "Conjunção em código",
+                role: "theory",
+                content: [{
+                  id: "card-a-content-1",
+                  package: contentSpec.package,
+                  version: contentSpec.version,
+                  data: {
+                    prompt: "Observe quando a conjunção é verdadeira.",
+                    language: "javascript",
+                    code: "const resultado = P && Q;"
+                  }
+                }],
+                response: null,
+                feedback: [],
+                topics: ["conjunção"],
+                sources: []
+              }
+            }
+          };
+        }
+        if (request.phase !== "card_assistance_text_edit") {
           throw new Error(`Fase inesperada: ${request.phase}`);
         }
-        const envelope = JSON.parse(request.prompt);
-        const current = structuredClone(probe.project.courses[0].modules[0]
-          .lessons[0].microsequences[0].cards[0]);
-        if (envelope.repairScope === "card") {
-          current.title = "Conjunção revisada";
-          current.content[0].data.text = "P e Q são verdadeiras ao mesmo tempo.";
-        } else {
-          current.content[0].data.text = "P e Q devem ser simultaneamente verdadeiras.";
+        const requestedText = envelope.userRequest;
+        if (requestedText.startsWith("Explique sem alterar")) {
+          return {
+            value: {
+              message: "A formulação atual já apresenta a distinção solicitada.",
+              edits: []
+            }
+          };
         }
-        return { value: { card: current } };
+        const nextText = requestedText.startsWith("Primeiro")
+          ? "Antes de aplicar a regra, identifique os valores de P e Q."
+          : requestedText.startsWith("Agora")
+            ? "Antes de aplicar a regra, identifique P e Q; por exemplo, V ∧ V produz V."
+            : envelope.scope === "card"
+              ? "P e Q são verdadeiras ao mesmo tempo."
+              : "P e Q devem ser simultaneamente verdadeiras.";
+        const edits = [{ path: "content[0].data.text", value: nextText }];
+        if (envelope.scope === "card") {
+          edits.unshift({ path: "title", value: "Conjunção revisada" });
+        }
+        return {
+          value: {
+            message: envelope.scope === "card"
+              ? "Reescrevi o título e a explicação do card."
+              : "Reescrevi o texto selecionado e preservei o restante do card.",
+            edits
+          }
+        };
       }
     };
     globalThis.__packageAuthoringProbe = probe;
@@ -237,9 +294,16 @@ async function bootAuthoring(page) {
 async function openFirstCard(page) {
   await page.locator('[data-action="open-course"]').click();
   await page.locator('[data-action="open-module"]').click();
-  await page.locator('[data-action="open-lesson"]').click();
-  await page.locator('[data-action="open-microsequence-overview"]').click();
-  await page.locator('[data-action="open-microsequence-card"][data-card-index="0"]').click();
+  if (!await page.locator(".runtime-card-title").isVisible()) {
+    const lesson = page.locator('[data-action="open-lesson"]').first();
+    if (await lesson.isVisible()) await lesson.click();
+    const overview = page.locator('[data-action="open-microsequence-overview"]').first();
+    if (await overview.isVisible()) await overview.click();
+    const card = page.locator(
+      '[data-action="open-microsequence-card"][data-card-index="0"]'
+    ).first();
+    if (await card.isVisible()) await card.click();
+  }
   await expect(page.locator(".runtime-card-title")).toHaveText("Conjunção");
 }
 
@@ -281,6 +345,9 @@ test("edição manual altera só data e preserva o package", async ({ page }) =>
   await openFirstCard(page);
   await selectMode(page, "edit");
   await packageTarget(page, "content:paragraph-1").click();
+  await expect(page.locator(".package-manual-editor-head")).toContainText("Textos editáveis");
+  await expect(page.locator(".package-manual-editor-head")).toContainText("Texto explicado");
+  await expect(page.locator(".package-manual-context")).not.toHaveAttribute("open", "");
   const field = page.locator(
     '[data-resource-edit-target="content:paragraph-1"] [data-manual-edit-path="text"]'
   );
@@ -316,7 +383,7 @@ test("edição manual alcança feedback sem projeção after", async ({ page }) 
     .toBe("Compare agora com a operação de disjunção.");
 });
 
-test("IA repara o card inteiro no contrato por packages e permite desfazer", async ({ page }) => {
+test("chat edita o card e restaura versões anteriores e posteriores sem nova chamada", async ({ page }) => {
   await bootAuthoring(page);
   await openFirstCard(page);
   await selectMode(page, "ai");
@@ -331,11 +398,23 @@ test("IA repara o card inteiro no contrato por packages e permite desfazer", asy
     calls: structuredClone(globalThis.__packageAuthoringProbe.providerCalls)
   }));
   expect(applied.calls.map(({ phase }) => phase)).toEqual([
-    "package_card_assistance_repair"
+    "card_assistance_text_edit"
   ]);
   expect(applied.card.content[0].package).toBe("aralearn.resource.paragraph");
+  const prompt = page.locator('[data-field="assist-prompt"]');
+  await prompt.fill("Volte à versão anterior.");
+  await page.locator('[data-action="submit-card-assistance"]').click();
+  await expect(page.locator(".runtime-card-title")).toHaveText("Conjunção");
+  await expect.poll(() => page.evaluate(
+    () => globalThis.__packageAuthoringProbe.providerCalls.length
+  )).toBe(1);
+  await prompt.fill("Refaça a versão seguinte.");
+  await page.locator('[data-action="submit-card-assistance"]').click();
+  await expect(page.locator(".runtime-card-title")).toHaveText("Conjunção revisada");
   await page.locator('[data-action="undo-card-edit"]').click();
-  await expect(page.getByText("Conjunção", { exact: true })).toBeVisible();
+  await expect(page.locator(".runtime-card-title")).toHaveText("Conjunção");
+  await page.locator('[data-action="redo-card-edit"]').click();
+  await expect(page.locator(".runtime-card-title")).toHaveText("Conjunção revisada");
 });
 
 test("IA limitada ao resource não altera título nem feedback", async ({ page }) => {
@@ -355,6 +434,104 @@ test("IA limitada ao resource não altera título nem feedback", async ({ page }
   ));
   expect(card.title).toBe("Conjunção");
   expect(card.feedback[0].data.text).toBe("Compare com a disjunção.");
+});
+
+test("chat mantém conversa iterativa no mesmo card sem persistir o diálogo", async ({ page }) => {
+  await bootAuthoring(page);
+  await openFirstCard(page);
+  await selectMode(page, "ai");
+  await packageTarget(page, "content:paragraph-1").click();
+  await page.locator('[data-action="toggle-card-assistance-composer"]').click();
+  await expect(page.locator(".card-assistance-scope")).toContainText("A IA pode alterar");
+  await expect(page.locator(".card-assistance-scope")).toContainText("Texto");
+  await expect(page.locator(".card-assistance-scope")).toContainText("Contexto somente leitura");
+  const prompt = page.locator('[data-field="assist-prompt"]');
+  await prompt.fill("Primeiro, situe o conceito.");
+  await page.locator('[data-action="submit-card-assistance"]').click();
+  await expect(prompt).toBeVisible();
+  await expect(prompt).toHaveValue("");
+  await expect(page.locator(".card-assistance-conversation")).toContainText("Primeiro, situe o conceito.");
+  await expect(page.locator(".card-assistance-conversation")).toContainText(
+    "Reescrevi o texto selecionado e preservei o restante do card."
+  );
+  await expect(page.locator(".card-assistance-message-bubble.is-user")).toHaveCount(1);
+  await expect(page.locator(".card-assistance-message-bubble.is-assistant")).toHaveCount(1);
+  await prompt.fill("Agora acrescente um exemplo curto.");
+  await page.locator('[data-action="submit-card-assistance"]').click();
+
+  const probe = await page.evaluate(() => ({
+    calls: structuredClone(globalThis.__packageAuthoringProbe.providerCalls),
+    localState: structuredClone(globalThis.__packageAuthoringProbe.localState)
+  }));
+  expect(probe.calls).toHaveLength(2);
+  const secondEnvelope = JSON.parse(probe.calls[1].prompt);
+  expect(secondEnvelope.priorConversation).toHaveLength(1);
+  expect(secondEnvelope.priorConversation[0].userRequest)
+    .toBe("Primeiro, situe o conceito.");
+  expect(secondEnvelope.priorConversation[0].assistantResponse)
+    .toBe("Reescrevi o texto selecionado e preservei o restante do card.");
+  expect(secondEnvelope.userRequest).toBe("Agora acrescente um exemplo curto.");
+  expect(JSON.stringify(probe.localState)).not.toContain("Primeiro, situe o conceito.");
+  expect(JSON.stringify(probe.localState)).not.toContain("Agora acrescente um exemplo curto.");
+});
+
+test("chat mantém explicação sem alteração na conversa e não persiste o curso", async ({ page }) => {
+  await bootAuthoring(page);
+  await openFirstCard(page);
+  await selectMode(page, "ai");
+  await page.locator('[data-action="toggle-card-assistance-whole-card"]').click();
+  await page.locator('[data-action="toggle-card-assistance-composer"]').click();
+  const prompt = page.locator('[data-field="assist-prompt"]');
+  await prompt.fill("Explique sem alterar por que este texto está adequado.");
+  await page.locator('[data-action="submit-card-assistance"]').click();
+
+  const conversation = page.locator(".card-assistance-conversation");
+  await expect(conversation).toContainText(
+    "Explique sem alterar por que este texto está adequado."
+  );
+  await expect(conversation).toContainText(
+    "A formulação atual já apresenta a distinção solicitada."
+  );
+  await expect(conversation).not.toContainText("Aplicado ao");
+  const probe = await page.evaluate(() => ({
+    card: structuredClone(globalThis.__packageAuthoringProbe.project.courses[0]
+      .modules[0].lessons[0].microsequences[0].cards[0]),
+    saves: structuredClone(globalThis.__packageAuthoringProbe.saves),
+    localState: structuredClone(globalThis.__packageAuthoringProbe.localState)
+  }));
+  expect(probe.card.title).toBe("Conjunção");
+  expect(probe.card.content[0].data.text).toBe("P e Q precisam ser verdadeiras.");
+  expect(probe.saves).toHaveLength(0);
+  expect(probe.localState).toBeNull();
+});
+
+test("chat recompõe estruturalmente o card com um package escolhido no catálogo", async ({ page }) => {
+  await bootAuthoring(page);
+  await openFirstCard(page);
+  await selectMode(page, "ai");
+  await page.locator('[data-action="toggle-card-assistance-whole-card"]').click();
+  await page.locator('[data-action="toggle-card-assistance-composer"]').click();
+  await expect(page.locator(".card-assistance-scope"))
+    .toContainText("Recomposição permitida");
+  await expect(page.locator(".card-assistance-scope"))
+    .toContainText("a identidade e a posição do card são preservadas");
+  await page.locator('[data-field="assist-prompt"]')
+    .fill("Troque a representação por código.");
+  await page.locator('[data-action="submit-card-assistance"]').click();
+  await expect(page.getByText("Conjunção em código", { exact: true })).toBeVisible();
+  const probe = await page.evaluate(() => ({
+    card: structuredClone(globalThis.__packageAuthoringProbe.project.courses[0]
+      .modules[0].lessons[0].microsequences[0].cards[0]),
+    phases: globalThis.__packageAuthoringProbe.providerCalls.map(({ phase }) => phase)
+  }));
+  expect(probe.phases).toEqual([
+    "card_assistance_representation",
+    "card_assistance_build"
+  ]);
+  expect(probe.card.content[0].package).toBe("aralearn.resource.code");
+  expect(probe.card.content[0].data.code).toBe("const resultado = P && Q;");
+  await page.locator('[data-action="undo-card-edit"]').click();
+  await expect(page.locator(".runtime-card-title")).toHaveText("Conjunção");
 });
 
 for (const width of [320, 360, 390, 412]) {

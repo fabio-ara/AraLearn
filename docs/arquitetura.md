@@ -78,18 +78,19 @@ privado automático de conteúdo de Coleções. Curso privado de outra pessoa n�
 fechados. A passagem de privado para catálogo continua exclusiva da autoria
 por Chatbot ou Plugin com MCP.
 
-A autoridade bottom-up é hierárquica e limitada: resources ou card inteiro no
-nível de card; cards selecionados ou o recipiente no nível de
+A autoridade bottom-up é hierárquica e limitada: instâncias de packages ou o
+card inteiro no nível de card; cards selecionados ou o recipiente no nível de
 microssequência; microssequências selecionadas ou o recipiente no nível de
 lição. Todos os filhos precisam estar selecionados para autorizar criação no
 recipiente. O fluxo local não atua em módulo ou curso. Contexto não selecionado
 entra somente para leitura, com vizinhos limitados e um índice compacto da
 lição.
 
-Somente a última alteração concluída conserva uma inversa compacta para
-**Desfazer**. Não há snapshot nem histórico de cópias do curso. A autoria
-extensa pelo Chatbot ou Plugin usa o mesmo motor de composição para operações
-maiores. Não há merge silencioso.
+No card, a assistência mantém uma conversa volátil de até oito turnos e nove
+versões exatas, com desfazer, refazer e restauração. Um turno sem mudança guarda
+somente a explicação e não cria versão. O histórico não é persistido nem se
+confunde com cópias do curso. A autoria extensa pelo Chatbot ou Plugin consulta
+o mesmo catálogo de packages para operações maiores. Não há merge silencioso.
 
 Cada comando do workspace usa `expectedRevision` para recusar uma base
 desatualizada e `requestId` para permitir repetição segura depois de uma falha
@@ -207,6 +208,7 @@ Também não existe pacote SharePoint/SPFx. O aplicativo protege a navegação c
 | Área | Responsabilidade |
 | --- | --- |
 | `src/domain/` e `src/resources/kernel/` | Entidades, envelope da biblioteca, kernel de cards e validação. |
+| `src/resources/catalog/` | Famílias, vocabulário controlado, política de seleção e descoberta progressiva. |
 | `src/resources/packages/` | Manifests, contratos, schemas e renderers independentes. |
 | `src/model/` | Dados preparados para apresentação. |
 | `src/render/` | Composição única dos packages no card. |

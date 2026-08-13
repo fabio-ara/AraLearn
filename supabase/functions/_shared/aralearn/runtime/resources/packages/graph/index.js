@@ -1,139 +1,276 @@
+import { academicProfile } from "../../sdk/academic.js";
 import {
-  escapePackageAttribute,
-  escapePackageHtml,
-  renderPackageInline,
-  renderPackageProse
-} from "../../sdk/html.js";
+  appendGraphvizForeignLabel,
+  dotAttributes,
+  dotQuote,
+  graphvizGroupById,
+  hasGraphvizGap,
+  plainGraphvizLabel,
+  renderGraphvizSvg,
+  unionGraphvizTextBounds
+} from "../../sdk/graphviz.js";
+import { escapePackageAttribute, renderPackageInline, renderPackageProse } from "../../sdk/html.js";
 
-const LAYOUTS = Object.freeze(["auto", "path", "cycle", "star", "hierarchical", "network", "causal"]);
+const LAYOUTS = Object.freeze(["auto", "force", "hierarchical", "circular", "radial"]);
 
-function normalizeText(value) {
+function text(value) {
   return String(value ?? "").trim();
 }
 
-function wrapLabel(value, limit = 16) {
-  const words = normalizeText(value).split(/\s+/u).filter(Boolean);
-  const lines = [];
-  let line = "";
-  words.forEach((word) => {
-    if (!line || `${line} ${word}`.length <= limit) line = line ? `${line} ${word}` : word;
-    else {
-      lines.push(line);
-      line = word;
-    }
-  });
-  if (line) lines.push(line);
-  if (lines.length <= 3) return lines;
-  return [...lines.slice(0, 2), `${lines.slice(2).join(" ").slice(0, limit - 1)}…`];
+function graphName(value) {
+  return text(value) || "G";
 }
 
-function nodePositions(vertices, layout) {
-  const count = vertices.length;
-  const width = 320;
-  const columns = count <= 4 ? 2 : 3;
-  if (["cycle", "star", "network"].includes(layout) && count <= 8) {
-    const radius = count <= 5 ? 88 : 104;
-    return vertices.map((vertex, index) => {
-      if (layout === "star" && index === 0) return { id: vertex.id, x: 160, y: 128 };
-      const ringCount = layout === "star" ? count - 1 : count;
-      const ringIndex = layout === "star" ? index - 1 : index;
-      const angle = ((Math.PI * 2 * ringIndex) / Math.max(1, ringCount)) - (Math.PI / 2);
-      return { id: vertex.id, x: 160 + Math.cos(angle) * radius, y: 128 + Math.sin(angle) * radius };
-    });
-  }
-  const rowCount = Math.ceil(count / columns);
-  return vertices.map((vertex, index) => {
-    const row = Math.floor(index / columns);
-    const itemsInRow = Math.min(columns, count - row * columns);
-    const column = index % columns;
-    const effectiveGap = width / itemsInRow;
-    return {
-      id: vertex.id,
-      x: effectiveGap * (column + 0.5),
-      y: 48 + row * 78
-    };
-  }).map((position) => ({ ...position, height: 80 + rowCount * 78 }));
+function edgeLabel(edge) {
+  if (edge.label) return edge.label;
+  return edge.weight === undefined ? "" : String(edge.weight);
 }
 
-function inferredLayout(data) {
-  if (data.layout && data.layout !== "auto") return data.layout;
-  if (data.vertices.length > 8 || data.edges.length > 12) return "hierarchical";
+function degreeByVertex(data) {
   const degree = new Map(data.vertices.map(({ id }) => [id, 0]));
   data.edges.forEach(({ from, to }) => {
     degree.set(from, (degree.get(from) || 0) + 1);
     degree.set(to, (degree.get(to) || 0) + 1);
   });
-  if ([...degree.values()].some((value) => value >= data.vertices.length - 1)) return "star";
-  if (data.edges.length === data.vertices.length) return "cycle";
-  if (data.edges.length <= Math.max(0, data.vertices.length - 1)) return "path";
-  return "network";
+  return degree;
+}
+
+function graphvizEngine(data) {
+  if (data.layout === "hierarchical") return "dot";
+  if (data.layout === "circular") return "circo";
+  if (data.layout === "radial") return "twopi";
+  if (data.layout === "force") return "neato";
+  if (data.directed) return "dot";
+  const degrees = [...degreeByVertex(data).values()];
+  if (data.vertices.length > 2 && data.edges.length === data.vertices.length && degrees.every((value) => value === 2)) return "circo";
+  if (degrees.some((value) => value === data.vertices.length - 1)) return "twopi";
+  return "neato";
+}
+
+function radialRoot(data) {
+  const degree = degreeByVertex(data);
+  return [...degree.entries()].sort((left, right) => right[1] - left[1])[0]?.[0] || data.vertices[0]?.id;
 }
 
 function graphAccessibleText(data) {
   const names = new Map(data.vertices.map(({ id, label }) => [id, label]));
+  const connector = data.directed ? "leva a" : "liga-se a";
   const relations = data.edges.map((edge) => {
-    const verb = edge.label || edge.weight || (edge.directed ? "leva a" : "se relaciona com");
-    return `${names.get(edge.from)} ${verb} ${names.get(edge.to)}`;
+    const relation = edgeLabel(edge);
+    return `${names.get(edge.from)} ${connector} ${names.get(edge.to)}${relation ? `, com ${relation}` : ""}`;
   });
-  return `${data.prompt} Vértices: ${data.vertices.map(({ label }) => label).join(", ")}. Relações: ${relations.join("; ")}.`;
+  return [
+    data.prompt,
+    `${data.directed ? "Dígrafo" : "Grafo"} ${data.name}, com ${data.vertices.length} vértices e ${data.edges.length} arestas.`,
+    `Vértices: ${data.vertices.map(({ label }) => label).join(", ")}.`,
+    relations.length ? `Arestas: ${relations.join("; ")}.` : "Sem arestas."
+  ].filter(Boolean).join(" ");
 }
 
-function renderNode(vertex, position, highlighted) {
-  const lines = wrapLabel(vertex.label);
-  const y = position.y - ((lines.length - 1) * 8);
-  return `<g class="package-graph-node${highlighted ? " is-highlighted" : ""}" data-graph-node="${escapePackageAttribute(vertex.id)}"><rect x="${position.x - 43}" y="${position.y - 25}" width="86" height="50" rx="12"/><text x="${position.x}" y="${y}" text-anchor="middle">${lines.map((line, index) => `<tspan x="${position.x}" dy="${index ? 16 : 0}">${escapePackageHtml(line)}</tspan>`).join("")}</text></g>`;
+function edgeAccessibleText(data, edge) {
+  const names = new Map(data.vertices.map(({ id, label }) => [id, label]));
+  const relation = edgeLabel(edge);
+  return `${names.get(edge.from)} ${data.directed ? "leva a" : "liga-se a"} ${names.get(edge.to)}${relation ? `, com ${relation}` : ""}.`;
 }
 
-function renderEdge(edge, positions, highlighted) {
-  const from = positions.get(edge.from);
-  const to = positions.get(edge.to);
-  if (!from || !to) return "";
-  return `<g class="package-graph-edge${highlighted ? " is-highlighted" : ""}" data-graph-edge="${escapePackageAttribute(edge.id)}"><line x1="${from.x}" y1="${from.y}" x2="${to.x}" y2="${to.y}"${edge.directed ? " marker-end=\"url(#package-graph-arrow)\"" : ""}/></g>`;
+function graphvizSource(data) {
+  const engine = graphvizEngine(data);
+  const operator = data.directed ? "->" : "--";
+  const graphType = data.directed ? "digraph" : "graph";
+  const graphAttributes = {
+    id: `graph-${data.name}`,
+    bgcolor: "transparent",
+    pad: "0.18",
+    margin: "0",
+    overlap: "false",
+    splines: "true",
+    outputorder: "edgesfirst",
+    ...(engine === "dot" ? { rankdir: "TB", nodesep: "0.48", ranksep: "0.58" } : {}),
+    ...(engine === "twopi" ? { root: radialRoot(data), ranksep: "1.05" } : {})
+  };
+  const nodeLines = data.vertices.map((vertex) => `  ${dotQuote(vertex.id)} ${dotAttributes({
+    id: `graph-vertex-${vertex.id}`,
+    class: `package-math-graph-vertex${data.highlight?.vertices?.includes(vertex.id) ? " is-highlighted" : ""}`,
+    label: plainGraphvizLabel(vertex.label),
+    shape: "circle",
+    width: "0.44",
+    height: "0.44",
+    margin: "0.07,0.04"
+  })};`);
+  const edgeLines = data.edges.map((edge) => `  ${dotQuote(edge.from)} ${operator} ${dotQuote(edge.to)} ${dotAttributes({
+    id: `graph-edge-${edge.id}`,
+    class: `package-math-graph-edge${data.highlight?.edges?.includes(edge.id) ? " is-highlighted" : ""}`,
+    ...(edgeLabel(edge) ? { label: plainGraphvizLabel(edgeLabel(edge)) } : {}),
+    ...(data.directed ? { arrowsize: "0.72" } : {})
+  })};`);
+  return {
+    engine,
+    source: [
+      `${graphType} ${dotQuote(data.name)} {`,
+      `  graph ${dotAttributes(graphAttributes)};`,
+      "  node [fontname=\"Arial\", fontsize=\"16\", penwidth=\"1.15\", color=\"#64748b\", fontcolor=\"#111827\", style=\"solid\"];",
+      "  edge [fontname=\"Arial\", fontsize=\"14\", penwidth=\"1.15\", color=\"#64748b\", fontcolor=\"#111827\"];",
+      ...nodeLines,
+      ...edgeLines,
+      "}"
+    ].join("\n")
+  };
+}
+
+function labelTemplate(kind, id, value) {
+  if (!value) return "";
+  return `<template data-math-graph-${kind}-template="${escapePackageAttribute(id)}"><span class="package-math-graph-label-content">${renderPackageInline(value)}</span></template>`;
+}
+
+function renderGraphFigure(data) {
+  const { engine, source } = graphvizSource(data);
+  const templates = [
+    ...data.vertices.map((vertex) => labelTemplate("vertex", vertex.id, vertex.label)),
+    ...data.edges.filter((edge) => edgeLabel(edge)).map((edge) => labelTemplate("edge", edge.id, edgeLabel(edge)))
+  ].join("");
+  return `<figure class="package-math-graph" data-graphviz-engine="${engine}"><div class="package-math-graph-canvas" data-resource-scroll-frame="diagram" role="img" aria-label="${escapePackageAttribute(graphAccessibleText(data))}" aria-busy="true" tabindex="0" data-graphviz-source="${escapePackageAttribute(source)}"></div>${templates}<figcaption><i>${renderPackageInline(data.name)}</i> = (<i>V</i>, <i>E</i>) · |<i>V</i>| = ${data.vertices.length} · |<i>E</i>| = ${data.edges.length}</figcaption><p class="package-math-graph-layout-error" hidden>Não foi possível diagramar o grafo.</p><ol class="visually-hidden">${data.edges.map((edge) => `<li>${renderPackageInline(edgeAccessibleText(data, edge))}</li>`).join("")}</ol></figure>`;
+}
+
+function vertexBounds(group) {
+  const shape = group?.querySelector("ellipse, polygon, path");
+  if (!shape) return null;
+  const box = shape.getBBox();
+  return { x: box.x + 4, y: box.y + 3, width: Math.max(1, box.width - 8), height: Math.max(1, box.height - 6) };
+}
+
+function replaceInteractiveLabels(figure, svg, data) {
+  data.vertices.forEach((vertex) => {
+    const group = graphvizGroupById(svg, `graph-vertex-${vertex.id}`);
+    if (!group) return;
+    group.dataset.graphVertexId = vertex.id;
+    if (!hasGraphvizGap(vertex.label)) return;
+    const template = figure.querySelector(`template[data-math-graph-vertex-template="${CSS.escape(vertex.id)}"]`);
+    group.querySelectorAll("text").forEach((element) => { element.style.visibility = "hidden"; });
+    appendGraphvizForeignLabel(group, template, vertexBounds(group), "package-math-graph-vertex-label");
+  });
+  data.edges.forEach((edge) => {
+    const group = graphvizGroupById(svg, `graph-edge-${edge.id}`);
+    if (!group) return;
+    group.dataset.graphEdgeId = edge.id;
+    const label = edgeLabel(edge);
+    if (!label || !hasGraphvizGap(label)) return;
+    const texts = [...group.querySelectorAll("text")];
+    const bounds = unionGraphvizTextBounds(texts);
+    const template = figure.querySelector(`template[data-math-graph-edge-template="${CSS.escape(edge.id)}"]`);
+    texts.forEach((element) => { element.style.visibility = "hidden"; });
+    if (!bounds) return;
+    appendGraphvizForeignLabel(group, template, {
+      x: bounds.x - 8,
+      y: bounds.y - 4,
+      width: Math.max(54, bounds.width + 16),
+      height: Math.max(26, bounds.height + 8)
+    }, "package-math-graph-edge-label");
+  });
+}
+
+async function hydrateGraph(figure) {
+  const canvas = figure.querySelector(".package-math-graph-canvas");
+  if (!canvas || canvas.dataset.graphvizStatus === "ready") return;
+  try {
+    const data = JSON.parse(decodeURIComponent(figure.dataset.graphData || ""));
+    const svg = await renderGraphvizSvg(canvas, {
+      source: canvas.dataset.graphvizSource,
+      engine: figure.dataset.graphvizEngine,
+      className: "package-math-graph-svg"
+    });
+    replaceInteractiveLabels(figure, svg, data);
+    canvas.dataset.graphvizStatus = "ready";
+    canvas.setAttribute("aria-busy", "false");
+  } catch (error) {
+    canvas.dataset.graphvizStatus = "error";
+    canvas.setAttribute("aria-busy", "false");
+    const message = figure.querySelector(".package-math-graph-layout-error");
+    if (message) message.hidden = false;
+    throw error;
+  }
+}
+
+function editableTargets(data) {
+  return [
+    { path: "prompt", label: "Editar orientação" },
+    { path: "name", label: "Editar símbolo do grafo" },
+    ...data.vertices.map((_, index) => ({ path: `vertices[${index}].label`, label: `Editar rótulo do vértice ${index + 1}` })),
+    ...data.edges.flatMap((edge, index) => edge.label ? [{ path: `edges[${index}].label`, label: `Editar rótulo da aresta ${index + 1}` }] : [])
+  ];
 }
 
 export const graphPackage = Object.freeze({
   manifest: Object.freeze({
     id: "aralearn.resource.graph",
     version: "1.0.0",
-    label: "Grafo",
-    purpose: "Representar entidades e relações quando a topologia é parte do conceito ensinado.",
+    label: "Grafo matemático",
+    purpose: "Representar grafos e dígrafos abstratos segundo a notação de teoria dos grafos.",
     slots: Object.freeze(["content", "feedback"]),
-    cognitiveOperations: Object.freeze(["trace-relation", "inspect-topology", "compare-path", "identify-connectivity"]),
-    responseCompatibility: Object.freeze(["aralearn.response.choice", "aralearn.response.gap"]),
-    limitations: Object.freeze(["Relações densas são acompanhadas por lista semântica; não comprima muitas ideias em um único grafo.", "Coordenadas e dimensões não são autorais."]),
-    accessibility: "Vértices e relações são integralmente repetidos em texto; rótulos de arestas ficam em uma lista legível."
+    cognitiveOperations: Object.freeze(["inspect-adjacency", "trace-path", "identify-cycle", "compare-degree", "locate-bridge", "analyze-connectivity"]),
+    academic: academicProfile({
+      domains: ["teoria dos grafos", "algoritmos", "pesquisa operacional", "matemática discreta"],
+      knowledgeObjects: ["grafo", "dígrafo", "vértice", "aresta", "caminho", "ciclo", "ponte", "componente"],
+      conventions: ["vértices como círculos discretos", "arestas sem seta em grafos", "setas apenas em dígrafos", "pesos e rótulos associados à aresta", "layout calculado com redução de cruzamentos"],
+      appropriateWhen: ["a topologia abstrata é o próprio objeto de estudo"],
+      avoidWhen: ["os nós são componentes de software, equipamentos de rede, estados ou conceitos", "uma matriz de adjacência é mais adequada à tarefa"],
+      technologies: ["Graphviz", "Viz.js WebAssembly", "SVG", "HTML semântico"],
+      practiceModes: ["exposition", "gap", "typing", "selection"]
+    }),
+    responseCompatibility: Object.freeze(["aralearn.response.gap", "aralearn.response.choice"]),
+    limitations: Object.freeze(["Diagramas nó-aresta densos devem ser divididos ou substituídos por representação matricial apropriada.", "A geometria é derivada e nunca autoral."]),
+    accessibility: "Vértices, cardinalidades e arestas possuem descrição textual equivalente."
   }),
   authoringContract: Object.freeze({
-    intent: "Declare entidades e relações semanticamente; o package calcula geometria e decide quando priorizar a leitura textual.",
-    required: Object.freeze(["prompt", "vertices", "edges"]),
+    intent: "Declare o grafo abstrato; o renderer escolhe engine, posição, curvas e recorte das arestas nos vértices.",
+    required: Object.freeze(["prompt", "name", "directed", "vertices", "edges"]),
     optional: Object.freeze(["layout", "highlight"]),
-    rules: Object.freeze(["Todo from e to referencia um vértice existente.", "Rótulos expressam a relação, não códigos de legenda.", "Divida o conteúdo quando o grafo exigir mais de uma tarefa cognitiva central."]),
+    fieldSemantics: Object.freeze({
+      directed: "false produz grafo sem setas; true produz dígrafo com todas as arestas orientadas.",
+      vertices: "Cada item é um vértice abstrato com identificador estrutural e rótulo matemático curto.",
+      edges: "Cada item liga from a to; repetições formam arestas paralelas e from igual a to forma laço.",
+      weight: "Peso escalar ou simbólico materializado junto da aresta.",
+      layout: "Preferência semântica; auto escolhe pela estrutura, nunca por coordenadas."
+    }),
+    visualGrammar: Object.freeze(["Círculo = vértice.", "Linha sem ponta = aresta de grafo.", "Linha com ponta = arco de dígrafo.", "Texto junto da linha = rótulo ou peso da aresta.", "Cor de destaque não altera a classe matemática do objeto."]),
+    rules: Object.freeze(["Use rótulos curtos e convencionais nos vértices; explicações pertencem ao prompt ou a paragraph.", "Não use graph para arquitetura, mapas conceituais, topologia física ou máquinas de estados.", "Não declare coordenadas, formas ou rotas.", "Divida a tarefa quando a densidade impedir leitura móvel.", "Não declare label e weight simultaneamente na mesma aresta."]),
     example: Object.freeze({
-      prompt: "Observe como a estação consulta o agente.",
-      layout: "path",
-      vertices: [{ id: "station", label: "Estação de gerência" }, { id: "agent", label: "Agente no dispositivo" }, { id: "object", label: "Objeto gerenciado" }],
-      edges: [{ id: "request", from: "station", to: "agent", label: "envia solicitação", directed: true }, { id: "read", from: "agent", to: "object", label: "consulta", directed: true }]
+      prompt: "Observe os dois ciclos ligados por uma ponte e identifique os vértices de articulação.",
+      name: "G",
+      directed: false,
+      layout: "auto",
+      vertices: ["v1", "v2", "v3", "v4", "v5", "v6", "v7", "v8"].map((label) => ({ id: label, label })),
+      edges: [
+        { id: "e12", from: "v1", to: "v2" }, { id: "e23", from: "v2", to: "v3" }, { id: "e31", from: "v3", to: "v1" },
+        { id: "bridge", from: "v3", to: "v4", label: "ponte" },
+        { id: "e45", from: "v4", to: "v5" }, { id: "e56", from: "v5", to: "v6" }, { id: "e64", from: "v6", to: "v4" },
+        { id: "e47", from: "v4", to: "v7" }, { id: "e78", from: "v7", to: "v8" }
+      ],
+      highlight: { vertices: ["v3", "v4"], edges: ["bridge"] }
     })
   }),
   schema: Object.freeze({
     type: "object",
     additionalProperties: false,
-    required: ["prompt", "vertices", "edges"],
+    required: ["prompt", "name", "directed", "vertices", "edges"],
     properties: {
       prompt: { type: "string", minLength: 1 },
+      name: { type: "string", minLength: 1, maxLength: 12 },
+      directed: { type: "boolean" },
       layout: { type: "string", enum: LAYOUTS },
-      vertices: { type: "array", minItems: 1, maxItems: 12, items: { type: "object", additionalProperties: false, required: ["id", "label"], properties: { id: { type: "string", minLength: 1 }, label: { type: "string", minLength: 1 } } } },
-      edges: { type: "array", maxItems: 20, items: { type: "object", additionalProperties: false, required: ["id", "from", "to"], properties: { id: { type: "string", minLength: 1 }, from: { type: "string", minLength: 1 }, to: { type: "string", minLength: 1 }, label: { type: "string" }, weight: { anyOf: [{ type: "string" }, { type: "number" }] }, directed: { type: "boolean" } } } },
+      vertices: { type: "array", minItems: 1, maxItems: 24, items: { type: "object", additionalProperties: false, required: ["id", "label"], properties: { id: { type: "string", minLength: 1 }, label: { type: "string", minLength: 1, maxLength: 64 } } } },
+      edges: { type: "array", maxItems: 60, items: { type: "object", additionalProperties: false, required: ["id", "from", "to"], properties: { id: { type: "string", minLength: 1 }, from: { type: "string", minLength: 1 }, to: { type: "string", minLength: 1 }, label: { type: "string", minLength: 1, maxLength: 120 }, weight: { anyOf: [{ type: "string", minLength: 1, maxLength: 48 }, { type: "number" }] } } } },
       highlight: { type: "object", additionalProperties: false, properties: { vertices: { type: "array", uniqueItems: true, items: { type: "string" } }, edges: { type: "array", uniqueItems: true, items: { type: "string" } } } }
     }
   }),
   normalize(data) {
     return {
-      prompt: normalizeText(data?.prompt),
+      prompt: text(data?.prompt),
+      name: graphName(data?.name),
+      directed: Boolean(data?.directed),
       layout: LAYOUTS.includes(data?.layout) ? data.layout : "auto",
-      vertices: (data?.vertices || []).map((vertex) => ({ id: normalizeText(vertex?.id), label: normalizeText(vertex?.label) })),
-      edges: (data?.edges || []).map((edge) => ({ id: normalizeText(edge?.id), from: normalizeText(edge?.from), to: normalizeText(edge?.to), ...(normalizeText(edge?.label) ? { label: normalizeText(edge.label) } : {}), ...(edge?.weight !== undefined ? { weight: edge.weight } : {}), directed: edge?.directed !== false })),
-      ...((data?.highlight?.vertices?.length || data?.highlight?.edges?.length) ? { highlight: { vertices: (data.highlight.vertices || []).map(normalizeText), edges: (data.highlight.edges || []).map(normalizeText) } } : {})
+      vertices: (data?.vertices || []).map((vertex) => ({ id: text(vertex?.id), label: text(vertex?.label) })),
+      edges: (data?.edges || []).map((edge) => ({ id: text(edge?.id), from: text(edge?.from), to: text(edge?.to), ...(text(edge?.label) ? { label: text(edge.label) } : {}), ...(edge?.weight !== undefined ? { weight: edge.weight } : {}) })),
+      ...((data?.highlight?.vertices?.length || data?.highlight?.edges?.length) ? { highlight: { vertices: (data.highlight.vertices || []).map(text), edges: (data.highlight.edges || []).map(text) } } : {})
     };
   },
   validate(data) {
@@ -144,20 +281,29 @@ export const graphPackage = Object.freeze({
     if (vertices.size !== vertexIds.length) errors.push("Vértices precisam de ids únicos.");
     if (new Set(edgeIds).size !== edgeIds.length) errors.push("Arestas precisam de ids únicos.");
     if (data.edges.some(({ from, to }) => !vertices.has(from) || !vertices.has(to))) errors.push("Aresta referencia vértice inexistente.");
+    if (data.edges.some((edge) => edge.label !== undefined && edge.weight !== undefined)) errors.push("Aresta declara label e weight simultaneamente.");
     if ((data.highlight?.vertices || []).some((id) => !vertices.has(id))) errors.push("Destaque referencia vértice inexistente.");
     if ((data.highlight?.edges || []).some((id) => !edgeIds.includes(id))) errors.push("Destaque referencia aresta inexistente.");
     return errors;
   },
   render(data) {
-    const layout = inferredLayout(data);
-    const rawPositions = nodePositions(data.vertices, layout);
-    const positions = new Map(rawPositions.map((position) => [position.id, position]));
-    const height = Math.max(256, ...rawPositions.map(({ y }) => y + 42));
-    const highlightedVertices = new Set(data.highlight?.vertices || []);
-    const highlightedEdges = new Set(data.highlight?.edges || []);
-    const names = new Map(data.vertices.map(({ id, label }) => [id, label]));
-    return `<div class="runtime-block runtime-graph-block package-graph" data-layout="${layout}" data-density="${data.vertices.length > 8 || data.edges.length > 12 ? "high" : "normal"}">${renderPackageProse(data.prompt)}<svg viewBox="0 0 320 ${height}" role="img" aria-label="${escapePackageAttribute(graphAccessibleText(data))}"><defs><marker id="package-graph-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z"/></marker></defs>${data.edges.map((edge) => renderEdge(edge, positions, highlightedEdges.has(edge.id))).join("")}${data.vertices.map((vertex) => renderNode(vertex, positions.get(vertex.id), highlightedVertices.has(vertex.id))).join("")}</svg><ol class="package-graph-relations" aria-label="Relações do grafo">${data.edges.map((edge, index) => `<li><span class="package-graph-relation-number">${index + 1}</span><span><strong>${renderPackageInline(names.get(edge.from))}</strong> ${edge.directed ? "→" : "—"} <strong>${renderPackageInline(names.get(edge.to))}</strong>${edge.label || edge.weight ? `: ${renderPackageInline(edge.label || String(edge.weight))}` : ""}</span></li>`).join("")}</ol></div>`;
+    const encodedData = encodeURIComponent(JSON.stringify(data));
+    return `<div class="runtime-block runtime-graph-block">${renderPackageProse(data.prompt)}<div data-graph-data="${escapePackageAttribute(encodedData)}">${renderGraphFigure(data)}</div></div>`;
+  },
+  async hydrate(instanceRoot) {
+    await Promise.all([...instanceRoot.querySelectorAll("[data-graph-data]")].map(async (host) => {
+      const figure = host.querySelector(".package-math-graph");
+      if (figure) {
+        figure.dataset.graphData = host.dataset.graphData;
+        await hydrateGraph(figure);
+      }
+    }));
   },
   accessibleText(data) { return graphAccessibleText(data); },
-  editableTargets(data) { return [{ path: "prompt", label: "Editar orientação" }, ...data.vertices.map((_, index) => ({ path: `vertices[${index}].label`, label: `Editar vértice ${index + 1}` })), ...data.edges.map((_, index) => ({ path: `edges[${index}].label`, label: `Editar relação ${index + 1}` }))]; }
+  editableTargets,
+  practiceTargets(data) {
+    return editableTargets(data)
+      .filter(({ path }) => /^(?:vertices|edges)\[/u.test(path))
+      .map((target) => ({ ...target, label: target.label.replace("Editar", "Lacuna em"), modes: ["gap", "typing"] }));
+  }
 });

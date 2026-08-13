@@ -1,61 +1,54 @@
-import { escapePackageAttribute, renderPackageInline, renderPackageProse } from "../../sdk/html.js";
-
-function actionIcon(kind) {
-  return kind === "answer"
-    ? '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z"/><circle cx="12" cy="12" r="2.5"/></svg>'
-    : '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12a8 8 0 1 0 2.3-5.7L4 8.6M4 4v4.6h4.6"/></svg>';
-}
+import {
+  escapePackageAttribute,
+  renderPackageActionIcon,
+  renderPackageInline,
+  renderPackageProse
+} from "../../sdk/html.js";
+import { academicProfile } from "../../sdk/academic.js";
 
 function feedbackHtml(blockKey, feedback) {
   if (!feedback) return "";
   const key = escapePackageAttribute(blockKey);
   if (feedback === "correct") return `<div class="inline-feedback ok"><p class="tiny">Correto.</p></div>`;
   if (feedback === "incomplete") return `<div class="inline-feedback warn"><p class="tiny">Organize todos os itens.</p></div>`;
-  return `<div class="inline-feedback err has-actions"><p class="tiny">A ordem ainda não está correta.</p><div class="feedback-icons"><button class="icon-pill" type="button" data-action="ordering-view-answer" data-response-block-key="${key}" title="Ver resposta" aria-label="Ver resposta">${actionIcon("answer")}</button><button class="icon-pill primary" type="button" data-action="ordering-try-again" data-response-block-key="${key}" title="Tentar de novo" aria-label="Tentar de novo">${actionIcon("retry")}</button></div></div>`;
-}
-
-function itemLabels(data, options) {
-  const target = (options.card?.content || []).find(({ id }) => id === data.targetInstanceId);
-  const items = Array.isArray(target?.data?.items) ? target.data.items : [];
-  return new Map(items.map((item) => [String(item.id), String(item.label || item.text || item.id)]));
+  return `<div class="inline-feedback err has-actions"><p class="tiny">A ordem ainda não está correta.</p><div class="feedback-icons"><button class="icon-pill" type="button" data-action="ordering-view-answer" data-response-block-key="${key}" title="Ver resposta" aria-label="Ver resposta">${renderPackageActionIcon("answer")}</button><button class="icon-pill primary" type="button" data-action="ordering-try-again" data-response-block-key="${key}" title="Tentar de novo" aria-label="Tentar de novo">${renderPackageActionIcon("retry")}</button></div></div>`;
 }
 
 export const orderingResponsePackage = Object.freeze({
   manifest: Object.freeze({
-    id: "aralearn.response.ordering", version: "1.0.0", label: "Ordenação",
+    id: "aralearn.response.ordering", version: "2.0.0", label: "Ordenação",
     purpose: "Pedir que o estudante reconstrua uma ordem causal, temporal ou procedimental.", slots: Object.freeze(["response"]),
     cognitiveOperations: Object.freeze(["order", "reconstruct-process", "sequence-causes"]), responseCompatibility: Object.freeze([]),
+    academic: academicProfile({ domains: ["transversal"], knowledgeObjects: ["ordem de itens", "procedimento reconstruído"], conventions: ["posição explícita", "alternativa ao arraste", "conjunto de itens preservado"], appropriateWhen: ["reconstruir a ordem é a evidência de aprendizagem"], avoidWhen: ["a ordem é arbitrária"], technologies: ["HTML semântico", "controles de movimento acessíveis"], practiceModes: ["ordering"], content: false }),
     limitations: Object.freeze(["Não use para ordem arbitrária ou mera decoração." ]), accessibility: "Oferece botões de mover e posição anunciada; arrastar nunca é obrigatório."
   }),
-  authoringContract: Object.freeze({ intent: "Referencie itens expostos por um package de conteúdo e declare a ordem correta.", required: Object.freeze(["prompt", "targetInstanceId", "itemIds", "answerOrder"]), optional: Object.freeze([]), rules: Object.freeze(["answerOrder contém exatamente os mesmos ids de itemIds."]), example: Object.freeze({ prompt: "Ordene as etapas.", targetInstanceId: "body-1", itemIds: ["s1", "s2"], answerOrder: ["s1", "s2"] }) }),
-  schema: Object.freeze({ type: "object", additionalProperties: false, required: ["prompt", "targetInstanceId", "itemIds", "answerOrder"], properties: { prompt: { type: "string", minLength: 1 }, targetInstanceId: { type: "string", minLength: 1 }, itemIds: { type: "array", minItems: 2, maxItems: 20, uniqueItems: true, items: { type: "string", minLength: 1 } }, answerOrder: { type: "array", minItems: 2, maxItems: 20, uniqueItems: true, items: { type: "string", minLength: 1 } } } }),
-  normalize(data) { return { prompt: String(data?.prompt || "").trim(), targetInstanceId: String(data?.targetInstanceId || "").trim(), itemIds: (data?.itemIds || []).map(String), answerOrder: (data?.answerOrder || []).map(String) }; },
-  validate(data) { const items = [...data.itemIds].sort(); const answer = [...data.answerOrder].sort(); return items.length === answer.length && items.every((id, index) => id === answer[index]) ? [] : ["answerOrder precisa conter exatamente os ids de itemIds."]; },
-  validateCard(card) {
-    const data = card.response.data;
-    const target = (card.content || []).find(({ id }) => id === data.targetInstanceId);
-    if (!target) return ["A ordenação aponta para uma instância de conteúdo inexistente."];
-    const availableIds = new Set((target.data?.items || []).map(({ id }) => String(id)));
-    return data.itemIds.every((id) => availableIds.has(id))
-      ? []
-      : ["A ordenação referencia itens inexistentes no conteúdo indicado."];
+  authoringContract: Object.freeze({ intent: "Declare os blocos que o estudante deve ordenar e a sequência correta, sem depender da estrutura do package de conteúdo.", required: Object.freeze(["prompt", "items", "answerOrder"]), optional: Object.freeze([]), rules: Object.freeze(["Cada item possui id e texto próprios.", "answerOrder contém exatamente os ids declarados em items.", "A ordem precisa ser pedagogicamente significativa."]), example: Object.freeze({ prompt: "Ordene as etapas.", items: [{ id: "s1", label: "Preparar" }, { id: "s2", label: "Executar" }], answerOrder: ["s1", "s2"] }) }),
+  schema: Object.freeze({ type: "object", additionalProperties: false, required: ["prompt", "items", "answerOrder"], properties: { prompt: { type: "string", minLength: 1 }, items: { type: "array", minItems: 2, maxItems: 20, items: { type: "object", additionalProperties: false, required: ["id", "label"], properties: { id: { type: "string", minLength: 1 }, label: { type: "string", minLength: 1 } } } }, answerOrder: { type: "array", minItems: 2, maxItems: 20, uniqueItems: true, items: { type: "string", minLength: 1 } } } }),
+  normalize(data) { return { prompt: String(data?.prompt || "").trim(), items: (data?.items || []).map((item) => ({ id: String(item?.id || "").trim(), label: String(item?.label || "").trim() })), answerOrder: (data?.answerOrder || []).map(String) }; },
+  validate(data) {
+    const itemIds = data.items.map(({ id }) => id);
+    const answer = [...data.answerOrder].sort();
+    const items = [...itemIds].sort();
+    const errors = [];
+    if (new Set(itemIds).size !== itemIds.length) errors.push("Itens de ordenação precisam de ids únicos.");
+    if (items.length !== answer.length || !items.every((id, index) => id === answer[index])) errors.push("answerOrder precisa conter exatamente os ids de items.");
+    return errors;
   },
   render(data, options = {}) {
-    const labels = itemLabels(data, options);
+    const labels = new Map(data.items.map(({ id, label }) => [id, label]));
     const order = Array.isArray(options.responseState?.order)
       ? options.responseState.order
-      : data.itemIds;
+      : data.items.map(({ id }) => id);
     const key = escapePackageAttribute(options.blockKey);
     const body = `<div class="package-ordering-response">${renderPackageProse(data.prompt)}<ol>${order.map((id, index) => `<li data-ordering-item-id="${escapePackageAttribute(id)}"><span>${renderPackageInline(labels.get(id) || id)}</span><span class="package-ordering-controls"><button type="button" data-action="ordering-move" data-response-block-key="${key}" data-ordering-item-id="${escapePackageAttribute(id)}" data-ordering-direction="up" aria-label="Mover para cima"${index === 0 ? " disabled" : ""}>↑</button><button type="button" data-action="ordering-move" data-response-block-key="${key}" data-ordering-item-id="${escapePackageAttribute(id)}" data-ordering-direction="down" aria-label="Mover para baixo"${index === order.length - 1 ? " disabled" : ""}>↓</button></span><span class="visually-hidden">Posição ${index + 1}</span></li>`).join("")}</ol></div>`;
-    const validation = `<button class="choice-check-btn" type="button" data-action="ordering-validate" data-response-block-key="${key}">Conferir</button>`;
     const feedback = feedbackHtml(options.blockKey, options.responseState?.feedback);
     if (Array.isArray(options.dockExerciseParts)) {
-      options.dockExerciseParts.push(validation + feedback);
+      if (feedback) options.dockExerciseParts.push(feedback);
       return body;
     }
-    return body + validation + feedback;
+    return body + feedback;
   },
-  accessibleText(data) { return `${data.prompt} Itens: ${data.itemIds.join(", ")}.`; },
-  editableTargets() { return [{ path: "prompt", label: "Editar pergunta" }]; },
+  accessibleText(data) { return `${data.prompt} Itens: ${data.items.map(({ label }) => label).join(", ")}.`; },
+  editableTargets(data) { return [{ path: "prompt", label: "Editar pergunta" }, ...data.items.map((_, index) => ({ path: `items[${index}].label`, label: `Editar bloco ${index + 1}` }))]; },
   evaluate(data, answer) { const order = Array.isArray(answer?.order) ? answer.order.map(String) : []; return { correct: order.length === data.answerOrder.length && order.every((id, index) => id === data.answerOrder[index]), order, expectedOrder: [...data.answerOrder] }; }
 });

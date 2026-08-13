@@ -26,6 +26,7 @@
     <main class="resource-gallery" aria-label="Galeria de packages"></main>
     <script type="module">
       import { renderPackageCardBlocks } from "/src/render/renderPackageCard.js";
+      import { RESOURCE_PACKAGE_REGISTRY } from "/src/resources/packages/index.js";
 
       const response = await fetch("/tests/fixtures/package/project-resources-gallery.json", {
         cache: "no-store"
@@ -42,6 +43,7 @@
         article.innerHTML = `<h2>${card.title}</h2>${renderPackageCardBlocks(card)}`;
         gallery.append(article);
       });
+      await RESOURCE_PACKAGE_REGISTRY.hydrate(gallery);
       globalThis.__RESOURCE_GALLERY_READY__ = true;
     </script>
   </body>

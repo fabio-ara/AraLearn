@@ -235,7 +235,7 @@ test("materialização aparece na Home única e muda de grupo pelo trailItemId",
   expect(result.hasReset).toBe(false);
 });
 
-test("Play recompõe a posição do card da linha remota e abre o runtime", async ({ page }) => {
+test("Play recompõe a posição e abre diretamente o card de um módulo com lição única", async ({ page }) => {
   const course = structuredClone(PROJECT_FIXTURE.courses[0]);
   const courseItem = {
     ...plan(),
@@ -304,11 +304,7 @@ test("Play recompõe a posição do card da linha remota e abre o runtime", asyn
   await page.locator('[data-action="open-course"]').click();
   await expect(page.locator('[data-action="open-module"]')).toBeVisible();
   await page.locator('[data-action="open-module"]').click();
-  await page.locator('[data-action="open-lesson"]').click();
-  await page.locator('[data-action="open-microsequence-overview"]').click();
-  await page.locator(
-    '[data-action="open-microsequence-card"][data-card-index="0"]'
-  ).click();
+  await expect(page.locator('[data-action="open-lesson"]')).toHaveCount(0);
   await expect(page.locator(".runtime-card-title")).toHaveText("Regra central");
   await expect(page.locator(".home-trails-error")).toHaveCount(0);
 });

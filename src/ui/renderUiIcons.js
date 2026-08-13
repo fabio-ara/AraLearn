@@ -258,6 +258,14 @@ export function renderUiIcon(iconName, className = "ui-icon") {
     );
   }
 
+  if (iconName === "arrow-right") {
+    return (
+      '<svg class="' + classes + '" viewBox="0 0 16 16" aria-hidden="true" focusable="false">' +
+      '<path d="M3.3 8h9.2M8.8 4.3L12.5 8l-3.7 3.7" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"></path>' +
+      "</svg>"
+    );
+  }
+
   if (iconName === "arrow-up" || iconName === "arrow-down") {
     const path = iconName === "arrow-up" ? "M8 12.5V3.8M4.8 7l3.2-3.2L11.2 7" : "M8 3.5v8.7M4.8 9l3.2 3.2L11.2 9";
     return (

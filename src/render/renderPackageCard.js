@@ -18,23 +18,49 @@ function targetId(slot, instance) {
   return instance?.id ? `${slot}:${instance.id}` : "";
 }
 
-function manualFields(instance, slot) {
-  const targets = RESOURCE_PACKAGE_REGISTRY.editableTargets(instance, slot);
+function conciseEditLabel(value) {
+  return String(value || "Texto").replace(/^Editar\s+/iu, "");
+}
+
+function packageLabel(instance) {
+  return RESOURCE_PACKAGE_REGISTRY.listCatalog()
+    .find(({ id, version }) => id === instance.package && version === instance.version)?.label
+    || instance.package;
+}
+
+function textareaRows(value, preserveWhitespace) {
+  const lines = String(value).split("\n").length;
+  const wrappedLines = Math.ceil(String(value).length / (preserveWhitespace ? 44 : 36));
+  return Math.max(2, Math.min(8, Math.max(lines, wrappedLines)));
+}
+
+function manualEditor(instance, slot, readOnlyHtml) {
+  const targets = RESOURCE_PACKAGE_REGISTRY.editableTargets(instance, slot)
+    .map((target) => ({ ...target, value: readPath(instance.data, target.path) }))
+    .filter(({ value }) => typeof value === "string");
   if (!targets.length) return "";
-  return '<div class="package-manual-fields" aria-label="Campos editáveis do recurso">' +
+  const label = packageLabel(instance);
+  return '<section class="package-manual-editor" aria-label="Editar textos de ' +
+    escapePackageAttribute(label) + '">' +
+    '<header class="package-manual-editor-head"><strong>Textos editáveis</strong><span>' +
+    escapePackageHtml(label) + '</span><small>A estrutura do recurso permanece somente leitura.</small></header>' +
+    '<div class="package-manual-fields">' +
     targets.map((target) => {
-      const value = readPath(instance.data, target.path);
-      if (value === undefined || value === null || typeof value === "object") return "";
-      return `<label class="package-manual-field"><span>${escapePackageHtml(target.label || target.path)}</span><span class="package-manual-field-value" data-manual-edit-path="${escapePackageAttribute(target.path)}" data-manual-edit-original="${escapePackageAttribute(value)}" contenteditable="plaintext-only" role="textbox" spellcheck="false" aria-multiline="true" aria-label="${escapePackageAttribute(target.label || "Editar conteúdo")}">${escapePackageHtml(value)}</span></label>`;
+      const fieldLabel = conciseEditLabel(target.label || target.path);
+      const preserveWhitespace = target.preserveWhitespace === true;
+      return `<label class="package-manual-field"><span>${escapePackageHtml(fieldLabel)}</span><textarea class="package-manual-field-value${preserveWhitespace ? " preserves-whitespace" : ""}" rows="${textareaRows(target.value, preserveWhitespace)}" data-manual-edit-path="${escapePackageAttribute(target.path)}" data-manual-edit-original="${escapePackageAttribute(target.value)}"${preserveWhitespace ? ' spellcheck="false"' : ' spellcheck="true"'} aria-label="${escapePackageAttribute(`Editar ${fieldLabel}`)}">${escapePackageHtml(target.value)}</textarea></label>`;
     }).join("") +
-    "</div>";
+    '</div><details class="package-manual-context"><summary>Representação — somente leitura</summary>' +
+    `<div class="package-manual-preview" inert aria-hidden="true">${readOnlyHtml}</div>` +
+    '</details></section>';
 }
 
 function wrapInstance(instance, slot, html, options = {}) {
   const id = targetId(slot, instance);
   const selected = (options.selectedResourceTargetIds || []).includes(id);
   const inlineEditing = options.manualEditingTargetId === id;
-  const packageHtml = `<section class="package-instance" data-package="${escapePackageAttribute(instance.package)}" data-package-version="${escapePackageAttribute(instance.version)}" data-package-instance-id="${escapePackageAttribute(instance.id)}">${html}${inlineEditing ? manualFields(instance, slot) : ""}</section>`;
+  const packageContent = inlineEditing ? manualEditor(instance, slot, html) : html;
+  const packageHtml = `<section class="package-instance" data-package="${escapePackageAttribute(instance.package)}" data-package-version="${escapePackageAttribute(instance.version)}" data-package-instance-id="${escapePackageAttribute(instance.id)}">${packageContent}</section>`;
   if (!options.resourceSelectionEnabled || !id) return packageHtml;
   const label = options.resourceSelectionLabels?.[id] || (selected ? "Retirar recurso do reparo" : "Selecionar recurso para reparo");
   return `<section class="runtime-resource-edit-target${selected ? " is-selected" : ""}${inlineEditing ? " is-inline-editing" : ""}" data-resource-edit-target="${escapePackageAttribute(id)}" data-package-id="${escapePackageAttribute(instance.package)}"${inlineEditing ? ` data-manual-target-id="${escapePackageAttribute(id)}"` : ""}>${inlineEditing ? `<div class="runtime-resource-selection-content">${packageHtml}</div>` : `<button class="runtime-resource-selection-surface" type="button" data-action="toggle-card-assistance-resource" data-resource-target-id="${escapePackageAttribute(id)}" aria-pressed="${selected ? "true" : "false"}" data-card-authoring-focus="resource:${escapePackageAttribute(id)}" aria-label="${escapePackageAttribute(label)}" title="${escapePackageAttribute(label)}"${options.resourceSelectionDisabled ? " disabled aria-disabled=\"true\"" : ""}></button><div class="runtime-resource-selection-content">${packageHtml}</div>`}</section>`;

@@ -61,11 +61,11 @@ Mayer (2009) argumenta que palavras e imagens podem favorecer a compreensão qua
 
 A forma não é decoração. Ela participa do conteúdo quando a relação espacial, tabular, hierárquica ou operacional é parte do que se aprende.
 
-Cada card materializa a representação escolhida diretamente em `resource`,
-orientada pela evidência expressa em `covers` e `checks`. A prática deve
-preservar a forma necessária à operação, sem reduzir código, tabela, árvore,
-grafo, matriz ou fórmula a uma pergunta textual apenas por facilidade de
-produção.
+Cada card materializa a representação escolhida em uma ou mais instâncias de
+packages, orientadas pela evidência expressa em `covers` e `checks`. A prática
+deve preservar a forma necessária à operação, sem reduzir código, tabela,
+árvore, grafo, matriz ou fórmula a uma pergunta textual apenas por facilidade
+de produção.
 
 Quando o estudante completa uma estrutura, a lacuna fica no próprio lugar em que o raciocínio ocorre: uma célula, um trecho de código, um rótulo, um peso, uma coordenada ou um termo de fórmula. A autoria descreve isso por campos JSON conhecidos. O AraLearn valida e compila esses campos de modo determinístico; não tenta converter instruções em português em marcação visual.
 

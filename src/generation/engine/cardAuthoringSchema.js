@@ -34,7 +34,7 @@ export function listCardRepresentationCandidates() {
     feedback: []
   }));
   const standalonePractice = responses
-    .filter(({ id }) => id === "aralearn.response.choice")
+    .filter(({ id }) => ["aralearn.response.choice", "aralearn.response.matching"].includes(id))
     .map((response) => ({
       id: compositionId(null, response),
       role: "practice",
@@ -70,7 +70,9 @@ export function buildCardRepresentationCatalog() {
     slots: manifest.slots,
     cognitiveOperations: manifest.cognitiveOperations,
     responseCompatibility: manifest.responseCompatibility,
-    limitations: manifest.limitations
+    limitations: manifest.limitations,
+    accessibility: manifest.accessibility,
+    academic: manifest.academic
   }));
 }
 

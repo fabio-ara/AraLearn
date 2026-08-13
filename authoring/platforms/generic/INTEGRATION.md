@@ -19,9 +19,11 @@ comando. O Storage recebe o artefato canônico imutável na publicação.
    `criarEstruturaNoWorkspace`;
 5. após a aprovação, use uma única `record_approved_plan` com todas as Partes
    por ids de microssequências, decisões e o mandato humano;
-6. consulte o catálogo compacto com `consultarPackagesDeCard`, escolha os packages pela operação cognitiva, solicite somente seus contratos versionados e salve os cards
-   de uma microssequência por vez com `salvarCardsNaMicrossequencia`; nunca
-   envie um curso populado inteiro;
+6. na única `consultarBibliotecaDeResources`, percorra `explore`, `search`,
+   `inspect` (até oito), `contracts` (até quatro versões exatas), componha o
+   card e use `validate_card` seguido de `audit_representation`; então salve os
+   cards de uma microssequência por vez com
+   `salvarCardsNaMicrossequencia`, sem enviar um curso populado inteiro;
 7. para corrigir, use `atualizarMetadadosDaEntidade` ou
    `salvarCardNoWorkspace`;
 8. conserve a nova revisão e use `microtheories` para revisão humana;
@@ -39,6 +41,13 @@ valor completo e use `gerirContinuidadeDaAutoria` com
 O documento integral é uma visão composta, não o estado que o cliente deve
 reenviar em toda alteração. `listarAlteracoesRecentesDoWorkspace` oferece
 apenas resumos pequenos de até 200 eventos recentes.
+
+`preview_card` devolve sempre um descritor com `rendered: false`; não representa
+screenshot nem validação visual. Se `search` retornar
+`coverage.status: "substitute"`, prossiga com o melhor candidato, use
+brevemente o `chatDisclosure` no chat e preserve a representação ideal na
+decisão autoral. A biblioteca não possui uma operação para despejar todos os
+schemas.
 
 ## Idempotência
 

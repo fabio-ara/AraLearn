@@ -138,7 +138,7 @@ test("codex cli provider expõe generateText sem schema", async () => {
   try {
     const result = await provider.generateText({
       modelId: "codex-local",
-      phase: "card_assistance_resource_repair",
+      phase: "card_assistance_text_edit",
       system: "Responda com reparo estruturado.",
       prompt: "Repare o recurso selecionado."
     });

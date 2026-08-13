@@ -289,12 +289,22 @@ function createJourneyAdapter() {
         target: publication.target,
         courseId: publication.courseId,
         contentHash: publication.contentHash,
-        completionState: publication.completionState,
         updatedAt: NOW
       }));
     return {
       workspaceId: state.workspaceId,
       title: state.title,
+      purpose: "",
+      workspaceKind: "personal",
+      visibility: "private",
+      role: "owner",
+      capabilities: {
+        author: true,
+        review: true,
+        comment: true,
+        publish: true,
+        manage: true
+      },
       revision: state.revision,
       currentRevision: state.revision,
       entityCount: flattenWorkspaceDocument(state.document).length,
@@ -494,8 +504,8 @@ function createJourneyAdapter() {
         revision: state.revision,
         courseId: publishedCourseId,
         contentHash,
-        completionState: "partial",
         target: "private",
+        submissionId: null,
         idempotent: false
       };
     },
@@ -603,8 +613,11 @@ function createJourneyAdapter() {
         courseId: submission.courseId,
         title: submission.title,
         goal: submission.goal,
-        completionState: submission.completionState,
         status: submission.status,
+        sourceRevisionHash: submission.sourceRevisionHash,
+        authorNote: submission.authorNote,
+        reviewerNote: submission.reviewerNote,
+        reviewWorkspaceId: submission.reviewWorkspaceId,
         view,
         content: viewContent(submission.document, {
           view,
@@ -901,13 +914,12 @@ test("jornada Dataprev atravessa Chatbot autoral e Plugin editorial sem snapshot
   });
   assert.equal(structured.revision, contextUpdated.revision + 1);
 
-  await actionCall(chatbot, "consultarPackagesDeCard", {
-    packageId: "aralearn.resource.paragraph",
-    version: "1.0.0"
-  });
-  await actionCall(chatbot, "consultarPackagesDeCard", {
-    packageId: "aralearn.resource.table",
-    version: "1.0.0"
+  await actionCall(chatbot, "consultarBibliotecaDeResources", {
+    operation: "contracts",
+    packages: [
+      { packageId: "aralearn.resource.paragraph", version: "1.0.0" },
+      { packageId: "aralearn.resource.table", version: "1.0.0" }
+    ]
   });
 
   const invalidCardCases = [

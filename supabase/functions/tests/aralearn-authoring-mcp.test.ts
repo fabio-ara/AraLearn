@@ -39,7 +39,16 @@ function adapter() {
       };
     },
     async createWorkspace(command: Record<string, unknown>) {
-      return { workspaceId: command.workspaceId, revision: 1 };
+      return {
+        workspaceId: command.workspaceId,
+        title: command.title,
+        revision: 1,
+        currentRevision: 1,
+        entityCount: 0,
+        createdAt: "2026-08-13T00:00:00.000Z",
+        updatedAt: "2026-08-13T00:00:00.000Z",
+        idempotent: false
+      };
     }
   };
 }

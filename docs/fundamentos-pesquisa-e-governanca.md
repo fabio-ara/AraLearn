@@ -51,18 +51,20 @@ A arquitetura Transformer de Vaswani et al. (2017) tornou-se base relevante para
 
 Na autoria pessoal, o AraLearn não trata a IA como fonte final de verdade. O GPT
 externo com MCP pode propor e transformar estruturas em um workspace; a
-assistência por API dentro do aplicativo atua somente nos resources, cards ou
+assistência por API dentro do aplicativo atua somente nas instâncias, cards ou
 microssequências expressamente autorizados pela seleção. Servidor e aplicativo
-validam suas fronteiras, a pessoa escolhe o escopo e pode desfazer a última
-mudança. A publicação continua sendo uma decisão separada. A intenção é reduzir
-o esforço de autoria sem apagar responsabilidade editorial.
+validam suas fronteiras, a pessoa escolhe o escopo e, no card, pode desfazer,
+refazer ou restaurar versões da conversa curta. A publicação continua sendo
+uma decisão separada. A intenção é reduzir o esforço de autoria sem apagar
+responsabilidade editorial.
 
 Lewis et al. (2020) são relevantes para pensar RAG como geração apoiada por
 recuperação de informação. Na autoria extensa, o AraLearn usa uma forma leve:
 uma busca lexical determinística seleciona até oito unidades versionadas de
-fluxo, pedagogia, resources e segurança, enquanto o schema exato de cada
-resource é consultado somente no primeiro uso. Não há embedding remoto, banco
-vetorial nem armazenamento da conversa nesse mecanismo.
+fluxo, pedagogia, resources e segurança. Em paralelo, a biblioteca de packages
+é consultada progressivamente por intenção e facetas; somente os contratos das
+versões escolhidas entram no contexto. Não há embedding remoto, banco vetorial
+nem armazenamento da conversa nesse mecanismo.
 
 Fontes externas e outros RAGs ainda podem apoiar a pesquisa para um curso, mas
 não entram como verdade automática. A assistência bottom-up do aplicativo não

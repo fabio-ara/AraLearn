@@ -14,7 +14,9 @@ import {
 
 const candidates = [
   { id: "prose", packageId: "aralearn.resource.paragraph", version: "1.0.0", reason: "Situa e explica progressivamente." },
-  { id: "topology", packageId: "aralearn.resource.graph", version: "1.0.0", reason: "Torna relações e caminhos observáveis." },
+  { id: "topology", packageId: "aralearn.resource.network_topology", version: "1.0.0", reason: "Torna equipamentos, segmentos e caminhos de pacote observáveis." },
+  { id: "process", packageId: "aralearn.resource.flow", version: "1.0.0", reason: "Explicita a progressão e as decisões de um processo." },
+  { id: "internal-system", packageId: "aralearn.resource.system_internal_block", version: "1.0.0", reason: "Explicita partes, portas e fluxos internos de um sistema." },
   { id: "mapping", packageId: "aralearn.resource.relation_map", version: "1.0.0", reason: "Contrasta papéis e correspondências." },
   { id: "recall", packageId: "aralearn.response.gap", version: "1.0.0", reason: "Recupera termo já ensinado." },
   { id: "choice", packageId: "aralearn.response.choice", version: "1.0.0", reason: "Discrimina conceitos próximos com distratores funcionais." }
@@ -69,7 +71,7 @@ test("blueprint de Transporte e sistema de nomes progride antes de praticar", ()
       theory("t1", ["end-to-end"], "Dar referente concreto à comunicação entre processos.", "situate", ["prose"]),
       theory("t2", ["ports"], "Explicar como o destino interno é identificado.", "explain", ["prose"]),
       theory("t3", ["transport"], "Contrastar decisões de transporte em cenários concretos.", "explain", ["prose"]),
-      theory("t4", ["names"], "Percorrer a passagem de nome legível a endereço.", "trace-relation", ["topology"])
+      theory("t4", ["names"], "Percorrer a passagem de nome legível a endereço.", "trace-control-flow", ["process"])
     ],
     practiceSteps: [
       practice("p1", ["ports"], "Recuperar o papel da porta", "recall", ["recall"]),
@@ -96,7 +98,7 @@ test("blueprint de SNMP e RMON cria referentes antes das siglas", () => {
     layers,
     theorySteps: [
       theory("t1", ["problem"], "Situar o problema humano e operacional.", "situate", ["prose"]),
-      theory("t2", ["roles"], "Visualizar a direção entre gerente, agente e dispositivo.", "trace-relation", ["topology"]),
+      theory("t2", ["roles"], "Visualizar a direção entre gerente, agente e dispositivo.", "trace-item-flow", ["internal-system"]),
       theory("t3", ["managed-data"], "Relacionar objetos aos identificadores que os localizam.", "map-correspondence", ["mapping"]),
       theory("t4", ["snmp"], "Explicar consultas, alterações e avisos em camadas.", "explain", ["prose"]),
       theory("t5", ["rmon"], "Contrastar coleta local e consulta central.", "explain", ["prose"])
@@ -162,15 +164,30 @@ test("MCP expõe blueprint, catálogo compacto e somente contrato versionado esc
   assert.deepEqual(context.packageContracts, [{
     packageId: "aralearn.resource.graph",
     version: "1.0.0",
-    tool: "consultarPackagesDeCard"
+    tool: "consultarBibliotecaDeResources",
+    operation: "contracts"
   }]);
   const names = AUTHORING_WORKSPACE_MCP_TOOLS.map(({ name }) => name);
-  assert.ok(names.includes("consultarPackagesDeCard"));
-  assert.equal(names.includes("consultarRecursosDeCard"), false);
-  assert.equal(mapAuthoringMcpToolCall("consultarPackagesDeCard", {}).path, "/v1/packages");
+  assert.ok(names.includes("consultarBibliotecaDeResources"));
+  assert.deepEqual(
+    mapAuthoringMcpToolCall("consultarBibliotecaDeResources", {
+      operation: "contracts",
+      packages: [{ packageId: "aralearn.resource.graph", version: "1.0.0" }]
+    }),
+    {
+      kind: "resource-library",
+      body: {
+        operation: "contracts",
+        packages: [{ packageId: "aralearn.resource.graph", version: "1.0.0" }]
+      },
+      requestId: null
+    }
+  );
   assert.throws(
-    () => mapAuthoringMcpToolCall("consultarPackagesDeCard", { packageId: "aralearn.resource.graph" }),
-    /packageId e version/iu
+    () => mapAuthoringMcpToolCall("consultarBibliotecaDeResources", {
+      operation: "contracts"
+    }),
+    /packages/iu
   );
 });
 

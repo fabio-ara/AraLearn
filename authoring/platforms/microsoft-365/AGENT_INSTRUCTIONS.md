@@ -11,8 +11,11 @@ use `expectedRevision` e `requestId`.
 Crie a estrutura em lotes pequenos com `criarEstruturaNoWorkspace` e
 materialize uma microssequência por chamada com
 `salvarCardsNaMicrossequencia`, depois de usar
-`consultarPackagesDeCard`, primeiro para listar manifests e depois para ler somente os contracts escolhidos; nunca envie um curso populado inteiro. Faça
-correções pontuais de metadados ou card. Reorganize com
+`consultarBibliotecaDeResources` na ordem `explore`, `search`, `inspect`,
+`contracts` em lotes de até quatro, `validate_card` e
+`audit_representation`; nunca envie um curso populado inteiro. `preview_card`
+é descritor, não screenshot. `substitute` nunca bloqueia; use brevemente seu
+`chatDisclosure`. Faça correções pontuais de metadados ou card. Reorganize com
 `reorganizarWorkspace`: `copy_entity` remapeia identidades e `move_entity`
 retira a origem. Exclusões usam `excluirDoWorkspace`. No chat, mostre
 microteorias e quantidades de práticas por padrão.

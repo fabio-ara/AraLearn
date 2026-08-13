@@ -6,11 +6,12 @@ curso. Escolha a superfície pela dimensão do trabalho.
 ## Corrigir durante o estudo
 
 Quando a conta tiver permissão, ative **Editar** ou **IA** no próprio conteúdo.
-No card, selecione por contorno um ou mais resources ou o card inteiro para
-reparo. Na microssequência, a seleção integral também permite criar cards; na
-lição, a seleção integral permite criar no máximo uma nova microssequência.
-Escreva um pedido delimitado. O retorno validado aparece diretamente, e a
-última mudança pode ser desfeita.
+No card, selecione por contorno uma ou mais instâncias para editar seus textos,
+ou o card inteiro quando também puder ser necessário recompor a representação.
+Na microssequência, a seleção integral também permite criar cards; na lição, a
+seleção integral permite criar no máximo uma nova microssequência. Escreva um
+pedido delimitado. O retorno validado aparece diretamente, e a conversa permite
+desfazer, refazer ou restaurar versões do card.
 
 ## Construir ou reorganizar
 

@@ -1,8 +1,10 @@
 import {
   createPackageGapMarker,
   escapePackageAttribute,
+  renderPackageActionIcon,
   renderPackageInline
 } from "../../sdk/html.js";
+import { academicProfile } from "../../sdk/academic.js";
 
 function normalizeAnswer(value) { return String(value ?? "").normalize("NFC").trim(); }
 
@@ -40,10 +42,30 @@ function countOccurrences(value, search) {
   return count;
 }
 
-function actionIcon(kind) {
-  return kind === "answer"
-    ? '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z"/><circle cx="12" cy="12" r="2.5"/></svg>'
-    : '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12a8 8 0 1 0 2.3-5.7L4 8.6M4 4v4.6h4.6"/></svg>';
+function locateBlankAnswers(source, blanks) {
+  const claimed = [];
+  return blanks.map(({ blank, index }) => {
+    let offset = 0;
+    let start = -1;
+    while ((start = source.indexOf(blank.answer, offset)) >= 0) {
+      const end = start + blank.answer.length;
+      if (!claimed.some((range) => start < range.end && end > range.start)) {
+        const location = { start, end, blank, index };
+        claimed.push(location);
+        return location;
+      }
+      offset = start + 1;
+    }
+    throw new TypeError(`Lacuna ${blank.id} não encontra uma ocorrência livre da resposta no campo de conteúdo indicado.`);
+  });
+}
+
+function replaceLocatedAnswers(source, locations, replacement) {
+  return [...locations]
+    .sort((left, right) => right.start - left.start)
+    .reduce((value, location) => (
+      value.slice(0, location.start) + replacement(location) + value.slice(location.end)
+    ), source);
 }
 
 function feedbackHtml(blockKey, feedback) {
@@ -51,7 +73,7 @@ function feedbackHtml(blockKey, feedback) {
   const key = escapePackageAttribute(blockKey);
   if (feedback === "correct") return `<div class="inline-feedback ok" data-complete-feedback-block-key="${key}"><p class="tiny">Correto.</p></div>`;
   if (feedback === "incomplete") return `<div class="inline-feedback warn" data-complete-feedback-block-key="${key}"><p class="tiny">Complete todas as lacunas.</p></div>`;
-  return `<div class="inline-feedback err has-actions" data-complete-feedback-block-key="${key}"><p class="tiny">Incorreto. Tente novamente.</p><div class="feedback-icons"><button class="icon-pill" type="button" data-action="complete-view-answer" data-complete-block-key="${key}" title="Ver resposta" aria-label="Ver resposta">${actionIcon("answer")}</button><button class="icon-pill primary" type="button" data-action="complete-try-again" data-complete-block-key="${key}" title="Tentar de novo" aria-label="Tentar de novo">${actionIcon("retry")}</button></div></div>`;
+  return `<div class="inline-feedback err has-actions" data-complete-feedback-block-key="${key}"><p class="tiny">Incorreto. Tente novamente.</p><div class="feedback-icons"><button class="icon-pill" type="button" data-action="complete-view-answer" data-complete-block-key="${key}" title="Ver resposta" aria-label="Ver resposta">${renderPackageActionIcon("answer")}</button><button class="icon-pill primary" type="button" data-action="complete-try-again" data-complete-block-key="${key}" title="Tentar de novo" aria-label="Tentar de novo">${renderPackageActionIcon("retry")}</button></div></div>`;
 }
 
 function choicePrompt(data, options) {
@@ -69,13 +91,14 @@ export const gapResponsePackage = Object.freeze({
     id: "aralearn.response.gap", version: "1.0.0", label: "Lacuna",
     purpose: "Pedir recuperação ou discriminação exatamente no campo semântico declarado pelo conteúdo.", slots: Object.freeze(["response"]),
     cognitiveOperations: Object.freeze(["recall", "complete", "label", "calculate"]), responseCompatibility: Object.freeze([]),
+    academic: academicProfile({ domains: ["transversal"], knowledgeObjects: ["lacuna semântica", "resposta curta"], conventions: ["lacuna no lugar exato do conceito", "equivalentes aceitos explícitos"], appropriateWhen: ["recordar ou completar um elemento localizado é a operação desejada"], avoidWhen: ["a resposta exige argumentação extensa"], technologies: ["HTML semântico", "controles nativos"], practiceModes: ["gap", "typing", "selection"], content: false }),
     limitations: Object.freeze(["O package de conteúdo precisa declarar o targetPath como editável por resposta." ]), accessibility: "Cada lacuna tem prompt, rótulo e controle nativo próprios."
   }),
   authoringContract: Object.freeze({ intent: "Declare lacunas com targetInstanceId e targetPath inequívocos, resposta formal e modo.", required: Object.freeze(["blanks"]), optional: Object.freeze(["prompt"]), rules: Object.freeze(["Não codifique lacunas dentro de strings.", "AcceptedAnswers só contém equivalentes formalmente aceitos."]), example: Object.freeze({ prompt: "Complete o termo.", blanks: [{ id: "protocol", targetInstanceId: "body-1", targetPath: "text:protocol", responseMode: "text", answer: "protocolo" }] }) }),
   schema: Object.freeze({ type: "object", additionalProperties: false, required: ["blanks"], properties: { prompt: { type: "string", maxLength: 2000 }, blanks: { type: "array", minItems: 1, maxItems: 12, items: { type: "object", additionalProperties: false, required: ["id", "targetInstanceId", "targetPath", "responseMode", "answer"], properties: { id: { type: "string", minLength: 1 }, targetInstanceId: { type: "string", minLength: 1 }, targetPath: { type: "string", minLength: 1 }, label: { type: "string" }, responseMode: { type: "string", enum: ["text", "choice"] }, answer: { type: "string", minLength: 1 }, acceptedAnswers: { type: "array", uniqueItems: true, items: { type: "string", minLength: 1 } }, distractors: { type: "array", uniqueItems: true, items: { type: "string", minLength: 1 } } } } } } }),
   normalize(data) { return { ...(data?.prompt ? { prompt: String(data.prompt).trim() } : {}), blanks: (data?.blanks || []).map((blank) => ({ id: String(blank?.id || "").trim(), targetInstanceId: String(blank?.targetInstanceId || "").trim(), targetPath: String(blank?.targetPath || "").trim(), ...(blank?.label ? { label: String(blank.label).trim() } : {}), responseMode: String(blank?.responseMode || "text").trim(), answer: normalizeAnswer(blank?.answer), ...(blank?.acceptedAnswers ? { acceptedAnswers: blank.acceptedAnswers.map(normalizeAnswer) } : {}), ...(blank?.distractors ? { distractors: blank.distractors.map(normalizeAnswer) } : {}) })) }; },
   validate(data) { const errors = []; if (new Set(data.blanks.map(({ id }) => id)).size !== data.blanks.length) errors.push("Lacunas precisam de ids únicos."); data.blanks.forEach((blank) => { if (blank.responseMode === "choice" && (!blank.distractors || blank.distractors.length < 1)) errors.push(`Lacuna ${blank.id} por escolha precisa de distrator.`); if (blank.distractors?.includes(blank.answer)) errors.push(`Lacuna ${blank.id} repete a resposta nos distratores.`); }); return errors; },
-  validateCard(card) {
+  validateCard(card, registry) {
     const errors = [];
     const contents = new Map((card.content || []).map((instance) => [instance.id, instance]));
     const requiredByTarget = new Map();
@@ -86,6 +109,14 @@ export const gapResponsePackage = Object.freeze({
         return;
       }
       const path = fieldPath(blank.targetPath);
+      const requiredMode = blank.responseMode === "choice" ? "gap" : "typing";
+      const declaredTarget = registry?.practiceTargets(instance)?.find((target) => (
+        target.path === path && target.modes.includes(requiredMode)
+      ));
+      if (!declaredTarget) {
+        errors.push(`Lacuna ${blank.id} aponta para um campo não declarado pelo package para ${requiredMode}.`);
+        return;
+      }
       const source = readPath(instance.data, path);
       if (typeof source !== "string") {
         errors.push(`Lacuna ${blank.id} aponta para um campo textual inexistente.`);
@@ -95,44 +126,54 @@ export const gapResponsePackage = Object.freeze({
       requiredByTarget.set(key, (requiredByTarget.get(key) || 0) + 1);
       if (countOccurrences(source, blank.answer) < requiredByTarget.get(key)) {
         errors.push(`Lacuna ${blank.id} não encontra sua resposta no campo de conteúdo indicado.`);
+        return;
+      }
+      if (!registry?.materializesGap?.(instance, card.response, (card.response?.data?.blanks || []).indexOf(blank))) {
+        errors.push(`Lacuna ${blank.id} não materializa um controle visível no renderer do package.`);
       }
     });
     return errors;
   },
   prepareCardForSemantics(card) {
     const visible = structuredClone(card);
-    (visible.response?.data?.blanks || []).forEach((blank) => {
-      const instance = (visible.content || []).find(({ id }) => id === blank.targetInstanceId);
-      if (!instance) return;
-      const path = fieldPath(blank.targetPath);
-      const source = String(readPath(instance.data, path) ?? "");
-      const answerIndex = source.indexOf(blank.answer);
-      if (answerIndex < 0) return;
-      writePath(
-        instance.data,
-        path,
-        source.slice(0, answerIndex) + " […] " + source.slice(answerIndex + blank.answer.length)
-      );
+    (visible.content || []).forEach((instance) => {
+      const grouped = new Map();
+      (visible.response?.data?.blanks || []).forEach((blank, index) => {
+        if (blank.targetInstanceId !== instance.id) return;
+        const path = fieldPath(blank.targetPath);
+        if (!grouped.has(path)) grouped.set(path, []);
+        grouped.get(path).push({ blank, index });
+      });
+      grouped.forEach((blanks, path) => {
+        const source = String(readPath(instance.data, path) ?? "");
+        const locations = locateBlankAnswers(source, blanks);
+        writePath(instance.data, path, replaceLocatedAnswers(source, locations, () => " […] "));
+      });
     });
     return visible;
   },
   prepareContentInstance(instance, response, options = {}) {
     const data = structuredClone(instance.data || {});
+    const grouped = new Map();
     (response.blanks || []).forEach((blank, index) => {
       if (blank.targetInstanceId !== instance.id) return;
       const path = fieldPath(blank.targetPath);
+      if (!grouped.has(path)) grouped.set(path, []);
+      grouped.get(path).push({ blank, index });
+    });
+    grouped.forEach((blanks, path) => {
       const source = String(readPath(data, path) ?? "");
-      const answerIndex = source.indexOf(blank.answer);
-      if (answerIndex < 0) {
-        throw new TypeError(`Lacuna ${blank.id} não encontra sua resposta no campo de conteúdo indicado.`);
-      }
-      const marker = createPackageGapMarker({
-        blockKey: options.responseBlockKey || options.blockKey,
-        index,
-        responseMode: blank.responseMode,
-        value: options.responseState?.values?.[index] ?? ""
-      });
-      writePath(data, path, source.slice(0, answerIndex) + marker + source.slice(answerIndex + blank.answer.length));
+      const locations = locateBlankAnswers(source, blanks);
+      writePath(data, path, replaceLocatedAnswers(source, locations, ({ blank, index }) => (
+        createPackageGapMarker({
+          blockKey: options.responseBlockKey || options.blockKey,
+          index,
+          responseMode: blank.responseMode,
+          layoutText: [blank.answer, ...(blank.acceptedAnswers || [])]
+            .reduce((widest, candidate) => candidate.length > widest.length ? candidate : widest, ""),
+          value: options.responseState?.values?.[index] ?? ""
+        })
+      )));
     });
     return data;
   },
@@ -147,6 +188,6 @@ export const gapResponsePackage = Object.freeze({
     return prompt + feedback;
   },
   accessibleText(data) { return `${data.prompt || "Complete as lacunas."} ${data.blanks.map((blank) => blank.label || blank.id).join("; ")}`; },
-  editableTargets() { return []; },
+  editableTargets(data) { return [...(data.prompt ? [{ path: "prompt", label: "Editar pergunta" }] : []), ...data.blanks.flatMap((blank, index) => [...(blank.label ? [{ path: `blanks[${index}].label`, label: `Editar rótulo ${index + 1}` }] : []), ...(blank.distractors || []).map((_, distractorIndex) => ({ path: `blanks[${index}].distractors[${distractorIndex}]`, label: `Editar distrator ${index + 1}.${distractorIndex + 1}` }))])]; },
   evaluate(data, answer) { const values = answer?.values && typeof answer.values === "object" ? answer.values : {}; const results = data.blanks.map((blank) => { const received = normalizeAnswer(values[blank.id]); const accepted = [blank.answer, ...(blank.acceptedAnswers || [])].map(normalizeAnswer); return { id: blank.id, correct: accepted.includes(received), received, expected: blank.answer }; }); return { correct: results.every(({ correct }) => correct), results }; }
 });

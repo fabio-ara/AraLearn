@@ -66,7 +66,7 @@ test("registro externo fica abaixo do teto da Action e não conserva aliases ant
     assert.equal(authoringMcpToolDefinition(name), null, name);
   }
   for (const name of [
-    "consultarPackagesDeCard",
+    "consultarBibliotecaDeResources",
     "consultarCatalogo",
     "editarCatalogo",
     "retirarDoCatalogo",
@@ -86,7 +86,7 @@ test("grupos mantêm leitura e consequência separadas", () => {
       value
     ])
   );
-  assert.equal(annotations.consultarPackagesDeCard.readOnlyHint, true);
+  assert.equal(annotations.consultarBibliotecaDeResources.readOnlyHint, true);
   assert.equal(annotations.consultarCatalogo.readOnlyHint, true);
   assert.equal(annotations.editarCatalogo.destructiveHint, true);
   assert.equal(annotations.retirarDoCatalogo.destructiveHint, true);
@@ -122,17 +122,26 @@ test("grupos mantêm leitura e consequência separadas", () => {
   );
 });
 
-test("consulta agrupada de packages e catálogo roteia somente leituras compactas", () => {
-  assert.equal(
-    mapAuthoringMcpToolCall("consultarPackagesDeCard", {}).path,
-    "/v1/packages"
+test("biblioteca de resources e catálogo roteiam somente leituras compactas", () => {
+  assert.deepEqual(
+    mapAuthoringMcpToolCall("consultarBibliotecaDeResources", {
+      operation: "explore"
+    }),
+    {
+      kind: "resource-library",
+      body: { operation: "explore" },
+      requestId: null
+    }
   );
-  assert.equal(
-    mapAuthoringMcpToolCall("consultarPackagesDeCard", {
-      packageId: "aralearn.resource.paragraph",
-      version: "1.0.0"
-    }).path,
-    "/v1/packages/aralearn.resource.paragraph?version=1.0.0"
+  assert.deepEqual(
+    mapAuthoringMcpToolCall("consultarBibliotecaDeResources", {
+      operation: "contracts",
+      packages: [{
+        packageId: "aralearn.resource.paragraph",
+        version: "1.0.0"
+      }]
+    }).body.packages,
+    [{ packageId: "aralearn.resource.paragraph", version: "1.0.0" }]
   );
   assert.equal(
     mapAuthoringMcpToolCall("consultarCatalogo", {
@@ -378,7 +387,7 @@ test("discriminadores são obrigatórios, fechados e autorizados por capacidade"
 test("as 30 assinaturas públicas validam, roteiam e recusam kwargs não anunciados", () => {
   const calls = new Map([
     ["prepararAutoriaAraLearn", { intent: "inspect" }],
-    ["consultarPackagesDeCard", {}],
+    ["consultarBibliotecaDeResources", { operation: "explore" }],
     ["listarCursosDaBibliotecaPessoal", {}],
     ["retirarCursoDasTrilhas", {
       requestId: WRITE.requestId,
@@ -520,7 +529,7 @@ test("as 30 assinaturas públicas validam, roteiam e recusam kwargs não anuncia
   );
   for (const [name, argumentsValue] of calls) {
     const mapped = mapAuthoringMcpToolCall(name, argumentsValue);
-    if (mapped.kind !== "knowledge") {
+    if (!new Set(["knowledge", "resource-library"]).has(mapped.kind)) {
       assert.doesNotThrow(
         () => routeRequest(mapped.method, new URL(`https://aralearn.invalid${mapped.path}`).pathname),
         `${name} não alcança uma rota executável.`

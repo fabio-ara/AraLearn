@@ -16,7 +16,7 @@ const DEEPSEEK_PHASE_POLICIES = Object.freeze({
     temperature: 0.1,
     maxTokens: 16000
   }),
-  card_assistance_resource_repair: Object.freeze({
+  card_assistance_text_edit: Object.freeze({
     modelId: DEEPSEEK_V4_FLASH,
     thinking: Object.freeze({ type: "disabled" }),
     temperature: 0.1,

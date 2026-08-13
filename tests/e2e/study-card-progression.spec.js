@@ -499,6 +499,10 @@ async function openMicrosequenceOverview(page, microsequenceKey = null) {
 }
 
 async function openMicrosequenceRuntime(page, microsequenceKey = null) {
+  if (await page.locator(".runtime-card-title").isVisible()) {
+    if (!microsequenceKey) return;
+    await page.locator('[data-action="go-back"]').first().click();
+  }
   await openMicrosequenceOverview(page, microsequenceKey);
   const keySelector = microsequenceKey
     ? `[data-microsequence-key="${microsequenceKey}"]`
@@ -507,6 +511,28 @@ async function openMicrosequenceRuntime(page, microsequenceKey = null) {
     `[data-action="open-microsequence-card"]${keySelector}[data-card-index="0"]`
   ).first().click();
   await expect(page.locator(".runtime-card-title")).toBeVisible();
+}
+
+async function openStudyCardFromCourse(page, {
+  moduleKey = null,
+  lessonKey = null,
+  microsequenceKey = null,
+  interaction = "tap"
+} = {}) {
+  const activate = async (locator) => {
+    if (interaction === "click") await locator.click();
+    else await locator.tap();
+  };
+  const withKey = (action, attribute, key) => page.locator(
+    `[data-action="${action}"]${key ? `[${attribute}="${key}"]` : ""}`
+  ).first();
+
+  await activate(withKey("open-module", "data-module-key", moduleKey));
+  if (!await page.locator(".runtime-card-title").isVisible()) {
+    const lesson = withKey("open-lesson", "data-lesson-key", lessonKey);
+    if (await lesson.isVisible()) await activate(lesson);
+  }
+  await openMicrosequenceRuntime(page, microsequenceKey);
 }
 
 async function readLocalStore(page, storeName) {
@@ -588,9 +614,11 @@ test("shell consolidado permanece operável em paisagem, tablet e desktop", asyn
   await page.keyboard.press("Tab");
   await expect(page.locator(":focus-visible")).toHaveCount(1);
   await page.locator('[data-action="open-course"]').click();
-  await page.locator('[data-action="open-module"][data-module-key="module-teoria-dos-grafos"]').click();
-  await page.locator('[data-action="open-lesson"][data-lesson-key="lesson-vocabulario-contagem"]').click();
-  await openMicrosequenceRuntime(page);
+  await openStudyCardFromCourse(page, {
+    moduleKey: "module-teoria-dos-grafos",
+    lessonKey: "lesson-vocabulario-contagem",
+    interaction: "click"
+  });
   await expect(page.locator(".runtime-card-title")).toBeVisible();
   await assertViewportFit();
   await page.evaluate(() => globalThis.AraLearnTheme.setPreference("dark"));
@@ -740,9 +768,11 @@ test("tema e play respondem imediatamente enquanto a rede não responde", async 
       }, 2_000);
     }));
     expect(resumeDuration).toBeLessThan(500);
-    await page.locator('[data-action="open-module"][data-module-key="module-teoria-dos-grafos"]').tap();
-    await page.locator('[data-action="open-lesson"][data-lesson-key="lesson-vocabulario-contagem"]').tap();
-    await openMicrosequenceRuntime(page, "micro-grafo-como-conjuntos");
+    await openStudyCardFromCourse(page, {
+      moduleKey: "module-teoria-dos-grafos",
+      lessonKey: "lesson-vocabulario-contagem",
+      microsequenceKey: "micro-grafo-como-conjuntos"
+    });
 
     const feedbackDuration = await page.locator('[data-action="next-card"]').evaluate((button) => {
       const startedAt = performance.now();
@@ -814,9 +844,11 @@ test("continuar cria somente estado funcional de retomada", async ({ page }) => 
   page.on("pageerror", (error) => pageErrors.push(error.message));
   await signIn(page, { holdPush: true });
   await page.locator('[data-action="open-course"]').tap();
-  await page.locator('[data-action="open-module"][data-module-key="module-teoria-dos-grafos"]').tap();
-  await page.locator('[data-action="open-lesson"][data-lesson-key="lesson-vocabulario-contagem"]').tap();
-  await openMicrosequenceRuntime(page, "micro-grafo-como-conjuntos");
+  await openStudyCardFromCourse(page, {
+    moduleKey: "module-teoria-dos-grafos",
+    lessonKey: "lesson-vocabulario-contagem",
+    microsequenceKey: "micro-grafo-como-conjuntos"
+  });
 
   await expect(page.locator(".runtime-card-title")).toHaveText("Grafo como dois conjuntos");
   await page.locator('[data-action="next-card"]').tap();
@@ -843,9 +875,11 @@ test("continuar cria somente estado funcional de retomada", async ({ page }) => 
 test("Rever persiste uma decisão pessoal sem registrar desempenho", async ({ page }) => {
   await signIn(page, { holdPush: true });
   await page.locator('[data-action="open-course"]').tap();
-  await page.locator('[data-action="open-module"][data-module-key="module-teoria-dos-grafos"]').tap();
-  await page.locator('[data-action="open-lesson"][data-lesson-key="lesson-vocabulario-contagem"]').tap();
-  await openMicrosequenceRuntime(page, "micro-grafo-como-conjuntos");
+  await openStudyCardFromCourse(page, {
+    moduleKey: "module-teoria-dos-grafos",
+    lessonKey: "lesson-vocabulario-contagem",
+    microsequenceKey: "micro-grafo-como-conjuntos"
+  });
 
   await page.getByRole("button", { name: "Marcar card para rever" }).tap();
   await expect(page.getByRole("button", { name: "Retirar card de Rever" }))
@@ -865,9 +899,11 @@ test("Rever persiste uma decisão pessoal sem registrar desempenho", async ({ pa
 test("observação situada fica editável no card enquanto aguarda reconexão", async ({ page }) => {
   await signIn(page, { holdPush: true });
   await page.locator('[data-action="open-course"]').tap();
-  await page.locator('[data-action="open-module"][data-module-key="module-teoria-dos-grafos"]').tap();
-  await page.locator('[data-action="open-lesson"][data-lesson-key="lesson-vocabulario-contagem"]').tap();
-  await openMicrosequenceRuntime(page, "micro-grafo-como-conjuntos");
+  await openStudyCardFromCourse(page, {
+    moduleKey: "module-teoria-dos-grafos",
+    lessonKey: "lesson-vocabulario-contagem",
+    microsequenceKey: "micro-grafo-como-conjuntos"
+  });
 
   await page.getByRole("button", { name: "Observação do card" }).tap();
   await page.getByText("Possível erro", { exact: true }).tap();
@@ -914,9 +950,11 @@ test("progresso remoto v3 por ids estáveis não bloqueia estudo nem retorno à 
     }
   });
   await page.locator('[data-action="open-course"]').tap();
-  await page.locator('[data-action="open-module"][data-module-key="module-teoria-dos-grafos"]').tap();
-  await page.locator('[data-action="open-lesson"][data-lesson-key="lesson-vocabulario-contagem"]').tap();
-  await openMicrosequenceRuntime(page, "micro-grafo-como-conjuntos");
+  await openStudyCardFromCourse(page, {
+    moduleKey: "module-teoria-dos-grafos",
+    lessonKey: "lesson-vocabulario-contagem",
+    microsequenceKey: "micro-grafo-como-conjuntos"
+  });
 
   await expect(page.locator(".runtime-card-title")).toBeVisible();
   await expect(page.locator('[data-action="select-workbench-pane"]')).toHaveCount(0);
@@ -958,10 +996,11 @@ test("play abre a microssequência escolhida no primeiro card sem avanço implí
 
   await page.locator('[data-action="open-course"]').tap();
   await expect(page.locator('[data-action="open-module"]')).not.toHaveCount(0);
-  await page.locator('[data-action="open-module"][data-module-key="module-teoria-dos-grafos"]').tap();
-  await page.locator('[data-action="open-lesson"][data-lesson-key="lesson-vocabulario-contagem"]').tap();
-
-  await openMicrosequenceRuntime(page, "micro-adjacencia-incidencia");
+  await openStudyCardFromCourse(page, {
+    moduleKey: "module-teoria-dos-grafos",
+    lessonKey: "lesson-vocabulario-contagem",
+    microsequenceKey: "micro-adjacencia-incidencia"
+  });
 
   await expect(page.locator(".runtime-card-title")).toHaveText("Adjacência e incidência");
   await page.waitForTimeout(500);
@@ -1014,9 +1053,11 @@ test("navegação de estudo permanece imediata em um curso extenso", async ({ pa
 test("leitor mobile mantém altura e CTA ancorado entre cards de tamanhos diferentes", async ({ page }) => {
   await signIn(page);
   await page.locator('[data-action="open-course"]').tap();
-  await page.locator('[data-action="open-module"][data-module-key="module-teoria-dos-grafos"]').tap();
-  await page.locator('[data-action="open-lesson"][data-lesson-key="lesson-vocabulario-contagem"]').tap();
-  await openMicrosequenceRuntime(page, "micro-grafo-como-conjuntos");
+  await openStudyCardFromCourse(page, {
+    moduleKey: "module-teoria-dos-grafos",
+    lessonKey: "lesson-vocabulario-contagem",
+    microsequenceKey: "micro-grafo-como-conjuntos"
+  });
 
   const measureReader = () => page.evaluate(() => {
     const surface = document.querySelector(".workbench-surface");
@@ -1302,9 +1343,7 @@ test("o runtime completo executa escolhas, lacunas, fluxograma, popup e anotaç�
   }, { initialProject: project, trailSnapshot });
 
   await page.locator('[data-action="open-course"]').click();
-  await page.locator('[data-action="open-module"]').click();
-  await page.locator('[data-action="open-lesson"]').click();
-  await openMicrosequenceRuntime(page);
+  await openStudyCardFromCourse(page, { interaction: "click" });
   await expect(page.locator(".runtime-card-title")).toHaveText("Escolha");
 
   const reviewButton = page.getByRole("button", { name: "Marcar card para rever" });
@@ -1380,10 +1419,14 @@ test("o runtime completo executa escolhas, lacunas, fluxograma, popup e anotaç�
   await expect(choiceGap).toHaveText("certo");
   await choiceGap.focus();
   await choiceGap.press("Space");
+  await expect(choiceGap).toHaveText("");
+  await expect(choiceGap).toHaveAttribute("data-empty", "true");
+  await expect(page.locator("[data-text-gap-prompt='true']")).toHaveCount(0);
+  await choiceGap.press("Enter");
   await expect(page.locator("[data-text-gap-prompt='true']")).toBeVisible();
-  await expect(
-    page.locator('[data-action="text-gap-set-choice"][data-text-gap-value="certo"]')
-  ).toHaveClass(/active/u);
+  await expect(page.locator(
+    '[data-action="text-gap-set-choice"][data-text-gap-value="certo"]'
+  )).not.toHaveClass(/active/u);
   await page.locator('[data-action="text-gap-set-choice"][data-text-gap-value="certo"]').click();
   await page.locator('[data-action="next-card"]').click();
   await expect(page.locator(".runtime-card-title")).toHaveText("Lacuna livre");

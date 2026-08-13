@@ -4,6 +4,44 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 
 ## [Unreleased]
 
+## [0.0.18] - 2026-08-13
+
+### Added
+
+- biblioteca progressiva de `resources`, organizada por vocabulários e perfis
+  acadêmicos, com descoberta, busca, inspeção, contratos seletivos, validação e
+  auditoria por uma única ferramenta MCP;
+- curso oficial `AraLearn: Catálogo de recursos`, com 32 microssequências e 64
+  cards para exercitar os packages de conteúdo e resposta no fluxo real;
+- conversa iterativa na assistência de cards, com recomposição estrutural,
+  versões limitadas, ramificação, desfazer, refazer e restauração determinística.
+
+### Changed
+
+- o kernel deixa de conhecer a lista concreta de packages; o índice é gerado a
+  partir das pastas instaladas e compartilhado entre navegador e Edge Runtime;
+- o GPT escolhe representações por intenção e facetas antes de receber somente
+  os contratos necessários, podendo combinar múltiplos conteúdos compatíveis;
+- módulos de uma única lição abrem diretamente no ponto de estudo pertinente,
+  sem alterar a hierarquia ou a navegação de Autoria;
+- decisões representacionais substitutivas preservam intenção, limitações e
+  proveniência sem bloquear a produção do curso.
+
+### Fixed
+
+- assistência por API distingue edição textual de troca de representação e
+  conserva explicações sem alteração dentro da conversa;
+- auditoria recusa cards estruturalmente inválidos e não classifica como
+  canônica uma modalidade prática ausente;
+- navegação do histórico reconhece pedidos naturais em português sem confundir
+  menções explicativas, negações, títulos ou rótulos com operações estruturais.
+
+### Removed
+
+- rota produtiva `/teste-recursos`, substituída pelo curso oficial no catálogo;
+- ferramenta intermediária de consulta de packages, endpoints REST paralelos e
+  contrato conversacional anterior da assistência.
+
 ## [0.0.17] - 2026-08-12
 
 ### Changed

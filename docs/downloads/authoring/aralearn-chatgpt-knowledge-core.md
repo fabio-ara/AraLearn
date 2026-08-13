@@ -66,12 +66,13 @@ Enquanto existir mandato, o commit aplica essa fronteira atomicamente: `build_pa
 Materialize exatamente uma microssequência por vez:
 
 1. leia o objetivo, os guias, os tópicos, as dependências e o contexto pertinente;
-2. selecione os resources pela operação cognitiva;
-3. consulte o contrato de cada resource antes do primeiro uso;
+2. use `consultarBibliotecaDeResources` com `explore`, `search` e `inspect` para escolher os resources pela operação cognitiva e pela estrutura;
+3. use `contracts` em lotes de até quatro versões exatas e componha o card sem inventar campos;
 4. produza uma microteoria pequena e base suficiente;
 5. produza práticas variadas, autocontidas e verificáveis que consolidem a mesma microteoria;
-6. use `salvarCardsNaMicrossequencia` para validar e salvar o conjunto daquela unidade;
-7. releia o recorte necessário antes de avançar.
+6. passe cada composição por `validate_card` e `audit_representation`; se a busca devolver `substitute`, prossiga com a aproximação e use seu `chatDisclosure` brevemente no chat;
+7. use `salvarCardsNaMicrossequencia` para salvar o conjunto daquela unidade;
+8. releia o recorte necessário antes de avançar.
 
 Essa composição reduz o tamanho de cada chamada e limita uma eventual correção à unidade afetada, sem transformar cada card em um fluxo isolado. Em `append`, a ordem do array é anexada ao fim e o servidor renumera `position`; o resumo devolve `positionsNormalized: true`.
 
@@ -172,7 +173,7 @@ Depois da aprovação ou ajuste, use `record_approved_plan` uma vez para gravar 
 
 ## Construção
 
-Construa somente a parte pedida, uma microssequência por chamada. Consulte os resources antes do primeiro uso. Ao terminar, apresente microteorias, quantidades de práticas, resources, termos e decisões de escopo, sem despejar JSON ou todas as práticas.
+Construa somente a parte pedida, uma microssequência por chamada. Para escolher resources, percorra `explore`, `search`, `inspect` e `contracts` na única `consultarBibliotecaDeResources`; valide o card e audite sua representação antes de salvar. Um `substitute` não bloqueia a construção: preserve a intenção ideal e comunique a aproximação em uma linha natural. Ao terminar, apresente microteorias, quantidades de práticas, resources, termos e decisões de escopo, sem despejar JSON ou todas as práticas.
 
 ## Auditoria
 
@@ -252,7 +253,8 @@ A Action devolve caminhos em `error.issues` e orientação em `error.recovery`. 
 - A progressão é observável na ordem dos cards: fundamento, exemplo resolvido, prática guiada e prática com menor apoio, quando essas etapas forem pertinentes. Não invente metadados de função por card; a sequência e o conteúdo precisam demonstrar a progressão.
 - Uma microssequência que ensina uma operação nova não começa pela cobrança da operação nem termina apenas na explicação.
 - A quantidade de práticas decorre da complexidade de `checks`, dos erros previsíveis e da necessidade de retomada. Quando houver várias práticas, torne visível a variação de caso, representação, estratégia, erro provável ou grau de apoio.
-- O recurso escolhido corresponde à operação cognitiva. Consulte primeiro o catálogo compacto de packages instalados. Só depois de escolher recupere o contrato da versão exata. Não reduza a autoria a texto e escolha quando outro package preservar melhor o raciocínio.
+- O recurso escolhido corresponde à operação cognitiva. Em `consultarBibliotecaDeResources`, percorra `explore`, `search`, `inspect` e `contracts`, estes em lotes de até quatro versões exatas. Use `validate_card` e depois `audit_representation`: a auditoria distingue `semantic_fit` no conteúdo, `response_affordance` na resposta e `feedback_legibility` no feedback. Não reduza a autoria a texto e escolha quando outro package preservar melhor o raciocínio.
+- A ausência de package canônico não paralisa a produção. `canonical` é o ajuste específico e `versatile` preserva a estrutura por uma convenção transversal. Se `coverage.status` for `substitute`, use o melhor candidato, incorpore brevemente o `chatDisclosure` devolvido e registre a representação desejada na decisão autoral. Não esconda a perda nem transforme a observação em burocracia.
 - A escolha fica materializada em uma instância de package de `card.content`, `card.response` ou `card.feedback`. Confira se ela preserva `microsequence.goal`, `covers` e `checks`; não acrescente ao JSON um bloco paralelo de preferências de representação.
 - A diversidade de recursos decorre do conteúdo. Não estabeleça cota e não troque o formato apenas para variar a aparência.
 - A retomada de conhecimentos anteriores usa `dependsOn`, os tópicos da lição e conteúdo anterior visível. Um conceito só pode ser recuperado depois de uma apresentação anterior na mesma cadeia causal.
@@ -262,6 +264,8 @@ A Action devolve caminhos em `error.issues` e orientação em `error.recovery`. 
 
 ## Construção dos cards
 
+- Um card de teoria realiza um avanço conceitual identificável. Não concentre definição, mecanismo, exceções, comparação, exemplo e consequências numa única representação para economizar cards. Distribua a explicação em aproximações sucessivas até cobrir o escopo e a profundidade planejados.
+- Dividir a teoria não significa resumir. Cada card oferece a fundamentação necessária para compreender seu avanço, sem premissas ocultas; o card seguinte acrescenta uma camada, em vez de pressupor que a pessoa preencherá as lacunas recorrendo a outra fonte.
 - Um card de prática mede uma decisão principal.
 - A prática é autossuficiente. O enunciado não depende de imagem, texto ou aula ausente.
 - Dados voláteis aparecem no próprio card: valores, nomes, trechos de código, tabelas, casos, coordenadas, opções e demais elementos particulares da questão não podem existir apenas em um card anterior. Conceitos e notações já ensinados podem ser mobilizados, mas o caso que será resolvido precisa estar completo.
@@ -269,6 +273,7 @@ A Action devolve caminhos em `error.issues` e orientação em `error.recovery`. 
 - Cada item de `microsequence.checks` precisa chegar a uma prática observável. Quando útil, `card.topics` liga o card aos IDs declarados em `lesson.topics`; não crie campos adicionais para resultados ou funções.
 - A diferença entre práticas próximas deve estar no conteúdo observável: caso, condição, representação, estratégia, erro provável ou grau de apoio.
 - Uma prática cobra uma decisão principal. Ela pode mobilizar pré-requisitos aprovados, mas não pode exigir que a pessoa reconstrua o caso a partir de posição, cor, legenda extensa, card anterior, feedback ou resposta oculta.
+- Um card de prática pode reunir mais dados e elementos visuais que um card de teoria quando o contexto completo for necessário à decisão. Essa densidade precisa servir ao gesto cognitivo principal; não autoriza inventário de assuntos, ornamentação ou relações irrelevantes.
 - Termo técnico, símbolo, sigla, unidade, papel, convenção ou relação nova recebe explicação suficiente antes de ser exigido. Expanda a sigla na primeira ocorrência e explique sua função, não apenas as letras. Para comando, utilitário ou palavra reservada, apresente forma literal, significado, função e ambiente; por exemplo, `pwd` significa `print working directory` e mostra o diretório de trabalho atual. Não use jargão mais avançado como explicação de uma lacuna conceitual.
 - Quando o estudante deve completar uma representação, use um package de resposta compatível com o conteúdo. A lacuna, as alternativas ou os itens ordenáveis pertencem ao contrato específico desse package; não descreva a posição da resposta em prosa.
 - A lacuna mede a operação planejada e não pode ter a resposta exposta em título, enunciado, rótulo, outra opção, feedback antecipado, estrutura visível ou geometria derivada do mesmo card. O feedback explica a condição decisiva e não fornece a base que faltava para responder.
@@ -304,11 +309,13 @@ A Action devolve caminhos em `error.issues` e orientação em `error.recovery`. 
 
 ## Leitura de representações estruturadas
 
+- Um package especializado só é justificável quando preserva uma estrutura que seria perdida em `paragraph`, `table` ou package existente. Aplique a policy devolvida por `explore`; aparência diferente ou variedade não são evidência.
+- A representação escolhida precisa tornar a relação relevante mais imediata e previsível pelas convenções da área do que seria em prosa ou numa forma mais simples. Se a pessoa precisar decifrar a interface, cruzar uma legenda distante ou aprender uma gramática criada pelo renderer, rejeite a escolha, decomponha o conteúdo ou corrija o package. Não acrescente um tutorial visual para compensar uma representação inadequada.
 - Todo recurso estruturado deixa explícitos o objeto, a relação e a operação de leitura. A posição, a cor, um identificador interno ou uma legenda distante não podem ser a única forma de entender um dado necessário.
 - Entidades que precisam ser distinguidas possuem nomes visíveis e inequívocos. Rótulos, unidades, direção, ordem, escala e destaque necessários aparecem no próprio card.
-- Em `graph`, vértices representam entidades ou papéis estáveis e arestas representam relações nomeáveis. Direção só é usada quando altera a interpretação. Componentes independentes são distinguidos no enunciado ou separados em cards; uma legenda não pode exigir que a pessoa adivinhe a correspondência entre abreviação e papel.
+- Em `graph`, círculos representam vértices abstratos e linhas representam arestas; setas só aparecem em dígrafos. O objeto é matemático: adjacência, caminho, ciclo, grau, ponte e conectividade justificam seu uso. Componentes de software, equipamentos, estados e conceitos exigem packages próprios.
 - Em `flow`, cada ramo torna explícitas condição e consequência. Em `tree`, a ligação preserva leitura pai-filho. Em `relation_map`, os conjuntos e a natureza do pareamento são claros. Em `matrix`, `plane` e `formula`, unidades, eixos, ordem, notação e convenções necessárias aparecem antes da decisão.
-- Em `system_map`, grupos correspondem a limites ou regiões identificáveis, componentes declaram pertencimento e conexões têm origem, destino, direção e rótulo quando semanticamente necessários. Não use a posição visual como única evidência de pertencimento.
+- Em `software_system_context`, há um único sistema em foco, pessoas e sistemas externos; nenhum componente interno é admitido. Em `software_container`, a fronteira reúne aplicações e armazenamentos implantáveis, cada qual com tecnologia e responsabilidade. Em `system_internal_block`, partes tipadas expõem portas e conectores segundo a gramática de diagrama interno do SysML. Não use posição ou cor como única evidência semântica.
 - Em `reaction`, reagentes e produtos ocupam lados distintos, coeficientes e estados pertencem à espécie correta e a seta/condição corresponde ao fenômeno descrito. Uma equação simbólica não substitui representação macroscópica ou submicroscópica quando a coordenação entre níveis é o objetivo.
 
 ## Revisão antes de aceitar
@@ -487,13 +494,19 @@ Um card é um envelope fechado:
 
 `role` aceita `theory` ou `practice`. Teoria tem `response: null` e ao menos uma instância em `content`; prática usa exatamente uma instância de package no slot `response`. Uma prática exclusivamente discriminativa pode ter `content: []`: a pergunta pertence somente a `aralearn.response.choice` e nunca deve ser copiada para um `paragraph`. Quando há cenário, representação ou dados além da pergunta, `content` os materializa sem repetir o enunciado. `feedback` pode combinar packages compatíveis. Cada instância declara id, package, versão semântica e `data` validado pelo contrato daquele package.
 
-Não existe contrato monolítico de resources. Primeiro planeje a operação cognitiva, consulte o catálogo compacto, escolha os packages e só então obtenha o contrato da versão exata de cada escolha. Nunca invente campos ou coordenadas.
+Não existe contrato monolítico de resources. Primeiro planeje a operação cognitiva e a estrutura que precisa permanecer visível. Em `consultarBibliotecaDeResources`, use `explore` para conhecer famílias e facetas, `search` para receber candidatos classificados, `inspect` para conferir os perfis e `contracts` para carregar, em lotes de até quatro, somente as versões escolhidas. Antes de persistir, use `validate_card` e `audit_representation`. `preview_card` apenas descreve a composição: a prévia visual fiel pertence ao renderer do aplicativo. Nunca invente campos ou coordenadas. Toda resposta dessa ferramenta segue `aralearn.resource-library.v1`.
+
+`canonical` indica ajuste específico; `versatile`, uma representação transversal que preserva a estrutura; `substitute`, a melhor aproximação instalada. Somente `coverage.status: "substitute"` traz `chatDisclosure`. Um substituto não bloqueia a autoria: use-o, incorpore essa observação brevemente e com naturalidade no chat e registre na decisão autoral a representação ideal, para permitir futura troca quando surgir um package mais adequado.
+
+`validate_card` confere o envelope, schemas, referências e compatibilidades. `audit_representation` acrescenta a análise de `semantic_fit` para conteúdo, `response_affordance` para resposta e `feedback_legibility` para feedback. `preview_card` sempre devolve `rendered: false`: é um descritor estrutural, não screenshot nem substituto para a prévia no renderer do aplicativo.
+
+Antes de escolher um package especializado, aplique uma vez a policy devolvida por `explore`. Depois leia, no perfil do candidato, `conventions`, `useWhen` e `avoidWhen`. A forma só é admitida quando preserva estrutura necessária à operação, torna a relação mais previsível e não acrescenta gramática visual a ser decifrada. Diversidade visual não é motivo de seleção. Na teoria, avance sem condensar assuntos; na prática, mantenha no card o caso completo e somente a complexidade necessária ao gesto cognitivo.
 
 Microssequências sem cards continuam no planejamento. Com cards, ficam imediatamente renderizáveis e estudáveis. Não envie status de publicação, conclusão ou prontidão.
 
 IDs são estáveis; `position` ordena cards. Cópias e importações remapeiam IDs. Campos desconhecidos são erro. O backend valida o envelope, cada package, as referências estruturais, os guides, tópicos e fontes antes de persistir.
 
-Na assistência local, alvos são `content:<id>`, `response:<id>` e `feedback:<id>`. Reparos textuais preservam identidade, package, versão, estrutura e respostas formais.
+Na assistência local, alvos são `content:<id>`, `response:<id>` e `feedback:<id>`. Selecionar alvos preserva identidade, package, versão, estrutura e respostas formais e autoriza somente a edição de seus textos visíveis. Selecionar o card inteiro também pode recompor a representação e a prática, mantendo apenas `card.id` e `position`. A conversa recebe o resultado corrente e pode iterar ou restaurar uma versão anterior sem pedir ao modelo que recrie o texto perdido.
 
 ---
 
@@ -638,6 +651,20 @@ Variações de prática mudam dados, contexto, representação ou grau de apoio,
 ## Alterações correntes
 
 Cada mudança de continuidade altera somente as partes afetadas no estado corrente do workspace. `expectedRevision` impede que uma decisão antiga sobrescreva reorganização mais recente. O feed de alterações guarda resumos recentes para orientar a conversa, sem snapshots comparáveis nem restauração de versões anteriores.
+
+## Decisões de representação
+
+Uma escolha de `resource` que precise sobreviver à conversa é registrada por `record_decision`, ligada à microssequência planejada ou ao card já materializado. A decisão conserva `representationSelection` com:
+
+- `intent`: a intenção didática e representacional em linguagem clara;
+- `chosen`: `packageId` e versão exata efetivamente usados;
+- `fit`: `canonical`, `versatile` ou `substitute`;
+- `desiredResource`: a representação ideal ainda desejada, ou `null`;
+- `catalogVersion`: a versão do catálogo consultado;
+- `limitations`: perdas conhecidas da escolha; e
+- `chatDisclosure`: a observação breve comunicada ao usuário quando houve substituição, ou `null`.
+
+`substitute` exige `desiredResource` e `chatDisclosure`, mas nunca impede a materialização: usa-se a melhor aproximação disponível e preserva-se a intenção para uma revisão futura. Esse metadado pertence à continuidade do workspace; não é inserido no envelope público do card nem no conteúdo estudado.
 
 ---
 
@@ -1753,11 +1780,15 @@ O kernel conhece apenas slots, identidade, versão, validação, renderização,
 O fluxo de autoria é deliberadamente progressivo:
 
 1. planejar a microssequência e suas operações cognitivas;
-2. consultar o catálogo compacto de packages;
-3. escolher packages adequados;
-4. consultar somente os contratos e versões escolhidos;
-5. materializar envelopes completos;
-6. validar pedagogia, estrutura e referências antes da gravação.
+2. usar `consultarBibliotecaDeResources` com `explore` e `search`;
+3. usar `inspect` para comparar a lista curta;
+4. obter com `contracts` no máximo quatro contratos exatos por chamada;
+5. materializar envelopes completos e executar `validate_card`;
+6. executar `audit_representation` antes da gravação.
+
+`preview_card` devolve apenas um descritor com `rendered: false`; a prévia visual fiel existe no renderer do aplicativo. Se a busca classificar a cobertura como `substitute`, a autoria prossegue e comunica brevemente o `chatDisclosure` recebido.
+
+A intenção, a escolha e uma eventual substituição de `resource` são metadados da decisão autoral no workspace. Não são campos do envelope do card: o documento distribuído conserva apenas as instâncias de packages que de fato serão renderizadas.
 
 Microssequências com cards ficam imediatamente estudáveis. Microssequências sem cards permanecem visíveis como planejamento. Não existe campo de publicado, rascunho, pronto ou concluído no documento.
 

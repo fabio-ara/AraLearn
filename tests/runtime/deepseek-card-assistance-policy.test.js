@@ -22,7 +22,7 @@ test("DeepSeek possui políticas somente para as três fases atômicas de card",
     16000
   );
   assert.equal(
-    resolveDeepSeekPhasePolicy({ phase: "card_assistance_resource_repair" })?.temperature,
+    resolveDeepSeekPhasePolicy({ phase: "card_assistance_text_edit" })?.temperature,
     0.1
   );
 });

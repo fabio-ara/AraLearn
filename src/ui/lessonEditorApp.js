@@ -24,6 +24,7 @@ import {
   buildLessonNavigationState,
   buildModuleNavigationState,
   buildNavigationViewState,
+  buildStudyModuleNavigationState,
   resolveExactCardSelection,
   resolveFirstSelection,
   resolveSelectionByKeys as resolveSelectionByKeysRuntime
@@ -57,6 +58,19 @@ import { executeCardAssistance } from "../generation/runtime/cardAssistanceRunti
 import { resolveCardAssistanceLaunchConfig } from "../generation/runtime/cardAssistanceLaunchConfig.js";
 import { executeBottomUpAssistance } from "../assist/bottomUpAssistanceRuntime.js";
 import { buildBottomUpAssistanceScope } from "../assist/bottomUpAssistanceScope.js";
+import {
+  assertCardAssistanceLedgerCurrent,
+  cardAssistanceLedgerContext,
+  cardAssistanceLedgerKey,
+  createCardAssistanceLedger,
+  redoCardAssistanceLedger,
+  undoCardAssistanceLedger
+} from "../assist/cardAssistanceLedger.js";
+import {
+  cardAssistanceLedgerNavigation,
+  resolveCardAssistanceChatOperation,
+  resolveCardAssistanceNavigationPrompt
+} from "../assist/cardAssistanceNavigation.js";
 import { canonicalStringify } from "../persistence/canonicalCourseHash.js";
 import {
   CARD_ASSISTANCE_UNDO_CONTRACT,
@@ -359,7 +373,9 @@ export function createLessonEditorApp({
       syncError: "",
       isSubmitting: false,
       errorMessage: "",
-      manualEditError: ""
+      statusMessage: "",
+      manualEditError: "",
+      assistanceLedgerByReferenceKey: new Map()
     },
     bottomUpDraft: {
       level: "",
@@ -1248,10 +1264,15 @@ export function createLessonEditorApp({
   }
 
   function openModule(moduleKey, { mode = "view" } = {}) {
-    const navigationState = buildModuleNavigationState(state.project, {
-      courseKey: state.selection.courseKey,
-      moduleKey
-    });
+    const courseKey = state.selection.courseKey;
+    const studyNavigation = mode === "view" && state.entityModes.course === "view";
+    const navigationState = studyNavigation
+      ? buildStudyModuleNavigationState(
+          state.project,
+          activeProgress(courseKey),
+          { courseKey, moduleKey }
+        )
+      : buildModuleNavigationState(state.project, { courseKey, moduleKey });
     if (!navigationState) return false;
     Object.assign(state, buildNavigationViewState(navigationState));
     state.entityModes.module = "view";
@@ -1259,6 +1280,13 @@ export function createLessonEditorApp({
     state.entityMutationError = "";
 
     if (mode === "edit") return setEntityMode("module", "edit", { preserveState: false });
+    if (navigationState.view === "microsequence") {
+      return openMicrosequenceScreen(
+        navigationState.selection.microsequenceKey,
+        navigationState.selection.cardIndex,
+        "play"
+      );
+    }
     render({ preserveState: false });
     return true;
   }
@@ -1671,8 +1699,9 @@ export function createLessonEditorApp({
     state.continuePopup = null;
     state.activeTextGapPrompt = null;
     state.cardExerciseLoadVersion += 1;
-    syncAssistDraft();
-    render({ preserveState: true });
+    // Um novo card possui foco e posição de leitura próprios. Capturar e
+    // restaurar toda a árvore anterior aqui só alonga o caminho crítico do Play.
+    render({ preserveState: false });
   }
 
   function closeContinuePopup({ rerender = true } = {}) {
@@ -1788,7 +1817,7 @@ export function createLessonEditorApp({
     }
 
     const blank = blanks[blankIndex];
-    if (blank?.responseMode === "choice" && Array.isArray(blank.options) && blank.options.length) {
+    if (blank?.responseMode === "choice" && Array.isArray(blank.distractors) && blank.distractors.length) {
       state.activeTextGapPrompt = {
         blockKey,
         blankIndex
@@ -1842,7 +1871,8 @@ export function createLessonEditorApp({
     // No modo de estudo, o card só pode avançar quando os exercícios do card atual
     // estiverem completos e validados como corretos.
     if (delta > 0) {
-      const choices = getCurrentCardChoiceResponse();
+      const currentCard = getRenderContext().card;
+      const choices = getCurrentCardChoiceResponse(currentCard);
       for (const entry of choices) {
         const exercise = state.responseExerciseByBlockKey[entry.blockKey] || { selected: [], feedback: null };
         if (exercise.feedback !== "correct") {
@@ -1854,7 +1884,7 @@ export function createLessonEditorApp({
         }
       }
 
-      const completes = getCurrentCardGapResponse();
+      const completes = getCurrentCardGapResponse(currentCard);
       for (const entry of completes) {
         const exercise = state.responseExerciseByBlockKey[entry.blockKey] || { values: [], feedback: null };
         if (exercise.feedback !== "correct") {
@@ -1865,7 +1895,7 @@ export function createLessonEditorApp({
         }
       }
 
-      const orderings = getCurrentCardOrderingResponse();
+      const orderings = getCurrentCardOrderingResponse(currentCard);
       for (const entry of orderings) {
         const exercise = state.responseExerciseByBlockKey[entry.blockKey] || { order: [], feedback: null };
         if (exercise.feedback !== "correct") {
@@ -1874,7 +1904,16 @@ export function createLessonEditorApp({
         }
       }
 
-      const popupEntry = getCurrentPackageFeedbackEntry();
+      const matchings = getCurrentCardMatchingResponse(currentCard);
+      for (const entry of matchings) {
+        const exercise = state.responseExerciseByBlockKey[entry.blockKey] || { matches: {}, feedback: null };
+        if (exercise.feedback !== "correct") {
+          const status = validateMatching(entry.blockKey, { renderCorrect: false });
+          if (status !== "correct") return;
+        }
+      }
+
+      const popupEntry = getCurrentPackageFeedbackEntry(currentCard);
       const popupIsOpen = isCurrentContinuePopupOpen(popupEntry);
 
       if (popupEntry && !popupIsOpen) {
@@ -2037,12 +2076,54 @@ export function createLessonEditorApp({
       cards: context.cards
     });
     state.assistDraft.assistance = assistance;
+    const ledger = currentCardAssistanceLedger(state.selection, context.card, {
+      create: false
+    });
+    const navigationRequest = resolveCardAssistanceNavigationPrompt(
+      state.assistDraft.promptText,
+      ledger
+    );
+    if (navigationRequest?.matched && !navigationRequest.versionId) {
+      throw new Error(navigationRequest.errorMessage);
+    }
+    const operation = navigationRequest?.versionId
+      ? "restore_version"
+      : resolveCardAssistanceChatOperation(state.assistDraft.promptText, assistance);
     return {
-      operation: "repair",
+      operation,
       promptText: state.assistDraft.promptText,
-      repairScope: assistance.wholeCardSelected ? "card" : "resources",
-      resourceTargetIds: assistance.wholeCardSelected ? [] : assistance.resourceTargetIds
+      scope: operation === "restore_version" || assistance.wholeCardSelected
+        ? "card"
+        : "resources",
+      resourceTargetIds: operation === "restore_version" || assistance.wholeCardSelected
+        ? []
+        : assistance.resourceTargetIds,
+      ...(navigationRequest?.versionId ? { versionId: navigationRequest.versionId } : {})
     };
+  }
+
+  function currentCardAssistanceLedger(selection, card, { create = true } = {}) {
+    if (!card) return null;
+    const key = cardAssistanceLedgerKey(selection);
+    const stored = state.assistDraft.assistanceLedgerByReferenceKey.get(key) || null;
+    if (stored) {
+      try {
+        return assertCardAssistanceLedgerCurrent(stored, card, selection);
+      } catch {
+        state.assistDraft.assistanceLedgerByReferenceKey.delete(key);
+      }
+    }
+    return create ? createCardAssistanceLedger({ selection, card }) : null;
+  }
+
+  function rememberCardAssistanceLedger(key, ledger) {
+    const ledgers = state.assistDraft.assistanceLedgerByReferenceKey;
+    ledgers.delete(key);
+    ledgers.set(key, ledger);
+    while (ledgers.size > 24) {
+      const oldestKey = ledgers.keys().next().value;
+      ledgers.delete(oldestKey);
+    }
   }
 
   async function deleteCardComment() {
@@ -2424,6 +2505,9 @@ export function createLessonEditorApp({
       "A edição de cards não está disponível para este curso."
     );
     const workspaceRef = capabilities.workspaceRef;
+    const textOnly = entries.every(
+      (entry) => entry?.changeSet?.operation === "edit_text"
+    );
     const beforeMicrosequence = findMicrosequence(
       requestedProjectDocument,
       requestedSelection.courseKey,
@@ -2554,7 +2638,7 @@ export function createLessonEditorApp({
       {
         ...requestedSelection,
         microsequenceKey: applied.targetMicrosequenceKey,
-        textOnly: true,
+        textOnly,
         baseCards: structuredClone(beforeMicrosequence?.cards || []),
         baseMetadata: {
           title: beforeMicrosequence?.title || "",
@@ -2653,8 +2737,8 @@ export function createLessonEditorApp({
       }
       const targetId = container.getAttribute("data-manual-target-id") || "card";
       const request = targetId === "card"
-        ? { operation: "repair", repairScope: "card", resourceTargetIds: [] }
-        : { operation: "repair", repairScope: "resources", resourceTargetIds: [targetId] };
+        ? { operation: "edit_text", scope: "card", resourceTargetIds: [] }
+        : { operation: "edit_text", scope: "resources", resourceTargetIds: [targetId] };
       const snapshot = await buildCardAssistanceScopeSnapshot(
         requestedProjectDocument,
         requestedSelection,
@@ -2669,17 +2753,22 @@ export function createLessonEditorApp({
         selection: requestedSelection,
         snapshot,
         changeSet: {
-          contract: "aralearn.card-assistance-change.v1",
-          operation: "repair",
+          contract: "aralearn.card-assistance-change.v2",
+          operation: "edit_text",
           card: editedCard
         }
       }];
-      await commitCardAssistanceEntries({
+      const committed = await commitCardAssistanceEntries({
         requestedProjectDocument,
         requestedSelection,
         entries,
         persistenceGuard: guard
       });
+      if (!committed.unchanged) {
+        state.assistDraft.assistanceLedgerByReferenceKey.delete(
+          cardAssistanceLedgerKey(requestedSelection)
+        );
+      }
     } catch (error) {
       if (error?.code === "local_course_draft_changed") setProject(storage.loadProject());
       state.assistDraft.manualEditError =
@@ -2775,9 +2864,19 @@ export function createLessonEditorApp({
     })) {
       return;
     }
-    const request = buildCurrentCardAssistanceRequest();
+    let request;
+    try {
+      request = buildCurrentCardAssistanceRequest();
+    } catch (error) {
+      state.assistDraft.errorMessage = error instanceof Error
+        ? error.message
+        : "Não foi possível interpretar o pedido.";
+      render({ preserveState: true });
+      return;
+    }
     state.assistDraft.isSubmitting = true;
     state.assistDraft.errorMessage = "";
+    state.assistDraft.statusMessage = "";
     render({ preserveState: true });
     try {
       const requestedProjectDocument = structuredClone(state.project);
@@ -2789,6 +2888,19 @@ export function createLessonEditorApp({
         "A assistência por IA não está disponível para este curso."
       );
       const workspaceRef = capabilities.workspaceRef;
+      const ledgerKey = cardAssistanceLedgerKey(requestedSelection);
+      const requestedMicrosequence = findMicrosequence(
+        requestedProjectDocument,
+        requestedSelection.courseKey,
+        requestedSelection.moduleKey,
+        requestedSelection.lessonKey,
+        requestedSelection.microsequenceKey
+      );
+      const currentCard = findSelectedCard(requestedMicrosequence, requestedSelection);
+      const assistanceLedger = currentCardAssistanceLedger(
+        requestedSelection,
+        currentCard
+      );
       let persistenceGuard = null;
       if (!workspaceRef) {
         if (
@@ -2809,6 +2921,7 @@ export function createLessonEditorApp({
         request,
         assistConfig: requestedAssistConfig,
         provider: assistProvider,
+        assistanceLedger,
         checkCodexLocalHealth
       });
       if (submission.status === "provider-unready") {
@@ -2833,6 +2946,19 @@ export function createLessonEditorApp({
           submission.errorMessage || "Não foi possível produzir uma alteração válida.";
         return;
       }
+      if (submission.change.outcome === "no-op") {
+        if (submission.change.assistanceLedger) {
+          rememberCardAssistanceLedger(
+            ledgerKey,
+            submission.change.assistanceLedger
+          );
+        }
+        state.assistDraft.statusMessage = "";
+        state.assistDraft.promptText = "";
+        state.assistDraft.composerOpen = true;
+        queueAuthoringFocus("ai-prompt");
+        return;
+      }
       await assertCardAssistanceScopeCurrent({
         snapshot: submission.change.snapshot,
         projectDocument: state.project,
@@ -2848,6 +2974,29 @@ export function createLessonEditorApp({
         }],
         persistenceGuard
       });
+      if (submission.change.assistanceLedger) {
+        rememberCardAssistanceLedger(
+          ledgerKey,
+          submission.change.assistanceLedger
+        );
+      }
+      if (request.operation === "restore_version") {
+        state.assistDraft.statusMessage = submission.change.assistantMessage;
+      }
+      const currentContext = getRenderContext();
+      state.assistDraft.assistance = reconcileCardAssistanceUiState({
+        ...createCardAssistanceUiState(state.selection),
+        wholeCardSelected: request.scope === "card",
+        scope: request.scope,
+        resourceTargetIds: request.resourceTargetIds
+      }, {
+        selection: state.selection,
+        card: currentContext.card,
+        cards: currentContext.cards
+      });
+      state.assistDraft.composerOpen = true;
+      state.assistDraft.promptText = "";
+      queueAuthoringFocus("ai-prompt");
     } catch (error) {
       state.assistDraft.errorMessage =
         error instanceof Error ? error.message : "Não foi possível concluir a alteração.";
@@ -3349,6 +3498,98 @@ export function createLessonEditorApp({
     return entry?.instance?.package === "aralearn.response.ordering" ? [entry] : [];
   }
 
+  async function navigateCardAssistanceHistory(direction) {
+    if (state.assistDraft.isSubmitting) return;
+    const context = getRenderContext();
+    if (!context.card || !context.microsequence) return;
+    const requestedSelection = { ...state.selection };
+    const ledgerKey = cardAssistanceLedgerKey(requestedSelection);
+    const ledger = currentCardAssistanceLedger(requestedSelection, context.card, {
+      create: false
+    });
+    if (!ledger) return;
+    const candidate = direction === "redo"
+      ? redoCardAssistanceLedger(ledger)
+      : undoCardAssistanceLedger(ledger);
+    if (!candidate.changed || !candidate.versionId) return;
+
+    state.assistDraft.isSubmitting = true;
+    state.assistDraft.errorMessage = "";
+    state.assistDraft.statusMessage = "";
+    render({ preserveState: true });
+    try {
+      const requestedProjectDocument = structuredClone(state.project);
+      const capabilities = assertCourseCapability(
+        "canEditCards",
+        requestedSelection.courseKey,
+        "A edição de cards não está disponível para este curso."
+      );
+      let persistenceGuard = null;
+      if (!capabilities.workspaceRef) {
+        if (
+          typeof storage.flush !== "function" ||
+          typeof storage.createLocalCourseDraftGuard !== "function"
+        ) {
+          throw new Error("Não foi possível salvar a alteração neste dispositivo.");
+        }
+        await storage.flush();
+        persistenceGuard = requireCardAssistancePersistenceGuard(
+          await storage.createLocalCourseDraftGuard(requestedSelection.courseKey),
+          requestedSelection.courseKey
+        );
+      }
+      const submission = await executeCardAssistance({
+        projectDocument: requestedProjectDocument,
+        selection: requestedSelection,
+        request: {
+          operation: "restore_version",
+          scope: "card",
+          resourceTargetIds: [],
+          versionId: candidate.versionId
+        },
+        assistanceLedger: ledger
+      });
+      if (submission.status !== "success" || !submission.change) {
+        throw new Error(submission.errorMessage || "Não foi possível restaurar essa versão.");
+      }
+      if (submission.change.outcome === "no-op") return;
+      await assertCardAssistanceScopeCurrent({
+        snapshot: submission.change.snapshot,
+        projectDocument: state.project,
+        selection: requestedSelection
+      });
+      await commitCardAssistanceEntries({
+        requestedProjectDocument,
+        requestedSelection,
+        entries: [{
+          selection: requestedSelection,
+          snapshot: submission.change.snapshot,
+          changeSet: submission.change.changeSet
+        }],
+        persistenceGuard
+      });
+      rememberCardAssistanceLedger(
+        ledgerKey,
+        submission.change.assistanceLedger
+      );
+      state.assistDraft.statusMessage = submission.change.assistantMessage;
+      state.assistDraft.composerOpen = true;
+      queueAuthoringFocus("ai-prompt");
+    } catch (error) {
+      state.assistDraft.errorMessage = error instanceof Error
+        ? error.message
+        : "Não foi possível restaurar essa versão.";
+    } finally {
+      state.assistDraft.isSubmitting = false;
+      render({ preserveState: true });
+    }
+  }
+
+  function getCurrentCardMatchingResponse(card = getRenderContext().card) {
+    const entry = getPackageResponseEntry(card, buildCardPathKey(state.selection));
+    return entry?.instance?.package === "aralearn.response.matching" ? [entry] : [];
+  }
+
   function getCurrentChoiceEntry(blockKey) {
     return (
       [
@@ -3421,13 +3662,35 @@ export function createLessonEditorApp({
     };
     getCurrentCardOrderingResponse().forEach((entry) => {
       const current = state.responseExerciseByBlockKey[entry.blockKey];
-      const itemIds = Array.isArray(entry.block?.itemIds) ? entry.block.itemIds.map(String) : [];
+      const itemIds = Array.isArray(entry.block?.items)
+        ? entry.block.items.map(({ id }) => String(id))
+        : [];
       let order = Array.isArray(current?.order) ? current.order.slice() : [];
       if (order.length !== itemIds.length || order.some((id) => !itemIds.includes(id))) {
         order = itemIds.length > 1 ? [...itemIds.slice(1), itemIds[0]] : itemIds;
       }
       state.responseExerciseByBlockKey[entry.blockKey] = {
         order,
+        feedback: current?.feedback || null
+      };
+      runtimeOptions.responseStateByBlockKey[entry.blockKey] = state.responseExerciseByBlockKey[entry.blockKey];
+    });
+    return runtimeOptions;
+  }
+
+  function ensureCurrentMatchingExerciseState() {
+    const runtimeOptions = {
+      blockKeyPrefix: buildCardPathKey(state.selection),
+      responseStateByBlockKey: {}
+    };
+    getCurrentCardMatchingResponse().forEach((entry) => {
+      const current = state.responseExerciseByBlockKey[entry.blockKey];
+      const leftIds = new Set((entry.block?.leftItems || []).map(({ id }) => String(id)));
+      const matches = Object.fromEntries(Object.entries(current?.matches || {})
+        .filter(([leftId]) => leftIds.has(leftId))
+        .map(([leftId, rightId]) => [leftId, String(rightId)]));
+      state.responseExerciseByBlockKey[entry.blockKey] = {
+        matches,
         feedback: current?.feedback || null
       };
       runtimeOptions.responseStateByBlockKey[entry.blockKey] = state.responseExerciseByBlockKey[entry.blockKey];
@@ -3559,6 +3822,13 @@ export function createLessonEditorApp({
     ensureCurrentCompleteExerciseState();
     const currentExercise = state.responseExerciseByBlockKey[blockKey] || { values: [], feedback: null };
     const currentValues = Array.isArray(currentExercise.values) ? currentExercise.values : [];
+    const numericBlankIndex = Number(blankIndex);
+    if (String(currentValues[numericBlankIndex] ?? "").trim()) {
+      setCompleteBlank(blockKey, numericBlankIndex, "", { rerender: false });
+      state.activeTextGapPrompt = null;
+      render({ preserveState: true });
+      return;
+    }
     if (currentExercise.feedback) {
       state.responseExerciseByBlockKey[blockKey] = {
         values: currentValues.slice(),
@@ -3567,7 +3837,7 @@ export function createLessonEditorApp({
     }
     state.activeTextGapPrompt = {
       blockKey,
-      blankIndex: Number(blankIndex)
+      blankIndex: numericBlankIndex
     };
     render({ preserveState: true });
   }
@@ -3693,7 +3963,7 @@ export function createLessonEditorApp({
   function tryOrderingAgain(blockKey) {
     const entry = getCurrentOrderingEntry(blockKey);
     if (!entry) return;
-    const itemIds = entry.block.itemIds.map(String);
+    const itemIds = entry.block.items.map(({ id }) => String(id));
     state.responseExerciseByBlockKey[blockKey] = {
       order: itemIds.length > 1 ? [...itemIds.slice(1), itemIds[0]] : itemIds,
       feedback: null
@@ -3701,16 +3971,73 @@ export function createLessonEditorApp({
     render({ preserveState: true });
   }
 
+  function getCurrentMatchingEntry(blockKey) {
+    return getCurrentCardMatchingResponse().find((entry) => entry.blockKey === blockKey) || null;
+  }
+
+  function setMatchingValue(blockKey, leftId, rightId) {
+    const entry = getCurrentMatchingEntry(blockKey);
+    if (!entry) return;
+    ensureCurrentMatchingExerciseState();
+    const exercise = state.responseExerciseByBlockKey[blockKey];
+    state.responseExerciseByBlockKey[blockKey] = {
+      matches: { ...exercise.matches, [leftId]: String(rightId || "") },
+      feedback: null
+    };
+    render({ preserveState: true });
+  }
+
+  function validateMatching(blockKey, { renderCorrect = true } = {}) {
+    const entry = getCurrentMatchingEntry(blockKey);
+    if (!entry) return null;
+    ensureCurrentMatchingExerciseState();
+    const exercise = state.responseExerciseByBlockKey[blockKey];
+    const leftIds = (entry.block.leftItems || []).map(({ id }) => String(id));
+    if (leftIds.some((id) => !String(exercise.matches[id] || ""))) {
+      state.responseExerciseByBlockKey[blockKey] = { ...exercise, feedback: "incomplete" };
+      notifyIncompleteExercise("Complete todos os encaixes.");
+      render({ preserveState: true });
+      return "incomplete";
+    }
+    const evaluation = RESOURCE_PACKAGE_REGISTRY.evaluateResponse(entry.instance, {
+      matches: exercise.matches
+    });
+    state.responseExerciseByBlockKey[blockKey] = {
+      ...exercise,
+      feedback: evaluation.correct ? "correct" : "wrong"
+    };
+    if (!evaluation.correct || renderCorrect) render({ preserveState: true });
+    return evaluation.correct ? "correct" : "wrong";
+  }
+
+  function viewMatchingAnswer(blockKey) {
+    const entry = getCurrentMatchingEntry(blockKey);
+    if (!entry) return;
+    state.responseExerciseByBlockKey[blockKey] = {
+      matches: Object.fromEntries(entry.block.answerPairs.map(({ leftId, rightId }) => [leftId, rightId])),
+      feedback: "correct"
+    };
+    render({ preserveState: true });
+  }
+
+  function tryMatchingAgain(blockKey) {
+    if (!getCurrentMatchingEntry(blockKey)) return;
+    state.responseExerciseByBlockKey[blockKey] = { matches: {}, feedback: null };
+    render({ preserveState: true });
+  }
+
   function ensureCurrentPackageCardOptions() {
     const choiceOptions = ensureCurrentChoiceExerciseState();
     const completeOptions = ensureCurrentCompleteExerciseState();
     const orderingOptions = ensureCurrentOrderingExerciseState();
+    const matchingOptions = ensureCurrentMatchingExerciseState();
     return {
       blockKeyPrefix: buildCardPathKey(state.selection),
       responseStateByBlockKey: {
         ...(choiceOptions.responseStateByBlockKey || {}),
         ...(completeOptions.responseStateByBlockKey || {}),
-        ...(orderingOptions.responseStateByBlockKey || {})
+        ...(orderingOptions.responseStateByBlockKey || {}),
+        ...(matchingOptions.responseStateByBlockKey || {})
       },
       activeTextGapPrompt: state.activeTextGapPrompt,
       exerciseShuffleSeed: choiceOptions.exerciseShuffleSeed || "package"
@@ -4582,6 +4909,83 @@ export function createLessonEditorApp({
     });
   }
 
+  function bindCompleteResponseControls(scope) {
+    scope.querySelectorAll("[data-action='complete-input']").forEach((node) => {
+      if (node.dataset.responseControlBound === "true") return;
+      node.dataset.responseControlBound = "true";
+      if (node.tagName === "TEXTAREA" || node.tagName === "INPUT") {
+        autosizeTextGapField(node);
+        node.addEventListener("input", () => {
+          const blockKey = node.getAttribute("data-complete-block-key");
+          const blankIndex = node.getAttribute("data-complete-blank-index");
+          if (!blockKey || blankIndex === null) return;
+          autosizeTextGapField(node);
+          setCompleteBlank(blockKey, blankIndex, node.value, { rerender: false });
+        });
+        return;
+      }
+
+      if (node.getAttribute("contenteditable") !== "true") return;
+      const updateEmptyAttribute = () => {
+        const content = String(node.textContent || "").replace(/\u2007/g, "");
+        node.setAttribute("data-empty", content.length ? "false" : "true");
+      };
+      updateEmptyAttribute();
+      node.addEventListener("keydown", (event) => {
+        if (event.key === "Enter") event.preventDefault();
+      });
+      node.addEventListener("beforeinput", (event) => {
+        if (event.inputType === "insertParagraph" || event.inputType === "insertLineBreak") {
+          event.preventDefault();
+        }
+      });
+      node.addEventListener("input", () => {
+        const blockKey = node.getAttribute("data-complete-block-key");
+        const blankIndex = node.getAttribute("data-complete-blank-index");
+        if (!blockKey || blankIndex === null) return;
+        const normalized = normalizeTextGapContentEditableValue(node);
+        node.setAttribute("data-empty", normalized ? "false" : "true");
+        setCompleteBlank(blockKey, blankIndex, normalized, { rerender: false });
+      });
+      node.addEventListener("blur", () => {
+        if (!normalizeTextGapContentEditableValue(node)) {
+          node.textContent = "";
+          node.setAttribute("data-empty", "true");
+        }
+      });
+    });
+
+    scope.querySelectorAll("[data-action='text-gap-open-choice']").forEach((node) => {
+      if (node.dataset.responseControlBound === "true") return;
+      node.dataset.responseControlBound = "true";
+      const openPrompt = () => {
+        const blockKey = node.getAttribute("data-complete-block-key");
+        const blankIndex = node.getAttribute("data-complete-blank-index");
+        if (!blockKey || blankIndex === null) return;
+        openTextGapChoicePrompt(blockKey, blankIndex);
+      };
+      node.addEventListener("click", openPrompt);
+      node.addEventListener("keydown", (event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          openPrompt();
+        }
+      });
+    });
+
+    scope.querySelectorAll("[data-action='text-gap-set-choice']").forEach((node) => {
+      if (node.dataset.responseControlBound === "true") return;
+      node.dataset.responseControlBound = "true";
+      node.addEventListener("click", () => {
+        const blockKey = node.getAttribute("data-complete-block-key");
+        const blankIndex = node.getAttribute("data-complete-blank-index");
+        const value = node.getAttribute("data-text-gap-value");
+        if (!blockKey || blankIndex === null || value === null) return;
+        setTextGapChoice(blockKey, blankIndex, value);
+      });
+    });
+  }
+
   function render({
     preserveState = true,
     preserveScrollSelectors = null,
@@ -4596,6 +5000,7 @@ export function createLessonEditorApp({
       : null;
     const context = getRenderContext();
     const rendersPackageCard = state.view === "microsequence";
+    const rendersCardAssistance = rendersPackageCard && state.microsequenceMode === "assist";
     const currentPackageCardOptions = rendersPackageCard
       ? ensureCurrentPackageCardOptions()
       : {};
@@ -4639,7 +5044,7 @@ export function createLessonEditorApp({
           canKeepLocal: false,
           canDiscardLocal: false
         });
-    if (rendersPackageCard) {
+    if (rendersCardAssistance) {
       state.assistDraft.assistance = reconcileCardAssistanceUiState(
         state.assistDraft.assistance,
         { selection: state.selection, card: context.card, cards: context.cards }
@@ -4650,7 +5055,7 @@ export function createLessonEditorApp({
       card: context.card,
       cards: context.cards
     };
-    const cardAssistanceRequestReady = canSubmitCardAssistanceRequest({
+    const cardAssistanceRequestReady = rendersCardAssistance && canSubmitCardAssistanceRequest({
       promptText: state.assistDraft.promptText,
       isSubmitting: state.assistDraft.isSubmitting,
       selectionReady: cardAssistanceSelectionIsReady(
@@ -4740,30 +5145,44 @@ export function createLessonEditorApp({
               }
             : null,
           cardAssistanceState: state.assistDraft.assistance,
-          cardResourceTargets: rendersPackageCard
+          cardResourceTargets: rendersCardAssistance
             ? listCardResourceTargets(context.card).filter((target) =>
                 target.location !== "after_text" || text(context.card?.after).trim()
               )
             : [],
           manualCardEditDraft: state.assistDraft.manualDraft,
           cardAssistanceComposerOpen: state.assistDraft.composerOpen,
+          cardAssistanceHistory: rendersCardAssistance
+            ? cardAssistanceLedgerContext(
+                currentCardAssistanceLedger(state.selection, context.card)
+              )
+            : [],
           cardAssistanceRequestReady,
-          assistPromptLabel: "O que precisa ser reparado?",
-          assistSubmitLabel: "Enviar reparo",
-          assistPromptPlaceholder: "Descreva com precisão o problema e o resultado esperado.",
+          assistPromptLabel: "O que você quer mudar?",
+          assistSubmitLabel: "Enviar mensagem",
+          assistPromptPlaceholder: "Descreva a mudança desejada ou peça para voltar a uma versão anterior.",
           promptText: state.assistDraft.promptText,
           assistErrorMessage: state.assistDraft.errorMessage || state.assistDraft.syncError,
+          assistStatusMessage: state.assistDraft.statusMessage,
           manualCardEditError: state.assistDraft.manualEditError,
           hasCardComment: Boolean(
             activeTrailPersonalStorage()?.loadCommentForPath?.(state.selection)
           ),
           cardMarkedForReview: currentCardIsMarkedForReview(),
-          canUndoCardEdit: Boolean(
-            !workspaceCourseRef(state.selection.courseKey) &&
-            state.assistDraft.localState.undo?.kind === "microsequence" &&
-            state.assistDraft.localState.undo.courseKey === state.selection.courseKey &&
-            state.assistDraft.localState.undo.microsequenceKey === state.selection.microsequenceKey
-          ),
+          canUndoCardEdit: state.entityModes.card === "ai"
+            ? cardAssistanceLedgerNavigation(
+                currentCardAssistanceLedger(state.selection, context.card, { create: false })
+              ).canUndo
+            : Boolean(
+                !workspaceCourseRef(state.selection.courseKey) &&
+                state.assistDraft.localState.undo?.kind === "microsequence" &&
+                state.assistDraft.localState.undo.courseKey === state.selection.courseKey &&
+                state.assistDraft.localState.undo.microsequenceKey === state.selection.microsequenceKey
+              ),
+          canRedoCardEdit: state.entityModes.card === "ai" &&
+            cardAssistanceLedgerNavigation(
+              currentCardAssistanceLedger(state.selection, context.card, { create: false })
+            ).canRedo,
           isSubmitting: state.assistDraft.isSubmitting,
           hasApiKey: Boolean(state.assistConfig.apiKey || state.assistConfig.providerSecret),
           packageCardOptions: currentPackageCardOptions,
@@ -4799,6 +5218,15 @@ export function createLessonEditorApp({
           })
         : "") +
       "</div>";
+
+    void RESOURCE_PACKAGE_REGISTRY.hydrate(root)
+      .then(() => bindCompleteResponseControls(root))
+      .catch((error) => {
+        root.dispatchEvent(new CustomEvent("aralearn:package-hydration-error", {
+          bubbles: true,
+          detail: { error }
+        }));
+      });
 
     const manualResourceEditor = root.querySelector(
       ".runtime-resource-edit-target[data-manual-target-id]"
@@ -5424,83 +5852,7 @@ export function createLessonEditorApp({
       closeContinuePopup();
     });
 
-    root.querySelectorAll("[data-action='complete-input']").forEach((node) => {
-      if (node.tagName === "TEXTAREA" || node.tagName === "INPUT") {
-        autosizeTextGapField(node);
-        node.addEventListener("input", () => {
-          const blockKey = node.getAttribute("data-complete-block-key");
-          const blankIndex = node.getAttribute("data-complete-blank-index");
-          if (!blockKey || blankIndex === null) return;
-          autosizeTextGapField(node);
-          setCompleteBlank(blockKey, blankIndex, node.value, { rerender: false });
-        });
-        return;
-      }
-
-      if (node.getAttribute("contenteditable") !== "true") {
-        return;
-      }
-
-      const updateEmptyAttribute = () => {
-        const content = String(node.textContent || "").replace(/\u2007/g, "");
-        const isEmpty = !content.length;
-        node.setAttribute("data-empty", isEmpty ? "true" : "false");
-      };
-
-      updateEmptyAttribute();
-
-      node.addEventListener("keydown", (event) => {
-        if (event.key === "Enter") {
-          event.preventDefault();
-        }
-      });
-      node.addEventListener("beforeinput", (event) => {
-        if (event.inputType === "insertParagraph" || event.inputType === "insertLineBreak") {
-          event.preventDefault();
-        }
-      });
-
-      node.addEventListener("input", () => {
-        const blockKey = node.getAttribute("data-complete-block-key");
-        const blankIndex = node.getAttribute("data-complete-blank-index");
-        if (!blockKey || blankIndex === null) return;
-        const normalized = normalizeTextGapContentEditableValue(node);
-        node.setAttribute("data-empty", normalized ? "false" : "true");
-        setCompleteBlank(blockKey, blankIndex, normalized, { rerender: false });
-      });
-
-      node.addEventListener("blur", () => {
-        if (!normalizeTextGapContentEditableValue(node)) {
-          node.textContent = "";
-          node.setAttribute("data-empty", "true");
-        }
-      });
-    });
-    root.querySelectorAll("[data-action='text-gap-open-choice']").forEach((node) => {
-      const openPrompt = () => {
-        const blockKey = node.getAttribute("data-complete-block-key");
-        const blankIndex = node.getAttribute("data-complete-blank-index");
-        if (!blockKey || blankIndex === null) return;
-        openTextGapChoicePrompt(blockKey, blankIndex);
-      };
-
-      node.addEventListener("click", openPrompt);
-      node.addEventListener("keydown", (event) => {
-        if (event.key === "Enter" || event.key === " ") {
-          event.preventDefault();
-          openPrompt();
-        }
-      });
-    });
-    root.querySelectorAll("[data-action='text-gap-set-choice']").forEach((node) => {
-      node.addEventListener("click", () => {
-        const blockKey = node.getAttribute("data-complete-block-key");
-        const blankIndex = node.getAttribute("data-complete-blank-index");
-        const value = node.getAttribute("data-text-gap-value");
-        if (!blockKey || blankIndex === null || value === null) return;
-        setTextGapChoice(blockKey, blankIndex, value);
-      });
-    });
+    bindCompleteResponseControls(root);
     root.querySelectorAll("[data-action='complete-try-again']").forEach((node) => {
       node.addEventListener("click", () => {
         const blockKey = node.getAttribute("data-complete-block-key");
@@ -5531,11 +5883,6 @@ export function createLessonEditorApp({
         );
       });
     });
-    root.querySelectorAll("[data-action='ordering-validate']").forEach((node) => {
-      node.addEventListener("click", () => validateOrdering(
-        node.getAttribute("data-response-block-key")
-      ));
-    });
     root.querySelectorAll("[data-action='ordering-view-answer']").forEach((node) => {
       node.addEventListener("click", () => viewOrderingAnswer(
         node.getAttribute("data-response-block-key")
@@ -5543,6 +5890,45 @@ export function createLessonEditorApp({
     });
     root.querySelectorAll("[data-action='ordering-try-again']").forEach((node) => {
       node.addEventListener("click", () => tryOrderingAgain(
+        node.getAttribute("data-response-block-key")
+      ));
+    });
+    root.querySelectorAll("[data-action='annotation-toggle']").forEach((node) => {
+      node.addEventListener("click", () => {
+        const packageRoot = node.closest(".package-instance");
+        if (!packageRoot) return;
+        const indexes = new Set(String(node.getAttribute("data-annotation-indexes") || "")
+          .split(",").map((value) => value.trim()).filter(Boolean));
+        const shouldActivate = !node.classList.contains("is-active");
+        packageRoot.querySelectorAll("[data-action='annotation-toggle']").forEach((target) => {
+          const targetIndexes = String(target.getAttribute("data-annotation-indexes") || "")
+            .split(",").map((value) => value.trim()).filter(Boolean);
+          const active = shouldActivate && targetIndexes.some((index) => indexes.has(index));
+          target.classList.toggle("is-active", active);
+          target.setAttribute("aria-pressed", active ? "true" : "false");
+        });
+        if (shouldActivate && node.classList.contains("runtime-annotated-text-segment")) {
+          const note = [...packageRoot.querySelectorAll(".runtime-annotated-text-note")]
+            .find((target) => String(target.getAttribute("data-annotation-indexes") || "")
+              .split(",").some((index) => indexes.has(index.trim())));
+          note?.scrollIntoView({ block: "nearest", inline: "nearest", behavior: "smooth" });
+        }
+      });
+    });
+    root.querySelectorAll("[data-action='matching-set']").forEach((node) => {
+      node.addEventListener("change", () => setMatchingValue(
+        node.getAttribute("data-response-block-key"),
+        node.getAttribute("data-matching-left-id"),
+        node.value
+      ));
+    });
+    root.querySelectorAll("[data-action='matching-view-answer']").forEach((node) => {
+      node.addEventListener("click", () => viewMatchingAnswer(
+        node.getAttribute("data-response-block-key")
+      ));
+    });
+    root.querySelectorAll("[data-action='matching-try-again']").forEach((node) => {
+      node.addEventListener("click", () => tryMatchingAgain(
         node.getAttribute("data-response-block-key")
       ));
     });
@@ -5813,7 +6199,11 @@ export function createLessonEditorApp({
       cancelManualCardEdit();
     });
     root.querySelector("[data-action='undo-card-edit']")?.addEventListener("click", () => {
-      void undoCardEdit();
+      if (state.entityModes.card === "ai") void navigateCardAssistanceHistory("undo");
+      else void undoCardEdit();
+    });
+    root.querySelector("[data-action='redo-card-edit']")?.addEventListener("click", () => {
+      void navigateCardAssistanceHistory("redo");
     });
     root.querySelector("[data-action='provider-config-close']")?.addEventListener("click", () => closeProviderConfig());
     root.querySelector("[data-action='provider-config-check-codex']")?.addEventListener("click", () => {

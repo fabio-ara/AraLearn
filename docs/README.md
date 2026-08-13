@@ -48,6 +48,7 @@
 | Síntese temática da literatura, controvérsias e lacunas | [Revisão de literatura](revisao-de-literatura.md) |
 | Construtos, mecanismos e proposições examináveis | [Quadro teórico](quadro-teorico.md) e [Glossário de construtos](glossario-construtos.md) |
 | Evidências e decisões do contrato de resources | [Fundamentação pedagógica dos resources](fundamentacao-pedagogica-dos-resources.md) |
+| Matriz disciplinar, limites e ensaios de estresse dos resources | [Auditoria acadêmica dos resources](auditoria-academica-dos-resources.md) |
 | Auditoria da interface e migração progressiva | [Auditoria do front-end](auditoria-front-end.md) |
 | Temas claro/escuro, tokens, ícones e resources | [Sistema visual](sistema-visual.md) |
 | Relação entre problema, hipótese, implementação e avaliação | [Matriz de rastreabilidade pedagógica](matriz-rastreabilidade-pedagogica.md) |
