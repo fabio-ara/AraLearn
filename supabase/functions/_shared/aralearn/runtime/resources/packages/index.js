@@ -18,6 +18,15 @@ import { chartPackage } from "./chart/index.js";
 import { systemMapPackage } from "./system-map/index.js";
 import { graphPackage } from "./graph/index.js";
 import { relationMapPackage } from "./relation-map/index.js";
+import { algorithmTracePackage } from "./algorithm-trace/index.js";
+import { databaseSchemaPackage } from "./database-schema/index.js";
+import { memoryLayoutPackage } from "./memory-layout/index.js";
+import { networkTopologyPackage } from "./network-topology/index.js";
+import { packetLayoutPackage } from "./packet-layout/index.js";
+import { setDiagramPackage } from "./set-diagram/index.js";
+import { stateMachinePackage } from "./state-machine/index.js";
+import { truthTablePackage } from "./truth-table/index.js";
+import { matchingResponsePackage } from "./matching-response/index.js";
 
 export const RESOURCE_PACKAGE_REGISTRY = createPackageRegistry([
   paragraphPackage,
@@ -38,7 +47,16 @@ export const RESOURCE_PACKAGE_REGISTRY = createPackageRegistry([
   chartPackage,
   systemMapPackage,
   graphPackage,
-  relationMapPackage
+  relationMapPackage,
+  algorithmTracePackage,
+  databaseSchemaPackage,
+  memoryLayoutPackage,
+  networkTopologyPackage,
+  packetLayoutPackage,
+  setDiagramPackage,
+  stateMachinePackage,
+  truthTablePackage,
+  matchingResponsePackage
 ]);
 
 export {
@@ -60,5 +78,14 @@ export {
   chartPackage,
   systemMapPackage,
   graphPackage,
-  relationMapPackage
+  relationMapPackage,
+  algorithmTracePackage,
+  databaseSchemaPackage,
+  memoryLayoutPackage,
+  networkTopologyPackage,
+  packetLayoutPackage,
+  setDiagramPackage,
+  stateMachinePackage,
+  truthTablePackage,
+  matchingResponsePackage
 };

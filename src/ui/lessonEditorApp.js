@@ -57,6 +57,12 @@ import { executeCardAssistance } from "../generation/runtime/cardAssistanceRunti
 import { resolveCardAssistanceLaunchConfig } from "../generation/runtime/cardAssistanceLaunchConfig.js";
 import { executeBottomUpAssistance } from "../assist/bottomUpAssistanceRuntime.js";
 import { buildBottomUpAssistanceScope } from "../assist/bottomUpAssistanceScope.js";
+import {
+  appendCardAssistanceConversationTurn,
+  cardAssistanceConversationContext,
+  cardAssistanceConversationKey,
+  normalizeCardAssistanceConversation
+} from "../assist/cardAssistanceConversation.js";
 import { canonicalStringify } from "../persistence/canonicalCourseHash.js";
 import {
   CARD_ASSISTANCE_UNDO_CONTRACT,
@@ -359,7 +365,8 @@ export function createLessonEditorApp({
       syncError: "",
       isSubmitting: false,
       errorMessage: "",
-      manualEditError: ""
+      manualEditError: "",
+      conversationByReferenceKey: new Map()
     },
     bottomUpDraft: {
       level: "",
@@ -1874,6 +1881,15 @@ export function createLessonEditorApp({
         }
       }
 
+      const matchings = getCurrentCardMatchingResponse();
+      for (const entry of matchings) {
+        const exercise = state.responseExerciseByBlockKey[entry.blockKey] || { matches: {}, feedback: null };
+        if (exercise.feedback !== "correct") {
+          const status = validateMatching(entry.blockKey, { renderCorrect: false });
+          if (status !== "correct") return;
+        }
+      }
+
       const popupEntry = getCurrentPackageFeedbackEntry();
       const popupIsOpen = isCurrentContinuePopupOpen(popupEntry);
 
@@ -2037,11 +2053,17 @@ export function createLessonEditorApp({
       cards: context.cards
     });
     state.assistDraft.assistance = assistance;
+    const conversationKey = cardAssistanceConversationKey(state.selection);
+    const conversation = normalizeCardAssistanceConversation(
+      state.assistDraft.conversationByReferenceKey.get(conversationKey),
+      state.selection
+    );
     return {
       operation: "repair",
       promptText: state.assistDraft.promptText,
       repairScope: assistance.wholeCardSelected ? "card" : "resources",
-      resourceTargetIds: assistance.wholeCardSelected ? [] : assistance.resourceTargetIds
+      resourceTargetIds: assistance.wholeCardSelected ? [] : assistance.resourceTargetIds,
+      conversationTurns: cardAssistanceConversationContext(conversation, state.selection)
     };
   }
 
@@ -2848,6 +2870,32 @@ export function createLessonEditorApp({
         }],
         persistenceGuard
       });
+      const conversationKey = cardAssistanceConversationKey(requestedSelection);
+      const conversation = appendCardAssistanceConversationTurn(
+        state.assistDraft.conversationByReferenceKey.get(conversationKey),
+        requestedSelection,
+        {
+          request: request.promptText,
+          scope: request.repairScope,
+          targetIds: request.resourceTargetIds,
+          modelId: submission.modelId
+        }
+      );
+      state.assistDraft.conversationByReferenceKey.set(conversationKey, conversation);
+      const currentContext = getRenderContext();
+      state.assistDraft.assistance = reconcileCardAssistanceUiState({
+        ...createCardAssistanceUiState(state.selection),
+        wholeCardSelected: request.repairScope === "card",
+        repairScope: request.repairScope,
+        resourceTargetIds: request.resourceTargetIds
+      }, {
+        selection: state.selection,
+        card: currentContext.card,
+        cards: currentContext.cards
+      });
+      state.assistDraft.composerOpen = true;
+      state.assistDraft.promptText = "";
+      queueAuthoringFocus("ai-prompt");
     } catch (error) {
       state.assistDraft.errorMessage =
         error instanceof Error ? error.message : "Não foi possível concluir a alteração.";
@@ -3349,6 +3397,11 @@ export function createLessonEditorApp({
     return entry?.instance?.package === "aralearn.response.ordering" ? [entry] : [];
   }
 
+  function getCurrentCardMatchingResponse(card = getRenderContext().card) {
+    const entry = getPackageResponseEntry(card, buildCardPathKey(state.selection));
+    return entry?.instance?.package === "aralearn.response.matching" ? [entry] : [];
+  }
+
   function getCurrentChoiceEntry(blockKey) {
     return (
       [
@@ -3428,6 +3481,26 @@ export function createLessonEditorApp({
       }
       state.responseExerciseByBlockKey[entry.blockKey] = {
         order,
+        feedback: current?.feedback || null
+      };
+      runtimeOptions.responseStateByBlockKey[entry.blockKey] = state.responseExerciseByBlockKey[entry.blockKey];
+    });
+    return runtimeOptions;
+  }
+
+  function ensureCurrentMatchingExerciseState() {
+    const runtimeOptions = {
+      blockKeyPrefix: buildCardPathKey(state.selection),
+      responseStateByBlockKey: {}
+    };
+    getCurrentCardMatchingResponse().forEach((entry) => {
+      const current = state.responseExerciseByBlockKey[entry.blockKey];
+      const leftIds = new Set((entry.block?.leftItems || []).map(({ id }) => String(id)));
+      const matches = Object.fromEntries(Object.entries(current?.matches || {})
+        .filter(([leftId]) => leftIds.has(leftId))
+        .map(([leftId, rightId]) => [leftId, String(rightId)]));
+      state.responseExerciseByBlockKey[entry.blockKey] = {
+        matches,
         feedback: current?.feedback || null
       };
       runtimeOptions.responseStateByBlockKey[entry.blockKey] = state.responseExerciseByBlockKey[entry.blockKey];
@@ -3701,16 +3774,73 @@ export function createLessonEditorApp({
     render({ preserveState: true });
   }
 
+  function getCurrentMatchingEntry(blockKey) {
+    return getCurrentCardMatchingResponse().find((entry) => entry.blockKey === blockKey) || null;
+  }
+
+  function setMatchingValue(blockKey, leftId, rightId) {
+    const entry = getCurrentMatchingEntry(blockKey);
+    if (!entry) return;
+    ensureCurrentMatchingExerciseState();
+    const exercise = state.responseExerciseByBlockKey[blockKey];
+    state.responseExerciseByBlockKey[blockKey] = {
+      matches: { ...exercise.matches, [leftId]: String(rightId || "") },
+      feedback: null
+    };
+    render({ preserveState: true });
+  }
+
+  function validateMatching(blockKey, { renderCorrect = true } = {}) {
+    const entry = getCurrentMatchingEntry(blockKey);
+    if (!entry) return null;
+    ensureCurrentMatchingExerciseState();
+    const exercise = state.responseExerciseByBlockKey[blockKey];
+    const leftIds = (entry.block.leftItems || []).map(({ id }) => String(id));
+    if (leftIds.some((id) => !String(exercise.matches[id] || ""))) {
+      state.responseExerciseByBlockKey[blockKey] = { ...exercise, feedback: "incomplete" };
+      notifyIncompleteExercise("Complete todos os encaixes.");
+      render({ preserveState: true });
+      return "incomplete";
+    }
+    const evaluation = RESOURCE_PACKAGE_REGISTRY.evaluateResponse(entry.instance, {
+      matches: exercise.matches
+    });
+    state.responseExerciseByBlockKey[blockKey] = {
+      ...exercise,
+      feedback: evaluation.correct ? "correct" : "wrong"
+    };
+    if (!evaluation.correct || renderCorrect) render({ preserveState: true });
+    return evaluation.correct ? "correct" : "wrong";
+  }
+
+  function viewMatchingAnswer(blockKey) {
+    const entry = getCurrentMatchingEntry(blockKey);
+    if (!entry) return;
+    state.responseExerciseByBlockKey[blockKey] = {
+      matches: Object.fromEntries(entry.block.answerPairs.map(({ leftId, rightId }) => [leftId, rightId])),
+      feedback: "correct"
+    };
+    render({ preserveState: true });
+  }
+
+  function tryMatchingAgain(blockKey) {
+    if (!getCurrentMatchingEntry(blockKey)) return;
+    state.responseExerciseByBlockKey[blockKey] = { matches: {}, feedback: null };
+    render({ preserveState: true });
+  }
+
   function ensureCurrentPackageCardOptions() {
     const choiceOptions = ensureCurrentChoiceExerciseState();
     const completeOptions = ensureCurrentCompleteExerciseState();
     const orderingOptions = ensureCurrentOrderingExerciseState();
+    const matchingOptions = ensureCurrentMatchingExerciseState();
     return {
       blockKeyPrefix: buildCardPathKey(state.selection),
       responseStateByBlockKey: {
         ...(choiceOptions.responseStateByBlockKey || {}),
         ...(completeOptions.responseStateByBlockKey || {}),
-        ...(orderingOptions.responseStateByBlockKey || {})
+        ...(orderingOptions.responseStateByBlockKey || {}),
+        ...(matchingOptions.responseStateByBlockKey || {})
       },
       activeTextGapPrompt: state.activeTextGapPrompt,
       exerciseShuffleSeed: choiceOptions.exerciseShuffleSeed || "package"
@@ -4747,6 +4877,12 @@ export function createLessonEditorApp({
             : [],
           manualCardEditDraft: state.assistDraft.manualDraft,
           cardAssistanceComposerOpen: state.assistDraft.composerOpen,
+          cardAssistanceConversation: normalizeCardAssistanceConversation(
+            state.assistDraft.conversationByReferenceKey.get(
+              cardAssistanceConversationKey(state.selection)
+            ),
+            state.selection
+          ).turns,
           cardAssistanceRequestReady,
           assistPromptLabel: "O que precisa ser reparado?",
           assistSubmitLabel: "Enviar reparo",
@@ -5543,6 +5679,28 @@ export function createLessonEditorApp({
     });
     root.querySelectorAll("[data-action='ordering-try-again']").forEach((node) => {
       node.addEventListener("click", () => tryOrderingAgain(
+        node.getAttribute("data-response-block-key")
+      ));
+    });
+    root.querySelectorAll("[data-action='matching-set']").forEach((node) => {
+      node.addEventListener("change", () => setMatchingValue(
+        node.getAttribute("data-response-block-key"),
+        node.getAttribute("data-matching-left-id"),
+        node.value
+      ));
+    });
+    root.querySelectorAll("[data-action='matching-validate']").forEach((node) => {
+      node.addEventListener("click", () => validateMatching(
+        node.getAttribute("data-response-block-key")
+      ));
+    });
+    root.querySelectorAll("[data-action='matching-view-answer']").forEach((node) => {
+      node.addEventListener("click", () => viewMatchingAnswer(
+        node.getAttribute("data-response-block-key")
+      ));
+    });
+    root.querySelectorAll("[data-action='matching-try-again']").forEach((node) => {
+      node.addEventListener("click", () => tryMatchingAgain(
         node.getAttribute("data-response-block-key")
       ));
     });

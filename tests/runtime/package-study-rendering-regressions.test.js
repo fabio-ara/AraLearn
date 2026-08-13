@@ -128,14 +128,15 @@ test("matrix e tree preservam a estrutura visual package-native no card completo
     package: "aralearn.resource.matrix",
     version: "1.0.0",
     data: {
-      prompt: "Compare os fluxos.",
-      name: "Fluxos",
-      values: [["F1", "TCP", "51000"], ["F2", "TCP", "51001"]]
+      prompt: "Observe a matriz identidade.",
+      name: "I",
+      values: [["1", "0"], ["0", "1"]]
     }
   }));
   assert.match(matrixHtml, /runtime-matrix-shell/u);
-  assert.match(matrixHtml, /runtime-matrix-bracket is-left/u);
-  assert.match(matrixHtml, /runtime-matrix-table/u);
+  assert.match(matrixHtml, /runtime-matrix-delimiter is-left/u);
+  assert.match(matrixHtml, /runtime-matrix-grid/u);
+  assert.doesNotMatch(matrixHtml, /<table/u);
 
   const treeHtml = renderPackageCardBlocks(cardWith({
     id: "tree",

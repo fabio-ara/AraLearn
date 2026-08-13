@@ -4,6 +4,7 @@ import {
   renderPackageInline,
   renderPackageProse
 } from "../../sdk/html.js";
+import { academicProfile } from "../../sdk/academic.js";
 
 function feedbackHtml(blockKey, feedback) {
   if (!feedback) return "";
@@ -24,6 +25,7 @@ export const orderingResponsePackage = Object.freeze({
     id: "aralearn.response.ordering", version: "1.0.0", label: "Ordenação",
     purpose: "Pedir que o estudante reconstrua uma ordem causal, temporal ou procedimental.", slots: Object.freeze(["response"]),
     cognitiveOperations: Object.freeze(["order", "reconstruct-process", "sequence-causes"]), responseCompatibility: Object.freeze([]),
+    academic: academicProfile({ domains: ["transversal"], knowledgeObjects: ["ordem de itens", "procedimento reconstruído"], conventions: ["posição explícita", "alternativa ao arraste", "conjunto de itens preservado"], appropriateWhen: ["reconstruir a ordem é a evidência de aprendizagem"], avoidWhen: ["a ordem é arbitrária"], technologies: ["HTML semântico", "controles de movimento acessíveis"], practiceModes: ["ordering"], content: false }),
     limitations: Object.freeze(["Não use para ordem arbitrária ou mera decoração." ]), accessibility: "Oferece botões de mover e posição anunciada; arrastar nunca é obrigatório."
   }),
   authoringContract: Object.freeze({ intent: "Referencie itens expostos por um package de conteúdo e declare a ordem correta.", required: Object.freeze(["prompt", "targetInstanceId", "itemIds", "answerOrder"]), optional: Object.freeze([]), rules: Object.freeze(["answerOrder contém exatamente os mesmos ids de itemIds."]), example: Object.freeze({ prompt: "Ordene as etapas.", targetInstanceId: "body-1", itemIds: ["s1", "s2"], answerOrder: ["s1", "s2"] }) }),

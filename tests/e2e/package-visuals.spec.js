@@ -71,12 +71,11 @@ const matrixInstance = {
   package: "aralearn.resource.matrix",
   version: "1.0.0",
   data: {
-    prompt: "Compare os campos que individualizam cada comunicação.",
-    name: "Fluxos",
+    prompt: "Observe uma matriz de transformação linear.",
+    name: "A",
     values: [
-      ["Fluxo", "Origem", "Transporte", "Porta de origem", "Porta de destino"],
-      ["F1", "192.0.2.10", "TCP", "51000", "443"],
-      ["F2", "192.0.2.10", "TCP", "51001", "443"]
+      ["1", "2", "0"],
+      ["0", "1", "-1"]
     ]
   }
 };
@@ -189,22 +188,17 @@ for (const width of [360, 390, 412]) {
       expect(labels).toContain("Agente no dispositivo monitorado");
     });
 
-    test(`relation_map não sobrepõe colunas em ${width}px no modo ${mode}`, async ({ page }) => {
+    test(`relation_map preserva conjuntos e pares sem sobreposição em ${width}px no modo ${mode}`, async ({ page }) => {
       await page.setViewportSize({ width, height: 900 });
       await page.goto("/");
       await page.setContent(documentFor(relationInstance, mode));
-      await expect(page.locator(".package-relation-row")).toHaveCount(4);
-      await assertContained(page, ".package-relation-row, .package-relation-item, .package-relation-verb", width);
-      const rows = await page.locator(".package-relation-row").evaluateAll((elements) => elements.map((element) => {
-        const left = element.querySelector(".package-relation-left").getBoundingClientRect();
-        const verb = element.querySelector(".package-relation-verb").getBoundingClientRect();
-        const right = element.querySelector(".package-relation-right").getBoundingClientRect();
-        return { leftBottom: left.bottom, verbTop: verb.top, verbBottom: verb.bottom, rightTop: right.top };
-      }));
-      rows.forEach((row) => {
-        expect(row.leftBottom).toBeLessThanOrEqual(row.verbTop + 0.5);
-        expect(row.verbBottom).toBeLessThanOrEqual(row.rightTop + 0.5);
-      });
+      await expect(page.locator(".package-relation-set")).toHaveCount(2);
+      await expect(page.locator(".package-relation-pairs > li")).toHaveCount(4);
+      await assertContained(page, ".package-relation-set, .package-relation-set li, .package-relation-pairs > li", width);
+      const setPanels = await page.locator(".package-relation-set").evaluateAll((elements) => elements.map((element) => element.getBoundingClientRect()).map(({ left, right, top, bottom }) => ({ left, right, top, bottom })));
+      const overlapWidth = Math.max(0, Math.min(setPanels[0].right, setPanels[1].right) - Math.max(setPanels[0].left, setPanels[1].left));
+      const overlapHeight = Math.max(0, Math.min(setPanels[0].bottom, setPanels[1].bottom) - Math.max(setPanels[0].top, setPanels[1].top));
+      expect(overlapWidth * overlapHeight).toBeLessThanOrEqual(0.5);
       expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
     });
 
@@ -218,18 +212,9 @@ for (const width of [360, 390, 412]) {
       await expect(page.locator(".package-graph-edge-index")).toHaveCount(0);
       await expect(page.locator(".package-graph-relations li")).toHaveCount(5);
       await expect(page.locator(".package-relation-map svg")).toHaveCount(0);
-      await expect(page.locator(".package-relation-map .package-relation-row")).toHaveCount(4);
-      await assertContained(page, ".package-graph-relations li, .package-relation-map .package-relation-item, .package-relation-map .package-relation-verb", width);
-      const relationParts = await page.locator(".package-relation-map .package-relation-row").evaluateAll((elements) => elements.map((element) => {
-        const left = element.querySelector(".package-relation-left").getBoundingClientRect();
-        const verb = element.querySelector(".package-relation-verb").getBoundingClientRect();
-        const right = element.querySelector(".package-relation-right").getBoundingClientRect();
-        return { leftBottom: left.bottom, verbTop: verb.top, verbBottom: verb.bottom, rightTop: right.top };
-      }));
-      relationParts.forEach((row) => {
-        expect(row.leftBottom).toBeLessThanOrEqual(row.verbTop + 0.5);
-        expect(row.verbBottom).toBeLessThanOrEqual(row.rightTop + 0.5);
-      });
+      await expect(page.locator(".package-relation-map .package-relation-set")).toHaveCount(2);
+      await expect(page.locator(".package-relation-map .package-relation-pairs > li")).toHaveCount(4);
+      await assertContained(page, ".package-graph-relations li, .package-relation-map .package-relation-set, .package-relation-map .package-relation-pairs > li", width);
       expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
     });
 
@@ -265,8 +250,8 @@ for (const width of [360, 390, 412]) {
         expect(stroke).toBe(color);
       });
 
-      await expect(page.locator(".runtime-matrix-bracket")).toHaveCount(2);
-      await expect(page.locator(".runtime-matrix-table td")).toHaveCount(15);
+      await expect(page.locator(".runtime-matrix-delimiter")).toHaveCount(2);
+      await expect(page.locator('.runtime-matrix-grid [role="cell"]')).toHaveCount(6);
       await expect(page.locator(".runtime-tree-entry")).toHaveCount(4);
       await expect(page.locator('.runtime-tree-item[aria-level="4"]')).toHaveCount(1);
       await assertContained(page, ".runtime-tree-structure, .runtime-tree-entry", width);

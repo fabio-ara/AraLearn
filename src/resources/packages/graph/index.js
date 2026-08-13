@@ -4,6 +4,7 @@ import {
   renderPackageInline,
   renderPackageProse
 } from "../../sdk/html.js";
+import { academicProfile } from "../../sdk/academic.js";
 
 const LAYOUTS = Object.freeze(["auto", "path", "cycle", "star", "hierarchical", "network", "causal"]);
 
@@ -99,6 +100,7 @@ export const graphPackage = Object.freeze({
     purpose: "Representar entidades e relações quando a topologia é parte do conceito ensinado.",
     slots: Object.freeze(["content", "feedback"]),
     cognitiveOperations: Object.freeze(["trace-relation", "inspect-topology", "compare-path", "identify-connectivity"]),
+    academic: academicProfile({ domains: ["teoria dos grafos", "algoritmos", "pesquisa operacional"], knowledgeObjects: ["grafo", "vértice", "aresta", "caminho"], conventions: ["vértices e arestas distinguíveis", "direção e peso explícitos", "rótulo associado inequivocamente à aresta"], appropriateWhen: ["conectividade ou topologia abstrata é o próprio objeto estudado"], avoidWhen: ["os nós são equipamentos de rede com convenções próprias", "a relação é apenas hierárquica ou bipartida"], technologies: ["SVG", "layout determinístico derivado"], practiceModes: ["exposition", "gap", "typing", "selection"] }),
     responseCompatibility: Object.freeze(["aralearn.response.choice", "aralearn.response.gap"]),
     limitations: Object.freeze(["Relações densas são acompanhadas por lista semântica; não comprima muitas ideias em um único grafo.", "Coordenadas e dimensões não são autorais."]),
     accessibility: "Vértices e relações são integralmente repetidos em texto; rótulos de arestas ficam em uma lista legível."

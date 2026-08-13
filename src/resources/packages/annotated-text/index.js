@@ -1,10 +1,12 @@
 import { escapePackageAttribute, renderPackageInline, renderPackageProse } from "../../sdk/html.js";
+import { academicProfile } from "../../sdk/academic.js";
 
 export const annotatedTextPackage = Object.freeze({
   manifest: Object.freeze({
     id: "aralearn.resource.annotated_text", version: "1.0.0", label: "Texto anotado",
     purpose: "Relacionar trechos precisos de um texto a observações, funções ou explicações.", slots: Object.freeze(["content", "feedback"]),
     cognitiveOperations: Object.freeze(["annotate", "identify-function", "connect-evidence", "close-reading"]),
+    academic: academicProfile({ domains: ["linguagens", "direito", "humanidades", "programação"], knowledgeObjects: ["trecho", "evidência", "anotação localizada"], conventions: ["alvo e comentário identificados", "citação preservada", "anotação próxima ao alvo"], appropriateWhen: ["a tarefa exige leitura minuciosa ou associação entre evidência e explicação"], avoidWhen: ["a observação não possui alvo textual preciso"], technologies: ["HTML semântico", "ARIA"], practiceModes: ["exposition", "gap", "typing", "selection", "matching"] }),
     responseCompatibility: Object.freeze(["aralearn.response.choice", "aralearn.response.gap"]), limitations: Object.freeze(["Não use para comentários sem alvo textual preciso."]),
     accessibility: "Anotações repetem textualmente os ids e rótulos dos trechos-alvo."
   }),

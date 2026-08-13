@@ -3,6 +3,19 @@ import { validatePackageSchema } from "./schemaValidation.js";
 const PACKAGE_ID_PATTERN = /^aralearn\.(?:resource|response)\.[a-z][a-z0-9]*(?:[._-][a-z0-9]+)*$/u;
 const PACKAGE_VERSION_PATTERN = /^(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)$/u;
 const PACKAGE_SLOTS = Object.freeze(["content", "response", "feedback"]);
+const PRACTICE_MODES = Object.freeze([
+  "exposition",
+  "gap",
+  "typing",
+  "selection",
+  "ordering",
+  "matching",
+  "classification"
+]);
+const UNIVERSAL_CONTENT_RESPONSES = Object.freeze([
+  "aralearn.response.gap",
+  "aralearn.response.matching"
+]);
 
 function clone(value) {
   return structuredClone(value);
@@ -19,6 +32,45 @@ function text(value) {
 function assertNonEmptyList(value, label) {
   if (!Array.isArray(value) || value.length === 0 || value.some((item) => !text(item))) {
     throw new TypeError(`${label} precisa ser uma lista não vazia de textos.`);
+  }
+}
+
+function assertAcademicManifest(manifest) {
+  const academic = manifest.academic;
+  if (!academic || typeof academic !== "object" || Array.isArray(academic)) {
+    throw new TypeError(`${manifest.id}.manifest precisa de academic.`);
+  }
+  for (const field of [
+    "domains",
+    "knowledgeObjects",
+    "conventions",
+    "appropriateWhen",
+    "avoidWhen",
+    "technologies",
+    "practiceModes"
+  ]) {
+    assertNonEmptyList(academic[field], `${manifest.id}.manifest.academic.${field}`);
+  }
+  if (academic.practiceModes.some((mode) => !PRACTICE_MODES.includes(mode))) {
+    throw new TypeError(`${manifest.id} declara modalidade de prática desconhecida.`);
+  }
+  const authoring = academic.authoring;
+  if (!authoring || typeof authoring !== "object" || Array.isArray(authoring) ||
+      authoring.aiSelection !== true || authoring.manualTextEditing !== true ||
+      authoring.structureEditing !== false) {
+    throw new TypeError(
+      `${manifest.id}.manifest.academic.authoring precisa habilitar seleção por IA e edição textual, sem edição estrutural.`
+    );
+  }
+  if (manifest.slots.includes("content") && !academic.practiceModes.includes("exposition")) {
+    throw new TypeError(`${manifest.id} precisa declarar exposição em practiceModes.`);
+  }
+  if (manifest.slots.includes("content")) {
+    for (const mode of ["gap", "typing", "matching"]) {
+      if (!academic.practiceModes.includes(mode)) {
+        throw new TypeError(`${manifest.id} precisa admitir a prática ${mode}.`);
+      }
+    }
   }
 }
 
@@ -44,6 +96,7 @@ export function assertPackageDefinition(definition) {
     throw new TypeError(`${manifest.id} declara slot desconhecido.`);
   }
   assertNonEmptyList(manifest.cognitiveOperations, `${manifest.id}.manifest.cognitiveOperations`);
+  assertAcademicManifest(manifest);
   if (!definition.schema || typeof definition.schema !== "object") {
     throw new TypeError(`${manifest.id} precisa de schema.`);
   }
@@ -63,6 +116,9 @@ export function assertPackageDefinition(definition) {
 
 function publicManifest(definition) {
   const manifest = definition.manifest;
+  const responseCompatibility = manifest.slots.includes("content")
+    ? [...new Set([...(manifest.responseCompatibility || []), ...UNIVERSAL_CONTENT_RESPONSES])]
+    : manifest.responseCompatibility || [];
   return freezeClone({
     id: manifest.id,
     version: manifest.version,
@@ -70,9 +126,10 @@ function publicManifest(definition) {
     purpose: manifest.purpose,
     slots: manifest.slots,
     cognitiveOperations: manifest.cognitiveOperations,
-    responseCompatibility: manifest.responseCompatibility || [],
+    responseCompatibility,
     limitations: manifest.limitations || [],
-    accessibility: manifest.accessibility || ""
+    accessibility: manifest.accessibility || "",
+    academic: manifest.academic
   });
 }
 
@@ -209,3 +266,4 @@ export function createPackageRegistry(packageDefinitions = []) {
 }
 
 export const PACKAGE_SLOTS_SUPPORTED_BY_KERNEL = PACKAGE_SLOTS;
+export const PACKAGE_PRACTICE_MODES = PRACTICE_MODES;

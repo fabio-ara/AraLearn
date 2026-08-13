@@ -1,4 +1,5 @@
 import { escapePackageAttribute, renderPackageInline, renderPackageProse } from "../../sdk/html.js";
+import { academicProfile } from "../../sdk/academic.js";
 
 export const sequencePackage = Object.freeze({
   manifest: Object.freeze({
@@ -6,6 +7,7 @@ export const sequencePackage = Object.freeze({
     purpose: "Tornar visível ordem, cronologia, procedimento ou ciclo sem ramificação.",
     slots: Object.freeze(["content", "feedback"]),
     cognitiveOperations: Object.freeze(["order", "trace-process", "locate-in-time", "recognize-cycle"]),
+    academic: academicProfile({ domains: ["transversal", "processos", "computação"], knowledgeObjects: ["ordem temporal", "procedimento linear", "ciclo"], conventions: ["ordem de leitura explícita", "etapas identificáveis", "ciclo fechado quando aplicável"], appropriateWhen: ["a ordem é parte do conceito e não há ramificação"], avoidWhen: ["há decisão, concorrência ou hierarquia"], technologies: ["HTML semântico", "CSS lógico"], practiceModes: ["exposition", "gap", "typing", "selection", "ordering"] }),
     responseCompatibility: Object.freeze(["aralearn.response.ordering", "aralearn.response.choice", "aralearn.response.gap"]),
     limitations: Object.freeze(["Não representa decisão ou ramificação." ]),
     accessibility: "A ordem visual também é a ordem do DOM e cada item tem posição textual."

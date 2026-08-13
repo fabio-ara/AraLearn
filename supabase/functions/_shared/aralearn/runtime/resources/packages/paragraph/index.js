@@ -1,4 +1,5 @@
 import { renderPackageProse } from "../../sdk/html.js";
+import { academicProfile } from "../../sdk/academic.js";
 
 export const paragraphPackage = Object.freeze({
   manifest: Object.freeze({
@@ -8,6 +9,7 @@ export const paragraphPackage = Object.freeze({
     purpose: "Desenvolver uma explicação progressiva em prosa, listas curtas e literais inequívocos.",
     slots: Object.freeze(["content", "feedback"]),
     cognitiveOperations: Object.freeze(["situate", "explain", "exemplify", "summarize-locally", "give-feedback"]),
+    academic: academicProfile({ domains: ["transversal"], knowledgeObjects: ["conceito", "explicação", "exemplo narrado"], conventions: ["prosa acadêmica contínua", "termo apresentado antes do uso"], appropriateWhen: ["a relação espacial não acrescenta significado"], avoidWhen: ["a estrutura do objeto exige notação própria"], technologies: ["HTML semântico"], practiceModes: ["exposition", "gap", "typing", "selection"] }),
     responseCompatibility: Object.freeze(["aralearn.response.gap"]),
     limitations: Object.freeze([
       "Não representa relações espaciais ou tabulares.",

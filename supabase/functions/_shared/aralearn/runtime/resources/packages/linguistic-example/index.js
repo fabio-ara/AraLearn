@@ -1,10 +1,12 @@
 import { escapePackageAttribute, renderPackageInline, renderPackageProse } from "../../sdk/html.js";
+import { academicProfile } from "../../sdk/academic.js";
 
 export const linguisticExamplePackage = Object.freeze({
   manifest: Object.freeze({
     id: "aralearn.resource.linguistic_example", version: "1.0.0", label: "Exemplo linguístico",
     purpose: "Alinhar forma, glosa e tradução em análise linguística.", slots: Object.freeze(["content", "feedback"]),
     cognitiveOperations: Object.freeze(["align-form-gloss", "compare-language-forms", "analyze-morphemes"]),
+    academic: academicProfile({ domains: ["linguística", "línguas"], knowledgeObjects: ["forma linguística", "glosa", "tradução"], conventions: ["alinhamento interlinear", "glosas consistentes", "idioma e direção declarados"], appropriateWhen: ["forma, análise e tradução precisam ser alinhadas"], avoidWhen: ["uma citação simples é suficiente"], technologies: ["HTML semântico", "atributos de idioma e direção"], practiceModes: ["exposition", "gap", "typing", "selection", "matching"] }),
     responseCompatibility: Object.freeze(["aralearn.response.gap", "aralearn.response.choice"]), limitations: Object.freeze(["Não use fora de uma tarefa linguística que exija alinhamento."]),
     accessibility: "Cada unidade é lida com forma, glosa e tradução na mesma ordem."
   }),

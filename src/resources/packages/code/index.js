@@ -1,4 +1,5 @@
 import { escapePackageHtml, renderPackageCode, renderPackageProse } from "../../sdk/html.js";
+import { academicProfile } from "../../sdk/academic.js";
 
 export const codePackage = Object.freeze({
   manifest: Object.freeze({
@@ -6,6 +7,7 @@ export const codePackage = Object.freeze({
     purpose: "Apresentar código cuja sintaxe, indentação e execução mental são relevantes.",
     slots: Object.freeze(["content", "feedback"]),
     cognitiveOperations: Object.freeze(["inspect-code", "trace", "compare-implementations", "explain-syntax"]),
+    academic: academicProfile({ domains: ["programação", "engenharia de software", "bancos de dados"], knowledgeObjects: ["trecho de programa", "consulta", "configuração textual"], conventions: ["fonte monoespaçada", "indentação preservada", "linguagem identificada"], appropriateWhen: ["a sintaxe e a execução mental fazem parte da aprendizagem"], avoidWhen: ["pseudocódigo ou prosa expressam melhor a ideia"], technologies: ["HTML semântico", "texto pré-formatado"], practiceModes: ["exposition", "gap", "typing", "selection"] }),
     responseCompatibility: Object.freeze(["aralearn.response.gap", "aralearn.response.choice"]),
     limitations: Object.freeze(["Não executa o programa.", "Não substitui a explicação do contexto e do efeito do código."]),
     accessibility: "Prompt, linguagem e código são expostos como texto selecionável."

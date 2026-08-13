@@ -56,17 +56,48 @@ function choiceResponse(question = "Qual protocolo confirma a entrega?") {
 
 test("kernel registra package sem conhecer paragraph", () => {
   const catalog = RESOURCE_PACKAGE_REGISTRY.listCatalog();
-  assert.equal(catalog.length, 19);
+  assert.equal(catalog.length, 28);
   assert.equal(catalog[0].id, "aralearn.resource.paragraph");
   assert.equal(Object.hasOwn(catalog[0], "schema"), false);
   assert.equal(Object.hasOwn(catalog[0], "example"), false);
+  catalog.forEach((manifest) => {
+    assert.ok(manifest.academic.domains.length, manifest.id);
+    assert.ok(manifest.academic.knowledgeObjects.length, manifest.id);
+    assert.ok(manifest.academic.conventions.length, manifest.id);
+    assert.ok(manifest.academic.appropriateWhen.length, manifest.id);
+    assert.ok(manifest.academic.avoidWhen.length, manifest.id);
+    assert.equal(manifest.academic.authoring.manualTextEditing, true, manifest.id);
+    assert.equal(manifest.academic.authoring.aiSelection, true, manifest.id);
+    assert.equal(manifest.academic.authoring.structureEditing, false, manifest.id);
+    if (manifest.slots.includes("content")) {
+      assert.ok(manifest.academic.practiceModes.includes("gap"), manifest.id);
+      assert.ok(manifest.academic.practiceModes.includes("typing"), manifest.id);
+      assert.ok(manifest.academic.practiceModes.includes("matching"), manifest.id);
+      assert.ok(manifest.responseCompatibility.includes("aralearn.response.gap"), manifest.id);
+      assert.ok(manifest.responseCompatibility.includes("aralearn.response.matching"), manifest.id);
+      const contract = RESOURCE_PACKAGE_REGISTRY.getAuthoringContract(manifest.id, manifest.version);
+      const instance = RESOURCE_PACKAGE_REGISTRY.normalizeInstance({
+        id: `selection-${manifest.id}`,
+        package: manifest.id,
+        version: manifest.version,
+        data: contract.contract.example
+      }, "content");
+      const targets = RESOURCE_PACKAGE_REGISTRY.editableTargets(instance, "content");
+      assert.ok(targets.length, `${manifest.id} precisa expor texto selecionável.`);
+      targets.forEach((target) => {
+        assert.ok(target.path, manifest.id);
+        assert.ok(target.label, manifest.id);
+      });
+    }
+  });
 });
 
-test("packages de resposta avaliam escolha exata, lacuna e ordenação", () => {
+test("packages de resposta avaliam escolha, lacuna, ordenação e encaixe", () => {
   const cases = [
     ["aralearn.response.choice", { selectedIds: ["tcp"] }],
     ["aralearn.response.gap", { values: { protocol: "protocolo" } }],
-    ["aralearn.response.ordering", { order: ["s1", "s2"] }]
+    ["aralearn.response.ordering", { order: ["s1", "s2"] }],
+    ["aralearn.response.matching", { matches: { tcp: "transport", ip: "network" } }]
   ];
   cases.forEach(([packageId, answer], index) => {
     const manifest = RESOURCE_PACKAGE_REGISTRY.listCatalog().find(({ id }) => id === packageId);

@@ -357,6 +357,35 @@ test("IA limitada ao resource não altera título nem feedback", async ({ page }
   expect(card.feedback[0].data.text).toBe("Compare com a disjunção.");
 });
 
+test("IA mantém conversa de reparo no mesmo card sem persistir o diálogo", async ({ page }) => {
+  await bootAuthoring(page);
+  await openFirstCard(page);
+  await selectMode(page, "ai");
+  await packageTarget(page, "content:paragraph-1").click();
+  await page.locator('[data-action="toggle-card-assistance-composer"]').click();
+  const prompt = page.locator('[data-field="assist-prompt"]');
+  await prompt.fill("Primeiro, situe o conceito.");
+  await page.locator('[data-action="submit-card-assistance"]').click();
+  await expect(prompt).toBeVisible();
+  await expect(prompt).toHaveValue("");
+  await expect(page.locator(".card-assistance-conversation")).toContainText("Primeiro, situe o conceito.");
+  await prompt.fill("Agora acrescente um exemplo curto.");
+  await page.locator('[data-action="submit-card-assistance"]').click();
+
+  const probe = await page.evaluate(() => ({
+    calls: structuredClone(globalThis.__packageAuthoringProbe.providerCalls),
+    localState: structuredClone(globalThis.__packageAuthoringProbe.localState)
+  }));
+  expect(probe.calls).toHaveLength(2);
+  const secondEnvelope = JSON.parse(probe.calls[1].prompt);
+  expect(secondEnvelope.priorRepairConversation).toHaveLength(1);
+  expect(secondEnvelope.priorRepairConversation[0].userRequest)
+    .toBe("Primeiro, situe o conceito.");
+  expect(secondEnvelope.userRequest).toBe("Agora acrescente um exemplo curto.");
+  expect(JSON.stringify(probe.localState)).not.toContain("Primeiro, situe o conceito.");
+  expect(JSON.stringify(probe.localState)).not.toContain("Agora acrescente um exemplo curto.");
+});
+
 for (const width of [320, 360, 390, 412]) {
   test(`autoria por packages permanece contida em ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 800 });

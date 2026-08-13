@@ -1307,11 +1307,22 @@ function renderMicrosequenceScreen({ course, lesson, microsequence, cards, selec
       renderUiIcon("ready-state", "home-tab-icon") + "</button>"
     : "";
   const cardAssistanceComposerOpen = editorSupport.cardAssistanceComposerOpen === true;
+  const assistanceConversation = Array.isArray(editorSupport.cardAssistanceConversation)
+    ? editorSupport.cardAssistanceConversation
+    : [];
+  const assistanceConversationHtml = assistanceConversation.length
+    ? '<ol class="card-assistance-conversation" aria-label="Ajustes anteriores desta conversa">' +
+      assistanceConversation.map((turn, index) => '<li><span>Ajuste ' +
+        String(index + 1) + '</span><p>' + escapeHtml(turn.request) +
+        '</p><small>Aplicado ao ' + escapeHtml(turn.scope === "card" ? "card" : "conteúdo selecionado") +
+        '</small></li>').join("") + '</ol>'
+    : "";
   const aiEditor = cardEditorMode === "ai" && cardAssistanceComposerOpen
     ? '<section class="runtime-card-ai-editor" aria-label="Assistência por IA">' +
+      assistanceConversationHtml +
       '<textarea data-field="assist-prompt" class="assist-prompt" data-card-authoring-focus="ai-prompt" aria-label="' +
       escapeHtml(promptLabel) + '" title="' + escapeHtml(promptLabel) + '" placeholder="' +
-      escapeHtml(promptPlaceholder) + '"' +
+      escapeHtml(assistanceConversation.length ? "Continue o ajuste a partir do resultado atual." : promptPlaceholder) + '"' +
       (cardAssistanceLocked ? ' disabled aria-disabled="true"' : "") + ">" +
       escapeHtml(editorSupport.promptText || "") + "</textarea>" +
       '<div class="card-assistance-command-row">' +

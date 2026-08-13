@@ -305,6 +305,11 @@ test("consulta lista manifests e só envia schema para package e versão escolhi
   const listed = (await body(listedResponse)).result.structuredContent.data;
   assert.equal(listed.contract, "aralearn.packages.v1");
   assert.equal(Object.hasOwn(listed.packages[0], "schema"), false);
+  assert.ok(listed.packages[0].academic.domains.length);
+  assert.ok(listed.packages[0].academic.conventions.length);
+  assert.ok(listed.packages[0].academic.appropriateWhen.length);
+  assert.ok(listed.packages[0].academic.avoidWhen.length);
+  assert.ok(listed.packages[0].academic.practiceModes.includes("typing"));
 
   const response = await handler()(request(toolCall("consultarPackagesDeCard", {
     packageId: "aralearn.resource.paragraph",

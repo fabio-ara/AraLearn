@@ -75,11 +75,24 @@ test("geração estruturada usa schema exato do package e aplica reparo", async 
   const result = await generateCardAssistanceChangeSet({
     projectDocument: document,
     selection,
-    request: { operation: "repair", repairScope: "card", promptText: "Torne a explicação mais clara." },
+    request: {
+      operation: "repair",
+      repairScope: "card",
+      promptText: "Torne a explicação mais clara.",
+      conversationTurns: [{
+        turn: 1,
+        userRequest: "Situe primeiro o problema.",
+        appliedTo: ["card"],
+        result: "A alteração foi validada e já está refletida no currentCard."
+      }]
+    },
     provider,
     modelId: "test-model"
   });
   assert.equal(requestSeen.schemaName, "aralearn_package_card_repair_v1");
+  const requestEnvelope = JSON.parse(requestSeen.prompt);
+  assert.equal(requestEnvelope.priorRepairConversation[0].userRequest, "Situe primeiro o problema.");
+  assert.equal(requestEnvelope.userRequest, "Torne a explicação mais clara.");
   assert.equal(result.changeSet.card.content[0].data.text, "Texto progressivo e situado.");
   const snapshot = await buildCardAssistanceScopeSnapshot(document, selection, {
     operation: "repair",

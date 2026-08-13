@@ -471,6 +471,7 @@ async function generatePackageCardRepair({
   userRequest,
   context,
   snapshot,
+  conversationTurns,
   onProgress
 }) {
   const repairScope = snapshot.target.repairScope;
@@ -480,12 +481,13 @@ async function generatePackageCardRepair({
     modelId,
     buildRequest: (feedback) => ({
       phase: "package_card_assistance_repair",
-      system: "Repare somente as folhas textuais autorizadas do card. Preserve identidades, packages, versões, estrutura e respostas formais. Responda somente no schema.",
+      system: "Repare somente as folhas textuais autorizadas do card. Preserve identidades, packages, versões, estrutura e respostas formais. Considere priorRepairConversation como continuidade já aplicada e trate userRequest como a instrução mais recente; o currentCard é sempre o estado vigente. Responda somente no schema.",
       prompt: serializeAssistanceEnvelope({
         contract: "aralearn.package-card-assistance.v1",
         userRequest: normalizedUserRequest(userRequest),
         repairScope,
         selectedPackageTargets: targets.map(({ targetId }) => targetId),
+        priorRepairConversation: Array.isArray(conversationTurns) ? conversationTurns : [],
         writableTextPaths: listCardAssistanceTextPaths(context.card, {
           repairScope,
           targets
@@ -552,6 +554,7 @@ export async function generateCardAssistanceChangeSet({
     userRequest: request.promptText,
     context,
     snapshot,
+    conversationTurns: request.conversationTurns,
     onProgress
   });
   const validatedCard = snapshot.target.repairScope === "resources"

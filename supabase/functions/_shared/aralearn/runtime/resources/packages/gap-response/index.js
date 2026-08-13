@@ -4,6 +4,7 @@ import {
   renderPackageActionIcon,
   renderPackageInline
 } from "../../sdk/html.js";
+import { academicProfile } from "../../sdk/academic.js";
 
 function normalizeAnswer(value) { return String(value ?? "").normalize("NFC").trim(); }
 
@@ -64,6 +65,7 @@ export const gapResponsePackage = Object.freeze({
     id: "aralearn.response.gap", version: "1.0.0", label: "Lacuna",
     purpose: "Pedir recuperação ou discriminação exatamente no campo semântico declarado pelo conteúdo.", slots: Object.freeze(["response"]),
     cognitiveOperations: Object.freeze(["recall", "complete", "label", "calculate"]), responseCompatibility: Object.freeze([]),
+    academic: academicProfile({ domains: ["transversal"], knowledgeObjects: ["lacuna semântica", "resposta curta"], conventions: ["lacuna no lugar exato do conceito", "equivalentes aceitos explícitos"], appropriateWhen: ["recordar ou completar um elemento localizado é a operação desejada"], avoidWhen: ["a resposta exige argumentação extensa"], technologies: ["HTML semântico", "controles nativos"], practiceModes: ["gap", "typing", "selection"], content: false }),
     limitations: Object.freeze(["O package de conteúdo precisa declarar o targetPath como editável por resposta." ]), accessibility: "Cada lacuna tem prompt, rótulo e controle nativo próprios."
   }),
   authoringContract: Object.freeze({ intent: "Declare lacunas com targetInstanceId e targetPath inequívocos, resposta formal e modo.", required: Object.freeze(["blanks"]), optional: Object.freeze(["prompt"]), rules: Object.freeze(["Não codifique lacunas dentro de strings.", "AcceptedAnswers só contém equivalentes formalmente aceitos."]), example: Object.freeze({ prompt: "Complete o termo.", blanks: [{ id: "protocol", targetInstanceId: "body-1", targetPath: "text:protocol", responseMode: "text", answer: "protocolo" }] }) }),
@@ -142,6 +144,6 @@ export const gapResponsePackage = Object.freeze({
     return prompt + feedback;
   },
   accessibleText(data) { return `${data.prompt || "Complete as lacunas."} ${data.blanks.map((blank) => blank.label || blank.id).join("; ")}`; },
-  editableTargets() { return []; },
+  editableTargets(data) { return [...(data.prompt ? [{ path: "prompt", label: "Editar pergunta" }] : []), ...data.blanks.flatMap((blank, index) => [...(blank.label ? [{ path: `blanks[${index}].label`, label: `Editar rótulo ${index + 1}` }] : []), ...(blank.distractors || []).map((_, distractorIndex) => ({ path: `blanks[${index}].distractors[${distractorIndex}]`, label: `Editar distrator ${index + 1}.${distractorIndex + 1}` }))])]; },
   evaluate(data, answer) { const values = answer?.values && typeof answer.values === "object" ? answer.values : {}; const results = data.blanks.map((blank) => { const received = normalizeAnswer(values[blank.id]); const accepted = [blank.answer, ...(blank.acceptedAnswers || [])].map(normalizeAnswer); return { id: blank.id, correct: accepted.includes(received), received, expected: blank.answer }; }); return { correct: results.every(({ correct }) => correct), results }; }
 });

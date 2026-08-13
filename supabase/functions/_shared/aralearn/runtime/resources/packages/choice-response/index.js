@@ -5,6 +5,7 @@ import {
   renderPackageProse
 } from "../../sdk/html.js";
 import { shuffleExerciseOptions } from "../../../core/exerciseOptions.js";
+import { academicProfile } from "../../sdk/academic.js";
 
 function optionValue(option) {
   return option.kind === "code" ? `${option.language}:${option.code}` : option.text;
@@ -30,6 +31,7 @@ export const choiceResponsePackage = Object.freeze({
     id: "aralearn.response.choice", version: "1.0.0", label: "Escolha",
     purpose: "Pedir que o estudante discrimine uma ou mais alternativas plausíveis.", slots: Object.freeze(["response"]),
     cognitiveOperations: Object.freeze(["discriminate", "select-best", "identify-set", "diagnose-misconception"]),
+    academic: academicProfile({ domains: ["transversal"], knowledgeObjects: ["alternativas", "distratores", "conjunto de respostas"], conventions: ["enunciado único", "distratores plausíveis", "confirmação antes do feedback"], appropriateWhen: ["discriminar opções é a operação desejada"], avoidWhen: ["o estudante deve produzir a resposta sem pistas"], technologies: ["HTML semântico", "ARIA"], practiceModes: ["selection"], content: false }),
     responseCompatibility: Object.freeze([]), limitations: Object.freeze(["Não use quando recordar ou produzir a resposta for a operação desejada."]),
     accessibility: "Alternativas usam fieldset, legend e controles nativos."
   }),

@@ -480,6 +480,7 @@
                           "data": {
                             "prompt": "Observe a identidade.",
                             "name": "I",
+                            "delimiters": "brackets",
                             "values": [
                               [
                                 "1",
@@ -500,7 +501,7 @@
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
-                            "text": "Cada matriz possui tabela semântica e ordem linear por linhas."
+                            "text": "Cada matriz possui leitura por linhas e dimensões anunciadas."
                           }
                         }
                       ],
@@ -933,7 +934,559 @@
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
-                            "text": "Cada correspondência é uma linha DOM completa; nenhuma informação depende da posição de uma seta."
+                            "text": "Cada conjunto lista seus elementos uma única vez e toda correspondência também aparece como par ordenado textual."
+                          }
+                        }
+                      ],
+                      "topics": [],
+                      "sources": []
+                    },
+                    {
+                      "id": "gallery-20",
+                      "position": 20,
+                      "title": "Rastreamento de algoritmo",
+                      "role": "theory",
+                      "content": [
+                        {
+                          "id": "instance-20",
+                          "package": "aralearn.resource.algorithm_trace",
+                          "version": "1.0.0",
+                          "data": {
+                            "prompt": "Acompanhe o contador.",
+                            "variables": [
+                              "i",
+                              "soma"
+                            ],
+                            "steps": [
+                              {
+                                "id": "s0",
+                                "action": "Inicializar",
+                                "values": [
+                                  "0",
+                                  "0"
+                                ],
+                                "output": ""
+                              },
+                              {
+                                "id": "s1",
+                                "action": "Somar i e incrementar",
+                                "values": [
+                                  "1",
+                                  "0"
+                                ],
+                                "output": ""
+                              }
+                            ]
+                          }
+                        }
+                      ],
+                      "response": null,
+                      "feedback": [
+                        {
+                          "id": "feedback-20",
+                          "package": "aralearn.resource.paragraph",
+                          "version": "1.0.0",
+                          "data": {
+                            "text": "Cada passo é uma linha com ação, valores das variáveis e saída."
+                          }
+                        }
+                      ],
+                      "topics": [],
+                      "sources": []
+                    },
+                    {
+                      "id": "gallery-21",
+                      "position": 21,
+                      "title": "Esquema relacional",
+                      "role": "theory",
+                      "content": [
+                        {
+                          "id": "instance-21",
+                          "package": "aralearn.resource.database_schema",
+                          "version": "1.0.0",
+                          "data": {
+                            "prompt": "Observe a chave estrangeira.",
+                            "relations": [
+                              {
+                                "id": "course",
+                                "name": "Curso",
+                                "attributes": [
+                                  {
+                                    "id": "course_id",
+                                    "name": "curso_id",
+                                    "type": "uuid",
+                                    "key": "primary"
+                                  },
+                                  {
+                                    "id": "title",
+                                    "name": "titulo",
+                                    "type": "text",
+                                    "key": "none"
+                                  }
+                                ]
+                              },
+                              {
+                                "id": "lesson",
+                                "name": "Licao",
+                                "attributes": [
+                                  {
+                                    "id": "lesson_id",
+                                    "name": "licao_id",
+                                    "type": "uuid",
+                                    "key": "primary"
+                                  },
+                                  {
+                                    "id": "course_id",
+                                    "name": "curso_id",
+                                    "type": "uuid",
+                                    "key": "foreign"
+                                  }
+                                ]
+                              }
+                            ],
+                            "references": [
+                              {
+                                "id": "lesson_course",
+                                "fromRelation": "lesson",
+                                "fromAttribute": "course_id",
+                                "toRelation": "course",
+                                "toAttribute": "course_id",
+                                "cardinality": "many-to-one"
+                              }
+                            ]
+                          }
+                        }
+                      ],
+                      "response": null,
+                      "feedback": [
+                        {
+                          "id": "feedback-21",
+                          "package": "aralearn.resource.paragraph",
+                          "version": "1.0.0",
+                          "data": {
+                            "text": "Cada relação lista atributos e chaves; cada referência é repetida em texto."
+                          }
+                        }
+                      ],
+                      "topics": [],
+                      "sources": []
+                    },
+                    {
+                      "id": "gallery-22",
+                      "position": 22,
+                      "title": "Mapa de memória",
+                      "role": "theory",
+                      "content": [
+                        {
+                          "id": "instance-22",
+                          "package": "aralearn.resource.memory_layout",
+                          "version": "1.0.0",
+                          "data": {
+                            "prompt": "Observe as regiões de um processo.",
+                            "addressBase": "hexadecimal",
+                            "addressOrder": "ascending",
+                            "segments": [
+                              {
+                                "id": "text",
+                                "start": "0x00400000",
+                                "end": "0x0040FFFF",
+                                "label": "Código",
+                                "kind": "code",
+                                "description": "Instruções executáveis"
+                              },
+                              {
+                                "id": "heap",
+                                "start": "0x00600000",
+                                "end": "0x0060FFFF",
+                                "label": "Heap",
+                                "kind": "heap",
+                                "description": "Alocação dinâmica"
+                              }
+                            ]
+                          }
+                        }
+                      ],
+                      "response": null,
+                      "feedback": [
+                        {
+                          "id": "feedback-22",
+                          "package": "aralearn.resource.paragraph",
+                          "version": "1.0.0",
+                          "data": {
+                            "text": "Segmentos são lidos na ordem dos endereços com início, fim, rótulo e descrição."
+                          }
+                        }
+                      ],
+                      "topics": [],
+                      "sources": []
+                    },
+                    {
+                      "id": "gallery-23",
+                      "position": 23,
+                      "title": "Topologia de rede",
+                      "role": "theory",
+                      "content": [
+                        {
+                          "id": "instance-23",
+                          "package": "aralearn.resource.network_topology",
+                          "version": "1.0.0",
+                          "data": {
+                            "prompt": "Acompanhe o caminho até o servidor.",
+                            "segments": [
+                              {
+                                "id": "lan",
+                                "label": "LAN 192.0.2.0/24"
+                              }
+                            ],
+                            "devices": [
+                              {
+                                "id": "client",
+                                "label": "Cliente",
+                                "kind": "host",
+                                "segmentId": "lan",
+                                "address": "192.0.2.10"
+                              },
+                              {
+                                "id": "switch",
+                                "label": "Switch de acesso",
+                                "kind": "switch",
+                                "segmentId": "lan"
+                              },
+                              {
+                                "id": "server",
+                                "label": "Servidor",
+                                "kind": "server",
+                                "segmentId": "lan",
+                                "address": "192.0.2.20"
+                              }
+                            ],
+                            "links": [
+                              {
+                                "id": "l1",
+                                "from": "client",
+                                "to": "switch",
+                                "medium": "Ethernet",
+                                "directed": false
+                              },
+                              {
+                                "id": "l2",
+                                "from": "switch",
+                                "to": "server",
+                                "medium": "Ethernet",
+                                "directed": false
+                              }
+                            ]
+                          }
+                        }
+                      ],
+                      "response": null,
+                      "feedback": [
+                        {
+                          "id": "feedback-23",
+                          "package": "aralearn.resource.paragraph",
+                          "version": "1.0.0",
+                          "data": {
+                            "text": "Equipamentos são agrupados por segmento e os enlaces aparecem em lista textual completa."
+                          }
+                        }
+                      ],
+                      "topics": [],
+                      "sources": []
+                    },
+                    {
+                      "id": "gallery-24",
+                      "position": 24,
+                      "title": "Layout de pacote",
+                      "role": "theory",
+                      "content": [
+                        {
+                          "id": "instance-24",
+                          "package": "aralearn.resource.packet_layout",
+                          "version": "1.0.0",
+                          "data": {
+                            "prompt": "Leia os campos iniciais do cabeçalho TCP.",
+                            "unitBits": 32,
+                            "fields": [
+                              {
+                                "id": "source",
+                                "label": "Porta de origem",
+                                "widthBits": 16,
+                                "description": "Identifica o processo emissor."
+                              },
+                              {
+                                "id": "destination",
+                                "label": "Porta de destino",
+                                "widthBits": 16,
+                                "description": "Identifica o processo receptor."
+                              }
+                            ]
+                          }
+                        }
+                      ],
+                      "response": null,
+                      "feedback": [
+                        {
+                          "id": "feedback-24",
+                          "package": "aralearn.resource.paragraph",
+                          "version": "1.0.0",
+                          "data": {
+                            "text": "Cada campo é listado com nome, offset, largura e descrição."
+                          }
+                        }
+                      ],
+                      "topics": [],
+                      "sources": []
+                    },
+                    {
+                      "id": "gallery-25",
+                      "position": 25,
+                      "title": "Diagrama de conjuntos",
+                      "role": "theory",
+                      "content": [
+                        {
+                          "id": "instance-25",
+                          "package": "aralearn.resource.set_diagram",
+                          "version": "1.0.0",
+                          "data": {
+                            "prompt": "Observe a interseção.",
+                            "universeLabel": "Estudantes",
+                            "sets": [
+                              {
+                                "id": "sql",
+                                "label": "Conhecem SQL"
+                              },
+                              {
+                                "id": "python",
+                                "label": "Conhecem Python"
+                              }
+                            ],
+                            "regions": [
+                              {
+                                "id": "both",
+                                "setIds": [
+                                  "sql",
+                                  "python"
+                                ],
+                                "items": [
+                                  "Ana"
+                                ]
+                              },
+                              {
+                                "id": "sql-only",
+                                "setIds": [
+                                  "sql"
+                                ],
+                                "items": [
+                                  "Bruno"
+                                ]
+                              },
+                              {
+                                "id": "outside",
+                                "setIds": [],
+                                "items": [
+                                  "Carla"
+                                ]
+                              }
+                            ]
+                          }
+                        }
+                      ],
+                      "response": null,
+                      "feedback": [
+                        {
+                          "id": "feedback-25",
+                          "package": "aralearn.resource.paragraph",
+                          "version": "1.0.0",
+                          "data": {
+                            "text": "As regiões são enumeradas por pertencimento; o desenho não é a única fonte de informação."
+                          }
+                        }
+                      ],
+                      "topics": [],
+                      "sources": []
+                    },
+                    {
+                      "id": "gallery-26",
+                      "position": 26,
+                      "title": "Máquina de estados",
+                      "role": "theory",
+                      "content": [
+                        {
+                          "id": "instance-26",
+                          "package": "aralearn.resource.state_machine",
+                          "version": "1.0.0",
+                          "data": {
+                            "prompt": "Acompanhe uma conexão simplificada.",
+                            "machineKind": "deterministic",
+                            "states": [
+                              {
+                                "id": "closed",
+                                "label": "Fechada",
+                                "initial": true,
+                                "accepting": false
+                              },
+                              {
+                                "id": "open",
+                                "label": "Aberta",
+                                "initial": false,
+                                "accepting": true
+                              }
+                            ],
+                            "events": [
+                              {
+                                "id": "connect",
+                                "label": "CONNECT"
+                              },
+                              {
+                                "id": "close",
+                                "label": "CLOSE"
+                              }
+                            ],
+                            "transitions": [
+                              {
+                                "id": "t1",
+                                "from": "closed",
+                                "event": "connect",
+                                "to": "open"
+                              },
+                              {
+                                "id": "t2",
+                                "from": "open",
+                                "event": "close",
+                                "to": "closed"
+                              }
+                            ]
+                          }
+                        }
+                      ],
+                      "response": null,
+                      "feedback": [
+                        {
+                          "id": "feedback-26",
+                          "package": "aralearn.resource.paragraph",
+                          "version": "1.0.0",
+                          "data": {
+                            "text": "A função de transição é uma tabela; marcadores indicam estados inicial e de aceitação."
+                          }
+                        }
+                      ],
+                      "topics": [],
+                      "sources": []
+                    },
+                    {
+                      "id": "gallery-27",
+                      "position": 27,
+                      "title": "Tabela-verdade",
+                      "role": "theory",
+                      "content": [
+                        {
+                          "id": "instance-27",
+                          "package": "aralearn.resource.truth_table",
+                          "version": "1.0.0",
+                          "data": {
+                            "prompt": "Observe a negação.",
+                            "variables": [
+                              "P"
+                            ],
+                            "derivedColumns": [
+                              "¬P"
+                            ],
+                            "rows": [
+                              {
+                                "values": [
+                                  "true"
+                                ],
+                                "results": [
+                                  "false"
+                                ]
+                              },
+                              {
+                                "values": [
+                                  "false"
+                                ],
+                                "results": [
+                                  "true"
+                                ]
+                              }
+                            ]
+                          }
+                        }
+                      ],
+                      "response": null,
+                      "feedback": [
+                        {
+                          "id": "feedback-27",
+                          "package": "aralearn.resource.paragraph",
+                          "version": "1.0.0",
+                          "data": {
+                            "text": "Cabeçalhos identificam variáveis, subfórmulas e resultado; cada valoração é uma linha."
+                          }
+                        }
+                      ],
+                      "topics": [],
+                      "sources": []
+                    },
+                    {
+                      "id": "gallery-28",
+                      "position": 28,
+                      "title": "Encaixe de correspondências",
+                      "role": "practice",
+                      "content": [
+                        {
+                          "id": "context-aralearn.response.matching",
+                          "package": "aralearn.resource.paragraph",
+                          "version": "1.0.0",
+                          "data": {
+                            "text": "Pedir que o estudante encaixe cada item na correspondência ou categoria adequada."
+                          }
+                        }
+                      ],
+                      "response": {
+                        "id": "instance-28",
+                        "package": "aralearn.response.matching",
+                        "version": "1.0.0",
+                        "data": {
+                          "prompt": "Associe cada protocolo à camada.",
+                          "mode": "classification",
+                          "leftItems": [
+                            {
+                              "id": "tcp",
+                              "label": "TCP"
+                            },
+                            {
+                              "id": "ip",
+                              "label": "IP"
+                            }
+                          ],
+                          "rightItems": [
+                            {
+                              "id": "transport",
+                              "label": "Transporte"
+                            },
+                            {
+                              "id": "network",
+                              "label": "Rede"
+                            }
+                          ],
+                          "answerPairs": [
+                            {
+                              "leftId": "tcp",
+                              "rightId": "transport"
+                            },
+                            {
+                              "leftId": "ip",
+                              "rightId": "network"
+                            }
+                          ]
+                        }
+                      },
+                      "feedback": [
+                        {
+                          "id": "feedback-28",
+                          "package": "aralearn.resource.paragraph",
+                          "version": "1.0.0",
+                          "data": {
+                            "text": "Cada origem possui um seletor nativo rotulado; arrastar nunca é obrigatório."
                           }
                         }
                       ],

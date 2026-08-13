@@ -1,4 +1,4 @@
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
 
@@ -12,7 +12,7 @@ const edgeRuntimeRoot = path.join(
   "runtime"
 );
 
-const files = [
+const fixedFiles = [
   ["src/core/exerciseOptions.js", "core/exerciseOptions.js"],
   ["src/domain/aralearnProject.js", "domain/aralearnProject.js"],
   ["src/domain/formulaExpression.js", "domain/formulaExpression.js"],
@@ -22,33 +22,27 @@ const files = [
   ["src/persistence/relationalSchema.js", "persistence/relationalSchema.js"],
   ["src/persistence/relationalRowsToContract.js", "persistence/relationalRowsToContract.js"],
   ["src/persistence/validateRelationalCourse.js", "persistence/validateRelationalCourse.js"],
-  ["src/resources/kernel/cardEnvelope.js", "resources/kernel/cardEnvelope.js"],
-  ["src/resources/kernel/courseContract.js", "resources/kernel/courseContract.js"],
-  ["src/resources/kernel/packageRegistry.js", "resources/kernel/packageRegistry.js"],
-  ["src/resources/kernel/schemaValidation.js", "resources/kernel/schemaValidation.js"],
-  ["src/resources/sdk/html.js", "resources/sdk/html.js"],
-  ["src/resources/packages/index.js", "resources/packages/index.js"],
-  ["src/resources/packages/paragraph/index.js", "resources/packages/paragraph/index.js"],
-  ["src/resources/packages/code/index.js", "resources/packages/code/index.js"],
-  ["src/resources/packages/table/index.js", "resources/packages/table/index.js"],
-  ["src/resources/packages/sequence/index.js", "resources/packages/sequence/index.js"],
-  ["src/resources/packages/annotated-text/index.js", "resources/packages/annotated-text/index.js"],
-  ["src/resources/packages/linguistic-example/index.js", "resources/packages/linguistic-example/index.js"],
-  ["src/resources/packages/choice-response/index.js", "resources/packages/choice-response/index.js"],
-  ["src/resources/packages/gap-response/index.js", "resources/packages/gap-response/index.js"],
-  ["src/resources/packages/ordering-response/index.js", "resources/packages/ordering-response/index.js"],
-  ["src/resources/packages/tree/index.js", "resources/packages/tree/index.js"],
-  ["src/resources/packages/matrix/index.js", "resources/packages/matrix/index.js"],
-  ["src/resources/packages/reaction/index.js", "resources/packages/reaction/index.js"],
-  ["src/resources/packages/flow/index.js", "resources/packages/flow/index.js"],
-  ["src/resources/packages/formula/index.js", "resources/packages/formula/index.js"],
-  ["src/resources/packages/plane/index.js", "resources/packages/plane/index.js"],
-  ["src/resources/packages/chart/index.js", "resources/packages/chart/index.js"],
-  ["src/resources/packages/system-map/index.js", "resources/packages/system-map/index.js"],
-  ["src/resources/packages/graph/index.js", "resources/packages/graph/index.js"],
-  ["src/resources/packages/relation-map/index.js", "resources/packages/relation-map/index.js"],
   ["src/authoring/pedagogicalBlueprint.js", "authoring/pedagogicalBlueprint.js"],
   ["src/authoring/instructionProfile.js", "authoring/instructionProfile.js"]
+];
+
+async function listJavaScriptFiles(relativeRoot) {
+  const absoluteRoot = path.join(sourceRoot, relativeRoot);
+  const entries = await readdir(absoluteRoot, { recursive: true, withFileTypes: true });
+  return entries
+    .filter((entry) => entry.isFile() && entry.name.endsWith(".js"))
+    .map((entry) => {
+      const sourceRelativePath = path.relative(sourceRoot, path.join(entry.parentPath, entry.name));
+      const targetRelativePath = path.relative(path.join(sourceRoot, "src"), path.join(entry.parentPath, entry.name));
+      return [sourceRelativePath, targetRelativePath];
+    });
+}
+
+const files = [
+  ...fixedFiles,
+  ...(await listJavaScriptFiles("src/resources/kernel")),
+  ...(await listJavaScriptFiles("src/resources/sdk")),
+  ...(await listJavaScriptFiles("src/resources/packages"))
 ];
 
 const checkOnly = process.argv.includes("--check");

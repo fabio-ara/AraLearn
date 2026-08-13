@@ -10,7 +10,7 @@ Critérios pedagógicos para escolher e combinar resources. Use consultarRecurso
 
 O package representa a estrutura sobre a qual o estudante raciocina. Escolha-o pela operação exigida, não pela aparência, por uma cota de variedade nem pela facilidade de geração.
 
-O catálogo MCP é a fonte de verdade sobre os packages instalados. Consulte-o antes de escolher. Ele informa finalidade, operações cognitivas, slots e compatibilidades sem enviar todos os schemas. Depois do planejamento, consulte somente o contrato da versão exata de cada package escolhido. O catálogo pode crescer sem alterar estas instruções.
+O catálogo MCP é a fonte de verdade sobre os packages instalados. Consulte-o antes de escolher. Ele informa finalidade, operações cognitivas, áreas, objetos de conhecimento, convenções acadêmicas, tecnologias, situações apropriadas e contraindicadas, modalidades de prática, slots e compatibilidades sem enviar todos os schemas. Compare esses campos com o gesto cognitivo planejado; não escolha apenas pelo nome. Depois do planejamento, consulte somente o contrato da versão exata de cada package escolhido. O catálogo pode crescer sem alterar estas instruções.
 
 ## Composição do card
 
@@ -30,18 +30,21 @@ Em `aralearn.response.choice`, `data.question` é o único enunciado da escolha.
 Use o manifest recuperado por MCP para comparar a operação cognitiva com a finalidade do package. Em termos gerais:
 
 - texto explicativo pede `aralearn.resource.paragraph`;
-- código, tabela, fórmula, reação, gráfico quantitativo, sequência, fluxo, árvore, grafo, matriz, plano, mapa de sistema, mapa de relações, exemplo linguístico e texto anotado pedem seus packages estruturais específicos;
+- código, tabela, fórmula, reação, gráfico quantitativo, sequência, fluxo, árvore, grafo, matriz, plano, mapa de sistema, mapa de relações, diagrama de conjuntos, tabela-verdade, cabeçalho de pacote, rastreamento de algoritmo, esquema relacional, máquina de estados, topologia de rede, mapa de memória, exemplo linguístico e texto anotado pedem seus packages estruturais específicos;
 - discriminação por alternativas pede `aralearn.response.choice`;
 - recuperação dentro de um campo textual visível pede `aralearn.response.gap`;
 - reconstrução de uma ordem pede `aralearn.response.ordering`.
+- reconstrução de pares ou classificação pede `aralearn.response.matching`.
 
 Essa orientação não substitui o catálogo. Nunca memorize um schema, invente campos, use coordenadas de tela ou presuma que todos os packages aceitam toda resposta. A combinação é válida somente quando manifest, contrato e validação do package concordam.
 
-## Lacunas e ordenação
+## Lacunas, ordenação e encaixe
 
 Uma lacuna declara `targetInstanceId` e `targetPath` para um campo textual real de uma instância em `content`. A resposta precisa ocorrer nesse campo e será substituída pelo controle interativo somente na renderização. A notação de `targetPath` pertence ao contrato recuperado de `aralearn.response.gap`; não codifique lacunas em strings.
 
 Uma ordenação aponta para uma instância de conteúdo que preserve a sequência e declara os identificadores na ordem correta. Os itens visíveis vêm da representação alvo. Não duplique a sequência no enunciado nem use a posição visual como resposta implícita.
+
+Um encaixe declara origens, destinos e pares corretos. Ele pode reconstruir uma bijeção ou classificar várias origens na mesma categoria. A interface usa controles nativos acessíveis; arrastar nunca é obrigatório. Todo package de conteúdo admite composição com lacuna/digitação e encaixe, mas isso não autoriza deformar a convenção disciplinar do conteúdo: a interação permanece no package de resposta.
 
 ## Representações visuais
 
@@ -49,7 +52,9 @@ O JSON descreve significado; o renderer do package decide geometria e dimensiona
 
 Em `graph`, vértices são entidades estáveis e relações são apresentadas sem sobrepor rótulos às arestas. Use direção somente quando ela mudar a interpretação. Não force um grafo para representar uma simples sequência ou lista.
 
-Em `relation_map`, deixe explícitos os dois conjuntos e a natureza de cada pareamento. O renderer apresenta relações como linhas legíveis; não dependa de setas atravessando textos ou de caixas com largura fixa.
+Em `relation_map`, deixe explícitos domínio, contradomínio e pares ordenados. O renderer apresenta cada elemento uma única vez e enumera a relação sem cruzar rótulos. Use `set_diagram` quando interseção, união ou pertencimento simultâneo for o objeto.
+
+`matrix` é reservado a arranjos algébricos de escalares ou expressões, sem cabeçalhos de atributos nem grade de registros. Para dados tabulares use `table`; para esquema relacional use `database_schema`; para execução variável por passo use `algorithm_trace`.
 
 Em `flow`, cada decisão explicita condição e consequência. Em `tree`, a ligação preserva pai e filho. Nos demais packages, unidades, eixos, ordem, notação, grupos e direção necessários precisam estar declarados nos campos semânticos do contrato.
 
@@ -80,14 +85,19 @@ Escolha o recurso pela operação que o estudante precisa realizar:
 | Operação | Recursos mais prováveis |
 |---|---|
 | compreender uma definição ou distinção | `paragraph`, `choice` ou combinação justificada de packages |
-| acompanhar execução, sintaxe ou comando | `code`, `flow`, `table` |
-| comparar casos ou valores | `table`, `matrix`, `choice` |
-| reconhecer hierarquia ou classificação | `tree`, `relation_map` |
-| analisar conexões, dependências ou rotas | `graph`, `relation_map`, `flow` |
+| acompanhar execução, sintaxe ou comando | `code`, `algorithm_trace`, `flow` |
+| comparar casos, registros ou valores | `table`, `chart`, `choice` |
+| reconhecer hierarquia ou classificação | `tree`, `matching` |
+| analisar conexões, dependências ou rotas | `graph`, `network_topology`, `flow` |
 | distinguir limites, subsistemas e integrações | `system_map`, `graph`, `flow` |
 | raciocinar com coordenadas, vetores ou distância | `plane`, `matrix`, `formula` |
 | ler notação matemática | `formula`, `matrix` ou combinação justificada de packages |
 | ler ou balancear uma equação de reação | `reaction`, `formula` ou combinação justificada de packages |
+| avaliar proposições ou conectivos | `truth_table`, `formula` |
+| analisar relações entre conjuntos | `relation_map`, `set_diagram` |
+| interpretar cabeçalhos e offsets | `packet_layout`, `memory_layout` |
+| inspecionar chaves e referências | `database_schema`, `table` |
+| acompanhar eventos dependentes de estado | `state_machine` |
 
 O recurso visual permanece no próprio card de prática. Não descreva um diagrama ausente nem peça que a pessoa se lembre dos valores apresentados anteriormente.
 
@@ -100,6 +110,7 @@ Registre o objetivo e a evidência em `microsequence.goal` e `microsequence.chec
 - Use alternativas quando o objetivo for prever saída, encontrar defeito, escolher consulta ou distinguir efeitos colaterais.
 - Preserve indentação, linguagem, versão e ambiente relevantes. SQL precisa indicar o esquema mínimo, as linhas necessárias e o dialeto quando isso mudar a resposta.
 - Faça o estudante acompanhar o estado: valores de variáveis, pilha, resultado intermediário, linhas afetadas ou fluxo de controle.
+- Use `algorithm_trace` para mudanças de variáveis por passo, `database_schema` para chaves e referências e `memory_layout` para endereços e segmentos. Uma tabela genérica não substitui essas convenções.
 - Um fragmento executável não deve depender de arquivo, biblioteca ou tabela que não esteja declarada no card.
 - Distratores devem representar erros reais: atribuição em lugar de comparação, índice incorreto, junção inadequada, filtro aplicado no estágio errado, mutação inesperada ou tratamento incompleto de ausência.
 
@@ -107,6 +118,7 @@ Registre o objetivo e a evidência em `microsequence.goal` e `microsequence.chec
 
 - Introduza cada símbolo, domínio, unidade e convenção antes do primeiro uso exigido.
 - Use `formula` para a estrutura simbólica, `plane` para relações espaciais, `matrix` para posição e transformação e `table` para dados observados.
+- Use `truth_table` para valorações e conectivos, `relation_map` para uma relação binária e `set_diagram` para regiões de Venn/Euler. Não use `matrix` como tabela com cabeçalhos.
 - Um exemplo resolvido explicita as transformações decisivas. A prática seguinte altera dados e foco, não apenas a aparência.
 - Arredondamento, precisão, intervalo, hipótese e unidade fazem parte do enunciado quando influenciam a resposta.
 - Em estatística, diferencie descrição, estimação e inferência. Não transforme correlação em causalidade.
@@ -125,7 +137,7 @@ Registre o objetivo e a evidência em `microsequence.goal` e `microsequence.chec
 
 - Apresente a função observável antes da abstração: por exemplo, mostre a associação entre um nome e um endereço antes de introduzir hierarquia, registros distribuídos e resolução de nomes. Defina cada termo na primeira ocorrência e contraste serviços próximos somente depois que ambos tiverem função clara.
 - Declare topologia, endereçamento, estado inicial, equipamento ou serviço e versão quando necessários.
-- Use `system_map` quando limites e pertencimento a subsistemas importarem, `graph` para conexões sem essa semântica, `flow` para negociação e resposta a falhas, `table` para configuração e `code` para comandos.
+- Use `system_map` quando limites e pertencimento a subsistemas importarem, `network_topology` para equipamentos, segmentos e enlaces, `graph` para topologia abstrata, `packet_layout` para campos de protocolo, `state_machine` para comportamento dependente do estado, `flow` para decisão procedural, `table` para configuração e `code` para comandos.
 - Diferencie observação, diagnóstico e ação. Uma evidência isolada não prova uma causa sem as condições correspondentes.
 - Não apresente credenciais reais, dados pessoais, endereços internos nem comandos destrutivos sem ambiente seguro e finalidade didática explícita.
 - Distratores podem representar camada errada, direção invertida, máscara incompatível, porta inadequada ou interpretação incorreta de log.
@@ -173,12 +185,12 @@ Antes de aprovar, verifique:
 
 # Packages de card
 
-Packages são módulos independentes compatíveis com o kernel. O catálogo compacto informa identidade, versão, finalidade, operações cognitivas, slots, compatibilidades, limitações e acessibilidade. O contrato completo só é devolvido para package e versão escolhidos.
+Packages são módulos independentes compatíveis com o kernel. O catálogo compacto informa identidade, versão, finalidade, operações cognitivas, slots, áreas, objetos de conhecimento, convenções acadêmicas, adequações, contraindicações, tecnologias, modalidades de prática, compatibilidades, limitações e acessibilidade. O contrato completo só é devolvido para package e versão escolhidos.
 
-Os packages de conteúdo instalados incluem texto explicado, código, tabela, sequência, texto anotado, exemplo linguístico, árvore, matriz, reação, fluxo, fórmula, plano, gráfico, mapa de sistema, grafo e mapa de relações. Os packages de resposta instalados cobrem escolha, lacuna e ordenação. A lista vigente é sempre derivada do registry; documentação não é fonte paralela de enumeração.
+Os packages de conteúdo instalados incluem texto explicado, código, tabela, sequência, texto anotado, exemplo linguístico, árvore, matriz, reação, fluxo, fórmula, plano, gráfico, mapa de sistema, grafo, mapa de relações, tabela-verdade, layout de pacote, rastreamento de algoritmo, esquema relacional, máquina de estados, topologia de rede, diagrama de conjuntos e mapa de memória. Os packages de resposta instalados cobrem escolha, lacuna, ordenação e encaixe/classificação. A lista vigente é sempre derivada do registry; documentação não é fonte paralela de enumeração.
 
-`graph` recebe vértices e arestas sem coordenadas. O package calcula a geometria móvel, numera relações no desenho e repete cada relação numa lista semântica, evitando rótulos sobrepostos. `relation_map` recebe dois conjuntos e correspondências; renderiza linhas DOM completas com quebra de texto, sem elipses, âncoras ou setas autorais.
+`graph` recebe vértices e arestas sem coordenadas. O package calcula a geometria móvel e mantém os rótulos completos numa lista semântica fora das arestas. `relation_map` recebe domínio, contradomínio e pares ordenados; apresenta cada elemento uma única vez e explicita a relação sem cruzar texto. `matrix` representa somente arranjos algébricos, sem herdar a grade de uma tabela de registros.
 
 Na autoria, escolha pelo trabalho cognitivo e não para variar visualmente. Explique referências e termos antes de exigir interpretação. Divida uma ideia quando densidade, número de relações ou carga verbal tornarem o recurso difícil de ler em 360 px.
 
-Uma lacuna declara `targetInstanceId` e `targetPath`; não se codifica resposta em marcador textual. Uma escolha declara IDs corretos, e uma ordenação declara a ordem formal. O package de resposta avalia sem inferência.
+Uma lacuna declara `targetInstanceId` e `targetPath`; não se codifica resposta em marcador textual. Uma escolha declara IDs corretos, e uma ordenação declara a ordem formal. Um encaixe declara origens, destinos e pares. Todo package de conteúdo admite composição com lacuna/digitação e encaixe; o package de resposta avalia sem inferência e a representação disciplinar permanece inalterada.

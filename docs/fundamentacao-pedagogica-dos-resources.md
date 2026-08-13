@@ -77,7 +77,22 @@ No AraLearn:
 - `linguistic_example` alinha forma, som, glosa e tradução;
 - `system_map` explicita pertencimento a limites e conexões entre componentes;
 - `reaction` preserva a gramática de uma equação química;
+- `truth_table`, `set_diagram` e `relation_map` distinguem valoração
+  lógica, regiões de conjuntos e pares de uma relação binária;
+- `algorithm_trace`, `database_schema` e `memory_layout` preservam,
+  respectivamente, estado de execução, chaves/referências e intervalos de
+  endereços;
+- `packet_layout`, `network_topology` e `state_machine` distinguem campos
+  contíguos de protocolo, equipamentos/enlaces e comportamento dependente de
+  estado;
 - múltiplos packages em `content` são reservados à tarefa que realmente exige coordenação.
+
+Cada package de conteúdo expõe folhas textuais selecionáveis e pode ser
+composto com resposta por lacuna/digitação ou encaixe. A prática fica no
+package de resposta: essa separação impede que a interação descaracterize a
+notação acadêmica do objeto. `matrix`, por exemplo, não recebe cabeçalhos de
+atributos nem grade tabular; registros pertencem a `table`, enquanto chaves e
+referências pertencem a `database_schema`.
 
 `goal`, `covers` e `checks` declaram a intenção antes da escolha dos packages.
 A revisão pergunta se a composição preserva a evidência

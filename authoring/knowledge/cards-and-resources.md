@@ -5,10 +5,13 @@ pela operação exigida, não pela aparência, por uma cota de variedade nem pel
 facilidade de geração.
 
 O catálogo MCP é a fonte de verdade sobre os packages instalados. Consulte-o
-antes de escolher. Ele informa finalidade, operações cognitivas, slots e
-compatibilidades sem enviar todos os schemas. Depois do planejamento, consulte
-somente o contrato da versão exata de cada package escolhido. O catálogo pode
-crescer sem alterar estas instruções.
+antes de escolher. Ele informa finalidade, operações cognitivas, áreas,
+objetos de conhecimento, convenções acadêmicas, tecnologias, situações
+apropriadas e contraindicadas, modalidades de prática, slots e
+compatibilidades sem enviar todos os schemas. Compare esses campos com o gesto
+cognitivo planejado; não escolha apenas pelo nome. Depois do planejamento,
+consulte somente o contrato da versão exata de cada package escolhido. O
+catálogo pode crescer sem alterar estas instruções.
 
 ## Composição do card
 
@@ -36,19 +39,24 @@ finalidade do package. Em termos gerais:
 
 - texto explicativo pede `aralearn.resource.paragraph`;
 - código, tabela, fórmula, reação, gráfico quantitativo, sequência, fluxo,
-  árvore, grafo, matriz, plano, mapa de sistema, mapa de relações, exemplo
-  linguístico e texto anotado pedem seus packages estruturais específicos;
+  árvore, grafo, matriz, plano, mapa de sistema, mapa de relações, diagrama de
+  conjuntos, tabela-verdade, cabeçalho de pacote, rastreamento de algoritmo,
+  esquema relacional, máquina de estados, topologia de rede, mapa de memória,
+  exemplo linguístico e texto anotado pedem seus packages estruturais
+  específicos;
 - discriminação por alternativas pede `aralearn.response.choice`;
 - recuperação dentro de um campo textual visível pede
   `aralearn.response.gap`;
 - reconstrução de uma ordem pede `aralearn.response.ordering`.
+- reconstrução de pares ou classificação pede
+  `aralearn.response.matching`.
 
 Essa orientação não substitui o catálogo. Nunca memorize um schema, invente
 campos, use coordenadas de tela ou presuma que todos os packages aceitam toda
 resposta. A combinação é válida somente quando manifest, contrato e validação
 do package concordam.
 
-## Lacunas e ordenação
+## Lacunas, ordenação e encaixe
 
 Uma lacuna declara `targetInstanceId` e `targetPath` para um campo textual real
 de uma instância em `content`. A resposta precisa ocorrer nesse campo e será
@@ -60,6 +68,13 @@ Uma ordenação aponta para uma instância de conteúdo que preserve a sequênci
 declara os identificadores na ordem correta. Os itens visíveis vêm da
 representação alvo. Não duplique a sequência no enunciado nem use a posição
 visual como resposta implícita.
+
+Um encaixe declara origens, destinos e pares corretos. Ele pode reconstruir
+uma bijeção ou classificar várias origens na mesma categoria. A interface usa
+controles nativos acessíveis; arrastar nunca é obrigatório. Todo package de
+conteúdo admite composição com lacuna/digitação e encaixe, mas isso não
+autoriza deformar a convenção disciplinar do conteúdo: a interação permanece
+no package de resposta.
 
 ## Representações visuais
 
@@ -73,9 +88,15 @@ sobrepor rótulos às arestas. Use direção somente quando ela mudar a
 interpretação. Não force um grafo para representar uma simples sequência ou
 lista.
 
-Em `relation_map`, deixe explícitos os dois conjuntos e a natureza de cada
-pareamento. O renderer apresenta relações como linhas legíveis; não dependa de
-setas atravessando textos ou de caixas com largura fixa.
+Em `relation_map`, deixe explícitos domínio, contradomínio e pares ordenados.
+O renderer apresenta cada elemento uma única vez e enumera a relação sem
+cruzar rótulos. Use `set_diagram` quando interseção, união ou pertencimento
+simultâneo for o objeto.
+
+`matrix` é reservado a arranjos algébricos de escalares ou expressões, sem
+cabeçalhos de atributos nem grade de registros. Para dados tabulares use
+`table`; para esquema relacional use `database_schema`; para execução
+variável por passo use `algorithm_trace`.
 
 Em `flow`, cada decisão explicita condição e consequência. Em `tree`, a
 ligação preserva pai e filho. Nos demais packages, unidades, eixos, ordem,
