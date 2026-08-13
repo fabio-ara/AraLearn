@@ -1,5 +1,5 @@
 import { academicProfile } from "../../sdk/academic.js";
-import { dotAttributes, dotQuote, wrapGraphvizLabel } from "../../sdk/graphviz.js";
+import { dotAttributes, dotAttributesWithHtmlLabel, dotQuote, graphvizHtmlLines, wrapGraphvizLabel } from "../../sdk/graphviz.js";
 import { renderPackageInline, renderPackageProse } from "../../sdk/html.js";
 import {
   hydrateSystemDiagrams,
@@ -40,6 +40,18 @@ function externalTemplate(item) {
   return `<span class="package-system-diagram-node-content"><small>${renderPackageInline(item.stereotype)}</small><strong>${renderPackageInline(item.label)}</strong><span>${renderPackageInline(item.description)}</span></span>`;
 }
 
+function semanticGraphvizLabel({ type, name, metadata = [], description = "" }) {
+  return `<TABLE BORDER="0" CELLBORDER="0" CELLSPACING="0" CELLPADDING="2"><TR><TD><FONT POINT-SIZE="12">${graphvizHtmlLines(type, 34)}</FONT></TD></TR><TR><TD><B>${graphvizHtmlLines(name, 28)}</B></TD></TR>${metadata.map((value) => `<TR><TD><FONT POINT-SIZE="13"><I>${graphvizHtmlLines(value, 30)}</I></FONT></TD></TR>`).join("")}${description ? `<TR><TD>${graphvizHtmlLines(description, 32)}</TD></TR>` : ""}</TABLE>`;
+}
+
+function containerGraphvizLabel(item) {
+  return semanticGraphvizLabel({ type: `Contêiner · ${containerStereotype(item.kind)}`, name: item.label, metadata: [item.technology], description: item.responsibility });
+}
+
+function externalGraphvizLabel(item) {
+  return semanticGraphvizLabel({ type: item.stereotype, name: item.label, description: item.description });
+}
+
 function containerObjects(data) {
   return [
     ...data.containers.map((item) => ({ ...item, role: `container-${item.kind}` })),
@@ -60,8 +72,8 @@ function containerAccessibleText(data) {
 }
 
 function graphvizSource(data) {
-  const externalLines = externalObjects(data).map((item) => `  ${dotQuote(item.id)} ${dotAttributes({ id: `system-node-${item.id}`, class: `package-software-container-node is-${item.role}`, label: externalPlainLabel(item), shape: "box", style: "rounded", margin: "0.16,0.11" })};`);
-  const containerLines = data.containers.map((item) => `    ${dotQuote(item.id)} ${dotAttributes({ id: `system-node-${item.id}`, class: `package-software-container-node is-${item.role}`, label: containerPlainLabel(item), shape: item.kind === "data_store" ? "cylinder" : item.kind === "queue" ? "component" : "box", style: item.kind === "application" ? "rounded" : "solid", margin: "0.16,0.11" })};`);
+  const externalLines = externalObjects(data).map((item) => `  ${dotQuote(item.id)} ${dotAttributesWithHtmlLabel({ id: `system-node-${item.id}`, class: `package-software-container-node is-${item.role}`, shape: "box", style: "rounded", margin: "0.16,0.11" }, externalGraphvizLabel(item))};`);
+  const containerLines = data.containers.map((item) => `    ${dotQuote(item.id)} ${dotAttributesWithHtmlLabel({ id: `system-node-${item.id}`, class: `package-software-container-node is-${item.role}`, shape: item.kind === "data_store" ? "cylinder" : item.kind === "queue" ? "component" : "box", style: item.kind === "application" ? "rounded" : "solid", margin: "0.16,0.11" }, containerGraphvizLabel(item))};`);
   const edgeLines = data.relationships.map((item) => `  ${dotQuote(item.from)} -> ${dotQuote(item.to)} ${dotAttributes({ id: `system-edge-${item.id}`, class: "package-software-container-relationship", label: wrapGraphvizLabel(item.label, 16), arrowsize: "0.72" })};`);
   return [
     "digraph SoftwareContainers {",
@@ -79,8 +91,8 @@ function graphvizSource(data) {
 
 function labels(data) {
   return [
-    ...data.containers.map((item) => ({ kind: "node", id: item.id, plain: containerPlainLabel(item), html: containerTemplate(item), replacement: "always" })),
-    ...externalObjects(data).map((item) => ({ kind: "node", id: item.id, plain: externalPlainLabel(item), html: externalTemplate(item), replacement: "always" })),
+    ...data.containers.map((item) => ({ kind: "node", id: item.id, plain: containerPlainLabel(item), html: containerTemplate(item) })),
+    ...externalObjects(data).map((item) => ({ kind: "node", id: item.id, plain: externalPlainLabel(item), html: externalTemplate(item) })),
     ...data.relationships.map((item) => ({ kind: "edge", id: item.id, plain: item.label, html: `<span>${renderPackageInline(item.label)}</span>` }))
   ];
 }

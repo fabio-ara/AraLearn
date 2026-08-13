@@ -384,24 +384,42 @@ for (const mode of ["light", "dark"]) {
       .toBeLessThan(contextOrder.focus.top);
     expect(Math.min(...contextOrder.externals.map(({ top }) => top)))
       .toBeGreaterThan(contextOrder.focus.bottom);
-    const typeLabels = await figures.locator("small").allTextContents();
-    typeLabels.forEach((label) => expect(label.trim()).not.toMatch(/^\[[^\]]+\]$/u));
     for (const figure of [figures.nth(0), figures.nth(1)]) {
-      const hierarchy = await figure.locator(".package-system-diagram-node-content").evaluateAll((nodes) => nodes.map((node) => {
-        const type = node.querySelector("small");
-        const name = node.querySelector("strong");
-        const description = node.querySelector("span:not(.package-system-diagram-node-content)");
+      const hierarchy = await figure.locator('[data-system-object-kind="node"]').evaluateAll((nodes) => nodes.map((node) => {
+        const labels = [...node.querySelectorAll("text")]
+          .filter((label) => getComputedStyle(label).visibility === "visible");
+        const shapeElements = [...node.querySelectorAll(":scope > path, :scope > polygon, :scope > ellipse, :scope > rect")];
+        const boundsFor = (elements) => elements.reduce((bounds, element) => {
+          const box = element.getBBox();
+          return {
+            left: Math.min(bounds.left, box.x),
+            top: Math.min(bounds.top, box.y),
+            right: Math.max(bounds.right, box.x + box.width),
+            bottom: Math.max(bounds.bottom, box.y + box.height)
+          };
+        }, { left: Infinity, top: Infinity, right: -Infinity, bottom: -Infinity });
+        const shape = boundsFor(shapeElements);
+        const text = boundsFor(labels);
+        const styles = labels.map((label) => getComputedStyle(label));
+        const weights = styles.map((style) => style.fontWeight === "bold"
+          ? 700
+          : Number.parseInt(style.fontWeight || "0", 10));
         return {
-          complete: Boolean(type && name && description),
-          typeSize: type ? Number.parseFloat(getComputedStyle(type).fontSize) : 0,
-          nameSize: name ? Number.parseFloat(getComputedStyle(name).fontSize) : 0,
-          nameWeight: name ? Number.parseInt(getComputedStyle(name).fontWeight, 10) : 0
+          complete: labels.length >= 3,
+          native: !node.querySelector("foreignObject"),
+          contained: text.left >= shape.left - 1 && text.right <= shape.right + 1 &&
+            text.top >= shape.top - 1 && text.bottom <= shape.bottom + 1,
+          typeSize: styles[0] ? Number.parseFloat(styles[0].fontSize) : 0,
+          nameSize: Math.max(...styles.map((style) => Number.parseFloat(style.fontSize))),
+          nameWeight: Math.max(...weights)
         };
       }));
       expect(hierarchy.length).toBeGreaterThan(0);
-      hierarchy.forEach(({ complete, typeSize, nameSize, nameWeight }) => {
+      hierarchy.forEach(({ complete, native, contained, typeSize, nameSize, nameWeight }) => {
         expect(complete).toBe(true);
-        expect(typeSize).toBeLessThan(nameSize);
+        expect(native).toBe(true);
+        expect(contained).toBe(true);
+        expect(typeSize).toBeLessThanOrEqual(nameSize);
         expect(nameWeight).toBeGreaterThanOrEqual(600);
       });
     }

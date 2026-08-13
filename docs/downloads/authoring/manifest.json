@@ -7,8 +7,8 @@
     {
       "file": "aralearn-authoring-core.zip",
       "platform": null,
-      "bytes": 227500,
-      "sha256": "0e1050a553175349bee16e5cbe5ea870ce59e326dbe0b595a8eda4298cee4b70",
+      "bytes": 227812,
+      "sha256": "ecc78b80ce20eb9f41e377bcfb613c9dd777b828840298e3cdf3bd84228304ce",
       "files": [
         {
           "path": "aralearn-authoring/core/editorial-cycle.md",
@@ -52,8 +52,8 @@
         },
         {
           "path": "aralearn-authoring/docs/fundamentacao-pedagogica-dos-resources.md",
-          "bytes": 39700,
-          "sha256": "22402f03001aaec5bf36141fce33440fb91c3ade847c19afdd2adc9bdab3cfa4"
+          "bytes": 40012,
+          "sha256": "6436a22645bb1f18c590db7635566d59b9e77f0bc003ed5499442b9872846853"
         },
         {
           "path": "aralearn-authoring/docs/persistencia-relacional.md",
@@ -165,8 +165,8 @@
     {
       "file": "aralearn-authoring-chatgpt.zip",
       "platform": "chatgpt",
-      "bytes": 459402,
-      "sha256": "eebd44c7e6dda90e72ac403f2ac3a6a167bfe58c6d4eb6f083fd9929283a512d",
+      "bytes": 459714,
+      "sha256": "88e93278896926290626cda5b5b0f502f84457b9c59947a79c699d192502b533",
       "files": [
         {
           "path": "aralearn-authoring/core/editorial-cycle.md",
@@ -210,8 +210,8 @@
         },
         {
           "path": "aralearn-authoring/docs/fundamentacao-pedagogica-dos-resources.md",
-          "bytes": 39088,
-          "sha256": "181b6ad2cd3305cb768022f8f66c088a46594b92567427f08923322e38dbe48f"
+          "bytes": 39400,
+          "sha256": "166a96059add0926b8014d13dfd91ab5dfbb6cbb18d9b81e9ba39d2732459805"
         },
         {
           "path": "aralearn-authoring/docs/persistencia-relacional.md",
@@ -358,8 +358,8 @@
     {
       "file": "aralearn-authoring-gemini.zip",
       "platform": "gemini",
-      "bytes": 233394,
-      "sha256": "542251bda7e5aa2821b1f867b0e00088e6783d80487b535d8f3237bde4d1387e",
+      "bytes": 233706,
+      "sha256": "d5f5fca55da79bc091dd409a9067f828c9cbfac326637a5ed111bfedb6105685",
       "files": [
         {
           "path": "aralearn-authoring/core/editorial-cycle.md",
@@ -403,8 +403,8 @@
         },
         {
           "path": "aralearn-authoring/docs/fundamentacao-pedagogica-dos-resources.md",
-          "bytes": 39700,
-          "sha256": "22402f03001aaec5bf36141fce33440fb91c3ade847c19afdd2adc9bdab3cfa4"
+          "bytes": 40012,
+          "sha256": "6436a22645bb1f18c590db7635566d59b9e77f0bc003ed5499442b9872846853"
         },
         {
           "path": "aralearn-authoring/docs/persistencia-relacional.md",
@@ -531,8 +531,8 @@
     {
       "file": "aralearn-authoring-microsoft-365.zip",
       "platform": "microsoft-365",
-      "bytes": 234446,
-      "sha256": "50222a66f9667e1f6747eaaa6bd77013044184ab6faacc05140e7c4ca89c57c8",
+      "bytes": 234758,
+      "sha256": "c7b88c6f4cf7bc5f74a967cc627fd61686c8340c11736075348ef2209c488bc7",
       "files": [
         {
           "path": "aralearn-authoring/core/editorial-cycle.md",
@@ -576,8 +576,8 @@
         },
         {
           "path": "aralearn-authoring/docs/fundamentacao-pedagogica-dos-resources.md",
-          "bytes": 39700,
-          "sha256": "22402f03001aaec5bf36141fce33440fb91c3ade847c19afdd2adc9bdab3cfa4"
+          "bytes": 40012,
+          "sha256": "6436a22645bb1f18c590db7635566d59b9e77f0bc003ed5499442b9872846853"
         },
         {
           "path": "aralearn-authoring/docs/persistencia-relacional.md",
@@ -709,8 +709,8 @@
     {
       "file": "aralearn-authoring-claude.zip",
       "platform": "claude",
-      "bytes": 233807,
-      "sha256": "cf687170d87ff1158d289d358ffd3523110e6c744dab24e9f16d746163edbe16",
+      "bytes": 234119,
+      "sha256": "4492b745178635a9374a1751a85baec5fe653e9bed470b4a4b8713c813d7ec52",
       "files": [
         {
           "path": "aralearn-authoring/core/editorial-cycle.md",
@@ -754,8 +754,8 @@
         },
         {
           "path": "aralearn-authoring/docs/fundamentacao-pedagogica-dos-resources.md",
-          "bytes": 39700,
-          "sha256": "22402f03001aaec5bf36141fce33440fb91c3ade847c19afdd2adc9bdab3cfa4"
+          "bytes": 40012,
+          "sha256": "6436a22645bb1f18c590db7635566d59b9e77f0bc003ed5499442b9872846853"
         },
         {
           "path": "aralearn-authoring/docs/persistencia-relacional.md",
@@ -882,8 +882,8 @@
     {
       "file": "aralearn-authoring-generic.zip",
       "platform": "generic",
-      "bytes": 235598,
-      "sha256": "2f1ec9baf3dc0266d27d217e420ecb8eaa6a1e50f9f480898ed5250e0a27d330",
+      "bytes": 235910,
+      "sha256": "65d4b540947e3eaa7a2a6e7f2125ead3b2aaae8af7d24f48b91053083f8ab2b0",
       "files": [
         {
           "path": "aralearn-authoring/core/editorial-cycle.md",
@@ -927,8 +927,8 @@
         },
         {
           "path": "aralearn-authoring/docs/fundamentacao-pedagogica-dos-resources.md",
-          "bytes": 39700,
-          "sha256": "22402f03001aaec5bf36141fce33440fb91c3ade847c19afdd2adc9bdab3cfa4"
+          "bytes": 40012,
+          "sha256": "6436a22645bb1f18c590db7635566d59b9e77f0bc003ed5499442b9872846853"
         },
         {
           "path": "aralearn-authoring/docs/persistencia-relacional.md",

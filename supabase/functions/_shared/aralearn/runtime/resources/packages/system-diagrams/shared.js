@@ -7,7 +7,7 @@ import {
 import { escapePackageAttribute } from "../../sdk/html.js";
 
 function templateMarkup(label) {
-  return `<template data-system-label-kind="${escapePackageAttribute(label.kind)}" data-system-label-id="${escapePackageAttribute(label.id)}" data-system-label-replacement="${escapePackageAttribute(label.replacement || "interactive")}">${label.html}</template>`;
+  return `<template data-system-label-kind="${escapePackageAttribute(label.kind)}" data-system-label-id="${escapePackageAttribute(label.id)}">${label.html}</template>`;
 }
 
 export function renderSystemDiagramFigure({
@@ -37,7 +37,7 @@ function replaceLabel(figure, svg, label) {
   group.dataset.systemObjectKind = label.kind;
   const template = figure.querySelector(`template[data-system-label-kind="${CSS.escape(label.kind)}"][data-system-label-id="${CSS.escape(label.id)}"]`);
   const interactive = template?.content.querySelector('[data-action="text-gap-open-choice"], [data-action="complete-input"]');
-  if (template?.dataset.systemLabelReplacement !== "always" && !interactive) return;
+  if (!interactive) return;
   const texts = [...group.querySelectorAll("text")];
   const bounds = label.kind === "node" ? nodeBounds(group) : unionGraphvizTextBounds(texts);
   texts.forEach((element) => { element.style.visibility = "hidden"; });

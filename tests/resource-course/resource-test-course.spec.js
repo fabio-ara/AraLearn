@@ -248,6 +248,68 @@ test("frame BPMN mantém as duas rolagens ao alcance e não captura o gesto feit
   await expect.poll(() => card.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
 });
 
+test("contêineres de software preservam todo rótulo na exposição e após preencher a lacuna", async ({ page }) => {
+  await openModule(page, 15);
+  await expect(page.locator('.runtime-software-container-block [data-graphviz-status="ready"]')).toHaveCount(1);
+
+  const staticLabels = await page.locator(".package-software-container-node").evaluateAll((nodes) => nodes.map((node) => {
+    const union = (elements) => elements.reduce((bounds, element) => {
+      const rect = element.getBoundingClientRect();
+      return {
+        left: Math.min(bounds.left, rect.left),
+        top: Math.min(bounds.top, rect.top),
+        right: Math.max(bounds.right, rect.right),
+        bottom: Math.max(bounds.bottom, rect.bottom)
+      };
+    }, { left: Infinity, top: Infinity, right: -Infinity, bottom: -Infinity });
+    const shape = union([...node.querySelectorAll(":scope > path, :scope > polygon, :scope > ellipse, :scope > rect")]);
+    const text = union([...node.querySelectorAll("text")]
+      .filter((label) => getComputedStyle(label).visibility === "visible"));
+    return {
+      native: !node.querySelector("foreignObject"),
+      textCount: node.querySelectorAll("text").length,
+      inside: text.left >= shape.left - 1 && text.right <= shape.right + 1 &&
+        text.top >= shape.top - 1 && text.bottom <= shape.bottom + 1
+    };
+  }));
+  expect(staticLabels).toHaveLength(7);
+  staticLabels.forEach(({ native, textCount, inside }) => {
+    expect(native).toBe(true);
+    expect(textCount).toBeGreaterThanOrEqual(3);
+    expect(inside).toBe(true);
+  });
+
+  await page.locator('[data-action="next-card"]').click();
+  const gap = page.locator('.package-software-container-node [data-action="text-gap-open-choice"]');
+  await expect(gap).toHaveCount(1);
+  await gap.click();
+  await page.locator('[data-action="text-gap-set-choice"]').first().click();
+  await expect(page.locator('.runtime-software-container-block [data-graphviz-status="ready"]')).toHaveCount(1);
+
+  const interactiveLabel = await page.locator(".package-software-container-node foreignObject").evaluate((foreignObject) => {
+    const node = foreignObject.closest(".package-software-container-node");
+    const content = foreignObject.querySelector(".package-system-diagram-node-content");
+    const shapeRects = [...node.querySelectorAll(":scope > path, :scope > polygon, :scope > ellipse, :scope > rect")]
+      .map((element) => element.getBoundingClientRect());
+    const shape = shapeRects.reduce((bounds, rect) => ({
+      left: Math.min(bounds.left, rect.left),
+      top: Math.min(bounds.top, rect.top),
+      right: Math.max(bounds.right, rect.right),
+      bottom: Math.max(bounds.bottom, rect.bottom)
+    }), { left: Infinity, top: Infinity, right: -Infinity, bottom: -Infinity });
+    const label = foreignObject.getBoundingClientRect();
+    return {
+      inside: label.left >= shape.left - 1 && label.right <= shape.right + 1 &&
+        label.top >= shape.top - 1 && label.bottom <= shape.bottom + 1,
+      overflowX: content.scrollWidth - content.clientWidth,
+      overflowY: content.scrollHeight - content.clientHeight
+    };
+  });
+  expect(interactiveLabel.inside).toBe(true);
+  expect(interactiveLabel.overflowX).toBeLessThanOrEqual(1);
+  expect(interactiveLabel.overflowY).toBeLessThanOrEqual(1);
+});
+
 test("glosa interlinear preserva alinhamento, tradução e legenda", async ({ page }) => {
   await openModule(page, 6);
   await expect(page.locator(".runtime-interlinear-unit")).toHaveCount(6);

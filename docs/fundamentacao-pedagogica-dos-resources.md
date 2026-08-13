@@ -194,7 +194,11 @@ diagrama; fora dele, move o card. Não há instrução visual autorreferente par
 um gesto convencional, o enquadramento vertical começa pelo início da
 representação e o documento externo não sofre overflow. O CSS não altera família
 nem tamanho tipográfico depois da diagramação, porque isso invalidaria as
-caixas usadas pelo Graphviz. Lacunas e digitação substituem somente rótulos
+caixas usadas pelo Graphviz. Rótulos estáticos com tipo, nome, tecnologia e
+descrição são tabelas tipográficas do próprio Graphviz: o mesmo conteúdo que
+determina a largura e a altura do nó é o que permanece visível na exposição.
+Não se substitui depois da diagramação um rótulo estático por HTML com métricas
+diferentes. Lacunas e digitação substituem somente rótulos
 declarados pelo package; edição manual e assistência por API recebem as mesmas
 folhas textuais, enquanto ids, referências, tipos, direções e topologia ficam
 protegidos como contexto estrutural.

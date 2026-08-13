@@ -1,5 +1,5 @@
 import { academicProfile } from "../../sdk/academic.js";
-import { dotAttributes, dotQuote, wrapGraphvizLabel } from "../../sdk/graphviz.js";
+import { dotAttributes, dotAttributesWithHtmlLabel, dotQuote, graphvizHtmlLines, wrapGraphvizLabel } from "../../sdk/graphviz.js";
 import { renderPackageInline, renderPackageProse } from "../../sdk/html.js";
 import {
   hydrateSystemDiagrams,
@@ -27,6 +27,10 @@ function objectTemplate(item) {
   return `<span class="package-system-diagram-node-content"><small>${renderPackageInline(item.stereotype)}</small><strong>${renderPackageInline(item.label)}</strong><span>${renderPackageInline(item.description)}</span></span>`;
 }
 
+function objectGraphvizLabel(item) {
+  return `<TABLE BORDER="0" CELLBORDER="0" CELLSPACING="0" CELLPADDING="2"><TR><TD><FONT POINT-SIZE="12">${graphvizHtmlLines(item.stereotype, 26)}</FONT></TD></TR><TR><TD><B>${graphvizHtmlLines(item.label, 26)}</B></TD></TR><TR><TD>${graphvizHtmlLines(item.description, 32)}</TD></TR></TABLE>`;
+}
+
 function contextAccessibleText(data) {
   const names = new Map(contextObjects(data).map(({ id, label }) => [id, label]));
   return [
@@ -40,14 +44,13 @@ function contextAccessibleText(data) {
 
 function graphvizSource(data) {
   const objects = contextObjects(data);
-  const nodeLines = objects.map((item) => `  ${dotQuote(item.id)} ${dotAttributes({
+  const nodeLines = objects.map((item) => `  ${dotQuote(item.id)} ${dotAttributesWithHtmlLabel({
     id: `system-node-${item.id}`,
     class: `package-system-context-node is-${item.role}`,
-    label: objectPlainLabel(item),
     shape: item.role === "person" ? "box" : "box",
     style: item.role === "person" ? "rounded" : "rounded",
     margin: "0.16,0.11"
-  })};`);
+  }, objectGraphvizLabel(item))};`);
   const edgeLines = data.relationships.map((item) => `  ${dotQuote(item.from)} -> ${dotQuote(item.to)} ${dotAttributes({
     id: `system-edge-${item.id}`,
     class: "package-system-context-relationship",
@@ -74,7 +77,7 @@ function graphvizSource(data) {
 
 function labels(data) {
   return [
-    ...contextObjects(data).map((item) => ({ kind: "node", id: item.id, plain: objectPlainLabel(item), html: objectTemplate(item), replacement: "always" })),
+    ...contextObjects(data).map((item) => ({ kind: "node", id: item.id, plain: objectPlainLabel(item), html: objectTemplate(item) })),
     ...data.relationships.map((item) => ({ kind: "edge", id: item.id, plain: item.label, html: `<span>${renderPackageInline(item.label)}</span>` }))
   ];
 }

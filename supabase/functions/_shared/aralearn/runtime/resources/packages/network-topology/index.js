@@ -1,5 +1,5 @@
 import { academicProfile } from "../../sdk/academic.js";
-import { dotAttributes, dotQuote, wrapGraphvizLabel } from "../../sdk/graphviz.js";
+import { dotAttributes, dotAttributesWithHtmlLabel, dotQuote, graphvizHtmlLines, wrapGraphvizLabel } from "../../sdk/graphviz.js";
 import { renderPackageInline, renderPackageProse } from "../../sdk/html.js";
 import {
   hydrateSystemDiagrams,
@@ -45,6 +45,14 @@ function deviceTemplate(device) {
   return `<span class="package-system-diagram-node-content"><small>${renderPackageInline(DEVICE_LABELS[device.kind])}</small><strong>${renderPackageInline(device.label)}</strong>${device.address ? `<code>${renderPackageInline(device.address)}</code>` : ""}</span>`;
 }
 
+function deviceGraphvizLabel(device) {
+  return `<TABLE BORDER="0" CELLBORDER="0" CELLSPACING="0" CELLPADDING="2"><TR><TD><FONT POINT-SIZE="12">${graphvizHtmlLines(DEVICE_LABELS[device.kind], 24)}</FONT></TD></TR><TR><TD><B>${graphvizHtmlLines(device.label, 24)}</B></TD></TR>${device.address ? `<TR><TD><FONT FACE="Courier New" POINT-SIZE="13">${graphvizHtmlLines(device.address, 28)}</FONT></TD></TR>` : ""}</TABLE>`;
+}
+
+function deviceStatement(device, indent = "  ") {
+  return `${indent}${dotQuote(device.id)} ${dotAttributesWithHtmlLabel({ id: `system-node-${device.id}`, class: `package-network-topology-device is-${device.kind}`, shape: DEVICE_SHAPES[device.kind], style: device.kind === "host" ? "rounded" : device.kind === "cloud" ? "dashed" : "solid" }, deviceGraphvizLabel(device))};`;
+}
+
 function linkPlainLabel(link) {
   return [link.medium, link.protocol].filter(Boolean).join(" · ");
 }
@@ -73,11 +81,11 @@ function graphvizSource(data) {
     clustered.add(segment.id);
     lines.push(`  subgraph ${dotQuote(`cluster-${segment.id}`)} {`);
     lines.push(`    graph ${dotAttributes({ id: `network-segment-${segment.id}`, class: "package-network-topology-segment", label: wrapGraphvizLabel(segment.label, 34), labelloc: "t", labeljust: "l", margin: "18", style: "rounded,dashed" })};`);
-    devices.forEach((device) => lines.push(`    ${dotQuote(device.id)} ${dotAttributes({ id: `system-node-${device.id}`, class: `package-network-topology-device is-${device.kind}`, label: devicePlainLabel(device), shape: DEVICE_SHAPES[device.kind], style: device.kind === "host" ? "rounded" : "solid" })};`));
+    devices.forEach((device) => lines.push(deviceStatement(device, "    ")));
     lines.push("  }");
   });
   data.devices.filter(({ segmentId }) => segmentId === null || !clustered.has(segmentId)).forEach((device) => {
-    lines.push(`  ${dotQuote(device.id)} ${dotAttributes({ id: `system-node-${device.id}`, class: `package-network-topology-device is-${device.kind}`, label: devicePlainLabel(device), shape: DEVICE_SHAPES[device.kind], style: device.kind === "cloud" ? "dashed" : "solid" })};`);
+    lines.push(deviceStatement(device));
   });
   data.links.forEach((link) => {
     lines.push(`  ${dotQuote(link.from)} -> ${dotQuote(link.to)} ${dotAttributes({ id: `system-edge-${link.id}`, class: "package-network-topology-link", label: wrapGraphvizLabel(linkPlainLabel(link), 18), dir: link.directed ? "forward" : "none" })};`);
@@ -88,7 +96,7 @@ function graphvizSource(data) {
 
 function labels(data) {
   return [
-    ...data.devices.map((device) => ({ kind: "node", id: device.id, plain: devicePlainLabel(device), html: deviceTemplate(device), replacement: "always" })),
+    ...data.devices.map((device) => ({ kind: "node", id: device.id, plain: devicePlainLabel(device), html: deviceTemplate(device) })),
     ...data.links.map((link) => ({ kind: "edge", id: link.id, plain: linkPlainLabel(link), html: `<span>${renderPackageInline(linkPlainLabel(link))}</span>` }))
   ];
 }

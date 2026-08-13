@@ -45,6 +45,29 @@ export function dotAttributes(attributes) {
     .join(", ")}]`;
 }
 
+export function escapeGraphvizHtml(value) {
+  return String(value ?? "")
+    .replace(/&/gu, "&amp;")
+    .replace(/</gu, "&lt;")
+    .replace(/>/gu, "&gt;")
+    .replace(/"/gu, "&quot;");
+}
+
+export function graphvizHtmlLines(value, lineLength = 32) {
+  return wrapGraphvizLabel(value, lineLength)
+    .split("\n")
+    .map(escapeGraphvizHtml)
+    .join("<BR/>");
+}
+
+export function dotAttributesWithHtmlLabel(attributes, htmlLabel) {
+  const serialized = Object.entries(attributes)
+    .filter(([, value]) => value !== undefined && value !== null && value !== "")
+    .map(([key, value]) => `${key}=${dotQuote(value)}`);
+  serialized.push(`label=<${String(htmlLabel || " ")}>`);
+  return `[${serialized.join(", ")}]`;
+}
+
 export function plainGraphvizLabel(value) {
   return String(value || "")
     .replace(GAP_MARKER, (encoded) => {

@@ -1,5 +1,5 @@
 import { academicProfile } from "../../sdk/academic.js";
-import { dotAttributes, dotQuote, plainGraphvizLabel, wrapGraphvizLabel } from "../../sdk/graphviz.js";
+import { dotAttributes, dotAttributesWithHtmlLabel, dotQuote, graphvizHtmlLines, wrapGraphvizLabel } from "../../sdk/graphviz.js";
 import { renderPackageInline, renderPackageProse } from "../../sdk/html.js";
 import { hydrateSystemDiagrams, renderSystemDiagramFigure, systemDiagramModelLabels } from "../system-diagrams/shared.js";
 
@@ -20,10 +20,9 @@ function nodeStereotype(node) {
   return "";
 }
 
-function nodeGraphvizLabel(node) {
+function nodeGraphvizHtmlLabel(node) {
   const stereotype = nodeStereotype(node);
-  const label = plainGraphvizLabel(nodeSymbol(node));
-  return stereotype ? `${stereotype}\n${label}` : label;
+  return `<TABLE BORDER="0" CELLBORDER="0" CELLSPACING="0" CELLPADDING="2">${stereotype ? `<TR><TD><FONT POINT-SIZE="12">${graphvizHtmlLines(stereotype, 24)}</FONT></TD></TR>` : ""}<TR><TD><B>${graphvizHtmlLines(nodeSymbol(node), 24)}</B></TD></TR></TABLE>`;
 }
 
 function nodeInteractiveLabel(node) {
@@ -32,7 +31,7 @@ function nodeInteractiveLabel(node) {
 }
 
 function nodeAttributes(node) {
-  const common = { id: `system-node-${node.id}`, class: `package-bpmn-node is-${node.kind}`, label: nodeGraphvizLabel(node), margin: "0.25,0.27" };
+  const common = { id: `system-node-${node.id}`, class: `package-bpmn-node is-${node.kind}`, margin: "0.25,0.27" };
   if (node.kind === "start_event") return { ...common, shape: "circle", width: "0.32", height: "0.32", fixedsize: "true", label: " " };
   if (node.kind === "end_event") return { ...common, shape: "doublecircle", width: "0.36", height: "0.36", fixedsize: "true", label: " " };
   if (node.kind === "intermediate_event") return { ...common, shape: "doublecircle", width: "0.48", height: "0.48", fixedsize: "true", label: " " };
@@ -40,11 +39,18 @@ function nodeAttributes(node) {
   return { ...common, shape: "box", style: "rounded", width: "2.05" };
 }
 
+function nodeStatement(node) {
+  const attributes = nodeAttributes(node);
+  return `${dotQuote(node.id)} ${["start_event", "end_event", "intermediate_event"].includes(node.kind)
+    ? dotAttributes(attributes)
+    : dotAttributesWithHtmlLabel(attributes, nodeGraphvizHtmlLabel(node))};`;
+}
+
 function participantSource(participant, data) {
   const participantNodes = data.nodes.filter((node) => node.participant === participant.id);
   const laneLines = participant.lanes.map((lane) => {
     const laneNodes = participantNodes.filter((node) => node.lane === lane.id);
-    return [`    subgraph ${dotQuote(`cluster-${participant.id}-${lane.id}`)} {`, `      graph ${dotAttributes({ id: `bpmn-lane-${participant.id}-${lane.id}`, class: "package-bpmn-lane", label: wrapGraphvizLabel(lane.label, 24), style: "rounded,dashed", margin: "14" })};`, ...laneNodes.map((node) => `      ${dotQuote(node.id)} ${dotAttributes(nodeAttributes(node))};`), "    }"].join("\n");
+    return [`    subgraph ${dotQuote(`cluster-${participant.id}-${lane.id}`)} {`, `      graph ${dotAttributes({ id: `bpmn-lane-${participant.id}-${lane.id}`, class: "package-bpmn-lane", label: wrapGraphvizLabel(lane.label, 24), style: "rounded,dashed", margin: "14" })};`, ...laneNodes.map((node) => `      ${nodeStatement(node)}`), "    }"].join("\n");
   });
   return [`  subgraph ${dotQuote(`cluster-${participant.id}`)} {`, `    graph ${dotAttributes({ id: `bpmn-participant-${participant.id}`, class: "package-bpmn-participant", label: wrapGraphvizLabel(participant.label, 28), style: "rounded", margin: "18" })};`, ...laneLines, "  }"].join("\n");
 }
@@ -60,8 +66,7 @@ function labels(data) {
       kind: "node",
       id: node.id,
       plain: nodeInteractiveLabel(node),
-      html: `<span class="package-system-diagram-node-content">${stereotype ? `<small>${stereotype}</small>` : ""}<strong>${renderPackageInline(nodeSymbol(node))}</strong></span>`,
-      replacement: "always"
+      html: `<span class="package-system-diagram-node-content">${stereotype ? `<small>${stereotype}</small>` : ""}<strong>${renderPackageInline(nodeSymbol(node))}</strong></span>`
     };
   }), ...data.flows.filter((flow) => flow.label).map((flow) => ({ kind: "edge", id: flow.id, plain: flow.label, html: `<span>${renderPackageInline(flow.label)}</span>` }))];
 }

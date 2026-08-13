@@ -1,5 +1,5 @@
 import { academicProfile } from "../../sdk/academic.js";
-import { dotAttributes, dotQuote, wrapGraphvizLabel } from "../../sdk/graphviz.js";
+import { dotAttributes, dotAttributesWithHtmlLabel, dotQuote, graphvizHtmlLines, wrapGraphvizLabel } from "../../sdk/graphviz.js";
 import { renderPackageInline, renderPackageProse } from "../../sdk/html.js";
 import {
   hydrateSystemDiagrams,
@@ -29,6 +29,20 @@ function nodeTemplate(node, variant) {
   return `<span class="package-system-diagram-node-content">${variant === "filesystem" && node.entryType ? `<small>${renderPackageInline(node.entryType)}</small>` : ""}<strong>${renderPackageInline(node.label)}</strong></span>`;
 }
 
+function nodeGraphvizLabel(node, variant) {
+  const type = variant === "filesystem" && node.entryType
+    ? `<TR><TD><FONT POINT-SIZE="12">${graphvizHtmlLines(node.entryType, 16)}</FONT></TD></TR>`
+    : "";
+  return `<TABLE BORDER="0" CELLBORDER="0" CELLSPACING="0" CELLPADDING="2">${type}<TR><TD><B>${graphvizHtmlLines(node.label, 24)}</B></TD></TR></TABLE>`;
+}
+
+function nodeStatement(node, variant, shape) {
+  const attributes = { id: `system-node-${node.id}`, class: `package-rooted-tree-node is-${variant}`, shape, ...(variant === "syntax" ? { fontname: "Arial Italic" } : {}), ...(variant === "phylogeny" ? { width: "0.08", height: "0.08", xlabel: wrapGraphvizLabel(node.label, 18) } : {}) };
+  return `  ${dotQuote(node.id)} ${variant === "phylogeny"
+    ? dotAttributes(attributes)
+    : dotAttributesWithHtmlLabel(attributes, nodeGraphvizLabel(node, variant))};`;
+}
+
 function treeAccessibleText(data) {
   const labels = new Map(data.nodes.map(({ id, label }) => [id, label]));
   return [data.prompt, `Árvore de ${VARIANT_LABELS[data.variant]}.`, ...data.nodes.map((node) => node.parentId ? `${node.label} é descendente direto de ${labels.get(node.parentId)}.` : `${node.label} é raiz.`)].filter(Boolean).join(" ");
@@ -41,7 +55,7 @@ function graphvizSource(data) {
     `  graph ${dotAttributes({ bgcolor: "transparent", pad: "0.2", margin: "0", overlap: "false", splines: data.variant === "phylogeny" ? "ortho" : "polyline", outputorder: "edgesfirst", rankdir: "TB", nodesep: "0.38", ranksep: "0.62", ordering: "out" })};`,
     "  node [fontname=\"Arial\", fontsize=\"15\", penwidth=\"1.15\", color=\"#64748b\", fontcolor=\"#111827\", margin=\"0.13,0.08\"];",
     "  edge [penwidth=\"1.15\", color=\"#64748b\", arrowsize=\"0.68\"];",
-    ...data.nodes.map((node) => `  ${dotQuote(node.id)} ${dotAttributes({ id: `system-node-${node.id}`, class: `package-rooted-tree-node is-${data.variant}`, label: nodePlainLabel(node, data.variant), shape, ...(data.variant === "syntax" ? { fontname: "Arial Italic" } : {}), ...(data.variant === "phylogeny" ? { width: "0.08", height: "0.08", xlabel: wrapGraphvizLabel(node.label, 18) } : {}) })};`),
+    ...data.nodes.map((node) => nodeStatement(node, data.variant, shape)),
     ...data.nodes.filter(({ parentId }) => parentId).map((node) => `  ${dotQuote(node.parentId)} -> ${dotQuote(node.id)} ${dotAttributes({ class: "package-rooted-tree-edge", dir: data.variant === "phylogeny" ? "none" : "forward" })};`),
     "}"
   ].join("\n");
@@ -49,7 +63,7 @@ function graphvizSource(data) {
 
 function diagramLabels(data) {
   if (data.variant === "phylogeny") return [];
-  return data.nodes.map((node) => ({ kind: "node", id: node.id, plain: nodePlainLabel(node, data.variant), html: nodeTemplate(node, data.variant), replacement: "always" }));
+  return data.nodes.map((node) => ({ kind: "node", id: node.id, plain: nodePlainLabel(node, data.variant), html: nodeTemplate(node, data.variant) }));
 }
 
 export const treePackage = Object.freeze({
