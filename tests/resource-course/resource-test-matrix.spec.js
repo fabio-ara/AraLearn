@@ -42,11 +42,41 @@ for (const theme of themes) {
               const overlaps = a.left < b.right - 1 && a.right > b.left + 1 && a.top < b.bottom - 1 && a.bottom > b.top + 1;
               return overlaps ? [`${left.textContent.trim()}:${right.textContent.trim()}`] : [];
             }));
+          }),
+        setDiagramMembershipErrors: [...document.querySelectorAll('.resource-test-card[data-package="aralearn.resource.set_diagram"]')]
+          .flatMap((card) => {
+            const canvas = card.querySelector("[data-set-diagram]");
+            const data = JSON.parse(decodeURIComponent(canvas.dataset.setDiagram));
+            const regionById = new Map(data.regions.map((region) => [region.id, new Set(region.setIds)]));
+            const paths = [...card.querySelectorAll(".package-set-shape")];
+            return [...card.querySelectorAll(".package-set-region-marker")].flatMap((marker) => {
+              const region = regionById.get(marker.dataset.regionId);
+              const circle = marker.querySelector("circle");
+              const point = new DOMPoint(Number(circle.getAttribute("cx")), Number(circle.getAttribute("cy")));
+              const wrongSet = paths.find((path) => path.isPointInFill(point) !== region.has(path.dataset.setId));
+              const clearance = Number(marker.dataset.regionClearance);
+              return wrongSet || clearance < 13
+                ? [`${marker.dataset.regionId}:${wrongSet?.dataset.setId || `margem-${clearance}`}`]
+                : [];
+            });
+          }),
+        callStackErrors: [...document.querySelectorAll('.resource-test-card[data-package="aralearn.resource.call_stack"]')]
+          .flatMap((card) => {
+            const frames = [...card.querySelectorAll(".package-call-stack li")];
+            const text = card.textContent;
+            return [
+              ...(frames[0]?.dataset.frameId === "fact3" ? [] : ["quadro ativo não está no topo"]),
+              ...(frames.at(-1)?.dataset.frameId === "main" ? [] : ["chamada inicial não está na base"]),
+              ...(frames.some((frame) => frame.scrollWidth > frame.clientWidth + 1) ? ["quadro com overflow"] : []),
+              ...(/…|\.{3}/u.test(text) ? ["continuação truncada"] : [])
+            ];
           })
       }));
       expect(audit.documentOverflow).toBeLessThanOrEqual(1);
       expect(audit.cards).toEqual([]);
       expect(audit.setDiagramCollisions).toEqual([]);
+      expect(audit.setDiagramMembershipErrors).toEqual([]);
+      expect(audit.callStackErrors).toEqual([]);
       expect(pageErrors).toEqual([]);
     });
   }

@@ -4,6 +4,12 @@ O package representa a estrutura sobre a qual o estudante raciocina. Escolha-o
 pela operação exigida, não pela aparência, por uma cota de variedade nem pela
 facilidade de geração.
 
+Uma representação visual não recebe um card auxiliar para ensinar uma
+gramática inventada pela interface. O contexto disciplinar apresenta os
+conceitos e convenções necessários em progressão; o package materializa essas
+relações de forma canônica e mais direta que prosa, tabela ou outra alternativa
+mais simples. Se isso não ocorrer, a seleção ou o package está errado.
+
 O catálogo MCP é a fonte de verdade sobre os packages instalados. Consulte-o
 antes de escolher. Ele informa finalidade, operações cognitivas, áreas,
 objetos de conhecimento, convenções acadêmicas, tecnologias, situações
@@ -38,9 +44,9 @@ Use o manifest recuperado por MCP para comparar a operação cognitiva com a
 finalidade do package. Em termos gerais:
 
 - texto explicativo pede `aralearn.resource.paragraph`;
-- código, tabela, fórmula, reação, gráfico quantitativo, sequência, fluxo,
-  árvore, grafo, matriz, plano, mapa de sistema, mapa de relações, diagrama de
-  conjuntos, tabela-verdade, cabeçalho de pacote, rastreamento de algoritmo,
+- código, tabela, fórmula, reação, gráfico quantitativo, fluxo,
+  árvore, grafo, matriz, plano, diagramas de software, mapa de relações, diagrama de
+  conjuntos, tabela-verdade, cabeçalho de pacote,
   esquema relacional, máquina de estados, topologia de rede, mapa de memória,
   glosa interlinear e texto anotado pedem seus packages estruturais
   específicos;

@@ -36,10 +36,13 @@ verificável, às perguntas abaixo:
    realista, preenchimento da maior resposta aceita, temas, larguras móveis,
    rolagem local, teclado, toque e descrição acessível.
 
-`academic.admission` torna os três primeiros critérios visíveis ao GPT no
-catálogo: a estrutura preservada, a condição estrita de uso e as situações em
-que uma representação mais simples deve vencer. Um package não é admitido
-apenas porque possui renderer e schema.
+`academic.admission` torna esses critérios operáveis pelo GPT no catálogo: a
+estrutura preservada, a condição estrita de uso, as situações em que uma forma
+mais simples deve vencer, a legibilidade intrínseca, a densidade distinta de
+teoria e prática e a autossuficiência do caso. Um package não é admitido apenas
+porque possui renderer e schema. Se a pessoa precisar aprender uma gramática
+inventada pela interface para interpretar a figura, a seleção ou o package
+falhou; um tutorial adicional não corrige essa inadequação.
 
 Nesta auditoria, `sequence` foi removido porque era uma lista ordenada
 ornamentada; `algorithm_trace` foi removido porque era uma tabela genérica de
@@ -68,7 +71,7 @@ alias, compatibilidade ou renderer residual para os dois ids retirados.
 | Dados | `entity_relationship` | modelo conceitual ER | entidades, atributos identificadores e cardinalidades | esquema físico ou tabela de dados |
 | Dados | `database_schema` | modelo relacional | relações, atributos, PK, FK, nulabilidade e dependências | diagrama ER com caixas renomeadas |
 | Sistemas | `memory_layout` | intervalos de endereços | segmentos de memória e crescimento relativo | pilha de chamadas |
-| Sistemas | `call_stack` | ativações e quadros de função | retorno, parâmetros, variáveis locais e profundidade | mapa global do processo |
+| Sistemas | `call_stack` | ativações e quadros de função | continuação no chamador, parâmetros, variáveis locais e profundidade | mapa global do processo |
 | Redes | `packet_layout` | campos contíguos em linhas de bits | cabeçalhos definidos em RFCs e protocolos | tabela comum de nomes e valores |
 | Redes | `network_topology` | dispositivos, segmentos e enlaces | conectividade física ou lógica de rede | grafo abstrato de teoria dos grafos |
 | Comportamento | `state_machine` | estados e transições rotuladas | ciclo de vida dependente de eventos | sequência linear de passos |

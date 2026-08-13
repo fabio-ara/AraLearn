@@ -2952,12 +2952,12 @@
                           "package": "aralearn.resource.call_stack",
                           "version": "1.0.0",
                           "data": {
-                            "prompt": "Observe os quadros durante a segunda chamada recursiva de fatorial(4).",
+                            "prompt": "Observe o estado da pilha logo após fatorial(4) chamar fatorial(3).",
                             "frames": [
                               {
                                 "id": "main",
                                 "functionName": "main",
-                                "returnTo": "encerrar programa",
+                                "continuation": "encerrar o programa",
                                 "fields": [
                                   {
                                     "id": "n",
@@ -2970,7 +2970,7 @@
                               {
                                 "id": "fact4",
                                 "functionName": "fatorial(4)",
-                                "returnTo": "main: resultado = …",
+                                "continuation": "retomar main com o resultado",
                                 "fields": [
                                   {
                                     "id": "n",
@@ -2982,14 +2982,14 @@
                                     "id": "partial",
                                     "role": "local",
                                     "name": "parcial",
-                                    "value": "aguardando"
+                                    "value": "aguarda fatorial(3)"
                                   }
                                 ]
                               },
                               {
                                 "id": "fact3",
                                 "functionName": "fatorial(3)",
-                                "returnTo": "fatorial(4): 4 × …",
+                                "continuation": "retomar fatorial(4) e calcular 4 × resultado",
                                 "fields": [
                                   {
                                     "id": "n",

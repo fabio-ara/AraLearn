@@ -17,6 +17,9 @@ test("todo resource de conteúdo declara fundamento acadêmico e limites de uso"
     assert.deepEqual(manifest.academic.admission.onlyWhen, manifest.academic.appropriateWhen, `${manifest.id}: onlyWhen`);
     assert.deepEqual(manifest.academic.admission.useSimplerRepresentationWhen, manifest.academic.avoidWhen, `${manifest.id}: simpler alternative`);
     assert.match(manifest.academic.admission.decisionRule, /representação mais simples/u, `${manifest.id}: decisionRule`);
+    assert.match(manifest.academic.admission.interpretabilityRule, /mais direta e previsível/u, `${manifest.id}: interpretabilityRule`);
+    assert.match(manifest.academic.admission.theoryDensityRule, /um avanço conceitual por card/u, `${manifest.id}: theoryDensityRule`);
+    assert.match(manifest.academic.admission.practiceContextRule, /todos os dados do caso/u, `${manifest.id}: practiceContextRule`);
     assert.ok(manifest.academic.practiceModes.includes("exposition"), `${manifest.id}: exposition`);
     assert.ok(manifest.limitations.length > 0, `${manifest.id}: limitations`);
   });

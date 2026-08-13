@@ -2,6 +2,8 @@ import { academicProfile } from "../../sdk/academic.js";
 import { escapePackageAttribute, renderPackageInline, renderPackageProse } from "../../sdk/html.js";
 
 const VIEWBOX = Object.freeze({ width: 300, height: 250, padding: 20 });
+const MARKER_RADIUS = 11;
+const MARKER_CLEARANCE = 2;
 let vennModulePromise = null;
 
 function text(value) {
@@ -77,23 +79,58 @@ function appendSetShapes(svg, data, layout) {
   });
 }
 
+function circleBySetId(layout) {
+  return new Map(layout
+    .filter(({ data: area }) => area.sets.length === 1)
+    .map((area) => [area.data.sets[0], area.circles[0]]));
+}
+
+function exactRegionClearance(point, includedIds, circles) {
+  const included = new Set(includedIds);
+  return Math.min(...[...circles].map(([id, circle]) => {
+    const distance = Math.hypot(point.x - circle.x, point.y - circle.y);
+    return included.has(id) ? circle.radius - distance : distance - circle.radius;
+  }));
+}
+
+function labelClearance(point, circles) {
+  return Math.min(...[...circles.values()].map((circle) => (
+    Math.hypot(point.x - circle.x, point.y - (circle.y - circle.radius + 17)) - 20
+  )));
+}
+
+export function findExactRegionMarker(setIds, layout) {
+  const circles = circleBySetId(layout);
+  let best = null;
+  for (let y = VIEWBOX.padding; y <= VIEWBOX.height - VIEWBOX.padding; y += 2) {
+    for (let x = VIEWBOX.padding; x <= VIEWBOX.width - VIEWBOX.padding; x += 2) {
+      const point = { x, y };
+      const regionClearance = exactRegionClearance(point, setIds, circles);
+      const clearance = Math.min(regionClearance, labelClearance(point, circles));
+      if (!best || clearance > best.clearance) best = { ...point, clearance };
+    }
+  }
+  return best;
+}
+
 function appendRegionMarkers(svg, data, layout) {
-  const areaByKey = new Map(layout.map((area) => [membershipKey(area.data.sets), area]));
+  const circles = circleBySetId(layout);
   data.regions.forEach((region, index) => {
     const marker = svgElement("g", {
       class: "package-set-region-marker",
       "data-region-id": region.id,
+      "data-region-membership": membershipKey(region.setIds),
       "aria-label": region.label || `Região ${index + 1}`
     });
     let x = VIEWBOX.padding;
     let y = VIEWBOX.padding;
     if (region.setIds.length) {
-      const area = areaByKey.get(membershipKey(region.setIds));
-      if (!area?.text || area.text.disjoint) return;
-      x = area.text.x;
-      y = area.text.y;
+      const point = findExactRegionMarker(region.setIds, layout);
+      if (!point || point.clearance < MARKER_RADIUS + MARKER_CLEARANCE) return;
+      ({ x, y } = point);
     }
-    marker.append(svgElement("circle", { cx: x, cy: y, r: 11 }));
+    marker.setAttribute("data-region-clearance", String(exactRegionClearance({ x, y }, region.setIds, circles)));
+    marker.append(svgElement("circle", { cx: x, cy: y, r: MARKER_RADIUS }));
     const number = svgElement("text", { x, y, dy: "0.35em", "text-anchor": "middle" });
     number.textContent = String(index + 1);
     marker.append(number);

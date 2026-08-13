@@ -71,6 +71,14 @@
 
 ## Construção dos cards
 
+- Um card de teoria realiza um avanço conceitual identificável. Não concentre
+  definição, mecanismo, exceções, comparação, exemplo e consequências numa
+  única representação para economizar cards. Distribua a explicação em
+  aproximações sucessivas até cobrir o escopo e a profundidade planejados.
+- Dividir a teoria não significa resumir. Cada card oferece a fundamentação
+  necessária para compreender seu avanço, sem premissas ocultas; o card
+  seguinte acrescenta uma camada, em vez de pressupor que a pessoa preencherá
+  as lacunas recorrendo a outra fonte.
 - Um card de prática mede uma decisão principal.
 - A prática é autossuficiente. O enunciado não depende de imagem, texto ou aula ausente.
 - Dados voláteis aparecem no próprio card: valores, nomes, trechos de código, tabelas, casos, coordenadas, opções e demais elementos particulares da questão não podem existir apenas em um card anterior. Conceitos e notações já ensinados podem ser mobilizados, mas o caso que será resolvido precisa estar completo.
@@ -83,6 +91,10 @@
 - A diferença entre práticas próximas deve estar no conteúdo observável: caso,
   condição, representação, estratégia, erro provável ou grau de apoio.
 - Uma prática cobra uma decisão principal. Ela pode mobilizar pré-requisitos aprovados, mas não pode exigir que a pessoa reconstrua o caso a partir de posição, cor, legenda extensa, card anterior, feedback ou resposta oculta.
+- Um card de prática pode reunir mais dados e elementos visuais que um card de
+  teoria quando o contexto completo for necessário à decisão. Essa densidade
+  precisa servir ao gesto cognitivo principal; não autoriza inventário de
+  assuntos, ornamentação ou relações irrelevantes.
 - Termo técnico, símbolo, sigla, unidade, papel, convenção ou relação nova recebe explicação suficiente antes de ser exigido. Expanda a sigla na primeira ocorrência e explique sua função, não apenas as letras. Para comando, utilitário ou palavra reservada, apresente forma literal, significado, função e ambiente; por exemplo, `pwd` significa `print working directory` e mostra o diretório de trabalho atual. Não use jargão mais avançado como explicação de uma lacuna conceitual.
 - Quando o estudante deve completar uma representação, use um package de
   resposta compatível com o conteúdo. A lacuna, as alternativas ou os itens
@@ -134,6 +146,12 @@
 - Um package especializado só é justificável quando preserva uma estrutura que
   seria perdida em `paragraph`, `table` ou package existente. Consulte
   `academic.admission`; aparência diferente ou variedade não são evidência.
+- A representação escolhida precisa tornar a relação relevante mais imediata
+  e previsível pelas convenções da área do que seria em prosa ou numa forma
+  mais simples. Se a pessoa precisar decifrar a interface, cruzar uma legenda
+  distante ou aprender uma gramática criada pelo renderer, rejeite a escolha,
+  decomponha o conteúdo ou corrija o package. Não acrescente um tutorial visual
+  para compensar uma representação inadequada.
 - Todo recurso estruturado deixa explícitos o objeto, a relação e a operação de leitura. A posição, a cor, um identificador interno ou uma legenda distante não podem ser a única forma de entender um dado necessário.
 - Entidades que precisam ser distinguidas possuem nomes visíveis e inequívocos. Rótulos, unidades, direção, ordem, escala e destaque necessários aparecem no próprio card.
 - Em `graph`, círculos representam vértices abstratos e linhas representam arestas; setas só aparecem em dígrafos. O objeto é matemático: adjacência, caminho, ciclo, grau, ponte e conectividade justificam seu uso. Componentes de software, equipamentos, estados e conceitos exigem packages próprios.

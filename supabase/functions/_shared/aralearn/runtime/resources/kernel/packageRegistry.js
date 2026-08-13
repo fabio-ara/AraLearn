@@ -89,8 +89,10 @@ function assertAcademicManifest(manifest) {
   for (const field of ["preservedStructure", "onlyWhen", "useSimplerRepresentationWhen"]) {
     assertNonEmptyList(admission[field], `${manifest.id}.manifest.academic.admission.${field}`);
   }
-  if (!text(admission.decisionRule)) {
-    throw new TypeError(`${manifest.id}.manifest.academic.admission precisa de decisionRule.`);
+  for (const field of ["decisionRule", "interpretabilityRule", "theoryDensityRule", "practiceContextRule"]) {
+    if (!text(admission[field])) {
+      throw new TypeError(`${manifest.id}.manifest.academic.admission precisa de ${field}.`);
+    }
   }
   if (academic.practiceModes.some((mode) => !PRACTICE_MODES.includes(mode))) {
     throw new TypeError(`${manifest.id} declara modalidade de prática desconhecida.`);

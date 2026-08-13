@@ -47,6 +47,10 @@ somente se `preservedStructure` for necessária à operação e `onlyWhen` for
 verdadeira neste card. Se alguma condição de `useSimplerRepresentationWhen`
 for satisfeita, prefira `paragraph`, `table`, uma resposta independente ou
 outro package já instalado. Diversidade visual não é motivo de seleção.
+Também aplique `interpretabilityRule`, `theoryDensityRule` e
+`practiceContextRule`: a forma precisa tornar a relação mais previsível, a
+teoria avança sem condensar vários assuntos e a prática mantém no próprio card
+somente a complexidade necessária ao caso completo.
 
 Microssequências sem cards continuam no planejamento. Com cards, ficam
 imediatamente renderizáveis e estudáveis. Não envie status de publicação,
