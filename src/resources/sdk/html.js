@@ -93,6 +93,11 @@ export function renderPackageInline(value) {
   return html + (state.inCode ? "</code>" : "");
 }
 
+export function renderPackageInlineReference(value) {
+  GAP_MARKER.lastIndex = 0;
+  return renderPackageInline(String(value || "").replace(GAP_MARKER, "\u2026"));
+}
+
 export function renderPackageCode(value) {
   const source = String(value || "");
   let cursor = 0;

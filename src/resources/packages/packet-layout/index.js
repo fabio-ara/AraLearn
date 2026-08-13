@@ -1,5 +1,10 @@
 import { academicProfile } from "../../sdk/academic.js";
-import { escapePackageAttribute, renderPackageInline, renderPackageProse } from "../../sdk/html.js";
+import {
+  escapePackageAttribute,
+  renderPackageInline,
+  renderPackageInlineReference,
+  renderPackageProse
+} from "../../sdk/html.js";
 
 function text(value) {
   return String(value ?? "").trim();
@@ -98,7 +103,7 @@ export const packetLayoutPackage = Object.freeze({
   render(data) {
     const fields = fieldsWithOffsets(data);
     const rows = packetRows(data);
-    return `<div class="runtime-block package-packet-layout">${data.prompt ? renderPackageProse(data.prompt) : ""}<figure>${data.caption ? `<figcaption>${renderPackageInline(data.caption)}</figcaption>` : ""}<div class="package-packet-frame" style="--packet-min-width:${Math.max(560, data.unitBits * 18)}px">${ruler(data.unitBits)}${rows.map((row) => `<div class="package-packet-row"><span class="package-packet-row-offset">${row.offset}</span><div class="package-packet-word" style="--packet-unit-bits:${data.unitBits}">${row.fragments.map((fragment) => `<div class="package-packet-field${fragment.continued ? " is-continuation" : ""}" data-field-id="${escapePackageAttribute(fragment.id)}" style="--field-column:${fragment.localStart + 1};--field-span:${fragment.span}"><strong>${fragment.continued ? `<span aria-hidden="true">↳</span> ${renderPackageInline(fragment.label)}` : renderPackageInline(fragment.label)}</strong><small>${fragment.span} bit${fragment.span === 1 ? "" : "s"}</small></div>`).join("")}</div></div>`).join("")}</div><ol class="package-packet-legend">${fields.map((field) => `<li><strong>${renderPackageInline(field.label)}</strong><span>bits ${field.start}–${field.end} · ${field.widthBits} bit${field.widthBits === 1 ? "" : "s"}</span><small>${renderPackageInline(field.description)}</small></li>`).join("")}</ol></figure></div>`;
+    return `<div class="runtime-block package-packet-layout">${data.prompt ? renderPackageProse(data.prompt) : ""}<figure>${data.caption ? `<figcaption>${renderPackageInline(data.caption)}</figcaption>` : ""}<div class="package-packet-frame" style="--packet-min-width:${Math.max(560, data.unitBits * 18)}px">${ruler(data.unitBits)}${rows.map((row) => `<div class="package-packet-row"><span class="package-packet-row-offset">${row.offset}</span><div class="package-packet-word" style="--packet-unit-bits:${data.unitBits}">${row.fragments.map((fragment) => `<div class="package-packet-field${fragment.continued ? " is-continuation" : ""}" data-field-id="${escapePackageAttribute(fragment.id)}" style="--field-column:${fragment.localStart + 1};--field-span:${fragment.span}"><strong>${fragment.continued ? `<span aria-hidden="true">↳</span> ${renderPackageInlineReference(fragment.label)}` : renderPackageInline(fragment.label)}</strong><small>${fragment.span} bit${fragment.span === 1 ? "" : "s"}</small></div>`).join("")}</div></div>`).join("")}</div><ol class="package-packet-legend">${fields.map((field) => `<li><strong>${renderPackageInlineReference(field.label)}</strong><span>bits ${field.start}–${field.end} · ${field.widthBits} bit${field.widthBits === 1 ? "" : "s"}</span><small>${renderPackageInline(field.description)}</small></li>`).join("")}</ol></figure></div>`;
   },
   accessibleText(data) {
     return `${data.prompt || "Layout de pacote."} ${fieldsWithOffsets(data).map((field) => `${field.label}, bits ${field.start} a ${field.end}: ${field.description}`).join("; ")}.`;

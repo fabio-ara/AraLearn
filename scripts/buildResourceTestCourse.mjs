@@ -47,29 +47,35 @@ function exampleInstance(manifest, id) {
 
 function gapResponse(instance, mode, id) {
   const requiredMode = mode === "choice" ? "gap" : "typing";
-  const target = RESOURCE_PACKAGE_REGISTRY.practiceTargets(instance)
+  const targets = RESOURCE_PACKAGE_REGISTRY.practiceTargets(instance)
     .filter((entry) => entry.modes.includes(requiredMode))
     .map((entry) => ({ ...entry, value: readPath(instance.data, entry.path) }))
-    .find((entry) => typeof entry.value === "string" && answerFragment(entry.value));
-  if (!target) return null;
-  const answer = answerFragment(target.value);
+    .filter((entry) => typeof entry.value === "string" && answerFragment(entry.value));
+  if (!targets.length) return null;
+  const selectedTargets = mode === "choice" &&
+    instance.package === "aralearn.resource.state_transition_table"
+    ? targets.slice(0, 3)
+    : targets.slice(0, 1);
   return normalizeInstance({
     id,
     packageId: "aralearn.response.gap",
     version: "1.0.0",
     slot: "response",
     data: {
-      blanks: [{
-        id: "blank-1",
-        targetInstanceId: instance.id,
-        targetPath: target.path,
-        label: target.label,
-        responseMode: mode,
-        answer,
-        ...(mode === "choice"
-          ? { distractors: [`não ${answer}`, `outro ${answer}`] }
-          : {})
-      }]
+      blanks: selectedTargets.map((target, index) => {
+        const answer = answerFragment(target.value);
+        return {
+          id: `blank-${index + 1}`,
+          targetInstanceId: instance.id,
+          targetPath: target.path,
+          label: target.label,
+          responseMode: mode,
+          answer,
+          ...(mode === "choice"
+            ? { distractors: [`não ${answer}`, `outro ${answer}`] }
+            : {})
+        };
+      })
     }
   });
 }

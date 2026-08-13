@@ -7,7 +7,7 @@
   "scripts": {
     "start": "node ./scripts/servePublic.js",
     "dev": "node ./scripts/servePublic.js",
-    "test": "node ./scripts/syncEdgeResourceRuntime.mjs --check && node ./scripts/buildResourceCatalogCourse.mjs --check && node ./scripts/auditCurrentArchitecture.mjs && node ./scripts/auditChoicePromptDuplication.mjs --check && node ./scripts/auditDocumentation.mjs && node ./scripts/runTests.mjs && node ./scripts/testAuthoringPackages.mjs",
+    "test": "node ./scripts/buildVegaInterpreterVendor.mjs --check && node ./scripts/syncEdgeResourceRuntime.mjs --check && node ./scripts/buildResourceCatalogCourse.mjs --check && node ./scripts/auditCurrentArchitecture.mjs && node ./scripts/auditChoicePromptDuplication.mjs --check && node ./scripts/auditDocumentation.mjs && node ./scripts/runTests.mjs && node ./scripts/testAuthoringPackages.mjs",
     "test:supabase:smoke": "node ./supabase/tests/postgrest-smoke.mjs",
     "test:authoring:action:local": "node ./supabase/tests/authoring-action-local-journey.mjs",
     "test:authoring:mcp:local": "node ./supabase/tests/authoring-mcp-local-smoke.mjs",
@@ -24,6 +24,7 @@
     "deployment:verify-site": "node ./scripts/verifyPublishedSite.mjs",
     "authoring:packages": "node ./scripts/buildAuthoringPackages.mjs",
     "resources:sync-edge": "node ./scripts/syncEdgeResourceRuntime.mjs",
+    "resources:vendor": "node ./scripts/buildVegaInterpreterVendor.mjs",
     "authoring:access": "node ./scripts/manageAuthoringAccess.mjs",
     "test:authoring-packages": "node ./scripts/testAuthoringPackages.mjs",
     "smoke:deepseek:real": "node ./scripts/runDeepSeekCardAssistanceSmoke.js",
@@ -63,6 +64,7 @@
     "@upsetjs/venn.js": "^2.0.0",
     "@viz-js/viz": "^3.27.0",
     "vega": "^6.3.1",
+    "vega-interpreter": "2.3.1",
     "vega-lite": "^6.4.3"
   }
 }

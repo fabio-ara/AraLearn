@@ -121,7 +121,10 @@ desejada, não se a sequência apresenta variedade visual.
 contrato declara tipo, domínio, escala e unidade de cada eixo; séries contêm
 pontos nomeados e podem incluir limites inferior e superior já calculados. A
 autoria também nomeia a medida de incerteza e a nota metodológica. O package
-compila essa semântica em Vega-Lite e Vega no próprio navegador. Vega-Lite
+compila essa semântica em Vega-Lite e Vega no próprio navegador. A árvore de
+expressões é executada pelo interpretador do Vega, sem geração dinâmica de
+código e sem relaxar a política de segurança do aplicativo. Os runtimes ficam
+locais e continuam disponíveis offline. Vega-Lite
 deriva eixos, escalas e marcas a partir dos campos e admite escalas contínuas,
 temporais e discretas, domínios explícitos, camadas, regras de referência e
 barras de erro com limites preagregados

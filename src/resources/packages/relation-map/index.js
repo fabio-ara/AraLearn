@@ -5,7 +5,11 @@ import {
   graphvizHtmlLines,
   plainGraphvizLabel
 } from "../../sdk/graphviz.js";
-import { renderPackageInline, renderPackageProse } from "../../sdk/html.js";
+import {
+  renderPackageInline,
+  renderPackageInlineReference,
+  renderPackageProse
+} from "../../sdk/html.js";
 import {
   hydrateSystemDiagrams,
   renderSystemDiagramFigure,
@@ -124,7 +128,7 @@ function relationNotation(data) {
   const pairs = data.relations
     .map(({ from, to }) => `(${left.get(from)}, ${right.get(to)})`)
     .join(", ");
-  return `<i>${renderPackageInline(data.name)}</i> = {${renderPackageInline(pairs)}}`;
+  return `<i>${renderPackageInline(data.name)}</i> = {${renderPackageInlineReference(pairs)}}`;
 }
 
 export const relationMapPackage = Object.freeze({

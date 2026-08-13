@@ -9239,6 +9239,30 @@
                                 "não q₀",
                                 "outro q₀"
                               ]
+                            },
+                            {
+                              "id": "blank-2",
+                              "targetInstanceId": "resource-test-27-choice-content",
+                              "targetPath": "states[1].label",
+                              "label": "Lacuna no estado 2",
+                              "responseMode": "choice",
+                              "answer": "q₁",
+                              "distractors": [
+                                "não q₁",
+                                "outro q₁"
+                              ]
+                            },
+                            {
+                              "id": "blank-3",
+                              "targetInstanceId": "resource-test-27-choice-content",
+                              "targetPath": "states[2].label",
+                              "label": "Lacuna no estado 3",
+                              "responseMode": "choice",
+                              "answer": "q₂",
+                              "distractors": [
+                                "não q₂",
+                                "outro q₂"
+                              ]
                             }
                           ]
                         }

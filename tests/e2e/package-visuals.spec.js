@@ -77,6 +77,14 @@ const systemDiagramInstances = [
   return { id: `system-diagram-${index + 1}`, package: packageId, version: "1.0.0", data: contract.contract.example };
 });
 
+const vegaInstances = [
+  "aralearn.resource.chart",
+  "aralearn.resource.plane"
+].map((packageId, index) => {
+  const contract = RESOURCE_PACKAGE_REGISTRY.getAuthoringContract(packageId, "1.0.0");
+  return { id: `vega-csp-${index + 1}`, package: packageId, version: "1.0.0", data: contract.contract.example };
+});
+
 const matrixInstance = {
   id: "matrix-test",
   package: "aralearn.resource.matrix",
@@ -154,6 +162,39 @@ async function hydratePackages(page) {
     await RESOURCE_PACKAGE_REGISTRY.hydrate(document);
   });
 }
+
+async function mountVegaInstances(page) {
+  const markup = vegaInstances.map(renderHydratableInstance).join("");
+  await page.locator("body").evaluate((body, html) => {
+    body.innerHTML = `<main style="box-sizing:border-box;width:100%;max-width:420px;margin:0 auto;padding:16px">${html}</main>`;
+  }, markup);
+  await hydratePackages(page);
+  await expect(page.locator("[data-vega-status='ready']")).toHaveCount(2);
+  await expect(page.locator(".package-chart-canvas svg, .package-plane-canvas svg")).toHaveCount(2);
+  await expect(page.locator(".package-chart-layout-error:visible, .package-plane-layout-error:visible")).toHaveCount(0);
+}
+
+test("gráfico estatístico e plano cartesiano materializam sob a CSP real e permanecem offline", async ({ context, page }) => {
+  const relevantErrors = [];
+  page.on("pageerror", (error) => {
+    if (/vega|unsafe-eval|content security policy/iu.test(error.message)) relevantErrors.push(error.message);
+  });
+  await page.goto("/");
+  const policy = await page.locator('meta[http-equiv="Content-Security-Policy"]').getAttribute("content");
+  expect(policy).toBeTruthy();
+  expect(policy).not.toMatch(/(?:^|\s)'unsafe-eval'(?:\s|$)/u);
+  await mountVegaInstances(page);
+  await page.evaluate(() => navigator.serviceWorker.ready);
+
+  await context.setOffline(true);
+  try {
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await mountVegaInstances(page);
+  } finally {
+    await context.setOffline(false);
+  }
+  expect(relevantErrors).toEqual([]);
+});
 
 function studyCardFor(instance) {
   return {
