@@ -1,8 +1,10 @@
 import { FORMULA_EXPRESSION_INPUT_SCHEMA, isFormulaNotation, validateFormulaExpression } from "../../../domain/formulaExpression.js";
 import { escapePackageAttribute, escapePackageHtml, renderPackageProse } from "../../sdk/html.js";
 import { academicProfile } from "../../sdk/academic.js";
+import { renderStretchDelimiter } from "../../sdk/stretchDelimiter.js";
 
 const STACKED_EXPRESSION_TYPES = new Set(["fraction", "derivative", "integral", "large_operator"]);
+const FORMULA_FENCE_OBSERVERS = new WeakMap();
 
 function containsStackedExpression(node) {
   if (!node || typeof node !== "object") return false;
@@ -30,8 +32,14 @@ function expressionText(node) {
   return Object.values(node).filter((value) => value && typeof value === "object").map(expressionText).join(" ");
 }
 
+function renderFenced(open, content, close, stacked = false) {
+  const anchor = (symbol, side) => `<mo class="package-formula-fence-anchor is-${side}" data-stretch-delimiter="${escapePackageAttribute(symbol)}" fence="true" stretchy="false" symmetric="true">${escapePackageHtml(symbol)}</mo>`;
+  return `<mrow class="package-formula-fenced${stacked ? " is-stacked" : ""}">${anchor(open, "open")}<mrow class="package-formula-fenced-content">${content}</mrow>${anchor(close, "close")}</mrow>`;
+}
+
 function renderDelimitedList(items) {
-  return `<mrow><mo fence="true" stretchy="true">(</mo>${items.map((item, index) => `${index ? "<mo>,</mo>" : ""}${renderMathNode(item)}`).join("")}<mo fence="true" stretchy="true">)</mo></mrow>`;
+  const content = items.map((item, index) => `${index ? "<mo>,</mo>" : ""}${renderMathNode(item)}`).join("");
+  return renderFenced("(", content, ")", containsStackedExpression(items));
 }
 
 function renderWithLimits(base, lower, upper) {
@@ -56,7 +64,7 @@ function renderMathNode(node) {
   if (node.type === "superscript") return `<msup>${renderMathNode(node.base)}${renderMathNode(node.exponent)}</msup>`;
   if (node.type === "subscript") return `<msub>${renderMathNode(node.base)}${renderMathNode(node.subscript)}</msub>`;
   if (node.type === "subsup") return `<msubsup>${renderMathNode(node.base)}${renderMathNode(node.subscript)}${renderMathNode(node.superscript)}</msubsup>`;
-  if (node.type === "fenced") { const stackedClass = containsStackedExpression(node.content) ? " is-stacked" : ""; return `<mrow class="package-formula-fenced${stackedClass}"><mo class="package-formula-fence" fence="true" stretchy="true" symmetric="true">${escapePackageHtml(node.open)}</mo><mrow class="package-formula-fenced-content">${renderMathNode(node.content)}</mrow><mo class="package-formula-fence" fence="true" stretchy="true" symmetric="true">${escapePackageHtml(node.close)}</mo></mrow>`; }
+  if (node.type === "fenced") return renderFenced(node.open, renderMathNode(node.content), node.close, containsStackedExpression(node.content));
   if (node.type === "function") return `<mrow><mi>${escapePackageHtml(node.name)}</mi><mo>⁡</mo>${renderDelimitedList(node.arguments)}</mrow>`;
   if (node.type === "integral") {
     const symbols = { single: "∫", double: "∬", triple: "∭", contour: "∮", surface: "∯", volume: "∰" };
@@ -131,6 +139,46 @@ export const formulaPackage = Object.freeze({
   normalize(data) { return { ...(data?.prompt ? { prompt: String(data.prompt).trim() } : {}), notation: String(data?.notation || "mathematics"), accessibleText: String(data?.accessibleText || "").trim(), expression: structuredClone(data?.expression) }; },
   validate(data) { const errors = []; if (!isFormulaNotation(data.notation)) errors.push("Notação inválida."); const result = validateFormulaExpression(data.expression); if (!result.ok) errors.push(...result.errors.map((error) => `${error.path}: ${error.message}`)); return errors; },
   render(data) { return `<div class="runtime-block runtime-formula-block">${data.prompt ? renderPackageProse(data.prompt) : ""}<figure class="package-formula"><math display="block" aria-label="${escapePackageAttribute(data.accessibleText)}">${renderMathNode(data.expression)}</math><figcaption class="visually-hidden">${escapePackageHtml(data.accessibleText)}</figcaption></figure></div>`; },
+  hydrate(instanceRoot) {
+    const figure = instanceRoot.querySelector(".package-formula");
+    if (!figure) return;
+    FORMULA_FENCE_OBSERVERS.get(figure)?.disconnect();
+    figure.querySelectorAll(":scope > .package-formula-fence").forEach((delimiter) => delimiter.remove());
+    const alignments = [];
+    for (const fenced of instanceRoot.querySelectorAll(".package-formula-fenced")) {
+      const content = fenced.querySelector(":scope > .package-formula-fenced-content");
+      if (!content) continue;
+      for (const anchor of fenced.querySelectorAll(":scope > .package-formula-fence-anchor")) {
+        const template = anchor.ownerDocument.createElement("template");
+        const side = anchor.classList.contains("is-open") ? "open" : "close";
+        template.innerHTML = renderStretchDelimiter(anchor.dataset.stretchDelimiter, `package-formula-fence is-${side}`);
+        const delimiter = template.content.firstElementChild;
+        figure.append(delimiter);
+        alignments.push({ anchor, content, delimiter });
+      }
+    }
+    const align = () => {
+      const figureRect = figure.getBoundingClientRect();
+      const scrollLeft = figure.scrollLeft;
+      for (const { anchor, content, delimiter } of alignments) {
+        const anchorRect = anchor.getBoundingClientRect();
+        const contentRect = content.getBoundingClientRect();
+        const width = Number.parseFloat(getComputedStyle(figure).fontSize) * 0.5;
+        const height = Math.max(contentRect.height, anchorRect.height);
+        delimiter.style.left = `${anchorRect.left - figureRect.left - figure.clientLeft + scrollLeft + (anchorRect.width - width) / 2}px`;
+        delimiter.style.top = `${contentRect.top - figureRect.top - figure.clientTop + (contentRect.height - height) / 2}px`;
+        delimiter.style.width = `${width}px`;
+        delimiter.style.height = `${height}px`;
+      }
+    };
+    align();
+    if (typeof globalThis.ResizeObserver === "function") {
+      const observer = new globalThis.ResizeObserver(align);
+      observer.observe(figure);
+      alignments.forEach(({ content }) => observer.observe(content));
+      FORMULA_FENCE_OBSERVERS.set(figure, observer);
+    }
+  },
   accessibleText(data) { return data.accessibleText; }, editableTargets(data) { return [...(data.prompt ? [{ path: "prompt", label: "Editar orientação" }] : []), { path: "accessibleText", label: "Editar descrição acessível" }]; },
   practiceTargets() { return []; }
 });

@@ -153,10 +153,12 @@ estrutural de `reactants`, `products`, `coefficient` e `reactionType` em
 `reaction`. O contrato também conserva `state` e `conditions` como contexto
 explícito, em vez de embuti-los numa string livre.
 
-Matriz e reação usam MathML para as estruturas matemáticas e químicas. Como o
-Chromium móvel não expande de modo confiável os operadores quadrados em torno
-de `mtable`, `matrix` usa somente nos delimitadores um traço vetorial fino que
-se estende pela altura efetiva da grade; as entradas continuam em MathML.
+Fórmula, matriz e reação usam MathML para as estruturas matemáticas e
+químicas. Como o Chromium móvel não expande delimitadores sem engrossar seus
+glifos, `formula` e `matrix` compartilham delimitadores vetoriais de traço fino
+e não escalável. Em `formula`, cada delimitador acompanha a caixa real do
+conteúdo agrupado; em `matrix`, acompanha exatamente a altura da grade. A AST
+e as entradas continuam em MathML, sem dimensão fornecida pelo autor.
 `reaction` explicita o espaço fino entre coeficiente e espécie e espaços
 laterais em torno de sinais e setas. A interação de lacuna permanece no package
 e só pode atingir uma entrada ou componente químico efetivamente visível. O

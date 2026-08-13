@@ -29,7 +29,8 @@ test("exemplo de fórmula exercita integral, derivada parcial, tensores, funçã
   assert.match(html, /<msub><mo largeop="true">∫<\/mo><mi>Ω<\/mi><\/msub>/u);
   assert.match(html, /<mfrac>/u);
   assert.match(html, /class="package-formula-fenced is-stacked"/u);
-  assert.match(html, /class="package-formula-fence" fence="true" stretchy="true" symmetric="true"/u);
+  assert.match(html, /class="package-formula-fence-anchor is-open"[^>]*stretchy="false"/u);
+  assert.doesNotMatch(html, /stretchy="true"/u);
   assert.match(html, /<mo>∂<\/mo>/u);
   assert.match(html, /<msup><mi>T<\/mi><mrow><mi>i<\/mi><mi>j<\/mi><\/mrow><\/msup>/u);
   assert.match(html, /<mi>S<\/mi><mo>⁡<\/mo>/u);

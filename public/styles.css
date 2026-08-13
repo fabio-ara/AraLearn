@@ -2267,6 +2267,15 @@ input:-webkit-autofill:focus {
   flex: 0 0 auto;
 }
 
+/* Delimitadores acadêmicos mantêm traço fino ao crescer com o conteúdo. */
+.resource-stretch-delimiter path {
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: square;
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+
 /* Catálogo acadêmico de packages: cada representação conserva a notação da área. */
 .runtime-matrix-delimiter {
   position: absolute;
@@ -2283,13 +2292,6 @@ input:-webkit-autofill:focus {
 
 .runtime-matrix-delimiter.is-right {
   inset-inline-end: 0;
-}
-
-.runtime-matrix-delimiter path {
-  fill: none;
-  stroke: currentColor;
-  stroke-linecap: square;
-  stroke-width: 1;
 }
 
 .runtime-matrix-grid {
@@ -3465,6 +3467,7 @@ input:-webkit-autofill:focus {
 }
 
 .package-formula {
+  position: relative;
   display: grid;
   place-items: center;
   padding: 20px 14px;
@@ -3478,8 +3481,16 @@ input:-webkit-autofill:focus {
   font-size: var(--type-base);
 }
 
-.package-formula-fenced.is-stacked > .package-formula-fence {
-  font-size: 2.5em;
+.package-formula-fence-anchor {
+  color: transparent;
+}
+
+.package-formula > .package-formula-fence {
+  position: absolute;
+  z-index: 1;
+  display: block;
+  overflow: visible;
+  pointer-events: none;
 }
 
 .package-reaction {

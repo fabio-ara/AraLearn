@@ -117,17 +117,27 @@ test("matrix usa MathML com peso normal e lacuna na entrada", async ({ page }) =
   await expect(page.locator(".runtime-matrix-name")).toHaveText("I");
   await expect(page.locator(".runtime-matrix-name")).toHaveCSS("font-weight", "400");
   const dimensions = await page.locator(".runtime-matrix-item").evaluate((matrix) => {
-    const gridHeight = matrix.querySelector("mtable").getBoundingClientRect().height;
+    const gridRect = matrix.querySelector("mtable").getBoundingClientRect();
     return {
-      gridHeight,
-      delimiterHeights: [...matrix.querySelectorAll(".runtime-matrix-delimiter")]
-        .map((delimiter) => delimiter.getBoundingClientRect().height)
+      grid: { top: gridRect.top, bottom: gridRect.bottom, height: gridRect.height },
+      delimiters: [...matrix.querySelectorAll(".runtime-matrix-delimiter")]
+        .map((delimiter) => {
+          const rect = delimiter.getBoundingClientRect();
+          return {
+            top: rect.top,
+            bottom: rect.bottom,
+            height: rect.height,
+            strokeWidth: getComputedStyle(delimiter.querySelector("path")).strokeWidth
+          };
+        })
     };
   });
-  expect(dimensions.delimiterHeights).toHaveLength(2);
-  dimensions.delimiterHeights.forEach((height) => {
-    expect(height).toBeGreaterThanOrEqual(dimensions.gridHeight * 0.95);
-    expect(height).toBeLessThanOrEqual(dimensions.gridHeight * 1.05);
+  expect(dimensions.delimiters).toHaveLength(2);
+  dimensions.delimiters.forEach((delimiter) => {
+    expect(Math.abs(delimiter.height - dimensions.grid.height)).toBeLessThanOrEqual(1);
+    expect(Math.abs(delimiter.top - dimensions.grid.top)).toBeLessThanOrEqual(1);
+    expect(Math.abs(delimiter.bottom - dimensions.grid.bottom)).toBeLessThanOrEqual(1);
+    expect(delimiter.strokeWidth).toBe("1px");
   });
   await page.locator('[data-action="next-card"]').click();
   await expect(page.locator(".runtime-matrix-item mtd [data-action='text-gap-open-choice']")).toHaveCount(1);
@@ -318,18 +328,30 @@ test("formula combina texto e notação avançada na mesma escala tipográfica",
   await expect(page.locator(".package-formula math mfrac")).toHaveCount(2);
   await expect(page.locator(".package-formula math msub")).toHaveCount(3);
   await expect(page.locator(".package-formula math msup")).toHaveCount(1);
-  const fencedDimensions = await page.locator(".package-formula-fenced").evaluate((fenced) => {
-    const contentHeight = fenced.querySelector(".package-formula-fenced-content").getBoundingClientRect().height;
+  const fencedDimensions = await page.locator(".package-formula-fenced.is-stacked").evaluate((fenced) => {
+    const figure = fenced.closest(".package-formula");
+    const contentRect = fenced.querySelector(":scope > .package-formula-fenced-content").getBoundingClientRect();
+    const delimiters = [...figure.querySelectorAll(":scope > .package-formula-fence")]
+      .filter((delimiter) => delimiter.getBoundingClientRect().height > 20);
     return {
-      contentHeight,
-      fenceHeights: [...fenced.querySelectorAll(".package-formula-fence")]
-        .map((delimiter) => delimiter.getBoundingClientRect().height)
+      contentRect: { top: contentRect.top, bottom: contentRect.bottom, height: contentRect.height },
+      fences: delimiters.map((delimiter) => {
+        const rect = delimiter.getBoundingClientRect();
+        return {
+          top: rect.top,
+          bottom: rect.bottom,
+          height: rect.height,
+          strokeWidth: getComputedStyle(delimiter.querySelector("path")).strokeWidth
+        };
+      })
     };
   });
-  expect(fencedDimensions.fenceHeights).toHaveLength(2);
-  fencedDimensions.fenceHeights.forEach((height) => {
-    expect(height).toBeGreaterThanOrEqual(fencedDimensions.contentHeight * 0.85);
-    expect(height).toBeLessThanOrEqual(fencedDimensions.contentHeight * 1.15);
+  expect(fencedDimensions.fences).toHaveLength(2);
+  fencedDimensions.fences.forEach((fence) => {
+    expect(Math.abs(fence.height - fencedDimensions.contentRect.height)).toBeLessThanOrEqual(1);
+    expect(Math.abs(fence.top - fencedDimensions.contentRect.top)).toBeLessThanOrEqual(1);
+    expect(Math.abs(fence.bottom - fencedDimensions.contentRect.bottom)).toBeLessThanOrEqual(1);
+    expect(fence.strokeWidth).toBe("1px");
   });
   const sizes = await page.evaluate(() => ({
     prose: getComputedStyle(document.querySelector(".runtime-formula-block > p")).fontSize,

@@ -1,15 +1,14 @@
 import { academicProfile } from "../../sdk/academic.js";
 import { escapePackageAttribute, escapePackageHtml, renderPackageInline, renderPackageProse } from "../../sdk/html.js";
+import { renderStretchDelimiter } from "../../sdk/stretchDelimiter.js";
 
 function renderMatrix(values, name = "", delimiters = "brackets") {
   const dimensions = `${values.length} por ${values[0]?.length || 0}`;
   const accessibleName = name ? `Matriz ${name}, ${dimensions}` : `Matriz ${dimensions}`;
   const body = values.map((row) => `<mtr>${row.map((cell) => `<mtd><mtext>${renderPackageInline(cell)}</mtext></mtd>`).join("")}</mtr>`).join("");
-  const bracket = (side) => `<svg class="runtime-matrix-delimiter is-${side}" viewBox="0 0 8 100" preserveAspectRatio="none" aria-hidden="true" focusable="false"><path d="${side === "left" ? "M7 1H1V99H7" : "M1 1H7V99H1"}" vector-effect="non-scaling-stroke"/></svg>`;
-  const parenthesis = (side) => `<svg class="runtime-matrix-delimiter is-${side}" viewBox="0 0 8 100" preserveAspectRatio="none" aria-hidden="true" focusable="false"><path d="${side === "left" ? "M7 1C2 20 1 35 1 50S2 80 7 99" : "M1 1C6 20 7 35 7 50S6 80 1 99"}" vector-effect="non-scaling-stroke"/></svg>`;
-  const delimiter = delimiters === "parentheses" ? parenthesis : bracket;
+  const symbols = delimiters === "parentheses" ? ["(", ")"] : ["[", "]"];
   const prefix = name ? `<math class="runtime-matrix-prefix" aria-hidden="true"><mrow><mi class="runtime-matrix-name">${escapePackageHtml(name)}</mi><mo>=</mo></mrow></math>` : "";
-  return `<span class="runtime-matrix-item" role="group" aria-label="${escapePackageAttribute(accessibleName)}">${prefix}<span class="runtime-matrix-fenced">${delimiter("left")}<math class="runtime-matrix-values"><mtable class="runtime-matrix-grid">${body}</mtable></math>${delimiter("right")}</span></span>`;
+  return `<span class="runtime-matrix-item" role="group" aria-label="${escapePackageAttribute(accessibleName)}">${prefix}<span class="runtime-matrix-fenced">${renderStretchDelimiter(symbols[0], "runtime-matrix-delimiter is-left")}<math class="runtime-matrix-values"><mtable class="runtime-matrix-grid">${body}</mtable></math>${renderStretchDelimiter(symbols[1], "runtime-matrix-delimiter is-right")}</span></span>`;
 }
 
 export const matrixPackage = Object.freeze({
