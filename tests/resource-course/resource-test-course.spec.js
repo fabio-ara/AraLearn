@@ -420,6 +420,7 @@ test("plano cartesiano complexo preserva eixos, objetos e rótulos sem colisão"
   await expect(page.locator(".package-plane-legend li").nth(0)).toContainText("e₁, e₂, p, Q");
   await expect(page.locator(".package-plane-legend li").nth(1)).toContainText("Imagem por A");
   await expect(page.locator(".package-plane-legend li").nth(1)).toContainText("Ae₁, Ae₂, Ap, A(Q)");
+  await expect(page.locator(".package-plane-object-key li")).toHaveText(["Ponto", "Vetor", "Região ou trajetória"]);
 });
 
 test("gráfico acadêmico mostra escala logarítmica, incerteza e referência sem legenda solta", async ({ page }) => {

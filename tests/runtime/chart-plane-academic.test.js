@@ -46,10 +46,18 @@ test("chart rejeita a antiga tupla categórica e tipos declarados sem renderer",
 
 test("plane acadêmico diferencia pontos, vetores aplicados e regiões em domínios explícitos", () => {
   const data = planePackage.normalize(planePackage.authoringContract.example);
+  const deliveredContract = RESOURCE_PACKAGE_REGISTRY.getAuthoringContract(
+    "aralearn.resource.plane",
+    "1.0.0"
+  ).contract;
   assert.deepEqual(planePackage.validate(data), []);
   assert.equal(data.points.length, 2);
   assert.equal(data.vectors.length, 4);
   assert.equal(data.paths.length, 2);
+  assert.match(deliveredContract.fieldSemantics.groups, /não altera o tipo geométrico/iu);
+  assert.match(deliveredContract.fieldSemantics.vectors, /to.*extremidade.*ponta.*termina/iu);
+  assert.match(deliveredContract.visualGrammar.geometricType, /círculo para ponto/iu);
+  assert.match(deliveredContract.visualGrammar.semanticGroup, /nunca transformam ponto em losango/iu);
   assert.deepEqual(data.groups.map(({ label }) => label), ["Objeto original", "Imagem por A"]);
   assert.ok([...data.points, ...data.vectors, ...data.paths].every(({ group }) => ["original", "image"].includes(group)));
   assert.ok(data.vectors.every(({ from, to }) => from.length === 2 && to.length === 2));
@@ -57,9 +65,11 @@ test("plane acadêmico diferencia pontos, vetores aplicados e regiões em domín
   const specification = compilePlaneVegaLite(data, theme);
   assert.equal(specification.width, "container");
   assert.ok(specification.layer.some(({ mark }) => mark?.type === "rule"));
-  assert.ok(specification.layer.some(({ mark, encoding }) => mark?.type === "line" && encoding?.strokeDash?.field === "tone"));
-  assert.ok(specification.layer.some(({ mark }) => mark?.type === "point" && mark?.shape === "triangle"));
-  assert.ok(specification.layer.some(({ mark, encoding }) => mark?.type === "point" && mark?.filled && encoding?.shape?.field === "tone"));
+  assert.ok(specification.layer.some(({ mark, encoding }) => mark?.type === "line" && !mark?.point && encoding?.strokeDash?.field === "tone"));
+  const arrowheads = specification.layer.filter(({ mark }) => mark?.type === "point" && mark?.shape === "triangle-up");
+  assert.equal(arrowheads.length, data.vectors.length);
+  assert.ok(arrowheads.every(({ mark }) => Math.hypot(mark.xOffset, mark.yOffset) > 4.8));
+  assert.ok(specification.layer.some(({ mark, encoding }) => mark?.type === "point" && mark?.shape === "circle" && !encoding?.shape));
 });
 
 test("plane rejeita agrupamento cromático ambíguo", () => {
@@ -70,6 +80,16 @@ test("plane rejeita agrupamento cromático ambíguo", () => {
     points: [{ id: "p", label: "p", group: "não-declarado", at: [1, 1] }]
   });
   assert.match(planePackage.validate(data).join(" "), /grupo declarado/iu);
+});
+
+test("plane rejeita vetor nulo e grupo sem objeto", () => {
+  const data = planePackage.normalize({
+    xAxis: { label: "x", domain: [0, 2] },
+    yAxis: { label: "y", domain: [0, 2] },
+    groups: [{ id: "usado", label: "Usado" }, { id: "vazio", label: "Vazio" }],
+    vectors: [{ id: "v", label: "v", group: "usado", from: [1, 1], to: [1, 1] }]
+  });
+  assert.match(planePackage.validate(data).join(" "), /grupo declarado precisa conter|origem e extremidade distintas/iu);
 });
 
 test("plane rejeita o vetor ambíguo da versão abolida", () => {

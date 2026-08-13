@@ -58,7 +58,10 @@ adicionais fora do contrato.
   Vetor tem `from` e `to`; trajetória conserva a ordem; região fechada usa
   `closed`. Quando houver categorias semanticamente relevantes, declare poucos
   `groups` e associe cada objeto ao grupo correspondente; não crie uma cor por
-  objeto. O renderer combina cor, traço e forma e produz uma legenda agrupada.
+  objeto. Grupo é categoria transversal, não tipo geométrico: ponto continua
+  ponto, vetor continua vetor e região continua região em qualquer grupo. O
+  renderer combina cor e traço para os grupos, conserva formas próprias dos
+  objetos e produz uma legenda agrupada.
   Não use esse package para campo vetorial denso, contorno, superfície
   tridimensional ou outro objeto que necessite package disciplinar próprio.
 - Em `formula`, descreva a expressão pelos nós semânticos do contrato. Prefira

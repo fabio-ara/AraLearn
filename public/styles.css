@@ -3317,6 +3317,24 @@ input:-webkit-autofill:focus {
   font-weight: 400;
 }
 
+.package-plane-object-key {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px 12px;
+  margin: 0 0 7px;
+  padding: 0;
+  color: var(--resource-text-secondary);
+  font-size: var(--type-sm);
+  line-height: var(--leading-snug);
+  list-style: none;
+}
+
+.package-plane-object-key li {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
 .package-chart-swatch,
 .package-plane-swatch {
   width: 11px;
@@ -3347,6 +3365,21 @@ input:-webkit-autofill:focus {
   border-radius: 0;
 }
 
+.package-plane-swatch.group-line {
+  position: relative;
+  width: 18px;
+  height: 3px;
+  border: 0;
+  border-radius: 0;
+}
+
+.package-plane-swatch.group-line.tone-1::after {
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(90deg, transparent 0 6px, var(--resource-surface-subtle) 6px 10px);
+  content: "";
+}
+
 .package-chart-swatch.mark-line.tone-1::after {
   position: absolute;
   inset: 0;
@@ -3361,6 +3394,46 @@ input:-webkit-autofill:focus {
 
 .package-chart-swatch.mark-bar {
   border-radius: 2px;
+}
+
+.package-plane-key-symbol {
+  position: relative;
+  display: inline-block;
+  flex: 0 0 auto;
+  color: var(--resource-text-secondary);
+}
+
+.package-plane-key-symbol.point {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: currentColor;
+}
+
+.package-plane-key-symbol.vector {
+  width: 18px;
+  height: 2px;
+  background: currentColor;
+}
+
+.package-plane-key-symbol.vector::after {
+  position: absolute;
+  top: 50%;
+  right: -1px;
+  width: 0;
+  height: 0;
+  border-top: 4px solid transparent;
+  border-bottom: 4px solid transparent;
+  border-left: 6px solid currentColor;
+  content: "";
+  transform: translateY(-50%);
+}
+
+.package-plane-key-symbol.region {
+  width: 11px;
+  height: 9px;
+  border: 1px solid currentColor;
+  background: transparent;
 }
 
 .package-chart-layout-error,

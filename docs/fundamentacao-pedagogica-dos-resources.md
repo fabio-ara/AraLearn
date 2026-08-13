@@ -132,6 +132,10 @@ essas categorias e agrega os objetos que pertencem a cada uma, em vez de criar
 uma entrada desconexa para cada ponto, vetor e região. O renderer usa uma
 paleta de dados própria para cada tema e repete a distinção por traço e forma;
 cor nunca é o único canal para reconhecer um grupo.
+Tipo geométrico e categoria são dimensões independentes: pontos permanecem
+circulares em qualquer grupo, vetores são reconhecidos pela ponta de seta e
+trajetórias ou regiões pelo contorno. A ponta termina na coordenada `to`; ela
+não usa a extremidade como centro e não avança além do valor declarado.
 O exemplo canônico coordena base canônica, imagens de vetores por uma
 transformação linear, ponto e imagem do ponto, quadrado unitário e região
 transformada. Assim, exercita valores negativos, múltiplos rótulos, escalas e
