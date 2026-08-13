@@ -32,9 +32,21 @@ const trailSnapshot = homeTrailSnapshotForProject(project, {
   }
 });
 
+const progressStorageKey = "aralearn.resource-test.progress.v1";
+function loadLocalProgress() {
+  try {
+    const value = JSON.parse(localStorage.getItem(progressStorageKey) || "null");
+    return value?.version === 1 && value.lessons && typeof value.lessons === "object"
+      ? value
+      : { version: 1, lessons: {} };
+  } catch {
+    return { version: 1, lessons: {} };
+  }
+}
+
 const state = {
   project: structuredClone(project),
-  progress: { version: 1, lessons: {} },
+  progress: loadLocalProgress(),
   reviewItems: [],
   comments: new Map()
 };
@@ -44,7 +56,10 @@ const storage = {
   loadProject: () => structuredClone(state.project),
   saveProject: async (next) => { state.project = structuredClone(next); },
   loadProgress: () => structuredClone(state.progress),
-  saveProgress: async (next) => { state.progress = structuredClone(next); },
+  saveProgress: async (next) => {
+    state.progress = structuredClone(next);
+    localStorage.setItem(progressStorageKey, JSON.stringify(state.progress));
+  },
   initialize: async () => undefined,
   refresh: async () => undefined,
   setCourse: () => undefined,
