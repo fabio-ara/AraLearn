@@ -211,9 +211,9 @@ test("recursos visuais extraídos preservam representação própria em vez de t
   });
   assert.match(reactionHtml, /<math class="package-reaction-equation"/u);
   assert.match(reactionHtml, /<mrow class="package-reaction-species"/u);
-  assert.match(reactionHtml, /package-reaction-coefficient-space" width="0\.2em"/u);
-  assert.match(reactionHtml, /package-reaction-plus" lspace="0\.5em" rspace="0\.5em"/u);
-  assert.match(reactionHtml, /package-reaction-arrow" lspace="0\.7em" rspace="0\.7em"/u);
+  assert.match(reactionHtml, /package-reaction-coefficient-space" width="0\.35em"/u);
+  assert.match(reactionHtml, /package-reaction-operator-space" width="0\.6em"/u);
+  assert.match(reactionHtml, /package-reaction-transition-space" width="0\.8em"/u);
   assert.match(reactionHtml, /<mo class="package-reaction-arrow"/u);
 
   const flowHtml = render({

@@ -2269,12 +2269,20 @@ input:-webkit-autofill:focus {
 
 /* Catálogo acadêmico de packages: cada representação conserva a notação da área. */
 .runtime-matrix-delimiter {
-  align-self: stretch;
+  position: absolute;
+  inset-block: 0;
   width: 0.48em;
-  height: auto;
+  height: 100%;
   color: var(--resource-text);
-  flex: 0 0 0.48em;
   overflow: visible;
+}
+
+.runtime-matrix-delimiter.is-left {
+  inset-inline-start: 0;
+}
+
+.runtime-matrix-delimiter.is-right {
+  inset-inline-end: 0;
 }
 
 .runtime-matrix-delimiter path {
@@ -3093,8 +3101,10 @@ input:-webkit-autofill:focus {
 }
 
 .runtime-matrix-fenced {
+  position: relative;
   display: inline-flex;
-  align-items: stretch;
+  align-items: center;
+  padding-inline: 0.48em;
 }
 
 .runtime-matrix-values {

@@ -125,13 +125,38 @@ test("matrix usa MathML com peso normal e lacuna na entrada", async ({ page }) =
     };
   });
   expect(dimensions.delimiterHeights).toHaveLength(2);
-  dimensions.delimiterHeights.forEach((height) => expect(height).toBeGreaterThanOrEqual(dimensions.gridHeight * 0.85));
+  dimensions.delimiterHeights.forEach((height) => {
+    expect(height).toBeGreaterThanOrEqual(dimensions.gridHeight * 0.95);
+    expect(height).toBeLessThanOrEqual(dimensions.gridHeight * 1.05);
+  });
   await page.locator('[data-action="next-card"]').click();
   await expect(page.locator(".runtime-matrix-item mtd [data-action='text-gap-open-choice']")).toHaveCount(1);
 });
 
 test("reaction materializa escolha e digitação dentro da equação química", async ({ page }) => {
-  await openModule(page, 8, 1);
+  await openModule(page, 8);
+  const spacing = await page.locator(".package-reaction-equation").evaluate((equation) => {
+    const species = [...equation.querySelectorAll(".package-reaction-species")];
+    const coefficient = equation.querySelector(".package-reaction-coefficient").getBoundingClientRect();
+    const formula = equation.querySelector(".package-reaction-formula").getBoundingClientRect();
+    const plus = equation.querySelector(".package-reaction-plus").getBoundingClientRect();
+    const arrow = equation.querySelector(".package-reaction-arrow").getBoundingClientRect();
+    const boxes = species.map((item) => item.getBoundingClientRect());
+    return {
+      coefficientToFormula: formula.left - coefficient.right,
+      speciesToPlus: plus.left - boxes[0].right,
+      plusToSpecies: boxes[1].left - plus.right,
+      reactantsToArrow: arrow.left - boxes[1].right,
+      arrowToProducts: boxes[2].left - arrow.right
+    };
+  });
+  expect(spacing.coefficientToFormula).toBeGreaterThanOrEqual(5);
+  expect(spacing.speciesToPlus).toBeGreaterThanOrEqual(8);
+  expect(spacing.plusToSpecies).toBeGreaterThanOrEqual(8);
+  expect(spacing.reactantsToArrow).toBeGreaterThanOrEqual(11);
+  expect(spacing.arrowToProducts).toBeGreaterThanOrEqual(11);
+
+  await page.locator('[data-action="next-card"]').click();
   await expect(page.locator(".inline-feedback")).toHaveCount(0);
   const coefficientGap = page.locator("math.package-reaction-equation [data-action='text-gap-open-choice']");
   await expect(coefficientGap).toHaveCount(1);
