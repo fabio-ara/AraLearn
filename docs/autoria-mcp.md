@@ -166,7 +166,8 @@ separadas.
 As ferramentas são pequenas e previsíveis:
 
 - preparar a autoria recuperando um brief pertinente ao pedido;
-- listar recursos e consultar o contrato formal de um `resource`;
+- explorar a biblioteca por facetas, buscar representações pela intenção,
+  inspecionar candidatos, consultar seus contratos e auditar a composição;
 - listar a projeção canônica de Trilhas, incluindo planos, cursos em
   materialização e seleções, com `completedCardCount` sem carregar a árvore;
   retirar uma seleção continua sendo operação separada; somente uma conta com capacidade
@@ -207,13 +208,13 @@ Partes, decisões e o mandato. Cada Parte é uma lista ordenada dos ids exatos d
 suas microssequências; as operações unitárias servem a ajustes posteriores.
 
 O registro canônico tem 30 ferramentas tanto no MCP quanto na Action. Oito
-nomes concentram famílias relacionadas com contratos fechados. Sete usam
-`operation`; a consulta de packages alterna entre lista e detalhe pela
-presença de `packageId`:
+nomes concentram famílias relacionadas com contratos fechados. A biblioteca de
+resources usa uma única ferramenta progressiva; acrescentar um package não
+altera a lista de ferramentas nem incorpora seus ids ao schema público:
 
 | Ferramenta | Operações |
 | --- | --- |
-| `consultarPackagesDeCard` | sem `packageId`, lista manifests compactos; com `packageId` e `version`, consulta o contrato exato |
+| `consultarBibliotecaDeResources` | `explore`, `search`, `inspect`, `contracts`, `validate_card`, `audit_representation`, `preview_card` |
 | `consultarCatalogo` | `list_collections`, `list_collection_courses`, `search_courses` |
 | `editarCatalogo` | `create_collection`, `update_collection`, `move_course` |
 | `retirarDoCatalogo` | `retire_collection`, `remove_course` |
@@ -266,14 +267,52 @@ podem apontar para o mesmo reparo confirmado, mas uma operação nunca substitui
 a outra.
 
 Esse agrupamento não transforma o backend em uma mutação genérica. Cada valor
-de `operation` seleciona uma entrada fechada; em packages, a presença do campo
-seleciona a consulta detalhada. Retiradas e exclusões continuam separadas das
-edições comuns. Nomes individuais antigos não fazem parte da superfície
-pública.
+de `operation` seleciona uma leitura fechada. Retiradas e exclusões continuam
+separadas das edições comuns.
 
-O catálogo evita repetir no contexto do modelo todos os schemas. O contrato
-completo é entregue somente para o package e a versão escolhidos; a
-persistência valida o envelope e cada instância pelo mesmo registro canônico.
+Toda resposta da ferramenta usa `aralearn.resource-library.v1`. A sequência
+operacional é progressiva e não possui uma variante que despeje o catálogo
+inteiro:
+
+| Operação | Entrada essencial | Decisão apoiada |
+| --- | --- | --- |
+| `explore` | `slot` opcional | Conhecer famílias e vocabulários de disciplina, estrutura, operação e modalidade, sem schemas. |
+| `search` | intenção em `query` e facetas pertinentes | Obter uma lista curta, seus motivos e `coverage.status`. |
+| `inspect` | até oito pares de package e versão opcional | Comparar perfis completos antes da escolha. |
+| `contracts` | até quatro pares exatos de `packageId` e `version` | Receber somente contrato autoral, schema e `practiceTargets` das escolhas. |
+| `validate_card` | envelope em `cardJson` | Verificar schema, referências e compatibilidades da composição. |
+| `audit_representation` | `cardJson` e a intenção representacional | Avaliar adequação semântica, operação de resposta e legibilidade do feedback. |
+| `preview_card` | `cardJson` | Obter um descritor estrutural, nunca uma imagem. |
+
+O agente começa por `explore`, formula `search` com a operação cognitiva e a
+estrutura que precisam permanecer visíveis, reduz os candidatos com `inspect`
+e só então pede `contracts`. Depois de compor o card, executa `validate_card` e
+`audit_representation` antes da escrita. A auditoria identifica cada seleção
+por `basis`: `semantic_fit` para conteúdo, `response_affordance` para resposta
+e `feedback_legibility` para feedback.
+
+`canonical` representa o ajuste específico; `versatile`, uma convenção
+transversal que preserva a estrutura; `substitute`, a melhor aproximação
+instalada. Somente a cobertura `substitute` traz `chatDisclosure`. Ela nunca
+bloqueia a produção: o agente usa o melhor candidato, incorpora a observação em
+uma linha natural do feedback do chat e registra a representação ideal numa
+decisão da continuidade. Quando um package especializado for instalado, ele
+passa a superar o substituto pelo ranking, sem refatoração do kernel ou da
+ferramenta.
+
+A decisão fica ligada à microssequência ou ao card por
+`gerirContinuidadeDaAutoria` com `operation: record_decision`. Seu campo
+`representationSelection` guarda a intenção, o package e a versão escolhidos,
+o ajuste `canonical`, `versatile` ou `substitute`, a representação ideal, a
+versão do catálogo, as limitações e o `chatDisclosure`. Em uma substituição, a
+representação ideal e a comunicação breve são obrigatórias; o estado continua
+válido e a autoria prossegue. Esse registro pertence somente à continuidade
+autoral e não amplia o envelope público do card.
+
+`preview_card` sempre informa `rendered: false`. O Edge não simula viewport,
+hidratação, Graphviz, Vega ou screenshot; a prévia visual fiel pertence ao
+renderer real do aplicativo. O descritor pode antecipar packages e problemas
+estruturais, mas não comprova layout ou legibilidade visual.
 
 No MCP, `destructiveHint` conserva a semântica normativa do protocolo para
 mutações não aditivas. Na Action, o metadado próprio de consequência marca

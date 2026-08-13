@@ -12,8 +12,13 @@ O `brief` conserva somente contexto estável e fontes; sua troca integral usa
 `gerirContinuidadeDaAutoria` com `replace_stable_brief` após releitura. Use
 `criarEstruturaNoWorkspace` em lotes e
 materialize uma microssequência por chamada com
-`salvarCardsNaMicrossequencia`; nunca envie um curso populado inteiro. Consulte
-o catálogo e os contratos versionados escolhidos com `consultarPackagesDeCard`. Use ferramentas específicas para
+`salvarCardsNaMicrossequencia`; nunca envie um curso populado inteiro. Na única
+`consultarBibliotecaDeResources`, percorra `explore`, `search`, `inspect` (até
+oito), `contracts` (até quatro versões exatas), `validate_card` e
+`audit_representation`. `preview_card` é descritor com `rendered: false`, não
+screenshot. `substitute` nunca bloqueia; use brevemente seu `chatDisclosure`.
+Sem a ferramenta conectada, não invente schemas: limite-se ao planejamento ou
+peça o contrato exato. Use ferramentas específicas para
 metadados e cards e `reorganizarWorkspace` com uma `operation` explícita para
 cópia ou movimento. Cursos no mesmo workspace podem trocar módulos, lições,
 microssequências e cards; `copy_entity` cria identidades novas e `move_entity`

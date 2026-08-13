@@ -36,11 +36,13 @@ interação, não como obrigação de conservar posição, decoração ou CSS le
 
 No leitor, **Visualizar**, **Editar** e **IA** são estados contextuais da mesma
 superfície, não abas permanentes. O conteúdo continua em primeiro plano; a
-seleção acontece por contorno sobre resources, card, cards da microssequência
-ou microssequências da lição. O resultado validado ocupa diretamente a árvore
-corrente, com apenas uma ação de desfazer. Toda a autoria contextual desaparece
-ao retornar à visualização. Conteúdo e controles acompanham a mesma rolagem da
-página; não existem dois painéis roláveis presos dentro do card.
+seleção acontece por contorno sobre instâncias de packages, card, cards da
+microssequência ou microssequências da lição. O resultado validado ocupa
+diretamente a árvore corrente, e a conversa curta permite desfazer, refazer ou
+restaurar versões do card. Toda a autoria contextual desaparece ao retornar à
+visualização. Conteúdo e controles acompanham a rolagem da página; diagramas
+extensos podem usar um frame interno limitado e rolável sem prender o gesto
+feito fora dele.
 
 ## Arquitetura de tokens
 
@@ -90,15 +92,9 @@ alto contraste e avaliar ambos em contextos reais.
 
 ## Resources
 
-Os dezoito `resources` integram o sistema de temas e já atravessam o mesmo
-contrato cromático do leitor:
-
-- texto, anotação, código e fórmula;
-- escolha, composição e feedback;
-- tabela, matriz, sequência e plano cartesiano;
-- fluxo, árvore, grafo, relações e mapa de sistema;
-- gráfico estatístico e reação química;
-- lacunas, respostas reveladas, seleção e estados de prática.
+Todos os packages registrados integram o sistema de temas e atravessam o mesmo
+contrato cromático do leitor. A lista corrente é derivada do catálogo; acrescentar
+uma representação não exige manter uma enumeração paralela neste documento.
 
 As decisões `resource-*` separam superfície, texto, borda, grade, eixo,
 estrutura, lacuna e feedback. As seis decisões `data-series-*` possuem valores

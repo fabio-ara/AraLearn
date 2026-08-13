@@ -206,10 +206,10 @@ relacional incremental de progresso, trilhas, seleções e comentários. A
 autoria remota pelo Chatbot ou Plugin, incluindo consulta de contratos de
 resources e mutações focadas em workspaces compostos, é
 `atomic-resource-authoring`. A assistência bottom-up local por API usa
-`atomic-card-assistance` para reparar resources ou o card inteiro e escopos
-hierárquicos próprios para operar em cards de uma microssequência ou, no máximo,
-criar uma microssequência em uma lição. As capacidades coexistem e não são
-alternativas intercambiáveis.
+`atomic-card-assistance` para editar caminhos textuais ou recompor o card
+inteiro pelo catálogo, além de escopos hierárquicos próprios para operar em
+cards de uma microssequência ou, no máximo, criar uma microssequência em uma
+lição. As capacidades coexistem e não são alternativas intercambiáveis.
 
 Implante banco e funções pelo roteiro protegido:
 
@@ -426,11 +426,27 @@ Os dois comandos devem ficar sem resultados de segredo ou catálogo operacional.
 
 ## Publicação inicial das fixtures oficiais
 
-As três fixtures de curso em `supabase/fixtures/catalog/` nunca são lidas pelo app. Primeiro valide localmente o contrato, o round-trip, o hash canônico, todas as relações e o estado editorial. A validação exige `status: "ready"` em todas as microssequências antes de qualquer chamada ao banco:
+As fixtures de curso listadas em
+`supabase/fixtures/catalog/catalog-fixtures.json` nunca são lidas diretamente
+pelo app. Primeiro valide localmente o contrato, o round-trip, o hash canônico,
+todas as relações e o estado editorial. A validação exige `status: "ready"` em
+todas as microssequências antes de qualquer chamada ao banco:
 
 ```powershell
 npm.cmd run catalog:validate
 ```
+
+A fixture **AraLearn: Catálogo de recursos** é um curso oficial comum, não uma
+galeria nem uma rota especial. Seus sete módulos percorrem as famílias do
+catálogo e mantêm uma microssequência independente para cada package. Packages
+de conteúdo aparecem como representação expositiva e como premissa efetiva da
+prática: a resposta é materializada dentro do objeto quando o contrato admite
+lacuna ou digitação; nos packages apenas seletivos, a questão exige ler a
+representação mostrada. Packages de resposta (`choice`, `gap`, `matching` e
+`ordering`) possuem microssequências próprias e são exercitados no slot
+`response`; eles não são convertidos em conteúdo ilustrativo. Assim, o mesmo
+curso permite verificar Estudo, edição textual, seleção, assistência e
+sincronização pelo fluxo produtivo.
 
 Depois de aplicar as migrations, o roteiro valida cada fixture, grava o documento
 canônico no bucket de revisões e confirma sua referência. A publicação oficial

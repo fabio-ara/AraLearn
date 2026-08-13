@@ -26,10 +26,10 @@ function request(index) {
       microsequenceKey: "micro-a",
       cardKey: "card-a"
     },
-    operation: "repair",
+    operation: "edit_text",
     promptText: `Corrija o card ${index}.`,
     selectedCardKeys: ["card-a"],
-    repairScope: "card"
+    scope: "card"
   };
 }
 

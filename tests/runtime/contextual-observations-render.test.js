@@ -140,7 +140,7 @@ test("edição de resource permanece inline e não abre o painel de observaçõe
     editorSupport: editorSupport(true, {
       entityModes: { card: "edit" },
       cardAssistanceState: {
-        repairScope: "resources",
+        scope: "resources",
         wholeCardSelected: false,
         selectedCardKeys: [values.card.id],
         resourceTargetIds: ["content:paragraph-a"]
@@ -158,7 +158,7 @@ test("edição de resource permanece inline e não abre o painel de observaçõe
     editorSupport: editorSupport(false, {
       entityModes: { card: "edit" },
       cardAssistanceState: {
-        repairScope: "resources",
+        scope: "resources",
         wholeCardSelected: false,
         selectedCardKeys: [values.card.id],
         resourceTargetIds: ["content:paragraph-a"]

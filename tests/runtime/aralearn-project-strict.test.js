@@ -360,10 +360,11 @@ test("tree rejeita pai inexistente, autorreferência e ciclo", () => {
   }
 });
 
-test("as três fixtures de publicação satisfazem a fronteira estrita", async () => {
+test("as fixtures de publicação satisfazem a fronteira estrita", async () => {
   const catalogDirectory = new URL("../../supabase/fixtures/catalog/", import.meta.url);
   const manifest = JSON.parse(await fs.readFile(new URL("catalog-fixtures.json", catalogDirectory), "utf8"));
-  assert.equal(manifest.courseFiles.length, 3);
+  assert.equal(new Set(manifest.courseFiles).size, manifest.courseFiles.length);
+  assert.ok(manifest.courseFiles.includes("aralearn-catalogo-recursos-course.json"));
 
   let preservedMicrosequenceErrors = 0;
   for (const fileName of manifest.courseFiles) {

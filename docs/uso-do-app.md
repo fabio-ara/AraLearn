@@ -185,14 +185,12 @@ tiver sido substituído, o app não abre outro card por aproximação. O
 funcionamento e os limites de interpretação estão em
 [Observações pedagógicas](observacoes-pedagogicas.md).
 
-Os cards combinam packages de conteúdo, resposta e feedback. O catálogo atual
-inclui parágrafo, código, tabela, fluxo, árvore, grafo, mapa de relações,
-matriz, plano cartesiano, fórmula, gráfico estatístico, sequência, texto
-anotado, glosa interlinear, mapa de sistema, reação química, escolha, lacuna
-e ordenação. Os cards de estudo não exibem controles de
+Os cards combinam uma ou mais instâncias de conteúdo, no máximo uma resposta e
+explicações posteriores. A lista corrente de packages é derivada do catálogo,
+sem enumeração fixa na interface. Os cards de estudo não exibem controles de
 movimentação. **Visualizar**, **Editar** e **IA** usam o próprio conteúdo. Um
-contorno discreto identifica o alvo sem redimensionar o resource nem criar uma
-segunda tela. Outro toque retira o alvo da seleção.
+contorno discreto identifica o alvo sem redimensionar a representação nem criar
+uma segunda tela. Outro toque retira o alvo da seleção.
 
 Na lição, o botão **Play** da microssequência abre sua lista compacta de cards.
 As etiquetas permanecem no nível da microssequência. Dentro dela, o
@@ -212,8 +210,9 @@ uma linha dimensionável, sem setas atravessando os textos.
 
 Quando a conta tem permissão de autoria, os botões de editar e excluir aparecem
 junto do curso, módulo ou lição; sem permissão, permanecem desabilitados. No
-card, a assistência repara os resources selecionados ou o card inteiro, mas não
-cria conteúdo irmão. Na microssequência, selecionar todos os cards permite
+card, a assistência edita os caminhos textuais selecionados ou recompõe o card
+inteiro pelo catálogo, mas não cria conteúdo irmão. Na microssequência,
+selecionar todos os cards permite
 criar cards dentro dela. Na lição, selecionar uma microssequência permite criar
 cards nela; selecionar todas permite criar no máximo uma nova microssequência.
 Não há assistência por API em módulo ou curso.
@@ -223,12 +222,14 @@ parágrafos, rótulos, células, texto e código de alternativas, feedback de ca
 alternativa, explicação posterior e texto ao redor de uma lacuna. A resposta
 correta, os tokens e respostas aceitas da lacuna, identidades, tipos, relações,
 quantidade e ordem permanecem protegidos. O campo acompanha a largura do
-resource e texto longo quebra ou rola dentro da própria caixa, inclusive no
+package e texto longo quebra ou rola dentro da própria caixa, inclusive no
 teclado do smartphone, sem distorcer o runtime.
 
 A assistência envia o pedido com o contexto somente leitura, valida o retorno
-e mostra diretamente o resultado. A última mudança pode ser desfeita. Uma
-falha não altera parte do conteúdo e mantém a superfície utilizável. Alterar
+e mostra diretamente o resultado e sua explicação. A conversa do card permite
+desfazer, refazer ou restaurar versões; uma conclusão sem mudança registra a
+explicação sem criar versão. Uma falha não altera parte do conteúdo e mantém a
+superfície utilizável. Alterar
 semanticamente um exercício também limpa seu resultado e progresso anteriores,
 para que uma resposta antiga não continue marcada como correta.
 

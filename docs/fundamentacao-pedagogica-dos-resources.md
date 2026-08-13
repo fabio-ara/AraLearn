@@ -487,8 +487,8 @@ causalidade a partir de métricas de uso.
 Para cada regra didática, a avaliação deve registrar cinco campos: fonte,
 população e tarefa estudadas, força/limite da evidência, inferência feita pelo
 AraLearn e métrica que poderá refutá-la. Reparo direto, fingerprint, validação
-interna, reversão compacta e controle de escopo pertencem à confiabilidade de
-software; expor só microteorias no chat e permitir o teste incremental da
+interna, versões locais limitadas e controle de escopo pertencem à
+confiabilidade de software; expor só microteorias no chat e permitir o teste incremental da
 composição corrente em `Trilhas` são hipóteses de produto. Não devem ser
 apresentados como resultados já demonstrados pela literatura.
 

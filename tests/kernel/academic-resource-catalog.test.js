@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { RESOURCE_PACKAGE_REGISTRY } from "../../src/resources/packages/index.js";
+import { RESOURCE_CATALOG } from "../../src/resources/catalog/resourceCatalog.js";
 
 const contentCatalog = RESOURCE_PACKAGE_REGISTRY.listCatalog({ slot: "content" });
 
@@ -13,13 +14,7 @@ test("todo resource de conteúdo declara fundamento acadêmico e limites de uso"
     assert.ok(manifest.academic.conventions.length > 0, `${manifest.id}: conventions`);
     assert.ok(manifest.academic.appropriateWhen.length > 0, `${manifest.id}: appropriateWhen`);
     assert.ok(manifest.academic.avoidWhen.length > 0, `${manifest.id}: avoidWhen`);
-    assert.deepEqual(manifest.academic.admission.preservedStructure, manifest.academic.conventions, `${manifest.id}: preservedStructure`);
-    assert.deepEqual(manifest.academic.admission.onlyWhen, manifest.academic.appropriateWhen, `${manifest.id}: onlyWhen`);
-    assert.deepEqual(manifest.academic.admission.useSimplerRepresentationWhen, manifest.academic.avoidWhen, `${manifest.id}: simpler alternative`);
-    assert.match(manifest.academic.admission.decisionRule, /representação mais simples/u, `${manifest.id}: decisionRule`);
-    assert.match(manifest.academic.admission.interpretabilityRule, /mais direta e previsível/u, `${manifest.id}: interpretabilityRule`);
-    assert.match(manifest.academic.admission.theoryDensityRule, /um avanço conceitual por card/u, `${manifest.id}: theoryDensityRule`);
-    assert.match(manifest.academic.admission.practiceContextRule, /todos os dados do caso/u, `${manifest.id}: practiceContextRule`);
+    assert.equal(Object.hasOwn(manifest.academic, "admission"), false, `${manifest.id}: policy local duplicada`);
     assert.ok(manifest.academic.practiceModes.includes("exposition"), `${manifest.id}: exposition`);
     assert.ok(manifest.limitations.length > 0, `${manifest.id}: limitations`);
   });
@@ -74,7 +69,7 @@ test("diagrama de conjuntos distingue Venn de Euler sem receber geometria autora
   assert.deepEqual(contract.schema.properties.kind.enum, ["venn", "euler"]);
   assert.doesNotMatch(JSON.stringify(contract), /"(?:x|y|radius|coordinates)"\s*:/iu);
   assert.match(contract.manifest.purpose, /Venn|Euler/u);
-  assert.match(contract.manifest.academic.admission.decisionRule, /representação mais simples/u);
+  assert.match(RESOURCE_CATALOG.explore().policy.decision, /representação mais simples/u);
   const instance = RESOURCE_PACKAGE_REGISTRY.normalizeInstance({
     id: "set-diagram-academic-example",
     package: packageId,

@@ -196,13 +196,30 @@ try {
     ]
   });
   workspaceRevision = structured.revision;
-  const packageCatalog = await tool("consultarPackagesDeCard", { slot: "content" });
-  assert.equal(packageCatalog.packages.some(({ id }) => id === "aralearn.resource.paragraph"), true);
-  const paragraphContract = await tool("consultarPackagesDeCard", {
-    packageId: "aralearn.resource.paragraph",
-    version: "1.0.0"
+  const packageCatalog = await tool("consultarBibliotecaDeResources", {
+    operation: "search",
+    query: "explicação progressiva em prosa",
+    slot: "content",
+    structureIds: ["structure.prose"],
+    limit: 4
   });
-  assert.equal(paragraphContract.definition.manifest.id, "aralearn.resource.paragraph");
+  assert.equal(
+    packageCatalog.result.candidates.some(
+      ({ packageId }) => packageId === "aralearn.resource.paragraph"
+    ),
+    true
+  );
+  const paragraphContract = await tool("consultarBibliotecaDeResources", {
+    operation: "contracts",
+    packages: [{
+      packageId: "aralearn.resource.paragraph",
+      version: "1.0.0"
+    }]
+  });
+  assert.equal(
+    paragraphContract.result.items[0].definition.manifest.id,
+    "aralearn.resource.paragraph"
+  );
   const authoringCards = structuredClone(microsequence.cards);
   const materialized = await tool("salvarCardsNaMicrossequencia", {
     requestId: randomUUID(),

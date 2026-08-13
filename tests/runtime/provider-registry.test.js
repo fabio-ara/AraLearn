@@ -86,7 +86,7 @@ test("modelo livre OpenAI compatível usa JSON mode explícito no fluxo estrutur
     });
     const result = await launch.provider.generateStructured({
       modelId: launch.modelId,
-      phase: "card_assistance_resource_repair",
+      phase: "card_assistance_text_edit",
       prompt: "Responda no contrato.",
       schema: {
         type: "object",

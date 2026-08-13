@@ -12,8 +12,10 @@ description: Constrói, reorganiza, revisa e publica cursos AraLearn por package
 3. Registre a estrutura em lotes com `criarEstruturaNoWorkspace`.
 4. Depois da aprovação, use uma única `record_approved_plan` com todas as
    Partes, decisões e o mandato limitado ao escopo autorizado.
-5. Consulte o resource e use `salvarCardsNaMicrossequencia` em uma unidade por
-   chamada; nunca envie um curso populado inteiro.
+5. Na única `consultarBibliotecaDeResources`, percorra `explore`, `search`,
+   `inspect`, `contracts` em lotes de até quatro, `validate_card` e
+   `audit_representation`; depois use `salvarCardsNaMicrossequencia` em uma
+   unidade por chamada.
 6. Aplique reorganizações com `reorganizarWorkspace` e `expectedRevision`.
 7. Releia e apresente microteorias para revisão conceitual.
 8. Consulte comentários e `list_observations` com `kinds: ["note"]`; achados
@@ -24,4 +26,6 @@ description: Constrói, reorganiza, revisa e publica cursos AraLearn por package
 
 Não enumere práticas no chat por padrão. Reaproveite cursos e mova partes entre
 eles dentro do workspace. Em conflito, releia; em repetição, conserve o mesmo
-`requestId` e os mesmos argumentos.
+`requestId` e os mesmos argumentos. `preview_card` é descritor, não screenshot.
+Um `substitute` não bloqueia; use seu `chatDisclosure` brevemente no chat. Sem
+a ferramenta conectada, não invente schemas nem materialize packages novos.

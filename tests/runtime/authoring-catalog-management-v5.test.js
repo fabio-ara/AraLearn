@@ -71,11 +71,24 @@ function toolDefinition(name) {
 }
 
 function inputBranch(name, operation) {
-  const branch = toolDefinition(name).inputSchema.oneOf?.find(
+  const inputSchema = toolDefinition(name).inputSchema;
+  const branch = inputSchema.oneOf?.find(
     (candidate) => candidate.properties?.operation?.const === operation
   );
   assert.ok(branch, `Operação ausente em ${name}: ${operation}`);
-  return branch;
+  const allowed = branch.propertyNames?.enum || Object.keys(inputSchema.properties || {});
+  return {
+    ...branch,
+    additionalProperties: inputSchema.additionalProperties,
+    required: [...new Set([
+      ...(inputSchema.required || []),
+      ...(branch.required || [])
+    ])],
+    properties: Object.fromEntries(allowed.map((field) => [
+      field,
+      branch.properties?.[field] || inputSchema.properties?.[field]
+    ]))
+  };
 }
 
 function validateSuccessEnvelope(name, envelope) {
@@ -409,11 +422,11 @@ test("somente catalog:manage anuncia as ferramentas administrativas agrupadas", 
     assert.equal(publisherNames.includes(name), false);
 
     const definition = toolDefinition(name);
-    assert.ok(
-      definition.inputSchema.oneOf.every(
-        (branch) => branch.additionalProperties === false
-      )
-    );
+    assert.equal(definition.inputSchema.additionalProperties, false);
+    assert.ok(definition.inputSchema.oneOf.every(
+      (branch) => Array.isArray(branch.propertyNames?.enum)
+        && branch.propertyNames.enum.length > 0
+    ));
     assert.doesNotThrow(() => compileOutputSchema(definition.outputSchema));
   }
   assert.equal(

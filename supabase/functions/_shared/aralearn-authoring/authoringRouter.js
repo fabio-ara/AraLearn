@@ -1,6 +1,5 @@
 import { deterministicRequestUuid } from "./canonical.js";
 import { AuthoringApiError } from "./errors.js";
-import { RESOURCE_PACKAGE_REGISTRY } from "../aralearn/runtime/resources/packages/index.js";
 import {
   STANDARD_BODY_LIMIT,
   readJsonBody,
@@ -725,41 +724,6 @@ export async function executeAuthoringRoute({
       }),
       requestId: value.requestId
     };
-  }
-  if (route.name === "listPackages") {
-    assertAuthoringScope(principal, "read");
-    const slot = new URL(request.url).searchParams.get("slot") || "";
-    if (slot && !new Set(["content", "response", "feedback"]).has(slot)) {
-      throw new AuthoringApiError(422, "invalid_parameter", "slot desconhecido.");
-    }
-    return {
-      data: {
-        contract: "aralearn.packages.v1",
-        packages: RESOURCE_PACKAGE_REGISTRY.listCatalog({ slot })
-      },
-      requestId: null
-    };
-  }
-  if (route.name === "getPackage") {
-    assertAuthoringScope(principal, "read");
-    const version = new URL(request.url).searchParams.get("version") || "";
-    if (!/^\d+\.\d+\.\d+$/u.test(version)) {
-      throw new AuthoringApiError(422, "invalid_parameter", "version semântica é obrigatória.");
-    }
-    try {
-      return {
-        data: {
-          contract: "aralearn.packages.v1",
-          definition: RESOURCE_PACKAGE_REGISTRY.getAuthoringContract(route.packageId, version)
-        },
-        requestId: null
-      };
-    } catch (error) {
-      if (error instanceof RangeError) {
-        throw new AuthoringApiError(404, "package_not_found", "Package ou versão inexistente.");
-      }
-      throw error;
-    }
   }
   if (route.name === "listPersonalLibraryCourses") {
     assertAuthoringScope(principal, "read", "private");

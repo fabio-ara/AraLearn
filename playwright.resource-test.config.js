@@ -14,7 +14,7 @@ export default defineConfig({
   },
   webServer: {
     command: "node ./scripts/servePublic.js",
-    url: `http://127.0.0.1:${port}/teste-recursos`,
+    url: `http://127.0.0.1:${port}/tests/gallery/resource-test-course.html`,
     env: {
       PORT: String(port),
       ARALEARN_SUPABASE_URL: "https://project.supabase.test",

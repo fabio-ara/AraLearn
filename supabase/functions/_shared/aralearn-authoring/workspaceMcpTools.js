@@ -1,8 +1,12 @@
 import { AuthoringApiError } from "./errors.js";
-import { RESOURCE_PACKAGE_REGISTRY } from "../aralearn/runtime/resources/packages/index.js";
-
 const UUID = Object.freeze({ type: "string", format: "uuid" });
 const ID = Object.freeze({ type: "string", minLength: 1, maxLength: 240, pattern: "\\S" });
+const PACKAGE_ID = Object.freeze({
+  type: "string",
+  minLength: 1,
+  maxLength: 160,
+  pattern: "^aralearn\\.(?:resource|response)\\.[a-z0-9_]+$"
+});
 const REQUEST_ID = Object.freeze({
   type: "string",
   minLength: 8,
@@ -48,9 +52,6 @@ function fixedEntityPath(length) {
 const COURSE_PATH = fixedEntityPath(1);
 const MODULE_PATH = fixedEntityPath(2);
 const MICROSEQUENCE_PATH = fixedEntityPath(4);
-const AUTHORING_PACKAGE_IDS = Object.freeze(
-  RESOURCE_PACKAGE_REGISTRY.listCatalog().map(({ id }) => id)
-);
 const MCP_SECURITY_SCHEMES = Object.freeze([
   Object.freeze({ type: "oauth2", scopes: Object.freeze(["openid"]) })
 ]);
@@ -324,51 +325,258 @@ const OPEN_CANONICAL_OBJECT = Object.freeze({
   additionalProperties: true,
   description: "Objeto canônico integral cujo formato depende da entidade ou documento solicitado."
 });
-const PACKAGE_SUMMARY_SCHEMA = schema([
-  "id",
-  "version",
-  "label",
-  "purpose",
-  "slots",
-  "cognitiveOperations",
-  "responseCompatibility",
-  "limitations",
-  "accessibility"
-], {
-  id: { type: "string", enum: AUTHORING_PACKAGE_IDS },
-  version: { type: "string", pattern: "^(?:0|[1-9][0-9]*)\\.(?:0|[1-9][0-9]*)\\.(?:0|[1-9][0-9]*)$" },
-  label: NON_EMPTY_STRING,
-  purpose: NON_EMPTY_STRING,
-  slots: { type: "array", minItems: 1, uniqueItems: true, items: { type: "string", enum: ["content", "response", "feedback"] } },
-  cognitiveOperations: STRING_LIST,
-  responseCompatibility: STRING_LIST,
-  limitations: STRING_LIST,
-  accessibility: { type: "string" }
+const RESOURCE_LIBRARY_OPERATIONS = Object.freeze([
+  "explore",
+  "search",
+  "inspect",
+  "contracts",
+  "validate_card",
+  "audit_representation",
+  "preview_card"
+]);
+const RESOURCE_LIBRARY_CONTRACT = Object.freeze({
+  const: "aralearn.resource-library.v1"
 });
-const PACKAGE_LIST_DATA_SCHEMA = schema(["contract", "packages"], {
-  contract: { const: "aralearn.packages.v1" },
+const RESOURCE_FIT = Object.freeze({
+  type: "string",
+  enum: ["canonical", "versatile", "substitute"]
+});
+const RESOURCE_LIBRARY_CATALOG_HEADER = Object.freeze({
+  contract: RESOURCE_LIBRARY_CONTRACT,
+  catalogVersion: NON_EMPTY_STRING
+});
+const RESOURCE_LIBRARY_COMPOSITION_ITEM_SCHEMA = schema([
+  "slot", "index", "instanceId", "packageId", "version"
+], {
+  slot: { type: "string", enum: ["content", "response", "feedback"] },
+  index: NON_NEGATIVE_INTEGER,
+  instanceId: { type: "string" },
+  packageId: { type: "string" },
+  version: { type: "string" }
+});
+const RESOURCE_LIBRARY_VALIDATION_SCHEMA = schema([
+  "contract", "catalogVersion", "valid", "errors", "composition"
+], {
+  ...RESOURCE_LIBRARY_CATALOG_HEADER,
+  valid: { type: "boolean" },
+  errors: { type: "array", maxItems: 100, items: { type: "string" } },
+  composition: {
+    type: "array",
+    maxItems: 64,
+    items: RESOURCE_LIBRARY_COMPOSITION_ITEM_SCHEMA
+  }
+});
+const RESOURCE_LIBRARY_FACET_SCHEMA = schema([
+  "id", "label", "aliases", "count"
+], {
+  id: ID,
+  label: NON_EMPTY_STRING,
+  aliases: { type: "array", maxItems: 24, items: NON_EMPTY_STRING },
+  count: NON_NEGATIVE_INTEGER
+});
+const RESOURCE_LIBRARY_EXPLORE_SCHEMA = schema([
+  "contract", "catalogVersion", "policyVersion", "policy", "packageCount",
+  "families", "facets"
+], {
+  ...RESOURCE_LIBRARY_CATALOG_HEADER,
+  policyVersion: { const: 1 },
+  policy: schema([
+    "contract", "decision", "interpretability", "theoryDensity",
+    "practiceContext", "selectionEvidence"
+  ], {
+    contract: { const: "aralearn.resource-selection-policy.v1" },
+    decision: NON_EMPTY_STRING,
+    interpretability: NON_EMPTY_STRING,
+    theoryDensity: NON_EMPTY_STRING,
+    practiceContext: NON_EMPTY_STRING,
+    selectionEvidence: {
+      type: "array",
+      minItems: 1,
+      maxItems: 12,
+      items: NON_EMPTY_STRING
+    }
+  }),
+  packageCount: NON_NEGATIVE_INTEGER,
+  families: {
+    type: "array",
+    maxItems: 16,
+    items: schema(["id", "label", "description", "order", "count"], {
+      id: ID,
+      label: NON_EMPTY_STRING,
+      description: NON_EMPTY_STRING,
+      order: NON_NEGATIVE_INTEGER,
+      count: NON_NEGATIVE_INTEGER
+    })
+  },
+  facets: schema([
+    "disciplines", "structures", "operations", "practiceModes"
+  ], Object.fromEntries([
+    "disciplines", "structures", "operations", "practiceModes"
+  ].map((field) => [field, {
+    type: "array",
+    maxItems: 64,
+    items: RESOURCE_LIBRARY_FACET_SCHEMA
+  }])) )
+});
+const RESOURCE_LIBRARY_SEARCH_SCHEMA = schema([
+  "contract", "catalogVersion", "coverage", "candidates"
+], {
+  ...RESOURCE_LIBRARY_CATALOG_HEADER,
+  coverage: schema(["status", "desiredResource", "chatDisclosure"], {
+    status: RESOURCE_FIT,
+    desiredResource: NON_EMPTY_STRING,
+    chatDisclosure: { type: ["string", "null"] }
+  }),
+  candidates: {
+    type: "array",
+    maxItems: 8,
+    items: schema([
+      "packageId", "version", "label", "primaryFamilyId", "fit", "score",
+      "matched", "missing", "reason", "useWhen", "avoidWhen",
+      "responseCompatibility"
+    ], {
+      packageId: PACKAGE_ID,
+      version: NON_EMPTY_STRING,
+      label: NON_EMPTY_STRING,
+      primaryFamilyId: ID,
+      fit: RESOURCE_FIT,
+      score: { type: "integer" },
+      matched: { type: "array", maxItems: 64, items: NON_EMPTY_STRING },
+      missing: { type: "array", maxItems: 64, items: NON_EMPTY_STRING },
+      reason: NON_EMPTY_STRING,
+      useWhen: { type: "array", maxItems: 24, items: NON_EMPTY_STRING },
+      avoidWhen: { type: "array", maxItems: 24, items: NON_EMPTY_STRING },
+      responseCompatibility: {
+        type: "array",
+        maxItems: 16,
+        items: PACKAGE_ID
+      }
+    })
+  }
+});
+const RESOURCE_LIBRARY_INSPECT_SCHEMA = schema([
+  "contract", "catalogVersion", "items"
+], {
+  ...RESOURCE_LIBRARY_CATALOG_HEADER,
+  items: {
+    type: "array",
+    minItems: 1,
+    maxItems: 8,
+    items: {
+      oneOf: [
+        schema(["status", "profile"], {
+          status: { const: "ok" },
+          profile: OPEN_CANONICAL_OBJECT
+        }),
+        schema(["status", "packageId"], {
+          status: { const: "not_found" },
+          packageId: { type: "string" },
+          version: { type: "string" }
+        })
+      ]
+    }
+  }
+});
+const RESOURCE_LIBRARY_CONTRACTS_SCHEMA = schema([
+  "contract", "catalogVersion", "items"
+], {
+  ...RESOURCE_LIBRARY_CATALOG_HEADER,
+  items: {
+    type: "array",
+    minItems: 1,
+    maxItems: 4,
+    items: {
+      oneOf: [
+        schema(["status", "packageId", "version", "definition"], {
+          status: { const: "ok" },
+          packageId: PACKAGE_ID,
+          version: NON_EMPTY_STRING,
+          definition: OPEN_CANONICAL_OBJECT
+        }),
+        schema(["status", "packageId"], {
+          status: { const: "not_found" },
+          packageId: { type: "string" },
+          version: { type: "string" }
+        })
+      ]
+    }
+  }
+});
+const RESOURCE_LIBRARY_AUDIT_SCHEMA = schema([
+  "contract", "catalogVersion", "structural", "overallFit", "selections",
+  "warnings", "accessibleText", "visualPreview"
+], {
+  ...RESOURCE_LIBRARY_CATALOG_HEADER,
+  structural: RESOURCE_LIBRARY_VALIDATION_SCHEMA,
+  overallFit: RESOURCE_FIT,
+  selections: {
+    type: "array",
+    maxItems: 64,
+    items: schema([
+      "slot", "index", "instanceId", "packageId", "version", "basis", "fit",
+      "reason", "matched", "missing"
+    ], {
+      ...RESOURCE_LIBRARY_COMPOSITION_ITEM_SCHEMA.properties,
+      basis: {
+        type: "string",
+        enum: ["semantic_fit", "response_affordance", "feedback_legibility"]
+      },
+      fit: RESOURCE_FIT,
+      reason: NON_EMPTY_STRING,
+      matched: { type: "array", maxItems: 64, items: NON_EMPTY_STRING },
+      missing: { type: "array", maxItems: 64, items: NON_EMPTY_STRING }
+    })
+  },
+  warnings: { type: "array", maxItems: 64, items: NON_EMPTY_STRING },
+  accessibleText: { type: "string", maxLength: 80_000 },
+  visualPreview: schema(["rendered", "reason"], {
+    rendered: { const: false },
+    reason: NON_EMPTY_STRING
+  })
+});
+const RESOURCE_LIBRARY_PREVIEW_SCHEMA = schema([
+  "contract", "catalogVersion", "rendered", "structural", "packages", "reason"
+], {
+  ...RESOURCE_LIBRARY_CATALOG_HEADER,
+  rendered: { const: false },
+  structural: RESOURCE_LIBRARY_VALIDATION_SCHEMA,
   packages: {
     type: "array",
-    items: PACKAGE_SUMMARY_SCHEMA
-  }
+    maxItems: 64,
+    items: RESOURCE_LIBRARY_COMPOSITION_ITEM_SCHEMA
+  },
+  reason: NON_EMPTY_STRING
 });
-const PACKAGE_DEFINITION_DATA_SCHEMA = schema(["contract", "definition"], {
-  contract: { const: "aralearn.packages.v1" },
-  definition: {
-    type: "object",
-    additionalProperties: true,
-    description: "Manifest, contrato autoral e schema da versão exata do package escolhido."
-  }
+const RESOURCE_LIBRARY_RESULT_SCHEMAS = Object.freeze({
+  explore: RESOURCE_LIBRARY_EXPLORE_SCHEMA,
+  search: RESOURCE_LIBRARY_SEARCH_SCHEMA,
+  inspect: RESOURCE_LIBRARY_INSPECT_SCHEMA,
+  contracts: RESOURCE_LIBRARY_CONTRACTS_SCHEMA,
+  validate_card: RESOURCE_LIBRARY_VALIDATION_SCHEMA,
+  audit_representation: RESOURCE_LIBRARY_AUDIT_SCHEMA,
+  preview_card: RESOURCE_LIBRARY_PREVIEW_SCHEMA
+});
+const RESOURCE_LIBRARY_DATA_SCHEMA = Object.freeze({
+  ...schema(["contract", "operation", "result"], {
+    contract: RESOURCE_LIBRARY_CONTRACT,
+    operation: { type: "string", enum: RESOURCE_LIBRARY_OPERATIONS },
+    result: { type: "object" }
+  }),
+  allOf: RESOURCE_LIBRARY_OPERATIONS.map((operation) => ({
+    if: { properties: { operation: { const: operation } } },
+    then: { properties: { result: RESOURCE_LIBRARY_RESULT_SCHEMAS[operation] } }
+  }))
 });
 const AUTHORING_GUIDANCE_SCHEMA = schema(["id", "title", "text"], {
   id: NON_EMPTY_STRING,
   title: NON_EMPTY_STRING,
   text: NON_EMPTY_STRING
 });
-const AUTHORING_PACKAGE_CONTRACT_SCHEMA = schema(["packageId", "version", "tool"], {
-  packageId: { type: "string", enum: AUTHORING_PACKAGE_IDS },
+const AUTHORING_PACKAGE_CONTRACT_SCHEMA = schema(["packageId", "version", "tool", "operation"], {
+  packageId: PACKAGE_ID,
   version: { type: "string", pattern: "^(?:0|[1-9][0-9]*)\\.(?:0|[1-9][0-9]*)\\.(?:0|[1-9][0-9]*)$" },
-  tool: { const: "consultarPackagesDeCard" }
+  tool: { const: "consultarBibliotecaDeResources" },
+  operation: { const: "contracts" }
 });
 const PEDAGOGICAL_BLUEPRINT_SCHEMA = schema(["version", "principle", "requiredSections"], {
   version: { const: 1 },
@@ -471,7 +679,7 @@ const AUTHORING_CONTEXT_DATA_SCHEMA = schema([
   }),
   packageContracts: {
     type: "array",
-    maxItems: AUTHORING_PACKAGE_IDS.length,
+    maxItems: 16,
     items: AUTHORING_PACKAGE_CONTRACT_SCHEMA
   },
   access: AUTHORING_ACCESS_SCHEMA
@@ -940,12 +1148,66 @@ const WORKSPACE_REVISION_DATA_SCHEMA = schema(
   WORKSPACE_CONTROL_REQUIRED,
   WORKSPACE_CONTROL_PROPERTIES
 );
+const REPRESENTATION_SELECTION_SCHEMA = Object.freeze({
+  ...schema([
+    "intent", "chosen", "fit", "desiredResource", "catalogVersion",
+    "limitations", "chatDisclosure"
+  ], {
+    intent: { type: "string", minLength: 1, maxLength: 1_000, pattern: "\\S" },
+    chosen: schema(["packageId", "version"], {
+      packageId: PACKAGE_ID,
+      version: {
+        type: "string",
+        pattern: "^(?:0|[1-9][0-9]*)\\.(?:0|[1-9][0-9]*)\\.(?:0|[1-9][0-9]*)$"
+      }
+    }),
+    fit: { type: "string", enum: ["canonical", "versatile", "substitute"] },
+    desiredResource: {
+      anyOf: [
+        { type: "string", minLength: 1, maxLength: 1_000, pattern: "\\S" },
+        { type: "null" }
+      ]
+    },
+    catalogVersion: {
+      type: "string", minLength: 1, maxLength: 80, pattern: "\\S"
+    },
+    limitations: {
+      type: "array",
+      maxItems: 12,
+      uniqueItems: true,
+      items: { type: "string", minLength: 1, maxLength: 500, pattern: "\\S" }
+    },
+    chatDisclosure: {
+      anyOf: [
+        { type: "string", minLength: 1, maxLength: 1_000, pattern: "\\S" },
+        { type: "null" }
+      ]
+    }
+  }),
+  allOf: [
+    {
+      if: { properties: { fit: { const: "substitute" } }, required: ["fit"] },
+      then: {
+        properties: {
+          desiredResource: {
+            type: "string", minLength: 1, maxLength: 1_000, pattern: "\\S"
+          },
+          chatDisclosure: {
+            type: "string", minLength: 1, maxLength: 1_000, pattern: "\\S"
+          }
+        }
+      },
+      else: { properties: { chatDisclosure: { type: "null" } } }
+    }
+  ]
+});
 const CONTINUITY_DECISION_SCHEMA = Object.freeze({
   ...schema(["id", "summary"], {
     id: ID,
     summary: { type: "string", minLength: 1, maxLength: 1_000, pattern: "\\S" },
     entityType: ENTITY_TYPE,
-    entityId: ID
+    entityId: ID,
+    representationSelection: REPRESENTATION_SELECTION_SCHEMA
   }),
   allOf: [
     {
@@ -955,6 +1217,19 @@ const CONTINUITY_DECISION_SCHEMA = Object.freeze({
     {
       if: { properties: { entityId: {} }, required: ["entityId"] },
       then: { properties: { entityType: ENTITY_TYPE }, required: ["entityType"] }
+    },
+    {
+      if: {
+        properties: { representationSelection: {} },
+        required: ["representationSelection"]
+      },
+      then: {
+        properties: {
+          entityType: { type: "string", enum: ["microsequence", "card"] },
+          entityId: ID
+        },
+        required: ["entityType", "entityId"]
+      }
     }
   ]
 });
@@ -1352,7 +1627,7 @@ const WORKSPACE_MICROSEQUENCE_CARD_ITEM_SCHEMA = schema([
     type: "array",
     minItems: 1,
     uniqueItems: true,
-    items: { type: "string", enum: AUTHORING_PACKAGE_IDS }
+    items: PACKAGE_ID
   },
   summary: {
     type: "string",
@@ -2319,7 +2594,8 @@ const CONTINUITY_INPUT_SCHEMA = discriminatedInputSchema([
       decisionId: ID,
       summary: { type: "string", minLength: 1, maxLength: 1_000, pattern: "\\S" },
       entityType: ENTITY_TYPE,
-      entityId: ID
+      entityId: ID,
+      representationSelection: REPRESENTATION_SELECTION_SCHEMA
     }),
     allOf: [
       {
@@ -2329,6 +2605,19 @@ const CONTINUITY_INPUT_SCHEMA = discriminatedInputSchema([
       {
         if: { properties: { entityId: {} }, required: ["entityId"] },
         then: { properties: { entityType: ENTITY_TYPE }, required: ["entityType"] }
+      },
+      {
+        if: {
+          properties: { representationSelection: {} },
+          required: ["representationSelection"]
+        },
+        then: {
+          properties: {
+            entityType: { type: "string", enum: ["microsequence", "card"] },
+            entityId: ID
+          },
+          required: ["entityType", "entityId"]
+        }
       }
     ]
   }),
@@ -2520,6 +2809,76 @@ const CONTINUITY_MUTATION_DATA_SCHEMA = Object.freeze({
   ]
 });
 
+const RESOURCE_LIBRARY_PACKAGE_REQUEST_SCHEMA = schema(["packageId"], {
+  packageId: PACKAGE_ID,
+  version: {
+    type: "string",
+    pattern: "^(?:0|[1-9][0-9]*)\\.(?:0|[1-9][0-9]*)\\.(?:0|[1-9][0-9]*)$"
+  }
+});
+const RESOURCE_LIBRARY_INPUT_SCHEMA = Object.freeze({
+  ...readSchema(["operation"], {
+    operation: { type: "string", enum: RESOURCE_LIBRARY_OPERATIONS },
+    query: { type: "string", maxLength: 2_000 },
+    limit: { type: "integer", minimum: 1, maximum: 8, default: 8 },
+    slot: { type: "string", enum: ["content", "response", "feedback"] },
+    cardRole: { type: "string", enum: ["theory", "practice"] },
+    disciplineIds: { type: "array", maxItems: 12, uniqueItems: true, items: ID },
+    structureIds: { type: "array", maxItems: 12, uniqueItems: true, items: ID },
+    operationIds: { type: "array", maxItems: 12, uniqueItems: true, items: ID },
+    practiceModeIds: { type: "array", maxItems: 8, uniqueItems: true, items: ID },
+    knowledgeObjects: { type: "array", maxItems: 12, uniqueItems: true, items: NON_EMPTY_STRING },
+    notationIsLearningObject: { type: "boolean" },
+    mustPreserve: { type: "array", maxItems: 12, uniqueItems: true, items: NON_EMPTY_STRING },
+    packages: {
+      type: "array",
+      minItems: 1,
+      maxItems: 8,
+      uniqueItems: true,
+      items: RESOURCE_LIBRARY_PACKAGE_REQUEST_SCHEMA
+    },
+    cardJson: {
+      type: "string",
+      minLength: 2,
+      maxLength: 40_000,
+      description: "Envelope canônico de um card, serializado como JSON."
+    },
+    intent: {
+      type: "string",
+      maxLength: 4_000,
+      description: "Intenção pedagógica e representacional declarada para auditar o card."
+    }
+  }),
+  allOf: [
+    {
+      if: { properties: { operation: { enum: ["inspect", "contracts"] } } },
+      then: { required: ["packages"] }
+    },
+    {
+      if: { properties: { operation: { const: "contracts" } } },
+      then: { properties: { packages: { maxItems: 4 } } }
+    },
+    {
+      if: {
+        properties: {
+          operation: {
+            enum: ["validate_card", "audit_representation", "preview_card"]
+          }
+        }
+      },
+      then: { required: ["cardJson"] }
+    }
+  ]
+});
+const RESOURCE_LIBRARY_TOOL = tool(
+  "consultarBibliotecaDeResources",
+  "Consultar biblioteca de resources",
+  "Explora facetas, busca pela intenção, inspeciona manifests, obtém até quatro contratos, valida cards e audita a adequação representacional. A ausência de um resource exato devolve um substituto explicitado e nunca bloqueia a autoria.",
+  RESOURCE_LIBRARY_INPUT_SCHEMA,
+  RESOURCE_LIBRARY_DATA_SCHEMA,
+  { readOnlyHint: true }
+);
+
 const INDIVIDUAL_AUTHORING_WORKSPACE_MCP_TOOLS = Object.freeze([
   tool(
     "prepararAutoriaAraLearn",
@@ -2538,36 +2897,15 @@ const INDIVIDUAL_AUTHORING_WORKSPACE_MCP_TOOLS = Object.freeze([
       },
       packageIds: {
         type: "array",
-        maxItems: AUTHORING_PACKAGE_IDS.length,
+        maxItems: 16,
         uniqueItems: true,
-        items: { type: "string", enum: AUTHORING_PACKAGE_IDS }
+        items: PACKAGE_ID
       }
     }),
     AUTHORING_CONTEXT_DATA_SCHEMA,
     { readOnlyHint: true }
   ),
-  tool(
-    "listarPackagesDeCard",
-    "Listar packages de card",
-    "Lista manifests compactos dos packages disponíveis, sem enviar schemas ou exemplos.",
-    readSchema(),
-    PACKAGE_LIST_DATA_SCHEMA,
-    { readOnlyHint: true }
-  ),
-  tool(
-    "consultarPackageDeCard",
-    "Consultar package de card",
-    "Lê o contrato autoral e o schema da versão exata de um package já escolhido.",
-    readSchema(["packageId", "version"], {
-      packageId: {
-        type: "string",
-        enum: AUTHORING_PACKAGE_IDS
-      },
-      version: { type: "string", pattern: "^(?:0|[1-9][0-9]*)\\.(?:0|[1-9][0-9]*)\\.(?:0|[1-9][0-9]*)$" }
-    }),
-    PACKAGE_DEFINITION_DATA_SCHEMA,
-    { readOnlyHint: true }
-  ),
+  RESOURCE_LIBRARY_TOOL,
   tool(
     "listarCursosDaBibliotecaPessoal",
     "Listar cursos de Trilhas",
@@ -3258,16 +3596,61 @@ function discriminatedInputSchema(alternatives, { write = false } = {}) {
     }
     return operation;
   }));
+  const propertyVariants = new Map();
+  for (const alternative of frozenAlternatives) {
+    for (const [field, fieldSchema] of Object.entries(alternative.properties || {})) {
+      const variants = propertyVariants.get(field) || new Map();
+      variants.set(JSON.stringify(fieldSchema), fieldSchema);
+      propertyVariants.set(field, variants);
+    }
+  }
+  const sharedProperties = Object.freeze(Object.fromEntries(
+    [...propertyVariants].map(([field, variants]) => {
+      const schemas = [...variants.values()];
+      if (field === "operation") {
+        return [field, Object.freeze({ type: "string", enum: operations })];
+      }
+      return [field, schemas.length === 1
+        ? schemas[0]
+        : Object.freeze({ anyOf: Object.freeze(schemas) })];
+    })
+  ));
+  const requiredByEveryAlternative = [...new Set(
+    frozenAlternatives[0]?.required || []
+  )].filter((field) => frozenAlternatives.every(
+    (alternative) => alternative.required?.includes(field)
+  ));
+  const rootRequired = Object.freeze([...new Set([
+    ...(write ? ["requestId"] : []),
+    "operation",
+    ...requiredByEveryAlternative
+  ])]);
+  const compactAlternatives = Object.freeze(frozenAlternatives.map((alternative) => {
+    const allowedFields = Object.keys(alternative.properties || {});
+    const variantProperties = Object.fromEntries(allowedFields
+      .filter((field) => field === "operation" || propertyVariants.get(field)?.size > 1)
+      .map((field) => [field, alternative.properties[field]]));
+    const variantRequired = (alternative.required || [])
+      .filter((field) => !rootRequired.includes(field));
+    const constraints = { ...alternative };
+    delete constraints.type;
+    delete constraints.additionalProperties;
+    delete constraints.required;
+    delete constraints.properties;
+    return Object.freeze({
+      type: "object",
+      ...(variantRequired.length ? { required: Object.freeze(variantRequired) } : {}),
+      properties: Object.freeze(variantProperties),
+      propertyNames: Object.freeze({ enum: Object.freeze(allowedFields) }),
+      ...constraints
+    });
+  }));
   return Object.freeze({
     type: "object",
-    required: Object.freeze(write
-      ? ["requestId", "operation"]
-      : ["operation"]),
-    properties: Object.freeze({
-      ...(write ? { requestId: REQUEST_ID } : {}),
-      operation: Object.freeze({ type: "string", enum: operations })
-    }),
-    oneOf: frozenAlternatives
+    additionalProperties: false,
+    required: rootRequired,
+    properties: sharedProperties,
+    oneOf: compactAlternatives
   });
 }
 
@@ -3295,25 +3678,6 @@ function groupedDataSchema(branches) {
     ))
   });
 }
-
-const PACKAGE_QUERY_TOOL = tool(
-  "consultarPackagesDeCard",
-  "Consultar packages de card",
-  "Sem packageId, lista somente manifests compactos; depois de escolher pela operação cognitiva, informe packageId e version para receber apenas o contrato específico.",
-  readSchema([], {
-    packageId: {
-      type: "string",
-      enum: AUTHORING_PACKAGE_IDS
-    },
-    version: { type: "string", pattern: "^(?:0|[1-9][0-9]*)\\.(?:0|[1-9][0-9]*)\\.(?:0|[1-9][0-9]*)$" },
-    slot: { type: "string", enum: ["content", "response", "feedback"] }
-  }),
-  Object.freeze({
-    type: "object",
-    anyOf: [PACKAGE_LIST_DATA_SCHEMA, PACKAGE_DEFINITION_DATA_SCHEMA]
-  }),
-  { readOnlyHint: true }
-);
 
 const CATALOG_QUERY_BRANCHES = Object.freeze([
   Object.freeze({
@@ -3437,7 +3801,6 @@ const WORKSPACE_DELETE_TOOL = tool(
 );
 
 const CONSOLIDATED_REPLACEMENTS = new Map([
-  ["listarPackagesDeCard", PACKAGE_QUERY_TOOL],
   ["listarColecoesDoCatalogo", CATALOG_QUERY_TOOL],
   ["criarColecaoNoCatalogo", CATALOG_EDIT_TOOL],
   ["retirarColecaoDoCatalogo", CATALOG_REMOVE_TOOL],
@@ -3445,7 +3808,6 @@ const CONSOLIDATED_REPLACEMENTS = new Map([
   ["excluirEntidadeDoWorkspace", WORKSPACE_DELETE_TOOL]
 ]);
 const CONSOLIDATED_REMOVALS = new Set([
-  "consultarPackageDeCard",
   "listarCursosDaColecao",
   "buscarCursosNoCatalogo",
   "atualizarColecaoDoCatalogo",
@@ -3491,7 +3853,7 @@ const CATALOG_MANAGE = new Set([
 ]);
 const AUTHORING_READ = new Set([
   "prepararAutoriaAraLearn",
-  "consultarPackagesDeCard",
+  "consultarBibliotecaDeResources",
   "lerConteudoDoCurso",
   "listarWorkspacesDeAutoria",
   "lerWorkspaceDeAutoria",
@@ -3671,6 +4033,13 @@ function validateValue(value, definition, field) {
           `${field}.${property}`
         );
       }
+    }
+    if (definition.propertyNames) {
+      Object.keys(value).forEach((property) => validateValue(
+        property,
+        definition.propertyNames,
+        `${field}.${property}`
+      ));
     }
   }
   if (definition.oneOf) {
@@ -3917,23 +4286,7 @@ export function mapAuthoringMcpToolCall(name, rawArguments) {
   const definition = TOOL_BY_NAME.get(name);
   if (!definition) throw new AuthoringApiError(404, "unknown_tool", "Ferramenta inexistente.");
   let args = validateArguments(definition, rawArguments);
-  if (name === "consultarPackagesDeCard") {
-    if (Boolean(args.packageId) !== Boolean(args.version)) {
-      throw new AuthoringApiError(
-        422,
-        "invalid_tool_arguments",
-        "packageId e version precisam ser informados juntos."
-      );
-    }
-    if (args.packageId && args.slot) {
-      throw new AuthoringApiError(
-        422,
-        "invalid_tool_arguments",
-        "slot pertence somente à listagem compacta."
-      );
-    }
-    name = args.packageId ? "consultarPackageDeCard" : "listarPackagesDeCard";
-  } else if (GROUPED_OPERATION_TARGETS[name]) {
+  if (GROUPED_OPERATION_TARGETS[name]) {
     const targetName = GROUPED_OPERATION_TARGETS[name][args.operation];
     const operationArguments = { ...args };
     delete operationArguments.operation;
@@ -3947,19 +4300,10 @@ export function mapAuthoringMcpToolCall(name, rawArguments) {
       requestId: null
     };
   }
-  if (name === "listarPackagesDeCard") {
+  if (name === "consultarBibliotecaDeResources") {
     return {
-      method: "GET",
-      path: `/v1/packages${args.slot ? `?slot=${encode(args.slot)}` : ""}`,
-      body: null,
-      requestId: null
-    };
-  }
-  if (name === "consultarPackageDeCard") {
-    return {
-      method: "GET",
-      path: `/v1/packages/${encode(args.packageId)}?version=${encode(args.version)}`,
-      body: null,
+      kind: "resource-library",
+      body: args,
       requestId: null
     };
   }

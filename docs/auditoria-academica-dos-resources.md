@@ -36,13 +36,14 @@ verificável, às perguntas abaixo:
    realista, preenchimento da maior resposta aceita, temas, larguras móveis,
    rolagem local, teclado, toque e descrição acessível.
 
-`academic.admission` torna esses critérios operáveis pelo GPT no catálogo: a
-estrutura preservada, a condição estrita de uso, as situações em que uma forma
-mais simples deve vencer, a legibilidade intrínseca, a densidade distinta de
-teoria e prática e a autossuficiência do caso. Um package não é admitido apenas
-porque possui renderer e schema. Se a pessoa precisar aprender uma gramática
-inventada pela interface para interpretar a figura, a seleção ou o package
-falhou; um tutorial adicional não corrige essa inadequação.
+A policy versionada devolvida por `explore` concentra os critérios globais de
+decisão, interpretabilidade, densidade da teoria e autossuficiência da prática.
+Cada package declara apenas o que lhe pertence: estrutura, convenções,
+condições de uso, situações a evitar, limitações e capacidades. Assim, as
+regras comuns não são copiadas em dezenas de manifests. Um package não é
+admitido apenas porque possui renderer e schema. Se a pessoa precisar aprender
+uma gramática inventada pela interface para interpretar a figura, a seleção ou
+o package falhou; um tutorial adicional não corrige essa inadequação.
 
 Nesta auditoria, `sequence` foi removido porque era uma lista ordenada
 ornamentada; `algorithm_trace` foi removido porque era uma tabela genérica de

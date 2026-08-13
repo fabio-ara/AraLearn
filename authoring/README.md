@@ -40,10 +40,12 @@ as duas posições.
 ## Conversa e revisão
 
 O assistente começa por um contexto curto, registra a estrutura planejada em
-lotes pequenos e materializa uma microssequência por vez. Antes de usar um
-resource pela primeira vez, consulta o schema exato. O chat mostra por padrão
-as microteorias consolidadas e a quantidade de práticas, sem despejar todos os
-cards para a pessoa autora.
+lotes pequenos e materializa uma microssequência por vez. Para escolher cada
+representação, usa a única ferramenta `consultarBibliotecaDeResources` em
+descoberta progressiva: explora facetas, busca pela intenção, inspeciona uma
+lista curta, carrega somente os contratos exatos escolhidos, valida o card e
+audita sua adequação. O chat mostra por padrão as microteorias consolidadas e a
+quantidade de práticas, sem despejar todos os cards para a pessoa autora.
 
 O ciclo editorial acontece por rodadas distintas: planejamento, construção de
 uma parte, auditoria independente, reparo autorizado e reauditoria. Cada rodada
@@ -62,8 +64,10 @@ depois somente o recorte que realmente usará.
 
 Em correção pontual, o assistente pagina metadados curtos dos cards da
 microssequência, lê integralmente só o alvo e preserva seu id na substituição.
-Para criar conteúdo, consulta primeiro o catálogo de packages e só então o
-contrato exato de cada resource ou resposta escolhido.
+Para criar conteúdo, não carrega uma lista global de schemas. O catálogo pode
+crescer sem mudar a ferramenta ou estas instruções: um resultado
+`substitute` permite prosseguir e gera somente uma observação breve sobre a
+aproximação usada.
 Uma mudança semântica altera somente as entidades afetadas. A revisão técnica
 controla concorrência e não representa aceitação pedagógica.
 

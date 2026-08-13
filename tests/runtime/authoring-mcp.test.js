@@ -12,9 +12,11 @@ import {
   AUTHORING_WORKSPACE_MCP_TOOLS,
   authoringMcpToolDefinition,
   authoringMcpToolsForPrincipal,
-  mapAuthoringMcpToolCall
+  mapAuthoringMcpToolCall,
+  validateAuthoringMcpToolOutput
 } from "../../supabase/functions/_shared/aralearn-authoring/workspaceMcpTools.js";
 import { RESOURCE_PACKAGE_REGISTRY } from "../../supabase/functions/_shared/aralearn/runtime/resources/packages/index.js";
+import { RESOURCE_CATALOG } from "../../supabase/functions/_shared/aralearn/runtime/resources/catalog/resourceCatalog.js";
 
 const ORIGIN = "https://client.example";
 const OAUTH_TOKEN = "header.oauth-payload.signature";
@@ -206,8 +208,8 @@ test("MCP publica conhecimento e recupera um brief autoral curto", async () => {
   assert.ok(prepared.data.guidance.some(({ id }) => id === "resource-selection"));
   assert.ok(prepared.data.guidance.some(({ id }) => id === "source-discipline"));
   assert.deepEqual(prepared.data.packageContracts, [
-    { packageId: "aralearn.resource.flow", version: "1.0.0", tool: "consultarPackagesDeCard" },
-    { packageId: "aralearn.resource.table", version: "1.0.0", tool: "consultarPackagesDeCard" }
+    { packageId: "aralearn.resource.flow", version: "1.0.0", tool: "consultarBibliotecaDeResources", operation: "contracts" },
+    { packageId: "aralearn.resource.table", version: "1.0.0", tool: "consultarBibliotecaDeResources", operation: "contracts" }
   ]);
   assert.equal(prepared.data.blueprintContract.version, 1);
   assert.ok(prepared.data.blueprintContract.requiredSections.includes("conceptualLayers"));
@@ -260,25 +262,97 @@ test("nenhuma ferramenta publica data genérico no ramo de sucesso", () => {
   }
 });
 
-test("enum de packages do MCP deriva exatamente do registro canônico Edge", () => {
+test("schema da biblioteca permanece estável quando entram novos packages", () => {
   const definition = AUTHORING_WORKSPACE_MCP_TOOLS.find(
-    (entry) => entry.name === "consultarPackagesDeCard"
+    (entry) => entry.name === "consultarBibliotecaDeResources"
   );
-  assert.deepEqual(
-    definition.inputSchema.properties.packageId.enum,
-    RESOURCE_PACKAGE_REGISTRY.listCatalog().map(({ id }) => id)
+  const packageIdSchema = definition.inputSchema.properties.packages
+    .items.properties.packageId;
+  assert.equal(Object.hasOwn(packageIdSchema, "enum"), false);
+  assert.match("aralearn.resource.paragraph", new RegExp(packageIdSchema.pattern, "u"));
+  assert.ok(RESOURCE_PACKAGE_REGISTRY.listCatalog().length >= 30);
+});
+
+test("busca encaminha a consulta textual ao catálogo em MCP e Action", async () => {
+  const response = await handler()(request(toolCall(
+    "consultarBibliotecaDeResources",
+    {
+      operation: "search",
+      query: "glosa interlinear",
+      limit: 3
+    }
+  )));
+  const payload = await body(response);
+  assert.equal(response.status, 200);
+  const structuredContent = payload.result.structuredContent;
+  assert.equal(
+    structuredContent.data.result.candidates[0].packageId,
+    "aralearn.resource.interlinear_gloss"
+  );
+
+  const validate = compileOutputSchema(
+    authoringMcpToolDefinition("consultarBibliotecaDeResources").outputSchema
+  );
+  assert.equal(validate(structuredContent), true, JSON.stringify(validate.errors, null, 2));
+  const malformed = structuredClone(structuredContent);
+  delete malformed.data.result.coverage;
+  assert.equal(validate(malformed), false);
+  assert.throws(
+    () => validateAuthoringMcpToolOutput(
+      "consultarBibliotecaDeResources",
+      malformed
+    ),
+    (error) => error instanceof AuthoringApiError
+      && error.code === "invalid_tool_arguments"
+  );
+});
+
+test("budgets progressivos mantêm o maior lote de contratos abaixo da Action", () => {
+  const packageRequests = RESOURCE_PACKAGE_REGISTRY.listCatalog().map(({ id, version }) => ({
+    packageId: id,
+    version
+  }));
+  const largest = packageRequests.map((requestValue) => ({
+    requestValue,
+    bytes: Buffer.byteLength(JSON.stringify(RESOURCE_CATALOG.contracts([requestValue])))
+  })).sort((left, right) => right.bytes - left.bytes).slice(0, 4)
+    .map(({ requestValue }) => requestValue);
+  const largestBatch = {
+    ok: true,
+    requestId: null,
+    data: {
+      contract: "aralearn.resource-library.v1",
+      operation: "contracts",
+      result: RESOURCE_CATALOG.contracts(largest)
+    }
+  };
+  validateAuthoringMcpToolOutput(
+    "consultarBibliotecaDeResources",
+    largestBatch
+  );
+  assert.ok(Buffer.byteLength(JSON.stringify(largestBatch)) < 96 * 1024);
+  assert.throws(
+    () => mapAuthoringMcpToolCall("consultarBibliotecaDeResources", {
+      operation: "contracts",
+      packages: packageRequests.slice(0, 5)
+    }),
+    (error) => error instanceof AuthoringApiError
+      && error.code === "invalid_tool_arguments"
   );
 });
 
 test("consulta de versão exata devolve manifest e schema do package escolhido", async () => {
-  const response = await handler()(request(toolCall("consultarPackagesDeCard", {
-    packageId: "aralearn.resource.tree",
-    version: "1.0.0"
+  const response = await handler()(request(toolCall("consultarBibliotecaDeResources", {
+    operation: "contracts",
+    packages: [{ packageId: "aralearn.resource.tree", version: "1.0.0" }]
   })));
   const payload = await body(response);
   assert.equal(response.status, 200);
   assert.equal(payload.result.isError, false);
-  const definition = payload.result.structuredContent.data.definition;
+  const data = payload.result.structuredContent.data;
+  assert.equal(data.contract, "aralearn.resource-library.v1");
+  assert.equal(data.operation, "contracts");
+  const definition = data.result.items[0].definition;
   assert.equal(definition.package, "aralearn.resource.tree");
   assert.equal(definition.version, "1.0.0");
   assert.ok(definition.manifest.purpose);
@@ -288,39 +362,164 @@ test("consulta de versão exata devolve manifest e schema do package escolhido",
   assert.deepEqual(definition.practiceTargets[0].modes, ["gap", "typing"]);
 });
 
-test("consulta lista manifests e só envia schema para package e versão escolhidos", async () => {
+test("descoberta progressiva explora, busca e inspeciona antes de obter contratos", async () => {
   const definition = AUTHORING_WORKSPACE_MCP_TOOLS.find(
-    (entry) => entry.name === "consultarPackagesDeCard"
+    (entry) => entry.name === "consultarBibliotecaDeResources"
   );
   assert.equal(Object.hasOwn(definition.inputSchema.properties, "detail"), false);
 
-  const operation = mapAuthoringMcpToolCall("consultarPackagesDeCard", {
-    packageId: "aralearn.resource.paragraph",
-    version: "1.0.0"
+  const mapped = mapAuthoringMcpToolCall("consultarBibliotecaDeResources", {
+    operation: "search",
+    query: "explicação progressiva em prosa",
+    structureIds: ["structure.prose"],
+    limit: 4
   });
-  assert.equal(
-    operation.path,
-    "/v1/packages/aralearn.resource.paragraph?version=1.0.0"
-  );
+  assert.equal(mapped.kind, "resource-library");
+  assert.equal(mapped.body.operation, "search");
 
-  const listedResponse = await handler()(request(toolCall("consultarPackagesDeCard", {})));
-  const listed = (await body(listedResponse)).result.structuredContent.data;
-  assert.equal(listed.contract, "aralearn.packages.v1");
-  assert.equal(Object.hasOwn(listed.packages[0], "schema"), false);
-  assert.ok(listed.packages[0].academic.domains.length);
-  assert.ok(listed.packages[0].academic.conventions.length);
-  assert.ok(listed.packages[0].academic.appropriateWhen.length);
-  assert.ok(listed.packages[0].academic.avoidWhen.length);
-  assert.ok(listed.packages[0].academic.practiceModes.includes("typing"));
+  const exploredResponse = await handler()(request(toolCall(
+    "consultarBibliotecaDeResources",
+    { operation: "explore", slot: "content" }
+  )));
+  const explored = (await body(exploredResponse)).result.structuredContent.data;
+  assert.equal(explored.operation, "explore");
+  assert.equal(explored.result.contract, "aralearn.resource-library.v1");
+  assert.equal(explored.result.families.length, 6);
+  assert.ok(explored.result.facets.structures.length);
+  assert.equal(Object.hasOwn(explored.result.families[0], "schema"), false);
 
-  const response = await handler()(request(toolCall("consultarPackagesDeCard", {
-    packageId: "aralearn.resource.paragraph",
-    version: "1.0.0"
+  const searchedResponse = await handler()(request(toolCall(
+    "consultarBibliotecaDeResources",
+    {
+      operation: "search",
+      query: "explicação progressiva em prosa",
+      slot: "content",
+      structureIds: ["structure.prose"],
+      operationIds: ["operation.explain"],
+      limit: 4
+    }
+  )));
+  const searched = (await body(searchedResponse)).result.structuredContent.data.result;
+  assert.ok(searched.candidates.length <= 4);
+  assert.equal(searched.candidates[0].packageId, "aralearn.resource.paragraph");
+  assert.ok(["canonical", "versatile"].includes(searched.coverage.status));
+
+  const inspectedResponse = await handler()(request(toolCall(
+    "consultarBibliotecaDeResources",
+    {
+      operation: "inspect",
+      packages: [{ packageId: "aralearn.resource.paragraph" }]
+    }
+  )));
+  const inspected = (await body(inspectedResponse)).result.structuredContent.data.result;
+  assert.equal(inspected.items[0].status, "ok");
+  assert.equal(inspected.items[0].profile.packageId, "aralearn.resource.paragraph");
+  assert.equal(Object.hasOwn(inspected.items[0].profile, "schema"), false);
+
+  const response = await handler()(request(toolCall("consultarBibliotecaDeResources", {
+    operation: "contracts",
+    packages: [{ packageId: "aralearn.resource.paragraph", version: "1.0.0" }]
   })));
   const payload = await body(response);
-  const packageDefinition = payload.result.structuredContent.data.definition;
+  const packageDefinition = payload.result.structuredContent.data.result.items[0].definition;
   assert.ok(packageDefinition.schema.properties.text);
   assert.equal(Object.hasOwn(packageDefinition.schema.properties, "afterBlocks"), false);
+});
+
+test("falta de representação exata oferece substituto sem bloquear a autoria", async () => {
+  const response = await handler()(request(toolCall(
+    "consultarBibliotecaDeResources",
+    {
+      operation: "search",
+      query: "cartografia estelar tridimensional especializada inexistente",
+      slot: "content",
+      notationIsLearningObject: true,
+      limit: 3
+    }
+  )));
+  const result = (await body(response)).result.structuredContent.data.result;
+  assert.equal(result.coverage.status, "substitute");
+  assert.ok(result.candidates.length > 0);
+  assert.match(result.coverage.chatDisclosure, /como aproximação/iu);
+});
+
+test("faceta desconhecida produz erro acionável, não falha interna", async () => {
+  const response = await handler()(request(toolCall(
+    "consultarBibliotecaDeResources",
+    {
+      operation: "search",
+      structureIds: ["structure.inexistente"],
+      limit: 3
+    }
+  )));
+  const payload = await body(response);
+  assert.equal(response.status, 200);
+  assert.equal(payload.result.isError, true);
+  assert.equal(payload.result.structuredContent.ok, false);
+  assert.equal(
+    payload.result.structuredContent.error.code,
+    "invalid_resource_library_request"
+  );
+  assert.match(
+    payload.result.structuredContent.error.message,
+    /identificador desconhecido/u
+  );
+});
+
+test("kernel valida e audita composição sem fingir uma prévia visual", async () => {
+  const card = {
+    id: "card-paragraph-a",
+    position: 1,
+    title: "Primeiro referente",
+    role: "theory",
+    content: [{
+      id: "content-a",
+      package: "aralearn.resource.paragraph",
+      version: "1.0.0",
+      data: {
+        text: "Um referente concreto é apresentado antes do termo formal.",
+        languageTag: "pt-BR",
+        textDirection: "ltr"
+      }
+    }],
+    response: null,
+    feedback: [],
+    topics: [],
+    sources: []
+  };
+  const call = async (operation, extra = {}) => {
+    const response = await handler()(request(toolCall(
+      "consultarBibliotecaDeResources",
+      { operation, cardJson: JSON.stringify(card), ...extra }
+    )));
+    assert.equal(response.status, 200);
+    return (await body(response)).result.structuredContent.data.result;
+  };
+  const validation = await call("validate_card");
+  assert.equal(validation.valid, true);
+  assert.equal(validation.composition[0].packageId, "aralearn.resource.paragraph");
+
+  const audit = await call("audit_representation", {
+    intent: "Explicar progressivamente em prosa para um estudante iniciante."
+  });
+  assert.equal(audit.structural.valid, true);
+  assert.ok(["canonical", "versatile"].includes(audit.overallFit));
+  assert.equal(audit.visualPreview.rendered, false);
+
+  const mismatchedAudit = await call("audit_representation", {
+    intent: "Alinhar cada morfema à glosa correspondente.",
+    disciplineIds: ["discipline.language"],
+    structureIds: ["structure.interlinear"],
+    operationIds: ["operation.identify"]
+  });
+  assert.equal(mismatchedAudit.overallFit, "substitute");
+  assert.ok(
+    mismatchedAudit.selections[0].missing.includes("structure:structure.interlinear")
+  );
+
+  const preview = await call("preview_card");
+  assert.equal(preview.rendered, false);
+  assert.match(preview.reason, /renderer do aplicativo/iu);
 });
 
 test("matriz de escopos separa leitura, escrita e publicação", () => {
@@ -915,7 +1114,23 @@ test("contratos recusam campos desconhecidos e revisões inválidas", () => {
 test("tools/call devolve structuredContent no contrato anunciado", async () => {
   const response = await handler(adapter({
     async listWorkspaces() {
-      return { items: [{ workspaceId: WORKSPACE_ID, title: "Curso", revision: 2 }] };
+      return {
+        items: [{
+          workspaceId: WORKSPACE_ID,
+          title: "Curso",
+          purpose: "",
+          workspaceKind: "personal",
+          visibility: "private",
+          role: "owner",
+          revision: 2,
+          sourceCourseId: null,
+          publicationCount: 0,
+          updatedAt: "2026-08-01T12:01:00.000Z",
+          createdAt: "2026-08-01T12:00:00.000Z"
+        }],
+        hasMore: false,
+        nextCursor: null
+      };
     }
   }))(request(toolCall("listarWorkspacesDeAutoria", {})));
   const payload = await body(response);
@@ -961,7 +1176,16 @@ test("chamada de escrita atravessa o executor interno compartilhado", async () =
   const response = await handler(adapter({
     async mutateWorkspace(options) {
       received = options;
-      return { workspaceId: WORKSPACE_ID, revision: 5 };
+      return {
+        workspaceId: WORKSPACE_ID,
+        title: "Curso revisto",
+        revision: 5,
+        currentRevision: 5,
+        entityCount: 1,
+        createdAt: "2026-08-01T12:00:00.000Z",
+        updatedAt: "2026-08-01T12:01:00.000Z",
+        idempotent: false
+      };
     }
   }))(request(toolCall("reorganizarWorkspace", {
     operation: "rename_entity",

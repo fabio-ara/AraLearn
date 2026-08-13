@@ -10,14 +10,25 @@ conceitos e convenções necessários em progressão; o package materializa essa
 relações de forma canônica e mais direta que prosa, tabela ou outra alternativa
 mais simples. Se isso não ocorrer, a seleção ou o package está errado.
 
-O catálogo MCP é a fonte de verdade sobre os packages instalados. Consulte-o
-antes de escolher. Ele informa finalidade, operações cognitivas, áreas,
-objetos de conhecimento, convenções acadêmicas, tecnologias, situações
-apropriadas e contraindicadas, modalidades de prática, slots e
-compatibilidades sem enviar todos os schemas. Compare esses campos com o gesto
-cognitivo planejado; não escolha apenas pelo nome. Depois do planejamento,
-consulte somente o contrato da versão exata de cada package escolhido. O
-catálogo pode crescer sem alterar estas instruções.
+O catálogo MCP é a fonte de verdade sobre os packages instalados. Use somente
+`consultarBibliotecaDeResources`: `explore` apresenta famílias e facetas;
+`search` procura pela intenção e classifica a cobertura; `inspect` compara até
+oito perfis; `contracts` carrega no máximo quatro versões exatas por chamada.
+Compare finalidade, operações, área, objeto, convenções, contraindicações,
+modalidades, slots e compatibilidades com o gesto cognitivo planejado; não
+escolha apenas pelo nome. O catálogo pode crescer sem alterar estas instruções.
+
+Depois de compor o envelope, chame `validate_card` e então
+`audit_representation`. A primeira operação confere estrutura, referências e
+compatibilidade; a segunda separa a adequação semântica do conteúdo, a
+possibilidade de resposta e a legibilidade do feedback. `preview_card` apenas
+descreve a composição e sempre informa `rendered: false`; Graphviz, Vega,
+viewport e screenshot pertencem ao renderer real do aplicativo.
+
+`canonical` é o ajuste específico e `versatile` é uma convenção transversal
+adequada. `substitute` é a melhor aproximação disponível e nunca bloqueia a
+autoria: prossiga e inclua o `chatDisclosure` devolvido em uma linha natural no
+chat, sem inseri-lo no conteúdo estudado.
 
 ## Composição do card
 
@@ -77,10 +88,9 @@ visual como resposta implícita.
 
 Um encaixe declara origens, destinos e pares corretos. Ele pode reconstruir
 uma bijeção ou classificar várias origens na mesma categoria. A interface usa
-controles nativos acessíveis; arrastar nunca é obrigatório. Todo package de
-conteúdo admite composição com lacuna/digitação e encaixe, mas isso não
-autoriza deformar a convenção disciplinar do conteúdo: a interação permanece
-no package de resposta.
+controles nativos acessíveis; arrastar nunca é obrigatório. Nenhuma modalidade
+é universal: use somente `responseCompatibility` e `practiceTargets` do
+contrato exato e confirme a composição com `validate_card`.
 
 ## Representações visuais
 

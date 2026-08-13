@@ -5,6 +5,9 @@ import {
   applyCardAssistanceChangeSet
 } from "../src/assist/cardAssistanceScope.js";
 import {
+  createCardAssistanceLedger
+} from "../src/assist/cardAssistanceLedger.js";
+import {
   generateCardAssistanceChangeSet
 } from "../src/generation/runtime/cardAssistanceRuntime.js";
 
@@ -91,6 +94,12 @@ export async function runCardAssistanceSmoke({
     cardKey: "card-vetor"
   };
   const progress = [];
+  const originalCard = projectDocument.courses[0].modules[0].lessons[0]
+    .microsequences[0].cards[0];
+  const assistanceLedger = createCardAssistanceLedger({
+    selection,
+    card: originalCard
+  });
   const usage = {
     calls: 0,
     successful_calls: 0,
@@ -128,13 +137,14 @@ export async function runCardAssistanceSmoke({
     projectDocument,
     selection,
     request: {
-      operation: "repair",
-      repairScope: "resources",
-      resourceTargetIds: ["main"],
+      operation: "edit_text",
+      scope: "card",
+      resourceTargetIds: [],
       promptText: "Torne a explicação mais precisa e autocontida sem alterar seu objetivo."
     },
     provider: measuredProvider,
     modelId,
+    assistanceLedger,
     onProgress: (event) => progress.push(event)
   });
   const applied = await applyCardAssistanceChangeSet({
@@ -145,24 +155,31 @@ export async function runCardAssistanceSmoke({
   });
   const cards = applied.projectDocument.courses[0].modules[0].lessons[0]
     .microsequences[0].cards;
-  const changed = cards[0]?.text !== projectDocument.courses[0].modules[0]
-    .lessons[0].microsequences[0].cards[0].text;
+  const changed = JSON.stringify(cards[0]) !== JSON.stringify(originalCard);
   if (!changed) {
     throw new Error("O smoke terminou sem materializar a correção solicitada.");
   }
   const report = {
-    contract: "aralearn.card-assistance-smoke.v3",
+    contract: "aralearn.card-assistance-smoke.v4",
     createdAt: new Date().toISOString(),
     provider: providerId,
     modelId,
     operation: generated.changeSet.operation,
     cardCount: cards.length,
-    repairedCard: {
+    editedCard: {
       id: cards[0]?.id,
-      resource: cards[0]?.resource,
-      kind: cards[0]?.kind,
-      exercise: cards[0]?.exercise,
+      role: cards[0]?.role,
+      packages: [
+        ...(cards[0]?.content || []),
+        ...(cards[0]?.response ? [cards[0].response] : []),
+        ...(cards[0]?.feedback || [])
+      ].map(({ package: packageId, version }) => ({ package: packageId, version })),
+      editedPaths: (generated.changeSet.textPatch || []).map(({ path: editedPath }) => editedPath),
       changed
+    },
+    ledger: {
+      turnCount: generated.assistanceLedger?.turns?.length || 0,
+      cursorVersionId: generated.assistanceLedger?.cursorVersionId || ""
     },
     generationStoresProject: Object.hasOwn(generated, "projectDocument"),
     usage,

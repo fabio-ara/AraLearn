@@ -281,6 +281,92 @@ function planningReference(revision, brief) {
   return value;
 }
 
+const SUBSTITUTE_REPRESENTATION_SELECTION = Object.freeze({
+  intent: "Mostrar dependências causais com papéis distintos e leitura vertical.",
+  chosen: {
+    packageId: "aralearn.resource.graph",
+    version: "1.0.0"
+  },
+  fit: "substitute",
+  desiredResource: "diagrama causal especializado",
+  catalogVersion: "1-a1b2c3d4",
+  limitations: [
+    "O package escolhido não distingue causalidade de associação por convenção própria."
+  ],
+  chatDisclosure: "Usei Grafo como aproximação porque ainda não há um diagrama causal especializado."
+});
+
+test("decisão preserva escolha e substituição de resource fora do envelope do card", () => {
+  const mapped = mapAuthoringMcpToolCall("gerirContinuidadeDaAutoria", {
+    requestId: "continuity:representation:0001",
+    workspaceId: WORKSPACE_ID,
+    expectedRevision: 7,
+    operation: "record_decision",
+    decisionId: "representation-card-a",
+    summary: "Preservar a intenção representacional para revisão futura.",
+    entityType: "card",
+    entityId: "card-a",
+    representationSelection: SUBSTITUTE_REPRESENTATION_SELECTION
+  });
+  assert.deepEqual(
+    mapped.body.arguments.representationSelection,
+    SUBSTITUTE_REPRESENTATION_SELECTION
+  );
+  const payload = validateWorkspaceContinuityActionPayload(mapped.body);
+  const next = applyContinuityStateOperation({
+    state: continuity().authoringState,
+    operation: payload.operation,
+    arguments: payload.arguments,
+    reference: reference(),
+    continuity: continuity(),
+    expectedRevision: payload.expectedRevision
+  });
+  const decision = next.decisions.find(({ id }) => id === "representation-card-a");
+  assert.deepEqual(decision.representationSelection, SUBSTITUTE_REPRESENTATION_SELECTION);
+
+  const projection = buildWorkspaceResumeProjection(reference(), {
+    ...continuity(),
+    authoringState: next
+  });
+  assert.deepEqual(
+    projection.content.decisions.find(({ id }) => id === decision.id)
+      .representationSelection,
+    SUBSTITUTE_REPRESENTATION_SELECTION
+  );
+  const card = reference().entities.find(({ entityType }) => entityType === "card");
+  assert.equal(Object.hasOwn(card.content, "representationSelection"), false);
+});
+
+test("metadado representacional exige alvo adequado e explicita substituição sem bloquear", () => {
+  assert.throws(() => mapAuthoringMcpToolCall("gerirContinuidadeDaAutoria", {
+    requestId: "continuity:representation:bad1",
+    workspaceId: WORKSPACE_ID,
+    expectedRevision: 7,
+    operation: "record_decision",
+    decisionId: "representation-course-a",
+    summary: "Alvo estrutural inadequado.",
+    entityType: "course",
+    entityId: "course-a",
+    representationSelection: SUBSTITUTE_REPRESENTATION_SELECTION
+  }), ({ code }) => code === "invalid_tool_arguments");
+
+  assert.throws(() => validateWorkspaceContinuityActionPayload({
+    requestId: "continuity:representation:bad2",
+    expectedRevision: 7,
+    operation: "record_decision",
+    arguments: {
+      id: "representation-card-a",
+      summary: "Substituição sem comunicação explícita.",
+      entityType: "card",
+      entityId: "card-a",
+      representationSelection: {
+        ...SUBSTITUTE_REPRESENTATION_SELECTION,
+        chatDisclosure: null
+      }
+    }
+  }), ({ code }) => code === "invalid_authoring_decision");
+});
+
 test("estado de continuidade é fechado, econômico e limita coleções antes do RPC", () => {
   assert.throws(
     () => normalizeContinuityState({

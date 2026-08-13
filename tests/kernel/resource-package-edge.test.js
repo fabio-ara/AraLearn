@@ -12,10 +12,13 @@ test("browser e Edge derivam catálogo e contrato do mesmo package", () => {
   );
 });
 
-test("protocolo separa catálogo compacto e contrato versionado", () => {
-  assert.deepEqual(routeRequest("GET", "/v1/packages"), { name: "listPackages" });
-  assert.deepEqual(
-    routeRequest("GET", "/v1/packages/aralearn.resource.paragraph"),
-    { name: "getPackage", packageId: "aralearn.resource.paragraph" }
+test("biblioteca de resources não mantém endpoints REST paralelos ao MCP", () => {
+  assert.throws(
+    () => routeRequest("GET", "/v1/packages"),
+    (error) => error?.status === 404 && error?.code === "not_found"
+  );
+  assert.throws(
+    () => routeRequest("GET", "/v1/packages/aralearn.resource.paragraph"),
+    (error) => error?.status === 404 && error?.code === "not_found"
   );
 });

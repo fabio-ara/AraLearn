@@ -398,7 +398,7 @@ export function setCardAssistanceUndo(value = {}, undo = null) {
 export function markContextualAuthoringSyncPending(value = {}, selection = {}) {
   const state = normalizeCardAssistanceLocalState(value);
   const pending = normalizeSyncPath(selection);
-  if (!pending) throw new Error("O reparo local não possui um caminho sincronizável.");
+  if (!pending) throw new Error("A edição local não possui um caminho sincronizável.");
   const key = syncPathKey(pending);
   const current = state.sync.pendingPaths.find((item) => syncPathKey(item) === key) || null;
   const combined = current

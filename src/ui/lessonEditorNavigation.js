@@ -1,4 +1,4 @@
-import { getLessonProgressCursor } from "../storage/progressStore.js";
+import { getLessonProgressCursor, readLessonProgressEntry } from "../storage/progressStore.js";
 import {
   collectLessonCards,
   findCard,
@@ -116,6 +116,49 @@ export function buildModuleNavigationState(projectDocument, { courseKey = "", mo
       cardIndex: 0
     }),
     view: "module"
+  };
+}
+
+function firstPendingLessonEntry(progressState, reference, lessonCards) {
+  const progressEntry = readLessonProgressEntry(progressState, reference);
+  const completedCardKeys = new Set(progressEntry?.completedCardKeys || []);
+  return lessonCards.find((entry) => !completedCardKeys.has(entry.cardKey)) || lessonCards.at(-1) || null;
+}
+
+export function buildStudyModuleNavigationState(
+  projectDocument,
+  progressState,
+  { courseKey = "", moduleKey = "" } = {}
+) {
+  const moduleValue = findModule(projectDocument, courseKey, moduleKey);
+  if (!moduleValue) {
+    return null;
+  }
+
+  const lessons = Array.isArray(moduleValue.lessons) ? moduleValue.lessons : [];
+  if (lessons.length !== 1) {
+    return buildModuleNavigationState(projectDocument, { courseKey, moduleKey });
+  }
+
+  const lesson = lessons[0];
+  const reference = { courseKey, moduleKey, lessonKey: lesson.id };
+  const lessonCards = collectLessonCards(lesson);
+  const entry = firstPendingLessonEntry(progressState, reference, lessonCards);
+
+  if (!entry) {
+    return buildLessonNavigationState(projectDocument, progressState, reference);
+  }
+
+  return {
+    selection: {
+      courseKey,
+      moduleKey,
+      lessonKey: lesson.id,
+      microsequenceKey: entry.microsequenceKey,
+      cardKey: entry.cardKey,
+      cardIndex: entry.cardIndex
+    },
+    view: "microsequence"
   };
 }
 

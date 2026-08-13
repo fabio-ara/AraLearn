@@ -141,7 +141,8 @@ comando de organização. É uma navegação de leitura sobre a seleção já ex
 ou sobre o curso consultado em Coleções.
 
 Os controles de autoria alteram somente as linhas correspondentes ao escopo
-selecionado. Resources e card inteiro são o limite no card; uma
+selecionado. Caminhos textuais de instâncias e o card inteiro são o limite no
+card; uma
 microssequência pode receber cards quando seu recipiente foi autorizado; uma
 lição pode receber no máximo uma nova microssequência quando todos os filhos
 foram selecionados. Não há escrita bottom-up em módulo ou curso.
@@ -152,9 +153,10 @@ Se outra aba gravou antes, a operação obsoleta falha e recarrega o conteúdo
 corrente; não há sobrescrita por último escritor. Pedido, contexto e resposta
 do provider não entram nas tabelas do curso.
 
-Somente a última alteração concluída conserva uma inversa compacta do fragmento
-necessário a **Desfazer**. Uma nova escrita substitui essa inversa; o aplicativo
-não cria snapshots integrais nem histórico de respostas.
+No card, o ledger volátil mantém por pouco tempo até oito turnos e nove versões
+exatas para desfazer, refazer ou restaurar. Pedido, explicações e versões não
+entram no IndexedDB ou no Supabase e não criam snapshots do curso. Uma escrita
+externa no mesmo card invalida a conversa local.
 
 Curso privado próprio mantém seu `courseId`. Curso oficial é somente leitura
 para conta comum; uma conta administrativa ou editorial altera a continuidade

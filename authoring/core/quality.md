@@ -53,10 +53,19 @@
   previsíveis e da necessidade de retomada. Quando houver várias práticas,
   torne visível a variação de caso, representação, estratégia, erro provável ou
   grau de apoio.
-- O recurso escolhido corresponde à operação cognitiva. Consulte primeiro o
-  catálogo compacto de packages instalados. Só depois de escolher recupere o
-  contrato da versão exata. Não reduza a autoria a texto e escolha quando
-  outro package preservar melhor o raciocínio.
+- O recurso escolhido corresponde à operação cognitiva. Em
+  `consultarBibliotecaDeResources`, percorra `explore`, `search`, `inspect` e
+  `contracts`, estes em lotes de até quatro versões exatas. Use `validate_card`
+  e depois `audit_representation`: a auditoria distingue `semantic_fit` no
+  conteúdo, `response_affordance` na resposta e `feedback_legibility` no
+  feedback. Não reduza a autoria a texto e escolha quando outro package
+  preservar melhor o raciocínio.
+- A ausência de package canônico não paralisa a produção. `canonical` é o
+  ajuste específico e `versatile` preserva a estrutura por uma convenção
+  transversal. Se `coverage.status` for `substitute`, use o melhor candidato,
+  incorpore brevemente o `chatDisclosure` devolvido e registre a representação
+  desejada na decisão autoral. Não esconda a perda nem transforme a observação
+  em burocracia.
 - A escolha fica materializada em uma instância de package de `card.content`,
   `card.response` ou `card.feedback`. Confira se ela preserva
   `microsequence.goal`, `covers` e `checks`; não acrescente ao JSON um bloco
@@ -144,8 +153,8 @@
 ## Leitura de representações estruturadas
 
 - Um package especializado só é justificável quando preserva uma estrutura que
-  seria perdida em `paragraph`, `table` ou package existente. Consulte
-  `academic.admission`; aparência diferente ou variedade não são evidência.
+  seria perdida em `paragraph`, `table` ou package existente. Aplique a policy
+  devolvida por `explore`; aparência diferente ou variedade não são evidência.
 - A representação escolhida precisa tornar a relação relevante mais imediata
   e previsível pelas convenções da área do que seria em prosa ou numa forma
   mais simples. Se a pessoa precisar decifrar a interface, cruzar uma legenda

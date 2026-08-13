@@ -2,13 +2,33 @@ import { asAuthoringApiError } from "./errors.js";
 
 const ERROR_ISSUE_LIMIT = 20;
 
-function cardResource(rawArguments, path) {
-  const match = String(path || "").match(/cards\[(\d+)\]/u);
-  if (!match || typeof rawArguments?.cardsJson !== "string") return null;
+function cardPackage(rawArguments, path) {
+  const normalizedPath = String(path || "")
+    .replace(/\[(\d+)\]/gu, ".$1")
+    .replace(/\/(\d+)(?=\/|$)/gu, ".$1")
+    .replaceAll("/", ".");
+  const cardMatch = normalizedPath.match(/(?:^|\.)cards\.(\d+)(?:\.|$)/u)
+    || normalizedPath.match(/^\$?\.?([0-9]+)(?:\.|$)/u);
+  if (!cardMatch || typeof rawArguments?.cardsJson !== "string") return null;
   try {
     const cards = JSON.parse(rawArguments.cardsJson);
-    const resource = cards?.[Number(match[1])]?.resource;
-    return typeof resource === "string" && resource ? resource : null;
+    const card = cards?.[Number(cardMatch[1])];
+    if (!card || typeof card !== "object") return null;
+    const instanceMatch = normalizedPath.match(
+      /(?:^|\.)(content|feedback)\.(\d+)(?:\.|$)/u
+    );
+    if (instanceMatch) {
+      const instance = card?.[instanceMatch[1]]?.[Number(instanceMatch[2])];
+      return typeof instance?.package === "string" ? instance.package : null;
+    }
+    if (/(?:^|\.)response(?:\.|$)/u.test(normalizedPath)) {
+      return typeof card.response?.package === "string" ? card.response.package : null;
+    }
+    return typeof card.content?.[0]?.package === "string"
+      ? card.content[0].package
+      : typeof card.response?.package === "string"
+        ? card.response.package
+        : null;
   } catch {
     return null;
   }
@@ -24,7 +44,7 @@ function errorIssues(error, toolName, rawArguments) {
   const issues = source.slice(0, ERROR_ISSUE_LIMIT).map((issue) => {
     const path = String(issue?.path || issue?.field || "");
     const resource = toolName === "salvarCardsNaMicrossequencia"
-      ? cardResource(rawArguments, path)
+      ? cardPackage(rawArguments, path)
       : null;
     return {
       path,

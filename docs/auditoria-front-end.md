@@ -95,16 +95,18 @@ local em vez de sobrescrever o remoto.
 ## Edição situada
 
 **Visualizar**, **Editar** e **IA** permanecem na própria superfície montada.
-Um contorno discreto indica a seleção sem redimensionar o resource nem copiar o
-conteúdo para outro painel. No card, a assistência apenas repara os resources
-selecionados ou o card inteiro.
+Um contorno discreto indica a seleção sem redimensionar a instância de package
+nem copiar o conteúdo para outro painel. No card, selecionar instâncias limita
+a assistência a seus caminhos textuais; selecionar o card inteiro também
+permite recompor seu conteúdo pelo catálogo.
 
 Microssequência e lição oferecem seus próprios escopos. Selecionar todos os
 cards autoriza criar cards naquela microssequência; selecionar todas as
 microssequências autoriza criar no máximo uma nova microssequência. O contexto
 adjacente e o índice compacto da lição entram somente para leitura. O pedido
-fica junto ao conteúdo e o resultado validado aparece diretamente. Um único
-botão **Desfazer** conserva a reversão mais recente. Providers remotos de IA
+fica junto ao conteúdo e o resultado validado aparece diretamente. A conversa
+curta permite desfazer, refazer e restaurar versões do card; um resultado sem
+mudança conserva apenas a explicação. Providers remotos de IA
 exigem rede; a edição manual e o bridge local continuam disponíveis para
 conteúdo já baixado e anteriormente autorizado. Respostas, gaps, identidades,
 ordem e topologia não se tornam editáveis nesse modo.

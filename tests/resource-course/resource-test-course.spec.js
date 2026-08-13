@@ -1,19 +1,37 @@
 import { expect, test } from "@playwright/test";
 
-async function openModule(page, moduleIndex, cardIndex = 0) {
+async function openModuleRuntime(page, module, cardIndex = 0) {
   await page.locator('[data-action="open-course"]').click();
-  await page.locator('[data-action="open-module"]').nth(moduleIndex).click();
-  await page.locator('[data-action="open-lesson"]').click();
-  await page.locator('[data-action="open-microsequence-overview"]').click();
-  await page.locator(`[data-action="open-microsequence-card"][data-card-index="${cardIndex}"]`).click();
+  await module.click();
+
+  if (await page.locator(".runtime-card-title").isVisible()) {
+    if (cardIndex === 0) return;
+    await page.locator('[data-action="go-back"]').first().click();
+  }
+
+  const lesson = page.locator('[data-action="open-lesson"]').first();
+  if (await lesson.isVisible()) await lesson.click();
+  const overview = page.locator('[data-action="open-microsequence-overview"]').first();
+  if (await overview.isVisible()) await overview.click();
+  await page.locator(
+    `[data-action="open-microsequence-card"][data-card-index="${cardIndex}"]`
+  ).first().click();
+}
+
+async function openModule(page, moduleIndex, cardIndex = 0) {
+  await openModuleRuntime(
+    page,
+    page.locator('[data-action="open-module"]').nth(moduleIndex),
+    cardIndex
+  );
 }
 
 async function openModuleByKey(page, moduleKey, cardIndex = 0) {
-  await page.locator('[data-action="open-course"]').click();
-  await page.locator(`[data-action="open-module"][data-module-key="${moduleKey}"]`).click();
-  await page.locator('[data-action="open-lesson"]').click();
-  await page.locator('[data-action="open-microsequence-overview"]').click();
-  await page.locator(`[data-action="open-microsequence-card"][data-card-index="${cardIndex}"]`).click();
+  await openModuleRuntime(
+    page,
+    page.locator(`[data-action="open-module"][data-module-key="${moduleKey}"]`),
+    cardIndex
+  );
 }
 
 async function touchSwipe(page, { from, to }) {
@@ -38,7 +56,7 @@ async function touchSwipe(page, { from, to }) {
 
 test.beforeEach(async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 900 });
-  await page.goto("/teste-recursos");
+  await page.goto("/tests/gallery/resource-test-course.html");
   await page.waitForFunction(() => globalThis.__RESOURCE_TEST_COURSE_READY__ === true);
   await page.evaluate(() => localStorage.removeItem("aralearn.resource-test.progress.v3"));
   await page.reload();

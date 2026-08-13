@@ -32,7 +32,6 @@ test("conteúdo primário dos resources compartilha a escala tipográfica do tex
     ".package-relational-table",
     ".package-set-name",
     ".runtime-table th,\n.runtime-table td",
-    ".runtime-tree-node-label",
     ".runtime-matrix-item",
     ".package-math-graph-label-content",
     ".package-chart-legend",
@@ -49,7 +48,6 @@ test("conteúdo primário dos resources compartilha a escala tipográfica do tex
 
 test("metadados acadêmicos compactos usam apenas os degraus tipográficos secundários", () => {
   for (const selector of [
-    ".runtime-tree-node-chip",
     ".package-reaction-state",
     ".package-flow-edge-label",
     ".runtime-interlinear-abbreviations"

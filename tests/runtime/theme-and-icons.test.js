@@ -109,7 +109,18 @@ test("tokens têm modos explícitos, contraste AA e nenhum alias do tema anterio
 });
 
 test("interface usa SVG temável e recusa nomes desconhecidos", () => {
-  for (const name of ["add", "cloud", "drag", "more", "play", "theme-system", "theme-light", "theme-dark"]) {
+  for (const name of [
+    "add",
+    "arrow-left",
+    "arrow-right",
+    "cloud",
+    "drag",
+    "more",
+    "play",
+    "theme-system",
+    "theme-light",
+    "theme-dark"
+  ]) {
     const icon = renderUiIcon(name);
     assert.match(icon, /<svg/u);
     assert.match(icon, /currentColor/u);

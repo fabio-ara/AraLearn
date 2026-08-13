@@ -14,8 +14,14 @@ revisão e somente a entidade necessária antes de escrever.
 
 Crie primeiro a estrutura em lotes pequenos com
 `criarEstruturaNoWorkspace`. Materialize uma microssequência por chamada com
-`salvarCardsNaMicrossequencia`; nunca envie um curso populado inteiro. Consulte
-primeiro o catálogo compacto com `consultarPackagesDeCard`; escolha pela operação cognitiva e consulte depois somente o contrato da versão de cada package selecionado. Use
+`salvarCardsNaMicrossequencia`; nunca envie um curso populado inteiro. Em
+`consultarBibliotecaDeResources`, percorra `explore`, `search`, `inspect` e
+`contracts`; escolha pela operação cognitiva e estrutural e carregue no máximo
+quatro contratos exatos por chamada. Use `validate_card` e
+`audit_representation` antes de salvar; a auditoria separa conteúdo, resposta e
+feedback. `preview_card` é descritor com `rendered: false`, não screenshot. Se
+`coverage.status` for `substitute`, prossiga, incorpore brevemente o
+`chatDisclosure` e preserve a intenção ideal na decisão autoral. Use
 `atualizarMetadadosDaEntidade` ou `salvarCardNoWorkspace` para correções
 pontuais. Reorganize com `reorganizarWorkspace` e uma `operation` explícita:
 `copy_entity` cria identidades novas e preserva a origem; `move_entity`

@@ -3035,78 +3035,8 @@ input:-webkit-autofill:focus {
   gap: 10px;
 }
 
-.runtime-tree-prompt > .runtime-markdown-paragraph,
 .runtime-matrix-prompt > .runtime-markdown-paragraph {
   margin: 0;
-}
-
-.runtime-tree-structure {
-  min-width: 0;
-  padding: 12px;
-  border: 1px solid var(--resource-border);
-  border-radius: 14px;
-  background:
-    linear-gradient(180deg, var(--resource-surface-subtle), var(--resource-surface-subtle)),
-    radial-gradient(circle at top left, color-mix(in srgb, var(--resource-accent) 7%, transparent), transparent 60%);
-  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--resource-text) 4%, transparent);
-  overflow-x: auto;
-}
-
-.runtime-tree-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
-  gap: 8px;
-}
-
-.runtime-tree-item > .runtime-tree-list {
-  margin-top: 6px;
-  margin-left: 12px;
-  padding-left: 14px;
-  border-left: 1px solid var(--resource-border-strong);
-}
-
-.runtime-tree-entry {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  min-width: 0;
-  max-width: 100%;
-  padding: 7px 10px;
-  border: 1px solid var(--resource-border);
-  border-radius: 12px;
-  background: var(--resource-surface);
-  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--resource-text) 4%, transparent);
-}
-
-.runtime-tree-item[data-node-role="leaf"] > .runtime-tree-entry {
-  background: color-mix(in srgb, var(--resource-surface-subtle) 92%, var(--resource-surface));
-}
-
-.runtime-tree-node-chip {
-  flex: 0 0 auto;
-  min-width: 32px;
-  padding: 2px 6px;
-  border-radius: 999px;
-  border: 1px solid var(--resource-border);
-  background: var(--resource-accent-subtle);
-  color: var(--resource-accent);
-  font-family: var(--font-ui);
-  font-size: var(--type-sm);
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  text-align: center;
-}
-
-.runtime-tree-node-label {
-  min-width: 0;
-  color: var(--resource-text);
-  font-size: var(--type-base);
-  line-height: 1.42;
-  overflow-wrap: anywhere;
-  word-break: break-word;
 }
 
 .runtime-matrix-wrap {
@@ -4704,6 +4634,10 @@ input:-webkit-autofill:focus {
   color: var(--status-warning);
   font-size: 0.75rem;
   line-height: 1.35;
+}
+
+.card-assistance-message.is-neutral {
+  color: var(--text-secondary);
 }
 
 .workspace-authoring-status {

@@ -584,15 +584,18 @@ async function runJourney() {
   };
   assert.equal(Object.hasOwn(partial, "completionState"), false);
 
-  await action(state.authorToken, "consultarPackagesDeCard", {});
+  await action(state.authorToken, "consultarBibliotecaDeResources", {
+    operation: "explore",
+    slot: "content"
+  });
   for (const packageId of [
     "aralearn.resource.paragraph",
     "aralearn.resource.table",
     "aralearn.response.gap"
   ]) {
-    await action(state.authorToken, "consultarPackagesDeCard", {
-      packageId,
-      version: "1.0.0"
+    await action(state.authorToken, "consultarBibliotecaDeResources", {
+      operation: "contracts",
+      packages: [{ packageId, version: "1.0.0" }]
     });
   }
 

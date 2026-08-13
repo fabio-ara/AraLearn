@@ -3,10 +3,11 @@
 O Plugin usa o endpoint MCP remoto para autoria estrutural. O Chatbot
 personalizado usa uma Action OpenAPI gerada do mesmo registro de ferramentas.
 As duas superfícies executam o mesmo fluxo; a conta conectada determina quais
-capacidades ficam disponíveis. O registro público possui 30 ferramentas; as
-famílias de catálogo, transformação e continuidade usam `operation` explícita, enquanto a
-consulta de resources usa a presença de `resource` para alternar lista e
-detalhe. Isso mantém a lista curta sem aceitar payloads genéricos.
+capacidades ficam disponíveis. O registro público possui 30 ferramentas. As
+famílias de catálogo, transformação e continuidade usam `operation` explícita.
+Resources usam somente `consultarBibliotecaDeResources`, também com operações
+fechadas; a descoberta progressiva evita schemas ou ids de package hardcoded na
+superfície pública.
 
 ## Preparação contextual
 
@@ -98,9 +99,15 @@ persistidos; o histórico da conversa não os substitui.
 - `listarAlteracoesRecentesDoWorkspace`: resumos das últimas alterações;
 - `gerirWorkspaceEducacional`: também lista, registra e exclui notas de
   curadoria ligadas a partes do plano ou curso, sem copiar conteúdo;
-- `consultarPackagesDeCard`: sem `packageId`, lista somente manifests compactos;
-  depois da escolha pela operação cognitiva, `packageId` e `version` devolvem
-  somente o contrato autoral e o schema daquela versão.
+- `consultarBibliotecaDeResources`: `explore` apresenta famílias e facetas;
+  `search` classifica `coverage.status` como `canonical`, `versatile` ou
+  `substitute`; `inspect` confere até oito perfis; `contracts` devolve até
+  quatro contratos exatos por chamada. Depois de compor o envelope,
+  `validate_card` verifica schemas, referências e compatibilidade, e
+  `audit_representation` distingue `semantic_fit`, `response_affordance` e
+  `feedback_legibility`. `preview_card` é somente um descritor com
+  `rendered: false`, não screenshot. Um `substitute` nunca bloqueia: prossiga e
+  use brevemente o `chatDisclosure` que só esse estado devolve.
 
 Em workspace já existente, a primeira leitura da etapa usa `view: "resume"`.
 Depois, `outline` e `entity` reduzem o contexto ao recorte necessário.
@@ -132,9 +139,10 @@ O fluxo recomendado evita pedir ao modelo uma árvore grande e populada:
 5. apresente o planejamento, sugira aprovação ou ajuste e espere;
 6. após aprovação, use uma única `record_approved_plan` para substituir
    atomicamente todas as Partes, decisões e o mandato autorizado;
-7. faça o blueprint didático, consulte os manifests, escolha packages pela
-   operação cognitiva, peça somente seus contratos versionados e materialize
-   uma microssequência por chamada até concluir somente a Parte autorizada;
+7. faça o blueprint didático e, na única
+   `consultarBibliotecaDeResources`, percorra `explore`, `search`, `inspect`,
+   `contracts`, `validate_card` e `audit_representation`; materialize uma
+   microssequência por chamada até concluir somente a Parte autorizada;
 8. apresente `revisarMicroteoriasDoWorkspace`, contagens e resources, sugira
    auditoria independente e espere;
 9. audite em rodada somente leitura após `list_comments` e
@@ -182,7 +190,8 @@ Os vínculos não são intercambiáveis: `link_comment_correction` aponta um rep
 confirmado para o comentário feito no estudo; `link_finding_correction` aponta
 um reparo confirmado para um achado formal de auditoria.
 
-`salvarCardsNaMicrossequencia` recebe os cards v4 completos da unidade. Para
+`salvarCardsNaMicrossequencia` recebe os envelopes canônicos completos dos
+cards da unidade. Para
 uma correção pontual, use `atualizarMetadadosDaEntidade` em curso, módulo,
 lição ou microssequência, ou `salvarCardNoWorkspace` para um único card
 completo, preservando seu id e sua posição. Esses comandos fechados reduzem a

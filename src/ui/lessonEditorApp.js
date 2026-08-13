@@ -24,6 +24,7 @@ import {
   buildLessonNavigationState,
   buildModuleNavigationState,
   buildNavigationViewState,
+  buildStudyModuleNavigationState,
   resolveExactCardSelection,
   resolveFirstSelection,
   resolveSelectionByKeys as resolveSelectionByKeysRuntime
@@ -58,11 +59,18 @@ import { resolveCardAssistanceLaunchConfig } from "../generation/runtime/cardAss
 import { executeBottomUpAssistance } from "../assist/bottomUpAssistanceRuntime.js";
 import { buildBottomUpAssistanceScope } from "../assist/bottomUpAssistanceScope.js";
 import {
-  appendCardAssistanceConversationTurn,
-  cardAssistanceConversationContext,
-  cardAssistanceConversationKey,
-  normalizeCardAssistanceConversation
-} from "../assist/cardAssistanceConversation.js";
+  assertCardAssistanceLedgerCurrent,
+  cardAssistanceLedgerContext,
+  cardAssistanceLedgerKey,
+  createCardAssistanceLedger,
+  redoCardAssistanceLedger,
+  undoCardAssistanceLedger
+} from "../assist/cardAssistanceLedger.js";
+import {
+  cardAssistanceLedgerNavigation,
+  resolveCardAssistanceChatOperation,
+  resolveCardAssistanceNavigationPrompt
+} from "../assist/cardAssistanceNavigation.js";
 import { canonicalStringify } from "../persistence/canonicalCourseHash.js";
 import {
   CARD_ASSISTANCE_UNDO_CONTRACT,
@@ -365,8 +373,9 @@ export function createLessonEditorApp({
       syncError: "",
       isSubmitting: false,
       errorMessage: "",
+      statusMessage: "",
       manualEditError: "",
-      conversationByReferenceKey: new Map()
+      assistanceLedgerByReferenceKey: new Map()
     },
     bottomUpDraft: {
       level: "",
@@ -1255,10 +1264,15 @@ export function createLessonEditorApp({
   }
 
   function openModule(moduleKey, { mode = "view" } = {}) {
-    const navigationState = buildModuleNavigationState(state.project, {
-      courseKey: state.selection.courseKey,
-      moduleKey
-    });
+    const courseKey = state.selection.courseKey;
+    const studyNavigation = mode === "view" && state.entityModes.course === "view";
+    const navigationState = studyNavigation
+      ? buildStudyModuleNavigationState(
+          state.project,
+          activeProgress(courseKey),
+          { courseKey, moduleKey }
+        )
+      : buildModuleNavigationState(state.project, { courseKey, moduleKey });
     if (!navigationState) return false;
     Object.assign(state, buildNavigationViewState(navigationState));
     state.entityModes.module = "view";
@@ -1266,6 +1280,13 @@ export function createLessonEditorApp({
     state.entityMutationError = "";
 
     if (mode === "edit") return setEntityMode("module", "edit", { preserveState: false });
+    if (navigationState.view === "microsequence") {
+      return openMicrosequenceScreen(
+        navigationState.selection.microsequenceKey,
+        navigationState.selection.cardIndex,
+        "play"
+      );
+    }
     render({ preserveState: false });
     return true;
   }
@@ -2055,18 +2076,54 @@ export function createLessonEditorApp({
       cards: context.cards
     });
     state.assistDraft.assistance = assistance;
-    const conversationKey = cardAssistanceConversationKey(state.selection);
-    const conversation = normalizeCardAssistanceConversation(
-      state.assistDraft.conversationByReferenceKey.get(conversationKey),
-      state.selection
+    const ledger = currentCardAssistanceLedger(state.selection, context.card, {
+      create: false
+    });
+    const navigationRequest = resolveCardAssistanceNavigationPrompt(
+      state.assistDraft.promptText,
+      ledger
     );
+    if (navigationRequest?.matched && !navigationRequest.versionId) {
+      throw new Error(navigationRequest.errorMessage);
+    }
+    const operation = navigationRequest?.versionId
+      ? "restore_version"
+      : resolveCardAssistanceChatOperation(state.assistDraft.promptText, assistance);
     return {
-      operation: "repair",
+      operation,
       promptText: state.assistDraft.promptText,
-      repairScope: assistance.wholeCardSelected ? "card" : "resources",
-      resourceTargetIds: assistance.wholeCardSelected ? [] : assistance.resourceTargetIds,
-      conversationTurns: cardAssistanceConversationContext(conversation, state.selection)
+      scope: operation === "restore_version" || assistance.wholeCardSelected
+        ? "card"
+        : "resources",
+      resourceTargetIds: operation === "restore_version" || assistance.wholeCardSelected
+        ? []
+        : assistance.resourceTargetIds,
+      ...(navigationRequest?.versionId ? { versionId: navigationRequest.versionId } : {})
     };
+  }
+
+  function currentCardAssistanceLedger(selection, card, { create = true } = {}) {
+    if (!card) return null;
+    const key = cardAssistanceLedgerKey(selection);
+    const stored = state.assistDraft.assistanceLedgerByReferenceKey.get(key) || null;
+    if (stored) {
+      try {
+        return assertCardAssistanceLedgerCurrent(stored, card, selection);
+      } catch {
+        state.assistDraft.assistanceLedgerByReferenceKey.delete(key);
+      }
+    }
+    return create ? createCardAssistanceLedger({ selection, card }) : null;
+  }
+
+  function rememberCardAssistanceLedger(key, ledger) {
+    const ledgers = state.assistDraft.assistanceLedgerByReferenceKey;
+    ledgers.delete(key);
+    ledgers.set(key, ledger);
+    while (ledgers.size > 24) {
+      const oldestKey = ledgers.keys().next().value;
+      ledgers.delete(oldestKey);
+    }
   }
 
   async function deleteCardComment() {
@@ -2448,6 +2505,9 @@ export function createLessonEditorApp({
       "A edição de cards não está disponível para este curso."
     );
     const workspaceRef = capabilities.workspaceRef;
+    const textOnly = entries.every(
+      (entry) => entry?.changeSet?.operation === "edit_text"
+    );
     const beforeMicrosequence = findMicrosequence(
       requestedProjectDocument,
       requestedSelection.courseKey,
@@ -2578,7 +2638,7 @@ export function createLessonEditorApp({
       {
         ...requestedSelection,
         microsequenceKey: applied.targetMicrosequenceKey,
-        textOnly: true,
+        textOnly,
         baseCards: structuredClone(beforeMicrosequence?.cards || []),
         baseMetadata: {
           title: beforeMicrosequence?.title || "",
@@ -2677,8 +2737,8 @@ export function createLessonEditorApp({
       }
       const targetId = container.getAttribute("data-manual-target-id") || "card";
       const request = targetId === "card"
-        ? { operation: "repair", repairScope: "card", resourceTargetIds: [] }
-        : { operation: "repair", repairScope: "resources", resourceTargetIds: [targetId] };
+        ? { operation: "edit_text", scope: "card", resourceTargetIds: [] }
+        : { operation: "edit_text", scope: "resources", resourceTargetIds: [targetId] };
       const snapshot = await buildCardAssistanceScopeSnapshot(
         requestedProjectDocument,
         requestedSelection,
@@ -2693,17 +2753,22 @@ export function createLessonEditorApp({
         selection: requestedSelection,
         snapshot,
         changeSet: {
-          contract: "aralearn.card-assistance-change.v1",
-          operation: "repair",
+          contract: "aralearn.card-assistance-change.v2",
+          operation: "edit_text",
           card: editedCard
         }
       }];
-      await commitCardAssistanceEntries({
+      const committed = await commitCardAssistanceEntries({
         requestedProjectDocument,
         requestedSelection,
         entries,
         persistenceGuard: guard
       });
+      if (!committed.unchanged) {
+        state.assistDraft.assistanceLedgerByReferenceKey.delete(
+          cardAssistanceLedgerKey(requestedSelection)
+        );
+      }
     } catch (error) {
       if (error?.code === "local_course_draft_changed") setProject(storage.loadProject());
       state.assistDraft.manualEditError =
@@ -2799,9 +2864,19 @@ export function createLessonEditorApp({
     })) {
       return;
     }
-    const request = buildCurrentCardAssistanceRequest();
+    let request;
+    try {
+      request = buildCurrentCardAssistanceRequest();
+    } catch (error) {
+      state.assistDraft.errorMessage = error instanceof Error
+        ? error.message
+        : "Não foi possível interpretar o pedido.";
+      render({ preserveState: true });
+      return;
+    }
     state.assistDraft.isSubmitting = true;
     state.assistDraft.errorMessage = "";
+    state.assistDraft.statusMessage = "";
     render({ preserveState: true });
     try {
       const requestedProjectDocument = structuredClone(state.project);
@@ -2813,6 +2888,19 @@ export function createLessonEditorApp({
         "A assistência por IA não está disponível para este curso."
       );
       const workspaceRef = capabilities.workspaceRef;
+      const ledgerKey = cardAssistanceLedgerKey(requestedSelection);
+      const requestedMicrosequence = findMicrosequence(
+        requestedProjectDocument,
+        requestedSelection.courseKey,
+        requestedSelection.moduleKey,
+        requestedSelection.lessonKey,
+        requestedSelection.microsequenceKey
+      );
+      const currentCard = findSelectedCard(requestedMicrosequence, requestedSelection);
+      const assistanceLedger = currentCardAssistanceLedger(
+        requestedSelection,
+        currentCard
+      );
       let persistenceGuard = null;
       if (!workspaceRef) {
         if (
@@ -2833,6 +2921,7 @@ export function createLessonEditorApp({
         request,
         assistConfig: requestedAssistConfig,
         provider: assistProvider,
+        assistanceLedger,
         checkCodexLocalHealth
       });
       if (submission.status === "provider-unready") {
@@ -2857,6 +2946,19 @@ export function createLessonEditorApp({
           submission.errorMessage || "Não foi possível produzir uma alteração válida.";
         return;
       }
+      if (submission.change.outcome === "no-op") {
+        if (submission.change.assistanceLedger) {
+          rememberCardAssistanceLedger(
+            ledgerKey,
+            submission.change.assistanceLedger
+          );
+        }
+        state.assistDraft.statusMessage = "";
+        state.assistDraft.promptText = "";
+        state.assistDraft.composerOpen = true;
+        queueAuthoringFocus("ai-prompt");
+        return;
+      }
       await assertCardAssistanceScopeCurrent({
         snapshot: submission.change.snapshot,
         projectDocument: state.project,
@@ -2872,24 +2974,20 @@ export function createLessonEditorApp({
         }],
         persistenceGuard
       });
-      const conversationKey = cardAssistanceConversationKey(requestedSelection);
-      const conversation = appendCardAssistanceConversationTurn(
-        state.assistDraft.conversationByReferenceKey.get(conversationKey),
-        requestedSelection,
-        {
-          request: request.promptText,
-          assistantResponse: submission.change.assistantMessage,
-          scope: request.repairScope,
-          targetIds: request.resourceTargetIds,
-          modelId: submission.modelId
-        }
-      );
-      state.assistDraft.conversationByReferenceKey.set(conversationKey, conversation);
+      if (submission.change.assistanceLedger) {
+        rememberCardAssistanceLedger(
+          ledgerKey,
+          submission.change.assistanceLedger
+        );
+      }
+      if (request.operation === "restore_version") {
+        state.assistDraft.statusMessage = submission.change.assistantMessage;
+      }
       const currentContext = getRenderContext();
       state.assistDraft.assistance = reconcileCardAssistanceUiState({
         ...createCardAssistanceUiState(state.selection),
-        wholeCardSelected: request.repairScope === "card",
-        repairScope: request.repairScope,
+        wholeCardSelected: request.scope === "card",
+        scope: request.scope,
         resourceTargetIds: request.resourceTargetIds
       }, {
         selection: state.selection,
@@ -3398,6 +3496,93 @@ export function createLessonEditorApp({
   function getCurrentCardOrderingResponse(card = getRenderContext().card) {
     const entry = getPackageResponseEntry(card, buildCardPathKey(state.selection));
     return entry?.instance?.package === "aralearn.response.ordering" ? [entry] : [];
+  }
+
+  async function navigateCardAssistanceHistory(direction) {
+    if (state.assistDraft.isSubmitting) return;
+    const context = getRenderContext();
+    if (!context.card || !context.microsequence) return;
+    const requestedSelection = { ...state.selection };
+    const ledgerKey = cardAssistanceLedgerKey(requestedSelection);
+    const ledger = currentCardAssistanceLedger(requestedSelection, context.card, {
+      create: false
+    });
+    if (!ledger) return;
+    const candidate = direction === "redo"
+      ? redoCardAssistanceLedger(ledger)
+      : undoCardAssistanceLedger(ledger);
+    if (!candidate.changed || !candidate.versionId) return;
+
+    state.assistDraft.isSubmitting = true;
+    state.assistDraft.errorMessage = "";
+    state.assistDraft.statusMessage = "";
+    render({ preserveState: true });
+    try {
+      const requestedProjectDocument = structuredClone(state.project);
+      const capabilities = assertCourseCapability(
+        "canEditCards",
+        requestedSelection.courseKey,
+        "A edição de cards não está disponível para este curso."
+      );
+      let persistenceGuard = null;
+      if (!capabilities.workspaceRef) {
+        if (
+          typeof storage.flush !== "function" ||
+          typeof storage.createLocalCourseDraftGuard !== "function"
+        ) {
+          throw new Error("Não foi possível salvar a alteração neste dispositivo.");
+        }
+        await storage.flush();
+        persistenceGuard = requireCardAssistancePersistenceGuard(
+          await storage.createLocalCourseDraftGuard(requestedSelection.courseKey),
+          requestedSelection.courseKey
+        );
+      }
+      const submission = await executeCardAssistance({
+        projectDocument: requestedProjectDocument,
+        selection: requestedSelection,
+        request: {
+          operation: "restore_version",
+          scope: "card",
+          resourceTargetIds: [],
+          versionId: candidate.versionId
+        },
+        assistanceLedger: ledger
+      });
+      if (submission.status !== "success" || !submission.change) {
+        throw new Error(submission.errorMessage || "Não foi possível restaurar essa versão.");
+      }
+      if (submission.change.outcome === "no-op") return;
+      await assertCardAssistanceScopeCurrent({
+        snapshot: submission.change.snapshot,
+        projectDocument: state.project,
+        selection: requestedSelection
+      });
+      await commitCardAssistanceEntries({
+        requestedProjectDocument,
+        requestedSelection,
+        entries: [{
+          selection: requestedSelection,
+          snapshot: submission.change.snapshot,
+          changeSet: submission.change.changeSet
+        }],
+        persistenceGuard
+      });
+      rememberCardAssistanceLedger(
+        ledgerKey,
+        submission.change.assistanceLedger
+      );
+      state.assistDraft.statusMessage = submission.change.assistantMessage;
+      state.assistDraft.composerOpen = true;
+      queueAuthoringFocus("ai-prompt");
+    } catch (error) {
+      state.assistDraft.errorMessage = error instanceof Error
+        ? error.message
+        : "Não foi possível restaurar essa versão.";
+    } finally {
+      state.assistDraft.isSubmitting = false;
+      render({ preserveState: true });
+    }
   }
 
   function getCurrentCardMatchingResponse(card = getRenderContext().card) {
@@ -4967,31 +5152,37 @@ export function createLessonEditorApp({
             : [],
           manualCardEditDraft: state.assistDraft.manualDraft,
           cardAssistanceComposerOpen: state.assistDraft.composerOpen,
-          cardAssistanceConversation: rendersCardAssistance
-            ? normalizeCardAssistanceConversation(
-                state.assistDraft.conversationByReferenceKey.get(
-                  cardAssistanceConversationKey(state.selection)
-                ),
-                state.selection
-              ).turns
+          cardAssistanceHistory: rendersCardAssistance
+            ? cardAssistanceLedgerContext(
+                currentCardAssistanceLedger(state.selection, context.card)
+              )
             : [],
           cardAssistanceRequestReady,
-          assistPromptLabel: "O que precisa ser reparado?",
-          assistSubmitLabel: "Enviar reparo",
-          assistPromptPlaceholder: "Descreva com precisão o problema e o resultado esperado.",
+          assistPromptLabel: "O que você quer mudar?",
+          assistSubmitLabel: "Enviar mensagem",
+          assistPromptPlaceholder: "Descreva a mudança desejada ou peça para voltar a uma versão anterior.",
           promptText: state.assistDraft.promptText,
           assistErrorMessage: state.assistDraft.errorMessage || state.assistDraft.syncError,
+          assistStatusMessage: state.assistDraft.statusMessage,
           manualCardEditError: state.assistDraft.manualEditError,
           hasCardComment: Boolean(
             activeTrailPersonalStorage()?.loadCommentForPath?.(state.selection)
           ),
           cardMarkedForReview: currentCardIsMarkedForReview(),
-          canUndoCardEdit: Boolean(
-            !workspaceCourseRef(state.selection.courseKey) &&
-            state.assistDraft.localState.undo?.kind === "microsequence" &&
-            state.assistDraft.localState.undo.courseKey === state.selection.courseKey &&
-            state.assistDraft.localState.undo.microsequenceKey === state.selection.microsequenceKey
-          ),
+          canUndoCardEdit: state.entityModes.card === "ai"
+            ? cardAssistanceLedgerNavigation(
+                currentCardAssistanceLedger(state.selection, context.card, { create: false })
+              ).canUndo
+            : Boolean(
+                !workspaceCourseRef(state.selection.courseKey) &&
+                state.assistDraft.localState.undo?.kind === "microsequence" &&
+                state.assistDraft.localState.undo.courseKey === state.selection.courseKey &&
+                state.assistDraft.localState.undo.microsequenceKey === state.selection.microsequenceKey
+              ),
+          canRedoCardEdit: state.entityModes.card === "ai" &&
+            cardAssistanceLedgerNavigation(
+              currentCardAssistanceLedger(state.selection, context.card, { create: false })
+            ).canRedo,
           isSubmitting: state.assistDraft.isSubmitting,
           hasApiKey: Boolean(state.assistConfig.apiKey || state.assistConfig.providerSecret),
           packageCardOptions: currentPackageCardOptions,
@@ -6008,7 +6199,11 @@ export function createLessonEditorApp({
       cancelManualCardEdit();
     });
     root.querySelector("[data-action='undo-card-edit']")?.addEventListener("click", () => {
-      void undoCardEdit();
+      if (state.entityModes.card === "ai") void navigateCardAssistanceHistory("undo");
+      else void undoCardEdit();
+    });
+    root.querySelector("[data-action='redo-card-edit']")?.addEventListener("click", () => {
+      void navigateCardAssistanceHistory("redo");
     });
     root.querySelector("[data-action='provider-config-close']")?.addEventListener("click", () => closeProviderConfig());
     root.querySelector("[data-action='provider-config-check-codex']")?.addEventListener("click", () => {

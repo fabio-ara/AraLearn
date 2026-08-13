@@ -17,6 +17,16 @@ const OUTPUT = path.join(ROOT, "docs", "downloads", "authoring");
 const CHATGPT_INSTRUCTIONS_MAX_CHARACTERS = 7_600;
 const forbiddenStaticAuthoring =
   /aralearn-authoring-api|X-AraLearn-API-Key|\barl_(?:\.{3}|[A-Za-z0-9_-]{4,})|ARALEARN_AUTHORING_(?:INTEGRATION|RECEIPT)_SECRET|authoring_api_(?:clients|keys)/iu;
+const obsoleteResourceDiscovery =
+  /consultar(?:Packages|Recursos)DeCard|\/v1\/packages|cards? v4|estrutura v4|workspace v4|sem `?packageId`?[^\n.]*listar? (?:todos os )?manifests/iu;
+const progressiveResourceOperations = [
+  "explore",
+  "search",
+  "inspect",
+  "contracts",
+  "validate_card",
+  "audit_representation"
+];
 
 function assertKnowledgeHasNoWrappedProse(content, fileName) {
   let inFence = false;
@@ -106,28 +116,67 @@ function dereferenceLocalSchema(document, schema, activeReferences = new Set()) 
 }
 
 function assertAllLocalReferencesResolve(document) {
-  const visit = (value) => {
+  const visit = (value, activeReferences = new Set()) => {
     if (Array.isArray(value)) {
-      value.forEach(visit);
+      value.forEach((item) => visit(item, activeReferences));
       return;
     }
     if (!value || typeof value !== "object") return;
     if (typeof value.$ref === "string") {
-      resolveLocalReference(document, value.$ref);
+      assert.deepEqual(
+        Object.keys(value),
+        ["$ref"],
+        `${value.$ref} não deve ocultar irmãos no contrato da Action.`
+      );
+      assert.equal(
+        activeReferences.has(value.$ref),
+        false,
+        `Referência circular inesperada: ${value.$ref}.`
+      );
+      const nextReferences = new Set(activeReferences);
+      nextReferences.add(value.$ref);
+      visit(resolveLocalReference(document, value.$ref), nextReferences);
+      return;
     }
-    Object.values(value).forEach(visit);
+    Object.values(value).forEach((child) => visit(child, activeReferences));
   };
   visit(document);
 }
 
-function assertActionInputObjectSchemasDeclareProperties(value, path = []) {
+function assertActionInputObjectSchemasDeclareProperties(
+  document,
+  value,
+  path = [],
+  activeReferences = new Set()
+) {
   if (Array.isArray(value)) {
     value.forEach((item, index) =>
-      assertActionInputObjectSchemasDeclareProperties(item, [...path, index])
+      assertActionInputObjectSchemasDeclareProperties(
+        document,
+        item,
+        [...path, index],
+        activeReferences
+      )
     );
     return;
   }
   if (!value || typeof value !== "object") return;
+  if (typeof value.$ref === "string") {
+    assert.equal(
+      activeReferences.has(value.$ref),
+      false,
+      `Referência circular inesperada em ${path.join(".")}: ${value.$ref}.`
+    );
+    const nextReferences = new Set(activeReferences);
+    nextReferences.add(value.$ref);
+    assertActionInputObjectSchemasDeclareProperties(
+      document,
+      resolveLocalReference(document, value.$ref),
+      [...path, "$ref"],
+      nextReferences
+    );
+    return;
+  }
   const declaresObject = value.type === "object"
     || (Array.isArray(value.type) && value.type.includes("object"));
   if (declaresObject && value.additionalProperties !== true) {
@@ -139,7 +188,12 @@ function assertActionInputObjectSchemasDeclareProperties(value, path = []) {
     );
   }
   Object.entries(value).forEach(([key, child]) =>
-    assertActionInputObjectSchemasDeclareProperties(child, [...path, key])
+    assertActionInputObjectSchemasDeclareProperties(
+      document,
+      child,
+      [...path, key],
+      activeReferences
+    )
   );
 }
 
@@ -235,6 +289,28 @@ for (const archive of manifest.archives) {
       forbiddenStaticAuthoring,
       `${archive.file}!${expectedFile.path} conserva a API estática de autoria.`
     );
+    assert.doesNotMatch(
+      extractedContent.toString("utf8"),
+      obsoleteResourceDiscovery,
+      `${archive.file}!${expectedFile.path} conserva a descoberta antiga de resources.`
+    );
+  }
+  if (archive.platform) {
+    const platformInstructions = [...extracted.entries()]
+      .filter(([filePath]) => filePath.startsWith(
+        `aralearn-authoring/platforms/${archive.platform}/`
+      ) && /\.(?:json|md|txt)$/u.test(filePath))
+      .map(([, content]) => content.toString("utf8"))
+      .join("\n");
+    assert.match(platformInstructions, /consultarBibliotecaDeResources/u);
+    for (const operation of progressiveResourceOperations) {
+      assert.ok(
+        platformInstructions.includes(operation),
+        `${archive.file} não instrui a operação ${operation}.`
+      );
+    }
+    assert.match(platformInstructions, /preview_card/u);
+    assert.match(platformInstructions, /substitute/u);
   }
   if (archive.file === "aralearn-authoring-chatgpt.zip") {
     const setup = extracted.get("aralearn-authoring/platforms/chatgpt/SETUP.md")?.toString("utf8");
@@ -335,7 +411,17 @@ for (const obsoleteRule of [
   assert.doesNotMatch(coreKnowledge, obsoleteRule);
 }
 assert.match(coreKnowledge, /workspace-mutation\.schema\.json/u);
-assert.match(resourceKnowledge, /consultarRecursosDeCard/u);
+assert.match(resourceKnowledge, /consultarBibliotecaDeResources/u);
+for (const operation of progressiveResourceOperations) {
+  assert.ok(prompt.includes(operation), `Prompt sem operação ${operation}.`);
+  assert.ok(resourceKnowledge.includes(operation), `Conhecimento sem operação ${operation}.`);
+}
+assert.match(prompt, /chatDisclosure/u);
+assert.match(prompt, /rendered: false/u);
+assert.match(resourceKnowledge, /chatDisclosure/u);
+assert.match(resourceKnowledge, /rendered: false/u);
+assert.doesNotMatch(prompt, obsoleteResourceDiscovery);
+assert.doesNotMatch(knowledge, obsoleteResourceDiscovery);
 assert.match(resourceKnowledge, /aralearn\.resource\.paragraph/u);
 assert.match(resourceKnowledge, /targetInstanceId/u);
 assert.match(resourceKnowledge, /targetPath/u);
@@ -365,6 +451,17 @@ const actionSource = await readFile(
 );
 const actionSchema = parseYaml(actionSource);
 assert.equal(actionSchema.openapi, "3.1.0");
+assert.equal(actionSchema.info.version, "5.0.0");
+assert.equal(Object.hasOwn(actionSchema.paths, "/v1/packages"), false);
+const resourceLibraryInput = actionSchema.components.schemas
+  .InputConsultarBibliotecaDeResources;
+assert.ok(resourceLibraryInput);
+assert.deepEqual(
+  resourceLibraryInput.properties.operation.enum,
+  [...progressiveResourceOperations, "preview_card"]
+);
+assert.equal(resourceLibraryInput.properties.packages.maxItems, 8);
+assert.equal(Object.hasOwn(resourceLibraryInput.properties.packages.items.properties.packageId, "enum"), false);
 assert.equal(
   actionSchema.components.schemas != null
     && typeof actionSchema.components.schemas === "object",
@@ -376,10 +473,42 @@ assert.equal(
   false,
   "components.schemas deve ser um objeto."
 );
+const representationSelectionReference =
+  "#/components/schemas/RepresentationSelection";
+const representationSelectionComponent = actionSchema.components.schemas
+  .RepresentationSelection;
+assert.equal(representationSelectionComponent.type, "object");
+const continuityActionInput = actionSchema.components.schemas
+  .InputGerirContinuidadeDaAutoria;
+assert.deepEqual(
+  continuityActionInput.properties.representationSelection,
+  { $ref: representationSelectionReference }
+);
+assert.deepEqual(
+  continuityActionInput.properties.decisions.items.properties
+    .representationSelection,
+  { $ref: representationSelectionReference }
+);
+const continuityDefinition = AUTHORING_WORKSPACE_MCP_TOOLS.find(
+  ({ name }) => name === "gerirContinuidadeDaAutoria"
+);
+assert.ok(continuityDefinition);
+assert.deepEqual(
+  dereferenceLocalSchema(
+    actionSchema,
+    continuityActionInput.properties.representationSelection
+  ),
+  continuityDefinition.inputSchema.properties.representationSelection,
+  "O componente RepresentationSelection divergiu do contrato MCP canônico."
+);
 assertAllLocalReferencesResolve(actionSchema);
 for (const [name, schema] of Object.entries(actionSchema.components.schemas)) {
   if (name.startsWith("Input")) {
-    assertActionInputObjectSchemasDeclareProperties(schema, ["components", "schemas", name]);
+    assertActionInputObjectSchemasDeclareProperties(
+      actionSchema,
+      schema,
+      ["components", "schemas", name]
+    );
   }
 }
 assert.deepEqual(

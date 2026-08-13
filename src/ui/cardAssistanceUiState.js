@@ -1,5 +1,5 @@
 import {
-  CARD_REPAIR_SCOPES,
+  CARD_ASSISTANCE_SCOPES,
   listCardResourceTargets
 } from "../assist/cardAssistanceScope.js";
 
@@ -21,8 +21,8 @@ export function createCardAssistanceUiState(selection = {}) {
   const cardKey = text(selection.cardKey);
   return {
     referenceKey: referenceKey(selection),
-    operation: "repair",
-    repairScope: "resources",
+    operation: "edit_text",
+    scope: "resources",
     wholeCardSelected: false,
     resourceTargetIds: [],
     selectedCardKeys: cardKey ? [cardKey] : []
@@ -42,7 +42,7 @@ export function reconcileCardAssistanceUiState(
   }
   const cardKey = text(card?.id || selection.cardKey);
   const wholeCardSelected = value.wholeCardSelected === true;
-  const repairScope = wholeCardSelected ? "card" : "resources";
+  const scope = wholeCardSelected ? "card" : "resources";
   const availableTargetIds = new Set(
     listCardResourceTargets(card).map((target) => target.targetId)
   );
@@ -55,24 +55,24 @@ export function reconcileCardAssistanceUiState(
     : [];
   return {
     referenceKey: key,
-    operation: "repair",
-    repairScope,
+    operation: "edit_text",
+    scope,
     wholeCardSelected,
     resourceTargetIds,
     selectedCardKeys: cardKey ? [cardKey] : []
   };
 }
 
-export function selectCardRepairScope(
+export function selectCardAssistanceScope(
   value = {},
   context = {},
-  repairScope = "card"
+  scope = "card"
 ) {
   const normalized = reconcileCardAssistanceUiState(value, context);
-  const nextScope = CARD_REPAIR_SCOPES.includes(repairScope) ? repairScope : "card";
+  const nextScope = CARD_ASSISTANCE_SCOPES.includes(scope) ? scope : "card";
   return {
     ...normalized,
-    repairScope: nextScope,
+    scope: nextScope,
     wholeCardSelected: nextScope === "card",
     resourceTargetIds: nextScope === "resources"
       ? normalized.resourceTargetIds
@@ -85,7 +85,7 @@ export function toggleCardAssistanceResource(
   context = {},
   targetId = ""
 ) {
-  const normalized = selectCardRepairScope(value, context, "resources");
+  const normalized = selectCardAssistanceScope(value, context, "resources");
   const available = listCardResourceTargets(context.card).map((target) => target.targetId);
   const requested = text(targetId);
   if (!available.includes(requested)) return normalized;
@@ -95,7 +95,7 @@ export function toggleCardAssistanceResource(
   return {
     ...normalized,
     wholeCardSelected: false,
-    repairScope: "resources",
+    scope: "resources",
     resourceTargetIds: available.filter((id) => selected.has(id))
   };
 }
@@ -106,7 +106,7 @@ export function toggleCardAssistanceWholeCard(value = {}, context = {}) {
   return {
     ...normalized,
     wholeCardSelected,
-    repairScope: wholeCardSelected ? "card" : "resources",
+    scope: wholeCardSelected ? "card" : "resources",
     resourceTargetIds: []
   };
 }

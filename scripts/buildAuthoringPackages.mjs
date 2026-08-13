@@ -2,7 +2,11 @@ import { createHash } from "node:crypto";
 import { mkdir, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { Document as YamlDocument } from "yaml";
+import {
+  CST as YamlCst,
+  Document as YamlDocument,
+  Parser as YamlParser
+} from "yaml";
 import { AUTHORING_WORKSPACE_MCP_TOOLS } from "../supabase/functions/_shared/aralearn-authoring/workspaceMcpTools.js";
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
@@ -51,7 +55,7 @@ const CHATGPT_KNOWLEDGE_VARIANTS = Object.freeze({
   }),
   resources: Object.freeze({
     title: "Conhecimento didático dos resources do AraLearn",
-    introduction: "Critérios pedagógicos para escolher e combinar resources. Use consultarRecursosDeCard antes do primeiro uso de cada resource para obter o contrato exato e um exemplo válido.",
+    introduction: "Critérios pedagógicos para escolher e combinar resources. Na única consultarBibliotecaDeResources, percorra explore, search, inspect e contracts; valide e audite cada card antes de salvá-lo.",
     sources: CHATGPT_RESOURCE_KNOWLEDGE_SOURCES,
     schemas: [],
     docs: ["recursos-de-card.md"]
@@ -63,6 +67,9 @@ const PLATFORMS = ["chatgpt", "gemini", "microsoft-365", "claude", "generic"];
 const FIXED_DOS_TIME = 0;
 const FIXED_DOS_DATE = 33;
 const UTF8_FLAG = 0x0800;
+const REPRESENTATION_SELECTION_COMPONENT_NAME = "RepresentationSelection";
+const REPRESENTATION_SELECTION_COMPONENT_REFERENCE =
+  `#/components/schemas/${REPRESENTATION_SELECTION_COMPONENT_NAME}`;
 
 
 const CRC32_TABLE = (() => {
@@ -212,6 +219,74 @@ async function buildChatGptKnowledge(variantName) {
   }
 
   return Buffer.from(`${sections.join("\n")}\n`, "utf8");
+}
+
+function replaceSharedSchemaWithReference(value, sharedSchema, reference) {
+  let replacements = 0;
+
+  const visit = (current) => {
+    if (Array.isArray(current)) {
+      current.forEach((child, index) => {
+        if (child === sharedSchema) {
+          current[index] = { $ref: reference };
+          replacements += 1;
+        } else {
+          visit(child);
+        }
+      });
+      return;
+    }
+    if (!current || typeof current !== "object") return;
+    for (const [key, child] of Object.entries(current)) {
+      if (child === sharedSchema) {
+        current[key] = { $ref: reference };
+        replacements += 1;
+      } else {
+        visit(child);
+      }
+    }
+  };
+
+  visit(value);
+  return replacements;
+}
+
+function extractRepresentationSelectionComponent(inputSchemas) {
+  const continuityInput = inputSchemas.InputGerirContinuidadeDaAutoria;
+  const componentSchema = continuityInput?.properties?.representationSelection;
+  if (!componentSchema || typeof componentSchema !== "object") {
+    throw new Error("O input de continuidade não expõe representationSelection.");
+  }
+  const replacements = replaceSharedSchemaWithReference(
+    inputSchemas,
+    componentSchema,
+    REPRESENTATION_SELECTION_COMPONENT_REFERENCE
+  );
+  if (replacements < 2) {
+    throw new Error(
+      "representationSelection deixou de compartilhar o contrato canônico esperado."
+    );
+  }
+  return componentSchema;
+}
+
+function compactYamlFlowCollectionSpacing(source) {
+  const documents = [...new YamlParser().parse(source)];
+  const visit = (value) => {
+    if (Array.isArray(value)) {
+      for (let index = value.length - 1; index > 0; index -= 1) {
+        if (value[index]?.type === "space" && value[index - 1]?.type === "comma") {
+          value.splice(index, 1);
+        }
+      }
+      value.forEach(visit);
+      return;
+    }
+    if (!value || typeof value !== "object") return;
+    Object.values(value).forEach(visit);
+  };
+  documents.forEach(visit);
+  return documents.map((document) => YamlCst.stringify(document)).join("");
 }
 
 function buildChatGptActionOpenApi() {
@@ -400,6 +475,8 @@ function buildChatGptActionOpenApi() {
       structuredClone(definition.inputSchema)
     ])
   );
+  const representationSelectionSchema =
+    extractRepresentationSelectionComponent(inputSchemas);
   const paths = Object.fromEntries(
     AUTHORING_WORKSPACE_MCP_TOOLS.map((definition) => [
       `/${definition.name}`,
@@ -448,7 +525,7 @@ function buildChatGptActionOpenApi() {
     openapi: "3.1.0",
     info: {
       title: "AraLearn — autoria de cursos",
-      version: "4.0.0",
+      version: "5.0.0",
       description: "Opera cursos AraLearn atomicamente."
     },
     servers: [{
@@ -459,6 +536,7 @@ function buildChatGptActionOpenApi() {
       schemas: {
         AraLearnActionSuccess: responseSchema,
         AraLearnActionError: errorSchema,
+        [REPRESENTATION_SELECTION_COMPONENT_NAME]: representationSelectionSchema,
         ...inputSchemas
       },
       responses: errorResponses,
@@ -489,11 +567,12 @@ function buildChatGptActionOpenApi() {
   for (const schemaName of Object.keys(document.components.schemas)) {
     yamlDocument.getIn(["components", "schemas", schemaName], true).flow = true;
   }
-  return Buffer.from(yamlDocument.toString({
+  const serialized = yamlDocument.toString({
     lineWidth: 0,
     indent: 1,
     flowCollectionPadding: false
-  }), "utf8");
+  });
+  return Buffer.from(compactYamlFlowCollectionSpacing(serialized), "utf8");
 }
 
 function createStoredZip(entries) {

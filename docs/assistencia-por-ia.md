@@ -27,13 +27,13 @@ assistência bottom-up.
 
 Visualização, edição manual e assistência por API usam a mesma árvore e o
 mesmo card renderizado. Ao ativar a edição, o conteúdo selecionável recebe
-apenas uma indicação visual de foco; os resources não mudam de tamanho nem são
-copiados para outro painel.
+apenas uma indicação visual de foco; as instâncias de packages não mudam de
+tamanho nem são copiadas para outro painel.
 
 O esqueleto, a largura, a altura, a tipografia e os espaçamentos do alvo são
 os mesmos nos três modos. Na edição, o texto digitável ocupa a caixa original
 e rola dentro dela se ultrapassar o espaço disponível. Salvar e cancelar ficam
-no rodapé da tela, nunca dentro do card ou do resource selecionado.
+no rodapé da tela, nunca dentro do card ou da instância selecionada.
 
 O modo Editar conserva o renderer canônico de cada package: muda apenas a
 editabilidade do texto que possui caminho inequívoco no contrato. Identidades,
@@ -45,15 +45,16 @@ Em escolhas, podem ser alterados o texto, o código e o feedback de cada opção
 mas não a opção correta, o modo de seleção nem a identidade ou a ordem. Uma
 lacuna liga-se por caminho formal a um campo textual do package de conteúdo;
 a edição não muda por acidente sua resposta, seus distratores ou seu modo.
-Packages no slot `feedback` usam a mesma superfície textual. Campos longos respeitam a caixa do resource em tela
-estreita e a composição do teclado móvel antes de serem salvos.
+Packages no slot `feedback` usam a mesma superfície textual. Campos longos
+respeitam a caixa da representação em tela estreita e a composição do teclado
+móvel antes de serem salvos.
 
-Na edição manual, o texto autorizado torna-se editável no próprio resource. Na
-assistência por API, um toque ou clique seleciona um alvo e outro toque o
-retira da seleção. O botão de brilhos abre a caixa do pedido na própria
-superfície; configuração do serviço e envio aparecem somente nesse momento.
-Fechar a caixa não perde a seleção corrente. A caixa flutua acima do rodapé e
-não reduz nem desloca o card, os resources ou a lista estrutural.
+Na edição manual, o texto autorizado torna-se editável na própria instância.
+Na assistência por API, um toque ou clique seleciona um alvo e outro toque o
+retira da seleção. O botão de brilhos abre a conversa na própria superfície;
+configuração do serviço e envio aparecem somente nesse momento. Fechar a caixa
+não perde a seleção corrente. A caixa flutua acima do rodapé e não reduz nem
+desloca o card, suas representações ou a lista estrutural.
 
 Em lições e microssequências, o próprio card HTML é a superfície de seleção:
 toques sucessivos acumulam alvos, e a seleção permanece ao atualizar a tela.
@@ -64,13 +65,49 @@ pode escolher uma operação dentro desse limite, mas nunca ampliar o escopo.
 Conteúdo não selecionado pode ajudar a interpretar o pedido, sempre como
 contexto somente leitura.
 
-Na escolha da operação, o provider recebe somente o pedido, a autoridade
-calculada e a lista fechada de operações; conteúdo pedagógico, guides e cards
-não participam dessa classificação. `unsupported` é uma resposta válida quando
-o pedido não cabe na seleção, para que uma criação fora de escopo nunca seja
-reinterpretada como atualização. Remover ou mover exige que o pedido se refira
-explicitamente ao card ou à microssequência: “remova a redundância do card” é
-reparo de conteúdo, não exclusão do card.
+No card, a operação pertence a uma lista fechada:
+
+- `edit_text` altera somente caminhos textuais autorizados nas instâncias
+  selecionadas ou no card inteiro. O modelo devolve pares de caminho e valor;
+  o AraLearn reconstrói o card e rejeita qualquer mudança estrutural;
+- `recompose_card` exige o card inteiro e pode trocar sua composição. O catálogo
+  propõe alternativas com uma ou mais instâncias em `content`, uma resposta
+  compatível quando o papel é prática e os feedbacks pertinentes. O modelo
+  escolhe uma alternativa e preenche somente seus contratos exatos;
+- `restore_version` restaura localmente uma versão exata da conversa, sem pedir
+  ao modelo que tente reproduzi-la.
+
+Selecionar somente instâncias autoriza apenas `edit_text`. Ao selecionar o
+card inteiro, o pedido determina se basta alterar textos ou se é necessário
+recompor sua representação. Identidade e posição do card permanecem fixas nas
+três operações.
+
+Na classificação das demais operações bottom-up, o provider recebe somente o
+pedido, a autoridade calculada e a lista fechada de operações; conteúdo
+pedagógico, guides e cards não participam dessa classificação. `unsupported` é
+uma resposta válida quando o pedido não cabe na seleção, para que uma criação
+fora de escopo nunca seja reinterpretada como atualização. Remover ou mover
+exige que o pedido se refira explicitamente ao card ou à microssequência:
+“remova a redundância do card” é edição de conteúdo, não exclusão do card.
+
+### Conversa e versões do card
+
+A assistência de card é uma conversa iterativa. Cada novo pedido recebe o
+estado corrente do card, o contexto didático delimitado e até oito turnos da
+conversa ativa. Isso permite pedir uma mudança, avaliar o resultado, refiná-lo,
+desfazê-lo, refazê-lo ou retornar a uma versão anterior sem reexplicar tudo.
+
+O histórico volátil conserva no máximo oito turnos e nove versões exatas do
+card. Um envio que conclua que nada deve mudar ainda registra a explicação do
+assistente como `no-op`, sem fabricar uma versão ou indicar que houve aplicação.
+Falhas de transporte ou validação não viram turnos. Uma edição feita depois de
+desfazer abre um novo ramo ativo e elimina o refazer daquele ramo abandonado.
+
+Pedidos, respostas e versões da conversa não são gravados no curso, no
+IndexedDB nem no Supabase. Uma mudança do mesmo card fora da conversa invalida
+o histórico, em vez de restaurar silenciosamente um estado sobre conteúdo mais
+novo. Esse histórico curto é uma ferramenta de iteração local, não o
+versionamento de proveniência do curso.
 
 ## Escopos autorizados
 
@@ -83,15 +120,15 @@ identificadores de alvo são fechados:
 - `response:<id>` para a instância de resposta;
 - `feedback:<id>` para uma instância de explicação posterior.
 
-Selecionar o card inteiro autoriza reparar seu conteúdo pedagógico. Identidade,
-caminho e posição permanecem fixos. O nível de card não cria outro card nem
-uma microssequência.
+Selecionar o card inteiro autoriza editar seus textos ou recompor seu conteúdo
+pedagógico. Identidade, caminho e posição permanecem fixos. O nível de card não
+cria outro card nem uma microssequência.
 
 ### Microssequência
 
-Ao selecionar alguns cards, somente esses cards podem ser reparados, removidos
+Ao selecionar alguns cards, somente esses cards podem ser atualizados, removidos
 ou reordenados. Os demais ajudam a preservar progressão e coerência, mas não
-podem ser alterados. Um reparo que precise gerar novamente vários cards alcança
+podem ser alterados. Uma atualização que precise gerar novamente vários cards alcança
 no máximo oito por envio.
 
 Selecionar todos os cards concede também autoridade sobre o recipiente da
@@ -140,13 +177,21 @@ as próprias barreiras obrigatórias excederem o limite seguro, o pedido é
 recusado antes de chamar o serviço. Os demais campos extensos podem ser
 truncados, com marcação explícita no contexto.
 
-No reparo de resource, o valor selecionado aparece uma única vez, em
-`writableTargets`. A cópia do card em `readOnlyContext` conserva os resources
-não selecionados e marca o alvo gravável como omitido; essa separação ocorre
-antes de qualquer truncamento. Ao criar cards dentro da única microssequência
-selecionada no nível de lição, um índice compacto readonly informa `index`,
-identidade, posição, título e representação dos cards existentes, para que o
-modelo escolha uma fronteira de inserção sem ganhar escrita sobre eles.
+Em `edit_text`, cada valor selecionado aparece uma única vez em
+`writableTargets`, associado ao caminho textual que pode ser alterado. A cópia
+do card em `readOnlyContext` conserva as instâncias não selecionadas e marca o
+alvo gravável como omitido; essa separação ocorre antes de qualquer
+truncamento. A conversa ativa entra separadamente e nunca transforma contexto
+anterior em autoridade de escrita.
+
+Em `recompose_card`, o contexto residente orienta primeiro a busca no catálogo.
+O modelo recebe uma lista curta de composições válidas, e somente depois da
+escolha recebe finalidade, limitações, regras e exemplo dos contratos exatos.
+Isso permite combinar packages sem despejar o catálogo inteiro no prompt. Ao
+criar cards dentro da única microssequência selecionada no nível de lição, um
+índice compacto somente leitura informa `index`, identidade, posição, título e
+representação dos cards existentes, para que o modelo escolha uma fronteira de
+inserção sem ganhar escrita sobre eles.
 
 Não existe uma configuração separada de “Contexto didático”. O AraLearn monta
 esse contexto automaticamente a partir do alvo, da hierarquia, dos guias e dos
@@ -154,28 +199,28 @@ vizinhos pertinentes. A pessoa escolhe apenas o provider, o modelo e a chave.
 
 ## Envio, validação e gravação
 
-O botão de envio executa uma única intenção. O AraLearn:
+Cada envio executa um turno e uma única intenção. O AraLearn:
 
 1. congela a seleção, o conteúdo e a revisão lidos;
 2. monta o contexto delimitado;
-3. solicita uma saída estruturada ao serviço configurado;
-4. converte a resposta para o contrato canônico e a valida localmente quanto a
-   schema, semântica, referências e limites do escopo;
-5. confirma toda a mudança em uma única transação com compare-and-swap;
-6. mostra imediatamente o conteúdo resultante.
+3. em `recompose_card`, consulta o catálogo, seleciona uma composição e carrega
+   somente os contratos necessários;
+4. solicita uma saída estruturada ao serviço configurado;
+5. converte a resposta para o contrato canônico e a valida localmente quanto a
+   schema, semântica, referências, compatibilidade e limites do escopo;
+6. confirma toda a mudança em uma única transação com compare-and-swap;
+7. mostra imediatamente o conteúdo e a explicação resultantes.
 
 A validação e a gravação atômica são garantias internas, não etapas adicionais
 impostas à pessoa. Uma resposta inválida ou uma revisão desatualizada não
 produz alteração parcial.
 
-Somente a última mudança concluída conserva um **Desfazer** local. Ele guarda
-uma inversa estrutural compacta apenas dos campos, itens e ordem alterados,
-nunca uma cópia da lição ou do curso, e não é enviado ao Supabase. Uma nova
-mudança o substitui; uma escrita real posterior ou uma atualização remota do
-mesmo curso o invalida quando já não representa o estado corrente. A fila de
-sincronização não é apagada. A inversa também preserva entidades remotas novas,
-como defesa adicional contra concorrência. Não se cria um histórico de cópias
-do curso.
+Na conversa de card, **Desfazer**, **Refazer** e a restauração de uma versão
+movem o cursor entre snapshots exatos do próprio card. `edit_text` registra um
+patch compacto de caminhos; `recompose_card` registra a transição entre duas
+composições completas. O limite curto impede que isso se transforme em cópias
+do curso. A fila de sincronização não é apagada, e uma escrita concorrente
+invalida a conversa quando seu estado de base já não é o atual.
 
 O conteúdo é salvo primeiro neste dispositivo e a atualização remota é
 tentada em seguida. Se ela precisar ser adiada, o AraLearn mantém os caminhos
@@ -193,20 +238,28 @@ resposta final válida, portanto uma repetição do serviço não duplica a escr
 
 O AraLearn verifica, entre outros pontos:
 
-- campos obrigatórios e combinações de `resource`, `kind` e `exercise`;
+- o envelope de card com `role`, `content`, `response` e `feedback`;
+- cada instância `{ id, package, version, data }` segundo o schema da versão
+  exata e o slot que ela pode ocupar;
 - identidades, posições, dependências e referências internas;
 - `answerIds`, opções e regras de lacunas;
-- dados necessários a resources visuais;
+- `responseCompatibility` e os `practiceTargets` que autorizam a prática no
+  campo representado;
+- integridade estrutural e dados necessários às representações visuais;
 - origem de referências declaradas;
 - termos excluídos ou desaconselhados pelos guias;
 - ausência de alterações fora da seleção;
 - ausência de novas pistas indevidas para respostas.
 
-Em reparo de resources, um problema semântico preexistente fora do alvo não
-impede uma correção pontual, mas nenhum achado novo ou agravado é aceito. Em
-reparo de card inteiro e nas criações autorizadas pela microssequência ou pela
-lição, o resultado precisa passar integralmente pela validação aplicável.
-Essas verificações não comprovam verdade factual nem suficiência pedagógica; a
+Em `edit_text`, um problema semântico preexistente fora do alvo não impede uma
+correção pontual, mas nenhum achado novo ou agravado é aceito. Em
+`recompose_card` e nas criações autorizadas pela microssequência ou pela lição,
+o resultado precisa passar integralmente pela validação aplicável. A auditoria
+distingue a adequação do conteúdo à intenção, a capacidade da resposta de
+exercitar o gesto cognitivo e a legibilidade do feedback. Em lacunas e
+digitação, uma prática estruturalmente válida ainda é recusada quando sua
+resposta não atua sobre um `practiceTarget` declarado pelo package. Essas
+verificações não comprovam verdade factual nem suficiência pedagógica; a
 responsabilidade autoral permanece humana.
 
 ## Permissões
@@ -302,8 +355,9 @@ defina também `DEEPSEEK_SMOKE_SCENARIO`. Os identificadores aceitos são:
 `create_one_microsequence_in_empty_lesson`.
 
 O modelo padrão é `deepseek-v4-flash`; `DEEPSEEK_MODEL` aceita também
-`deepseek-v4-pro`. A bateria usa somente fixtures sintéticas e cobre um
-resource, vários resources, card inteiro, dois cards com aplicação atômica,
+`deepseek-v4-pro`. A bateria usa somente fixtures sintéticas e cobre uma
+instância de package, várias instâncias, card inteiro, dois cards com aplicação
+atômica,
 criação de card na única microssequência selecionada pela lição e criação de
 microssequência em lição vazia.
 Os cenários incluem sentinelas e instruções não confiáveis no contexto somente

@@ -18,6 +18,7 @@ const FIXTURES = [
   "tests/fixtures/course-catalog/organizacao-arquitetura-computadores-seed-course.json",
   "tests/fixtures/course-catalog/logica-programacao-seed-course.json",
   "tests/fixtures/course-catalog/framework-ia-generativa-seed-course.json",
+  "supabase/fixtures/catalog/aralearn-catalogo-recursos-course.json",
   "supabase/fixtures/catalog/microsoft-azure-ai-fundamentals-ai900-seed-course.json",
   "supabase/fixtures/catalog/fundamentos-ia-analise-dados-seed-course.json",
   "supabase/fixtures/catalog/dataprev-analista-processamento-seed-course.json"

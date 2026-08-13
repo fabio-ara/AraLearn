@@ -40,6 +40,7 @@ async function listJavaScriptFiles(relativeRoot) {
 
 const files = [
   ...fixedFiles,
+  ...(await listJavaScriptFiles("src/resources/catalog")),
   ...(await listJavaScriptFiles("src/resources/kernel")),
   ...(await listJavaScriptFiles("src/resources/sdk")),
   ...(await listJavaScriptFiles("src/resources/packages"))

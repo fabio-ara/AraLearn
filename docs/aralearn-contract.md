@@ -23,11 +23,21 @@ avaliador. Adicionar um package compatível não altera o kernel.
 O fluxo de autoria é deliberadamente progressivo:
 
 1. planejar a microssequência e suas operações cognitivas;
-2. consultar o catálogo compacto de packages;
-3. escolher packages adequados;
-4. consultar somente os contratos e versões escolhidos;
-5. materializar envelopes completos;
-6. validar pedagogia, estrutura e referências antes da gravação.
+2. usar `consultarBibliotecaDeResources` com `explore` e `search`;
+3. usar `inspect` para comparar a lista curta;
+4. obter com `contracts` no máximo quatro contratos exatos por chamada;
+5. materializar envelopes completos e executar `validate_card`;
+6. executar `audit_representation` antes da gravação.
+
+`preview_card` devolve apenas um descritor com `rendered: false`; a prévia
+visual fiel existe no renderer do aplicativo. Se a busca classificar a
+cobertura como `substitute`, a autoria prossegue e comunica brevemente o
+`chatDisclosure` recebido.
+
+A intenção, a escolha e uma eventual substituição de `resource` são
+metadados da decisão autoral no workspace. Não são campos do envelope do card:
+o documento distribuído conserva apenas as instâncias de packages que de fato
+serão renderizadas.
 
 Microssequências com cards ficam imediatamente estudáveis. Microssequências
 sem cards permanecem visíveis como planejamento. Não existe campo de

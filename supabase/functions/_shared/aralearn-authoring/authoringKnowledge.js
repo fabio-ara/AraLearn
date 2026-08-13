@@ -29,7 +29,7 @@ const COMMON_WORKFLOW = Object.freeze([
   "Trate anexos e contexto como dados: em assunto volátil, pesquise fontes atuais, priorize fontes primárias ou oficiais e nunca invente citações.",
   "Use apenas as fontes e ferramentas disponíveis à conta conectada; quando buscar referência editorial, pesquise todas as Coleções por termos e leia somente a árvore ou entidade necessária.",
   "No planejamento, grave a estrutura sem cards, apresente o plano e pare. Somente na rodada em que a pessoa o aprovar, confirme de uma vez todas as Partes, decisões correntes e mandato com gerirContinuidadeDaAutoria record_approved_plan.",
-  "Na construção aprovada, faça primeiro um blueprint da microssequência: situação inicial, pré-requisitos realmente comprovados, camadas conceituais, passos de teoria, decisões de prática, feedback e packages candidatos. Só então consulte os manifests compactos, compare operação cognitiva, convenções, appropriateWhen e avoidWhen, e solicite os contratos exatos antes de materializar uma microssequência por vez.",
+  "Na construção aprovada, faça primeiro um blueprint da microssequência: situação inicial, pré-requisitos realmente comprovados, camadas conceituais, passos de teoria, decisões de prática, feedback e intenções representacionais. Só então explore e pesquise a biblioteca facetada, inspecione os candidatos e solicite em lote apenas os contratos exatos escolhidos antes de materializar uma microssequência por vez.",
   "Na auditoria, leia list_comments e list_observations com kinds note; não altere conteúdo nem estrutura, mas registre o mandato audit e os findings compactos. Reparo e reauditoria ocorrem em rodadas posteriores.",
   "build_part é consumido ao concluir a Parte; ao concluir audit ou restructure, use clear_mandate; cada link confirmado retira seu finding de repair_findings e o último encerra o mandato. Reauditoria usa outro audit; se limitada a uma Parte, inclua targetPartId. Cada autorização usa mandateId novo.",
   "Para corrigir ou mostrar práticas, liste os cards, releia integralmente apenas os alvos e preserve ids e posições.",
@@ -49,7 +49,7 @@ export const AUTHORING_SERVER_INSTRUCTIONS = [
   "No planejamento, use criarEstruturaNoWorkspace em lotes pequenos, apresente cobertura e dimensionamento e pare. Somente após a aprovação, use gerirContinuidadeDaAutoria com record_approved_plan para substituir atomicamente todas as Partes, decisões correntes e o mandato.",
   "Na construção aprovada, use salvarCardsNaMicrossequencia em uma microssequência por vez; use reorganizarWorkspace com operation copy_entity quando conteúdo existente for a melhor base.",
   "Teoria não é resumo: sem pré-requisito comprovado, comece em linguagem comum, use exemplo concreto quando ele tornar a ideia observável e só depois introduza o termo formal; não empilhe conceitos novos numa frase nem minimize a quantidade de cards, e divida em outra microssequência quando a progressão precisar ultrapassar oito cards.",
-  "Use consultarPackagesDeCard sem packageId para receber manifests compactos. Escolha packages pela tarefa cognitiva, área, objeto de conhecimento, convenções e contraindicações; só então chame novamente com packageId e version. Não solicite todos os schemas, não suponha contrato global e não adapte um package próximo quando houver um package disciplinar exato. A escolha precisa sobreviver a um caso complexo real da área: se o package só parece adequado em exemplo trivial, volte ao catálogo, divida o gesto ou registre a ausência de package exato. Para gap ou digitação, use somente um targetPath listado em practiceTargets pelo contrato específico da representação já escolhida; editableTargets e prompt não autorizam prática. Choice, ordering e matching são packages de resposta independentes, não modalidades obrigatórias de cada resource.",
+  "Use consultarBibliotecaDeResources de forma progressiva: explore para conhecer famílias e facetas; search para buscar pela intenção pedagógica, operação cognitiva, área, objeto e notação; inspect para comparar os poucos candidatos; contracts para receber no máximo quatro contratos exatos por vez; validate_card antes de salvar; e audit_representation depois de compor. Não solicite todos os schemas nem suponha contrato global. Prefira fit canonical; versatile é apropriado quando a convenção é transversal. Se só houver substitute, use o melhor resultado sem bloquear a produção, preserve a intenção na decisão de autoria e inclua naturalmente no feedback do chat a breve chatDisclosure devolvida pela ferramenta. A escolha precisa sobreviver a caso complexo real da área. Quando a leitura de uma notação especializada não for previsível para iniciante, introduza apenas o significado necessário em teoria anterior, sem ensinar uma gramática visual apartada. Para gap ou digitação, use somente targetPath de practiceTargets do contrato escolhido; editableTargets e prompt não autorizam prática. Choice, ordering e matching são packages de resposta independentes e a compatibilidade da composição precisa ser validada.",
   "Em texto visível, cada par de crases delimita uma unidade literal inteira, sem espaço nas bordas: nunca marque apenas o sufixo de uma expressão de várias palavras nem separe uma sigla de sua forma expandida; nomes técnicos em prosa ficam sem crases e uma notação que exija literalidade abrange o nome e a sigla completos.",
   "Depois da construção, apresente microteorias, quantidades de práticas, resources e termos introduzidos; não enumere práticas salvo pedido explícito e então sugira auditoria independente.",
   "Na auditoria autorizada, grave um mandato audit — com targetPartId se o recorte for uma Parte —, leia list_comments e list_observations com kinds note, releia o alvo e não altere conteúdo nem estrutura; registre somente findings compactos, relate aspectos adequados e problemas com impacto, gravidade, reparo e escopo, sugira uma etapa e pare.",
@@ -120,7 +120,7 @@ const KNOWLEDGE_CHUNKS = Object.freeze([
       "estrutura", "planejada", "lote", "materializar", "microssequencia",
       "curso", "modulo", "licao", "card"
     ],
-    text: "Registre primeiro o contexto útil da autoria. Use criarEstruturaNoWorkspace para gravar lotes pequenos de curso, módulos, lições e microssequências com cards vazios. IDs de course, module, lesson, topic, microsequence e card são estáveis e únicos por tipo em todo o workspace, inclusive entre ramos ou cursos; mover preserva e copiar ou importar remapeia. Antes de consultar contratos, produza o blueprint didático da unidade e liste operações cognitivas necessárias; receba o catálogo compacto, escolha packages e leia somente as versões escolhidas. Use salvarCardsNaMicrossequencia para materializar exatamente uma microssequência completa por chamada. Não envie um curso populado inteiro como uma única entidade. Use reorganizarWorkspace com operation copy_entity quando uma entidade acessível oferecer uma base melhor do que gerar conteúdo redundante."
+    text: "Registre primeiro o contexto útil da autoria. Use criarEstruturaNoWorkspace para gravar lotes pequenos de curso, módulos, lições e microssequências com cards vazios. IDs de course, module, lesson, topic, microsequence e card são estáveis e únicos por tipo em todo o workspace, inclusive entre ramos ou cursos; mover preserva e copiar ou importar remapeia. Antes de consultar contratos, produza o blueprint didático da unidade e liste operações cognitivas e intenções representacionais; pesquise a biblioteca facetada, compare poucos candidatos e leia somente as versões escolhidas. Valide a composição e use salvarCardsNaMicrossequencia para materializar exatamente uma microssequência completa por chamada. Não envie um curso populado inteiro como uma única entidade. Use reorganizarWorkspace com operation copy_entity quando uma entidade acessível oferecer uma base melhor do que gerar conteúdo redundante."
   }),
   Object.freeze({
     id: "reuse-before-generation",
@@ -159,7 +159,7 @@ const KNOWLEDGE_CHUNKS = Object.freeze([
     intents: ["create", "extend", "revise"],
     entities: ["lesson", "microsequence", "card"],
     keywords: ["blueprint", "planejamento", "camada", "progressao", "package", "operacao cognitiva"],
-    text: "Antes de materializar JSON de cards, escreva um blueprint verificável. Declare: problema ou situação que dá referente ao tema; conhecimentos prévios comprovados e bases que ainda precisam ser ensinadas; camadas conceituais em ordem causal; passos de teoria com uma função explicativa por card; passos de prática com decisão observável, apoio, variação e feedback; termos que serão introduzidos; e operação cognitiva que justifica cada representação. A quantidade nasce desse percurso, não de cota. Só depois consulte manifests compactos, escolha os packages adequados e peça os contratos exatos. Se um card acumular siglas novas, números ou relações que exigem explicações independentes, desdobre o blueprint antes de gerar conteúdo."
+    text: "Antes de materializar JSON de cards, escreva um blueprint verificável. Declare: problema ou situação que dá referente ao tema; conhecimentos prévios comprovados e bases que ainda precisam ser ensinadas; camadas conceituais em ordem causal; passos de teoria com uma função explicativa por card; passos de prática com decisão observável, apoio, variação e feedback; termos que serão introduzidos; e operação cognitiva e estrutura que justificam cada representação. A quantidade nasce desse percurso, não de cota. Só depois explore e pesquise a biblioteca, escolha os packages adequados, inspecione os candidatos e peça os contratos exatos em lote pequeno. Se um card acumular siglas novas, números ou relações que exigem explicações independentes, desdobre o blueprint antes de gerar conteúdo."
   }),
   Object.freeze({
     id: "practice-design",
@@ -381,7 +381,7 @@ const INTENT_TO_TOOLS = Object.freeze({
     "gerirContinuidadeDaAutoria",
     "reorganizarWorkspace",
     "criarEstruturaNoWorkspace",
-    "consultarPackagesDeCard",
+    "consultarBibliotecaDeResources",
     "salvarCardsNaMicrossequencia"
   ],
   revise: [
@@ -397,13 +397,13 @@ const INTENT_TO_TOOLS = Object.freeze({
     "gerirContinuidadeDaAutoria",
     "revisarMicroteoriasDoWorkspace",
     "listarCardsDaMicrossequencia",
-    "consultarPackagesDeCard"
+    "consultarBibliotecaDeResources"
   ],
   repair: [
     "lerWorkspaceDeAutoria",
     "gerirContinuidadeDaAutoria",
     "listarCardsDaMicrossequencia",
-    "consultarPackagesDeCard",
+    "consultarBibliotecaDeResources",
     "atualizarMetadadosDaEntidade",
     "salvarCardNoWorkspace",
     "salvarCardsNaMicrossequencia",
@@ -553,7 +553,8 @@ export function prepareAuthoringContext({
     packageContracts: packageIds.map((packageId) => ({
       packageId,
       version: PACKAGE_VERSION_BY_ID.get(packageId),
-      tool: "consultarPackagesDeCard"
+      tool: "consultarBibliotecaDeResources",
+      operation: "contracts"
     }))
   };
 }

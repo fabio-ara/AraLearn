@@ -1001,7 +1001,7 @@ function resultEnvelope({ operation, projectDocument, targetIds = [], createdIds
   };
 }
 
-async function executeCardRepair({
+async function executeCardTextEdit({
   scope,
   projectDocument,
   prompt,
@@ -1016,14 +1016,14 @@ async function executeCardRepair({
   assertBottomUpAssistanceOperationAuthorized(scope, { operation });
   const request = operation === BOTTOM_UP_ASSISTANCE_OPERATIONS.REPLACE_RESOURCES
     ? {
-        operation: "repair",
-        repairScope: "resources",
+        operation: "edit_text",
+        scope: "resources",
         resourceTargetIds: clone(scope.writeScope.selectedIds),
         promptText: prompt
       }
     : {
-        operation: "repair",
-        repairScope: "card",
+        operation: "edit_text",
+        scope: "card",
         resourceTargetIds: [],
         promptText: prompt
       };
@@ -1072,8 +1072,8 @@ async function executeCardUpdates({
       projectDocument,
       selection,
       request: {
-        operation: "repair",
-        repairScope: "card",
+        operation: "edit_text",
+        scope: "card",
         resourceTargetIds: [],
         promptText: prompt
       },
@@ -2065,7 +2065,7 @@ export async function executeBottomUpAssistance({
     BOTTOM_UP_ASSISTANCE_OPERATIONS.REPLACE_RESOURCES,
     BOTTOM_UP_ASSISTANCE_OPERATIONS.REPLACE_CARD
   ].includes(operation)) {
-    return executeCardRepair({
+    return executeCardTextEdit({
       scope,
       projectDocument,
       prompt: normalizedPrompt,

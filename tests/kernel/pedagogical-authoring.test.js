@@ -164,15 +164,30 @@ test("MCP expõe blueprint, catálogo compacto e somente contrato versionado esc
   assert.deepEqual(context.packageContracts, [{
     packageId: "aralearn.resource.graph",
     version: "1.0.0",
-    tool: "consultarPackagesDeCard"
+    tool: "consultarBibliotecaDeResources",
+    operation: "contracts"
   }]);
   const names = AUTHORING_WORKSPACE_MCP_TOOLS.map(({ name }) => name);
-  assert.ok(names.includes("consultarPackagesDeCard"));
-  assert.equal(names.includes("consultarRecursosDeCard"), false);
-  assert.equal(mapAuthoringMcpToolCall("consultarPackagesDeCard", {}).path, "/v1/packages");
+  assert.ok(names.includes("consultarBibliotecaDeResources"));
+  assert.deepEqual(
+    mapAuthoringMcpToolCall("consultarBibliotecaDeResources", {
+      operation: "contracts",
+      packages: [{ packageId: "aralearn.resource.graph", version: "1.0.0" }]
+    }),
+    {
+      kind: "resource-library",
+      body: {
+        operation: "contracts",
+        packages: [{ packageId: "aralearn.resource.graph", version: "1.0.0" }]
+      },
+      requestId: null
+    }
+  );
   assert.throws(
-    () => mapAuthoringMcpToolCall("consultarPackagesDeCard", { packageId: "aralearn.resource.graph" }),
-    /packageId e version/iu
+    () => mapAuthoringMcpToolCall("consultarBibliotecaDeResources", {
+      operation: "contracts"
+    }),
+    /packages/iu
   );
 });
 

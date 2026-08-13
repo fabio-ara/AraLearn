@@ -22,11 +22,7 @@ export function routeRequest(method, pathname) {
   const path = normalizeAuthoringPath(pathname);
   const workspace = workspaceRoute(verb, path);
   if (workspace) return workspace;
-  if (verb === "GET" && path === "/v1/packages") {
-    return { name: "listPackages" };
-  }
-  let match = path.match(/^\/v1\/packages\/(aralearn\.(?:resource|response)\.[a-z0-9._-]+)$/u);
-  if (match && verb === "GET") return { name: "getPackage", packageId: match[1] };
+  let match;
   if (verb === "GET" && path === "/v1/library/courses") {
     return { name: "listPersonalLibraryCourses" };
   }

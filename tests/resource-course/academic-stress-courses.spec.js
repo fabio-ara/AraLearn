@@ -3,9 +3,20 @@ import { expect, test } from "@playwright/test";
 async function openCard(page, { moduleIndex, microsequenceIndex, cardIndex = 0 }) {
   await page.locator('[data-action="open-course"]').click();
   await page.locator('[data-action="open-module"]').nth(moduleIndex).click();
-  await page.locator('[data-action="open-lesson"]').click();
-  await page.locator('[data-action="open-microsequence-overview"]').nth(microsequenceIndex).click();
-  await page.locator(`[data-action="open-microsequence-card"][data-card-index="${cardIndex}"]`).click();
+
+  if (await page.locator(".runtime-card-title").isVisible()) {
+    if (microsequenceIndex === 0 && cardIndex === 0) return;
+    await page.locator('[data-action="go-back"]').first().click();
+  }
+
+  const lesson = page.locator('[data-action="open-lesson"]').first();
+  if (await lesson.isVisible()) await lesson.click();
+  await page.locator('[data-action="open-microsequence-overview"]')
+    .nth(microsequenceIndex)
+    .click();
+  await page.locator(
+    `[data-action="open-microsequence-card"][data-card-index="${cardIndex}"]`
+  ).first().click();
 }
 
 test.beforeEach(async ({ page }) => {

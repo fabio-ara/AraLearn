@@ -10,17 +10,38 @@ import { resolveCardAssistanceLaunchConfig } from "./cardAssistanceLaunchConfig.
 import { resolveCardAssistanceProviderReadiness } from "./cardAssistanceConfig.js";
 import {
   applyCardAssistanceChangeSet,
+  applyCardAssistanceTextEdits,
   buildCardAssistanceScopeSnapshot,
   CardAssistanceScopeError,
-  listCardAssistanceTextPaths,
-  projectCardAssistanceTextChange,
+  listCardAssistanceTextEntries,
+  listCardResourceTargets,
   resolveCardAssistanceContext
 } from "../../assist/cardAssistanceScope.js";
+import {
+  CARD_ASSISTANCE_OPERATIONS,
+  normalizeCardAssistanceOperation
+} from "../../assist/cardAssistanceOperations.js";
+import {
+  cardAssistanceCandidatePrompt,
+  queryCardAssistanceCatalog
+} from "../../assist/cardAssistanceCatalog.js";
 import {
   cardAssistanceSemanticFindingKey,
   validateCardAssistanceSemantics
 } from "../validation/cardAssistanceSemantics.js";
-import { RESOURCE_PACKAGE_REGISTRY } from "../../resources/packages/index.js";
+import {
+  buildCardAssistanceAuthoringCardSchema,
+  compileAndValidateAuthoringCard
+} from "../engine/cardAuthoringSchema.js";
+import { RESOURCE_CATALOG } from "../../resources/catalog/resourceCatalog.js";
+import {
+  appendCardAssistanceLedgerTurn,
+  assertCardAssistanceLedgerCurrent,
+  cardAssistanceLedgerContext,
+  createCardAssistanceLedger,
+  readCardAssistanceLedgerVersion,
+  restoreCardAssistanceLedgerVersion
+} from "../../assist/cardAssistanceLedger.js";
 
 const MAX_USER_REQUEST_CHARACTERS = 12000;
 const MAX_PROVIDER_PROMPT_CHARACTERS = 64000;
@@ -230,7 +251,7 @@ export function buildCardAssistanceContextPacket(
   projectDocument = {},
   selection = {},
   {
-    operation = "repair",
+    operation = CARD_ASSISTANCE_OPERATIONS.EDIT_TEXT,
     didacticProfileId = "",
     didacticPolicy = {},
     resourceTargetIds = []
@@ -278,7 +299,10 @@ export function buildCardAssistanceContextPacket(
     },
     cards: {
       previous: boundedValue(context.previousCard, 3500),
-      current: boundedValue(readOnlyCurrentCard, operation === "repair" ? 14000 : 8000),
+      current: boundedValue(
+        readOnlyCurrentCard,
+        operation === CARD_ASSISTANCE_OPERATIONS.EDIT_TEXT ? 14000 : 8000
+      ),
       next: boundedValue(context.nextCard, 3500)
     },
     indexes: {
@@ -372,7 +396,7 @@ function assertCardAssistanceSemantics(card, contextPacket) {
   return card;
 }
 
-function assertResourceRepairSemantics(beforeCard, afterCard, contextPacket) {
+function assertResourceEditSemantics(beforeCard, afterCard, contextPacket) {
   const before = validateCardAssistanceSemantics(beforeCard, contextPacket);
   const after = validateCardAssistanceSemantics(afterCard, contextPacket);
   const remainingBaseline = new Map();
@@ -390,86 +414,61 @@ function assertResourceRepairSemantics(beforeCard, afterCard, contextPacket) {
   if (regressions.length) {
     throw new CardAssistanceScopeError(
       regressions[0].message
-        || "O reparo introduziu uma nova violação semântica no resource selecionado.",
+        || "A edição introduziu uma nova violação semântica no resource selecionado.",
       "INVALID_CARD_ASSISTANCE_RESULT"
     );
   }
   return afterCard;
 }
 
-function exactPackageInstanceSchema(instance) {
+function compactConversationTurns(value) {
+  const turns = (Array.isArray(value) ? value : []).slice(-8).map((turn) => ({
+    operation: text(turn?.operation) || CARD_ASSISTANCE_OPERATIONS.EDIT_TEXT,
+    userRequest: boundedText(turn?.userRequest ?? turn?.request, 1800),
+    assistantResponse: boundedText(turn?.assistantResponse, 1800),
+    appliedTo: Array.isArray(turn?.appliedTo)
+      ? turn.appliedTo.map((item) => boundedText(item, 300)).filter(Boolean).slice(0, 24)
+      : turn?.scope === "card" ? ["card"] : (turn?.targetIds || []).slice(0, 24)
+  })).filter(({ userRequest, assistantResponse }) => userRequest && assistantResponse);
+  while (JSON.stringify(turns).length > 8000 && turns.length > 1) turns.shift();
+  return turns;
+}
+
+function textualPatchSchema(entries) {
+  const paths = entries.map(({ path }) => path);
   return {
     type: "object",
     additionalProperties: false,
-    required: ["id", "package", "version", "data"],
+    required: ["message", "edits"],
     properties: {
-      id: { const: instance.id },
-      package: { const: instance.package },
-      version: { const: instance.version },
-      data: RESOURCE_PACKAGE_REGISTRY.getAuthoringContract(
-        instance.package,
-        instance.version
-      ).schema
-    }
-  };
-}
-
-function exactPackageInstanceListSchema(instances) {
-  const list = Array.isArray(instances) ? instances : [];
-  return {
-    type: "array",
-    minItems: list.length,
-    maxItems: list.length,
-    items: list.length === 1
-      ? exactPackageInstanceSchema(list[0])
-      : { anyOf: list.map(exactPackageInstanceSchema) }
-  };
-}
-
-function packageCardRepairSchema(card) {
-  return {
-    type: "object",
-    additionalProperties: false,
-    required: ["message", "card"],
-    properties: {
-      message: {
-        type: "string",
-        minLength: 1,
-        maxLength: 800
-      },
-      card: {
-        type: "object",
-        additionalProperties: false,
-        required: [
-          "id",
-          "position",
-          "title",
-          "role",
-          "content",
-          "response",
-          "feedback",
-          "topics",
-          "sources"
-        ],
-        properties: {
-          id: { const: card.id },
-          position: { const: card.position },
-          title: { type: "string", minLength: 1 },
-          role: { const: card.role },
-          content: exactPackageInstanceListSchema(card.content),
-          response: card.response
-            ? exactPackageInstanceSchema(card.response)
-            : { type: "null" },
-          feedback: exactPackageInstanceListSchema(card.feedback),
-          topics: { const: card.topics },
-          sources: { const: card.sources }
+      message: { type: "string", minLength: 1, maxLength: 800 },
+      edits: {
+        type: "array",
+        minItems: 0,
+        maxItems: Math.min(paths.length, 64),
+        items: {
+          type: "object",
+          additionalProperties: false,
+          required: ["path", "value"],
+          properties: {
+            path: { type: "string", enum: paths },
+            value: { type: "string", maxLength: 24000 }
+          }
         }
       }
     }
   };
 }
 
-async function generatePackageCardRepair({
+function assistantMessage(value, fallback) {
+  const message = text(value?.message);
+  if (!message) {
+    throw new CardAssistanceScopeError(fallback, "INVALID_CARD_ASSISTANCE_RESULT");
+  }
+  return message;
+}
+
+async function generateTextEdit({
   provider,
   modelId,
   contextPacket,
@@ -479,53 +478,282 @@ async function generatePackageCardRepair({
   conversationTurns,
   onProgress
 }) {
-  const repairScope = snapshot.target.repairScope;
+  const scope = snapshot.target.scope;
   const targets = snapshot.target.resources || [];
+  const writableText = listCardAssistanceTextEntries(context.card, { scope, targets });
+  if (!writableText.length) {
+    throw new CardAssistanceScopeError(
+      "O alvo selecionado não expõe folhas textuais editáveis.",
+      "INVALID_CARD_ASSISTANCE_REQUEST"
+    );
+  }
+  const currentValues = new Map(writableText.map(({ path, value }) => [path, value]));
   return callStructuredWithValidation({
     provider,
     modelId,
     buildRequest: (feedback) => ({
-      phase: "package_card_assistance_repair",
-      system: "Repare somente as folhas textuais autorizadas do card. Preserve identidades, packages, versões, estrutura e respostas formais. Considere priorRepairConversation como continuidade já aplicada e trate userRequest como a instrução mais recente; o currentCard é sempre o estado vigente. Em message, responda brevemente ao usuário, dizendo o que foi ajustado sem alegar mudanças que não estejam no card devolvido. Responda somente no schema.",
+      phase: "card_assistance_text_edit",
+      system: "Edite apenas as folhas textuais autorizadas. Devolva somente os caminhos cujo valor deve ser substituído; nunca devolva o card inteiro. Preserve estrutura, IDs, packages, versões, campos formais e tudo que não estiver em writableText. O estado atual já incorpora as iterações anteriores. Em message, descreva brevemente apenas o que o patch realmente faz. Responda somente no schema.",
       prompt: serializeAssistanceEnvelope({
-        contract: "aralearn.package-card-assistance.v1",
+        contract: "aralearn.card-assistance-edit-text.v2",
         userRequest: normalizedUserRequest(userRequest),
-        repairScope,
-        selectedPackageTargets: targets.map(({ targetId }) => targetId),
-        priorRepairConversation: Array.isArray(conversationTurns) ? conversationTurns : [],
-        writableTextPaths: listCardAssistanceTextPaths(context.card, {
-          repairScope,
-          targets
-        }),
-        currentCard: context.card,
+        scope,
+        selectedTargets: targets.map(({ targetId, resourceType }) => ({ targetId, resourceType })),
+        priorConversation: compactConversationTurns(conversationTurns),
+        writableText,
         readOnlyContext: contextPacket,
         validationFeedback: feedback.slice(-1)
       }),
-      schemaName: "aralearn_package_card_repair_v1",
-      schema: packageCardRepairSchema(context.card),
+      schemaName: "aralearn_card_assistance_text_patch_v2",
+      schema: textualPatchSchema(writableText),
       temperature: feedback.length ? 0 : 0.1,
-      maxTokens: 5200
+      maxTokens: 3000
     }),
     validate: (value) => {
-      assertPlainObject(value?.card, "O reparo não devolveu o card.");
-      const assistantMessage = text(value?.message);
-      if (!assistantMessage) {
+      const message = assistantMessage(
+        value,
+        "A edição textual não explicou brevemente o resultado."
+      );
+      if (!Array.isArray(value?.edits)) {
         throw new CardAssistanceScopeError(
-          "O reparo não explicou brevemente o resultado.",
+          "A edição textual não devolveu um patch.",
           "INVALID_CARD_ASSISTANCE_RESULT"
         );
       }
+      const card = applyCardAssistanceTextEdits(context.card, value.edits, {
+        scope,
+        targets
+      });
       return {
-        assistantMessage,
-        card: projectCardAssistanceTextChange(context.card, value.card, {
-          repairScope,
-          targets
-        })
+        assistantMessage: message,
+        card,
+        edits: value.edits.filter(({ path, value: nextValue }) => (
+          currentValues.has(path) && !Object.is(currentValues.get(path), nextValue)
+        ))
       };
     },
     onProgress,
     reconstructionBudget: { remaining: 1 }
   });
+}
+
+function candidateSelectionSchema(candidates) {
+  return {
+    type: "object",
+    additionalProperties: false,
+    required: ["candidateId"],
+    properties: {
+      candidateId: { type: "string", enum: candidates.map(({ id }) => id) }
+    }
+  };
+}
+
+async function selectRecompositionCandidate({
+  provider,
+  modelId,
+  candidates,
+  userRequest,
+  contextPacket,
+  conversationTurns,
+  onProgress
+}) {
+  if (candidates.length === 1) return candidates[0];
+  const selected = await callStructuredWithValidation({
+    provider,
+    modelId,
+    buildRequest: (feedback) => ({
+      phase: "card_assistance_representation",
+      system: "Escolha a composição de packages que melhor materializa a intenção pedagógica. Use somente um candidateId fornecido. Responda somente no schema.",
+      prompt: serializeAssistanceEnvelope({
+        contract: "aralearn.card-assistance-recomposition-choice.v1",
+        userRequest: normalizedUserRequest(userRequest),
+        currentCard: contextPacket.cards.current,
+        didacticContext: contextPacket.hierarchy,
+        priorConversation: compactConversationTurns(conversationTurns),
+        candidates: candidates.map(({ id, label, description, composition }) => ({
+          id,
+          label,
+          description,
+          composition
+        })),
+        validationFeedback: feedback.slice(-1)
+      }),
+      schemaName: "aralearn_card_assistance_recomposition_choice_v1",
+      schema: candidateSelectionSchema(candidates),
+      temperature: 0,
+      maxTokens: 300
+    }),
+    validate: (value) => {
+      const candidate = candidates.find(({ id }) => id === text(value?.candidateId));
+      if (!candidate) {
+        throw new CardAssistanceScopeError(
+          "O modelo escolheu uma composição fora do recorte do catálogo.",
+          "INVALID_CARD_ASSISTANCE_RESULT"
+        );
+      }
+      return candidate;
+    },
+    onProgress,
+    reconstructionBudget: { remaining: 1 }
+  });
+  return selected;
+}
+
+function recompositionResultSchema(plan) {
+  return {
+    type: "object",
+    additionalProperties: false,
+    required: ["message", "card"],
+    properties: {
+      message: { type: "string", minLength: 1, maxLength: 800 },
+      card: buildCardAssistanceAuthoringCardSchema(plan)
+    }
+  };
+}
+
+function cardComposition(card) {
+  const specs = (items) => (Array.isArray(items) ? items : []).map((instance) => ({
+    package: instance?.package,
+    version: instance?.version
+  }));
+  return {
+    role: card?.role,
+    content: specs(card?.content),
+    response: card?.response
+      ? { package: card.response.package, version: card.response.version }
+      : null,
+    feedback: specs(card?.feedback)
+  };
+}
+
+function assertCardMatchesRecompositionPlan(card, plan) {
+  const expected = {
+    role: plan.role,
+    content: plan.content,
+    response: plan.response,
+    feedback: plan.feedback
+  };
+  if (JSON.stringify(cardComposition(card)) !== JSON.stringify(expected)) {
+    throw new CardAssistanceScopeError(
+      "O card devolvido não corresponde à composição escolhida no catálogo.",
+      "INVALID_CARD_ASSISTANCE_RESULT"
+    );
+  }
+  const expectedIds = [
+    ...plan.content.map((_spec, index) => `${plan.id}-content-${index + 1}`),
+    ...(plan.response ? [`${plan.id}-response-1`] : []),
+    ...plan.feedback.map((_spec, index) => `${plan.id}-feedback-${index + 1}`)
+  ];
+  const actualIds = [
+    ...(card.content || []).map(({ id }) => id),
+    ...(card.response ? [card.response.id] : []),
+    ...(card.feedback || []).map(({ id }) => id)
+  ];
+  if (JSON.stringify(expectedIds) !== JSON.stringify(actualIds)) {
+    throw new CardAssistanceScopeError(
+      "O card devolvido não preservou as identidades determinísticas da composição.",
+      "INVALID_CARD_ASSISTANCE_RESULT"
+    );
+  }
+}
+
+async function generateRecomposedCard({
+  provider,
+  modelId,
+  catalog,
+  contextPacket,
+  userRequest,
+  context,
+  conversationTurns,
+  onProgress
+}) {
+  const priorConversation = compactConversationTurns(conversationTurns);
+  const candidates = await queryCardAssistanceCatalog(catalog, {
+    intent: normalizedUserRequest(userRequest),
+    currentCard: {
+      id: context.card.id,
+      title: boundedText(context.card.title, 300),
+      role: context.card.role,
+      content: (context.card.content || [])
+        .map(({ package: packageId, version }) => ({ package: packageId, version })),
+      response: context.card.response
+        ? { package: context.card.response.package, version: context.card.response.version }
+        : null,
+      feedback: (context.card.feedback || [])
+        .map(({ package: packageId, version }) => ({ package: packageId, version }))
+    },
+    didacticContext: contextPacket.hierarchy,
+    priorConversation
+  });
+  const candidate = await selectRecompositionCandidate({
+    provider,
+    modelId,
+    candidates,
+    userRequest,
+    contextPacket,
+    conversationTurns,
+    onProgress
+  });
+  const plan = {
+    id: context.card.id,
+    position: context.card.position,
+    ...candidate.composition
+  };
+  const result = await callStructuredWithValidation({
+    provider,
+    modelId,
+    buildRequest: (feedback) => ({
+      phase: "card_assistance_build",
+      system: "Recomponha o card inteiro com a composição já escolhida. Siga os contratos dos packages, preserve exatamente id e position exigidos pelo schema e produza conteúdo autocontido, didático e coerente com os cards vizinhos. Em message, explique brevemente a mudança estrutural; se selectedComposition.catalogDisclosure estiver preenchido, inclua essa ressalva de cobertura com naturalidade. Responda somente no schema.",
+      prompt: serializeAssistanceEnvelope({
+        contract: "aralearn.card-assistance-recompose-card.v1",
+        userRequest: normalizedUserRequest(userRequest),
+        selectedComposition: cardAssistanceCandidatePrompt(candidate),
+        priorConversation,
+        readOnlyContext: contextPacket,
+        validationFeedback: feedback.slice(-1)
+      }),
+      schemaName: "aralearn_card_assistance_recomposed_card_v1",
+      schema: recompositionResultSchema(plan),
+      temperature: feedback.length ? 0 : 0.1,
+      maxTokens: 5600
+    }),
+    validate: (value) => {
+      const message = assistantMessage(
+        value,
+        "A recomposição não explicou brevemente o resultado."
+      );
+      assertPlainObject(value?.card, "A recomposição não devolveu o card.");
+      let card;
+      try {
+        card = compileAndValidateAuthoringCard(value.card, "$.assistance.card");
+      } catch (error) {
+        throw new CardAssistanceScopeError(
+          error instanceof Error ? error.message : "A recomposição devolveu um card inválido.",
+          "INVALID_CARD_ASSISTANCE_RESULT"
+        );
+      }
+      if (card.id !== context.card.id || card.position !== context.card.position) {
+        throw new CardAssistanceScopeError(
+          "A recomposição tentou trocar a identidade ou a posição do card.",
+          "OUT_OF_SCOPE_CARD_ASSISTANCE_CHANGE"
+        );
+      }
+      assertCardMatchesRecompositionPlan(card, plan);
+      const disclosure = text(candidate.catalogDisclosure);
+      return {
+        assistantMessage: disclosure && !message.includes(disclosure)
+          ? `${message} ${disclosure}`
+          : message,
+        card,
+        candidateId: candidate.id,
+        catalogDisclosure: disclosure
+      };
+    },
+    onProgress,
+    reconstructionBudget: { remaining: 1 }
+  });
+  return result;
 }
 
 export async function generateCardAssistanceChangeSet({
@@ -536,11 +764,10 @@ export async function generateCardAssistanceChangeSet({
   modelId,
   didacticProfileId = "",
   didacticPolicy = {},
+  resourceCatalog = RESOURCE_CATALOG,
+  assistanceLedger = null,
   onProgress
 } = {}) {
-  if (typeof provider?.generateStructured !== "function") {
-    throw new Error("O provider selecionado não oferece saída estruturada.");
-  }
   const snapshot = await buildCardAssistanceScopeSnapshot(
     projectDocument,
     selection,
@@ -553,46 +780,133 @@ export async function generateCardAssistanceChangeSet({
       "INVALID_CARD_ASSISTANCE_REQUEST"
     );
   }
+  const operation = snapshot.target.operation;
+  const activeLedger = assistanceLedger
+    ? assertCardAssistanceLedgerCurrent(assistanceLedger, context.card, selection)
+    : null;
+  const conversationTurns = activeLedger
+    ? cardAssistanceLedgerContext(activeLedger)
+    : request.conversationTurns;
+  if (operation !== CARD_ASSISTANCE_OPERATIONS.RESTORE_VERSION &&
+      typeof provider?.generateStructured !== "function") {
+    throw new Error("O provider selecionado não oferece saída estruturada.");
+  }
+  const omittedTargets = operation === CARD_ASSISTANCE_OPERATIONS.EDIT_TEXT
+    ? snapshot.target.scope === "resources"
+      ? snapshot.target.resources.map((target) => target.targetId)
+      : listCardResourceTargets(context.card).map((target) => target.targetId)
+    : [];
   const contextPacket = buildCardAssistanceContextPacket(projectDocument, selection, {
-    operation: snapshot.target.operation,
+    operation,
     didacticProfileId,
     didacticPolicy,
-    resourceTargetIds: snapshot.target.repairScope === "resources"
-      ? snapshot.target.resources.map((target) => target.targetId)
-      : []
+    resourceTargetIds: omittedTargets
   });
   const beforeCard = context.card;
-  const repair = await generatePackageCardRepair({
-    provider,
-    modelId,
-    contextPacket,
-    userRequest: request.promptText,
-    context,
-    snapshot,
-    conversationTurns: request.conversationTurns,
-    onProgress
-  });
-  const card = repair.card;
-  const validatedCard = snapshot.target.repairScope === "resources"
-    ? assertResourceRepairSemantics(beforeCard, card, contextPacket)
-    : assertCardAssistanceSemantics(card, contextPacket);
+  let generated;
+  if (operation === CARD_ASSISTANCE_OPERATIONS.EDIT_TEXT) {
+    generated = await generateTextEdit({
+      provider,
+      modelId,
+      contextPacket,
+      userRequest: request.promptText,
+      context,
+      snapshot,
+      conversationTurns,
+      onProgress
+    });
+  } else if (operation === CARD_ASSISTANCE_OPERATIONS.RECOMPOSE_CARD) {
+    generated = await generateRecomposedCard({
+      provider,
+      modelId,
+      catalog: resourceCatalog,
+      contextPacket,
+      userRequest: request.promptText,
+      context,
+      conversationTurns,
+      onProgress
+    });
+  } else {
+    if (!activeLedger) {
+      throw new CardAssistanceScopeError(
+        "A restauração exige o histórico volátil desta conversa.",
+        "CARD_ASSISTANCE_VERSION_NOT_FOUND"
+      );
+    }
+    const exactVersion = readCardAssistanceLedgerVersion(
+      activeLedger,
+      snapshot.target.versionId
+    );
+    assertPlainObject(exactVersion.card, "A versão solicitada não contém um card.");
+    generated = {
+      assistantMessage: text(request.restoreMessage) || "Restaurei a versão selecionada do card.",
+      card: clone(exactVersion.card),
+      versionId: snapshot.target.versionId
+    };
+  }
+  const card = generated.card;
+  const validatedCard = operation === CARD_ASSISTANCE_OPERATIONS.RESTORE_VERSION
+    ? card
+    : operation === CARD_ASSISTANCE_OPERATIONS.EDIT_TEXT &&
+        snapshot.target.scope === "resources"
+      ? assertResourceEditSemantics(beforeCard, card, contextPacket)
+      : assertCardAssistanceSemantics(card, contextPacket);
   const changeSet = {
-    contract: "aralearn.card-assistance-change.v1",
-    operation: snapshot.target.operation,
-    card: validatedCard
+    contract: "aralearn.card-assistance-change.v2",
+    operation,
+    card: validatedCard,
+    ...(generated.edits ? { textPatch: generated.edits } : {}),
+    ...(generated.candidateId ? { candidateId: generated.candidateId } : {}),
+    ...(generated.catalogDisclosure ? { catalogDisclosure: generated.catalogDisclosure } : {}),
+    ...(generated.versionId ? { versionId: generated.versionId } : {})
   };
-  await applyCardAssistanceChangeSet({
+  const applied = await applyCardAssistanceChangeSet({
     projectDocument,
     selection,
     snapshot,
     changeSet
   });
+  const outcome = applied.changed ? "applied" : "no-op";
+  let nextLedger = activeLedger;
+  let ledgerTransition = null;
+  if (activeLedger) {
+    if (operation === CARD_ASSISTANCE_OPERATIONS.RESTORE_VERSION && outcome === "applied") {
+      ledgerTransition = restoreCardAssistanceLedgerVersion(
+        activeLedger,
+        snapshot.target.versionId
+      );
+      nextLedger = ledgerTransition.ledger;
+    } else if (operation !== CARD_ASSISTANCE_OPERATIONS.RESTORE_VERSION) {
+      ledgerTransition = appendCardAssistanceLedgerTurn(activeLedger, {
+        beforeCard,
+        afterCard: validatedCard,
+        operation,
+        request: request.promptText,
+        assistantResponse: generated.assistantMessage,
+        scope: snapshot.target.scope,
+        targetIds: (snapshot.target.resources || []).map(({ targetId }) => targetId),
+        modelId,
+        textPatch: generated.edits,
+        outcome
+      });
+      nextLedger = ledgerTransition.ledger;
+    }
+  }
   return {
-    contract: "aralearn.card-assistance-generated-change.v1",
+    contract: "aralearn.card-assistance-generated-change.v2",
     snapshot,
     changeSet,
-    assistantMessage: repair.assistantMessage,
-    diagnostics: { modelId, contextContract: contextPacket.contract }
+    assistantMessage: generated.assistantMessage,
+    outcome,
+    ...(nextLedger ? { assistanceLedger: nextLedger } : {}),
+    ...(ledgerTransition ? {
+        ledgerTransition: {
+          changed: ledgerTransition.changed ?? ledgerTransition.applied ?? false,
+          versionId: ledgerTransition.versionId || nextLedger.cursorVersionId,
+          supersededVersionIds: ledgerTransition.supersededVersionIds || []
+        }
+      } : {}),
+    diagnostics: { modelId, operation, contextContract: contextPacket.contract }
   };
 }
 
@@ -609,15 +923,54 @@ export async function executeCardAssistance({
   request = {},
   assistConfig = {},
   provider = null,
+  resourceCatalog = RESOURCE_CATALOG,
+  assistanceLedger = null,
   checkCodexLocalHealth,
   onProgress
 } = {}) {
+  const operation = normalizeCardAssistanceOperation(request.operation);
+  if (!operation) {
+    return {
+      status: "error",
+      errorMessage: "Escolha edit_text, recompose_card ou restore_version."
+    };
+  }
   const promptText = text(request.promptText);
-  if (!promptText) {
+  if (operation !== CARD_ASSISTANCE_OPERATIONS.RESTORE_VERSION && !promptText) {
     return {
       status: "error",
       errorMessage: "Descreva a alteração desejada."
     };
+  }
+  if (operation === CARD_ASSISTANCE_OPERATIONS.RESTORE_VERSION) {
+    try {
+      if (!assistanceLedger) {
+        throw new CardAssistanceScopeError(
+          "A restauração exige o histórico volátil desta conversa.",
+          "CARD_ASSISTANCE_VERSION_NOT_FOUND"
+        );
+      }
+      const change = await generateCardAssistanceChangeSet({
+        projectDocument,
+        selection,
+        request: { ...request, promptText: "" },
+        provider: null,
+        modelId: "deterministic-restore",
+        resourceCatalog,
+        assistanceLedger,
+        onProgress
+      });
+      return { status: "success", change, modelId: "" };
+    } catch (error) {
+      const isStale = [
+        "STALE_CARD_ASSISTANCE_SCOPE",
+        "STALE_CARD_ASSISTANCE_LEDGER"
+      ].includes(error?.code);
+      return {
+        status: isStale ? "stale" : "error",
+        errorMessage: error instanceof Error ? error.message : "Falha ao restaurar a versão."
+      };
+    }
   }
   const readiness = await resolveCardAssistanceProviderReadiness({
     selectedModel: assistConfig.model,
@@ -646,6 +999,11 @@ export async function executeCardAssistance({
     };
   }
   try {
+    let activeLedger = assistanceLedger;
+    if (!activeLedger) {
+      const context = resolveCardAssistanceContext(projectDocument, selection);
+      activeLedger = createCardAssistanceLedger({ selection, card: context.card });
+    }
     const launchConfig = resolveCardAssistanceLaunchConfig({
       selectedModel: text(assistConfig.model),
       apiKey: assistConfig.apiKey,
@@ -668,6 +1026,8 @@ export async function executeCardAssistance({
       modelId: launchConfig.modelId,
       didacticProfileId: launchConfig.didacticProfileId,
       didacticPolicy: launchConfig.didacticPolicy,
+      resourceCatalog,
+      assistanceLedger: activeLedger,
       onProgress
     });
     return {
@@ -678,7 +1038,10 @@ export async function executeCardAssistance({
   } catch (error) {
     const details = classifyFailure(error);
     const isAuthError = details?.category === "auth_error";
-    const isStale = error?.code === "STALE_CARD_ASSISTANCE_SCOPE";
+    const isStale = [
+      "STALE_CARD_ASSISTANCE_SCOPE",
+      "STALE_CARD_ASSISTANCE_LEDGER"
+    ].includes(error?.code);
     return {
       status: isAuthError ? "auth-error" : isStale ? "stale" : "error",
       errorMessage: isAuthError

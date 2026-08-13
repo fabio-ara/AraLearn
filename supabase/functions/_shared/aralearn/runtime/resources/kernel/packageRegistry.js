@@ -1,4 +1,8 @@
 import { validatePackageSchema } from "./schemaValidation.js";
+import {
+  inferAcademicTaxonomy,
+  validateAcademicTaxonomy
+} from "../catalog/vocabularies.js";
 
 const PACKAGE_ID_PATTERN = /^aralearn\.(?:resource|response)\.[a-z][a-z0-9]*(?:[._-][a-z0-9]+)*$/u;
 const PACKAGE_VERSION_PATTERN = /^(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)$/u;
@@ -82,18 +86,6 @@ function assertAcademicManifest(manifest) {
   ]) {
     assertNonEmptyList(academic[field], `${manifest.id}.manifest.academic.${field}`);
   }
-  const admission = academic.admission;
-  if (!admission || typeof admission !== "object" || Array.isArray(admission)) {
-    throw new TypeError(`${manifest.id}.manifest.academic precisa de admission.`);
-  }
-  for (const field of ["preservedStructure", "onlyWhen", "useSimplerRepresentationWhen"]) {
-    assertNonEmptyList(admission[field], `${manifest.id}.manifest.academic.admission.${field}`);
-  }
-  for (const field of ["decisionRule", "interpretabilityRule", "theoryDensityRule", "practiceContextRule"]) {
-    if (!text(admission[field])) {
-      throw new TypeError(`${manifest.id}.manifest.academic.admission precisa de ${field}.`);
-    }
-  }
   if (academic.practiceModes.some((mode) => !PRACTICE_MODES.includes(mode))) {
     throw new TypeError(`${manifest.id} declara modalidade de prática desconhecida.`);
   }
@@ -108,6 +100,11 @@ function assertAcademicManifest(manifest) {
   if (manifest.slots.includes("content") && !academic.practiceModes.includes("exposition")) {
     throw new TypeError(`${manifest.id} precisa declarar exposição em practiceModes.`);
   }
+  const taxonomyErrors = validateAcademicTaxonomy(
+    academic.taxonomy,
+    `${manifest.id}.manifest.academic.taxonomy`
+  );
+  if (taxonomyErrors.length) throw new TypeError(taxonomyErrors.join(" "));
 }
 
 export function assertPackageDefinition(definition) {
@@ -158,6 +155,7 @@ export function assertPackageDefinition(definition) {
 
 function publicManifest(definition) {
   const manifest = definition.manifest;
+  const academic = manifest.academic;
   return freezeClone({
     id: manifest.id,
     version: manifest.version,
@@ -168,7 +166,17 @@ function publicManifest(definition) {
     responseCompatibility: manifest.responseCompatibility || [],
     limitations: manifest.limitations || [],
     accessibility: manifest.accessibility || "",
-    academic: manifest.academic
+    academic: {
+      ...academic,
+      taxonomy: inferAcademicTaxonomy({
+        domains: academic.domains,
+        knowledgeObjects: academic.knowledgeObjects,
+        conventions: academic.conventions,
+        cognitiveOperations: manifest.cognitiveOperations,
+        practiceModes: academic.practiceModes,
+        taxonomy: academic.taxonomy
+      })
+    }
   });
 }
 

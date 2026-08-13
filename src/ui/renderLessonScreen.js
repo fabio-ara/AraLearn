@@ -202,9 +202,9 @@ function summarizeIconTitle(label) {
 function normalizeCardAssistanceState(editorSupport = {}, activeCard = null) {
   const value = editorSupport.cardAssistanceState || {};
   return {
-    operation: "repair",
+    operation: "edit_text",
     wholeCardSelected: value.wholeCardSelected === true,
-    repairScope: value.repairScope === "resources" ? "resources" : "card",
+    scope: value.scope === "resources" ? "resources" : "card",
     resourceTargetIds: Array.isArray(value.resourceTargetIds)
       ? value.resourceTargetIds.map((targetId) => String(targetId || "")).filter(Boolean)
       : [],
@@ -1211,7 +1211,7 @@ function renderMicrosequenceScreen({ course, lesson, microsequence, cards, selec
   const wholeCardSelected = Boolean(
     authoringMode &&
     cardAssistanceState.wholeCardSelected &&
-    cardAssistanceState.repairScope === "card" &&
+    cardAssistanceState.scope === "card" &&
     selectedCardKeys.includes(activeCard?.id)
   );
   const selectsResourcesInCard = Boolean(
@@ -1228,14 +1228,14 @@ function renderMicrosequenceScreen({ course, lesson, microsequence, cards, selec
       const targetId = String(target?.targetId || "");
       const label = target?.label || target?.resourceType || "recurso";
       return [targetId, selectedResourceTargetIds.has(targetId)
-        ? `Retirar ${label} do reparo`
-        : `Selecionar ${label} para reparo`];
+        ? `Retirar ${label} da edição`
+        : `Selecionar ${label} para edição`];
     })
   );
   const cardAssistanceLocked = Boolean(editorSupport.isSubmitting);
   const manualEditTargetId =
     selectedCardKeys.length === 1 && selectedCardKeys[0] === activeCard?.id
-      ? cardAssistanceState.repairScope === "resources"
+      ? cardAssistanceState.scope === "resources"
         ? cardAssistanceState.resourceTargetIds.length === 1
           ? cardAssistanceState.resourceTargetIds[0]
           : ""
@@ -1290,8 +1290,8 @@ function renderMicrosequenceScreen({ course, lesson, microsequence, cards, selec
         "</button>" +
         "</div></section></div>"
       : "";
-  const promptLabel = editorSupport.assistPromptLabel || "Descreva o reparo";
-  const submitLabel = editorSupport.assistSubmitLabel || "Enviar para a IA";
+  const promptLabel = editorSupport.assistPromptLabel || "O que você quer mudar?";
+  const submitLabel = editorSupport.assistSubmitLabel || "Enviar mensagem";
   const promptPlaceholder = editorSupport.assistPromptPlaceholder ||
     "Explique pontualmente o que precisa ser corrigido.";
   const cardUndo = editorSupport.canUndoCardEdit
@@ -1310,18 +1310,30 @@ function renderMicrosequenceScreen({ course, lesson, microsequence, cards, selec
       renderUiIcon("ready-state", "home-tab-icon") + "</button>"
     : "";
   const cardAssistanceComposerOpen = editorSupport.cardAssistanceComposerOpen === true;
-  const assistanceConversation = Array.isArray(editorSupport.cardAssistanceConversation)
-    ? editorSupport.cardAssistanceConversation
+  const assistanceHistory = Array.isArray(editorSupport.cardAssistanceHistory)
+    ? editorSupport.cardAssistanceHistory
     : [];
-  const assistanceConversationHtml = assistanceConversation.length
+  const assistanceHistoryHtml = assistanceHistory.length
     ? '<ol class="card-assistance-conversation" aria-label="Ajustes anteriores desta conversa">' +
-      assistanceConversation.map((turn) => '<li class="card-assistance-turn">' +
+      assistanceHistory.map((turn) => '<li class="card-assistance-turn">' +
         '<article class="card-assistance-message-bubble is-user"><span>Você</span><p>' +
-        escapeHtml(turn.request) + '</p></article>' +
+        escapeHtml(turn.userRequest || turn.request) + '</p></article>' +
         '<article class="card-assistance-message-bubble is-assistant"><span>Assistente</span><p>' +
-        escapeHtml(turn.assistantResponse) + '</p><small>Aplicado ao ' +
-        escapeHtml(turn.scope === "card" ? "card" : "conteúdo selecionado") +
-        '</small></article></li>').join("") + '</ol>'
+        escapeHtml(turn.assistantResponse) + '</p>' +
+        (turn.outcome === "no-op"
+          ? ""
+          : '<small>Aplicado ao ' +
+            escapeHtml(
+              turn.appliedTo?.[0] === "card" || turn.scope === "card"
+                ? "card"
+                : "conteúdo selecionado"
+            ) + '</small>') +
+        '</article></li>').join("") + '</ol>'
+    : "";
+  const cardRedo = editorSupport.canRedoCardEdit
+    ? '<button class="icon-ghost" type="button" data-action="redo-card-edit" title="Refazer alteração" aria-label="Refazer alteração"' +
+      (cardAssistanceLocked ? ' disabled aria-disabled="true"' : "") + '>' +
+      renderUiIcon("arrow-right", "home-tab-icon") + "</button>"
     : "";
   const selectedAssistanceTargets = wholeCardSelected
     ? cardResourceTargets
@@ -1330,21 +1342,24 @@ function renderMicrosequenceScreen({ course, lesson, microsequence, cards, selec
     ...(wholeCardSelected ? [{ label: "Título do card", editableTextLabels: [] }] : []),
     ...selectedAssistanceTargets
   ];
+  const assistanceBoundaryHtml = wholeCardSelected
+    ? '<p><strong>Recomposição permitida:</strong> a IA pode trocar a representação e a prática; a identidade e a posição do card são preservadas.</p>'
+    : '<p><strong>Contexto somente leitura:</strong> tipos de resource, IDs, ordem, relações, geometria, respostas e gabarito.</p>';
   const assistanceScopeHtml = assistanceScopeItems.length
-    ? '<section class="card-assistance-scope" aria-label="Limites do reparo"><strong>A IA pode alterar</strong><ul>' +
+    ? '<section class="card-assistance-scope" aria-label="Escopo da mudança"><strong>A IA pode alterar</strong><ul>' +
       assistanceScopeItems.map((target) => '<li><span>' + escapeHtml(target.label) + '</span>' +
         (Array.isArray(target.editableTextLabels) && target.editableTextLabels.length
           ? '<small>' + escapeHtml(target.editableTextLabels.join(" · ")) + '</small>'
           : '') + '</li>').join("") +
-      '</ul><p><strong>Contexto somente leitura:</strong> tipos de resource, IDs, ordem, relações, geometria, respostas e gabarito.</p></section>'
+      '</ul>' + assistanceBoundaryHtml + '</section>'
     : "";
   const aiEditor = cardEditorMode === "ai" && cardAssistanceComposerOpen
     ? '<section class="runtime-card-ai-editor" aria-label="Assistência por IA">' +
       assistanceScopeHtml +
-      assistanceConversationHtml +
+      assistanceHistoryHtml +
       '<textarea data-field="assist-prompt" class="assist-prompt" data-card-authoring-focus="ai-prompt" aria-label="' +
       escapeHtml(promptLabel) + '" title="' + escapeHtml(promptLabel) + '" placeholder="' +
-      escapeHtml(assistanceConversation.length ? "Continue o ajuste a partir do resultado atual." : promptPlaceholder) + '"' +
+      escapeHtml(assistanceHistory.length ? "Continue o ajuste a partir do resultado atual." : promptPlaceholder) + '"' +
       (cardAssistanceLocked ? ' disabled aria-disabled="true"' : "") + ">" +
       escapeHtml(editorSupport.promptText || "") + "</textarea>" +
       '<div class="card-assistance-command-row">' +
@@ -1358,6 +1373,10 @@ function renderMicrosequenceScreen({ course, lesson, microsequence, cards, selec
         : "") + ">" + renderUiIcon("sparkles", "generate-submit-icon") + "</button></div></section>"
     : "";
   const authoringMessages =
+    (editorSupport.assistStatusMessage
+      ? '<p class="card-assistance-message is-neutral" role="status">' +
+        escapeHtml(editorSupport.assistStatusMessage) + "</p>"
+      : "") +
     (editorSupport.assistErrorMessage || editorSupport.manualCardEditError
       ? '<p class="card-assistance-message" role="status">' +
         escapeHtml(editorSupport.assistErrorMessage || editorSupport.manualCardEditError) + "</p>"
@@ -1366,7 +1385,6 @@ function renderMicrosequenceScreen({ course, lesson, microsequence, cards, selec
   const cardAuthoring = authoringMode && cardAuthoringContent
     ? '<section class="runtime-card-authoring' +
       (cardEditorMode === "manual" ? " is-manual" : " is-ai") +
-      " is-repairing" +
       '" aria-label="Editar card">' +
       cardAuthoringContent +
       "</section>"
@@ -1445,7 +1463,7 @@ function renderMicrosequenceScreen({ course, lesson, microsequence, cards, selec
   const footerActions = cardMode === "view"
     ? studyActions + previousCardButton + nextCardButton + continuePopupHtml
     : cardMode === "ai"
-      ? cardUndo + previousCardButton + assistanceToggle + nextCardButton
+      ? cardUndo + cardRedo + previousCardButton + assistanceToggle + nextCardButton
       : cardUndo + previousCardButton + manualCancel + manualSave + nextCardButton;
   const readerSurface =
     '<section class="workbench-surface-pane workbench-reader-pane study-reader-screen' +

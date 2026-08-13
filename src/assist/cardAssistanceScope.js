@@ -2,8 +2,12 @@ import { canonicalStringify } from "../persistence/canonicalCourseHash.js";
 import { validateProjectDocument } from "../domain/aralearnProject.js";
 import { normalizeCardEnvelope, validateCardEnvelope } from "../resources/kernel/cardEnvelope.js";
 import { RESOURCE_PACKAGE_REGISTRY } from "../resources/packages/index.js";
+import {
+  CARD_ASSISTANCE_OPERATIONS,
+  normalizeCardAssistanceOperation
+} from "./cardAssistanceOperations.js";
 
-export const CARD_REPAIR_SCOPES = Object.freeze(["card", "resources"]);
+export const CARD_ASSISTANCE_SCOPES = Object.freeze(["card", "resources"]);
 
 const MASKED_TEXT_VALUE = "__aralearn_authorized_text_leaf__";
 const TEXT_REBASE_CONFLICT_POLICIES = new Set(["reject", "local"]);
@@ -235,35 +239,50 @@ export async function buildCardAssistanceScopeSnapshot(
   request = {}
 ) {
   const context = resolveCardAssistanceContext(projectDocument, selection);
-  if (text(request.operation) !== "repair") {
-    fail("A assistência no card aceita somente reparo.");
-  }
+  const operation = normalizeCardAssistanceOperation(request.operation);
+  if (!operation) fail("A assistência exige uma operação explícita e válida.");
   if (!context.card) {
-    fail("Não há card selecionado para reparar.", "INVALID_CARD_ASSISTANCE_SELECTION");
+    fail("Não há card selecionado para alterar.", "INVALID_CARD_ASSISTANCE_SELECTION");
   }
-  const scope = text(request.repairScope);
-  if (!CARD_REPAIR_SCOPES.includes(scope)) {
+  const requestedScope = text(request.scope);
+  if (operation === CARD_ASSISTANCE_OPERATIONS.EDIT_TEXT &&
+      !CARD_ASSISTANCE_SCOPES.includes(requestedScope)) {
     fail(
-      "O reparo exige um escopo explícito e válido.",
+      "edit_text exige um escopo explícito e válido.",
       "INVALID_CARD_ASSISTANCE_SCOPE"
     );
   }
+  const scope = operation === CARD_ASSISTANCE_OPERATIONS.EDIT_TEXT
+    ? requestedScope
+    : "card";
+  if (operation !== CARD_ASSISTANCE_OPERATIONS.EDIT_TEXT &&
+      requestedScope && requestedScope !== "card") {
+    fail(
+      "Somente edit_text pode atuar em resources selecionados; a recomposição e a restauração substituem o card inteiro.",
+      "INVALID_CARD_ASSISTANCE_SCOPE"
+    );
+  }
+  const versionId = text(request.versionId);
+  if (operation === CARD_ASSISTANCE_OPERATIONS.RESTORE_VERSION && !versionId) {
+    fail("A restauração exige a identidade exata da versão.", "INVALID_CARD_ASSISTANCE_SCOPE");
+  }
   const target = {
-    operation: "repair",
-    repairScope: scope,
+    operation,
+    scope,
     cardKey: context.card.id,
     cardIndex: context.cardIndex,
-    ...(scope === "resources"
+    ...(operation === CARD_ASSISTANCE_OPERATIONS.EDIT_TEXT && scope === "resources"
       ? {
           resources: normalizeRequestedResourceTargets(
             context.card,
             request.resourceTargetIds
           )
         }
-      : {})
+      : {}),
+    ...(operation === CARD_ASSISTANCE_OPERATIONS.RESTORE_VERSION ? { versionId } : {})
   };
   return {
-    contract: "aralearn.card-assistance-scope.v1",
+    contract: "aralearn.card-assistance-scope.v2",
     selection: context.selection,
     target,
     baseFingerprint: await sha256(snapshotFingerprintInput(context, target))
@@ -275,7 +294,7 @@ export async function assertCardAssistanceScopeCurrent({
   projectDocument,
   selection
 } = {}) {
-  if (snapshot?.contract !== "aralearn.card-assistance-scope.v1" ||
+  if (snapshot?.contract !== "aralearn.card-assistance-scope.v2" ||
       !snapshot?.baseFingerprint || !snapshot?.target) {
     fail(
       "A alteração não possui um escopo verificável.",
@@ -283,9 +302,10 @@ export async function assertCardAssistanceScopeCurrent({
     );
   }
   const request = {
-    operation: "repair",
-    repairScope: snapshot.target.repairScope,
-    resourceTargetIds: (snapshot.target.resources || []).map((target) => target.targetId)
+    operation: snapshot.target.operation,
+    scope: snapshot.target.scope,
+    resourceTargetIds: (snapshot.target.resources || []).map((target) => target.targetId),
+    versionId: snapshot.target.versionId
   };
   let current;
   try {
@@ -325,13 +345,13 @@ function addTargetTextualLeaves(card, target, leaves) {
     });
 }
 
-function authorizedTextualLeaves(card, repairScope, targets) {
+function authorizedTextualLeaves(card, scope, targets) {
   const leaves = new Map();
-  const selectedTargets = repairScope === "card"
+  const selectedTargets = scope === "card"
     ? listCardResourceTargets(card)
     : targets;
   selectedTargets.forEach((target) => addTargetTextualLeaves(card, target, leaves));
-  if (repairScope === "card") {
+  if (scope === "card") {
     leaves.set("title", { path: "title", optional: false });
   }
   return [...leaves.values()];
@@ -339,20 +359,70 @@ function authorizedTextualLeaves(card, repairScope, targets) {
 
 export function listCardAssistanceTextPaths(
   card,
-  { repairScope = "card", targets = [] } = {}
+  { scope = "card", targets = [] } = {}
 ) {
-  return authorizedTextualLeaves(card, repairScope, targets)
+  return authorizedTextualLeaves(card, scope, targets)
     .map(({ path }) => path);
+}
+
+export function listCardAssistanceTextEntries(
+  card,
+  { scope = "card", targets = [] } = {}
+) {
+  return authorizedTextualLeaves(card, scope, targets).map(({ path }) => ({
+    path,
+    value: readPath(card, path)
+  }));
+}
+
+export function applyCardAssistanceTextEdits(
+  beforeCard,
+  edits,
+  { scope = "card", targets = [] } = {}
+) {
+  const beforeValidation = validatePackageCard(beforeCard, "$.assistance.beforeCard");
+  if (!beforeValidation.ok) {
+    fail("O card de origem do patch textual é inválido.", "INVALID_CARD_ASSISTANCE_RESULT");
+  }
+  if (!Array.isArray(edits) || edits.length > 64) {
+    fail("O patch textual deve ser uma lista compacta de até 64 edições.", "INVALID_CARD_ASSISTANCE_RESULT");
+  }
+  const allowed = new Map(
+    authorizedTextualLeaves(beforeValidation.value, scope, targets)
+      .map((leaf) => [leaf.path, leaf])
+  );
+  const seen = new Set();
+  const patched = clone(beforeCard);
+  edits.forEach((edit) => {
+    const path = text(edit?.path);
+    const leaf = allowed.get(path);
+    if (!leaf || seen.has(path) || typeof edit?.value !== "string" || edit.value.length > 24000) {
+      fail(
+        "O patch contém caminho ausente ou repetido, ou um valor textual fora do limite.",
+        "OUT_OF_SCOPE_CARD_ASSISTANCE_CHANGE"
+      );
+    }
+    seen.add(path);
+    if (!writePath(patched, path, edit.value, { createMissing: leaf.optional })) {
+      fail(`Não foi possível aplicar a edição textual ${path}.`, "INVALID_CARD_ASSISTANCE_RESULT");
+    }
+  });
+  const validation = validatePackageCard(patched, "$.assistance.patchedCard");
+  if (!validation.ok) {
+    fail("O patch textual deixou o card inválido.", "INVALID_CARD_ASSISTANCE_RESULT");
+  }
+  assertCardAssistanceTextBoundary(beforeCard, patched, { scope, targets });
+  return patched;
 }
 
 export function assertCardAssistanceTextBoundary(
   beforeCard,
   afterCard,
-  { repairScope = "card", targets = [] } = {}
+  { scope = "card", targets = [] } = {}
 ) {
   const beforeComparable = clone(beforeCard);
   const afterComparable = clone(afterCard);
-  const leaves = authorizedTextualLeaves(beforeCard, repairScope, targets);
+  const leaves = authorizedTextualLeaves(beforeCard, scope, targets);
 
   leaves.forEach(({ path, optional }) => {
     const beforeValue = readPath(beforeCard, path);
@@ -363,7 +433,7 @@ export function assertCardAssistanceTextBoundary(
       (optional && afterValue !== undefined && typeof afterValue !== "string")
     ) {
       fail(
-        `O reparo tentou alterar a forma estrutural do campo textual ${path}.`,
+        `A edição tentou alterar a forma estrutural do campo textual ${path}.`,
         "OUT_OF_SCOPE_CARD_ASSISTANCE_CHANGE"
       );
     }
@@ -373,7 +443,7 @@ export function assertCardAssistanceTextBoundary(
       !writePath(afterComparable, path, MASKED_TEXT_VALUE, { createMissing })
     ) {
       fail(
-        `O reparo tentou remover o campo textual autorizado ${path}.`,
+        `A edição tentou remover o campo textual autorizado ${path}.`,
         "OUT_OF_SCOPE_CARD_ASSISTANCE_CHANGE"
       );
     }
@@ -381,7 +451,7 @@ export function assertCardAssistanceTextBoundary(
 
   if (!same(beforeComparable, afterComparable)) {
     fail(
-      repairScope === "resources"
+      scope === "resources"
         ? "A resposta tentou alterar estrutura, resposta ou conteúdo fora dos recursos selecionados."
         : "A resposta tentou alterar a estrutura ou as respostas do card.",
       "OUT_OF_SCOPE_CARD_ASSISTANCE_CHANGE"
@@ -393,24 +463,24 @@ export function assertCardAssistanceTextBoundary(
 export function projectCardAssistanceTextChange(
   beforeCard,
   proposedCard,
-  { repairScope = "card", targets = [] } = {}
+  { scope = "card", targets = [] } = {}
 ) {
   const beforeValidation = validatePackageCard(beforeCard, "$.assistance.beforeCard");
   const proposedValidation = validatePackageCard(proposedCard, "$.assistance.proposedCard");
   if (!proposedValidation.ok) {
-    fail("O reparo textual contém um card inválido.", "INVALID_CARD_ASSISTANCE_RESULT");
+    fail("A edição textual contém um card inválido.", "INVALID_CARD_ASSISTANCE_RESULT");
   }
   const normalizedBefore = beforeValidation.ok ? beforeValidation.value : beforeCard;
   const normalizedProposal = beforeValidation.ok
     ? proposedValidation.value
     : proposedCard;
   assertCardAssistanceTextBoundary(normalizedBefore, normalizedProposal, {
-    repairScope,
+    scope,
     targets
   });
 
   const projected = clone(beforeCard);
-  authorizedTextualLeaves(normalizedBefore, repairScope, targets)
+  authorizedTextualLeaves(normalizedBefore, scope, targets)
     .forEach(({ path, optional }) => {
       const value = readPath(normalizedProposal, path);
       if (optional && value === undefined) {
@@ -426,7 +496,7 @@ export function projectCardAssistanceTextChange(
     });
   const projectedValidation = validatePackageCard(projected, "$.assistance.projectedCard");
   if (!projectedValidation.ok) {
-    fail("O reparo textual projetado deixou o card inválido.", "INVALID_CARD_ASSISTANCE_RESULT");
+    fail("A edição textual projetada deixou o card inválido.", "INVALID_CARD_ASSISTANCE_RESULT");
   }
   return projected;
 }
@@ -444,7 +514,7 @@ export function rebaseCardAssistanceTextChange({
   baseCard,
   localCard,
   remoteCard,
-  repairScope = "card",
+  scope = "card",
   targets = [],
   conflictPolicy = "reject"
 } = {}) {
@@ -455,13 +525,13 @@ export function rebaseCardAssistanceTextChange({
     );
   }
   const safeLocal = projectCardAssistanceTextChange(baseCard, localCard, {
-    repairScope,
+    scope,
     targets
   });
   let safeRemote;
   try {
     safeRemote = projectCardAssistanceTextChange(baseCard, remoteCard, {
-      repairScope: "card"
+      scope: "card"
     });
   } catch (error) {
     if (!(error instanceof CardAssistanceScopeError)) throw error;
@@ -475,7 +545,7 @@ export function rebaseCardAssistanceTextChange({
   const appliedPaths = [];
   const convergedPaths = [];
   const conflictPaths = [];
-  authorizedTextualLeaves(baseCard, repairScope, targets)
+  authorizedTextualLeaves(baseCard, scope, targets)
     .forEach(({ path, optional }) => {
       const baseValue = readPath(baseCard, path);
       const localValue = readPath(safeLocal, path);
@@ -533,9 +603,31 @@ export async function applyCardAssistanceChangeSet({
   changeSet
 } = {}) {
   await assertCardAssistanceScopeCurrent({ snapshot, projectDocument, selection });
-  if (changeSet?.contract !== "aralearn.card-assistance-change.v1" ||
-      changeSet?.operation !== "repair") {
-    fail("A alteração não corresponde ao reparo autorizado.", "INVALID_CARD_ASSISTANCE_RESULT");
+  const operation = normalizeCardAssistanceOperation(changeSet?.operation);
+  if (changeSet?.contract !== "aralearn.card-assistance-change.v2" ||
+      !operation || operation !== snapshot.target.operation) {
+    fail("A alteração não corresponde à operação autorizada.", "INVALID_CARD_ASSISTANCE_RESULT");
+  }
+  if (operation === CARD_ASSISTANCE_OPERATIONS.RESTORE_VERSION &&
+      text(changeSet?.versionId) !== snapshot.target.versionId) {
+    fail("A alteração não corresponde à versão autorizada.", "INVALID_CARD_ASSISTANCE_RESULT");
+  }
+  const allowedChangeFields = new Set([
+    "contract",
+    "operation",
+    "card",
+    ...(operation === CARD_ASSISTANCE_OPERATIONS.EDIT_TEXT ? ["textPatch"] : []),
+    ...(operation === CARD_ASSISTANCE_OPERATIONS.RECOMPOSE_CARD
+      ? ["candidateId", "catalogDisclosure"]
+      : []),
+    ...(operation === CARD_ASSISTANCE_OPERATIONS.RESTORE_VERSION ? ["versionId"] : [])
+  ]);
+  if (Object.keys(changeSet || {}).some((field) => !allowedChangeFields.has(field)) ||
+      (operation === CARD_ASSISTANCE_OPERATIONS.RECOMPOSE_CARD && !text(changeSet.candidateId)) ||
+      (changeSet.catalogDisclosure !== undefined &&
+        (typeof changeSet.catalogDisclosure !== "string" ||
+          changeSet.catalogDisclosure.length > 900))) {
+    fail("O envelope da alteração não corresponde à operação declarada.", "INVALID_CARD_ASSISTANCE_RESULT");
   }
   const context = resolveCardAssistanceContext(projectDocument, selection);
   const nextProject = clone(projectDocument);
@@ -545,14 +637,28 @@ export async function applyCardAssistanceChangeSet({
 
   if (proposedCard.id !== context.card.id || proposedCard.position !== context.card.position) {
     fail(
-      "O reparo tentou trocar a identidade ou a posição do card.",
+      "A alteração tentou trocar a identidade ou a posição do card.",
       "OUT_OF_SCOPE_CARD_ASSISTANCE_CHANGE"
     );
   }
-  assertCardAssistanceTextBoundary(context.card, proposedCard, {
-    repairScope: snapshot.target.repairScope,
-    targets: snapshot.target.resources || []
-  });
+  if (operation === CARD_ASSISTANCE_OPERATIONS.EDIT_TEXT) {
+    assertCardAssistanceTextBoundary(context.card, proposedCard, {
+      scope: snapshot.target.scope,
+      targets: snapshot.target.resources || []
+    });
+    if (changeSet.textPatch !== undefined) {
+      const patched = applyCardAssistanceTextEdits(context.card, changeSet.textPatch, {
+        scope: snapshot.target.scope,
+        targets: snapshot.target.resources || []
+      });
+      if (!same(patched, proposedCard)) {
+        fail(
+          "O patch textual não reconstrói exatamente o card proposto.",
+          "INVALID_CARD_ASSISTANCE_RESULT"
+        );
+      }
+    }
+  }
   nextContext.microsequence.cards[nextContext.cardIndex] = proposedCard;
 
   const validation = validateProjectDocument(nextProject);
@@ -566,7 +672,9 @@ export async function applyCardAssistanceChangeSet({
   return {
     projectDocument: nextProject,
     targetMicrosequenceKey: nextContext.microsequence.id,
-    cardKey: proposedCard.id
+    cardKey: proposedCard.id,
+    changed: !same(context.card, proposedCard),
+    operation
   };
 }
 
@@ -575,7 +683,7 @@ export async function applyCardAssistanceBatchChangeSet({
   entries = []
 } = {}) {
   if (!Array.isArray(entries) || !entries.length) {
-    fail("A alteração conjunta não contém reparos.", "INVALID_CARD_ASSISTANCE_RESULT");
+    fail("A alteração conjunta não contém edições.", "INVALID_CARD_ASSISTANCE_RESULT");
   }
   if (entries.length === 1) {
     const item = entries[0] || {};
@@ -601,7 +709,7 @@ export async function applyCardAssistanceBatchChangeSet({
       )
     ) {
       fail(
-        "Um reparo conjunto deve permanecer na mesma microssequência.",
+        "Uma edição conjunta deve permanecer na mesma microssequência.",
         "INVALID_CARD_ASSISTANCE_SELECTION"
       );
     }
@@ -613,11 +721,13 @@ export async function applyCardAssistanceBatchChangeSet({
     }
     seenCardKeys.add(selection.cardKey);
     if (
-      item?.snapshot?.target?.operation !== "repair" ||
-      item?.changeSet?.operation !== "repair"
+      normalizeCardAssistanceOperation(item?.snapshot?.target?.operation) !==
+        CARD_ASSISTANCE_OPERATIONS.EDIT_TEXT ||
+      normalizeCardAssistanceOperation(item?.changeSet?.operation) !==
+        CARD_ASSISTANCE_OPERATIONS.EDIT_TEXT
     ) {
       fail(
-        "A seleção de vários cards aceita somente reparos.",
+        "A seleção de vários cards aceita somente edições textuais.",
         "INVALID_CARD_ASSISTANCE_SCOPE"
       );
     }
@@ -635,20 +745,38 @@ export async function applyCardAssistanceBatchChangeSet({
     const afterContext = resolveCardAssistanceContext(nextProject, selection);
     const proposedCard = clone(item.changeSet.card);
     validateProposedCard(proposedCard, `$.assistance.cards.${selection.cardKey}`);
+    const allowedFields = new Set(["contract", "operation", "card", "textPatch"]);
     if (
-      item.changeSet?.contract !== "aralearn.card-assistance-change.v1" ||
+      item.changeSet?.contract !== "aralearn.card-assistance-change.v2" ||
+      Object.keys(item.changeSet || {}).some((field) => !allowedFields.has(field)) ||
       proposedCard.id !== beforeContext.card.id ||
       proposedCard.position !== beforeContext.card.position
     ) {
       fail(
-        "Um reparo conjunto tentou trocar identidade ou posição de card.",
+        "Uma edição textual conjunta tentou trocar identidade ou posição de card.",
         "OUT_OF_SCOPE_CARD_ASSISTANCE_CHANGE"
       );
     }
     assertCardAssistanceTextBoundary(beforeContext.card, proposedCard, {
-      repairScope: item.snapshot.target.repairScope,
+      scope: item.snapshot.target.scope,
       targets: item.snapshot.target.resources || []
     });
+    if (item.changeSet.textPatch !== undefined) {
+      const patched = applyCardAssistanceTextEdits(
+        beforeContext.card,
+        item.changeSet.textPatch,
+        {
+          scope: item.snapshot.target.scope,
+          targets: item.snapshot.target.resources || []
+        }
+      );
+      if (!same(patched, proposedCard)) {
+        fail(
+          "Um patch textual conjunto não reconstrói exatamente o card proposto.",
+          "INVALID_CARD_ASSISTANCE_RESULT"
+        );
+      }
+    }
     afterContext.microsequence.cards[afterContext.cardIndex] = proposedCard;
   }
 

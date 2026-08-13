@@ -18,11 +18,13 @@ A microssequência é o ponto de equilíbrio. Um card isolado pode perder contex
 
 ## Assistência de linguagem
 
-No aplicativo, a assistência por API repara o card inteiro ou os resources
-selecionados. O escopo de microssequência pode autorizar a criação de cards; o
-escopo integral de lição pode autorizar no máximo uma nova microssequência. O
-resultado estruturado é validado e gravado diretamente, com uma única ação de
-desfazer. Planejamento, reorganização e publicação de estruturas extensas
+No aplicativo, a assistência por API edita os caminhos textuais selecionados ou
+recompõe o card inteiro pelo catálogo. O escopo de microssequência pode
+autorizar a criação de cards; o escopo integral de lição pode autorizar no
+máximo uma nova microssequência. O resultado estruturado é validado e gravado
+diretamente. No card, uma conversa curta permite desfazer, refazer e restaurar
+versões; um `no-op` conserva a explicação sem simular mudança. Planejamento,
+reorganização e publicação de estruturas extensas
 pertencem ao Chatbot personalizado ou ao Plugin; cada mutação aceita altera
 somente as partes necessárias de um workspace composto. É o mesmo assistente
 na autoria e na revisão editorial; as ferramentas visíveis dependem das
@@ -36,7 +38,7 @@ O estudante não precisa conhecer a arquitetura para usar o produto. Em
 `Coleções`, seleciona explicitamente os cursos que quer em `Trilhas`; abrir ou
 estudar nunca faz essa seleção por conta própria. Em `Trilhas`, cria e organiza
 grupos pessoais sem alterar o catálogo. Quando tiver autoridade, pode reparar
-cards e resources ou solicitar cards e microssequências pelos escopos locais;
+cards e seus textos ou solicitar cards e microssequências pelos escopos locais;
 para estruturas maiores, pede ao Chatbot ou Plugin que abra um workspace. O
 plano resultante aparece em `Trilhas`, e uma publicação oficial só muda por uma
 operação autorizada. Quando o conteúdo pede outra forma, o card pode combinar

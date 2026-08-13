@@ -7,11 +7,16 @@ Este roteiro é uma orientação técnica inicial. O fluxo por arquivos é disti
 1. Crie um Project.
 2. Use `PROJECT_INSTRUCTIONS.md` como instruções.
 3. Adicione `core/`, `knowledge/`, `schemas/`, `docs/aralearn-contract.md` e `docs/recursos-de-card.md` ao conhecimento do projeto. Se a plataforma limitar a quantidade de anexos, reúna esses textos num único arquivo antes do envio, sem retirar os esquemas.
-4. Peça a criação ou revisão no workspace composto e acompanhe o estado
-   corrente e os resumos recentes.
-5. Valide o documento e importe-o como curso privado pela aba **Trilhas** do AraLearn.
+4. Use o Project para planejamento, revisão ou conteúdo cujos contratos exatos
+   tenham sido fornecidos. Sem MCP, ele não pode descobrir packages nem obter
+   schemas; não autorize que os invente.
+5. Valide o documento e importe-o como curso privado pela aba **Trilhas** do
+   AraLearn.
 
-Esse caminho funciona apenas por arquivos. Um Project conserva instruções e conhecimento, mas não passa a chamar o gateway MCP do AraLearn por causa desses anexos.
+Esse caminho funciona apenas por arquivos. Um Project conserva instruções e
+conhecimento, mas não passa a chamar o gateway MCP do AraLearn por causa desses
+anexos. Para materializar uma representação nova com segurança, forneça a
+saída exata de `contracts` ou use a conexão direta.
 
 ## Conexão direta
 

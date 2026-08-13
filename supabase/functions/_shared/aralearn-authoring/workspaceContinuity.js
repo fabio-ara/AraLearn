@@ -39,6 +39,8 @@ const ENTITY_DEPTH = Object.freeze({
 const DECISION_ENTITY_TYPES = new Set([
   "course", "module", "lesson", "microsequence", "card"
 ]);
+const REPRESENTATION_DECISION_ENTITY_TYPES = new Set(["microsequence", "card"]);
+const REPRESENTATION_FITS = new Set(["canonical", "versatile", "substitute"]);
 const MANDATE_KINDS = new Set([
   "build_part", "repair_findings", "audit", "restructure"
 ]);
@@ -48,6 +50,8 @@ const FINDING_STATUSES = new Set([
 const FINDING_SEVERITIES = new Set(["low", "medium", "high", "critical"]);
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
 const REQUEST_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$/u;
+const PACKAGE_ID_PATTERN = /^aralearn\.(?:resource|response)\.[a-z0-9_]+$/u;
+const SEMVER_PATTERN = /^(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)$/u;
 
 function fail(code, message, details = undefined) {
   throw new AuthoringApiError(422, code, message, details);
@@ -116,6 +120,89 @@ function uniqueIds(value, field, maximum = 500) {
   return result;
 }
 
+function optionalTextList(value, field, maximum = 12) {
+  if (!Array.isArray(value) || value.length > maximum) {
+    fail(
+      "invalid_authoring_continuity",
+      `${field} deve ser uma lista com até ${maximum} itens.`,
+      { field }
+    );
+  }
+  const result = value.map((item, index) => text(item, `${field}[${index}]`, 500));
+  if (new Set(result).size !== result.length) {
+    fail("invalid_authoring_continuity", `${field} não aceita repetições.`, { field });
+  }
+  return result;
+}
+
+function normalizeRepresentationSelection(value, field) {
+  if (!plainObject(value)) {
+    fail("invalid_authoring_continuity", `${field} deve ser um objeto.`, { field });
+  }
+  only(value, [
+    "intent", "chosen", "fit", "desiredResource", "catalogVersion",
+    "limitations", "chatDisclosure"
+  ], field);
+  if (!plainObject(value.chosen)) {
+    fail("invalid_authoring_continuity", `${field}.chosen deve ser um objeto.`, {
+      field: `${field}.chosen`
+    });
+  }
+  only(value.chosen, ["packageId", "version"], `${field}.chosen`);
+  const fit = text(value.fit, `${field}.fit`, 20);
+  if (!REPRESENTATION_FITS.has(fit)) {
+    fail("invalid_authoring_continuity", `${field}.fit é inválido.`, {
+      field: `${field}.fit`
+    });
+  }
+  const desiredResource = optionalText(
+    value.desiredResource,
+    `${field}.desiredResource`,
+    1_000
+  );
+  const chatDisclosure = optionalText(
+    value.chatDisclosure,
+    `${field}.chatDisclosure`,
+    1_000
+  );
+  if (fit === "substitute" && (!desiredResource || !chatDisclosure)) {
+    fail(
+      "invalid_authoring_continuity",
+      `${field} substituto deve preservar desiredResource e chatDisclosure.`,
+      { field }
+    );
+  }
+  if (fit !== "substitute" && chatDisclosure) {
+    fail(
+      "invalid_authoring_continuity",
+      `${field}.chatDisclosure pertence somente a uma substituição.`,
+      { field: `${field}.chatDisclosure` }
+    );
+  }
+  const packageId = text(
+    value.chosen.packageId,
+    `${field}.chosen.packageId`,
+    160
+  );
+  const version = text(value.chosen.version, `${field}.chosen.version`, 40);
+  if (!PACKAGE_ID_PATTERN.test(packageId) || !SEMVER_PATTERN.test(version)) {
+    fail(
+      "invalid_authoring_continuity",
+      `${field}.chosen deve identificar uma versão exata de package.`,
+      { field: `${field}.chosen` }
+    );
+  }
+  return {
+    intent: text(value.intent, `${field}.intent`, 1_000),
+    chosen: { packageId, version },
+    fit,
+    desiredResource,
+    catalogVersion: text(value.catalogVersion, `${field}.catalogVersion`, 80),
+    limitations: optionalTextList(value.limitations, `${field}.limitations`),
+    chatDisclosure
+  };
+}
+
 function normalizePart(value, field = "part") {
   if (!plainObject(value)) {
     fail("invalid_authoring_continuity", `${field} deve ser um objeto.`, { field });
@@ -136,7 +223,9 @@ function normalizeDecision(value, field = "decision") {
   if (!plainObject(value)) {
     fail("invalid_authoring_continuity", `${field} deve ser um objeto.`, { field });
   }
-  only(value, ["id", "summary", "entityType", "entityId"], field);
+  only(value, [
+    "id", "summary", "entityType", "entityId", "representationSelection"
+  ], field);
   const entityType = optionalText(value.entityType, `${field}.entityType`, 30);
   const entityId = optionalText(value.entityId, `${field}.entityId`, 240);
   if ((entityType == null) !== (entityId == null)
@@ -147,10 +236,24 @@ function normalizeDecision(value, field = "decision") {
       { field }
     );
   }
+  const representationSelection = value.representationSelection == null
+    ? null
+    : normalizeRepresentationSelection(
+      value.representationSelection,
+      `${field}.representationSelection`
+    );
+  if (representationSelection && !REPRESENTATION_DECISION_ENTITY_TYPES.has(entityType)) {
+    fail(
+      "invalid_authoring_continuity",
+      `${field}.representationSelection deve estar ligada a card ou microssequência.`,
+      { field: `${field}.representationSelection` }
+    );
+  }
   return {
     id: identifier(value.id, `${field}.id`),
     summary: text(value.summary, `${field}.summary`, 1_000),
-    ...(entityType ? { entityType, entityId } : {})
+    ...(entityType ? { entityType, entityId } : {}),
+    ...(representationSelection ? { representationSelection } : {})
   };
 }
 
@@ -512,7 +615,9 @@ export function applyContinuityStateOperation({
     }
     next.parts = next.parts.filter(({ id }) => id !== partId);
   } else if (operation === "record_decision") {
-    only(operationArguments, ["id", "summary", "entityType", "entityId"], "arguments");
+    only(operationArguments, [
+      "id", "summary", "entityType", "entityId", "representationSelection"
+    ], "arguments");
     const decision = normalizeDecision(operationArguments, "arguments");
     const existingIndex = next.decisions.findIndex(({ id }) => id === decision.id);
     if (existingIndex >= 0) next.decisions[existingIndex] = decision;
