@@ -8,7 +8,7 @@ limitações e acessibilidade. O contrato completo só é devolvido para package
 versão escolhidos.
 
 Os packages de conteúdo instalados incluem texto explicado, código, tabela,
-sequência, texto anotado, exemplo linguístico, árvore, matriz, reação, fluxo,
+sequência, texto anotado, glosa interlinear, árvore, matriz, reação, fluxo,
 fórmula, plano, gráfico, mapa de sistema, grafo, mapa de relações,
 tabela-verdade, layout de pacote, rastreamento de algoritmo, esquema
 relacional, máquina de estados, topologia de rede, diagrama de conjuntos e

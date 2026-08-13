@@ -12,7 +12,7 @@ test.beforeEach(async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 900 });
   await page.goto("/teste-recursos");
   await page.waitForFunction(() => globalThis.__RESOURCE_TEST_COURSE_READY__ === true);
-  await page.evaluate(() => localStorage.removeItem("aralearn.resource-test.progress.v2"));
+  await page.evaluate(() => localStorage.removeItem("aralearn.resource-test.progress.v3"));
   await page.reload();
   await page.waitForFunction(() => globalThis.__RESOURCE_TEST_COURSE_READY__ === true);
 });
@@ -85,6 +85,48 @@ test("table recebe alternativa e digitação dentro de células", async ({ page 
   await page.locator('[data-action="next-card"]').click();
   await expect(page.locator(".runtime-table tbody [data-action='complete-input']"))
     .toHaveCount(1);
+});
+
+test("texto anotado liga trecho e nota nos dois sentidos sem ids internos", async ({ page }) => {
+  await openModule(page, 4);
+  await expect(page.locator(".runtime-annotated-text-segment")).toHaveCount(2);
+  await expect(page.locator(".runtime-annotated-text-notes")).not.toContainText("Trechos:");
+  await page.locator(".runtime-annotated-text-segment").first().click();
+  await expect(page.locator(".runtime-annotated-text-segment").first()).toHaveClass(/is-active/u);
+  await expect(page.locator(".runtime-annotated-text-note").first()).toHaveClass(/is-active/u);
+  await page.locator(".runtime-annotated-text-note").last().click();
+  await expect(page.locator(".runtime-annotated-text-segment").last()).toHaveClass(/is-active/u);
+});
+
+test("glosa interlinear preserva alinhamento, tradução e legenda", async ({ page }) => {
+  await openModule(page, 5);
+  await expect(page.locator(".runtime-interlinear-unit")).toHaveCount(1);
+  await expect(page.locator(".runtime-interlinear-form")).toHaveText("casa-s");
+  await expect(page.locator(".runtime-interlinear-unit-gloss")).toHaveText("casa-PL");
+  await expect(page.locator(".runtime-interlinear-translation")).toContainText("casas");
+  await expect(page.locator(".runtime-interlinear-abbreviations")).toContainText("PL");
+  await expect(page.locator(".runtime-interlinear-abbreviations")).toContainText("plural");
+});
+
+test("matrix usa MathML com peso normal e lacuna na entrada", async ({ page }) => {
+  await openModule(page, 7);
+  await expect(page.locator("math.runtime-matrix-item mtable")).toHaveCount(1);
+  await expect(page.locator(".runtime-matrix-name")).toHaveText("I");
+  await expect(page.locator(".runtime-matrix-name")).toHaveCSS("font-weight", "400");
+  await page.locator('[data-action="next-card"]').click();
+  await expect(page.locator("math.runtime-matrix-item mtd [data-action='text-gap-open-choice']")).toHaveCount(1);
+});
+
+test("reaction materializa escolha e digitação dentro da equação química", async ({ page }) => {
+  await openModule(page, 8, 1);
+  await expect(page.locator(".inline-feedback")).toHaveCount(0);
+  const coefficientGap = page.locator("math.package-reaction-equation [data-action='text-gap-open-choice']");
+  await expect(coefficientGap).toHaveCount(1);
+  await coefficientGap.click();
+  await page.locator('[data-action="text-gap-set-choice"]').first().click();
+  await page.locator('[data-action="next-card"]').click();
+  await expect(page.locator("math.package-reaction-equation [data-action='complete-input']")).toHaveCount(1);
+  await expect(page.locator(".inline-feedback")).toHaveCount(0);
 });
 
 test("ordenação é resposta independente e o Play é o único controle de confirmação", async ({ page }) => {

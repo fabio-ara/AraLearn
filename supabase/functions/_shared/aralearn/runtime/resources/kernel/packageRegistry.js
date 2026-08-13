@@ -31,7 +31,8 @@ function readPath(root, path) {
 }
 
 function validatePracticeTargets(definition, data) {
-  const targets = definition.practiceTargets(data);
+  const normalizedData = definition.normalize(clone(data));
+  const targets = definition.practiceTargets(normalizedData);
   if (!Array.isArray(targets)) {
     return [`${definition.manifest.id}.practiceTargets() precisa devolver uma lista.`];
   }
@@ -44,7 +45,7 @@ function validatePracticeTargets(definition, data) {
     if (!modes.length || modes.some((mode) => !["gap", "typing"].includes(mode))) {
       errors.push(`${definition.manifest.id}.practiceTargets()[${index}] declara modo inválido.`);
     }
-    if (typeof readPath(data, target?.path) !== "string") {
+    if (typeof readPath(normalizedData, target?.path) !== "string") {
       errors.push(`${definition.manifest.id}.practiceTargets()[${index}] não aponta para campo textual.`);
     }
     return errors;
@@ -52,9 +53,10 @@ function validatePracticeTargets(definition, data) {
 }
 
 function resolvedPracticeTargets(definition, data) {
-  const targets = definition.practiceTargets(data);
+  const normalizedData = definition.normalize(clone(data));
+  const targets = definition.practiceTargets(normalizedData);
   return Array.isArray(targets)
-    ? targets.filter((target) => text(readPath(data, target?.path)))
+    ? targets.filter((target) => text(readPath(normalizedData, target?.path)))
     : [];
 }
 
@@ -253,6 +255,23 @@ export function createPackageRegistry(packageDefinitions = []) {
         practiceTargets(instance) {
           const contentDefinition = requirePackage(instance.package, instance.version);
           return clone(resolvedPracticeTargets(contentDefinition, instance.data));
+        },
+        materializesGap(instance, response, blankIndex) {
+          const contentDefinition = requirePackage(instance.package, instance.version);
+          if (typeof definition.prepareContentInstance !== "function") return false;
+          try {
+            const blockKey = "aralearn-practice-materialization";
+            const prepared = definition.prepareContentInstance(clone(instance), clone(response.data), {
+              responseBlockKey: blockKey,
+              blockKey,
+              responseState: { values: [] }
+            });
+            const html = contentDefinition.render(prepared, {});
+            return html.includes(`data-complete-block-key="${blockKey}"`) &&
+              html.includes(`data-complete-blank-index="${blankIndex}"`);
+          } catch {
+            return false;
+          }
         }
       });
       return Array.isArray(errors) ? errors.filter(Boolean).map(String) : [];

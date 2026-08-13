@@ -4,7 +4,7 @@ import { codePackage } from "./code/index.js";
 import { tablePackage } from "./table/index.js";
 import { sequencePackage } from "./sequence/index.js";
 import { annotatedTextPackage } from "./annotated-text/index.js";
-import { linguisticExamplePackage } from "./linguistic-example/index.js";
+import { interlinearGlossPackage } from "./interlinear-gloss/index.js";
 import { choiceResponsePackage } from "./choice-response/index.js";
 import { gapResponsePackage } from "./gap-response/index.js";
 import { orderingResponsePackage } from "./ordering-response/index.js";
@@ -34,7 +34,7 @@ export const RESOURCE_PACKAGE_REGISTRY = createPackageRegistry([
   tablePackage,
   sequencePackage,
   annotatedTextPackage,
-  linguisticExamplePackage,
+  interlinearGlossPackage,
   choiceResponsePackage,
   gapResponsePackage,
   orderingResponsePackage,
@@ -64,7 +64,7 @@ export {
   codePackage,
   choiceResponsePackage,
   gapResponsePackage,
-  linguisticExamplePackage,
+  interlinearGlossPackage,
   paragraphPackage,
   orderingResponsePackage,
   sequencePackage,

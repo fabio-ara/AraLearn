@@ -73,8 +73,10 @@ No AraLearn:
 - `table`, `matrix`, `chart` e `plane` não são estilos de parágrafo;
 - `tree`, `graph`, `flow` e `sequence` distinguem hierarquia, rede, decisão e
   ordem;
-- `annotated_text` liga evidência e comentário;
-- `linguistic_example` alinha forma, som, glosa e tradução;
+- `annotated_text` ancora comentários em trechos identificáveis e mantém a
+  navegação bidirecional entre evidência e explicação;
+- `interlinear_gloss` alinha forma segmentada e glosa morfema a morfema,
+  separa a tradução livre e explicita abreviações gramaticais;
 - `system_map` explicita pertencimento a limites e conexões entre componentes;
 - `reaction` preserva a gramática de uma equação química;
 - `truth_table`, `set_diagram` e `relation_map` distinguem valoração
@@ -129,6 +131,17 @@ símbolos de conexão com significados distintos. Isso fundamenta a separação
 estrutural de `reactants`, `products`, `coefficient` e `reactionType` em
 `reaction`. O contrato também conserva `state` e `conditions` como contexto
 explícito, em vez de embuti-los numa string livre.
+
+Matriz e reação usam MathML para delegar à tipografia matemática nativa o
+dimensionamento de delimitadores, índices, sobrescritos e setas. A interação de
+lacuna permanece no package e só pode atingir uma entrada ou componente
+químico efetivamente visível. O kernel simula essa composição ao validar o card
+e recusa alvos que não materializem um controle interativo.
+
+`interlinear_gloss` segue a finalidade das Leipzig Glossing Rules: preservar
+correspondência entre unidades e fronteiras de morfemas, sem fabricar
+alinhamento por espaços. A tradução livre pertence ao exemplo inteiro, e a
+legenda introduz abreviações como `PL` antes que o estudante precise inferi-las.
 
 Nyachwaya e Wood (2014), ao avaliar representações em livros de físico-química,
 retomam os níveis macroscópico, submicroscópico e simbólico associados a
@@ -341,6 +354,10 @@ apresentados como resultados já demonstrados pela literatura.
   <https://www.w3.org/WAI/WCAG22/Understanding/target-size-minimum>
 - IUPAC. *Compendium of Chemical Terminology: chemical reaction equation*.
   <https://doi.org/10.1351/goldbook.C01034>
+- Max Planck Institute for Evolutionary Anthropology & Leipzig University.
+  *The Leipzig Glossing Rules*.
+  <https://www.eva.mpg.de/lingua/resources/glossing-rules.php>
+- W3C. *MathML Core*. <https://www.w3.org/TR/mathml-core/>
 
 ## Referências acadêmicas
 

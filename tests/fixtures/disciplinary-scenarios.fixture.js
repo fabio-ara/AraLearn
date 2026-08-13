@@ -502,18 +502,23 @@ const scenarios = [
     cards: [
       {
         id: "card-exemplo-linguistico",
-        resource: "linguistic_example",
+        resource: "interlinear_gloss",
         kind: "theory",
         exercise: "none",
         title: "Exemplo interlinear em português",
         prompt: "Compare as unidades da oração com suas glosas.",
         languageTag: "pt-BR",
-        writingMode: "horizontal",
-        alignment: "word",
         units: [
-          { id: "unidade-1", form: "As", gloss: "DET.PL", translation: "as" },
-          { id: "unidade-2", form: "crianças", gloss: "criança.PL", translation: "crianças" },
-          { id: "unidade-3", form: "brincam", gloss: "brincar.PRS.3PL", translation: "brincam" }
+          { id: "unidade-1", form: "A-s", gloss: "DET-PL" },
+          { id: "unidade-2", form: "criança-s", gloss: "criança-PL" },
+          { id: "unidade-3", form: "brinc-a-m", gloss: "brincar-PRS-3PL" }
+        ],
+        translation: "As crianças brincam.",
+        abbreviations: [
+          { code: "DET", meaning: "determinante" },
+          { code: "PL", meaning: "plural" },
+          { code: "PRS", meaning: "presente" },
+          { code: "3PL", meaning: "terceira pessoa do plural" }
         ],
         after: "A segmentação mantém cada forma alinhada à glosa e à tradução."
       }

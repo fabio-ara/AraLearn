@@ -1,4 +1,4 @@
-import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
 
@@ -47,6 +47,7 @@ const files = [
 
 const checkOnly = process.argv.includes("--check");
 const divergent = [];
+const expectedTargets = new Set(files.map(([, targetRelativePath]) => targetRelativePath));
 
 for (const [sourceRelativePath, targetRelativePath] of files) {
   const sourcePath = path.join(sourceRoot, sourceRelativePath);
@@ -59,6 +60,17 @@ for (const [sourceRelativePath, targetRelativePath] of files) {
     await mkdir(path.dirname(targetPath), { recursive: true });
     await writeFile(targetPath, source, "utf8");
   }
+}
+
+const edgeResourcesRoot = path.join(edgeRuntimeRoot, "resources");
+const mirroredResourceEntries = await readdir(edgeResourcesRoot, { recursive: true, withFileTypes: true });
+for (const entry of mirroredResourceEntries) {
+  if (!entry.isFile() || !entry.name.endsWith(".js")) continue;
+  const targetPath = path.join(entry.parentPath, entry.name);
+  const targetRelativePath = path.relative(edgeRuntimeRoot, targetPath);
+  if (expectedTargets.has(targetRelativePath)) continue;
+  divergent.push(targetRelativePath);
+  if (!checkOnly) await rm(targetPath);
 }
 
 if (checkOnly && divergent.length) {

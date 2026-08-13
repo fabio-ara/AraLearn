@@ -11,7 +11,7 @@ import {
 } from "../../src/resources/kernel/courseContract.js";
 import { createPackageRegistry } from "../../src/resources/kernel/packageRegistry.js";
 import { validatePackageSchema } from "../../src/resources/kernel/schemaValidation.js";
-import { paragraphPackage, RESOURCE_PACKAGE_REGISTRY } from "../../src/resources/packages/index.js";
+import { gapResponsePackage, paragraphPackage, RESOURCE_PACKAGE_REGISTRY } from "../../src/resources/packages/index.js";
 
 function paragraphInstance(overrides = {}) {
   return {
@@ -183,6 +183,95 @@ test("todo alvo de prática do catálogo materializa a lacuna dentro do resource
       responseState: { values: [] }
     });
     assert.match(rendered.contentHtml, /data-action="(?:text-gap-open-choice|complete-input)"/u, manifest.id);
+  });
+});
+
+test("kernel rejeita alvo declarado que o renderer mantém invisível", () => {
+  const hiddenTargetPackage = {
+    ...paragraphPackage,
+    manifest: {
+      ...paragraphPackage.manifest,
+      id: "aralearn.resource.hidden_target_fixture"
+    },
+    authoringContract: {
+      ...paragraphPackage.authoringContract,
+      example: { text: "Texto visível.", hidden: "resposta" }
+    },
+    schema: {
+      ...paragraphPackage.schema,
+      required: ["text", "hidden"],
+      properties: {
+        ...paragraphPackage.schema.properties,
+        hidden: { type: "string", minLength: 1 }
+      }
+    },
+    normalize(data) {
+      return { text: String(data?.text || "").trim(), hidden: String(data?.hidden || "").trim() };
+    },
+    practiceTargets() {
+      return [{ path: "hidden", label: "Alvo invisível", modes: ["gap", "typing"] }];
+    }
+  };
+  const registry = createPackageRegistry([hiddenTargetPackage, gapResponsePackage]);
+  const content = registry.normalizeInstance({
+    id: "hidden-content",
+    package: hiddenTargetPackage.manifest.id,
+    version: hiddenTargetPackage.manifest.version,
+    data: hiddenTargetPackage.authoringContract.example
+  }, "content");
+  const response = registry.normalizeInstance({
+    id: "hidden-response",
+    package: "aralearn.response.gap",
+    version: "1.0.0",
+    data: { blanks: [{ id: "hidden", targetInstanceId: content.id, targetPath: "hidden", responseMode: "text", answer: "resposta" }] }
+  }, "response");
+  const result = validateCardEnvelope({
+    ...theoryCard(), id: "hidden-card", role: "practice", content: [content], response
+  }, registry);
+  assert.equal(result.valid, false);
+  assert.match(result.errors.join(" "), /não materializa um controle visível/u);
+});
+
+test("lacunas múltiplas no mesmo campo não corrompem os marcadores umas das outras", () => {
+  const content = RESOURCE_PACKAGE_REGISTRY.normalizeInstance({
+    id: "code-with-overlapping-marker-terms",
+    package: "aralearn.resource.code",
+    version: "1.0.0",
+    data: {
+      prompt: "Complete o trecho.",
+      language: "python",
+      code: "contagem_setor = df[\"setor\"].value_counts()\nplt.bar(contagem_setor.index, contagem_setor.values)"
+    }
+  }, "content");
+  const answers = ["setor", "value_counts()", "index", "values"];
+  const response = RESOURCE_PACKAGE_REGISTRY.normalizeInstance({
+    id: "code-with-four-gaps",
+    package: "aralearn.response.gap",
+    version: "1.0.0",
+    data: {
+      blanks: answers.map((answer, index) => ({
+        id: `blank-${index + 1}`,
+        targetInstanceId: content.id,
+        targetPath: "code",
+        responseMode: "choice",
+        answer,
+        distractors: [`distrator-${index + 1}`]
+      }))
+    }
+  }, "response");
+  const card = {
+    ...theoryCard(), id: "multiple-gaps-card", role: "practice", content: [content], response
+  };
+  const validation = validateCardEnvelope(card, RESOURCE_PACKAGE_REGISTRY);
+  assert.equal(validation.valid, true, validation.errors.join(" "));
+  const rendered = renderCardEnvelope(card, RESOURCE_PACKAGE_REGISTRY, {
+    cardResponse: response,
+    responseBlockKey: "multiple-gaps",
+    blockKey: "multiple-gaps",
+    responseState: { values: [] }
+  });
+  answers.forEach((_, index) => {
+    assert.match(rendered.contentHtml, new RegExp(`data-complete-blank-index="${index}"`, "u"));
   });
 });
 

@@ -5686,6 +5686,28 @@ export function createLessonEditorApp({
         node.getAttribute("data-response-block-key")
       ));
     });
+    root.querySelectorAll("[data-action='annotation-toggle']").forEach((node) => {
+      node.addEventListener("click", () => {
+        const packageRoot = node.closest(".package-instance");
+        if (!packageRoot) return;
+        const indexes = new Set(String(node.getAttribute("data-annotation-indexes") || "")
+          .split(",").map((value) => value.trim()).filter(Boolean));
+        const shouldActivate = !node.classList.contains("is-active");
+        packageRoot.querySelectorAll("[data-action='annotation-toggle']").forEach((target) => {
+          const targetIndexes = String(target.getAttribute("data-annotation-indexes") || "")
+            .split(",").map((value) => value.trim()).filter(Boolean);
+          const active = shouldActivate && targetIndexes.some((index) => indexes.has(index));
+          target.classList.toggle("is-active", active);
+          target.setAttribute("aria-pressed", active ? "true" : "false");
+        });
+        if (shouldActivate && node.classList.contains("runtime-annotated-text-segment")) {
+          const note = [...packageRoot.querySelectorAll(".runtime-annotated-text-note")]
+            .find((target) => String(target.getAttribute("data-annotation-indexes") || "")
+              .split(",").some((index) => indexes.has(index.trim())));
+          note?.scrollIntoView({ block: "nearest", inline: "nearest", behavior: "smooth" });
+        }
+      });
+    });
     root.querySelectorAll("[data-action='matching-set']").forEach((node) => {
       node.addEventListener("change", () => setMatchingValue(
         node.getAttribute("data-response-block-key"),

@@ -32,7 +32,7 @@ const trailSnapshot = homeTrailSnapshotForProject(project, {
   }
 });
 
-const progressStorageKey = "aralearn.resource-test.progress.v2";
+const progressStorageKey = "aralearn.resource-test.progress.v3";
 function loadLocalProgress() {
   try {
     const value = JSON.parse(localStorage.getItem(progressStorageKey) || "null");

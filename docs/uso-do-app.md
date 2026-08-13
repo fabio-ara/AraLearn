@@ -188,7 +188,7 @@ funcionamento e os limites de interpretação estão em
 Os cards combinam packages de conteúdo, resposta e feedback. O catálogo atual
 inclui parágrafo, código, tabela, fluxo, árvore, grafo, mapa de relações,
 matriz, plano cartesiano, fórmula, gráfico estatístico, sequência, texto
-anotado, exemplo linguístico, mapa de sistema, reação química, escolha, lacuna
+anotado, glosa interlinear, mapa de sistema, reação química, escolha, lacuna
 e ordenação. Os cards de estudo não exibem controles de
 movimentação. **Visualizar**, **Editar** e **IA** usam o próprio conteúdo. Um
 contorno discreto identifica o alvo sem redimensionar o resource nem criar uma

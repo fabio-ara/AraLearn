@@ -42,7 +42,7 @@ finalidade do package. Em termos gerais:
   árvore, grafo, matriz, plano, mapa de sistema, mapa de relações, diagrama de
   conjuntos, tabela-verdade, cabeçalho de pacote, rastreamento de algoritmo,
   esquema relacional, máquina de estados, topologia de rede, mapa de memória,
-  exemplo linguístico e texto anotado pedem seus packages estruturais
+  glosa interlinear e texto anotado pedem seus packages estruturais
   específicos;
 - discriminação por alternativas pede `aralearn.response.choice`;
 - recuperação dentro de um campo textual visível pede

@@ -2268,38 +2268,19 @@ input:-webkit-autofill:focus {
 }
 
 /* Catálogo acadêmico de packages: cada representação conserva a notação da área. */
-.runtime-matrix-shell {
-  display: inline-flex;
-  align-items: stretch;
-  min-height: 0;
-}
-
 .runtime-matrix-delimiter {
-  display: flex;
-  align-items: center;
   color: var(--resource-text);
-  font-family: serif;
-  font-size: clamp(2.6rem, 13vw, 5.4rem);
-  font-weight: 300;
-  line-height: 0.75;
-  transform: scaleY(1.08);
+  font-weight: 400;
 }
 
 .runtime-matrix-grid {
-  display: grid;
-  gap: 7px;
-  align-content: center;
-  padding: 8px 5px;
-  background: transparent;
+  row-gap: 0.35em;
+  column-gap: 0.8em;
 }
 
-.runtime-matrix-row {
-  display: grid;
-  grid-auto-flow: column;
-  grid-auto-columns: minmax(34px, auto);
-  gap: 12px;
-  align-items: center;
-  justify-content: center;
+.runtime-matrix-grid mtd {
+  min-width: 1.9em;
+  padding: 0.12em 0.34em;
   color: var(--resource-text);
   text-align: center;
   white-space: nowrap;
@@ -3089,15 +3070,19 @@ input:-webkit-autofill:focus {
 .runtime-matrix-item {
   display: inline-flex;
   align-items: center;
-  gap: 10px;
   flex: 0 0 auto;
+}
+
+.runtime-matrix-item {
+  color: var(--resource-text);
+  font-size: 1.08rem;
+  font-weight: 400;
 }
 
 .runtime-matrix-sequence-operator,
 .runtime-matrix-name {
   color: var(--resource-text);
-  font-family: var(--font-display);
-  font-weight: 700;
+  font-weight: 400;
   white-space: nowrap;
 }
 
@@ -3461,29 +3446,16 @@ input:-webkit-autofill:focus {
   overflow-x: auto;
 }
 
-.package-reaction-equation,
-.package-reaction-side {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 7px;
-}
-
 .package-reaction-equation {
   min-width: max-content;
   color: var(--resource-text);
-}
-
-.package-reaction-species {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 2px;
+  font-size: 1.12rem;
+  font-weight: 400;
 }
 
 .package-reaction-coefficient,
 .package-reaction-formula {
-  font-size: 1.15rem;
-  font-weight: 750;
+  font-weight: 400;
 }
 
 .package-reaction-state {
@@ -3494,11 +3466,17 @@ input:-webkit-autofill:focus {
 .package-reaction-plus,
 .package-reaction-arrow {
   color: var(--resource-accent);
-  font-weight: 800;
+  font-weight: 500;
 }
 
 .package-reaction-arrow {
-  font-size: 1.55rem;
+  padding-inline: 0.45em;
+  font-size: 1.35rem;
+}
+
+.package-reaction-arrow-condition {
+  color: var(--resource-text-secondary);
+  font-size: 0.72rem;
 }
 
 .package-reaction-conditions {
@@ -4481,11 +4459,178 @@ input:-webkit-autofill:focus {
 
 }
 
-.runtime-linguistic-units {
+.runtime-annotated-text-block,
+.runtime-interlinear-gloss-block {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 9rem), 1fr));
-  gap: 0.75rem;
+  gap: 12px;
+  min-width: 0;
+}
+
+.runtime-annotated-text-source {
+  margin: 0;
+  color: var(--resource-text);
+  font-size: 1rem;
+  line-height: 1.8;
+}
+
+.runtime-annotated-text-segment {
+  display: inline;
+  margin: 0;
+  padding: 0 0.08em;
+  border: 0;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--resource-accent) 12%, transparent);
+  color: inherit;
+  font: inherit;
+  text-align: inherit;
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--resource-accent) 55%, transparent);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.18em;
+  cursor: pointer;
+}
+
+.runtime-annotated-text-segment sup {
+  margin-inline-start: 0.12em;
+  color: var(--resource-accent);
+  font-family: var(--font-ui);
+  font-size: 0.62em;
+  font-weight: 600;
+}
+
+.runtime-annotated-text-segment.is-active,
+.runtime-annotated-text-segment:focus-visible {
+  background: color-mix(in srgb, var(--resource-accent) 24%, transparent);
+  outline: 1px solid var(--resource-accent);
+  outline-offset: 2px;
+}
+
+.runtime-annotated-text-notes {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.runtime-annotated-text-note {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 10px;
+  width: 100%;
+  padding: 10px;
+  border: 1px solid var(--resource-border);
+  border-radius: 12px;
+  background: transparent;
+  color: var(--resource-text);
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+
+.runtime-annotated-text-note.is-active,
+.runtime-annotated-text-note:focus-visible {
+  border-color: var(--resource-accent);
+  background: var(--resource-accent-subtle);
+  outline: none;
+}
+
+.runtime-annotation-number {
+  display: grid;
+  place-items: center;
+  width: 1.7em;
+  height: 1.7em;
+  border: 1px solid var(--resource-accent);
+  border-radius: 999px;
+  color: var(--resource-accent);
+  font-size: 0.72rem;
+}
+
+.runtime-annotation-copy {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.runtime-annotation-copy q {
+  color: var(--resource-text-secondary);
+  font-size: var(--type-xs);
+}
+
+.runtime-annotation-copy .runtime-markdown-paragraph {
+  margin: 0;
+}
+
+.runtime-annotation-category {
+  color: var(--resource-accent);
+  font-size: 0.68rem;
+  font-weight: 650;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.runtime-interlinear-gloss {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  margin: 0;
+  padding: 12px;
+  border: 1px solid var(--resource-border);
+  border-radius: 12px;
+  background: var(--resource-surface-subtle);
+}
+
+.runtime-interlinear-units {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: start;
+  gap: 10px 16px;
   direction: inherit;
+}
+
+.runtime-interlinear-unit {
+  display: inline-grid;
+  grid-template-rows: auto auto;
+  gap: 2px;
+  min-width: max-content;
+}
+
+.runtime-interlinear-form,
+.runtime-interlinear-unit-gloss {
+  display: block;
+  white-space: nowrap;
+}
+
+.runtime-interlinear-unit-gloss {
+  color: var(--resource-text-secondary);
+}
+
+.runtime-interlinear-translation {
+  color: var(--resource-text);
+  font-style: normal;
+}
+
+.runtime-interlinear-abbreviations {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px 14px;
+  margin: 0;
+  color: var(--resource-text-secondary);
+  font-size: var(--type-xs);
+}
+
+.runtime-interlinear-abbreviations div {
+  display: inline-flex;
+  gap: 5px;
+}
+
+.runtime-interlinear-abbreviations dt {
+  color: var(--resource-text);
+  font-weight: 650;
+}
+
+.runtime-interlinear-abbreviations dd {
+  margin: 0;
 }
 
 #home-panel-courses {

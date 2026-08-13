@@ -42,6 +42,32 @@ function countOccurrences(value, search) {
   return count;
 }
 
+function locateBlankAnswers(source, blanks) {
+  const claimed = [];
+  return blanks.map(({ blank, index }) => {
+    let offset = 0;
+    let start = -1;
+    while ((start = source.indexOf(blank.answer, offset)) >= 0) {
+      const end = start + blank.answer.length;
+      if (!claimed.some((range) => start < range.end && end > range.start)) {
+        const location = { start, end, blank, index };
+        claimed.push(location);
+        return location;
+      }
+      offset = start + 1;
+    }
+    throw new TypeError(`Lacuna ${blank.id} não encontra uma ocorrência livre da resposta no campo de conteúdo indicado.`);
+  });
+}
+
+function replaceLocatedAnswers(source, locations, replacement) {
+  return [...locations]
+    .sort((left, right) => right.start - left.start)
+    .reduce((value, location) => (
+      value.slice(0, location.start) + replacement(location) + value.slice(location.end)
+    ), source);
+}
+
 function feedbackHtml(blockKey, feedback) {
   if (!feedback) return "";
   const key = escapePackageAttribute(blockKey);
@@ -100,44 +126,52 @@ export const gapResponsePackage = Object.freeze({
       requiredByTarget.set(key, (requiredByTarget.get(key) || 0) + 1);
       if (countOccurrences(source, blank.answer) < requiredByTarget.get(key)) {
         errors.push(`Lacuna ${blank.id} não encontra sua resposta no campo de conteúdo indicado.`);
+        return;
+      }
+      if (!registry?.materializesGap?.(instance, card.response, (card.response?.data?.blanks || []).indexOf(blank))) {
+        errors.push(`Lacuna ${blank.id} não materializa um controle visível no renderer do package.`);
       }
     });
     return errors;
   },
   prepareCardForSemantics(card) {
     const visible = structuredClone(card);
-    (visible.response?.data?.blanks || []).forEach((blank) => {
-      const instance = (visible.content || []).find(({ id }) => id === blank.targetInstanceId);
-      if (!instance) return;
-      const path = fieldPath(blank.targetPath);
-      const source = String(readPath(instance.data, path) ?? "");
-      const answerIndex = source.indexOf(blank.answer);
-      if (answerIndex < 0) return;
-      writePath(
-        instance.data,
-        path,
-        source.slice(0, answerIndex) + " […] " + source.slice(answerIndex + blank.answer.length)
-      );
+    (visible.content || []).forEach((instance) => {
+      const grouped = new Map();
+      (visible.response?.data?.blanks || []).forEach((blank, index) => {
+        if (blank.targetInstanceId !== instance.id) return;
+        const path = fieldPath(blank.targetPath);
+        if (!grouped.has(path)) grouped.set(path, []);
+        grouped.get(path).push({ blank, index });
+      });
+      grouped.forEach((blanks, path) => {
+        const source = String(readPath(instance.data, path) ?? "");
+        const locations = locateBlankAnswers(source, blanks);
+        writePath(instance.data, path, replaceLocatedAnswers(source, locations, () => " […] "));
+      });
     });
     return visible;
   },
   prepareContentInstance(instance, response, options = {}) {
     const data = structuredClone(instance.data || {});
+    const grouped = new Map();
     (response.blanks || []).forEach((blank, index) => {
       if (blank.targetInstanceId !== instance.id) return;
       const path = fieldPath(blank.targetPath);
+      if (!grouped.has(path)) grouped.set(path, []);
+      grouped.get(path).push({ blank, index });
+    });
+    grouped.forEach((blanks, path) => {
       const source = String(readPath(data, path) ?? "");
-      const answerIndex = source.indexOf(blank.answer);
-      if (answerIndex < 0) {
-        throw new TypeError(`Lacuna ${blank.id} não encontra sua resposta no campo de conteúdo indicado.`);
-      }
-      const marker = createPackageGapMarker({
-        blockKey: options.responseBlockKey || options.blockKey,
-        index,
-        responseMode: blank.responseMode,
-        value: options.responseState?.values?.[index] ?? ""
-      });
-      writePath(data, path, source.slice(0, answerIndex) + marker + source.slice(answerIndex + blank.answer.length));
+      const locations = locateBlankAnswers(source, blanks);
+      writePath(data, path, replaceLocatedAnswers(source, locations, ({ blank, index }) => (
+        createPackageGapMarker({
+          blockKey: options.responseBlockKey || options.blockKey,
+          index,
+          responseMode: blank.responseMode,
+          value: options.responseState?.values?.[index] ?? ""
+        })
+      )));
     });
     return data;
   },

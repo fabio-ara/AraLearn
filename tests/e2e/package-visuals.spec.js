@@ -250,7 +250,7 @@ for (const width of [360, 390, 412]) {
       });
 
       await expect(page.locator(".runtime-matrix-delimiter")).toHaveCount(2);
-      await expect(page.locator('.runtime-matrix-grid [role="cell"]')).toHaveCount(6);
+      await expect(page.locator(".runtime-matrix-grid mtd")).toHaveCount(6);
       await expect(page.locator(".runtime-tree-entry")).toHaveCount(4);
       await expect(page.locator('.runtime-tree-item[aria-level="4"]')).toHaveCount(1);
       await assertContained(page, ".runtime-tree-structure, .runtime-tree-entry", width);

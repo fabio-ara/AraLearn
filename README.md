@@ -27,7 +27,7 @@ Cada curso é uma árvore didática explícita:
 curso -> módulo -> lição -> microssequência -> card
 ```
 
-A microssequência é a unidade de estudo central: pequena o bastante para caber entre compromissos, mas com contexto suficiente para ligar explicação, exemplo e prática. Os cards podem usar os dezoito recursos canônicos: parágrafo, escolha, composição, código, tabela, fluxo, árvore, grafo, mapa de relações, matriz, plano cartesiano, fórmula, gráfico estatístico, sequência, texto anotado, exemplo linguístico, mapa de sistema e reação química.
+A microssequência é a unidade de estudo central: pequena o bastante para caber entre compromissos, mas com contexto suficiente para ligar explicação, exemplo e prática. Os cards escolhem representações no catálogo acadêmico de packages — como texto anotado, glosa interlinear, matriz, reação química, grafo e mapa de relações — e as combinam somente com formas de resposta pedagogicamente compatíveis.
 
 Na biblioteca, duas formas de organização usam a mesma gramática visual de
 grupos e cards, mas atendem a finalidades e permissões diferentes:

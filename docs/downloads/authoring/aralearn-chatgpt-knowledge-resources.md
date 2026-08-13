@@ -30,7 +30,7 @@ Em `aralearn.response.choice`, `data.question` é o único enunciado da escolha.
 Use o manifest recuperado por MCP para comparar a operação cognitiva com a finalidade do package. Em termos gerais:
 
 - texto explicativo pede `aralearn.resource.paragraph`;
-- código, tabela, fórmula, reação, gráfico quantitativo, sequência, fluxo, árvore, grafo, matriz, plano, mapa de sistema, mapa de relações, diagrama de conjuntos, tabela-verdade, cabeçalho de pacote, rastreamento de algoritmo, esquema relacional, máquina de estados, topologia de rede, mapa de memória, exemplo linguístico e texto anotado pedem seus packages estruturais específicos;
+- código, tabela, fórmula, reação, gráfico quantitativo, sequência, fluxo, árvore, grafo, matriz, plano, mapa de sistema, mapa de relações, diagrama de conjuntos, tabela-verdade, cabeçalho de pacote, rastreamento de algoritmo, esquema relacional, máquina de estados, topologia de rede, mapa de memória, glosa interlinear e texto anotado pedem seus packages estruturais específicos;
 - discriminação por alternativas pede `aralearn.response.choice`;
 - recuperação dentro de um campo textual visível pede `aralearn.response.gap`;
 - reconstrução de uma ordem pede `aralearn.response.ordering`.
@@ -187,7 +187,7 @@ Antes de aprovar, verifique:
 
 Packages são módulos independentes compatíveis com o kernel. O catálogo compacto informa identidade, versão, finalidade, operações cognitivas, slots, áreas, objetos de conhecimento, convenções acadêmicas, adequações, contraindicações, tecnologias, modalidades de prática, compatibilidades, limitações e acessibilidade. O contrato completo só é devolvido para package e versão escolhidos.
 
-Os packages de conteúdo instalados incluem texto explicado, código, tabela, sequência, texto anotado, exemplo linguístico, árvore, matriz, reação, fluxo, fórmula, plano, gráfico, mapa de sistema, grafo, mapa de relações, tabela-verdade, layout de pacote, rastreamento de algoritmo, esquema relacional, máquina de estados, topologia de rede, diagrama de conjuntos e mapa de memória. Os packages de resposta instalados cobrem escolha, lacuna, ordenação e encaixe/classificação. A lista vigente é sempre derivada do registry; documentação não é fonte paralela de enumeração.
+Os packages de conteúdo instalados incluem texto explicado, código, tabela, sequência, texto anotado, glosa interlinear, árvore, matriz, reação, fluxo, fórmula, plano, gráfico, mapa de sistema, grafo, mapa de relações, tabela-verdade, layout de pacote, rastreamento de algoritmo, esquema relacional, máquina de estados, topologia de rede, diagrama de conjuntos e mapa de memória. Os packages de resposta instalados cobrem escolha, lacuna, ordenação e encaixe/classificação. A lista vigente é sempre derivada do registry; documentação não é fonte paralela de enumeração.
 
 `graph` recebe vértices e arestas sem coordenadas. O package calcula a geometria móvel e mantém os rótulos completos numa lista semântica fora das arestas. `relation_map` recebe domínio, contradomínio e pares ordenados; apresenta cada elemento uma única vez e explicita a relação sem cruzar texto. `matrix` representa somente arranjos algébricos, sem herdar a grade de uma tabela de registros.
 

@@ -133,9 +133,9 @@ test("matrix e tree preservam a estrutura visual package-native no card completo
       values: [["1", "0"], ["0", "1"]]
     }
   }));
-  assert.match(matrixHtml, /runtime-matrix-shell/u);
+  assert.match(matrixHtml, /<math class="runtime-matrix-item"/u);
   assert.match(matrixHtml, /runtime-matrix-delimiter is-left/u);
-  assert.match(matrixHtml, /runtime-matrix-grid/u);
+  assert.match(matrixHtml, /<mtable class="runtime-matrix-grid"/u);
   assert.doesNotMatch(matrixHtml, /<table/u);
 
   const treeHtml = renderPackageCardBlocks(cardWith({
@@ -208,8 +208,9 @@ test("recursos visuais extraídos preservam representação própria em vez de t
       products: [{ id: "w", formula: "H₂O", name: "água", coefficient: 2, state: "l" }]
     }
   });
-  assert.match(reactionHtml, /package-reaction-species/u);
-  assert.match(reactionHtml, /package-reaction-arrow/u);
+  assert.match(reactionHtml, /<math class="package-reaction-equation"/u);
+  assert.match(reactionHtml, /<mrow class="package-reaction-species"/u);
+  assert.match(reactionHtml, /<mo class="package-reaction-arrow"/u);
 
   const flowHtml = render({
     id: "flow",
@@ -233,4 +234,38 @@ test("recursos visuais extraídos preservam representação própria em vez de t
   assert.match(systemMapHtml, /package-system-ungrouped/u);
   assert.match(systemMapHtml, /package-system-group/u);
   assert.match(systemMapHtml, /package-system-link-number/u);
+});
+
+test("texto anotado ancora notas nos trechos sem revelar ids internos", () => {
+  const html = renderPackageCardBlocks(cardWith({
+    id: "annotated",
+    package: "aralearn.resource.annotated_text",
+    version: "1.0.0",
+    data: {
+      segments: [{ id: "before", text: "O " }, { id: "client", text: "cliente" }, { id: "after", text: " envia." }],
+      annotations: [{ id: "role", targetIds: ["client"], category: "Papel", label: "Iniciador", note: "Inicia a comunicação." }]
+    }
+  }));
+  assert.match(html, /runtime-annotated-text-segment/u);
+  assert.match(html, /data-annotation-indexes="0"/u);
+  assert.match(html, /<q>cliente<\/q>/u);
+  assert.doesNotMatch(html, /Trechos:|>client</u);
+});
+
+test("glosa interlinear preserva linhas alinhadas, tradução livre e legenda", () => {
+  const html = renderPackageCardBlocks(cardWith({
+    id: "gloss",
+    package: "aralearn.resource.interlinear_gloss",
+    version: "1.0.0",
+    data: {
+      languageTag: "pt-BR",
+      units: [{ id: "word", form: "casa-s", gloss: "casa-PL" }],
+      translation: "casas",
+      abbreviations: [{ code: "PL", meaning: "plural" }]
+    }
+  }));
+  assert.match(html, /runtime-interlinear-form">casa-s/u);
+  assert.match(html, /runtime-interlinear-unit-gloss">casa-PL/u);
+  assert.match(html, /runtime-interlinear-translation[^>]*>“casas”/u);
+  assert.match(html, /<dt>PL<\/dt><dd>plural<\/dd>/u);
 });

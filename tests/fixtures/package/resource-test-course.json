@@ -784,20 +784,47 @@
                           "package": "aralearn.resource.annotated_text",
                           "version": "1.0.0",
                           "data": {
+                            "prompt": "Examine os participantes da comunicação.",
                             "segments": [
                               {
-                                "id": "s1",
-                                "text": "O cliente envia uma requisição."
+                                "id": "lead",
+                                "text": "O "
+                              },
+                              {
+                                "id": "client",
+                                "text": "cliente"
+                              },
+                              {
+                                "id": "middle",
+                                "text": " envia uma "
+                              },
+                              {
+                                "id": "request",
+                                "text": "requisição"
+                              },
+                              {
+                                "id": "end",
+                                "text": " ao servidor."
                               }
                             ],
                             "annotations": [
                               {
-                                "id": "a1",
+                                "id": "initiator",
                                 "targetIds": [
-                                  "s1"
+                                  "client"
                                 ],
-                                "label": "Ação inicial",
-                                "note": "A comunicação começa no cliente."
+                                "category": "Papel",
+                                "label": "Iniciador",
+                                "note": "Entidade que inicia a comunicação."
+                              },
+                              {
+                                "id": "message",
+                                "targetIds": [
+                                  "request"
+                                ],
+                                "category": "Mensagem",
+                                "label": "Pedido",
+                                "note": "Mensagem que formaliza o pedido enviado ao servidor."
                               }
                             ]
                           }
@@ -819,20 +846,47 @@
                           "package": "aralearn.resource.annotated_text",
                           "version": "1.0.0",
                           "data": {
+                            "prompt": "Examine os participantes da comunicação.",
                             "segments": [
                               {
-                                "id": "s1",
-                                "text": "O cliente envia uma requisição."
+                                "id": "lead",
+                                "text": "O "
+                              },
+                              {
+                                "id": "client",
+                                "text": "cliente"
+                              },
+                              {
+                                "id": "middle",
+                                "text": " envia uma "
+                              },
+                              {
+                                "id": "request",
+                                "text": "requisição"
+                              },
+                              {
+                                "id": "end",
+                                "text": " ao servidor."
                               }
                             ],
                             "annotations": [
                               {
-                                "id": "a1",
+                                "id": "initiator",
                                 "targetIds": [
-                                  "s1"
+                                  "client"
                                 ],
-                                "label": "Ação inicial",
-                                "note": "A comunicação começa no cliente."
+                                "category": "Papel",
+                                "label": "Iniciador",
+                                "note": "Entidade que inicia a comunicação."
+                              },
+                              {
+                                "id": "message",
+                                "targetIds": [
+                                  "request"
+                                ],
+                                "category": "Mensagem",
+                                "label": "Pedido",
+                                "note": "Mensagem que formaliza o pedido enviado ao servidor."
                               }
                             ]
                           }
@@ -847,13 +901,13 @@
                             {
                               "id": "blank-1",
                               "targetInstanceId": "resource-test-5-choice-content",
-                              "targetPath": "segments[0].text",
-                              "label": "Lacuna no trecho 1",
+                              "targetPath": "segments[1].text",
+                              "label": "Lacuna no trecho anotado 2",
                               "responseMode": "choice",
-                              "answer": "requisição.",
+                              "answer": "cliente",
                               "distractors": [
-                                "não requisição.",
-                                "outro requisição."
+                                "não cliente",
+                                "outro cliente"
                               ]
                             }
                           ]
@@ -874,20 +928,47 @@
                           "package": "aralearn.resource.annotated_text",
                           "version": "1.0.0",
                           "data": {
+                            "prompt": "Examine os participantes da comunicação.",
                             "segments": [
                               {
-                                "id": "s1",
-                                "text": "O cliente envia uma requisição."
+                                "id": "lead",
+                                "text": "O "
+                              },
+                              {
+                                "id": "client",
+                                "text": "cliente"
+                              },
+                              {
+                                "id": "middle",
+                                "text": " envia uma "
+                              },
+                              {
+                                "id": "request",
+                                "text": "requisição"
+                              },
+                              {
+                                "id": "end",
+                                "text": " ao servidor."
                               }
                             ],
                             "annotations": [
                               {
-                                "id": "a1",
+                                "id": "initiator",
                                 "targetIds": [
-                                  "s1"
+                                  "client"
                                 ],
-                                "label": "Ação inicial",
-                                "note": "A comunicação começa no cliente."
+                                "category": "Papel",
+                                "label": "Iniciador",
+                                "note": "Entidade que inicia a comunicação."
+                              },
+                              {
+                                "id": "message",
+                                "targetIds": [
+                                  "request"
+                                ],
+                                "category": "Mensagem",
+                                "label": "Pedido",
+                                "note": "Mensagem que formaliza o pedido enviado ao servidor."
                               }
                             ]
                           }
@@ -902,10 +983,10 @@
                             {
                               "id": "blank-1",
                               "targetInstanceId": "resource-test-5-text-content",
-                              "targetPath": "segments[0].text",
-                              "label": "Lacuna no trecho 1",
+                              "targetPath": "segments[1].text",
+                              "label": "Lacuna no trecho anotado 2",
                               "responseMode": "text",
-                              "answer": "requisição."
+                              "answer": "cliente"
                             }
                           ]
                         }
@@ -922,9 +1003,9 @@
         },
         {
           "id": "resource-test-6-module",
-          "title": "Exemplo linguístico",
+          "title": "Glosa interlinear",
           "guide": {
-            "goal": "Avaliar aralearn.resource.linguistic_example somente nas modalidades declaradas pelo próprio package.",
+            "goal": "Avaliar aralearn.resource.interlinear_gloss somente nas modalidades declaradas pelo próprio package.",
             "include": [
               "representação canônica e interação declarada"
             ],
@@ -932,9 +1013,10 @@
               "adaptação artificial de outra operação cognitiva"
             ],
             "notation": [
-              "alinhamento interlinear",
-              "glosas consistentes",
-              "idioma e direção declarados"
+              "alinhamento interlinear por unidade",
+              "mesmas fronteiras na forma e na glosa",
+              "tradução livre separada",
+              "abreviações gramaticais em versal"
             ],
             "avoid": [
               "usar a forma quando ela não acrescenta significado"
@@ -943,9 +1025,9 @@
           "lessons": [
             {
               "id": "resource-test-6-lesson",
-              "title": "Exemplo linguístico",
+              "title": "Glosa interlinear",
               "guide": {
-                "goal": "Avaliar aralearn.resource.linguistic_example somente nas modalidades declaradas pelo próprio package.",
+                "goal": "Avaliar aralearn.resource.interlinear_gloss somente nas modalidades declaradas pelo próprio package.",
                 "include": [
                   "exposição e práticas semanticamente suportadas"
                 ],
@@ -953,9 +1035,10 @@
                   "práticas universais presumidas"
                 ],
                 "notation": [
-                  "alinhamento interlinear",
-                  "glosas consistentes",
-                  "idioma e direção declarados"
+                  "alinhamento interlinear por unidade",
+                  "mesmas fronteiras na forma e na glosa",
+                  "tradução livre separada",
+                  "abreviações gramaticais em versal"
                 ],
                 "avoid": [
                   "lacuna fora da representação"
@@ -965,8 +1048,8 @@
               "microsequences": [
                 {
                   "id": "resource-test-6-microsequence",
-                  "title": "Exemplo linguístico",
-                  "goal": "Avaliar aralearn.resource.linguistic_example somente nas modalidades declaradas pelo próprio package.",
+                  "title": "Glosa interlinear",
+                  "goal": "Avaliar aralearn.resource.interlinear_gloss somente nas modalidades declaradas pelo próprio package.",
                   "role": "practice",
                   "dependsOn": [],
                   "covers": [],
@@ -985,18 +1068,24 @@
                       "content": [
                         {
                           "id": "resource-test-6-exposition-content",
-                          "package": "aralearn.resource.linguistic_example",
+                          "package": "aralearn.resource.interlinear_gloss",
                           "version": "1.0.0",
                           "data": {
+                            "prompt": "Observe como o plural é segmentado.",
                             "languageTag": "pt-BR",
-                            "writingMode": "horizontal",
-                            "alignment": "word",
+                            "textDirection": "ltr",
                             "units": [
                               {
-                                "id": "u1",
-                                "form": "casas",
-                                "gloss": "casa-PL",
-                                "translation": "mais de uma casa"
+                                "id": "word-1",
+                                "form": "casa-s",
+                                "gloss": "casa-PL"
+                              }
+                            ],
+                            "translation": "casas",
+                            "abbreviations": [
+                              {
+                                "code": "PL",
+                                "meaning": "plural"
                               }
                             ]
                           }
@@ -1015,18 +1104,24 @@
                       "content": [
                         {
                           "id": "resource-test-6-choice-content",
-                          "package": "aralearn.resource.linguistic_example",
+                          "package": "aralearn.resource.interlinear_gloss",
                           "version": "1.0.0",
                           "data": {
+                            "prompt": "Observe como o plural é segmentado.",
                             "languageTag": "pt-BR",
-                            "writingMode": "horizontal",
-                            "alignment": "word",
+                            "textDirection": "ltr",
                             "units": [
                               {
-                                "id": "u1",
-                                "form": "casas",
-                                "gloss": "casa-PL",
-                                "translation": "mais de uma casa"
+                                "id": "word-1",
+                                "form": "casa-s",
+                                "gloss": "casa-PL"
+                              }
+                            ],
+                            "translation": "casas",
+                            "abbreviations": [
+                              {
+                                "code": "PL",
+                                "meaning": "plural"
                               }
                             ]
                           }
@@ -1042,12 +1137,12 @@
                               "id": "blank-1",
                               "targetInstanceId": "resource-test-6-choice-content",
                               "targetPath": "units[0].form",
-                              "label": "Lacuna em form da unidade 1",
+                              "label": "Lacuna na forma 1",
                               "responseMode": "choice",
-                              "answer": "casas",
+                              "answer": "casa-s",
                               "distractors": [
-                                "não casas",
-                                "outro casas"
+                                "não casa-s",
+                                "outro casa-s"
                               ]
                             }
                           ]
@@ -1065,18 +1160,24 @@
                       "content": [
                         {
                           "id": "resource-test-6-text-content",
-                          "package": "aralearn.resource.linguistic_example",
+                          "package": "aralearn.resource.interlinear_gloss",
                           "version": "1.0.0",
                           "data": {
+                            "prompt": "Observe como o plural é segmentado.",
                             "languageTag": "pt-BR",
-                            "writingMode": "horizontal",
-                            "alignment": "word",
+                            "textDirection": "ltr",
                             "units": [
                               {
-                                "id": "u1",
-                                "form": "casas",
-                                "gloss": "casa-PL",
-                                "translation": "mais de uma casa"
+                                "id": "word-1",
+                                "form": "casa-s",
+                                "gloss": "casa-PL"
+                              }
+                            ],
+                            "translation": "casas",
+                            "abbreviations": [
+                              {
+                                "code": "PL",
+                                "meaning": "plural"
                               }
                             ]
                           }
@@ -1092,9 +1193,9 @@
                               "id": "blank-1",
                               "targetInstanceId": "resource-test-6-text-content",
                               "targetPath": "units[0].form",
-                              "label": "Lacuna em form da unidade 1",
+                              "label": "Lacuna na forma 1",
                               "responseMode": "text",
-                              "answer": "casas"
+                              "answer": "casa-s"
                             }
                           ]
                         }
@@ -1577,7 +1678,7 @@
                                 "id": "h",
                                 "formula": "H₂",
                                 "name": "hidrogênio",
-                                "coefficient": 2,
+                                "coefficient": "2",
                                 "state": "g"
                               },
                               {
@@ -1592,7 +1693,7 @@
                                 "id": "w",
                                 "formula": "H₂O",
                                 "name": "água",
-                                "coefficient": 2,
+                                "coefficient": "2",
                                 "state": "l"
                               }
                             ],
@@ -1623,7 +1724,7 @@
                                 "id": "h",
                                 "formula": "H₂",
                                 "name": "hidrogênio",
-                                "coefficient": 2,
+                                "coefficient": "2",
                                 "state": "g"
                               },
                               {
@@ -1638,7 +1739,7 @@
                                 "id": "w",
                                 "formula": "H₂O",
                                 "name": "água",
-                                "coefficient": 2,
+                                "coefficient": "2",
                                 "state": "l"
                               }
                             ],
@@ -1655,13 +1756,13 @@
                             {
                               "id": "blank-1",
                               "targetInstanceId": "resource-test-9-choice-content",
-                              "targetPath": "reactants[0].name",
-                              "label": "Lacuna no reagente 1",
+                              "targetPath": "reactants[0].coefficient",
+                              "label": "Lacuna no coeficiente 1 de reagente",
                               "responseMode": "choice",
-                              "answer": "hidrogênio",
+                              "answer": "2",
                               "distractors": [
-                                "não hidrogênio",
-                                "outro hidrogênio"
+                                "não 2",
+                                "outro 2"
                               ]
                             }
                           ]
@@ -1689,7 +1790,7 @@
                                 "id": "h",
                                 "formula": "H₂",
                                 "name": "hidrogênio",
-                                "coefficient": 2,
+                                "coefficient": "2",
                                 "state": "g"
                               },
                               {
@@ -1704,7 +1805,7 @@
                                 "id": "w",
                                 "formula": "H₂O",
                                 "name": "água",
-                                "coefficient": 2,
+                                "coefficient": "2",
                                 "state": "l"
                               }
                             ],
@@ -1721,10 +1822,10 @@
                             {
                               "id": "blank-1",
                               "targetInstanceId": "resource-test-9-text-content",
-                              "targetPath": "reactants[0].name",
-                              "label": "Lacuna no reagente 1",
+                              "targetPath": "reactants[0].coefficient",
+                              "label": "Lacuna no coeficiente 1 de reagente",
                               "responseMode": "text",
-                              "answer": "hidrogênio"
+                              "answer": "2"
                             }
                           ]
                         }
