@@ -4,6 +4,7 @@ import { codePackage } from "./code/index.js";
 import { tablePackage } from "./table/index.js";
 import { sequencePackage } from "./sequence/index.js";
 import { annotatedTextPackage } from "./annotated-text/index.js";
+import { bpmnProcessPackage } from "./bpmn-process/index.js";
 import { interlinearGlossPackage } from "./interlinear-gloss/index.js";
 import { choiceResponsePackage } from "./choice-response/index.js";
 import { gapResponsePackage } from "./gap-response/index.js";
@@ -29,6 +30,9 @@ import { setDiagramPackage } from "./set-diagram/index.js";
 import { stateMachinePackage } from "./state-machine/index.js";
 import { truthTablePackage } from "./truth-table/index.js";
 import { matchingResponsePackage } from "./matching-response/index.js";
+import { entityRelationshipPackage } from "./entity-relationship/index.js";
+import { stateTransitionTablePackage } from "./state-transition-table/index.js";
+import { callStackPackage } from "./call-stack/index.js";
 
 export const RESOURCE_PACKAGE_REGISTRY = createPackageRegistry([
   paragraphPackage,
@@ -36,6 +40,7 @@ export const RESOURCE_PACKAGE_REGISTRY = createPackageRegistry([
   tablePackage,
   sequencePackage,
   annotatedTextPackage,
+  bpmnProcessPackage,
   interlinearGlossPackage,
   choiceResponsePackage,
   gapResponsePackage,
@@ -60,11 +65,15 @@ export const RESOURCE_PACKAGE_REGISTRY = createPackageRegistry([
   setDiagramPackage,
   stateMachinePackage,
   truthTablePackage,
-  matchingResponsePackage
+  matchingResponsePackage,
+  entityRelationshipPackage,
+  stateTransitionTablePackage,
+  callStackPackage
 ]);
 
 export {
   annotatedTextPackage,
+  bpmnProcessPackage,
   codePackage,
   choiceResponsePackage,
   gapResponsePackage,
@@ -93,5 +102,8 @@ export {
   setDiagramPackage,
   stateMachinePackage,
   truthTablePackage,
-  matchingResponsePackage
+  matchingResponsePackage,
+  entityRelationshipPackage,
+  stateTransitionTablePackage,
+  callStackPackage
 };

@@ -33,6 +33,7 @@
     "validate:resource-corpus": "node ./scripts/runResourceCorpusValidation.js",
     "resources:gallery:fixture": "node ./scripts/buildResourceGalleryFixture.mjs",
     "resources:test-course": "node ./scripts/buildResourceTestCourse.mjs",
+    "resources:academic-courses": "node ./scripts/buildAcademicStressCourses.mjs",
     "resources:test-course:e2e": "node ./scripts/buildResourceTestCourse.mjs && playwright test --config playwright.resource-test.config.js",
     "resources:gallery:visual": "node ./scripts/buildResourceGalleryFixture.mjs && node ./scripts/captureResourceGallery.mjs",
     "audit:frontend": "node ./scripts/auditFrontendStyles.mjs",

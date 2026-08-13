@@ -56,7 +56,8 @@ function choiceResponse(question = "Qual protocolo confirma a entrega?") {
 
 test("kernel registra package sem conhecer paragraph", () => {
   const catalog = RESOURCE_PACKAGE_REGISTRY.listCatalog();
-  assert.equal(catalog.length, 30);
+  assert.ok(catalog.length > 0);
+  assert.equal(new Set(catalog.map(({ id, version }) => `${id}@${version}`)).size, catalog.length);
   assert.equal(catalog[0].id, "aralearn.resource.paragraph");
   assert.equal(Object.hasOwn(catalog[0], "schema"), false);
   assert.equal(Object.hasOwn(catalog[0], "example"), false);

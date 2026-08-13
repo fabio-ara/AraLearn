@@ -90,9 +90,9 @@
                           "package": "aralearn.resource.code",
                           "version": "1.0.0",
                           "data": {
-                            "prompt": "Observe a condição antes do envio.",
-                            "language": "javascript",
-                            "code": "if (online) {\n  enviar();\n}"
+                            "prompt": "Leia a busca binária e acompanhe como os limites eliminam metade do vetor a cada iteração.",
+                            "language": "python",
+                            "code": "def busca_binaria(valores, alvo):\n    inicio, fim = 0, len(valores) - 1\n    while inicio <= fim:\n        meio = (inicio + fim) // 2\n        if valores[meio] == alvo:\n            return meio\n        if valores[meio] < alvo:\n            inicio = meio + 1\n        else:\n            fim = meio - 1\n    return -1"
                           }
                         }
                       ],
@@ -121,15 +121,39 @@
                           "package": "aralearn.resource.table",
                           "version": "1.0.0",
                           "data": {
-                            "prompt": "Compare a finalidade.",
+                            "prompt": "Compare mecanismos de controle de congestionamento depois de estudar janela de congestionamento, perda e atraso.",
+                            "caption": "Sinais e respostas típicas; detalhes dependem do algoritmo e da implementação.",
+                            "layout": "wide",
                             "columns": [
                               "Mecanismo",
-                              "Finalidade"
+                              "Sinal observado",
+                              "Resposta principal",
+                              "Efeito esperado"
                             ],
                             "rows": [
                               [
-                                "Get",
-                                "Consultar um valor"
+                                "Slow start",
+                                "Início da conexão ou reinício após timeout",
+                                "Crescimento exponencial de cwnd por RTT",
+                                "Descobrir rapidamente a capacidade disponível"
+                              ],
+                              [
+                                "Congestion avoidance",
+                                "cwnd alcança ssthresh",
+                                "Crescimento aproximadamente linear",
+                                "Sondar capacidade com mais cautela"
+                              ],
+                              [
+                                "Fast retransmit",
+                                "ACKs duplicados",
+                                "Retransmitir antes do timeout",
+                                "Reduzir o tempo de recuperação"
+                              ],
+                              [
+                                "Timeout",
+                                "Ausência de confirmação dentro do RTO",
+                                "Reduzir cwnd e reiniciar crescimento",
+                                "Responder a indício forte de perda"
                               ]
                             ]
                           }
@@ -160,16 +184,33 @@
                           "package": "aralearn.resource.sequence",
                           "version": "1.0.0",
                           "data": {
-                            "prompt": "Acompanhe o envio.",
+                            "prompt": "Acompanhe uma resolução DNS iterativa depois que o nome completo e o papel do resolvedor já foram apresentados.",
                             "variant": "ordered_steps",
                             "items": [
                               {
-                                "id": "s1",
-                                "label": "Preparar mensagem"
+                                "id": "query",
+                                "label": "Receber a consulta do cliente",
+                                "detail": "O resolvedor verifica primeiro seu cache."
                               },
                               {
-                                "id": "s2",
-                                "label": "Transmitir"
+                                "id": "root",
+                                "label": "Consultar um servidor raiz",
+                                "detail": "A resposta encaminha para o domínio de topo apropriado."
+                              },
+                              {
+                                "id": "tld",
+                                "label": "Consultar o servidor do domínio de topo",
+                                "detail": "A resposta indica servidores autoritativos do domínio."
+                              },
+                              {
+                                "id": "authoritative",
+                                "label": "Consultar o servidor autoritativo",
+                                "detail": "O registro solicitado é devolvido com seu TTL."
+                              },
+                              {
+                                "id": "answer",
+                                "label": "Armazenar e devolver a resposta",
+                                "detail": "O cache evita repetir imediatamente todo o percurso."
                               }
                             ]
                           }
@@ -263,11 +304,191 @@
                     {
                       "id": "gallery-6",
                       "position": 6,
-                      "title": "Glosa interlinear",
+                      "title": "Processo BPMN",
                       "role": "theory",
                       "content": [
                         {
                           "id": "instance-6",
+                          "package": "aralearn.resource.bpmn_process",
+                          "version": "1.0.0",
+                          "data": {
+                            "prompt": "Acompanhe o atendimento de uma solicitação e distinga a decisão exclusiva do fluxo de mensagem entre cliente e organização.",
+                            "participants": [
+                              {
+                                "id": "customer",
+                                "label": "Cliente",
+                                "lanes": [
+                                  {
+                                    "id": "customer_lane",
+                                    "label": "Solicitante"
+                                  }
+                                ]
+                              },
+                              {
+                                "id": "organization",
+                                "label": "Organização",
+                                "lanes": [
+                                  {
+                                    "id": "service",
+                                    "label": "Atendimento"
+                                  },
+                                  {
+                                    "id": "analysis",
+                                    "label": "Análise"
+                                  }
+                                ]
+                              }
+                            ],
+                            "nodes": [
+                              {
+                                "id": "need",
+                                "kind": "start_event",
+                                "label": "Necessidade identificada",
+                                "participant": "customer",
+                                "lane": "customer_lane"
+                              },
+                              {
+                                "id": "send",
+                                "kind": "user_task",
+                                "label": "Enviar solicitação",
+                                "participant": "customer",
+                                "lane": "customer_lane"
+                              },
+                              {
+                                "id": "receive",
+                                "kind": "start_event",
+                                "label": "Solicitação recebida",
+                                "participant": "organization",
+                                "lane": "service"
+                              },
+                              {
+                                "id": "register",
+                                "kind": "user_task",
+                                "label": "Registrar solicitação",
+                                "participant": "organization",
+                                "lane": "service"
+                              },
+                              {
+                                "id": "analyze",
+                                "kind": "user_task",
+                                "label": "Analisar requisitos",
+                                "participant": "organization",
+                                "lane": "analysis"
+                              },
+                              {
+                                "id": "complete",
+                                "kind": "exclusive_gateway",
+                                "label": "Dados completos?",
+                                "participant": "organization",
+                                "lane": "analysis"
+                              },
+                              {
+                                "id": "request",
+                                "kind": "user_task",
+                                "label": "Solicitar complemento",
+                                "participant": "organization",
+                                "lane": "service"
+                              },
+                              {
+                                "id": "approve",
+                                "kind": "service_task",
+                                "label": "Emitir decisão",
+                                "participant": "organization",
+                                "lane": "analysis"
+                              },
+                              {
+                                "id": "finish",
+                                "kind": "end_event",
+                                "label": "Solicitação decidida",
+                                "participant": "organization",
+                                "lane": "analysis"
+                              }
+                            ],
+                            "flows": [
+                              {
+                                "id": "f1",
+                                "kind": "sequence",
+                                "from": "need",
+                                "to": "send"
+                              },
+                              {
+                                "id": "m1",
+                                "kind": "message",
+                                "from": "send",
+                                "to": "receive",
+                                "label": "solicitação"
+                              },
+                              {
+                                "id": "f2",
+                                "kind": "sequence",
+                                "from": "receive",
+                                "to": "register"
+                              },
+                              {
+                                "id": "f3",
+                                "kind": "sequence",
+                                "from": "register",
+                                "to": "analyze"
+                              },
+                              {
+                                "id": "f4",
+                                "kind": "sequence",
+                                "from": "analyze",
+                                "to": "complete"
+                              },
+                              {
+                                "id": "f5",
+                                "kind": "sequence",
+                                "from": "complete",
+                                "to": "approve",
+                                "label": "Sim"
+                              },
+                              {
+                                "id": "f6",
+                                "kind": "sequence",
+                                "from": "complete",
+                                "to": "request",
+                                "label": "Não"
+                              },
+                              {
+                                "id": "f7",
+                                "kind": "sequence",
+                                "from": "request",
+                                "to": "analyze",
+                                "label": "dados recebidos"
+                              },
+                              {
+                                "id": "f8",
+                                "kind": "sequence",
+                                "from": "approve",
+                                "to": "finish"
+                              }
+                            ]
+                          }
+                        }
+                      ],
+                      "response": null,
+                      "feedback": [
+                        {
+                          "id": "feedback-6",
+                          "package": "aralearn.resource.paragraph",
+                          "version": "1.0.0",
+                          "data": {
+                            "text": "Participantes, raias, elementos e fluxos possuem descrição textual equivalente."
+                          }
+                        }
+                      ],
+                      "topics": [],
+                      "sources": []
+                    },
+                    {
+                      "id": "gallery-7",
+                      "position": 7,
+                      "title": "Glosa interlinear",
+                      "role": "theory",
+                      "content": [
+                        {
+                          "id": "instance-7",
                           "package": "aralearn.resource.interlinear_gloss",
                           "version": "1.0.0",
                           "data": {
@@ -331,7 +552,7 @@
                       "response": null,
                       "feedback": [
                         {
-                          "id": "feedback-6",
+                          "id": "feedback-7",
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
@@ -343,8 +564,8 @@
                       "sources": []
                     },
                     {
-                      "id": "gallery-7",
-                      "position": 7,
+                      "id": "gallery-8",
+                      "position": 8,
                       "title": "Escolha",
                       "role": "practice",
                       "content": [
@@ -358,7 +579,7 @@
                         }
                       ],
                       "response": {
-                        "id": "instance-7",
+                        "id": "instance-8",
                         "package": "aralearn.response.choice",
                         "version": "1.0.0",
                         "data": {
@@ -384,7 +605,7 @@
                       },
                       "feedback": [
                         {
-                          "id": "feedback-7",
+                          "id": "feedback-8",
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
@@ -396,8 +617,8 @@
                       "sources": []
                     },
                     {
-                      "id": "gallery-8",
-                      "position": 8,
+                      "id": "gallery-9",
+                      "position": 9,
                       "title": "Lacuna",
                       "role": "practice",
                       "content": [
@@ -411,7 +632,7 @@
                         }
                       ],
                       "response": {
-                        "id": "instance-8",
+                        "id": "instance-9",
                         "package": "aralearn.response.gap",
                         "version": "1.0.0",
                         "data": {
@@ -429,7 +650,7 @@
                       },
                       "feedback": [
                         {
-                          "id": "feedback-8",
+                          "id": "feedback-9",
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
@@ -441,8 +662,8 @@
                       "sources": []
                     },
                     {
-                      "id": "gallery-9",
-                      "position": 9,
+                      "id": "gallery-10",
+                      "position": 10,
                       "title": "Ordenação",
                       "role": "practice",
                       "content": [
@@ -466,7 +687,7 @@
                         }
                       ],
                       "response": {
-                        "id": "instance-9",
+                        "id": "instance-10",
                         "package": "aralearn.response.ordering",
                         "version": "2.0.0",
                         "data": {
@@ -489,7 +710,7 @@
                       },
                       "feedback": [
                         {
-                          "id": "feedback-9",
+                          "id": "feedback-10",
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
@@ -501,28 +722,58 @@
                       "sources": []
                     },
                     {
-                      "id": "gallery-10",
-                      "position": 10,
-                      "title": "Árvore",
+                      "id": "gallery-11",
+                      "position": 11,
+                      "title": "Árvore enraizada",
                       "role": "theory",
                       "content": [
                         {
-                          "id": "instance-10",
+                          "id": "instance-11",
                           "package": "aralearn.resource.tree",
                           "version": "1.0.0",
                           "data": {
-                            "prompt": "Observe a classificação.",
-                            "variant": "taxonomy",
+                            "prompt": "Observe a árvore binária de busca e compare os caminhos da raiz até 20 e 65.",
+                            "variant": "hierarchy",
                             "nodes": [
                               {
-                                "id": "animalia",
-                                "label": "Animalia",
+                                "id": "n40",
+                                "label": "40",
                                 "parentId": null
                               },
                               {
-                                "id": "chordata",
-                                "label": "Chordata",
-                                "parentId": "animalia"
+                                "id": "n20",
+                                "label": "20",
+                                "parentId": "n40"
+                              },
+                              {
+                                "id": "n60",
+                                "label": "60",
+                                "parentId": "n40"
+                              },
+                              {
+                                "id": "n10",
+                                "label": "10",
+                                "parentId": "n20"
+                              },
+                              {
+                                "id": "n30",
+                                "label": "30",
+                                "parentId": "n20"
+                              },
+                              {
+                                "id": "n50",
+                                "label": "50",
+                                "parentId": "n60"
+                              },
+                              {
+                                "id": "n70",
+                                "label": "70",
+                                "parentId": "n60"
+                              },
+                              {
+                                "id": "n65",
+                                "label": "65",
+                                "parentId": "n70"
                               }
                             ]
                           }
@@ -531,11 +782,11 @@
                       "response": null,
                       "feedback": [
                         {
-                          "id": "feedback-10",
+                          "id": "feedback-11",
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
-                            "text": "A hierarquia usa listas aninhadas na mesma ordem visual."
+                            "text": "Cada nó é descrito com seu pai; a ordem visual acompanha os níveis."
                           }
                         }
                       ],
@@ -543,13 +794,13 @@
                       "sources": []
                     },
                     {
-                      "id": "gallery-11",
-                      "position": 11,
+                      "id": "gallery-12",
+                      "position": 12,
                       "title": "Matriz",
                       "role": "theory",
                       "content": [
                         {
-                          "id": "instance-11",
+                          "id": "instance-12",
                           "package": "aralearn.resource.matrix",
                           "version": "1.0.0",
                           "data": {
@@ -579,7 +830,7 @@
                       "response": null,
                       "feedback": [
                         {
-                          "id": "feedback-11",
+                          "id": "feedback-12",
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
@@ -591,13 +842,13 @@
                       "sources": []
                     },
                     {
-                      "id": "gallery-12",
-                      "position": 12,
+                      "id": "gallery-13",
+                      "position": 13,
                       "title": "Reação",
                       "role": "theory",
                       "content": [
                         {
-                          "id": "instance-12",
+                          "id": "instance-13",
                           "package": "aralearn.resource.reaction",
                           "version": "1.0.0",
                           "data": {
@@ -634,7 +885,7 @@
                       "response": null,
                       "feedback": [
                         {
-                          "id": "feedback-12",
+                          "id": "feedback-13",
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
@@ -646,13 +897,13 @@
                       "sources": []
                     },
                     {
-                      "id": "gallery-13",
-                      "position": 13,
+                      "id": "gallery-14",
+                      "position": 14,
                       "title": "Fluxograma",
                       "role": "theory",
                       "content": [
                         {
-                          "id": "instance-13",
+                          "id": "instance-14",
                           "package": "aralearn.resource.flow",
                           "version": "1.0.0",
                           "data": {
@@ -703,7 +954,7 @@
                       "response": null,
                       "feedback": [
                         {
-                          "id": "feedback-13",
+                          "id": "feedback-14",
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
@@ -715,13 +966,13 @@
                       "sources": []
                     },
                     {
-                      "id": "gallery-14",
-                      "position": 14,
+                      "id": "gallery-15",
+                      "position": 15,
                       "title": "Fórmula",
                       "role": "theory",
                       "content": [
                         {
-                          "id": "instance-14",
+                          "id": "instance-15",
                           "package": "aralearn.resource.formula",
                           "version": "1.0.0",
                           "data": {
@@ -850,7 +1101,7 @@
                       "response": null,
                       "feedback": [
                         {
-                          "id": "feedback-14",
+                          "id": "feedback-15",
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
@@ -862,13 +1113,13 @@
                       "sources": []
                     },
                     {
-                      "id": "gallery-15",
-                      "position": 15,
+                      "id": "gallery-16",
+                      "position": 16,
                       "title": "Plano cartesiano",
                       "role": "theory",
                       "content": [
                         {
-                          "id": "instance-15",
+                          "id": "instance-16",
                           "package": "aralearn.resource.plane",
                           "version": "1.0.0",
                           "data": {
@@ -1027,7 +1278,7 @@
                       "response": null,
                       "feedback": [
                         {
-                          "id": "feedback-15",
+                          "id": "feedback-16",
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
@@ -1039,13 +1290,13 @@
                       "sources": []
                     },
                     {
-                      "id": "gallery-16",
-                      "position": 16,
+                      "id": "gallery-17",
+                      "position": 17,
                       "title": "Gráfico estatístico",
                       "role": "theory",
                       "content": [
                         {
-                          "id": "instance-16",
+                          "id": "instance-17",
                           "package": "aralearn.resource.chart",
                           "version": "1.0.0",
                           "data": {
@@ -1174,7 +1425,7 @@
                       "response": null,
                       "feedback": [
                         {
-                          "id": "feedback-16",
+                          "id": "feedback-17",
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
@@ -1186,13 +1437,13 @@
                       "sources": []
                     },
                     {
-                      "id": "gallery-17",
-                      "position": 17,
+                      "id": "gallery-18",
+                      "position": 18,
                       "title": "Contexto de sistema de software",
                       "role": "theory",
                       "content": [
                         {
-                          "id": "instance-17",
+                          "id": "instance-18",
                           "package": "aralearn.resource.software_system_context",
                           "version": "1.0.0",
                           "data": {
@@ -1258,7 +1509,7 @@
                       "response": null,
                       "feedback": [
                         {
-                          "id": "feedback-17",
+                          "id": "feedback-18",
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
@@ -1270,13 +1521,13 @@
                       "sources": []
                     },
                     {
-                      "id": "gallery-18",
-                      "position": 18,
+                      "id": "gallery-19",
+                      "position": 19,
                       "title": "Contêineres de software",
                       "role": "theory",
                       "content": [
                         {
-                          "id": "instance-18",
+                          "id": "instance-19",
                           "package": "aralearn.resource.software_container",
                           "version": "1.0.0",
                           "data": {
@@ -1381,7 +1632,7 @@
                       "response": null,
                       "feedback": [
                         {
-                          "id": "feedback-18",
+                          "id": "feedback-19",
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
@@ -1393,13 +1644,13 @@
                       "sources": []
                     },
                     {
-                      "id": "gallery-19",
-                      "position": 19,
+                      "id": "gallery-20",
+                      "position": 20,
                       "title": "Diagrama interno de bloco",
                       "role": "theory",
                       "content": [
                         {
-                          "id": "instance-19",
+                          "id": "instance-20",
                           "package": "aralearn.resource.system_internal_block",
                           "version": "1.0.0",
                           "data": {
@@ -1498,7 +1749,7 @@
                       "response": null,
                       "feedback": [
                         {
-                          "id": "feedback-19",
+                          "id": "feedback-20",
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
@@ -1510,13 +1761,13 @@
                       "sources": []
                     },
                     {
-                      "id": "gallery-20",
-                      "position": 20,
+                      "id": "gallery-21",
+                      "position": 21,
                       "title": "Grafo matemático",
                       "role": "theory",
                       "content": [
                         {
-                          "id": "instance-20",
+                          "id": "instance-21",
                           "package": "aralearn.resource.graph",
                           "version": "1.0.0",
                           "data": {
@@ -1621,7 +1872,7 @@
                       "response": null,
                       "feedback": [
                         {
-                          "id": "feedback-20",
+                          "id": "feedback-21",
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
@@ -1633,64 +1884,98 @@
                       "sources": []
                     },
                     {
-                      "id": "gallery-21",
-                      "position": 21,
+                      "id": "gallery-22",
+                      "position": 22,
                       "title": "Mapa de relações",
                       "role": "theory",
                       "content": [
                         {
-                          "id": "instance-21",
+                          "id": "instance-22",
                           "package": "aralearn.resource.relation_map",
                           "version": "1.0.0",
                           "data": {
-                            "prompt": "Relacione cada componente à responsabilidade que ele exerce.",
+                            "prompt": "Examine a relação R de A em B e observe que a pertence a duas imagens, enquanto d não possui preimagem.",
                             "leftSet": {
-                              "label": "Componente",
+                              "label": "Domínio A",
                               "items": [
                                 {
-                                  "id": "manager",
-                                  "label": "Gerente"
+                                  "id": "a",
+                                  "label": "a"
                                 },
                                 {
-                                  "id": "agent",
-                                  "label": "Agente"
+                                  "id": "b",
+                                  "label": "b"
+                                },
+                                {
+                                  "id": "c",
+                                  "label": "c"
                                 }
                               ]
                             },
                             "rightSet": {
-                              "label": "Responsabilidade",
+                              "label": "Contradomínio B",
                               "items": [
                                 {
-                                  "id": "request",
-                                  "label": "Envia a solicitação"
+                                  "id": "one",
+                                  "label": "1"
                                 },
                                 {
-                                  "id": "local",
-                                  "label": "Acessa o dado local"
+                                  "id": "two",
+                                  "label": "2"
+                                },
+                                {
+                                  "id": "three",
+                                  "label": "3"
+                                },
+                                {
+                                  "id": "four",
+                                  "label": "4"
                                 }
                               ]
                             },
                             "relations": [
                               {
-                                "id": "r1",
-                                "from": "manager",
-                                "to": "request",
-                                "label": "executa"
+                                "id": "a1",
+                                "from": "a",
+                                "to": "one",
+                                "label": "(a, 1) ∈ R"
                               },
                               {
-                                "id": "r2",
-                                "from": "agent",
-                                "to": "local",
-                                "label": "executa"
+                                "id": "a2",
+                                "from": "a",
+                                "to": "two",
+                                "label": "(a, 2) ∈ R"
+                              },
+                              {
+                                "id": "b2",
+                                "from": "b",
+                                "to": "two",
+                                "label": "(b, 2) ∈ R"
+                              },
+                              {
+                                "id": "c3",
+                                "from": "c",
+                                "to": "three",
+                                "label": "(c, 3) ∈ R"
                               }
-                            ]
+                            ],
+                            "highlight": {
+                              "relations": [
+                                "a1",
+                                "a2"
+                              ],
+                              "leftItems": [
+                                "a"
+                              ],
+                              "rightItems": []
+                            }
                           }
                         }
                       ],
                       "response": null,
                       "feedback": [
                         {
-                          "id": "feedback-21",
+                          "id": "feedback-22",
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
@@ -1702,116 +1987,59 @@
                       "sources": []
                     },
                     {
-                      "id": "gallery-22",
-                      "position": 22,
+                      "id": "gallery-23",
+                      "position": 23,
                       "title": "Rastreamento de algoritmo",
                       "role": "theory",
                       "content": [
                         {
-                          "id": "instance-22",
+                          "id": "instance-23",
                           "package": "aralearn.resource.algorithm_trace",
                           "version": "1.0.0",
                           "data": {
-                            "prompt": "Acompanhe o contador.",
+                            "prompt": "Acompanhe a busca binária por 23 no vetor [4, 8, 15, 16, 23, 42] e observe por que metade do intervalo pode ser descartada a cada comparação.",
                             "variables": [
-                              "i",
-                              "soma"
+                              "início",
+                              "fim",
+                              "meio",
+                              "valor[meio]"
                             ],
                             "steps": [
                               {
                                 "id": "s0",
-                                "action": "Inicializar",
+                                "action": "Inicializar intervalo de busca",
                                 "values": [
                                   "0",
-                                  "0"
+                                  "5",
+                                  "2",
+                                  "15"
                                 ],
-                                "output": ""
+                                "condition": "15 < 23",
+                                "output": "descartar posições 0..2"
                               },
                               {
                                 "id": "s1",
-                                "action": "Somar i e incrementar",
+                                "action": "Mover o início para meio + 1",
                                 "values": [
-                                  "1",
-                                  "0"
+                                  "3",
+                                  "5",
+                                  "4",
+                                  "23"
                                 ],
-                                "output": ""
-                              }
-                            ]
-                          }
-                        }
-                      ],
-                      "response": null,
-                      "feedback": [
-                        {
-                          "id": "feedback-22",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Cada passo é uma linha com ação, valores das variáveis e saída."
-                          }
-                        }
-                      ],
-                      "topics": [],
-                      "sources": []
-                    },
-                    {
-                      "id": "gallery-23",
-                      "position": 23,
-                      "title": "Esquema relacional",
-                      "role": "theory",
-                      "content": [
-                        {
-                          "id": "instance-23",
-                          "package": "aralearn.resource.database_schema",
-                          "version": "1.0.0",
-                          "data": {
-                            "prompt": "Observe a chave estrangeira.",
-                            "relations": [
-                              {
-                                "id": "course",
-                                "name": "Curso",
-                                "attributes": [
-                                  {
-                                    "id": "course_id",
-                                    "name": "curso_id",
-                                    "type": "uuid",
-                                    "key": "primary"
-                                  },
-                                  {
-                                    "id": "title",
-                                    "name": "titulo",
-                                    "type": "text",
-                                    "key": "none"
-                                  }
-                                ]
+                                "condition": "23 = 23",
+                                "output": "encontrado no índice 4"
                               },
                               {
-                                "id": "lesson",
-                                "name": "Licao",
-                                "attributes": [
-                                  {
-                                    "id": "lesson_id",
-                                    "name": "licao_id",
-                                    "type": "uuid",
-                                    "key": "primary"
-                                  },
-                                  {
-                                    "id": "course_id",
-                                    "name": "curso_id",
-                                    "type": "uuid",
-                                    "key": "foreign"
-                                  }
-                                ]
-                              }
-                            ],
-                            "references": [
-                              {
-                                "id": "lesson_course",
-                                "fromRelation": "lesson",
-                                "fromAttribute": "course_id",
-                                "toRelation": "course",
-                                "toAttribute": "course_id",
-                                "cardinality": "many-to-one"
+                                "id": "s2",
+                                "action": "Encerrar e devolver a posição",
+                                "values": [
+                                  "3",
+                                  "5",
+                                  "4",
+                                  "23"
+                                ],
+                                "condition": "resultado definido",
+                                "output": "4"
                               }
                             ]
                           }
@@ -1824,7 +2052,7 @@
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
-                            "text": "Cada relação lista atributos e chaves; cada referência é repetida em texto."
+                            "text": "Cada passo é uma linha com ação, valores das variáveis e saída."
                           }
                         }
                       ],
@@ -1834,33 +2062,149 @@
                     {
                       "id": "gallery-24",
                       "position": 24,
-                      "title": "Mapa de memória",
+                      "title": "Esquema relacional",
                       "role": "theory",
                       "content": [
                         {
                           "id": "instance-24",
-                          "package": "aralearn.resource.memory_layout",
+                          "package": "aralearn.resource.database_schema",
                           "version": "1.0.0",
                           "data": {
-                            "prompt": "Observe as regiões de um processo.",
-                            "addressBase": "hexadecimal",
-                            "addressOrder": "ascending",
-                            "segments": [
+                            "prompt": "Observe como o item do pedido preserva a chave composta e referencia pedido e produto sem redundância desnecessária.",
+                            "relations": [
                               {
-                                "id": "text",
-                                "start": "0x00400000",
-                                "end": "0x0040FFFF",
-                                "label": "Código",
-                                "kind": "code",
-                                "description": "Instruções executáveis"
+                                "id": "customer",
+                                "name": "CLIENTE",
+                                "attributes": [
+                                  {
+                                    "id": "customer_id",
+                                    "name": "id_cliente",
+                                    "type": "uuid",
+                                    "key": "primary",
+                                    "nullable": false
+                                  },
+                                  {
+                                    "id": "customer_name",
+                                    "name": "nome",
+                                    "type": "text",
+                                    "key": "none",
+                                    "nullable": false
+                                  }
+                                ]
                               },
                               {
-                                "id": "heap",
-                                "start": "0x00600000",
-                                "end": "0x0060FFFF",
-                                "label": "Heap",
-                                "kind": "heap",
-                                "description": "Alocação dinâmica"
+                                "id": "order",
+                                "name": "PEDIDO",
+                                "attributes": [
+                                  {
+                                    "id": "order_id",
+                                    "name": "id_pedido",
+                                    "type": "uuid",
+                                    "key": "primary",
+                                    "nullable": false
+                                  },
+                                  {
+                                    "id": "customer_fk",
+                                    "name": "id_cliente",
+                                    "type": "uuid",
+                                    "key": "foreign",
+                                    "nullable": false
+                                  },
+                                  {
+                                    "id": "placed_at",
+                                    "name": "realizado_em",
+                                    "type": "timestamp",
+                                    "key": "none",
+                                    "nullable": false
+                                  }
+                                ]
+                              },
+                              {
+                                "id": "product",
+                                "name": "PRODUTO",
+                                "attributes": [
+                                  {
+                                    "id": "product_id",
+                                    "name": "id_produto",
+                                    "type": "uuid",
+                                    "key": "primary",
+                                    "nullable": false
+                                  },
+                                  {
+                                    "id": "description",
+                                    "name": "descricao",
+                                    "type": "text",
+                                    "key": "none",
+                                    "nullable": false
+                                  },
+                                  {
+                                    "id": "price",
+                                    "name": "preco_atual",
+                                    "type": "decimal",
+                                    "key": "none",
+                                    "nullable": false
+                                  }
+                                ]
+                              },
+                              {
+                                "id": "order_item",
+                                "name": "ITEM_PEDIDO",
+                                "attributes": [
+                                  {
+                                    "id": "order_fk",
+                                    "name": "id_pedido",
+                                    "type": "uuid",
+                                    "key": "primary-foreign",
+                                    "nullable": false
+                                  },
+                                  {
+                                    "id": "product_fk",
+                                    "name": "id_produto",
+                                    "type": "uuid",
+                                    "key": "primary-foreign",
+                                    "nullable": false
+                                  },
+                                  {
+                                    "id": "quantity",
+                                    "name": "quantidade",
+                                    "type": "integer",
+                                    "key": "none",
+                                    "nullable": false
+                                  },
+                                  {
+                                    "id": "sale_price",
+                                    "name": "preco_venda",
+                                    "type": "decimal",
+                                    "key": "none",
+                                    "nullable": false
+                                  }
+                                ]
+                              }
+                            ],
+                            "references": [
+                              {
+                                "id": "order_customer",
+                                "fromRelation": "order",
+                                "fromAttribute": "customer_fk",
+                                "toRelation": "customer",
+                                "toAttribute": "customer_id",
+                                "cardinality": "many-to-one"
+                              },
+                              {
+                                "id": "item_order",
+                                "fromRelation": "order_item",
+                                "fromAttribute": "order_fk",
+                                "toRelation": "order",
+                                "toAttribute": "order_id",
+                                "cardinality": "many-to-one"
+                              },
+                              {
+                                "id": "item_product",
+                                "fromRelation": "order_item",
+                                "fromAttribute": "product_fk",
+                                "toRelation": "product",
+                                "toAttribute": "product_id",
+                                "cardinality": "many-to-one"
                               }
                             ]
                           }
@@ -1873,7 +2217,7 @@
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
-                            "text": "Segmentos são lidos na ordem dos endereços com início, fim, rótulo e descrição."
+                            "text": "Cada relação lista atributos, chaves, tipos e nulabilidade; cada referência é repetida em texto."
                           }
                         }
                       ],
@@ -1883,57 +2227,73 @@
                     {
                       "id": "gallery-25",
                       "position": 25,
-                      "title": "Topologia de rede",
+                      "title": "Mapa de memória",
                       "role": "theory",
                       "content": [
                         {
                           "id": "instance-25",
-                          "package": "aralearn.resource.network_topology",
+                          "package": "aralearn.resource.memory_layout",
                           "version": "1.0.0",
                           "data": {
-                            "prompt": "Acompanhe o caminho até o servidor.",
+                            "prompt": "Observe uma visão recortada do espaço virtual de um processo de 64 bits; os intervalos omitidos não estão em escala física.",
+                            "addressBase": "hexadecimal",
+                            "addressOrder": "ascending",
                             "segments": [
                               {
-                                "id": "lan",
-                                "label": "LAN 192.0.2.0/24"
-                              }
-                            ],
-                            "devices": [
-                              {
-                                "id": "client",
-                                "label": "Cliente",
-                                "kind": "host",
-                                "segmentId": "lan",
-                                "address": "192.0.2.10"
+                                "id": "text",
+                                "start": "0x00400000",
+                                "end": "0x0047FFFF",
+                                "label": "Código",
+                                "kind": "code",
+                                "description": "Instruções executáveis e somente leitura"
                               },
                               {
-                                "id": "switch",
-                                "label": "Switch de acesso",
-                                "kind": "switch",
-                                "segmentId": "lan"
+                                "id": "rodata",
+                                "start": "0x00480000",
+                                "end": "0x0049FFFF",
+                                "label": "Dados somente leitura",
+                                "kind": "data",
+                                "description": "Constantes e literais"
                               },
                               {
-                                "id": "server",
-                                "label": "Servidor",
-                                "kind": "server",
-                                "segmentId": "lan",
-                                "address": "192.0.2.20"
-                              }
-                            ],
-                            "links": [
-                              {
-                                "id": "l1",
-                                "from": "client",
-                                "to": "switch",
-                                "medium": "Ethernet",
-                                "directed": false
+                                "id": "data",
+                                "start": "0x00600000",
+                                "end": "0x0060FFFF",
+                                "label": "Dados inicializados",
+                                "kind": "data",
+                                "description": "Variáveis globais com valor inicial"
                               },
                               {
-                                "id": "l2",
-                                "from": "switch",
-                                "to": "server",
-                                "medium": "Ethernet",
-                                "directed": false
+                                "id": "bss",
+                                "start": "0x00610000",
+                                "end": "0x0061FFFF",
+                                "label": "BSS",
+                                "kind": "bss",
+                                "description": "Globais inicializadas com zero"
+                              },
+                              {
+                                "id": "heap",
+                                "start": "0x00800000",
+                                "end": "0x00FFFFFF",
+                                "label": "Heap",
+                                "kind": "heap",
+                                "description": "Alocação dinâmica; tende a crescer para endereços maiores"
+                              },
+                              {
+                                "id": "mapped",
+                                "start": "0x7F000000",
+                                "end": "0x7FFEFFFF",
+                                "label": "Região mapeada",
+                                "kind": "mapped",
+                                "description": "Bibliotecas compartilhadas e arquivos mapeados"
+                              },
+                              {
+                                "id": "stack",
+                                "start": "0x7FFF0000",
+                                "end": "0x7FFFFFFF",
+                                "label": "Pilha",
+                                "kind": "stack",
+                                "description": "Chamadas e dados automáticos; tende a crescer para endereços menores"
                               }
                             ]
                           }
@@ -1946,7 +2306,7 @@
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
-                            "text": "Equipamentos são agrupados por segmento e os enlaces aparecem em lista textual completa."
+                            "text": "Segmentos são lidos na ordem dos endereços com início, fim, rótulo e descrição."
                           }
                         }
                       ],
@@ -1956,15 +2316,120 @@
                     {
                       "id": "gallery-26",
                       "position": 26,
-                      "title": "Layout de pacote",
+                      "title": "Topologia de rede",
                       "role": "theory",
                       "content": [
                         {
                           "id": "instance-26",
+                          "package": "aralearn.resource.network_topology",
+                          "version": "1.0.0",
+                          "data": {
+                            "prompt": "Acompanhe o caminho HTTPS da estação da VLAN de usuários até a aplicação na DMZ e identifique onde ocorre a filtragem.",
+                            "segments": [
+                              {
+                                "id": "users",
+                                "label": "VLAN 10 · usuários · 10.10.10.0/24"
+                              },
+                              {
+                                "id": "dmz",
+                                "label": "DMZ · 10.10.30.0/24"
+                              }
+                            ],
+                            "devices": [
+                              {
+                                "id": "client",
+                                "label": "Estação de trabalho",
+                                "kind": "host",
+                                "segmentId": "users",
+                                "address": "10.10.10.42"
+                              },
+                              {
+                                "id": "access",
+                                "label": "Switch de acesso",
+                                "kind": "switch",
+                                "segmentId": "users"
+                              },
+                              {
+                                "id": "firewall",
+                                "label": "Firewall de borda",
+                                "kind": "firewall",
+                                "segmentId": null
+                              },
+                              {
+                                "id": "app",
+                                "label": "Servidor de aplicação",
+                                "kind": "server",
+                                "segmentId": "dmz",
+                                "address": "10.10.30.20:443"
+                              },
+                              {
+                                "id": "internet",
+                                "label": "Internet",
+                                "kind": "cloud",
+                                "segmentId": null
+                              }
+                            ],
+                            "links": [
+                              {
+                                "id": "l1",
+                                "from": "client",
+                                "to": "access",
+                                "medium": "Ethernet",
+                                "directed": false
+                              },
+                              {
+                                "id": "l2",
+                                "from": "access",
+                                "to": "firewall",
+                                "medium": "trunk 802.1Q",
+                                "directed": false
+                              },
+                              {
+                                "id": "l3",
+                                "from": "firewall",
+                                "to": "app",
+                                "medium": "Ethernet",
+                                "protocol": "HTTPS",
+                                "directed": true
+                              },
+                              {
+                                "id": "l4",
+                                "from": "firewall",
+                                "to": "internet",
+                                "medium": "WAN",
+                                "directed": false
+                              }
+                            ]
+                          }
+                        }
+                      ],
+                      "response": null,
+                      "feedback": [
+                        {
+                          "id": "feedback-26",
+                          "package": "aralearn.resource.paragraph",
+                          "version": "1.0.0",
+                          "data": {
+                            "text": "Segmentos, equipamentos e enlaces possuem descrição textual equivalente."
+                          }
+                        }
+                      ],
+                      "topics": [],
+                      "sources": []
+                    },
+                    {
+                      "id": "gallery-27",
+                      "position": 27,
+                      "title": "Layout de pacote",
+                      "role": "theory",
+                      "content": [
+                        {
+                          "id": "instance-27",
                           "package": "aralearn.resource.packet_layout",
                           "version": "1.0.0",
                           "data": {
-                            "prompt": "Leia os campos iniciais do cabeçalho TCP.",
+                            "prompt": "Leia o cabeçalho TCP por palavras de 32 bits e localize os campos que participam da confiabilidade e do controle de fluxo.",
+                            "caption": "Cabeçalho TCP sem opções · RFC 9293, Figura 1",
                             "unitBits": 32,
                             "fields": [
                               {
@@ -1978,74 +2443,54 @@
                                 "label": "Porta de destino",
                                 "widthBits": 16,
                                 "description": "Identifica o processo receptor."
-                              }
-                            ]
-                          }
-                        }
-                      ],
-                      "response": null,
-                      "feedback": [
-                        {
-                          "id": "feedback-26",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Cada campo é listado com nome, offset, largura e descrição."
-                          }
-                        }
-                      ],
-                      "topics": [],
-                      "sources": []
-                    },
-                    {
-                      "id": "gallery-27",
-                      "position": 27,
-                      "title": "Diagrama de conjuntos",
-                      "role": "theory",
-                      "content": [
-                        {
-                          "id": "instance-27",
-                          "package": "aralearn.resource.set_diagram",
-                          "version": "1.0.0",
-                          "data": {
-                            "prompt": "Observe a interseção.",
-                            "universeLabel": "Estudantes",
-                            "sets": [
-                              {
-                                "id": "sql",
-                                "label": "Conhecem SQL"
                               },
                               {
-                                "id": "python",
-                                "label": "Conhecem Python"
-                              }
-                            ],
-                            "regions": [
-                              {
-                                "id": "both",
-                                "setIds": [
-                                  "sql",
-                                  "python"
-                                ],
-                                "items": [
-                                  "Ana"
-                                ]
+                                "id": "sequence",
+                                "label": "Número de sequência",
+                                "widthBits": 32,
+                                "description": "Ordena octetos e apoia retransmissão."
                               },
                               {
-                                "id": "sql-only",
-                                "setIds": [
-                                  "sql"
-                                ],
-                                "items": [
-                                  "Bruno"
-                                ]
+                                "id": "acknowledgment",
+                                "label": "Número de confirmação",
+                                "widthBits": 32,
+                                "description": "Indica o próximo octeto esperado."
                               },
                               {
-                                "id": "outside",
-                                "setIds": [],
-                                "items": [
-                                  "Carla"
-                                ]
+                                "id": "offset",
+                                "label": "Data Offset",
+                                "widthBits": 4,
+                                "description": "Informa o tamanho do cabeçalho."
+                              },
+                              {
+                                "id": "reserved",
+                                "label": "Reservado",
+                                "widthBits": 4,
+                                "description": "Bits reservados pelo protocolo."
+                              },
+                              {
+                                "id": "flags",
+                                "label": "Flags",
+                                "widthBits": 8,
+                                "description": "Sinais de controle da conexão."
+                              },
+                              {
+                                "id": "window",
+                                "label": "Janela",
+                                "widthBits": 16,
+                                "description": "Anuncia a capacidade de recepção."
+                              },
+                              {
+                                "id": "checksum",
+                                "label": "Checksum",
+                                "widthBits": 16,
+                                "description": "Detecta corrupção do segmento."
+                              },
+                              {
+                                "id": "urgent",
+                                "label": "Ponteiro urgente",
+                                "widthBits": 16,
+                                "description": "Indica o fim de dados urgentes quando aplicável."
                               }
                             ]
                           }
@@ -2058,7 +2503,7 @@
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
-                            "text": "As regiões são enumeradas por pertencimento; o desenho não é a única fonte de informação."
+                            "text": "Cada campo é descrito por nome, intervalo de bits, largura e função."
                           }
                         }
                       ],
@@ -2068,52 +2513,72 @@
                     {
                       "id": "gallery-28",
                       "position": 28,
-                      "title": "Máquina de estados",
+                      "title": "Diagrama de conjuntos",
                       "role": "theory",
                       "content": [
                         {
                           "id": "instance-28",
-                          "package": "aralearn.resource.state_machine",
+                          "package": "aralearn.resource.set_diagram",
                           "version": "1.0.0",
                           "data": {
-                            "prompt": "Acompanhe uma conexão simplificada.",
-                            "machineKind": "deterministic",
-                            "states": [
+                            "prompt": "Classifique as linguagens por paradigma e observe as interseções; os nomes ficam na legenda das regiões para não sobrecarregar o desenho.",
+                            "universeLabel": "Linguagens analisadas",
+                            "sets": [
                               {
-                                "id": "closed",
-                                "label": "Fechada",
-                                "initial": true,
-                                "accepting": false
+                                "id": "imperative",
+                                "label": "Imperativas"
                               },
                               {
-                                "id": "open",
-                                "label": "Aberta",
-                                "initial": false,
-                                "accepting": true
+                                "id": "object",
+                                "label": "Orientadas a objetos"
+                              },
+                              {
+                                "id": "functional",
+                                "label": "Funcionais"
                               }
                             ],
-                            "events": [
+                            "regions": [
                               {
-                                "id": "connect",
-                                "label": "CONNECT"
+                                "id": "all",
+                                "setIds": [
+                                  "imperative",
+                                  "object",
+                                  "functional"
+                                ],
+                                "label": "Multiparadigma nos três grupos",
+                                "items": [
+                                  "Python",
+                                  "Scala"
+                                ]
                               },
                               {
-                                "id": "close",
-                                "label": "CLOSE"
-                              }
-                            ],
-                            "transitions": [
-                              {
-                                "id": "t1",
-                                "from": "closed",
-                                "event": "connect",
-                                "to": "open"
+                                "id": "imperative-object",
+                                "setIds": [
+                                  "imperative",
+                                  "object"
+                                ],
+                                "label": "Imperativa e orientada a objetos",
+                                "items": [
+                                  "Java"
+                                ]
                               },
                               {
-                                "id": "t2",
-                                "from": "open",
-                                "event": "close",
-                                "to": "closed"
+                                "id": "functional-only",
+                                "setIds": [
+                                  "functional"
+                                ],
+                                "label": "Funcional neste recorte",
+                                "items": [
+                                  "Haskell"
+                                ]
+                              },
+                              {
+                                "id": "outside",
+                                "setIds": [],
+                                "label": "Fora dos três critérios",
+                                "items": [
+                                  "SQL declarativa"
+                                ]
                               }
                             ]
                           }
@@ -2126,7 +2591,7 @@
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
-                            "text": "A função de transição é uma tabela; marcadores indicam estados inicial e de aceitação."
+                            "text": "As regiões são enumeradas por pertencimento; o desenho não é a única fonte de informação."
                           }
                         }
                       ],
@@ -2136,37 +2601,94 @@
                     {
                       "id": "gallery-29",
                       "position": 29,
-                      "title": "Tabela-verdade",
+                      "title": "Diagrama de estados",
                       "role": "theory",
                       "content": [
                         {
                           "id": "instance-29",
-                          "package": "aralearn.resource.truth_table",
+                          "package": "aralearn.resource.state_machine",
                           "version": "1.0.0",
                           "data": {
-                            "prompt": "Observe a negação.",
-                            "variables": [
-                              "P"
-                            ],
-                            "derivedColumns": [
-                              "¬P"
-                            ],
-                            "rows": [
+                            "prompt": "Acompanhe o ciclo simplificado de uma conexão TCP e observe a diferença entre evento recebido e ação executada.",
+                            "machineKind": "protocol",
+                            "states": [
                               {
-                                "values": [
-                                  "true"
-                                ],
-                                "results": [
-                                  "false"
-                                ]
+                                "id": "closed",
+                                "label": "CLOSED",
+                                "initial": true,
+                                "accepting": false
                               },
                               {
-                                "values": [
-                                  "false"
-                                ],
-                                "results": [
-                                  "true"
-                                ]
+                                "id": "listen",
+                                "label": "LISTEN",
+                                "initial": false,
+                                "accepting": false
+                              },
+                              {
+                                "id": "syn_received",
+                                "label": "SYN-RECEIVED",
+                                "initial": false,
+                                "accepting": false
+                              },
+                              {
+                                "id": "established",
+                                "label": "ESTABLISHED",
+                                "initial": false,
+                                "accepting": false
+                              },
+                              {
+                                "id": "close_wait",
+                                "label": "CLOSE-WAIT",
+                                "initial": false,
+                                "accepting": true
+                              }
+                            ],
+                            "events": [
+                              {
+                                "id": "passive_open",
+                                "label": "abertura passiva"
+                              },
+                              {
+                                "id": "syn",
+                                "label": "receber SYN"
+                              },
+                              {
+                                "id": "ack",
+                                "label": "receber ACK"
+                              },
+                              {
+                                "id": "fin",
+                                "label": "receber FIN"
+                              }
+                            ],
+                            "transitions": [
+                              {
+                                "id": "t1",
+                                "from": "closed",
+                                "event": "passive_open",
+                                "to": "listen",
+                                "action": "aguardar conexão"
+                              },
+                              {
+                                "id": "t2",
+                                "from": "listen",
+                                "event": "syn",
+                                "to": "syn_received",
+                                "action": "enviar SYN+ACK"
+                              },
+                              {
+                                "id": "t3",
+                                "from": "syn_received",
+                                "event": "ack",
+                                "to": "established",
+                                "guard": "ACK válido"
+                              },
+                              {
+                                "id": "t4",
+                                "from": "established",
+                                "event": "fin",
+                                "to": "close_wait",
+                                "action": "confirmar FIN"
                               }
                             ]
                           }
@@ -2179,7 +2701,7 @@
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
-                            "text": "Cabeçalhos identificam variáveis, subfórmulas e resultado; cada valoração é uma linha."
+                            "text": "Estados e transições possuem descrição textual equivalente."
                           }
                         }
                       ],
@@ -2189,6 +2711,95 @@
                     {
                       "id": "gallery-30",
                       "position": 30,
+                      "title": "Tabela-verdade",
+                      "role": "theory",
+                      "content": [
+                        {
+                          "id": "instance-30",
+                          "package": "aralearn.resource.truth_table",
+                          "version": "1.0.0",
+                          "data": {
+                            "prompt": "Compare a implicação P → Q com sua forma equivalente ¬P ∨ Q e observe que elas coincidem em todas as valorações.",
+                            "variables": [
+                              "P",
+                              "Q"
+                            ],
+                            "derivedColumns": [
+                              "P → Q",
+                              "¬P",
+                              "¬P ∨ Q",
+                              "(P → Q) ↔ (¬P ∨ Q)"
+                            ],
+                            "rows": [
+                              {
+                                "values": [
+                                  "true",
+                                  "true"
+                                ],
+                                "results": [
+                                  "true",
+                                  "false",
+                                  "true",
+                                  "true"
+                                ]
+                              },
+                              {
+                                "values": [
+                                  "true",
+                                  "false"
+                                ],
+                                "results": [
+                                  "false",
+                                  "false",
+                                  "false",
+                                  "true"
+                                ]
+                              },
+                              {
+                                "values": [
+                                  "false",
+                                  "true"
+                                ],
+                                "results": [
+                                  "true",
+                                  "true",
+                                  "true",
+                                  "true"
+                                ]
+                              },
+                              {
+                                "values": [
+                                  "false",
+                                  "false"
+                                ],
+                                "results": [
+                                  "true",
+                                  "true",
+                                  "true",
+                                  "true"
+                                ]
+                              }
+                            ]
+                          }
+                        }
+                      ],
+                      "response": null,
+                      "feedback": [
+                        {
+                          "id": "feedback-30",
+                          "package": "aralearn.resource.paragraph",
+                          "version": "1.0.0",
+                          "data": {
+                            "text": "Cabeçalhos identificam variáveis, subfórmulas e resultado; cada valoração é uma linha."
+                          }
+                        }
+                      ],
+                      "topics": [],
+                      "sources": []
+                    },
+                    {
+                      "id": "gallery-31",
+                      "position": 31,
                       "title": "Encaixe de correspondências",
                       "role": "practice",
                       "content": [
@@ -2202,7 +2813,7 @@
                         }
                       ],
                       "response": {
-                        "id": "instance-30",
+                        "id": "instance-31",
                         "package": "aralearn.response.matching",
                         "version": "1.0.0",
                         "data": {
@@ -2242,11 +2853,302 @@
                       },
                       "feedback": [
                         {
-                          "id": "feedback-30",
+                          "id": "feedback-31",
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
                             "text": "Cada origem possui um seletor nativo rotulado; arrastar nunca é obrigatório."
+                          }
+                        }
+                      ],
+                      "topics": [],
+                      "sources": []
+                    },
+                    {
+                      "id": "gallery-32",
+                      "position": 32,
+                      "title": "Modelo entidade-relacionamento",
+                      "role": "theory",
+                      "content": [
+                        {
+                          "id": "instance-32",
+                          "package": "aralearn.resource.entity_relationship",
+                          "version": "1.0.0",
+                          "data": {
+                            "prompt": "Observe como matrícula resolve a relação muitos-para-muitos entre estudante e turma e conserva o resultado acadêmico.",
+                            "entities": [
+                              {
+                                "id": "student",
+                                "name": "Estudante",
+                                "attributes": [
+                                  {
+                                    "id": "student_id",
+                                    "name": "id_estudante",
+                                    "type": "UUID",
+                                    "key": "primary",
+                                    "optional": false
+                                  },
+                                  {
+                                    "id": "name",
+                                    "name": "nome",
+                                    "type": "texto",
+                                    "key": "none",
+                                    "optional": false
+                                  }
+                                ]
+                              },
+                              {
+                                "id": "class",
+                                "name": "Turma",
+                                "attributes": [
+                                  {
+                                    "id": "class_id",
+                                    "name": "id_turma",
+                                    "type": "UUID",
+                                    "key": "primary",
+                                    "optional": false
+                                  },
+                                  {
+                                    "id": "term",
+                                    "name": "período",
+                                    "type": "texto",
+                                    "key": "none",
+                                    "optional": false
+                                  }
+                                ]
+                              },
+                              {
+                                "id": "enrollment",
+                                "name": "Matrícula",
+                                "attributes": [
+                                  {
+                                    "id": "student_fk",
+                                    "name": "id_estudante",
+                                    "type": "UUID",
+                                    "key": "primary-foreign",
+                                    "optional": false
+                                  },
+                                  {
+                                    "id": "class_fk",
+                                    "name": "id_turma",
+                                    "type": "UUID",
+                                    "key": "primary-foreign",
+                                    "optional": false
+                                  },
+                                  {
+                                    "id": "grade",
+                                    "name": "nota_final",
+                                    "type": "decimal",
+                                    "key": "none",
+                                    "optional": true
+                                  }
+                                ]
+                              }
+                            ],
+                            "relationships": [
+                              {
+                                "id": "student_enrollment",
+                                "from": "student",
+                                "to": "enrollment",
+                                "label": "realiza",
+                                "fromCardinality": "one",
+                                "toCardinality": "zero_or_many",
+                                "identifying": true
+                              },
+                              {
+                                "id": "class_enrollment",
+                                "from": "class",
+                                "to": "enrollment",
+                                "label": "recebe",
+                                "fromCardinality": "one",
+                                "toCardinality": "zero_or_many",
+                                "identifying": true
+                              }
+                            ]
+                          }
+                        }
+                      ],
+                      "response": null,
+                      "feedback": [
+                        {
+                          "id": "feedback-32",
+                          "package": "aralearn.resource.paragraph",
+                          "version": "1.0.0",
+                          "data": {
+                            "text": "Entidades, atributos, relações e cardinalidades possuem descrição textual equivalente."
+                          }
+                        }
+                      ],
+                      "topics": [],
+                      "sources": []
+                    },
+                    {
+                      "id": "gallery-33",
+                      "position": 33,
+                      "title": "Tabela de transição",
+                      "role": "theory",
+                      "content": [
+                        {
+                          "id": "instance-33",
+                          "package": "aralearn.resource.state_transition_table",
+                          "version": "1.0.0",
+                          "data": {
+                            "prompt": "Compare a função de transição do autômato que reconhece cadeias binárias terminadas em 01.",
+                            "states": [
+                              {
+                                "id": "q0",
+                                "label": "q₀",
+                                "initial": true,
+                                "accepting": false
+                              },
+                              {
+                                "id": "q1",
+                                "label": "q₁",
+                                "initial": false,
+                                "accepting": false
+                              },
+                              {
+                                "id": "q2",
+                                "label": "q₂",
+                                "initial": false,
+                                "accepting": true
+                              }
+                            ],
+                            "events": [
+                              {
+                                "id": "zero",
+                                "label": "0"
+                              },
+                              {
+                                "id": "one",
+                                "label": "1"
+                              }
+                            ],
+                            "transitions": [
+                              {
+                                "id": "t1",
+                                "from": "q0",
+                                "event": "zero",
+                                "to": "q1"
+                              },
+                              {
+                                "id": "t2",
+                                "from": "q0",
+                                "event": "one",
+                                "to": "q0"
+                              },
+                              {
+                                "id": "t3",
+                                "from": "q1",
+                                "event": "zero",
+                                "to": "q1"
+                              },
+                              {
+                                "id": "t4",
+                                "from": "q1",
+                                "event": "one",
+                                "to": "q2"
+                              },
+                              {
+                                "id": "t5",
+                                "from": "q2",
+                                "event": "zero",
+                                "to": "q1"
+                              },
+                              {
+                                "id": "t6",
+                                "from": "q2",
+                                "event": "one",
+                                "to": "q0"
+                              }
+                            ]
+                          }
+                        }
+                      ],
+                      "response": null,
+                      "feedback": [
+                        {
+                          "id": "feedback-33",
+                          "package": "aralearn.resource.paragraph",
+                          "version": "1.0.0",
+                          "data": {
+                            "text": "Cabeçalhos identificam eventos; cada linha declara um estado e seus destinos."
+                          }
+                        }
+                      ],
+                      "topics": [],
+                      "sources": []
+                    },
+                    {
+                      "id": "gallery-34",
+                      "position": 34,
+                      "title": "Pilha de chamadas",
+                      "role": "theory",
+                      "content": [
+                        {
+                          "id": "instance-34",
+                          "package": "aralearn.resource.call_stack",
+                          "version": "1.0.0",
+                          "data": {
+                            "prompt": "Observe os quadros durante a segunda chamada recursiva de fatorial(4).",
+                            "frames": [
+                              {
+                                "id": "main",
+                                "functionName": "main",
+                                "returnTo": "encerrar programa",
+                                "fields": [
+                                  {
+                                    "id": "n",
+                                    "role": "local",
+                                    "name": "n",
+                                    "value": "4"
+                                  }
+                                ]
+                              },
+                              {
+                                "id": "fact4",
+                                "functionName": "fatorial(4)",
+                                "returnTo": "main: resultado = …",
+                                "fields": [
+                                  {
+                                    "id": "n",
+                                    "role": "parameter",
+                                    "name": "n",
+                                    "value": "4"
+                                  },
+                                  {
+                                    "id": "partial",
+                                    "role": "local",
+                                    "name": "parcial",
+                                    "value": "aguardando"
+                                  }
+                                ]
+                              },
+                              {
+                                "id": "fact3",
+                                "functionName": "fatorial(3)",
+                                "returnTo": "fatorial(4): 4 × …",
+                                "fields": [
+                                  {
+                                    "id": "n",
+                                    "role": "parameter",
+                                    "name": "n",
+                                    "value": "3"
+                                  }
+                                ]
+                              }
+                            ]
+                          }
+                        }
+                      ],
+                      "response": null,
+                      "feedback": [
+                        {
+                          "id": "feedback-34",
+                          "package": "aralearn.resource.paragraph",
+                          "version": "1.0.0",
+                          "data": {
+                            "text": "Os quadros são lidos do topo ativo até a base; campos têm nome, papel e valor."
                           }
                         }
                       ],

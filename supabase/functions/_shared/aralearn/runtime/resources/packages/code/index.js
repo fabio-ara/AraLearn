@@ -17,7 +17,7 @@ export const codePackage = Object.freeze({
     required: Object.freeze(["prompt", "language", "code"]),
     optional: Object.freeze(["languageTag", "textDirection"]),
     rules: Object.freeze(["Preserve indentação.", "Não use código como decoração."]),
-    example: Object.freeze({ prompt: "Observe a condição antes do envio.", language: "javascript", code: "if (online) {\n  enviar();\n}" })
+    example: Object.freeze({ prompt: "Leia a busca binária e acompanhe como os limites eliminam metade do vetor a cada iteração.", language: "python", code: "def busca_binaria(valores, alvo):\n    inicio, fim = 0, len(valores) - 1\n    while inicio <= fim:\n        meio = (inicio + fim) // 2\n        if valores[meio] == alvo:\n            return meio\n        if valores[meio] < alvo:\n            inicio = meio + 1\n        else:\n            fim = meio - 1\n    return -1" })
   }),
   schema: Object.freeze({
     type: "object", additionalProperties: false, required: ["prompt", "language", "code"],

@@ -15,13 +15,13 @@ export const sequencePackage = Object.freeze({
   authoringContract: Object.freeze({
     intent: "Declare etapas semanticamente distintas na ordem correta.", required: Object.freeze(["variant", "items"]),
     optional: Object.freeze(["prompt"]), rules: Object.freeze(["Use flow quando houver ramificação.", "Cada item precisa ser compreensível por si no contexto."]),
-    example: Object.freeze({ prompt: "Acompanhe o envio.", variant: "ordered_steps", items: [{ id: "s1", label: "Preparar mensagem" }, { id: "s2", label: "Transmitir" }] })
+    example: Object.freeze({ prompt: "Acompanhe uma resolução DNS iterativa depois que o nome completo e o papel do resolvedor já foram apresentados.", variant: "ordered_steps", items: [{ id: "query", label: "Receber a consulta do cliente", detail: "O resolvedor verifica primeiro seu cache." }, { id: "root", label: "Consultar um servidor raiz", detail: "A resposta encaminha para o domínio de topo apropriado." }, { id: "tld", label: "Consultar o servidor do domínio de topo", detail: "A resposta indica servidores autoritativos do domínio." }, { id: "authoritative", label: "Consultar o servidor autoritativo", detail: "O registro solicitado é devolvido com seu TTL." }, { id: "answer", label: "Armazenar e devolver a resposta", detail: "O cache evita repetir imediatamente todo o percurso." }] })
   }),
   schema: Object.freeze({
     type: "object", additionalProperties: false, required: ["variant", "items"],
     properties: {
       prompt: { type: "string", maxLength: 2000 },
-      variant: { type: "string", enum: ["ordered_steps", "timeline", "lifecycle", "cycle", "code_blocks"] },
+      variant: { type: "string", enum: ["ordered_steps", "timeline", "lifecycle", "cycle"] },
       items: { type: "array", minItems: 2, maxItems: 20, items: { type: "object", additionalProperties: false, required: ["id", "label"], properties: { id: { type: "string", minLength: 1 }, label: { type: "string", minLength: 1, maxLength: 1200 }, detail: { type: "string", maxLength: 3000 } } } }
     }
   }),

@@ -447,7 +447,7 @@ assert.deepEqual(
 assert.match(
   actionSchema.paths["/salvarCardsNaMicrossequencia"].post
     .responses["200"].description,
-  /validado estruturalmente; isso não representa aprovação pedagógica/iu
+  /conteúdo validado; não implica aprovação pedagógica/iu
 );
 assert.match(
   actionSchema.components.schemas.InputPrepararAutoriaAraLearn

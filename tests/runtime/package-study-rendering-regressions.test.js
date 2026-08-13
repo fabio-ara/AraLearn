@@ -157,9 +157,10 @@ test("matrix e tree preservam a estrutura visual package-native no card completo
       ]
     }
   }));
-  assert.match(treeHtml, /runtime-tree-structure/u);
-  assert.match(treeHtml, /runtime-tree-node-chip/u);
-  assert.match(treeHtml, /aria-level="3"/u);
+  assert.match(treeHtml, /class="package-system-diagram"/u);
+  assert.match(treeHtml, /data-graphviz-source=/u);
+  assert.match(treeHtml, /package-rooted-tree-node/u);
+  assert.doesNotMatch(treeHtml, /runtime-tree-structure|runtime-tree-node-chip/u);
 });
 
 test("recursos visuais extraídos preservam representação própria em vez de texto cru", () => {

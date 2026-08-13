@@ -83,12 +83,16 @@ No AraLearn:
 - `reaction` preserva a gramática de uma equação química;
 - `truth_table`, `set_diagram` e `relation_map` distinguem valoração
   lógica, regiões de conjuntos e pares de uma relação binária;
-- `algorithm_trace`, `database_schema` e `memory_layout` preservam,
-  respectivamente, estado de execução, chaves/referências e intervalos de
-  endereços;
+- `algorithm_trace`, `entity_relationship`, `database_schema`,
+  `memory_layout` e `call_stack` preservam, respectivamente, estado de
+  execução, modelo conceitual, esquema lógico com chaves, intervalos de
+  endereços e ativações de funções;
 - `packet_layout`, `network_topology` e `state_machine` distinguem campos
   contíguos de protocolo, equipamentos/enlaces e comportamento dependente de
   estado;
+- `state_transition_table` torna explícita a função de transição, enquanto
+  `bpmn_process` preserva participantes, raias, atividades, gateways e a
+  distinção normativa entre fluxo de sequência e fluxo de mensagem;
 - múltiplos packages em `content` são reservados à tarefa que realmente exige coordenação.
 
 Cada package de conteúdo expõe folhas textuais selecionáveis e pode ser
@@ -187,9 +191,21 @@ folhas textuais, enquanto ids, referências, tipos, direções e topologia ficam
 protegidos como contexto estrutural.
 
 Esses packages não são intercambiáveis. Um processo com condição permanece
-`flow`; equipamentos e enlaces permanecem `network_topology`; relações entre
+`flow` quando o objeto é um algoritmo; um processo de negócio entre
+responsabilidades permanece `bpmn_process`; equipamentos e enlaces permanecem `network_topology`; relações entre
 dois conjuntos permanecem `relation_map`; e topologia matemática abstrata
 permanece `graph`.
+
+`bpmn_process` cobre deliberadamente um subconjunto didático de BPMN 2.0:
+participantes ou pools, raias, eventos, tarefas, gateways exclusivos e
+paralelos, fluxo de sequência e fluxo de mensagem. A distinção não é estética:
+fluxo de sequência ordena atividades dentro de um participante, enquanto
+fluxo de mensagem comunica participantes distintos. Coreografia, conversação
+e a notação completa de eventos precisam de packages próprios quando forem o
+objeto de aprendizagem. O contrato declara semântica e responsabilidade; o
+Graphviz calcula clusters, posições e rotas. A especificação normativa e os
+exemplos da OMG são as referências de gramática visual, não um fluxograma
+genérico com raias (<https://www.omg.org/spec/BPMN/2.0/>).
 
 Em teoria dos grafos, cruzamentos não tornam um desenho automaticamente
 inválido: planaridade é uma propriedade específica, e grafos não planares

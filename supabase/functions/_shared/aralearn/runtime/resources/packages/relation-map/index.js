@@ -41,10 +41,11 @@ export const relationMapPackage = Object.freeze({
     optional: Object.freeze(["highlight"]),
     rules: Object.freeze(["from pertence ao conjunto esquerdo e to ao direito.", "Use um rótulo verbal quando a direção não for autoexplicativa.", "Prefira labels curtos, mas nunca os abrevie a ponto de perder sentido."]),
     example: Object.freeze({
-      prompt: "Relacione cada componente à responsabilidade que ele exerce.",
-      leftSet: { label: "Componente", items: [{ id: "manager", label: "Gerente" }, { id: "agent", label: "Agente" }] },
-      rightSet: { label: "Responsabilidade", items: [{ id: "request", label: "Envia a solicitação" }, { id: "local", label: "Acessa o dado local" }] },
-      relations: [{ id: "r1", from: "manager", to: "request", label: "executa" }, { id: "r2", from: "agent", to: "local", label: "executa" }]
+      prompt: "Examine a relação R de A em B e observe que a pertence a duas imagens, enquanto d não possui preimagem.",
+      leftSet: { label: "Domínio A", items: [{ id: "a", label: "a" }, { id: "b", label: "b" }, { id: "c", label: "c" }] },
+      rightSet: { label: "Contradomínio B", items: [{ id: "one", label: "1" }, { id: "two", label: "2" }, { id: "three", label: "3" }, { id: "four", label: "4" }] },
+      relations: [{ id: "a1", from: "a", to: "one", label: "(a, 1) ∈ R" }, { id: "a2", from: "a", to: "two", label: "(a, 2) ∈ R" }, { id: "b2", from: "b", to: "two", label: "(b, 2) ∈ R" }, { id: "c3", from: "c", to: "three", label: "(c, 3) ∈ R" }],
+      highlight: { relations: ["a1", "a2"], leftItems: ["a"], rightItems: [] }
     })
   }),
   schema: Object.freeze({

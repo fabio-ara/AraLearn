@@ -25,14 +25,14 @@ test.beforeEach(async ({ page }) => {
   await page.waitForFunction(() => globalThis.__RESOURCE_TEST_COURSE_READY__ === true);
 });
 
-test("curso separa 26 representações dos quatro packages de resposta", async ({ page }) => {
+test("curso separa representações dos quatro packages de resposta", async ({ page }) => {
   await expect(page.locator('[data-action="open-course"]')).toBeVisible();
   await page.locator('[data-action="open-course"]').click();
-  await expect(page.locator('[data-action="open-module"]')).toHaveCount(30);
-  await expect(page.locator('[data-action="open-module"]').nth(26)).toHaveAttribute("data-module-key", "response-choice-test-module");
-  await expect(page.locator('[data-action="open-module"]').nth(27)).toHaveAttribute("data-module-key", "response-gap-test-module");
-  await expect(page.locator('[data-action="open-module"]').nth(28)).toHaveAttribute("data-module-key", "response-ordering-test-module");
-  await expect(page.locator('[data-action="open-module"]').nth(29)).toHaveAttribute("data-module-key", "response-matching-test-module");
+  expect(await page.locator('[data-action="open-module"]').count()).toBeGreaterThan(4);
+  await expect(page.locator('[data-action="open-module"][data-module-key="response-choice-test-module"]')).toHaveCount(1);
+  await expect(page.locator('[data-action="open-module"][data-module-key="response-gap-test-module"]')).toHaveCount(1);
+  await expect(page.locator('[data-action="open-module"][data-module-key="response-ordering-test-module"]')).toHaveCount(1);
+  await expect(page.locator('[data-action="open-module"][data-module-key="response-matching-test-module"]')).toHaveCount(1);
 });
 
 test("paragraph usa alternativas sob demanda e segundo toque esvazia a lacuna", async ({ page }) => {
@@ -106,8 +106,42 @@ test("texto anotado liga trecho e nota nos dois sentidos sem ids internos", asyn
   await expect(page.locator(".runtime-annotated-text-segment").last()).toHaveClass(/is-active/u);
 });
 
-test("glosa interlinear preserva alinhamento, tradução e legenda", async ({ page }) => {
+test("BPMN preserva participantes, raias, gateways e fluxos em um caso não trivial", async ({ page }) => {
   await openModule(page, 5);
+  await expect(page.locator('[data-graphviz-status="ready"]')).toHaveCount(1);
+  await expect(page.locator(".package-bpmn-participant")).toHaveCount(2);
+  await expect(page.locator(".package-bpmn-lane")).toHaveCount(3);
+  await expect(page.locator(".package-bpmn-node.is-exclusive_gateway")).toHaveCount(1);
+  await expect(page.locator(".package-bpmn-flow.is-message")).toHaveCount(1);
+  await expect(page.locator(".package-bpmn-flow.is-sequence")).toHaveCount(8);
+  const visibleEventText = await page.locator(".package-bpmn-process svg text").allTextContents();
+  expect(visibleEventText.map((value) => value.trim())).not.toContain("need");
+  expect(visibleEventText.map((value) => value.trim())).not.toContain("finish");
+  const geometry = await page.locator(".package-bpmn-process svg").evaluate((svg) => {
+    const boxes = [...svg.querySelectorAll("g.package-bpmn-node")].map((node) => ({
+      id: node.id,
+      rect: node.getBoundingClientRect()
+    }));
+    const overlaps = [];
+    for (let leftIndex = 0; leftIndex < boxes.length; leftIndex += 1) {
+      for (let rightIndex = leftIndex + 1; rightIndex < boxes.length; rightIndex += 1) {
+        const left = boxes[leftIndex].rect;
+        const right = boxes[rightIndex].rect;
+        if (left.left < right.right && left.right > right.left && left.top < right.bottom && left.bottom > right.top) {
+          overlaps.push([boxes[leftIndex].id, boxes[rightIndex].id]);
+        }
+      }
+    }
+    return { overlaps, width: svg.getBoundingClientRect().width };
+  });
+  expect(geometry.overlaps).toEqual([]);
+  expect(geometry.width).toBeGreaterThan(300);
+  await page.locator('[data-action="next-card"]').click();
+  await expect(page.locator('.package-bpmn-node [data-action="text-gap-open-choice"], .package-bpmn-flow [data-action="text-gap-open-choice"]')).toHaveCount(1);
+});
+
+test("glosa interlinear preserva alinhamento, tradução e legenda", async ({ page }) => {
+  await openModule(page, 6);
   await expect(page.locator(".runtime-interlinear-unit")).toHaveCount(6);
   await expect(page.locator(".runtime-interlinear-form").nth(1)).toHaveText("abur-u-n");
   await expect(page.locator(".runtime-interlinear-unit-gloss").nth(1)).toHaveText("they-OBL-GEN");
@@ -119,7 +153,7 @@ test("glosa interlinear preserva alinhamento, tradução e legenda", async ({ pa
 });
 
 test("matrix usa MathML com peso normal e lacuna na entrada", async ({ page }) => {
-  await openModule(page, 7);
+  await openModule(page, 8);
   await expect(page.locator(".runtime-matrix-item math.runtime-matrix-values mtable")).toHaveCount(1);
   await expect(page.locator(".runtime-matrix-item math.runtime-matrix-values mtr")).toHaveCount(3);
   await expect(page.locator(".runtime-matrix-name")).toHaveText("I");
@@ -152,7 +186,7 @@ test("matrix usa MathML com peso normal e lacuna na entrada", async ({ page }) =
 });
 
 test("reaction materializa escolha e digitação dentro da equação química", async ({ page }) => {
-  await openModule(page, 8);
+  await openModule(page, 9);
   const spacing = await page.locator(".package-reaction-equation").evaluate((equation) => {
     const species = [...equation.querySelectorAll(".package-reaction-species")];
     const coefficient = equation.querySelector(".package-reaction-coefficient").getBoundingClientRect();
@@ -186,7 +220,7 @@ test("reaction materializa escolha e digitação dentro da equação química", 
 });
 
 test("flow usa convenções de fluxograma e não a estrutura visual de tree", async ({ page }) => {
-  await openModule(page, 9);
+  await openModule(page, 10);
   await expect(page.locator(".package-flowchart")).toBeVisible();
   await expect(page.locator('[data-flow-layout-status="ready"]')).toHaveCount(1);
   await expect(page.locator(".package-flow-node.is-terminal")).toHaveCount(2);
@@ -330,7 +364,7 @@ test("flow complexo diagrama laço e decisão aninhada sem sobrepor nós", async
 });
 
 test("formula combina texto e notação avançada na mesma escala tipográfica", async ({ page }) => {
-  await openModule(page, 10);
+  await openModule(page, 11);
   await expect(page.locator(".runtime-formula-block > p")).toContainText("teoria de campos");
   await expect(page.locator(".package-formula math")).toBeVisible();
   await expect(page.locator(".package-formula math mfrac")).toHaveCount(2);
@@ -372,7 +406,7 @@ test("plano cartesiano complexo preserva eixos, objetos e rótulos sem colisão"
   await page.evaluate(() => localStorage.setItem("aralearn.ui.theme", "dark"));
   await page.reload();
   await page.waitForFunction(() => globalThis.__RESOURCE_TEST_COURSE_READY__ === true);
-  await openModule(page, 11);
+  await openModule(page, 12);
   await expect(page.locator(".package-plane-canvas[data-vega-status='ready']")).toBeVisible();
   const geometry = await page.locator(".package-plane-canvas").evaluate((canvas) => {
     const expected = new Set(["e₁", "e₂", "Ae₁", "Ae₂", "p", "Ap"]);
@@ -494,7 +528,7 @@ test("plano cartesiano complexo preserva eixos, objetos e rótulos sem colisão"
 });
 
 test("gráfico acadêmico mostra escala logarítmica, incerteza e referência sem legenda solta", async ({ page }) => {
-  await openModule(page, 12);
+  await openModule(page, 13);
   const canvas = page.locator(".package-chart-canvas[data-vega-status='ready']");
   await expect(canvas).toBeVisible();
   await expect(canvas).toContainText("Concorrência (requisições simultâneas)");

@@ -18,9 +18,10 @@ export function renderSystemDiagramFigure({
   caption,
   labels,
   model,
-  focusId = ""
+  focusId = "",
+  errorMessage = "Não foi possível diagramar a representação."
 }) {
-  return `<figure class="package-system-diagram" data-system-diagram-engine="${escapePackageAttribute(engine)}" data-system-diagram-model="${escapePackageAttribute(encodeURIComponent(JSON.stringify(model)))}"${focusId ? ` data-system-diagram-focus-id="${escapePackageAttribute(focusId)}"` : ""}><div class="package-system-diagram-canvas" role="img" aria-label="${escapePackageAttribute(accessibleText)}" aria-busy="true" tabindex="0" data-graphviz-source="${escapePackageAttribute(source)}"></div>${labels.map(templateMarkup).join("")}<p class="package-system-diagram-pan-hint" hidden>Deslize horizontalmente para examinar o diagrama completo.</p><figcaption>${caption}</figcaption><p class="package-system-diagram-layout-error" hidden>Não foi possível diagramar o sistema.</p></figure>`;
+  return `<figure class="package-system-diagram" data-system-diagram-engine="${escapePackageAttribute(engine)}" data-system-diagram-model="${escapePackageAttribute(encodeURIComponent(JSON.stringify(model)))}"${focusId ? ` data-system-diagram-focus-id="${escapePackageAttribute(focusId)}"` : ""}><div class="package-system-diagram-canvas" role="img" aria-label="${escapePackageAttribute(accessibleText)}" aria-busy="true" tabindex="0" data-graphviz-source="${escapePackageAttribute(source)}"></div>${labels.map(templateMarkup).join("")}<p class="package-system-diagram-pan-hint" hidden>Deslize horizontalmente para examinar o diagrama completo.</p><figcaption>${caption}</figcaption><p class="package-system-diagram-layout-error" hidden>${escapePackageAttribute(errorMessage)}</p></figure>`;
 }
 
 function nodeBounds(group) {

@@ -16,7 +16,7 @@ export const tablePackage = Object.freeze({
     intent: "Declare uma comparação pequena, com cabeçalhos autoexplicativos e contexto anterior.",
     required: Object.freeze(["columns", "rows"]), optional: Object.freeze(["prompt", "caption", "layout"]),
     rules: Object.freeze(["Cada linha tem a mesma quantidade de células que columns.", "Explique antes toda sigla usada."]),
-    example: Object.freeze({ prompt: "Compare a finalidade.", columns: ["Mecanismo", "Finalidade"], rows: [["Get", "Consultar um valor"]] })
+    example: Object.freeze({ prompt: "Compare mecanismos de controle de congestionamento depois de estudar janela de congestionamento, perda e atraso.", caption: "Sinais e respostas típicas; detalhes dependem do algoritmo e da implementação.", layout: "wide", columns: ["Mecanismo", "Sinal observado", "Resposta principal", "Efeito esperado"], rows: [["Slow start", "Início da conexão ou reinício após timeout", "Crescimento exponencial de cwnd por RTT", "Descobrir rapidamente a capacidade disponível"], ["Congestion avoidance", "cwnd alcança ssthresh", "Crescimento aproximadamente linear", "Sondar capacidade com mais cautela"], ["Fast retransmit", "ACKs duplicados", "Retransmitir antes do timeout", "Reduzir o tempo de recuperação"], ["Timeout", "Ausência de confirmação dentro do RTO", "Reduzir cwnd e reiniciar crescimento", "Responder a indício forte de perda"]] })
   }),
   schema: Object.freeze({
     type: "object", additionalProperties: false, required: ["columns", "rows"],

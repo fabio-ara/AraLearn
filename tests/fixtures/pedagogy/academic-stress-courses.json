@@ -1,0 +1,2847 @@
+{
+  "contract": "aralearn.library.v1",
+  "scope": "course",
+  "courses": [
+    {
+      "id": "academic-ifsp-tads",
+      "title": "Laboratório acadêmico — TADS IFSP São Paulo",
+      "goal": "Testar progressão autossuficiente e representações canônicas em recortes do PPC de TADS.",
+      "modules": [
+        {
+          "id": "ifsp-algorithms",
+          "title": "Algoritmos: do problema à execução",
+          "guide": {
+            "goal": "Ensinar a um iniciante o que é algoritmo e como acompanhar busca binária sem exigir programação prévia.",
+            "include": [
+              "situação concreta",
+              "vocabulário antes da notação",
+              "explicação progressiva",
+              "prática guiada e transferência"
+            ],
+            "exclude": [
+              "resumo enciclopédico",
+              "tabela de siglas como primeira explicação"
+            ],
+            "notation": [
+              "notação canônica da área",
+              "rótulos completos",
+              "uma representação por intenção"
+            ],
+            "avoid": [
+              "presumir repertório técnico",
+              "compactar para reduzir número de cards"
+            ]
+          },
+          "lessons": [
+            {
+              "id": "ifsp-algorithms-lesson",
+              "title": "Algoritmos: do problema à execução",
+              "guide": {
+                "goal": "Ensinar a um iniciante o que é algoritmo e como acompanhar busca binária sem exigir programação prévia.",
+                "include": [
+                  "situação concreta",
+                  "vocabulário antes da notação",
+                  "explicação progressiva",
+                  "prática guiada e transferência"
+                ],
+                "exclude": [
+                  "resumo enciclopédico",
+                  "tabela de siglas como primeira explicação"
+                ],
+                "notation": [
+                  "notação canônica da área",
+                  "rótulos completos",
+                  "uma representação por intenção"
+                ],
+                "avoid": [
+                  "presumir repertório técnico",
+                  "compactar para reduzir número de cards"
+                ]
+              },
+              "topics": [
+                {
+                  "id": "alg-problem",
+                  "label": "Problema, entrada e saída",
+                  "kind": "concept",
+                  "checks": [
+                    "distingue objetivo de procedimento"
+                  ],
+                  "errors": [
+                    "confunde código com algoritmo"
+                  ]
+                },
+                {
+                  "id": "alg-state",
+                  "label": "Estado de execução",
+                  "kind": "representation",
+                  "checks": [
+                    "prevê valores após uma instrução"
+                  ],
+                  "errors": [
+                    "salta alterações intermediárias"
+                  ]
+                },
+                {
+                  "id": "alg-binary",
+                  "label": "Busca binária",
+                  "kind": "procedure",
+                  "checks": [
+                    "mantém e reduz intervalo válido"
+                  ],
+                  "errors": [
+                    "aplica sem dados ordenados"
+                  ]
+                }
+              ],
+              "microsequences": [
+                {
+                  "id": "alg-foundation",
+                  "title": "Por que um algoritmo existe",
+                  "goal": "Situar algoritmo como procedimento finito que transforma entrada em saída.",
+                  "role": "explain",
+                  "dependsOn": [],
+                  "covers": [
+                    "alg-problem"
+                  ],
+                  "checks": [
+                    "o estudante encontra o fundamento antes da notação densa",
+                    "a prática cobra somente objetos já ensinados",
+                    "a representação acrescenta informação ao raciocínio"
+                  ],
+                  "errors": [
+                    "siglas ou convenções sem introdução",
+                    "mais de um núcleo conceitual novo no mesmo card",
+                    "recurso usado apenas como decoração"
+                  ],
+                  "cards": [
+                    {
+                      "id": "alg-1",
+                      "position": 1,
+                      "title": "Antes do código",
+                      "role": "theory",
+                      "content": [
+                        {
+                          "id": "alg-1-text",
+                          "package": "aralearn.resource.paragraph",
+                          "version": "1.0.0",
+                          "data": {
+                            "text": "Imagine uma lista de nomes e a tarefa de descobrir se “Lia” aparece nela. O problema declara o que se deseja obter; um algoritmo descreve uma sequência finita e não ambígua de passos para produzir essa resposta a partir da lista recebida.",
+                            "languageTag": "pt-BR",
+                            "textDirection": "auto"
+                          }
+                        }
+                      ],
+                      "response": null,
+                      "feedback": [],
+                      "topics": [
+                        "alg-problem"
+                      ],
+                      "sources": [
+                        "https://spo.ifsp.edu.br/tads",
+                        "https://spo.ifsp.edu.br/images/phocadownload/DOCUMENTOS_MENU_LATERAL_FIXO/GRADUACAO/ANALISE_DESENVOLVIMENTO_SISTEMAS/28_janeiro_2020/SPO_TADS_PPC_Reformulacao_v7julho2019_ATPDGRA_002_2019.pdf"
+                      ]
+                    },
+                    {
+                      "id": "alg-2",
+                      "position": 2,
+                      "title": "Entrada, estado e saída",
+                      "role": "theory",
+                      "content": [
+                        {
+                          "id": "alg-2-text",
+                          "package": "aralearn.resource.paragraph",
+                          "version": "1.0.0",
+                          "data": {
+                            "text": "A lista e o nome procurado são entradas. Durante a execução, posições e valores mudam: esse conjunto momentâneo é o estado. A posição encontrada, ou a indicação de ausência, é a saída. Separar essas três ideias permite compreender uma execução antes de dominar a sintaxe de uma linguagem.",
+                            "languageTag": "pt-BR",
+                            "textDirection": "auto"
+                          }
+                        }
+                      ],
+                      "response": null,
+                      "feedback": [],
+                      "topics": [
+                        "alg-problem",
+                        "alg-state"
+                      ],
+                      "sources": [
+                        "https://spo.ifsp.edu.br/images/phocadownload/DOCUMENTOS_MENU_LATERAL_FIXO/GRADUACAO/ANALISE_DESENVOLVIMENTO_SISTEMAS/28_janeiro_2020/SPO_TADS_PPC_Reformulacao_v7julho2019_ATPDGRA_002_2019.pdf"
+                      ]
+                    },
+                    {
+                      "id": "alg-3",
+                      "position": 3,
+                      "title": "Busca em lista ordenada",
+                      "role": "theory",
+                      "content": [
+                        {
+                          "id": "alg-3-text",
+                          "package": "aralearn.resource.paragraph",
+                          "version": "1.0.0",
+                          "data": {
+                            "text": "Se os valores estão ordenados, comparar o alvo com o elemento central informa em qual metade ele ainda pode estar. A busca binária conserva um intervalo possível e descarta apenas a metade que não pode conter o alvo.",
+                            "languageTag": "pt-BR",
+                            "textDirection": "auto"
+                          }
+                        }
+                      ],
+                      "response": null,
+                      "feedback": [],
+                      "topics": [
+                        "alg-binary"
+                      ],
+                      "sources": [
+                        "https://spo.ifsp.edu.br/images/phocadownload/DOCUMENTOS_MENU_LATERAL_FIXO/GRADUACAO/ANALISE_DESENVOLVIMENTO_SISTEMAS/28_janeiro_2020/SPO_TADS_PPC_Reformulacao_v7julho2019_ATPDGRA_002_2019.pdf"
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "id": "alg-representation",
+                  "title": "Do procedimento ao estado",
+                  "goal": "Ler código e rastreamento como representações complementares.",
+                  "role": "explain",
+                  "dependsOn": [
+                    "alg-foundation"
+                  ],
+                  "covers": [
+                    "alg-state",
+                    "alg-binary"
+                  ],
+                  "checks": [
+                    "o estudante encontra o fundamento antes da notação densa",
+                    "a prática cobra somente objetos já ensinados",
+                    "a representação acrescenta informação ao raciocínio"
+                  ],
+                  "errors": [
+                    "siglas ou convenções sem introdução",
+                    "mais de um núcleo conceitual novo no mesmo card",
+                    "recurso usado apenas como decoração"
+                  ],
+                  "cards": [
+                    {
+                      "id": "alg-4",
+                      "position": 1,
+                      "title": "O procedimento em Python",
+                      "role": "theory",
+                      "content": [
+                        {
+                          "id": "ifsp-alg-code",
+                          "package": "aralearn.resource.code",
+                          "version": "1.0.0",
+                          "data": {
+                            "prompt": "Leia a busca binária e acompanhe como os limites eliminam metade do vetor a cada iteração.",
+                            "language": "python",
+                            "code": "def busca_binaria(valores, alvo):\n    inicio, fim = 0, len(valores) - 1\n    while inicio <= fim:\n        meio = (inicio + fim) // 2\n        if valores[meio] == alvo:\n            return meio\n        if valores[meio] < alvo:\n            inicio = meio + 1\n        else:\n            fim = meio - 1\n    return -1"
+                          }
+                        }
+                      ],
+                      "response": null,
+                      "feedback": [],
+                      "topics": [
+                        "alg-binary"
+                      ],
+                      "sources": [
+                        "https://spo.ifsp.edu.br/images/phocadownload/DOCUMENTOS_MENU_LATERAL_FIXO/GRADUACAO/ANALISE_DESENVOLVIMENTO_SISTEMAS/28_janeiro_2020/SPO_TADS_PPC_Reformulacao_v7julho2019_ATPDGRA_002_2019.pdf"
+                      ]
+                    },
+                    {
+                      "id": "alg-5",
+                      "position": 2,
+                      "title": "O mesmo procedimento em execução",
+                      "role": "theory",
+                      "content": [
+                        {
+                          "id": "ifsp-alg-trace",
+                          "package": "aralearn.resource.algorithm_trace",
+                          "version": "1.0.0",
+                          "data": {
+                            "prompt": "Acompanhe a busca binária por 23 no vetor [4, 8, 15, 16, 23, 42] e observe por que metade do intervalo pode ser descartada a cada comparação.",
+                            "variables": [
+                              "início",
+                              "fim",
+                              "meio",
+                              "valor[meio]"
+                            ],
+                            "steps": [
+                              {
+                                "id": "s0",
+                                "action": "Inicializar intervalo de busca",
+                                "values": [
+                                  "0",
+                                  "5",
+                                  "2",
+                                  "15"
+                                ],
+                                "condition": "15 < 23",
+                                "output": "descartar posições 0..2"
+                              },
+                              {
+                                "id": "s1",
+                                "action": "Mover o início para meio + 1",
+                                "values": [
+                                  "3",
+                                  "5",
+                                  "4",
+                                  "23"
+                                ],
+                                "condition": "23 = 23",
+                                "output": "encontrado no índice 4"
+                              },
+                              {
+                                "id": "s2",
+                                "action": "Encerrar e devolver a posição",
+                                "values": [
+                                  "3",
+                                  "5",
+                                  "4",
+                                  "23"
+                                ],
+                                "condition": "resultado definido",
+                                "output": "4"
+                              }
+                            ]
+                          }
+                        }
+                      ],
+                      "response": null,
+                      "feedback": [],
+                      "topics": [
+                        "alg-state",
+                        "alg-binary"
+                      ],
+                      "sources": [
+                        "https://spo.ifsp.edu.br/images/phocadownload/DOCUMENTOS_MENU_LATERAL_FIXO/GRADUACAO/ANALISE_DESENVOLVIMENTO_SISTEMAS/28_janeiro_2020/SPO_TADS_PPC_Reformulacao_v7julho2019_ATPDGRA_002_2019.pdf"
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "id": "alg-practice",
+                  "title": "Reconstruir e transferir",
+                  "goal": "Praticar estado, ordem e invariantes em situações já fundamentadas.",
+                  "role": "practice",
+                  "dependsOn": [
+                    "alg-representation"
+                  ],
+                  "covers": [
+                    "alg-state",
+                    "alg-binary"
+                  ],
+                  "checks": [
+                    "o estudante encontra o fundamento antes da notação densa",
+                    "a prática cobra somente objetos já ensinados",
+                    "a representação acrescenta informação ao raciocínio"
+                  ],
+                  "errors": [
+                    "siglas ou convenções sem introdução",
+                    "mais de um núcleo conceitual novo no mesmo card",
+                    "recurso usado apenas como decoração"
+                  ],
+                  "cards": [
+                    {
+                      "id": "alg-6",
+                      "position": 1,
+                      "title": "Complete o estado",
+                      "role": "practice",
+                      "content": [
+                        {
+                          "id": "ifsp-alg-gap-content",
+                          "package": "aralearn.resource.algorithm_trace",
+                          "version": "1.0.0",
+                          "data": {
+                            "prompt": "Acompanhe a busca binária por 23 no vetor [4, 8, 15, 16, 23, 42] e observe por que metade do intervalo pode ser descartada a cada comparação.",
+                            "variables": [
+                              "início",
+                              "fim",
+                              "meio",
+                              "valor[meio]"
+                            ],
+                            "steps": [
+                              {
+                                "id": "s0",
+                                "action": "Inicializar intervalo de busca",
+                                "values": [
+                                  "0",
+                                  "5",
+                                  "2",
+                                  "15"
+                                ],
+                                "condition": "15 < 23",
+                                "output": "descartar posições 0..2"
+                              },
+                              {
+                                "id": "s1",
+                                "action": "Mover o início para meio + 1",
+                                "values": [
+                                  "3",
+                                  "5",
+                                  "4",
+                                  "23"
+                                ],
+                                "condition": "23 = 23",
+                                "output": "encontrado no índice 4"
+                              },
+                              {
+                                "id": "s2",
+                                "action": "Encerrar e devolver a posição",
+                                "values": [
+                                  "3",
+                                  "5",
+                                  "4",
+                                  "23"
+                                ],
+                                "condition": "resultado definido",
+                                "output": "4"
+                              }
+                            ]
+                          }
+                        }
+                      ],
+                      "response": {
+                        "id": "alg-6-response",
+                        "package": "aralearn.response.gap",
+                        "version": "1.0.0",
+                        "data": {
+                          "blanks": [
+                            {
+                              "id": "alg-6-response-blank",
+                              "targetInstanceId": "ifsp-alg-gap-content",
+                              "targetPath": "steps[1].values[2]",
+                              "label": "Complete o elemento na própria representação",
+                              "responseMode": "text",
+                              "answer": "4"
+                            }
+                          ]
+                        }
+                      },
+                      "feedback": [
+                        {
+                          "id": "alg-6-feedback",
+                          "package": "aralearn.resource.paragraph",
+                          "version": "1.0.0",
+                          "data": {
+                            "text": "O índice central é 4 depois que o início passa a 3 e o fim permanece 5.",
+                            "languageTag": "pt-BR",
+                            "textDirection": "auto"
+                          }
+                        }
+                      ],
+                      "topics": [
+                        "alg-state"
+                      ],
+                      "sources": [
+                        "https://spo.ifsp.edu.br/images/phocadownload/DOCUMENTOS_MENU_LATERAL_FIXO/GRADUACAO/ANALISE_DESENVOLVIMENTO_SISTEMAS/28_janeiro_2020/SPO_TADS_PPC_Reformulacao_v7julho2019_ATPDGRA_002_2019.pdf"
+                      ]
+                    },
+                    {
+                      "id": "alg-7",
+                      "position": 2,
+                      "title": "Reconstrua uma iteração",
+                      "role": "practice",
+                      "content": [],
+                      "response": {
+                        "id": "alg-7-response",
+                        "package": "aralearn.response.ordering",
+                        "version": "2.0.0",
+                        "data": {
+                          "prompt": "Ordene os gestos de uma iteração da busca binária.",
+                          "items": [
+                            {
+                              "id": "middle",
+                              "label": "Calcular o índice central do intervalo"
+                            },
+                            {
+                              "id": "compare",
+                              "label": "Comparar o valor central com o alvo"
+                            },
+                            {
+                              "id": "reduce",
+                              "label": "Reduzir o intervalo conforme a comparação"
+                            }
+                          ],
+                          "answerOrder": [
+                            "middle",
+                            "compare",
+                            "reduce"
+                          ]
+                        }
+                      },
+                      "feedback": [
+                        {
+                          "id": "alg-7-feedback",
+                          "package": "aralearn.resource.paragraph",
+                          "version": "1.0.0",
+                          "data": {
+                            "text": "Primeiro se escolhe o centro; a comparação fornece a informação que permite reduzir o intervalo.",
+                            "languageTag": "pt-BR",
+                            "textDirection": "auto"
+                          }
+                        }
+                      ],
+                      "topics": [
+                        "alg-binary"
+                      ],
+                      "sources": [
+                        "https://spo.ifsp.edu.br/images/phocadownload/DOCUMENTOS_MENU_LATERAL_FIXO/GRADUACAO/ANALISE_DESENVOLVIMENTO_SISTEMAS/28_janeiro_2020/SPO_TADS_PPC_Reformulacao_v7julho2019_ATPDGRA_002_2019.pdf"
+                      ]
+                    },
+                    {
+                      "id": "alg-8",
+                      "position": 3,
+                      "title": "Condição de uso",
+                      "role": "practice",
+                      "content": [],
+                      "response": {
+                        "id": "alg-8-response",
+                        "package": "aralearn.response.choice",
+                        "version": "1.0.0",
+                        "data": {
+                          "question": "Em qual situação a busca binária pode descartar metade dos candidatos com segurança?",
+                          "selectionMode": "single",
+                          "selectionCriterion": "correct",
+                          "options": [
+                            {
+                              "id": "ordered",
+                              "kind": "text",
+                              "text": "Os valores estão ordenados segundo o mesmo critério da comparação."
+                            },
+                            {
+                              "id": "distinct",
+                              "kind": "text",
+                              "text": "Todos os valores são necessariamente diferentes."
+                            },
+                            {
+                              "id": "short",
+                              "kind": "text",
+                              "text": "A lista contém menos de dez valores."
+                            },
+                            {
+                              "id": "memory",
+                              "kind": "text",
+                              "text": "A lista ocupa posições contíguas de memória."
+                            }
+                          ],
+                          "answerIds": [
+                            "ordered"
+                          ]
+                        }
+                      },
+                      "feedback": [
+                        {
+                          "id": "alg-8-feedback",
+                          "package": "aralearn.resource.paragraph",
+                          "version": "1.0.0",
+                          "data": {
+                            "text": "A ordenação é o fundamento lógico do descarte; tamanho, unicidade e posição física não bastam.",
+                            "languageTag": "pt-BR",
+                            "textDirection": "auto"
+                          }
+                        }
+                      ],
+                      "topics": [
+                        "alg-binary"
+                      ],
+                      "sources": [
+                        "https://spo.ifsp.edu.br/images/phocadownload/DOCUMENTOS_MENU_LATERAL_FIXO/GRADUACAO/ANALISE_DESENVOLVIMENTO_SISTEMAS/28_janeiro_2020/SPO_TADS_PPC_Reformulacao_v7julho2019_ATPDGRA_002_2019.pdf"
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "ifsp-databases",
+          "title": "Modelagem de dados: do domínio às relações",
+          "guide": {
+            "goal": "Distinguir modelo conceitual, modelo lógico e dados sem confundir suas notações.",
+            "include": [
+              "situação concreta",
+              "vocabulário antes da notação",
+              "explicação progressiva",
+              "prática guiada e transferência"
+            ],
+            "exclude": [
+              "resumo enciclopédico",
+              "tabela de siglas como primeira explicação"
+            ],
+            "notation": [
+              "notação canônica da área",
+              "rótulos completos",
+              "uma representação por intenção"
+            ],
+            "avoid": [
+              "presumir repertório técnico",
+              "compactar para reduzir número de cards"
+            ]
+          },
+          "lessons": [
+            {
+              "id": "ifsp-databases-lesson",
+              "title": "Modelagem de dados: do domínio às relações",
+              "guide": {
+                "goal": "Distinguir modelo conceitual, modelo lógico e dados sem confundir suas notações.",
+                "include": [
+                  "situação concreta",
+                  "vocabulário antes da notação",
+                  "explicação progressiva",
+                  "prática guiada e transferência"
+                ],
+                "exclude": [
+                  "resumo enciclopédico",
+                  "tabela de siglas como primeira explicação"
+                ],
+                "notation": [
+                  "notação canônica da área",
+                  "rótulos completos",
+                  "uma representação por intenção"
+                ],
+                "avoid": [
+                  "presumir repertório técnico",
+                  "compactar para reduzir número de cards"
+                ]
+              },
+              "topics": [
+                {
+                  "id": "db-conceptual",
+                  "label": "Modelo conceitual",
+                  "kind": "concept",
+                  "checks": [
+                    "reconhece entidades e cardinalidades"
+                  ],
+                  "errors": [
+                    "trata entidade como tabela pronta"
+                  ]
+                },
+                {
+                  "id": "db-relational",
+                  "label": "Modelo relacional",
+                  "kind": "representation",
+                  "checks": [
+                    "segue PK e FK"
+                  ],
+                  "errors": [
+                    "confunde linhas com esquema"
+                  ]
+                },
+                {
+                  "id": "db-transform",
+                  "label": "Transformação entre modelos",
+                  "kind": "procedure",
+                  "checks": [
+                    "resolve muitos-para-muitos por relação associativa"
+                  ],
+                  "errors": [
+                    "perde atributo do relacionamento"
+                  ]
+                }
+              ],
+              "microsequences": [
+                {
+                  "id": "db-foundation",
+                  "title": "Três níveis que não são a mesma coisa",
+                  "goal": "Situar domínio, esquema, transformação e instância antes das notações.",
+                  "role": "explain",
+                  "dependsOn": [],
+                  "covers": [
+                    "db-conceptual",
+                    "db-relational",
+                    "db-transform"
+                  ],
+                  "checks": [
+                    "o estudante encontra o fundamento antes da notação densa",
+                    "a prática cobra somente objetos já ensinados",
+                    "a representação acrescenta informação ao raciocínio"
+                  ],
+                  "errors": [
+                    "siglas ou convenções sem introdução",
+                    "mais de um núcleo conceitual novo no mesmo card",
+                    "recurso usado apenas como decoração"
+                  ],
+                  "cards": [
+                    {
+                      "id": "db-1",
+                      "position": 1,
+                      "title": "Comece pelo domínio",
+                      "role": "theory",
+                      "content": [
+                        {
+                          "id": "db-1-text",
+                          "package": "aralearn.resource.paragraph",
+                          "version": "1.0.0",
+                          "data": {
+                            "text": "Uma escola precisa registrar estudantes, turmas e matrículas. Antes de pensar em tabelas, o modelo conceitual descreve quais objetos do domínio existem, quais propriedades importam e como eles se relacionam.",
+                            "languageTag": "pt-BR",
+                            "textDirection": "auto"
+                          }
+                        }
+                      ],
+                      "response": null,
+                      "feedback": [],
+                      "topics": [
+                        "db-conceptual"
+                      ],
+                      "sources": [
+                        "https://spo.ifsp.edu.br/tads",
+                        "https://spo.ifsp.edu.br/images/phocadownload/DOCUMENTOS_MENU_LATERAL_FIXO/GRADUACAO/ANALISE_DESENVOLVIMENTO_SISTEMAS/28_janeiro_2020/SPO_TADS_PPC_Reformulacao_v7julho2019_ATPDGRA_002_2019.pdf"
+                      ]
+                    },
+                    {
+                      "id": "db-2",
+                      "position": 2,
+                      "title": "O desenho conceitual",
+                      "role": "theory",
+                      "content": [
+                        {
+                          "id": "ifsp-db-er",
+                          "package": "aralearn.resource.entity_relationship",
+                          "version": "1.0.0",
+                          "data": {
+                            "prompt": "Observe como matrícula resolve a relação muitos-para-muitos entre estudante e turma e conserva o resultado acadêmico.",
+                            "entities": [
+                              {
+                                "id": "student",
+                                "name": "Estudante",
+                                "attributes": [
+                                  {
+                                    "id": "student_id",
+                                    "name": "id_estudante",
+                                    "type": "UUID",
+                                    "key": "primary",
+                                    "optional": false
+                                  },
+                                  {
+                                    "id": "name",
+                                    "name": "nome",
+                                    "type": "texto",
+                                    "key": "none",
+                                    "optional": false
+                                  }
+                                ]
+                              },
+                              {
+                                "id": "class",
+                                "name": "Turma",
+                                "attributes": [
+                                  {
+                                    "id": "class_id",
+                                    "name": "id_turma",
+                                    "type": "UUID",
+                                    "key": "primary",
+                                    "optional": false
+                                  },
+                                  {
+                                    "id": "term",
+                                    "name": "período",
+                                    "type": "texto",
+                                    "key": "none",
+                                    "optional": false
+                                  }
+                                ]
+                              },
+                              {
+                                "id": "enrollment",
+                                "name": "Matrícula",
+                                "attributes": [
+                                  {
+                                    "id": "student_fk",
+                                    "name": "id_estudante",
+                                    "type": "UUID",
+                                    "key": "primary-foreign",
+                                    "optional": false
+                                  },
+                                  {
+                                    "id": "class_fk",
+                                    "name": "id_turma",
+                                    "type": "UUID",
+                                    "key": "primary-foreign",
+                                    "optional": false
+                                  },
+                                  {
+                                    "id": "grade",
+                                    "name": "nota_final",
+                                    "type": "decimal",
+                                    "key": "none",
+                                    "optional": true
+                                  }
+                                ]
+                              }
+                            ],
+                            "relationships": [
+                              {
+                                "id": "student_enrollment",
+                                "from": "student",
+                                "to": "enrollment",
+                                "label": "realiza",
+                                "fromCardinality": "one",
+                                "toCardinality": "zero_or_many",
+                                "identifying": true
+                              },
+                              {
+                                "id": "class_enrollment",
+                                "from": "class",
+                                "to": "enrollment",
+                                "label": "recebe",
+                                "fromCardinality": "one",
+                                "toCardinality": "zero_or_many",
+                                "identifying": true
+                              }
+                            ]
+                          }
+                        }
+                      ],
+                      "response": null,
+                      "feedback": [],
+                      "topics": [
+                        "db-conceptual",
+                        "db-transform"
+                      ],
+                      "sources": [
+                        "https://spo.ifsp.edu.br/images/phocadownload/DOCUMENTOS_MENU_LATERAL_FIXO/GRADUACAO/ANALISE_DESENVOLVIMENTO_SISTEMAS/28_janeiro_2020/SPO_TADS_PPC_Reformulacao_v7julho2019_ATPDGRA_002_2019.pdf"
+                      ]
+                    },
+                    {
+                      "id": "db-3",
+                      "position": 3,
+                      "title": "Depois vem o modelo lógico",
+                      "role": "theory",
+                      "content": [
+                        {
+                          "id": "db-3-text",
+                          "package": "aralearn.resource.paragraph",
+                          "version": "1.0.0",
+                          "data": {
+                            "text": "No modelo relacional, cada relação possui atributos e uma chave que identifica tuplas. Uma chave estrangeira preserva uma referência entre relações. Ela não é uma seta genérica: seus valores devem corresponder à chave referenciada, salvo quando a nulabilidade permite ausência.",
+                            "languageTag": "pt-BR",
+                            "textDirection": "auto"
+                          }
+                        }
+                      ],
+                      "response": null,
+                      "feedback": [],
+                      "topics": [
+                        "db-relational"
+                      ],
+                      "sources": [
+                        "https://spo.ifsp.edu.br/images/phocadownload/DOCUMENTOS_MENU_LATERAL_FIXO/GRADUACAO/ANALISE_DESENVOLVIMENTO_SISTEMAS/28_janeiro_2020/SPO_TADS_PPC_Reformulacao_v7julho2019_ATPDGRA_002_2019.pdf"
+                      ]
+                    },
+                    {
+                      "id": "db-4",
+                      "position": 4,
+                      "title": "O esquema relacional",
+                      "role": "theory",
+                      "content": [
+                        {
+                          "id": "ifsp-db-schema",
+                          "package": "aralearn.resource.database_schema",
+                          "version": "1.0.0",
+                          "data": {
+                            "prompt": "Observe como o item do pedido preserva a chave composta e referencia pedido e produto sem redundância desnecessária.",
+                            "relations": [
+                              {
+                                "id": "customer",
+                                "name": "CLIENTE",
+                                "attributes": [
+                                  {
+                                    "id": "customer_id",
+                                    "name": "id_cliente",
+                                    "type": "uuid",
+                                    "key": "primary",
+                                    "nullable": false
+                                  },
+                                  {
+                                    "id": "customer_name",
+                                    "name": "nome",
+                                    "type": "text",
+                                    "key": "none",
+                                    "nullable": false
+                                  }
+                                ]
+                              },
+                              {
+                                "id": "order",
+                                "name": "PEDIDO",
+                                "attributes": [
+                                  {
+                                    "id": "order_id",
+                                    "name": "id_pedido",
+                                    "type": "uuid",
+                                    "key": "primary",
+                                    "nullable": false
+                                  },
+                                  {
+                                    "id": "customer_fk",
+                                    "name": "id_cliente",
+                                    "type": "uuid",
+                                    "key": "foreign",
+                                    "nullable": false
+                                  },
+                                  {
+                                    "id": "placed_at",
+                                    "name": "realizado_em",
+                                    "type": "timestamp",
+                                    "key": "none",
+                                    "nullable": false
+                                  }
+                                ]
+                              },
+                              {
+                                "id": "product",
+                                "name": "PRODUTO",
+                                "attributes": [
+                                  {
+                                    "id": "product_id",
+                                    "name": "id_produto",
+                                    "type": "uuid",
+                                    "key": "primary",
+                                    "nullable": false
+                                  },
+                                  {
+                                    "id": "description",
+                                    "name": "descricao",
+                                    "type": "text",
+                                    "key": "none",
+                                    "nullable": false
+                                  },
+                                  {
+                                    "id": "price",
+                                    "name": "preco_atual",
+                                    "type": "decimal",
+                                    "key": "none",
+                                    "nullable": false
+                                  }
+                                ]
+                              },
+                              {
+                                "id": "order_item",
+                                "name": "ITEM_PEDIDO",
+                                "attributes": [
+                                  {
+                                    "id": "order_fk",
+                                    "name": "id_pedido",
+                                    "type": "uuid",
+                                    "key": "primary-foreign",
+                                    "nullable": false
+                                  },
+                                  {
+                                    "id": "product_fk",
+                                    "name": "id_produto",
+                                    "type": "uuid",
+                                    "key": "primary-foreign",
+                                    "nullable": false
+                                  },
+                                  {
+                                    "id": "quantity",
+                                    "name": "quantidade",
+                                    "type": "integer",
+                                    "key": "none",
+                                    "nullable": false
+                                  },
+                                  {
+                                    "id": "sale_price",
+                                    "name": "preco_venda",
+                                    "type": "decimal",
+                                    "key": "none",
+                                    "nullable": false
+                                  }
+                                ]
+                              }
+                            ],
+                            "references": [
+                              {
+                                "id": "order_customer",
+                                "fromRelation": "order",
+                                "fromAttribute": "customer_fk",
+                                "toRelation": "customer",
+                                "toAttribute": "customer_id",
+                                "cardinality": "many-to-one"
+                              },
+                              {
+                                "id": "item_order",
+                                "fromRelation": "order_item",
+                                "fromAttribute": "order_fk",
+                                "toRelation": "order",
+                                "toAttribute": "order_id",
+                                "cardinality": "many-to-one"
+                              },
+                              {
+                                "id": "item_product",
+                                "fromRelation": "order_item",
+                                "fromAttribute": "product_fk",
+                                "toRelation": "product",
+                                "toAttribute": "product_id",
+                                "cardinality": "many-to-one"
+                              }
+                            ]
+                          }
+                        }
+                      ],
+                      "response": null,
+                      "feedback": [],
+                      "topics": [
+                        "db-relational",
+                        "db-transform"
+                      ],
+                      "sources": [
+                        "https://spo.ifsp.edu.br/images/phocadownload/DOCUMENTOS_MENU_LATERAL_FIXO/GRADUACAO/ANALISE_DESENVOLVIMENTO_SISTEMAS/28_janeiro_2020/SPO_TADS_PPC_Reformulacao_v7julho2019_ATPDGRA_002_2019.pdf"
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "id": "db-practice",
+                  "title": "Transformar sem decorar",
+                  "goal": "Praticar a função de entidade associativa, PK e FK.",
+                  "role": "practice",
+                  "dependsOn": [
+                    "db-foundation"
+                  ],
+                  "covers": [
+                    "db-conceptual",
+                    "db-relational",
+                    "db-transform"
+                  ],
+                  "checks": [
+                    "o estudante encontra o fundamento antes da notação densa",
+                    "a prática cobra somente objetos já ensinados",
+                    "a representação acrescenta informação ao raciocínio"
+                  ],
+                  "errors": [
+                    "siglas ou convenções sem introdução",
+                    "mais de um núcleo conceitual novo no mesmo card",
+                    "recurso usado apenas como decoração"
+                  ],
+                  "cards": [
+                    {
+                      "id": "db-5",
+                      "position": 1,
+                      "title": "Complete o relacionamento",
+                      "role": "practice",
+                      "content": [
+                        {
+                          "id": "ifsp-db-er-gap",
+                          "package": "aralearn.resource.entity_relationship",
+                          "version": "1.0.0",
+                          "data": {
+                            "prompt": "Observe como matrícula resolve a relação muitos-para-muitos entre estudante e turma e conserva o resultado acadêmico.",
+                            "entities": [
+                              {
+                                "id": "student",
+                                "name": "Estudante",
+                                "attributes": [
+                                  {
+                                    "id": "student_id",
+                                    "name": "id_estudante",
+                                    "type": "UUID",
+                                    "key": "primary",
+                                    "optional": false
+                                  },
+                                  {
+                                    "id": "name",
+                                    "name": "nome",
+                                    "type": "texto",
+                                    "key": "none",
+                                    "optional": false
+                                  }
+                                ]
+                              },
+                              {
+                                "id": "class",
+                                "name": "Turma",
+                                "attributes": [
+                                  {
+                                    "id": "class_id",
+                                    "name": "id_turma",
+                                    "type": "UUID",
+                                    "key": "primary",
+                                    "optional": false
+                                  },
+                                  {
+                                    "id": "term",
+                                    "name": "período",
+                                    "type": "texto",
+                                    "key": "none",
+                                    "optional": false
+                                  }
+                                ]
+                              },
+                              {
+                                "id": "enrollment",
+                                "name": "Matrícula",
+                                "attributes": [
+                                  {
+                                    "id": "student_fk",
+                                    "name": "id_estudante",
+                                    "type": "UUID",
+                                    "key": "primary-foreign",
+                                    "optional": false
+                                  },
+                                  {
+                                    "id": "class_fk",
+                                    "name": "id_turma",
+                                    "type": "UUID",
+                                    "key": "primary-foreign",
+                                    "optional": false
+                                  },
+                                  {
+                                    "id": "grade",
+                                    "name": "nota_final",
+                                    "type": "decimal",
+                                    "key": "none",
+                                    "optional": true
+                                  }
+                                ]
+                              }
+                            ],
+                            "relationships": [
+                              {
+                                "id": "student_enrollment",
+                                "from": "student",
+                                "to": "enrollment",
+                                "label": "realiza",
+                                "fromCardinality": "one",
+                                "toCardinality": "zero_or_many",
+                                "identifying": true
+                              },
+                              {
+                                "id": "class_enrollment",
+                                "from": "class",
+                                "to": "enrollment",
+                                "label": "recebe",
+                                "fromCardinality": "one",
+                                "toCardinality": "zero_or_many",
+                                "identifying": true
+                              }
+                            ]
+                          }
+                        }
+                      ],
+                      "response": {
+                        "id": "db-5-response",
+                        "package": "aralearn.response.gap",
+                        "version": "1.0.0",
+                        "data": {
+                          "blanks": [
+                            {
+                              "id": "db-5-response-blank",
+                              "targetInstanceId": "ifsp-db-er-gap",
+                              "targetPath": "relationships[0].label",
+                              "label": "Complete o elemento na própria representação",
+                              "responseMode": "choice",
+                              "answer": "realiza",
+                              "distractors": [
+                                "contém",
+                                "substitui"
+                              ]
+                            }
+                          ]
+                        }
+                      },
+                      "feedback": [
+                        {
+                          "id": "db-5-feedback",
+                          "package": "aralearn.resource.paragraph",
+                          "version": "1.0.0",
+                          "data": {
+                            "text": "O rótulo deve formar uma proposição compreensível no domínio: estudante realiza matrícula.",
+                            "languageTag": "pt-BR",
+                            "textDirection": "auto"
+                          }
+                        }
+                      ],
+                      "topics": [
+                        "db-conceptual"
+                      ],
+                      "sources": [
+                        "https://spo.ifsp.edu.br/images/phocadownload/DOCUMENTOS_MENU_LATERAL_FIXO/GRADUACAO/ANALISE_DESENVOLVIMENTO_SISTEMAS/28_janeiro_2020/SPO_TADS_PPC_Reformulacao_v7julho2019_ATPDGRA_002_2019.pdf"
+                      ]
+                    },
+                    {
+                      "id": "db-6",
+                      "position": 2,
+                      "title": "Associe símbolo e função",
+                      "role": "practice",
+                      "content": [],
+                      "response": {
+                        "id": "db-6-response",
+                        "package": "aralearn.response.matching",
+                        "version": "1.0.0",
+                        "data": {
+                          "prompt": "Associe cada elemento do esquema à função que exerce.",
+                          "mode": "one-to-one",
+                          "leftItems": [
+                            {
+                              "id": "pk",
+                              "label": "PK"
+                            },
+                            {
+                              "id": "fk",
+                              "label": "FK"
+                            },
+                            {
+                              "id": "null",
+                              "label": "NULL permitido"
+                            }
+                          ],
+                          "rightItems": [
+                            {
+                              "id": "identify",
+                              "label": "Identificar univocamente uma tupla"
+                            },
+                            {
+                              "id": "reference",
+                              "label": "Referenciar chave de outra relação"
+                            },
+                            {
+                              "id": "absence",
+                              "label": "Admitir ausência de valor"
+                            }
+                          ],
+                          "answerPairs": [
+                            {
+                              "leftId": "pk",
+                              "rightId": "identify"
+                            },
+                            {
+                              "leftId": "fk",
+                              "rightId": "reference"
+                            },
+                            {
+                              "leftId": "null",
+                              "rightId": "absence"
+                            }
+                          ]
+                        }
+                      },
+                      "feedback": [
+                        {
+                          "id": "db-6-feedback",
+                          "package": "aralearn.resource.paragraph",
+                          "version": "1.0.0",
+                          "data": {
+                            "text": "Os três sinais descrevem propriedades distintas: identidade, referência e admissibilidade de ausência.",
+                            "languageTag": "pt-BR",
+                            "textDirection": "auto"
+                          }
+                        }
+                      ],
+                      "topics": [
+                        "db-relational"
+                      ],
+                      "sources": [
+                        "https://spo.ifsp.edu.br/images/phocadownload/DOCUMENTOS_MENU_LATERAL_FIXO/GRADUACAO/ANALISE_DESENVOLVIMENTO_SISTEMAS/28_janeiro_2020/SPO_TADS_PPC_Reformulacao_v7julho2019_ATPDGRA_002_2019.pdf"
+                      ]
+                    },
+                    {
+                      "id": "db-7",
+                      "position": 3,
+                      "title": "Preserve o fato histórico",
+                      "role": "practice",
+                      "content": [],
+                      "response": {
+                        "id": "db-7-response",
+                        "package": "aralearn.response.choice",
+                        "version": "1.0.0",
+                        "data": {
+                          "question": "Por que ITEM_PEDIDO conserva preco_venda se PRODUTO já possui preco_atual?",
+                          "selectionMode": "single",
+                          "selectionCriterion": "correct",
+                          "options": [
+                            {
+                              "id": "history",
+                              "kind": "text",
+                              "text": "Para preservar o preço efetivamente praticado quando o pedido foi feito."
+                            },
+                            {
+                              "id": "duplicate",
+                              "kind": "text",
+                              "text": "Porque toda tabela deve repetir todos os atributos relacionados."
+                            },
+                            {
+                              "id": "foreign",
+                              "kind": "text",
+                              "text": "Porque preço é sempre uma chave estrangeira."
+                            },
+                            {
+                              "id": "null",
+                              "kind": "text",
+                              "text": "Para permitir que o produto não tenha identificador."
+                            }
+                          ],
+                          "answerIds": [
+                            "history"
+                          ]
+                        }
+                      },
+                      "feedback": [
+                        {
+                          "id": "db-7-feedback",
+                          "package": "aralearn.resource.paragraph",
+                          "version": "1.0.0",
+                          "data": {
+                            "text": "Preço atual pode mudar; o item registra um fato histórico do pedido.",
+                            "languageTag": "pt-BR",
+                            "textDirection": "auto"
+                          }
+                        }
+                      ],
+                      "topics": [
+                        "db-transform"
+                      ],
+                      "sources": [
+                        "https://spo.ifsp.edu.br/images/phocadownload/DOCUMENTOS_MENU_LATERAL_FIXO/GRADUACAO/ANALISE_DESENVOLVIMENTO_SISTEMAS/28_janeiro_2020/SPO_TADS_PPC_Reformulacao_v7julho2019_ATPDGRA_002_2019.pdf"
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "academic-dataprev-2026",
+      "title": "Laboratório acadêmico — Dataprev 2026",
+      "goal": "Testar progressão para iniciantes e prática densa em recortes do conteúdo programático oficial.",
+      "modules": [
+        {
+          "id": "dataprev-networking",
+          "title": "TCP: serviço, segmento e estado",
+          "guide": {
+            "goal": "Ensinar TCP do zero e conectar serviço percebido, campos do segmento, estados e caminho na rede.",
+            "include": [
+              "situação concreta",
+              "vocabulário antes da notação",
+              "explicação progressiva",
+              "prática guiada e transferência"
+            ],
+            "exclude": [
+              "resumo enciclopédico",
+              "tabela de siglas como primeira explicação"
+            ],
+            "notation": [
+              "notação canônica da área",
+              "rótulos completos",
+              "uma representação por intenção"
+            ],
+            "avoid": [
+              "presumir repertório técnico",
+              "compactar para reduzir número de cards"
+            ]
+          },
+          "lessons": [
+            {
+              "id": "dataprev-networking-lesson",
+              "title": "TCP: serviço, segmento e estado",
+              "guide": {
+                "goal": "Ensinar TCP do zero e conectar serviço percebido, campos do segmento, estados e caminho na rede.",
+                "include": [
+                  "situação concreta",
+                  "vocabulário antes da notação",
+                  "explicação progressiva",
+                  "prática guiada e transferência"
+                ],
+                "exclude": [
+                  "resumo enciclopédico",
+                  "tabela de siglas como primeira explicação"
+                ],
+                "notation": [
+                  "notação canônica da área",
+                  "rótulos completos",
+                  "uma representação por intenção"
+                ],
+                "avoid": [
+                  "presumir repertório técnico",
+                  "compactar para reduzir número de cards"
+                ]
+              },
+              "topics": [
+                {
+                  "id": "tcp-service",
+                  "label": "Serviço de transporte",
+                  "kind": "concept",
+                  "checks": [
+                    "distingue fluxo de bytes e datagrama"
+                  ],
+                  "errors": [
+                    "confunde TCP com aplicação"
+                  ]
+                },
+                {
+                  "id": "tcp-header",
+                  "label": "Cabeçalho TCP",
+                  "kind": "representation",
+                  "checks": [
+                    "localiza sequência, ACK e janela"
+                  ],
+                  "errors": [
+                    "decora bit sem função"
+                  ]
+                },
+                {
+                  "id": "tcp-state",
+                  "label": "Estado da conexão",
+                  "kind": "concept",
+                  "checks": [
+                    "relaciona evento e transição"
+                  ],
+                  "errors": [
+                    "trata estado como etapa linear"
+                  ]
+                },
+                {
+                  "id": "tcp-path",
+                  "label": "Caminho e papéis na rede",
+                  "kind": "representation",
+                  "checks": [
+                    "distingue enlace e processo"
+                  ],
+                  "errors": [
+                    "confunde topologia com grafo abstrato"
+                  ]
+                }
+              ],
+              "microsequences": [
+                {
+                  "id": "tcp-foundation",
+                  "title": "O problema resolvido pelo transporte",
+                  "goal": "Situar aplicação, transporte e fluxo de bytes antes de mostrar números e siglas.",
+                  "role": "explain",
+                  "dependsOn": [],
+                  "covers": [
+                    "tcp-service"
+                  ],
+                  "checks": [
+                    "o estudante encontra o fundamento antes da notação densa",
+                    "a prática cobra somente objetos já ensinados",
+                    "a representação acrescenta informação ao raciocínio"
+                  ],
+                  "errors": [
+                    "siglas ou convenções sem introdução",
+                    "mais de um núcleo conceitual novo no mesmo card",
+                    "recurso usado apenas como decoração"
+                  ],
+                  "cards": [
+                    {
+                      "id": "tcp-1",
+                      "position": 1,
+                      "title": "Duas aplicações distantes",
+                      "role": "theory",
+                      "content": [
+                        {
+                          "id": "tcp-1-text",
+                          "package": "aralearn.resource.paragraph",
+                          "version": "1.0.0",
+                          "data": {
+                            "text": "Um processo envia bytes em um computador e outro processo precisa recebê-los em outro. IP encaminha pacotes entre hosts, mas não oferece sozinho à aplicação a conversa confiável, ordenada e identificada por portas que este exemplo exige.",
+                            "languageTag": "pt-BR",
+                            "textDirection": "auto"
+                          }
+                        }
+                      ],
+                      "response": null,
+                      "feedback": [],
+                      "topics": [
+                        "tcp-service"
+                      ],
+                      "sources": [
+                        "https://conhecimento.fgv.br/sites/default/files/concursos/edital-dataprev_supe-versao-final.pdf",
+                        "https://www.rfc-editor.org/rfc/rfc9293.html"
+                      ]
+                    },
+                    {
+                      "id": "tcp-2",
+                      "position": 2,
+                      "title": "O que TCP oferece",
+                      "role": "theory",
+                      "content": [
+                        {
+                          "id": "tcp-2-text",
+                          "package": "aralearn.resource.paragraph",
+                          "version": "1.0.0",
+                          "data": {
+                            "text": "TCP apresenta às aplicações um fluxo confiável de bytes. Para sustentar essa abstração, numera bytes, confirma o que chegou, retransmite perdas e controla quanto pode permanecer em trânsito. O fluxo não preserva fronteiras das chamadas de envio da aplicação.",
+                            "languageTag": "pt-BR",
+                            "textDirection": "auto"
+                          }
+                        }
+                      ],
+                      "response": null,
+                      "feedback": [],
+                      "topics": [
+                        "tcp-service"
+                      ],
+                      "sources": [
+                        "https://conhecimento.fgv.br/sites/default/files/concursos/edital-dataprev_supe-versao-final.pdf",
+                        "https://www.rfc-editor.org/rfc/rfc9293.html"
+                      ]
+                    },
+                    {
+                      "id": "tcp-3",
+                      "position": 3,
+                      "title": "Conexão não é um fio",
+                      "role": "theory",
+                      "content": [
+                        {
+                          "id": "tcp-3-text",
+                          "package": "aralearn.resource.paragraph",
+                          "version": "1.0.0",
+                          "data": {
+                            "text": "Uma conexão TCP é estado mantido nas duas extremidades: endereços e portas identificam os pontos, enquanto números de sequência, confirmações e janelas evoluem com os eventos. Pacotes intermediários podem seguir caminhos diferentes; a conexão é uma relação lógica entre os processos.",
+                            "languageTag": "pt-BR",
+                            "textDirection": "auto"
+                          }
+                        }
+                      ],
+                      "response": null,
+                      "feedback": [],
+                      "topics": [
+                        "tcp-service",
+                        "tcp-state"
+                      ],
+                      "sources": [
+                        "https://www.rfc-editor.org/rfc/rfc9293.html"
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "id": "tcp-representations",
+                  "title": "Três perguntas, três representações",
+                  "goal": "Usar layout de pacote, máquina de estados e topologia somente para os objetos que cada qual representa.",
+                  "role": "explain",
+                  "dependsOn": [
+                    "tcp-foundation"
+                  ],
+                  "covers": [
+                    "tcp-header",
+                    "tcp-state",
+                    "tcp-path"
+                  ],
+                  "checks": [
+                    "o estudante encontra o fundamento antes da notação densa",
+                    "a prática cobra somente objetos já ensinados",
+                    "a representação acrescenta informação ao raciocínio"
+                  ],
+                  "errors": [
+                    "siglas ou convenções sem introdução",
+                    "mais de um núcleo conceitual novo no mesmo card",
+                    "recurso usado apenas como decoração"
+                  ],
+                  "cards": [
+                    {
+                      "id": "tcp-4",
+                      "position": 1,
+                      "title": "Onde a informação está no segmento",
+                      "role": "theory",
+                      "content": [
+                        {
+                          "id": "dataprev-tcp-packet",
+                          "package": "aralearn.resource.packet_layout",
+                          "version": "1.0.0",
+                          "data": {
+                            "prompt": "Leia o cabeçalho TCP por palavras de 32 bits e localize os campos que participam da confiabilidade e do controle de fluxo.",
+                            "caption": "Cabeçalho TCP sem opções · RFC 9293, Figura 1",
+                            "unitBits": 32,
+                            "fields": [
+                              {
+                                "id": "source",
+                                "label": "Porta de origem",
+                                "widthBits": 16,
+                                "description": "Identifica o processo emissor."
+                              },
+                              {
+                                "id": "destination",
+                                "label": "Porta de destino",
+                                "widthBits": 16,
+                                "description": "Identifica o processo receptor."
+                              },
+                              {
+                                "id": "sequence",
+                                "label": "Número de sequência",
+                                "widthBits": 32,
+                                "description": "Ordena octetos e apoia retransmissão."
+                              },
+                              {
+                                "id": "acknowledgment",
+                                "label": "Número de confirmação",
+                                "widthBits": 32,
+                                "description": "Indica o próximo octeto esperado."
+                              },
+                              {
+                                "id": "offset",
+                                "label": "Data Offset",
+                                "widthBits": 4,
+                                "description": "Informa o tamanho do cabeçalho."
+                              },
+                              {
+                                "id": "reserved",
+                                "label": "Reservado",
+                                "widthBits": 4,
+                                "description": "Bits reservados pelo protocolo."
+                              },
+                              {
+                                "id": "flags",
+                                "label": "Flags",
+                                "widthBits": 8,
+                                "description": "Sinais de controle da conexão."
+                              },
+                              {
+                                "id": "window",
+                                "label": "Janela",
+                                "widthBits": 16,
+                                "description": "Anuncia a capacidade de recepção."
+                              },
+                              {
+                                "id": "checksum",
+                                "label": "Checksum",
+                                "widthBits": 16,
+                                "description": "Detecta corrupção do segmento."
+                              },
+                              {
+                                "id": "urgent",
+                                "label": "Ponteiro urgente",
+                                "widthBits": 16,
+                                "description": "Indica o fim de dados urgentes quando aplicável."
+                              }
+                            ]
+                          }
+                        }
+                      ],
+                      "response": null,
+                      "feedback": [],
+                      "topics": [
+                        "tcp-header"
+                      ],
+                      "sources": [
+                        "https://conhecimento.fgv.br/sites/default/files/concursos/edital-dataprev_supe-versao-final.pdf",
+                        "https://www.rfc-editor.org/rfc/rfc9293.html"
+                      ]
+                    },
+                    {
+                      "id": "tcp-5",
+                      "position": 2,
+                      "title": "Como eventos mudam a conexão",
+                      "role": "theory",
+                      "content": [
+                        {
+                          "id": "dataprev-tcp-state",
+                          "package": "aralearn.resource.state_machine",
+                          "version": "1.0.0",
+                          "data": {
+                            "prompt": "Acompanhe o ciclo simplificado de uma conexão TCP e observe a diferença entre evento recebido e ação executada.",
+                            "machineKind": "protocol",
+                            "states": [
+                              {
+                                "id": "closed",
+                                "label": "CLOSED",
+                                "initial": true,
+                                "accepting": false
+                              },
+                              {
+                                "id": "listen",
+                                "label": "LISTEN",
+                                "initial": false,
+                                "accepting": false
+                              },
+                              {
+                                "id": "syn_received",
+                                "label": "SYN-RECEIVED",
+                                "initial": false,
+                                "accepting": false
+                              },
+                              {
+                                "id": "established",
+                                "label": "ESTABLISHED",
+                                "initial": false,
+                                "accepting": false
+                              },
+                              {
+                                "id": "close_wait",
+                                "label": "CLOSE-WAIT",
+                                "initial": false,
+                                "accepting": true
+                              }
+                            ],
+                            "events": [
+                              {
+                                "id": "passive_open",
+                                "label": "abertura passiva"
+                              },
+                              {
+                                "id": "syn",
+                                "label": "receber SYN"
+                              },
+                              {
+                                "id": "ack",
+                                "label": "receber ACK"
+                              },
+                              {
+                                "id": "fin",
+                                "label": "receber FIN"
+                              }
+                            ],
+                            "transitions": [
+                              {
+                                "id": "t1",
+                                "from": "closed",
+                                "event": "passive_open",
+                                "to": "listen",
+                                "action": "aguardar conexão"
+                              },
+                              {
+                                "id": "t2",
+                                "from": "listen",
+                                "event": "syn",
+                                "to": "syn_received",
+                                "action": "enviar SYN+ACK"
+                              },
+                              {
+                                "id": "t3",
+                                "from": "syn_received",
+                                "event": "ack",
+                                "to": "established",
+                                "guard": "ACK válido"
+                              },
+                              {
+                                "id": "t4",
+                                "from": "established",
+                                "event": "fin",
+                                "to": "close_wait",
+                                "action": "confirmar FIN"
+                              }
+                            ]
+                          }
+                        }
+                      ],
+                      "response": null,
+                      "feedback": [],
+                      "topics": [
+                        "tcp-state"
+                      ],
+                      "sources": [
+                        "https://conhecimento.fgv.br/sites/default/files/concursos/edital-dataprev_supe-versao-final.pdf",
+                        "https://www.rfc-editor.org/rfc/rfc9293.html"
+                      ]
+                    },
+                    {
+                      "id": "tcp-6",
+                      "position": 3,
+                      "title": "Por onde a comunicação passa",
+                      "role": "theory",
+                      "content": [
+                        {
+                          "id": "dataprev-tcp-topology",
+                          "package": "aralearn.resource.network_topology",
+                          "version": "1.0.0",
+                          "data": {
+                            "prompt": "Acompanhe o caminho HTTPS da estação da VLAN de usuários até a aplicação na DMZ e identifique onde ocorre a filtragem.",
+                            "segments": [
+                              {
+                                "id": "users",
+                                "label": "VLAN 10 · usuários · 10.10.10.0/24"
+                              },
+                              {
+                                "id": "dmz",
+                                "label": "DMZ · 10.10.30.0/24"
+                              }
+                            ],
+                            "devices": [
+                              {
+                                "id": "client",
+                                "label": "Estação de trabalho",
+                                "kind": "host",
+                                "segmentId": "users",
+                                "address": "10.10.10.42"
+                              },
+                              {
+                                "id": "access",
+                                "label": "Switch de acesso",
+                                "kind": "switch",
+                                "segmentId": "users"
+                              },
+                              {
+                                "id": "firewall",
+                                "label": "Firewall de borda",
+                                "kind": "firewall",
+                                "segmentId": null
+                              },
+                              {
+                                "id": "app",
+                                "label": "Servidor de aplicação",
+                                "kind": "server",
+                                "segmentId": "dmz",
+                                "address": "10.10.30.20:443"
+                              },
+                              {
+                                "id": "internet",
+                                "label": "Internet",
+                                "kind": "cloud",
+                                "segmentId": null
+                              }
+                            ],
+                            "links": [
+                              {
+                                "id": "l1",
+                                "from": "client",
+                                "to": "access",
+                                "medium": "Ethernet",
+                                "directed": false
+                              },
+                              {
+                                "id": "l2",
+                                "from": "access",
+                                "to": "firewall",
+                                "medium": "trunk 802.1Q",
+                                "directed": false
+                              },
+                              {
+                                "id": "l3",
+                                "from": "firewall",
+                                "to": "app",
+                                "medium": "Ethernet",
+                                "protocol": "HTTPS",
+                                "directed": true
+                              },
+                              {
+                                "id": "l4",
+                                "from": "firewall",
+                                "to": "internet",
+                                "medium": "WAN",
+                                "directed": false
+                              }
+                            ]
+                          }
+                        }
+                      ],
+                      "response": null,
+                      "feedback": [],
+                      "topics": [
+                        "tcp-path"
+                      ],
+                      "sources": [
+                        "https://conhecimento.fgv.br/sites/default/files/concursos/edital-dataprev_supe-versao-final.pdf"
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "id": "tcp-practice",
+                  "title": "Recuperar, distinguir e transferir",
+                  "goal": "Praticar campos, estados e papéis sem exigir informação não ensinada.",
+                  "role": "practice",
+                  "dependsOn": [
+                    "tcp-representations"
+                  ],
+                  "covers": [
+                    "tcp-header",
+                    "tcp-state",
+                    "tcp-path"
+                  ],
+                  "checks": [
+                    "o estudante encontra o fundamento antes da notação densa",
+                    "a prática cobra somente objetos já ensinados",
+                    "a representação acrescenta informação ao raciocínio"
+                  ],
+                  "errors": [
+                    "siglas ou convenções sem introdução",
+                    "mais de um núcleo conceitual novo no mesmo card",
+                    "recurso usado apenas como decoração"
+                  ],
+                  "cards": [
+                    {
+                      "id": "tcp-7",
+                      "position": 1,
+                      "title": "Localize a confirmação",
+                      "role": "practice",
+                      "content": [
+                        {
+                          "id": "dataprev-tcp-gap",
+                          "package": "aralearn.resource.packet_layout",
+                          "version": "1.0.0",
+                          "data": {
+                            "prompt": "Leia o cabeçalho TCP por palavras de 32 bits e localize os campos que participam da confiabilidade e do controle de fluxo.",
+                            "caption": "Cabeçalho TCP sem opções · RFC 9293, Figura 1",
+                            "unitBits": 32,
+                            "fields": [
+                              {
+                                "id": "source",
+                                "label": "Porta de origem",
+                                "widthBits": 16,
+                                "description": "Identifica o processo emissor."
+                              },
+                              {
+                                "id": "destination",
+                                "label": "Porta de destino",
+                                "widthBits": 16,
+                                "description": "Identifica o processo receptor."
+                              },
+                              {
+                                "id": "sequence",
+                                "label": "Número de sequência",
+                                "widthBits": 32,
+                                "description": "Ordena octetos e apoia retransmissão."
+                              },
+                              {
+                                "id": "acknowledgment",
+                                "label": "Número de confirmação",
+                                "widthBits": 32,
+                                "description": "Indica o próximo octeto esperado."
+                              },
+                              {
+                                "id": "offset",
+                                "label": "Data Offset",
+                                "widthBits": 4,
+                                "description": "Informa o tamanho do cabeçalho."
+                              },
+                              {
+                                "id": "reserved",
+                                "label": "Reservado",
+                                "widthBits": 4,
+                                "description": "Bits reservados pelo protocolo."
+                              },
+                              {
+                                "id": "flags",
+                                "label": "Flags",
+                                "widthBits": 8,
+                                "description": "Sinais de controle da conexão."
+                              },
+                              {
+                                "id": "window",
+                                "label": "Janela",
+                                "widthBits": 16,
+                                "description": "Anuncia a capacidade de recepção."
+                              },
+                              {
+                                "id": "checksum",
+                                "label": "Checksum",
+                                "widthBits": 16,
+                                "description": "Detecta corrupção do segmento."
+                              },
+                              {
+                                "id": "urgent",
+                                "label": "Ponteiro urgente",
+                                "widthBits": 16,
+                                "description": "Indica o fim de dados urgentes quando aplicável."
+                              }
+                            ]
+                          }
+                        }
+                      ],
+                      "response": {
+                        "id": "tcp-7-response",
+                        "package": "aralearn.response.gap",
+                        "version": "1.0.0",
+                        "data": {
+                          "blanks": [
+                            {
+                              "id": "tcp-7-response-blank",
+                              "targetInstanceId": "dataprev-tcp-gap",
+                              "targetPath": "fields[3].label",
+                              "label": "Complete o elemento na própria representação",
+                              "responseMode": "choice",
+                              "answer": "Número de confirmação",
+                              "distractors": [
+                                "Porta de origem",
+                                "Ponteiro urgente"
+                              ]
+                            }
+                          ]
+                        }
+                      },
+                      "feedback": [
+                        {
+                          "id": "tcp-7-feedback",
+                          "package": "aralearn.resource.paragraph",
+                          "version": "1.0.0",
+                          "data": {
+                            "text": "O número de confirmação indica o próximo octeto esperado pelo receptor.",
+                            "languageTag": "pt-BR",
+                            "textDirection": "auto"
+                          }
+                        }
+                      ],
+                      "topics": [
+                        "tcp-header"
+                      ],
+                      "sources": [
+                        "https://www.rfc-editor.org/rfc/rfc9293.html"
+                      ]
+                    },
+                    {
+                      "id": "tcp-8",
+                      "position": 2,
+                      "title": "Não confunda campo e estado",
+                      "role": "practice",
+                      "content": [],
+                      "response": {
+                        "id": "tcp-8-response",
+                        "package": "aralearn.response.matching",
+                        "version": "1.0.0",
+                        "data": {
+                          "prompt": "Associe cada objeto à representação que permite estudá-lo diretamente.",
+                          "mode": "one-to-one",
+                          "leftItems": [
+                            {
+                              "id": "window",
+                              "label": "Largura e posição do campo Janela"
+                            },
+                            {
+                              "id": "established",
+                              "label": "Transição até ESTABLISHED"
+                            },
+                            {
+                              "id": "dmz",
+                              "label": "Ligação entre firewall e DMZ"
+                            }
+                          ],
+                          "rightItems": [
+                            {
+                              "id": "packet",
+                              "label": "Layout de pacote"
+                            },
+                            {
+                              "id": "state",
+                              "label": "Diagrama de estados"
+                            },
+                            {
+                              "id": "topology",
+                              "label": "Topologia de rede"
+                            }
+                          ],
+                          "answerPairs": [
+                            {
+                              "leftId": "window",
+                              "rightId": "packet"
+                            },
+                            {
+                              "leftId": "established",
+                              "rightId": "state"
+                            },
+                            {
+                              "leftId": "dmz",
+                              "rightId": "topology"
+                            }
+                          ]
+                        }
+                      },
+                      "feedback": [
+                        {
+                          "id": "tcp-8-feedback",
+                          "package": "aralearn.resource.paragraph",
+                          "version": "1.0.0",
+                          "data": {
+                            "text": "Cada representação responde a uma pergunta diferente: estrutura binária, comportamento por estado ou conectividade física/lógica.",
+                            "languageTag": "pt-BR",
+                            "textDirection": "auto"
+                          }
+                        }
+                      ],
+                      "topics": [
+                        "tcp-header",
+                        "tcp-state",
+                        "tcp-path"
+                      ],
+                      "sources": [
+                        "https://conhecimento.fgv.br/sites/default/files/concursos/edital-dataprev_supe-versao-final.pdf",
+                        "https://www.rfc-editor.org/rfc/rfc9293.html"
+                      ]
+                    },
+                    {
+                      "id": "tcp-9",
+                      "position": 3,
+                      "title": "Transfira para um caso novo",
+                      "role": "practice",
+                      "content": [],
+                      "response": {
+                        "id": "tcp-9-response",
+                        "package": "aralearn.response.choice",
+                        "version": "1.0.0",
+                        "data": {
+                          "question": "Um receptor recebeu continuamente até o byte 5000 e anuncia que espera o próximo. Qual campo expressa diretamente essa informação?",
+                          "selectionMode": "single",
+                          "selectionCriterion": "correct",
+                          "options": [
+                            {
+                              "id": "ack",
+                              "kind": "text",
+                              "text": "Número de confirmação"
+                            },
+                            {
+                              "id": "source",
+                              "kind": "text",
+                              "text": "Porta de origem"
+                            },
+                            {
+                              "id": "checksum",
+                              "kind": "text",
+                              "text": "Checksum"
+                            },
+                            {
+                              "id": "offset",
+                              "kind": "text",
+                              "text": "Data Offset"
+                            }
+                          ],
+                          "answerIds": [
+                            "ack"
+                          ]
+                        }
+                      },
+                      "feedback": [
+                        {
+                          "id": "tcp-9-feedback",
+                          "package": "aralearn.resource.paragraph",
+                          "version": "1.0.0",
+                          "data": {
+                            "text": "A confirmação é cumulativa e informa o próximo octeto esperado.",
+                            "languageTag": "pt-BR",
+                            "textDirection": "auto"
+                          }
+                        }
+                      ],
+                      "topics": [
+                        "tcp-header"
+                      ],
+                      "sources": [
+                        "https://www.rfc-editor.org/rfc/rfc9293.html"
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "dataprev-bpmn",
+          "title": "BPMN: responsabilidade, decisão e mensagem",
+          "guide": {
+            "goal": "Introduzir BPMN a partir de um processo reconhecível antes de exigir leitura da notação.",
+            "include": [
+              "situação concreta",
+              "vocabulário antes da notação",
+              "explicação progressiva",
+              "prática guiada e transferência"
+            ],
+            "exclude": [
+              "resumo enciclopédico",
+              "tabela de siglas como primeira explicação"
+            ],
+            "notation": [
+              "notação canônica da área",
+              "rótulos completos",
+              "uma representação por intenção"
+            ],
+            "avoid": [
+              "presumir repertório técnico",
+              "compactar para reduzir número de cards"
+            ]
+          },
+          "lessons": [
+            {
+              "id": "dataprev-bpmn-lesson",
+              "title": "BPMN: responsabilidade, decisão e mensagem",
+              "guide": {
+                "goal": "Introduzir BPMN a partir de um processo reconhecível antes de exigir leitura da notação.",
+                "include": [
+                  "situação concreta",
+                  "vocabulário antes da notação",
+                  "explicação progressiva",
+                  "prática guiada e transferência"
+                ],
+                "exclude": [
+                  "resumo enciclopédico",
+                  "tabela de siglas como primeira explicação"
+                ],
+                "notation": [
+                  "notação canônica da área",
+                  "rótulos completos",
+                  "uma representação por intenção"
+                ],
+                "avoid": [
+                  "presumir repertório técnico",
+                  "compactar para reduzir número de cards"
+                ]
+              },
+              "topics": [
+                {
+                  "id": "bpmn-responsibility",
+                  "label": "Participantes e raias",
+                  "kind": "concept",
+                  "checks": [
+                    "localiza responsável"
+                  ],
+                  "errors": [
+                    "confunde raia com etapa"
+                  ]
+                },
+                {
+                  "id": "bpmn-flow",
+                  "label": "Fluxos BPMN",
+                  "kind": "representation",
+                  "checks": [
+                    "distingue sequência e mensagem"
+                  ],
+                  "errors": [
+                    "faz sequência cruzar pool"
+                  ]
+                },
+                {
+                  "id": "bpmn-gateway",
+                  "label": "Gateway exclusivo",
+                  "kind": "concept",
+                  "checks": [
+                    "interpreta condições mutuamente exclusivas"
+                  ],
+                  "errors": [
+                    "trata gateway como tarefa"
+                  ]
+                }
+              ],
+              "microsequences": [
+                {
+                  "id": "bpmn-foundation",
+                  "title": "Antes dos símbolos",
+                  "goal": "Situar processo, participante, responsabilidade e decisão.",
+                  "role": "explain",
+                  "dependsOn": [],
+                  "covers": [
+                    "bpmn-responsibility",
+                    "bpmn-flow",
+                    "bpmn-gateway"
+                  ],
+                  "checks": [
+                    "o estudante encontra o fundamento antes da notação densa",
+                    "a prática cobra somente objetos já ensinados",
+                    "a representação acrescenta informação ao raciocínio"
+                  ],
+                  "errors": [
+                    "siglas ou convenções sem introdução",
+                    "mais de um núcleo conceitual novo no mesmo card",
+                    "recurso usado apenas como decoração"
+                  ],
+                  "cards": [
+                    {
+                      "id": "bpmn-1",
+                      "position": 1,
+                      "title": "Um processo atravessa responsabilidades",
+                      "role": "theory",
+                      "content": [
+                        {
+                          "id": "bpmn-1-text",
+                          "package": "aralearn.resource.paragraph",
+                          "version": "1.0.0",
+                          "data": {
+                            "text": "Em um atendimento, cliente e organização participam do mesmo resultado, mas não executam as mesmas atividades. BPMN separa participantes em pools e pode subdividir a responsabilidade interna em raias. Pool e raia respondem a “quem?”, não a “em que ordem?”.",
+                            "languageTag": "pt-BR",
+                            "textDirection": "auto"
+                          }
+                        }
+                      ],
+                      "response": null,
+                      "feedback": [],
+                      "topics": [
+                        "bpmn-responsibility"
+                      ],
+                      "sources": [
+                        "https://conhecimento.fgv.br/sites/default/files/concursos/edital-dataprev_supe-versao-final.pdf",
+                        "https://www.omg.org/spec/BPMN/2.0/About-BPMN/"
+                      ]
+                    },
+                    {
+                      "id": "bpmn-2",
+                      "position": 2,
+                      "title": "Duas espécies de fluxo",
+                      "role": "theory",
+                      "content": [
+                        {
+                          "id": "bpmn-2-text",
+                          "package": "aralearn.resource.paragraph",
+                          "version": "1.0.0",
+                          "data": {
+                            "text": "O fluxo de sequência liga elementos dentro de um participante e informa a ordem do processo. Entre participantes, o fluxo de mensagem representa comunicação. Misturar os dois apagaria a fronteira de responsabilidade que a notação foi criada para preservar.",
+                            "languageTag": "pt-BR",
+                            "textDirection": "auto"
+                          }
+                        }
+                      ],
+                      "response": null,
+                      "feedback": [],
+                      "topics": [
+                        "bpmn-flow"
+                      ],
+                      "sources": [
+                        "https://conhecimento.fgv.br/sites/default/files/concursos/edital-dataprev_supe-versao-final.pdf",
+                        "https://www.omg.org/spec/BPMN/2.0/About-BPMN/"
+                      ]
+                    },
+                    {
+                      "id": "bpmn-3",
+                      "position": 3,
+                      "title": "A decisão exclusiva",
+                      "role": "theory",
+                      "content": [
+                        {
+                          "id": "bpmn-3-text",
+                          "package": "aralearn.resource.paragraph",
+                          "version": "1.0.0",
+                          "data": {
+                            "text": "Um gateway exclusivo escolhe um entre caminhos alternativos conforme condições. Ele não executa trabalho: apenas controla a divergência ou a convergência do fluxo. As condições pertencem às saídas, como “Sim” e “Não”.",
+                            "languageTag": "pt-BR",
+                            "textDirection": "auto"
+                          }
+                        }
+                      ],
+                      "response": null,
+                      "feedback": [],
+                      "topics": [
+                        "bpmn-gateway"
+                      ],
+                      "sources": [
+                        "https://conhecimento.fgv.br/sites/default/files/concursos/edital-dataprev_supe-versao-final.pdf",
+                        "https://www.omg.org/spec/BPMN/2.0/About-BPMN/"
+                      ]
+                    },
+                    {
+                      "id": "bpmn-4",
+                      "position": 4,
+                      "title": "O processo completo",
+                      "role": "theory",
+                      "content": [
+                        {
+                          "id": "dataprev-bpmn-process",
+                          "package": "aralearn.resource.bpmn_process",
+                          "version": "1.0.0",
+                          "data": {
+                            "prompt": "Acompanhe o atendimento de uma solicitação e distinga a decisão exclusiva do fluxo de mensagem entre cliente e organização.",
+                            "participants": [
+                              {
+                                "id": "customer",
+                                "label": "Cliente",
+                                "lanes": [
+                                  {
+                                    "id": "customer_lane",
+                                    "label": "Solicitante"
+                                  }
+                                ]
+                              },
+                              {
+                                "id": "organization",
+                                "label": "Organização",
+                                "lanes": [
+                                  {
+                                    "id": "service",
+                                    "label": "Atendimento"
+                                  },
+                                  {
+                                    "id": "analysis",
+                                    "label": "Análise"
+                                  }
+                                ]
+                              }
+                            ],
+                            "nodes": [
+                              {
+                                "id": "need",
+                                "kind": "start_event",
+                                "label": "Necessidade identificada",
+                                "participant": "customer",
+                                "lane": "customer_lane"
+                              },
+                              {
+                                "id": "send",
+                                "kind": "user_task",
+                                "label": "Enviar solicitação",
+                                "participant": "customer",
+                                "lane": "customer_lane"
+                              },
+                              {
+                                "id": "receive",
+                                "kind": "start_event",
+                                "label": "Solicitação recebida",
+                                "participant": "organization",
+                                "lane": "service"
+                              },
+                              {
+                                "id": "register",
+                                "kind": "user_task",
+                                "label": "Registrar solicitação",
+                                "participant": "organization",
+                                "lane": "service"
+                              },
+                              {
+                                "id": "analyze",
+                                "kind": "user_task",
+                                "label": "Analisar requisitos",
+                                "participant": "organization",
+                                "lane": "analysis"
+                              },
+                              {
+                                "id": "complete",
+                                "kind": "exclusive_gateway",
+                                "label": "Dados completos?",
+                                "participant": "organization",
+                                "lane": "analysis"
+                              },
+                              {
+                                "id": "request",
+                                "kind": "user_task",
+                                "label": "Solicitar complemento",
+                                "participant": "organization",
+                                "lane": "service"
+                              },
+                              {
+                                "id": "approve",
+                                "kind": "service_task",
+                                "label": "Emitir decisão",
+                                "participant": "organization",
+                                "lane": "analysis"
+                              },
+                              {
+                                "id": "finish",
+                                "kind": "end_event",
+                                "label": "Solicitação decidida",
+                                "participant": "organization",
+                                "lane": "analysis"
+                              }
+                            ],
+                            "flows": [
+                              {
+                                "id": "f1",
+                                "kind": "sequence",
+                                "from": "need",
+                                "to": "send"
+                              },
+                              {
+                                "id": "m1",
+                                "kind": "message",
+                                "from": "send",
+                                "to": "receive",
+                                "label": "solicitação"
+                              },
+                              {
+                                "id": "f2",
+                                "kind": "sequence",
+                                "from": "receive",
+                                "to": "register"
+                              },
+                              {
+                                "id": "f3",
+                                "kind": "sequence",
+                                "from": "register",
+                                "to": "analyze"
+                              },
+                              {
+                                "id": "f4",
+                                "kind": "sequence",
+                                "from": "analyze",
+                                "to": "complete"
+                              },
+                              {
+                                "id": "f5",
+                                "kind": "sequence",
+                                "from": "complete",
+                                "to": "approve",
+                                "label": "Sim"
+                              },
+                              {
+                                "id": "f6",
+                                "kind": "sequence",
+                                "from": "complete",
+                                "to": "request",
+                                "label": "Não"
+                              },
+                              {
+                                "id": "f7",
+                                "kind": "sequence",
+                                "from": "request",
+                                "to": "analyze",
+                                "label": "dados recebidos"
+                              },
+                              {
+                                "id": "f8",
+                                "kind": "sequence",
+                                "from": "approve",
+                                "to": "finish"
+                              }
+                            ]
+                          }
+                        }
+                      ],
+                      "response": null,
+                      "feedback": [],
+                      "topics": [
+                        "bpmn-responsibility",
+                        "bpmn-flow",
+                        "bpmn-gateway"
+                      ],
+                      "sources": [
+                        "https://conhecimento.fgv.br/sites/default/files/concursos/edital-dataprev_supe-versao-final.pdf",
+                        "https://www.omg.org/spec/BPMN/2.0/About-BPMN/"
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "id": "bpmn-practice",
+                  "title": "Ler sem decorar figuras",
+                  "goal": "Praticar responsabilidade, decisão e tipo de fluxo no próprio diagrama.",
+                  "role": "practice",
+                  "dependsOn": [
+                    "bpmn-foundation"
+                  ],
+                  "covers": [
+                    "bpmn-responsibility",
+                    "bpmn-flow",
+                    "bpmn-gateway"
+                  ],
+                  "checks": [
+                    "o estudante encontra o fundamento antes da notação densa",
+                    "a prática cobra somente objetos já ensinados",
+                    "a representação acrescenta informação ao raciocínio"
+                  ],
+                  "errors": [
+                    "siglas ou convenções sem introdução",
+                    "mais de um núcleo conceitual novo no mesmo card",
+                    "recurso usado apenas como decoração"
+                  ],
+                  "cards": [
+                    {
+                      "id": "bpmn-5",
+                      "position": 1,
+                      "title": "Complete a condição",
+                      "role": "practice",
+                      "content": [
+                        {
+                          "id": "dataprev-bpmn-gap",
+                          "package": "aralearn.resource.bpmn_process",
+                          "version": "1.0.0",
+                          "data": {
+                            "prompt": "Acompanhe o atendimento de uma solicitação e distinga a decisão exclusiva do fluxo de mensagem entre cliente e organização.",
+                            "participants": [
+                              {
+                                "id": "customer",
+                                "label": "Cliente",
+                                "lanes": [
+                                  {
+                                    "id": "customer_lane",
+                                    "label": "Solicitante"
+                                  }
+                                ]
+                              },
+                              {
+                                "id": "organization",
+                                "label": "Organização",
+                                "lanes": [
+                                  {
+                                    "id": "service",
+                                    "label": "Atendimento"
+                                  },
+                                  {
+                                    "id": "analysis",
+                                    "label": "Análise"
+                                  }
+                                ]
+                              }
+                            ],
+                            "nodes": [
+                              {
+                                "id": "need",
+                                "kind": "start_event",
+                                "label": "Necessidade identificada",
+                                "participant": "customer",
+                                "lane": "customer_lane"
+                              },
+                              {
+                                "id": "send",
+                                "kind": "user_task",
+                                "label": "Enviar solicitação",
+                                "participant": "customer",
+                                "lane": "customer_lane"
+                              },
+                              {
+                                "id": "receive",
+                                "kind": "start_event",
+                                "label": "Solicitação recebida",
+                                "participant": "organization",
+                                "lane": "service"
+                              },
+                              {
+                                "id": "register",
+                                "kind": "user_task",
+                                "label": "Registrar solicitação",
+                                "participant": "organization",
+                                "lane": "service"
+                              },
+                              {
+                                "id": "analyze",
+                                "kind": "user_task",
+                                "label": "Analisar requisitos",
+                                "participant": "organization",
+                                "lane": "analysis"
+                              },
+                              {
+                                "id": "complete",
+                                "kind": "exclusive_gateway",
+                                "label": "Dados completos?",
+                                "participant": "organization",
+                                "lane": "analysis"
+                              },
+                              {
+                                "id": "request",
+                                "kind": "user_task",
+                                "label": "Solicitar complemento",
+                                "participant": "organization",
+                                "lane": "service"
+                              },
+                              {
+                                "id": "approve",
+                                "kind": "service_task",
+                                "label": "Emitir decisão",
+                                "participant": "organization",
+                                "lane": "analysis"
+                              },
+                              {
+                                "id": "finish",
+                                "kind": "end_event",
+                                "label": "Solicitação decidida",
+                                "participant": "organization",
+                                "lane": "analysis"
+                              }
+                            ],
+                            "flows": [
+                              {
+                                "id": "f1",
+                                "kind": "sequence",
+                                "from": "need",
+                                "to": "send"
+                              },
+                              {
+                                "id": "m1",
+                                "kind": "message",
+                                "from": "send",
+                                "to": "receive",
+                                "label": "solicitação"
+                              },
+                              {
+                                "id": "f2",
+                                "kind": "sequence",
+                                "from": "receive",
+                                "to": "register"
+                              },
+                              {
+                                "id": "f3",
+                                "kind": "sequence",
+                                "from": "register",
+                                "to": "analyze"
+                              },
+                              {
+                                "id": "f4",
+                                "kind": "sequence",
+                                "from": "analyze",
+                                "to": "complete"
+                              },
+                              {
+                                "id": "f5",
+                                "kind": "sequence",
+                                "from": "complete",
+                                "to": "approve",
+                                "label": "Sim"
+                              },
+                              {
+                                "id": "f6",
+                                "kind": "sequence",
+                                "from": "complete",
+                                "to": "request",
+                                "label": "Não"
+                              },
+                              {
+                                "id": "f7",
+                                "kind": "sequence",
+                                "from": "request",
+                                "to": "analyze",
+                                "label": "dados recebidos"
+                              },
+                              {
+                                "id": "f8",
+                                "kind": "sequence",
+                                "from": "approve",
+                                "to": "finish"
+                              }
+                            ]
+                          }
+                        }
+                      ],
+                      "response": {
+                        "id": "bpmn-5-response",
+                        "package": "aralearn.response.gap",
+                        "version": "1.0.0",
+                        "data": {
+                          "blanks": [
+                            {
+                              "id": "bpmn-5-response-blank",
+                              "targetInstanceId": "dataprev-bpmn-gap",
+                              "targetPath": "flows[5].label",
+                              "label": "Complete o elemento na própria representação",
+                              "responseMode": "choice",
+                              "answer": "Sim",
+                              "distractors": [
+                                "Não",
+                                "mensagem"
+                              ]
+                            }
+                          ]
+                        }
+                      },
+                      "feedback": [
+                        {
+                          "id": "bpmn-5-feedback",
+                          "package": "aralearn.resource.paragraph",
+                          "version": "1.0.0",
+                          "data": {
+                            "text": "A condição “Sim” conduz da verificação de completude à emissão da decisão.",
+                            "languageTag": "pt-BR",
+                            "textDirection": "auto"
+                          }
+                        }
+                      ],
+                      "topics": [
+                        "bpmn-gateway"
+                      ],
+                      "sources": [
+                        "https://www.omg.org/spec/BPMN/2.0/About-BPMN/"
+                      ]
+                    },
+                    {
+                      "id": "bpmn-6",
+                      "position": 2,
+                      "title": "Escolha o fluxo correto",
+                      "role": "practice",
+                      "content": [],
+                      "response": {
+                        "id": "bpmn-6-response",
+                        "package": "aralearn.response.choice",
+                        "version": "1.0.0",
+                        "data": {
+                          "question": "Qual fluxo deve representar a solicitação enviada do pool Cliente ao pool Organização?",
+                          "selectionMode": "single",
+                          "selectionCriterion": "correct",
+                          "options": [
+                            {
+                              "id": "message",
+                              "kind": "text",
+                              "text": "Fluxo de mensagem, porque cruza participantes."
+                            },
+                            {
+                              "id": "sequence",
+                              "kind": "text",
+                              "text": "Fluxo de sequência, porque toda seta indica sequência."
+                            },
+                            {
+                              "id": "association",
+                              "kind": "text",
+                              "text": "Uma associação sem direção, porque não há comunicação."
+                            },
+                            {
+                              "id": "gateway",
+                              "kind": "text",
+                              "text": "Um gateway paralelo, porque há dois pools."
+                            }
+                          ],
+                          "answerIds": [
+                            "message"
+                          ]
+                        }
+                      },
+                      "feedback": [
+                        {
+                          "id": "bpmn-6-feedback",
+                          "package": "aralearn.resource.paragraph",
+                          "version": "1.0.0",
+                          "data": {
+                            "text": "Fluxo de sequência permanece dentro do participante; a comunicação entre pools usa fluxo de mensagem.",
+                            "languageTag": "pt-BR",
+                            "textDirection": "auto"
+                          }
+                        }
+                      ],
+                      "topics": [
+                        "bpmn-flow"
+                      ],
+                      "sources": [
+                        "https://www.omg.org/spec/BPMN/2.0/About-BPMN/"
+                      ]
+                    },
+                    {
+                      "id": "bpmn-7",
+                      "position": 3,
+                      "title": "Reconstrua o trecho principal",
+                      "role": "practice",
+                      "content": [],
+                      "response": {
+                        "id": "bpmn-7-response",
+                        "package": "aralearn.response.ordering",
+                        "version": "2.0.0",
+                        "data": {
+                          "prompt": "Ordene o caminho quando os dados estão completos.",
+                          "items": [
+                            {
+                              "id": "register",
+                              "label": "Registrar solicitação"
+                            },
+                            {
+                              "id": "analyze",
+                              "label": "Analisar requisitos"
+                            },
+                            {
+                              "id": "decide",
+                              "label": "Verificar se os dados estão completos"
+                            },
+                            {
+                              "id": "issue",
+                              "label": "Emitir decisão"
+                            }
+                          ],
+                          "answerOrder": [
+                            "register",
+                            "analyze",
+                            "decide",
+                            "issue"
+                          ]
+                        }
+                      },
+                      "feedback": [
+                        {
+                          "id": "bpmn-7-feedback",
+                          "package": "aralearn.resource.paragraph",
+                          "version": "1.0.0",
+                          "data": {
+                            "text": "A ordenação reproduz apenas o caminho “Sim”; o retorno para complemento pertence ao outro ramo.",
+                            "languageTag": "pt-BR",
+                            "textDirection": "auto"
+                          }
+                        }
+                      ],
+                      "topics": [
+                        "bpmn-gateway",
+                        "bpmn-flow"
+                      ],
+                      "sources": [
+                        "https://www.omg.org/spec/BPMN/2.0/About-BPMN/"
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

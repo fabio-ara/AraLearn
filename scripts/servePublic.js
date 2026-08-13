@@ -148,6 +148,8 @@ const server = http.createServer(async (req, res) => {
     const urlPath = new URL(req.url || "/", "http://127.0.0.1").pathname;
     const targetPath = !artifactMode && urlPath === "/teste-recursos"
       ? "/tests/gallery/resource-test-course.html"
+      : !artifactMode && urlPath === "/teste-academico"
+        ? "/tests/gallery/academic-stress-courses.html"
       : urlPath === "/"
         ? (artifactMode ? "/index.html" : "/public/index.html")
         : urlPath;

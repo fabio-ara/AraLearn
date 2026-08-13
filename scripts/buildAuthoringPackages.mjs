@@ -386,13 +386,13 @@ function buildChatGptActionOpenApi() {
     const fields = definition.outputSchema?.oneOf?.[0]
       ?.properties?.data?.required || [];
     const outcome = structuralContentWrites.has(definition.name)
-      ? "Conteúdo persistido e validado estruturalmente; isso não representa aprovação pedagógica."
+      ? "Conteúdo validado; não implica aprovação pedagógica."
       : definition.annotations?.readOnlyHint
         ? "Leitura concluída."
         : "Operação concluída.";
     return fields.length
-      ? `${outcome} data contém: ${fields.join(", ")}.`
-      : `${outcome} Resultado estruturado em data.`;
+      ? `${outcome} Campos: ${fields.join(", ")}.`
+      : `${outcome} Resultado em data.`;
   };
   const inputSchemas = Object.fromEntries(
     AUTHORING_WORKSPACE_MCP_TOOLS.map((definition) => [
