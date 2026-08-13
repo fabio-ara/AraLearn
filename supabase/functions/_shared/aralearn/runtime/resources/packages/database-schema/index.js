@@ -1,5 +1,5 @@
 import { academicProfile } from "../../sdk/academic.js";
-import { dotAttributes, dotQuote, wrapGraphvizLabel } from "../../sdk/graphviz.js";
+import { dotAttributes, dotQuote, graphvizLayoutAttributes, wrapGraphvizLabel } from "../../sdk/graphviz.js";
 import { renderPackageInline, renderPackageProse } from "../../sdk/html.js";
 import {
   hydrateSystemDiagrams,
@@ -51,7 +51,7 @@ function accessibleText(data) {
 function graphvizSource(data) {
   return [
     "digraph RelationalSchema {",
-    `  graph ${dotAttributes({ bgcolor: "transparent", pad: "0.2", margin: "0", overlap: "false", splines: "polyline", outputorder: "edgesfirst", rankdir: "LR", nodesep: "0.5", ranksep: "0.9" })};`,
+    `  graph ${dotAttributes(graphvizLayoutAttributes("block", { bgcolor: "transparent", pad: "0.2", margin: "0", overlap: "false", splines: "polyline", outputorder: "edgesfirst", nodesep: "0.5", ranksep: "0.9" }))};`,
     "  node [fontname=\"Arial\", fontsize=\"15\", penwidth=\"1.15\", color=\"#64748b\", fontcolor=\"#111827\", shape=\"box\", style=\"rounded\", margin=\"0.16,0.12\"];",
     "  edge [fontname=\"Arial\", fontsize=\"13\", penwidth=\"1.15\", color=\"#64748b\", fontcolor=\"#111827\", arrowsize=\"0.7\"];",
     ...data.relations.map((relation) => `  ${dotQuote(relation.id)} ${dotAttributes({ id: `system-node-${relation.id}`, class: "package-relational-relation", label: relationPlainLabel(relation) })};`),

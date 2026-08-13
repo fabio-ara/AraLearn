@@ -215,6 +215,25 @@ declarados pelo package; edição manual e assistência por API recebem as mesma
 folhas textuais, enquanto ids, referências, tipos, direções e topologia ficam
 protegidos como contexto estrutural.
 
+A orientação também deriva da semântica, não de coordenadas autorais. Uma
+política compartilhada traduz progressão em bloco de cima para baixo,
+progressão em linha da esquerda para a direita e estruturas livres para o
+motor apropriado.
+No leitor móvel, esquemas relacionais de banco de dados, modelos
+entidade–relacionamento, topologias de rede e máquinas de estados priorizam a
+progressão vertical. A relação entre domínio e contradomínio e o diagrama
+interno de bloco SysML conservam a leitura lateral, pois lados, portas e
+incidência fazem parte da notação. Grafos não hierárquicos continuam livres.
+Essa política é interna ao package e não acrescenta orientação, largura ou
+posição ao contrato preenchido pelo GPT.
+
+Verticalizar o fluxo principal não significa transpor o objeto acadêmico.
+Tabelas, matrizes, equações, reações, layouts de pacote e eixos cartesianos
+preservam linhas, colunas, sintaxe e eixos convencionais; quando excedem a
+largura, a rolagem local é informação espacial legítima. Diagramas densos são
+recortados pedagogicamente ou divididos entre cards, nunca comprimidos até
+prejudicar a leitura.
+
 Esses packages não são intercambiáveis. Um processo com condição permanece
 `flow` quando o objeto é um algoritmo; um processo de negócio entre
 responsabilidades permanece `bpmn_process`; equipamentos e enlaces permanecem `network_topology`; relações entre

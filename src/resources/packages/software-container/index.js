@@ -1,5 +1,5 @@
 import { academicProfile } from "../../sdk/academic.js";
-import { dotAttributes, dotAttributesWithHtmlLabel, dotQuote, graphvizHtmlLines, wrapGraphvizLabel } from "../../sdk/graphviz.js";
+import { dotAttributes, dotAttributesWithHtmlLabel, dotQuote, graphvizHtmlLines, graphvizLayoutAttributes, wrapGraphvizLabel } from "../../sdk/graphviz.js";
 import { renderPackageInline, renderPackageProse } from "../../sdk/html.js";
 import {
   hydrateSystemDiagrams,
@@ -77,7 +77,7 @@ function graphvizSource(data) {
   const edgeLines = data.relationships.map((item) => `  ${dotQuote(item.from)} -> ${dotQuote(item.to)} ${dotAttributes({ id: `system-edge-${item.id}`, class: "package-software-container-relationship", label: wrapGraphvizLabel(item.label, 16), arrowsize: "0.72" })};`);
   return [
     "digraph SoftwareContainers {",
-    `  graph ${dotAttributes({ bgcolor: "transparent", pad: "0.2", margin: "0", overlap: "false", splines: "polyline", outputorder: "edgesfirst", rankdir: "TB", nodesep: "0.42", ranksep: "0.72", newrank: "true" })};`,
+    `  graph ${dotAttributes(graphvizLayoutAttributes("block", { bgcolor: "transparent", pad: "0.2", margin: "0", overlap: "false", splines: "polyline", outputorder: "edgesfirst", nodesep: "0.42", ranksep: "0.72", newrank: "true" }))};`,
     "  node [fontname=\"Arial\", fontsize=\"15\", penwidth=\"1.15\", color=\"#64748b\", fontcolor=\"#111827\"];",
     "  edge [fontname=\"Arial\", fontsize=\"13\", penwidth=\"1.15\", color=\"#64748b\", fontcolor=\"#111827\"];",
     ...externalLines,

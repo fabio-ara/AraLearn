@@ -5,6 +5,7 @@ import {
   dotQuote,
   graphvizGroupById,
   hasGraphvizGap,
+  graphvizLayoutAttributes,
   plainGraphvizLabel,
   renderGraphvizSvg,
   unionGraphvizTextBounds
@@ -82,7 +83,7 @@ function graphvizSource(data) {
   const engine = graphvizEngine(data);
   const operator = data.directed ? "->" : "--";
   const graphType = data.directed ? "digraph" : "graph";
-  const graphAttributes = {
+  const graphAttributes = graphvizLayoutAttributes(engine === "dot" ? "block" : "free", {
     id: `graph-${data.name}`,
     bgcolor: "transparent",
     pad: "0.18",
@@ -90,9 +91,9 @@ function graphvizSource(data) {
     overlap: "false",
     splines: "true",
     outputorder: "edgesfirst",
-    ...(engine === "dot" ? { rankdir: "TB", nodesep: "0.48", ranksep: "0.58" } : {}),
+    ...(engine === "dot" ? { nodesep: "0.48", ranksep: "0.58" } : {}),
     ...(engine === "twopi" ? { root: radialRoot(data), ranksep: "1.05" } : {})
-  };
+  });
   const nodeLines = data.vertices.map((vertex) => `  ${dotQuote(vertex.id)} ${dotAttributes({
     id: `graph-vertex-${vertex.id}`,
     class: `package-math-graph-vertex${data.highlight?.vertices?.includes(vertex.id) ? " is-highlighted" : ""}`,

@@ -1,5 +1,5 @@
 import { academicProfile } from "../../sdk/academic.js";
-import { dotAttributes, dotAttributesWithHtmlLabel, dotQuote, graphvizHtmlLines, wrapGraphvizLabel } from "../../sdk/graphviz.js";
+import { dotAttributes, dotAttributesWithHtmlLabel, dotQuote, graphvizHtmlLines, graphvizLayoutAttributes, wrapGraphvizLabel } from "../../sdk/graphviz.js";
 import { renderPackageInline, renderPackageProse } from "../../sdk/html.js";
 import { hydrateSystemDiagrams, renderSystemDiagramFigure, systemDiagramModelLabels } from "../system-diagrams/shared.js";
 
@@ -56,7 +56,7 @@ function participantSource(participant, data) {
 }
 
 function graphvizSource(data) {
-  return ["digraph BpmnProcess {", `  graph ${dotAttributes({ bgcolor: "transparent", pad: "0.22", margin: "0", overlap: "false", splines: "polyline", outputorder: "edgesfirst", rankdir: "TB", nodesep: "0.5", ranksep: "0.7", compound: "true", newrank: "true" })};`, "  node [fontname=\"Arial\", fontsize=\"15\", penwidth=\"1.15\", color=\"#64748b\", fontcolor=\"#111827\"];", "  edge [fontname=\"Arial\", fontsize=\"13\", penwidth=\"1.15\", color=\"#64748b\", fontcolor=\"#111827\", arrowsize=\"0.72\"];", ...data.participants.map((participant) => participantSource(participant, data)), ...data.flows.map((flow) => `  ${dotQuote(flow.from)} -> ${dotQuote(flow.to)} ${dotAttributes({ id: `system-edge-${flow.id}`, class: `package-bpmn-flow is-${flow.kind}`, ...(flow.label ? { label: wrapGraphvizLabel(flow.label, 20) } : {}), ...(flow.kind === "message" ? { style: "dashed", arrowhead: "onormal" } : { arrowhead: "normal" }) })};`), "}"].join("\n");
+  return ["digraph BpmnProcess {", `  graph ${dotAttributes(graphvizLayoutAttributes("block", { bgcolor: "transparent", pad: "0.22", margin: "0", overlap: "false", splines: "polyline", outputorder: "edgesfirst", nodesep: "0.5", ranksep: "0.7", compound: "true", newrank: "true" }))};`, "  node [fontname=\"Arial\", fontsize=\"15\", penwidth=\"1.15\", color=\"#64748b\", fontcolor=\"#111827\"];", "  edge [fontname=\"Arial\", fontsize=\"13\", penwidth=\"1.15\", color=\"#64748b\", fontcolor=\"#111827\", arrowsize=\"0.72\"];", ...data.participants.map((participant) => participantSource(participant, data)), ...data.flows.map((flow) => `  ${dotQuote(flow.from)} -> ${dotQuote(flow.to)} ${dotAttributes({ id: `system-edge-${flow.id}`, class: `package-bpmn-flow is-${flow.kind}`, ...(flow.label ? { label: wrapGraphvizLabel(flow.label, 20) } : {}), ...(flow.kind === "message" ? { style: "dashed", arrowhead: "onormal" } : { arrowhead: "normal" }) })};`), "}"].join("\n");
 }
 
 function labels(data) {

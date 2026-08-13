@@ -3,6 +3,7 @@ import {
   dotAttributes,
   dotQuote,
   graphvizHtmlLines,
+  graphvizLayoutAttributes,
   plainGraphvizLabel
 } from "../../sdk/graphviz.js";
 import {
@@ -77,10 +78,9 @@ function graphvizSource(data) {
   })};`);
   return [
     `digraph ${dotQuote(data.name)} {`,
-    `  graph ${dotAttributes({
+    `  graph ${dotAttributes(graphvizLayoutAttributes("inline", {
       id: `relation-map-${data.name}`,
       bgcolor: "transparent",
-      rankdir: "LR",
       pad: "0.18",
       margin: "0",
       nodesep: "0.42",
@@ -89,7 +89,7 @@ function graphvizSource(data) {
       outputorder: "edgesfirst",
       remincross: "true",
       mclimit: "2"
-    })};`,
+    }))};`,
     "  node [fontname=\"Arial\", fontsize=\"15\", penwidth=\"1.15\", color=\"#64748b\", fontcolor=\"#111827\", style=\"solid\"];",
     "  edge [penwidth=\"1.15\", color=\"#64748b\"];",
     "  subgraph cluster_left {",

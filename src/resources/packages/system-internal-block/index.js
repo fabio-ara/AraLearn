@@ -1,5 +1,5 @@
 import { academicProfile } from "../../sdk/academic.js";
-import { dotAttributes, dotQuote, plainGraphvizLabel, wrapGraphvizLabel } from "../../sdk/graphviz.js";
+import { dotAttributes, dotQuote, graphvizLayoutAttributes, plainGraphvizLabel, wrapGraphvizLabel } from "../../sdk/graphviz.js";
 import { renderPackageInline, renderPackageProse } from "../../sdk/html.js";
 import {
   hydrateSystemDiagrams,
@@ -87,7 +87,7 @@ function graphvizSource(data) {
   });
   return [
     "digraph InternalBlock {",
-    `  graph ${dotAttributes({ bgcolor: "transparent", pad: "0.2", margin: "0", overlap: "false", splines: "spline", outputorder: "edgesfirst", rankdir: "LR", nodesep: "0.5", ranksep: "0.82" })};`,
+    `  graph ${dotAttributes(graphvizLayoutAttributes("inline", { bgcolor: "transparent", pad: "0.2", margin: "0", overlap: "false", splines: "spline", outputorder: "edgesfirst", nodesep: "0.5", ranksep: "0.82" }))};`,
     "  node [fontname=\"Arial\", fontsize=\"15\", penwidth=\"1.15\", color=\"#64748b\", fontcolor=\"#111827\"];",
     "  edge [fontname=\"Arial\", fontsize=\"13\", penwidth=\"1.15\", color=\"#64748b\", fontcolor=\"#111827\"];",
     `  subgraph cluster_block { graph ${dotAttributes({ id: "system-internal-block-boundary", class: "package-system-internal-boundary", label: `ibd · ${plainGraphvizLabel(data.block.label)}`, labelloc: "t", labeljust: "l", margin: "22", style: "solid" })};`,
