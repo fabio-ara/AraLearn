@@ -19,8 +19,8 @@ $repositoryRoot = Resolve-AraLearnRepositoryRoot -ScriptRoot $PSScriptRoot
 $issues = [Collections.Generic.List[object]]::new()
 $reports = [Collections.Generic.List[object]]::new()
 $expectedAndroidApplicationId = 'com.aralearn.app'
-$expectedAndroidVersionCode = '159'
-$expectedAndroidVersionName = '0.0.17'
+$expectedAndroidVersionCode = '160'
+$expectedAndroidVersionName = '0.0.18'
 $expectedAndroidCertificateSha256 = 'c3d2ad6c97e44492c09d785d2d5e9f461eb6399914b196119e2cba0e5d271296'
 $requiredRuntimeModules = @(
   'src/assist/cardassistancescope.js',
