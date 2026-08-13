@@ -1220,8 +1220,11 @@ function renderMicrosequenceScreen({ course, lesson, microsequence, cards, selec
     selectedCardKeys[0] === activeCard?.id
   );
   const selectedResourceTargetIds = new Set(cardAssistanceState.resourceTargetIds);
+  const cardResourceTargets = Array.isArray(editorSupport.cardResourceTargets)
+    ? editorSupport.cardResourceTargets
+    : [];
   const resourceSelectionLabels = Object.fromEntries(
-    (editorSupport.cardResourceTargets || []).map((target) => {
+    cardResourceTargets.map((target) => {
       const targetId = String(target?.targetId || "");
       const label = target?.label || target?.resourceType || "recurso";
       return [targetId, selectedResourceTargetIds.has(targetId)
@@ -1312,13 +1315,32 @@ function renderMicrosequenceScreen({ course, lesson, microsequence, cards, selec
     : [];
   const assistanceConversationHtml = assistanceConversation.length
     ? '<ol class="card-assistance-conversation" aria-label="Ajustes anteriores desta conversa">' +
-      assistanceConversation.map((turn, index) => '<li><span>Ajuste ' +
-        String(index + 1) + '</span><p>' + escapeHtml(turn.request) +
-        '</p><small>Aplicado ao ' + escapeHtml(turn.scope === "card" ? "card" : "conteúdo selecionado") +
-        '</small></li>').join("") + '</ol>'
+      assistanceConversation.map((turn) => '<li class="card-assistance-turn">' +
+        '<article class="card-assistance-message-bubble is-user"><span>Você</span><p>' +
+        escapeHtml(turn.request) + '</p></article>' +
+        '<article class="card-assistance-message-bubble is-assistant"><span>Assistente</span><p>' +
+        escapeHtml(turn.assistantResponse) + '</p><small>Aplicado ao ' +
+        escapeHtml(turn.scope === "card" ? "card" : "conteúdo selecionado") +
+        '</small></article></li>').join("") + '</ol>'
+    : "";
+  const selectedAssistanceTargets = wholeCardSelected
+    ? cardResourceTargets
+    : cardResourceTargets.filter(({ targetId }) => selectedResourceTargetIds.has(targetId));
+  const assistanceScopeItems = [
+    ...(wholeCardSelected ? [{ label: "Título do card", editableTextLabels: [] }] : []),
+    ...selectedAssistanceTargets
+  ];
+  const assistanceScopeHtml = assistanceScopeItems.length
+    ? '<section class="card-assistance-scope" aria-label="Limites do reparo"><strong>A IA pode alterar</strong><ul>' +
+      assistanceScopeItems.map((target) => '<li><span>' + escapeHtml(target.label) + '</span>' +
+        (Array.isArray(target.editableTextLabels) && target.editableTextLabels.length
+          ? '<small>' + escapeHtml(target.editableTextLabels.join(" · ")) + '</small>'
+          : '') + '</li>').join("") +
+      '</ul><p><strong>Contexto somente leitura:</strong> tipos de resource, IDs, ordem, relações, geometria, respostas e gabarito.</p></section>'
     : "";
   const aiEditor = cardEditorMode === "ai" && cardAssistanceComposerOpen
     ? '<section class="runtime-card-ai-editor" aria-label="Assistência por IA">' +
+      assistanceScopeHtml +
       assistanceConversationHtml +
       '<textarea data-field="assist-prompt" class="assist-prompt" data-card-authoring-focus="ai-prompt" aria-label="' +
       escapeHtml(promptLabel) + '" title="' + escapeHtml(promptLabel) + '" placeholder="' +

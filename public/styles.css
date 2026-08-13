@@ -2309,42 +2309,97 @@ input:-webkit-autofill:focus {
 
 .card-assistance-conversation {
   display: grid;
-  gap: 6px;
-  max-height: 150px;
+  gap: 10px;
+  max-height: 210px;
   margin: 0;
   padding: 0;
   overflow-y: auto;
   list-style: none;
 }
 
-.card-assistance-conversation li {
+.card-assistance-turn {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  gap: 2px 7px;
-  padding: 7px 8px;
-  border-inline-start: 2px solid var(--resource-accent);
-  border-radius: 0 8px 8px 0;
-  background: var(--resource-surface-subtle);
+  gap: 6px;
+}
+
+.card-assistance-message-bubble {
+  display: grid;
+  gap: 3px;
+  width: fit-content;
+  max-width: 92%;
+  padding: 7px 9px;
+  border: 1px solid var(--resource-border);
+  border-radius: 10px;
   color: var(--resource-text);
   font-size: var(--type-xs);
 }
 
-.card-assistance-conversation li > span,
-.card-assistance-conversation li > small {
+.card-assistance-message-bubble.is-user {
+  justify-self: end;
+  border-color: color-mix(in srgb, var(--resource-accent) 46%, var(--resource-border));
+  background: var(--resource-accent-subtle);
+}
+
+.card-assistance-message-bubble.is-assistant {
+  justify-self: start;
+  background: var(--resource-surface-subtle);
+}
+
+.card-assistance-message-bubble > span,
+.card-assistance-message-bubble > small {
   color: var(--resource-text-secondary);
   font-size: 0.62rem;
   font-weight: 750;
   text-transform: uppercase;
 }
 
-.card-assistance-conversation li > p {
+.card-assistance-message-bubble > p {
   margin: 0;
   overflow-wrap: anywhere;
 }
 
-.card-assistance-conversation li > small {
-  grid-column: 2;
+.card-assistance-message-bubble > small {
   text-transform: none;
+}
+
+.card-assistance-scope {
+  display: grid;
+  gap: 6px;
+  padding: 8px 9px;
+  border: 1px solid var(--resource-border);
+  border-radius: 9px;
+  background: var(--resource-surface-subtle);
+  color: var(--resource-text);
+  font-size: var(--type-xs);
+}
+
+.card-assistance-scope > strong,
+.card-assistance-scope li > span {
+  font-weight: 750;
+}
+
+.card-assistance-scope ul {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.card-assistance-scope li {
+  display: grid;
+  gap: 1px;
+}
+
+.card-assistance-scope li > small,
+.card-assistance-scope > p {
+  color: var(--resource-text-secondary);
+  font-size: 0.68rem;
+  line-height: 1.35;
+}
+
+.card-assistance-scope > p {
+  margin: 2px 0 0;
 }
 
 .package-matching-response {
@@ -5658,7 +5713,86 @@ input:-webkit-autofill:focus {
 }
 
 .runtime-resource-edit-target [data-manual-edit-path]:focus {
-  box-shadow: none;
+  border-color: var(--resource-accent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--resource-accent) 20%, transparent);
+}
+
+.package-manual-editor {
+  display: grid;
+  gap: 9px;
+  min-width: 0;
+  padding: 9px;
+  border: 1px solid var(--resource-border);
+  border-radius: 10px;
+  background: var(--resource-surface);
+  color: var(--resource-text);
+}
+
+.package-manual-editor-head {
+  display: grid;
+  gap: 2px;
+}
+
+.package-manual-editor-head > strong {
+  font-size: var(--type-sm);
+}
+
+.package-manual-editor-head > span,
+.package-manual-editor-head > small {
+  color: var(--resource-text-secondary);
+  font-size: var(--type-xs);
+}
+
+.package-manual-fields {
+  display: grid;
+  gap: 8px;
+}
+
+.package-manual-field {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  color: var(--resource-text-secondary);
+  font-size: var(--type-xs);
+  font-weight: 700;
+}
+
+.package-manual-field-value {
+  width: 100%;
+  min-width: 0;
+  padding: 7px 8px;
+  border: 1px solid var(--input-border);
+  border-radius: 8px;
+  background: var(--input-surface);
+  color: var(--text-primary);
+  font: 400 var(--type-sm)/1.45 var(--font-ui);
+  resize: vertical;
+  box-sizing: border-box;
+}
+
+.package-manual-field-value.preserves-whitespace {
+  font-family: var(--font-mono);
+  white-space: pre;
+  tab-size: 2;
+}
+
+.package-manual-context {
+  min-width: 0;
+  border-top: 1px solid var(--resource-border);
+  padding-top: 7px;
+}
+
+.package-manual-context > summary {
+  color: var(--resource-text-secondary);
+  cursor: pointer;
+  font-size: var(--type-xs);
+  font-weight: 700;
+}
+
+.package-manual-preview {
+  min-width: 0;
+  margin-top: 8px;
+  pointer-events: none;
 }
 
 .runtime-resource-edit-target .is-manual-edit-source-hidden {

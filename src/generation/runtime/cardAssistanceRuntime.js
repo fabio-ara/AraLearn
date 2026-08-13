@@ -430,8 +430,13 @@ function packageCardRepairSchema(card) {
   return {
     type: "object",
     additionalProperties: false,
-    required: ["card"],
+    required: ["message", "card"],
     properties: {
+      message: {
+        type: "string",
+        minLength: 1,
+        maxLength: 800
+      },
       card: {
         type: "object",
         additionalProperties: false,
@@ -481,7 +486,7 @@ async function generatePackageCardRepair({
     modelId,
     buildRequest: (feedback) => ({
       phase: "package_card_assistance_repair",
-      system: "Repare somente as folhas textuais autorizadas do card. Preserve identidades, packages, versões, estrutura e respostas formais. Considere priorRepairConversation como continuidade já aplicada e trate userRequest como a instrução mais recente; o currentCard é sempre o estado vigente. Responda somente no schema.",
+      system: "Repare somente as folhas textuais autorizadas do card. Preserve identidades, packages, versões, estrutura e respostas formais. Considere priorRepairConversation como continuidade já aplicada e trate userRequest como a instrução mais recente; o currentCard é sempre o estado vigente. Em message, responda brevemente ao usuário, dizendo o que foi ajustado sem alegar mudanças que não estejam no card devolvido. Responda somente no schema.",
       prompt: serializeAssistanceEnvelope({
         contract: "aralearn.package-card-assistance.v1",
         userRequest: normalizedUserRequest(userRequest),
@@ -503,10 +508,20 @@ async function generatePackageCardRepair({
     }),
     validate: (value) => {
       assertPlainObject(value?.card, "O reparo não devolveu o card.");
-      return projectCardAssistanceTextChange(context.card, value.card, {
-        repairScope,
-        targets
-      });
+      const assistantMessage = text(value?.message);
+      if (!assistantMessage) {
+        throw new CardAssistanceScopeError(
+          "O reparo não explicou brevemente o resultado.",
+          "INVALID_CARD_ASSISTANCE_RESULT"
+        );
+      }
+      return {
+        assistantMessage,
+        card: projectCardAssistanceTextChange(context.card, value.card, {
+          repairScope,
+          targets
+        })
+      };
     },
     onProgress,
     reconstructionBudget: { remaining: 1 }
@@ -547,7 +562,7 @@ export async function generateCardAssistanceChangeSet({
       : []
   });
   const beforeCard = context.card;
-  const card = await generatePackageCardRepair({
+  const repair = await generatePackageCardRepair({
     provider,
     modelId,
     contextPacket,
@@ -557,6 +572,7 @@ export async function generateCardAssistanceChangeSet({
     conversationTurns: request.conversationTurns,
     onProgress
   });
+  const card = repair.card;
   const validatedCard = snapshot.target.repairScope === "resources"
     ? assertResourceRepairSemantics(beforeCard, card, contextPacket)
     : assertCardAssistanceSemantics(card, contextPacket);
@@ -575,6 +591,7 @@ export async function generateCardAssistanceChangeSet({
     contract: "aralearn.card-assistance-generated-change.v1",
     snapshot,
     changeSet,
+    assistantMessage: repair.assistantMessage,
     diagnostics: { modelId, contextContract: contextPacket.contract }
   };
 }

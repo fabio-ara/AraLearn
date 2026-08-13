@@ -141,6 +141,16 @@ function packageLabel(packageId) {
     || packageId;
 }
 
+function conciseEditableLabel(value) {
+  return String(value || "Texto").replace(/^Editar\s+/iu, "");
+}
+
+function instanceEditableTextLabels(instance, slot) {
+  return RESOURCE_PACKAGE_REGISTRY.editableTargets(instance, slot)
+    .filter(({ path }) => typeof readPath(instance.data, path) === "string")
+    .map(({ path, label }) => conciseEditableLabel(label || path));
+}
+
 export function listCardResourceTargets(card = {}) {
   if (!card || typeof card !== "object" || Array.isArray(card) || !text(card.id)) return [];
   const targets = [
@@ -152,7 +162,8 @@ export function listCardResourceTargets(card = {}) {
     location: slot,
     blockId: instance.id,
     resourceType: instance.package,
-    label: `${packageLabel(instance.package)}${slot === "feedback" ? " · feedback" : ""}${index ? ` ${index + 1}` : ""}`
+    label: `${packageLabel(instance.package)}${slot === "feedback" ? " · feedback" : ""}${index ? ` ${index + 1}` : ""}`,
+    editableTextLabels: instanceEditableTextLabels(instance, slot)
   }));
   if (new Set(targets.map((target) => target.targetId)).size !== targets.length) {
     fail(

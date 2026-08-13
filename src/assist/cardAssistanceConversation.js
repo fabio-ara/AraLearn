@@ -18,15 +18,16 @@ export function cardAssistanceConversationKey(selection = {}) {
 export function normalizeCardAssistanceConversation(value = {}, selection = {}) {
   const key = cardAssistanceConversationKey(selection);
   const turns = Array.isArray(value?.turns)
-    ? value.turns.slice(-MAX_TURNS).map((turn) => ({
+      ? value.turns.slice(-MAX_TURNS).map((turn) => ({
         request: text(turn?.request).slice(0, MAX_TURN_TEXT),
+        assistantResponse: text(turn?.assistantResponse).slice(0, MAX_TURN_TEXT),
         scope: turn?.scope === "card" ? "card" : "resources",
         targetIds: Array.isArray(turn?.targetIds)
           ? turn.targetIds.map(text).filter(Boolean).slice(0, 24)
           : [],
         outcome: "applied",
         modelId: text(turn?.modelId).slice(0, 200)
-      })).filter(({ request }) => request)
+      })).filter(({ request, assistantResponse }) => request && assistantResponse)
     : [];
   return {
     contract: CARD_ASSISTANCE_CONVERSATION_CONTRACT,
@@ -48,8 +49,8 @@ export function cardAssistanceConversationContext(value, selection) {
   const turns = normalized.turns.map((turn, index) => ({
     turn: index + 1,
     userRequest: turn.request,
-    appliedTo: turn.scope === "card" ? ["card"] : turn.targetIds,
-    result: "A alteração foi validada e já está refletida no currentCard."
+    assistantResponse: turn.assistantResponse,
+    appliedTo: turn.scope === "card" ? ["card"] : turn.targetIds
   }));
   while (JSON.stringify(turns).length > MAX_CONTEXT_CHARACTERS && turns.length > 1) {
     turns.shift();

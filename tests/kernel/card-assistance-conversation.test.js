@@ -25,12 +25,14 @@ test("conversa de reparo permanece isolada pela identidade completa do card", ()
 test("cada iteração registra instrução e seleção já aplicadas", () => {
   const first = appendCardAssistanceConversationTurn(null, selection, {
     request: "Explique o referente antes da sigla.",
+    assistantResponse: "Situei o referente antes da primeira ocorrência da sigla.",
     scope: "resources",
     targetIds: ["content:paragraph-1"],
     modelId: "provider/model"
   });
   const second = appendCardAssistanceConversationTurn(first, selection, {
     request: "Agora dê um exemplo concreto.",
+    assistantResponse: "Acrescentei um exemplo concreto após a explicação.",
     scope: "card",
     targetIds: [],
     modelId: "provider/model"
@@ -39,14 +41,14 @@ test("cada iteração registra instrução e seleção já aplicadas", () => {
     {
       turn: 1,
       userRequest: "Explique o referente antes da sigla.",
-      appliedTo: ["content:paragraph-1"],
-      result: "A alteração foi validada e já está refletida no currentCard."
+      assistantResponse: "Situei o referente antes da primeira ocorrência da sigla.",
+      appliedTo: ["content:paragraph-1"]
     },
     {
       turn: 2,
       userRequest: "Agora dê um exemplo concreto.",
-      appliedTo: ["card"],
-      result: "A alteração foi validada e já está refletida no currentCard."
+      assistantResponse: "Acrescentei um exemplo concreto após a explicação.",
+      appliedTo: ["card"]
     }
   ]);
 });
@@ -54,6 +56,7 @@ test("cada iteração registra instrução e seleção já aplicadas", () => {
 test("contexto para modelos menores é limitado às oito iterações recentes", () => {
   const turns = Array.from({ length: 12 }, (_, index) => ({
     request: `Pedido ${index + 1}`,
+    assistantResponse: `Resposta ${index + 1}`,
     scope: "resources",
     targetIds: [`content:${index + 1}`]
   }));

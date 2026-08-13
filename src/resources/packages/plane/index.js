@@ -81,10 +81,30 @@ function dashEncoding(domain) {
   return { field: "tone", type: "nominal", scale: { domain, range: [[1, 0], [7, 4], [2, 3], [10, 3, 2, 3], [12, 4], [3, 2, 1, 2]] }, legend: null };
 }
 
-function labelOffsets([x, y], [originX = 0, originY = 0] = []) {
+function pointLabelOffsets([x, y], [originX = 0, originY = 0] = []) {
   const dx = x - originX;
   const dy = y - originY;
   return { dx: dx < -0.2 ? -8 : 8, dy: dy > 0.2 ? -9 : 12, align: dx < -0.2 ? "right" : "left" };
+}
+
+function vectorLabelPosition(vector, data) {
+  const [fromX, fromY] = vector.from;
+  const [toX, toY] = vector.to;
+  const xSpan = data.xAxis.domain[1] - data.xAxis.domain[0];
+  const ySpan = data.yAxis.domain[1] - data.yAxis.domain[0];
+  const normalizedX = (toX - fromX) / xSpan;
+  const normalizedY = (toY - fromY) / ySpan;
+  const normalizedLength = Math.hypot(normalizedX, normalizedY) || 1;
+  const perpendicularX = -normalizedY / normalizedLength;
+  const perpendicularY = normalizedX / normalizedLength;
+  const shaftFraction = 0.58;
+  const offsetFraction = 0.035;
+  return {
+    labelX: fromX + ((toX - fromX) * shaftFraction) +
+      (perpendicularX * xSpan * offsetFraction),
+    labelY: fromY + ((toY - fromY) * shaftFraction) +
+      (perpendicularY * ySpan * offsetFraction)
+  };
 }
 
 export function compilePlaneVegaLite(data, theme) {
@@ -118,7 +138,16 @@ export function compilePlaneVegaLite(data, theme) {
     });
   }
   if (data.vectors?.length) {
-    const values = data.vectors.map((vector) => ({ id: vector.id, tone: objectTone(vector, data, "Vetor"), label: vector.label, x: vector.from[0], y: vector.from[1], x2: vector.to[0], y2: vector.to[1], ...labelOffsets(vector.to, vector.from) }));
+    const values = data.vectors.map((vector) => ({
+      id: vector.id,
+      tone: objectTone(vector, data, "Vetor"),
+      label: vector.label,
+      x: vector.from[0],
+      y: vector.from[1],
+      x2: vector.to[0],
+      y2: vector.to[1],
+      ...vectorLabelPosition(vector, data)
+    }));
     layers.push({
       data: { values },
       mark: { type: "rule", strokeWidth: 2.2 },
@@ -126,12 +155,22 @@ export function compilePlaneVegaLite(data, theme) {
     });
     layers.push(...values.map((value) => ({
       data: { values: [value] },
-      mark: { type: "text", fontSize: 11, fontWeight: 600, dx: value.dx, dy: value.dy, align: value.align, color: theme.text },
-      encoding: { ...positionEncodings(data, { xField: "x2", yField: "y2" }), text: { field: "label" } }
+      mark: {
+        type: "text",
+        fontSize: 11,
+        fontWeight: 600,
+        align: "center",
+        baseline: "middle",
+        color: theme.text
+      },
+      encoding: {
+        ...positionEncodings(data, { xField: "labelX", yField: "labelY" }),
+        text: { field: "label" }
+      }
     })));
   }
   if (data.points?.length) {
-    const values = data.points.map((point) => ({ id: point.id, tone: objectTone(point, data, "Ponto"), label: point.label, x: point.at[0], y: point.at[1], ...labelOffsets(point.at) }));
+    const values = data.points.map((point) => ({ id: point.id, tone: objectTone(point, data, "Ponto"), label: point.label, x: point.at[0], y: point.at[1], ...pointLabelOffsets(point.at) }));
     layers.push({
       data: { values },
       mark: { type: "point", shape: "circle", filled: true, size: 72, strokeWidth: 1 },

@@ -69,7 +69,12 @@ test("geração estruturada usa schema exato do package e aplica reparo", async 
       requestSeen = request;
       const repaired = structuredClone(card);
       repaired.content[0].data.text = "Texto progressivo e situado.";
-      return { value: { card: repaired } };
+      return {
+        value: {
+          message: "Reorganizei a explicação para situar o conceito antes da regra.",
+          card: repaired
+        }
+      };
     }
   };
   const result = await generateCardAssistanceChangeSet({
@@ -82,18 +87,23 @@ test("geração estruturada usa schema exato do package e aplica reparo", async 
       conversationTurns: [{
         turn: 1,
         userRequest: "Situe primeiro o problema.",
+        assistantResponse: "Situei o problema antes da explicação.",
         appliedTo: ["card"],
-        result: "A alteração foi validada e já está refletida no currentCard."
       }]
     },
     provider,
     modelId: "test-model"
   });
   assert.equal(requestSeen.schemaName, "aralearn_package_card_repair_v1");
+  assert.deepEqual(requestSeen.schema.required, ["message", "card"]);
   const requestEnvelope = JSON.parse(requestSeen.prompt);
   assert.equal(requestEnvelope.priorRepairConversation[0].userRequest, "Situe primeiro o problema.");
   assert.equal(requestEnvelope.userRequest, "Torne a explicação mais clara.");
   assert.equal(result.changeSet.card.content[0].data.text, "Texto progressivo e situado.");
+  assert.equal(
+    result.assistantMessage,
+    "Reorganizei a explicação para situar o conceito antes da regra."
+  );
   const snapshot = await buildCardAssistanceScopeSnapshot(document, selection, {
     operation: "repair",
     repairScope: "resources",

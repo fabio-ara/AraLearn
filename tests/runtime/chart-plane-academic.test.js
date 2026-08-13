@@ -68,6 +68,19 @@ test("plane acadêmico diferencia pontos, vetores aplicados e regiões em domín
   assert.ok(specification.layer.some(({ mark, encoding }) => mark?.type === "line" && !mark?.point && encoding?.strokeDash?.field === "tone"));
   assert.equal(specification.layer.filter(({ mark }) => mark?.shape === "triangle-up").length, 0);
   assert.ok(specification.layer.some(({ mark, encoding }) => mark?.type === "point" && mark?.shape === "circle" && !encoding?.shape));
+  const vectorLabels = Object.fromEntries(
+    specification.layer
+      .filter(({ mark }) => mark?.type === "text")
+      .flatMap(({ data: layerData }) => layerData?.values || [])
+      .filter(({ id }) => ["e1", "e2", "ae1", "ae2"].includes(id))
+      .map((value) => [value.id, value])
+  );
+  assert.ok(vectorLabels.e1.labelX > 0 && vectorLabels.e1.labelX < 1);
+  assert.ok(vectorLabels.e1.labelY > 0);
+  assert.ok(vectorLabels.e2.labelX < 0);
+  assert.ok(vectorLabels.e2.labelY > 0 && vectorLabels.e2.labelY < 1);
+  assert.notEqual(vectorLabels.e1.labelX, data.vectors[0].to[0]);
+  assert.notEqual(vectorLabels.e2.labelY, data.vectors[1].to[1]);
 });
 
 test("plane rejeita agrupamento cromático ambíguo", () => {

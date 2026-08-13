@@ -370,7 +370,13 @@ test("plano cartesiano complexo preserva eixos, objetos e rótulos sem colisão"
     const expected = new Set(["e₁", "e₂", "Ae₁", "Ae₂", "p", "Ap"]);
     const labels = [...canvas.querySelectorAll("svg text")]
       .filter((element) => expected.has(element.textContent.trim()))
-      .map((element) => ({ text: element.textContent.trim(), rect: element.getBoundingClientRect() }));
+      .map((element) => ({
+        text: element.textContent.trim(),
+        rect: element.getBoundingClientRect(),
+        fill: getComputedStyle(element).fill,
+        stroke: getComputedStyle(element).stroke,
+        strokeWidth: getComputedStyle(element).strokeWidth
+      }));
     const overlaps = [];
     for (let leftIndex = 0; leftIndex < labels.length; leftIndex += 1) {
       for (let rightIndex = leftIndex + 1; rightIndex < labels.length; rightIndex += 1) {
@@ -397,6 +403,35 @@ test("plano cartesiano complexo preserva eixos, objetos e rótulos sem colisão"
     const swatchColors = [...canvas.closest("figure").querySelectorAll(".package-plane-swatch")]
       .map((swatch) => getComputedStyle(swatch).backgroundColor);
     const vectorShafts = [...canvas.querySelectorAll('svg g.mark-rule.role-mark line[x2][y2]')];
+    const distanceToSegment = (point, start, end) => {
+      const deltaX = end.x - start.x;
+      const deltaY = end.y - start.y;
+      const lengthSquared = (deltaX ** 2) + (deltaY ** 2);
+      const ratio = lengthSquared
+        ? Math.max(0, Math.min(1, (((point.x - start.x) * deltaX) + ((point.y - start.y) * deltaY)) / lengthSquared))
+        : 0;
+      return Math.hypot(
+        point.x - (start.x + (ratio * deltaX)),
+        point.y - (start.y + (ratio * deltaY))
+      );
+    };
+    const vectorLabelOrder = ["e₁", "e₂", "Ae₁", "Ae₂"];
+    const vectorLabelDistances = vectorShafts.map((shaft, index) => {
+      const matrix = shaft.getScreenCTM();
+      const svg = shaft.ownerSVGElement;
+      const endpoint = (xName, yName) => {
+        const point = svg.createSVGPoint();
+        point.x = Number(shaft.getAttribute(xName));
+        point.y = Number(shaft.getAttribute(yName));
+        return point.matrixTransform(matrix);
+      };
+      const label = labels.find(({ text: labelText }) => labelText === vectorLabelOrder[index]);
+      return distanceToSegment(
+        { x: label.rect.left + (label.rect.width / 2), y: label.rect.top + (label.rect.height / 2) },
+        endpoint("x1", "y1"),
+        endpoint("x2", "y2")
+      );
+    });
     const arrowMarkers = vectorShafts.map((shaft) => {
       const markerId = /^url\(#(.+)\)$/u.exec(shaft.getAttribute("marker-end") || "")?.[1];
       const marker = markerId ? canvas.querySelector(`svg marker[id="${markerId}"]`) : null;
@@ -416,6 +451,8 @@ test("plano cartesiano complexo preserva eixos, objetos e rótulos sem colisão"
     });
     return {
       labels: labels.map(({ text }) => text),
+      labelPaint: labels.map(({ text, fill, stroke, strokeWidth }) => ({ text, fill, stroke, strokeWidth })),
+      vectorLabelDistances,
       overlaps,
       swatchColors,
       contrasts,
@@ -425,6 +462,10 @@ test("plano cartesiano complexo preserva eixos, objetos e rótulos sem colisão"
     };
   });
   expect(geometry.labels.sort()).toEqual(["Ae₁", "Ae₂", "Ap", "e₁", "e₂", "p"].sort());
+  expect(geometry.labelPaint.every(({ fill, stroke, strokeWidth }) =>
+    fill !== "none" && fill !== "rgba(0, 0, 0, 0)" &&
+    (stroke === "none" || strokeWidth === "0px"))).toBe(true);
+  expect(Math.max(...geometry.vectorLabelDistances)).toBeLessThanOrEqual(20);
   expect(geometry.overlaps).toEqual([]);
   expect(new Set(geometry.swatchColors).size).toBe(2);
   expect(Math.min(...geometry.contrasts)).toBeGreaterThanOrEqual(3);

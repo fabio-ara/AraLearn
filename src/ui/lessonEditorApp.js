@@ -2876,6 +2876,7 @@ export function createLessonEditorApp({
         requestedSelection,
         {
           request: request.promptText,
+          assistantResponse: submission.change.assistantMessage,
           scope: request.repairScope,
           targetIds: request.resourceTargetIds,
           modelId: submission.modelId

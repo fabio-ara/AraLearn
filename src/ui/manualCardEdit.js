@@ -24,14 +24,8 @@ function writePath(target, path, rawValue) {
   if (last === undefined) return false;
   const parent = segments.reduce((value, segment) => value?.[segment], target);
   if (!parent || typeof parent !== "object" || !Object.hasOwn(parent, last)) return false;
-  const current = parent[last];
-  if (typeof current === "number") {
-    const numeric = Number(String(rawValue).trim());
-    if (!Number.isFinite(numeric)) return false;
-    parent[last] = numeric;
-  } else {
-    parent[last] = String(rawValue ?? "");
-  }
+  if (typeof parent[last] !== "string") return false;
+  parent[last] = String(rawValue ?? "");
   return true;
 }
 
@@ -63,12 +57,16 @@ function resolveTarget(card, targetId) {
 export function listManualCardEditablePaths(card = {}, targetId = "card") {
   const resolved = resolveTarget(card, targetId);
   if (!resolved) return [];
-  return resolved.targets.map((target) => ({
-    path: target.path,
-    label: target.label || target.path,
-    value: readPath(resolved.value, target.path),
-    valueType: typeof readPath(resolved.value, target.path)
-  }));
+  return resolved.targets.map((target) => {
+    const value = readPath(resolved.value, target.path);
+    return {
+      path: target.path,
+      label: target.label || target.path,
+      value,
+      valueType: typeof value,
+      preserveWhitespace: target.preserveWhitespace === true
+    };
+  }).filter(({ valueType }) => valueType === "string");
 }
 
 export function buildManualCardEditModel(card = {}, targetId = "card") {
@@ -94,7 +92,11 @@ export function applyManualCardEdit(card = {}, targetId = "card", values = {}) {
   const nextCard = structuredClone(card);
   const resolved = resolveTarget(nextCard, targetId);
   if (!resolved) throw new Error("O recurso selecionado deixou de existir.");
-  const allowedPaths = new Set(resolved.targets.map(({ path }) => path));
+  const allowedPaths = new Set(
+    resolved.targets
+      .filter(({ path }) => typeof readPath(resolved.value, path) === "string")
+      .map(({ path }) => path)
+  );
   const pathValues = values?.pathValues && typeof values.pathValues === "object"
     ? values.pathValues
     : targetId === "card" && Object.hasOwn(values || {}, "title")

@@ -208,7 +208,14 @@ async function bootAuthoring(page) {
         } else {
           current.content[0].data.text = "P e Q devem ser simultaneamente verdadeiras.";
         }
-        return { value: { card: current } };
+        return {
+          value: {
+            message: envelope.repairScope === "card"
+              ? "Reescrevi o título e a explicação do card."
+              : "Reescrevi o texto selecionado e preservei o restante do card.",
+            card: current
+          }
+        };
       }
     };
     globalThis.__packageAuthoringProbe = probe;
@@ -281,6 +288,9 @@ test("edição manual altera só data e preserva o package", async ({ page }) =>
   await openFirstCard(page);
   await selectMode(page, "edit");
   await packageTarget(page, "content:paragraph-1").click();
+  await expect(page.locator(".package-manual-editor-head")).toContainText("Textos editáveis");
+  await expect(page.locator(".package-manual-editor-head")).toContainText("Texto explicado");
+  await expect(page.locator(".package-manual-context")).not.toHaveAttribute("open", "");
   const field = page.locator(
     '[data-resource-edit-target="content:paragraph-1"] [data-manual-edit-path="text"]'
   );
@@ -363,12 +373,20 @@ test("IA mantém conversa de reparo no mesmo card sem persistir o diálogo", asy
   await selectMode(page, "ai");
   await packageTarget(page, "content:paragraph-1").click();
   await page.locator('[data-action="toggle-card-assistance-composer"]').click();
+  await expect(page.locator(".card-assistance-scope")).toContainText("A IA pode alterar");
+  await expect(page.locator(".card-assistance-scope")).toContainText("Texto");
+  await expect(page.locator(".card-assistance-scope")).toContainText("Contexto somente leitura");
   const prompt = page.locator('[data-field="assist-prompt"]');
   await prompt.fill("Primeiro, situe o conceito.");
   await page.locator('[data-action="submit-card-assistance"]').click();
   await expect(prompt).toBeVisible();
   await expect(prompt).toHaveValue("");
   await expect(page.locator(".card-assistance-conversation")).toContainText("Primeiro, situe o conceito.");
+  await expect(page.locator(".card-assistance-conversation")).toContainText(
+    "Reescrevi o texto selecionado e preservei o restante do card."
+  );
+  await expect(page.locator(".card-assistance-message-bubble.is-user")).toHaveCount(1);
+  await expect(page.locator(".card-assistance-message-bubble.is-assistant")).toHaveCount(1);
   await prompt.fill("Agora acrescente um exemplo curto.");
   await page.locator('[data-action="submit-card-assistance"]').click();
 
@@ -381,6 +399,8 @@ test("IA mantém conversa de reparo no mesmo card sem persistir o diálogo", asy
   expect(secondEnvelope.priorRepairConversation).toHaveLength(1);
   expect(secondEnvelope.priorRepairConversation[0].userRequest)
     .toBe("Primeiro, situe o conceito.");
+  expect(secondEnvelope.priorRepairConversation[0].assistantResponse)
+    .toBe("Reescrevi o texto selecionado e preservei o restante do card.");
   expect(secondEnvelope.userRequest).toBe("Agora acrescente um exemplo curto.");
   expect(JSON.stringify(probe.localState)).not.toContain("Primeiro, situe o conceito.");
   expect(JSON.stringify(probe.localState)).not.toContain("Agora acrescente um exemplo curto.");
