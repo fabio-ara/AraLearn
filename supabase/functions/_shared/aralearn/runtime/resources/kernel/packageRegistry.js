@@ -12,12 +12,6 @@ const PRACTICE_MODES = Object.freeze([
   "matching",
   "classification"
 ]);
-const UNIVERSAL_CONTENT_RESPONSES = Object.freeze([
-  "aralearn.response.gap",
-  "aralearn.response.ordering",
-  "aralearn.response.matching"
-]);
-
 function clone(value) {
   return structuredClone(value);
 }
@@ -28,6 +22,40 @@ function freezeClone(value) {
 
 function text(value) {
   return typeof value === "string" ? value.trim() : "";
+}
+
+function readPath(root, path) {
+  return (String(path || "").match(/[^.[\]]+|\[(\d+)\]/gu) || [])
+    .map((segment) => segment.startsWith("[") ? Number(segment.slice(1, -1)) : segment)
+    .reduce((current, segment) => current?.[segment], root);
+}
+
+function validatePracticeTargets(definition, data) {
+  const targets = definition.practiceTargets(data);
+  if (!Array.isArray(targets)) {
+    return [`${definition.manifest.id}.practiceTargets() precisa devolver uma lista.`];
+  }
+  return targets.flatMap((target, index) => {
+    const errors = [];
+    const modes = Array.isArray(target?.modes) ? target.modes : [];
+    if (!text(target?.path) || !text(target?.label)) {
+      errors.push(`${definition.manifest.id}.practiceTargets()[${index}] precisa de path e label.`);
+    }
+    if (!modes.length || modes.some((mode) => !["gap", "typing"].includes(mode))) {
+      errors.push(`${definition.manifest.id}.practiceTargets()[${index}] declara modo inválido.`);
+    }
+    if (typeof readPath(data, target?.path) !== "string") {
+      errors.push(`${definition.manifest.id}.practiceTargets()[${index}] não aponta para campo textual.`);
+    }
+    return errors;
+  });
+}
+
+function resolvedPracticeTargets(definition, data) {
+  const targets = definition.practiceTargets(data);
+  return Array.isArray(targets)
+    ? targets.filter((target) => text(readPath(data, target?.path)))
+    : [];
 }
 
 function assertNonEmptyList(value, label) {
@@ -66,13 +94,6 @@ function assertAcademicManifest(manifest) {
   if (manifest.slots.includes("content") && !academic.practiceModes.includes("exposition")) {
     throw new TypeError(`${manifest.id} precisa declarar exposição em practiceModes.`);
   }
-  if (manifest.slots.includes("content")) {
-    for (const mode of ["gap", "typing", "ordering", "matching"]) {
-      if (!academic.practiceModes.includes(mode)) {
-        throw new TypeError(`${manifest.id} precisa admitir a prática ${mode}.`);
-      }
-    }
-  }
 }
 
 export function assertPackageDefinition(definition) {
@@ -109,6 +130,9 @@ export function assertPackageDefinition(definition) {
       throw new TypeError(`${manifest.id} precisa implementar ${method}().`);
     }
   }
+  if (manifest.slots.includes("content") && typeof definition.practiceTargets !== "function") {
+    throw new TypeError(`${manifest.id} ocupa content e precisa implementar practiceTargets().`);
+  }
   if (manifest.slots.includes("response") && typeof definition.evaluate !== "function") {
     throw new TypeError(`${manifest.id} ocupa response e precisa implementar evaluate().`);
   }
@@ -117,9 +141,6 @@ export function assertPackageDefinition(definition) {
 
 function publicManifest(definition) {
   const manifest = definition.manifest;
-  const responseCompatibility = manifest.slots.includes("content")
-    ? [...new Set([...(manifest.responseCompatibility || []), ...UNIVERSAL_CONTENT_RESPONSES])]
-    : manifest.responseCompatibility || [];
   return freezeClone({
     id: manifest.id,
     version: manifest.version,
@@ -127,7 +148,7 @@ function publicManifest(definition) {
     purpose: manifest.purpose,
     slots: manifest.slots,
     cognitiveOperations: manifest.cognitiveOperations,
-    responseCompatibility,
+    responseCompatibility: manifest.responseCompatibility || [],
     limitations: manifest.limitations || [],
     accessibility: manifest.accessibility || "",
     academic: manifest.academic
@@ -183,6 +204,9 @@ export function createPackageRegistry(packageDefinitions = []) {
     if (schemaValidation.valid) {
       const semanticErrors = definition.validate(instance.data);
       if (Array.isArray(semanticErrors)) errors.push(...semanticErrors.filter(Boolean).map(String));
+      if (slot === "content" && definition.manifest.slots.includes("content")) {
+        errors.push(...validatePracticeTargets(definition, instance.data));
+      }
     }
     return { valid: errors.length === 0, errors };
   }
@@ -195,12 +219,16 @@ export function createPackageRegistry(packageDefinitions = []) {
     },
     getAuthoringContract(packageId, version) {
       const definition = requirePackage(packageId, version);
+      const exampleData = definition.normalize(clone(definition.authoringContract.example));
       return clone({
         package: definition.manifest.id,
         version: definition.manifest.version,
         manifest: definition.manifest,
         contract: definition.authoringContract,
-        schema: definition.schema
+        schema: definition.schema,
+        ...(definition.manifest.slots.includes("content")
+          ? { practiceTargets: resolvedPracticeTargets(definition, exampleData) }
+          : {})
       });
     },
     get,
@@ -221,7 +249,12 @@ export function createPackageRegistry(packageDefinitions = []) {
       if (!card?.response) return [];
       const definition = get(card.response.package, card.response.version);
       if (typeof definition?.validateCard !== "function") return [];
-      const errors = definition.validateCard(clone(card));
+      const errors = definition.validateCard(clone(card), {
+        practiceTargets(instance) {
+          const contentDefinition = requirePackage(instance.package, instance.version);
+          return clone(resolvedPracticeTargets(contentDefinition, instance.data));
+        }
+      });
       return Array.isArray(errors) ? errors.filter(Boolean).map(String) : [];
     },
     prepareCardForSemantics(card) {
@@ -257,6 +290,12 @@ export function createPackageRegistry(packageDefinitions = []) {
       const validation = validateInstance(instance, slot);
       if (!validation.valid) throw new TypeError(validation.errors.join(" "));
       return clone(requirePackage(instance.package, instance.version).editableTargets(instance.data));
+    },
+    practiceTargets(instance, slot = "content") {
+      const validation = validateInstance(instance, slot);
+      if (!validation.valid) throw new TypeError(validation.errors.join(" "));
+      const definition = requirePackage(instance.package, instance.version);
+      return clone(resolvedPracticeTargets(definition, instance.data));
     },
     evaluateResponse(instance, answer) {
       const validation = validateInstance(instance, "response");

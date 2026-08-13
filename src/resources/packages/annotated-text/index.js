@@ -30,5 +30,6 @@ export const annotatedTextPackage = Object.freeze({
     return `<div class="runtime-block runtime-annotated-text-block">${data.prompt ? renderPackageProse(data.prompt) : ""}${segments}${annotations}</div>`;
   },
   accessibleText(data) { return [...data.segments.map(({ text }) => text), ...data.annotations.map((item) => `${item.label}: ${item.note}`)].join(" "); },
-  editableTargets(data) { return [...data.segments.map((_, index) => ({ path: `segments[${index}].text`, label: `Editar trecho ${index + 1}` })), ...data.annotations.flatMap((_, index) => [{ path: `annotations[${index}].label`, label: `Editar rótulo ${index + 1}` }, { path: `annotations[${index}].note`, label: `Editar anotação ${index + 1}` }])]; }
+  editableTargets(data) { return [...data.segments.map((_, index) => ({ path: `segments[${index}].text`, label: `Editar trecho ${index + 1}` })), ...data.annotations.flatMap((_, index) => [{ path: `annotations[${index}].label`, label: `Editar rótulo ${index + 1}` }, { path: `annotations[${index}].note`, label: `Editar anotação ${index + 1}` }])]; },
+  practiceTargets(data) { return [...data.segments.map((_, index) => ({ path: `segments[${index}].text`, label: `Lacuna no trecho ${index + 1}`, modes: ["gap", "typing"] })), ...data.annotations.map((_, index) => ({ path: `annotations[${index}].note`, label: `Lacuna na anotação ${index + 1}`, modes: ["gap", "typing"] }))]; }
 });

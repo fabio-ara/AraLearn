@@ -5,7 +5,7 @@ const themes = ["light", "dark"];
 
 for (const theme of themes) {
   for (const width of widths) {
-    test(`96 cards não criam overflow em ${width}px no modo ${theme}`, async ({ page }) => {
+    test(`73 cards declarados não criam overflow em ${width}px no modo ${theme}`, async ({ page }) => {
       await page.setViewportSize({ width, height: 900 });
       await page.addInitScript((selectedTheme) => {
         localStorage.setItem("aralearn.ui.theme", selectedTheme);
@@ -15,9 +15,9 @@ for (const theme of themes) {
       await page.goto("/tests/gallery/resource-test-matrix.html");
       await page.waitForFunction(() => globalThis.__RESOURCE_TEST_MATRIX_READY__ === true);
 
-      await expect(page.locator(".resource-test-card")).toHaveCount(96);
+      await expect(page.locator(".resource-test-card")).toHaveCount(73);
       await expect(page.locator('.resource-test-card[data-package="aralearn.resource.relation_map"]'))
-        .toHaveCount(4);
+        .toHaveCount(3);
       await expect(page.locator(".package-relation-pairs")).toHaveCount(0);
       const audit = await page.evaluate(() => ({
         documentOverflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,

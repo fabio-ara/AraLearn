@@ -23,5 +23,6 @@ export const flowPackage = Object.freeze({
   normalize(data) { return { ...(data?.prompt ? { prompt: String(data.prompt).trim() } : {}), structure: normalizeFlowchartStructure(data?.structure) }; },
   validate(data) { const result = validateFlowchartStructureContract(data.structure); return result.valid ? [] : result.findings.map((error) => String(error)); },
   render(data) { return `<div class="runtime-block runtime-flow-block package-flow-semantic">${data.prompt ? renderPackageProse(data.prompt) : ""}<ol class="package-flow-tree">${renderFlowNode(data.structure)}</ol></div>`; },
-  accessibleText(data) { return [data.prompt, ...flattenFlow(data.structure)].filter(Boolean).join(". "); }, editableTargets(data) { return [...(data.prompt ? [{ path: "prompt", label: "Editar orientação" }] : []), ...flowEditableTargets(data.structure)]; }
+  accessibleText(data) { return [data.prompt, ...flattenFlow(data.structure)].filter(Boolean).join(". "); }, editableTargets(data) { return [...(data.prompt ? [{ path: "prompt", label: "Editar orientação" }] : []), ...flowEditableTargets(data.structure)]; },
+  practiceTargets(data) { return flowEditableTargets(data.structure).map((target) => ({ ...target, label: target.label.replace("Editar", "Lacuna em"), modes: ["gap", "typing"] })); }
 });

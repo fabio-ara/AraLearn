@@ -4,14 +4,6 @@ const DEFAULT_AUTHORING = Object.freeze({
   structureEditing: false
 });
 
-const UNIVERSAL_CONTENT_PRACTICE_MODES = Object.freeze([
-  "exposition",
-  "gap",
-  "typing",
-  "ordering",
-  "matching"
-]);
-
 function freezeTextList(value) {
   return Object.freeze((Array.isArray(value) ? value : []).map((item) => String(item).trim()));
 }
@@ -23,12 +15,8 @@ export function academicProfile({
   appropriateWhen,
   avoidWhen,
   technologies,
-  practiceModes,
-  content = true
+  practiceModes
 }) {
-  const effectivePracticeModes = content
-    ? [...new Set([...UNIVERSAL_CONTENT_PRACTICE_MODES, ...(practiceModes || [])])]
-    : practiceModes;
   return Object.freeze({
     domains: freezeTextList(domains),
     knowledgeObjects: freezeTextList(knowledgeObjects),
@@ -36,7 +24,7 @@ export function academicProfile({
     appropriateWhen: freezeTextList(appropriateWhen),
     avoidWhen: freezeTextList(avoidWhen),
     technologies: freezeTextList(technologies),
-    practiceModes: freezeTextList(effectivePracticeModes),
+    practiceModes: freezeTextList(practiceModes),
     authoring: DEFAULT_AUTHORING
   });
 }

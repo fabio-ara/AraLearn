@@ -6,10 +6,7 @@ import { validateProjectDocument } from "../src/domain/aralearnProject.js";
 import { RESOURCE_PACKAGE_REGISTRY } from "../src/resources/packages/index.js";
 
 const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
-const outputPath = path.resolve(
-  scriptDirectory,
-  "../tests/fixtures/package/resource-test-course.json"
-);
+const outputPath = path.resolve(scriptDirectory, "../tests/fixtures/package/resource-test-course.json");
 
 function pathSegments(value) {
   return (String(value || "").match(/[^.[\]]+|\[(\d+)\]/gu) || []).map((segment) => (
@@ -23,39 +20,45 @@ function readPath(root, value) {
 
 function answerFragment(value) {
   const source = String(value || "").trim();
-  const words = source.match(/[\p{L}\p{N}][\p{L}\p{N}_.:/+-]*/gu) || [];
-  const candidates = words.filter((word) => word.length >= 3 && word.length <= 36);
+  const words = source.match(/[\p{L}\p{N}_][\p{L}\p{N}_.:/+-]*/gu) || [];
+  const candidates = words.filter((word) => word.length >= 2 && word.length <= 36);
   return candidates.sort((left, right) => right.length - left.length)[0] || source.slice(0, 36);
 }
 
-function contentInstance(manifest, id) {
-  const contract = RESOURCE_PACKAGE_REGISTRY.getAuthoringContract(
-    manifest.id,
-    manifest.version
-  );
+function normalizeInstance({ id, packageId, version, data, slot }) {
   return RESOURCE_PACKAGE_REGISTRY.normalizeInstance({
     id,
-    package: manifest.id,
+    package: packageId,
+    version,
+    data
+  }, slot);
+}
+
+function exampleInstance(manifest, id) {
+  const contract = RESOURCE_PACKAGE_REGISTRY.getAuthoringContract(manifest.id, manifest.version);
+  return normalizeInstance({
+    id,
+    packageId: manifest.id,
     version: manifest.version,
-    data: contract.contract.example
-  }, "content");
+    data: contract.contract.example,
+    slot: "content"
+  });
 }
 
 function gapResponse(instance, mode, id) {
-  const targets = RESOURCE_PACKAGE_REGISTRY.editableTargets(instance, "content");
-  const target = targets
+  const requiredMode = mode === "choice" ? "gap" : "typing";
+  const target = RESOURCE_PACKAGE_REGISTRY.practiceTargets(instance)
+    .filter((entry) => entry.modes.includes(requiredMode))
     .map((entry) => ({ ...entry, value: readPath(instance.data, entry.path) }))
     .find((entry) => typeof entry.value === "string" && answerFragment(entry.value));
-  if (!target) throw new Error(`${instance.package} não oferece alvo textual para lacuna.`);
+  if (!target) return null;
   const answer = answerFragment(target.value);
-  return RESOURCE_PACKAGE_REGISTRY.normalizeInstance({
+  return normalizeInstance({
     id,
-    package: "aralearn.response.gap",
+    packageId: "aralearn.response.gap",
     version: "1.0.0",
+    slot: "response",
     data: {
-      prompt: mode === "choice"
-        ? "Complete a lacuna escolhendo o termo que pertence à representação."
-        : "Digite o termo retirado da representação.",
       blanks: [{
         id: "blank-1",
         targetInstanceId: instance.id,
@@ -64,37 +67,20 @@ function gapResponse(instance, mode, id) {
         responseMode: mode,
         answer,
         ...(mode === "choice"
-          ? { distractors: ["termo inadequado", "outra possibilidade"] }
+          ? { distractors: [`não ${answer}`, `outro ${answer}`] }
           : {})
       }]
     }
-  }, "response");
+  });
 }
 
-function orderingResponse(id) {
-  return RESOURCE_PACKAGE_REGISTRY.normalizeInstance({
-    id,
-    package: "aralearn.response.ordering",
-    version: "2.0.0",
-    data: {
-      prompt: "Ordene os gestos de leitura desta representação.",
-      items: [
-        { id: "interpret", label: "Interpretar as relações apresentadas" },
-        { id: "observe", label: "Observar os elementos e a convenção usada" },
-        { id: "conclude", label: "Formular a conclusão sustentada pela representação" }
-      ],
-      answerOrder: ["observe", "interpret", "conclude"]
-    }
-  }, "response");
-}
-
-function card({ id, position, title, content, response = null }) {
+function card({ id, position, title, content = [], response = null }) {
   return {
     id,
     position,
     title,
     role: response ? "practice" : "theory",
-    content: [content],
+    content,
     response,
     feedback: [],
     topics: [],
@@ -102,78 +88,177 @@ function card({ id, position, title, content, response = null }) {
   };
 }
 
-const contentManifests = RESOURCE_PACKAGE_REGISTRY.listCatalog()
-  .filter(({ slots }) => slots.includes("content"));
-
-const modules = contentManifests.map((manifest, index) => {
-  const prefix = `resource-test-${index + 1}`;
-  const exposition = contentInstance(manifest, `${prefix}-exposition-content`);
-  const choiceGap = contentInstance(manifest, `${prefix}-gap-content`);
-  const typingGap = contentInstance(manifest, `${prefix}-typing-content`);
-  const ordering = contentInstance(manifest, `${prefix}-ordering-content`);
-  const cards = [
-    card({ id: `${prefix}-exposition`, position: 1, title: "Exposição", content: exposition }),
-    card({ id: `${prefix}-gap`, position: 2, title: "Lacuna com alternativas", content: choiceGap, response: gapResponse(choiceGap, "choice", `${prefix}-gap-response`) }),
-    card({ id: `${prefix}-typing`, position: 3, title: "Lacuna com digitação", content: typingGap, response: gapResponse(typingGap, "text", `${prefix}-typing-response`) }),
-    card({ id: `${prefix}-ordering`, position: 4, title: "Blocos de ordenação", content: ordering, response: orderingResponse(`${prefix}-ordering-response`) })
-  ];
+function moduleForCards({ id, title, goal, cards, conventions = ["representação legível"] }) {
   return {
-    id: `${prefix}-module`,
-    title: manifest.label,
+    id: `${id}-module`,
+    title,
     guide: {
-      goal: `Avaliar ${manifest.id} nas quatro modalidades comuns.`,
-      include: [manifest.purpose],
-      exclude: ["avaliação de conteúdo disciplinar"],
-      notation: manifest.academic.conventions,
-      avoid: manifest.academic.avoidWhen
+      goal,
+      include: ["representação canônica e interação declarada"],
+      exclude: ["adaptação artificial de outra operação cognitiva"],
+      notation: conventions,
+      avoid: ["usar a forma quando ela não acrescenta significado"]
     },
     lessons: [{
-      id: `${prefix}-lesson`,
-      title: manifest.id,
+      id: `${id}-lesson`,
+      title,
       guide: {
-        goal: "Comparar a mesma representação sem prática e com três formas de resposta.",
-        include: ["exposição", "lacuna", "digitação", "ordenação"],
-        exclude: ["alteração estrutural do package"],
-        notation: manifest.academic.conventions,
-        avoid: manifest.limitations
+        goal,
+        include: ["exposição e práticas semanticamente suportadas"],
+        exclude: ["práticas universais presumidas"],
+        notation: conventions,
+        avoid: ["lacuna fora da representação"]
       },
       topics: [],
       microsequences: [{
-        id: `${prefix}-microsequence`,
-        title: manifest.label,
-        goal: `Inspecionar a adequação acadêmica e a responsividade de ${manifest.id}.`,
+        id: `${id}-microsequence`,
+        title,
+        goal,
         role: "practice",
         dependsOn: [],
         covers: [],
-        checks: ["sem sobreposição", "notação acadêmica", "interação acessível"],
+        checks: ["sem sobreposição", "alvo de prática dentro da representação", "Play como confirmação"],
         errors: [],
         cards
       }]
     }]
   };
+}
+
+const contentManifests = RESOURCE_PACKAGE_REGISTRY.listCatalog({ slot: "content" });
+const contentModules = contentManifests.map((manifest, index) => {
+  const prefix = `resource-test-${index + 1}`;
+  const cards = [];
+  const exposition = exampleInstance(manifest, `${prefix}-exposition-content`);
+  cards.push(card({ id: `${prefix}-exposition`, position: cards.length + 1, title: "Exposição", content: [exposition] }));
+
+  for (const mode of ["choice", "text"]) {
+    const practiceContent = exampleInstance(manifest, `${prefix}-${mode}-content`);
+    const response = gapResponse(practiceContent, mode, `${prefix}-${mode}-response`);
+    if (!response) continue;
+    cards.push(card({
+      id: `${prefix}-${mode}`,
+      position: cards.length + 1,
+      title: mode === "choice" ? "Lacuna com alternativas" : "Lacuna com digitação",
+      content: [practiceContent],
+      response
+    }));
+  }
+
+  return moduleForCards({
+    id: prefix,
+    title: manifest.label,
+    goal: `Avaliar ${manifest.id} somente nas modalidades declaradas pelo próprio package.`,
+    cards,
+    conventions: manifest.academic.conventions
+  });
 });
 
+function paragraphContent(id, text) {
+  return normalizeInstance({
+    id,
+    packageId: "aralearn.resource.paragraph",
+    version: "1.0.0",
+    slot: "content",
+    data: { text }
+  });
+}
+
+const choiceResponse = normalizeInstance({
+  id: "response-choice",
+  packageId: "aralearn.response.choice",
+  version: "1.0.0",
+  slot: "response",
+  data: {
+    question: "Qual protocolo oferece entrega confiável e ordenada?",
+    selectionMode: "single",
+    selectionCriterion: "correct",
+    options: [{ id: "tcp", text: "TCP" }, { id: "udp", text: "UDP" }],
+    answerIds: ["tcp"]
+  }
+});
+
+const gapChoiceContent = paragraphContent(
+  "response-gap-choice-content",
+  "Na arquitetura cliente-servidor, o cliente envia a requisição e o servidor envia a resposta."
+);
+const gapChoiceResponse = normalizeInstance({
+  id: "response-gap-choice",
+  packageId: "aralearn.response.gap",
+  version: "1.0.0",
+  slot: "response",
+  data: {
+    blanks: [
+      { id: "actor", targetInstanceId: gapChoiceContent.id, targetPath: "text", responseMode: "choice", answer: "cliente", distractors: ["servidor", "roteador"] },
+      { id: "message", targetInstanceId: gapChoiceContent.id, targetPath: "text", responseMode: "choice", answer: "resposta", distractors: ["requisição", "conexão"] }
+    ]
+  }
+});
+
+const gapTypingContent = paragraphContent(
+  "response-gap-typing-content",
+  "O DNS traduz nomes de domínio em endereços IP."
+);
+const gapTypingResponse = normalizeInstance({
+  id: "response-gap-typing",
+  packageId: "aralearn.response.gap",
+  version: "1.0.0",
+  slot: "response",
+  data: {
+    blanks: [{ id: "service", targetInstanceId: gapTypingContent.id, targetPath: "text", responseMode: "text", answer: "DNS" }]
+  }
+});
+
+const orderingResponse = normalizeInstance({
+  id: "response-ordering",
+  packageId: "aralearn.response.ordering",
+  version: "2.0.0",
+  slot: "response",
+  data: {
+    prompt: "Ordene as etapas da resolução iterativa de um nome.",
+    items: [{ id: "root", label: "Consultar um servidor raiz" }, { id: "query", label: "Receber a consulta do cliente" }, { id: "answer", label: "Devolver o endereço encontrado" }],
+    answerOrder: ["query", "root", "answer"]
+  }
+});
+
+const matchingResponse = normalizeInstance({
+  id: "response-matching",
+  packageId: "aralearn.response.matching",
+  version: "1.0.0",
+  slot: "response",
+  data: {
+    prompt: "Associe cada protocolo à função principal.",
+    mode: "one-to-one",
+    leftItems: [{ id: "dns", label: "DNS" }, { id: "dhcp", label: "DHCP" }],
+    rightItems: [{ id: "names", label: "Resolver nomes" }, { id: "address", label: "Configurar endereços" }],
+    answerPairs: [{ leftId: "dns", rightId: "names" }, { leftId: "dhcp", rightId: "address" }]
+  }
+});
+
+const responseModules = [
+  moduleForCards({ id: "response-choice-test", title: "Escolha", goal: "Avaliar seleção e feedback por Play.", cards: [card({ id: "choice-card", position: 1, title: "Escolha", response: choiceResponse })] }),
+  moduleForCards({ id: "response-gap-test", title: "Lacuna", goal: "Avaliar lacunas independentes por alternativas e digitação.", cards: [card({ id: "gap-choice-card", position: 1, title: "Alternativas por lacuna", content: [gapChoiceContent], response: gapChoiceResponse }), card({ id: "gap-typing-card", position: 2, title: "Digitação na lacuna", content: [gapTypingContent], response: gapTypingResponse })] }),
+  moduleForCards({ id: "response-ordering-test", title: "Ordenação", goal: "Avaliar reconstrução de ordem como resposta independente.", cards: [card({ id: "ordering-card", position: 1, title: "Blocos de ordenação", response: orderingResponse })] }),
+  moduleForCards({ id: "response-matching-test", title: "Encaixe", goal: "Avaliar correspondências como resposta independente.", cards: [card({ id: "matching-card", position: 1, title: "Encaixe de correspondências", response: matchingResponse })] })
+];
+
+const modules = [...contentModules, ...responseModules];
 const project = {
   contract: "aralearn.library.v1",
   scope: "course",
   courses: [{
     id: "course-resource-test",
     title: "Teste de Recursos",
-    goal: "Avaliar cada package de conteúdo em exposição, lacuna, digitação e ordenação.",
+    goal: "Avaliar separadamente packages de representação e packages de resposta.",
     modules
   }]
 };
 
 const validation = validateProjectDocument(project);
-if (!validation.ok) {
-  throw new Error(`Curso de teste inválido:\n${JSON.stringify(validation.errors, null, 2)}`);
-}
+if (!validation.ok) throw new Error(`Curso de teste inválido:\n${JSON.stringify(validation.errors, null, 2)}`);
 
-const cardCount = modules.reduce(
-  (total, moduleValue) => total + moduleValue.lessons[0].microsequences[0].cards.length,
-  0
-);
+const cardCount = modules.reduce((total, moduleValue) => (
+  total + moduleValue.lessons[0].microsequences[0].cards.length
+), 0);
 fs.writeFileSync(outputPath, `${JSON.stringify(validation.value, null, 2)}\n`, "utf8");
-console.log(
-  `Curso de teste gerado em ${outputPath}: ${contentManifests.length} resources, ${cardCount} cards.`
-);
+console.log(`Curso de teste gerado em ${outputPath}: ${modules.length} packages, ${cardCount} cards.`);

@@ -70,13 +70,7 @@ test("kernel registra package sem conhecer paragraph", () => {
     assert.equal(manifest.academic.authoring.aiSelection, true, manifest.id);
     assert.equal(manifest.academic.authoring.structureEditing, false, manifest.id);
     if (manifest.slots.includes("content")) {
-      assert.ok(manifest.academic.practiceModes.includes("gap"), manifest.id);
-      assert.ok(manifest.academic.practiceModes.includes("typing"), manifest.id);
-      assert.ok(manifest.academic.practiceModes.includes("ordering"), manifest.id);
-      assert.ok(manifest.academic.practiceModes.includes("matching"), manifest.id);
-      assert.ok(manifest.responseCompatibility.includes("aralearn.response.gap"), manifest.id);
-      assert.ok(manifest.responseCompatibility.includes("aralearn.response.ordering"), manifest.id);
-      assert.ok(manifest.responseCompatibility.includes("aralearn.response.matching"), manifest.id);
+      assert.ok(manifest.academic.practiceModes.includes("exposition"), manifest.id);
       const contract = RESOURCE_PACKAGE_REGISTRY.getAuthoringContract(manifest.id, manifest.version);
       const instance = RESOURCE_PACKAGE_REGISTRY.normalizeInstance({
         id: `selection-${manifest.id}`,
@@ -90,7 +84,105 @@ test("kernel registra package sem conhecer paragraph", () => {
         assert.ok(target.path, manifest.id);
         assert.ok(target.label, manifest.id);
       });
+      const practiceTargets = RESOURCE_PACKAGE_REGISTRY.practiceTargets(instance);
+      practiceTargets.forEach((target) => {
+        assert.notEqual(target.path, "prompt", `${manifest.id} não pode usar o enunciado como lacuna.`);
+        assert.ok(target.modes.length, manifest.id);
+        target.modes.forEach((mode) => assert.ok(["gap", "typing"].includes(mode), manifest.id));
+      });
     }
+  });
+});
+
+test("code e table declaram lacunas dentro da representação", () => {
+  const cases = [
+    ["aralearn.resource.code", "code"],
+    ["aralearn.resource.table", "rows[0][0]"]
+  ];
+  cases.forEach(([packageId, expectedPath], index) => {
+    const manifest = RESOURCE_PACKAGE_REGISTRY.listCatalog().find(({ id }) => id === packageId);
+    const contract = RESOURCE_PACKAGE_REGISTRY.getAuthoringContract(packageId, manifest.version);
+    const instance = RESOURCE_PACKAGE_REGISTRY.normalizeInstance({
+      id: `practice-target-${index}`,
+      package: packageId,
+      version: manifest.version,
+      data: contract.contract.example
+    }, "content");
+    const targets = RESOURCE_PACKAGE_REGISTRY.practiceTargets(instance);
+    assert.equal(targets[0].path, expectedPath);
+    assert.equal(targets.some(({ path }) => path === "prompt"), false);
+  });
+});
+
+test("gap rejeita campo editável que o package não declarou para prática", () => {
+  const content = {
+    id: "code-content",
+    package: "aralearn.resource.code",
+    version: "1.0.0",
+    data: { prompt: "Explique TCP.", language: "javascript", code: "const protocol = 'TCP';" }
+  };
+  const response = {
+    id: "invalid-gap",
+    package: "aralearn.response.gap",
+    version: "1.0.0",
+    data: { blanks: [{ id: "bad", targetInstanceId: content.id, targetPath: "prompt", responseMode: "text", answer: "TCP" }] }
+  };
+  const card = { ...theoryCard(), id: "invalid-target", role: "practice", content: [content], response };
+  assert.match(
+    validateCardEnvelope(card, RESOURCE_PACKAGE_REGISTRY).errors.join(" "),
+    /campo não declarado pelo package/u
+  );
+});
+
+test("todo alvo de prática do catálogo materializa a lacuna dentro do resource", () => {
+  const readPath = (root, path) => (
+    (String(path).match(/[^.[\]]+|\[(\d+)\]/gu) || [])
+      .map((segment) => segment.startsWith("[") ? Number(segment.slice(1, -1)) : segment)
+      .reduce((current, segment) => current?.[segment], root)
+  );
+  RESOURCE_PACKAGE_REGISTRY.listCatalog({ slot: "content" }).forEach((manifest, index) => {
+    const contract = RESOURCE_PACKAGE_REGISTRY.getAuthoringContract(manifest.id, manifest.version);
+    const content = RESOURCE_PACKAGE_REGISTRY.normalizeInstance({
+      id: `render-target-${index}`,
+      package: manifest.id,
+      version: manifest.version,
+      data: contract.contract.example
+    }, "content");
+    const target = RESOURCE_PACKAGE_REGISTRY.practiceTargets(content)[0];
+    if (!target) return;
+    const answer = readPath(content.data, target.path);
+    const responseMode = target.modes.includes("gap") ? "choice" : "text";
+    const response = RESOURCE_PACKAGE_REGISTRY.normalizeInstance({
+      id: `render-gap-${index}`,
+      package: "aralearn.response.gap",
+      version: "1.0.0",
+      data: {
+        blanks: [{
+          id: "target",
+          targetInstanceId: content.id,
+          targetPath: target.path,
+          responseMode,
+          answer,
+          ...(responseMode === "choice" ? { distractors: [`outro ${answer}`] } : {})
+        }]
+      }
+    }, "response");
+    const practiceCard = {
+      ...theoryCard(),
+      id: `render-practice-${index}`,
+      role: "practice",
+      content: [content],
+      response
+    };
+    const validation = validateCardEnvelope(practiceCard, RESOURCE_PACKAGE_REGISTRY);
+    assert.equal(validation.valid, true, `${manifest.id}: ${validation.errors.join(" ")}`);
+    const rendered = renderCardEnvelope(practiceCard, RESOURCE_PACKAGE_REGISTRY, {
+      cardResponse: response,
+      responseBlockKey: `gap-${index}`,
+      blockKey: `gap-${index}`,
+      responseState: { values: [] }
+    });
+    assert.match(rendered.contentHtml, /data-action="(?:text-gap-open-choice|complete-input)"/u, manifest.id);
   });
 });
 
@@ -135,6 +227,11 @@ test("contrato completo é obtido somente para o package escolhido", () => {
   assert.equal(contract.package, "aralearn.resource.paragraph");
   assert.deepEqual(contract.contract.required, ["text"]);
   assert.equal(contract.schema.properties.text.type, "string");
+  assert.deepEqual(contract.practiceTargets, [{
+    path: "text",
+    label: "Lacuna na explicação",
+    modes: ["gap", "typing"]
+  }]);
 });
 
 test("exemplos autorais de todos os packages instalados normalizam, validam e renderizam", () => {

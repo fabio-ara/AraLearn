@@ -42,5 +42,6 @@ export const treePackage = Object.freeze({
     return `<div class="runtime-block runtime-tree-block">${data.prompt ? `<div class="runtime-tree-prompt">${renderPackageProse(data.prompt)}</div>` : ""}<div class="runtime-tree-structure is-variant-${escapePackageAttribute(data.variant)}" role="tree" aria-label="${escapePackageAttribute(accessibleDescription)}">${renderChildren(null, children, data.variant)}</div></div>`;
   },
   accessibleText(data) { const labels = new Map(data.nodes.map((node) => [node.id, node.label])); return data.nodes.map((node) => `${node.label}${node.parentId ? `, filho de ${labels.get(node.parentId)}` : ", raiz"}`).join(". "); },
-  editableTargets(data) { return [...(data.prompt ? [{ path: "prompt", label: "Editar orientação" }] : []), ...data.nodes.map((_, index) => ({ path: `nodes[${index}].label`, label: `Editar nó ${index + 1}` }))]; }
+  editableTargets(data) { return [...(data.prompt ? [{ path: "prompt", label: "Editar orientação" }] : []), ...data.nodes.map((_, index) => ({ path: `nodes[${index}].label`, label: `Editar nó ${index + 1}` }))]; },
+  practiceTargets(data) { return data.nodes.map((_, index) => ({ path: `nodes[${index}].label`, label: `Lacuna no nó ${index + 1}`, modes: ["gap", "typing"] })); }
 });

@@ -6065,6 +6065,68 @@ input:-webkit-autofill:focus {
   font-size: var(--type-xs);
   overflow-wrap: anywhere;
 }
+.runtime-sequence-list {
+  display: grid;
+  gap: 0;
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.runtime-sequence-list > li {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 10px;
+  position: relative;
+  padding: 0 0 20px;
+}
+
+.runtime-sequence-list > li:last-child {
+  padding-bottom: 0;
+}
+
+.runtime-sequence-position {
+  display: grid;
+  place-items: center;
+  align-self: start;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--resource-border);
+  border-radius: 50%;
+  color: var(--resource-accent);
+  font-size: var(--type-xs);
+  font-weight: 700;
+}
+
+.runtime-sequence-content {
+  min-width: 0;
+  padding-top: 3px;
+}
+
+.runtime-sequence-content > p {
+  margin: 4px 0 0;
+  color: var(--resource-text-muted);
+}
+
+.runtime-sequence-connector {
+  position: absolute;
+  inset-block-end: 1px;
+  inset-inline-start: 8px;
+  width: 12px;
+  color: var(--resource-text-muted);
+  line-height: 18px;
+  text-align: center;
+}
+
+.runtime-sequence-list > li:not(:last-child)::after {
+  content: "";
+  position: absolute;
+  inset-block-start: 29px;
+  inset-block-end: 17px;
+  inset-inline-start: 13px;
+  border-inline-start: 1px solid var(--resource-border);
+}
+
 .package-ordering-response ol {
   display: grid;
   gap: 8px;

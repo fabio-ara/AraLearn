@@ -284,6 +284,8 @@ test("consulta de versão exata devolve manifest e schema do package escolhido",
   assert.ok(definition.manifest.purpose);
   assert.ok(definition.contract.intent);
   assert.equal(definition.schema.properties.variant.enum.includes("filesystem"), true);
+  assert.equal(definition.practiceTargets[0].path, "nodes[0].label");
+  assert.deepEqual(definition.practiceTargets[0].modes, ["gap", "typing"]);
 });
 
 test("consulta lista manifests e só envia schema para package e versão escolhidos", async () => {

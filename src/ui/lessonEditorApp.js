@@ -1795,7 +1795,7 @@ export function createLessonEditorApp({
     }
 
     const blank = blanks[blankIndex];
-    if (blank?.responseMode === "choice" && Array.isArray(blank.options) && blank.options.length) {
+    if (blank?.responseMode === "choice" && Array.isArray(blank.distractors) && blank.distractors.length) {
       state.activeTextGapPrompt = {
         blockKey,
         blankIndex
@@ -3634,6 +3634,13 @@ export function createLessonEditorApp({
     ensureCurrentCompleteExerciseState();
     const currentExercise = state.responseExerciseByBlockKey[blockKey] || { values: [], feedback: null };
     const currentValues = Array.isArray(currentExercise.values) ? currentExercise.values : [];
+    const numericBlankIndex = Number(blankIndex);
+    if (String(currentValues[numericBlankIndex] ?? "").trim()) {
+      setCompleteBlank(blockKey, numericBlankIndex, "", { rerender: false });
+      state.activeTextGapPrompt = null;
+      render({ preserveState: true });
+      return;
+    }
     if (currentExercise.feedback) {
       state.responseExerciseByBlockKey[blockKey] = {
         values: currentValues.slice(),
@@ -3642,7 +3649,7 @@ export function createLessonEditorApp({
     }
     state.activeTextGapPrompt = {
       blockKey,
-      blankIndex: Number(blankIndex)
+      blankIndex: numericBlankIndex
     };
     render({ preserveState: true });
   }
@@ -5669,11 +5676,6 @@ export function createLessonEditorApp({
         );
       });
     });
-    root.querySelectorAll("[data-action='ordering-validate']").forEach((node) => {
-      node.addEventListener("click", () => validateOrdering(
-        node.getAttribute("data-response-block-key")
-      ));
-    });
     root.querySelectorAll("[data-action='ordering-view-answer']").forEach((node) => {
       node.addEventListener("click", () => viewOrderingAnswer(
         node.getAttribute("data-response-block-key")
@@ -5689,11 +5691,6 @@ export function createLessonEditorApp({
         node.getAttribute("data-response-block-key"),
         node.getAttribute("data-matching-left-id"),
         node.value
-      ));
-    });
-    root.querySelectorAll("[data-action='matching-validate']").forEach((node) => {
-      node.addEventListener("click", () => validateMatching(
-        node.getAttribute("data-response-block-key")
       ));
     });
     root.querySelectorAll("[data-action='matching-view-answer']").forEach((node) => {

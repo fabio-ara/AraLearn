@@ -72,7 +72,7 @@ export const gapResponsePackage = Object.freeze({
   schema: Object.freeze({ type: "object", additionalProperties: false, required: ["blanks"], properties: { prompt: { type: "string", maxLength: 2000 }, blanks: { type: "array", minItems: 1, maxItems: 12, items: { type: "object", additionalProperties: false, required: ["id", "targetInstanceId", "targetPath", "responseMode", "answer"], properties: { id: { type: "string", minLength: 1 }, targetInstanceId: { type: "string", minLength: 1 }, targetPath: { type: "string", minLength: 1 }, label: { type: "string" }, responseMode: { type: "string", enum: ["text", "choice"] }, answer: { type: "string", minLength: 1 }, acceptedAnswers: { type: "array", uniqueItems: true, items: { type: "string", minLength: 1 } }, distractors: { type: "array", uniqueItems: true, items: { type: "string", minLength: 1 } } } } } } }),
   normalize(data) { return { ...(data?.prompt ? { prompt: String(data.prompt).trim() } : {}), blanks: (data?.blanks || []).map((blank) => ({ id: String(blank?.id || "").trim(), targetInstanceId: String(blank?.targetInstanceId || "").trim(), targetPath: String(blank?.targetPath || "").trim(), ...(blank?.label ? { label: String(blank.label).trim() } : {}), responseMode: String(blank?.responseMode || "text").trim(), answer: normalizeAnswer(blank?.answer), ...(blank?.acceptedAnswers ? { acceptedAnswers: blank.acceptedAnswers.map(normalizeAnswer) } : {}), ...(blank?.distractors ? { distractors: blank.distractors.map(normalizeAnswer) } : {}) })) }; },
   validate(data) { const errors = []; if (new Set(data.blanks.map(({ id }) => id)).size !== data.blanks.length) errors.push("Lacunas precisam de ids únicos."); data.blanks.forEach((blank) => { if (blank.responseMode === "choice" && (!blank.distractors || blank.distractors.length < 1)) errors.push(`Lacuna ${blank.id} por escolha precisa de distrator.`); if (blank.distractors?.includes(blank.answer)) errors.push(`Lacuna ${blank.id} repete a resposta nos distratores.`); }); return errors; },
-  validateCard(card) {
+  validateCard(card, registry) {
     const errors = [];
     const contents = new Map((card.content || []).map((instance) => [instance.id, instance]));
     const requiredByTarget = new Map();
@@ -83,6 +83,14 @@ export const gapResponsePackage = Object.freeze({
         return;
       }
       const path = fieldPath(blank.targetPath);
+      const requiredMode = blank.responseMode === "choice" ? "gap" : "typing";
+      const declaredTarget = registry?.practiceTargets(instance)?.find((target) => (
+        target.path === path && target.modes.includes(requiredMode)
+      ));
+      if (!declaredTarget) {
+        errors.push(`Lacuna ${blank.id} aponta para um campo não declarado pelo package para ${requiredMode}.`);
+        return;
+      }
       const source = readPath(instance.data, path);
       if (typeof source !== "string") {
         errors.push(`Lacuna ${blank.id} aponta para um campo textual inexistente.`);

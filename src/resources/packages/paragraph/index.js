@@ -68,5 +68,8 @@ export const paragraphPackage = Object.freeze({
   },
   editableTargets() {
     return [{ path: "text", label: "Editar explicação", preserveMarkup: true }];
+  },
+  practiceTargets() {
+    return [{ path: "text", label: "Lacuna na explicação", modes: ["gap", "typing"] }];
   }
 });

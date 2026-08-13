@@ -41,13 +41,12 @@ export const orderingResponsePackage = Object.freeze({
       : data.items.map(({ id }) => id);
     const key = escapePackageAttribute(options.blockKey);
     const body = `<div class="package-ordering-response">${renderPackageProse(data.prompt)}<ol>${order.map((id, index) => `<li data-ordering-item-id="${escapePackageAttribute(id)}"><span>${renderPackageInline(labels.get(id) || id)}</span><span class="package-ordering-controls"><button type="button" data-action="ordering-move" data-response-block-key="${key}" data-ordering-item-id="${escapePackageAttribute(id)}" data-ordering-direction="up" aria-label="Mover para cima"${index === 0 ? " disabled" : ""}>↑</button><button type="button" data-action="ordering-move" data-response-block-key="${key}" data-ordering-item-id="${escapePackageAttribute(id)}" data-ordering-direction="down" aria-label="Mover para baixo"${index === order.length - 1 ? " disabled" : ""}>↓</button></span><span class="visually-hidden">Posição ${index + 1}</span></li>`).join("")}</ol></div>`;
-    const validation = `<button class="choice-check-btn" type="button" data-action="ordering-validate" data-response-block-key="${key}">Conferir</button>`;
     const feedback = feedbackHtml(options.blockKey, options.responseState?.feedback);
     if (Array.isArray(options.dockExerciseParts)) {
-      options.dockExerciseParts.push(validation + feedback);
+      if (feedback) options.dockExerciseParts.push(feedback);
       return body;
     }
-    return body + validation + feedback;
+    return body + feedback;
   },
   accessibleText(data) { return `${data.prompt} Itens: ${data.items.map(({ label }) => label).join(", ")}.`; },
   editableTargets(data) { return [{ path: "prompt", label: "Editar pergunta" }, ...data.items.map((_, index) => ({ path: `items[${index}].label`, label: `Editar bloco ${index + 1}` }))]; },

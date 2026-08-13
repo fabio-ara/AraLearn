@@ -32,7 +32,7 @@
         cards.forEach((card) => {
           const article = document.createElement("article");
           article.className = "resource-test-card";
-          article.dataset.package = card.content[0].package;
+          article.dataset.package = card.content[0]?.package || card.response?.package || "unknown";
           article.dataset.modality = card.title;
           article.innerHTML = `<h2>${moduleValue.title} · ${card.title}</h2>${renderPackageCardBlocks(card)}`;
           matrix.append(article);

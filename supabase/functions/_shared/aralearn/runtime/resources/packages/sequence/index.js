@@ -30,8 +30,10 @@ export const sequencePackage = Object.freeze({
   },
   validate(data) { return new Set(data.items.map(({ id }) => id)).size === data.items.length ? [] : ["Items precisam de ids únicos."]; },
   render(data) {
-    return `<div class="runtime-block runtime-sequence-block" data-sequence-variant="${escapePackageAttribute(data.variant)}">${data.prompt ? renderPackageProse(data.prompt) : ""}<ol class="runtime-sequence-list">${data.items.map((item) => `<li data-sequence-item-id="${escapePackageAttribute(item.id)}"><strong>${renderPackageInline(item.label)}</strong>${item.detail ? renderPackageProse(item.detail) : ""}</li>`).join("")}</ol></div>`;
+    const cyclic = ["cycle", "lifecycle"].includes(data.variant);
+    return `<div class="runtime-block runtime-sequence-block" data-sequence-variant="${escapePackageAttribute(data.variant)}">${data.prompt ? renderPackageProse(data.prompt) : ""}<ol class="runtime-sequence-list" aria-label="Sequência ${cyclic ? "cíclica" : "ordenada"}">${data.items.map((item, index) => `<li data-sequence-item-id="${escapePackageAttribute(item.id)}"><span class="runtime-sequence-position" aria-hidden="true">${index + 1}</span><div class="runtime-sequence-content"><strong>${renderPackageInline(item.label)}</strong>${item.detail ? renderPackageProse(item.detail) : ""}</div>${index < data.items.length - 1 || cyclic ? `<span class="runtime-sequence-connector" aria-hidden="true">${index === data.items.length - 1 ? "↺" : "↓"}</span>` : ""}</li>`).join("")}</ol></div>`;
   },
   accessibleText(data) { return [data.prompt, ...data.items.map((item, index) => `${index + 1}. ${item.label}. ${item.detail || ""}`)].filter(Boolean).join(" "); },
-  editableTargets(data) { return data.items.flatMap((item, index) => [{ path: `items[${index}].label`, label: `Editar etapa ${index + 1}` }, ...(item.detail ? [{ path: `items[${index}].detail`, label: `Editar detalhe ${index + 1}` }] : [])]); }
+  editableTargets(data) { return data.items.flatMap((item, index) => [{ path: `items[${index}].label`, label: `Editar etapa ${index + 1}` }, ...(item.detail ? [{ path: `items[${index}].detail`, label: `Editar detalhe ${index + 1}` }] : [])]); },
+  practiceTargets(data) { return data.items.flatMap((item, index) => [{ path: `items[${index}].label`, label: `Lacuna na etapa ${index + 1}`, modes: ["gap", "typing"] }, ...(item.detail ? [{ path: `items[${index}].detail`, label: `Lacuna no detalhe ${index + 1}`, modes: ["gap", "typing"] }] : [])]); }
 });

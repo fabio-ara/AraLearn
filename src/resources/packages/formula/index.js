@@ -37,5 +37,6 @@ export const formulaPackage = Object.freeze({
   normalize(data) { return { ...(data?.prompt ? { prompt: String(data.prompt).trim() } : {}), notation: String(data?.notation || "mathematics"), accessibleText: String(data?.accessibleText || "").trim(), expression: structuredClone(data?.expression) }; },
   validate(data) { const errors = []; if (!isFormulaNotation(data.notation)) errors.push("Notação inválida."); const result = validateFormulaExpression(data.expression); if (!result.ok) errors.push(...result.errors.map((error) => `${error.path}: ${error.message}`)); return errors; },
   render(data) { return `<div class="runtime-block runtime-formula-block">${data.prompt ? renderPackageProse(data.prompt) : ""}<figure class="package-formula"><math display="block" aria-label="${escapePackageAttribute(data.accessibleText)}">${renderMathNode(data.expression)}</math><figcaption class="visually-hidden">${escapePackageHtml(data.accessibleText)}</figcaption></figure></div>`; },
-  accessibleText(data) { return data.accessibleText; }, editableTargets(data) { return [...(data.prompt ? [{ path: "prompt", label: "Editar orientação" }] : []), { path: "accessibleText", label: "Editar descrição acessível" }]; }
+  accessibleText(data) { return data.accessibleText; }, editableTargets(data) { return [...(data.prompt ? [{ path: "prompt", label: "Editar orientação" }] : []), { path: "accessibleText", label: "Editar descrição acessível" }]; },
+  practiceTargets() { return []; }
 });

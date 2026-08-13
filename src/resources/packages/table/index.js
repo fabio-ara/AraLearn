@@ -54,5 +54,12 @@ export const tablePackage = Object.freeze({
       ...data.columns.map((_, index) => ({ path: `columns[${index}]`, label: `Editar cabeçalho ${index + 1}` })),
       ...data.rows.flatMap((row, rowIndex) => row.map((_, columnIndex) => ({ path: `rows[${rowIndex}][${columnIndex}]`, label: `Editar célula ${rowIndex + 1}, ${columnIndex + 1}` })))
     ];
+  },
+  practiceTargets(data) {
+    return data.rows.flatMap((row, rowIndex) => row.map((_, columnIndex) => ({
+      path: `rows[${rowIndex}][${columnIndex}]`,
+      label: `Lacuna na célula ${rowIndex + 1}, ${columnIndex + 1}`,
+      modes: ["gap", "typing"]
+    })));
   }
 });
