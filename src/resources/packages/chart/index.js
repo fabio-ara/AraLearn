@@ -56,6 +56,24 @@ function baseEncoding(data, theme) {
   };
 }
 
+function seriesDashEncoding(data) {
+  return {
+    field: "seriesId",
+    type: "nominal",
+    scale: { domain: data.series.map(({ id }) => id), range: [[1, 0], [7, 4], [2, 3], [10, 3, 2, 3], [12, 4], [3, 2, 1, 2]] },
+    legend: null
+  };
+}
+
+function seriesShapeEncoding(data) {
+  return {
+    field: "seriesId",
+    type: "nominal",
+    scale: { domain: data.series.map(({ id }) => id), range: ["circle", "diamond", "square", "triangle-up", "triangle-down", "cross"] },
+    legend: null
+  };
+}
+
 function yEncoding(data, { zero = false, field = "y", title = axisTitle(data.yAxis) } = {}) {
   return {
     field,
@@ -105,7 +123,7 @@ export function compileChartVegaLite(data, theme) {
     });
   }
   if (data.chartType === "line") {
-    layers.push({ mark: { type: "line", strokeWidth: 2 }, encoding: markEncoding });
+    layers.push({ mark: { type: "line", strokeWidth: 2 }, encoding: { ...markEncoding, strokeDash: seriesDashEncoding(data) } });
   }
   layers.push({
     mark: data.chartType === "bar"
@@ -113,6 +131,7 @@ export function compileChartVegaLite(data, theme) {
       : { type: "point", filled: true, size: 62, strokeWidth: 1 },
     encoding: {
       ...markEncoding,
+      ...(data.chartType !== "bar" ? { shape: seriesShapeEncoding(data) } : {}),
       tooltip: [
         { field: "seriesName", type: "nominal", title: "Série" },
         { field: "x", type: data.xAxis.type, title: axisTitle(data.xAxis) },
@@ -266,7 +285,7 @@ export const chartPackage = Object.freeze({
   },
   render(data) {
     const encoded = encodeURIComponent(JSON.stringify(data));
-    const legend = data.series.map((series, index) => `<li><span class="package-chart-swatch tone-${index % 6}" aria-hidden="true"></span>${renderPackageInline(series.name)}</li>`).join("");
+    const legend = data.series.map((series, index) => `<li><span class="package-chart-swatch mark-${data.chartType} tone-${index % 6}" aria-hidden="true"></span>${renderPackageInline(series.name)}</li>`).join("");
     return `<div class="runtime-block runtime-chart-block">${data.prompt ? renderPackageProse(data.prompt) : ""}<figure class="package-chart-figure"><ul class="package-chart-legend">${legend}</ul>${data.uncertainty?.label ? `<p class="package-chart-uncertainty">${renderPackageInline(data.uncertainty.label)}</p>` : ""}<div class="package-chart-canvas" role="img" aria-label="${escapePackageAttribute(chartAccessibleText(data))}" aria-busy="true" data-vega-status="pending" data-chart-data="${escapePackageAttribute(encoded)}"></div>${data.caption ? `<figcaption class="package-chart-caption">${renderPackageInline(data.caption)}</figcaption>` : ""}<p class="package-chart-layout-error" hidden>Não foi possível materializar o gráfico estatístico.</p></figure></div>`;
   },
   async hydrate(instanceRoot) { await Promise.all([...instanceRoot.querySelectorAll(".package-chart-figure")].map(hydrateChart)); },

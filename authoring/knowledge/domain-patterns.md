@@ -56,7 +56,10 @@ adicionais fora do contrato.
   empírica; dados de demonstração são identificados como sintéticos.
 - Em `plane`, declare domínios e diferencie `points`, `vectors` e `paths`.
   Vetor tem `from` e `to`; trajetória conserva a ordem; região fechada usa
-  `closed`. Não use esse package para campo vetorial denso, contorno, superfície
+  `closed`. Quando houver categorias semanticamente relevantes, declare poucos
+  `groups` e associe cada objeto ao grupo correspondente; não crie uma cor por
+  objeto. O renderer combina cor, traço e forma e produz uma legenda agrupada.
+  Não use esse package para campo vetorial denso, contorno, superfície
   tridimensional ou outro objeto que necessite package disciplinar próprio.
 - Em `formula`, descreva a expressão pelos nós semânticos do contrato. Prefira
   `integral`, `derivative`, `tensor`, `function` e `large_operator` a sequências

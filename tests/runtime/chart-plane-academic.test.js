@@ -28,7 +28,8 @@ test("chart acadêmico declara escala, incerteza, referência e dados suficiente
   const specification = compileChartVegaLite(data, theme);
   assert.equal(specification.width, "container");
   assert.ok(specification.layer.some(({ mark }) => mark?.type === "errorbar"));
-  assert.ok(specification.layer.some(({ mark }) => mark?.type === "line"));
+  assert.ok(specification.layer.some(({ mark, encoding }) => mark?.type === "line" && encoding?.strokeDash?.field === "seriesId"));
+  assert.ok(specification.layer.some(({ mark, encoding }) => mark?.type === "point" && encoding?.shape?.field === "seriesId"));
   assert.ok(specification.layer.some(({ mark }) => mark?.type === "rule"));
 });
 
@@ -49,13 +50,26 @@ test("plane acadêmico diferencia pontos, vetores aplicados e regiões em domín
   assert.equal(data.points.length, 2);
   assert.equal(data.vectors.length, 4);
   assert.equal(data.paths.length, 2);
+  assert.deepEqual(data.groups.map(({ label }) => label), ["Objeto original", "Imagem por A"]);
+  assert.ok([...data.points, ...data.vectors, ...data.paths].every(({ group }) => ["original", "image"].includes(group)));
   assert.ok(data.vectors.every(({ from, to }) => from.length === 2 && to.length === 2));
   assert.ok(data.paths.every(({ points }) => points.length === 4));
   const specification = compilePlaneVegaLite(data, theme);
   assert.equal(specification.width, "container");
   assert.ok(specification.layer.some(({ mark }) => mark?.type === "rule"));
-  assert.ok(specification.layer.some(({ mark }) => mark?.type === "line"));
+  assert.ok(specification.layer.some(({ mark, encoding }) => mark?.type === "line" && encoding?.strokeDash?.field === "tone"));
   assert.ok(specification.layer.some(({ mark }) => mark?.type === "point" && mark?.shape === "triangle"));
+  assert.ok(specification.layer.some(({ mark, encoding }) => mark?.type === "point" && mark?.filled && encoding?.shape?.field === "tone"));
+});
+
+test("plane rejeita agrupamento cromático ambíguo", () => {
+  const data = planePackage.normalize({
+    xAxis: { label: "x", domain: [0, 2] },
+    yAxis: { label: "y", domain: [0, 2] },
+    groups: [{ id: "original", label: "Original" }],
+    points: [{ id: "p", label: "p", group: "não-declarado", at: [1, 1] }]
+  });
+  assert.match(planePackage.validate(data).join(" "), /grupo declarado/iu);
 });
 
 test("plane rejeita o vetor ambíguo da versão abolida", () => {

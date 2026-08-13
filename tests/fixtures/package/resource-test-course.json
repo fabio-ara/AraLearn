@@ -2545,10 +2545,21 @@
                                 3.8
                               ]
                             },
+                            "groups": [
+                              {
+                                "id": "original",
+                                "label": "Objeto original"
+                              },
+                              {
+                                "id": "image",
+                                "label": "Imagem por A"
+                              }
+                            ],
                             "points": [
                               {
                                 "id": "p",
                                 "label": "p",
+                                "group": "original",
                                 "at": [
                                   1.5,
                                   -0.5
@@ -2557,6 +2568,7 @@
                               {
                                 "id": "ap",
                                 "label": "Ap",
+                                "group": "image",
                                 "at": [
                                   3.5,
                                   0.5
@@ -2567,6 +2579,7 @@
                               {
                                 "id": "e1",
                                 "label": "e₁",
+                                "group": "original",
                                 "from": [
                                   0,
                                   0
@@ -2579,6 +2592,7 @@
                               {
                                 "id": "e2",
                                 "label": "e₂",
+                                "group": "original",
                                 "from": [
                                   0,
                                   0
@@ -2591,6 +2605,7 @@
                               {
                                 "id": "ae1",
                                 "label": "Ae₁",
+                                "group": "image",
                                 "from": [
                                   0,
                                   0
@@ -2603,6 +2618,7 @@
                               {
                                 "id": "ae2",
                                 "label": "Ae₂",
+                                "group": "image",
                                 "from": [
                                   0,
                                   0
@@ -2616,7 +2632,8 @@
                             "paths": [
                               {
                                 "id": "unit",
-                                "label": "Quadrado unitário",
+                                "label": "Q",
+                                "group": "original",
                                 "closed": true,
                                 "points": [
                                   [
@@ -2639,7 +2656,8 @@
                               },
                               {
                                 "id": "image",
-                                "label": "Imagem A(Q)",
+                                "label": "A(Q)",
+                                "group": "image",
                                 "closed": true,
                                 "points": [
                                   [

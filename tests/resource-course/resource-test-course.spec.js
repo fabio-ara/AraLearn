@@ -361,6 +361,9 @@ test("formula combina texto e notação avançada na mesma escala tipográfica",
 });
 
 test("plano cartesiano complexo preserva eixos, objetos e rótulos sem colisão", async ({ page }) => {
+  await page.evaluate(() => localStorage.setItem("aralearn.ui.theme", "dark"));
+  await page.reload();
+  await page.waitForFunction(() => globalThis.__RESOURCE_TEST_COURSE_READY__ === true);
   await openModule(page, 11);
   await expect(page.locator(".package-plane-canvas[data-vega-status='ready']")).toBeVisible();
   const geometry = await page.locator(".package-plane-canvas").evaluate((canvas) => {
@@ -379,18 +382,44 @@ test("plano cartesiano complexo preserva eixos, objetos e rótulos sem colisão"
         }
       }
     }
+    const parseColor = (value) => {
+      const context = document.createElement("canvas").getContext("2d", { willReadFrequently: true });
+      context.fillStyle = value;
+      context.fillRect(0, 0, 1, 1);
+      return [...context.getImageData(0, 0, 1, 1).data].slice(0, 3);
+    };
+    const luminance = (channels) => channels
+      .map((channel) => channel / 255)
+      .map((channel) => channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4)
+      .reduce((total, channel, index) => total + channel * [0.2126, 0.7152, 0.0722][index], 0);
+    const figureColor = parseColor(getComputedStyle(canvas.closest("figure")).backgroundColor);
+    const figureLuminance = luminance(figureColor);
+    const swatchColors = [...canvas.closest("figure").querySelectorAll(".package-plane-swatch")]
+      .map((swatch) => getComputedStyle(swatch).backgroundColor);
+    const contrasts = swatchColors.map((color) => {
+      const swatchLuminance = luminance(parseColor(color));
+      return (Math.max(figureLuminance, swatchLuminance) + 0.05) / (Math.min(figureLuminance, swatchLuminance) + 0.05);
+    });
     return {
       labels: labels.map(({ text }) => text),
       overlaps,
+      swatchColors,
+      contrasts,
       documentOverflow: document.documentElement.scrollWidth - document.documentElement.clientWidth
     };
   });
   expect(geometry.labels.sort()).toEqual(["Ae₁", "Ae₂", "Ap", "e₁", "e₂", "p"].sort());
   expect(geometry.overlaps).toEqual([]);
+  expect(new Set(geometry.swatchColors).size).toBe(2);
+  expect(Math.min(...geometry.contrasts)).toBeGreaterThanOrEqual(3);
   expect(geometry.documentOverflow).toBeLessThanOrEqual(1);
   await expect(page.locator(".package-plane-canvas svg")).toContainText("Coordenada x");
   await expect(page.locator(".package-plane-canvas svg")).toContainText("Coordenada y");
-  await expect(page.locator(".package-plane-legend li")).toHaveCount(8);
+  await expect(page.locator(".package-plane-legend li")).toHaveCount(2);
+  await expect(page.locator(".package-plane-legend li").nth(0)).toContainText("Objeto original");
+  await expect(page.locator(".package-plane-legend li").nth(0)).toContainText("e₁, e₂, p, Q");
+  await expect(page.locator(".package-plane-legend li").nth(1)).toContainText("Imagem por A");
+  await expect(page.locator(".package-plane-legend li").nth(1)).toContainText("Ae₁, Ae₂, Ap, A(Q)");
 });
 
 test("gráfico acadêmico mostra escala logarítmica, incerteza e referência sem legenda solta", async ({ page }) => {
@@ -402,6 +431,8 @@ test("gráfico acadêmico mostra escala logarítmica, incerteza e referência se
   await expect(canvas).toContainText("Limite operacional");
   await expect(page.locator(".package-chart-uncertainty")).toHaveText("Intervalo de confiança de 95%");
   await expect(page.locator(".package-chart-legend li")).toHaveCount(2);
+  const seriesColors = await page.locator(".package-chart-swatch").evaluateAll((swatches) => swatches.map((swatch) => getComputedStyle(swatch).backgroundColor));
+  expect(new Set(seriesColors).size).toBe(2);
   await expect(page.locator(".package-chart-caption")).toContainText("bootstrap percentil");
   await expect(page.locator(".package-chart-figure > span")).toHaveCount(0);
   const geometry = await canvas.evaluate((element) => ({

@@ -3304,30 +3304,64 @@ input:-webkit-autofill:focus {
   min-width: 0;
 }
 
-.package-plane-legend li span:last-child {
+.package-plane-legend li > span:last-child {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 6px;
+}
+
+.package-plane-legend small {
   color: var(--resource-text-secondary);
   font-size: var(--type-sm);
+  font-weight: 400;
 }
 
 .package-chart-swatch,
 .package-plane-swatch {
-  width: 9px;
-  height: 9px;
+  width: 11px;
+  height: 11px;
   border-radius: 999px;
   flex: 0 0 auto;
-  background: var(--resource-accent);
+  border: 1px solid color-mix(in srgb, currentColor 24%, transparent);
 }
 
+.package-chart-swatch.tone-0,
+.package-plane-swatch.tone-0 { background: var(--data-series-1); }
 .package-chart-swatch.tone-1,
-.package-plane-swatch.tone-1 { background: color-mix(in srgb, var(--resource-accent) 62%, var(--resource-text)); }
+.package-plane-swatch.tone-1 { background: var(--data-series-2); }
 .package-chart-swatch.tone-2,
-.package-plane-swatch.tone-2 { background: color-mix(in srgb, var(--resource-accent) 58%, var(--status-success)); }
+.package-plane-swatch.tone-2 { background: var(--data-series-3); }
 .package-chart-swatch.tone-3,
-.package-plane-swatch.tone-3 { background: color-mix(in srgb, var(--resource-accent) 64%, var(--status-warning)); }
+.package-plane-swatch.tone-3 { background: var(--data-series-4); }
 .package-chart-swatch.tone-4,
-.package-plane-swatch.tone-4 { background: color-mix(in srgb, var(--resource-accent) 52%, var(--status-error)); }
+.package-plane-swatch.tone-4 { background: var(--data-series-5); }
 .package-chart-swatch.tone-5,
-.package-plane-swatch.tone-5 { background: color-mix(in srgb, var(--resource-accent) 48%, var(--status-info)); }
+.package-plane-swatch.tone-5 { background: var(--data-series-6); }
+
+.package-chart-swatch.mark-line {
+  position: relative;
+  width: 18px;
+  height: 3px;
+  border: 0;
+  border-radius: 0;
+}
+
+.package-chart-swatch.mark-line.tone-1::after {
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(90deg, transparent 0 6px, var(--resource-surface-subtle) 6px 10px);
+  content: "";
+}
+
+.package-chart-swatch.mark-scatter.tone-1 {
+  border-radius: 2px;
+  transform: rotate(45deg);
+}
+
+.package-chart-swatch.mark-bar {
+  border-radius: 2px;
+}
 
 .package-chart-layout-error,
 .package-plane-layout-error {

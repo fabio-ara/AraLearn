@@ -127,6 +127,11 @@ em vez de serem imitados por esse contrato.
 declara origem e extremidade; cada caminho conserva a ordem dos pontos; os
 eixos têm domínio e unidade próprios. A geometria também é compilada por
 Vega-Lite, enquanto o contrato permanece em linguagem matemática de alto nível.
+Categorias comparáveis podem ser declaradas em `groups`. A legenda apresenta
+essas categorias e agrega os objetos que pertencem a cada uma, em vez de criar
+uma entrada desconexa para cada ponto, vetor e região. O renderer usa uma
+paleta de dados própria para cada tema e repete a distinção por traço e forma;
+cor nunca é o único canal para reconhecer um grupo.
 O exemplo canônico coordena base canônica, imagens de vetores por uma
 transformação linear, ponto e imagem do ponto, quadrado unitário e região
 transformada. Assim, exercita valores negativos, múltiplos rótulos, escalas e

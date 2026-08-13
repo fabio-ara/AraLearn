@@ -12,17 +12,46 @@ function axisTitle(axis) {
 
 function planeObjects(data) {
   return [
-    ...(data.points || []).map((point) => ({ type: "Ponto", id: point.id, label: point.label, coordinates: point.at })),
-    ...(data.vectors || []).map((vector) => ({ type: "Vetor", id: vector.id, label: vector.label, from: vector.from, coordinates: vector.to })),
-    ...(data.paths || []).map((path) => ({ type: path.closed ? "Região" : "Trajetória", id: path.id, label: path.label, coordinates: path.points }))
+    ...(data.points || []).map((point) => ({ type: "Ponto", id: point.id, label: point.label, group: point.group, coordinates: point.at })),
+    ...(data.vectors || []).map((vector) => ({ type: "Vetor", id: vector.id, label: vector.label, group: vector.group, from: vector.from, coordinates: vector.to })),
+    ...(data.paths || []).map((path) => ({ type: path.closed ? "Região" : "Trajetória", id: path.id, label: path.label, group: path.group, coordinates: path.points }))
   ];
 }
 
+function automaticGroupLabel(type) {
+  return { Ponto: "Pontos", Vetor: "Vetores", Região: "Regiões", Trajetória: "Trajetórias" }[type] || type;
+}
+
+function planeGroups(data) {
+  const objects = planeObjects(data);
+  const orderObjects = (members) => [...members].sort((left, right) => {
+    const rank = { Vetor: 0, Ponto: 1, Região: 2, Trajetória: 2 };
+    return (rank[left.type] ?? 3) - (rank[right.type] ?? 3);
+  });
+  if (data.groups?.length) {
+    return data.groups.map((group) => ({
+      ...group,
+      objects: orderObjects(objects.filter((object) => object.group === group.id))
+    }));
+  }
+  return [...new Set(objects.map(({ type }) => type))].map((type) => ({
+    id: `type:${type}`,
+    label: automaticGroupLabel(type),
+    objects: objects.filter((object) => object.type === type)
+  }));
+}
+
+function objectTone(object, data, fallbackType = object.type) {
+  return data.groups?.length ? object.group : `type:${fallbackType}`;
+}
+
 function planeAccessibleText(data) {
+  const groupNames = new Map((data.groups || []).map(({ id, label }) => [id, label]));
   const objects = planeObjects(data).map((object) => {
-    if (object.from) return `${object.type} ${object.label}, de (${object.from.join(", ")}) a (${object.coordinates.join(", ")})`;
-    if (Array.isArray(object.coordinates[0])) return `${object.type} ${object.label}: ${object.coordinates.map((point) => `(${point.join(", ")})`).join(", ")}`;
-    return `${object.type} ${object.label}: (${object.coordinates.join(", ")})`;
+    const group = object.group ? `, grupo ${groupNames.get(object.group) || object.group}` : "";
+    if (object.from) return `${object.type} ${object.label}${group}, de (${object.from.join(", ")}) a (${object.coordinates.join(", ")})`;
+    if (Array.isArray(object.coordinates[0])) return `${object.type} ${object.label}${group}: ${object.coordinates.map((point) => `(${point.join(", ")})`).join(", ")}`;
+    return `${object.type} ${object.label}${group}: (${object.coordinates.join(", ")})`;
   }).join(". ");
   return `${data.prompt || "Plano cartesiano."} Eixo x: ${axisTitle(data.xAxis)}, domínio de ${data.xAxis.domain.join(" a ")}. Eixo y: ${axisTitle(data.yAxis)}, domínio de ${data.yAxis.domain.join(" a ")}. ${objects}`;
 }
@@ -45,7 +74,15 @@ function positionEncodings(data, { axes = false, xField = "x", yField = "y" } = 
 }
 
 function toneEncoding(domain, theme) {
-  return { field: "id", type: "nominal", scale: { domain, range: theme.colors }, legend: null };
+  return { field: "tone", type: "nominal", scale: { domain, range: theme.colors }, legend: null };
+}
+
+function dashEncoding(domain) {
+  return { field: "tone", type: "nominal", scale: { domain, range: [[1, 0], [7, 4], [2, 3], [10, 3, 2, 3], [12, 4], [3, 2, 1, 2]] }, legend: null };
+}
+
+function shapeEncoding(domain) {
+  return { field: "tone", type: "nominal", scale: { domain, range: ["circle", "diamond", "square", "triangle-up", "triangle-down", "cross"] }, legend: null };
 }
 
 function labelOffsets([x, y], [originX = 0, originY = 0] = []) {
@@ -56,7 +93,7 @@ function labelOffsets([x, y], [originX = 0, originY = 0] = []) {
 
 export function compilePlaneVegaLite(data, theme) {
   const objects = planeObjects(data);
-  const domain = objects.map(({ id }) => id);
+  const domain = planeGroups(data).map(({ id }) => id);
   const layers = [
     {
       data: { values: [{ x: data.xAxis.domain[0], y: data.yAxis.domain[0] }, { x: data.xAxis.domain[1], y: data.yAxis.domain[1] }] },
@@ -75,20 +112,21 @@ export function compilePlaneVegaLite(data, theme) {
       const points = path.closed && path.points[0].some((value, index) => value !== path.points.at(-1)[index])
         ? [...path.points, path.points[0]]
         : path.points;
-      return points.map(([x, y], order) => ({ id: path.id, label: path.label, x, y, order }));
+      const object = objects.find(({ id }) => id === path.id);
+      return points.map(([x, y], order) => ({ id: path.id, tone: objectTone(object, data), label: path.label, x, y, order }));
     });
     layers.push({
       data: { values },
       mark: { type: "line", strokeWidth: 2, point: { filled: true, size: 26 } },
-      encoding: { ...positionEncodings(data), color: toneEncoding(domain, theme), detail: { field: "id" }, order: { field: "order", type: "ordinal" } }
+      encoding: { ...positionEncodings(data), color: toneEncoding(domain, theme), strokeDash: dashEncoding(domain), detail: { field: "id" }, order: { field: "order", type: "ordinal" } }
     });
   }
   if (data.vectors?.length) {
-    const values = data.vectors.map((vector) => ({ id: vector.id, label: vector.label, x: vector.from[0], y: vector.from[1], x2: vector.to[0], y2: vector.to[1], angle: Math.atan2(vector.to[0] - vector.from[0], vector.to[1] - vector.from[1]) * 180 / Math.PI, ...labelOffsets(vector.to, vector.from) }));
+    const values = data.vectors.map((vector) => ({ id: vector.id, tone: objectTone(vector, data, "Vetor"), label: vector.label, x: vector.from[0], y: vector.from[1], x2: vector.to[0], y2: vector.to[1], angle: Math.atan2(vector.to[0] - vector.from[0], vector.to[1] - vector.from[1]) * 180 / Math.PI, ...labelOffsets(vector.to, vector.from) }));
     layers.push({
       data: { values },
       mark: { type: "rule", strokeWidth: 2.2 },
-      encoding: { ...positionEncodings(data), x2: { field: "x2" }, y2: { field: "y2" }, color: toneEncoding(domain, theme) }
+      encoding: { ...positionEncodings(data), x2: { field: "x2" }, y2: { field: "y2" }, color: toneEncoding(domain, theme), strokeDash: dashEncoding(domain) }
     });
     layers.push({
       data: { values },
@@ -102,11 +140,11 @@ export function compilePlaneVegaLite(data, theme) {
     })));
   }
   if (data.points?.length) {
-    const values = data.points.map((point) => ({ id: point.id, label: point.label, x: point.at[0], y: point.at[1], ...labelOffsets(point.at) }));
+    const values = data.points.map((point) => ({ id: point.id, tone: objectTone(point, data, "Ponto"), label: point.label, x: point.at[0], y: point.at[1], ...labelOffsets(point.at) }));
     layers.push({
       data: { values },
       mark: { type: "point", filled: true, size: 72, strokeWidth: 1 },
-      encoding: { ...positionEncodings(data), color: toneEncoding(domain, theme), tooltip: [{ field: "label", title: "Objeto" }, { field: "x", title: axisTitle(data.xAxis) }, { field: "y", title: axisTitle(data.yAxis) }] }
+      encoding: { ...positionEncodings(data), color: toneEncoding(domain, theme), shape: shapeEncoding(domain), tooltip: [{ field: "label", title: "Objeto" }, { field: "x", title: axisTitle(data.xAxis) }, { field: "y", title: axisTitle(data.yAxis) }] }
     });
     layers.push(...values.map((value) => ({
       data: { values: [value] },
@@ -134,7 +172,7 @@ async function hydratePlane(figure) {
   if (!canvas || canvas.dataset.vegaStatus === "ready") return;
   try {
     const data = JSON.parse(decodeURIComponent(canvas.dataset.planeData || ""));
-    const selectors = planeObjects(data).map((_, index) => `.package-plane-swatch.tone-${index % 6}`);
+    const selectors = planeGroups(data).map((_, index) => `.package-plane-swatch.tone-${index % 6}`);
     const theme = readVegaTheme(canvas, selectors);
     await renderVegaLite(canvas, compilePlaneVegaLite(data, theme));
   } catch (error) {
@@ -154,25 +192,29 @@ export const planePackage = Object.freeze({
   authoringContract: Object.freeze({
     intent: "Declare eixos, domínios e objetos geométricos; o motor deriva escala, grade, marcas, setas e rótulos.",
     required: Object.freeze(["xAxis", "yAxis"]),
-    optional: Object.freeze(["prompt", "points", "vectors", "paths"]),
-    rules: Object.freeze(["Declare ao menos um ponto, vetor ou trajetória.", "Vetor declara origem e extremidade; ponto declara uma posição.", "Trajetória preserva a ordem dos pontos e closed fecha a região.", "Não envie SVG, Vega, cores, pixels ou posições de rótulo."]),
+    optional: Object.freeze(["prompt", "groups", "points", "vectors", "paths"]),
+    rules: Object.freeze(["Declare ao menos um ponto, vetor ou trajetória.", "Use groups quando cores e traços precisarem distinguir categorias semanticamente relevantes; não crie um grupo por objeto.", "Vetor declara origem e extremidade; ponto declara uma posição.", "Trajetória preserva a ordem dos pontos e closed fecha a região.", "Não envie SVG, Vega, cores, pixels ou posições de rótulo."]),
     example: Object.freeze({
       prompt: "Compare a base canônica com sua imagem pela transformação linear A e observe a região transformada.",
       xAxis: { label: "Coordenada x", domain: [-2.5, 3.5] },
       yAxis: { label: "Coordenada y", domain: [-1.5, 3.8] },
+      groups: [
+        { id: "original", label: "Objeto original" },
+        { id: "image", label: "Imagem por A" }
+      ],
       vectors: [
-        { id: "e1", label: "e₁", from: [0, 0], to: [1, 0] },
-        { id: "e2", label: "e₂", from: [0, 0], to: [0, 1] },
-        { id: "ae1", label: "Ae₁", from: [0, 0], to: [2, 1] },
-        { id: "ae2", label: "Ae₂", from: [0, 0], to: [-1, 2] }
+        { id: "e1", label: "e₁", group: "original", from: [0, 0], to: [1, 0] },
+        { id: "e2", label: "e₂", group: "original", from: [0, 0], to: [0, 1] },
+        { id: "ae1", label: "Ae₁", group: "image", from: [0, 0], to: [2, 1] },
+        { id: "ae2", label: "Ae₂", group: "image", from: [0, 0], to: [-1, 2] }
       ],
       points: [
-        { id: "p", label: "p", at: [1.5, -0.5] },
-        { id: "ap", label: "Ap", at: [3.5, 0.5] }
+        { id: "p", label: "p", group: "original", at: [1.5, -0.5] },
+        { id: "ap", label: "Ap", group: "image", at: [3.5, 0.5] }
       ],
       paths: [
-        { id: "unit", label: "Quadrado unitário", closed: true, points: [[0, 0], [1, 0], [1, 1], [0, 1]] },
-        { id: "image", label: "Imagem A(Q)", closed: true, points: [[0, 0], [2, 1], [1, 3], [-1, 2]] }
+        { id: "unit", label: "Q", group: "original", closed: true, points: [[0, 0], [1, 0], [1, 1], [0, 1]] },
+        { id: "image", label: "A(Q)", group: "image", closed: true, points: [[0, 0], [2, 1], [1, 3], [-1, 2]] }
       ]
     })
   }),
@@ -184,9 +226,10 @@ export const planePackage = Object.freeze({
       prompt: { type: "string" },
       xAxis: planeAxisSchema,
       yAxis: planeAxisSchema,
-      points: { type: "array", maxItems: 24, items: { type: "object", additionalProperties: false, required: ["id", "label", "at"], properties: { id: { type: "string", minLength: 1 }, label: { type: "string", minLength: 1 }, at: coordinateSchema } } },
-      vectors: { type: "array", maxItems: 24, items: { type: "object", additionalProperties: false, required: ["id", "label", "from", "to"], properties: { id: { type: "string", minLength: 1 }, label: { type: "string", minLength: 1 }, from: coordinateSchema, to: coordinateSchema } } },
-      paths: { type: "array", maxItems: 12, items: { type: "object", additionalProperties: false, required: ["id", "label", "points"], properties: { id: { type: "string", minLength: 1 }, label: { type: "string", minLength: 1 }, closed: { type: "boolean" }, points: { type: "array", minItems: 2, maxItems: 80, items: coordinateSchema } } } }
+      groups: { type: "array", minItems: 1, maxItems: 6, items: { type: "object", additionalProperties: false, required: ["id", "label"], properties: { id: { type: "string", minLength: 1 }, label: { type: "string", minLength: 1 } } } },
+      points: { type: "array", maxItems: 24, items: { type: "object", additionalProperties: false, required: ["id", "label", "at"], properties: { id: { type: "string", minLength: 1 }, label: { type: "string", minLength: 1 }, group: { type: "string", minLength: 1 }, at: coordinateSchema } } },
+      vectors: { type: "array", maxItems: 24, items: { type: "object", additionalProperties: false, required: ["id", "label", "from", "to"], properties: { id: { type: "string", minLength: 1 }, label: { type: "string", minLength: 1 }, group: { type: "string", minLength: 1 }, from: coordinateSchema, to: coordinateSchema } } },
+      paths: { type: "array", maxItems: 12, items: { type: "object", additionalProperties: false, required: ["id", "label", "points"], properties: { id: { type: "string", minLength: 1 }, label: { type: "string", minLength: 1 }, group: { type: "string", minLength: 1 }, closed: { type: "boolean" }, points: { type: "array", minItems: 2, maxItems: 80, items: coordinateSchema } } } }
     }
   }),
   normalize(data) {
@@ -195,9 +238,10 @@ export const planePackage = Object.freeze({
       ...(data?.prompt ? { prompt: String(data.prompt).trim() } : {}),
       xAxis: normalizeAxis(data?.xAxis),
       yAxis: normalizeAxis(data?.yAxis),
-      points: (data?.points || []).map((point) => ({ id: String(point?.id || "").trim(), label: String(point?.label || "").trim(), at: coordinate(point?.at) })),
-      vectors: (data?.vectors || []).map((vector) => ({ id: String(vector?.id || "").trim(), label: String(vector?.label || "").trim(), from: coordinate(vector?.from), to: coordinate(vector?.to) })),
-      paths: (data?.paths || []).map((path) => ({ id: String(path?.id || "").trim(), label: String(path?.label || "").trim(), ...(path?.closed ? { closed: true } : {}), points: (path?.points || []).map(coordinate) }))
+      ...(data?.groups?.length ? { groups: data.groups.map((group) => ({ id: String(group?.id || "").trim(), label: String(group?.label || "").trim() })) } : {}),
+      points: (data?.points || []).map((point) => ({ id: String(point?.id || "").trim(), label: String(point?.label || "").trim(), ...(point?.group ? { group: String(point.group).trim() } : {}), at: coordinate(point?.at) })),
+      vectors: (data?.vectors || []).map((vector) => ({ id: String(vector?.id || "").trim(), label: String(vector?.label || "").trim(), ...(vector?.group ? { group: String(vector.group).trim() } : {}), from: coordinate(vector?.from), to: coordinate(vector?.to) })),
+      paths: (data?.paths || []).map((path) => ({ id: String(path?.id || "").trim(), label: String(path?.label || "").trim(), ...(path?.group ? { group: String(path.group).trim() } : {}), ...(path?.closed ? { closed: true } : {}), points: (path?.points || []).map(coordinate) }))
     };
   },
   validate(data) {
@@ -206,6 +250,10 @@ export const planePackage = Object.freeze({
     if (!objects.length) findings.push("Plane precisa de ao menos um ponto, vetor ou trajetória.");
     const ids = objects.map(({ id }) => id);
     if (new Set(ids).size !== ids.length) findings.push("Objetos do plano precisam de ids únicos.");
+    const groupIds = (data.groups || []).map(({ id }) => id);
+    if (new Set(groupIds).size !== groupIds.length) findings.push("Grupos do plano precisam de ids únicos.");
+    if (groupIds.length && objects.some(({ group }) => !groupIds.includes(group))) findings.push("Todo objeto precisa referenciar um grupo declarado quando groups é usado.");
+    if (!groupIds.length && objects.some(({ group }) => group)) findings.push("Objetos só podem declarar group quando groups existe.");
     for (const [name, axis] of [["xAxis", data.xAxis], ["yAxis", data.yAxis]]) if (axis.domain[0] >= axis.domain[1]) findings.push(`${name}.domain precisa estar em ordem crescente.`);
     const coordinates = [...(data.points || []).map(({ at }) => at), ...(data.vectors || []).flatMap(({ from, to }) => [from, to]), ...(data.paths || []).flatMap(({ points }) => points)];
     if (coordinates.some((point) => !point?.every(Number.isFinite))) findings.push("Toda coordenada precisa conter dois números finitos.");
@@ -213,8 +261,7 @@ export const planePackage = Object.freeze({
   },
   render(data) {
     const encoded = encodeURIComponent(JSON.stringify(data));
-    const objects = planeObjects(data);
-    const legend = objects.map((object, index) => `<li><span class="package-plane-swatch tone-${index % 6}" aria-hidden="true"></span><strong>${renderPackageInline(object.label)}</strong><span>${object.type.toLowerCase()}</span></li>`).join("");
+    const legend = planeGroups(data).map((group, index) => `<li><span class="package-plane-swatch tone-${index % 6}" aria-hidden="true"></span><span><strong>${renderPackageInline(group.label)}</strong><small>${group.objects.map(({ label }) => renderPackageInline(label)).join(", ")}</small></span></li>`).join("");
     return `<div class="runtime-block runtime-plane-block">${data.prompt ? renderPackageProse(data.prompt) : ""}<figure class="package-plane-figure"><ul class="package-plane-legend">${legend}</ul><div class="package-plane-canvas" role="img" aria-label="${escapePackageAttribute(planeAccessibleText(data))}" aria-busy="true" data-vega-status="pending" data-plane-data="${escapePackageAttribute(encoded)}"></div><p class="package-plane-layout-error" hidden>Não foi possível materializar o plano cartesiano.</p></figure></div>`;
   },
   async hydrate(instanceRoot) { await Promise.all([...instanceRoot.querySelectorAll(".package-plane-figure")].map(hydratePlane)); },
