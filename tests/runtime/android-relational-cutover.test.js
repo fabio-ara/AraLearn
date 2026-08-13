@@ -126,7 +126,8 @@ test("o shell web limita a limpeza de cache e não persiste callbacks de autenti
 
   assert.match(serviceWorker, /__ARALEARN_CACHE_REVISION__/u);
   assert.doesNotMatch(serviceWorker, /0\.0\.11-r1/u);
-  assert.match(serviceWorker, /key\.startsWith\(CACHE_PREFIX\) && key !== CACHE_NAME/u);
+  assert.match(serviceWorker, /const CACHE_PREFIX = "aralearn-shell-v2-"/u);
+  assert.match(serviceWorker, /OBSOLETE_CACHE_PREFIXES\.some\(\(prefix\) => key\.startsWith\(prefix\)\)/u);
   assert.match(serviceWorker, /response\.ok && !new URL\(request\.url\)\.search/u);
   assert.match(serviceWorker, /\.\/frame-guard\.js/u);
   assert.match(serviceWorker, /\.\/theme-bootstrap\.js/u);

@@ -1,4 +1,5 @@
-const CACHE_PREFIX = "aralearn-shell-";
+const CACHE_PREFIX = "aralearn-shell-v2-";
+const OBSOLETE_CACHE_PREFIXES = ["aralearn-shell-"];
 const CACHE_NAME = `${CACHE_PREFIX}__ARALEARN_CACHE_REVISION__`;
 const SHELL = [
   "./",
@@ -8,7 +9,7 @@ const SHELL = [
   "./styles-tokens.css",
   "./styles-shell-baseline.css",
   "./styles.css",
-  "./vendor/elk.bundled.js",
+  "./vendor/viz-global.js",
   "./main.js",
   "./assets/brand/aralearn-mark.png"
 ];
@@ -38,7 +39,8 @@ self.addEventListener("activate", (event) => {
     caches.keys()
       .then((keys) => Promise.all(
         keys
-          .filter((key) => key.startsWith(CACHE_PREFIX) && key !== CACHE_NAME)
+          .filter((key) => key !== CACHE_NAME &&
+            OBSOLETE_CACHE_PREFIXES.some((prefix) => key.startsWith(prefix)))
           .map((key) => caches.delete(key))
       ))
       .then(() => self.clients.claim())

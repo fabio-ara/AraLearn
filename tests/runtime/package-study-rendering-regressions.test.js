@@ -227,8 +227,9 @@ test("recursos visuais extraídos preservam representação própria em vez de t
   assert.match(flowHtml, /package-flow-node is-input-output/u);
   assert.match(flowHtml, /package-flow-node is-decision/u);
   assert.match(flowHtml, /package-flow-node is-merge/u);
-  assert.match(flowHtml, /data-flow-edge-label-id="[^"]+">Sim/u);
-  assert.match(flowHtml, /data-flow-edge-label-id="[^"]+">Não/u);
+  assert.match(flowHtml, /data-flow-graphviz-source="digraph AraLearnFlow/u);
+  assert.match(flowHtml, /label=&quot;Sim&quot;/u);
+  assert.match(flowHtml, /label=&quot;Não&quot;/u);
   assert.doesNotMatch(flowHtml, /package-flow-tree|package-flow-node-card/u);
 
   const systemMapHtml = render({

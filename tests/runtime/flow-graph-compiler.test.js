@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { compileFlowGraph } from "../../src/resources/packages/flow/index.js";
+import { compileFlowGraph, compileFlowGraphviz } from "../../src/resources/packages/flow/index.js";
 
 function sourceNode(graph, sourceId) {
   return graph.nodes.find((node) => node.sourceId === sourceId);
@@ -107,4 +107,30 @@ test("do while mantém o rótulo de repetição na aresta de retorno e uma únic
     edge.source === decision.id && edge.target === end.id && edge.kind === "branch" && edge.label === "Não"
   ));
   assert.equal(graph.edges.filter((edge) => edge.visible && edge.target === end.id).length, 1);
+});
+
+test("compilador Graphviz deriva a notação visual sem receber geometria autoral", () => {
+  const { source } = compileFlowGraphviz({
+    kind: "sequence",
+    items: [
+      { id: "start", kind: "start", text: "Início" },
+      { id: "input", kind: "input", text: "Ler valor" },
+      {
+        id: "decision",
+        kind: "if_then_else",
+        condition: "Valor válido?",
+        thenBranch: [{ id: "process", kind: "process", text: "Calcular" }],
+        elseBranch: [{ id: "output", kind: "output", text: "Exibir erro" }]
+      },
+      { id: "end", kind: "end", text: "Fim" }
+    ]
+  });
+
+  assert.match(source, /^digraph AraLearnFlow/u);
+  assert.match(source, /rankdir=TB/u);
+  assert.match(source, /shape="oval"/u);
+  assert.match(source, /shape="parallelogram"/u);
+  assert.match(source, /shape="diamond"/u);
+  assert.match(source, /shape="box"/u);
+  assert.doesNotMatch(source, /\bpos\s*=/u);
 });

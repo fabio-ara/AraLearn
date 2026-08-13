@@ -3532,7 +3532,7 @@ input:-webkit-autofill:focus {
 
 .package-flowchart {
   max-width: 100%;
-  padding: 12px;
+  padding: 10px;
   overflow-x: auto;
   overflow-y: hidden;
   border: 1px solid var(--resource-border);
@@ -3542,124 +3542,91 @@ input:-webkit-autofill:focus {
 }
 
 .package-flow-canvas {
-  position: relative;
   min-width: 100%;
-  min-height: 280px;
+  min-height: 120px;
+}
+
+.package-flow-svg {
+  display: block;
+  max-width: none;
+  height: auto;
   margin-inline: auto;
-}
-
-.package-flow-edges,
-.package-flow-nodes,
-.package-flow-labels {
-  position: absolute;
-  inset: 0;
-}
-
-.package-flow-edges {
   overflow: visible;
-  pointer-events: none;
 }
 
-.package-flow-edges marker path {
+.package-flow-svg > .graph > polygon {
+  fill: transparent;
+  stroke: none;
+}
+
+.package-flow-node {
+  font-size: var(--type-base);
+}
+
+.package-flow-svg .package-flow-node :is(ellipse, polygon, path) {
+  fill: var(--resource-surface);
+  stroke: var(--resource-border-strong);
+  stroke-width: 1px;
+}
+
+.package-flow-svg .package-flow-node.is-merge :is(ellipse, polygon, path) {
   fill: var(--resource-accent);
+  stroke: var(--resource-accent);
 }
 
-.package-flow-edge-path {
+.package-flow-svg .package-flow-node text {
+  fill: var(--resource-text);
+  font-size: inherit;
+}
+
+.package-flow-svg .package-flow-edge path {
   fill: none;
   stroke: var(--resource-accent);
-  stroke-width: 1.35px;
+  stroke-width: 1.15px;
   stroke-linecap: round;
   stroke-linejoin: round;
 }
 
-.package-flow-edge-path.is-loop {
-  stroke-dasharray: 5 4;
+.package-flow-svg .package-flow-edge polygon {
+  fill: var(--resource-accent);
+  stroke: var(--resource-accent);
 }
 
-.package-flow-node {
-  position: absolute;
-  z-index: 2;
-  display: grid;
-  place-items: center;
-  box-sizing: border-box;
-  width: 180px;
-  min-height: 46px;
-  padding: 10px 16px;
-  border: 1px solid var(--resource-border-strong);
-  background: var(--resource-surface);
-  color: var(--resource-text);
-  font-size: var(--type-base);
-  line-height: 1.35;
-  text-align: center;
-  overflow-wrap: anywhere;
+.package-flow-svg .package-flow-edge text {
+  fill: var(--resource-accent);
 }
 
-.package-flow-node[data-flow-depth]:not([data-flow-depth="0"]) {
-  width: 90px;
-  padding-inline: 7px;
-}
-
-.package-flow-node.is-terminal {
-  border-radius: 999px;
-}
-
-.package-flow-node.is-input-output {
-  width: 190px;
-  transform: skew(-8deg);
-}
-
-.package-flow-node.is-input-output > span {
-  transform: skew(8deg);
-}
-
-.package-flow-node.is-decision {
-  width: 190px;
-  min-height: 88px;
-  padding-inline: 36px;
-  border: 0;
-  clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%);
-  background: var(--resource-border-strong);
-}
-
-.package-flow-node.is-decision[data-flow-depth]:not([data-flow-depth="0"]) {
-  width: 160px;
-}
-
-.package-flow-node.is-decision::before {
-  position: absolute;
-  z-index: -1;
-  inset: 1px;
-  clip-path: inherit;
-  background: var(--resource-surface);
-  content: "";
-}
-
-.package-flow-node.is-merge[data-flow-kind="merge"] {
-  width: 12px;
-  min-height: 12px;
-  padding: 0;
-  border-radius: 50%;
-  background: var(--resource-accent);
+.package-flow-node-label,
+.package-flow-edge-label {
+  overflow: visible;
 }
 
 .package-flow-edge-label {
-  position: absolute;
-  z-index: 3;
-  box-sizing: border-box;
-  max-width: 124px;
-  padding: 2px 5px;
-  border-radius: 5px;
-  background: var(--resource-surface-subtle);
-  color: var(--resource-accent);
   font-size: var(--type-sm);
-  font-weight: 700;
+}
+
+.package-flow-label-content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  color: var(--resource-text);
+  font-family: inherit;
+  font-size: var(--type-base);
   line-height: 1.25;
   text-align: center;
   overflow-wrap: anywhere;
 }
 
-.package-flow-canvas[data-flow-layout-status="pending"] :is(.package-flow-node, .package-flow-edge-label) {
-  visibility: hidden;
+.package-flow-edge-label .package-flow-label-content {
+  padding-inline: 3px;
+  border-radius: 4px;
+  background: var(--resource-surface-subtle);
+  color: var(--resource-accent);
+  font-size: var(--type-sm);
+  font-weight: 700;
 }
 
 .package-flow-layout-error {

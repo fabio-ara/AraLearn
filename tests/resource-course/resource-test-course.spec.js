@@ -176,11 +176,13 @@ test("flow usa convenções de fluxograma e não a estrutura visual de tree", as
   await expect(page.locator(".package-flow-node.is-decision")).toHaveCount(1);
   await expect(page.locator(".package-flow-node.is-merge")).toHaveCount(1);
   await expect(page.locator(".package-flow-edge-label")).toHaveText(["Sim", "Não"]);
-  await expect(page.locator(".package-flow-edge-path")).toHaveCount(7);
-  const topology = await page.locator(".package-flow-canvas").evaluate((canvas) => {
+  await expect(page.locator(".package-flow-edge")).toHaveCount(7);
+  const topology = await page.locator(".package-flowchart").evaluate((chart) => {
+    const canvas = chart.querySelector(".package-flow-canvas");
     const end = canvas.querySelector('[data-flow-kind="end"]')?.getAttribute("data-flow-node-id");
-    const incoming = [...canvas.querySelectorAll("[data-flow-edge-id]")]
-      .filter((edge) => edge.getAttribute("data-flow-target") === end);
+    const incoming = [...chart.querySelectorAll("[data-flow-edge-id]")]
+      .filter((edge) => edge.getAttribute("data-flow-edge-visible") === "true" &&
+        edge.getAttribute("data-flow-target") === end);
     const nodes = [...canvas.querySelectorAll(".package-flow-node:not(.is-merge)")]
       .map((node) => ({ id: node.getAttribute("data-flow-node-id"), rect: node.getBoundingClientRect() }));
     const labels = [...canvas.querySelectorAll(".package-flow-edge-label")]
@@ -206,6 +208,15 @@ test("flow usa convenções de fluxograma e não a estrutura visual de tree", as
   expect(topology.overlaps).toEqual([]);
   expect(topology.labelOverlaps).toEqual([]);
   await expect(page.locator(".runtime-tree-structure, .package-flow-tree")).toHaveCount(0);
+
+  await page.locator('[data-action="next-card"]').click();
+  await expect(page.locator('.package-flow-node [data-action="text-gap-open-choice"]')).toHaveCount(1);
+  await expect(page.locator('[data-action="text-gap-open-choice"]')).toHaveCount(1);
+  await page.locator('.package-flow-node [data-action="text-gap-open-choice"]').click();
+  await page.locator('[data-action="text-gap-set-choice"]').first().click();
+  await page.locator('[data-action="next-card"]').click();
+  await page.locator('[data-action="next-card"]').click();
+  await expect(page.locator('.package-flow-node [data-action="complete-input"]')).toHaveCount(1);
 });
 
 test("flow complexo diagrama laço e decisão aninhada sem sobrepor nós", async ({ page }) => {
@@ -262,7 +273,7 @@ test("flow complexo diagrama laço e decisão aninhada sem sobrepor nós", async
 
   await expect(page.locator('#complex-flow-fixture [data-flow-layout-status="ready"]')).toBeVisible();
   await expect(page.locator("#complex-flow-fixture .package-flow-node.is-decision")).toHaveCount(3);
-  await expect(page.locator("#complex-flow-fixture .package-flow-edge-path.is-loop")).toHaveCount(2);
+  await expect(page.locator("#complex-flow-fixture .package-flow-edge.is-loop")).toHaveCount(2);
   const geometry = await page.locator("#complex-flow-fixture .package-flow-canvas").evaluate((canvas) => {
     const nodes = [...canvas.querySelectorAll(".package-flow-node:not(.is-merge)")]
       .map((node) => ({ id: node.getAttribute("data-flow-source-id"), rect: node.getBoundingClientRect() }));
@@ -286,13 +297,18 @@ test("flow complexo diagrama laço e decisão aninhada sem sobrepor nós", async
           label.rect.top < node.rect.bottom && label.rect.bottom > node.rect.top)
         .map((node) => [label.id, node.id])),
       width: canvas.getBoundingClientRect().width,
-      height: canvas.getBoundingClientRect().height
+      height: canvas.getBoundingClientRect().height,
+      scrollWidth: canvas.parentElement.scrollWidth,
+      clientWidth: canvas.parentElement.clientWidth,
+      documentOverflow: document.documentElement.scrollWidth - document.documentElement.clientWidth
     };
   });
   expect(geometry.overlaps).toEqual([]);
   expect(geometry.labelOverlaps).toEqual([]);
   expect(geometry.width).toBeGreaterThan(300);
-  expect(geometry.height).toBeGreaterThan(700);
+  expect(geometry.height).toBeGreaterThan(500);
+  expect(geometry.scrollWidth).toBeGreaterThanOrEqual(geometry.clientWidth);
+  expect(geometry.documentOverflow).toBeLessThanOrEqual(1);
 });
 
 test("formula combina texto e notação avançada na mesma escala tipográfica", async ({ page }) => {

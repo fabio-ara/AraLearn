@@ -4721,6 +4721,83 @@ export function createLessonEditorApp({
     });
   }
 
+  function bindCompleteResponseControls(scope) {
+    scope.querySelectorAll("[data-action='complete-input']").forEach((node) => {
+      if (node.dataset.responseControlBound === "true") return;
+      node.dataset.responseControlBound = "true";
+      if (node.tagName === "TEXTAREA" || node.tagName === "INPUT") {
+        autosizeTextGapField(node);
+        node.addEventListener("input", () => {
+          const blockKey = node.getAttribute("data-complete-block-key");
+          const blankIndex = node.getAttribute("data-complete-blank-index");
+          if (!blockKey || blankIndex === null) return;
+          autosizeTextGapField(node);
+          setCompleteBlank(blockKey, blankIndex, node.value, { rerender: false });
+        });
+        return;
+      }
+
+      if (node.getAttribute("contenteditable") !== "true") return;
+      const updateEmptyAttribute = () => {
+        const content = String(node.textContent || "").replace(/\u2007/g, "");
+        node.setAttribute("data-empty", content.length ? "false" : "true");
+      };
+      updateEmptyAttribute();
+      node.addEventListener("keydown", (event) => {
+        if (event.key === "Enter") event.preventDefault();
+      });
+      node.addEventListener("beforeinput", (event) => {
+        if (event.inputType === "insertParagraph" || event.inputType === "insertLineBreak") {
+          event.preventDefault();
+        }
+      });
+      node.addEventListener("input", () => {
+        const blockKey = node.getAttribute("data-complete-block-key");
+        const blankIndex = node.getAttribute("data-complete-blank-index");
+        if (!blockKey || blankIndex === null) return;
+        const normalized = normalizeTextGapContentEditableValue(node);
+        node.setAttribute("data-empty", normalized ? "false" : "true");
+        setCompleteBlank(blockKey, blankIndex, normalized, { rerender: false });
+      });
+      node.addEventListener("blur", () => {
+        if (!normalizeTextGapContentEditableValue(node)) {
+          node.textContent = "";
+          node.setAttribute("data-empty", "true");
+        }
+      });
+    });
+
+    scope.querySelectorAll("[data-action='text-gap-open-choice']").forEach((node) => {
+      if (node.dataset.responseControlBound === "true") return;
+      node.dataset.responseControlBound = "true";
+      const openPrompt = () => {
+        const blockKey = node.getAttribute("data-complete-block-key");
+        const blankIndex = node.getAttribute("data-complete-blank-index");
+        if (!blockKey || blankIndex === null) return;
+        openTextGapChoicePrompt(blockKey, blankIndex);
+      };
+      node.addEventListener("click", openPrompt);
+      node.addEventListener("keydown", (event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          openPrompt();
+        }
+      });
+    });
+
+    scope.querySelectorAll("[data-action='text-gap-set-choice']").forEach((node) => {
+      if (node.dataset.responseControlBound === "true") return;
+      node.dataset.responseControlBound = "true";
+      node.addEventListener("click", () => {
+        const blockKey = node.getAttribute("data-complete-block-key");
+        const blankIndex = node.getAttribute("data-complete-blank-index");
+        const value = node.getAttribute("data-text-gap-value");
+        if (!blockKey || blankIndex === null || value === null) return;
+        setTextGapChoice(blockKey, blankIndex, value);
+      });
+    });
+  }
+
   function render({
     preserveState = true,
     preserveScrollSelectors = null,
@@ -4945,12 +5022,14 @@ export function createLessonEditorApp({
         : "") +
       "</div>";
 
-    void RESOURCE_PACKAGE_REGISTRY.hydrate(root).catch((error) => {
-      root.dispatchEvent(new CustomEvent("aralearn:package-hydration-error", {
-        bubbles: true,
-        detail: { error }
-      }));
-    });
+    void RESOURCE_PACKAGE_REGISTRY.hydrate(root)
+      .then(() => bindCompleteResponseControls(root))
+      .catch((error) => {
+        root.dispatchEvent(new CustomEvent("aralearn:package-hydration-error", {
+          bubbles: true,
+          detail: { error }
+        }));
+      });
 
     const manualResourceEditor = root.querySelector(
       ".runtime-resource-edit-target[data-manual-target-id]"
@@ -5576,83 +5655,7 @@ export function createLessonEditorApp({
       closeContinuePopup();
     });
 
-    root.querySelectorAll("[data-action='complete-input']").forEach((node) => {
-      if (node.tagName === "TEXTAREA" || node.tagName === "INPUT") {
-        autosizeTextGapField(node);
-        node.addEventListener("input", () => {
-          const blockKey = node.getAttribute("data-complete-block-key");
-          const blankIndex = node.getAttribute("data-complete-blank-index");
-          if (!blockKey || blankIndex === null) return;
-          autosizeTextGapField(node);
-          setCompleteBlank(blockKey, blankIndex, node.value, { rerender: false });
-        });
-        return;
-      }
-
-      if (node.getAttribute("contenteditable") !== "true") {
-        return;
-      }
-
-      const updateEmptyAttribute = () => {
-        const content = String(node.textContent || "").replace(/\u2007/g, "");
-        const isEmpty = !content.length;
-        node.setAttribute("data-empty", isEmpty ? "true" : "false");
-      };
-
-      updateEmptyAttribute();
-
-      node.addEventListener("keydown", (event) => {
-        if (event.key === "Enter") {
-          event.preventDefault();
-        }
-      });
-      node.addEventListener("beforeinput", (event) => {
-        if (event.inputType === "insertParagraph" || event.inputType === "insertLineBreak") {
-          event.preventDefault();
-        }
-      });
-
-      node.addEventListener("input", () => {
-        const blockKey = node.getAttribute("data-complete-block-key");
-        const blankIndex = node.getAttribute("data-complete-blank-index");
-        if (!blockKey || blankIndex === null) return;
-        const normalized = normalizeTextGapContentEditableValue(node);
-        node.setAttribute("data-empty", normalized ? "false" : "true");
-        setCompleteBlank(blockKey, blankIndex, normalized, { rerender: false });
-      });
-
-      node.addEventListener("blur", () => {
-        if (!normalizeTextGapContentEditableValue(node)) {
-          node.textContent = "";
-          node.setAttribute("data-empty", "true");
-        }
-      });
-    });
-    root.querySelectorAll("[data-action='text-gap-open-choice']").forEach((node) => {
-      const openPrompt = () => {
-        const blockKey = node.getAttribute("data-complete-block-key");
-        const blankIndex = node.getAttribute("data-complete-blank-index");
-        if (!blockKey || blankIndex === null) return;
-        openTextGapChoicePrompt(blockKey, blankIndex);
-      };
-
-      node.addEventListener("click", openPrompt);
-      node.addEventListener("keydown", (event) => {
-        if (event.key === "Enter" || event.key === " ") {
-          event.preventDefault();
-          openPrompt();
-        }
-      });
-    });
-    root.querySelectorAll("[data-action='text-gap-set-choice']").forEach((node) => {
-      node.addEventListener("click", () => {
-        const blockKey = node.getAttribute("data-complete-block-key");
-        const blankIndex = node.getAttribute("data-complete-blank-index");
-        const value = node.getAttribute("data-text-gap-value");
-        if (!blockKey || blankIndex === null || value === null) return;
-        setTextGapChoice(blockKey, blankIndex, value);
-      });
-    });
+    bindCompleteResponseControls(root);
     root.querySelectorAll("[data-action='complete-try-again']").forEach((node) => {
       node.addEventListener("click", () => {
         const blockKey = node.getAttribute("data-complete-block-key");

@@ -126,19 +126,23 @@ continua sendo `flow`.
 ## Fluxogramas e complexidade estrutural
 
 `flow` conserva uma AST de controle, e não coordenadas. O package compila essa
-estrutura em grafo de fluxo de controle e usa ELK Layered para posicionar os
-símbolos e obter rotas ortogonais. Rótulos como **Sim** e **Não** pertencem à
-aresta correspondente; convergências passam por uma única junção; e retornos de
-laço ocupam uma faixa lateral própria. A continuação posterior ao laço recebe
-uma restrição somente de diagramação para permanecer depois do corpo, sem criar
-uma etapa fictícia no conteúdo nem uma aresta visual adicional.
+estrutura em grafo de fluxo de controle e entrega a geometria ao algoritmo
+`dot` do Graphviz, executado localmente por Viz.js. O motor escolhe posições,
+dimensões e rotas a partir da topologia completa. Rótulos como **Sim** e
+**Não** pertencem à aresta correspondente; convergências passam por uma única
+junção; e retornos de laço são arestas semanticamente distintas. Restrições
+invisíveis podem ordenar a leitura sem criar etapa fictícia no conteúdo nem
+aresta visual adicional.
 
 O desenho permanece legível no exemplo pequeno e pode crescer conforme o
-algoritmo. Uma decisão binária comum cabe na largura móvel; estruturas maiores
-conservam as dimensões mínimas dos símbolos e usam uma viewport horizontal
-local, sem provocar overflow na página. O renderer continua sendo único: falha
-de diagramação é explícita e não ativa árvore textual, geometria manual ou
-outro fallback visual.
+algoritmo. Não existe obrigação de comprimir um algoritmo na largura móvel:
+estruturas maiores conservam as dimensões calculadas pelo Graphviz e usam uma
+viewport horizontal local, inicialmente posicionada no início do fluxo, sem
+provocar overflow na página. Textos expositivos permanecem no próprio SVG e
+participam da medição do motor; somente uma lacuna interativa troca o rótulo
+correspondente por HTML ancorado ao símbolo calculado. O renderer continua
+sendo único: falha de diagramação é explícita e não ativa árvore textual,
+geometria manual ou outro fallback visual.
 
 ## Equações e múltiplas representações químicas
 
@@ -370,7 +374,8 @@ apresentados como resultados já demonstrados pela literatura.
   <https://developers.openai.com/api/docs/guides/structured-outputs>
 - DeepSeek. *JSON Output*.
   <https://api-docs.deepseek.com/guides/json_mode/>
-- Eclipse Layout Kernel. *ELK Layered*. <https://eclipse.dev/elk/reference/algorithms/org-eclipse-elk-layered.html>
+- Graphviz. *dot*. <https://graphviz.org/docs/layouts/dot/>
+- Viz.js. *Graphviz in the browser*. <https://github.com/mdaines/viz-js>
 - W3C. *Web Content Accessibility Guidelines 2.2*. <https://www.w3.org/TR/WCAG22/>
 - W3C WAI. *Understanding SC 1.4.10: Reflow*. <https://www.w3.org/WAI/WCAG22/Understanding/reflow>
 - W3C WAI. *Understanding SC 2.5.8: Target Size (Minimum)*.
