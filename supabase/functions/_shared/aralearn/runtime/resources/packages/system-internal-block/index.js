@@ -23,11 +23,11 @@ function htmlLines(value, lineLength = 22) {
 }
 
 function partPlainLabel(part, ports) {
-  return [`[parte: ${part.type}]`, part.label, ...ports.map((port) => `${port.label}: ${port.itemType} (${port.direction})`)].join("\n");
+  return [`Parte · ${part.type}`, part.label, ...ports.map((port) => `${port.label}: ${port.itemType} (${port.direction})`)].join("\n");
 }
 
 function partTemplate(part, ports) {
-  return `<span class="package-system-diagram-node-content"><small>[parte: ${renderPackageInline(part.type)}]</small><strong>${renderPackageInline(part.label)}</strong>${ports.map((port) => `<span>${renderPackageInline(port.label)}: ${renderPackageInline(port.itemType)} (${renderPackageInline(port.direction)})</span>`).join("")}</span>`;
+  return `<span class="package-system-diagram-node-content"><small>Parte · ${renderPackageInline(part.type)}</small><strong>${renderPackageInline(part.label)}</strong>${ports.map((port) => `<span>${renderPackageInline(port.label)}: ${renderPackageInline(port.itemType)} (${renderPackageInline(port.direction)})</span>`).join("")}</span>`;
 }
 
 function directionArrow(direction) {
@@ -77,7 +77,7 @@ function graphvizSource(data) {
       portName.set(port.id, { node: part.id, port: name, direction: port.direction });
       return portRow(port, name);
     }).join("");
-    const label = `<<TABLE BORDER="1" COLOR="#64748b" CELLBORDER="0" CELLSPACING="0" CELLPADDING="6"><TR><TD><FONT POINT-SIZE="11">[parte: ${htmlLines(part.type, 24)}]</FONT></TD></TR><TR><TD><B>${htmlLines(part.label, 24)}</B></TD></TR>${rows}</TABLE>>`;
+    const label = `<<TABLE BORDER="1" COLOR="#64748b" CELLBORDER="0" CELLSPACING="0" CELLPADDING="6"><TR><TD><FONT POINT-SIZE="11">Parte · ${htmlLines(part.type, 24)}</FONT></TD></TR><TR><TD><B>${htmlLines(part.label, 24)}</B></TD></TR>${rows}</TABLE>>`;
     return `    ${dotQuote(part.id)} [id=${dotQuote(`system-node-${part.id}`)}, class=${dotQuote("package-system-internal-part")}, shape=plain, margin=0, label=${label}];`;
   });
   const connectorLines = data.connectors.map((connector) => {
@@ -90,7 +90,7 @@ function graphvizSource(data) {
     `  graph ${dotAttributes({ bgcolor: "transparent", pad: "0.2", margin: "0", overlap: "false", splines: "spline", outputorder: "edgesfirst", rankdir: "LR", nodesep: "0.5", ranksep: "0.82" })};`,
     "  node [fontname=\"Arial\", fontsize=\"15\", penwidth=\"1.15\", color=\"#64748b\", fontcolor=\"#111827\"];",
     "  edge [fontname=\"Arial\", fontsize=\"13\", penwidth=\"1.15\", color=\"#64748b\", fontcolor=\"#111827\"];",
-    `  subgraph cluster_block { graph ${dotAttributes({ id: "system-internal-block-boundary", class: "package-system-internal-boundary", label: `ibd [block] ${plainGraphvizLabel(data.block.label)}`, labelloc: "t", labeljust: "l", margin: "22", style: "solid" })};`,
+    `  subgraph cluster_block { graph ${dotAttributes({ id: "system-internal-block-boundary", class: "package-system-internal-boundary", label: `ibd · ${plainGraphvizLabel(data.block.label)}`, labelloc: "t", labeljust: "l", margin: "22", style: "solid" })};`,
     ...partLines,
     "  }",
     ...connectorLines,
@@ -135,7 +135,7 @@ export const systemInternalBlockPackage = Object.freeze({
     required: Object.freeze(["prompt", "block", "parts", "ports", "connectors"]),
     optional: Object.freeze([]),
     fieldSemantics: Object.freeze({ block: "Bloco cujo interior é apresentado.", parts: "Instâncias internas com nome e tipo.", ports: "Pontos de interação pertencentes a uma parte e tipados pelo item que transportam.", direction: "in, out ou inout em relação à parte.", connectors: "Ligações entre portas; flowDirection define a direção visual do fluxo." }),
-    visualGrammar: Object.freeze(["Quadro ibd [block] = interior do bloco.", "Retângulo [parte: tipo] = parte interna tipada.", "Linha de porta = interface nomeada e tipada.", "Conector toca portas declaradas, nunca o centro arbitrário da parte.", "Ponta de seta = direção de fluxo, não mera decoração."]),
+    visualGrammar: Object.freeze(["Quadro ibd nomeado = interior do bloco.", "Retângulo com nome e tipo = parte interna tipada.", "Linha de porta = interface nomeada e tipada.", "Conector toca portas declaradas, nunca o centro arbitrário da parte.", "Ponta de seta = direção de fluxo, não mera decoração."]),
     rules: Object.freeze(["Toda porta pertence a uma parte.", "Todo conector liga duas portas existentes.", "Não declare coordenadas ou lados de ancoragem.", "Use itemType para o que atravessa a porta; não o confunda com a finalidade da conexão.", "Prefira outro recurso quando portas não forem semanticamente importantes."]),
     example: Object.freeze({
       prompt: "Acompanhe dados de sensores e comandos de atuação pelas interfaces internas do controlador.",

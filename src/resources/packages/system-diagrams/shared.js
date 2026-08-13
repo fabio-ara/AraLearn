@@ -1,14 +1,13 @@
 import {
   appendGraphvizForeignLabel,
   graphvizGroupById,
-  hasGraphvizGap,
   renderGraphvizSvg,
   unionGraphvizTextBounds
 } from "../../sdk/graphviz.js";
 import { escapePackageAttribute } from "../../sdk/html.js";
 
 function templateMarkup(label) {
-  return `<template data-system-label-kind="${escapePackageAttribute(label.kind)}" data-system-label-id="${escapePackageAttribute(label.id)}">${label.html}</template>`;
+  return `<template data-system-label-kind="${escapePackageAttribute(label.kind)}" data-system-label-id="${escapePackageAttribute(label.id)}" data-system-label-replacement="${escapePackageAttribute(label.replacement || "interactive")}">${label.html}</template>`;
 }
 
 export function renderSystemDiagramFigure({
@@ -21,7 +20,7 @@ export function renderSystemDiagramFigure({
   focusId = "",
   errorMessage = "Não foi possível diagramar a representação."
 }) {
-  return `<figure class="package-system-diagram" data-system-diagram-engine="${escapePackageAttribute(engine)}" data-system-diagram-model="${escapePackageAttribute(encodeURIComponent(JSON.stringify(model)))}"${focusId ? ` data-system-diagram-focus-id="${escapePackageAttribute(focusId)}"` : ""}><div class="package-system-diagram-canvas" role="img" aria-label="${escapePackageAttribute(accessibleText)}" aria-busy="true" tabindex="0" data-graphviz-source="${escapePackageAttribute(source)}"></div>${labels.map(templateMarkup).join("")}<p class="package-system-diagram-pan-hint" hidden>Deslize horizontalmente para examinar o diagrama completo.</p><figcaption>${caption}</figcaption><p class="package-system-diagram-layout-error" hidden>${escapePackageAttribute(errorMessage)}</p></figure>`;
+  return `<figure class="package-system-diagram" data-system-diagram-engine="${escapePackageAttribute(engine)}" data-system-diagram-model="${escapePackageAttribute(encodeURIComponent(JSON.stringify(model)))}"${focusId ? ` data-system-diagram-focus-id="${escapePackageAttribute(focusId)}"` : ""}><div class="package-system-diagram-canvas" data-resource-scroll-frame="diagram" role="img" aria-label="${escapePackageAttribute(accessibleText)}" aria-busy="true" tabindex="0" data-graphviz-source="${escapePackageAttribute(source)}"></div>${labels.map(templateMarkup).join("")}<figcaption>${caption}</figcaption><p class="package-system-diagram-layout-error" hidden>${escapePackageAttribute(errorMessage)}</p></figure>`;
 }
 
 function nodeBounds(group) {
@@ -36,8 +35,9 @@ function replaceLabel(figure, svg, label) {
   if (!group) return;
   group.dataset.systemObjectId = label.id;
   group.dataset.systemObjectKind = label.kind;
-  if (!hasGraphvizGap(label.plain)) return;
   const template = figure.querySelector(`template[data-system-label-kind="${CSS.escape(label.kind)}"][data-system-label-id="${CSS.escape(label.id)}"]`);
+  const interactive = template?.content.querySelector('[data-action="text-gap-open-choice"], [data-action="complete-input"]');
+  if (template?.dataset.systemLabelReplacement !== "always" && !interactive) return;
   const texts = [...group.querySelectorAll("text")];
   const bounds = label.kind === "node" ? nodeBounds(group) : unionGraphvizTextBounds(texts);
   texts.forEach((element) => { element.style.visibility = "hidden"; });
@@ -65,17 +65,17 @@ async function hydrateFigure(figure) {
     });
     model.labels.forEach((label) => replaceLabel(figure, svg, label));
     const focus = graphvizGroupById(svg, figure.dataset.systemDiagramFocusId);
-    if (focus && canvas.scrollWidth > canvas.clientWidth) {
+    if (focus) {
       const canvasRect = canvas.getBoundingClientRect();
       const focusRect = focus.getBoundingClientRect();
-      canvas.scrollLeft = Math.max(0,
-        canvas.scrollLeft + focusRect.left - canvasRect.left + (focusRect.width - canvas.clientWidth) / 2
-      );
+      if (canvas.scrollWidth > canvas.clientWidth) {
+        canvas.scrollLeft = Math.max(0,
+          canvas.scrollLeft + focusRect.left - canvasRect.left + (focusRect.width - canvas.clientWidth) / 2
+        );
+      }
     }
-    const panHint = figure.querySelector(".package-system-diagram-pan-hint");
     const overflowsHorizontally = canvas.scrollWidth > canvas.clientWidth + 1;
     figure.classList.toggle("is-horizontally-scrollable", overflowsHorizontally);
-    if (panHint) panHint.hidden = !overflowsHorizontally;
     canvas.dataset.graphvizStatus = "ready";
     canvas.setAttribute("aria-busy", "false");
   } catch (error) {

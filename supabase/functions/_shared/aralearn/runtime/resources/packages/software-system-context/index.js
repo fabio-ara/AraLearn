@@ -20,11 +20,11 @@ function contextObjects(data) {
 }
 
 function objectPlainLabel(item) {
-  return [`[${item.stereotype}]`, wrapGraphvizLabel(item.label, 26), wrapGraphvizLabel(item.description, 32)].join("\n");
+  return [item.stereotype, wrapGraphvizLabel(item.label, 26), wrapGraphvizLabel(item.description, 32)].join("\n");
 }
 
 function objectTemplate(item) {
-  return `<span class="package-system-diagram-node-content"><small>[${renderPackageInline(item.stereotype)}]</small><strong>${renderPackageInline(item.label)}</strong><span>${renderPackageInline(item.description)}</span></span>`;
+  return `<span class="package-system-diagram-node-content"><small>${renderPackageInline(item.stereotype)}</small><strong>${renderPackageInline(item.label)}</strong><span>${renderPackageInline(item.description)}</span></span>`;
 }
 
 function contextAccessibleText(data) {
@@ -54,12 +54,19 @@ function graphvizSource(data) {
     label: wrapGraphvizLabel(item.label, 16),
     arrowsize: "0.72"
   })};`);
+  const verticalOrder = [...data.people, data.system, ...data.externalSystems]
+    .map(({ id }) => id)
+    .reduce((lines, id, index, ids) => index === ids.length - 1 ? lines : [
+      ...lines,
+      `  ${dotQuote(id)} -> ${dotQuote(ids[index + 1])} ${dotAttributes({ style: "invis", weight: "100", minlen: "1" })};`
+    ], []);
   return [
     "digraph SoftwareSystemContext {",
     `  graph ${dotAttributes({ bgcolor: "transparent", pad: "0.2", margin: "0", overlap: "false", splines: "spline", outputorder: "edgesfirst", rankdir: "TB", nodesep: "0.38", ranksep: "0.72" })};`,
     "  node [fontname=\"Arial\", fontsize=\"15\", penwidth=\"1.15\", color=\"#64748b\", fontcolor=\"#111827\"];",
     "  edge [fontname=\"Arial\", fontsize=\"13\", penwidth=\"1.15\", color=\"#64748b\", fontcolor=\"#111827\"];",
     ...nodeLines,
+    ...verticalOrder,
     ...edgeLines,
     "}"
   ].join("\n");
@@ -67,7 +74,7 @@ function graphvizSource(data) {
 
 function labels(data) {
   return [
-    ...contextObjects(data).map((item) => ({ kind: "node", id: item.id, plain: objectPlainLabel(item), html: objectTemplate(item) })),
+    ...contextObjects(data).map((item) => ({ kind: "node", id: item.id, plain: objectPlainLabel(item), html: objectTemplate(item), replacement: "always" })),
     ...data.relationships.map((item) => ({ kind: "edge", id: item.id, plain: item.label, html: `<span>${renderPackageInline(item.label)}</span>` }))
   ];
 }
@@ -120,7 +127,7 @@ export const softwareSystemContextPackage = Object.freeze({
       externalSystems: "Sistemas fora da fronteira do sistema em foco.",
       relationships: "Interações direcionais descritas por verbo ou pequena locução verbal."
     }),
-    visualGrammar: Object.freeze(["[Sistema em foco] identifica o objeto central.", "[Pessoa] identifica papel humano.", "[Sistema externo] identifica dependência fora do escopo.", "Seta rotulada identifica quem inicia a interação e sua finalidade."]),
+    visualGrammar: Object.freeze(["O tipo discreto Sistema em foco identifica o objeto central.", "O tipo discreto Pessoa identifica papel humano.", "O tipo discreto Sistema externo identifica dependência fora do escopo.", "Seta rotulada identifica quem inicia a interação e sua finalidade."]),
     rules: Object.freeze(["Não inclua banco de dados, API, fila ou módulo interno.", "Use descrições de responsabilidade, não detalhes de implementação.", "Não declare coordenadas, cores, formas ou agrupamentos.", "Toda relação deve ligar objetos declarados."]),
     example: Object.freeze({
       prompt: "Observe quem interage com o ambiente de aprendizagem e quais serviços permanecem fora de sua fronteira.",

@@ -256,6 +256,7 @@ for (const width of [360, 390, 412]) {
         renderPackageCardArticle(studyCardFor(treeInstance))
       ].join("");
       await page.setContent(documentForHtml(html, mode));
+      await hydratePackages(page);
 
       const tcp = page.locator('[data-choice-option-id="tcp"]');
       const dns = page.locator('[data-choice-option-id="dns"]');
@@ -274,9 +275,10 @@ for (const width of [360, 390, 412]) {
 
       await expect(page.locator(".runtime-matrix-delimiter")).toHaveCount(2);
       await expect(page.locator(".runtime-matrix-grid mtd")).toHaveCount(6);
-      await expect(page.locator(".runtime-tree-entry")).toHaveCount(4);
-      await expect(page.locator('.runtime-tree-item[aria-level="4"]')).toHaveCount(1);
-      await assertContained(page, ".runtime-tree-structure, .runtime-tree-entry", width);
+      await expect(page.locator('.runtime-tree-block [data-graphviz-status="ready"]')).toHaveCount(1);
+      await expect(page.locator(".package-rooted-tree-node")).toHaveCount(4);
+      await expect(page.locator(".runtime-tree-entry, .runtime-tree-item")).toHaveCount(0);
+      await assertContained(page, ".package-system-diagram-canvas", width);
       expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
     });
   }
@@ -309,9 +311,15 @@ for (const mode of ["light", "dark"]) {
       expect(labelState.length).toBeGreaterThan(0);
       labelState.forEach(({ text, visibility, fill }) => {
         expect(text.length).toBeGreaterThan(0);
-        expect(visibility).toBe("visible");
+        expect(["visible", "hidden"]).toContain(visibility);
         expect(fill).not.toBe("rgba(0, 0, 0, 0)");
       });
+
+      const visibleNodeLabels = await figure.locator('[data-system-object-kind="node"]').evaluateAll((nodes) => nodes.map((node) => ({
+        svgText: [...node.querySelectorAll("text")].some((label) => getComputedStyle(label).visibility === "visible"),
+        semanticText: Boolean(node.querySelector(".package-system-diagram-node-content"))
+      })));
+      visibleNodeLabels.forEach(({ svgText, semanticText }) => expect(svgText || semanticText).toBe(true));
 
       const viewportState = await figure.evaluate((element) => {
         const canvas = element.querySelector(".package-system-diagram-canvas");
@@ -321,13 +329,22 @@ for (const mode of ["light", "dark"]) {
         const canvasRect = canvas.getBoundingClientRect();
         const focusRect = focus?.getBoundingClientRect();
         return {
-          overflow: canvas.scrollWidth > canvas.clientWidth + 1,
-          hintVisible: !element.querySelector(".package-system-diagram-pan-hint").hidden,
-          focusContained: !focusRect || (focusRect.left >= canvasRect.left - 1 && focusRect.right <= canvasRect.right + 1)
+          overflowX: canvas.scrollWidth > canvas.clientWidth + 1,
+          overflowY: canvas.scrollHeight > canvas.clientHeight + 1,
+          boundedHeight: canvas.clientHeight <= 430,
+          touchAction: getComputedStyle(canvas).touchAction,
+          startsAtTop: canvas.scrollTop === 0,
+          focusContained: !focusRect || (
+            focusRect.left >= canvasRect.left - 1
+            && focusRect.right <= canvasRect.right + 1
+          )
         };
       });
-      expect(viewportState.hintVisible).toBe(viewportState.overflow);
+      expect(viewportState.boundedHeight).toBe(true);
+      expect(viewportState.touchAction).toBe("pan-x pan-y");
+      expect(viewportState.startsAtTop).toBe(true);
       expect(viewportState.focusContained).toBe(true);
+      await expect(figure.locator(".package-system-diagram-pan-hint")).toHaveCount(0);
 
       const overlaps = await figure.locator('[data-system-object-kind="node"]').evaluateAll((nodes) => {
         const boxes = nodes.map((node) => node.getBoundingClientRect());
@@ -344,6 +361,49 @@ for (const mode of ["light", "dark"]) {
         return collisions;
       });
       expect(overlaps).toEqual([]);
+    }
+
+    const contextOrder = await figures.first().evaluate((figure) => {
+      const rectFor = (selector) => {
+        const rect = figure.querySelector(selector).getBoundingClientRect();
+        return { top: rect.top, bottom: rect.bottom };
+      };
+      return {
+        people: [...figure.querySelectorAll(".package-system-context-node.is-person")].map((node) => {
+          const rect = node.getBoundingClientRect();
+          return { top: rect.top, bottom: rect.bottom };
+        }),
+        focus: rectFor(".package-system-context-node.is-focus"),
+        externals: [...figure.querySelectorAll(".package-system-context-node.is-external")].map((node) => {
+          const rect = node.getBoundingClientRect();
+          return { top: rect.top, bottom: rect.bottom };
+        })
+      };
+    });
+    expect(Math.max(...contextOrder.people.map(({ bottom }) => bottom)))
+      .toBeLessThan(contextOrder.focus.top);
+    expect(Math.min(...contextOrder.externals.map(({ top }) => top)))
+      .toBeGreaterThan(contextOrder.focus.bottom);
+    const typeLabels = await figures.locator("small").allTextContents();
+    typeLabels.forEach((label) => expect(label.trim()).not.toMatch(/^\[[^\]]+\]$/u));
+    for (const figure of [figures.nth(0), figures.nth(1)]) {
+      const hierarchy = await figure.locator(".package-system-diagram-node-content").evaluateAll((nodes) => nodes.map((node) => {
+        const type = node.querySelector("small");
+        const name = node.querySelector("strong");
+        const description = node.querySelector("span:not(.package-system-diagram-node-content)");
+        return {
+          complete: Boolean(type && name && description),
+          typeSize: type ? Number.parseFloat(getComputedStyle(type).fontSize) : 0,
+          nameSize: name ? Number.parseFloat(getComputedStyle(name).fontSize) : 0,
+          nameWeight: name ? Number.parseInt(getComputedStyle(name).fontWeight, 10) : 0
+        };
+      }));
+      expect(hierarchy.length).toBeGreaterThan(0);
+      hierarchy.forEach(({ complete, typeSize, nameSize, nameWeight }) => {
+        expect(complete).toBe(true);
+        expect(typeSize).toBeLessThan(nameSize);
+        expect(nameWeight).toBeGreaterThanOrEqual(600);
+      });
     }
   });
 }

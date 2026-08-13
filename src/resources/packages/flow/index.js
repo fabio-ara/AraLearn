@@ -278,7 +278,7 @@ function renderFlowGraph(structure) {
     `<span data-flow-edge-id="${escapePackageAttribute(edge.id)}" data-flow-source="${escapePackageAttribute(edge.source)}" data-flow-target="${escapePackageAttribute(edge.target)}" data-flow-edge-kind="${escapePackageAttribute(edge.kind)}" data-flow-edge-visible="${edge.visible ? "true" : "false"}" hidden></span>`
   ).join("");
   const encodedGraph = encodeURIComponent(JSON.stringify(graph));
-  return `<div class="package-flowchart" role="group" aria-label="Fluxograma"><div class="package-flow-canvas" data-flow-layout-status="pending" aria-busy="true" data-flow-graph="${escapePackageAttribute(encodedGraph)}" data-flow-graphviz-source="${escapePackageAttribute(source)}"></div>${templates}${edgeSpecs}<p class="package-flow-layout-error" hidden>Não foi possível diagramar o fluxograma.</p></div>`;
+  return `<div class="package-flowchart" data-resource-scroll-frame="diagram" role="group" aria-label="Fluxograma" tabindex="0"><div class="package-flow-canvas" data-flow-layout-status="pending" aria-busy="true" data-flow-graph="${escapePackageAttribute(encodedGraph)}" data-flow-graphviz-source="${escapePackageAttribute(source)}"></div>${templates}${edgeSpecs}<p class="package-flow-layout-error" hidden>Não foi possível diagramar o fluxograma.</p></div>`;
 }
 
 function nodeLabelBounds(group) {

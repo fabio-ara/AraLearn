@@ -35,14 +35,14 @@ function text(value) {
 
 function devicePlainLabel(device) {
   return [
-    `[${DEVICE_LABELS[device.kind]}]`,
+    DEVICE_LABELS[device.kind],
     wrapGraphvizLabel(device.label, 24),
     ...(device.address ? [wrapGraphvizLabel(device.address, 28)] : [])
   ].join("\n");
 }
 
 function deviceTemplate(device) {
-  return `<span class="package-system-diagram-node-content"><small>[${renderPackageInline(DEVICE_LABELS[device.kind])}]</small><strong>${renderPackageInline(device.label)}</strong>${device.address ? `<code>${renderPackageInline(device.address)}</code>` : ""}</span>`;
+  return `<span class="package-system-diagram-node-content"><small>${renderPackageInline(DEVICE_LABELS[device.kind])}</small><strong>${renderPackageInline(device.label)}</strong>${device.address ? `<code>${renderPackageInline(device.address)}</code>` : ""}</span>`;
 }
 
 function linkPlainLabel(link) {
@@ -88,7 +88,7 @@ function graphvizSource(data) {
 
 function labels(data) {
   return [
-    ...data.devices.map((device) => ({ kind: "node", id: device.id, plain: devicePlainLabel(device), html: deviceTemplate(device) })),
+    ...data.devices.map((device) => ({ kind: "node", id: device.id, plain: devicePlainLabel(device), html: deviceTemplate(device), replacement: "always" })),
     ...data.links.map((link) => ({ kind: "edge", id: link.id, plain: linkPlainLabel(link), html: `<span>${renderPackageInline(linkPlainLabel(link))}</span>` }))
   ];
 }

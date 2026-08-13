@@ -22,11 +22,11 @@ function text(value) {
 
 function nodePlainLabel(node, variant) {
   if (variant !== "filesystem" || !node.entryType) return wrapGraphvizLabel(node.label, 24);
-  return `[${wrapGraphvizLabel(node.entryType, 16)}]\n${wrapGraphvizLabel(node.label, 24)}`;
+  return `${wrapGraphvizLabel(node.entryType, 16)}\n${wrapGraphvizLabel(node.label, 24)}`;
 }
 
 function nodeTemplate(node, variant) {
-  return `<span class="package-system-diagram-node-content">${variant === "filesystem" && node.entryType ? `<small>[${renderPackageInline(node.entryType)}]</small>` : ""}<strong>${renderPackageInline(node.label)}</strong></span>`;
+  return `<span class="package-system-diagram-node-content">${variant === "filesystem" && node.entryType ? `<small>${renderPackageInline(node.entryType)}</small>` : ""}<strong>${renderPackageInline(node.label)}</strong></span>`;
 }
 
 function treeAccessibleText(data) {
@@ -49,7 +49,7 @@ function graphvizSource(data) {
 
 function diagramLabels(data) {
   if (data.variant === "phylogeny") return [];
-  return data.nodes.map((node) => ({ kind: "node", id: node.id, plain: nodePlainLabel(node, data.variant), html: nodeTemplate(node, data.variant) }));
+  return data.nodes.map((node) => ({ kind: "node", id: node.id, plain: nodePlainLabel(node, data.variant), html: nodeTemplate(node, data.variant), replacement: "always" }));
 }
 
 export const treePackage = Object.freeze({

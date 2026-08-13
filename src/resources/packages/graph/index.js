@@ -128,7 +128,7 @@ function renderGraphFigure(data) {
     ...data.vertices.map((vertex) => labelTemplate("vertex", vertex.id, vertex.label)),
     ...data.edges.filter((edge) => edgeLabel(edge)).map((edge) => labelTemplate("edge", edge.id, edgeLabel(edge)))
   ].join("");
-  return `<figure class="package-math-graph" data-graphviz-engine="${engine}"><div class="package-math-graph-canvas" role="img" aria-label="${escapePackageAttribute(graphAccessibleText(data))}" aria-busy="true" data-graphviz-source="${escapePackageAttribute(source)}"></div>${templates}<figcaption><i>${renderPackageInline(data.name)}</i> = (<i>V</i>, <i>E</i>) · |<i>V</i>| = ${data.vertices.length} · |<i>E</i>| = ${data.edges.length}</figcaption><p class="package-math-graph-layout-error" hidden>Não foi possível diagramar o grafo.</p><ol class="visually-hidden">${data.edges.map((edge) => `<li>${renderPackageInline(edgeAccessibleText(data, edge))}</li>`).join("")}</ol></figure>`;
+  return `<figure class="package-math-graph" data-graphviz-engine="${engine}"><div class="package-math-graph-canvas" data-resource-scroll-frame="diagram" role="img" aria-label="${escapePackageAttribute(graphAccessibleText(data))}" aria-busy="true" tabindex="0" data-graphviz-source="${escapePackageAttribute(source)}"></div>${templates}<figcaption><i>${renderPackageInline(data.name)}</i> = (<i>V</i>, <i>E</i>) · |<i>V</i>| = ${data.vertices.length} · |<i>E</i>| = ${data.edges.length}</figcaption><p class="package-math-graph-layout-error" hidden>Não foi possível diagramar o grafo.</p><ol class="visually-hidden">${data.edges.map((edge) => `<li>${renderPackageInline(edgeAccessibleText(data, edge))}</li>`).join("")}</ol></figure>`;
 }
 
 function vertexBounds(group) {

@@ -25,19 +25,19 @@ function containerStereotype(kind) {
 }
 
 function containerPlainLabel(item) {
-  return [`[Contêiner: ${containerStereotype(item.kind)}]`, wrapGraphvizLabel(item.label, 28), `[${wrapGraphvizLabel(item.technology, 30)}]`, wrapGraphvizLabel(item.responsibility, 32)].join("\n");
+  return [`Contêiner · ${containerStereotype(item.kind)}`, wrapGraphvizLabel(item.label, 28), wrapGraphvizLabel(item.technology, 30), wrapGraphvizLabel(item.responsibility, 32)].join("\n");
 }
 
 function externalPlainLabel(item) {
-  return [`[${item.stereotype}]`, wrapGraphvizLabel(item.label, 28), wrapGraphvizLabel(item.description, 32)].join("\n");
+  return [item.stereotype, wrapGraphvizLabel(item.label, 28), wrapGraphvizLabel(item.description, 32)].join("\n");
 }
 
 function containerTemplate(item) {
-  return `<span class="package-system-diagram-node-content"><small>[Contêiner: ${renderPackageInline(containerStereotype(item.kind))}]</small><strong>${renderPackageInline(item.label)}</strong><em>[${renderPackageInline(item.technology)}]</em><span>${renderPackageInline(item.responsibility)}</span></span>`;
+  return `<span class="package-system-diagram-node-content"><small>Contêiner · ${renderPackageInline(containerStereotype(item.kind))}</small><strong>${renderPackageInline(item.label)}</strong><em>${renderPackageInline(item.technology)}</em><span>${renderPackageInline(item.responsibility)}</span></span>`;
 }
 
 function externalTemplate(item) {
-  return `<span class="package-system-diagram-node-content"><small>[${renderPackageInline(item.stereotype)}]</small><strong>${renderPackageInline(item.label)}</strong><span>${renderPackageInline(item.description)}</span></span>`;
+  return `<span class="package-system-diagram-node-content"><small>${renderPackageInline(item.stereotype)}</small><strong>${renderPackageInline(item.label)}</strong><span>${renderPackageInline(item.description)}</span></span>`;
 }
 
 function containerObjects(data) {
@@ -69,7 +69,7 @@ function graphvizSource(data) {
     "  node [fontname=\"Arial\", fontsize=\"15\", penwidth=\"1.15\", color=\"#64748b\", fontcolor=\"#111827\"];",
     "  edge [fontname=\"Arial\", fontsize=\"13\", penwidth=\"1.15\", color=\"#64748b\", fontcolor=\"#111827\"];",
     ...externalLines,
-    `  subgraph cluster_system { graph ${dotAttributes({ id: "software-container-boundary", class: "package-software-container-boundary", label: `[Sistema] ${wrapGraphvizLabel(data.system.label, 30)}\n${wrapGraphvizLabel(data.system.description, 36)}`, labelloc: "t", labeljust: "l", margin: "20", style: "rounded" })};`,
+    `  subgraph cluster_system { graph ${dotAttributes({ id: "software-container-boundary", class: "package-software-container-boundary", label: `Sistema · ${wrapGraphvizLabel(data.system.label, 30)}\n${wrapGraphvizLabel(data.system.description, 36)}`, labelloc: "t", labeljust: "l", margin: "20", style: "rounded" })};`,
     ...containerLines,
     "  }",
     ...edgeLines,
@@ -79,8 +79,8 @@ function graphvizSource(data) {
 
 function labels(data) {
   return [
-    ...data.containers.map((item) => ({ kind: "node", id: item.id, plain: containerPlainLabel(item), html: containerTemplate(item) })),
-    ...externalObjects(data).map((item) => ({ kind: "node", id: item.id, plain: externalPlainLabel(item), html: externalTemplate(item) })),
+    ...data.containers.map((item) => ({ kind: "node", id: item.id, plain: containerPlainLabel(item), html: containerTemplate(item), replacement: "always" })),
+    ...externalObjects(data).map((item) => ({ kind: "node", id: item.id, plain: externalPlainLabel(item), html: externalTemplate(item), replacement: "always" })),
     ...data.relationships.map((item) => ({ kind: "edge", id: item.id, plain: item.label, html: `<span>${renderPackageInline(item.label)}</span>` }))
   ];
 }

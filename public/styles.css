@@ -3222,12 +3222,15 @@ input:-webkit-autofill:focus {
   max-width: 100%;
   min-width: 0;
   padding: 10px;
-  overflow-x: auto;
-  overflow-y: hidden;
+  max-height: min(48dvh, 430px);
+  overflow: auto;
   border: 1px solid var(--resource-border);
   border-radius: 15px;
   background: var(--resource-surface-subtle);
   overscroll-behavior-inline: contain;
+  overscroll-behavior-block: auto;
+  touch-action: pan-x pan-y;
+  -webkit-overflow-scrolling: touch;
 }
 
 .package-math-graph-svg,
@@ -3515,14 +3518,6 @@ input:-webkit-autofill:focus {
   stroke: var(--resource-border-strong);
   stroke-width: 1.15px;
   vector-effect: non-scaling-stroke;
-}
-
-.package-system-diagram-pan-hint {
-  margin: 6px 0 0;
-  color: var(--resource-text-secondary);
-  font-size: var(--type-xs);
-  line-height: var(--leading-snug);
-  text-align: center;
 }
 
 /* Recursos package-native recuperados após a separação do kernel. */
@@ -3825,13 +3820,16 @@ input:-webkit-autofill:focus {
 
 .package-flowchart {
   max-width: 100%;
+  max-height: min(48dvh, 430px);
   padding: 10px;
-  overflow-x: auto;
-  overflow-y: hidden;
+  overflow: auto;
   border: 1px solid var(--resource-border);
   border-radius: 15px;
   background: var(--resource-surface-subtle);
   overscroll-behavior-inline: contain;
+  overscroll-behavior-block: auto;
+  touch-action: pan-x pan-y;
+  -webkit-overflow-scrolling: touch;
 }
 
 .package-flow-canvas {

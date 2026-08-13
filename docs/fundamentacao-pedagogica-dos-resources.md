@@ -178,12 +178,21 @@ um único sistema em foco; o segundo abre essa fronteira apenas para aplicaçõe
 e armazenamentos executáveis ou implantáveis. `system_internal_block` usa a
 gramática de diagrama interno de bloco do SysML, na qual partes tipadas expõem
 portas e conectores. Os contratos não recebem coordenadas: Graphviz/Viz.js
-calcula posições, recorta arestas nos nós e reduz cruzamentos.
+calcula posições, recorta arestas nos nós e reduz cruzamentos. No contexto C4,
+a leitura móvel progride verticalmente de pessoas para o sistema em foco e,
+depois, para sistemas externos. Tipos são metadados tipográficos discretos;
+o nome do objeto recebe a ênfase principal e sua responsabilidade permanece em
+texto corrente. Colchetes só aparecem quando integram uma convenção formal do
+domínio.
 
-O renderer preserva a geometria natural calculada pelo motor. Quando uma
-estrutura acadêmica não cabe com texto legível na largura móvel, o diagrama
-ganha uma viewport horizontal focada no objeto inicial e uma instrução curta
-de navegação; o documento externo não sofre overflow. O CSS não altera família
+O renderer preserva a geometria natural calculada pelo motor. Diagramas
+Graphviz, grafos e fluxogramas usam um frame local com altura limitada e
+rolagem nativa nos dois eixos quando a estrutura excede o espaço disponível.
+A barra horizontal permanece, assim, no limite inferior do frame, sem exigir
+que a pessoa percorra toda a altura do desenho. Dentro do frame, o gesto move o
+diagrama; fora dele, move o card. Não há instrução visual autorreferente para
+um gesto convencional, o enquadramento vertical começa pelo início da
+representação e o documento externo não sofre overflow. O CSS não altera família
 nem tamanho tipográfico depois da diagramação, porque isso invalidaria as
 caixas usadas pelo Graphviz. Lacunas e digitação substituem somente rótulos
 declarados pelo package; edição manual e assistência por API recebem as mesmas
@@ -234,8 +243,8 @@ aresta visual adicional.
 
 O desenho permanece legível no exemplo pequeno e pode crescer conforme o
 algoritmo. Não existe obrigação de comprimir um algoritmo na largura móvel:
-estruturas maiores conservam as dimensões calculadas pelo Graphviz e usam uma
-viewport horizontal local, inicialmente posicionada no início do fluxo, sem
+estruturas maiores conservam as dimensões calculadas pelo Graphviz e usam o
+frame bidirecional local, inicialmente posicionado no início do fluxo, sem
 provocar overflow na página. Textos expositivos permanecem no próprio SVG e
 participam da medição do motor; somente uma lacuna interativa troca o rótulo
 correspondente por HTML ancorado ao símbolo calculado. O renderer continua
@@ -381,7 +390,10 @@ interna de 44 × 44 CSS px para linhas de resposta, superior ao mínimo AA,
 porque o cenário de uso inclui uma mão, movimento e atenção fragmentada.
 
 Recursos bidimensionais podem ter viewport próprio quando a relação espacial é
-essencial, mas o texto ao redor deve refluir. A pessoa precisa conseguir
+essencial, mas o texto ao redor deve refluir. O frame usa rolagem nativa e
+`touch-action: pan-x pan-y`: não registra manipuladores artesanais que capturem
+o toque. O limite de `48dvh`, até 430 px, mantém as duas barras ao alcance e
+preserva área externa suficiente para rolar o card. A pessoa precisa conseguir
 interromper, fechar e retomar no ponto corrente preservado no IndexedDB. A
 resposta em elaboração existe apenas enquanto a tela do card está aberta; o
 AraLearn não conserva tentativas, resultados ou histórico de respostas.

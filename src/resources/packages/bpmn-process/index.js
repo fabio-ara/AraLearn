@@ -23,16 +23,16 @@ function nodeStereotype(node) {
 function nodeGraphvizLabel(node) {
   const stereotype = nodeStereotype(node);
   const label = plainGraphvizLabel(nodeSymbol(node));
-  return stereotype ? `[${stereotype}]\n${label}` : label;
+  return stereotype ? `${stereotype}\n${label}` : label;
 }
 
 function nodeInteractiveLabel(node) {
   const stereotype = nodeStereotype(node);
-  return stereotype ? `[${stereotype}]\n${nodeSymbol(node)}` : nodeSymbol(node);
+  return stereotype ? `${stereotype}\n${nodeSymbol(node)}` : nodeSymbol(node);
 }
 
 function nodeAttributes(node) {
-  const common = { id: `system-node-${node.id}`, class: `package-bpmn-node is-${node.kind}`, label: nodeGraphvizLabel(node), margin: "0.25,0.22" };
+  const common = { id: `system-node-${node.id}`, class: `package-bpmn-node is-${node.kind}`, label: nodeGraphvizLabel(node), margin: "0.25,0.27" };
   if (node.kind === "start_event") return { ...common, shape: "circle", width: "0.32", height: "0.32", fixedsize: "true", label: " " };
   if (node.kind === "end_event") return { ...common, shape: "doublecircle", width: "0.36", height: "0.36", fixedsize: "true", label: " " };
   if (node.kind === "intermediate_event") return { ...common, shape: "doublecircle", width: "0.48", height: "0.48", fixedsize: "true", label: " " };
@@ -60,7 +60,8 @@ function labels(data) {
       kind: "node",
       id: node.id,
       plain: nodeInteractiveLabel(node),
-      html: `<span class="package-system-diagram-node-content">${stereotype ? `<small>[${stereotype}]</small>` : ""}<strong>${renderPackageInline(nodeSymbol(node))}</strong></span>`
+      html: `<span class="package-system-diagram-node-content">${stereotype ? `<small>${stereotype}</small>` : ""}<strong>${renderPackageInline(nodeSymbol(node))}</strong></span>`,
+      replacement: "always"
     };
   }), ...data.flows.filter((flow) => flow.label).map((flow) => ({ kind: "edge", id: flow.id, plain: flow.label, html: `<span>${renderPackageInline(flow.label)}</span>` }))];
 }

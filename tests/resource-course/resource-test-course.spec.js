@@ -16,6 +16,26 @@ async function openModuleByKey(page, moduleKey, cardIndex = 0) {
   await page.locator(`[data-action="open-microsequence-card"][data-card-index="${cardIndex}"]`).click();
 }
 
+async function touchSwipe(page, { from, to }) {
+  const session = await page.context().newCDPSession(page);
+  await session.send("Input.dispatchTouchEvent", {
+    type: "touchStart",
+    touchPoints: [{ x: from.x, y: from.y }]
+  });
+  for (let step = 1; step <= 8; step += 1) {
+    await session.send("Input.dispatchTouchEvent", {
+      type: "touchMove",
+      touchPoints: [{
+        x: from.x + ((to.x - from.x) * step) / 8,
+        y: from.y + ((to.y - from.y) * step) / 8
+      }]
+    });
+    await page.waitForTimeout(16);
+  }
+  await session.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+  await session.detach();
+}
+
 test.beforeEach(async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 900 });
   await page.goto("/teste-recursos");
@@ -168,6 +188,64 @@ test("BPMN preserva participantes, raias, gateways e fluxos em um caso não triv
   expect(completedLabel.insideShape).toBe(true);
   expect(completedLabel.contentOverflowX).toBeLessThanOrEqual(1);
   expect(completedLabel.contentOverflowY).toBeLessThanOrEqual(1);
+});
+
+test("frame BPMN mantém as duas rolagens ao alcance e não captura o gesto feito fora dele", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 700 });
+  await openModule(page, 5);
+  const frame = page.locator('.package-bpmn-process [data-resource-scroll-frame="diagram"]');
+  const card = page.locator(".card-sheet-content");
+  await expect(frame).toHaveAttribute("data-graphviz-status", "ready");
+
+  const geometry = await frame.evaluate((element) => {
+    const rect = element.getBoundingClientRect();
+    const cardRect = element.closest(".card-sheet-content").getBoundingClientRect();
+    return {
+      clientHeight: element.clientHeight,
+      scrollHeight: element.scrollHeight,
+      clientWidth: element.clientWidth,
+      scrollWidth: element.scrollWidth,
+      frameBottom: rect.bottom,
+      cardBottom: cardRect.bottom,
+      touchAction: getComputedStyle(element).touchAction
+    };
+  });
+  expect(geometry.clientHeight).toBeLessThanOrEqual(336);
+  expect(geometry.scrollHeight).toBeGreaterThan(geometry.clientHeight);
+  expect(geometry.scrollWidth).toBeGreaterThan(geometry.clientWidth);
+  expect(geometry.frameBottom).toBeLessThanOrEqual(geometry.cardBottom + 3);
+  expect(geometry.touchAction).toBe("pan-x pan-y");
+
+  const visible = await frame.evaluate((element) => {
+    const rect = element.getBoundingClientRect();
+    const cardRect = element.closest(".card-sheet-content").getBoundingClientRect();
+    return {
+      left: Math.max(rect.left, cardRect.left),
+      right: Math.min(rect.right, cardRect.right),
+      top: Math.max(rect.top, cardRect.top),
+      bottom: Math.min(rect.bottom, cardRect.bottom)
+    };
+  });
+  await touchSwipe(page, {
+    from: { x: (visible.left + visible.right) / 2, y: visible.bottom - 28 },
+    to: { x: (visible.left + visible.right) / 2, y: visible.top + 28 }
+  });
+  await expect.poll(() => frame.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
+
+  await frame.evaluate((element) => { element.scrollLeft = 0; });
+  await touchSwipe(page, {
+    from: { x: visible.right - 28, y: (visible.top + visible.bottom) / 2 },
+    to: { x: visible.left + 28, y: (visible.top + visible.bottom) / 2 }
+  });
+  await expect.poll(() => frame.evaluate((element) => element.scrollLeft)).toBeGreaterThan(0);
+
+  await card.evaluate((element) => { element.scrollTop = 0; });
+  const outside = await page.locator(".package-bpmn-process > p").first().boundingBox();
+  await touchSwipe(page, {
+    from: { x: outside.x + outside.width / 2, y: outside.y + outside.height - 8 },
+    to: { x: outside.x + outside.width / 2, y: Math.max(outside.y + 8, outside.y + outside.height - 120) }
+  });
+  await expect.poll(() => card.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
 });
 
 test("glosa interlinear preserva alinhamento, tradução e legenda", async ({ page }) => {
