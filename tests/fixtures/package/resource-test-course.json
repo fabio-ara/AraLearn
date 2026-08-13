@@ -1071,21 +1071,58 @@
                           "package": "aralearn.resource.interlinear_gloss",
                           "version": "1.0.0",
                           "data": {
-                            "prompt": "Observe como o plural é segmentado.",
-                            "languageTag": "pt-BR",
+                            "prompt": "Compare cada palavra do lezguiano com sua glosa morfema a morfema.",
+                            "languageTag": "lez",
                             "textDirection": "ltr",
                             "units": [
                               {
                                 "id": "word-1",
-                                "form": "casa-s",
-                                "gloss": "casa-PL"
+                                "form": "Gila",
+                                "gloss": "now"
+                              },
+                              {
+                                "id": "word-2",
+                                "form": "abur-u-n",
+                                "gloss": "they-OBL-GEN"
+                              },
+                              {
+                                "id": "word-3",
+                                "form": "ferma",
+                                "gloss": "farm"
+                              },
+                              {
+                                "id": "word-4",
+                                "form": "hamišaluǧ",
+                                "gloss": "forever"
+                              },
+                              {
+                                "id": "word-5",
+                                "form": "güǧüna",
+                                "gloss": "behind"
+                              },
+                              {
+                                "id": "word-6",
+                                "form": "amuq’-da-č.",
+                                "gloss": "stay-FUT-NEG"
                               }
                             ],
-                            "translation": "casas",
+                            "translation": "Agora, a fazenda deles não ficará para trás para sempre.",
                             "abbreviations": [
                               {
-                                "code": "PL",
-                                "meaning": "plural"
+                                "code": "OBL",
+                                "meaning": "oblíquo"
+                              },
+                              {
+                                "code": "GEN",
+                                "meaning": "genitivo"
+                              },
+                              {
+                                "code": "FUT",
+                                "meaning": "futuro"
+                              },
+                              {
+                                "code": "NEG",
+                                "meaning": "negação"
                               }
                             ]
                           }
@@ -1107,21 +1144,58 @@
                           "package": "aralearn.resource.interlinear_gloss",
                           "version": "1.0.0",
                           "data": {
-                            "prompt": "Observe como o plural é segmentado.",
-                            "languageTag": "pt-BR",
+                            "prompt": "Compare cada palavra do lezguiano com sua glosa morfema a morfema.",
+                            "languageTag": "lez",
                             "textDirection": "ltr",
                             "units": [
                               {
                                 "id": "word-1",
-                                "form": "casa-s",
-                                "gloss": "casa-PL"
+                                "form": "Gila",
+                                "gloss": "now"
+                              },
+                              {
+                                "id": "word-2",
+                                "form": "abur-u-n",
+                                "gloss": "they-OBL-GEN"
+                              },
+                              {
+                                "id": "word-3",
+                                "form": "ferma",
+                                "gloss": "farm"
+                              },
+                              {
+                                "id": "word-4",
+                                "form": "hamišaluǧ",
+                                "gloss": "forever"
+                              },
+                              {
+                                "id": "word-5",
+                                "form": "güǧüna",
+                                "gloss": "behind"
+                              },
+                              {
+                                "id": "word-6",
+                                "form": "amuq’-da-č.",
+                                "gloss": "stay-FUT-NEG"
                               }
                             ],
-                            "translation": "casas",
+                            "translation": "Agora, a fazenda deles não ficará para trás para sempre.",
                             "abbreviations": [
                               {
-                                "code": "PL",
-                                "meaning": "plural"
+                                "code": "OBL",
+                                "meaning": "oblíquo"
+                              },
+                              {
+                                "code": "GEN",
+                                "meaning": "genitivo"
+                              },
+                              {
+                                "code": "FUT",
+                                "meaning": "futuro"
+                              },
+                              {
+                                "code": "NEG",
+                                "meaning": "negação"
                               }
                             ]
                           }
@@ -1139,10 +1213,10 @@
                               "targetPath": "units[0].form",
                               "label": "Lacuna na forma 1",
                               "responseMode": "choice",
-                              "answer": "casa-s",
+                              "answer": "Gila",
                               "distractors": [
-                                "não casa-s",
-                                "outro casa-s"
+                                "não Gila",
+                                "outro Gila"
                               ]
                             }
                           ]
@@ -1163,21 +1237,58 @@
                           "package": "aralearn.resource.interlinear_gloss",
                           "version": "1.0.0",
                           "data": {
-                            "prompt": "Observe como o plural é segmentado.",
-                            "languageTag": "pt-BR",
+                            "prompt": "Compare cada palavra do lezguiano com sua glosa morfema a morfema.",
+                            "languageTag": "lez",
                             "textDirection": "ltr",
                             "units": [
                               {
                                 "id": "word-1",
-                                "form": "casa-s",
-                                "gloss": "casa-PL"
+                                "form": "Gila",
+                                "gloss": "now"
+                              },
+                              {
+                                "id": "word-2",
+                                "form": "abur-u-n",
+                                "gloss": "they-OBL-GEN"
+                              },
+                              {
+                                "id": "word-3",
+                                "form": "ferma",
+                                "gloss": "farm"
+                              },
+                              {
+                                "id": "word-4",
+                                "form": "hamišaluǧ",
+                                "gloss": "forever"
+                              },
+                              {
+                                "id": "word-5",
+                                "form": "güǧüna",
+                                "gloss": "behind"
+                              },
+                              {
+                                "id": "word-6",
+                                "form": "amuq’-da-č.",
+                                "gloss": "stay-FUT-NEG"
                               }
                             ],
-                            "translation": "casas",
+                            "translation": "Agora, a fazenda deles não ficará para trás para sempre.",
                             "abbreviations": [
                               {
-                                "code": "PL",
-                                "meaning": "plural"
+                                "code": "OBL",
+                                "meaning": "oblíquo"
+                              },
+                              {
+                                "code": "GEN",
+                                "meaning": "genitivo"
+                              },
+                              {
+                                "code": "FUT",
+                                "meaning": "futuro"
+                              },
+                              {
+                                "code": "NEG",
+                                "meaning": "negação"
                               }
                             ]
                           }
@@ -1195,7 +1306,7 @@
                               "targetPath": "units[0].form",
                               "label": "Lacuna na forma 1",
                               "responseMode": "text",
-                              "answer": "casa-s"
+                              "answer": "Gila"
                             }
                           ]
                         }
@@ -1476,15 +1587,22 @@
                           "package": "aralearn.resource.matrix",
                           "version": "1.0.0",
                           "data": {
-                            "prompt": "Observe a identidade.",
+                            "prompt": "Observe a matriz identidade de ordem três.",
                             "name": "I",
                             "delimiters": "brackets",
                             "values": [
                               [
                                 "1",
+                                "0",
                                 "0"
                               ],
                               [
+                                "0",
+                                "1",
+                                "0"
+                              ],
+                              [
+                                "0",
                                 "0",
                                 "1"
                               ]
@@ -1508,15 +1626,22 @@
                           "package": "aralearn.resource.matrix",
                           "version": "1.0.0",
                           "data": {
-                            "prompt": "Observe a identidade.",
+                            "prompt": "Observe a matriz identidade de ordem três.",
                             "name": "I",
                             "delimiters": "brackets",
                             "values": [
                               [
                                 "1",
+                                "0",
                                 "0"
                               ],
                               [
+                                "0",
+                                "1",
+                                "0"
+                              ],
+                              [
+                                "0",
                                 "0",
                                 "1"
                               ]
@@ -1560,15 +1685,22 @@
                           "package": "aralearn.resource.matrix",
                           "version": "1.0.0",
                           "data": {
-                            "prompt": "Observe a identidade.",
+                            "prompt": "Observe a matriz identidade de ordem três.",
                             "name": "I",
                             "delimiters": "brackets",
                             "values": [
                               [
                                 "1",
+                                "0",
                                 "0"
                               ],
                               [
+                                "0",
+                                "1",
+                                "0"
+                              ],
+                              [
+                                "0",
                                 "0",
                                 "1"
                               ]

@@ -2269,8 +2269,19 @@ input:-webkit-autofill:focus {
 
 /* Catálogo acadêmico de packages: cada representação conserva a notação da área. */
 .runtime-matrix-delimiter {
+  align-self: stretch;
+  width: 0.48em;
+  height: auto;
   color: var(--resource-text);
-  font-weight: 400;
+  flex: 0 0 0.48em;
+  overflow: visible;
+}
+
+.runtime-matrix-delimiter path {
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: square;
+  stroke-width: 1;
 }
 
 .runtime-matrix-grid {
@@ -3066,17 +3077,34 @@ input:-webkit-autofill:focus {
   justify-content: flex-start;
 }
 
-.runtime-matrix-sequence-group,
-.runtime-matrix-item {
+.runtime-matrix-sequence-group {
   display: inline-flex;
   align-items: center;
   flex: 0 0 auto;
 }
 
 .runtime-matrix-item {
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
   color: var(--resource-text);
   font-size: 1.08rem;
   font-weight: 400;
+}
+
+.runtime-matrix-fenced {
+  display: inline-flex;
+  align-items: stretch;
+}
+
+.runtime-matrix-values {
+  display: block;
+  color: var(--resource-text);
+}
+
+.runtime-matrix-prefix {
+  margin-inline-end: 0.25em;
+  color: var(--resource-text);
 }
 
 .runtime-matrix-sequence-operator,
@@ -3470,7 +3498,6 @@ input:-webkit-autofill:focus {
 }
 
 .package-reaction-arrow {
-  padding-inline: 0.45em;
   font-size: 1.35rem;
 }
 

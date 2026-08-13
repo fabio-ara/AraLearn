@@ -100,21 +100,34 @@ test("texto anotado liga trecho e nota nos dois sentidos sem ids internos", asyn
 
 test("glosa interlinear preserva alinhamento, tradução e legenda", async ({ page }) => {
   await openModule(page, 5);
-  await expect(page.locator(".runtime-interlinear-unit")).toHaveCount(1);
-  await expect(page.locator(".runtime-interlinear-form")).toHaveText("casa-s");
-  await expect(page.locator(".runtime-interlinear-unit-gloss")).toHaveText("casa-PL");
-  await expect(page.locator(".runtime-interlinear-translation")).toContainText("casas");
-  await expect(page.locator(".runtime-interlinear-abbreviations")).toContainText("PL");
-  await expect(page.locator(".runtime-interlinear-abbreviations")).toContainText("plural");
+  await expect(page.locator(".runtime-interlinear-unit")).toHaveCount(6);
+  await expect(page.locator(".runtime-interlinear-form").nth(1)).toHaveText("abur-u-n");
+  await expect(page.locator(".runtime-interlinear-unit-gloss").nth(1)).toHaveText("they-OBL-GEN");
+  await expect(page.locator(".runtime-interlinear-form").last()).toHaveText("amuq’-da-č.");
+  await expect(page.locator(".runtime-interlinear-unit-gloss").last()).toHaveText("stay-FUT-NEG");
+  await expect(page.locator(".runtime-interlinear-translation")).toContainText("fazenda deles");
+  await expect(page.locator(".runtime-interlinear-abbreviations")).toContainText("OBL");
+  await expect(page.locator(".runtime-interlinear-abbreviations")).toContainText("oblíquo");
 });
 
 test("matrix usa MathML com peso normal e lacuna na entrada", async ({ page }) => {
   await openModule(page, 7);
-  await expect(page.locator("math.runtime-matrix-item mtable")).toHaveCount(1);
+  await expect(page.locator(".runtime-matrix-item math.runtime-matrix-values mtable")).toHaveCount(1);
+  await expect(page.locator(".runtime-matrix-item math.runtime-matrix-values mtr")).toHaveCount(3);
   await expect(page.locator(".runtime-matrix-name")).toHaveText("I");
   await expect(page.locator(".runtime-matrix-name")).toHaveCSS("font-weight", "400");
+  const dimensions = await page.locator(".runtime-matrix-item").evaluate((matrix) => {
+    const gridHeight = matrix.querySelector("mtable").getBoundingClientRect().height;
+    return {
+      gridHeight,
+      delimiterHeights: [...matrix.querySelectorAll(".runtime-matrix-delimiter")]
+        .map((delimiter) => delimiter.getBoundingClientRect().height)
+    };
+  });
+  expect(dimensions.delimiterHeights).toHaveLength(2);
+  dimensions.delimiterHeights.forEach((height) => expect(height).toBeGreaterThanOrEqual(dimensions.gridHeight * 0.85));
   await page.locator('[data-action="next-card"]').click();
-  await expect(page.locator("math.runtime-matrix-item mtd [data-action='text-gap-open-choice']")).toHaveCount(1);
+  await expect(page.locator(".runtime-matrix-item mtd [data-action='text-gap-open-choice']")).toHaveCount(1);
 });
 
 test("reaction materializa escolha e digitação dentro da equação química", async ({ page }) => {

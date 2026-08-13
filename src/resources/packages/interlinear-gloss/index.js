@@ -19,9 +19,22 @@ export const interlinearGlossPackage = Object.freeze({
     required: Object.freeze(["languageTag", "units", "translation"]), optional: Object.freeze(["prompt", "textDirection", "abbreviations"]),
     rules: Object.freeze(["Cada unidade alinha uma forma a uma glosa.", "Fronteiras com hífen ou sinal de igual aparecem na mesma quantidade na forma e na glosa.", "A tradução é livre e pertence ao exemplo inteiro.", "Toda abreviação gramatical não explicada anteriormente deve constar em abbreviations."]),
     example: Object.freeze({
-      prompt: "Observe como o plural é segmentado.", languageTag: "pt-BR", textDirection: "ltr",
-      units: [{ id: "word-1", form: "casa-s", gloss: "casa-PL" }], translation: "casas",
-      abbreviations: [{ code: "PL", meaning: "plural" }]
+      prompt: "Compare cada palavra do lezguiano com sua glosa morfema a morfema.", languageTag: "lez", textDirection: "ltr",
+      units: [
+        { id: "word-1", form: "Gila", gloss: "now" },
+        { id: "word-2", form: "abur-u-n", gloss: "they-OBL-GEN" },
+        { id: "word-3", form: "ferma", gloss: "farm" },
+        { id: "word-4", form: "hamišaluǧ", gloss: "forever" },
+        { id: "word-5", form: "güǧüna", gloss: "behind" },
+        { id: "word-6", form: "amuq’-da-č.", gloss: "stay-FUT-NEG" }
+      ],
+      translation: "Agora, a fazenda deles não ficará para trás para sempre.",
+      abbreviations: [
+        { code: "OBL", meaning: "oblíquo" },
+        { code: "GEN", meaning: "genitivo" },
+        { code: "FUT", meaning: "futuro" },
+        { code: "NEG", meaning: "negação" }
+      ]
     })
   }),
   schema: Object.freeze({

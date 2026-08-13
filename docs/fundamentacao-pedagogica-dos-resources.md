@@ -132,16 +132,22 @@ estrutural de `reactants`, `products`, `coefficient` e `reactionType` em
 `reaction`. O contrato também conserva `state` e `conditions` como contexto
 explícito, em vez de embuti-los numa string livre.
 
-Matriz e reação usam MathML para delegar à tipografia matemática nativa o
-dimensionamento de delimitadores, índices, sobrescritos e setas. A interação de
-lacuna permanece no package e só pode atingir uma entrada ou componente
-químico efetivamente visível. O kernel simula essa composição ao validar o card
-e recusa alvos que não materializem um controle interativo.
+Matriz e reação usam MathML para as estruturas matemáticas e químicas. Como o
+Chromium móvel não expande de modo confiável os operadores quadrados em torno
+de `mtable`, `matrix` usa somente nos delimitadores um traço vetorial fino que
+se estende pela altura efetiva da grade; as entradas continuam em MathML.
+`reaction` explicita o espaço fino entre coeficiente e espécie e espaços
+laterais em torno de sinais e setas. A interação de lacuna permanece no package
+e só pode atingir uma entrada ou componente químico efetivamente visível. O
+kernel simula essa composição ao validar o card e recusa alvos que não
+materializem um controle interativo.
 
 `interlinear_gloss` segue a finalidade das Leipzig Glossing Rules: preservar
 correspondência entre unidades e fronteiras de morfemas, sem fabricar
 alinhamento por espaços. A tradução livre pertence ao exemplo inteiro, e a
-legenda introduz abreviações como `PL` antes que o estudante precise inferi-las.
+legenda introduz abreviações antes que o estudante precise inferi-las. O
+exemplo canônico de teste reproduz a estrutura do exemplo lezguiano das regras,
+com seis unidades, múltiplas fronteiras morfológicas e quatro abreviações.
 
 Nyachwaya e Wood (2014), ao avaliar representações em livros de físico-química,
 retomam os níveis macroscópico, submicroscópico e simbólico associados a

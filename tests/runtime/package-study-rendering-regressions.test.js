@@ -133,8 +133,9 @@ test("matrix e tree preservam a estrutura visual package-native no card completo
       values: [["1", "0"], ["0", "1"]]
     }
   }));
-  assert.match(matrixHtml, /<math class="runtime-matrix-item"/u);
+  assert.match(matrixHtml, /<span class="runtime-matrix-item"/u);
   assert.match(matrixHtml, /runtime-matrix-delimiter is-left/u);
+  assert.match(matrixHtml, /vector-effect="non-scaling-stroke"/u);
   assert.match(matrixHtml, /<mtable class="runtime-matrix-grid"/u);
   assert.doesNotMatch(matrixHtml, /<table/u);
 
@@ -210,6 +211,9 @@ test("recursos visuais extraídos preservam representação própria em vez de t
   });
   assert.match(reactionHtml, /<math class="package-reaction-equation"/u);
   assert.match(reactionHtml, /<mrow class="package-reaction-species"/u);
+  assert.match(reactionHtml, /package-reaction-coefficient-space" width="0\.2em"/u);
+  assert.match(reactionHtml, /package-reaction-plus" lspace="0\.5em" rspace="0\.5em"/u);
+  assert.match(reactionHtml, /package-reaction-arrow" lspace="0\.7em" rspace="0\.7em"/u);
   assert.match(reactionHtml, /<mo class="package-reaction-arrow"/u);
 
   const flowHtml = render({
