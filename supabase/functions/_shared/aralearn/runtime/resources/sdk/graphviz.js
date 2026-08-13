@@ -47,7 +47,14 @@ export function dotAttributes(attributes) {
 
 export function plainGraphvizLabel(value) {
   return String(value || "")
-    .replace(GAP_MARKER, "________")
+    .replace(GAP_MARKER, (encoded) => {
+      try {
+        const marker = JSON.parse(decodeURIComponent(encoded.slice(1, -1)));
+        return String(marker.value || marker.layoutText || "________");
+      } catch {
+        return "________";
+      }
+    })
     .replace(/\*\*([^*]+)\*\*/gu, "$1")
     .replace(/\*([^*]+)\*/gu, "$1")
     .replace(/`([^`]+)`/gu, "$1")

@@ -205,7 +205,12 @@ e a notação completa de eventos precisam de packages próprios quando forem o
 objeto de aprendizagem. O contrato declara semântica e responsabilidade; o
 Graphviz calcula clusters, posições e rotas. A especificação normativa e os
 exemplos da OMG são as referências de gramática visual, não um fluxograma
-genérico com raias (<https://www.omg.org/spec/BPMN/2.0/>).
+genérico com raias (<https://www.omg.org/spec/BPMN/2.0/>). No leitor móvel, a
+progressão principal é diagramada de cima para baixo. A largura natural não é
+comprimida: processos ou rótulos extensos usam rolagem local. Em práticas, o
+Graphviz recebe antecipadamente a resposta válida mais larga de cada lacuna;
+assim, a atividade é dimensionada antes da resposta aparecer e o texto
+interativo não pode ser recortado quando a lacuna é preenchida.
 
 Em teoria dos grafos, cruzamentos não tornam um desenho automaticamente
 inválido: planaridade é uma propriedade específica, e grafos não planares

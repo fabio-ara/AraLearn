@@ -12,6 +12,7 @@ import {
 import { createPackageRegistry } from "../../src/resources/kernel/packageRegistry.js";
 import { validatePackageSchema } from "../../src/resources/kernel/schemaValidation.js";
 import { gapResponsePackage, paragraphPackage, RESOURCE_PACKAGE_REGISTRY } from "../../src/resources/packages/index.js";
+import { plainGraphvizLabel } from "../../src/resources/sdk/graphviz.js";
 
 function paragraphInstance(overrides = {}) {
   return {
@@ -113,6 +114,24 @@ test("code e table declaram lacunas dentro da representação", () => {
     assert.equal(targets[0].path, expectedPath);
     assert.equal(targets.some(({ path }) => path === "prompt"), false);
   });
+});
+
+test("lacuna reserva no Graphviz a resposta válida mais larga antes de ser preenchida", () => {
+  const instance = {
+    id: "bpmn-1",
+    data: { nodes: [{ label: "Enviar solicitação" }] }
+  };
+  const prepared = gapResponsePackage.prepareContentInstance(instance, {
+    blanks: [{
+      id: "blank-1",
+      targetInstanceId: "bpmn-1",
+      targetPath: "nodes[0].label",
+      answer: "solicitação",
+      acceptedAnswers: ["pedido formal"],
+      responseMode: "choice"
+    }]
+  }, { responseBlockKey: "response-1", responseState: { values: {} } });
+  assert.equal(plainGraphvizLabel(prepared.nodes[0].label), "Enviar pedido formal");
 });
 
 test("diagramas acadêmicos expõem somente texto e preservam estrutura autoral", () => {

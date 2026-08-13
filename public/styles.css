@@ -3335,6 +3335,10 @@ input:-webkit-autofill:focus {
   font-style: normal;
 }
 
+.package-bpmn-node .package-system-diagram-node-content :is(small, strong) {
+  white-space: nowrap;
+}
+
 .package-math-graph figcaption,
 .package-system-diagram figcaption {
   margin-top: 6px;

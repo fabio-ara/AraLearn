@@ -169,6 +169,8 @@ export const gapResponsePackage = Object.freeze({
           blockKey: options.responseBlockKey || options.blockKey,
           index,
           responseMode: blank.responseMode,
+          layoutText: [blank.answer, ...(blank.acceptedAnswers || [])]
+            .reduce((widest, candidate) => candidate.length > widest.length ? candidate : widest, ""),
           value: options.responseState?.values?.[index] ?? ""
         })
       )));

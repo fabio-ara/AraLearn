@@ -1,5 +1,5 @@
 import { academicProfile } from "../../sdk/academic.js";
-import { dotAttributes, dotQuote, wrapGraphvizLabel } from "../../sdk/graphviz.js";
+import { dotAttributes, dotQuote, plainGraphvizLabel, wrapGraphvizLabel } from "../../sdk/graphviz.js";
 import { renderPackageInline, renderPackageProse } from "../../sdk/html.js";
 import { hydrateSystemDiagrams, renderSystemDiagramFigure, systemDiagramModelLabels } from "../system-diagrams/shared.js";
 
@@ -10,18 +10,34 @@ const text = (value) => String(value ?? "").trim();
 function nodeSymbol(node) {
   if (node.kind === "exclusive_gateway") return "×";
   if (node.kind === "parallel_gateway") return "+";
-  if (node.kind === "user_task") return `Usuário: ${node.label}`;
-  if (node.kind === "service_task") return `Serviço: ${node.label}`;
   return node.label;
 }
 
+function nodeStereotype(node) {
+  if (node.kind === "user_task") return "Tarefa de usuário";
+  if (node.kind === "service_task") return "Tarefa de serviço";
+  if (node.kind === "task") return "Tarefa";
+  return "";
+}
+
+function nodeGraphvizLabel(node) {
+  const stereotype = nodeStereotype(node);
+  const label = plainGraphvizLabel(nodeSymbol(node));
+  return stereotype ? `[${stereotype}]\n${label}` : label;
+}
+
+function nodeInteractiveLabel(node) {
+  const stereotype = nodeStereotype(node);
+  return stereotype ? `[${stereotype}]\n${nodeSymbol(node)}` : nodeSymbol(node);
+}
+
 function nodeAttributes(node) {
-  const common = { id: `system-node-${node.id}`, class: `package-bpmn-node is-${node.kind}`, label: wrapGraphvizLabel(nodeSymbol(node), 22), margin: "0.15,0.09" };
+  const common = { id: `system-node-${node.id}`, class: `package-bpmn-node is-${node.kind}`, label: nodeGraphvizLabel(node), margin: "0.25,0.22" };
   if (node.kind === "start_event") return { ...common, shape: "circle", width: "0.32", height: "0.32", fixedsize: "true", label: " " };
   if (node.kind === "end_event") return { ...common, shape: "doublecircle", width: "0.36", height: "0.36", fixedsize: "true", label: " " };
   if (node.kind === "intermediate_event") return { ...common, shape: "doublecircle", width: "0.48", height: "0.48", fixedsize: "true", label: " " };
   if (["exclusive_gateway", "parallel_gateway"].includes(node.kind)) return { ...common, shape: "diamond", width: "0.66", height: "0.66", fixedsize: "true" };
-  return { ...common, shape: "box", style: "rounded", width: "1.3" };
+  return { ...common, shape: "box", style: "rounded", width: "2.05" };
 }
 
 function participantSource(participant, data) {
@@ -34,11 +50,19 @@ function participantSource(participant, data) {
 }
 
 function graphvizSource(data) {
-  return ["digraph BpmnProcess {", `  graph ${dotAttributes({ bgcolor: "transparent", pad: "0.22", margin: "0", overlap: "false", splines: "polyline", outputorder: "edgesfirst", rankdir: "LR", nodesep: "0.5", ranksep: "0.85", compound: "true", newrank: "true" })};`, "  node [fontname=\"Arial\", fontsize=\"15\", penwidth=\"1.15\", color=\"#64748b\", fontcolor=\"#111827\"];", "  edge [fontname=\"Arial\", fontsize=\"13\", penwidth=\"1.15\", color=\"#64748b\", fontcolor=\"#111827\", arrowsize=\"0.72\"];", ...data.participants.map((participant) => participantSource(participant, data)), ...data.flows.map((flow) => `  ${dotQuote(flow.from)} -> ${dotQuote(flow.to)} ${dotAttributes({ id: `system-edge-${flow.id}`, class: `package-bpmn-flow is-${flow.kind}`, ...(flow.label ? { label: wrapGraphvizLabel(flow.label, 20) } : {}), ...(flow.kind === "message" ? { style: "dashed", arrowhead: "onormal" } : { arrowhead: "normal" }) })};`), "}"].join("\n");
+  return ["digraph BpmnProcess {", `  graph ${dotAttributes({ bgcolor: "transparent", pad: "0.22", margin: "0", overlap: "false", splines: "polyline", outputorder: "edgesfirst", rankdir: "TB", nodesep: "0.5", ranksep: "0.7", compound: "true", newrank: "true" })};`, "  node [fontname=\"Arial\", fontsize=\"15\", penwidth=\"1.15\", color=\"#64748b\", fontcolor=\"#111827\"];", "  edge [fontname=\"Arial\", fontsize=\"13\", penwidth=\"1.15\", color=\"#64748b\", fontcolor=\"#111827\", arrowsize=\"0.72\"];", ...data.participants.map((participant) => participantSource(participant, data)), ...data.flows.map((flow) => `  ${dotQuote(flow.from)} -> ${dotQuote(flow.to)} ${dotAttributes({ id: `system-edge-${flow.id}`, class: `package-bpmn-flow is-${flow.kind}`, ...(flow.label ? { label: wrapGraphvizLabel(flow.label, 20) } : {}), ...(flow.kind === "message" ? { style: "dashed", arrowhead: "onormal" } : { arrowhead: "normal" }) })};`), "}"].join("\n");
 }
 
 function labels(data) {
-  return [...data.nodes.filter(({ kind }) => !["start_event", "end_event"].includes(kind)).map((node) => ({ kind: "node", id: node.id, plain: nodeSymbol(node), html: `<span class="package-system-diagram-node-content"><strong>${renderPackageInline(nodeSymbol(node))}</strong></span>` })), ...data.flows.filter((flow) => flow.label).map((flow) => ({ kind: "edge", id: flow.id, plain: flow.label, html: `<span>${renderPackageInline(flow.label)}</span>` }))];
+  return [...data.nodes.filter(({ kind }) => !["start_event", "end_event"].includes(kind)).map((node) => {
+    const stereotype = nodeStereotype(node);
+    return {
+      kind: "node",
+      id: node.id,
+      plain: nodeInteractiveLabel(node),
+      html: `<span class="package-system-diagram-node-content">${stereotype ? `<small>[${stereotype}]</small>` : ""}<strong>${renderPackageInline(nodeSymbol(node))}</strong></span>`
+    };
+  }), ...data.flows.filter((flow) => flow.label).map((flow) => ({ kind: "edge", id: flow.id, plain: flow.label, html: `<span>${renderPackageInline(flow.label)}</span>` }))];
 }
 
 function accessibleText(data) {

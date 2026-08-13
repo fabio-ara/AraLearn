@@ -132,12 +132,42 @@ test("BPMN preserva participantes, raias, gateways e fluxos em um caso não triv
         }
       }
     }
-    return { overlaps, width: svg.getBoundingClientRect().width };
+    const send = svg.querySelector("#system-node-send").getBoundingClientRect();
+    const receive = svg.querySelector("#system-node-receive").getBoundingClientRect();
+    return {
+      overlaps,
+      width: svg.getBoundingClientRect().width,
+      primaryFlow: {
+        horizontal: Math.abs(receive.x - send.x),
+        vertical: receive.y - send.y
+      }
+    };
   });
   expect(geometry.overlaps).toEqual([]);
   expect(geometry.width).toBeGreaterThan(300);
+  expect(geometry.primaryFlow.vertical).toBeGreaterThan(geometry.primaryFlow.horizontal);
+  await expect(page.locator(".package-bpmn-process [data-graphviz-source]"))
+    .toHaveAttribute("data-graphviz-source", /rankdir="TB"/u);
   await page.locator('[data-action="next-card"]').click();
-  await expect(page.locator('.package-bpmn-node [data-action="text-gap-open-choice"], .package-bpmn-flow [data-action="text-gap-open-choice"]')).toHaveCount(1);
+  const nodeGap = page.locator('.package-bpmn-node [data-action="text-gap-open-choice"]');
+  await expect(nodeGap).toHaveCount(1);
+  await nodeGap.click();
+  await page.locator('[data-action="text-gap-set-choice"][data-text-gap-value="solicitação"]').click();
+  await expect(page.locator('[data-graphviz-status="ready"]')).toHaveCount(1);
+  const completedLabel = await page.locator("#system-node-send").evaluate((node) => {
+    const shape = node.querySelector("path, polygon").getBoundingClientRect();
+    const label = node.querySelector("foreignObject").getBoundingClientRect();
+    const content = node.querySelector(".package-system-diagram-node-content");
+    return {
+      insideShape: label.left >= shape.left - 1 && label.right <= shape.right + 1 &&
+        label.top >= shape.top - 1 && label.bottom <= shape.bottom + 1,
+      contentOverflowX: content.scrollWidth - content.clientWidth,
+      contentOverflowY: content.scrollHeight - content.clientHeight
+    };
+  });
+  expect(completedLabel.insideShape).toBe(true);
+  expect(completedLabel.contentOverflowX).toBeLessThanOrEqual(1);
+  expect(completedLabel.contentOverflowY).toBeLessThanOrEqual(1);
 });
 
 test("glosa interlinear preserva alinhamento, tradução e legenda", async ({ page }) => {
