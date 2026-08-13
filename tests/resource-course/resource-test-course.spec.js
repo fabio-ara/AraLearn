@@ -184,6 +184,19 @@ test("formula combina texto e notação avançada na mesma escala tipográfica",
   await expect(page.locator(".package-formula math mfrac")).toHaveCount(2);
   await expect(page.locator(".package-formula math msub")).toHaveCount(3);
   await expect(page.locator(".package-formula math msup")).toHaveCount(1);
+  const fencedDimensions = await page.locator(".package-formula-fenced").evaluate((fenced) => {
+    const contentHeight = fenced.querySelector(".package-formula-fenced-content").getBoundingClientRect().height;
+    return {
+      contentHeight,
+      fenceHeights: [...fenced.querySelectorAll(".package-formula-fence")]
+        .map((delimiter) => delimiter.getBoundingClientRect().height)
+    };
+  });
+  expect(fencedDimensions.fenceHeights).toHaveLength(2);
+  fencedDimensions.fenceHeights.forEach((height) => {
+    expect(height).toBeGreaterThanOrEqual(fencedDimensions.contentHeight * 0.85);
+    expect(height).toBeLessThanOrEqual(fencedDimensions.contentHeight * 1.15);
+  });
   const sizes = await page.evaluate(() => ({
     prose: getComputedStyle(document.querySelector(".runtime-formula-block > p")).fontSize,
     formula: getComputedStyle(document.querySelector(".package-formula math")).fontSize

@@ -2,6 +2,16 @@ import { FORMULA_EXPRESSION_INPUT_SCHEMA, isFormulaNotation, validateFormulaExpr
 import { escapePackageAttribute, escapePackageHtml, renderPackageProse } from "../../sdk/html.js";
 import { academicProfile } from "../../sdk/academic.js";
 
+const STACKED_EXPRESSION_TYPES = new Set(["fraction", "derivative", "integral", "large_operator"]);
+
+function containsStackedExpression(node) {
+  if (!node || typeof node !== "object") return false;
+  if (STACKED_EXPRESSION_TYPES.has(node.type)) return true;
+  return Object.values(node).some((value) => Array.isArray(value)
+    ? value.some(containsStackedExpression)
+    : containsStackedExpression(value));
+}
+
 function expressionText(node) {
   if (!node || typeof node !== "object") return "";
   if (Object.hasOwn(node, "value")) return String(node.value);
@@ -46,7 +56,7 @@ function renderMathNode(node) {
   if (node.type === "superscript") return `<msup>${renderMathNode(node.base)}${renderMathNode(node.exponent)}</msup>`;
   if (node.type === "subscript") return `<msub>${renderMathNode(node.base)}${renderMathNode(node.subscript)}</msub>`;
   if (node.type === "subsup") return `<msubsup>${renderMathNode(node.base)}${renderMathNode(node.subscript)}${renderMathNode(node.superscript)}</msubsup>`;
-  if (node.type === "fenced") return `<mrow><mo fence="true">${escapePackageHtml(node.open)}</mo>${renderMathNode(node.content)}<mo fence="true">${escapePackageHtml(node.close)}</mo></mrow>`;
+  if (node.type === "fenced") { const stackedClass = containsStackedExpression(node.content) ? " is-stacked" : ""; return `<mrow class="package-formula-fenced${stackedClass}"><mo class="package-formula-fence" fence="true" stretchy="true" symmetric="true">${escapePackageHtml(node.open)}</mo><mrow class="package-formula-fenced-content">${renderMathNode(node.content)}</mrow><mo class="package-formula-fence" fence="true" stretchy="true" symmetric="true">${escapePackageHtml(node.close)}</mo></mrow>`; }
   if (node.type === "function") return `<mrow><mi>${escapePackageHtml(node.name)}</mi><mo>⁡</mo>${renderDelimitedList(node.arguments)}</mrow>`;
   if (node.type === "integral") {
     const symbols = { single: "∫", double: "∬", triple: "∭", contour: "∮", surface: "∯", volume: "∰" };
