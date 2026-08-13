@@ -58770,12 +58770,18 @@
                       "content": [
                         {
                           "id": "dataprev-redes-l04-ms03-c02-content",
-                          "package": "aralearn.resource.matrix",
+                          "package": "aralearn.resource.table",
                           "version": "1.0.0",
                           "data": {
                             "prompt": "Compare os octetos de 192.0.2.10/24 e 192.0.2.200/24.",
-                            "name": "Endereços",
-                            "values": [
+                            "caption": "Comparação dos octetos dos endereços",
+                            "columns": [
+                              "Primeiro octeto",
+                              "Segundo octeto",
+                              "Terceiro octeto",
+                              "Quarto octeto"
+                            ],
+                            "rows": [
                               [
                                 "192",
                                 "0",
@@ -61301,19 +61307,19 @@
                       "content": [
                         {
                           "id": "dataprev-redes-l05-ms02-portas-c05-content",
-                          "package": "aralearn.resource.matrix",
+                          "package": "aralearn.resource.table",
                           "version": "1.0.0",
                           "data": {
                             "prompt": "Compare os campos que individualizam cada comunicação.",
-                            "name": "Fluxos",
-                            "values": [
-                              [
-                                "Fluxo",
-                                "Origem",
-                                "Transporte",
-                                "Porta de origem",
-                                "Porta de destino"
-                              ],
+                            "caption": "Campos que distinguem os fluxos",
+                            "columns": [
+                              "Fluxo",
+                              "Origem",
+                              "Transporte",
+                              "Porta de origem",
+                              "Porta de destino"
+                            ],
+                            "rows": [
                               [
                                 "F1",
                                 "192.0.2.10",
@@ -65437,12 +65443,17 @@
                       "content": [
                         {
                           "id": "dataprev-redes-l06-ms03-rmon-c08-content",
-                          "package": "aralearn.resource.matrix",
+                          "package": "aralearn.resource.table",
                           "version": "1.0.0",
                           "data": {
                             "prompt": "Cada linha registra um horário e duas contagens do segmento.",
-                            "name": "Amostras do segmento",
-                            "values": [
+                            "caption": "Amostras do segmento por horário",
+                            "columns": [
+                              "Horário",
+                              "Octetos observados",
+                              "Erros observados"
+                            ],
+                            "rows": [
                               [
                                 "08:00",
                                 "1200",

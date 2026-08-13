@@ -8,6 +8,7 @@ const UNIVERSAL_CONTENT_PRACTICE_MODES = Object.freeze([
   "exposition",
   "gap",
   "typing",
+  "ordering",
   "matching"
 ]);
 

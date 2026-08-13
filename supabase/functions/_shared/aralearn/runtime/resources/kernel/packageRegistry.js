@@ -14,6 +14,7 @@ const PRACTICE_MODES = Object.freeze([
 ]);
 const UNIVERSAL_CONTENT_RESPONSES = Object.freeze([
   "aralearn.response.gap",
+  "aralearn.response.ordering",
   "aralearn.response.matching"
 ]);
 
@@ -66,7 +67,7 @@ function assertAcademicManifest(manifest) {
     throw new TypeError(`${manifest.id} precisa declarar exposição em practiceModes.`);
   }
   if (manifest.slots.includes("content")) {
-    for (const mode of ["gap", "typing", "matching"]) {
+    for (const mode of ["gap", "typing", "ordering", "matching"]) {
       if (!academic.practiceModes.includes(mode)) {
         throw new TypeError(`${manifest.id} precisa admitir a prática ${mode}.`);
       }

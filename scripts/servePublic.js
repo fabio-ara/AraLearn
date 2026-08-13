@@ -146,7 +146,11 @@ function applyDevelopmentContentSecurityPolicy(data) {
 const server = http.createServer(async (req, res) => {
   try {
     const urlPath = new URL(req.url || "/", "http://127.0.0.1").pathname;
-    const targetPath = urlPath === "/" ? (artifactMode ? "/index.html" : "/public/index.html") : urlPath;
+    const targetPath = !artifactMode && urlPath === "/teste-recursos"
+      ? "/tests/gallery/resource-test-course.html"
+      : urlPath === "/"
+        ? (artifactMode ? "/index.html" : "/public/index.html")
+        : urlPath;
     if (!artifactMode && targetPath.split("?")[0] === "/runtime-config.js") {
       res.writeHead(200, {
         "Content-Type": "text/javascript; charset=utf-8",

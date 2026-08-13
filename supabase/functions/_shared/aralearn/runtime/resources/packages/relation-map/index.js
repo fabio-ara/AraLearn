@@ -30,10 +30,10 @@ export const relationMapPackage = Object.freeze({
     purpose: "Relacionar elementos de dois conjuntos preservando rótulos completos e correspondências legíveis.",
     slots: Object.freeze(["content", "feedback"]),
     cognitiveOperations: Object.freeze(["map-correspondence", "compare-roles", "classify-pair", "inspect-cardinality"]),
-    academic: academicProfile({ domains: ["teoria dos conjuntos", "lógica", "álgebra linear", "bancos de dados"], knowledgeObjects: ["relação binária", "domínio", "contradomínio", "par ordenado"], conventions: ["dois conjuntos distintos", "cada elemento aparece uma única vez", "correspondências ligam elementos sem atravessar rótulos"], appropriateWhen: ["a relação entre elementos de dois conjuntos é o objeto estudado"], avoidWhen: ["a tarefa é comparar pares independentes", "há interseção de conjuntos"], technologies: ["HTML semântico", "SVG responsivo derivado"], practiceModes: ["exposition", "gap", "typing", "selection", "matching"] }),
+    academic: academicProfile({ domains: ["teoria dos conjuntos", "lógica", "álgebra linear", "bancos de dados"], knowledgeObjects: ["relação binária", "domínio", "contradomínio", "par ordenado"], conventions: ["domínio e contradomínio nomeados", "cada elemento do domínio ocupa uma única linha", "as imagens relacionadas permanecem alinhadas ao elemento de origem"], appropriateWhen: ["a relação entre elementos de dois conjuntos é o objeto estudado"], avoidWhen: ["a tarefa é comparar pares independentes", "há interseção de conjuntos"], technologies: ["HTML semântico", "grade lógica responsiva"], practiceModes: ["exposition", "gap", "typing", "selection", "matching"] }),
     responseCompatibility: Object.freeze(["aralearn.response.choice", "aralearn.response.gap"]),
     limitations: Object.freeze(["Não representa interseção de conjuntos; para isso deve existir package específico.", "Muitas correspondências devem ser divididas em microssequências menores."]),
-    accessibility: "Cada conjunto lista seus elementos uma única vez e toda correspondência também aparece como par ordenado textual."
+    accessibility: "Cada elemento do domínio é seguido pelas imagens que lhe correspondem; a leitura não depende de linhas desenhadas."
   }),
   authoringContract: Object.freeze({
     intent: "Declare domínio, contradomínio e pares da relação sem coordenadas ou pontos de ancoragem.",
@@ -89,8 +89,22 @@ export const relationMapPackage = Object.freeze({
     const highlighted = new Set(data.highlight?.relations || []);
     const highlightedLeft = new Set(data.highlight?.leftItems || []);
     const highlightedRight = new Set(data.highlight?.rightItems || []);
-    const setPanel = (set, side, selected) => `<section class="package-relation-set is-${side}"><h4>${renderPackageInline(set.label)}</h4><ul>${set.items.map((item) => `<li class="${selected.has(item.id) ? "is-highlighted" : ""}" data-set-item-id="${escapePackageAttribute(item.id)}">${renderPackageInline(item.label)}</li>`).join("")}</ul></section>`;
-    return `<div class="runtime-block runtime-relation-map-block package-relation-map" data-density="${data.relations.length > 8 ? "high" : "normal"}">${renderPackageProse(data.prompt)}<div class="package-relation-sets" aria-label="Conjuntos da relação">${setPanel(data.leftSet, "left", highlightedLeft)}<span class="package-relation-symbol" aria-hidden="true">R ⊆ A × B</span>${setPanel(data.rightSet, "right", highlightedRight)}</div><ol class="package-relation-pairs" aria-label="Pares da relação entre ${escapePackageAttribute(data.leftSet.label)} e ${escapePackageAttribute(data.rightSet.label)}">${data.relations.map((relation) => `<li class="${highlighted.has(relation.id) ? "is-highlighted" : ""}" data-relation-id="${escapePackageAttribute(relation.id)}"><span aria-hidden="true">(</span><strong>${renderPackageInline(left.get(relation.from))}</strong><span aria-hidden="true">,</span><strong>${renderPackageInline(right.get(relation.to))}</strong><span aria-hidden="true">)</span>${relation.label ? `<small>${renderPackageInline(relation.label)}</small>` : ""}</li>`).join("")}</ol></div>`;
+    const bySource = new Map(data.leftSet.items.map(({ id }) => [id, []]));
+    data.relations.forEach((relation) => bySource.get(relation.from)?.push(relation));
+    const rows = data.leftSet.items.map((item) => {
+      const relations = bySource.get(item.id) || [];
+      const rowHighlighted = highlightedLeft.has(item.id) || relations.some(({ id }) => highlighted.has(id));
+      const targets = relations.length
+        ? relations.map((relation) => `<li class="${highlighted.has(relation.id) || highlightedRight.has(relation.to) ? "is-highlighted" : ""}" data-relation-id="${escapePackageAttribute(relation.id)}"><strong>${renderPackageInline(right.get(relation.to))}</strong>${relation.label ? `<small>${renderPackageInline(relation.label)}</small>` : ""}</li>`).join("")
+        : `<li class="is-empty"><span>Sem correspondência</span></li>`;
+      return `<li class="package-relation-row${rowHighlighted ? " is-highlighted" : ""}" data-set-item-id="${escapePackageAttribute(item.id)}"><strong class="package-relation-source">${renderPackageInline(left.get(item.id))}</strong><span class="package-relation-arrow" aria-hidden="true">→</span><ul class="package-relation-targets">${targets}</ul></li>`;
+    }).join("");
+    const relatedTargets = new Set(data.relations.map(({ to }) => to));
+    const unpairedTargets = data.rightSet.items.filter(({ id }) => !relatedTargets.has(id));
+    const unpaired = unpairedTargets.length
+      ? `<p class="package-relation-unpaired"><span>Sem preimagem:</span> ${unpairedTargets.map(({ label }) => renderPackageInline(label)).join(", ")}</p>`
+      : "";
+    return `<div class="runtime-block runtime-relation-map-block package-relation-map" data-density="${data.relations.length > 8 ? "high" : "normal"}">${renderPackageProse(data.prompt)}<section class="package-relation-mapping" aria-label="Relação entre ${escapePackageAttribute(data.leftSet.label)} e ${escapePackageAttribute(data.rightSet.label)}"><header><strong>${renderPackageInline(data.leftSet.label)}</strong><span aria-hidden="true">→</span><strong>${renderPackageInline(data.rightSet.label)}</strong></header><ol>${rows}</ol>${unpaired}</section></div>`;
   },
   accessibleText(data) { return relationMapAccessibleText(data); },
   editableTargets(data) { return [{ path: "prompt", label: "Editar orientação" }, { path: "leftSet.label", label: "Editar domínio" }, { path: "rightSet.label", label: "Editar contradomínio" }, ...data.leftSet.items.map((_, index) => ({ path: `leftSet.items[${index}].label`, label: `Editar elemento do domínio ${index + 1}` })), ...data.rightSet.items.map((_, index) => ({ path: `rightSet.items[${index}].label`, label: `Editar elemento do contradomínio ${index + 1}` })), ...data.relations.flatMap((relation, index) => relation.label ? [{ path: `relations[${index}].label`, label: `Editar relação ${index + 1}` }] : [])]; }

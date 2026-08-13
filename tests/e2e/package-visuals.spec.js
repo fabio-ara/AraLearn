@@ -188,17 +188,15 @@ for (const width of [360, 390, 412]) {
       expect(labels).toContain("Agente no dispositivo monitorado");
     });
 
-    test(`relation_map preserva conjuntos e pares sem sobreposição em ${width}px no modo ${mode}`, async ({ page }) => {
+    test(`relation_map alinha cada origem às imagens sem duplicar a relação em ${width}px no modo ${mode}`, async ({ page }) => {
       await page.setViewportSize({ width, height: 900 });
       await page.goto("/");
       await page.setContent(documentFor(relationInstance, mode));
-      await expect(page.locator(".package-relation-set")).toHaveCount(2);
-      await expect(page.locator(".package-relation-pairs > li")).toHaveCount(4);
-      await assertContained(page, ".package-relation-set, .package-relation-set li, .package-relation-pairs > li", width);
-      const setPanels = await page.locator(".package-relation-set").evaluateAll((elements) => elements.map((element) => element.getBoundingClientRect()).map(({ left, right, top, bottom }) => ({ left, right, top, bottom })));
-      const overlapWidth = Math.max(0, Math.min(setPanels[0].right, setPanels[1].right) - Math.max(setPanels[0].left, setPanels[1].left));
-      const overlapHeight = Math.max(0, Math.min(setPanels[0].bottom, setPanels[1].bottom) - Math.max(setPanels[0].top, setPanels[1].top));
-      expect(overlapWidth * overlapHeight).toBeLessThanOrEqual(0.5);
+      await expect(page.locator(".package-relation-mapping > header strong")).toHaveCount(2);
+      await expect(page.locator(".package-relation-row")).toHaveCount(4);
+      await expect(page.locator(".package-relation-targets > li")).toHaveCount(4);
+      await expect(page.locator(".package-relation-pairs")).toHaveCount(0);
+      await assertContained(page, ".package-relation-mapping, .package-relation-row, .package-relation-targets > li", width);
       expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
     });
 
@@ -212,9 +210,10 @@ for (const width of [360, 390, 412]) {
       await expect(page.locator(".package-graph-edge-index")).toHaveCount(0);
       await expect(page.locator(".package-graph-relations li")).toHaveCount(5);
       await expect(page.locator(".package-relation-map svg")).toHaveCount(0);
-      await expect(page.locator(".package-relation-map .package-relation-set")).toHaveCount(2);
-      await expect(page.locator(".package-relation-map .package-relation-pairs > li")).toHaveCount(4);
-      await assertContained(page, ".package-graph-relations li, .package-relation-map .package-relation-set, .package-relation-map .package-relation-pairs > li", width);
+      await expect(page.locator(".package-relation-map .package-relation-row")).toHaveCount(4);
+      await expect(page.locator(".package-relation-map .package-relation-targets > li")).toHaveCount(4);
+      await expect(page.locator(".package-relation-map .package-relation-pairs")).toHaveCount(0);
+      await assertContained(page, ".package-graph-relations li, .package-relation-map .package-relation-row, .package-relation-map .package-relation-targets > li", width);
       expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
     });
 

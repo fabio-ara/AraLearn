@@ -3474,7 +3474,9 @@ export function createLessonEditorApp({
     };
     getCurrentCardOrderingResponse().forEach((entry) => {
       const current = state.responseExerciseByBlockKey[entry.blockKey];
-      const itemIds = Array.isArray(entry.block?.itemIds) ? entry.block.itemIds.map(String) : [];
+      const itemIds = Array.isArray(entry.block?.items)
+        ? entry.block.items.map(({ id }) => String(id))
+        : [];
       let order = Array.isArray(current?.order) ? current.order.slice() : [];
       if (order.length !== itemIds.length || order.some((id) => !itemIds.includes(id))) {
         order = itemIds.length > 1 ? [...itemIds.slice(1), itemIds[0]] : itemIds;
@@ -3766,7 +3768,7 @@ export function createLessonEditorApp({
   function tryOrderingAgain(blockKey) {
     const entry = getCurrentOrderingEntry(blockKey);
     if (!entry) return;
-    const itemIds = entry.block.itemIds.map(String);
+    const itemIds = entry.block.items.map(({ id }) => String(id));
     state.responseExerciseByBlockKey[blockKey] = {
       order: itemIds.length > 1 ? [...itemIds.slice(1), itemIds[0]] : itemIds,
       feedback: null

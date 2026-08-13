@@ -72,8 +72,10 @@ test("kernel registra package sem conhecer paragraph", () => {
     if (manifest.slots.includes("content")) {
       assert.ok(manifest.academic.practiceModes.includes("gap"), manifest.id);
       assert.ok(manifest.academic.practiceModes.includes("typing"), manifest.id);
+      assert.ok(manifest.academic.practiceModes.includes("ordering"), manifest.id);
       assert.ok(manifest.academic.practiceModes.includes("matching"), manifest.id);
       assert.ok(manifest.responseCompatibility.includes("aralearn.response.gap"), manifest.id);
+      assert.ok(manifest.responseCompatibility.includes("aralearn.response.ordering"), manifest.id);
       assert.ok(manifest.responseCompatibility.includes("aralearn.response.matching"), manifest.id);
       const contract = RESOURCE_PACKAGE_REGISTRY.getAuthoringContract(manifest.id, manifest.version);
       const instance = RESOURCE_PACKAGE_REGISTRY.normalizeInstance({
@@ -105,6 +107,24 @@ test("packages de resposta avaliam escolha, lacuna, ordenação e encaixe", () =
     const instance = RESOURCE_PACKAGE_REGISTRY.normalizeInstance({ id: `response-${index}`, package: packageId, version: manifest.version, data: contract.contract.example }, "response");
     assert.equal(RESOURCE_PACKAGE_REGISTRY.evaluateResponse(instance, answer).correct, true, packageId);
   });
+});
+
+test("ordering possui blocos próprios e não depende da estrutura de conteúdo", () => {
+  const contract = RESOURCE_PACKAGE_REGISTRY.getAuthoringContract(
+    "aralearn.response.ordering",
+    "2.0.0"
+  );
+  assert.deepEqual(contract.contract.required, ["prompt", "items", "answerOrder"]);
+  assert.equal(Object.hasOwn(contract.schema.properties, "targetInstanceId"), false);
+  assert.equal(Object.hasOwn(contract.schema.properties, "itemIds"), false);
+  const instance = RESOURCE_PACKAGE_REGISTRY.normalizeInstance({
+    id: "ordering-independent",
+    package: "aralearn.response.ordering",
+    version: "2.0.0",
+    data: contract.contract.example
+  }, "response");
+  const card = { ...theoryCard(), role: "practice", response: instance };
+  assert.equal(validateCardEnvelope(card, RESOURCE_PACKAGE_REGISTRY).valid, true);
 });
 
 test("contrato completo é obtido somente para o package escolhido", () => {

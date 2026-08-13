@@ -398,13 +398,18 @@
                       "response": {
                         "id": "instance-9",
                         "package": "aralearn.response.ordering",
-                        "version": "1.0.0",
+                        "version": "2.0.0",
                         "data": {
                           "prompt": "Ordene as etapas.",
-                          "targetInstanceId": "body-1",
-                          "itemIds": [
-                            "s1",
-                            "s2"
+                          "items": [
+                            {
+                              "id": "s1",
+                              "label": "Preparar"
+                            },
+                            {
+                              "id": "s2",
+                              "label": "Executar"
+                            }
                           ],
                           "answerOrder": [
                             "s1",
@@ -934,7 +939,7 @@
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
-                            "text": "Cada conjunto lista seus elementos uma única vez e toda correspondência também aparece como par ordenado textual."
+                            "text": "Cada elemento do domínio é seguido pelas imagens que lhe correspondem; a leitura não depende de linhas desenhadas."
                           }
                         }
                       ],

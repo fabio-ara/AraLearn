@@ -11,6 +11,7 @@ const FIXTURES = [
   "tests/fixtures/package/project-minimal.json",
   "tests/fixtures/package/project-visual.json",
   "tests/fixtures/package/project-resources-gallery.json",
+  "tests/fixtures/package/resource-test-course.json",
   "tests/fixtures/formulas-matematica-quimica.json",
   "tests/fixtures/course-catalog/teoria-dos-grafos-prova.json",
   "tests/fixtures/course-catalog/praticas-ferramentas-seed-course.json",
