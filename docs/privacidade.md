@@ -1,79 +1,189 @@
-# Privacidade no AraLearn
+# Privacidade e tratamento de dados
 
-O AraLearn guarda somente os dados necessários para autenticação, estudo, sincronização e autoria. A instância oficial não vende dados, não exibe publicidade e não fornece credenciais do usuário a assistentes externos.
+## Por que este tema faz parte do funcionamento do AraLearn
 
-## Dados da conta e do estudo
+Um ambiente de aprendizagem precisa conservar dados suficientes para retomar o estudo, sincronizar alterações e controlar o acesso a espaços compartilhados. A mesma infraestrutura pode, porém, produzir registros desnecessários sobre o comportamento do estudante. O AraLearn separa essas duas necessidades: mantém **estado funcional**, necessário para prestar o serviço, e não transforma cada interação de estudo em um indicador de desempenho.
 
-O Supabase Auth trata o endereço de e-mail, a credencial de acesso e as sessões. O banco associa ao UUID da conta os cursos selecionados, as trilhas, o estado funcional de retomada, as observações pedagógicas e os cursos privados. O estado de estudo contém somente cursor, conclusão estrutural e a marca pessoal **Rever**. Não guarda abertura de card, tempo, número de tentativas, acertos, erros ou último resultado. O navegador e o aplicativo Android mantêm uma réplica no dispositivo para permitir o estudo sem conexão. Cada observação conserva categoria, texto curto e referência ao card; em workspace, pode conservar também papel contextual, revisão observada, resposta e estado correntes e referência compacta a uma correção concluída. Não copia o conteúdo estudado nem cria histórico do texto ou da conversa.
+Essa separação não torna qualquer sistema automaticamente seguro ou eticamente adequado. Ela reduz a coleta no desenho do produto e deixa explícitos finalidade, destinatário e risco de cada fluxo. A governança de dados educacionais exige também regras institucionais, controle de acesso, informação compreensível ao participante e avaliação contínua das consequências do tratamento ([Pardo e Siemens (2014)](referencias.md#ref-pardo2014ethical); [Prinsloo e Slade (2017)](referencias.md#ref-prinsloo2017ethics)).
 
-O usuário pode retirar cursos, apagar os dados deste dispositivo, encerrar a sessão ou excluir a conta pelo próprio AraLearn. A exclusão da conta remove os dados pessoais conforme as relações e os prazos técnicos definidos no banco.
+Este documento descreve o comportamento implementado no AraLearn. Uma instituição que instale o software em infraestrutura própria deve complementar esta descrição com sua política de privacidade, seus responsáveis, suas bases jurídicas, seus prazos de retenção e seus canais de atendimento.
 
-## Autoria privada e catálogo
+## Conceitos necessários
 
-O gateway MCP recebe comandos sobre entidades de `aralearn.library.v1` e conserva
-as partes atuais do workspace da própria conta. Cada mutação usa uma revisão
-esperada e uma chave de tentativa usada para deduplicação. A submissão editorial expõe somente a
-revisão privada escolhida, nunca os demais cursos da biblioteca.
+**Dado pessoal** é uma informação que identifica uma pessoa ou que pode ser relacionada a ela, como endereço de e-mail, identificador de conta ou participação em um workspace.
 
-Para permitir retomada em outra conversa, o workspace conserva um estado
-corrente e limitado com ids das Partes, decisões e o mandato humano atual.
-Achados formais guardam alvo, síntese, reparo proposto, decisão e verificação.
-Enquanto um reparo aprovado está em curso, guardam também somente o
-identificador e a revisão pendentes mais recentes para permitir retomada.
-Esse estado não inclui mensagens, prompts, respostas do modelo, cards nem
-snapshots do curso. Achados ativos permanecem até resolução ou exclusão;
-terminais possuem retenção limitada. Notas criadas pela pessoa não são
-apagadas pela limpeza de achados terminais.
+**Estado funcional de estudo** é o conjunto mínimo de dados que permite retomar uma atividade. No AraLearn, ele inclui posição no curso, cards estruturalmente concluídos, marcações **Rever** e observações da própria pessoa.
 
-Na assistência bottom-up, o serviço configurado recebe o pedido e um recorte
-delimitado: hierarquia e guias da etapa, alvos graváveis, ordem, vizinhos
-limitados e índice compacto da lição. O curso inteiro não é enviado. Pedido,
-contexto montado e resposta bruta não são persistidos junto ao conteúdo; a
-mudança validada é gravada atomicamente.
+**Réplica local** é a cópia mantida no dispositivo para que o aplicativo abra rapidamente e continue funcionando sem conexão. Ela não é uma cópia de segurança independente: dados ainda não sincronizados podem existir somente nesse dispositivo.
 
-Curso privado próprio permanece na mesma identidade. Curso oficial é somente
-leitura para conta comum e só pode ser alterado por conta administrativa ou
-editorial, mantendo sua continuidade oficial. O aplicativo não cria cópia
-privada automática nem promove conteúdo ao catálogo.
+**Servidor remoto** é a infraestrutura compartilhada que autentica contas, distribui cursos e sincroniza dados autorizados. Na configuração documentada neste repositório, essa função é exercida pelo Supabase.
 
-O gateway MCP autentica cada conexão por OAuth e resolve no banco as permissões
-efetivas da conta. Não existe chave pessoal estática ou fallback de credencial
-para a autoria estrutural.
+**Serviço externo** é um provedor que não faz parte do núcleo do AraLearn, como um modelo de linguagem escolhido para auxiliar a edição. Quando a pessoa aciona esse serviço, parte do contexto necessário à tarefa deixa o dispositivo e passa a ser tratada também segundo as regras do provedor escolhido.
 
-Em espaços compartilhados, a conta pode ter papéis diferentes em cada
-workspace. O servidor reavalia o vínculo em toda leitura e escrita. Um convite
-guarda e-mail normalizado, papel, expiração e hash do código; o código aparece
-somente no recibo de criação. Revogar participação interrompe o acesso remoto
-e remove a seleção concedida exclusivamente pelo workspace, sem apagar cursos
-próprios. Em workspace, os papéis de revisão consultam as observações ligadas
-àquele espaço; estudantes continuam sem acesso aos registros de colegas. A
-lista compartilhada de observações não é guardada no cache persistente de Trilhas.
+## Mapa dos dados tratados
 
-Os materiais enviados a um serviço externo de linguagem ou de recuperação de
-informação também ficam sujeitos às regras desse serviço. O envio ocorre apenas
-quando a pessoa aciona a assistência ou usa uma integração escolhida por ela;
-o contexto deve permanecer limitado ao necessário para a operação.
+### Conta e autenticação
 
-## Registros técnicos
+O serviço de autenticação trata o endereço de e-mail, a credencial de acesso e a sessão. O AraLearn recebe o identificador da conta e os dados de sessão necessários para autorizar operações; a senha não integra o conteúdo dos cursos nem o contexto enviado à assistência de autoria.
 
-O servidor conserva registros de autenticação, recibos temporários de
-deduplicação, limites
-de requisição e resumos recentes de alterações suficientes para detectar
-falhas, impedir repetição indevida e investigar uma autoria. Esses resumos não
-contêm cópias antigas do workspace nem permitem restaurá-las.
+O endereço de e-mail também pode ser usado para localizar o destinatário de um convite. Nesse caso, o convite conserva o e-mail normalizado, o papel proposto, a data de expiração e um resumo criptográfico do código de aceite. O código completo é apresentado na criação do convite e não é armazenado como texto recuperável no registro do convite.
 
-Revisões publicadas de curso ficam em objetos privados imutáveis, protegidos
-por autorização e pela política de retenção descrita em [Supabase:
-desenvolvimento e implantação](supabase.md). Uma submissão ativa retém o hash
-exato da revisão privada escolhida. Quem revisa recebe somente esse artefato e
-pode trabalhar numa cópia editorial independente.
+### Cursos, workspaces e autoria
 
-## Armazenamento no dispositivo
+O servidor pode conservar:
 
-IndexedDB, armazenamento local e cache do aplicativo guardam a sessão e a réplica necessária ao uso sem conexão. Limpar os dados do navegador ou do aplicativo remove essa cópia do dispositivo, mas não exclui automaticamente a conta nem o estado já sincronizado.
+- cursos e revisões necessárias à distribuição do material;
+- workspaces, seus participantes, papéis e permissões;
+- alterações de autoria e os dados mínimos usados para ordenar ou deduplicar uma operação;
+- observações pedagógicas vinculadas a um alvo do curso;
+- artefatos imutáveis de uma revisão submetida a avaliação ou distribuição.
+
+Esses dados existem para que uma alteração não seja aplicada duas vezes, para que duas pessoas não sobrescrevam silenciosamente a mesma revisão e para que somente participantes autorizados leiam ou modifiquem um workspace. A autorização é reavaliada no servidor; ocultar um botão no navegador não é usado como mecanismo de segurança.
+
+O estado corrente de autoria não é um arquivo de conversa. A implementação conserva a estrutura atual necessária para continuar o trabalho e referências compactas de operações em curso. Mensagens completas de uma conversa externa, respostas brutas e cópias sucessivas do curso não são anexadas ao conteúdo como histórico textual.
+
+### Estado pessoal de estudo
+
+A réplica funcional associa à conta e ao curso:
+
+- o card em que a pessoa parou;
+- os identificadores dos cards concluídos na progressão estrutural;
+- as marcações pessoais **Rever**;
+- as observações pedagógicas da própria pessoa e seu alvo.
+
+O estado funcional não registra abertura de cada card, tempo de permanência, quantidade de tentativas, sequência de acertos e erros nem a última alternativa escolhida. Portanto, a interface consegue retomar o estudo, mas esse estado não deve ser interpretado como medida de aprendizagem, domínio ou esforço. A distinção é explicada em [Estado de estudo não punitivo](estado-de-estudo-nao-punitivo.md).
+
+### Observações pedagógicas
+
+Uma observação contém categoria, texto e referência ao objeto observado. Em um workspace, ela também pode conter papel contextual, estado da análise, resposta e referência compacta à alteração que incorporou a observação.
+
+O estudante comum não recebe uma listagem das observações dos colegas. Participantes com função de revisão podem consultar observações vinculadas ao workspace quando essa capacidade faz parte de seu papel. A lista compartilhada não é mantida no cache persistente de Trilhas. Esses limites reduzem exposição indevida, mas não substituem regras institucionais sobre o que pode ser escrito em uma observação.
+
+### Assistência por modelo de linguagem
+
+Quando a pessoa solicita uma alteração assistida, o provedor configurado recebe o pedido e um contexto delimitado pela seleção: textos autorizados, posição do objeto, vizinhança necessária e informações estruturais de leitura. O aplicativo valida a resposta e só grava alterações nos campos permitidos.
+
+A conversa de assistência do card é mantida durante a sessão de edição para permitir pedidos sucessivos, desfazer e restaurar versões recentes. Na implementação atual, esse diálogo fica em memória e não é persistido como histórico pessoal no IndexedDB nem anexado ao curso. As chaves e segredos digitados na configuração do provedor também permanecem no estado em memória da sessão; não são gravados pelo editor na réplica local.
+
+Esse desenho diminui a quantidade de contexto transmitida, mas não elimina o risco de divulgação. Antes de enviar um pedido, a pessoa deve conferir a seleção e evitar inserir dados pessoais, segredos, avaliações individuais ou documentos que o provedor não esteja autorizado a receber. Sistemas de IA exigem supervisão humana, delimitação de finalidade e comunicação de suas limitações ([Amershi et al. (2019)](referencias.md#ref-amershi2019humanai); [UNESCO (2023)](referencias.md#ref-unesco2023genai); [Autio et al. (2024)](referencias.md#ref-nist2024genai)).
+
+### Registros técnicos
+
+O servidor conserva os registros necessários para autenticar operações, aplicar limites, deduplicar tentativas e investigar falhas. Recibos e resumos técnicos não equivalem a uma cópia integral do workspace e não devem ser tratados como mecanismo de restauração de conteúdo.
+
+Os prazos e mecanismos implementados no banco estão descritos em [Supabase: desenvolvimento e implantação](supabase.md). Logs do provedor de hospedagem ou de um serviço externo podem seguir regras próprias; por isso, o responsável por cada implantação precisa documentar também essas camadas.
+
+## O que permanece no dispositivo
+
+O navegador ou o aplicativo Android usa três formas principais de armazenamento:
+
+- **IndexedDB:** réplica relacional, estado de estudo e alterações que aguardam sincronização;
+- **armazenamento de preferências:** escolhas locais de interface, como tema;
+- **cache do aplicativo:** arquivos necessários para abrir a interface e executar recursos offline.
+
+O IndexedDB é apropriado para dados estruturados maiores e para transações locais. Diferentemente de uma variável em memória, ele sobrevive ao fechamento da página; diferentemente de um arquivo único, permite atualizar conjuntos relacionados sem regravar toda a base. Essa escolha sustenta a continuidade offline, mas cria uma responsabilidade: limpar os dados do navegador pode apagar a única cópia de uma alteração que ainda não chegou ao servidor.
+
+Sair da conta encerra a sessão e fecha as conexões locais, mas não deve ser confundido com apagar a réplica do dispositivo. Excluir a conta, quando confirmado e concluído pelo servidor, limpa também o estado local dessa conta no aplicativo. Uma limpeza local oferecida durante a recuperação de inicialização elimina a réplica e as alterações ainda não enviadas; deve ser usada somente depois das tentativas de recuperação descritas em [Solução de problemas](solucao-de-problemas.md).
+
+## Operações que a pessoa pode realizar
+
+### Encerrar a sessão sem excluir a conta
+
+**Pré-condição.** Estar autenticado e, de preferência, sem alterações pendentes.
+
+**Passos.**
+
+1. Abra o painel pelo ícone de nuvem.
+2. Verifique o indicador de sincronização.
+3. Escolha **Sair**.
+4. Se houver aviso de alterações pendentes, cancele, restabeleça a conexão e sincronize antes de tentar novamente.
+
+**Resultado esperado.** A sessão é encerrada e a tela de acesso volta a ser exibida. A conta e os dados já sincronizados permanecem no servidor.
+
+**Sem conexão.** O aplicativo pode identificar trabalho pendente e pedir confirmação. Sair não envia o que ainda está somente no dispositivo.
+
+**Recuperação.** Se a saída for interrompida porque a gravação local não terminou, use **Tentar gravar novamente**. Não feche nem limpe o aplicativo enquanto esse aviso estiver ativo.
+
+### Apagar somente a réplica deste dispositivo
+
+**Pré-condição.** Confirmar que não há alterações necessárias aguardando envio. Esta ação aparece como recuperação quando a base local impede a inicialização normal.
+
+**Passos.**
+
+1. Tente primeiro recarregar o aplicativo e restabelecer a conexão.
+2. Se a tela de recuperação continuar presente, leia o aviso sobre perda de dados locais.
+3. Use a opção de limpar os dados deste dispositivo somente se aceitar a perda do que não foi sincronizado.
+
+**Resultado esperado.** A réplica local é removida. Depois de autenticar e sincronizar, o dispositivo volta a receber o estado disponível no servidor.
+
+**Sem conexão.** Não será possível reconstruir a réplica até que o servidor esteja acessível.
+
+**Recuperação.** Dados que já estavam no servidor reaparecem na sincronização. Alterações existentes apenas na réplica apagada não podem ser recuperadas pelo AraLearn.
+
+### Excluir a conta
+
+**Pré-condição.** Estar autenticado, ter conexão e ter exportado ou transferido qualquer conteúdo que precise ser preservado. O proprietário de um workspace deve resolver previamente a continuidade desse espaço quando aplicável.
+
+**Passos.**
+
+1. Abra o painel pelo ícone de nuvem.
+2. Escolha **Excluir conta**.
+3. Leia a confirmação e prossiga somente se a exclusão for intencional.
+
+**Resultado esperado.** O servidor exclui a conta e os dados pessoais ligados a ela conforme as relações definidas no banco; em seguida, o aplicativo remove a réplica local e volta à tela de acesso.
+
+**Sem conexão.** A exclusão não pode ser concluída, porque precisa ser autorizada e executada no servidor.
+
+**Recuperação.** Se o pedido falhar antes da confirmação do servidor, a conta permanece ativa e a interface apresenta o erro. Depois de concluída, a operação não oferece restauração automática.
+
+### Usar assistência externa com exposição mínima
+
+**Pré-condição.** Ter um provedor configurado, conexão quando o provedor for remoto e autorização para enviar o conteúdo selecionado.
+
+**Passos.**
+
+1. Selecione somente o card ou os rótulos necessários.
+2. Revise o texto selecionado e retire dados pessoais ou sigilosos.
+3. Faça um pedido específico.
+4. Examine a proposta antes de continuar a edição.
+5. Use desfazer ou peça uma nova alteração se o resultado não corresponder à intenção.
+
+**Resultado esperado.** O provedor recebe um recorte da tarefa; somente uma mudança validada nos campos autorizados é incorporada.
+
+**Sem conexão.** Um provedor remoto não responde. Um serviço local pode funcionar, desde que esteja instalado e acessível no próprio dispositivo ou na rede configurada.
+
+**Recuperação.** Uma falha ou resposta inválida não deve produzir alteração parcial. Refaça o pedido com escopo menor; se uma mudança já foi aplicada, use o histórico recente da sessão para desfazer ou restaurar.
+
+## Responsabilidades em workspaces educacionais
+
+Permissão técnica não significa autorização pedagógica ou jurídica para qualquer uso. Quem administra um workspace deve:
+
+- convidar somente pessoas que precisam participar;
+- atribuir o papel menos abrangente compatível com a tarefa;
+- revisar periodicamente participantes e convites;
+- informar a finalidade das observações e da assistência externa;
+- evitar que dados de avaliação individual sejam inseridos em campos destinados a conteúdo didático;
+- definir procedimentos institucionais para exportação, retenção e encerramento do workspace.
+
+As capacidades de cada papel estão documentadas em [Administração de workspaces](guia-administracao-workspace.md).
 
 ## Instâncias mantidas por terceiros
 
-O código do AraLearn é público e pode ser implantado em outra infraestrutura. Quem mantém outra instância passa a responder pelo tratamento realizado nela e deve publicar suas próprias informações de privacidade.
+O código do AraLearn pode ser implantado em outra infraestrutura. O mantenedor dessa instância escolhe provedores, configura retenção, administra contas e pode modificar o software. Portanto, a política e o contato da instância usada pela pessoa são a fonte aplicável para compromissos jurídicos e operacionais. Este documento descreve o código deste repositório e não promete práticas de uma implantação que ele não controla.
 
-Questões gerais podem ser registradas no [repositório do projeto](https://github.com/fabio-ara/AraLearn/issues). Não publique senhas, chaves, documentos pessoais ou outros dados sigilosos em uma issue.
+## Como comunicar um problema de privacidade
+
+**Pré-condição.** Reunir apenas informações técnicas necessárias, sem reproduzir o dado sigiloso.
+
+**Passos.**
+
+1. Anote a versão do aplicativo, o dispositivo, a operação realizada e o resultado observado.
+2. Substitua e-mails, nomes, códigos de convite, chaves e conteúdo privado por exemplos fictícios.
+3. Use o canal definido pela instituição que mantém a instância.
+4. Para um defeito no código público, registre-o no [repositório do projeto](https://github.com/fabio-ara/AraLearn/issues).
+
+**Resultado esperado.** O responsável recebe informação suficiente para reproduzir o problema sem nova exposição de dados.
+
+**Sem conexão.** Guarde a descrição localmente e envie quando houver conexão segura.
+
+**Recuperação.** Se um segredo foi publicado acidentalmente, remova-o do canal quando possível e revogue ou substitua a credencial; apenas editar a mensagem pode não eliminar cópias já registradas.

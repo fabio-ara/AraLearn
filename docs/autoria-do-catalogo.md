@@ -1,165 +1,226 @@
-# Autoria e publicação
+# Autoria e publicação do catálogo
 
-O AraLearn publica cursos a partir de `aralearn.library.v1`, com cards por
-packages versionados. A construção extensa
-acontece num workspace composto acessado pelo gateway MCP. No aplicativo, a
-assistência bottom-up atua diretamente no curso privado próprio ou, para conta
-administrativa ou editorial, no curso oficial, sempre preservando a identidade
-e gravando somente as partes alteradas. Curso oficial é somente leitura para
-conta comum. O aplicativo não cria fork automático nem promove curso privado;
-a passagem ao catálogo ocorre exclusivamente pela autoria com MCP.
+Autoria, estudo e publicação são estados relacionados, mas não equivalentes.
+Uma pessoa precisa testar partes de um curso antes de concluí-lo; uma equipe
+precisa revisar uma versão exata sem receber acesso a toda a biblioteca
+privada; estudantes precisam continuar vendo uma publicação estável enquanto
+outra revisão é preparada.
 
-Fixtures oficiais continuam usando uma ferramenta de implantação separada.
-Elas não são uma forma de editar cursos pelo aplicativo.
+O AraLearn separa essas responsabilidades em três objetos:
 
-## Da conversa ao workspace
+- **workspace:** espaço mutável em que pessoas autorizadas planejam e editam;
+- **artefato:** documento imutável produzido a partir de uma revisão validada;
+- **publicação:** referência que torna um artefato disponível num destino.
 
-O assistente pode listar e ler cursos acessíveis antes de criar conteúdo. Um
-workspace pode começar vazio, partir de um curso, reunir vários cursos ou abrir
-uma revisão editorial já assumida.
+Essa separação evita usar rótulos burocráticos como “rascunho” e “publicado”
+para controlar se um card pode ser renderizado. Qualquer parte materializada e
+válida do workspace já pode ser estudada em Trilhas. Publicar serve para fixar
+e distribuir uma revisão, não para ativar a renderização.
 
-Quando o assistente confirma a estrutura inicial, o workspace aparece como
-plano em `Trilhas`; não é preciso criar um plano vazio no aplicativo. A
-materialização de cards torna o mesmo item estudável, sem gerar outro projeto.
+## Onde cada conteúdo aparece
 
-As operações são focadas:
+| Superfície | Conteúdo | Finalidade |
+| --- | --- | --- |
+| Trilhas | workspace próprio e cursos escolhidos | organizar e estudar |
+| submissão | artefato privado identificado por hash | oferecer uma revisão exata à avaliação |
+| Coleções | publicação oficial completa | distribuir o catálogo da instância |
 
-- registrar estrutura planejada em lotes pequenos;
+Um plano aparece em Trilhas depois que a estrutura inicial do workspace é
+confirmada. À medida que cards são materializados, o mesmo item passa a ser
+estudável. Não surge uma segunda cópia do projeto.
+
+## Por que o workspace é composto
+
+Um curso extenso pode conter centenas de cards. Salvar o documento integral a
+cada pequena correção aumentaria transferência, processamento e armazenamento.
+Também tornaria conflitos mais amplos: duas pessoas modificando lições
+distintas disputariam a mesma cópia inteira.
+
+O workspace remoto conserva partes atuais em registros separados. Uma operação
+altera somente as partes necessárias; o servidor recompõe a visão do curso e
+valida o resultado antes de confirmar a revisão. Esse desenho permite:
+
+- construir uma microssequência por vez;
+- copiar ou mover partes com identidades bem definidas;
+- retomar a autoria sem depender do histórico do chat;
+- detectar concorrência por revisão;
+- materializar um artefato integral apenas quando necessário.
+
+“Composto” não significa que o estudante recebe fragmentos desconexos. A
+composição é uma estratégia de persistência autoral; a leitura continua
+apresentando a árvore coerente.
+
+## Operações sobre a árvore
+
+A integração pode:
+
+- registrar curso, módulos, lições e microssequências planejadas;
 - salvar os cards de uma microssequência;
 - corrigir metadados ou um card;
-- copiar, renomear, mover ou excluir partes;
+- copiar, mover, renomear ou excluir partes;
 - juntar e separar microssequências;
-- transformar módulo em curso ou curso em módulo.
+- transformar um módulo em curso ou um curso em módulo.
 
-O PostgreSQL mantém uma linha corrente por parte. Cada alteração informa
-`expectedRevision` e `requestId`, toca somente o necessário e valida o documento
-recomposto. Não há merge silencioso, cópias integrais do workspace no Storage
-nem restauração de estados antigos.
+Copiar cria novas identidades e preserva a origem. Mover transfere a parte e a
+remove da origem na mesma confirmação. Não há compartilhamento oculto de uma
+subárvore mutável entre dois cursos.
 
-Copiar cria novas identidades e mantém a origem. Mover transfere a parte atual
-e remove a origem na mesma confirmação. Assim, módulos, lições,
-microssequências e cards podem atravessar cursos sem compartilhar estado.
+Cada comando informa a revisão esperada e uma chave de idempotência. Se a
+revisão mudou, a operação não sobrescreve o estado novo. Se a resposta se
+perdeu, repetir a mesma tentativa não duplica conteúdo.
 
-## Revisão humana durante a autoria
+## Revisão humana durante a construção
 
-O assistente mostra por padrão somente as microteorias produzidas e a quantidade
-de práticas. A pessoa autora consegue avaliar recorte, sequência e explicação
-conceitual sem receber todos os exercícios no chat. As práticas continuam no
-curso e podem ser lidas sob demanda.
+Mostrar todos os exercícios de um curso extenso em cada rodada produziria mais
+leitura do que decisão. A revisão padrão apresenta microteorias, finalidade,
+quantidade e variedade das práticas, recursos escolhidos e questões abertas.
+As práticas permanecem acessíveis sob demanda.
 
-O procedimento em linguagem comum está em [Criar cursos pelo
-chat](criar-cursos-pelo-chat.md).
+Esse resumo é uma vista de revisão, não outra fonte de conteúdo. Uma correção
+pontual relê o card canônico e preserva sua identidade. O procedimento completo
+está em [Criar cursos pelo chat](criar-cursos-pelo-chat.md).
 
-## Estudo em Trilhas e artefato editorial
+## Artefatos imutáveis
 
-| Destino | Forma | Resultado |
-| --- | --- | --- |
-| Trilhas | workspace corrente | plano visível e partes materializadas estudáveis, sem publicação |
-| submissão editorial | artefato privado | revisão exata, parcial ou completa, identificada por hash |
-| catálogo | `complete` | revisão editorial publicada |
+Um artefato é o JSON integral de uma composição validada. Antes de gravá-lo, o
+servidor calcula um hash criptográfico SHA-256. O hash funciona como identidade
+do conteúdo: qualquer alteração, mesmo pequena, produz outro valor com
+probabilidade prática extremamente alta.
 
-O workspace pode ser testado cedo em `Trilhas`; isso não grava JSON no Storage.
-Quando a pessoa decide submeter, `publicarCursoDoWorkspace` com
-`target: "private"` fixa ou atualiza o artefato que receberá um hash. O catálogo
-recusa conteúdo incompleto. Atualizar uma publicação existente exige o hash
-vigente, impedindo sobrescrita acidental.
+Imutabilidade foi escolhida por três razões:
+
+1. uma revisão recebida para avaliação não muda enquanto é lida;
+2. metadados relacionais podem apontar exatamente para o conteúdo validado;
+3. atualizar o catálogo troca uma referência, em vez de sobrescrever o arquivo
+   que outras operações ainda podem usar.
+
+Guardar uma cópia integral a cada comando do workspace seria desperdício;
+guardar somente a composição mutável impediria uma revisão estável. O desenho
+híbrido usa registros relacionais durante a edição e artefatos integrais nos
+pontos em que estabilidade é necessária.
+
+Um artefato antigo permanece enquanto uma publicação ou submissão válida o
+referenciar. Depois de perder todas as referências, torna-se elegível à coleta
+de lixo. “Imutável” não significa “retido para sempre”.
 
 ## Submissão editorial
 
-Uma pessoa autora envia uma revisão privada específica para avaliação. A
-submissão registra seu hash e pode conter uma nota curta. Ela não concede à
-equipe editorial acesso aos outros cursos privados da conta.
-
-O fluxo é:
+Submeter significa oferecer uma revisão privada exata para avaliação. A
+submissão registra o hash do artefato e pode incluir uma nota curta; não concede
+à equipe editorial acesso aos demais cursos privados da pessoa.
 
 ```text
-publicação privada
+workspace da autoria
+→ artefato privado
 → submissão
-→ fila de revisão
-→ workspace editorial independente
-→ pedido de ajustes, rejeição ou publicação
+→ fila editorial
+→ workspace de revisão independente
+→ ajustes, rejeição ou publicação
 ```
 
-A pessoa autora acompanha os próprios envios, inclusive depois de uma decisão.
-A listagem conserva o hash enviado, a nota da autoria, o parecer editorial e a
-data da decisão; portanto, a orientação continua legível mesmo quando o JSON
-antigo já não precisa permanecer no Storage.
+Há no máximo uma submissão ativa do mesmo curso por pessoa. Repetir o mesmo
+hash recupera o envio existente. Uma nova revisão pode substituir um envio que
+ainda aguarda na fila, mas não atropela uma revisão já assumida.
 
-Há no máximo uma submissão ativa de cada curso por pessoa:
+Quem revisa assume um item por tempo limitado, lê o artefato submetido e abre
+um workspace editorial independente. A reserva evita duas decisões
+simultâneas. Depois de expirar, outra pessoa pode assumir o trabalho. Pedir
+ajustes ou rejeitar exige justificativa; publicar um curso completo aceita a
+submissão.
 
-- repetir o mesmo hash ainda ativo recupera o mesmo envio;
-- fixar uma revisão privada nova substitui automaticamente um envio que ainda esteja
-  apenas aguardando na fila;
-- uma revisão já assumida não é atropelada: a pessoa aguarda a decisão ou pede
-  explicitamente a retirada antes de enviar outra.
+Quando há pedido de ajustes, a autoria continua em seu próprio workspace,
+produz outro artefato e envia o novo hash. A decisão anterior pode permanecer
+como registro compacto sem conservar outra cópia integral do curso.
 
-Quando recebe um pedido de ajustes, a pessoa continua seu próprio workspace,
-atualiza explicitamente o artefato privado e submete o novo hash. A submissão
-anterior fica como registro compacto da decisão, sem conservar outra cópia do
-curso.
+## Capacidades e autorização
 
-Quem revisa assume um item da fila, lê o artefato exato e abre um workspace
-editorial independente. A reserva dura 30 minutos e é renovada quando o mesmo
-revisor retoma o trabalho. Depois de expirar, outra pessoa pode assumir; o
-AraLearn fecha workspaces editoriais abandonados antes da transferência, para
-que duas cópias não avancem como se fossem a revisão vigente. Pedir ajustes ou
-rejeitar exige justificativa. Publicar um curso completo em uma coleção marca a
-submissão como aceita.
+Um **papel** descreve a relação da pessoa com um workspace ou com a instância.
+Uma **capacidade** é a ação resultante dessa relação, como submeter ou publicar.
+**Autorização** é a decisão feita para uma operação concreta, considerando
+conta, alvo e estado atuais.
 
-## Capacidades por conta
+Essa sequência importa: escrever “sou editor” num prompt não concede
+capacidade. O servidor resolve as relações no banco e autoriza cada chamada.
 
-Não existe um GPT administrativo separado. Action e MCP usam o mesmo
-executor; o backend mostra apenas as capacidades que a conta conectada possui:
+As capacidades podem incluir:
 
-- autoria privada e leitura da própria biblioteca em Trilhas;
-- leitura de Coleções somente com capacidade editorial;
-- submissão de curso próprio;
-- revisão da fila;
-- publicação e organização do catálogo.
+- criar e editar conteúdo privado;
+- submeter curso próprio;
+- consultar e assumir a fila editorial;
+- publicar e organizar o catálogo;
+- administrar participantes de um workspace específico.
 
-Essas capacidades vêm do banco, não de um texto que o assistente possa inventar
-nem de um `scope` confiado ao modelo. A conexão usa OAuth; a credencial secreta
-do backend permanece exclusivamente no ambiente protegido da Edge Function e
-opera com o papel PostgreSQL/PostgREST `service_role`. Nenhuma
-capacidade editorial global concede acesso a progresso, observações ou trilhas
-de outras pessoas. A triagem exige papel de revisão no workspace específico;
-não deriva do catálogo.
+Uma capacidade editorial global não concede acesso ao progresso, às Trilhas ou
+às observações pessoais de outras pessoas. Triagem pedagógica exige relação
+apropriada com o workspace correspondente.
 
-Uma conta com `catalog:read` pode pedir “procure cursos sobre Kubernetes e
-virtualização”. O assistente usa `consultarCatalogo` com
-`operation: "search_courses"` uma vez para pesquisar todas as Coleções: cada
-termo precisa aparecer em algum metadado do curso ou da coleção. A lista
-compacta informa onde o curso está, seu hash, revisão e contagens; o conteúdo
-só é lido depois, quando um curso ou uma parte for realmente necessário como
-contexto. Contas privadas não recebem essa ferramenta.
+## Publicação em Coleções
 
-## Artefatos e organização do catálogo
+Somente uma composição completa pode ser publicada como curso oficial. O
+servidor recompõe a árvore, valida os contratos, calcula o hash, grava o
+artefato e atualiza a referência corrente do curso.
 
-Somente ao publicar o servidor recompõe o curso, valida o contrato, calcula
-SHA-256 e grava o artefato imutável no Storage. A submissão aponta para esse
-mesmo conteúdo exato. A atualização troca a única referência corrente do curso;
-um artefato anterior sem referência de curso nem de submissão torna-se elegível
-à coleta de lixo.
+Coleções e classificação são metadados relacionais. Renomear uma coleção ou
+transferir um curso entre coleções não reescreve a árvore pedagógica. Adicionar
+um curso oficial a Trilhas é uma ação pessoal distinta; abrir o curso não o
+seleciona nem o move.
 
-O trabalho entregue por outro autor segue submissão e revisão. Uma conta
-editorial também pode criar ou atualizar diretamente um curso `complete` de seu
-próprio workspace, desde que informe a coleção e tenha a capacidade efetiva.
+Uma conta editorial pode publicar diretamente o próprio workspace quando tem
+a capacidade necessária. Conteúdo entregue por outra pessoa segue a submissão
+e a revisão, preservando a separação entre autoria e decisão editorial.
 
-Coleções e a classificação dos cursos são metadados relacionais. Grupos e
-cursos aparecem automaticamente em ordem alfabética; transferir um curso ou
-renomear uma coleção não reabre a árvore pedagógica. Contas editoriais podem
-administrar esses grupos e cursos oficiais diretamente na aba `Coleções` do
-aplicativo. Essas ações têm alcance global e permanecem separadas da seleção
-pessoal **Adicionar a Trilhas**. Abrir ou iniciar um curso não executa nenhuma
-das duas operações.
+## Fixtures de catálogo
 
-Fixtures oficiais são validadas e publicadas com:
+Uma **fixture** é um artefato de referência mantido no repositório para
+implantação e testes repetíveis. Fixtures oficiais seguem um fluxo de
+publicação administrativa separado da autoria cotidiana:
 
 ```powershell
 npm run catalog:validate
 npm run catalog:publish
 ```
 
-Consulte [Gateway MCP de autoria](autoria-mcp.md), [Workspaces compostos e
-artefatos](plano-de-controle-e-artefatos.md) e [Contrato
-público](aralearn-contract.md).
+O primeiro comando valida localmente; o segundo exige credencial administrativa
+e materializa as fixtures selecionadas na instância. Fixture não é um formato
+alternativo de editar cursos no aplicativo.
+
+## Falhas e recuperação
+
+| Situação | Resultado seguro |
+| --- | --- |
+| falha antes da confirmação | nenhuma parte é marcada como gravada |
+| resposta perdida depois da confirmação | a mesma chave recupera o resultado sem duplicar |
+| revisão concorrente | o alvo é relido antes de reaplicar a intenção |
+| artefato privado incompleto | pode ser testado, mas não entra em Coleções |
+| reserva editorial expirada | outra pessoa pode assumir sem continuar um workspace abandonado |
+| capacidade insuficiente | o curso permanece no destino já autorizado |
+
+## Alternativas rejeitadas
+
+### Uma cópia integral do workspace por alteração
+
+Foi rejeitada por custo de armazenamento e por ampliar conflitos. Partes
+correntes mais artefatos nos pontos de estabilidade preservam controle de
+revisão com menos duplicação.
+
+### Um estado “publicado” para liberar o estudo
+
+Foi rejeitado porque mistura qualidade editorial com capacidade de renderizar.
+Partes válidas podem ser testadas antes da conclusão; publicação continua sendo
+distribuição de uma revisão estável.
+
+### Acesso editorial a toda a biblioteca privada
+
+Foi rejeitado por excesso de autoridade. A submissão aponta somente para o
+artefato escolhido.
+
+### Editar o arquivo publicado no lugar
+
+Foi rejeitado porque destruiria a identidade da revisão lida e dificultaria
+auditoria, cache e recuperação. A atualização cria outro artefato e troca a
+referência corrente.
+
+A implementação detalhada aparece em [Plano de controle e
+artefatos](plano-de-controle-e-artefatos.md). O protocolo da integração está em
+[Autoria por Model Context Protocol](autoria-mcp.md), e o formato do curso está
+no [Contrato público](aralearn-contract.md).

@@ -12,6 +12,14 @@ objetivo, fontes, escopo e restrições estáveis; substitua-o integralmente ape
 após relê-lo, com `gerirContinuidadeDaAutoria` e `replace_stable_brief`. Leia a
 revisão e somente a entidade necessária antes de escrever.
 
+Antes de fechar o plano, use primeiro pedido, conversa, `brief`, fontes e
+leituras. Por microssequência, relacione condições relevantes, demandas do
+conteúdo, dificuldades previsíveis e respostas de desenho. Pergunte somente
+quando uma informação ausente puder mudar materialmente o plano; não aplique
+questionário fixo nem pergunte se o contexto já bastar. Mostre cobertura,
+dependências, dificuldades materiais e respostas em linguagem humana e pare
+para decisão antes dos cards.
+
 Crie primeiro a estrutura em lotes pequenos com
 `criarEstruturaNoWorkspace`. Materialize uma microssequência por chamada com
 `salvarCardsNaMicrossequencia`; nunca envie um curso populado inteiro. Em
@@ -30,15 +38,20 @@ preserva as identidades e retira a parte da origem. Exclua somente com
 IDs de course, module, lesson, topic, microsequence e card são estáveis e únicos
 por tipo em todo o workspace, inclusive entre ramos e cursos diferentes.
 Depois da aprovação, use uma única `record_approved_plan` com todas as Partes,
-decisões e o mandato. Audite considerando `list_comments` e
+decisões e o mandato. Vincule a cada microssequência a decisão compacta
+aprovada sobre condição, demanda, dificuldade e resposta, sem guardar
+raciocínio privado ou transcrição. Audite considerando `list_comments` e
 `list_observations` com `kinds: ["note"]`; achados ativos já vêm em `resume`.
 Persista achados compactos, repare somente os aprovados no
 mandato humano, vincule correções confirmadas e reaudite.
 
 Escolha resources pela operação cognitiva. Microteorias apresentam unidades
-conceituais pequenas; práticas abundantes e variadas consolidam o mesmo
-conteúdo. No chat, mostre por padrão as microteorias e a quantidade de
-práticas, não todos os cards.
+conceituais pequenas; escolha exemplo, contraste, apoio, representação e
+quantidade de prática localmente, conforme dificuldade e objetivo. Práticas
+são determinísticas: não use regex, avaliação por LLM ou correspondência
+aproximada. Na auditoria, confronte diagnóstico, plano e cards sem alegar
+eficácia. No chat, mostre microteorias e quantidade de práticas, não todos os
+cards.
 
 Criar a estrutura faz o plano aparecer em Trilhas; partes materializadas podem
 ser estudadas enquanto o restante permanece no plano, sem publicação. Um autor

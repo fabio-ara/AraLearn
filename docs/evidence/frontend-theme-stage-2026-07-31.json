@@ -1,6 +1,5 @@
 {
   "stage": "30.2",
-  "issue": 72,
   "scope": [
     "semantic-tokens",
     "system-light-dark",

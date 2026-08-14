@@ -201,7 +201,7 @@ test("MCP publica conhecimento e recupera um brief autoral curto", async () => {
   const prepared = (await body(preparedResponse)).result.structuredContent;
   assert.equal(prepared.ok, true);
   assert.equal(prepared.requestId, null);
-  assert.equal(prepared.data.briefVersion, 2);
+  assert.equal(prepared.data.briefVersion, 3);
   assert.equal(prepared.data.intent, "create");
   assert.ok(prepared.data.guidance.length >= 3);
   assert.ok(prepared.data.guidance.length <= 8);
@@ -211,13 +211,12 @@ test("MCP publica conhecimento e recupera um brief autoral curto", async () => {
     { packageId: "aralearn.resource.flow", version: "1.0.0", tool: "consultarBibliotecaDeResources", operation: "contracts" },
     { packageId: "aralearn.resource.table", version: "1.0.0", tool: "consultarBibliotecaDeResources", operation: "contracts" }
   ]);
-  assert.equal(prepared.data.blueprintContract.version, 1);
+  assert.equal(prepared.data.blueprintContract.version, 2);
   assert.ok(prepared.data.blueprintContract.requiredSections.includes("conceptualLayers"));
-  assert.deepEqual(prepared.data.calibrationContract.precedence, [
-    "protected_core",
-    "protected_knowledge",
-    "user_preferences"
-  ]);
+  assert.ok(prepared.data.blueprintContract.requiredSections.includes("anticipatedDifficulties"));
+  assert.equal(prepared.data.protectedCore.version, 2);
+  assert.ok(prepared.data.protectedCore.moduleIds.includes("contextual-learning-diagnosis"));
+  assert.equal(Object.hasOwn(prepared.data, "calibrationContract"), false);
 
   const sourceAwareResponse = await handler()(request(toolCall("prepararAutoriaAraLearn", {
     intent: "revise",

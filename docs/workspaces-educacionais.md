@@ -1,172 +1,249 @@
 # Workspaces educacionais
 
-Um workspace reúne pessoas e um projeto de curso sem criar outra cópia do
-conteúdo. A mesma pessoa pode ser autora em um workspace e estudante em outro.
-O papel é sempre local ao workspace.
+## Problema que o workspace resolve
 
-## Papéis
+Um curso individual pode ser mantido pela própria conta. Um curso construído
+por uma turma, grupo de pesquisa ou equipe editorial exige algo adicional:
+participantes diferentes precisam consultar, escrever, revisar e administrar o
+mesmo projeto sem compartilhar credenciais nem criar cópias divergentes.
 
-| Papel | Pode fazer |
+O AraLearn chama esse espaço delimitado de **workspace educacional**. O
+workspace reúne:
+
+- uma identidade estável para o projeto;
+- a composição corrente dos cursos em construção;
+- as pessoas que participam;
+- o papel de cada pessoa naquele espaço;
+- observações e decisões de curadoria vinculadas a alvos precisos;
+- o contexto mínimo necessário para retomar uma autoria interrompida.
+
+O workspace não é uma pasta visual nem uma etapa burocrática anterior ao
+curso. Ele é a fronteira de colaboração e autorização. A criação da estrutura
+já faz o planejamento aparecer em **Trilhas**; cards materializados tornam-se
+estudáveis no mesmo item, mesmo que outras partes ainda estejam em construção.
+
+## Conceitos que não devem ser confundidos
+
+| Conceito | Finalidade | Quem controla |
+| --- | --- | --- |
+| Workspace | pessoas, papéis, autoria e revisão de um projeto | participantes autorizados naquele espaço |
+| Trilhas | acesso pessoal a cursos e planejamentos | a própria conta e as concessões recebidas |
+| Grupo de Trilhas | organização visual dos itens da tela inicial | somente a própria conta |
+| Coleções | distribuição editorial de cursos oficiais | contas com autorização de catálogo |
+
+Excluir um grupo de **Trilhas** não exclui o workspace nem o curso. Ser
+proprietário de um workspace também não autoriza, por si só, alterar
+**Coleções**. A separação evita que ações pessoais de organização sejam
+interpretadas como decisões coletivas ou editoriais.
+
+## Papéis e capacidades
+
+O papel é local ao workspace. A mesma pessoa pode ser professora/autora em um
+projeto, estudante em outro e leitora em um terceiro.
+
+| Papel | Capacidades no workspace |
 | --- | --- |
-| Proprietário | administrar, criar, revisar, publicar e transferir a propriedade principal |
-| Administrador | administrar pessoas, criar, revisar e publicar |
-| Professor/Autor | criar, revisar e publicar |
-| Revisor | ler, comentar e revisar |
-| Estudante | estudar e registrar observações próprias |
-| Leitor | consultar |
+| Proprietário | ler, criar, revisar, comentar, publicar, administrar participantes e transferir a propriedade principal |
+| Administrador | ler, criar, revisar, comentar, publicar e administrar participantes |
+| Professor/Autor | ler, criar, revisar, comentar e publicar |
+| Revisor | ler, revisar e comentar |
+| Estudante | ler e registrar comentários próprios |
+| Leitor | ler |
 
-O banco calcula essas capacidades. A interface e os clientes de autoria apenas
-mostram e
-executam o que o papel vigente permite. Um papel global de catálogo continua
-necessário para publicar em Coleções; ser proprietário de um workspace não
-concede esse poder.
+O servidor verifica essas capacidades em cada leitura ou escrita compartilhada.
+Ocultar um botão na interface melhora a compreensão, mas não constitui
+controle de acesso suficiente; a decisão final precisa ocorrer onde os dados
+são mantidos.
 
-## Usar em Trilhas
+Há limites adicionais de delegação. Somente o proprietário principal transfere
+a propriedade. Um administrador não cria nem remove outro administrador. O
+proprietário principal não pode abandonar o espaço antes da transferência. O
+objetivo é tornar a mudança de responsabilidade deliberada e auditável, em vez
+de fazê-la surgir como efeito indireto de uma alteração de papel.
 
-Peça ao GPT personalizado com Action ou a um cliente MCP para criar o projeto e
-registrar sua estrutura. Assim
-que o backend confirmar a primeira composição, o plano aparece em **Trilhas**;
-não é necessário criar antes um contêiner vazio no aplicativo. Cards
-materializados passam a ser estudáveis no mesmo item, sem uma segunda cópia.
+Para distribuir um curso em **Coleções**, duas condições são independentes:
 
-No detalhe do workspace, aberto pela ação contextual do item em **Trilhas**, é
-possível:
+1. o papel local deve permitir publicação pelo workspace;
+2. a conta deve possuir autorização editorial no catálogo.
 
-- abrir um workspace e consultar pessoas, papel e composição dos cursos;
-- ajustar nome, finalidade e tipo;
-- criar um convite para um e-mail e copiar o código;
-- cancelar um convite pendente;
-- aceitar um convite recebido;
-- alterar o papel ou remover um membro, quando permitido;
-- transferir a propriedade principal;
-- sair de um workspace que não esteja sob sua propriedade principal;
-- consultar, filtrar e responder observações pedagógicas, conforme o papel;
-- abrir **Pontos de melhoria**, uma síntese corrente dos cards com observações.
+Esse cruzamento impede que a administração de um projeto privado conceda
+automaticamente poder global sobre os cursos oficiais.
 
-Convites expiram em sete dias. O código aparece somente na criação e deve ser
-enviado à pessoa convidada por um canal escolhido por quem administra. O banco
-guarda o hash, não o código. A conta que aceita precisa usar o mesmo e-mail do
-convite.
+## Um curso, duas experiências complementares
 
-Cada plano mostra a composição corrente de cursos, módulos, lições e
-microssequências. O que já é estudável abre como curso em `Trilhas`; conteúdo
-oficial aparece em `Coleções`. Não existe um segundo plano, snapshot ou JSON
-criado apenas para alimentar a tela.
+O mesmo curso do workspace pode ser usado em dois contextos paralelos:
 
-Os grupos pessoais de `Trilhas` organizam planos e cursos sem pertencer ao
-workspace. Podem ser criados, renomeados, preenchidos e excluídos pela própria
-conta; grupos e itens aparecem em ordem alfabética. Excluir um grupo não apaga
-o projeto nem o curso. Coleções usam a mesma apresentação visual, mas são
-organização editorial do catálogo.
+- em **Estudo**, a pessoa lê os cards, responde às práticas, marca **Rever** e
+  registra observações;
+- em **Autoria**, pessoas autorizadas modificam textos, reorganizam a árvore e
+  revisam o material.
 
-## GPT personalizado e integração MCP
+Não é criada uma cópia apenas para cada contexto. O aplicativo compõe a visão
+adequada a partir das mesmas identidades de curso, módulo, lição,
+microssequência e card. Identidades estáveis permitem mover uma entidade sem
+romper, por esse motivo apenas, o ponto de retomada e as observações que
+continuam referindo-se ao mesmo alvo.
 
-A ferramenta `gerirWorkspaceEducacional` usa `operation`:
+Separar a experiência de estudar da experiência de autorar reduz controles
+estranhos à tarefa imediata. Essa decisão constitui um pressuposto de
+usabilidade a ser avaliado com pessoas e tarefas reais; ela não prova, por si
+só, menor carga cognitiva ou melhor aprendizagem
+([International Organization for Standardization (2018)](referencias.md#ref-iso2018usability); [Sweller (1988)](referencias.md#ref-sweller1988cognitiveload)).
 
-- `read` consulta contexto, membros, capacidades e composição corrente dos cursos;
-- `create` e `update` administram o espaço;
-- `invite`, `accept_invite` e `cancel_invite` tratam convites;
-- `set_role`, `remove_member`, `transfer_owner` e `leave` tratam participação;
-- `list_comments` consulta a triagem paginada e devolve a síntese corrente do workspace;
-- `respond_comment` responde sem alterar o curso;
-- `set_comment_status` considera, resolve ou reabre;
-- `link_comment_correction` vincula somente um reparo já concluído;
-- `list_observations` com `kinds: ["note"]`, `create_observation` e
-  `delete_observation` tratam notas situadas na árvore do workspace; achados
-  ativos já aparecem na retomada, e o histórico usa
-  `kinds: ["audit_finding"]`, estados e paginação.
+## Criação e materialização progressiva
 
-Estudantes leem apenas as próprias observações. Proprietário, administrador,
-professor/autor e revisor podem triar as observações do workspace. O assistente
-não transforma uma observação em correção por conta própria: ele lê o alvo,
-executa uma operação de autoria separada quando solicitada e só então liga o
-reparo confirmado ao registro.
+O AraLearn não exige um estado binário de “rascunho” versus “publicado” para
+que o curso possa ser lido. A construção pode ocorrer progressivamente:
 
-Comentários são observações feitas durante o estudo e possuem triagem,
-resposta e vínculo de correção. Observações situadas são notas de curadoria
-presas a uma entidade do workspace. Uma auditoria pelo chat consulta as duas
-fontes, registra apenas achados compactos e não usa a conversa como memória. O
-reparo exige decisão e mandato persistidos, atua só nos achados aprovados,
-vincula a correção depois do sucesso e reaudita.
+1. a autoria define finalidade, público e planejamento;
+2. cria a estrutura de partes e microssequências;
+3. materializa teoria, prática e recursos de card;
+4. estuda e revisa o que já existe;
+5. corrige a composição corrente;
+6. distribui uma revisão somente quando houver uma finalidade editorial.
 
-Durante o reparo, o achado aprovado conserva apenas o `requestId` e a revisão
-pendentes mais recentes. `resume` permite recuperar esse ponto após uma queda;
-o vínculo explícito só ocorre depois da releitura confirmar que o reparo foi
-concluído.
+Isso aproxima validação pedagógica e autoria: uma parte pronta pode ser
+experimentada sem fingir que o projeto inteiro terminou. Publicação continua
+existindo como ato explícito de distribuição, não como requisito para
+renderização.
 
-`link_comment_correction` pertence ao comentário feito no estudo;
-`link_finding_correction` pertence ao achado formal registrado pela auditoria.
+## Convites e participação
 
-Ao continuar um projeto em outra sessão, o assistente usa
-`lerWorkspaceDeAutoria` com `view: "resume"`. Partes aprovadas são listas
-ordenadas de ids de microssequências e ficam na continuidade do workspace; o
-`brief` guarda somente contexto estável e fontes. A retomada usa contagens
-compactas da árvore e uma máscara por Parte; a árvore completa continua em
-`outline`. A aprovação inicial grava todas as Partes, decisões e o mandato de
-forma atômica com `record_approved_plan`.
+O convite associa um e-mail, um papel e um código temporário. O código fica
+válido por até sete dias e aparece somente quando é criado. O banco conserva
+uma impressão criptográfica do código; assim, uma consulta posterior confirma
+um código apresentado, mas não recupera o segredo original.
 
-A síntese de `list_comments` contém contagens por categoria e estado e até vinte
-cards com maior concentração de registros abertos. Ela sempre descreve a fila
-corrente inteira visível ao papel, independentemente dos filtros da página. É
-um apoio para escolher onde ler primeiro, não uma medida de estudante, turma,
-aprendizagem ou qualidade docente. Um ponto disponível abre o card corrente;
-um alvo retirado não produz redirecionamento aproximado.
+A conta que aceita precisa estar autenticada com o mesmo e-mail do convite.
+Após a aceitação, o vínculo de membro substitui o convite. Revogar esse vínculo
+interrompe o acesso que dependia exclusivamente do workspace, sem apagar cursos
+próprios nem outras concessões válidas.
 
-As ferramentas de autoria já existentes consultam o papel no banco para cada
-workspace. Ler um workspace não autoriza editá-lo. Publicar no catálogo exige,
-ao mesmo tempo, capacidade local de publicação e capacidade editorial da conta.
+As instruções completas estão no [guia de administração de
+workspace](guia-administracao-workspace.md).
 
-## Persistência e custo
+## Observações situadas e revisão
 
-O workspace de autoria continua sendo a única fonte mutável do curso. Cada
-parte do curso mantém uma linha corrente. Esta etapa acrescenta apenas:
+Durante o estudo, uma pessoa pode registrar uma dúvida, possível erro,
+confusão, sugestão ou observação no próprio card. Quando o curso se associa de
+forma inequívoca a um workspace, o registro entra na triagem daquele espaço.
 
-- uma linha por membro;
-- uma linha temporária por convite pendente;
-- um recibo pequeno por comando, eliminado após sete dias;
-- um estado de continuidade corrente e limitado por workspace, sem chat,
-  prompt, resposta, card ou snapshot de revisão;
-- uma resposta e um estado correntes por observação, sem cópia do card.
+Papéis de revisão podem responder e alterar o estado corrente. Responder não
+modifica o curso. Para indicar que uma observação foi incorporada, é necessário
+executar uma correção de autoria, verificar que ela foi gravada e somente
+depois vincular o reparo ao registro. Essa separação preserva a diferença entre
+conversar sobre um problema e alterar o objeto educacional.
 
-O estado de continuidade guarda somente Partes por ids, decisões e o mandato
-corrente. Achados de auditoria guardam alvo, síntese, reparo proposto, decisão e
-verificação compactos. Achados ativos são preservados; entre os terminais,
-ficam no máximo os 100 mais recentes e os dos últimos 90 dias. Notas criadas
-pela pessoa não são apagadas por essa política.
+A observação é manifestação qualitativa situada, não medida de domínio. A
+literatura sobre feedback enfatiza interpretação, diálogo e possibilidade de
+ação; ela não autoriza transformar a quantidade de comentários em nota ou
+indicador automático de qualidade docente ([Nicol e Macfarlane-Dick (2006)](referencias.md#ref-nicol2006formative); [Carless e Boud (2018)](referencias.md#ref-carless2018feedbackliteracy); [Wood (2021)](referencias.md#ref-wood2021dialogic)).
 
-O workspace é projetado em Trilhas para quem possui acesso local; não é preciso
-publicá-lo nem copiar o JSON do curso. Ao remover um membro, o acesso concedido somente
-por aquele workspace é revogado. Recibos não guardam curso, card, conversa ou
-conteúdo anterior.
+Consulte [Observações pedagógicas nos cards](observacoes-pedagogicas.md).
 
-As listas de cursos e as observações exibidas em Trilhas e devolvidas
-ao GPT personalizado ou ao cliente MCP são calculadas sob demanda a partir
-dessas mesmas linhas. Portanto,
-não aumentam o armazenamento do banco. O cache local conserva apenas os
-metadados estreitos do último detalhe consultado, nunca a triagem compartilhada,
-os cards nem uma nova cópia do planejamento.
+## Continuidade da autoria
 
-Uma medição com `pg_column_size` encontrou 96 bytes por membro, 200 por
-convite e 360 por recibo representativo, antes dos índices. Com margens
-conservadoras para índices, 1.000 workspaces com 30 membros, 500 convites
-pendentes e 10.000 recibos na janela de sete dias ocupam cerca de 14,89 MiB.
-Esse valor mede somente participação e recibos: não inclui entidades de curso,
-estado de continuidade nem achados, que possuem limites próprios e precisam ser
-acompanhados no uso real. Portanto, não é uma promessa de capacidade geral do
-projeto. A evidência desse recorte está no
-[orçamento de armazenamento](evidence/educational-workspace-storage-budget-2026-08-01.json),
-e o limite deve ser revisto na
-[documentação do Supabase](https://supabase.com/docs/guides/platform/database-size).
+Uma sessão de conversa pode terminar antes do curso. Para permitir retomada, o
+workspace conserva um estado operacional compacto: partes planejadas, decisões
+correntes, mandato de trabalho e achados formais ainda relevantes. Ele não usa
+o histórico integral da conversa como fonte de verdade.
 
-A projeção completa mais recente de Trilhas fica em uma única entrada do
-IndexedDB como estado disponível sem rede. Ela é sempre somente leitura e não
-conserva capacidades de autoria. Convites, papéis, publicação e operações de IA
-exigem conexão; o servidor revalida a capacidade no momento da escrita.
+Essa escolha resolve dois problemas:
 
-## Hipótese de design
+- uma conversa longa é uma memória instável e dispendiosa para reconstruir o
+  estado do projeto;
+- mensagens podem conter tentativas, hipóteses e explicações que não equivalem
+  a decisões aprovadas nem a conteúdo gravado.
 
-Participação em práticas compartilhadas pode apoiar aprendizagem e agência,
-mas isso não prova que uma hierarquia de papéis melhora a aprendizagem. No
-AraLearn, os papéis são primeiro um mecanismo de responsabilidade, acesso e
-coordenação. A utilidade pedagógica da colaboração será avaliada com pessoas
-reais e sem transformar presença, clique ou tempo em evidência de aprendizagem.
+A árvore do workspace e suas revisões correntes permanecem como fonte dos
+objetos de curso. A conversa ajuda a operar sobre eles, mas não substitui seus
+dados estruturados. Quando uma escrita parte de uma revisão que já mudou, o
+sistema exige nova leitura em vez de sobrescrever silenciosamente o trabalho
+de outra pessoa.
+
+## Persistência e economia de armazenamento
+
+O banco mantém cada entidade mutável do curso uma única vez no workspace. A
+colaboração acrescenta registros estreitos de membros, convites pendentes,
+observações e estado corrente de continuidade. Uma lista ou síntese mostrada
+na interface é calculada quando consultada; ela não precisa virar outra cópia
+persistida do curso.
+
+Revisões distribuídas são artefatos imutáveis identificados pelo conteúdo. A
+composição de autoria, ao contrário, continua mutável e é protegida por número
+de revisão. Essa divisão oferece uma origem estável para distribuição sem
+guardar uma cópia integral a cada pequena edição.
+
+Recibos temporários permitem reconhecer a repetição acidental do mesmo comando
+após uma falha de conexão. Eles não são versões do curso e expiram. Convites
+pendentes também expiram. Limites de retenção e medições de armazenamento devem
+ser tratados como propriedades verificáveis da implantação, não como promessa
+universal de capacidade.
+
+## Uso offline
+
+Depois de uma sincronização, **Trilhas** conserva no dispositivo a projeção e
+os cursos necessários à continuidade do estudo. A composição previamente
+carregada pode ser lida sem rede. Edições textuais autorizadas em cursos de
+workspace também podem ser guardadas em uma fila local e enviadas depois.
+
+Nem toda tarefa admite execução offline:
+
+| Tarefa | Sem conexão |
+| --- | --- |
+| estudar curso já sincronizado | disponível |
+| marcar **Rever** e escrever observação própria | disponível; sincroniza depois |
+| editar texto de card ou metadado em workspace já carregado | pode entrar na fila local |
+| resolver conflito de escrita | depende de comparação com o estado remoto |
+| convidar, aceitar convite ou mudar papel | indisponível |
+| publicar ou consultar triagem compartilhada | indisponível |
+| usar serviço externo de linguagem | indisponível |
+
+Uma fila local não transforma o dispositivo na autoridade sobre permissões.
+Na reconexão, o servidor volta a verificar o papel e a revisão. Se o mesmo
+texto mudou remotamente, a pessoa escolhe entre conservar a redação local ou
+descartá-la; o sistema não mistura redações incompatíveis sem decisão.
+
+## Hipóteses educacionais e limites
+
+Workspaces tornam possível coordenar autoria, revisão e participação sem
+compartilhar contas. Teorias de comunidades de prática e estudos sobre
+colaboração ajudam a formular hipóteses sobre participação e aprendizagem
+([Wenger (1998)](referencias.md#ref-wenger1998communities); [Bridwell-Mitchell (2016)](referencias.md#ref-bridwellmitchell2016collaborative)). Isso não permite
+afirmar que a simples presença em um workspace melhora a aprendizagem.
+
+No AraLearn, papéis são primeiro mecanismos de autorização e responsabilidade.
+Qualquer efeito educacional da colaboração precisa ser investigado com métodos
+adequados, incluindo a experiência das pessoas, a qualidade do material
+produzido e as tarefas realizadas. Cliques, tempo e presença não são usados
+como substitutos automáticos desses construtos.
+
+## Tarefa mínima de verificação
+
+**Pré-condição:** tenha um workspace de teste, duas contas com papéis diferentes,
+um curso parcialmente materializado e conexão para as operações de autoridade.
+
+**Passos:**
+
+1. se a finalidade está explícita;
+2. se cada papel corresponde à responsabilidade real;
+3. se o curso aparece em **Trilhas** sem cópia paralela;
+4. se somente pessoas autorizadas conseguem modificar o projeto;
+5. se uma observação pode receber resposta sem alterar o curso;
+6. se uma correção concorrente produz conflito, e não sobrescrita silenciosa;
+7. se o curso já sincronizado continua estudável sem rede.
+
+**Resultado esperado:** leitura, autoria, revisão e administração obedecem aos
+papéis; o curso usa a mesma identidade em Estudo e Autoria; conflitos e
+pendências permanecem explícitos.
+
+**Sem conexão:** repita apenas a leitura, o estudo e uma edição textual já
+autorizada e materializada. Convites, papéis, estrutura e publicação devem
+continuar indisponíveis até a reconexão.
+
+**Recuperação:** se a verificação falhar, preserve a réplica e registre operação,
+papel, revisão e mensagem. Reverta o cenário de teste pela ação correspondente;
+não amplie permissões nem limpe dados para ocultar a falha.
+
+Falhas nessas verificações são problemas funcionais; não devem ser explicadas
+como escolha pedagógica.

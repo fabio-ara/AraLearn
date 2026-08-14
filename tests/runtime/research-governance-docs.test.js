@@ -39,10 +39,10 @@ test("frente pedagógica possui as seis fontes canônicas e mapa de leitura", ()
 test("revisão e contribuição distinguem hipótese de eficácia comprovada", () => {
   const review = read("docs/revisao-de-literatura.md");
   const contribution = read("docs/contribuicao-originalidade.md");
-  assert.match(review, /não deve ser apresentado como revisão sistemática/u);
-  assert.match(review, /## Lacunas e agenda da revisão formal/u);
-  assert.match(contribution, /contribuição integrada a investigar/u);
-  assert.match(contribution, /### Ainda proibidas/u);
+  assert.match(review, /Não se trata de revisão sistemática/u);
+  assert.match(review, /## Lacunas de conhecimento/u);
+  assert.match(contribution, /contribuição integrada só pode ser avaliado por comparação/u);
+  assert.match(contribution, /### 6\.4 Alegações que permanecem indevidas sem comparação abrangente/u);
 });
 
 test("quadro e protocolo proíbem proxies comportamentais ambíguos", () => {
@@ -53,7 +53,7 @@ test("quadro e protocolo proíbem proxies comportamentais ambíguos", () => {
     assert.match(source, /atenção|aprendizagem|domínio/u);
   }
   assert.match(framework, /abertura ou tempo como atenção/u);
-  assert.match(protocol, /\| retomada .* abertura ou tempo como atenção \|/u);
+  assert.match(protocol, /\| retomada .* \| abertura ou atenção \|/u);
   assert.match(glossary, /Não equivale a/u);
 });
 
@@ -118,8 +118,8 @@ test("governança de pesquisa separa DBR, DSR e estados epistêmicos", () => {
   const review = read("docs/revisao-de-literatura.md");
 
   assert.match(foundations, /DBR e DSR são complementares, não sinônimos/u);
-  assert.match(protocol, /Trilha A — Design-Based Research \(DBR\)/u);
-  assert.match(protocol, /Trilha B — Design Science Research \(DSR\)/u);
+  assert.match(protocol, /Trilha educacional: Design-Based Research/u);
+  assert.match(protocol, /Trilha do artefato: Design Science Research/u);
   for (const marker of ["evidência externa", "inferência", "hipótese", "decisão", "limitação"]) {
     assert.match(`${foundations}\n${review}`, new RegExp(marker, "iu"));
   }

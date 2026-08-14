@@ -1,352 +1,355 @@
 # Criar cursos pelo chat
 
-O AraLearn permite construir um curso em uma única conversa sem exigir que a
-pessoa conheça JSON, schemas ou operações do backend. O assistente cuida da
-estrutura técnica; a pessoa autora decide o público, o recorte, as fontes e a
-qualidade conceitual.
+Este guia conduz a criação de um curso por uma integração de autoria do
+AraLearn. A pessoa descreve público, finalidade, escopo e fontes em linguagem
+comum; o assistente organiza a estrutura técnica, consulta os contratos das
+representações e grava o trabalho no workspace.
 
-A conversa é descartável: o curso não depende de mensagens antigas para ser
-retomado. No início de cada nova etapa, o assistente relê a retomada compacta:
-contagens da árvore, Partes, decisões, mandato e achados persistidos; depois
-consulta `outline` ou a entidade necessária. Assim, trocar de conversa ou de
-cliente não obriga a reconstruir o plano pela memória do chat. Tecnicamente, a
-retomada usa `lerWorkspaceDeAutoria` com `view: "resume"`.
+O objetivo não é obter um curso completo numa única resposta. Um curso é
+planejado, produzido e revisto em partes para que decisões pedagógicas possam
+ser avaliadas antes que erros se propaguem.
 
-No GPT personalizado, mantenha **Pesquisa na Web** habilitada quando o
-curso depender de editais, normas, produtos ou outras informações atuais.
-Habilite também **Intérprete de código e Análise de Dados** para trabalhar com
-PDFs, planilhas e outros anexos. Essas capacidades são configuradas no
-construtor do GPT; a Action AraLearn cuida da leitura e da gravação dos cursos.
+## Pré-requisitos
 
-## O que acontece durante a conversa
+Antes de começar, confirme:
 
-O trabalho avança em etapas pequenas e decididas pela pessoa:
+- uma conta autenticada no AraLearn;
+- uma integração de autoria configurada para a mesma instância;
+- autorização para criar conteúdo privado;
+- fontes ou critérios claros quando o curso depender de programa oficial,
+  norma ou material externo;
+- pesquisa na web habilitada no cliente quando forem necessárias informações
+  atuais;
+- processamento de anexos habilitado quando houver PDF, planilha ou outro
+  arquivo.
 
-1. o assistente registra o contexto estável e salva o planejamento;
-2. mostra as partes propostas e espera aprovação ou ajuste;
-3. constrói somente uma parte aprovada, gravando uma microssequência por vez;
-4. mostra microteorias, contagens de práticas, resources e termos e espera;
-5. quando autorizado, audita a parte sem alterá-la e espera a decisão;
-6. quando autorizado, repara somente os problemas escolhidos e espera;
-7. quando autorizado, reaudita sem reparar e espera;
-8. fixa uma revisão privada para submissão, distribui em Coleções ou avança
-   para outra parte somente quando a pessoa pedir.
+Capacidades de submissão, revisão e publicação são adicionais. É possível
+construir e testar um curso privado sem elas.
 
-Cada etapa termina com o resultado real, o estado corrente e exatamente uma
-próxima etapa sugerida. O assistente não executa essa sugestão na mesma
-resposta. A pessoa pode pular auditoria ou reauditoria, rejeitar reparos,
-aprovar apenas alguns deles e testar uma parte incompleta em Trilhas sem criar erro
-artificial.
+## O que informar no primeiro pedido
 
-Depois que a ferramenta confirma o workspace e a estrutura inicial, o plano
-aparece automaticamente em `Trilhas`. Não é preciso criar antes um plano vazio
-no aplicativo. À medida que os cards são materializados, o mesmo item passa a
-oferecer estudo; não surge uma segunda cópia do curso.
+Quando essas informações ainda não estiverem nas fontes, no curso ou no
+workspace, um pedido inicial útil pode informar, em linguagem comum:
 
-Planejar no chat e salvar no AraLearn são coisas diferentes. O assistente só
-deve afirmar que uma estrutura ou um conteúdo foi salvo depois da confirmação
-da ferramenta.
+1. quem estudará;
+2. qual desempenho se espera ao final;
+3. o que entra e o que fica fora;
+4. quais fontes têm prioridade;
+5. que conhecimento prévio pode ser comprovadamente presumido;
+6. qual idioma, notação ou convenção precisa ser preservado;
+7. se a tarefa cria, complementa, reorganiza ou revisa um curso.
 
-## Como fazer um bom pedido
+Essa lista é uma ajuda para formular o pedido, não um questionário obrigatório.
+O assistente consulta primeiro o contexto disponível e só pede uma informação
+ausente quando a resposta puder mudar materialmente objetivo, escopo,
+pré-requisito, sequência, representação, prática ou dependência de outro meio.
 
-Um pedido útil informa:
+Não determine uma quantidade arbitrária de cards nem escolha recursos visuais
+sem necessidade. O planejamento deve derivar o volume da cobertura, dos
+pré-requisitos, dos erros prováveis e das práticas adequadas.
 
-- quem vai estudar;
-- qual resultado se espera;
-- quais assuntos entram e quais ficam fora;
-- quais materiais podem ser usados;
-- idioma, notação ou convenções importantes;
-- se a intenção é criar, complementar, reorganizar ou revisar.
-
-Não é necessário escolher resources, escrever campos técnicos ou determinar a
-quantidade de cards. O assistente seleciona representações adequadas, consulta
-seus contratos e explica apenas decisões que realmente precisam de participação
-humana.
-
-Também não é necessário escrever um “prompt perfeito”. Uma descrição em
-linguagem comum basta quando deixa claro o resultado desejado. Se alguma
-informação não existir, diga isso diretamente — por exemplo, “não presuma
-conhecimento prévio”. O assistente transforma o pedido em um `brief` curto e
-mostra decisões conceituais; ids, revisões, JSON e nomes de ferramentas
-continuam sendo responsabilidade da integração.
-
-## Exemplo: formação profissional
+Exemplo:
 
 ```text
-Quero criar um curso privado de segurança da informação para profissionais que
-estão entrando numa equipe de operações. Use o programa de formação e os
-materiais que anexei como fontes principais. Considere uma pessoa que já
-conhece informática básica, mas precisa construir os pré-requisitos técnicos
-antes das aplicações mais avançadas.
+Crie um curso privado de segurança da informação para profissionais que estão
+entrando numa equipe de operações. Use o programa e os materiais anexados como
+fontes principais. Considere que a pessoa conhece informática básica, mas não
+pressuponha os conceitos técnicos do programa.
 
-Primeiro verifique se há cursos ou partes acessíveis que possam ser
-reaproveitados. Depois proponha uma árvore compacta de módulos, lições e
-microteorias. Registre a estrutura planejada em lotes pequenos e produza uma
-microssequência por vez, com teoria suficiente e práticas variadas. Mostre no
-chat somente as microteorias e a quantidade de práticas. Assim que houver um
-trecho coerente, avise que ele já pode ser testado em Trilhas.
+Primeiro proponha a estrutura e explique como os pré-requisitos serão
+introduzidos. Depois da minha aprovação, produza uma parte por vez. A teoria
+deve ser autocontida e progressiva, sem resumir conceitos diferentes no mesmo
+card. As práticas devem ser abundantes e variar conforme a operação cognitiva.
+Avise quando houver uma unidade coerente disponível para teste em Trilhas.
 ```
 
-O assistente pode pedir uma decisão sobre o recorte se o programa e os materiais
-forem contraditórios. Ele não deve pedir que a pessoa escolha ids, revisions,
-schemas ou nomes de operações.
+Não é necessário escrever JSON, identificar ferramentas ou conhecer a versão
+dos contratos.
 
-## Como o curso é construído
+## Etapa 1 — delimitar o contexto
 
-### 1. Contexto
+O assistente transforma o pedido num **brief**, isto é, um registro curto do
+contexto que deve permanecer estável entre as etapas. Ele inclui público,
+objetivo, fontes, inclusões, exclusões, idioma e notação.
 
-O assistente resume no `brief` somente público, objetivo, fontes, inclusões,
-exclusões, idioma e notação que continuem válidos entre etapas. Esse contexto
-orienta a autoria, mas não aparece como texto de bastidor nos cards do
-estudante. Partes, decisões, mandatos e achados possuem registros próprios e
-não são misturados ao `brief`.
+Antes de perguntar ou propor o desenho, o assistente relê o brief, as fontes, o
+curso e as decisões registradas. Se uma lacuna não alterar o desenho, ela não
+justifica interromper a autoria. Se alterar, a pergunta deve explicitar qual
+decisão depende da resposta, sem aplicar um roteiro fixo.
 
-Uma mudança de contexto estável substitui o `brief` inteiro depois de o
-assistente reler seu valor corrente. Isso evita perder fontes ou limites ainda
-válidos e impede usar a conversa como armazenamento implícito.
+Verifique se:
 
-### 2. Estrutura planejada
+- o público está descrito por conhecimentos e necessidades, não por rótulo
+  genérico;
+- o objetivo informa o que a pessoa deverá compreender ou fazer;
+- o recorte distingue conteúdo obrigatório de conteúdo apenas relacionado;
+- fontes atuais foram realmente consultadas;
+- lacunas de informação foram declaradas, em vez de preenchidas por suposição.
 
-O assistente usa `criarEstruturaNoWorkspace` para registrar lotes pequenos de
-curso, módulos, lições e microssequências. As microssequências começam como
-`planned` e sem cards.
+O diagnóstico contextual que orientará o planejamento distingue:
 
-Microssequência é a unidade técnica de gravação. Parte é a unidade da conversa
-e pode reunir várias lições ou microssequências que façam sentido avaliar em
-conjunto. O assistente não transforma cada microssequência em uma etapa para a
-pessoa. Em cursos com centenas de cards, cerca de 6 a 10 partes substanciais é
-uma heurística inicial, não um limite.
+- **condições de aprendizagem**: fatos ou hipóteses explícitas sobre público,
+  conhecimentos presumíveis, convenções e meios disponíveis;
+- **exigências do conteúdo**: operações, relações e pré-requisitos impostos pelo
+  objeto de estudo;
+- **dificuldades previstas**: hipóteses revisáveis sobre onde essas exigências
+  podem criar obstáculo nas condições declaradas;
+- **respostas de desenho**: decisões locais propostas para enfrentar cada
+  dificuldade numa microssequência.
 
-Depois que a pessoa aprova o plano, o assistente usa uma única
-`record_approved_plan` para gravar atomicamente todas as Partes, decisões e o
-mandato corrente. Cada Parte é uma lista ordenada dos ids exatos de suas
-microssequências. Essa fronteira permite retomar “Parte 2” sem inferir o recorte
-pelo título ou pelo chat e evita perder Partes se a sessão cair entre chamadas.
-Operações unitárias servem a ajustes posteriores. A mesma ferramenta substitui
-o contexto estável com `replace_stable_brief`, sempre depois de uma releitura.
+O brief e o diagnóstico não aparecem como texto para o estudante. Eles orientam
+a autoria, mas não constituem medição de capacidade, perfil individual ou
+predição de aprendizagem. A pessoa autora confirma as condições e julga as
+hipóteses; o assistente não substitui responsabilidade disciplinar ou
+pedagógica.
 
-O dimensionamento não parte de uma cota fixa de lições ou cards. O assistente
-mapeia cada item substantivo da ementa e das fontes obrigatórias para tópicos
-de lição e para `covers`, `checks` e `errors` verificáveis. Separa
-microssequências quando mudam o vocabulário, as relações, as decisões ou a
-forma de prática. Na ausência de indicação contrária, constrói os
-pré-requisitos desde o início. O volume decorre da cobertura necessária, dos
-erros prováveis, da complexidade das decisões e da recuperação espaçada.
-Revisões integradas e transferência para o estilo da avaliação entram no
-plano, mas uma prática nunca deve cobrar conceito ainda não ensinado.
+Resultado esperado: contexto estável, lacunas materiais identificadas e
+contradições relevantes resolvidas antes do planejamento detalhado.
 
-Quando outro curso servir apenas de referência, o assistente lê o recorte
-pertinente e registra no contexto somente as conclusões úteis. Para reaproveitar
-literalmente uma parte, ele importa primeiro o curso acessível para o mesmo
-workspace, relê a árvore importada e então copia ou move a parte. A raiz
-temporária é excluída quando não fizer parte do resultado. A cópia precisa ser
-revista no novo contexto: tópicos, dependências e guias não se tornam adequados
-apenas porque o título é parecido.
+## Etapa 2 — planejar a progressão
 
-Na conta editorial, a procura global usa poucos termos distintivos. Todos são
-obrigatórios, mas podem ocorrer em campos diferentes: título ou objetivo do
-curso, chave contratual, título ou descrição da coleção. O resultado é uma lista
-leve de metadados; localizar um curso não carrega seu JSON. Depois da escolha, o
-assistente lê primeiro a árvore compacta e somente as partes pertinentes.
+O assistente propõe módulos, lições e microssequências. Uma boa proposta
+explicita:
 
-Mover uma parte da cópia importada não altera o curso que foi consultado. Se a
-pessoa pedir uma transferência entre dois cursos já publicados, o assistente
-atualiza primeiro o curso de destino e, depois do sucesso, atualiza o curso de
-origem sem a parte. Ele informa o estado intermediário e usa a revisão corrente
-de cada publicação, evitando que uma falha deixe a única cópia indisponível.
+- objetivo de cada unidade;
+- conceitos e relações cobertos;
+- pré-requisitos;
+- condições e exigências pertinentes a cada microssequência;
+- dificuldades previstas e a resposta de desenho ligada a cada uma;
+- erros ou confusões que a prática poderá tornar observáveis;
+- tipos de prática previstos;
+- razão para separar ou reunir os assuntos;
+- fontes que sustentam o recorte.
 
-Depois de salvar o plano, o chat mostra as partes, suas lições e
-microssequências, objetivos, cobertura, dependências, faixa de práticas,
-justificativa do dimensionamento e riscos. Em seguida sugere aprovação ou
-ajuste e espera, sem começar a construir.
+A decisão pedagógica é local: a existência de uma condição contextual não
+prescreve o mesmo estilo para o curso inteiro. Cada microssequência seleciona
+explicação, exemplo, representação, prática e apoio conforme seu objetivo e as
+dificuldades aprovadas. Não existe uma calibração pedagógica global que dispense
+esse julgamento.
 
-### 3. Microteoria e práticas
+A unidade central de produção é a microssequência. Ela deve ensinar um avanço
+conceitual delimitado e praticá-lo. “Delimitado” não significa resumido: uma
+explicação difícil pode ocupar vários cards, desde a aproximação concreta até a
+formalização.
 
-Antes de usar um resource pela primeira vez, o assistente consulta seu contrato.
-Depois da aprovação, produz uma microssequência completa por chamada até
-concluir somente a parte pedida:
+Não há cota fixa de cards. Quando uma unidade precisaria concentrar conceitos
+independentes ou exceder o limite operacional de oito cards, ela é decomposta.
+A quantidade maior é consequência pedagógica aceitável; omitir etapas para
+reduzir custo não é.
 
-- microteoria pequena e conceitualmente suficiente;
-- exemplos ou representações necessários;
-- práticas variadas que recuperam e aplicam a mesma ideia;
-- respostas verificáveis e feedback específico.
+Analise a proposta, inclusive os vínculos dificuldade–resposta, e responda com
+aprovação ou ajustes. O assistente não deve começar a produção na mesma resposta
+em que pede essa decisão.
 
-“Pequena” descreve o foco conceitual, não um texto condensado. Sem
-pré-requisito comprovado, a teoria parte de linguagem comum, torna a ideia
-observável por exemplo concreto quando útil e introduz depois o termo formal.
-Conceitos novos independentes ocupam cards ou microssequências distintos. A
-quantidade resultante não é penalidade; quando uma unidade pedir mais de oito
-cards, o assistente a decompõe sem omitir etapas.
+Resultado esperado: árvore planejada, dividida em partes de revisão
+compreensíveis e visível como plano em Trilhas.
 
-`salvarCardsNaMicrossequencia` valida e salva o conjunto dessa unidade. O
-assistente não tenta enviar um curso populado inteiro em uma única chamada e
-também não obriga a pessoa a aprovar card por card.
+## Etapa 3 — verificar possibilidades de reaproveitamento
 
-Conteúdo recém-construído permanece normalmente `generated` ou
-`needs_review`. `ready` significa que a pessoa aceitou o conteúdo corrente ou
-deu ordem inequívoca para avançar; não é sinônimo de JSON válido.
+Quando houver cursos acessíveis sobre tema semelhante, o assistente pode
+consultá-los antes de produzir. Localizar um curso carrega primeiro metadados e
+uma árvore compacta; o conteúdo integral só é lido quando uma parte realmente
+servirá de referência.
 
-### 4. Revisão conceitual
+Há duas operações diferentes:
 
-No chat, a visualização padrão apresenta:
+- **usar como referência:** extrair conclusões e registrar as fontes;
+- **copiar uma parte:** criar uma subárvore independente, com novas
+  identidades, e adaptá-la ao novo público e à nova progressão.
 
-- título e objetivo da microteoria;
-- conteúdo conceitual consolidado;
-- quantidade de práticas;
-- resources relevantes e termos introduzidos;
-- decisões conceituais ainda abertas.
+Título parecido não comprova adequação. Uma parte copiada precisa ser revista
+quanto a pré-requisitos, terminologia, fontes, dependências e práticas. Mover
+uma parte entre cursos deve preservar primeiro o destino e somente depois
+retirá-la da origem, para não deixar a única cópia indisponível em caso de
+falha.
 
-As práticas permanecem no curso e podem ser examinadas sob demanda. Essa forma
-de revisão economiza leitura sem esconder o que será estudado.
+Resultado esperado: decisão explícita sobre o que será reaproveitado e por
+quê.
 
-É possível pedir todas as práticas, uma amostra, apenas lacunas, apenas
-alternativas, um resource, uma microssequência, um tópico ou um erro provável.
-O assistente então relê os cards pedidos e apresenta título, enunciado,
-representação suficiente, alternativas ou lacuna, resposta, feedback,
-resource, tópicos e fontes em texto legível, sem depender da tela do app.
+## Etapa 4 — produzir uma parte
 
-Para uma correção pontual, o assistente lista os cards da microssequência em
-páginas leves, identifica o card pelo resumo e lê integralmente só esse card.
-Depois salva a correção preservando o id. Essa operação conclui o reparo
-atômico sem pedir uma chancela técnica adicional. Ao mover um card, origem e destino voltam para
-revisão. Ao copiar, somente o destino volta. Renomear uma parte sem mudar seu
-conteúdo não desfaz uma revisão.
+Depois da aprovação, o assistente materializa uma microssequência completa por
+vez. Para cada uma, deve produzir:
 
-Essa listagem atua em workspace. Um curso já publicado precisa primeiro ser
-aberto ou importado para autoria; a publicação original permanece estável até
-uma atualização explícita.
+- microteoria suficiente e progressiva;
+- exemplos ou representações que reduzam a dificuldade pertinente;
+- práticas que recuperem, discriminem e apliquem a ideia ensinada;
+- respostas verificáveis;
+- feedback que explique a decisão, não apenas “correto” ou “incorreto”;
+- tópicos, dependências e fontes.
 
-Ao abrir um workspace a partir de um curso publicado, o AraLearn reconhece
-automaticamente qual publicação aquele curso deve continuar atualizando. Ao
-importar um curso apenas como referência ou para copiar partes, a cópia não
-ganha esse vínculo. Depois da primeira publicação de um curso novo, o vínculo
-fica no workspace e pode ser retomado em outra conversa; não é preciso escolher
-entre “criar” e “atualizar” nem copiar IDs técnicos.
+Quando uma representação especializada for necessária, o assistente consulta
+o catálogo, compara candidatos e carrega o contrato exato antes de construir o
+card. Se não houver opção ideal, pode usar o melhor substituto, mas deve
+informar brevemente a limitação.
 
-### 5. Auditoria, reparo e reauditoria
+Práticas não são variadas por ornamentação. Lacuna, digitação, escolha,
+ordenação e outras respostas devem corresponder à operação cognitiva desejada.
+Um diagrama só entra quando sua estrutura torna uma relação mais direta do que
+texto ou tabela.
 
-Auditoria não é a mesma coisa que apresentação de microteorias. Quando a pessoa
-a autoriza, o assistente relê a parte persistida e assume postura independente.
-Ele examina cobertura, dimensionamento, autossuficiência, carga cognitiva,
-linguagem sem bastidor, ancoragem das práticas, termos e siglas, relação entre
-teoria e prática, resources, fontes e continuidade. Não altera conteúdo.
+Resultado esperado: parte salva, validada e estudável em Trilhas. O assistente
+só deve dizer que foi salva depois da confirmação do AraLearn.
 
-O relatório separa aspectos adequados de problemas e informa, para cada achado,
-localização, tipo, impacto, gravidade, reparo recomendado e escopo. O reparo só
-ocorre numa resposta posterior e apenas para os problemas aprovados. Depois, a
-reauditoria relê o resultado para procurar resolução, regressões e novos
-problemas; ela também não repara na mesma rodada.
+## Etapa 5 — revisar o conteúdo
 
-Antes da auditoria, o assistente reúne tanto observações feitas durante o estudo
-quanto notas situadas na árvore do workspace (`list_observations` com
-`kinds: ["note"]`). Achados ativos já vêm na retomada; histórico de auditoria
-usa `kinds: ["audit_finding"]`, estados e paginação. Registra achados compactos, grava
-a decisão e o mandato humano, repara somente os achados aprovados, vincula a
-correção apenas depois da escrita confirmada e então reaudita. O chat nunca é a
-única fonte dessa autorização.
+A apresentação padrão de revisão resume:
 
-Se o reparo exigir mais de uma escrita ou a conversa for interrompida, o achado
-continua aprovado e conserva somente o identificador e a revisão pendentes mais
-recentes. A retomada apresenta esse par para que o alvo seja relido antes de
-continuar ou confirmar o vínculo.
+- título e objetivo das microteorias;
+- explicação conceitual consolidada;
+- quantidade e variedade das práticas;
+- representações usadas;
+- termos introduzidos;
+- decisões ainda abertas.
 
-Cada autorização recebe um novo identificador de mandato. O mandato de
-construção termina quando toda a Parte tem cards aceitos como `ready`; os de
-auditoria e reestruturação são limpos ao concluir a rodada; cada vínculo de
-correção retira o achado confirmado do mandato de reparo, e o último o encerra.
-A reauditoria usa outro mandato de auditoria, com a Parte quando esse for o
-recorte autorizado. Se a retomada indicar achados truncados, o
-assistente percorre `list_observations` antes de reparar.
+As práticas continuam no curso e podem ser solicitadas integralmente ou por
+amostra. Pedidos úteis:
 
-O vínculo de correção de um comentário de estudo é distinto do vínculo do
-achado formal de auditoria; o assistente não intercambia essas duas operações.
+- “Mostre as práticas que verificam a diferença entre os dois conceitos.”
+- “Mostre a resposta e o feedback deste card.”
+- “Liste as siglas introduzidas e onde foram explicadas.”
+- “Verifique se alguma prática cobra conteúdo ainda não ensinado.”
+- “Mostre como este diagrama deve ser lido e por que foi escolhido.”
 
-### 6. Trilhas, submissão e catálogo
+Uma correção pontual deve reler o card canônico e preservar sua identidade. O
+resumo exibido no chat não é uma segunda cópia autorizada do conteúdo.
 
-O conteúdo já pronto pode ser testado em Trilhas mesmo que outras unidades
-continuem planejadas. “Publicado” significa apenas fixado para submissão ou
-distribuído; não é condição para estudar. Testar a composição corrente não
-publica nem copia o workspace. Para submeter, o
-assistente fixa um artefato privado com hash; para distribuir, uma conta
-editorial publica a revisão completa em Coleções. O fluxo completo é:
+Resultado esperado: aprovação consciente do recorte e identificação de
+problemas que exigem auditoria ou reparo.
 
-```text
-autoria privada em Trilhas -> artefato privado -> submissão -> revisão administrativa -> Coleções
-```
+## Etapa 6 — auditar
 
-É sempre o mesmo assistente. O que muda são as capacidades da conta:
+Auditoria é uma rodada somente para leitura. Ela examina:
 
-- uma conta autora constrói e testa conteúdo privado;
-- uma conta habilitada pode submeter;
-- uma conta administrativa pode revisar e devolver ajustes;
-- uma conta editorial autorizada pode aprovar e publicar no catálogo.
+- cobertura do escopo;
+- rastreabilidade entre diagnóstico, plano e cards materializados;
+- respostas de desenho prometidas, mas ausentes;
+- progressão e pré-requisitos;
+- densidade dos cards de teoria;
+- prática introduzida antes da fundamentação necessária;
+- ligação entre teoria, prática e feedback;
+- terminologia, siglas e ausência de vocabulário de bastidor;
+- pertinência, convenção e legibilidade das representações;
+- variedade funcional das práticas;
+- qualidade e procedência das fontes;
+- continuidade com as partes vizinhas;
+- perdas de cobertura causadas por uma resposta local;
+- dependências de laboratório, sistema ou outro meio externo indisponível.
 
-O assistente não inventa permissões nem promete uma ação administrativa que a
-conta conectada não possui.
+Cada achado deve informar localização, tipo, impacto, gravidade e reparo
+recomendado. O assistente não corrige na mesma rodada. A pessoa aprova, rejeita
+ou restringe os reparos.
 
-Um pedido explícito para retirar de Trilhas um curso selecionado usa a seleção e
-o hash acabados de ler. Se o curso veio de Coleções, somente a seleção daquela
-conta é retirada. Um item cuja fonte seja o workspace não possui seleção: para
-excluí-lo, o assistente relê a revisão e exclui a raiz do curso ou o workspace,
-conforme o pedido. Um artefato submetido segue as regras da revisão editorial e
-não transforma o workspace corrente numa categoria separada em Trilhas.
+Observações registradas durante o estudo também podem orientar a auditoria,
+mas uma dúvida de estudante e um achado formal continuam sendo registros
+diferentes.
 
-## Se alguma etapa falhar
+Resultado esperado: relatório localizado e nenhuma mudança de conteúdo.
 
-Uma falha técnica não apaga o trabalho já confirmado e não significa que o
-curso inteiro precisa ser planejado novamente.
+## Etapa 7 — reparar e reauditar
 
-| Situação | O que o assistente deve fazer |
+Na rodada seguinte, o assistente corrige somente os achados autorizados. Cada
+correção é ligada ao achado depois da gravação confirmada. Se a sessão for
+interrompida, o estado persistido permite retomar o alvo e sua revisão.
+
+A reauditoria relê o resultado e procura:
+
+- resolução do problema original;
+- regressões introduzidas pelo reparo;
+- novos problemas tornados visíveis pela mudança.
+
+Ela também é somente para leitura. Essa separação evita que uma correção seja
+considerada adequada apenas porque conseguiu ser gerada.
+
+Resultado esperado: problemas autorizados resolvidos ou explicitamente
+mantidos, com resultado reavaliado.
+
+## Etapa 8 — testar em Trilhas
+
+Uma parte válida pode ser estudada antes de o curso estar completo. Abra o
+plano em Trilhas e teste:
+
+- clareza da microteoria na largura de celular;
+- navegação pelo botão principal;
+- lacunas e campos de digitação dentro do objeto correto;
+- legibilidade de diagramas complexos e rolagem interna;
+- feedback de respostas corretas e incorretas;
+- retomada e funcionamento sem conexão.
+
+Registrar uma observação no card cria um retorno situado para a autoria. Testar
+o workspace não o publica em Coleções e não cria uma segunda cópia.
+
+Resultado esperado: evidência de funcionamento e observações humanas para o
+próximo ciclo. Um teste individual não demonstra eficácia pedagógica geral.
+
+## Etapa 9 — submeter ou publicar
+
+Quando a revisão estiver pronta:
+
+1. fixe um artefato privado da composição corrente;
+2. confirme o hash e a abrangência;
+3. submeta-o à avaliação editorial, se a conta possuir essa capacidade;
+4. responda a pedidos de ajustes criando nova revisão;
+5. publique em Coleções somente depois da decisão editorial autorizada.
+
+Conteúdo incompleto pode continuar privado e estudável, mas o catálogo oficial
+aceita somente uma composição completa. A equipe editorial recebe o artefato
+submetido, não toda a biblioteca privada.
+
+O ciclo detalhado está em [Autoria e publicação do
+catálogo](autoria-do-catalogo.md).
+
+## Como retomar em outra conversa
+
+Uma nova sessão deve começar lendo a retomada compacta do workspace: brief,
+condições confirmadas, diagnósticos e respostas aprovados, estrutura, partes,
+decisões, achados e revisões pendentes. O curso não depende de o modelo recordar
+mensagens anteriores.
+
+Persistem somente informações aprovadas e úteis para continuar ou auditar o
+trabalho. O raciocínio privado do modelo e o transcript integral do diálogo não
+fazem parte desse estado; justificativas necessárias à revisão devem aparecer
+como decisões explícitas e inspecionáveis.
+
+Pedidos de retomada úteis:
+
+- “Leia o estado corrente e mostre a próxima parte não materializada.”
+- “Retome os achados aprovados ainda sem correção confirmada.”
+- “Mostre o plano aprovado e as mudanças posteriores.”
+- “Continue a partir da primeira microssequência incompleta.”
+
+Se o assistente não leu o estado persistido, não deve afirmar que sabe onde a
+sessão anterior parou.
+
+## Recuperação de falhas
+
+| Situação | Procedimento |
 | --- | --- |
-| campo ou resource inválido | ler todos os caminhos do erro, corrigir somente o menor lote rejeitado e enviar o payload corrigido com um novo `requestId` |
-| revisão mudou | reler o alvo e reaplicar apenas a alteração que ainda fizer sentido |
-| estrutura grande demais | dividir a estrutura em lotes de até 40 entidades estruturais e salvar uma microssequência por vez |
-| revisão conceitual grande demais | revisar uma lição ou microssequência por chamada e percorrer as lições sucessivamente |
-| resposta perdida ou falha temporária | repetir exatamente a mesma chamada, sem duplicar conteúdo |
-| conta sem capacidade administrativa | manter o curso privado e explicar qual etapa depende de outra conta |
+| contrato ou campo inválido | consultar o diagnóstico e corrigir somente o menor lote rejeitado |
+| revisão mudou | reler o alvo antes de reaplicar a intenção |
+| resposta de rede se perdeu | repetir a mesma tentativa idempotente |
+| parte grande demais | dividir por microssequência ou por unidade de decisão |
+| fonte contraditória | pedir uma decisão de escopo, sem escolher silenciosamente |
+| conta sem capacidade editorial | manter o curso privado e informar a dependência |
+| conversa encerrada | retomar pelo workspace, não reconstruir pela memória |
 
-Até uma ferramenta confirmar o sucesso, a formulação correta é “a proposta
-está pronta para ser salva”, e não “o curso foi salvo”.
+Até receber confirmação, a formulação correta é “a proposta está pronta para
+ser salva”, não “o curso foi salvo”.
 
-## Por que as instruções e o conhecimento são separados
+## Por que o processo é incremental
 
-O assistente recebe dois tipos de orientação:
+Produção integral em uma única chamada parece mais rápida, mas dificulta
+detectar premissas ocultas, propaga decisões ruins e torna caro refazer grandes
+trechos. A produção incremental cria pontos de revisão sem impedir o estudo
+precoce.
 
-- **instruções curtas** definem como conduzir a conversa, quando usar
-  ferramentas e como reagir a falhas;
-- **conhecimento sob demanda** traz somente as regras pertinentes ao pedido,
-  como desenho de práticas, continuidade ou escolha de resources.
+O custo também fica subordinado ao planejamento: primeiro se determina a
+sequência pedagogicamente adequada; depois se geram os contratos necessários.
+Economia é obtida por contexto seletivo, persistência por partes e
+reaproveitamento consciente, não pela redução arbitrária da teoria ou da
+prática.
 
-Esse funcionamento é uma forma leve de recuperação de conhecimento. Em vez de
-carregar todo o manual em cada resposta, o AraLearn seleciona trechos pequenos
-a partir da intenção e do nível estrutural. Em pedidos de criação, a seleção
-sempre inclui:
-
-- contrato operacional e brief;
-- disciplina de fontes;
-- materialização incremental;
-- cobertura e dimensionamento;
-- desenho da microteoria;
-- desenho das práticas;
-- escolha e consulta de resources.
-
-O servidor recupera no máximo oito unidades pequenas e versionadas. O schema
-exato de um resource é consultado no momento do uso. Assim, o assistente não
-depende de memória para campos técnicos e a validação determinística continua
-decidindo o que pode ser salvo.
-
-## Pedidos úteis durante a continuação
-
-Depois de iniciar o curso, a pessoa pode dizer:
-
-- “Mostre as microteorias já produzidas e quantas práticas há em cada uma.”
-- “A segunda microteoria pressupõe um conceito que ainda não foi apresentado;
-  corrija a ordem.”
-- “Reaproveite a lição equivalente do meu outro curso e adapte-a a este
-  público.”
-- “Avise quando a primeira lição já puder ser testada em Trilhas.”
-- “Fixe a revisão corrente e envie-a para avaliação editorial.”
-- “Aplique os ajustes devolvidos pela revisão administrativa.”
-
-O assistente continua a partir do estado confirmado no AraLearn, sem exigir que
-a pessoa repita toda a conversa.
+Para compreender a integração técnica usada por este guia, leia [Autoria por
+Model Context Protocol](autoria-mcp.md). Para compreender por que instruções,
+conhecimento recuperado e schemas são separados, leia [Fluxos, instruções e
+contratos](fluxos-prompts-e-contratos.md).

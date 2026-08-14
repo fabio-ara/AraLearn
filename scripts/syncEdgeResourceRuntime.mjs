@@ -23,7 +23,7 @@ const fixedFiles = [
   ["src/persistence/relationalRowsToContract.js", "persistence/relationalRowsToContract.js"],
   ["src/persistence/validateRelationalCourse.js", "persistence/validateRelationalCourse.js"],
   ["src/authoring/pedagogicalBlueprint.js", "authoring/pedagogicalBlueprint.js"],
-  ["src/authoring/instructionProfile.js", "authoring/instructionProfile.js"]
+  ["src/authoring/protectedCore.js", "authoring/protectedCore.js"]
 ];
 
 async function listJavaScriptFiles(relativeRoot) {

@@ -1,153 +1,246 @@
-# Estado do projeto
+# Estado atual e agenda de desenvolvimento
 
-## Aplicativo disponível
+Este documento distingue três tipos de afirmação:
 
-O AraLearn está disponível na web e no Android, com a mesma aplicação JavaScript. A conta dá acesso ao catálogo oficial, às coleções, às trilhas pessoais, ao estudo, aos comentários e ao progresso.
+- **implementado**: existe no código e possui verificação automatizada;
+- **verificado tecnicamente**: o comportamento foi exercitado em ambiente de
+  teste, mas isso não demonstra benefício educacional;
+- **a investigar**: depende de estudo com pessoas, contextos e conteúdos reais.
 
-Cada revisão oficial integral fica como artefato imutável no Supabase Storage;
-o PostgreSQL conserva metadados, referências e o ponteiro da revisão vigente.
-Selecionar um curso não cria uma cópia remota para a conta. O dispositivo baixa
-e projeta a árvore necessária para estudo sem conexão; progresso, comentários,
-seleções e trilhas são gravados como dados pessoais.
+A distinção evita transformar disponibilidade técnica em alegação de eficácia.
+Um recurso pode funcionar corretamente e ainda precisar de avaliação de
+compreensão, usabilidade ou aprendizagem.
 
-Uma alteração remota de conteúdo atualiza somente as partes necessárias do
-workspace composto. A publicação materializa o JSON imutável e troca a única
-referência corrente do curso. Um artefato anterior só permanece enquanto outra
-referência válida o proteger; depois disso, torna-se elegível à coleta de lixo.
+## Síntese da versão atual
 
-Também estão disponíveis:
+O AraLearn está disponível como aplicação web instalável e aplicativo Android.
+As duas distribuições executam o mesmo núcleo e mantêm a largura de leitura
+orientada a celulares. A conta dá acesso a Coleções, Trilhas, estudo, autoria,
+workspaces e observações, conforme suas capacidades.
 
-- cadastro, confirmação por e-mail, recuperação de senha, sessão persistida e saída;
-- tela inicial integrada para estudar e organizar `Trilhas`, com painel apenas
-  para `Coleções` e configuração do GPT personalizado e da integração MCP;
-- retomada por lição, conclusão estrutural, marca **Rever**, observações e estudo sem conexão depois do primeiro download, sem telemetria de abertura, tempo, tentativa ou resultado;
-- sincronização automática quando o aplicativo está aberto e encontra rede;
-- modos contextuais **Ler** e **Editar** na mesma superfície do card, sem aba
-  autoral concorrente;
-- edição manual simples e assistência bottom-up por API no card, na
-  microssequência e na lição, sem atuar em módulo ou curso;
-- seleção direta por contorno, com edição textual de instâncias ou recomposição
-  do card inteiro, criação de cards somente no recipiente de microssequência e
-  criação de no máximo uma microssequência no recipiente de lição;
-- conversa de card com até oito turnos e nove versões locais para desfazer,
-  refazer e restaurar, sem persistir pedido, contexto ou resposta do provider;
-- observação situada no card, com cinco categorias, texto curto, sincronização
-  offline e retorno do responsável; `Trilhas` permite acompanhar o workspace
-  sem copiar o card ou guardar histórico da conversa;
-- edição no curso privado próprio e, para conta administrativa ou editorial,
-  no curso oficial; conteúdo sem autoridade permanece somente leitura;
-- GPT personalizado com Action e, separadamente, integração MCP para clientes
-  compatíveis, ambos com leitura, edição estrutural, recombinação, estudo
-  imediato em Trilhas e submissão editorial (`atomic-resource-authoring`);
-- OAuth 2.1 como autenticação exclusiva do gateway MCP, com autoridade
-  resolvida pelos papéis e permissões do banco;
-- capacidades por conta para autoria privada, submissão, revisão e publicação
-  no catálogo, no mesmo assistente;
-- projeção progressiva em que `Trilhas` reúne planos e cursos e `Coleções` reúne
-  o catálogo oficial; listas remotas são paginadas e abertas sob demanda;
-- workspaces pessoais, de turma ou equipe com seis papéis locais, convites,
-  transferência, composição corrente dos planos e cursos e administração no próprio
-  app; papéis e relações derivam capacidades efetivas, e cada operação via MCP,
-  Action ou app é autorizada sobre seu alvo e estado correntes, sem copiar o
-  curso; responsáveis recebem contagens e **Pontos de melhoria**
-  calculados a partir das observações correntes, sem histórico ou telemetria;
-- sistema visual único em claro e escuro, sem paleta paralela, glifos de
-  interface ou CSS do editor e do painel de submissão já substituídos;
-- catálogo derivado automaticamente dos packages independentes, organizado por
-  famílias e facetas e consultado progressivamente sem acoplar novos renderers
-  ao kernel ou a uma enumeração documental.
+O produto possui duas atividades paralelas:
 
-## Trabalho de estabilização
+- **Estudo** apresenta o curso em microssequências, registra progresso local e
+  permite observações situadas;
+- **Autoria** permite criar, revisar e organizar o mesmo tipo de curso sem
+  converter o conteúdo para uma estrutura intermediária incompatível.
 
-As próximas verificações concentram-se no uso cotidiano: retomada sem conexão, passagem entre web e Android, atualização de cursos oficiais, acessibilidade em telas pequenas e medição de espaço no banco à medida que o catálogo cresce.
+Um curso incompleto já pode ser estudado. Publicação não significa “tornar o
+rascunho visível”, mas fixar uma composição validada como artefato imutável e
+apontar o catálogo para essa revisão.
 
-## Edição contextual durante o estudo
+## Capacidades implementadas
 
-O conteúdo renderizado continua sendo a superfície principal. **Editar** torna
-campos autorizados editáveis na própria instância; **IA** permite selecionar
-por contorno e mostra a conversa junto ao conteúdo. Não há JSON, tela duplicada
-nem etapa de conferência separada.
+### Estudo
 
-No card, a assistência edita somente os textos selecionados ou recompõe o
-conteúdo pedagógico integral por meio do catálogo. Na
-microssequência, alguns cards limitam a mudança a esses cards; todos os cards
-concedem também o recipiente e permitem criar cards dentro dele. Na lição, uma
-microssequência autoriza trabalhar em seus cards, enquanto todas concedem o
-recipiente e permitem criar no máximo uma nova microssequência. O fluxo local
-não atua em módulo ou curso.
+- navegação por curso, módulo, lição, microssequência e card;
+- retomada pelo progresso funcional, sem inferir domínio ou proficiência;
+- marcação **Rever** e observações vinculadas ao contexto estudado;
+- funcionamento sem conexão depois do primeiro download do curso;
+- fila local para sincronizar alterações quando a rede volta;
+- tema claro ou escuro aplicado sem consulta remota;
+- resposta e avanço pelo botão Play sem esperar tarefas de rede;
+- ausência deliberada de telemetria de tempo, tentativas, acertos ou presença
+  inferida.
 
-Pedido, contexto e resposta do provider não são persistidos. Depois de schema,
-semântica e compare-and-swap, o resultado aparece diretamente. A conversa do
-card mantém até oito turnos e nove versões exatas para desfazer, refazer ou
-restaurar durante a sessão; um `no-op` conserva a explicação sem criar versão.
-Curso privado próprio mantém sua identidade; curso oficial só é editável por
-conta administrativa ou editorial e mantém sua continuidade. Não há fork
-automático.
+O progresso informa onde a pessoa parou e quais cards concluiu. Ele não é nota,
+diagnóstico cognitivo nem modelo de domínio. Essa limitação preserva uma
+interpretação honesta dos dados disponíveis.
 
-## Observações pedagógicas situadas
+### Autoria contextual
 
-A #62 possui agora o ciclo operacional principal. A pessoa escolhe dúvida,
-possível erro, confuso, sugestão ou observação, escreve até 1.000 caracteres e
-pode editar ou retirar no próprio leitor. O dispositivo grava antes de
-sincronizar; o backend não aceita cópia do card nem campos fora do contrato.
+- edição manual dos textos autorizados na própria representação;
+- seleção visual de cards, microssequências e lições;
+- assistência por modelo de linguagem para editar texto ou recompor um card;
+- conversa limitada a oito turnos e histórico local de até nove versões de um
+  card durante a sessão;
+- desfazer, refazer e restaurar versões sem nova chamada ao provedor;
+- validação de schema, semântica e revisão antes de persistir;
+- escopo de escrita derivado da seleção feita pela pessoa.
 
-No workspace associado, papéis de revisão consultam e filtram a triagem,
-respondem e alteram o estado. O estudante acompanha a resposta no próprio
-card. Uma correção é uma operação de autoria separada e só pode ser vinculada
-depois de gravada. O GPT personalizado com Action e os clientes da integração
-MCP usam o mesmo contrato contextual.
+O histórico curto da assistência existe para sustentar iterações imediatas. O
+pedido, o contexto enviado e a resposta integral do provedor não são
+persistidos. A decisão reduz armazenamento e exposição de conteúdo, mas impede
+usar esse chat efêmero como registro longitudinal de pesquisa.
 
-O registro continua sem nota, histórico de conversa, agregado comportamental
-ou autorização automática para corrigir. Da triagem, o responsável abre o
-card exato no modo contextual; o caminho inteiro é validado e um alvo removido
-não produz fallback para outro card. Ainda falta avaliar essa interação com
-pessoas reais; por isso a issue não deve ser considerada encerrada apenas pela
-infraestrutura atual.
+### Resources de card
 
-## Autoria de cursos oficiais
+O catálogo é composto por packages independentes do kernel. Cada package
+declara contrato autoral, perfil acadêmico, capacidades de prática e renderer.
+O catálogo atual contém trinta e dois packages, dos quais vinte e oito
+materializam conteúdo e quatro materializam respostas.
 
-O fluxo editorial usa workspaces compostos por um assistente externo. A edição
-corrente fica no PostgreSQL e só vira artefato integral no Storage quando há
-publicação. A submissão aponta para o hash exato da composição corrente. As
-partes materializadas aparecem em `Trilhas`; o catálogo oficial permanece separado.
+Representações diagramáticas usam motores especializados quando isso reduz
+medição manual de coordenadas: Graphviz/Viz.js para diferentes grafos e
+diagramas; Vega e Vega-Lite para gráficos e planos; MathML para notação
+matemática e científica. As bibliotecas são distribuídas com o aplicativo para
+continuarem disponíveis sem conexão.
 
-Uma revisão privada pode ser submetida, assumida por quem revisa, corrigida em
-uma cópia editorial independente e devolvida com pedido de ajustes ou rejeição.
-É o mesmo assistente; as capacidades mudam conforme a conta conectada.
+A quantidade atual não define uma cobertura universal das áreas do
+conhecimento. Quando falta uma representação especializada, a autoria pode usar
+um substituto declarado e registrar a lacuna do catálogo. A qualidade
+acadêmica da escolha continua sujeita a revisão humana e avaliação no domínio.
 
-Os próximos passos dessa área são testar o fluxo com cursos extensos, medir a
-qualidade das recombinações e avaliar o trabalho editorial com mais pessoas. A
-integração MCP de autoria estrutural remota usa exclusivamente OAuth 2.1. O GPT
-personalizado usa a Action e sua fachada OAuth confidencial; as duas superfícies
-convergem para o mesmo registry e executor. Elas podem usar fontes recuperadas
-fora do AraLearn, desde que a pessoa autora
-examine o resultado e registre a procedência necessária.
+### Persistência e publicação
 
-## Ambiente docente
+- IndexedDB conserva no dispositivo cursos, progresso e operações pendentes;
+- PostgreSQL conserva identidades, relações, revisões e estado colaborativo;
+- Supabase Storage conserva artefatos integrais e imutáveis de publicação;
+- compare-and-swap impede sobrescrita silenciosa entre revisões concorrentes;
+- chaves de idempotência tornam a repetição de uma requisição segura;
+- hashes identificam o conteúdo exato submetido ou publicado;
+- objetos sem referência tornam-se elegíveis à coleta de lixo.
 
-Workspaces educacionais já oferecem colaboração entre proprietário,
-administração, autoria, revisão, estudante e leitura. `Trilhas` mostra a
-estrutura corrente e as observações qualitativas pertinentes; não mostra
-tempo, tentativas, acertos, presença inferida nem ranking. Ainda faltam estudos
-com pessoas reais para avaliar compreensão dos papéis, linguagem da triagem e
-adequação do fluxo ao trabalho docente.
+Essa distribuição evita guardar uma cópia integral do curso para cada pequena
+alteração e, ao mesmo tempo, permite demonstrar qual composição foi revisada ou
+publicada.
 
-## Pesquisa
+### Workspaces e colaboração
 
-O AraLearn será avaliado em situações de estudo com pouco tempo, conexão instável e alternância entre dispositivos. Entre as perguntas de pesquisa estão:
+- workspaces pessoais, de turma ou equipe;
+- seis papéis locais com capacidades derivadas no servidor;
+- convites, entrada, saída e transferência de propriedade;
+- curso corrente acessível em Trilhas sem duplicação automática;
+- observações de estudo e notas situadas;
+- triagem, resposta e vínculo entre observação e correção confirmada;
+- submissão, revisão editorial e publicação conforme autorização.
 
-- microssequências ajudam a retomar o estudo?
-- recursos visuais ajudam a compreender conteúdos estruturados?
-- o funcionamento sem conexão é previsível para quem estuda?
-- o catálogo compartilhado mantém o armazenamento sustentável com muitos cursos?
-- a assistência de linguagem reduz esforço de autoria sem substituir a revisão humana?
+O papel não é uma permissão isolada gravada no token. Autenticação identifica a
+conta; relações e estado do workspace determinam capacidades; cada operação é
+autorizada novamente sobre seu alvo atual.
 
-A frente fundadora separa [revisão de literatura](revisao-de-literatura.md),
-[quadro teórico](quadro-teorico.md), [glossário de
-construtos](glossario-construtos.md), [matriz de
-rastreabilidade](matriz-rastreabilidade-pedagogica.md), [protocolo de
-avaliação](protocolo-avaliacao-artefato.md) e [contribuição a
-investigar](contribuicao-originalidade.md). Essa organização não encerra a
-revisão da dissertação nem substitui avaliação com participantes. Analytics
-permanece bloqueado até que cada indicador proposto possua pergunta,
-construto, interpretação permitida, intervenção, avaliação e custo.
+### Autoria remota
+
+Clientes compatíveis podem conduzir autoria por MCP; um GPT personalizado usa
+uma Action OpenAPI. Ambos atravessam o mesmo registro, os mesmos schemas e o
+mesmo executor. A autenticação é individual por OAuth 2.1, e nenhuma superfície
+recebe acesso administrativo direto ao banco.
+
+O modelo consulta a biblioteca de resources progressivamente, recebe apenas os
+contratos escolhidos, valida o card e pode auditar a adequação da
+representação. Continuidade estruturada conserva brief, planejamento, decisões,
+mandatos e achados entre sessões sem armazenar o transcript inteiro.
+
+## O que foi verificado tecnicamente
+
+A suíte automatizada cobre, entre outros aspectos:
+
+- contratos de curso, card e packages;
+- paridade entre o runtime do navegador e o runtime das Edge Functions;
+- renderização em larguras móveis, nos temas claro e escuro;
+- lacunas independentes dentro de resources compostos;
+- hidratação de Graphviz e Vega sob a política de segurança de conteúdo;
+- retomada, avanço e troca de tema sem dependência da rede;
+- concorrência, idempotência e autorização relacional;
+- geração dos pacotes de integração e do aplicativo Android;
+- integridade das fixtures do catálogo.
+
+Esses testes sustentam afirmações de conformidade da implementação. Não
+demonstram que uma microssequência produz aprendizagem maior, que um diagrama é
+compreendido por todos os públicos ou que uma assistência reduz efetivamente o
+trabalho de autoria.
+
+## Limitações conhecidas
+
+### Evidência educacional
+
+Ainda não há evidência empírica suficiente para atribuir ganhos de aprendizagem
+ao AraLearn. A relação entre microteoria, prática, retomada e compreensão é uma
+hipótese de design apoiada por literatura, não um resultado causal já medido.
+
+### Cobertura disciplinar
+
+O catálogo possui representações gerais e packages especializados, com maior
+densidade inicial em computação e matemática. Áreas como linguística,
+biologia, química e ciências humanas requerem avaliação sistemática das
+notações utilizadas e, quando necessário, novos packages.
+
+### Avaliação de usabilidade
+
+Testes geométricos detectam recortes, sobreposições e problemas de interação,
+mas não substituem observação de pessoas. A compreensão dos papéis, a clareza
+das observações e a leitura de diagramas densos precisam ser estudadas em
+condições reais.
+
+### Dependências remotas
+
+Estudar conteúdo já baixado não depende da rede. Login inicial, aquisição de um
+curso ainda ausente, convites, sincronização, assistência por API e publicação
+dependem dos serviços remotos. O aplicativo precisa comunicar essa fronteira
+sem bloquear operações que são estritamente locais.
+
+### Limites de armazenamento
+
+O projeto opera com orçamento restrito de banco e Storage. Artefatos imutáveis,
+projeções compactas, retenções específicas e coleta de lixo reduzem o consumo,
+mas o crescimento do catálogo e de workspaces precisa ser medido continuamente.
+
+## Agenda de avaliação e desenvolvimento
+
+### Prioridade 1 — uso cotidiano
+
+- observar retomada em trajetos curtos e conexão instável;
+- testar alternância entre web e Android;
+- verificar compreensão do estado offline e da fila de sincronização;
+- acompanhar acessibilidade e gestos em telas pequenas;
+- medir tempo de resposta local sob limitação de CPU.
+
+### Prioridade 2 — qualidade pedagógica
+
+- avaliar se cards de teoria partem de premissas compreensíveis para iniciantes;
+- verificar progressão conceitual sem condensação excessiva;
+- medir cobertura e diversidade das práticas;
+- comparar a representação escolhida com convenções da área;
+- observar transferência entre o que foi explicado e o que foi praticado.
+
+### Prioridade 3 — autoria e revisão
+
+- avaliar o esforço necessário para produzir e revisar cursos extensos;
+- testar a continuidade entre sessões e a compreensão dos mandatos;
+- comparar reparos locais e recomposições estruturais;
+- estudar confiança, contestação e reversão das sugestões do modelo;
+- verificar se observações de estudantes apoiam correções sem se tornarem
+  vigilância comportamental.
+
+### Prioridade 4 — infraestrutura
+
+- acompanhar crescimento do PostgreSQL e do Storage;
+- testar coleta de lixo e restauração operacional;
+- medir payloads, contexto e custo dos fluxos de autoria;
+- ampliar testes de concorrência e falhas parciais;
+- avaliar recuperação semântica e evolução do catálogo sem acoplamento ao
+  kernel.
+
+## Perguntas abertas
+
+- A organização em microssequências melhora a retomada depois de interrupções?
+- A combinação entre microteoria e práticas variadas reduz premissas ocultas?
+- Resources especializados melhoram a interpretação de estruturas complexas?
+- A autoria assistida reduz trabalho mecânico sem reduzir a responsabilidade
+  editorial humana?
+- A proveniência registrada é suficiente para reconstruir decisões sem guardar
+  conversas integrais?
+- A arquitetura de artefatos imutáveis mantém custo sustentável quando o
+  catálogo e o número de workspaces crescem?
+
+Essas perguntas orientam avaliação; não antecipam resultados. O
+[Protocolo de avaliação do artefato](protocolo-avaliacao-artefato.md) descreve
+como separar verificação técnica, inspeção especializada e investigação com
+participantes. A [Matriz de rastreabilidade pedagógica](matriz-rastreabilidade-pedagogica.md)
+liga construtos, decisões, implementação, testes e evidências esperadas.
+
+## Como acompanhar o estado
+
+O estado publicado deve ser lido em conjunto com:
+
+- [Visão do produto](visao-do-produto.md), para a finalidade e o escopo;
+- [Arquitetura](arquitetura.md), para os componentes;
+- [Modelo didático](modelo-didatico.md), para as hipóteses pedagógicas;
+- [Matriz de conformidade técnica](matriz-conformidade-tecnica.md), para a
+  evidência verificável da implementação;
+- [Plano de controle e artefatos](plano-de-controle-e-artefatos.md), para os
+  procedimentos operacionais.
+
+O histórico cronológico de versões pertence ao [`CHANGELOG.md`](../CHANGELOG.md).
+Este documento descreve apenas o estado corrente e as lacunas que permanecem
+relevantes.

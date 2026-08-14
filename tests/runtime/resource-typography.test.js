@@ -25,6 +25,7 @@ function assertUsesType(selector, token) {
 test("conteúdo primário dos resources compartilha a escala tipográfica do texto explicado", () => {
   for (const selector of [
     ".runtime-code-block pre",
+    ".package-terminal-session pre",
     ".multiple-choice-option",
     ".package-matching-response label",
     ".package-packet-legend li",

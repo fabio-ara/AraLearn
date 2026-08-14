@@ -1,315 +1,485 @@
-# Uso do app
+# Uso do aplicativo
 
-O uso cotidiano segue um caminho simples: entrar, escolher cursos, organizá-los em trilhas e estudar. A edição aparece quando a pessoa quer adaptar o conteúdo.
+Este guia ensina as operações disponíveis na interface do AraLearn. Ele começa
+pelas ideias necessárias para compreender o aplicativo e, em seguida,
+apresenta cada tarefa com condições, procedimento, resultado esperado,
+comportamento sem conexão e forma de recuperação.
 
-## Mapa mental em um minuto
+## Antes de usar: cinco conceitos
 
-Quatro ideias bastam para acompanhar o funcionamento cotidiano:
+### Conta
 
-1. A conta guarda grupos de Trilhas, seleções, estado funcional de retomada e observações.
-2. O catálogo guarda uma única publicação oficial de cada curso.
-3. O dispositivo mantém cursos oficiais selecionados e a composição corrente
-   dos itens de workspace já abertos para uso sem conexão.
-4. Ao estudar, o AraLearn grava primeiro no dispositivo e sincroniza depois.
+A conta identifica a pessoa perante o servidor. Ela separa seleções de cursos,
+estado de estudo, observações e permissões. Entrar em outro dispositivo não
+transforma os dois aparelhos em uma única memória: cada um conserva sua réplica
+e os aproxima pela sincronização.
 
-```text
-catálogo + dados da conta
-          ⇅
- réplica deste dispositivo
-          ↓
-       estudo
-```
+### Coleções
 
-É possível estudar durante uma falha de rede porque o leitor depende primeiro da réplica local. A sincronização aproxima essa réplica dos dados da conta quando há conexão.
+**Coleções** é o catálogo compartilhado. Ele contém publicações oficiais que
+podem ser pesquisadas e adicionadas à área pessoal. Abrir um item no catálogo
+não o adiciona à conta.
+
+### Trilhas
+
+**Trilhas** reúne cursos selecionados e projetos de autoria aos quais a conta
+tem acesso. Os grupos de Trilhas são pessoais: servem para organização e não
+alteram o conteúdo de um curso, um workspace ou uma Coleção.
+
+### Réplica local
+
+Uma réplica local é a informação guardada no dispositivo para que a tela possa
+responder sem consultar o servidor a cada toque. No AraLearn, a réplica permite
+reabrir cursos já baixados, avançar no estudo e conservar alterações pendentes
+quando a conexão falha.
+
+Ela não é uma nova fonte de autoridade. Estar presente no dispositivo não
+concede permissão para editar, convidar pessoas ou publicar. Essas operações
+precisam ser confirmadas pelo servidor.
+
+### Sincronização
+
+Sincronizar significa comparar o estado local com o remoto e enviar ou receber
+o que for necessário. O aplicativo tenta fazer isso automaticamente. O botão
+**Sincronizar** solicita uma tentativa imediata; ele não é um botão de salvar.
+
+## Criar uma conta
+
+**Pré-condição:** tenha acesso ao endereço de e-mail informado e esteja
+conectado.
+
+**Passos:**
+
+1. Na tela de acesso, escolha **Criar conta**.
+2. Informe e-mail e uma senha com pelo menos oito caracteres.
+3. Confirme a criação.
+4. Se não houver uma sessão imediata, abra a mensagem de confirmação recebida
+   por e-mail. Verifique também a pasta de spam.
+5. Volte ao aplicativo e entre.
+
+**Resultado esperado:** a preparação inicial identifica a conta, carrega
+Trilhas e baixa o conteúdo necessário. Espere essa preparação terminar antes
+de depender do modo offline.
+
+**Sem conexão:** não é possível criar ou confirmar a conta.
+
+**Recuperação:** use **Reenviar confirmação** na tela de criação. A ação
+exige um e-mail válido no campo correspondente.
 
 ## Entrar
 
-Sem uma sessão, o AraLearn mostra a tela de acesso. É possível criar conta, confirmar o e-mail, entrar, recuperar a senha e sair.
+**Pré-condição:** a conta precisa estar confirmada. A primeira entrada no
+dispositivo requer conexão.
 
-Cada conta possui seus próprios dados neste dispositivo. Sair encerra a sessão, mas não apaga o que já foi baixado nem alterações que ainda aguardam envio.
+**Passos:** informe e-mail e senha e escolha **Entrar**.
 
-Depois da entrada, três etapas indicam a preparação do dispositivo, da conta e dos cursos. Essa tela e as telas de acesso e criação de conta usam toda a área disponível.
+**Resultado esperado:** a tela de acesso é substituída pela página inicial de
+Trilhas.
 
-## Encontrar e organizar conteúdo
+**Sem conexão:** uma sessão válida já existente pode usar a réplica disponível,
+mas uma primeira entrada ou a renovação de uma sessão expirada exige o servidor.
 
-O botão de nuvem abre as funções complementares à tela inicial:
+**Recuperação:** confirme o endereço, tente novamente em uma conexão estável ou
+use **Recuperar senha**.
 
-- **Coleções** apresenta os cursos oficiais disponíveis;
-- **Chatbot** contém a configuração do GPT personalizado com Action e da
-  integração MCP, apresentada na interface como **Plugin**.
+## Recuperar a senha
 
-A tela inicial é a superfície única para percorrer, iniciar e organizar os
-cursos de `Trilhas`. O seletor mostra planos e cursos da mesma projeção; ações
-menos frequentes ficam nos controles contextuais do grupo, curso ou parte
-correspondente. Sair e excluir a conta ficam recolhidos no menu de conta. Isso
-não torna os grupos equivalentes no banco:
+**Pré-condição:** esteja conectado e informe o e-mail da conta.
 
-- em `Trilhas`, cada grupo é pessoal e pode ser criado, renomeado ou excluído
-  pela própria pessoa;
-- em `Coleções`, cada grupo pertence ao catálogo oficial. A pessoa comum o
-  consulta; uma conta editorial pode criá-lo, renomeá-lo ou retirá-lo, com
-  alcance global.
+**Passos:**
 
-Grupos e cursos são apresentados automaticamente em ordem alfabética de
-português, com números em ordem natural. Não há botões de subir ou descer nem
-uma ordem pessoal paralela para manter.
+1. Escolha **Recuperar senha**.
+2. Informe o e-mail e escolha **Enviar recuperação**.
+3. Abra o link recebido.
+4. Informe e repita a nova senha, com pelo menos oito caracteres.
+5. Escolha **Salvar nova senha**.
 
-Excluir um grupo pessoal não retira os cursos escolhidos nem apaga o estado de
-estudo. Eles continuam em `Trilhas`, no grupo **Outros**, até serem movidos
-ou retirados explicitamente.
+**Resultado esperado:** a nova credencial substitui a anterior. Por segurança,
+a mensagem de solicitação não confirma se um endereço está cadastrado.
 
-Um plano é a estrutura que ainda está sendo montada; um curso já possui
-conteúdo estudável. Ambos aparecem em `Trilhas`, sem categorias intermediárias
-como “parcial”, “pronto” ou “em avaliação”. Ao abrir um plano, a pessoa vê a
-árvore corrente de cursos, módulos, lições e microssequências. Se tiver
-permissão, pode renomear, descrever, mover, excluir e registrar observações na
-parte exata. O aplicativo não mostra IDs, hashes, revisões nem estados internos.
+**Sem conexão:** o pedido, o recebimento do link e a troca da credencial
+dependem do serviço de autenticação.
 
-O aplicativo não cria um plano vazio por um formulário próprio. O GPT
-personalizado cria o workspace pela Action; um cliente compatível pode realizar
-o mesmo fluxo pela integração MCP. A estrutura planejada é registrada e, assim
-que o servidor
-confirma esse trabalho, o plano aparece em `Trilhas`. Conforme os cards são
-materializados, o mesmo item passa a oferecer conteúdo estudável, sem criar uma
-cópia paralela. O controle de novo grupo na tela inicial administra a
-organização pessoal; não cria cursos ou planos.
+**Recuperação:** se a mensagem não chegar, verifique a pasta de spam, confirme
+o endereço informado e solicite um novo envio. Criar outra conta não recupera
+os dados da identidade anterior.
 
-Os cards distinguem a origem sem depender dos botões: um ícone azul identifica
-planejamento, uma chave vermelha identifica curso somente privado e a pasta
-verde de `Coleções` identifica um curso público selecionado em `Trilhas`. Não
-há rótulo textual concorrendo com o título. Donos e contas editoriais podem
-alternar para a edição na própria hierarquia, sem abrir uma árvore paralela.
+## Alterar a aparência
 
-`Coleções` é consultada somente quando a aba é aberta. `Trilhas` carrega todas
-as páginas antes de substituir a lista anterior e só então conserva essa
-projeção completa para uma abertura sem rede. A cópia local é apenas para
-consulta: não concede permissão e mantém desabilitados editar, organizar,
-retirar e excluir. Com rede, esses controles refletem novamente as capacidades
-devolvidas pela sessão autenticada.
+**Pré-condição:** nenhuma conexão é necessária.
 
-A marca do AraLearn acompanha o tema claro ou escuro na web. No Android, o
-ícone padrão usa o kanji escuro sobre fundo claro; launchers compatíveis podem
-aplicar a paleta do sistema à camada de ícone temático.
+**Passos:**
 
-## Escolher cursos
+1. Abra o painel pelo botão de nuvem.
+2. No grupo **Aparência**, escolha **Tema do sistema**, **Tema claro** ou
+   **Tema escuro**.
 
-Em **Coleções**, a busca percorre o catálogo oficial. Use a ação explícita
-**Adicionar a Trilhas** para selecionar um curso. O botão de abrir ou estudar
-somente navega pelo conteúdo: ele nunca adiciona o curso, altera um grupo,
-publica uma revisão nem cria uma cópia.
+**Resultado esperado:** a interface muda imediatamente. **Tema do sistema**
+acompanha a preferência do dispositivo; as outras opções a substituem apenas
+no AraLearn.
 
-Ao adicionar um curso, a conta passa a tê-lo na biblioteca e o dispositivo baixa o material para estudo. Isso não altera o curso oficial nem cria outra cópia dele no banco.
+**Sem conexão:** a troca é local e não deve aguardar uma resposta da rede.
 
-Uma conta editorial encontra diretamente, nos alvos correspondentes, os menus
-para criar, renomear ou retirar coleções e para mover um curso entre coleções
-ou retirá-lo do catálogo. Não existe um modo intermediário de organização.
-Essas ações alteram o catálogo para todas as pessoas e, quando são destrutivas,
-exigem confirmação. Elas são diferentes de adicionar ou retirar um curso da
-biblioteca pessoal. **Outros cursos** é o destino estrutural do catálogo e
-recebe cursos que deixam uma coleção temática. A lista continua alfabética.
+**Recuperação:** se o tema não mudar, recarregue o aplicativo; não é necessário
+apagar os cursos.
 
-**Retirar de Trilhas** remove somente uma seleção daquela conta. A publicação
-oficial continua disponível em `Coleções` para outras pessoas. A ação editorial
-distinta **Retirar de Coleções** permanece no alvo correspondente da aba
-`Coleções`; depois da confirmação, ela retira a publicação do catálogo e de
-todas as contas que a selecionaram. Um curso proveniente de workspace usa a
-ação **Excluir curso privado**, baseada na composição corrente e não numa
-seleção.
+## Encontrar um curso no catálogo
 
-A retirada identifica a seleção exata, e não o título. Por isso duas tentativas
-independentes com o mesmo nome continuam sendo cursos diferentes. Arquivar um
-artefato privado não apaga uma composição de workspace ativa; para retirá-la de
-Trilhas, a pessoa exclui explicitamente a raiz ou o workspace correspondente.
+**Pré-condição:** a consulta a Coleções requer conexão.
 
-Antes de excluir uma publicação, o aplicativo termina as gravações locais e
-consulta o estado remoto corrente. Depois da confirmação do servidor, atualiza
-a réplica e a lista. Se o servidor tiver concluído a exclusão, mas o dispositivo
-não conseguir atualizar a tela, a mensagem informa que a retirada já ocorreu e
-pede apenas uma sincronização; não se deve repetir o comando.
+**Passos:**
 
-## Curadoria de Trilhas na tela inicial
+1. Abra o painel pelo botão de nuvem.
+2. Selecione a aba **Coleções**.
+3. Use **Pesquisar cursos em Coleções** para restringir a lista.
+4. Examine título e descrição do resultado.
 
-Na tela inicial, a pessoa acompanha o que planejou e o que já pode estudar. Ali
-seleciona primeiro o grupo e depois o curso, sem abrir uma tela administrativa
-paralela. O menu do grupo permite criar, renomear ou excluir; o menu do curso
-reúne somente as operações aplicáveis àquele item. Ao abri-lo, as ações aparecem
-com ícone e texto; **Mover para outro grupo** abre o seletor de destino no próprio
-card, inclusive para **Outros**. Escolher o grupo corrente apenas fecha o seletor,
-sem repetir uma gravação remota. Título e descrição tornam-se editáveis no
-próprio card selecionado, sem navegar para outra tela. Grupos e cursos permanecem
-em ordem alfabética depois de cada alteração. Excluir um grupo deixa seus itens
-em **Outros**;
-**Retirar de Trilhas** é a ação separada que remove uma seleção oficial, e
-**Excluir** remove a composição privada escolhida.
+**Resultado esperado:** Coleções é carregada quando a aba é aberta. A pesquisa
+não altera Trilhas.
 
-Títulos, mensagens de erro, seletores e menus permanecem contidos na largura da
-home e quebram texto longo, inclusive com zoom ou em telas estreitas; nenhum
-controle deve ser empurrado para fora do card.
+**Sem conexão:** a consulta pode mostrar uma falha ou o último contexto já
+presente, mas não deve ser tratada como catálogo atualizado.
 
-Essa ordenação alfabética vale para a biblioteca, não para a árvore pedagógica.
-Mover uma parte do curso muda sua posição na composição corrente; copiar uma
-parte para outro curso cria uma cópia independente. Excluir uma parte retira também seus
-descendentes, após confirmação. O progresso do estudo continua separado do
-conteúdo. Um curso distribuído tem uma só composição ativa vinculada; voltar a
-organizá-lo abre essa composição, em vez de criar outra. Planos realmente
-independentes podem ter o mesmo título e permanecem separados.
+**Recuperação:** restabeleça a conexão, abra Coleções novamente e refaça a
+pesquisa. Não retire cursos de Trilhas para tentar atualizar o catálogo.
 
-Durante uma gravação remota, os controles ficam indisponíveis apenas pelo tempo
-necessário para impedir comandos repetidos. Operações encadeadas e falhas sempre
-liberam novamente as abas e a navegação.
+## Adicionar um curso a Trilhas
 
-## Estudar
+**Pré-condição:** localize uma publicação em Coleções e mantenha conexão
+até a confirmação.
 
-A navegação segue a ordem:
+**Passos:** use a ação **Adicionar a Trilhas** no item escolhido.
 
-```text
-curso -> módulo -> lição -> microssequência -> card
-```
+**Resultado esperado:** o curso passa a integrar a seleção da conta e o
+dispositivo baixa seu conteúdo. Abrir, visualizar ou pressionar **Play** não
+substitui essa ação explícita.
 
-Depois que o material é baixado, o estudo continua sem conexão. Retomada,
-**Rever** e observações são gravados primeiro no dispositivo. **Rever** é um
-marcador pessoal para voltar a um card: quando o curso selecionado possui cards
-marcados, o ícone de marcador na tela inicial abre a lista curta e leva ao alvo
-exato. Não é nota, erro registrado nem tarefa obrigatória. A gravação normal
-é silenciosa; se demorar, aparece apenas um indicador discreto. Se falhar, um
-aviso compacto permite tentar novamente ou fechar a mensagem sem bloquear o
-estudo. O AraLearn não grava abertura, tempo, tentativas ou resultado; veja
-[Estado de estudo não punitivo](estado-de-estudo-nao-punitivo.md).
+**Sem conexão:** uma nova seleção não pode ser confirmada. Um curso já
+adicionado e baixado continua estudável.
 
-O ícone de observação no leitor permite registrar **Dúvida**, **Possível erro**,
-**Confuso**, **Sugestão** ou **Observação**, com até 1.000 caracteres. Existe
-somente uma observação corrente da pessoa por card: salvar novamente a
-substitui e retirar a apaga. O contador `1` informa apenas a presença desse
-registro; não é pontuação nem atividade obrigatória. Quando o curso integra um
-workspace, uma resposta da equipe e o estado corrente aparecem na mesma folha.
-Responsáveis consultam as observações no plano correspondente em **Trilhas** e
-podem abrir o card exato dali no modo de edição. Se o caminho
-tiver sido substituído, o app não abre outro card por aproximação. O
-funcionamento e os limites de interpretação estão em
-[Observações pedagógicas](observacoes-pedagogicas.md).
+**Recuperação:** sincronize e verifique Trilhas antes de repetir o comando.
+Isso evita interpretar uma confirmação remota seguida de falha de tela como se
+a operação não tivesse ocorrido.
 
-Os cards combinam uma ou mais instâncias de conteúdo, no máximo uma resposta e
-explicações posteriores. A lista corrente de packages é derivada do catálogo,
-sem enumeração fixa na interface. Os cards de estudo não exibem controles de
-movimentação. **Visualizar**, **Editar** e **IA** usam o próprio conteúdo. Um
-contorno discreto identifica o alvo sem redimensionar a representação nem criar
-uma segunda tela. Outro toque retira o alvo da seleção.
+## Organizar Trilhas em grupos pessoais
 
-Na lição, o botão **Play** da microssequência abre sua lista compacta de cards.
-As etiquetas permanecem no nível da microssequência. Dentro dela, o
-preenchimento de cada card comunica sua conclusão sem repetir `0/1` ou `1/1`;
-zerar progresso e **Play** continuam disponíveis, e este último abre o estudo.
-Em modo de autoria, editar ou excluir age no próprio card estrutural e
-não dispara a navegação de estudo.
+**Pré-condição:** a conta precisa estar aberta. Mudanças ainda não enviadas
+podem aguardar conexão.
 
-O progresso dentro da lição é sequencial. Por isso, zerar um card ou uma
-microssequência também reabre os cards posteriores daquela lição: assim, a
-retomada nunca afirma que uma etapa posterior continua concluída depois de uma
-etapa anterior ser reiniciada.
+**Passos:** escolha a operação desejada entre as alternativas a seguir.
 
-Nos grafos, os vértices conservam nomes legíveis e as relações aparecem fora do
-desenho, sem rótulos sobre as arestas. Mapas de relações apresentam cada par em
-uma linha dimensionável, sem setas atravessando os textos.
+**Como criar um grupo:**
 
-Quando a conta tem permissão de autoria, os botões de editar e excluir aparecem
-junto do curso, módulo ou lição; sem permissão, permanecem desabilitados. No
-card, a assistência edita os caminhos textuais selecionados ou recompõe o card
-inteiro pelo catálogo, mas não cria conteúdo irmão. Na microssequência,
-selecionar todos os cards permite
-criar cards dentro dela. Na lição, selecionar uma microssequência permite criar
-cards nela; selecionar todas permite criar no máximo uma nova microssequência.
-Não há assistência por API em módulo ou curso.
+1. Na tela inicial, abra **Ações do grupo**.
+2. Escolha a criação de grupo.
+3. Informe o nome e salve.
 
-Uma edição manual curta altera somente texto com origem inequívoca: títulos,
-parágrafos, rótulos, células, texto e código de alternativas, feedback de cada
-alternativa, explicação posterior e texto ao redor de uma lacuna. A resposta
-correta, os tokens e respostas aceitas da lacuna, identidades, tipos, relações,
-quantidade e ordem permanecem protegidos. O campo acompanha a largura do
-package e texto longo quebra ou rola dentro da própria caixa, inclusive no
-teclado do smartphone, sem distorcer o runtime.
+**Como renomear:** selecione o grupo, abra suas ações, altere o nome e salve.
 
-A assistência envia o pedido com o contexto somente leitura, valida o retorno
-e mostra diretamente o resultado e sua explicação. A conversa do card permite
-desfazer, refazer ou restaurar versões; uma conclusão sem mudança registra a
-explicação sem criar versão. Uma falha não altera parte do conteúdo e mantém a
-superfície utilizável. Alterar
-semanticamente um exercício também limpa seu resultado e progresso anteriores,
-para que uma resposta antiga não continue marcada como correta.
+**Como mover um curso:**
 
-Providers remotos de IA exigem conexão. Estudo e edição manual do conteúdo já
-baixado continuam disponíveis sem rede; o serviço local de integração com
-Codex CLI também pode prestar
-assistência textual se estiver acessível no próprio dispositivo. O app grava um
-rascunho durável, mantém a identidade da tentativa e sincroniza ao reconectar.
-Mudanças em folhas distintas são combinadas; se o mesmo texto tiver sido
-alterado remotamente, o rascunho é preservado e o conflito é informado, sem
-sobrescrita silenciosa. A autorização armazenada serve apenas para texto no
-conteúdo já baixado. Mover, excluir, comentar, publicar e usar providers remotos
-continuam exigindo conexão e autorização atual do servidor.
+1. Selecione o curso.
+2. Abra **Ações do curso**.
+3. Escolha **Mover para outro grupo**.
+4. Selecione o destino, inclusive **Outros**.
 
-Um curso oficial continua compartilhado como uma publicação protegida. Uma
-conta comum apenas o estuda; uma conta administrativa ou editorial pode
-alterá-lo mantendo sua identidade oficial. O dono altera seu curso privado sem
-criar outra cópia. Curso privado de outra pessoa permanece bloqueado.
+**Como excluir um grupo:** abra as ações do grupo e confirme a exclusão.
 
-## Integrar uma ferramenta de autoria
+**Resultado esperado:** grupos e cursos aparecem em ordem alfabética, com
+números em ordem natural. Excluir um grupo não remove seus cursos nem o estado
+de estudo; os itens restantes aparecem em **Outros**.
 
-Abra o painel e toque em **Chatbot**. A área separa:
+**Sem conexão:** a interface preserva a última projeção completa de Trilhas. As
+ações que dependem de validação remota podem ficar indisponíveis; alterações
+locais aceitas aguardam sincronização.
 
-- **Chatbot**: instruções, dois conhecimentos, schema da Action e credenciais
-  OAuth; depois de salvar o GPT, o ID `g-...` é vinculado no painel;
-- **Plugin**: rótulo da interface para nome, descrição, endpoint MCP e autenticação a copiar em
-  **Plugins → Novo plugin**.
+**Recuperação:** depois de reconectar, sincronize antes de repetir uma ação. Se
+um grupo for excluído, procure seus cursos em **Outros**; eles não precisam ser
+adicionados novamente.
 
-O GPT reúne orientação persistente, conhecimento anexado e acesso à conta.
-A integração MCP pode ser chamada em qualquer conversa: recebe instruções na
-inicialização e recupera, sob demanda, somente o conhecimento autoral
-pertinente ao pedido. Os dois usam as mesmas ferramentas e o mesmo motor de
-workspace. Não é preciso copiar uma chave estática.
+## Retirar um curso oficial de Trilhas
 
-Ao conectar a integração MCP no ChatGPT, o usuário entra na própria conta por OAuth e
-aprova o consentimento.
+**Pré-condição:** selecione um curso proveniente de Coleções.
 
-Contas que já receberam permissão editorial também veem a área **Catálogo**.
-A mesma conexão OAuth passa a expor as ferramentas de catálogo autorizadas
-para aquela conta.
+**Passos:** abra **Ações do curso**, escolha **Retirar de Trilhas** e
+confirme quando solicitado.
 
-A integração pode criar, reorganizar e revisar planos e cursos. A pedido, o
-conteúdo já materializado aparece em `Trilhas` para teste. A entrada em
-`Coleções` continua dependendo da permissão e da revisão editorial.
+**Resultado esperado:** somente a seleção dessa conta é removida. A publicação
+continua em Coleções e permanece disponível para outras pessoas.
 
-Para começar sem lidar com JSON ou nomes de operações, siga [Criar cursos pelo
-chat](criar-cursos-pelo-chat.md). O mesmo assistente continua a conversa; a
-conta conectada determina se ele também pode enviar, revisar ou publicar no
-catálogo.
+**Sem conexão:** aguarde a confirmação do servidor antes de considerar a
+retirada concluída.
 
-## Sincronização
+**Recuperação:** se a tela falhar depois da confirmação, sincronize antes de
+repetir. Uma conta com
+capacidade editorial pode ver outra ação, **Retirar de Coleções**, cujo efeito é
+global e não deve ser confundido com a retirada pessoal.
 
-O aplicativo tenta sincronizar ao abrir, ao recuperar conexão, ao voltar para a tela e depois de uma gravação local. Enquanto não houver rede, o estudo segue normalmente e as alterações aguardam no dispositivo.
+## Abrir e percorrer um curso
 
-O ícone de sincronização pede uma nova tentativa imediata. Ele não é necessário para salvar o trabalho.
+**Pré-condição:** o curso deve estar em Trilhas; para uso offline, ele
+precisa ter sido baixado anteriormente.
 
-Se a mesma conta fizer mudanças de progresso, observações ou trilhas em dispositivos diferentes, passa a valer a última alteração válida recebida pelo servidor. O conteúdo da área de autoria local não entra nessa fila e permanece no dispositivo até seguir por um fluxo integral de autoria. O AraLearn não exige que o estudante compare versões do estado pessoal.
+**Passos:**
 
-## Atualização de cursos
+1. Selecione o grupo e o curso na página inicial.
+2. Use **Abrir curso** ou **Play**.
+3. Percorra módulo, lição e microssequência.
+4. Abra o card indicado.
 
-Quando uma publicação oficial é atualizada, o dispositivo baixa e valida a
-nova árvore antes de substituir a réplica anterior. Se o download falhar, o
-material já disponível continua preservado. Uma escrita autorizada compara a
-revisão lida com a corrente e é recusada se outra alteração tiver avançado;
-nunca há combinação ou sobrescrita silenciosa.
+**Resultado esperado:** a hierarquia segue curso, módulo, lição,
+microssequência e card. Quando um módulo oferece um único caminho de
+continuação, **Play** pode levar diretamente ao ponto correspondente.
 
-Progresso e comentários continuam ligados às partes do curso que mantiverem a mesma identidade. Quando uma parte deixa de existir, os dados ligados a ela deixam de ser usados.
+**Sem conexão:** a abertura usa a réplica local. Uma publicação nunca baixada
+não pode ser reconstruída apenas pelo nome exibido em Trilhas.
 
-## Quando algo falha
+**Recuperação:** se somente esse curso falhar, sincronize-o quando houver rede;
+se os demais abrirem, não limpe toda a réplica. Consulte [Solução de
+problemas](solucao-de-problemas.md).
 
-- Sem rede, demora de resposta ou indisponibilidade temporária: a alteração permanece guardada e será enviada depois.
-- Sessão expirada: o trabalho local permanece guardado; basta entrar novamente.
-- Ação inválida ou sem permissão: a tela informa que a ação precisa ser refeita ou descartada.
-- Falha ao gravar no dispositivo: um aviso curto oferece nova tentativa e pode ser fechado sem interromper a navegação.
+## Responder e avançar em um card
 
-## Sair e excluir a conta
+**Pré-condição:** leia o enunciado e interaja com os campos da prática.
 
-Sair encerra a sessão e preserva os dados locais da conta.
+**Passos:**
 
-Excluir a conta exige confirmação. A operação remove as seleções, trilhas, progresso, comentários e dados locais daquela conta. Cursos oficiais não são removidos.
+1. Preencha, selecione, digite ou ordene conforme a representação.
+2. Pressione **Play**.
+3. Quando houver resposta avaliável, o primeiro toque confirma a tentativa e
+   mostra o feedback.
+4. Leia o retorno. Pressione **Play** novamente para avançar.
+5. Quando o recurso oferecer **Ver resposta**, use-o somente se decidir revelar
+   a solução; uma resposta correta não deve ser exposta antes disso.
+
+**Resultado esperado:** a confirmação e a navegação respondem localmente; não
+dependem de uma gravação remota. Errar, limpar, tentar novamente ou revelar a
+resposta não gera nota nem contagem de tentativas.
+
+**Sem conexão:** a prática, o feedback já contido no card e o avanço continuam
+funcionando.
+
+**Recuperação:** se o botão não responder, aguarde apenas uma animação em curso e toque uma
+vez. Se a interface permanecer parada, volte ao card e reabra-o; consulte
+[Solução de problemas](solucao-de-problemas.md) antes de apagar dados.
+
+## Interromper e retomar
+
+**Pré-condição:** nenhuma ação especial é necessária.
+
+**Passos:** saia do card ou feche o aplicativo. Ao voltar, abra o mesmo
+curso e use sua continuação.
+
+**Resultado esperado:** o ponto corrente e a conclusão estrutural são gravados
+primeiro no dispositivo. Eles ajudam a reencontrar o percurso, mas não são nota
+nem medida de atenção.
+
+**Sem conexão:** a retomada funciona com a réplica. A sincronização posterior
+leva o estado funcional à conta.
+
+**Recuperação:** se uma etapa for zerada, os cards posteriores da mesma lição são reabertos.
+Essa regra impede que a interface trate como concluída uma etapa posterior a
+outra que a própria pessoa decidiu reiniciar.
+
+## Marcar um card para rever
+
+**Pré-condição:** abra o card que deseja revisitar.
+
+**Passos:** toque no marcador **Rever**. Para retornar depois, abra a lista
+**Cards para rever** no curso selecionado e escolha o alvo. Toque novamente no
+marcador para removê-lo.
+
+**Resultado esperado:** a marca pertence à própria conta e aponta para a
+identidade do card. Ela não significa erro, dificuldade nem prioridade imposta
+por outra pessoa.
+
+**Sem conexão:** a marca é gravada localmente e pode ser enviada depois.
+
+**Recuperação:** se outro dispositivo ainda mostrar a marca anterior,
+sincronize os dois antes de refazer a ação.
+
+## Registrar uma observação pedagógica
+
+**Pré-condição:** abra o card e identifique o que deseja comunicar.
+
+**Passos:**
+
+1. Abra o ícone de observação.
+2. Escolha **Dúvida**, **Possível erro**, **Confuso**, **Sugestão** ou
+   **Observação**.
+3. Escreva até 1.000 caracteres.
+4. Salve.
+
+**Resultado esperado:** existe uma observação corrente da pessoa por card.
+Salvar novamente substitui categoria e texto; retirar apaga o registro. Em um
+workspace associado de modo inequívoco, pessoas responsáveis podem responder e
+alterar seu estado. O contador indica presença, não pontuação.
+
+**Sem conexão:** o texto próprio permanece no dispositivo e aguarda envio. A
+triagem compartilhada e novas respostas exigem rede.
+
+**Recuperação:** se o card tiver sido removido, a observação permanece identificável, mas o
+aplicativo não abre outro card por semelhança. Veja [Observações
+pedagógicas](observacoes-pedagogicas.md).
+
+## Editar texto manualmente
+
+**Pré-condição:** a conta deve possuir capacidade de autoria sobre o alvo.
+
+**Passos:**
+
+1. Entre no modo **Editar**.
+2. Selecione o card ou a instância de recurso pelo contorno.
+3. Altere somente os campos textuais apresentados.
+4. Salve.
+
+**Resultado esperado:** títulos, parágrafos, rótulos, células e outros textos
+autorizados podem mudar. Identidades, tipos de recurso, relações, ordem e
+respostas estruturais permanecem protegidos; a edição comum não apresenta o
+JSON do card.
+
+**Sem conexão:** em conteúdo de workspace já carregado e autorizado, uma edição
+textual pode ser guardada na fila local. Mover, excluir ou publicar continua
+dependendo do servidor.
+
+**Recuperação:** se o mesmo texto mudou remotamente, o AraLearn preserva a
+versão local e apresenta as escolhas **Manter meu texto** ou **Descartar
+alterações locais**. Não há sobrescrita silenciosa.
+
+## Solicitar uma alteração à assistência de linguagem
+
+**Pré-condição:** configure um provedor, mantenha conexão e possua permissão
+para o escopo selecionado.
+
+**Passos:**
+
+1. Entre no modo **IA**.
+2. Selecione recursos, o card ou o contêiner autorizado.
+3. Escreva uma alteração específica no campo **Pedido para a IA**.
+4. Envie e examine o resultado e a explicação.
+5. Continue a conversa se precisar ajustar o resultado.
+6. Use **Desfazer**, **Refazer** ou restaure uma versão quando necessário.
+
+**Resultado esperado:** o serviço recebe contexto de leitura e apenas os alvos
+graváveis do escopo. A resposta é validada antes da gravação. Uma explicação
+sem mudança pode integrar a conversa sem criar uma versão fictícia; uma saída
+inválida não deve alterar parcialmente o conteúdo.
+
+**Sem conexão:** provedores remotos não podem ser chamados. A conversa não é
+usada como armazenamento permanente; as versões do conteúdo, e não o diálogo
+completo, sustentam desfazer e refazer durante a sessão.
+
+**Recuperação:** se o resultado for inadequado, descreva o problema na mesma conversa ou
+desfaça. Reduza o alvo quando o pedido mistura alterações independentes.
+
+## Configurar autoria conversacional externa
+
+Nesta tarefa, **OAuth** é o fluxo de autorização pelo qual a pessoa concede a
+uma ferramenta acesso limitado à própria conta sem entregar sua senha. **Model
+Context Protocol (MCP)** é o protocolo pelo qual essa ferramenta consulta as
+operações disponíveis e envia pedidos estruturados ao AraLearn. O
+**identificador do GPT** é o código da ferramenta conversacional já configurada
+que será vinculada à autorização.
+
+**Pré-condição:** esta tarefa é destinada a quem construirá ou reorganizará
+cursos por uma ferramenta conversacional compatível. Requer conexão e uma
+conta autenticada.
+
+**Passos:**
+
+1. Abra o painel e selecione **Chatbot**.
+2. Na superfície **Chatbot**, baixe instruções, conhecimentos e o esquema de
+   integração; crie as credenciais OAuth e vincule o identificador do GPT salvo.
+3. Na superfície **Plugin**, copie nome, descrição, endpoint e método de
+   autenticação para configurar um cliente compatível com MCP.
+
+**Resultado esperado:** a ferramenta externa autentica a própria conta por
+OAuth e recebe somente as operações permitidas. As duas superfícies acessam o
+mesmo modelo de workspaces; diferem na forma de configuração do cliente.
+
+**Sem conexão:** materiais de configuração já baixados podem ser consultados;
+registrar credenciais, autorizar a conta e operar o servidor exige rede.
+
+**Recuperação:** se falhar, não substitua OAuth por uma chave pessoal estática.
+Confirme o endereço da instalação, a conta usada no consentimento e o
+identificador do GPT. Consulte
+[Criar cursos pelo chat](criar-cursos-pelo-chat.md).
+
+## Sincronizar manualmente
+
+**Pré-condição:** restabeleça a conexão.
+
+**Passos:** abra o painel e escolha **Sincronizar**.
+
+**Resultado esperado:** o aplicativo tenta enviar operações pendentes, atualizar
+Trilhas e baixar revisões necessárias. Durante a operação, controles podem
+ficar temporariamente indisponíveis para impedir comandos repetidos.
+
+**Sem conexão:** o comando não envia dados, mas a réplica continua atendendo às
+operações locais já materializadas.
+
+**Recuperação:** se falhar, continue estudando com o estado local e tente novamente depois.
+Uma falha de uma publicação não deve impedir os demais cursos de abrir.
+
+## Receber a atualização de um curso
+
+**Pré-condição:** o curso oficial precisa estar selecionado e a rede
+disponível.
+
+**Passos:** sincronize. O dispositivo baixa e valida a nova composição antes de
+substituir a réplica anterior.
+
+**Resultado esperado:** se o download ou a validação falhar, a versão local já
+utilizável permanece preservada. Progresso, marcas e observações continuam
+ligados às entidades que conservaram suas identidades.
+
+**Sem conexão:** a revisão já validada permanece disponível, mas o dispositivo
+não descobre uma revisão remota nova.
+
+**Recuperação:** dados ligados a uma entidade retirada deixam de encontrar um alvo
+ativo. O aplicativo não os redireciona para um título semelhante.
+
+## Sair
+
+**Pré-condição:** se houver alterações pendentes importantes, sincronize
+quando possível.
+
+**Passos:** abra o painel, abra **Conta** e escolha **Sair**.
+
+**Resultado esperado:** a sessão é encerrada e a porta de acesso volta a ser
+exibida. Sair não equivale a excluir a conta. A réplica local pode permanecer
+no dispositivo para a próxima sessão da mesma conta, mas deixa de estar aberta
+na interface.
+
+**Sem conexão:** a sessão local pode ser encerrada, mas alterações pendentes não
+são enviadas; o aplicativo pede confirmação quando as identifica.
+
+**Recuperação:** se a gravação local não puder terminar, use **Tentar gravar
+novamente** antes de fechar a página.
+
+## Excluir a conta
+
+**Pré-condição:** entenda que a operação é destrutiva e requer conexão.
+Sincronize ou exporte o que precisar conservar.
+
+**Passos:** abra o painel, abra **Conta**, escolha **Excluir conta** e
+confirme.
+
+**Resultado esperado:** os dados pessoais associados à conta e a cópia local
+correspondente são removidos conforme as relações do banco. Publicações
+oficiais do catálogo não são apagadas por uma exclusão pessoal.
+
+**Sem conexão:** a exclusão não é executada, porque depende de autorização e
+remoção no servidor.
+
+**Recuperação:** se a confirmação não chegar, não presuma conclusão. Entre novamente, confira
+o estado e consulte [Solução de problemas](solucao-de-problemas.md).
+
+## O que o aplicativo não interpreta
+
+O AraLearn não registra tentativas, acertos, erros, abertura ou permanência no
+card para transformar esses sinais em nota, atenção ou domínio. O ponto de
+continuação, a conclusão estrutural, **Rever** e a observação respondem a
+necessidades funcionais diferentes. A justificativa e os limites estão em
+[Estado de estudo não punitivo](estado-de-estudo-nao-punitivo.md) e
+[Privacidade](privacidade.md).

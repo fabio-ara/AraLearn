@@ -1,124 +1,241 @@
-# Android do AraLearn
+# Aplicativo Android do AraLearn
 
-O módulo Android hospeda o mesmo runtime JavaScript da aplicação web em um `WebView`. Não há uma segunda implementação nativa do domínio nem SDK Supabase para Kotlin: autenticação, catálogo, estudo, progresso e sincronização passam pelos mesmos módulos JavaScript usados na web.
+Este diretório contém o invólucro Android do AraLearn. Ele não reimplementa o
+produto em Java ou Kotlin: uma `WebView`, componente nativo que exibe uma
+aplicação web dentro do aplicativo, executa o mesmo código JavaScript do site.
+Essa escolha mantém autenticação, estudo, persistência e
+sincronização sob as mesmas regras nos dois ambientes e reduz o risco de duas
+implementações divergirem.
 
-## Arquitetura no APK
+## Como o aplicativo é composto
 
-- PostgreSQL/Supabase é a fonte canônica compartilhada.
-- O IndexedDB do `WebView` mantém o cache relacional dos cursos selecionados, o estado pessoal, a outbox e o cursor de sincronização.
-- A sessão do Supabase Auth é persistida pelo runtime JavaScript sem misturar dados de contas diferentes.
-- Sem sessão válida, o aplicativo mostra somente a porta de autenticação.
-- Depois da primeira sincronização, os cursos já replicados continuam disponíveis offline; mutações locais ficam na outbox até a conexão voltar.
+O APK reúne duas camadas:
 
-O APK não contém catálogo ou cursos operacionais. A listagem consulta somente metadados remotos; selecionar um curso cria apenas uma associação leve na conta e baixa a árvore compartilhada para o cache offline. O staging rejeita arquivos de catálogo, fixtures, caminhos documentais legados e chaves `service_role` antes de montar o artefato.
+- a camada nativa abre a `WebView`, recebe o retorno da autenticação, aplica as
+  restrições de navegação e hospeda os arquivos locais;
+- o runtime web executa a interface, acessa o Supabase — serviço de banco,
+  autenticação e funções remotas —, guarda a réplica no IndexedDB — banco local
+  oferecido pelo navegador — e sincroniza alterações pendentes.
 
-## Configuração pública do Supabase
+Os arquivos são servidos pela origem interna
+`https://appassets.androidplatform.net`. Uma origem HTTPS estável permite que a
+sessão e o IndexedDB sobrevivam ao fechamento do aplicativo sem liberar acesso
+universal a arquivos do aparelho.
 
-Defina as duas variáveis públicas no ambiente que executa o build:
+O APK não leva cursos nem um catálogo operacional embutidos. A pessoa precisa
+autenticar-se e replicar um curso ao menos uma vez. Depois disso, o conteúdo já
+replicado e o estado de estudo continuam disponíveis sem conexão; alterações
+locais aguardam na fila de sincronização até a rede voltar.
+
+## Limites de segurança
+
+O aplicativo solicita somente a permissão Android `INTERNET`. A camada nativa:
+
+- habilita JavaScript, armazenamento DOM e banco da `WebView`;
+- bloqueia acesso a `file://` e acesso universal entre origens;
+- rejeita conteúdo misto em release;
+- abre links HTTP(S), telefone e e-mail em aplicativos externos;
+- rejeita esquemas de navegação não autorizados e navegação externa em
+  subframes;
+- desabilita o backup Android, evitando exportar sessão e réplica local.
+
+Somente a URL pública do projeto Supabase e sua chave publicável entram no
+artefato. Chaves administrativas, senhas do banco e chaves `service_role` não
+pertencem ao APK; o processo de montagem rejeita uma chave com aparência de
+segredo administrativo.
+
+## Pré-requisitos
+
+Antes de gerar um APK, instale:
+
+- Node.js 22 ou mais recente;
+- JDK 17;
+- Android SDK com API 36;
+- dependências JavaScript, por meio de `npm ci` na raiz do repositório.
+
+O Gradle Wrapper já está versionado. Não é necessário instalar uma versão
+global do Gradle.
+
+## Configurar o serviço remoto
+
+### Pré-condição
+
+Tenha a URL do projeto Supabase e a chave publicável desse projeto. Essas
+informações identificam um serviço público; não concedem autoridade
+administrativa.
+
+### Passos
+
+No PowerShell, na raiz do repositório:
 
 ```powershell
 $env:ARALEARN_SUPABASE_URL = "https://<project-ref>.supabase.co"
 $env:ARALEARN_SUPABASE_PUBLISHABLE_KEY = "<publishable-key>"
-npm run android:debug
 ```
 
-Somente a URL do projeto e a publishable key entram em `runtime-config.js`. Nunca use `service_role`, senha do banco ou outro segredo administrativo nessas variáveis. O build rejeita uma chave identificada como `service_role`.
-
-Sem essas variáveis o build de desenvolvimento ainda pode ser gerado para validação local do artefato, mas o aplicativo permanece na porta de configuração/autenticação; ele não ativa catálogo anônimo nem fallback embarcado.
-
-Para testar o Supabase local no emulador Android, use `http://10.0.2.2:54321`. O tráfego HTTP é permitido apenas para `10.0.2.2`, `127.0.0.1` e `localhost` no build de depuração; qualquer serviço remoto deve usar HTTPS. Em aparelho físico, exponha o ambiente local por HTTPS em um endereço acessível ao aparelho. O build de release exige as duas variáveis públicas preenchidas e recusa inclusive uma URL HTTP local, evitando gerar um APK de produção que o próprio `WebView` bloquearia.
-
-Cadastre esta URL em **Authentication > URL Configuration > Redirect URLs** no projeto Supabase:
+No painel do Supabase, adicione o retorno móvel a **Authentication > URL
+Configuration > Redirect URLs**:
 
 ```text
 aralearn://auth/callback
 ```
 
-O callback móvel atual usa um esquema customizado porque este repositório não possui um domínio HTTPS próprio associado ao aplicativo. Confirmação e recuperação usam PKCE: o deep link transporta somente um código curto, de uso único, que só pode ser trocado com o verifier criado e guardado no IndexedDB do mesmo dispositivo. Outro aplicativo ainda pode registrar o esquema e interromper o retorno, mas não consegue trocar o código interceptado por tokens. Para eliminar também esse risco de interrupção numa distribuição pública, configure um Android App Link HTTPS verificado em domínio controlado, cadastre esse redirect no Supabase e substitua o filtro `aralearn://` no manifesto.
+### Resultado esperado
 
-O `MainActivity` recebe esse deep link, conserva a query com o código de confirmação ou recuperação e a entrega ao runtime em sua origem HTTPS interna. Bearer e refresh token em fragmento são rejeitados. A Activity é única durante o fluxo, evitando uma segunda instância após voltar do navegador.
+O build escreve essas duas informações em `runtime-config.js`. Ao iniciar, o
+aplicativo consegue abrir a autenticação e acessar o serviço configurado.
 
-## Pré-requisitos
+### Uso local e offline
 
-- Node.js 22.13+ ou 24
-- JDK 17
-- Android SDK compatível com API 36
-- dependências instaladas com `npm ci`
+No emulador Android, `http://10.0.2.2:54321` alcança o Supabase executado na
+máquina hospedeira. HTTP é aceito apenas em build de depuração e somente para
+`10.0.2.2`, `127.0.0.1` ou `localhost`. Em aparelho físico, use um endereço
+HTTPS acessível ao aparelho. O build de release exige HTTPS.
 
-## Build de depuração
+Sem configuração pública, o APK de depuração ainda pode ser montado para
+inspeção do artefato, mas não consegue autenticar nem obter cursos. Isso não
+ativa catálogo anônimo ou conteúdo embutido.
 
-Na raiz do projeto:
+## Gerar um APK de depuração
+
+### Pré-condição
+
+Conclua os pré-requisitos. Configure o Supabase se pretender testar o fluxo
+completo.
+
+### Passos
+
+Na raiz do repositório:
 
 ```powershell
 npm run android:debug
 ```
 
-Ou diretamente:
+O comando equivale a executar o Gradle Wrapper com
+`:app:assembleDebug --no-daemon`, depois de preparar o runtime web.
 
-```powershell
-cd android
-.\gradlew.bat :app:assembleDebug --no-daemon
-```
+### Resultado esperado
 
-Artefato esperado:
+O arquivo é criado em:
 
 ```text
 android/app/build/outputs/apk/debug/app-debug.apk
 ```
 
-## Build de release
+### Recuperação
 
-`npm run android:release` obtém automaticamente a URL e a publishable key do runtime público publicado quando elas não estiverem completas no ambiente. Para preservar a continuidade das instalações Android existentes, ele também reutiliza a keystore histórica local de depuração quando ela existe e nenhuma credencial de assinatura foi informada. Isso permite atualizar o APK já instalado, mas não substitui uma futura identidade de assinatura de produção.
+Se o Gradle não localizar Java, confirme `java -version` e aponte `JAVA_HOME`
+para um JDK 17. Se o Android SDK não for encontrado, configure `sdk.dir` em
+`android/local.properties` ou a variável reconhecida pelo Android Gradle
+Plugin. Se o APK abrir apenas a porta de configuração, confira as duas
+variáveis públicas e gere novamente o artefato.
 
-Para usar uma assinatura de produção diferente, configure o keystore exclusivamente pelo ambiente:
+## Gerar um APK de release
 
-- `ARALEARN_ANDROID_KEYSTORE_PATH`
-- `ARALEARN_ANDROID_KEYSTORE_PASSWORD`
-- `ARALEARN_ANDROID_KEY_ALIAS`
-- `ARALEARN_ANDROID_KEY_PASSWORD`
+Um APK de release precisa de configuração HTTPS e assinatura. A assinatura
+prova que uma atualização pertence ao mesmo aplicativo instalado; mudar a
+chave impede a atualização direta de instalações anteriores.
 
-Depois execute:
+### Pré-condição
+
+Escolha uma destas formas de assinatura:
+
+- informar uma keystore própria pelas quatro variáveis abaixo; ou
+- reutilizar a keystore histórica `~/.android/debug.keystore`, quando ela já
+  existir e nenhuma configuração explícita válida tiver sido fornecida.
+
+Para uma keystore própria:
+
+```powershell
+$env:ARALEARN_ANDROID_KEYSTORE_PATH = "C:\caminho\chave.jks"
+$env:ARALEARN_ANDROID_KEYSTORE_PASSWORD = "<senha>"
+$env:ARALEARN_ANDROID_KEY_ALIAS = "<alias>"
+$env:ARALEARN_ANDROID_KEY_PASSWORD = "<senha-da-chave>"
+```
+
+As quatro informações formam uma única configuração; não deixe apenas parte
+delas preenchida.
+
+### Passos
 
 ```powershell
 npm run android:release
 ```
 
-Uma assinatura explícita só tem prioridade quando as quatro variáveis estão completas e o arquivo existe. Se houver configuração parcial ou caminho antigo inválido, o script usa a keystore histórica quando ela estiver disponível; só falha quando nenhuma capacidade de assinatura utilizável existir. O APK esperado fica em `android/app/build/outputs/apk/release/app-release.apk`.
+Quando a URL e a chave pública não estiverem completas no ambiente, o script
+tenta recuperá-las do runtime publicado em
+`https://fabio-ara.github.io/AraLearn/runtime-config.js`. Uma configuração
+explícita válida sempre prevalece.
 
-## WebView, rede e persistência
+### Resultado esperado
 
-O conteúdo local é servido por `WebViewAssetLoader` na origem estável `https://appassets.androidplatform.net`. Essa origem permite que IndexedDB e sessão persistam entre aberturas sem conceder acesso universal a arquivos locais. O shell já está dentro do APK; por isso o funcionamento offline no Android não depende de Service Worker.
+```text
+android/app/build/outputs/apk/release/app-release.apk
+```
 
-O wrapper:
+### Recuperação
 
-- solicita somente a permissão de plataforma `INTERNET`;
-- habilita JavaScript, DOM Storage e banco do `WebView`;
-- desabilita acesso do runtime a `file://` e acesso universal entre origens;
-- bloqueia mixed content em release;
-- permite mixed content local apenas em build depurável;
-- abre navegação HTTP(S), telefone e e-mail fora do `WebView`;
-- bloqueia navegações externas em subframes e esquemas não autorizados;
-- desabilita backup Android para não exportar a sessão ou a réplica local.
+Se o build informar ausência de assinatura, confira o caminho da keystore, o
+alias e as quatro variáveis. Se recusar a URL, use HTTPS. Se recusar a chave,
+substitua-a pela chave publicável do projeto; nunca contorne a verificação com
+uma credencial administrativa.
 
-O APK empacota o mesmo runtime completo da web, incluindo importação/exportação manual, edição relacional e assistência atômica para reparar ou criar cards. A seleção comum continua reutilizando a árvore oficial; a primeira gravação autoral abre apenas uma área de trabalho local protegida. Nenhuma dessas superfícies pode levar credenciais administrativas para o APK.
+## Autenticação móvel
 
-## Verificação do artefato
+O retorno `aralearn://auth/callback` transporta somente o código curto do fluxo
+PKCE. O verificador necessário para trocar esse código permanece no IndexedDB
+do mesmo dispositivo. A Activity conserva a consulta recebida e a encaminha ao
+runtime interno; fragmentos com bearer token ou refresh token são rejeitados.
 
-Depois do build, confirme que não há curso, catálogo ou segredo empacotado:
+O esquema personalizado é adequado ao ambiente atual, mas outro aplicativo
+pode registrar o mesmo esquema e interromper o retorno. Uma distribuição em
+larga escala deve preferir um Android App Link HTTPS verificado em domínio
+controlado, com o redirect correspondente configurado no Supabase.
+
+## Verificar o artefato
+
+### Pré-condição
+
+Gere o APK de depuração ou release.
+
+### Passos
 
 ```powershell
 $apk = "android/app/build/outputs/apk/debug/app-debug.apk"
 tar -tf $apk | Select-String -Pattern "embedded-courses|seed-course|catalog.*json|fixture"
 ```
 
-O comando não deve produzir resultados. O teste `android-relational-cutover.test.js` também verifica o manifesto, as proteções do `WebView`, a ausência de SDK Supabase nativo e as garantias do staging.
+Execute também:
 
-## Teste manual recomendado
+```powershell
+node --test tests/runtime/android-relational-cutover.test.js
+```
 
-1. Instale o APK e confirme que, sem sessão, somente a autenticação aparece.
-2. Crie ou acesse uma conta, feche o aplicativo e confirme que a sessão foi restaurada.
-3. Liste o catálogo remoto e selecione um curso oficial.
-4. Abra o curso, desligue a rede, conclua um card e grave um comentário.
-5. Reabra o aplicativo ainda offline e confirme a réplica local.
-6. Restaure a rede e confirme o envio da outbox e o pull incremental.
-7. Solicite recuperação de senha e confirme o retorno por `aralearn://auth/callback`.
+### Resultado esperado
+
+A pesquisa dentro do APK não produz resultado. O teste confirma manifesto,
+restrições da `WebView`, ausência de SDK Supabase nativo e regras do staging.
+
+## Roteiro de teste manual
+
+1. Instale o APK e confirme que a autenticação é a única entrada sem sessão.
+2. Entre em uma conta, feche o aplicativo e confirme a restauração da sessão.
+3. Selecione um curso remoto e abra ao menos um card.
+4. Desligue a rede, conclua um card e registre um comentário.
+5. Feche e reabra o aplicativo ainda offline; confirme curso e estado local.
+6. Restaure a rede e confirme o envio das operações pendentes.
+7. Solicite recuperação de senha e confirme o retorno pelo deep link móvel.
+
+O recebimento de JSON pelo menu **Compartilhar** ainda não constitui um fluxo
+completo de importação. O estado e os limites dessa integração estão descritos
+em [Compartilhamento de JSON no Android](../docs/integrations/android-share-import.md).
+
+## Diagnóstico rápido
+
+| Sintoma | Causa provável | Ação |
+| --- | --- | --- |
+| O build termina, mas o aplicativo não autentica | Configuração pública ausente ou incorreta | Configure URL e chave publicável e gere o APK novamente. |
+| O emulador não alcança `localhost` | `localhost` aponta para o próprio emulador | Use `http://10.0.2.2:54321` no build de depuração. |
+| A instalação recusa a atualização | O APK foi assinado com outra chave | Assine com a mesma keystore da instalação existente ou desinstale conscientemente a versão anterior. |
+| O retorno de login abre outro aplicativo ou não volta | Conflito no esquema `aralearn://` | Tente novamente; para distribuição controlada, migre para App Link HTTPS verificado. |
+| Um curso não abre offline | O curso ainda não havia sido replicado | Reconecte, abra o curso uma vez e aguarde a sincronização. |

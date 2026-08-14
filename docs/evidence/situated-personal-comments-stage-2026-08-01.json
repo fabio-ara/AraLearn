@@ -1,5 +1,4 @@
 {
-  "issue": 62,
   "stage": "situated-personal-comments",
   "date": "2026-08-01",
   "scope": {
@@ -72,7 +71,7 @@
     "https://doi.org/10.1080/02602938.2023.2265080"
   ],
   "knownLimits": [
-    "Responsible-teacher visibility and workspace isolation depend on issue 58.",
+    "Responsible-teacher visibility and workspace isolation belong to the educational-workspaces capability and are outside this stage.",
     "Replies, resolution, reopening and change links are not exposed in this stage.",
     "Chatbot and Plugin do not read or mutate observations in this stage.",
     "Presence or absence is not evidence of learning, attention or mastery."

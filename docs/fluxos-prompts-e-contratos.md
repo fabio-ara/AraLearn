@@ -1,246 +1,296 @@
-# Fluxos e contratos de geração
+# Fluxos, instruções e contratos
 
-O AraLearn separa duas fronteiras de autoria:
+Um modelo de linguagem recebe texto e produz uma saída probabilística. Um
+sistema de autoria precisa preservar identidades, relações, permissões e
+revisões de forma determinística. O AraLearn não tenta eliminar essa diferença;
+ele a transforma numa fronteira explícita entre **intenção em linguagem
+natural** e **mudança estruturada**.
 
-- o GPT personalizado com Action ou um cliente MCP lê e reorganiza cursos,
-  módulos, lições,
-  microssequências e cards em workspaces compostos;
-- a assistência local por API atua somente nos alvos selecionados em cards,
-  microssequências ou lições.
+Este capítulo ensina os componentes dessa fronteira, os dois fluxos de autoria
+e as razões para separá-los.
 
-Cada chamada usa schema fechado. A resposta do serviço nunca é gravada
-diretamente: primeiro é compilada e validada em memória; depois, a mudança
-inteira é confirmada em uma transação. Essa garantia é invisível na interface.
+## Vocabulário básico
 
-No manifesto, `atomic-card-assistance` nomeia o fluxo local por API.
-`atomic-resource-authoring` nomeia separadamente a consulta de contratos e as
-mutações de workspace pelo GPT personalizado com Action ou por um cliente MCP.
-Uma capacidade não é alias nem
-fallback da outra.
+### Instrução e prompt
 
-## Assistência bottom-up por API
+Uma **instrução** estabelece comportamento estável, como “não cobre um conceito
+antes de ensiná-lo”. Um **prompt** é a mensagem completa entregue numa chamada
+específica e pode reunir instruções, pedido, contexto e formato de saída.
 
-O ponto de partida é sempre a seleção visível. Ela define a autoridade máxima
-da chamada; a instrução pode escolher uma operação dentro desse limite, mas
-não pode alcançar outro alvo.
+O prompt orienta o modelo, mas não concede autorização. Mesmo uma instrução
+cuidadosa pode ser interpretada incorretamente; por isso, o sistema verifica a
+saída depois da geração.
 
-| Nível | Seleção | Operações máximas |
+### Contexto
+
+**Contexto** é a informação necessária para interpretar o pedido: objetivos,
+posição na árvore, conteúdo vizinho, fontes e decisões anteriores. Contexto
+somente para leitura ajuda a manter coerência sem se tornar gravável.
+
+### Schema, contrato e envelope
+
+Um **schema** descreve a forma válida de um dado: campos, tipos, limites e
+combinações permitidas. Um **contrato** acrescenta significado operacional:
+quem produz, quem consome, que invariantes devem ser preservadas e como a
+versão evolui. Um **envelope** é o objeto externo que transporta conteúdo e
+metadados de identificação segundo esse contrato.
+
+O schema responde “este JSON tem a forma admitida?”. Regras semânticas
+respondem perguntas que a forma isolada não resolve, como “a lacuna aponta para
+um campo que este package autoriza praticar?”.
+
+### Compilação
+
+No AraLearn, **compilar** uma resposta significa convertê-la em uma mudança
+canônica, resolver referências e validar invariantes antes da persistência. Não
+é a compilação de uma linguagem de programação para código de máquina; é a
+passagem de uma proposta para o modelo de dados autorizado.
+
+## Por que não gravar a resposta do modelo diretamente
+
+Gravação direta teria quatro riscos:
+
+1. campos inesperados poderiam entrar no curso;
+2. identidades ou referências poderiam ser trocadas;
+3. conteúdo fora do alvo poderia ser alterado;
+4. uma resposta parcial poderia deixar o documento incoerente.
+
+O fluxo adotado mantém o resultado em memória, compila-o, valida-o e somente
+então confirma a mudança integral. Uma falha não produz gravação parcial.
+
+## Duas fronteiras de autoria
+
+O manifesto técnico distingue dois fluxos:
+
+- `atomic-card-assistance`: assistência contextual iniciada por seleção no
+  aplicativo;
+- `atomic-resource-authoring`: autoria estrutural por integração externa sobre
+  um workspace.
+
+Esses nomes são identificadores técnicos. Conceitualmente, a diferença é de
+escala e autoridade.
+
+| Propriedade | Assistência contextual | Autoria estrutural |
 | --- | --- | --- |
-| Card | Instâncias de packages | `edit_text` nos caminhos textuais selecionados |
-| Card | Card inteiro | `edit_text`, `recompose_card` ou `restore_version` |
-| Microssequência | Alguns cards | Atualizar, remover ou mover os cards selecionados |
-| Microssequência | Todos os cards | As anteriores e criar cards nessa microssequência |
-| Lição | Uma microssequência | Alterar seus cards e criar cards dentro dela |
-| Lição | Algumas microssequências | Alterar somente as subárvores selecionadas |
-| Lição | Todas as microssequências | As anteriores e criar uma microssequência na lição |
+| início | card, microssequência ou lição selecionada | finalidade e árvore do curso |
+| alcance | recorte visual autorizado | cursos e partes acessíveis no workspace |
+| conversa | curta e volátil no card | continuidade compacta persistida |
+| operações | edição, recomposição ou criação delimitada | planejamento, recombinação, auditoria e publicação |
+| autenticação | sessão do aplicativo e chave do provider | OAuth da integração de autoria |
 
-Microssequência ou lição vazia pode ser selecionada como recipiente para
-receber o primeiro filho. Cada chamada no recipiente de lição cria no máximo
-uma microssequência. Não há assistência local em módulo ou curso, nem criação
-de microssequência a partir do nível de card ou de microssequência.
+Uma capacidade não funciona como fallback da outra. Mudança de módulo ou curso
+não é silenciosamente reduzida a uma edição de card; uma correção pontual não
+precisa carregar o fluxo editorial completo.
 
-Selecionar todos os filhos concede autoridade sobre o recipiente, mas não
-obriga uma criação. A operação efetiva continua sendo determinada pelo pedido
-dentro das permissões calculadas.
+## Fluxo da assistência contextual
 
-Não existe pipeline local para planejar ou gerar a árvore inteira. Leitura,
-combinação e movimentação de partes maiores entre cursos ocorrem por MCP.
-
-### Contexto somente leitura
-
-O pacote de contexto contém:
-
-- caminho hierárquico, objetivos e guias;
-- `topics`, `covers`, `checks`, `errors` e `dependsOn` relevantes;
-- `guide.exclude` e `guide.avoid` sem truncamento;
-- ordem e índices locais;
-- vizinhos anteriores e posteriores limitados;
-- índice compacto da lição.
-
-Somente a seleção aparece como gravável. O restante existe para preservar
-coerência e não pode ser alterado. Curso completo, credenciais, instrução,
-contexto e resposta do serviço não são persistidos junto ao conteúdo.
-
-A primeira fase escolhe a operação usando apenas pedido e autoridade, sem
-cards, guides ou outros textos recuperados. Seu enum inclui `unsupported`,
-portanto um pedido incompatível com a seleção falha sem ser convertido na
-única mutação disponível. Remoção e movimento só entram no enum quando o
-pedido liga explicitamente o verbo à entidade selecionada; menções a remover
-redundância ou mover texto permanecem reparos de conteúdo.
-
-### Edição de card por conversa
-
-Cada instância de package recebe uma identidade de alvo:
-
-- `content:<id>` para uma instância de representação;
-- `response:<id>` para a instância de resposta;
-- `feedback:<id>` para uma instância de explicação posterior.
-
-Em `edit_text`, o valor de cada alvo existe em `writableTargets` com seu caminho
-textual fechado e é omitido do card em `readOnlyContext`; instâncias irmãs
-permanecem nessa representação para coerência, sem autoridade de escrita. O
-serviço devolve somente os pares de caminho e valor que deseja alterar.
-
-```json
-{
-  "message": "Tornei a explicação autocontida.",
-  "edits": [
-    {
-      "path": "content[0].data.text",
-      "value": "Exemplo corrigido e autocontido."
-    }
-  ]
-}
+```text
+seleção visível
+→ autoridade calculada
+→ operação fechada
+→ contexto delimitado
+→ saída estruturada
+→ compilação e validação
+→ confirmação atômica
+→ nova renderização
 ```
 
-O compilador aplica o patch ao card congelado e prova que ele reconstrói
-exatamente o resultado proposto. Identidades, packages, versões, estrutura,
-respostas formais e posição não podem mudar nessa operação. Selecionar o card
-inteiro amplia os caminhos textuais graváveis, mas uma troca de representação
-exige `recompose_card`.
+### Classificar antes de transmitir conteúdo
 
-A conversa conserva até oito turnos e nove versões exatas do card durante a
-sessão. Cada turno seguinte recebe apenas a ancestralidade ativa. `no-op`
-preserva a explicação do assistente sem criar versão; falha não entra na
-conversa. `restore_version` move o cursor para um snapshot existente sem nova
-chamada ao provider. Pedido, resposta e versões não são persistidos.
+A primeira decisão escolhe uma operação entre alternativas permitidas pela
+seleção. Ela recebe apenas o pedido e a lista de operações autorizadas, não o
+curso inteiro. `unsupported` é uma resposta válida. Isso impede converter um
+pedido fora do escopo na única mutação que restou disponível.
 
-### Cards e microssequências
+### Separar alvo gravável e contexto
 
-Recompor um card inteiro usa duas etapas curtas:
+Em edição textual, cada alvo gravável aparece uma única vez com seu caminho.
+As instâncias irmãs e os vizinhos aparecem como leitura. O modelo devolve
+somente os pares que deseja mudar; o compilador aplica-os sobre o card
+congelado.
 
-1. `card_assistance_representation` escolhe no catálogo uma composição com uma
-   ou mais instâncias de conteúdo e, na prática, uma resposta compatível;
-2. `card_assistance_build` recebe somente os contratos exatos da composição
-   escolhida e constrói o card autorizado.
+Em recomposição, o sistema busca uma composição no catálogo, apresenta ao
+modelo uma lista curta e carrega somente os contratos escolhidos. Criar cards
+ou microssequência é outra operação e só aparece quando a seleção concedeu
+autoridade sobre o recipiente.
 
-A representação atual é preferida quando a instrução não exige troca. Criar
-cards é uma operação distinta e só ocorre quando a seleção concedeu autoridade
-sobre uma microssequência. `bottom_up_plan_cards` planeja posições e
-representações; `bottom_up_build_card` constrói cada card com seu schema exato.
-O AraLearn aloca identidades e posições, e o serviço preenche somente o
-conteúdo. No recipiente de lição, `bottom_up_create_microsequence` cria no
-máximo uma microssequência por envio.
+Os limites completos por nível estão em [Assistência por modelo de
+linguagem](assistencia-por-ia.md#autoridade-por-nível).
 
-Quando uma lição autoriza criar cards dentro de exatamente uma
-microssequência, `bottom_up_plan_cards` recebe também um índice readonly dos
-cards do destino, com índice e posição explícitos. O índice orienta
-`insertIndex`, mas não transforma cards existentes em alvos graváveis.
+## Fluxo da autoria estrutural
 
-No nível de microssequência, cards não selecionados preservam identidade,
-conteúdo e ordem relativa. No nível de lição, microssequências não selecionadas
-também permanecem idênticas. Criar uma microssequência altera somente a nova
-subárvore e as posições estritamente necessárias das irmãs.
+```text
+contexto disponível e fontes
+→ diálogo somente sobre lacunas materiais
+→ diagnóstico contextual e planejamento local
+→ aprovação humana
+→ materialização incremental
+→ revisão conceitual
+→ auditoria somente para leitura
+→ reparo autorizado
+→ reauditoria
+→ submissão ou publicação
+```
 
-Lacunas usam `targetInstanceId` e `targetPath`. O compilador resolve o alvo no
-envelope de card; não há marcador em prosa, parser de HTML ou campo numerado.
+O **brief** registra contexto estável: público, objetivo, fontes, inclusões,
+exclusões, idioma e convenções. Ele não é texto de card. Estrutura, decisões,
+mandatos e achados possuem registros próprios, para que uma conversa não seja
+a única memória do trabalho.
 
-## Validação e confirmação invisíveis
+Antes do diálogo, o modelo consulta o que já existe no pedido, no workspace, no
+curso e nas fontes. Uma pergunta só é necessária quando a resposta ausente ou
+uma contradição puder mudar materialmente objetivo, escopo, pré-requisito,
+sequência, representação, prática ou dependência de ambiente externo. Não há
+questionário fixo de diagnóstico.
 
-O envio congela a revisão, o fingerprint e a autoridade da seleção. Uma falha
-estrutural permite no máximo uma repetição do mesmo alvo com o diagnóstico do
-validador. O pipeline não troca silenciosamente de serviço, modelo,
-representação ou escopo.
+### Planejar antes de produzir
 
-Antes de confirmar, o AraLearn valida:
+O planejamento pedagógico precede o custo de geração. Para cada
+microssequência, ele explicita condições de aprendizagem pertinentes, exigências
+do conteúdo, dificuldades previstas e respostas de desenho vinculadas às
+dificuldades, aos passos/packages que as concretizam e a critérios observáveis. A
+condição descreve o cenário; a resposta é uma decisão local sobre explicação,
+exemplo, representação, prática, apoio ou sequência. Uma não determina
+automaticamente a outra.
 
-- o envelope com `role`, `content`, `response` e `feedback`;
-- cada `{ id, package, version, data }` segundo seu slot e schema exato;
-- identidades, posições e dependências;
-- lacunas e opções de resposta;
-- `responseCompatibility`, `practiceTargets` e referências internas;
-- o contrato integral do fragmento resultante;
-- a ausência de alterações fora da autoridade selecionada.
+A quantidade de cards não é escolhida por cota fixa: decorre dos conceitos,
+pré-requisitos, dificuldades, respostas aprovadas, formas de prática e
+necessidade de revisão. A pessoa autora examina essa síntese antes da
+materialização. Depois da aprovação, a produção ocorre por microssequência, em
+lotes que podem ser validados e retomados.
 
-Se o conteúdo ou a revisão mudar durante a chamada, o resultado é recusado. Se
-continuar vigente, o servidor ou repositório local confirma o change set em
-uma única transação e a própria superfície renderizada mostra o resultado, sem
-etapa intermediária ou painel de validação.
+### Separar auditoria e reparo
 
-No card, **Desfazer**, **Refazer** e a restauração percorrem o histórico volátil
-da conversa. Uma nova edição depois de desfazer abre um ramo ativo e descarta o
-refazer abandonado. Esse histórico não é cópia do curso nem substitui a
-proveniência autoral.
+Auditar e corrigir na mesma chamada cria um conflito: o mesmo agente pode
+deixar de relatar um problema que já começou a racionalizar como solução. No
+AraLearn, auditoria é somente leitura e gera achados localizados. Reparos
+exigem autorização posterior; a reauditoria relê o resultado e procura tanto
+resolução quanto regressões.
 
-## Autoridade do conteúdo
+Essa separação não garante independência epistemológica completa — o mesmo
+modelo ainda pode ser usado —, mas torna ações e decisões observáveis e
+permite rejeitar apenas parte dos reparos.
 
-A autorização é calculada a partir da sessão vigente:
+## Descoberta progressiva de recursos
 
-- a pessoa pode editar manualmente ou por API seu curso privado;
-- curso oficial é somente leitura para conta comum;
-- conta administrativa ou editorial pode editar o curso oficial;
-- curso privado de outra pessoa não é editável neste recorte;
-- cache ou capacidade desconhecida sempre resulta em somente leitura.
+Um catálogo crescente não pode ser transmitido integralmente em todo prompt.
+Também não é seguro depender da memória do modelo para schemas que mudam. A
+consulta usa uma única biblioteca com operações progressivas:
 
-Uma alteração privada permanece na identidade privada. Uma alteração oficial
-autorizada mantém a continuidade oficial. Não existe fork automático do curso
-de Coleções. Elevar um curso privado ao catálogo é uma operação de autoria
-externa pelo GPT personalizado com Action ou por um cliente compatível pela
-integração MCP.
+1. `explore` apresenta famílias e facetas;
+2. `search` procura representações pela intenção;
+3. `inspect` compara perfis sem carregar schemas;
+4. `contracts` devolve somente os contratos exatos escolhidos;
+5. `validate_card` verifica estrutura;
+6. `audit_representation` verifica ajuste declarado e limitações;
+7. `preview_card` fornece um descritor, sem fingir uma renderização visual.
 
-## Contratos estruturados da autoria externa
+O resultado de busca usa três classificações técnicas:
 
-A autoria por workspace usa diretamente o envelope de packages versionados. O
-agente primeiro escolhe pelo catálogo, carrega somente os contratos exatos e
-preenche seus campos; não existe tradução de um contrato monolítico anterior.
-O compilador confere slots, schemas, referências, posições, lacunas e
-compatibilidades antes da gravação.
+- `canonical`: o perfil corresponde diretamente à intenção declarada;
+- `versatile`: um recurso mais geral preserva a estrutura necessária;
+- `substitute`: falta uma representação ideal e o melhor substituto possui
+  limitações que precisam ser informadas.
 
-O workspace remoto pode organizar partes maiores e produzir uma publicação
-privada incompleta para teste. No chat, a revisão conceitual pode mostrar
-somente as microteorias e a quantidade de práticas. Consulte [Gateway MCP de
-autoria](autoria-mcp.md).
+Esses tokens expressam o ajuste dentro do catálogo; `canonical` não certifica
+consenso acadêmico externo. Um substituto não bloqueia a produção. A integração
+o utiliza, informa brevemente a limitação e registra qual representação seria
+preferível, permitindo evolução posterior do catálogo.
 
-A escala técnica e a escala da conversa são diferentes. Uma alteração é
-confirmada atomicamente, enquanto uma etapa conversacional pode reunir várias
-microssequências. O GPT personalizado ou o cliente MCP pode salvar o
-planejamento, materializar a
-parte solicitada, auditá-la e repará-la em rodadas distintas. Essa disciplina
-vive nas instruções e no conhecimento recuperado, não numa trava de schema.
+## Recuperação de conhecimento
 
-O workspace não é salvo como cópia integral a cada comando. O executor envia
-ao banco somente as partes atingidas, e o servidor recompõe e valida o
-documento antes de confirmar a revisão corrente. Copiar cria identidades novas;
-mover transfere a parte atual e a retira da origem.
+Instruções operacionais precisam ser curtas e estáveis. Regras extensas sobre
+fontes, práticas, continuidade e domínios são recuperadas conforme a tarefa.
+Esse arranjo é uma forma de **Retrieval-Augmented Generation (RAG)**: a geração
+recebe conhecimento recuperado de uma coleção externa ao contexto-base
+([Lewis et al. (2020)](referencias.md#ref-lewis2020rag)).
 
-## Instruções curtas e conhecimento sob demanda
+No AraLearn, a recuperação autoral atual é lexical, versionada e
+determinística. Ela seleciona até oito unidades pequenas; não usa embedding
+remoto nem banco vetorial. Essa escolha reduz infraestrutura, torna a seleção
+auditável e atende ao corpus controlado atual. Busca semântica vetorial seria
+justificada quando a escala, a variedade lexical e a avaliação demonstrarem
+vantagem suficiente para compensar custo, opacidade e manutenção adicionais.
 
-O fluxo externo separa três responsabilidades:
+Conhecimento recuperado orienta o modelo. Contratos e validadores continuam
+determinando o que pode ser salvo.
 
-- instruções curtas mantêm o procedimento estável;
-- `prepararAutoriaAraLearn` recupera até oito unidades relevantes para a
-  intenção e o nível estrutural;
-- a única `consultarBibliotecaDeResources` conduz a descoberta e a verificação
-  progressivas sob `aralearn.resource-library.v1`.
+## Invariantes protegidos e decisões pedagógicas locais
 
-O agente usa `explore` para conhecer famílias e facetas, `search` para buscar
-pela intenção, `inspect` para comparar até oito perfis e `contracts` para
-carregar no máximo quatro versões exatas por chamada. Só então compõe o card,
-executa `validate_card` e usa `audit_representation` para distinguir
-`semantic_fit`, `response_affordance` e `feedback_legibility` antes de salvar.
-Não existe chamada de lista global nem contrato que reúna todos os schemas.
+Limites de autorização, fechamento de schema, integridade referencial,
+proibição de pistas indevidas, preservação de identidade, cobertura e revisão
+humana são invariantes do produto. Eles não são preferências editáveis e não
+podem ser anulados por conversa ou configuração.
 
-`search` classifica a cobertura como `canonical`, `versatile` ou `substitute`.
-São tokens do algoritmo de ajuste; `canonical` não certifica consenso
-acadêmico externo.
-Um `substitute` não é erro nem bloqueio: o agente prossegue com o melhor
-candidato, comunica brevemente o `chatDisclosure` e preserva a representação
-ideal numa decisão autoral. `preview_card` devolve um descritor com
-`rendered: false`; não produz screenshot nem simula o renderer do aplicativo.
+Também é invariante consultar o contexto existente, explicitar dificuldades e
+respostas e obter revisão humana antes da materialização. O conteúdo dessas
+hipóteses e decisões, porém, permanece contextual e revisável.
 
-A recuperação é lexical e determinística. Não usa embedding remoto, banco
-vetorial nem texto integral da conversa. Esse RAG leve reduz contexto e evita
-pedir ao modelo que memorize os campos dos packages instalados. O modelo
-decide conteúdo e representação; operações focadas, schemas e validadores
-decidem o que pode ser salvo.
+Idioma, notação, acesso a meios e conhecimentos prévios presumíveis são dados do
+contexto. Explicação, exemplo, representação, prática, apoio e sequência são
+decisões de desenho tomadas por microssequência. O AraLearn não aplica preset,
+perfil ou “pedagogia calibrada” ao curso inteiro: a autoria liga cada decisão a
+uma dificuldade pertinente e submete o conjunto à pessoa responsável.
 
-O mesmo assistente pode criar conteúdo privado, enviá-lo à avaliação e atuar
-no catálogo conforme as capacidades da conta conectada. Não existe um GPT
-administrativo separado. O percurso completo está em [Criar cursos pelo
-chat](criar-cursos-pelo-chat.md).
+Essa responsabilidade diagnóstica organiza hipóteses para planejamento; ela não
+mede estudantes nem certifica adequação ou eficácia. Contratos e validadores
+controlam o que pode ser persistido, mas julgamento factual, disciplinar e
+pedagógico permanece humano.
 
-## Responsabilidade autoral
+## Confirmação, concorrência e idempotência
 
-Saída estruturada reduz ambiguidade, mas não torna o conteúdo correto por si
-só. A pessoa continua responsável pela revisão pedagógica e factual. A
-publicação no catálogo permanece sujeita à validação e à capacidade editorial.
+Cada mutação informa a revisão que foi lida. A confirmação usa
+**compare-and-swap**: se a revisão mudou, a operação relê o alvo e decide se a
+intenção ainda se aplica. Não há merge silencioso.
+
+Uma **chave de idempotência** identifica a mesma tentativa. Se a resposta do
+servidor se perder, repetir a requisição com o mesmo conteúdo recupera o mesmo
+resultado em vez de duplicá-lo. Uma intenção ou payload diferente recebe outra
+chave.
+
+No workspace estrutural, somente as partes atingidas são escritas; o servidor
+recompõe o documento e valida a composição antes de avançar sua revisão. Na
+assistência local, o change set inteiro é aplicado numa transação. As duas
+implementações preservam atomicidade, mas em escalas diferentes.
+
+## Proveniência e conversa
+
+O curso registra resultados e decisões estruturadas que precisam sobreviver à
+sessão. A conversa curta da assistência contextual não é proveniência. Na
+autoria estrutural, decisões sobre representações substitutivas podem registrar
+intenção, package escolhido, ajuste, limitação e versão do catálogo sem inserir
+esses metadados no card público.
+
+O mesmo vale para diagnóstico e planejamento: condições estáveis ficam no
+brief; a decisão resume condição e demanda; somente pares relevantes de
+dificuldade e resposta seguem em `pedagogicalDiagnosis.difficultyResponses`.
+Não se persistem ids locais do blueprint, raciocínio privado do modelo nem o
+transcript integral do diálogo. Essa separação economiza armazenamento e permite
+analisar a evolução autoral sem transformar toda conversa em dado permanente.
+Quando uma investigação exigir preservar conversas, isso deve ser outro
+protocolo de coleta, com finalidade, consentimento e retenção próprios.
+
+## Falhas e recuperação
+
+| Falha | Resposta segura |
+| --- | --- |
+| JSON inválido | uma tentativa orientada de correção; nenhuma gravação parcial |
+| contrato incompatível | consultar o contrato exato e corrigir o menor lote |
+| revisão desatualizada | reler o alvo e reaplicar somente a intenção ainda válida |
+| resposta perdida | repetir a mesma tentativa idempotente |
+| pedido fora da seleção | retornar como não suportado, sem adaptar o escopo |
+| conta sem capacidade | conservar o conteúdo no estado autorizado e explicar a dependência |
+
+Falhar de modo explícito é preferível a trocar silenciosamente de provider,
+modelo, representação ou autoridade.
+
+## Limites
+
+Saída estruturada reduz ambiguidade e corrupção de estado; não garante verdade
+factual, suficiência da progressão ou qualidade da prática. Auditoria por
+modelo pode encontrar problemas, mas não substitui revisão disciplinar e
+pedagógica. A publicação no catálogo permanece uma decisão humana autorizada.
+
+Os envelopes e identificadores públicos são detalhados no [Contrato de
+conteúdo](aralearn-contract.md), e a operação remota aparece em [Autoria por
+Model Context Protocol](autoria-mcp.md).

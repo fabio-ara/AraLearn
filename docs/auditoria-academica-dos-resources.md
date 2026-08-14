@@ -1,135 +1,329 @@
-# Auditoria acadêmica dos resources
+# Auditoria acadêmica dos recursos de card
 
-## Finalidade
+## 1. Finalidade e escopo
 
-Esta matriz transforma a revisão do catálogo em um processo repetível. Um
-package existe somente quando conserva uma estrutura disciplinar que seria
-perdida em prosa, tabela ou desenho genérico. O contrato declara o objeto e sua
-semântica; bibliotecas de layout e notação calculam a geometria. O autor e o
-GPT não fornecem coordenadas, pixels, cores ou rotas.
+Esta auditoria verifica se cada recurso de card possui razão pedagógica para
+existir, preserva uma convenção acadêmica identificável e pode ser operado sem
+defeitos visuais ou interativos evitáveis. Um **package** é um módulo de recurso
+que reúne dados, validação e apresentação próprias. A auditoria examina o
+package completo: descrição no catálogo, contrato, validação, mecanismo de
+renderização, alvos de prática, campos
+editáveis, descrição acessível e testes.
 
-“Canônico” não significa que uma única figura seja universal. Significa que o
-package explicita a tradição de representação adotada, limita seu escopo e não
-improvisa símbolos de outra área. A validação automatizada verifica contrato,
-materialização, interação e geometria; a eficácia pedagógica continua sendo
-uma hipótese que exige estudo com pessoas.
+A auditoria separa três perguntas:
 
-## Porta de admissão
+1. **validade representacional**: o recurso preserva o objeto e a notação da
+   área?
+2. **conformidade técnica**: a implementação materializa o contrato sem
+   recorte, sobreposição, ambiguidade ou estado compartilhado indevido?
+3. **utilidade didática**: estudantes conseguem interpretar e usar a
+   representação na tarefa pretendida?
 
-Um novo package só entra no registry depois de responder, com evidência
-verificável, às perguntas abaixo:
+As duas primeiras podem receber evidência por inspeção especializada e testes.
+A terceira exige participantes e tarefas. Um package tecnicamente correto não
+é, por esse motivo, pedagogicamente eficaz.
 
-1. qual estrutura do objeto de conhecimento se perde em `paragraph`, `table`
-   ou outro package já instalado;
-2. qual operação cognitiva depende dessa estrutura, e não apenas de aparência
-   ou variedade visual;
-3. qual convenção disciplinar ou normativa orienta símbolos, relações,
-   notação e leitura;
-4. por que o contrato de alto nível consegue expressar casos diferentes sem
-   expor pixels, sintaxe da biblioteca ou um único exemplo disfarçado de regra;
-5. como exposição, lacuna e digitação permanecem dentro do objeto, e como uma
-   resposta de ordenação ou encaixe se coordena com ele sem virar modalidade
-   artificial;
-6. quais folhas textuais podem ser editadas e enviadas à assistência, mantendo
-   estrutura, ids e topologia somente como contexto;
-7. como o caso de estresse cobre rótulos longos, cardinalidade ou densidade
-   realista, preenchimento da maior resposta aceita, temas, larguras móveis,
-   rolagem local, teclado, toque e descrição acessível.
+## 2. Unidade de auditoria
 
-A policy versionada devolvida por `explore` concentra os critérios globais de
-decisão, interpretabilidade, densidade da teoria e autossuficiência da prática.
-Cada package declara apenas o que lhe pertence: estrutura, convenções,
-condições de uso, situações a evitar, limitações e capacidades. Assim, as
-regras comuns não são copiadas em dezenas de manifests. Um package não é
-admitido apenas porque possui renderer e schema. Se a pessoa precisar aprender
-uma gramática inventada pela interface para interpretar a figura, a seleção ou
-o package falhou; um tutorial adicional não corrige essa inadequação.
+Um **recurso de conteúdo** representa o objeto estudado. Um **recurso de
+resposta** organiza como a pessoa manifesta uma decisão. Essa distinção evita
+tratar “lacuna” como uma figura independente ou transformar toda figura em
+questionário.
 
-Nesta auditoria, `sequence` foi removido porque era uma lista ordenada
-ornamentada; `algorithm_trace` foi removido porque era uma tabela genérica de
-estados. Se, no futuro, houver necessidade comprovada de uma execução
-sincronizada entre código, linha corrente, estado anterior, alteração e pilha,
-ela deverá nascer como outro package, com contrato e testes próprios. Não há
-alias, compatibilidade ou renderer residual para os dois ids retirados.
+Cada package de conteúdo deve declarar:
 
-## Matriz de seleção
+- objeto preservado e domínio de uso;
+- estrutura semântica do contrato;
+- operações cognitivas compatíveis;
+- convenção disciplinar ou normativa;
+- situações indicadas e contraindicadas;
+- limites de complexidade;
+- folhas textuais editáveis;
+- alvos possíveis de lacuna ou digitação;
+- descrição não visual equivalente;
+- estratégia de layout, responsividade e estado interativo.
 
-| Família | Package | Objeto preservado | Use quando | Não use como |
-|---|---|---|---|---|
-| Texto | `paragraph` | prosa progressiva | situar, explicar e articular conceitos | recipiente para tabela, código ou fórmula estrutural |
-| Texto | `annotated_text` | trechos e anotações ancoradas | localizar evidência, função ou comentário no próprio texto | parágrafo seguido de notas soltas |
-| Linguística | `interlinear_gloss` | forma, segmentação, glosa e tradução | analisar morfemas segundo glosa interlinear | três linhas de texto alinhadas por espaços |
-| Programação | `code` | código com sintaxe e lacuna interna | ler ou completar programa executável | pseudocódigo sem convenção declarada |
-| Programação | `flow` | fluxo de controle algorítmico | acompanhar condição, laço, junção, entrada e saída | BPMN, árvore ou máquina de estados |
-| Estruturas | `tree` | hierarquia enraizada | ancestralidade, decomposição e árvores de busca | grafo arbitrário ou lista indentada decorativa |
-| Matemática | `formula` | AST matemática e operadores | expressões, integrais, derivadas, produtos e tensores | LaTeX livre ou texto matemático ambíguo |
-| Matemática | `matrix` | matriz sem cabeçalhos tabulares | álgebra linear e transformações matriciais | tabela entre colchetes |
-| Matemática | `plane` | pontos, vetores, trajetórias e regiões em ℝ² | geometria analítica e transformações lineares | gráfico estatístico ou desenho sem eixos |
-| Matemática discreta | `graph` | grafo ou dígrafo matemático | vértices, arestas, pesos, laços e caminhos | mapa conceitual, rede física ou arquitetura de software |
-| Lógica | `truth_table` | valoração de fórmulas | equivalência, validade e consequência em casos finitos | lista de respostas booleanas |
-| Conjuntos | `set_diagram` | regiões lógicas de Venn ou topologia de Euler | pertencimento simultâneo, interseção vazia e operações entre conjuntos | relação binária, classificação sem sobreposição ou mais de três conjuntos |
-| Relações | `relation_map` | incidência bipartida de pares | domínio, contradomínio, imagem, preimagem e cardinalidade | tabela de pares ou exercício de associação |
-| Dados | `entity_relationship` | modelo conceitual ER | entidades, atributos identificadores e cardinalidades | esquema físico ou tabela de dados |
-| Dados | `database_schema` | modelo relacional | relações, atributos, PK, FK, nulabilidade e dependências | diagrama ER com caixas renomeadas |
-| Sistemas | `memory_layout` | intervalos de endereços | segmentos de memória e crescimento relativo | pilha de chamadas |
-| Sistemas | `call_stack` | ativações e quadros de função | continuação no chamador, parâmetros, variáveis locais e profundidade | mapa global do processo |
-| Redes | `packet_layout` | campos contíguos em linhas de bits | cabeçalhos definidos em RFCs e protocolos | tabela comum de nomes e valores |
-| Redes | `network_topology` | dispositivos, segmentos e enlaces | conectividade física ou lógica de rede | grafo abstrato de teoria dos grafos |
-| Comportamento | `state_machine` | estados e transições rotuladas | ciclo de vida dependente de eventos | sequência linear de passos |
-| Comportamento | `state_transition_table` | função de transição tabular | comparar estado atual, evento, guarda, ação e próximo estado | tabela de dados sem semântica de estado |
-| Processos | `bpmn_process` | colaboração BPMN | pools, raias, tarefas, gateways e mensagens | fluxograma de algoritmo |
-| Software | `software_system_context` | contexto C4 | sistema em foco, pessoas e sistemas externos | diagrama de contêineres internos |
-| Software | `software_container` | contêineres C4 | aplicações, armazenamentos e relações dentro do sistema | classes ou implantação física detalhada |
-| Sistemas | `system_internal_block` | bloco interno SysML | partes, portas, conectores e itens transportados | mapa genérico de caixas e setas |
-| Química | `reaction` | equação química | reagentes, produtos, coeficientes, estados, condições e tipo de seta | descrição completa dos níveis macro e submicroscópico |
-| Dados quantitativos | `chart` | séries, escalas e incerteza | linha, dispersão ou barras com unidades e método | histograma, boxplot ou regressão improvisados |
-| Comparação | `table` | registros comparáveis por atributo | leitura cruzada entre linhas e colunas | matriz matemática ou esquema relacional |
+Cada package de resposta deve declarar identidade, avaliação, limpeza,
+confirmação, feedback e acessibilidade. A composição entre conteúdo e resposta
+é válida somente quando a modalidade corresponde ao gesto cognitivo planejado.
 
-`choice`, `gap`, `ordering` e `matching` são packages de resposta, não
-representações de conteúdo. Lacuna e digitação só podem atingir folhas
-declaradas pelo package de conteúdo e aparecem dentro da representação.
+## 3. Decisão de admissão no catálogo
 
-## Casos de estresse e critérios de aceitação
+### Problema
 
-O curso **Teste de Recursos** contém exposição e práticas internas para todo o
-catálogo. Exemplos triviais foram substituídos por casos capazes de revelar
-defeitos: código com lacuna sintática interna, cabeçalho TCP multilinha, relação
-muitos-para-muitos, transformação linear com regiões, série estatística com
-incerteza, processo BPMN com dois participantes e retorno, grafo com pesos e
-paralelismo e esquemas conceitual e relacional distintos.
+Um catálogo crescente pode acumular componentes redundantes, notações
+improvisadas e exemplos que funcionam apenas em casos simples. Isso aumenta o
+contexto de autoria e transfere ao estudante o custo de descobrir como ler cada
+figura.
 
-Os **Laboratórios acadêmicos** em `/teste-academico` materializam recortes de
-Algoritmos e Bancos de Dados de um curso superior de tecnologia, além de TCP e
-BPMN em um recorte de edital público. Eles não são cursos publicados: são ensaios de
-autoria usados para provar ou refutar as seguintes hipóteses:
+### Alternativas e requisitos
 
-1. a primeira explicação situa o problema sem presumir vocabulário técnico;
-2. notação densa só aparece depois do referente concreto;
-3. cada prática depende de uma microssequência expositiva e cobra somente
-   tópicos já ensinados;
-4. o resource é escolhido depois da operação cognitiva e não por variedade;
-5. a prática inclui recuperação, discriminação, ordenação e transferência;
-6. todo card conserva proveniência oficial;
-7. diagramas complexos preservam tamanho legível numa viewport local, sem
-   obrigatoriedade de caber na largura móvel.
+Um novo objeto pode ser representado por prosa, tabela, package existente ou
+package especializado. A última alternativa exige estrutura distintiva,
+convenção reconhecível, operação própria e manutenção justificável.
 
-Há verificações automáticas para essas propriedades do corpus, para a ausência
-de geometria autoral nos contratos automáticos, para temas claro e escuro e
-para larguras móveis. A auditoria visual mede o SVG final no Chromium; não se
-limita aos valores anteriores à compilação.
+### Decisão
 
-## Referências normativas e técnicas principais
+O package só entra no catálogo produtivo quando responde satisfatoriamente à
+porta de admissão abaixo. Se a mesma informação e operação forem preservadas
+por recurso mais simples, prevalece a alternativa mais simples.
 
-- IFSP São Paulo. [Tecnologia em Análise e Desenvolvimento de Sistemas](https://spo.ifsp.edu.br/tads).
-- OMG. [Business Process Model and Notation 2.0](https://www.omg.org/spec/BPMN/2.0/).
-- OMG. [Unified Modeling Language](https://www.omg.org/spec/UML/).
-- OMG. [SysML v1](https://www.omg.org/sysml/sysmlv1/).
-- RFC Editor. [RFC 9293 — Transmission Control Protocol](https://www.rfc-editor.org/rfc/rfc9293.html).
-- Graphviz. [`dot`: hierarchical drawing of directed graphs](https://graphviz.org/docs/layouts/dot/).
-- Vega-Lite. [Documentation](https://vega.github.io/vega-lite/docs/).
-- Vega. [CSP-safe expression interpreter](https://github.com/vega/vega/tree/main/packages/vega-interpreter).
-- UpSet.js. [Venn and Euler diagram layout](https://upset.js.org/venn.js/).
-- Leipzig Glossing Rules. [Conventions for interlinear morpheme-by-morpheme glosses](https://www.eva.mpg.de/lingua/resources/glossing-rules.php).
+### Fundamentação
 
-Outras fontes pedagógicas e disciplinares estão reunidas em
-[`fundamentacao-pedagogica-dos-resources.md`](./fundamentacao-pedagogica-dos-resources.md).
+Representações externas podem apoiar funções diferentes, mas sua coordenação
+também impõe demanda cognitiva ([Ainsworth (2006)](referencias.md#ref-ainsworth2006deft)). Coerência e contiguidade
+desaconselham elementos sem função e separação de informações que precisam ser
+integradas ([Mayer (2009)](referencias.md#ref-mayer2009multimedia); [Ginns (2006)](referencias.md#ref-ginns2006contiguity)). A carga criada pela
+interface não deve competir desnecessariamente com a tarefa
+([Sweller (1988)](referencias.md#ref-sweller1988cognitiveload); [Sweller et al. (1998)](referencias.md#ref-sweller1998architecture)).
+
+### Operacionalização: porta de admissão
+
+1. Qual relação se perde em `paragraph`, `table` ou outro package instalado?
+2. Qual gesto cognitivo depende dessa relação?
+3. Qual convenção acadêmica ou normativa orienta a leitura?
+4. O contrato expressa uma classe de casos ou apenas um exemplo codificado?
+5. O autor declara semântica sem fornecer pixels, cores, posições ou rotas?
+6. A representação admite rótulos longos, cardinalidade realista e casos
+   complexos?
+7. Lacuna e digitação aparecem no lugar estrutural da decisão?
+8. Vários alvos possuem identidade, opções e estado independentes?
+9. Edição e assistência recebem somente textos autorizados?
+10. A estrutura pode ser descrita sem depender de cor ou visão?
+11. Temas, zoom, teclado, toque e larguras móveis permanecem operáveis?
+12. As limitações e alternativas estão explícitas no catálogo?
+13. Um especialista do domínio reconhece a convenção adotada?
+14. Existe tarefa empírica capaz de testar sua utilidade didática?
+
+### Consequências
+
+Um package pode ser altamente especializado, desde que sua especialização
+preserve uma operação necessária. O catálogo também pode registrar lacunas de
+cobertura sem bloquear autoria; a alternativa usada precisa ser explicitada
+quando houver perda relevante.
+
+### Limites e evidência
+
+A porta organiza julgamento e conformidade, mas não substitui revisão por
+especialistas nem avaliação com estudantes. Decisões de manter, restringir,
+fundir ou retirar permanecem revisáveis.
+
+## 4. Matriz dos recursos de conteúdo
+
+### 4.1 Texto, linguagem e programação
+
+| Package | Objeto preservado | Use quando | Não use quando | Convenção e exigência de prática |
+| --- | --- | --- | --- | --- |
+| `paragraph` | exposição verbal progressiva | situar, definir, exemplificar, contrastar e explicar causalmente | uma relação espacial, formal ou tabular seria perdida | estrutura textual sem marcação autorreferente; prática apenas quando a própria linguagem é o objeto |
+| `annotated_text` | trechos ancorados e comentários relacionados | localizar evidência, função discursiva, argumento, correferência ou comentário em passagem específica | notas não precisam apontar para trechos precisos | destaque e anotação têm navegação bidirecional; sobreposição de trechos deve permanecer interpretável |
+| `interlinear_gloss` | forma original, segmentação morfêmica, glosa e tradução livre | análise linguística morfema a morfema | três linhas independentes ou tradução sem alinhamento | segue as [Leipzig Glossing Rules](https://www.eva.mpg.de/lingua/resources/glossing-rules.php); lacuna ocupa morfema ou glosa sem quebrar alinhamento |
+| `code` | código-fonte com sintaxe, indentação e posição de token | ler, explicar, executar mentalmente ou completar programa | pseudocódigo não possui convenção definida ou a tarefa é apenas descrever algoritmo | fonte monoespaçada, quebras preservadas e alvo dentro do editor; enunciado nunca recebe a lacuna do código |
+| `flow` | fluxo de controle algorítmico | acompanhar entrada, processo, decisão, laço, junção e saída | processo organizacional, árvore ou máquina de estados | formas convencionais de fluxograma e rótulos nas arestas; layout por Graphviz/Viz.js, sem coordenadas autorais |
+| `tree` | hierarquia enraizada | ancestralidade, decomposição, árvore sintática ou estrutura de busca | grafo arbitrário ou lista decorativamente indentada | raiz, níveis, filhos e ordem devem ser semanticamente definidos; cruzamentos evitados pelo motor de layout |
+
+### 4.2 Matemática, lógica e relações
+
+| Package | Objeto preservado | Use quando | Não use quando | Convenção e exigência de prática |
+| --- | --- | --- | --- | --- |
+| `formula` | árvore de expressão matemática | representar frações, limites, integrais, derivadas, somatórios, produtos, funções e tensores | texto com símbolos soltos ou sintaxe LaTeX livre | MathML mantém agrupamento, operadores e delimitadores proporcionais; lacuna substitui subexpressão sem destruir a árvore |
+| `matrix` | entradas organizadas por linhas e colunas com delimitadores matemáticos | álgebra linear e operações matriciais | registros possuem cabeçalhos de atributos | delimitadores finos acompanham exatamente a altura das linhas; índice e símbolo conservam peso tipográfico matemático |
+| `plane` | pontos, vetores aplicados, trajetórias e regiões em duas dimensões | geometria analítica, transformações e relações em eixos | série estatística ou figura sem coordenadas | eixos, domínios, unidades, origem e extremidade são explícitos; ponta do vetor termina na coordenada declarada |
+| `graph` | grafo ou dígrafo matemático | vértices, arestas, direção, peso, multiplicidade, laço, caminho e conectividade | mapa conceitual, arquitetura de software ou rede física | topologia é completa e o layout não altera incidência; cruzamento é reduzido, mas grafos não planares continuam possíveis |
+| `truth_table` | valoração finita de fórmulas lógicas | equivalência, validade, satisfatibilidade e consequência | lista booleana sem fórmulas relacionadas | fórmulas ocupam colunas semanticamente identificadas; lacunas são células independentes |
+| `set_diagram` | regiões lógicas de Venn ou topologia efetiva de Euler | pertencimento simultâneo, inclusão, interseção e complemento com poucos conjuntos | relação binária, classificação sem sobreposição ou mais de três conjuntos densos | símbolos e regiões precisam ser inequívocos; descrições longas ficam ancoradas fora da área geométrica |
+| `relation_map` | incidência bipartida de pares de uma relação | domínio, contradomínio, imagem, preimagem, função e cardinalidade | a tarefa é apenas ler uma lista de pares | lados permanecem distintos, cada aresta liga elementos, e rótulos não disputam espaço com linhas; não deve degenerar em tabela |
+
+### 4.3 Dados e estruturas de execução
+
+| Package | Objeto preservado | Use quando | Não use quando | Convenção e exigência de prática |
+| --- | --- | --- | --- | --- |
+| `table` | registros comparáveis por atributos | cruzar valores entre linhas e colunas | o objeto é matriz, esquema relacional ou função de transição | cabeçalho, unidade e escopo são explícitos; cada lacuna de célula mantém opções e estado próprios |
+| `entity_relationship` | modelo conceitual de dados | entidades, atributos, relacionamentos e cardinalidades do domínio | tabelas, chaves e nulabilidade já são o objeto | adota notação ER declarada; nomes e cardinalidades ficam junto do elemento a que pertencem |
+| `database_schema` | modelo relacional | relações, atributos, chaves primárias e estrangeiras, nulabilidade e dependências | modelagem conceitual ainda é o objetivo | tabelas representam relações e arestas representam referências; exemplos distinguem conceito de implementação |
+| `memory_layout` | intervalos de endereços e direção de crescimento | segmentos, alocação e disposição relativa na memória | ativações de função são o foco | endereços, limites e orientação são explícitos; tamanho visual não pode contradizer valor sem sinalização de escala |
+| `call_stack` | quadros de ativação e continuação no chamador | chamadas aninhadas, recursão, parâmetros, variáveis locais e retorno | mapa global de memória ou rastreamento tabular | topo, base e quadro ativo são inequívocos; valores longos quebram linha sem truncar conteúdo |
+
+### 4.4 Redes, comportamento e processos
+
+| Package | Objeto preservado | Use quando | Não use quando | Convenção e exigência de prática |
+| --- | --- | --- | --- | --- |
+| `packet_layout` | campos contíguos de uma unidade de protocolo | cabeçalhos definidos por RFC e posição/tamanho em bits | nomes e valores sem estrutura de bits | linhas, offsets, largura e unidade seguem o protocolo; campos multilinha não podem ocultar rótulos |
+| `network_topology` | dispositivos, interfaces, segmentos e enlaces | conectividade física ou lógica de rede | topologia matemática abstrata é o objeto | tipo de equipamento e tipo de enlace têm semântica distinta; rótulos e rotas são calculados sem cruzamentos evitáveis |
+| `state_machine` | estados e transições causadas por eventos | ciclo de vida, protocolo ou comportamento reativo | sequência linear de etapas | estado, evento, guarda e ação são separados; transição liga origem e destino sem ambiguidade |
+| `state_transition_table` | função de transição em forma tabular | comparar estado atual, evento, guarda, ação e próximo estado | tabela não possui semântica de estado | cada combinação é identificável; vários alvos de prática são independentes |
+| `terminal_session` | sequência temporal observável entre entrada, resposta textual e efeito | rastrear uma sessão de shell, PowerShell, Git, SQL ou interface análoga; interpretar saída, localizar erro ou relacionar ação e consequência | código-fonte estático é o objeto, registros independentes devem ser comparados ou executar o sistema real é o próprio objetivo | ambiente e contexto são explícitos; prompt visual não integra a entrada; `stdout`, `stderr`, código de saída e efeito permanecem distintos; espaços e ordem são preservados; somente a entrada admite lacuna de escolha inequívoca |
+| `bpmn_process` | colaboração e processo BPMN | participantes, raias, eventos, atividades, gateways e mensagens | algoritmo computacional é o objeto | segue [BPMN 2.0](https://www.omg.org/spec/BPMN/2.0/); fluxo de sequência e de mensagem não podem ser confundidos |
+| `reaction` | equação química | reagentes, produtos, coeficientes, estados, cargas, condições e tipo de seta | o fenômeno exige sozinho níveis macroscópico e submicroscópico | composição usa MathML; espaços entre coeficiente, espécie e operador preservam leitura científica; alvo fica na equação |
+
+### 4.5 Arquitetura e sistemas de software
+
+| Package | Objeto preservado | Use quando | Não use quando | Convenção e exigência de prática |
+| --- | --- | --- | --- | --- |
+| `software_system_context` | fronteira de um sistema em relação a pessoas e sistemas externos | situar responsabilidades e dependências externas | abrir aplicações e armazenamentos internos | segue a finalidade do [diagrama de contexto C4](https://c4model.com/diagrams/system-context); tipos são discretos e nomes/responsabilidades têm hierarquia legível |
+| `software_container` | unidades executáveis ou armazenamentos dentro do sistema | mostrar aplicações, serviços, bancos e relações internas | classes, componentes de código ou implantação física detalhada | segue a finalidade do [diagrama de contêineres C4](https://c4model.com/diagrams/container); texto integral determina a caixa antes do layout |
+| `system_internal_block` | partes, portas, conectores e itens transportados | composição interna segundo SysML | mapa genérico de caixas e setas | segue a gramática de [SysML](https://www.omg.org/sysml/sysmlv1/); incidência lateral e portas não devem ser verticalizadas artificialmente |
+
+### 4.6 Dados quantitativos
+
+| Package | Objeto preservado | Use quando | Não use quando | Convenção e exigência de prática |
+| --- | --- | --- | --- | --- |
+| `chart` | série quantitativa, escala, unidade e incerteza | linha, dispersão ou barras com método declarado | histograma, boxplot, regressão ou painel são improvisados pelo mesmo contrato | Vega-Lite deriva escalas, eixos, legendas e marcas; cor não é canal único e incerteza precisa ser nomeada |
+
+O catálogo deve ser ampliado quando uma área exige outra gramática — por
+exemplo, árvore sintática com operações próprias, mapa filogenético, via
+metabólica, partitura ou estrutura cristalina — e não quando se deseja apenas
+um novo estilo para relações já preservadas.
+
+## 5. Matriz dos recursos de resposta
+
+| Package | Operação principal | Requisito de uso | Falha que invalida a prática |
+| --- | --- | --- | --- |
+| `choice` | discriminar uma ou mais alternativas | distratores representam erros plausíveis; modo simples ou múltiplo é explícito | alternativa correta revelada antes da solicitação, enunciado duplicado ou avaliação a cada toque |
+| `gap` | completar elemento localizado | alvo pertence ao package de conteúdo; cada lacuna tem opções e estado próprios | lacuna aparece no enunciado por conveniência, ou todas as lacunas compartilham resposta |
+| `ordering` | reconstruir uma sequência | ordem é o conhecimento avaliado, não uma forma arbitrária de variar a interface | itens já aparecem em ordem ou a sequência não tem fundamento semântico |
+| `matching` | estabelecer correspondências | cada lado e regra de pareamento são claros; cardinalidade é declarada | a mesma tarefa seria melhor expressa por `relation_map` expositivo ou tabela |
+
+Digitação é uma modalidade de resposta aplicada a um alvo autorizado. Ela não
+constitui package de conteúdo. O controle principal do card confirma a
+resposta, apresenta feedback e, no acionamento seguinte, avança; controles
+redundantes de “conferir” não pertencem ao recurso.
+
+## 6. Processo de auditoria
+
+### Etapa 1 — auditoria conceitual
+
+O revisor descreve o objeto sem mencionar o componente visual e pergunta qual
+relação precisa permanecer explícita. Em seguida, compara prosa, tabela e
+packages próximos. O resultado possível é manter, restringir, fundir, retirar
+ou propor novo package.
+
+### Etapa 2 — auditoria disciplinar
+
+Um especialista confronta símbolos, terminologia, ordem de leitura e casos
+complexos com fontes primárias da área. Divergências legítimas entre notações
+devem ser declaradas no manifest; mistura inadvertida de tradições precisa ser
+corrigida.
+
+### Etapa 3 — auditoria do contrato
+
+O contrato deve:
+
+- usar conceitos do domínio, não propriedades de CSS ou da biblioteca;
+- separar identificadores estruturais e textos visíveis;
+- impedir referências inexistentes e duplicidades indevidas;
+- expressar cardinalidade e limites;
+- produzir erros de validação compreensíveis;
+- admitir casos diversos dentro do escopo declarado.
+
+### Etapa 4 — auditoria de renderização
+
+Casos de estresse incluem:
+
+- rótulos curtos e longos;
+- cardinalidade mínima e máxima admitida;
+- grafos densos, ciclos, laços e paralelismo quando pertinentes;
+- maior resposta válida já preenchida;
+- idiomas com palavras mais extensas;
+- temas claro e escuro;
+- larguras móveis, zoom e densidade de pixels diferentes;
+- rolagem vertical do card e rolagem local do frame;
+- navegação por teclado, foco e leitor de tela.
+
+São defeitos bloqueadores: texto cortado, elemento oculto, sobreposição que
+altera significado, aresta ligada ao alvo errado, legenda ambígua, contraste
+insuficiente, perda de foco, overflow externo e mudança de layout que revela a
+resposta.
+
+### Etapa 5 — auditoria da prática
+
+Cada alvo é acionado separadamente. Selecionar, limpar, confirmar, tentar de
+novo e revelar resposta são testados como estados distintos. Um teste com três
+ou mais lacunas verifica que opções, preenchimento, avaliação e feedback não
+são compartilhados acidentalmente.
+
+### Etapa 6 — auditoria de edição e assistência
+
+O modo de edição mostra somente rótulos compreensíveis e seus agrupamentos. O
+JSON estrutural não aparece como texto editável. A seleção enviada à assistência
+contém:
+
+- objetivo e contexto somente para leitura;
+- campos explicitamente graváveis;
+- identificação do package e suas restrições;
+- histórico conversacional necessário à iteração;
+- mecanismo de validação e reversão.
+
+Uma resposta estruturalmente válida ainda precisa ser revisada quanto a
+correção e adequação didática ([Amershi et al. (2019)](referencias.md#ref-amershi2019humanai); [Buçinca et al. (2021)](referencias.md#ref-bucinca2021overreliance)).
+
+### Etapa 7 — auditoria pedagógica
+
+O recurso é inserido em uma microssequência, não avaliado apenas como figura
+isolada. A revisão verifica se:
+
+1. o estudante recebeu os conhecimentos necessários para ler a notação;
+2. a teoria não concentra premissas ocultas;
+3. a prática cobra somente o que foi ensinado;
+4. a representação é necessária à operação;
+5. o feedback explica como agir;
+6. uma alternativa mais simples produziria o mesmo resultado;
+7. a densidade do card prático se justifica pelo contexto da tarefa.
+
+## 7. Critérios de aceitação
+
+Um package é aceito tecnicamente quando:
+
+- esquema de validação, mecanismo de renderização, catálogo e projeção de
+  autoria concordam;
+- a mesma entrada produz estrutura equivalente;
+- casos válidos e inválidos possuem testes;
+- alvos interativos são independentes;
+- não há recorte, sobreposição semântica ou overflow nos casos testados;
+- a descrição acessível conserva entidades e relações;
+- o escopo de edição não alcança estrutura;
+- dependências necessárias estão disponíveis no funcionamento offline previsto.
+
+É aceito academicamente quando especialistas reconhecem a convenção, os limites
+estão declarados e o exemplo de estresse representa uso plausível. É aceito
+didaticamente apenas na extensão apoiada por avaliação de interpretação e
+tarefa. Esses três estados não devem ser fundidos em um selo único de
+“aprovado”.
+
+## 8. Registro de resultados
+
+Cada rodada de auditoria registra:
+
+```text
+package e escopo
+→ problema examinado
+→ alternativa comparada
+→ fonte disciplinar
+→ caso de estresse
+→ evidência técnica
+→ julgamento especializado
+→ evidência com estudantes, se houver
+→ decisão: manter, restringir, fundir, redesenhar ou retirar
+→ limitações remanescentes
+```
+
+“Nenhum defeito encontrado” significa apenas que os casos executados não
+revelaram o defeito procurado. Não autoriza inferência de universalidade nem de
+eficácia.
+
+## 9. Referências normativas e técnicas
+
+- [Graphviz — layouts](https://graphviz.org/docs/layouts/)
+- [Vega-Lite — documentação](https://vega.github.io/vega-lite/docs/)
+- [MathML Core](https://www.w3.org/TR/mathml-core/)
+- [WCAG 2.2](https://www.w3.org/TR/WCAG22/) ([World Wide Web Consortium (2023)](referencias.md#ref-w3c2023wcag22))
+- [Business Process Model and Notation 2.0](https://www.omg.org/spec/BPMN/2.0/)
+- [Unified Modeling Language](https://www.omg.org/spec/UML/)
+- [Systems Modeling Language](https://www.omg.org/sysml/sysmlv1/)
+- [C4 model](https://c4model.com/)
+- [RFC 9293 — Transmission Control Protocol](https://www.rfc-editor.org/rfc/rfc9293.html)
+- [Leipzig Glossing Rules](https://www.eva.mpg.de/lingua/resources/glossing-rules.php)
+
+A [Fundamentação pedagógica dos
+recursos](fundamentacao-pedagogica-dos-resources.md) explica as decisões gerais.
+As referências acadêmicas completas estão em
+[`referencias.bib`](referencias.bib).

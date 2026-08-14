@@ -894,107 +894,6 @@ textarea {
   display: none;
 }
 
-.remote-assistant-calibration-intro,
-.remote-assistant-protected-core,
-.remote-assistant-calibration-field {
-  border: 1px solid var(--border-default);
-  border-radius: 10px;
-  background: var(--surface-subtle);
-}
-
-.remote-assistant-calibration-intro {
-  padding: 9px 10px;
-}
-
-.remote-assistant-calibration-intro p {
-  margin: 0;
-  color: var(--text-secondary);
-  font: 0.7rem/1.45 var(--font-ui);
-}
-
-.remote-assistant-calibration-intro .remote-assistant-calibration-preset {
-  color: var(--text-primary);
-  font-weight: 800;
-}
-
-.remote-assistant-protected-core {
-  padding: 8px 10px;
-  color: var(--text-secondary);
-  font: 0.7rem/1.45 var(--font-ui);
-}
-
-.remote-assistant-protected-core summary {
-  cursor: pointer;
-  color: var(--text-primary);
-  font-weight: 800;
-}
-
-.remote-assistant-protected-core ul {
-  display: grid;
-  gap: 8px;
-  margin: 9px 0 2px;
-  padding-left: 17px;
-}
-
-.remote-assistant-protected-core li span,
-.remote-assistant-calibration-help,
-.remote-assistant-calibration-effect {
-  display: block;
-}
-
-.remote-assistant-calibration-form {
-  display: grid;
-  gap: 7px;
-}
-
-.remote-assistant-calibration-field {
-  display: grid;
-  gap: 5px;
-  padding: 9px;
-}
-
-.remote-assistant-calibration-heading {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  color: var(--text-primary);
-  font: 0.73rem var(--font-ui);
-}
-
-.remote-assistant-calibration-heading small {
-  flex: 0 0 auto;
-  color: var(--action-primary-hover);
-  font: 700 0.64rem var(--font-ui);
-}
-
-.remote-assistant-calibration-help,
-.remote-assistant-calibration-effect {
-  color: var(--text-secondary);
-  font: 0.68rem/1.4 var(--font-ui);
-}
-
-.remote-assistant-calibration-field textarea {
-  width: 100%;
-  min-width: 0;
-  resize: vertical;
-  padding: 8px 9px;
-  border: 1px solid var(--input-border);
-  border-radius: 9px;
-  outline: none;
-  background: var(--input-surface);
-  color: var(--text-primary);
-  font: 0.72rem/1.45 var(--font-ui);
-}
-
-.remote-assistant-calibration-field textarea:focus {
-  border-color: var(--action-primary);
-}
-
-.remote-assistant-calibration-actions {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-
 .remote-library-panel [data-local-draft-discard] {
   color: var(--status-danger);
 }
@@ -2099,6 +1998,194 @@ input:-webkit-autofill:focus {
 
 .runtime-code-block code {
   font: inherit;
+}
+
+.package-terminal-session {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+
+.package-terminal-session figure {
+  display: grid;
+  gap: 0;
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  border: 1px solid var(--resource-border-strong);
+  border-radius: 12px;
+  background: var(--resource-surface-sunken);
+}
+
+.package-terminal-session figcaption {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 4px 12px;
+  padding: 9px 11px;
+  border-bottom: 1px solid var(--resource-border-strong);
+  background: var(--resource-surface-subtle);
+}
+
+.package-terminal-session figcaption span,
+.package-terminal-context span,
+.package-terminal-stream-label small,
+.package-terminal-exit span {
+  color: var(--resource-text-secondary);
+  font-size: var(--type-xs);
+}
+
+.package-terminal-session figcaption strong {
+  color: var(--resource-text);
+  font-size: var(--type-sm);
+  overflow-wrap: anywhere;
+}
+
+.package-terminal-context {
+  display: grid;
+  gap: 3px;
+  margin: 0;
+  padding: 9px 11px;
+  border-bottom: 1px solid var(--resource-border);
+  color: var(--resource-text);
+  font-size: var(--type-sm);
+  line-height: var(--leading-normal);
+  overflow-wrap: anywhere;
+}
+
+.package-terminal-session ol {
+  display: grid;
+  gap: 0;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.package-terminal-session li {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  padding: 10px;
+}
+
+.package-terminal-session li + li {
+  border-top: 1px solid var(--resource-border-strong);
+}
+
+.package-terminal-session li > header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 3px 10px;
+  color: var(--resource-text);
+  font-size: var(--type-sm);
+}
+
+.package-terminal-session li > header small {
+  color: var(--resource-text-secondary);
+  font-size: var(--type-xs);
+  overflow-wrap: anywhere;
+}
+
+.package-terminal-input,
+.package-terminal-stream {
+  display: grid;
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--resource-border);
+  border-radius: 9px;
+  background: var(--resource-surface);
+}
+
+.package-terminal-streams {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+}
+
+.package-terminal-stream-label {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 4px 8px;
+  border-bottom: 1px solid var(--resource-border);
+  background: var(--resource-surface-subtle);
+}
+
+.package-terminal-stream-label code,
+.package-terminal-exit code {
+  color: var(--resource-text);
+  font-family: "Cascadia Code", "Consolas", "SFMono-Regular", "Cascadia Mono", monospace;
+  font-size: var(--type-xs);
+}
+
+.package-terminal-stream.is-stderr .package-terminal-stream-label code {
+  color: var(--resource-error);
+}
+
+.package-terminal-session pre {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  margin: 0;
+  padding: 8px 10px;
+  overflow: auto;
+  background: var(--resource-surface-sunken);
+  color: var(--resource-text);
+  font-family: "Cascadia Code", "Consolas", "SFMono-Regular", "Cascadia Mono", monospace;
+  font-size: var(--type-base);
+  line-height: 1.5;
+  tab-size: 2;
+  touch-action: pan-x pan-y;
+  scrollbar-width: thin;
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+.package-terminal-stream pre {
+  max-height: min(38vh, 20rem);
+}
+
+.package-terminal-session pre:focus-visible {
+  outline: 2px solid var(--resource-gap-focus);
+  outline-offset: -2px;
+}
+
+.package-terminal-session pre code,
+.package-terminal-session pre samp {
+  font: inherit;
+  white-space: pre;
+}
+
+.package-terminal-prompt {
+  color: var(--resource-accent);
+  font-weight: 800;
+}
+
+.package-terminal-empty {
+  color: var(--resource-text-secondary);
+  font-style: italic;
+}
+
+.package-terminal-exit {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 7px;
+  margin: 0;
+}
+
+.package-terminal-exit.is-success code {
+  color: var(--resource-correct);
+}
+
+.package-terminal-exit.is-error code {
+  color: var(--resource-error);
 }
 
 .multiple-choice-list {

@@ -1,33 +1,112 @@
-# Dependências de diagramação e visualização
+# Bibliotecas locais de diagramação e visualização
 
-`viz-global.js` é a distribuição para navegador do Viz.js 3.27.0, compilação
-WebAssembly do Graphviz 14.1.5 publicada sob licença MIT. A distribuição inclui
-Graphviz e Expat em código objeto e conserva os avisos dos respectivos projetos
-em seu cabeçalho.
+Este diretório conserva dependências executadas diretamente no navegador. Elas
+são mantidas no repositório para que a aplicação web e o APK usem a mesma
+versão do renderizador e para que representações já carregadas continuem
+disponíveis sem conexão.
 
-- Viz.js: https://github.com/mdaines/viz-js
-- Graphviz: https://graphviz.org/
-- Licença do Viz.js: https://github.com/mdaines/viz-js/blob/main/LICENSE
+Arquivos versionados aqui não devem ser alterados manualmente para corrigir um
+caso visual. A correção pertence ao package do resource, ao contrato semântico
+ou ao processo documentado de atualização da biblioteca.
 
-O arquivo é mantido localmente para que fluxogramas continuem disponíveis sem
-conexão e para que site e APK usem exatamente o mesmo renderer.
+## Inventário
 
-`vega.min.js` e `vega-lite.min.js` são as distribuições para navegador de
-Vega 6.3.1 e Vega-Lite 6.4.3. `vega-interpreter.js` deriva de
-vega-interpreter 2.3.1 e avalia a árvore de expressões sem geração dinâmica de
-código, preservando a política de segurança do aplicativo. Esses três arquivos
-compilam e materializam gráficos estatísticos e planos cartesianos a partir dos
-contratos semânticos dos packages. Eles também permanecem locais e disponíveis
-offline; o formato Vega-Lite não é exposto à autoria.
+| Arquivo | Origem | Função no AraLearn |
+| --- | --- | --- |
+| `viz-global.js` | Viz.js 3.27.0, com Graphviz 14.1.5 em WebAssembly | Calcula disposição de fluxogramas e diagramas relacionais. |
+| `vega.min.js` | Vega 6.3.1 | Executa a especificação de visualizações estatísticas. |
+| `vega-lite.min.js` | Vega-Lite 6.4.3 | Compila contratos de alto nível para Vega. |
+| `vega-interpreter.js` | vega-interpreter 2.3.1 | Avalia árvores de expressão sem geração dinâmica de código. |
+| `venn.esm.js` | `@upsetjs/venn.js` 2.0.0 | Calcula regiões e contornos de diagramas de Venn e Euler. |
 
-- Vega: https://github.com/vega/vega
-- Vega-Lite: https://github.com/vega/vega-lite
-- Vega Interpreter: https://github.com/vega/vega/tree/main/packages/vega-interpreter
+O formato interno de Vega-Lite e a linguagem DOT não são contratos de autoria.
+O modelo fornece dados semânticos ao package; o package produz a especificação
+técnica. Essa separação impede que conteúdo de curso fique acoplado à versão de
+uma biblioteca de desenho.
 
-`venn.esm.js` é a distribuição ESM de `@upsetjs/venn.js` 2.0.0, usada
-somente para calcular contornos e regiões de diagramas de Venn e Euler. O
-AraLearn renderiza sua própria camada semântica e mantém a biblioteca local
-para preservar o funcionamento offline.
+## Por que as dependências são locais
 
-- venn.js: https://upset.js.org/venn.js/
-- Licença: https://github.com/upsetjs/venn.js/blob/main/LICENSE
+Carregar uma biblioteca por CDN tornaria a primeira renderização dependente da
+rede e permitiria que web e APK recebessem arquivos diferentes. A cópia local
+torna a versão auditável, reproduzível e disponível ao runtime empacotado.
+
+`vega-interpreter.js` também atende à política de segurança do aplicativo: ele
+interpreta a árvore de expressões em vez de criar funções JavaScript
+dinamicamente. Isso permite manter uma política de conteúdo mais restrita.
+
+## Atualizar o interpretador Vega
+
+O interpretador é o único arquivo deste diretório com gerador automatizado no
+repositório.
+
+### Pré-condição
+
+Instale as dependências com `npm ci` e confirme que a versão declarada de
+`vega-interpreter` continua exatamente sincronizada com o gerador.
+
+### Passos
+
+```powershell
+npm run resources:vendor
+npm test
+```
+
+O script `scripts/buildVegaInterpreterVendor.mjs` transforma a distribuição
+instalada em um arquivo clássico compatível com o runtime e verifica padrões
+esperados de importação e exportação.
+
+### Resultado esperado
+
+`vega-interpreter.js` é reproduzido deterministicamente e a suíte confirma que
+o arquivo versionado corresponde à versão instalada.
+
+### Recuperação
+
+Se o gerador rejeitar a estrutura do pacote, a versão upstream mudou de forma
+incompatível. Não remova a verificação: revise a transformação e os testes
+antes de atualizar o arquivo versionado.
+
+## Atualizar as demais bibliotecas
+
+`viz-global.js`, `vega.min.js`, `vega-lite.min.js` e `venn.esm.js` não possuem
+um gerador de repositório equivalente. Uma atualização deliberada deve:
+
+1. identificar versão, origem e licença do artefato;
+2. atualizar a dependência correspondente em `package.json` e no lockfile;
+3. substituir o bundle sem remover avisos de licença;
+4. testar temas claro e escuro, larguras móveis e execução offline;
+5. executar a suíte de resources e a auditoria do APK;
+6. atualizar este inventário.
+
+Não misture atualização de biblioteca com ajustes manuais em código
+minificado. Se o upstream não fornecer um artefato adequado, adicione um
+gerador verificável antes de versionar o resultado.
+
+## Validação focada
+
+```powershell
+npm run resources:vendor -- --check
+npm run lint
+npm test
+```
+
+O primeiro comando confere o artefato do interpretador. Os testes de galeria e
+do curso de resources exercitam os renderizadores dentro do runtime real.
+
+## Diagnóstico
+
+| Sintoma | Causa provável | Ação |
+| --- | --- | --- |
+| Um gráfico funciona na web, mas não no APK | Bundle ausente ou staging desatualizado | Gere novamente o runtime Android e inspecione o APK. |
+| A política de conteúdo bloqueia uma expressão Vega | Interpretador ausente ou caminho que tenta gerar código | Recrie `vega-interpreter.js` e confira a integração do package. |
+| O teste `--check` acusa diferença | Arquivo versionado não corresponde à dependência instalada | Execute o gerador, revise a alteração e mantenha versão e lockfile sincronizados. |
+| Um diagrama específico fica ilegível | Contrato ou package não trata aquele caso | Corrija o package e acrescente um caso de teste; não edite o bundle. |
+
+## Projetos e licenças
+
+- [Viz.js](https://github.com/mdaines/viz-js) e sua [licença MIT](https://github.com/mdaines/viz-js/blob/main/LICENSE)
+- [Graphviz](https://graphviz.org/)
+- [Vega](https://github.com/vega/vega)
+- [Vega-Lite](https://github.com/vega/vega-lite)
+- [vega-interpreter](https://github.com/vega/vega/tree/main/packages/vega-interpreter)
+- [venn.js](https://upset.js.org/venn.js/) e sua [licença](https://github.com/upsetjs/venn.js/blob/main/LICENSE)

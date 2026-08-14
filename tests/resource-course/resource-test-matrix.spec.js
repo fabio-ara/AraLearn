@@ -82,6 +82,71 @@ for (const theme of themes) {
   }
 }
 
+for (const [theme, width] of [["light", 360], ["dark", 412]]) {
+  test(`terminal_session mantém saída longa local, acessível e selecionável em ${width}px no modo ${theme}`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 });
+    await page.addInitScript((selectedTheme) => {
+      localStorage.setItem("aralearn.ui.theme", selectedTheme);
+    }, theme);
+    const pageErrors = [];
+    page.on("pageerror", (error) => pageErrors.push(error.message));
+    await page.goto("/tests/gallery/resource-test-matrix.html");
+    await page.waitForFunction(() => globalThis.__RESOURCE_TEST_MATRIX_READY__ === true);
+
+    const audit = await page.evaluate(async () => {
+      const [{ terminalSessionPackage }, response] = await Promise.all([
+        import("/src/resources/packages/terminal-session/index.js"),
+        fetch("/tests/fixtures/package/terminal-session-stress.json", { cache: "no-store" })
+      ]);
+      const fixture = await response.json();
+      const data = fixture.cases.find(({ id }) => id === "administrative-cloud-long-output").data;
+      const article = document.createElement("article");
+      article.className = "resource-test-card terminal-session-stress";
+      article.innerHTML = terminalSessionPackage.render(data);
+      document.querySelector(".resource-test-matrix").replaceChildren(article);
+
+      const output = article.querySelector(".package-terminal-stream.is-stdout pre");
+      const code = output.querySelector("samp");
+      const range = document.createRange();
+      range.selectNodeContents(code);
+      const selection = getSelection();
+      selection.removeAllRanges();
+      selection.addRange(range);
+      const selectedText = selection.toString();
+      selection.removeAllRanges();
+      return {
+        colorMode: document.documentElement.dataset.colorMode,
+        documentOverflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+        cardOverflow: article.scrollWidth - article.clientWidth,
+        outputScrollsVertically: output.scrollHeight > output.clientHeight + 1,
+        outputScrollsHorizontally: output.scrollWidth > output.clientWidth + 1,
+        outputTabIndex: output.tabIndex,
+        outputAriaLabel: output.getAttribute("aria-label"),
+        outputUserSelect: getComputedStyle(output).userSelect,
+        selectedText,
+        interactionLabel: article.querySelector("ol").getAttribute("aria-label"),
+        visualBackground: getComputedStyle(article.querySelector("figure")).backgroundColor,
+        visualColor: getComputedStyle(output).color
+      };
+    });
+
+    expect(audit.colorMode).toBe(theme);
+    expect(audit.documentOverflow).toBeLessThanOrEqual(1);
+    expect(audit.cardOverflow).toBeLessThanOrEqual(1);
+    expect(audit.outputScrollsVertically).toBe(true);
+    expect(audit.outputScrollsHorizontally).toBe(true);
+    expect(audit.outputTabIndex).toBe(0);
+    expect(audit.outputAriaLabel).toBe("Saída padrão da interação 1");
+    expect(audit.outputUserSelect).toBe("text");
+    expect(audit.selectedText).toContain("service: api <principal> & worker");
+    expect(audit.selectedText).toContain("sha256:9f86d081");
+    expect(audit.interactionLabel).toBe("Interações da sessão");
+    expect(audit.visualBackground).not.toBe("rgba(0, 0, 0, 0)");
+    expect(audit.visualColor).not.toBe("rgba(0, 0, 0, 0)");
+    expect(pageErrors).toEqual([]);
+  });
+}
+
 test("lacunas preenchidas permanecem visíveis dentro dos objetos acadêmicos", async ({ page }) => {
   await page.setViewportSize({ width: 360, height: 900 });
   await page.addInitScript(() => localStorage.setItem("aralearn.ui.theme", "dark"));

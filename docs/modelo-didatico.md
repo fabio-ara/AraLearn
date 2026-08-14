@@ -1,133 +1,523 @@
-# Modelo didático
+# Modelo didático do AraLearn
 
-O modelo didático do AraLearn parte de uma constatação prática: aprender exige mais do que receber explicações. É preciso situar o conteúdo, ver exemplos, praticar, errar, corrigir, revisar e seguir uma ordem que faça sentido. O estudante pode assistir a muitas aulas e ainda não conseguir resolver problemas; pode usar IA e receber respostas plausíveis, mas sem continuidade. O AraLearn tenta organizar esse intervalo entre exposição e apropriação.
+## Finalidade e estatuto deste documento
 
-## Microssequência
+Este documento explica o modelo didático adotado pelo AraLearn: quais problemas
+educacionais orientam o produto, quais alternativas foram consideradas, quais
+decisões estão vigentes e como essas decisões aparecem na organização dos
+cursos. O texto parte dos conceitos mais gerais e chega à sua
+operacionalização no artefato.
 
-A microssequência é a unidade de progressão do AraLearn. Ela reúne objetivo, papel na trilha, dependências, conteúdos cobertos, critérios de verificação e cards ordenados.
+O modelo é uma **proposta de design educacional fundamentada**, não uma teoria
+universal de aprendizagem nem uma demonstração de eficácia. Convém distinguir,
+ao longo da leitura:
 
-Ela foi escolhida por uma razão de escala. O card isolado tende a ficar estreito demais para sustentar contexto. A lição inteira pode ser ampla demais para uma sessão de estudo no celular. A microssequência ocupa o meio: trabalha um ponto delimitado e preserva a ligação com o percurso.
+- **evidência externa**: resultados e argumentos publicados em outros
+  contextos;
+- **decisão de produto**: escolha pedagógica ou técnica adotada no AraLearn;
+- **hipótese de design**: relação que ainda precisa ser examinada com pessoas,
+  tarefas e medidas adequadas;
+- **propriedade implementada**: comportamento demonstrável por código, teste ou
+  inspeção;
+- **resultado empírico**: achado obtido em avaliação documentada do artefato.
 
-Uma microssequência pode servir para:
+Uma propriedade implementada, como o funcionamento offline, não demonstra por
+si só compreensão, retenção ou aprendizagem. Do mesmo modo, uma decisão
+fundamentada pode ser plausível sem ter sido validada no contexto específico do
+AraLearn.
 
-- introduzir uma regra;
-- apresentar um exemplo suficiente;
-- pedir uma aplicação objetiva;
-- corrigir um erro recorrente;
-- revisar uma etapa anterior;
-- preparar a próxima etapa.
+## Problema educacional delimitado
 
-## Carga cognitiva
+O AraLearn foi concebido para situações em que estudar envolve mais do que
+acessar informação. A pessoa precisa compreender de onde um assunto parte,
+como seus conceitos se relacionam, qual operação deve aprender, como praticá-la
+e como retomar o percurso após uma interrupção. Esse problema é particularmente
+visível quando o estudo ocorre no celular, em períodos fragmentados e com
+conectividade variável.
 
-Sweller (1988) mostrou que a aprendizagem é afetada pelas limitações da memória de trabalho. Sweller, Van Merriënboer e Paas (1998) aprofundaram a relação entre arquitetura cognitiva e desenho instrucional. No AraLearn, isso se traduz em decompor a trilha, explicitar dependências e evitar que o estudante tenha de reconstruir sozinho a ordem do conteúdo.
+Três riscos orientam o desenho:
 
-Essa escolha é especialmente importante em conteúdos técnicos. Em programação, matemática, lógica, arquitetura de computadores ou governança de IA, parte da dificuldade não está apenas no conceito, mas no excesso de operações periféricas: procurar material, decidir sequência, identificar pré-requisito, alternar fonte, traduzir explicação em exercício e retomar depois de dias.
+1. **condensação**: vários conceitos, pressupostos e siglas aparecem juntos,
+   sem progressão suficiente para quem encontra o assunto pela primeira vez;
+2. **fragmentação**: o conteúdo é dividido em unidades curtas, mas perde suas
+   relações, sua profundidade e seu propósito;
+3. **atividade aparente**: o estudante toca, avança e conclui cards sem precisar
+   explicar, discriminar, aplicar ou recuperar o que estudou.
 
-## Exemplos resolvidos e retirada de apoio
+O modelo responde a esses riscos com progressão explícita, teoria suficiente,
+prática pertinente, feedback acionável, representações adequadas e continuidade
+entre sessões. Trata-se de uma orientação; cada curso continua exigindo
+planejamento e revisão próprios.
 
-Sweller e Cooper (1985) compararam o estudo de exemplos resolvidos com a resolução convencional de problemas na aprendizagem inicial de álgebra. Renkl, Atkinson e Große (2004) investigaram a passagem dos exemplos para a resolução independente por meio da retirada gradual de etapas.
+## Estrutura do percurso
 
-No AraLearn, uma operação nova recebe a base conceitual necessária e, quando a natureza da tarefa exigir, um exemplo resolvido da mesma operação. A prática guiada vem antes da prática com menos apoio. Essa ordem não fixa uma quantidade universal de cards: a especificação considera a complexidade da operação, os erros previsíveis e a evidência necessária para o resultado de aprendizagem.
+O curso é organizado em níveis com responsabilidades diferentes:
 
-Retirar apoio não significa omitir dados do problema. Valores, trechos, coordenadas, casos e demais elementos particulares permanecem no próprio card. O que diminui é a ajuda para decidir, não a informação indispensável para compreender a tarefa.
+| Unidade | Função principal | Pergunta que responde |
+| --- | --- | --- |
+| curso | delimitar propósito, público e escopo geral | o que será aprendido e para quê? |
+| módulo | reunir uma região coerente do domínio | que parte ampla do assunto está em foco? |
+| lição | organizar uma progressão local | que sequência de objetivos será percorrida? |
+| microssequência | ensinar e verificar um objetivo delimitado | qual transformação de conhecimento ou desempenho se pretende agora? |
+| card | realizar uma função didática específica | o que a pessoa precisa compreender ou fazer neste momento? |
 
-## Prática de recuperação
+### Por que a microssequência existe
 
-Karpicke e Roediger (2008) encontraram, na tarefa experimental que estudaram, vantagem da recuperação repetida sobre o estudo repetido para a retenção posterior. A evidência não autoriza chamar qualquer interação de recuperação nem garante o mesmo efeito em todo conteúdo, população ou intervalo. No AraLearn, **prática de recuperação** designa a tentativa de produzir conhecimento ou tomar uma decisão sem nova exposição integral ao conteúdo-alvo.
+**Problema.** Um card isolado costuma ser pequeno demais para situar, explicar,
+exemplificar e praticar um conceito complexo. Uma lição inteira pode conter
+objetivos demais para orientar uma sessão curta e permitir uma retomada
+precisa.
 
-Essa fundamentação sustenta uma hipótese de design, e não uma quantidade fixa de cards: depois de receber base suficiente, o estudante deve ter oportunidades pertinentes de lembrar, discriminar, explicar, ordenar ou aplicar. A operação exigida, o apoio disponível, o feedback e a medida posterior precisam ser declarados. Tocar em uma opção, reler ou reconhecer uma resposta já exposta não basta, por si só, para caracterizar prática de recuperação.
+**Alternativas e requisitos.** Seria possível usar somente cards e lições, ou
+fixar blocos por duração e quantidade. A unidade intermediária, porém, precisa
+preservar um objetivo, seus pré-requisitos, a teoria que o sustenta, as práticas
+que o verificam e a ligação com o percurso, sem impor duração universal.
 
-Nem toda etapa precisa conter todos esses movimentos. O princípio, porém, é estável: entender uma explicação não equivale a conseguir usar o conceito.
+**Decisão.** A **microssequência** é a unidade de progressão situada entre card
+e lição. Ela contém objetivo, papel no percurso, dependências, conceitos
+cobertos, operações verificadas e cards ordenados.
 
-## Retomada e alternância
+**Fundamentação.** A literatura de carga cognitiva chama atenção para a
+capacidade limitada da memória de trabalho e para demandas introduzidas pelo
+próprio desenho instrucional ([Sweller (1988)](referencias.md#ref-sweller1988cognitiveload); [Sweller et al. (1998)](referencias.md#ref-sweller1998architecture)). A evidência sobre segmentação apresenta moderadores
+e não sustenta uma regra universal de tamanho ([Rey et al. (2019)](referencias.md#ref-rey2019segmenting)). A literatura
+de microlearning também reúne intervenções heterogêneas
+([De Gagne et al. (2019)](referencias.md#ref-degagne2019microlearning)).
 
-Um conceito não deve desaparecer depois da primeira prática. Cepeda et al. (2008) mostraram que o intervalo mais favorável entre oportunidades de estudo depende do tempo pelo qual se pretende conservar a aprendizagem. Isso desaconselha uma regra única de espaçamento. No AraLearn, a autoria retoma um conceito depois de uma separação significativa na trilha e registra a dependência que torna essa retomada possível.
+**Operacionalização.** A autoria declara a função e as dependências da
+microssequência antes de materializar os cards. Sua extensão varia conforme a
+complexidade, os conhecimentos prévios presumidos, os erros previsíveis e a
+evidência de aprendizagem requerida.
 
-Alternar operações relacionadas pode ajudar o estudante a reconhecer qual procedimento se aplica a cada caso. Taylor e Rohrer (2010) observaram esse efeito em problemas de matemática mesmo quando controlaram o espaçamento entre as práticas. A alternância, portanto, não consiste em misturar assuntos ao acaso. Primeiro se estabelece a base de cada operação; depois, casos próximos podem aparecer intercalados para exigir discriminação.
+**Consequências.** A unidade permite orientar produção, auditoria, retomada e
+revisão sem reduzir a lição a uma lista de telas.
 
-A microssequência explicita conceitos, operações e relações por `covers`,
-`checks` e `dependsOn`. Um card de prática recupera o que a sequência já
-apresentou ou o que uma dependência aprovada tornou disponível. Assim, a
-continuidade não depende de coincidência de palavras nem da memória da conversa
-usada na autoria.
+**Limites e evidência.** “Microssequência” é um termo operacional do AraLearn.
+Não se demonstrou que essa unidade seja superior a toda alternativa; sua
+coerência e utilidade precisam ser avaliadas em cursos, públicos e domínios
+concretos.
 
-## Dificuldades desejáveis
+## Diagnóstico contextual antes da construção
 
-Bjork e Bjork (2011) usam **dificuldades desejáveis** para uma família de condições que pode prejudicar o desempenho imediato e, em circunstâncias apropriadas, favorecer retenção ou transferência posterior. O termo não transforma esforço, obstáculo ou decisão em benefício pedagógico automático. Para formular essa hipótese no AraLearn, é preciso nomear a operação cognitiva pretendida, as condições em que o estudante consegue realizá-la e o resultado adiado que será examinado.
+**Problema.** Um pedido de autoria não contém necessariamente tudo o que muda o
+desenho do curso. Ao mesmo tempo, transformar a abertura em questionário fixo
+produz perguntas irrelevantes, repete informações já disponíveis e pode
+confundir uma condição do contexto com uma regra pedagógica universal.
 
-Confusão representacional, pré-requisito ausente, enunciado ambíguo, navegação desnecessária e carga cognitiva extrínseca não são dificuldades desejáveis. Se o estudante não dispõe de base ou apoio suficiente para se engajar na operação-alvo, aumentar o esforço apenas acrescenta atrito. A decisão de produto é, portanto, evitar dificuldade gratuita; a possível contribuição de recuperação, discriminação, espaçamento ou alternância permanece uma hipótese condicionada e empiricamente avaliável.
+**Alternativas e requisitos.** A autoria poderia aplicar sempre o mesmo estilo,
+perguntar tudo novamente ou começar a produzir com lacunas silenciosas. Em vez
+disso, precisa consultar primeiro o brief, as fontes, o curso e as decisões já
+registradas; distinguir o que está documentado do que é apenas hipótese; e
+interromper para dialogar somente quando uma informação ausente ou contraditória
+mudaria materialmente objetivo, escopo, pré-requisito, sequência, representação,
+prática ou dependência de um ambiente externo.
 
-## Representação adequada
+**Decisão.** Antes de materializar cards, a autoria assume uma
+**responsabilidade diagnóstica contextual**: organiza as condições de
+aprendizagem conhecidas, as exigências do conteúdo e as dificuldades previstas,
+e liga cada dificuldade relevante a uma resposta de desenho proposta, aos
+passos e packages que a concretizam e a critérios observáveis. Essa
+síntese é apresentada à pessoa autora para confirmação ou correção. Ela não é
+um diagnóstico clínico, psicométrico ou automático dos estudantes.
 
-Mayer (2009) argumenta que palavras e imagens podem favorecer a compreensão quando são combinadas de modo coerente. No AraLearn, essa ideia aparece nos recursos de card. Uma matriz deve preservar linhas e colunas. Um plano cartesiano deve mostrar posição e deslocamento. Um grafo deve preservar vértices e arestas. Um fluxograma deve explicitar sequência, decisão e repetição.
+Uma **condição contextual** descreve o cenário, por exemplo, conhecimento prévio
+que pode ser presumido, convenção disciplinar, dispositivo, idioma ou acesso a
+laboratório. Uma **decisão local** define o que fazer numa microssequência, como
+introduzir um pré-requisito, usar um exemplo, escolher uma representação,
+acrescentar prática ou declarar que um meio indispensável não está disponível.
+A mesma condição pode exigir respostas diferentes conforme a operação e o
+conteúdo. Por isso, o AraLearn não adota uma pedagogia global calibrável que
+determine o curso inteiro. Objetivos, cobertura e invariantes continuam comuns;
+o que não existe é uma configuração global de estilo que substitua as decisões
+locais.
 
-A forma não é decoração. Ela participa do conteúdo quando a relação espacial, tabular, hierárquica ou operacional é parte do que se aprende.
+**Fundamentação.** A utilidade de orientação, exemplos e resolução de problemas
+pode mudar com o conhecimento prévio e a tarefa, fenômeno discutido como
+*expertise reversal* ([Kalyuga (2007)](referencias.md#ref-kalyuga2007expertisereversal)). Em análise de circuitos, por exemplo, a ordem entre exemplo e problema
+produziu resultados diferentes conforme o conhecimento prévio
+([Reisslein et al. (2006)](referencias.md#ref-reisslein2006expertisereversal)). Esses achados sustentam a necessidade de tratar a escolha como
+contextual; não fornecem um mecanismo para inferir automaticamente o que cada
+pessoa sabe nem demonstram a eficácia do produto.
 
-Cada card materializa a representação escolhida em uma ou mais instâncias de
-packages, orientadas pela evidência expressa em `covers` e `checks`. A prática
-deve preservar a forma necessária à operação, sem reduzir código, tabela,
-árvore, grafo, matriz ou fórmula a uma pergunta textual apenas por facilidade
-de produção.
+**Operacionalização.** Condições estáveis ficam no brief; o resumo da decisão
+conserva condição e exigência; `pedagogicalDiagnosis.difficultyResponses`
+preserva somente os pares relevantes de dificuldade e resposta ligados à
+microssequência. As referências locais aos passos e packages existem no
+blueprint de trabalho, mas não são copiadas para a continuidade. Não persistem
+raciocínio privado do modelo nem o transcript integral do diálogo. Na
+auditoria, cada resposta prometida deve aparecer no plano e nos cards; também
+se procuram resposta ausente, densidade excessiva, prática antes da base,
+representação inadequada, perda de cobertura e dependência de meio externo
+indisponível.
 
-Quando o estudante completa uma estrutura, a lacuna fica no próprio lugar em que o raciocínio ocorre: uma célula, um trecho de código, um rótulo, um peso, uma coordenada ou um termo de fórmula. A autoria descreve isso por campos JSON conhecidos. O AraLearn valida e compila esses campos de modo determinístico; não tenta converter instruções em português em marcação visual.
+**Consequências, limites e responsabilidade.** A pessoa autora continua
+responsável por confirmar o público, julgar as hipóteses, revisar fontes e
+aprovar decisões. O sistema pode tornar inconsistências e lacunas observáveis,
+mas não mede domínio individual, não produz sozinho diagnóstico de domínio, não
+certifica adequação disciplinar e não prediz resultados de aprendizagem.
 
-## Autonomia com suporte
+## Profundidade sem condensação
 
-Zimmerman (2002) define aprendizagem autorregulada como processo em que o estudante planeja, monitora e ajusta suas estratégias. O AraLearn tenta apoiar essa autorregulação ao oferecer uma estrutura visível: o estudante organiza trilhas, escolhe a etapa, acompanha o progresso, registra comentários e continua.
+### Explicação progressiva
 
-Vygotsky (1978) ajuda a pensar a aprendizagem como processo mediado por instrumentos, linguagem e interação. Wood, Bruner e Ross (1976) analisam formas contingentes de apoio em tarefas de resolução de problemas. No AraLearn, a microssequência funciona como uma forma de apoio local: delimita o problema, oferece prática e permite retirada progressiva de suporte conforme a trilha avança. Essa aproximação é uma hipótese de design; não demonstra, por si só, que a estrutura do produto realize o mecanismo estudado pelos autores.
+**Problema.** Uma explicação pode ser curta e ainda assim exigir muitos
+conhecimentos ocultos. O estudante novato encontra termos, símbolos e relações
+antes de saber que problema eles resolvem. Expandir o mesmo parágrafo não
+resolve necessariamente a dificuldade; apenas aumenta sua densidade.
 
-Freire (2021) é relevante por outra razão. Autonomia não significa abandono do estudante, nem consumo passivo de material pronto. No AraLearn, a pessoa escolhe cursos, organiza o próprio percurso e pode revisar, editar ou gerar uma nova revisão. A área de autoria local permite experimentar sem alterar o artefato oficial; somente uma nova publicação validada substitui o ponteiro do catálogo. A autoria precisa preservar revisão humana; a IA não deve ser tratada como professora automática.
+**Alternativas e requisitos.** Resumir favorece rapidez de leitura, mas pode
+retirar fundamentos. Acumular detalhes desde o primeiro contato preserva
+informação, mas pode impedir a construção de um modelo inicial. A solução deve
+começar por uma situação inteligível, introduzir o vocabulário necessário e
+acrescentar camadas até alcançar a profundidade definida pelo escopo.
 
-## Erro como objeto de estudo
+**Decisão.** O AraLearn não fixa quantidade de cards de teoria. A explicação
+parte do que uma pessoa leiga precisa compreender para situar o objeto e avança
+em complexidade sem omitir os fundamentos necessários à prática.
 
-O erro útil é aquele que revela uma distinção importante. Confundir valor e endereço em C, trocar linha por coluna em matriz, inverter origem e destino em uma aresta ou confundir condição de entrada e saída em um laço são erros que podem ensinar.
+**Fundamentação.** A carga imposta pela busca e pela integração de elementos
+precisa ser considerada no desenho ([Sweller (1988)](referencias.md#ref-sweller1988cognitiveload); [Sweller et al. (1998)](referencias.md#ref-sweller1998architecture)). A segmentação pode favorecer a aprendizagem em
+certas condições, mas seus efeitos dependem do conteúdo, da tarefa e do modo de
+apresentação ([Rey et al. (2019)](referencias.md#ref-rey2019segmenting)).
 
-Por isso, o AraLearn admite papéis como correção de erro e campos como `errors` em tópicos. Distratores não devem ser absurdos; devem representar alternativas plausíveis que ajudem o estudante a discriminar o conceito.
+**Operacionalização.** Antes da produção, a autoria explicita:
 
-## Cards dentro da microssequência
+1. o referente concreto ou problema que situa o assunto;
+2. os conceitos e relações indispensáveis;
+3. os conhecimentos que não podem ser presumidos;
+4. a ordem de introdução da terminologia e da notação;
+5. os exemplos que tornam a operação observável;
+6. as práticas que demonstram compreensão e uso.
 
-Os cards são peças de uma etapa. Podem cumprir funções como explicar, exemplificar, praticar, revisar, corrigir ou preparar continuidade. Essa organização evita dois extremos: teoria sem aplicação e exercício sem contexto.
+Uma tabela densa, uma fórmula ou um diagrama só aparece depois que os elementos
+necessários à sua leitura foram apresentados. Quando um card acumula objetivos
+independentes, ele é dividido; quando uma relação só faz sentido em conjunto,
+ela permanece integrada.
 
-A microssequência mantém teoria, prática e feedback no mesmo recorte didático.
-Uma nova revisão pode preservar a identidade de um elemento quando o autor
-declara que ele continua sendo o mesmo e a alteração respeita o contrato. O
-sistema não infere equivalência semântica nem altera uma revisão já publicada.
+**Consequências.** O número de cards passa a ser consequência do planejamento,
+e não orçamento pedagógico anterior ao conteúdo. Uma explicação simples pode
+ser profunda porque simplifica a entrada, não o alcance final.
 
-## Estudante-trabalhador
+**Limites e evidência.** Mais cards não significam automaticamente melhor
+ensino. Repetição improdutiva, perda de relações e navegação excessiva também
+podem aumentar a carga. A qualidade deve ser examinada por coerência,
+compreensão e prática, não por volume.
 
-O foco em estudantes-trabalhadores orienta escolhas didáticas. O projeto precisa funcionar para quem estuda no celular, em períodos fragmentados, com cansaço e, muitas vezes, sem conexão confiável. Essa condição favorece etapas delimitadas, prática objetiva, retomada e uma réplica local dos dados necessários.
+### Microteoria
 
-O objetivo não é reduzir a aprendizagem a pequenas doses sem continuidade. É o oposto: usar unidades manejáveis para preservar uma trilha mais longa.
+**Microteoria** é o conjunto de cards teóricos que fornece fundamento
+suficiente para as práticas de uma microssequência. O prefixo “micro” indica um
+recorte local no percurso; não significa resumo, superficialidade, duração
+fixa ou adoção automática de qualquer modelo de microlearning.
 
-## Referências citadas
+Uma microteoria é suficiente quando o estudante encontra no próprio percurso:
 
-Uma discussão específica das decisões de `resources`, com matriz de evidências
-e referências adicionais, está em
-[Fundamentação pedagógica dos resources](fundamentacao-pedagogica-dos-resources.md).
+- o problema e o contexto do conceito;
+- os termos e símbolos empregados;
+- as relações necessárias para compreender a operação;
+- pelo menos um exemplo apropriado quando a tarefa exigir modelagem;
+- os limites e contrastes relevantes;
+- base explícita para tudo o que será cobrado nas práticas locais.
 
-Bjork, R. A., & Bjork, E. L. (2011). Making things hard on yourself, but in a good way: Creating desirable difficulties to enhance learning. In M. A. Gernsbacher et al. (Eds.), *Psychology and the real world*. Worth.
+## Apoio inicial e retirada gradual
 
-Cepeda, N. J., Vul, E., Rohrer, D., Wixted, J. T., & Pashler, H. (2008). Spacing effects in learning: A temporal ridgeline of optimal retention. *Psychological Science*, 19(11), 1095-1102. <https://doi.org/10.1111/j.1467-9280.2008.02209.x>
+**Problema.** Pedir solução independente cedo demais pode transformar a
+aprendizagem em busca aleatória. Manter todos os passos resolvidos, por outro
+lado, pode impedir que o estudante assuma progressivamente a operação.
 
-Freire, P. (2021). *Pedagogia da autonomia: saberes necessários à prática educativa*. Paz e Terra.
+**Alternativas e requisitos.** A prática pode começar por problemas completos,
+por imitação permanente ou por exemplos seguidos de retirada de apoio. Para
+novatos, o desenho precisa tornar a operação visível antes de exigir sua
+execução autônoma; o apoio deve diminuir sem ocultar os dados necessários ao
+problema.
 
-Karpicke, J. D., & Roediger III, H. L. (2008). The critical importance of retrieval for learning. *Science*, 319(5865), 966-968. <https://doi.org/10.1126/science.1152408>
+**Decisão.** Quando a natureza da tarefa justificar, a progressão combina
+explicação, exemplo resolvido, prática guiada e prática com menos apoio.
 
-Mayer, R. E. (2009). *Multimedia learning* (2nd ed.). Cambridge University Press. <https://doi.org/10.1017/CBO9780511811678>
+**Fundamentação.** Estudos sobre exemplos resolvidos e transição para resolução
+independente sustentam essa possibilidade em condições delimitadas
+([Sweller e Cooper (1985)](referencias.md#ref-sweller1985workedexamples); [Renkl et al. (2004)](referencias.md#ref-renkl2004fading)). O nível de conhecimento prévio
+modifica a utilidade do apoio; por isso, a sequência não é uma receita fixa.
 
-Renkl, A., Atkinson, R. K., & Große, C. S. (2004). How fading worked solution steps works: A cognitive load perspective. *Instructional Science*, 32, 59-82. <https://doi.org/10.1023/B:TRUC.0000021815.74806.f6>
+**Operacionalização.** A retirada pode ocorrer por passos, dicas, decisões ou
+estrutura parcialmente preenchida. Valores, casos, coordenadas, código-base e
+demais informações particulares permanecem no card. Retira-se a ajuda para
+decidir, não o enunciado necessário para raciocinar.
 
-Sweller, J. (1988). Cognitive load during problem solving: Effects on learning. *Cognitive Science*, 12(2), 257-285. <https://doi.org/10.1207/s15516709cog1202_4>
+**Consequências.** A prática deixa de ser uma passagem abrupta da leitura para
+o desempenho completo. Também se torna possível identificar em qual etapa uma
+incompreensão aparece.
 
-Sweller, J., & Cooper, G. A. (1985). The use of worked examples as a substitute for problem solving in learning algebra. *Cognition and Instruction*, 2(1), 59-89. <https://doi.org/10.1207/s1532690xci0201_3>
+**Limites e evidência.** A retirada excessivamente lenta pode produzir
+dependência; a rápida pode reintroduzir busca improdutiva. A decisão precisa ser
+avaliada por operação, experiência e resultado.
 
-Sweller, J., Van Merriënboer, J. J. G., & Paas, F. (1998). Cognitive architecture and instructional design. *Educational Psychology Review*, 10, 251-296. <https://doi.org/10.1023/A:1022193728205>
+## Prática orientada pelo gesto cognitivo
 
-Taylor, K., & Rohrer, D. (2010). The effects of interleaved practice. *Applied Cognitive Psychology*, 24(6), 837-848. <https://doi.org/10.1002/acp.1598>
+Um **gesto cognitivo** é a operação que a pessoa precisa realizar sobre o
+conteúdo: recordar, localizar, discriminar, relacionar, ordenar, completar,
+explicar, calcular, transformar, provar ou aplicar, entre outras. O termo é
+usado como instrumento de planejamento, não como taxonomia psicológica
+universal.
 
-Vygotsky, L. S. (1978). *Mind in society: The development of higher psychological processes*. Harvard University Press.
+**Problema.** Variar componentes visuais sem variar a operação produz aparência
+de diversidade. Aplicar sempre múltipla escolha também pode reduzir tarefas de
+produção a reconhecimento.
 
-Wood, D., Bruner, J. S., & Ross, G. (1976). The role of tutoring in problem solving. *Journal of Child Psychology and Psychiatry*, 17(2), 89-100. <https://doi.org/10.1111/j.1469-7610.1976.tb00381.x>
+**Alternativas e requisitos.** A autoria poderia selecionar modalidades por
+preferência, por distribuição fixa ou pela evidência necessária. O formato
+precisa corresponder ao que o objetivo exige e permanecer situado no objeto
+representado.
 
-Zimmerman, B. J. (2002). Becoming a self-regulated learner: An overview. *Theory Into Practice*, 41(2), 64-70. <https://doi.org/10.1207/s15430421tip4102_2>
+**Decisão.** A prática é escolhida pelo gesto cognitivo e pode combinar:
+
+- seleção de uma ou mais alternativas quando discriminar opções é relevante;
+- lacuna localizada dentro de texto, tabela, código, matriz, fórmula ou
+  diagrama;
+- digitação quando produzir a resposta faz parte do objetivo;
+- ordenação quando a sequência é o próprio objeto de conhecimento;
+- associação quando estabelecer correspondências é a operação pretendida.
+
+**Fundamentação.** A prática de recuperação apresenta benefícios em diferentes
+contextos educacionais, com variação entre tarefas e resultados
+([Karpicke e Roediger (2008)](referencias.md#ref-karpicke2008retrieval); [Agarwal et al. (2021)](referencias.md#ref-agarwal2021retrieval); [Carpenter et al. (2022)](referencias.md#ref-carpenter2022spacing)). A
+transferência para tarefas novas não é automática ([Pan e Rickard (2018)](referencias.md#ref-pan2018transfer)).
+
+**Operacionalização.** Cada prática declara o que verifica e qual conhecimento
+anterior a torna respondível. Lacunas são independentes e permanecem no lugar
+estrutural em que a decisão ocorre. A resposta não aparece antecipadamente na
+exposição nem é revelada antes de ação explícita.
+
+**Consequências.** A diversidade passa a ter função, e não valor ornamental.
+Uma mesma representação pode servir à exposição e a práticas diferentes sem
+perder sua gramática acadêmica.
+
+**Limites e evidência.** Tocar numa opção não caracteriza, por si só, prática de
+recuperação. Reconhecimento, produção e ordenação impõem demandas distintas e
+precisam ser avaliados de acordo com o objetivo.
+
+## Distribuição e intercalação
+
+**Problema.** Um conceito praticado apenas logo após a exposição pode produzir
+desempenho imediato sem informar retenção. Misturar conteúdos aleatoriamente,
+contudo, pode introduzir confusão sem benefício.
+
+**Alternativas e requisitos.** A prática pode ser concentrada, distribuída no
+tempo ou intercalada com categorias relacionadas. O intervalo deve considerar
+o horizonte de retenção, e a intercalação deve exigir discriminação entre
+operações comparáveis.
+
+**Decisão.** O planejamento registra dependências e retomadas, sem adotar
+intervalo universal. A intercalação é usada quando reconhecer qual conceito ou
+procedimento se aplica faz parte da aprendizagem.
+
+**Fundamentação.** A prática distribuída possui respaldo amplo, mas o intervalo
+favorável depende do intervalo de retenção e de outras condições
+([Cepeda et al. (2006)](referencias.md#ref-cepeda2006distributed); [Cepeda et al. (2008)](referencias.md#ref-cepeda2008spacing)). A intercalação tem moderadores
+próprios, especialmente a similaridade entre categorias
+([Brunmair e Richter (2019)](referencias.md#ref-brunmair2019interleaving); [Taylor e Rohrer (2010)](referencias.md#ref-taylor2010interleaved)).
+
+**Operacionalização.** Conceitos são retomados depois de separação significativa
+e práticas próximas podem ser alternadas somente após a base de cada operação
+estar estabelecida.
+
+**Consequências.** O curso pode verificar discriminação e retenção sem depender
+da ordem imediata da explicação.
+
+**Limites e evidência.** Nenhum intervalo ou padrão de intercalação serve a
+todos os conteúdos. A seleção exige justificativa e avaliação situada.
+
+## Feedback acionável e estado não punitivo
+
+**Problema.** “Correto” ou “incorreto” informa um resultado, mas não
+necessariamente ajuda a entender o erro ou escolher a próxima ação. Acumular
+tentativas, notas e rankings também pode alterar a natureza da prática sem que
+isso seja necessário ao objetivo.
+
+**Alternativas e requisitos.** O sistema poderia avaliar a cada toque, revelar
+automaticamente a resposta, apenas registrar acerto ou oferecer feedback
+específico após confirmação. O estudante precisa controlar o momento de
+confirmar, poder tentar novamente e receber informação relacionada à distinção
+em estudo.
+
+**Decisão.** O botão principal confirma a resposta e, no toque seguinte,
+avança. A resposta correta só é revelada por ação explícita. Tentativas, ajuda,
+tempo e respostas reveladas não são convertidos em nota, ranking ou diagnóstico
+automático.
+
+**Fundamentação.** O efeito do feedback varia conforme foco, conteúdo,
+oportunidade de ação e contexto ([Hattie e Timperley (2007)](referencias.md#ref-hattie2007feedback); [Shute (2008)](referencias.md#ref-shute2008feedback); [Morris et al. (2021)](referencias.md#ref-morris2021formative)). *Feedback literacy* inclui interpretar, julgar e usar o
+feedback, e não apenas recebê-lo ([Carless e Boud (2018)](referencias.md#ref-carless2018feedbackliteracy); [Wood (2021)](referencias.md#ref-wood2021dialogic)). Avaliações frequentes de baixa consequência apresentam
+resultados médios positivos em determinados contextos, com heterogeneidade
+([Sotola e Credé (2021)](referencias.md#ref-sotola2021quizzes)).
+
+**Operacionalização.** O feedback explica regra, causa, contraste ou próximo
+passo. Distratores representam erros plausíveis. A pessoa pode limpar,
+repetir e revelar a resposta sem penalização acumulada.
+
+**Consequências.** O erro pode ser tratado como informação para revisão, e não
+como marca permanente sobre o estudante.
+
+**Limites e evidência.** O estado não punitivo é uma política normativa. Não há
+base para afirmar, sem estudo próprio, que ele reduz ansiedade ou melhora a
+aprendizagem.
+
+## Representações como parte do conteúdo
+
+**Problema.** Relações espaciais, tabulares, hierárquicas, temporais ou formais
+podem se perder quando convertidas em prosa. O problema inverso ocorre quando
+um diagrama é usado apenas para “variar” e introduz uma notação desnecessária.
+
+**Alternativas e requisitos.** Texto e tabela devem continuar sendo usados
+quando preservam adequadamente o objeto. Uma representação especializada só se
+justifica quando sua estrutura é necessária à compreensão ou à operação e
+segue uma convenção reconhecível no domínio.
+
+**Decisão.** O catálogo de recursos descreve intenção, estrutura, operações,
+condições de uso e limitações. A autoria escolhe primeiro o tipo de
+representação e consulta depois seu contrato específico. O **kernel**, núcleo
+comum que descobre, valida e compõe módulos de representação, materializa
+o contrato de forma determinística.
+
+**Fundamentação.** Representações externas podem complementar informação,
+restringir interpretações ou apoiar novas relações, mas sua coordenação também
+cria demanda cognitiva ([Ainsworth (2006)](referencias.md#ref-ainsworth2006deft)). Coerência e contiguidade são
+relevantes quando texto e imagem precisam ser integrados
+([Mayer (2009)](referencias.md#ref-mayer2009multimedia); [Ginns (2006)](referencias.md#ref-ginns2006contiguity)).
+
+**Operacionalização.** Uma matriz preserva linhas e colunas; um grafo preserva
+vértices e arestas; um plano cartesiano preserva eixos e coordenadas; uma glosa
+interlinear preserva alinhamento entre forma, morfema, glosa e tradução. A
+lacuna ou digitação aparece dentro do objeto quando ali ocorre o raciocínio.
+Rótulos textuais podem ser editados; topologia, identificadores e estrutura
+permanecem protegidos.
+
+**Consequências.** O recurso visual deixa de ser decoração e torna-se portador
+de uma relação que o estudante precisa aprender a interpretar e usar.
+
+**Limites e evidência.** Ausência de sobreposição e validade do contrato são
+condições técnicas, não demonstração didática. Adequação acadêmica requer
+confronto com convenções do domínio; compreensão requer tarefas com pessoas.
+
+## Continuidade móvel e retomada
+
+**Problema.** Interrupções podem exigir reconstruir o objetivo suspenso e o
+estado da tarefa ([Monk et al. (2008)](referencias.md#ref-monk2008resumption); [Foroughi et al. (2016)](referencias.md#ref-foroughi2016resumption)). Dependência de
+rede também pode transformar uma ação local simples em espera ou bloqueio.
+
+**Alternativas e requisitos.** Um aplicativo pode depender do servidor,
+armazenar apenas uma página em cache ou manter localmente o conteúdo e o estado
+necessários ao estudo. A interação corrente precisa permanecer imediata; a
+sincronização deve ocorrer sem bloquear o gesto principal.
+
+**Decisão.** O estudo utiliza uma réplica local do conteúdo sincronizado e do
+estado corrente. Tema, resposta em elaboração, confirmação e avanço são
+operações locais; a conectividade não integra seu caminho crítico.
+
+**Fundamentação.** A literatura de interrupção sustenta tratar a retomada como
+problema próprio, mas não prova que uma implementação específica o resolve. A
+diversidade de interfaces de aprendizagem móvel também desaconselha declarar
+um layout universal ([Ahmad Faudzi et al. (2023)](referencias.md#ref-faudzi2023mobileui)).
+
+**Operacionalização.** O percurso registra o ponto corrente necessário para
+continuar. Diagramas preservam legibilidade móvel e, quando bidimensionais,
+usam área de rolagem própria. Preferências de tema permanecem locais.
+
+**Consequências.** A pessoa pode continuar conteúdo já disponível e retomar seu
+ponto sem esperar uma operação remota.
+
+**Limites e evidência.** Funcionamento offline pode ser demonstrado
+tecnicamente. Redução de custo de retomada, continuidade de estudo e efeitos
+educacionais permanecem resultados a investigar.
+
+## Autonomia com suporte e responsabilidade humana
+
+**Problema.** Controle aparente pode significar apenas exposição a muitas
+opções. No extremo oposto, automação sem possibilidade real de rejeição ou
+reversão transfere decisões pedagógicas para mecanismos opacos.
+
+**Alternativas e requisitos.** A pessoa pode receber um percurso fechado, um
+ambiente sem estrutura ou apoio ajustável com consequências compreensíveis.
+Autoria assistida precisa separar sugestão, decisão, validação e
+responsabilidade.
+
+**Decisão.** O AraLearn oferece percurso visível, escolha de trilhas, edição
+contextual, versões reversíveis e assistência conversacional delimitada. A
+inteligência artificial (IA) propõe e transforma conteúdo sob escopo explícito;
+a decisão editorial continua humana.
+
+**Fundamentação.** Autorregulação envolve planejamento, execução, monitoramento
+e reflexão ([Zimmerman (2002)](referencias.md#ref-zimmerman2002selfregulated); [Panadero (2017)](referencias.md#ref-panadero2017selfregulated)). Agência
+não se reduz à presença de controles ([Bandura (2001)](referencias.md#ref-bandura2001agency)), e controle do
+aprendiz em tecnologia educacional apresenta resultados heterogêneos
+([Karich et al. (2014)](referencias.md#ref-karich2014learnercontrol)). Diretrizes de interação humano–IA recomendam
+comunicar capacidades e limites, permitir correção e sustentar controle
+([Amershi et al. (2019)](referencias.md#ref-amershi2019humanai)).
+
+**Operacionalização.** O estudante pode marcar conteúdo para revisão, registrar
+observações e editar textos autorizados. A assistência recebe contexto somente
+para leitura e alvos graváveis separados, permite iteração e conserva meios de
+desfazer ou restaurar. Estrutura e permissões não são inferidas de linguagem
+livre.
+
+**Consequências.** A automação funciona como instrumento de autoria, não como
+substituto da avaliação humana. A proveniência pode distinguir contribuições e
+revisões.
+
+**Limites e evidência.** A existência de botões de confirmação e reversão pode
+ser apenas controle simbólico. Agência, compreensão do escopo e qualidade
+autoral exigem avaliação própria.
+
+## Critérios de qualidade de uma microssequência
+
+Uma microssequência pode ser auditada pelas seguintes perguntas:
+
+1. o objetivo descreve conhecimento ou desempenho observável?
+2. os pré-requisitos foram ensinados ou explicitamente ligados ao percurso?
+3. o primeiro card situa o problema para quem encontra o assunto pela primeira
+   vez?
+4. a terminologia aparece depois de um referente compreensível?
+5. a teoria cobre tudo o que as práticas cobram?
+6. exemplos e representações preservam as convenções acadêmicas pertinentes?
+7. as práticas variam por função, e não por ornamentação?
+8. o apoio diminui de maneira justificável?
+9. o feedback permite compreender e agir?
+10. há retomada quando retenção ou discriminação posterior são relevantes?
+11. o card permanece autocontido nos dados particulares necessários à tarefa?
+12. hipóteses, decisões e resultados estão descritos sem alegações indevidas?
+
+## Exemplo abstrato de progressão
+
+Para ensinar uma operação nova, uma microssequência pode adotar a seguinte
+progressão — sem que ela se torne modelo obrigatório:
+
+1. apresentar uma situação concreta e o problema que exige a operação;
+2. nomear os elementos envolvidos e suas relações;
+3. introduzir a notação, mostrando como ler cada parte;
+4. resolver um caso e justificar cada decisão;
+5. pedir que a pessoa complete um passo no lugar estrutural correspondente;
+6. pedir a execução completa em caso semelhante;
+7. contrastar um erro plausível ou uma categoria próxima;
+8. retomar a operação depois de intervalo significativo;
+9. solicitar aplicação em estrutura nova quando transferência for objetivo.
+
+A quantidade real de cards depende do conteúdo. O exemplo mostra uma lógica de
+progressão, não uma cota de produção.
+
+## Relações com os demais documentos
+
+- A [Revisão de literatura](revisao-de-literatura.md) apresenta a base externa
+  e seus limites.
+- O [Quadro teórico](quadro-teorico.md) converte decisões em proposições
+  examináveis.
+- O [Glossário de construtos](glossario-construtos.md) distingue conceitos
+  teóricos, resultados e termos do produto.
+- A [Fundamentação pedagógica dos recursos](fundamentacao-pedagogica-dos-resources.md)
+  aprofunda as decisões representacionais.
+- A [Matriz de rastreabilidade pedagógica](matriz-rastreabilidade-pedagogica.md)
+  liga fundamento, implementação e avaliação.
+- O [Protocolo de avaliação](protocolo-avaliacao-artefato.md) define como as
+  hipóteses podem ser examinadas sem confundir teste técnico e aprendizagem.
+
+As referências completas e seus identificadores persistentes estão em
+[`referencias.bib`](referencias.bib).

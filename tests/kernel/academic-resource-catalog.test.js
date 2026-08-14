@@ -57,7 +57,8 @@ test("catálogo mantém separadas intenções que antes competiam por um diagram
     "aralearn.resource.flow",
     "aralearn.resource.bpmn_process",
     "aralearn.resource.memory_layout",
-    "aralearn.resource.call_stack"
+    "aralearn.resource.call_stack",
+    "aralearn.resource.terminal_session"
   ].forEach((id) => assert.ok(ids.has(id), id));
 });
 

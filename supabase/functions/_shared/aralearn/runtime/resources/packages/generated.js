@@ -31,6 +31,7 @@ import { matchingResponsePackage } from "./matching-response/index.js";
 import { entityRelationshipPackage } from "./entity-relationship/index.js";
 import { stateTransitionTablePackage } from "./state-transition-table/index.js";
 import { callStackPackage } from "./call-stack/index.js";
+import { terminalSessionPackage } from "./terminal-session/index.js";
 
 export const RESOURCE_PACKAGE_DEFINITIONS = Object.freeze([
   paragraphPackage,
@@ -64,7 +65,8 @@ export const RESOURCE_PACKAGE_DEFINITIONS = Object.freeze([
   matchingResponsePackage,
   entityRelationshipPackage,
   stateTransitionTablePackage,
-  callStackPackage
+  callStackPackage,
+  terminalSessionPackage
 ]);
 
 export {
@@ -99,5 +101,6 @@ export {
   matchingResponsePackage,
   entityRelationshipPackage,
   stateTransitionTablePackage,
-  callStackPackage
+  callStackPackage,
+  terminalSessionPackage
 };

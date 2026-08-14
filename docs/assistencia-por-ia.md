@@ -1,424 +1,346 @@
-# Assistência de linguagem
+# Assistência por modelo de linguagem
 
-O AraLearn oferece duas formas complementares de autoria:
+O AraLearn usa modelos de linguagem como instrumentos de autoria, não como
+fontes automáticas de verdade. A pessoa delimita o alvo e descreve a mudança;
+o modelo propõe conteúdo estruturado; contratos e validadores determinam o que
+pode ser aplicado; a pessoa avalia o resultado.
 
-- GPT personalizado com Action ou clientes compatíveis pela integração MCP,
-  para planejar e transformar cursos e suas partes;
-- assistência por API no próprio conteúdo, para intervenções delimitadas em
-  cards, microssequências e lições.
+Essa divisão responde a um problema concreto. Um pedido em linguagem natural
+é conveniente, mas pode ser ambíguo. Um modelo também pode alterar mais do que
+foi solicitado ou produzir uma estrutura inválida. Por outro lado, restringir
+toda autoria a formulários técnicos tornaria correções pedagógicas simples
+desnecessariamente difíceis. O AraLearn combina linguagem natural para
+expressar intenção com limites determinísticos para exercer autoridade.
 
-A assistência por API é bottom-up: parte do trecho que a pessoa está vendo e
-da seleção feita nessa tela. Ela não substitui a autoria estrutural ampla do
-GPT personalizado.
+## Duas escalas de autoria
 
-## Autoria estrutural pelo GPT personalizado
+Há duas formas complementares de assistência:
 
-Planejar cursos, organizar módulos, lições e microssequências, complementar
-árvores existentes e recombinar partes entre cursos são responsabilidades do
-GPT personalizado. O painel da interface chamado **Chatbot** fornece os
-materiais e endereços necessários para configurar sua Action; a área
-**Plugin** descreve separadamente a integração MCP para clientes compatíveis.
-As duas superfícies chegam ao mesmo executor de autoria; não são dois motores
-de conteúdo.
+| Escala | Ponto de partida | Finalidade |
+| --- | --- | --- |
+| contextual | conteúdo selecionado no aplicativo | corrigir texto, recompor um card ou alterar recipientes delimitados |
+| estrutural | curso ou workspace acessado por uma integração | planejar cursos, reorganizar partes, auditar e publicar |
 
-Ambas resolvem as capacidades da conta conectada no servidor. A passagem de um
-curso privado para o catálogo ocorre somente por esse fluxo de autoria
-estrutural, nunca por um botão da assistência bottom-up.
+A assistência contextual é **ascendente**: começa no objeto que a pessoa está
+vendo e pode subir somente até o recipiente explicitamente selecionado. A
+autoria estrutural é **descendente**: parte do propósito do curso, planeja a
+árvore e materializa suas unidades. A primeira não é uma versão reduzida nem
+um fallback da segunda; cada uma possui autoridade e contratos próprios.
 
-## Autoria integrada ao conteúdo
+Este capítulo explica principalmente a assistência contextual. O percurso
+estrutural é apresentado em [Criar cursos pelo chat](criar-cursos-pelo-chat.md)
+e aprofundado em [Autoria por Model Context Protocol](autoria-mcp.md).
 
-Visualização, edição manual e assistência por API usam a mesma árvore e o
-mesmo card renderizado. Ao ativar a edição, o conteúdo selecionável recebe
-apenas uma indicação visual de foco; as instâncias de packages não mudam de
-tamanho nem são copiadas para outro painel.
+## A seleção como limite de autoridade
 
-O esqueleto, a largura, a altura, a tipografia e os espaçamentos do alvo são
-os mesmos nos três modos. Na edição, o texto digitável ocupa a caixa original
-e rola dentro dela se ultrapassar o espaço disponível. Salvar e cancelar ficam
-no rodapé da tela, nunca dentro do card ou da instância selecionada.
+Ao tocar em um card ou em uma parte selecionável de um recurso, a pessoa
+declara o maior conjunto de dados que aquela solicitação pode modificar. O
+pedido pode escolher uma operação menor dentro desse conjunto, mas não pode
+ampliá-lo.
 
-O modo Editar conserva o renderer do package: muda apenas a
-editabilidade do texto que possui caminho inequívoco no contrato. Identidades,
-relações, respostas, topologia e demais elementos estruturais continuam
-somente leitura. Em packages estruturados, um texto só se torna editável
-quando pode ser associado deterministicamente ao campo de origem.
+Exemplo: se somente o rótulo de um nó foi selecionado, “melhore esta
+explicação” pode alterar esse texto. “Acrescente outro nó” exige selecionar o
+card inteiro, porque muda a estrutura da representação. Mesmo que o modelo
+devolva um novo nó, o resultado é rejeitado quando a seleção não o autoriza.
 
-Em escolhas, podem ser alterados o texto, o código e o feedback de cada opção,
-mas não a opção correta, o modo de seleção nem a identidade ou a ordem. Uma
-lacuna liga-se por caminho formal a um campo textual do package de conteúdo;
-a edição não muda por acidente sua resposta, seus distratores ou seu modo.
-Packages no slot `feedback` usam a mesma superfície textual. Campos longos
-respeitam a caixa da representação em tela estreita e a composição do teclado
-móvel antes de serem salvos.
+Conteúdo vizinho pode ser enviado para preservar coerência, mas é marcado como
+**contexto somente para leitura**. Essa separação é feita antes da chamada ao
+serviço. Portanto, a obediência ao escopo não depende de o modelo interpretar
+corretamente uma frase como “não altere os outros cards”.
 
-Na edição manual, o texto autorizado torna-se editável na própria instância.
-Na assistência por API, um toque ou clique seleciona um alvo e outro toque o
-retira da seleção. O botão de brilhos abre a conversa na própria superfície;
-configuração do serviço e envio aparecem somente nesse momento. Fechar a caixa
-não perde a seleção corrente. A caixa flutua acima do rodapé e não reduz nem
-desloca o card, suas representações ou a lista estrutural.
+## Edição no próprio conteúdo
 
-Em lições e microssequências, o próprio componente de card renderizado é a
-superfície de seleção:
-toques sucessivos acumulam alvos, e a seleção permanece ao atualizar a tela.
-O contorno é desenhado para dentro, sem cortar a borda nem alterar a largura.
+Leitura, edição manual e assistência usam o mesmo card renderizado. O sistema
+não converte a representação em um formulário de JSON nem abre uma cópia
+paralela do conteúdo.
 
-A seleção concede a autoridade máxima daquela solicitação. O texto do pedido
-pode escolher uma operação dentro desse limite, mas nunca ampliar o escopo.
-Conteúdo não selecionado pode ajudar a interpretar o pedido, sempre como
-contexto somente leitura.
+No modo manual, somente folhas textuais que o contrato identifica de maneira
+inequívoca se tornam editáveis. Relações, identidades, coordenadas, respostas
+corretas, topologia e outros elementos estruturais permanecem protegidos. Essa
+decisão reduz a chance de uma correção de redação corromper o objeto
+representado.
 
-No card, a operação pertence a uma lista fechada:
+Na assistência, toques sucessivos acrescentam ou retiram objetos da seleção.
+O contorno visual é desenhado sem alterar as dimensões do card. A conversa
+aparece junto da superfície de estudo; fechar a conversa não destrói a seleção
+atual.
 
-- `edit_text` altera somente caminhos textuais autorizados nas instâncias
-  selecionadas ou no card inteiro. O modelo devolve pares de caminho e valor;
-  o AraLearn reconstrói o card e rejeita qualquer mudança estrutural;
-- `recompose_card` exige o card inteiro e pode trocar sua composição. O catálogo
-  propõe alternativas com uma ou mais instâncias em `content`, uma resposta
-  compatível quando o papel é prática e os feedbacks pertinentes. O modelo
-  escolhe uma alternativa e preenche somente seus contratos exatos;
-- `restore_version` restaura localmente uma versão exata da conversa, sem pedir
-  ao modelo que tente reproduzi-la.
+## Operações em um card
 
-Selecionar somente instâncias autoriza apenas `edit_text`. Ao selecionar o
-card inteiro, o pedido determina se basta alterar textos ou se é necessário
-recompor sua representação. Identidade e posição do card permanecem fixas nas
-três operações.
+O card admite três operações fechadas.
 
-Na classificação das demais operações bottom-up, o provider recebe somente o
-pedido, a autoridade calculada e a lista fechada de operações; conteúdo
-pedagógico, guides e cards não participam dessa classificação. `unsupported` é
-uma resposta válida quando o pedido não cabe na seleção, para que uma criação
-fora de escopo nunca seja reinterpretada como atualização. Remover ou mover
-exige que o pedido se refira explicitamente ao card ou à microssequência:
-“remova a redundância do card” é edição de conteúdo, não exclusão do card.
+### Editar texto
 
-### Conversa e versões do card
+`edit_text` altera somente caminhos textuais previamente autorizados. O modelo
+não devolve o card inteiro: devolve pares de caminho e novo valor.
 
-A assistência de card é uma conversa iterativa. Cada novo pedido recebe o
-estado corrente do card, o contexto didático delimitado e até oito turnos da
-conversa ativa. Isso permite pedir uma mudança, avaliar o resultado, refiná-lo,
-desfazê-lo, refazê-lo ou retornar a uma versão anterior sem reexplicar tudo.
+```json
+{
+  "message": "Explicação reescrita sem pressupor o conceito posterior.",
+  "edits": [
+    {
+      "path": "content[0].data.text",
+      "value": "Nova explicação autocontida."
+    }
+  ]
+}
+```
 
-O histórico volátil conserva no máximo oito turnos e nove versões exatas do
-card. Um envio que conclua que nada deve mudar ainda registra a explicação do
-assistente como `no-op`, sem fabricar uma versão ou indicar que houve aplicação.
-Falhas de transporte ou validação não viram turnos. Uma edição feita depois de
-desfazer abre um novo ramo ativo e elimina o refazer daquele ramo abandonado.
+O aplicativo aplica esses pares sobre uma cópia congelada do card e prova que
+nenhum outro campo mudou. Essa forma é mais econômica para modelos menores e
+mais segura do que pedir uma reprodução integral da estrutura.
 
-Pedidos, respostas e versões da conversa não são gravados no curso, no
-IndexedDB nem no Supabase. Uma mudança do mesmo card fora da conversa invalida
-o histórico, em vez de restaurar silenciosamente um estado sobre conteúdo mais
-novo. Esse histórico curto é uma ferramenta de iteração local, não o
-versionamento de proveniência do curso.
+### Recompor o card
 
-## Escopos autorizados
+`recompose_card` exige a seleção do card inteiro. Ela permite trocar ou
+combinar representações, alterar a forma de resposta e reconstruir feedbacks,
+preservando a identidade e a posição do card.
+
+A recomposição ocorre em duas etapas. Primeiro, o sistema procura no catálogo
+uma composição compatível com a intenção pedagógica. Depois, o modelo recebe
+somente os contratos dos recursos escolhidos e preenche esses contratos. O
+catálogo inteiro não é inserido no contexto.
+
+Essa consulta progressiva evita dois extremos: obrigar o modelo a memorizar
+todos os schemas ou transmitir dezenas de contratos em cada pedido. Também
+permite acrescentar um package ao catálogo sem reescrever o prompt geral.
+
+### Restaurar uma versão
+
+`restore_version` move a conversa para uma versão exata já existente. A
+restauração é local e determinística: não se pede ao modelo que tente lembrar
+ou recriar o texto anterior.
+
+## Conversa, desfazer e ramificações
+
+A assistência do card conserva uma conversa curta durante a sessão. Cada novo
+pedido recebe o card corrente, o contexto didático pertinente e a
+ancestralidade ativa da conversa.
+
+O limite atual é de oito turnos e nove versões do card. Esse limite contém uso
+de memória e evita transformar a conversa em uma cópia histórica do curso.
+Pedidos que resultam em explicação sem mudança são registrados como conversa,
+mas não criam uma versão fictícia. Falhas de transporte ou validação não são
+registradas como se tivessem sido aplicadas.
+
+**Desfazer** e **Refazer** movem um cursor entre versões exatas. Quando a
+pessoa desfaz e depois solicita uma mudança diferente, inicia-se outro ramo; a
+linha de refazer abandonada deixa de ser a linha ativa. Uma alteração externa
+do mesmo card invalida a conversa, porque restaurar um snapshot antigo sobre
+conteúdo novo poderia apagar trabalho legítimo.
+
+Pedido, resposta e versões da conversa não são persistidos no curso, no
+IndexedDB nem no Supabase. O conteúdo confirmado é persistido; o diálogo usado
+para chegar a ele permanece efêmero. Proveniência editorial e conversa de
+assistência são responsabilidades diferentes.
+
+## Autoridade por nível
 
 ### Card
 
-Ao selecionar um ou mais packages, somente esses alvos podem mudar. Os
-identificadores de alvo são fechados:
+- uma ou mais instâncias selecionadas autorizam apenas edição de seus textos;
+- o card inteiro autoriza edição textual ou recomposição;
+- a identidade, o caminho e a posição do card permanecem fixos;
+- esse nível não cria outro card.
 
-- `content:<id>` para uma instância de representação;
-- `response:<id>` para a instância de resposta;
-- `feedback:<id>` para uma instância de explicação posterior.
-
-Selecionar o card inteiro autoriza editar seus textos ou recompor seu conteúdo
-pedagógico. Identidade, caminho e posição permanecem fixos. O nível de card não
-cria outro card nem uma microssequência.
+Cada instância tem um identificador de alvo: `content:<id>` para conteúdo,
+`response:<id>` para resposta e `feedback:<id>` para feedback. Esses
+identificadores ligam a seleção visual ao caminho persistido.
 
 ### Microssequência
 
-Ao selecionar alguns cards, somente esses cards podem ser atualizados, removidos
-ou reordenados. Os demais ajudam a preservar progressão e coerência, mas não
-podem ser alterados. Uma atualização que precise gerar novamente vários cards alcança
-no máximo oito por envio.
+- alguns cards selecionados podem ser atualizados, removidos ou reordenados;
+- os cards não selecionados são apenas contexto;
+- todos os cards selecionados concedem também autoridade sobre o recipiente e
+  permitem criar até oito cards nele;
+- uma microssequência vazia pode ser selecionada para receber o primeiro card.
 
-Selecionar todos os cards concede também autoridade sobre o recipiente da
-microssequência e permite criar até oito cards dentro dela no mesmo envio. A
-solicitação continua sem permissão para criar outra microssequência. Uma
-microssequência vazia pode ser selecionada como recipiente para receber seu
-primeiro card.
+Selecionar todos os filhos concede autoridade sobre o recipiente, mas não
+obriga uma criação. O pedido ainda determina a operação.
 
 ### Lição
 
-Ao selecionar uma ou mais microssequências, a assistência pode atualizar seus
-metadados, removê-las ou reordená-las dentro da lição. Quando exatamente uma é
-selecionada, também pode criar até oito cards dentro dela. Para reparar cards
-já existentes, é preciso entrar na microssequência e selecionar esses cards.
+- uma ou mais microssequências selecionadas podem ser reorganizadas ou
+  removidas;
+- exatamente uma microssequência selecionada pode receber novos cards;
+- todas as microssequências selecionadas concedem autoridade para criar, no
+  máximo, uma microssequência irmã por envio;
+- uma lição vazia pode receber sua primeira microssequência.
 
-Selecionar todas as microssequências concede autoridade sobre o recipiente da
-lição e permite criar uma nova microssequência. Cada envio cria no máximo uma.
-Ela pode nascer com até oito cards. Uma lição vazia pode ser selecionada para
-receber sua primeira microssequência.
+Não há assistência contextual nos níveis de módulo ou curso. Nessa escala, a
+mudança precisa ser planejada pela autoria estrutural.
 
-Quando a lição contém uma única microssequência, selecioná-la representa ao
-mesmo tempo uma unidade e o conjunto completo. O pedido define se a operação
-cria cards nela ou uma nova microssequência irmã.
+## Como o contexto é montado
 
-Não existe assistência por API nos níveis de módulo ou curso. Mudanças nessa
-escala pertencem ao GPT personalizado.
+Um modelo precisa de contexto suficiente para preservar progressão, mas não
+deve receber o curso inteiro por conveniência. O AraLearn monta um envelope
+compacto que pode incluir:
 
-## Contexto compacto e somente leitura
+- caminho na árvore e objetivos da unidade;
+- tópicos ensinados e verificados;
+- erros esperados e dependências;
+- orientações de inclusão e exclusão;
+- posição dos elementos e vizinhos próximos;
+- índice resumido da lição;
+- conversa ativa, quando houver.
 
-O contexto é montado a partir da autoridade selecionada. Ele inclui, conforme
-necessário:
+Somente os alvos selecionados aparecem como graváveis. Os demais elementos são
+serializados separadamente como leitura. Há um orçamento de tamanho; barreiras
+pedagógicas obrigatórias, como exclusões explícitas, não são silenciosamente
+removidas para caber. Se o contexto essencial ultrapassar o limite seguro, a
+operação é recusada e precisa ser dividida.
 
-- caminho hierárquico, objetivos e guias;
-- `topics`, `covers`, `checks`, `errors` e `dependsOn` relevantes;
-- `guide.exclude` e `guide.avoid` completos;
-- índices locais e a ordem dos elementos;
-- vizinhos anteriores e posteriores em quantidade limitada;
-- um índice compacto da lição.
+Esse desenho também reduz custo e truncamento em modelos mais leves. Janela de
+contexto grande não é justificativa para transmitir dados sem finalidade.
 
-O curso inteiro não é enviado por padrão. Essa composição ajuda modelos mais
-leves a manter coerência sem confundir contexto informativo com conteúdo
-gravável. Cada envelope contextual serializado tem o limite de 64 mil
-caracteres. Índices e vizinhos são compactados em torno da seleção;
-`guide.exclude` e `guide.avoid` permanecem integrais dentro desse orçamento. Se
-as próprias barreiras obrigatórias excederem o limite seguro, o pedido é
-recusado antes de chamar o serviço. Os demais campos extensos podem ser
-truncados, com marcação explícita no contexto.
+## Do pedido à gravação
 
-Em `edit_text`, cada valor selecionado aparece uma única vez em
-`writableTargets`, associado ao caminho textual que pode ser alterado. A cópia
-do card em `readOnlyContext` conserva as instâncias não selecionadas e marca o
-alvo gravável como omitido; essa separação ocorre antes de qualquer
-truncamento. A conversa ativa entra separadamente e nunca transforma contexto
-anterior em autoridade de escrita.
+Uma solicitação aplicada percorre estas etapas:
 
-Em `recompose_card`, o contexto residente orienta primeiro a busca no catálogo.
-O modelo recebe uma lista curta de composições válidas, e somente depois da
-escolha recebe finalidade, limitações, regras e exemplo dos contratos exatos.
-Isso permite combinar packages sem despejar o catálogo inteiro no prompt. Ao
-criar cards dentro da única microssequência selecionada no nível de lição, um
-índice compacto somente leitura informa `index`, identidade, posição, título e
-representação dos cards existentes, para que o modelo escolha uma fronteira de
-inserção sem ganhar escrita sobre eles.
+1. a seleção, a revisão e uma impressão digital do conteúdo são congeladas;
+2. o contexto somente para leitura e os alvos graváveis são montados;
+3. quando necessário, o catálogo seleciona representações e fornece seus
+   contratos;
+4. o serviço produz uma saída estruturada;
+5. o AraLearn valida schema, semântica, referências, compatibilidade e escopo;
+6. a mudança é confirmada integralmente com controle de revisão;
+7. o card renderizado mostra o resultado.
 
-Não existe uma configuração separada de “Contexto didático”. O AraLearn monta
-esse contexto automaticamente a partir do alvo, da hierarquia, dos guias e dos
-vizinhos pertinentes. A pessoa escolhe apenas o provider, o modelo e a chave.
+O controle de revisão usa **compare-and-swap (CAS)**: a gravação só é aceita se
+o estado ainda corresponder à revisão lida no início. Se outra operação alterou
+o alvo durante a chamada, o resultado antigo não sobrescreve silenciosamente o
+novo.
 
-## Envio, validação e gravação
+Uma resposta estruturalmente inválida pode receber uma tentativa orientada de
+correção. Falhas transitórias de transporte têm repetição limitada. Não há
+troca silenciosa de modelo, provider, representação ou escopo, pois isso
+tornaria custo e comportamento imprevisíveis.
 
-Cada envio executa um turno e uma única intenção. O AraLearn:
+## Validação não é avaliação pedagógica
 
-1. congela a seleção, o conteúdo e a revisão lidos;
-2. monta o contexto delimitado;
-3. em `recompose_card`, consulta o catálogo, seleciona uma composição e carrega
-   somente os contratos necessários;
-4. solicita uma saída estruturada ao serviço configurado;
-5. converte a resposta para o contrato exato do escopo e a valida localmente quanto a
-   schema, semântica, referências, compatibilidade e limites do escopo;
-6. confirma toda a mudança em uma única transação com compare-and-swap;
-7. mostra imediatamente o conteúdo e a explicação resultantes.
+Os validadores verificam, entre outros pontos:
 
-A validação e a gravação atômica são garantias internas, não etapas adicionais
-impostas à pessoa. Uma resposta inválida ou uma revisão desatualizada não
-produz alteração parcial.
+- envelope, slot e versão de cada package;
+- identidades, posições, dependências e referências;
+- opções, respostas e alvos de lacuna;
+- compatibilidade entre conteúdo, resposta e feedback;
+- ausência de mudanças fora da seleção;
+- integridade dos objetos usados pela renderização.
 
-Na conversa de card, **Desfazer**, **Refazer** e a restauração de uma versão
-movem o cursor entre snapshots exatos do próprio card. `edit_text` registra um
-patch compacto de caminhos; `recompose_card` registra a transição entre duas
-composições completas. O limite curto impede que isso se transforme em cópias
-do curso. A fila de sincronização não é apagada, e uma escrita concorrente
-invalida a conversa quando seu estado de base já não é o atual.
+Essas verificações impedem estados formalmente inválidos. Não provam que uma
+explicação é verdadeira, suficiente ou adequada ao público. Recomendações de
+interação humano–IA enfatizam visibilidade, controle, possibilidade de
+correção e prevenção de confiança excessiva ([Amershi et al. (2019)](referencias.md#ref-amershi2019humanai); [Buçinca et al. (2021)](referencias.md#ref-bucinca2021overreliance)). A responsabilidade factual e pedagógica continua
+humana, conforme também recomendado para IA generativa em educação
+([UNESCO (2023)](referencias.md#ref-unesco2023genai)).
 
-O conteúdo é salvo primeiro neste dispositivo e a atualização remota é
-tentada em seguida. Se ela precisar ser adiada, o AraLearn mantém os caminhos
-pendentes, mostra que a alteração ainda não chegou ao curso remoto e tenta de
-novo ao recuperar a conexão. Essa fila não guarda pedido, resposta nem contexto
-da conversa.
+## Persistência e funcionamento sem conexão
 
-Uma saída estruturada inválida pode receber uma única tentativa orientada de
-correção. A chamada inicial admite no máximo uma repetição de transporte para
-falha transitória; a reconstrução usa uma única chamada HTTP. Assim, uma fase
-tem teto de três chamadas HTTP mesmo quando transporte e estrutura falham em
-sequência. Cota esgotada, autenticação, timeout, resposta interrompida e outros
-erros determinísticos não são repetidos. A persistência só acontece depois da
-resposta final válida, portanto uma repetição do serviço não duplica a escrita.
+Depois de validada, uma mudança é salva primeiro no dispositivo. Se o curso
+remoto não puder ser atualizado naquele momento, uma fila durável conserva a
+operação pendente. Pedido, resposta e contexto do modelo não entram nessa
+fila.
 
-O AraLearn verifica, entre outros pontos:
+Ao reconectar, o aplicativo relê a composição e tenta combinar mudanças em
+folhas diferentes. Se dois dispositivos alteraram o mesmo texto, o conflito é
+apresentado para decisão; a versão local não é descartada silenciosamente.
+Autoridade obtida apenas de cache nunca libera mudança estrutural, exclusão ou
+publicação.
 
-- o envelope de card com `role`, `content`, `response` e `feedback`;
-- cada instância `{ id, package, version, data }` segundo o schema da versão
-  exata e o slot que ela pode ocupar;
-- identidades, posições, dependências e referências internas;
-- `answerIds`, opções e regras de lacunas;
-- `responseCompatibility` e os `practiceTargets` que autorizam a prática no
-  campo representado;
-- integridade estrutural e dados necessários às representações visuais;
-- origem de referências declaradas;
-- termos excluídos ou desaconselhados pelos guias;
-- ausência de alterações fora da seleção;
-- ausência de novas pistas indevidas para respostas.
+Modelos remotos exigem rede. Edição manual continua disponível offline. Um
+serviço executado no próprio dispositivo também pode prestar assistência sem
+internet, desde que esteja acessível e a autoridade necessária já tenha sido
+confirmada.
 
-Em `edit_text`, um problema semântico preexistente fora do alvo não impede uma
-correção pontual, mas nenhum achado novo ou agravado é aceito. Em
-`recompose_card` e nas criações autorizadas pela microssequência ou pela lição,
-o resultado precisa passar integralmente pela validação aplicável. A auditoria
-distingue a adequação do conteúdo à intenção, a capacidade da resposta de
-exercitar o gesto cognitivo e a legibilidade do feedback. Em lacunas e
-digitação, uma prática estruturalmente válida ainda é recusada quando sua
-resposta não atua sobre um `practiceTarget` declarado pelo package. Essas
-verificações não comprovam verdade factual nem suficiência pedagógica; a
-responsabilidade autoral permanece humana.
+## Providers, modelos e credenciais
+
+**Provider** é o serviço que recebe a requisição; **modelo** é a versão do
+sistema de linguagem escolhida nesse serviço. A interface apresenta presets
+compatíveis com os adaptadores correntes e uma opção de configuração manual.
+
+Nenhum provider é selecionado como fallback. A pessoa escolhe o serviço e o
+modelo antes do primeiro envio. A configuração pode usar:
+
+- a API do DeepSeek;
+- a API do Gemini;
+- endpoint compatível com OpenAI;
+- serviço local compatível com a integração do Codex CLI.
+
+O modelo recomendado no produto pode mudar conforme custo, latência,
+disponibilidade e capacidade de produzir JSON estruturado. Por isso, a
+garantia do AraLearn não é “usar determinado modelo”, mas aplicar o mesmo
+limite de autoridade e o mesmo validador depois de qualquer provider
+compatível.
+
+A chave de API fica apenas na memória da página. Ela não é gravada em
+IndexedDB, armazenamento simples do navegador, curso ou endereço. Trocar a
+família do provider limpa a chave atual; fechar ou recarregar a aplicação exige
+informá-la novamente.
+
+Endpoints externos precisam usar HTTPS. HTTP é admitido somente para endereços
+locais explícitos. A política de segurança do artefato deve autorizar a origem
+do serviço no momento da compilação.
+
+Custos, retenção e políticas de uso dependem do provider. O AraLearn reduz o
+contexto e valida a resposta, mas não controla o processamento realizado pelo
+serviço remoto. Antes de enviar conteúdo sensível, a instalação precisa
+avaliar termos, localização dos dados e política institucional.
 
 ## Permissões
 
-As permissões derivam da sessão autenticada e falham fechadas quando o estado
-é desconhecido ou vem apenas do cache.
+As permissões derivam da sessão e do alvo corrente. Estado desconhecido falha
+como somente leitura.
 
-| Conteúdo | Pessoa comum | Conta administrativa ou editorial |
+| Conteúdo | Conta comum | Conta com capacidade editorial |
 | --- | --- | --- |
-| Curso privado próprio | Edição manual e assistência por API | Edição manual e assistência por API |
-| Curso oficial de Coleções | Somente estudo | Edição manual e assistência por API no curso oficial |
-| Curso privado de outra pessoa | Sem edição | Sem edição neste recorte |
+| curso privado próprio | edição e assistência | edição e assistência |
+| curso oficial | estudo | edição autorizada na continuidade oficial |
+| curso privado de outra pessoa | sem edição | sem edição por esta função global |
 
-Uma edição de curso privado permanece no mesmo curso privado. Uma conta
-autorizada que edita um curso oficial atualiza sua continuidade oficial. O
-AraLearn não cria automaticamente uma cópia privada de curso do catálogo.
-Promover um curso privado para Coleções continua sendo uma operação explícita
-do GPT personalizado com Action ou de um cliente compatível pela integração
-MCP.
+Editar um curso oficial não cria automaticamente uma cópia privada. Levar um
+curso privado ao catálogo é uma operação editorial explícita da autoria
+estrutural.
 
-## Dados e disponibilidade
+## Alternativas rejeitadas
 
-Ao pedir assistência, o contexto delimitado é enviado ao serviço escolhido.
-Custos, limites, retenção de dados e disponibilidade dependem desse serviço.
+### Enviar o card inteiro para qualquer mudança
 
-O seletor inclui DeepSeek V4 Flash, DeepSeek V4 Pro, Gemini 3.6 Flash,
-Gemini 3.5 Flash-Lite e o serviço local de integração com Codex CLI. Esses são
-os presets correntes do
-AraLearn e acompanham os modelos documentados pelo
-[DeepSeek](https://api-docs.deepseek.com/quick_start/pricing/) e pelo
-[Gemini](https://ai.google.dev/gemini-api/docs/latest-model). Modelos já
-encerrados não permanecem como opções.
-Nenhum provider é escolhido silenciosamente: a pessoa faz uma seleção antes do
-primeiro envio. Os presets DeepSeek V4 usam o adaptador compatível com a API do
-DeepSeek; os presets Gemini 3.6 e 3.5 usam o adaptador oficial do Gemini. Ambos
-entregam a resposta ao mesmo validador local. No Gemini, o pedido
-estruturado usa `responseMimeType` e `responseJsonSchema` no `generateContent`;
-não há troca silenciosa para resposta livre quando o schema é recusado.
+Foi rejeitado porque aumenta tokens, facilita alterações acidentais e obriga o
+modelo a reproduzir estrutura que não precisava mudar. Patches de caminhos são
+preferidos para edição textual.
 
-A opção **Outro modelo** aceita três protocolos:
+### Confiar somente no prompt para limitar escopo
 
-- **Compatível com OpenAI:** requer modelo, chave e URL HTTPS completa de Chat
-  Completions com saída JSON estruturada; o endpoint oficial
-  `https://api.openai.com/v1/responses` usa Structured Outputs estrito;
-- **Gemini:** requer modelo e chave e usa a API oficial do Gemini;
-- **Codex CLI local:** requer modelo e endereço do serviço local. HTTP só é aceito em
-  `localhost`, `127.0.0.1` ou no endereço local IPv6; endereços externos
-  precisam de HTTPS.
+Foi rejeitado porque uma instrução textual não constitui autorização. A
+seleção, os schemas fechados e a comparação do resultado exercem o limite.
 
-A chave fica apenas na memória da página e é limpa ao trocar de família de
-provider, para que uma credencial do DeepSeek nunca seja enviada ao Gemini, ou
-vice-versa.
+### Guardar toda a conversa como proveniência
 
-### Escolha atual do DeepSeek
+Foi rejeitado porque aumenta armazenamento, mistura rascunho com estado
+editorial e transmite dados sem necessidade. O curso guarda o resultado; a
+proveniência autoral possui registros próprios; a conversa curta é volátil.
 
-O preset recomendado para o bottom-up é `deepseek-v4-flash`, atualmente
-associado pelo serviço ao DeepSeek-V4-Flash-0731. A documentação oficial lhe
-atribui contexto de 1 milhão de tokens, JSON Output e desempenho próximo do
-Pro em tarefas agentivas simples, com menor latência, maior concorrência e
-custo substancialmente menor. O AraLearn mantém seu próprio recorte de 64 mil
-caracteres: a janela maior do modelo não é justificativa para enviar o curso
-inteiro.
+### Trocar automaticamente para um modelo mais caro
 
-`deepseek-v4-pro` continua disponível como escolha explícita para um reparo
-atipicamente difícil. Ele nunca é acionado como fallback, porque isso tornaria
-custo e comportamento imprevisíveis. `deepseek-chat`, `deepseek-reasoner` e
-aliases locais antigos são recusados antes da chamada: os dois primeiros foram
-[retirados da API](https://api-docs.deepseek.com/news/news260424/).
+Foi rejeitado porque muda custo e comportamento sem consentimento. Uma falha é
+informada, e a pessoa decide se deseja outra configuração.
 
-O caminho de produção usa Chat Completions, `thinking` desativado e
-`response_format: {"type":"json_object"}`. O prompt contém a amostra JSON
-sintática exigida pelo provider e o schema exato; em seguida, o AraLearn valida
-esse schema e todas as regras de autoridade localmente. A
-[Responses API](https://api-docs.deepseek.com/guides/responses_api) foi
-comparada com esse caminho, mas não é fallback: no ensaio integral ela gastou
-mais raciocínio, teve latência muito maior e interrompeu uma fase pelo teto de
-saída, enquanto Chat Completions concluiu as dez operações. Essa escolha pode
-ser reavaliada quando o comportamento documentado e os testes reais mudarem.
+## Como testar com um serviço real
 
-### Validação real econômica do DeepSeek
-
-Desenvolvimento e manutenção dispõem de uma bateria real explícita, que nunca é
-executada por `npm test` nem durante build ou publicação:
+Os testes comuns usam respostas determinísticas e não consomem APIs pagas. Uma
+bateria real do DeepSeek existe para manutenção explícita:
 
 ```powershell
 $env:DEEPSEEK_API_KEY = "<chave temporária>"
 npm run smoke:deepseek:bottom-up:real
+Remove-Item Env:DEEPSEEK_API_KEY
 ```
 
-Para reiterar somente o recorte que falhou, sem pagar novamente pelos demais,
-defina também `DEEPSEEK_SMOKE_SCENARIO`. Os identificadores aceitos são:
-`single_resource_readonly_boundary`, `multiple_resources_readonly_boundary`,
-`whole_card_identity_boundary`, `multiple_cards_atomic_readonly_boundary`,
-`create_one_card_in_microsequence` e
-`create_one_microsequence_in_empty_lesson`.
+Ela usa fixtures sintéticas, limita a quantidade de chamadas e produz somente
+contagens locais, sem registrar chave, prompt, resposta ou curso. Esse smoke
+verifica compatibilidade operacional do provider; não avalia qualidade
+educacional.
 
-O modelo padrão é `deepseek-v4-flash`; `DEEPSEEK_MODEL` aceita também
-`deepseek-v4-pro`. A bateria usa somente fixtures sintéticas e cobre uma
-instância de package, várias instâncias, card inteiro, dois cards com aplicação
-atômica,
-criação de card na única microssequência selecionada pela lição e criação de
-microssequência em lição vazia.
-Os cenários incluem sentinelas e instruções não confiáveis no contexto somente
-leitura. Depois de cada resposta, o harness prova por diff que somente os
-caminhos autorizados mudaram, confere identidade, posição e destino, valida o
-envelope com packages e realiza o round-trip relacional.
-
-Há um teto não ampliável de 24 chamadas HTTP para a execução completa. Sem
-reconstruções, os seis cenários usam 19. Quando o smoke pago é executado, ele
-gera o relatório local, ignorado pelo Git,
-`tests/reports/deepseek-bottom-up-real.json`, com somente contagens, tokens e
-fases; o arquivo não integra o checkout nem registra chave, prompt, resposta ou
-conteúdo do curso. A chave deve ser temporária e removida do ambiente depois do
-teste.
-
-No relatório opcional da execução de referência de 7 de agosto de 2026, o V4 Flash concluiu os seis
-cenários nas 19 chamadas iniciais, sem reconstrução: 39.712 tokens de entrada e
-876 de saída. Pelos preços vigentes naquele dia e sem cache hit, o custo
-estimado foi de aproximadamente US$ 0,0058.
-
-O AraLearn verifica modelo, protocolo e endereço antes do envio. Uma
-configuração inválida interrompe a operação, sem trocar silenciosamente de
-serviço. A chave permanece somente na memória da página: não é gravada no
-IndexedDB, no armazenamento do navegador nem em endereços. Ao recarregar ou
-fechar o aplicativo, é preciso informá-la novamente.
-
-A política de conteúdo da instalação precisa autorizar a origem usada pelo
-serviço. DeepSeek e Gemini entram na lista padrão. O Android admite o serviço
-local executado no próprio dispositivo em
-próprio dispositivo em `http://127.0.0.1:4183`; no servidor local, também é
-aceito `http://localhost:4183`. Para **Outro modelo**, informe somente a origem
-HTTPS necessária em `ARALEARN_ASSIST_ALLOWED_ORIGINS` durante o build.
-
-Pedido, resposta e contexto montado não são anexados ao curso. Providers
-remotos exigem rede. O serviço local pode prestar a assistência textual sem
-internet quando continua acessível no próprio dispositivo; nesse caso, usa
-somente o conteúdo já baixado e a autoridade de edição previamente confirmada.
-A edição manual segue disponível na mesma condição. Ambas persistem o rascunho
-por curso e workspace, com revisão de base e identificador de tentativa estável.
-O identificador é estável somente enquanto o payload daquela operação permanece
-igual; uma nova redação recebe outra chave mesmo se a resposta anterior se
-perder.
-Ao reconectar, o app relê a composição, combina alterações em folhas diferentes
-e usa comparação e CAS para não sobrescrever o mesmo texto alterado em outro
-dispositivo. Conflitos conservam o rascunho e oferecem manter a redação local ou
-descartá-la. A autoridade em cache nunca libera mudança estrutural, exclusão,
-comentário ou publicação; operações remotas só reaparecem depois de confirmar a
-autorização atual no servidor.
-
-Se a conexão cair depois de o serviço devolver uma mudança válida, a aplicação
-local e a fila durável usam o mesmo caminho da edição manual. Qualquer mudança
-semântica de exercício invalida a resposta e o progresso correntes antes de o
-card voltar ao estudo.
-
-O formato de intercâmbio está em [Contrato público](aralearn-contract.md). A
-fronteira entre assistência local e MCP está em [Fluxos e contratos de
-geração](fluxos-prompts-e-contratos.md). A autoria estrutural está em [Gateway
-MCP de autoria](autoria-mcp.md), e o roteiro de uso está em [Criar cursos pelo
-chat](criar-cursos-pelo-chat.md).
+Os formatos canônicos aparecem em [Fluxos, instruções e
+contratos](fluxos-prompts-e-contratos.md). A política de dados está em
+[Privacidade](privacidade.md).

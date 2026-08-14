@@ -70,6 +70,9 @@ const UTF8_FLAG = 0x0800;
 const REPRESENTATION_SELECTION_COMPONENT_NAME = "RepresentationSelection";
 const REPRESENTATION_SELECTION_COMPONENT_REFERENCE =
   `#/components/schemas/${REPRESENTATION_SELECTION_COMPONENT_NAME}`;
+const PEDAGOGICAL_DIAGNOSIS_COMPONENT_NAME = "PedagogicalDiagnosis";
+const PEDAGOGICAL_DIAGNOSIS_COMPONENT_REFERENCE =
+  `#/components/schemas/${PEDAGOGICAL_DIAGNOSIS_COMPONENT_NAME}`;
 
 
 const CRC32_TABLE = (() => {
@@ -251,20 +254,25 @@ function replaceSharedSchemaWithReference(value, sharedSchema, reference) {
   return replacements;
 }
 
-function extractRepresentationSelectionComponent(inputSchemas) {
+function extractContinuityComponent({
+  inputSchemas,
+  propertyName,
+  reference,
+  label
+}) {
   const continuityInput = inputSchemas.InputGerirContinuidadeDaAutoria;
-  const componentSchema = continuityInput?.properties?.representationSelection;
+  const componentSchema = continuityInput?.properties?.[propertyName];
   if (!componentSchema || typeof componentSchema !== "object") {
-    throw new Error("O input de continuidade não expõe representationSelection.");
+    throw new Error(`O input de continuidade não expõe ${label}.`);
   }
   const replacements = replaceSharedSchemaWithReference(
     inputSchemas,
     componentSchema,
-    REPRESENTATION_SELECTION_COMPONENT_REFERENCE
+    reference
   );
   if (replacements < 2) {
     throw new Error(
-      "representationSelection deixou de compartilhar o contrato canônico esperado."
+      `${label} deixou de compartilhar o contrato canônico esperado.`
     );
   }
   return componentSchema;
@@ -475,8 +483,18 @@ function buildChatGptActionOpenApi() {
       structuredClone(definition.inputSchema)
     ])
   );
-  const representationSelectionSchema =
-    extractRepresentationSelectionComponent(inputSchemas);
+  const representationSelectionSchema = extractContinuityComponent({
+    inputSchemas,
+    propertyName: "representationSelection",
+    reference: REPRESENTATION_SELECTION_COMPONENT_REFERENCE,
+    label: "representationSelection"
+  });
+  const pedagogicalDiagnosisSchema = extractContinuityComponent({
+    inputSchemas,
+    propertyName: "pedagogicalDiagnosis",
+    reference: PEDAGOGICAL_DIAGNOSIS_COMPONENT_REFERENCE,
+    label: "pedagogicalDiagnosis"
+  });
   const paths = Object.fromEntries(
     AUTHORING_WORKSPACE_MCP_TOOLS.map((definition) => [
       `/${definition.name}`,
@@ -537,6 +555,7 @@ function buildChatGptActionOpenApi() {
         AraLearnActionSuccess: responseSchema,
         AraLearnActionError: errorSchema,
         [REPRESENTATION_SELECTION_COMPONENT_NAME]: representationSelectionSchema,
+        [PEDAGOGICAL_DIAGNOSIS_COMPONENT_NAME]: pedagogicalDiagnosisSchema,
         ...inputSchemas
       },
       responses: errorResponses,

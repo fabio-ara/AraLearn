@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { evaluatePedagogicalBlueprint } from "../../src/authoring/pedagogicalBlueprint.js";
+import {
+  evaluatePedagogicalBlueprint,
+  pedagogicalBlueprintContract
+} from "../../src/authoring/pedagogicalBlueprint.js";
 import { evaluatePedagogicalBlueprint as evaluateEdgeBlueprint } from "../../supabase/functions/_shared/aralearn/runtime/authoring/pedagogicalBlueprint.js";
 import { RESOURCE_PACKAGE_REGISTRY } from "../../src/resources/packages/index.js";
 import {
@@ -46,6 +49,29 @@ function blueprint({ goal, situation, layers, theorySteps, practiceSteps }) {
   return {
     goal,
     learnerSituation: situation,
+    learningConditions: [],
+    contentDemands: [{
+      id: "understand-relations",
+      description: "Interpretar as relações e decisões próprias deste conteúdo.",
+      cognitiveOperations: ["explain", "discriminate"]
+    }],
+    anticipatedDifficulties: [{
+      id: "missing-referent",
+      description: "Os conceitos podem permanecer abstratos sem progressão suficiente.",
+      contentDemandIds: ["understand-relations"],
+      learningConditionIds: []
+    }],
+    designResponses: [{
+      id: "progressive-foundation",
+      difficultyIds: ["missing-referent"],
+      decision: "Construir a relação em camadas antes da prática.",
+      theoryStepIds: theorySteps.map(({ id }) => id),
+      practiceStepIds: practiceSteps.map(({ id }) => id),
+      packageCandidateIds: candidates.map(({ id }) => id),
+      materializationChecks: [
+        "A teoria oferece um referente antes de introduzir os termos formais."
+      ]
+    }],
     prerequisiteEvidence: [],
     conceptualLayers: layers,
     theorySteps,
@@ -115,10 +141,103 @@ test("blueprint de SNMP e RMON cria referentes antes das siglas", () => {
   assert.equal(result.metrics.practicedLayerCount, 4);
 });
 
+test("blueprint aceita ausência justificada de dificuldade e prática", () => {
+  const value = blueprint({
+    goal: "Situar uma convenção já conhecida antes da próxima unidade.",
+    situation: "A pessoa já demonstrou o pré-requisito e só precisa localizar o referente.",
+    layers: [layer("referent", "Um referente já familiar.", ["referente formal"])],
+    theorySteps: [
+      theory("t1", ["referent"], "Localizar a convenção no contexto corrente.", "situate", ["prose"])
+    ],
+    practiceSteps: []
+  });
+  value.learningConditions = [{
+    id: "short-session",
+    description: "A consulta ocorrerá numa sessão curta.",
+    designRelevance: "Manter o referente integral num único passo explicativo."
+  }];
+  value.anticipatedDifficulties = [];
+  value.designResponses = [];
+  const result = evaluatePedagogicalBlueprint(value, RESOURCE_PACKAGE_REGISTRY);
+  assert.equal(result.valid, true, result.errors.join(" "));
+  assert.equal(result.metrics.anticipatedDifficultyCount, 0);
+  assert.equal(result.metrics.practiceStepCount, 0);
+});
+
+test("blueprint exige seções e listas internas explícitas mesmo quando vazias", () => {
+  const value = blueprint({
+    goal: "Explicitar uma decisão local.",
+    situation: "A condição pertinente já foi confirmada.",
+    layers: [layer("referent", "Um referente observável.", ["termo formal"])],
+    theorySteps: [
+      theory("t1", ["referent"], "Introduzir o referente.", "situate", ["prose"])
+    ],
+    practiceSteps: []
+  });
+  delete value.practiceSteps;
+  const missingSection = evaluatePedagogicalBlueprint(value, RESOURCE_PACKAGE_REGISTRY);
+  assert.equal(missingSection.valid, false);
+  assert.match(missingSection.errors.join(" "), /Seções ausentes: practiceSteps/iu);
+
+  const missingNestedList = blueprint({
+    goal: "Explicitar uma decisão local.",
+    situation: "A condição pertinente já foi confirmada.",
+    layers: [layer("referent", "Um referente observável.", ["termo formal"])],
+    theorySteps: [
+      theory("t1", ["referent"], "Introduzir o referente.", "situate", ["prose"])
+    ],
+    practiceSteps: []
+  });
+  delete missingNestedList.anticipatedDifficulties[0].learningConditionIds;
+  missingNestedList.anticipatedDifficulties[0].extra = true;
+  const invalidNested = evaluatePedagogicalBlueprint(
+    missingNestedList,
+    RESOURCE_PACKAGE_REGISTRY
+  );
+  assert.equal(invalidNested.valid, false);
+  assert.match(invalidNested.errors.join(" "), /omite campos obrigatórios: learningConditionIds/iu);
+  assert.match(invalidNested.errors.join(" "), /campos desconhecidos: extra/iu);
+});
+
+test("resposta de desenho referencia somente passos e packages materializados", () => {
+  const value = blueprint({
+    goal: "Explicar uma relação antes de verificá-la.",
+    situation: "A pessoa ainda não conhece a relação formal.",
+    layers: [layer("relation", "Dois elementos mudam em conjunto.", ["relação formal"])],
+    theorySteps: [
+      theory("t1", ["relation"], "Tornar a relação observável.", "situate", ["prose"])
+    ],
+    practiceSteps: []
+  });
+  value.designResponses[0].theoryStepIds = ["passo-inexistente"];
+  value.designResponses[0].packageCandidateIds = ["package-inexistente"];
+  const result = evaluatePedagogicalBlueprint(value, RESOURCE_PACKAGE_REGISTRY);
+  assert.equal(result.valid, false);
+  assert.match(result.errors.join(" "), /passo de teoria inexistente/iu);
+  assert.match(result.errors.join(" "), /candidato inexistente/iu);
+});
+
 test("eval rejeita o padrão condensado observado no curso antigo", () => {
   const bad = {
     goal: "Resumir SNMP e RMON.",
     learnerSituation: "Iniciante.",
+    learningConditions: [{
+      id: "unused-condition",
+      description: "Condição sem efeito demonstrado.",
+      designRelevance: "Não definida."
+    }],
+    contentDemands: [{
+      id: "read-dense-table",
+      description: "Interpretar muitas relações simultâneas.",
+      cognitiveOperations: ["explain"]
+    }],
+    anticipatedDifficulties: [{
+      id: "dense-abstraction",
+      description: "Carga terminológica sem referente.",
+      contentDemandIds: ["read-dense-table"],
+      learningConditionIds: []
+    }],
+    designResponses: [],
     prerequisiteEvidence: [],
     conceptualLayers: [
       layer("alphabet-soup", "Tabela com siglas e números.", ["SNMP", "MIB", "OID", "SMI", "PDU", "RMON"], ["missing-foundation"])
@@ -141,25 +260,28 @@ test("eval rejeita o padrão condensado observado no curso antigo", () => {
   assert.match(result.errors.join(" "), /Termo formal sem explicação/iu);
 });
 
-test("MCP expõe blueprint, catálogo compacto e somente contrato versionado escolhido", () => {
+test("MCP expõe núcleo protegido, blueprint contextual e somente contrato escolhido", () => {
   const context = prepareAuthoringContext({
     intent: "extend",
     targetEntity: "microsequence",
     context: "Ensinar SNMP e RMON progressivamente a um iniciante.",
     packageIds: ["aralearn.resource.graph"]
   });
-  assert.equal(context.blueprintContract.version, 1);
-  assert.deepEqual(context.calibrationContract.precedence, [
-    "protected_core",
-    "protected_knowledge",
-    "user_preferences"
+  assert.equal(context.briefVersion, 3);
+  assert.deepEqual(context.blueprintContract, pedagogicalBlueprintContract());
+  assert.equal(context.blueprintContract.version, 2);
+  assert.ok(context.blueprintContract.requiredSections.includes("learningConditions"));
+  assert.ok(context.blueprintContract.requiredSections.includes("contentDemands"));
+  assert.ok(context.blueprintContract.requiredSections.includes("anticipatedDifficulties"));
+  assert.ok(context.blueprintContract.requiredSections.includes("designResponses"));
+  assert.deepEqual(context.blueprintContract.designResponse.required, [
+    "id", "difficultyIds", "decision", "theoryStepIds",
+    "practiceStepIds", "packageCandidateIds", "materializationChecks"
   ]);
-  assert.deepEqual(context.calibrationContract.editablePreferenceIds, [
-    "tone-and-approach",
-    "examples-and-context",
-    "practice-variation",
-    "terminology-and-notation"
-  ]);
+  assert.match(context.blueprintContract.anticipatedDifficulty.rule, /demanda/iu);
+  assert.equal(context.protectedCore.version, 2);
+  assert.ok(context.protectedCore.moduleIds.includes("contextual-learning-diagnosis"));
+  assert.equal(Object.hasOwn(context, "calibrationContract"), false);
   assert.ok(context.guidance.some(({ id }) => id === "blueprint-before-materialization"));
   assert.deepEqual(context.packageContracts, [{
     packageId: "aralearn.resource.graph",

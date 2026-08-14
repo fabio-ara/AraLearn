@@ -1,208 +1,197 @@
 # AraLearn
 
-AraLearn é uma plataforma de trilhas de flashcards estruturados para quem quer estudar, revisar e construir o próprio percurso de aprendizagem.
+AraLearn é uma plataforma de aprendizagem para estudar, criar e revisar cursos
+formados por pequenas sequências de explicação e prática. O aplicativo foi
+projetado para o uso cotidiano em celulares, inclusive quando a conexão com a
+internet é instável.
 
-Ela foi pensada para o estudo autodidata real: pouco tempo, muitas fontes, pausas frequentes, celular à mão e conexão nem sempre disponível. Em vez de transformar conteúdo em uma sequência solta de cartões, o AraLearn organiza cada assunto como um caminho que pode ser retomado, praticado e, quando necessário, melhorado por quem o estuda.
-
-No AraLearn, a mesma pessoa pode estudar, revisar e criar.
-
-- **Estudante:** seleciona cursos, organiza-os em trilhas pessoais, pratica em etapas delimitadas e continua estudando sem conexão depois do primeiro download.
-- **Revisor:** pode comentar, corrigir um card no dispositivo ou participar da
-  revisão editorial de um curso quando a conta tiver essa capacidade.
-- **Autor:** pode reparar resources e cards no aplicativo; ao selecionar uma
-  microssequência ou lição, também pode criar cards ou uma microssequência
-  dentro do recipiente autorizado. Planejamento e transformações extensas
-  ficam no GPT personalizado com Action ou na integração MCP. Cada envio local válido
-  grava somente o recorte selecionado; na autoria remota, cada comando altera
-  apenas as partes necessárias do workspace composto.
-
-O pedido nunca amplia a seleção feita pela pessoa. Contrato, validadores e
-permissões delimitam o que pode ser gravado no percurso.
-
-## Do assunto ao card
-
-Cada curso é uma árvore didática explícita:
+Um curso não é tratado como uma coleção aleatória de perguntas. O conteúdo é
+organizado em uma progressão explícita:
 
 ```text
-curso -> módulo -> lição -> microssequência -> card
+curso → módulo → lição → microssequência → card
 ```
 
-A microssequência é a unidade de estudo central: pequena o bastante para caber entre compromissos, mas com contexto suficiente para ligar explicação, exemplo e prática. Os cards escolhem representações no catálogo acadêmico de packages — como texto anotado, glosa interlinear, matriz, reação química, grafo e mapa de relações — e as combinam somente com formas de resposta pedagogicamente compatíveis.
+A **microssequência** é a menor unidade didática completa. Ela apresenta um
+avanço conceitual delimitado, oferece as explicações necessárias e inclui
+práticas coerentes com aquilo que foi ensinado. Um **card** é uma etapa dessa
+microssequência: pode conter texto, fórmulas, diagramas, código, tabelas ou
+outras representações, além de uma forma de resposta quando houver prática.
 
-Na biblioteca, duas formas de organização usam a mesma gramática visual de
-grupos e cards, mas atendem a finalidades e permissões diferentes:
+## O problema educacional
 
-- **Coleções** organizam o catálogo oficial. Qualquer pessoa pode consultá-las;
-  contas editoriais também podem criar, renomear, ordenar ou retirar grupos e
-  cursos oficiais.
-- **Trilhas** são pessoais: a pessoa cria, renomeia e ordena seus grupos e
-  organiza neles planos, composições em materialização e cursos oficiais
-  selecionados. Excluir um grupo não exclui os itens nem o estado de estudo;
-  eles passam para **Outros**.
-- **Workspaces** reúnem pessoas e autoria com papéis locais, sem duplicar o curso.
+Materiais de estudo frequentemente impõem ao estudante dois trabalhos ao
+mesmo tempo: compreender o assunto e descobrir como o material foi organizado.
+Resumos excessivamente condensados, conceitos sem preparação, diagramas
+ambíguos e exercícios desconectados da teoria aumentam esse esforço sem
+necessariamente melhorar a aprendizagem.
 
-Em `Coleções`, adicionar um curso a `Trilhas` é sempre uma ação explícita e cria
-somente o vínculo da conta. O botão de abrir ou estudar apenas navega: não
-seleciona, copia, move, publica nem reorganiza conteúdo.
+O AraLearn adota quatro compromissos para reduzir esse atrito:
 
-## O que já funciona
+1. **não pressupor conhecimentos que ainda não foram ensinados**;
+2. **distribuir a explicação em avanços conceituais manejáveis**, sem confundir
+   segmentação com superficialidade;
+3. **praticar o conhecimento que a sequência efetivamente desenvolveu**, com
+   variedade determinada pela finalidade da prática;
+4. **usar a representação própria do objeto estudado**, quando um diagrama,
+   uma fórmula ou outra notação comunicar melhor do que texto corrido.
 
-- autenticação por e-mail, sessão persistida e recuperação de senha;
-- catálogo oficial remoto, pesquisa por coleções e seleção leve de cursos;
-- trilhas pessoais, retomada, conclusão estrutural, marca **Rever** e observações
-  pedagógicas pessoais, sem tempo, tentativas ou histórico de resultados;
-- estudo sem conexão após o download inicial, com gravação local confirmada antes de indicar que algo foi salvo;
-- sincronização automática e oportunista do estado pessoal quando o app está ativo e há rede;
-- autoria integral, com workspace composto, validação estrutural e artefatos de
-  publicação imutáveis;
-- planos produzidos pelo GPT personalizado com Action ou por clientes MCP e
-  cursos privados em `Trilhas`, com
-  cursos oficiais disponíveis em `Coleções`;
-- gateway MCP que lê, reorganiza e publica cursos por workspaces compostos e
-  comandos atômicos;
-- integração MCP para clientes compatíveis e GPT personalizado com Action gerada
-  do mesmo registro de ferramentas;
-- a mesma aplicação JavaScript na web e no APK Android;
-- envelope operacional `aralearn.library.v1`, contrato unitário
-  `aralearn.course.v1`, protocolo de catálogo `aralearn.resource-library.v1` e
-  packages independentes para validação, renderização, avaliação e autoria sob
-  demanda.
+Esses compromissos orientam a geração de cursos, os contratos de conteúdo, a
+interface de estudo e os critérios de auditoria. Eles não são apresentados
+como prova de eficácia: os fundamentos teóricos, as hipóteses e o protocolo de
+avaliação são distinguidos na [documentação pedagógica](docs/modelo-didatico.md).
 
-Por trás dessa experiência, cada publicação existe como um artefato JSON
-imutável no Supabase Storage. O PostgreSQL guarda metadados, vínculos, o hash
-da revisão publicada e, durante a autoria remota, uma linha corrente para cada
-parte do workspace. O dispositivo projeta a publicação no IndexedDB para uso
-sem conexão. Estado funcional de estudo, observações e trilhas permanecem separados do
-conteúdo.
+## Como se estuda
 
-O resultado é uma plataforma que pode manter muitos cursos sem transformar cada seleção em uma cópia completa na nuvem e que continua útil quando a conexão falha.
+Depois de entrar no aplicativo, a pessoa encontra duas organizações diferentes:
 
-## Autoria do catálogo
+- **Coleções** apresenta o catálogo de cursos disponibilizados pela instância;
+- **Trilhas** organiza os cursos escolhidos pela própria pessoa.
 
-O AraLearn dispõe de um gateway MCP para construir cursos por partes. O
-assistente pode ler o que já existe, copiar uma parte para outro curso, editar
-qualquer nível por operações atômicas e recombinar estruturas. Copiar cria uma
-parte independente, com novas identidades; mover transfere a parte e remove a
-origem na mesma alteração. Não há compartilhamento oculto entre cursos.
+Adicionar um curso a Trilhas não duplica todo o curso no banco remoto. A ação
+cria um vínculo pessoal, e o dispositivo mantém a réplica necessária para o
+estudo. Depois do primeiro carregamento, o conteúdo pode ser retomado sem
+conexão. O tema visual, a navegação entre cards, as respostas já disponíveis e
+o registro local do progresso não aguardam uma requisição de rede.
 
-Planejamento, construção de uma parte, auditoria independente, reparo e
-reauditoria acontecem em rodadas distintas. Cada rodada mostra o resultado e
-espera a decisão da pessoa; essas pausas não criam estados ou bloqueios no
-backend. Auditoria é somente leitura e reparo altera apenas os problemas
-aprovados. Assim que a estrutura é confirmada, o mesmo item aparece em
-`Trilhas`; cada parte materializada fica estudável sem publicação, mesmo quando
-o restante do plano ainda não foi produzido.
+Durante o estudo, o botão principal tem uma função estável: confirmar uma
+resposta quando o card exige resposta, mostrar o feedback e, no toque
+seguinte, avançar. A pessoa também pode marcar um card para rever ou registrar
+uma observação pedagógica, como dúvida, possível erro ou trecho confuso.
 
-É o mesmo assistente em todas as etapas. A conta conectada determina se ele
-pode apenas criar e testar conteúdo privado, enviar uma revisão para avaliação,
-assumir uma submissão editorial ou publicar no catálogo. A revisão recebe
-somente o artefato explicitamente submetido, não a biblioteca privada inteira.
-O assistente não acessa tabelas diretamente nem recebe a chave administrativa
-do Supabase.
+O AraLearn registra apenas o estado funcional necessário para retomar o
+percurso. Ele não converte tempo de tela, quantidade de tentativas ou padrões
+de acerto em nota, ranking ou vigilância. O funcionamento detalhado está no
+[guia de uso](docs/uso-do-app.md) e no [guia do estudante](docs/guia-estudante.md).
 
-O MCP remoto autentica a conta por OAuth 2.1 e não oferece chave estática
-alternativa. Publicar no catálogo exige permissão editorial separada.
-No ChatGPT, a integração MCP recebe instruções do servidor e recupera conhecimento
-autoral sob demanda; o GPT personalizado combina instruções e conhecimento
-anexados com uma Action OpenAPI fina sobre o mesmo executor e uma concessão
-OAuth confidencial compatível com o construtor de GPTs.
+## Como se cria e revisa conteúdo
 
-O roteiro em linguagem comum está em [Criar cursos pelo
-chat](docs/criar-cursos-pelo-chat.md). Ele explica a construção incremental, a
-revisão por microteorias, a presença automática em `Trilhas` e a submissão editorial sem exigir
-que a pessoa manipule JSON ou nomes de ferramentas.
+A autoria ocorre sobre o mesmo conteúdo que será estudado. Textos visíveis
+podem ser editados diretamente; objetos selecionados podem receber assistência
+de um modelo de linguagem; mudanças estruturais mais amplas podem ser feitas
+por uma integração de autoria.
 
-Cards produzidos por integrações usam envelopes JSON estruturados e
-versionados. Uma lacuna declara a instância e o caminho exatos que completa; o
-servidor valida o envelope e os contratos versionados dos packages escolhidos,
-sem interpretar instruções em português como HTML ou posição visual.
+Essa integração trabalha por etapas. Primeiro planeja a progressão; depois
+materializa partes do curso; em seguida audita o conteúdo e as representações;
+por fim repara apenas os problemas confirmados. Uma parte materializada já pode
+ser lida e estudada, mesmo que o restante do curso ainda esteja em construção.
 
-O registry oferece packages de conteúdo e resposta descobertos sob demanda.
-Escolhas podem ser simples ou múltiplas e são corrigidas pelo conjunto exato após confirmação da resposta do
-estudante. A assistência por API repara o card inteiro ou somente os resources
-selecionados. No nível da microssequência, selecionar todos os cards permite
-criar até oito cards dentro dela; no nível da lição, selecionar todas as
-microssequências permite criar no máximo uma nova, também com até oito cards.
-O contexto adjacente permanece somente leitura. **Enviar** valida e grava a
-mudança em uma única transação e mostra o resultado no próprio conteúdo. No
-card, a conversa volátil conserva até oito turnos e nove versões, com
-**Desfazer**, **Refazer** e restauração de uma versão; ela não é persistida nem
-sincronizada. Não há tela **Atual/Proposta** nem etapa **Aplicar**. A aplicação
-usa o mesmo leitor em cursos privados e do catálogo selecionados em `Trilhas`.
-A edição aparece somente quando a conta tem permissão: o dono edita seu curso
-privado e uma conta editorial pode editar conteúdo oficial. Prompt e resposta
-do serviço não entram na
-sincronização pessoal.
+O modelo não recebe liberdade irrestrita sobre o banco. Toda operação passa
+por contratos de dados, validação e autorização. Quando precisa escolher uma
+representação, consulta primeiro um catálogo que descreve a finalidade de cada
+tipo de recurso e somente depois obtém o contrato específico dos recursos
+selecionados. Essa separação permite acrescentar novas representações sem
+refazer o núcleo que organiza cards e cursos.
 
-O [material de autoria](authoring/README.md) pode ser baixado já organizado para [ChatGPT](docs/downloads/authoring/aralearn-authoring-chatgpt.zip), [Gemini](docs/downloads/authoring/aralearn-authoring-gemini.zip), [Microsoft 365](docs/downloads/authoring/aralearn-authoring-microsoft-365.zip), [Claude](docs/downloads/authoring/aralearn-authoring-claude.zip) ou uma [integração genérica](docs/downloads/authoring/aralearn-authoring-generic.zip). No ChatGPT, o pacote inclui instruções, dois conhecimentos e o OpenAPI da Action; o pacote também descreve separadamente a integração MCP para clientes compatíveis.
+Para quem quer apenas criar um curso, o percurso começa em [Criar cursos pelo
+chat](docs/criar-cursos-pelo-chat.md). A explicação técnica de **Model Context
+Protocol (MCP)** — o protocolo usado por clientes externos para descobrir e
+chamar as ferramentas de autoria — aparece somente no [capítulo de autoria por
+MCP](docs/autoria-mcp.md).
 
-Os pacotes explicam como configurar uma integração; não dão acesso automático a nenhum catálogo. Cada instância do AraLearn controla quem pode publicar cursos por meio das permissões do próprio banco.
+## Representações acadêmicas
 
-Workspaces de turma e equipe já permitem papéis locais, comentários situados e
-colaboração autoral. O AraLearn não converte esse contexto em vigilância,
-ranking ou acompanhamento individual por rastros comportamentais.
+O catálogo de recursos inclui texto, código, tabelas, fórmulas, matrizes,
+gráficos estatísticos, plano cartesiano, árvores, grafos, diagramas de
+conjuntos, processos, modelos de software e outras estruturas. Esses recursos
+não existem para ornamentar cards. Cada um deve preservar uma convenção
+reconhecível na área, admitir conteúdo complexo sem sobreposição e oferecer
+interação dentro do próprio objeto quando houver lacuna ou digitação.
 
-## Arquitetura, em uma frase
+O **kernel** do AraLearn conhece apenas as regras comuns de composição de um
+card. Cada **package de recurso** reúne, de forma independente, o contrato, a
+validação, a apresentação, os campos editáveis, as possibilidades de prática e
+a descrição acadêmica de uma representação. Essa arquitetura é detalhada em
+[Recursos de card](docs/recursos-de-card.md).
 
-O PostgreSQL mantém o estado pessoal e o workspace mutável por partes; o
-Storage conserva os artefatos imutáveis de publicação, e a submissão aponta
-para a revisão privada exata; o IndexedDB projeta cada curso selecionado para
-estudo sem conexão.
+O curso **AraLearn: Catálogo de recursos** está disponível no catálogo oficial
+para experimentar essas representações dentro do fluxo normal do aplicativo.
 
-O site e o APK não levam cursos operacionais embarcados, documentos integrais de progresso ou segredos administrativos. Sem rede, outboxes e filas locais próprias de cada fluxo preservam as alterações. Quando a rede volta, o aplicativo as envia sem duplicar dados e recebe as novidades da conta aos poucos. Para o estado pessoal, vale a última alteração válida confirmada pelo servidor, sem impor ao estudante uma tela de versões ou de combinação manual de dados.
+## Funcionamento sem conexão e sincronização
 
-A implantação validada usa arquivos estáticos em HTTPS com Supabase gerenciado. GitHub Pages possui publicação automatizada; outro servidor estático ou uma intranet podem servir o mesmo artefato quando atendem aos requisitos de tipos MIME, cache, retorno de autenticação, CSP e acesso ao Supabase. SharePoint/SPFx, Supabase auto-hospedado em produção e outros serviços de banco e autenticação ainda não possuem integração pronta. A [matriz de implantação](docs/implantacao.md#formas-de-implantação) apresenta esses limites.
+O navegador e o aplicativo Android usam **IndexedDB**, o banco de dados local
+padronizado para aplicações web, para conservar cursos selecionados e mudanças
+que ainda precisam ser enviadas. IndexedDB foi escolhido porque suporta dados
+estruturados e transações no dispositivo; armazenamento simples de pares de
+texto não oferece as mesmas garantias para uma árvore de curso e suas filas de
+sincronização.
 
-## Começar localmente
+Quando a rede volta, o aplicativo envia as operações pendentes de cada fluxo e
+recebe apenas as novidades necessárias. Identificadores de operação e controle
+de revisão impedem que uma repetição silenciosa duplique uma mudança. O banco
+remoto guarda estado relacional e metadados; publicações integrais e imutáveis
+ficam no armazenamento de objetos. A justificativa, as alternativas e os
+limites desse desenho são ensinados em [Persistência relacional e
+sincronização](docs/persistencia-relacional.md).
+
+## Aplicação web e Android
+
+A mesma aplicação é entregue em dois formatos:
+
+- [aplicação web](https://fabio-ara.github.io/AraLearn/);
+- [APK Android da versão mais recente](https://github.com/fabio-ara/AraLearn/releases/latest).
+
+O conteúdo operacional não é incorporado ao APK: ele é obtido conforme a
+conta e mantido localmente para uso posterior. A interface conserva largura de
+leitura móvel também no desktop, de modo que o conteúdo seja produzido e
+validado para a situação de uso prioritária.
+
+## Estado e limites
+
+O produto já oferece autenticação, catálogo, Trilhas, estudo offline,
+sincronização, edição contextual, observações pedagógicas, workspaces de
+autoria, revisão editorial e integrações de autoria. Ainda são necessários
+estudos com participantes para avaliar aprendizagem, compreensão dos papéis,
+qualidade da autoria assistida e adequação em diferentes áreas do
+conhecimento.
+
+Essa distinção é importante: teste automatizado demonstra que determinada
+operação respeita um contrato; não demonstra, sozinho, que pessoas aprendem
+mais. O [estado do produto](docs/estado-atual-e-roadmap.md) separa capacidade
+implementada, trabalho de engenharia e questão de pesquisa.
+
+## Documentação
+
+A documentação é material de aprendizagem sobre o produto. Ela não exige que
+o leitor conheça previamente educação, bancos de dados ou integração de
+modelos de linguagem. Cada capítulo introduz os conceitos usados, apresenta o
+problema, compara alternativas, justifica a decisão do AraLearn e indica suas
+consequências.
+
+Comece pelo [mapa da documentação](docs/README.md). Há percursos próprios para:
+
+- usar o aplicativo;
+- compreender o modelo pedagógico e sua literatura;
+- estudar a arquitetura, a persistência e a segurança;
+- criar, revisar e publicar cursos;
+- desenvolver, testar e implantar o sistema;
+- avaliar o artefato sem confundir hipótese, propriedade implementada e
+  resultado empírico.
+
+## Desenvolvimento local
+
+Pré-requisitos: Node.js compatível com o projeto e uma configuração pública de
+uma instância Supabase.
 
 ```bash
 npm install
 npm run dev
 ```
 
-O aplicativo precisa da URL pública do projeto Supabase e da chave pública de acesso. A configuração e os cuidados de implantação estão em [Supabase: desenvolvimento e implantação](docs/supabase.md).
-
 Validação principal:
 
 ```bash
 npm test
 npm run lint
-npm run validate:example
-npm run validate:cutover
-npm run catalog:validate
 npm run test:e2e
 npm run pages:build
 npm run android:debug
 ```
 
-## Documentação
+O [guia do desenvolvedor](docs/guia-desenvolvedor.md) explica o que cada etapa
+verifica, como o projeto é organizado e por que os testes são divididos dessa
+forma. Para contribuir, consulte também [CONTRIBUTING.md](CONTRIBUTING.md).
 
-Os documentos abaixo detalham produto, uso, arquitetura, autoria e pesquisa.
+## Licença
 
-Para um percurso curto, escolha seu papel no [guia de
-leitura](docs/README.md#comece-pelo-seu-papel).
-
-| Se você quer entender… | Leia… |
-| --- | --- |
-| o problema, o público e a posição do AraLearn | [Visão do produto](docs/visao-do-produto.md) |
-| microssequências, cards e escolhas didáticas | [Modelo didático](docs/modelo-didatico.md) |
-| a experiência de autenticação, biblioteca, estudo sem conexão e sincronização | [Uso do app](docs/uso-do-app.md) |
-| registrar e interpretar observações situadas nos cards | [Observações pedagógicas](docs/observacoes-pedagogicas.md) |
-| catálogo compartilhado, workspaces compostos, artefatos publicados e segurança | [Arquitetura](docs/arquitetura.md) |
-| PostgreSQL, projeção e réplica local em IndexedDB, outbox e sincronização | [Persistência relacional e sincronização](docs/persistencia-relacional.md) |
-| retomar, marcar para rever e entender o que não é rastreado | [Estado de estudo não punitivo](docs/estado-de-estudo-nao-punitivo.md) |
-| contratos e recursos renderizáveis | [Contrato público](docs/aralearn-contract.md) e [Recursos de card](docs/recursos-de-card.md) |
-| termos, garantias, limites e evidências técnicas | [Glossário técnico](docs/glossario-tecnico.md) e [Matriz de conformidade técnica](docs/matriz-conformidade-tecnica.md) |
-| assistência durante o estudo e autoria pessoal | [Assistência por IA](docs/assistencia-por-ia.md) e [Fluxos, prompts e contratos](docs/fluxos-prompts-e-contratos.md) |
-| criar pelo chat, workspaces compostos, MCP e capacidades por conta | [Criar cursos pelo chat](docs/criar-cursos-pelo-chat.md), [Autoria e publicação do catálogo](docs/autoria-do-catalogo.md) e [Gateway MCP de autoria](docs/autoria-mcp.md) |
-| participar, convidar e administrar papéis locais | [Workspaces educacionais](docs/workspaces-educacionais.md) |
-| fundamentos, literatura, construtos e avaliação | [Revisão de literatura](docs/revisao-de-literatura.md), [Quadro teórico](docs/quadro-teorico.md) e [Protocolo de avaliação](docs/protocolo-avaliacao-artefato.md) |
-| contribuição investigada e próximos passos | [Contribuição e originalidade](docs/contribuicao-originalidade.md) e [Estado atual e roadmap](docs/estado-atual-e-roadmap.md) |
-
-O [mapa completo da documentação](docs/README.md) organiza esses caminhos por tipo de leitor.
-
-Publicação web: <https://fabio-ara.github.io/AraLearn/>
-
-## Contribuição
-
-Mudanças entram por ramo temático, com histórico revisado antes da integração. Consulte [CONTRIBUTING.md](CONTRIBUTING.md).
+O código-fonte é distribuído nos termos descritos em [LICENSE.md](LICENSE.md).

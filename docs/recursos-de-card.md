@@ -1,76 +1,256 @@
 # Packages de card
 
-Packages são módulos independentes compatíveis com o kernel. A única
-ferramenta `consultarBibliotecaDeResources` expõe o contrato
-`aralearn.resource-library.v1` por descoberta progressiva:
+No AraLearn, um **package de card** é um módulo que representa um objeto de conhecimento ou uma forma de resposta cuja estrutura possui significado pedagógico. Ele reúne contrato, validação, renderização, acessibilidade, edição e avaliação. O kernel conhece apenas como packages ocupam um card; não conhece a estrutura interna de grafo, matriz, fórmula ou processo.
 
-1. `explore` apresenta famílias e facetas controladas;
-2. `search` busca pela intenção e classifica `coverage.status` como
-   `canonical`, `versatile` ou `substitute`;
-3. `inspect` compara até oito perfis sem carregar schemas;
-4. `contracts` entrega no máximo quatro contratos de versões exatas;
-5. `validate_card` confere o envelope, referências e compatibilidades;
-6. `audit_representation` avalia conteúdo, resposta e feedback;
-7. `preview_card` descreve a composição sem tentar reproduzir o renderer.
+Essa separação resolve dois problemas:
 
-O catálogo informa finalidade, operações cognitivas, slots, áreas, objetos de
-conhecimento, convenções acadêmicas, adequações, contraindicações,
-tecnologias, modalidades de prática, compatibilidades, limitações e
-acessibilidade. Não há enumeração documental paralela nem consulta que despeje
-todos os schemas. Acrescentar um package não muda o kernel ou a ferramenta.
-Famílias e facetas pertencem ao vocabulário controlado do catálogo; finalidade,
-convenções e limitações pertencem ao próprio package. A versão do catálogo é
-derivada desse conjunto semântico, portanto muda quando a capacidade ou a
-política de seleção muda, mesmo que os IDs instalados permaneçam iguais.
+- um catálogo crescente não obriga a refatorar o leitor e a persistência;
+- uma representação especializada pode ser corrigida e testada sem criar exceções espalhadas pelo aplicativo.
 
-Esses três valores são tokens públicos do protocolo. Nesse campo,
-`canonical` quer dizer apenas que o algoritmo encontrou um package específico
-para as facetas consultadas; não é uma certificação de consenso acadêmico. O
-catálogo de resources também não é o catálogo de cursos mostrado em
-**Coleções**.
+## 1. Quando um package é justificável
 
-O envelope de card vigente não usa os antigos campos `resource`, `kind` ou `exercise`. Ele
-declara `role`, uma lista `content`, no máximo uma instância `response` e uma
-lista `feedback`. Cada instância possui `{ id, package, version, data }`; o
-kernel conhece o envelope e cada package conhece seus dados.
+Uma caixa visual não se torna um resource apenas por ter estilo próprio. O package é justificável quando texto, tabela genérica ou outro package existente perderia uma relação relevante, uma notação convencional ou uma operação cognitiva.
 
-Um resultado `substitute` nunca bloqueia: o agente usa o melhor candidato e
-incorpora brevemente o `chatDisclosure` no feedback do chat. `preview_card`
-sempre devolve `rendered: false`; é um descritor, não screenshot nem simulação
-de viewport, Graphviz ou Vega.
+### Critério de decisão
 
-Na recomposição assistida, o catálogo oferece composições com uma ou mais
-instâncias de conteúdo. Packages complementares podem coexistir quando cada um
-preserva uma parte necessária da intenção, por exemplo uma fórmula e um gráfico
-estatístico. A prática acrescenta somente uma resposta compatível; feedbacks
-podem ser compostos quando acrescentam explicação posterior pertinente. A
-escolha da composição precede o preenchimento dos contratos, para que o modelo
-leve receba apenas a lista curta e os schemas que realmente usará.
+Antes de criar um package, responda:
 
-`graph` recebe vértices e arestas sem coordenadas. O package calcula a
-geometria móvel e mantém os rótulos completos numa lista semântica fora das
-arestas. `relation_map` recebe domínio, contradomínio e pares ordenados;
-apresenta cada elemento uma única vez, usa uma seta sem rótulo por par e
-complementa o desenho com notação extensional, sem cruzar texto.
-`matrix` representa somente arranjos algébricos, sem herdar a grade de uma
-tabela de registros.
+1. qual objeto ou relação precisa ser percebido;
+2. qual gesto o estudante deverá executar;
+3. qual convenção é usada na área acadêmica;
+4. por que uma representação existente não preserva essa intenção;
+5. como a forma continua legível, acessível e editável no celular;
+6. quais situações tornam o package inadequado.
 
-Na autoria, escolha pelo trabalho cognitivo e não para variar visualmente.
-Explique referências e termos antes de exigir interpretação. Divida uma ideia
-quando densidade, número de relações ou carga verbal tornarem o recurso difícil
-de ler em 360 px.
+`matrix` é distinto de `table` porque posição algébrica, delimitadores e operações matriciais têm significado. `call-stack` é distinto de tabela quando precisa mostrar topo, ordem de quadros, ativação e retorno. Se um suposto “rastreamento de algoritmo” apenas listar linhas e valores, `table` é suficiente; a especialização só se sustenta quando o estado do algoritmo, sua transição e seus elementos ativos são materializados de modo que a grade genérica não expressa.
 
-Uma lacuna declara `targetInstanceId` e `targetPath`; não se codifica resposta
-em marcador textual. Uma escolha declara IDs corretos, e uma ordenação declara
-a ordem formal. Um encaixe declara origens, destinos e pares. A compatibilidade
-depende de `responseCompatibility` e, para lacuna ou digitação, dos
-`practiceTargets` declarados pelo contrato exato; `validate_card` decide se a
-composição é válida.
+Representações múltiplas podem favorecer compreensão quando suas funções são coordenadas, mas aumentam carga quando apenas repetem ou decoram a mesma informação. Esse princípio é discutido no modelo DeFT de [Ainsworth (2006)](referencias.md#ref-ainsworth2006deft).
 
-Essa validação é estrutural: verifica envelope, slots, schemas, referências e
-compatibilidades. `audit_representation` acrescenta três verificações de
-adequação: `semantic_fit` para saber se o conteúdo materializa a intenção,
-`response_affordance` para saber se a resposta realmente exercita a operação
-cognitiva e `feedback_legibility` para saber se a explicação posterior pode ser
-lida e relacionada à prática. Um card só está pronto para gravação depois das
-duas etapas.
+## 2. Kernel e package
+
+O kernel em `src/resources/kernel/` oferece:
+
+- envelope e slots de card;
+- resolução de `package@version`;
+- validação estrutural e de composição;
+- montagem do renderer;
+- mediação de lacunas, digitação e respostas;
+- seleção de instâncias para edição e assistência.
+
+Cada diretório em `src/resources/packages/` oferece:
+
+- `manifest`: identidade, finalidade, taxonomia, operações e limites;
+- `authoringContract`: linguagem de alto nível que o autor preenche;
+- `schema`: forma de `data`;
+- `normalize` e `validate`: canonicalização e invariantes;
+- `render`: saída visual;
+- `accessibleText`: equivalente textual;
+- `editableTargets`: textos que podem ser alterados sem expor a estrutura;
+- `practiceTargets`: campos internos aptos a lacuna ou digitação;
+- `evaluate`: quando o package é uma resposta;
+- `hydrate`: somente quando a interação exige comportamento posterior.
+
+O registro rejeita packages que não implementam essas obrigações. Um package de conteúdo precisa declarar `exposition`; um package de resposta precisa avaliar sua resposta. Edição textual e seleção por assistência são obrigatórias, enquanto edição manual da estrutura permanece desabilitada.
+
+## 3. Catálogo como vocabulário controlado
+
+O catálogo não é uma lista solta de nomes. Ele descreve packages com facetas controladas:
+
+- domínios e objetos de conhecimento;
+- operações cognitivas;
+- convenções acadêmicas;
+- modalidades de prática;
+- tecnologias de renderização;
+- adequações e contraindicações;
+- acessibilidade e limitações;
+- slots e compatibilidades de resposta.
+
+Essa organização combina três necessidades. O modelo precisa recuperar candidatos por intenção; a manutenção precisa acrescentar termos sem alterar um algoritmo gigante; a curadoria precisa confrontar por que um candidato foi escolhido.
+
+`consultarBibliotecaDeResources` expõe o protocolo `aralearn.resource-library.v1` de maneira progressiva:
+
+1. `explore` mostra famílias e facetas;
+2. `search` ranqueia candidatos;
+3. `inspect` compara até oito perfis;
+4. `contracts` entrega até quatro contratos exatos;
+5. `validate_card` verifica estrutura e composição;
+6. `audit_representation` examina adequação e legibilidade;
+7. `preview_card` informa se o runtime pode abrir a composição.
+
+Não se envia todo o catálogo nem todos os schemas ao modelo. A autoria planeja primeiro, busca depois e carrega apenas a lista curta. Assim, ampliar a biblioteca altera dados catalográficos e packages, não a interface da ferramenta.
+
+## 4. Seleção e cobertura
+
+O catálogo devolve um estado de cobertura:
+
+- `canonical`: candidato específico para as facetas solicitadas;
+- `versatile`: candidato geral que preserva a operação;
+- `substitute`: aproximação possível com limitação declarada.
+
+Esses termos descrevem o ajuste calculado, não proclamam que uma representação seja universal na academia. O agente deve confrontar convenções, exemplo e contraindicações depois da busca.
+
+Um resultado `substitute` não interrompe a construção. O chat informa brevemente a aproximação usada e sua perda. Essa política permite produzir em áreas ainda não completamente cobertas e transforma a observação do usuário em insumo para expansão futura do catálogo.
+
+## 5. Composição do card
+
+Um card possui:
+
+- zero ou mais instâncias `content`;
+- no máximo uma instância `response`;
+- zero ou mais instâncias `feedback`.
+
+Packages complementares podem coexistir quando cada um desempenha uma função diferente, como um parágrafo que situa o fenômeno, uma fórmula que o formaliza e um gráfico que mostra o comportamento. A composição é inadequada quando duplica o estímulo ou obriga o estudante a reconciliar representações sem finalidade.
+
+A prática acrescenta uma resposta compatível com o conteúdo. `choice`, `ordering` e `matching` são packages de resposta, não “modos visuais” que qualquer diagrama deve reimplementar. Lacuna e digitação podem atuar dentro do próprio objeto representado quando o package declara alvos apropriados.
+
+## 6. Lacunas e digitação internas
+
+Uma lacuna não é um marcador embutido no enunciado. Ela aponta para:
+
+```text
+targetInstanceId + targetPath
+```
+
+`targetInstanceId` identifica a instância; `targetPath` identifica o campo textual declarado por `practiceTargets`. O package de resposta materializa o controle exatamente nesse local.
+
+### Independência entre lacunas
+
+Cada lacuna possui índice e estado próprios. Suas alternativas pertencem apenas àquela lacuna e aparecem quando ela recebe foco. Tocar numa lacuna preenchida novamente a esvazia sem alterar as demais. Digitação segue a mesma identidade, mas usa entrada textual e normalização declarada.
+
+Reutilizar o mesmo caminho ou chave para várias lacunas produziria seleção simultânea, portanto o kernel e os testes verificam unicidade e materialização de cada alvo. O preenchimento real também é medido no navegador: o rótulo substituído precisa caber ou provocar redimensionamento do nó, nunca ser recortado.
+
+## 7. Edição manual e assistência contextual
+
+O autor edita textos visíveis, não JSON estrutural. `editableTargets()` devolve rótulos com identificação compreensível e caminho interno. Campos como coordenadas, ids relacionais, tipos de nó e índices ficam disponíveis apenas como contexto de leitura.
+
+A seleção visual pode abranger uma instância, um card ou um recorte hierárquico autorizado. A assistência por API recebe:
+
+- objetivo e conversa curta;
+- contexto didático de leitura;
+- packages selecionados e seus contratos exatos;
+- lista explícita de caminhos textuais graváveis;
+- versão corrente para desfazer, refazer e restaurar.
+
+Um modelo leve pode propor `edit_text` somente nos alvos autorizados. Uma recomposição estrutural exige o card inteiro e nova validação. O retorno nunca ganha autoridade apenas porque contém JSON bem-formado.
+
+## 8. Motores de representação
+
+O renderer escolhe tecnologia pela classe do problema:
+
+| Necessidade | Tecnologia principal | Justificativa |
+|---|---|---|
+| grafos, fluxos e diagramas relacionais | [Graphviz/Viz.js](https://graphviz.org/) | cálculo automático de layout, rotas e dimensões a partir da topologia |
+| gráficos estatísticos e planos com dados | [Vega/Vega-Lite](https://vega.github.io/vega-lite/docs/) | escalas, eixos, legendas e gramática declarativa de visualização |
+| fórmulas, matrizes e reações | MathML | estrutura matemática nativa e dimensionamento tipográfico dos delimitadores |
+| texto, código e tabelas | HTML semântico | seleção, reflow, acessibilidade e edição textual nativos |
+
+O objetivo não é eliminar CSS, mas evitar que geometria acadêmica dependa de coordenadas autorais ou medições artesanais. Motores externos também têm limites: Graphviz não decide o valor pedagógico de um grafo, Vega não escolhe a escala cientificamente correta e MathML não valida uma equação.
+
+## 9. Regras de representação acadêmica
+
+Um contrato de alto nível deve usar conceitos da área. Exemplos:
+
+- `graph`: vértices, arestas, direção, peso e agrupamentos, sem coordenadas;
+- `relation-map`: domínio, contradomínio e pares ordenados, sem duplicar elementos;
+- `matrix`: entradas, linhas, colunas e tipo de delimitador;
+- `flow`: eventos, processos, decisões, ramos e junções;
+- `chart`: variáveis, unidades, séries, incerteza, escala e nota metodológica;
+- `interlinear-gloss`: forma, segmentação morfológica, glosas, tradução e abreviações;
+- `reaction`: espécies, coeficientes, estados, cargas, condições e seta.
+
+O contrato não pede SVG, LaTeX livre, uma tabela improvisada ou frases concatenadas. Isso reduz erro do modelo e permite que o renderer preserve convenções. Quando duas áreas usam diagramas superficialmente parecidos com semânticas distintas, packages separados são preferíveis a um contrato genérico repleto de exceções.
+
+### Sessões textuais observáveis
+
+`aralearn.resource.terminal_session` representa uma sequência temporal de
+interações textuais entre pessoa e sistema. Ele é apropriado para acompanhar
+entrada, resposta e efeito em shell, PowerShell, Git, SQL ou outra interface
+textual quando a ordem e o estado observável fazem parte do objeto de estudo.
+
+O contrato declara uma orientação pedagógica em `prompt`, o `environment`, um
+`initialContext` opcional e uma lista ordenada de `interactions`. Cada interação
+possui `input` e pode registrar separadamente o prompt visual, `stdout`,
+`stderr`, `exitCode` e um efeito curto. Espaços e quebras de linha são
+preservados num conteúdo declarativo e determinístico. Em `stdout` e `stderr`,
+a string vazia significa que o stream foi observado sem conteúdo; a omissão
+significa que ele não foi registrado ou não é pertinente.
+
+As operações previstas são rastrear interação, interpretar saída, identificar
+erro, relacionar ação e consequência, comparar estado, diagnosticar situação,
+prever resultado e reconhecer comando.
+
+Esse objeto não é `code`, que preserva código-fonte ou configuração estática;
+não é `table`, que compara registros por atributos; e não é `paragraph`, que
+expõe uma explicação em prosa. O package apresenta um registro fornecido pela
+autoria: não executa nem interpreta comandos, não abre shell ou banco e não
+acessa rede ou ambiente externo. O mesmo texto pode produzir outro resultado em
+outro estado, sistema ou momento.
+
+Quando houver prática, somente `interactions[i].input` pode receber lacuna de
+escolha com alternativas exatas e inequívocas. O package não avalia digitação,
+expressões regulares, equivalência semântica nem resposta livre por modelo. Sua
+lista cronológica, os rótulos de streams e o texto monoespaçado selecionável
+fornecem uma ordem de leitura acessível; no celular, conteúdo largo usa rolagem
+local sem alterar espaços ou quebrar o fluxo do card.
+
+Observar e interpretar uma sessão pode preparar reconhecimento, previsão ou
+diagnóstico, mas não substitui operar um ambiente real quando executar a ação é
+o objetivo de aprendizagem. Nessa situação, a autoria precisa oferecer prática
+externa adequada ou declarar explicitamente a limitação.
+
+## 10. Leitura sem gramática adicional
+
+O estudante não deve aprender uma legenda inventada pelo AraLearn para só então compreender o objeto. O package segue a notação reconhecida na área e o card introduz termos ou convenções que façam parte do próprio conteúdo. Uma breve instrução de leitura é apropriada quando a disciplina realmente ensina aquela representação; vocabulário de implementação ou instruções óbvias de rolagem não são conteúdo didático.
+
+Teoria e prática admitem densidades diferentes. Um card de teoria apresenta uma transformação conceitual delimitada, sem condensar vários pressupostos. Um card de prática pode conter contexto residente mais rico porque o estudante precisa operar sobre ele; ainda assim, rótulos e relações devem permanecer legíveis.
+
+## 11. Mobile, orientação e escalabilidade
+
+O runtime não força todo diagrama a caber na largura do celular. A orientação decorre da estrutura:
+
+- progressões e hierarquias longas tendem à vertical;
+- comparação entre duas colunas pode exigir horizontal;
+- grafos densos preservam tamanho natural e usam navegação interna.
+
+Diagramas extensos ficam num frame com altura limitada. Dentro do frame, o gesto move o diagrama; fora dele, move o card. Barras de rolagem permanecem acessíveis sem exigir alcançar o fim de uma figura muito alta. Rótulos completos dimensionam nós antes do layout, inclusive depois do preenchimento de lacuna.
+
+Escalabilidade significa que exemplos complexos continuam corretos, não que toda figura seja comprimida. A galeria inclui larguras móveis, temas e exemplos não triviais para expor cruzamentos, overflow, legendas, múltiplas lacunas e textos longos.
+
+## 12. Acessibilidade
+
+Todo package fornece `accessibleText()` e estrutura navegável quando há controles. Cor não pode ser o único código. Foco, seleção, resposta e erro precisam de contraste e forma. Alvos de toque seguem os critérios adotados pelo sistema visual.
+
+Um equivalente textual não torna automaticamente um diagrama compreensível a todas as pessoas; ele oferece acesso ao conteúdo e base para tecnologia assistiva. Packages complexos precisam de ordem de leitura, nomes de relações e feedback contextualizados.
+
+## 13. Validação e auditoria
+
+`validate_card` verifica:
+
+- envelope e slots;
+- `package@version` instalado;
+- schema e semântica de `data`;
+- ids e caminhos de prática;
+- compatibilidades entre conteúdo e resposta.
+
+`audit_representation` acrescenta:
+
+- `semantic_fit`: a forma preserva a intenção;
+- `response_affordance`: a interação exercita o gesto planejado;
+- `feedback_legibility`: o retorno pode ser relacionado à resposta.
+
+O renderer real e os testes de navegador verificam geometria e comportamento. Nenhuma dessas etapas isolada comprova correção científica ou efetividade pedagógica com estudantes. O conjunto fornece evidência técnica; avaliação acadêmica e empírica permanece necessária.
+
+## 14. Adicionar ou revisar um package
+
+1. registre a justificativa pedagógica e as alternativas recusadas;
+2. escolha a convenção e a tecnologia adequadas;
+3. defina manifest, taxonomia, contrato e exemplo complexo;
+4. implemente normalização, validação, renderer e acessibilidade;
+5. declare edição e alvos de prática sem expor estrutura;
+6. teste exposição, lacunas independentes, digitação e respostas compatíveis;
+7. teste claro/escuro, 360/390/412 px, textos longos e dados complexos;
+8. regenere catálogo e packages de autoria;
+9. execute auditoria de resíduos para impedir renderer ou alias antigo;
+10. atualize documentação e evidência de conformidade.
+
+Adicionar um package não muda o kernel. Alterar o envelope, os slots ou a semântica comum é mudança de kernel e exige revisão mais ampla.

@@ -296,6 +296,13 @@ const SUBSTITUTE_REPRESENTATION_SELECTION = Object.freeze({
   chatDisclosure: "Usei Grafo como aproximação porque ainda não há um diagrama causal especializado."
 });
 
+const PEDAGOGICAL_DIAGNOSIS = Object.freeze({
+  difficultyResponses: [{
+    difficulty: "Sem laboratório, comandos podem ficar sem consequência observável.",
+    response: "Mostrar uma sessão textual com erro, correção e novo estado."
+  }]
+});
+
 test("decisão preserva escolha e substituição de resource fora do envelope do card", () => {
   const mapped = mapAuthoringMcpToolCall("gerirContinuidadeDaAutoria", {
     requestId: "continuity:representation:0001",
@@ -365,6 +372,115 @@ test("metadado representacional exige alvo adequado e explicita substituição s
       }
     }
   }), ({ code }) => code === "invalid_authoring_decision");
+});
+
+test("decisão de microssequência persiste diagnóstico aprovado sem conversa ou raciocínio privado", () => {
+  const mapped = mapAuthoringMcpToolCall("gerirContinuidadeDaAutoria", {
+    requestId: "continuity:diagnosis:0001",
+    workspaceId: WORKSPACE_ID,
+    expectedRevision: 7,
+    operation: "record_decision",
+    decisionId: "diagnosis-micro-a",
+    summary: "Tornar a interação operacional observável sem laboratório.",
+    entityType: "microsequence",
+    entityId: "micro-a",
+    pedagogicalDiagnosis: PEDAGOGICAL_DIAGNOSIS
+  });
+  const payload = validateWorkspaceContinuityActionPayload(mapped.body);
+  const next = applyContinuityStateOperation({
+    state: continuity().authoringState,
+    operation: payload.operation,
+    arguments: payload.arguments,
+    reference: reference(),
+    continuity: continuity(),
+    expectedRevision: payload.expectedRevision
+  });
+  const persisted = next.decisions.find(({ id }) => id === "diagnosis-micro-a");
+  assert.deepEqual(persisted.pedagogicalDiagnosis, PEDAGOGICAL_DIAGNOSIS);
+  assert.equal(Object.hasOwn(persisted, "conversation"), false);
+  assert.equal(Object.hasOwn(persisted, "reasoning"), false);
+
+  const resumed = buildWorkspaceResumeProjection(reference(), {
+    ...continuity(),
+    authoringState: next
+  });
+  assert.deepEqual(
+    resumed.content.decisions.find(({ id }) => id === persisted.id)
+      .pedagogicalDiagnosis,
+    PEDAGOGICAL_DIAGNOSIS
+  );
+});
+
+test("diagnóstico compacto exige alvo de microssequência e vínculo dificuldade-resposta", () => {
+  assert.throws(() => mapAuthoringMcpToolCall("gerirContinuidadeDaAutoria", {
+    requestId: "continuity:diagnosis:bad1",
+    workspaceId: WORKSPACE_ID,
+    expectedRevision: 7,
+    operation: "record_decision",
+    decisionId: "diagnosis-course-a",
+    summary: "Alvo amplo demais.",
+    entityType: "course",
+    entityId: "course-a",
+    pedagogicalDiagnosis: PEDAGOGICAL_DIAGNOSIS
+  }), ({ code }) => code === "invalid_tool_arguments");
+
+  assert.throws(() => validateWorkspaceContinuityActionPayload({
+    requestId: "continuity:diagnosis:bad2",
+    expectedRevision: 7,
+    operation: "record_decision",
+    arguments: {
+      id: "diagnosis-micro-a",
+      summary: "Resposta sem dificuldade existente.",
+      entityType: "microsequence",
+      entityId: "micro-a",
+      pedagogicalDiagnosis: {
+        ...PEDAGOGICAL_DIAGNOSIS,
+        difficultyResponses: []
+      }
+    }
+  }), ({ code }) => code === "invalid_authoring_decision");
+});
+
+test("diagnóstico compacto preserva 64 microssequências realistas em 48 KiB", () => {
+  const decisions = Array.from({ length: 64 }, (_, index) => ({
+    id: `diagnosis-${index}`,
+    summary: `Estudo móvel; demanda: acompanhar as relações e decisões da unidade ${index} sem perder cobertura.`,
+    entityType: "microsequence",
+    entityId: `micro-${index}`,
+    pedagogicalDiagnosis: {
+      difficultyResponses: [{
+        difficulty: `As relações simultâneas da unidade ${index} podem ficar abstratas sem referente observável.`,
+        response: "Usar caso observável e camadas; conferir que cada termo surge após o referente e que eventual prática é determinística."
+      }]
+    }
+  }));
+  const parts = Array.from({ length: 4 }, (_, partIndex) => ({
+    id: `part-${partIndex}`,
+    title: `Parte ${partIndex + 1}`,
+    microsequenceIds: Array.from(
+      { length: 16 },
+      (_, index) => `micro-${partIndex * 16 + index}`
+    )
+  }));
+  const normalized = normalizeContinuityState({
+    version: 1,
+    parts,
+    decisions,
+    mandate: {
+      id: "mandate-build-part-0",
+      kind: "build_part",
+      targetPartId: "part-0",
+      note: "Materializar a Parte aprovada sem extrapolar o plano.",
+      decidedAtRevision: 1
+    }
+  });
+  assert.equal(normalized.decisions.length, 64);
+  const size = new TextEncoder().encode(JSON.stringify(normalized)).byteLength;
+  assert.ok(size > 28 * 1_024, `fixture de escala ficou artificialmente pequena: ${size}`);
+  assert.ok(
+    size < 48 * 1_024,
+    `continuidade realista excedeu 48 KiB: ${size}`
+  );
 });
 
 test("estado de continuidade é fechado, econômico e limita coleções antes do RPC", () => {

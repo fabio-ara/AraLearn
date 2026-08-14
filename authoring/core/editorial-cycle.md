@@ -18,16 +18,28 @@ mandato ou achado a partir da conversa.
 
 ## Planejamento
 
+Use primeiro pedido, conversa, `brief`, fontes e leituras correntes. Antes de
+fechar a estrutura, identifique por microssequência as condições relevantes, as
+demandas próprias do conteúdo, as dificuldades previsíveis e as respostas de
+desenho ligadas a elas. Pergunte apenas quando uma informação ausente puder
+mudar materialmente o plano; não aplique questionário fixo e não faça perguntas
+adicionais quando o contexto já bastar.
+
 Microssequência é a unidade técnica; parte é o recorte conversacional e pode
 reunir várias lições ou microssequências. Grave curso, módulos, lições e
 microssequências sem cards. Apresente objetivos, cobertura, dependências,
-estimativa de práticas, justificativa do dimensionamento e riscos. Pare para a
-decisão da pessoa.
+estimativa de práticas, justificativa do dimensionamento e riscos. Resuma em
+linguagem humana as dificuldades materialmente relevantes e as respostas
+planejadas, sem despejar JSON. Pare para a decisão da pessoa.
 
 Depois da aprovação ou ajuste, use `record_approved_plan` uma vez para gravar
 atomicamente todas as Partes, decisões e o mandato corrente. As Partes contêm
 listas ordenadas de ids de microssequências. O `brief` conserva somente contexto
-estável e fontes, nunca esses registros.
+estável e fontes, nunca esses registros. Nas decisões ligadas à
+microssequência, conserve de forma compacta somente condição, demanda,
+dificuldade e resposta aprovadas. Use o resumo para condição e demanda e
+`pedagogicalDiagnosis.difficultyResponses` apenas para pares materialmente
+relevantes, sem raciocínio privado ou transcrição da conversa.
 
 ## Construção
 
@@ -39,6 +51,11 @@ ideal e comunique a aproximação em uma linha natural. Ao terminar, apresente
 microteorias, quantidades de práticas, resources, termos e decisões de escopo,
 sem despejar JSON ou todas as práticas.
 
+Siga as respostas aprovadas sem convertê-las em regra global: exemplo,
+contraste, apoio, retomada, representação e quantidade de prática são decisões
+locais. Toda prática precisa ter correção determinística; não use regex,
+avaliação por LLM ou correspondência aproximada para resolver ambiguidade.
+
 ## Auditoria
 
 Grave um mandato `audit` novo — com `targetPartId` quando a autorização estiver
@@ -46,9 +63,13 @@ limitada a uma Parte —, retome o workspace, consulte `list_comments` e
 `list_observations` com `kinds: ["note"]`, releia o conteúdo persistido e não
 o altere. Verifique cobertura,
 autossuficiência, carga cognitiva, fontes, continuidade e adequação de teoria,
-práticas e resources. Separe aspectos adequados de problemas localizados com
-impacto, gravidade e reparo recomendado. Registre somente achados compactos na
-continuidade da autoria.
+práticas e resources. Confronte também diagnóstico, plano e cards: procure
+dificuldade sem resposta, resposta prometida ausente, condensação incompatível
+com o risco, prática sem base, representação inadequada, perda de cobertura ou
+dependência de meio declarado indisponível. Separe aspectos adequados de
+problemas localizados com impacto, gravidade e reparo recomendado. Registre
+somente achados compactos na continuidade da autoria e não alegue eficácia ou
+aprendizagem.
 
 Achados ativos já estão em `resume`. Consulte o histórico com
 `kinds: ["audit_finding"]`, estados e paginação somente quando a etapa exigir.

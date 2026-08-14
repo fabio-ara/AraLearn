@@ -4,6 +4,48 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 
 ## [Unreleased]
 
+### Added
+
+- a issue `#96` introduz o diagnóstico pedagógico contextual protegido na
+  autoria estrutural: condições de aprendizagem, exigências do conteúdo,
+  dificuldades previstas e respostas de desenho ficam vinculadas por
+  microssequência e são apresentadas para decisão humana antes dos cards;
+- o package `aralearn.resource.terminal_session` representa sessões textuais
+  observáveis e ordenadas sem executar comandos, com streams separados,
+  acessibilidade, rolagem local e prática determinística somente sobre entradas;
+- um corpus versionado de cinco cenários contrasta lacuna material, contexto já
+  suficiente, área não técnica, pedido completo e risco de densidade, sem alegar
+  eficácia pedagógica.
+
+### Changed
+
+- a autoria passa a consultar primeiro o contexto disponível, perguntar somente
+  quando a informação ausente muda materialmente o desenho e persistir apenas
+  contexto e decisões aprovadas, sem persistir conversa ou raciocínio privado;
+- auditorias passam a confrontar diagnóstico, plano e cards, incluindo resposta
+  prometida ausente, prática sem base, representação inadequada, perda de
+  cobertura e dependência de meio externo indisponível;
+- os metadados Android da atualização da release `0.0.19` usam
+  `versionCode 162`, mantendo `applicationId com.aralearn.app` e
+  `versionName 0.0.19` para a substituição compatível do APK;
+- documentação pública reorganizada como material de aprendizagem, com
+  apresentação do produto, percursos por finalidade, explicações progressivas
+  dos conceitos técnicos e pedagógicos, justificativas das decisões e
+  referências bibliográficas legíveis;
+- guias de uso, autoria, administração, desenvolvimento e implantação passam a
+  declarar pré-condições, procedimentos, resultados esperados, comportamento
+  sem conexão e formas seguras de recuperação;
+- materiais humanos e instruções executáveis de autoria passam a ter funções
+  editoriais explícitas, evitando que a concisão necessária aos modelos de
+  linguagem determine a profundidade da documentação destinada às pessoas.
+
+### Removed
+
+- a calibração pedagógica global, seu perfil local, a terceira superfície do
+  painel e as exportações de instruções calibradas deixam de integrar o produto;
+  as decisões pedagógicas passam a ser locais e justificadas por
+  microssequência.
+
 ## [0.0.19] - 2026-08-13
 
 ### Added
@@ -18,8 +60,8 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 ### Changed
 
 - documentação pública, material autoral e pacotes derivados passam a usar
-  terminologia precisa de computação e educação, conforme a auditoria da issue
-  #94;
+  terminologia precisa de computação e educação, conforme a revisão
+  técnico-documental do estado implementado;
 - diagramas relacionais compatíveis com leitura vertical passam a priorizar o
   eixo superior-inferior em telas móveis, preservando as convenções cuja
   orientação horizontal é semanticamente relevante.

@@ -146,57 +146,39 @@ test("Plugin oferece somente os valores necessários à criação", async ({ pag
   await expect(page.locator(".remote-assistant-step")).toHaveCount(0);
 });
 
-test("Calibração expõe detalhes editáveis, preserva o núcleo e funciona offline", async ({ page }) => {
+test("Painel remove calibração global e mantém Chatbot e Plugin disponíveis offline", async ({ page }) => {
   await page.goto("/");
   await page.evaluate(async () => {
-    const { createAuthoringAssistantPanel } = await import("/src/ui/AuthoringAssistantPanel.js?calibration-lote-5");
-    const saved = [];
-    window.AndroidHost = {
-      saveExportFile(content, fileName, mimeType) {
-        saved.push({ content, fileName, mimeType });
-        return true;
-      }
-    };
+    const { createAuthoringAssistantPanel } = await import("/src/ui/AuthoringAssistantPanel.js?contextual-planning");
+    const storageCalls = [];
     const panel = createAuthoringAssistantPanel({
-      fetchImpl: async () => new Response("# Núcleo protegido", { status: 200 })
+      fetchImpl: async () => {
+        throw new Error("offline");
+      },
+      storageValue: {
+        getItem(key) {
+          storageCalls.push(["get", key]);
+          return null;
+        },
+        setItem(key, value) {
+          storageCalls.push(["set", key, value]);
+        }
+      }
     });
     document.body.replaceChildren(panel.element);
-    window.assistantCalibrationTest = { panel, saved };
+    window.assistantSurfacesTest = { panel, storageCalls };
     await panel.open();
   });
 
-  await page.getByRole("tab", { name: "Abrir Calibração" }).click();
-  await expect(page.getByText("Preset: AraLearn — progressivo e denso")).toBeVisible();
-  await expect(page.locator("[data-assistant-calibration-form] textarea")).toHaveCount(4);
-  await expect(page.locator(".remote-assistant-protected-core textarea")).toHaveCount(0);
-  await page.getByRole("textbox", { name: "Exemplos e contexto" }).fill(
-    "Use primeiro um exemplo de rede doméstica e depois amplie para uma organização."
-  );
-  await expect(page.locator('[data-calibration-badge="examples-and-context"]')).toHaveText("Personalizado");
-  await expect(page.locator("[data-assistant-status]")).toContainText("guardada neste dispositivo");
+  await expect(page.getByRole("tab")).toHaveCount(2);
+  await expect(page.getByRole("tab", { name: "Abrir Chatbot" })).toBeVisible();
+  await expect(page.getByRole("tab", { name: "Abrir Plugin" })).toBeVisible();
+  await expect(page.getByRole("tab", { name: /Calibração/iu })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: /Instruções calibradas|Perfil JSON|Restaurar preset/iu })).toHaveCount(0);
+  expect(await page.evaluate(() => window.assistantSurfacesTest.storageCalls)).toEqual([]);
 
-  await page.evaluate(async () => {
-    window.assistantCalibrationTest.panel.close();
-    await window.assistantCalibrationTest.panel.open();
-  });
-  await page.getByRole("tab", { name: "Abrir Calibração" }).click();
-  await expect(page.getByRole("textbox", { name: "Exemplos e contexto" })).toHaveValue(
-    "Use primeiro um exemplo de rede doméstica e depois amplie para uma organização."
-  );
-
-  await page.getByRole("button", { name: "Instruções calibradas" }).click();
-  await expect.poll(() => page.evaluate(() => window.assistantCalibrationTest.saved.length)).toBe(1);
-  await expect.poll(() => page.evaluate(() => {
-    const saved = window.assistantCalibrationTest.saved[0];
-    const bytes = Uint8Array.from(atob(saved.content), (character) => character.charCodeAt(0));
-    return { fileName: saved.fileName, content: new TextDecoder().decode(bytes) };
-  })).toEqual({
-    fileName: "INSTRUCTIONS-CALIBRADAS.md",
-    content: expect.stringMatching(/# Núcleo protegido[\s\S]*núcleo pedagógico protegido[\s\S]*rede doméstica/iu)
-  });
-
-  await page.getByRole("button", { name: "Restaurar preset" }).click();
-  await expect(page.locator('[data-calibration-badge="examples-and-context"]')).toHaveText("Preset");
+  await page.getByRole("tab", { name: "Abrir Plugin" }).click();
+  await expect(page.getByRole("button", { name: "Endpoint" })).toBeVisible();
   await expect(page.locator("[data-assistants-panel]")).toHaveCSS("overflow-x", "visible");
   const overflow = await page.locator("[data-assistants-panel]").evaluate(
     (element) => element.scrollWidth > element.clientWidth + 1

@@ -24,7 +24,7 @@ ou metadados bibliográficos para propriedades inventadas do card.
 No `brief` do workspace, declare cada identificador aprovado com a forma
 `[source:id]` e escreva depois dela a identificação e o recorte necessários.
 Exemplo: `[source:prova-referencia] Prova fornecida pela pessoa autora, questões
-selecionadas para calibrar as práticas.` O servidor aceita em `card.sources` uma referência nova somente quando
+selecionadas para fundamentar as práticas.` O servidor aceita em `card.sources` uma referência nova somente quando
 o mesmo identificador está declarado no `brief` ou já pertence ao conteúdo
 herdado pelo workspace.
 

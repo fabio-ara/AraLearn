@@ -1,127 +1,198 @@
 # Auditoria do front-end
 
-Esta auditoria registra a consolidação do front-end claro/escuro, do leitor e
-do painel integrado. O critério principal é a finalidade do produto: localizar,
-estudar e administrar conteúdo sem exigir que a pessoa aprenda o modelo interno
-do backend.
+Auditar a interface significa verificar sistematicamente se ela cumpre suas finalidades e regras. A auditoria não procura apenas “telas bonitas”: verifica se a pessoa consegue localizar, estudar e alterar conteúdo sem conhecer detalhes internos do sistema.
 
-## Navegação corrente
+## Vocabulário inicial
+
+- **front-end** é a parte do sistema apresentada à pessoa no navegador ou no aplicativo;
+- **contrato** é uma regra verificável sobre a forma de dados ou o comportamento de uma operação;
+- **evidência executável** é um teste ou verificador que pode ser repetido para confrontar uma afirmação com o sistema;
+- **token de design** é um nome estável para uma decisão visual, como cor de ação ou espaçamento;
+- **IndexedDB** é o banco de dados do navegador usado como réplica local;
+- **Playwright** é a ferramenta que automatiza jornadas em um navegador real; um **smoke test** é uma verificação breve das funções essenciais no ambiente implantado;
+- **hash** é um resumo calculado de um conteúdo; **cursor** marca uma posição numa leitura paginada; **CAS** (*compare-and-swap*) rejeita uma gravação quando a revisão mudou desde a leitura;
+- **JWT** é o token assinado que identifica uma sessão perante o servidor;
+- **JSON** é um formato textual de dados; **schema** é o conjunto de regras que descreve sua forma aceita;
+- **provider** é o serviço externo que executa um modelo usado pela assistência.
+- **reflow** é a reorganização do conteúdo quando a largura, o tamanho do texto ou a ampliação mudam, sem perda de informação nem sobreposição.
+
+Este documento descreve o método, a interface esperada e os limites da evidência. O [sistema visual](sistema-visual.md) detalha tokens e acessibilidade; a [matriz de conformidade](matriz-conformidade-tecnica.md) liga afirmações a código e testes.
+
+## 1. Método de auditoria
+
+Cada requisito é examinado em cinco níveis:
+
+1. **semântica**: o controle representa a tarefa que anuncia;
+2. **autoridade**: a ação só aparece e só é aceita quando autorizada;
+3. **estado**: carregamento, sucesso, conflito e falha são distinguíveis;
+4. **interação**: toque, teclado, retorno, rolagem e foco funcionam;
+5. **integração**: IndexedDB, rede e servidor não criam resultados contraditórios.
+
+As evidências recebem pesos diferentes:
+
+| Evidência | O que demonstra | O que não demonstra |
+|---|---|---|
+| inspeção de código | responsabilidade e fluxo implementados | execução em todos os ambientes |
+| teste unitário | regra isolada | integração visual completa |
+| Playwright | jornada no navegador e geometria medida | uso prolongado ou diversidade humana |
+| smoke remoto | comunicação no ambiente implantado | disponibilidade futura |
+| avaliação com pessoas | compreensibilidade e carga percebida | ausência de defeito técnico fora da amostra |
+
+Uma alegação só é chamada de confirmada no escopo que a evidência realmente cobre.
+
+## 2. Modelo de navegação
 
 ```text
-Início
-├── curso
+Trilhas
+├── curso ou planejamento
 │   └── módulo
 │       └── lição
 │           └── microssequência
 │               └── card
-├── organização contextual de grupos e cursos de Trilhas
 └── painel
-    ├── Coleções: grupos e cursos oficiais
-    └── Chatbot: GPT personalizado com Action
+    ├── Coleções
+    └── Chatbot
 ```
 
-`Trilhas` não é uma fila de estados. Plano é a composição que a pessoa ainda
-está montando; curso é conteúdo que já pode abrir e estudar. O front-end não
-expõe `planned`, `ready`, `partial`, hashes ou revisões. Esses detalhes podem
-existir na persistência para validar concorrência e publicação, mas não criam
-categorias de navegação.
+`Trilhas` reúne organização pessoal e entrada no estudo. `Coleções` apresenta o catálogo e, para contas autorizadas, controles editoriais. Não existe uma segunda tela que replique a mesma biblioteca pessoal.
 
-A tela inicial é a superfície canônica de leitura e organização de `Trilhas`.
-Não há um índice paralelo repetindo os mesmos cursos. Em `Trilhas`, o grupo é pessoal e
-administrável pela própria conta; em `Coleções`, o grupo é editorial e somente
-uma capacidade autenticada permite alterá-lo. A linguagem de grupo permanece
-previsível sem duplicar a tela inicial, compartilhar propriedade ou ampliar
-permissões.
+### Decisão de vocabulário
 
-## Ações contextuais
+O front-end expõe conceitos que ajudam a agir: grupo, curso, módulo, lição, microssequência, card e coleção. Estados técnicos como hash, cursor, revisão CAS, `partial` ou `ready` permanecem no protocolo. Quando um conflito exige decisão, a mensagem explica que o conteúdo mudou e precisa ser recarregado; não apresenta apenas o código interno.
 
-O topo da tela inicial e das hierarquias contém somente a entrada do painel.
-No leitor, ficam somente **Editar card** e **Abrir painel**. Foram removidos os
-atalhos redundantes para Chatbot, criação rápida e importação/exportação, além
-do menu genérico sem alvo, do editor de fonte-guia já desativado e da criação
-manual de um plano vazio. Planos criados pelo GPT personalizado continuam
-visíveis e administráveis em `Trilhas`. O ícone de mais abre somente as ações
-contextuais do item correspondente.
+Essa abstração reduz carga, mas não pode esconder consequências. Retirar um curso de Trilhas, excluir uma composição privada e retirar uma publicação de Coleções são comandos diferentes e recebem rótulos e confirmações próprios.
 
-Cada componente estrutural de navegação oferece diretamente somente as ações de
-uso frequente:
+## 3. Trilhas e Coleções
 
-- zerar o progresso daquela parte;
-- editar título e descrição, quando permitido;
-- excluir, quando permitido;
-- abrir a próxima camada ou iniciar o estudo.
+### Trilhas
 
-Controles de arrastar pertencem apenas à estrutura de curso, nunca aos cards de
-estudo. Curso privado é editável pelo dono. Curso oficial é editável somente
-por uma conta administrativa/editorial. Na ausência de uma capacidade
-confirmada, o cliente falha fechado e desabilita edição e exclusão.
+A tela inicial carrega a projeção paginada de grupos, planejamentos, composições e seleções. Um cache por conta substitui a projeção anterior somente quando todas as páginas chegam. Sem rede, o cache é leitura local; não concede autoridade nova.
 
-## Projeção integrada
+Grupos e cursos usam ordem alfabética em português. A posição pedagógica dentro do curso continua explícita. Menus contextuais operam no item a que pertencem: criar ou renomear grupo, mover item, editar rótulo e retirar ou excluir quando permitido. Formulários surgem junto ao rótulo e devolvem foco ao acionador.
 
-A tela inicial lê a projeção paginada completa de `Trilhas`; `Coleções` é
-carregada somente quando a aba é aberta. Um
-cache por conta substitui o estado anterior somente ao terminar todas as
-páginas. No uso offline ele é somente leitura e não concede permissões.
+### Coleções
 
-Na tela inicial, seletores compactos escolhem o grupo e o curso. Seus menus
-contextuais recolhem criar, renomear, mover entre grupos e excluir no alvo a que
-se referem; título e descrição do curso tornam-se editáveis no próprio card.
-Formulários aparecem no mesmo lugar do rótulo e devolvem o foco ao acionador.
-Grupos e cursos usam ordem alfabética automática em português, sem setas ou modo
-de organização. As operações raras da conta ficam em um único menu no rodapé. Em `Coleções`,
-ações editoriais aparecem diretamente no alvo somente para uma conta
-autorizada; consultar, buscar, adicionar e abrir continuam sendo o estado
-padrão para as demais pessoas. Não existe modo intermediário de organização.
+Coleções é carregada quando sua aba é aberta. Pesquisa, seleção e abertura são o estado comum. Controles de administrar coleção ou publicação dependem de capacidade resolvida no servidor.
 
-Selecionar um curso oficial usa uma ação dedicada que cria apenas o vínculo
-pessoal. Abrir ou iniciar um curso é leitura e navegação: não seleciona, move,
-copia nem publica. Em `Coleções`, contas editoriais também administram grupos e
-cursos oficiais pelo aplicativo; em `Trilhas`, cada pessoa administra seus
-grupos e a classificação de planos, composições em materialização e seleções.
-Em ambos os casos, a ordem visual é alfabética; a posição pedagógica dentro do
-curso continua explícita e editável.
+Adicionar um curso oficial cria um vínculo leve em Trilhas. Abrir ou tocar Play não adiciona, move, copia nem publica. Essa separação é verificada em `tests/e2e/learning-spaces-panel.spec.js` e `tests/e2e/unified-home-trails.spec.js`.
 
-Ao abrir um plano, a árvore corrente permite renomear, descrever, reordenar,
-excluir e observar cursos, módulos, lições e microssequências. Observações
-guardam apenas alvo e texto corrente, sem copiar card, curso, prompt ou
-conversa. O GPT personalizado pode ler essas observações pelo mesmo contrato
-de autoria, pela Action; clientes compatíveis usam a integração MCP separada.
+## 4. Hierarquia e estudo
 
-Falhas de escrita deixam o formulário utilizável e mostram uma mensagem curta.
-Ações estruturais só são aplicadas após confirmação remota. Edição textual pode
-ser confirmada primeiro no rascunho durável do dispositivo e fica identificada
-como pendente até a sincronização CAS; conflito no mesmo alvo conserva o texto
-local em vez de sobrescrever o remoto.
+Curso, módulo, lição e microssequência são superfícies de navegação progressiva. A pessoa vê objetivo e filhos do nível corrente sem precisar percorrer um grafo de autoria.
 
-## Edição situada
+No card, o Play segue dois estados:
 
-**Visualizar**, **Editar** e **IA** permanecem na própria superfície montada.
-Um contorno discreto indica a seleção sem redimensionar a instância de package
-nem copiar o conteúdo para outro painel. No card, selecionar instâncias limita
-a assistência a seus caminhos textuais; selecionar o card inteiro também
-permite recompor seu conteúdo pelo catálogo.
+1. confirma a resposta e materializa feedback local;
+2. no toque seguinte, avança.
 
-Microssequência e lição oferecem seus próprios escopos. Selecionar todos os
-cards autoriza criar cards naquela microssequência; selecionar todas as
-microssequências autoriza criar no máximo uma nova microssequência. O contexto
-adjacente e o índice compacto da lição entram somente para leitura. O pedido
-fica junto ao conteúdo e o resultado validado aparece diretamente. A conversa
-curta permite desfazer, refazer e restaurar versões do card; um resultado sem
-mudança conserva apenas a explicação. Providers remotos de IA
-exigem rede; a edição manual e o serviço local de integração com Codex CLI continuam disponíveis para
-conteúdo já baixado e anteriormente autorizado. Respostas, gaps, identidades,
-ordem e topologia não se tornam editáveis nesse modo.
+A avaliação não aguarda persistência remota. O estado é gravado na réplica e sincronizado em seguida. Tema, retorno e retomada também operam sem depender de uma requisição pendente. A jornada de latência e falta de rede está em `tests/e2e/study-card-progression.spec.js`.
 
-## Sistema visual e validação
+O cartão preserva posição de leitura quando o feedback aparece. Scroll interno só pertence a resources que precisam manter tamanho natural; tocar fora do frame continua rolando o card.
 
-Componentes consomem tokens semânticos em temas claro e escuro. Ícones de
-interface são SVG com `currentColor`; nomes desconhecidos falham explicitamente.
-O auditor de resíduos exige zero cores literais no CSS de componentes, zero
-seletores órfãos, zero ramos órfãos e zero glifos usados como ícones.
+## 5. Ações contextuais e autoridade
 
-As jornadas automatizadas cobrem Android, teclado, toque, diferentes larguras,
-abertura de plano e curso, carregamento tardio de Coleções, administração de
-grupos, seleção explícita, permissões, GPT personalizado com Action, integração
-MCP, estudo, retorno e
-assistência contextual. Também verificam que `play` não produz mutação.
-Nenhum teste preserva componentes removidos apenas por compatibilidade.
+Um controle é exibido quando a ação faz sentido naquele alvo e a conta possui capacidade conhecida. A interface falha fechada: capacidade ausente ou carregamento incompleto não habilita edição destrutiva.
+
+Entretanto, esconder o controle não é a barreira de segurança. Toda escrita remota revalida JWT, relação, capacidade, revisão e estado. O front-end apenas previne tentativa inútil e comunica a autoridade efetiva.
+
+| Alvo | Ações comuns | Condição |
+|---|---|---|
+| grupo pessoal | criar, renomear, excluir | conta proprietária |
+| curso privado | editar, mover, excluir | capacidade sobre a composição |
+| curso oficial selecionado | abrir, retirar de Trilhas | vínculo da conta |
+| publicação oficial | editar classificação, retirar de Coleções | capacidade editorial |
+| parte do workspace | editar texto, estrutura autorizada, observar | revisão e capacidade correntes |
+
+Falha de escrita mantém o formulário e seu texto. Edição textual pode permanecer como mudança local pendente; conflito CAS conserva a proposta e pede reconciliação, sem sobrescrever silenciosamente o remoto.
+
+## 6. Edição situada
+
+**Visualizar**, **Editar** e **Assistência por IA** pertencem à superfície montada.
+
+### Visualizar
+
+Mostra o resultado do card e os controles de estudo. Não exibe JSON, caminhos de schema ou ferramentas autorais.
+
+### Editar
+
+Um contorno discreto indica a instância escolhida sem alterar sua geometria. O formulário contém somente os valores devolvidos por `editableTargets()`: rótulos, texto, legenda e descrição visíveis. Ids, coordenadas, topologia e tipos de nó são contexto protegido.
+
+### Assistência por IA
+
+A seleção delimita a autoridade:
+
+- instância: somente seus textos declarados;
+- card: recomposição completa validada do card;
+- cards da microssequência: alteração ou criação dentro dessa microssequência;
+- microssequências da lição: no máximo uma nova microssequência no escopo autorizado.
+
+Contexto adjacente pode ser lido, mas não gravado. A conversa conserva uma janela curta de turnos e versões em memória, com desfazer, refazer e restaurar. Resposta do provider é validada contra os contratos e o escopo antes de entrar na árvore.
+
+Os componentes principais estão em `src/ui/renderLessonScreen.js`, `src/render/renderPackageCard.js` e `src/assist/`. As jornadas estão em `tests/e2e/card-assistance.spec.js` e `tests/e2e/authoring-assistant.spec.js`.
+
+## 7. Estados de rede e persistência
+
+O front-end distingue:
+
+- conteúdo disponível localmente;
+- mutação local pendente;
+- sincronização em curso;
+- rejeição determinística;
+- conflito de revisão;
+- indisponibilidade transitória;
+- curso ainda não materializado.
+
+Uma ausência de conexão não bloqueia leitura, tema, resposta, feedback ou avanço já materializados. Uma operação que exige servidor — login novo, assistência remota, publicação ou mudança de permissão — informa a dependência em vez de simular sucesso.
+
+A fila local não é mostrada como jargão de “outbox”; a interface comunica “alteração pendente” ou “sincronização necessária”. Detalhes ficam disponíveis para diagnóstico, não como requisito para estudar.
+
+## 8. Sistema visual e acessibilidade
+
+Componentes usam os tokens de `public/styles-tokens.css`. SVGs funcionais usam `currentColor`. O auditor de resíduos procura cores literais fora da fundação, seletores e ramos órfãos e glifos usados como ícones.
+
+A auditoria cobre:
+
+- claro, escuro e Sistema;
+- 360, 390, 412 e 1280 px;
+- foco visível e ordem de teclado;
+- nome e estado acessíveis;
+- alvo de toque;
+- zoom e reflow;
+- preferência de movimento reduzido;
+- recursos complexos com rolagem interna;
+- contraste de texto, controles e dados.
+
+Automação de contraste e árvore acessível não substitui leitor de tela nem teste com participantes. A referência normativa é [WCAG 2.2](https://www.w3.org/TR/WCAG22/).
+
+## 9. Matriz de jornadas
+
+| Jornada | Evidência principal |
+|---|---|
+| carga e organização de Trilhas | `tests/e2e/unified-home-trails.spec.js`, `tests/e2e/home-course-group-move.spec.js` |
+| Coleções e permissões | `tests/e2e/learning-spaces-panel.spec.js` |
+| estudo, Play, feedback, offline e retomada | `tests/e2e/study-card-progression.spec.js` |
+| edição e assistência situada | `tests/e2e/card-assistance.spec.js`, `tests/e2e/authoring-assistant.spec.js` |
+| persistência autoral offline | `tests/e2e/workspace-offline-authoring.spec.js` |
+| resources e temas | `tests/e2e/package-visuals.spec.js`, `tests/e2e/table-resource.spec.js` |
+| layout da tela inicial | `tests/e2e/home-layout.spec.js` |
+| Android e artefato | testes runtime de Android e verificador de implantação |
+
+Os testes não mantêm componentes obsoletos apenas por compatibilidade. O objetivo é uma única interface corrente e uma única responsabilidade por ação.
+
+## 10. Critérios de aprovação
+
+Uma mudança de front-end é aprovada quando:
+
+1. usa vocabulário da tarefa, sem expor implementação desnecessária;
+2. mantém leitura e ações frequentes em primeiro plano;
+3. não confunde abrir com selecionar, nem retirar com excluir;
+4. falha fechada em autoridade, mas não bloqueia operação local por rede;
+5. preserva texto diante de falha e conflito;
+6. funciona por toque e teclado nas larguras suportadas;
+7. oferece nome, estado, foco e contraste acessíveis;
+8. atualiza testes de jornada e auditoria de resíduos;
+9. não cria componente paralelo para responsabilidade já existente.
+
+## 11. Limites da auditoria
+
+A auditoria de código e navegador demonstra a implementação observada nas fixtures. Ela não comprova que uma pessoa leiga compreende toda representação, que a carga cognitiva é baixa em uso prolongado, nem que uma Edge Function remota permanecerá disponível. Esses aspectos requerem avaliação com participantes, observação de uso, dados operacionais e revisão pedagógica dos cursos produzidos.
