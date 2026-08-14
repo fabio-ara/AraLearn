@@ -73,6 +73,10 @@ test("modo de conferência detecta divergência da página gerada", (context) =>
   fs.writeFileSync(path.join(root, "docs", "referencias.bib"), fixture, "utf8");
   buildReadableReferences({ root });
   assert.doesNotThrow(() => buildReadableReferences({ root, check: true }));
+  const output = path.join(root, "docs", "referencias.md");
+  const crlf = fs.readFileSync(output, "utf8").replace(/\n/gu, "\r\n");
+  fs.writeFileSync(output, crlf, "utf8");
+  assert.doesNotThrow(() => buildReadableReferences({ root, check: true }));
   fs.appendFileSync(path.join(root, "docs", "referencias.md"), "alteração manual\n", "utf8");
   assert.throws(() => buildReadableReferences({ root, check: true }), /diverge de docs\/referencias\.bib/u);
 });

@@ -309,8 +309,9 @@ export function buildReadableReferences({ root = defaultRoot, check = false, con
   const entries = parseBibTeX(fs.readFileSync(bibliography, "utf8"));
   const rendered = renderReadableReferences(entries);
   const current = fs.existsSync(output) ? fs.readFileSync(output, "utf8") : "";
-  if (check && current !== rendered) throw new Error("docs/referencias.md diverge de docs/referencias.bib; execute npm run docs:references.");
-  if (!check && current !== rendered) fs.writeFileSync(output, rendered, "utf8");
+  const normalizedCurrent = current.replace(/\r\n?/gu, "\n");
+  if (check && normalizedCurrent !== rendered) throw new Error("docs/referencias.md diverge de docs/referencias.bib; execute npm run docs:references.");
+  if (!check && normalizedCurrent !== rendered) fs.writeFileSync(output, rendered, "utf8");
 
   if (check) {
     const citationErrors = [];
