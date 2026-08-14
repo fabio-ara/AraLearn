@@ -7,7 +7,7 @@
   "method": {
     "id": "canonical-source-two-revision-replay",
     "description": "A mesma auditoria executável lê as duas fontes no commit Git baseline e no snapshot final, calcula SHA-256, deriva findings do conteúdo e exige baseline não conforme e revisão final conforme.",
-    "sourceStorage": "O artefato guarda caminhos, fingerprints, observações e ajustes; não duplica o conteúdo integral das fontes.",
+    "sourceStorage": "O artefato guarda caminhos, fingerprints com finais de linha canônicos LF, observações e ajustes; não duplica o conteúdo integral das fontes.",
     "historyRequirement": "O objeto Git baseline é obrigatório. O CI usa checkout com fetch-depth 0; sem o conteúdo antigo verificável, a auditoria falha."
   },
   "scenarioLinkage": {
@@ -309,8 +309,8 @@
       {
         "id": "authoring-knowledge",
         "path": "supabase/functions/_shared/aralearn-authoring/authoringKnowledge.js",
-        "sha256": "2e147923cb821b17c6ae9e1732a15012314b6036f79a5ce274cd7925f904cf57",
-        "bytes": 44507
+        "sha256": "f6ce9b2ca56c38111ece4e30649bb65bfd0f1bc3a3224b1acb9046acde708b83",
+        "bytes": 43994
       }
     ],
     "findings": []

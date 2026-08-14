@@ -1,11 +1,11 @@
 import assert from "node:assert/strict";
-import { createHash } from "node:crypto";
 import test from "node:test";
 
 import {
   AuthoringSourceIterationError,
   auditAuthoringSourceRevision,
   evaluateAuthoringSourceIteration,
+  fingerprintCanonicalText,
   loadAuthoringSourceIteration
 } from "../../scripts/evaluateAuthoringSourceIteration.mjs";
 
@@ -14,10 +14,7 @@ function fixtures() {
 }
 
 function fingerprint(content) {
-  return {
-    sha256: createHash("sha256").update(content).digest("hex"),
-    bytes: Buffer.byteLength(content)
-  };
+  return fingerprintCanonicalText(content);
 }
 
 function refreshFingerprint(input, revision, sourceId, content) {
@@ -39,6 +36,19 @@ test("replay audita baseline Git e revisão final pelas duas fontes canônicas",
   assert.equal(result.baselineFindingCodes.length, 9);
   assert.deepEqual(result.finalFindingCodes, []);
   assert.equal(result.result, "pass");
+});
+
+test("fingerprint canônico não depende dos finais de linha do checkout", () => {
+  const input = fixtures();
+  const sourceId = "authoring-knowledge";
+  input.finalSourceById[sourceId] = input.finalSourceById[sourceId]
+    .replace(/\r\n?/gu, "\n")
+    .replace(/\n/gu, "\r\n");
+
+  const result = evaluateAuthoringSourceIteration(input);
+
+  assert.equal(result.result, "pass");
+  assert.deepEqual(result.finalFindingCodes, []);
 });
 
 test("checkout raso falha sem aceitar findings ou fingerprints autodeclarados", () => {
@@ -357,6 +367,39 @@ test("objetos dos corpora permanecem ligados aos bytes versionados", () => {
   changedRunObject.runCorpus.recordedAt = "2099-01-01";
   assert.throws(
     () => evaluateAuthoringSourceIteration(changedRunObject),
+    (error) => error instanceof AuthoringSourceIterationError &&
+      error.code === "scenario-linkage"
+  );
+});
+
+test("hashes dos corpora são portáveis sem aceitar mutação semântica", () => {
+  const crlfCheckout = fixtures();
+  crlfCheckout.scenarioCorpusSource = crlfCheckout.scenarioCorpusSource
+    .replace(/\r\n?/gu, "\n")
+    .replace(/\n/gu, "\r\n");
+  crlfCheckout.runCorpusSource = crlfCheckout.runCorpusSource
+    .replace(/\r\n?/gu, "\n")
+    .replace(/\n/gu, "\r\n");
+  assert.equal(evaluateAuthoringSourceIteration(crlfCheckout).result, "pass");
+
+  const semanticMutation = fixtures();
+  const originalKind = '"evaluationKind": "engineering-regression"';
+  const changedKind =
+    '"evaluationKind": "engineering-regression-mutated"';
+  assert.ok(semanticMutation.scenarioCorpusSource.includes(originalKind));
+  semanticMutation.scenarioCorpusSource =
+    semanticMutation.scenarioCorpusSource.replace(originalKind, changedKind);
+  semanticMutation.scenarioCorpus = JSON.parse(
+    semanticMutation.scenarioCorpusSource
+  );
+  semanticMutation.scenarioCorpusSha256 = fingerprint(
+    semanticMutation.scenarioCorpusSource
+  ).sha256;
+  semanticMutation.artifact.scenarioLinkage.scenarioCorpusSha256 =
+    semanticMutation.scenarioCorpusSha256;
+
+  assert.throws(
+    () => evaluateAuthoringSourceIteration(semanticMutation),
     (error) => error instanceof AuthoringSourceIterationError &&
       error.code === "scenario-linkage"
   );

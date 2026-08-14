@@ -89,7 +89,9 @@ de `authoring/platforms/chatgpt/INSTRUCTIONS.md` e
 - snapshot final identificado pelo SHA-256 de cada arquivo atual.
 
 O artefato não copia as fontes. Ele guarda caminhos, tamanho, fingerprints,
-findings derivados, ajustes que os atenderam e o resultado da reexecução. O
+findings derivados, ajustes que os atenderam e o resultado da reexecução. Os
+fingerprints normalizam apenas finais de linha para LF, de modo que o mesmo
+conteúdo tenha identidade estável em checkouts Windows e Linux. O
 evaluator mantém fora do artefato os fingerprints canônicos do baseline e
 reabre obrigatoriamente o objeto Git correspondente. No
 baseline, a auditoria encontra nove gaps: contexto primeiro, diagnóstico,
@@ -108,7 +110,8 @@ correspondentes de `sharedRubric`. O evaluator lê os bytes dos dois corpora
 versionados, vincula por igualdade o JSON parseado aos respectivos SHA-256 e
 executa a auditoria dos runs A–E; falha se contrato,
 conjunto de cenários, runs, conteúdo, mapa de aplicação ou relação de rubricas
-divergirem.
+divergirem. Os hashes dos corpora usam a mesma normalização exclusiva de finais
+de linha e continuam rejeitando qualquer mutação semântica.
 
 Execute:
 
@@ -118,7 +121,7 @@ node --test tests/runtime/authoring-contextual-planning-source-iteration.test.js
 ```
 
 Resultado registrado em 14 de agosto de 2026: baseline com 9 findings, revisão
-final com 0 e 25/25 testes aprovados. Os testes regressivos alteram o conteúdo
+final com 0 e 27/27 testes aprovados. Os testes regressivos alteram o conteúdo
 final em memória, recalculam seu SHA e ainda exigem que a auditoria falhe;
 incluem inversões `Nunca`→`Sempre`, `não aplique`→`aplique`, contexto depois e
 uso de avaliação heurística, além de contradições e sinônimos contrapolares

@@ -32,7 +32,7 @@ const CLAIM_BOUNDARY =
 const METHOD = Object.freeze({
   id: "canonical-source-two-revision-replay",
   description: "A mesma auditoria executável lê as duas fontes no commit Git baseline e no snapshot final, calcula SHA-256, deriva findings do conteúdo e exige baseline não conforme e revisão final conforme.",
-  sourceStorage: "O artefato guarda caminhos, fingerprints, observações e ajustes; não duplica o conteúdo integral das fontes.",
+  sourceStorage: "O artefato guarda caminhos, fingerprints com finais de linha canônicos LF, observações e ajustes; não duplica o conteúdo integral das fontes.",
   historyRequirement: "O objeto Git baseline é obrigatório. O CI usa checkout com fetch-depth 0; sem o conteúdo antigo verificável, a auditoria falha."
 });
 const SCENARIO_CONTRACT =
@@ -454,12 +454,19 @@ export function auditAuthoringSourceRevision(sourceById) {
   return findings;
 }
 
+export function fingerprintCanonicalText(content) {
+  const canonicalContent = content.replace(/\r\n?/gu, "\n");
+  return {
+    sha256: sha256(canonicalContent),
+    bytes: Buffer.byteLength(canonicalContent)
+  };
+}
+
 function sourceFingerprint(sourceDefinition, content) {
   return {
     id: sourceDefinition.id,
     path: sourceDefinition.path,
-    sha256: sha256(content),
-    bytes: Buffer.byteLength(content)
+    ...fingerprintCanonicalText(content)
   };
 }
 
@@ -498,8 +505,8 @@ export function loadAuthoringSourceIteration() {
     runCorpusSource,
     scenarioCorpus: JSON.parse(scenarioCorpusSource),
     runCorpus: JSON.parse(runCorpusSource),
-    scenarioCorpusSha256: sha256(scenarioCorpusSource),
-    runCorpusSha256: sha256(runCorpusSource)
+    scenarioCorpusSha256: fingerprintCanonicalText(scenarioCorpusSource).sha256,
+    runCorpusSha256: fingerprintCanonicalText(runCorpusSource).sha256
   };
 }
 
@@ -543,14 +550,16 @@ function validateScenarioLinkage({
       linkage?.scenarioCorpusPath ===
         "authoring/evals/contextual-planning-scenarios.v1.json" &&
       linkage?.scenarioCorpusSha256 === SCENARIO_CORPUS_SHA256 &&
-      sha256(scenarioCorpusSource) === SCENARIO_CORPUS_SHA256 &&
+      fingerprintCanonicalText(scenarioCorpusSource).sha256 ===
+        SCENARIO_CORPUS_SHA256 &&
       scenarioCorpusSha256 === SCENARIO_CORPUS_SHA256 &&
       sameJson(parsedScenarioCorpus, scenarioCorpus) &&
       linkage?.runContract === RUN_CONTRACT &&
       linkage?.runCorpusPath ===
         "authoring/evals/contextual-planning-runs.v1.json" &&
       linkage?.runCorpusSha256 === RUN_CORPUS_SHA256 &&
-      sha256(runCorpusSource) === RUN_CORPUS_SHA256 &&
+      fingerprintCanonicalText(runCorpusSource).sha256 ===
+        RUN_CORPUS_SHA256 &&
       runCorpusSha256 === RUN_CORPUS_SHA256 &&
       sameJson(parsedRunCorpus, runCorpus) &&
       runCorpus.scenarioContract === SCENARIO_CONTRACT &&
