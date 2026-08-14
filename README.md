@@ -12,7 +12,7 @@ No AraLearn, a mesma pessoa pode estudar, revisar e criar.
 - **Autor:** pode reparar resources e cards no aplicativo; ao selecionar uma
   microssequência ou lição, também pode criar cards ou uma microssequência
   dentro do recipiente autorizado. Planejamento e transformações extensas
-  ficam no Chatbot personalizado ou no Plugin MCP. Cada envio local válido
+  ficam no GPT personalizado com Action ou na integração MCP. Cada envio local válido
   grava somente o recorte selecionado; na autoria remota, cada comando altera
   apenas as partes necessárias do workspace composto.
 
@@ -55,14 +55,18 @@ seleciona, copia, move, publica nem reorganiza conteúdo.
 - sincronização automática e oportunista do estado pessoal quando o app está ativo e há rede;
 - autoria integral, com workspace composto, validação estrutural e artefatos de
   publicação imutáveis;
-- planos produzidos pelo Chatbot ou Plugin e cursos privados em `Trilhas`, com
+- planos produzidos pelo GPT personalizado com Action ou por clientes MCP e
+  cursos privados em `Trilhas`, com
   cursos oficiais disponíveis em `Coleções`;
 - gateway MCP que lê, reorganiza e publica cursos por workspaces compostos e
   comandos atômicos;
-- Plugin MCP para qualquer conversa e Chatbot personalizado com Action gerada
+- integração MCP para clientes compatíveis e GPT personalizado com Action gerada
   do mesmo registro de ferramentas;
 - a mesma aplicação JavaScript na web e no APK Android;
-- biblioteca `aralearn.library.v1` e packages independentes para validação, renderização, avaliação e autoria sob demanda.
+- envelope operacional `aralearn.library.v1`, contrato unitário
+  `aralearn.course.v1`, protocolo de catálogo `aralearn.resource-library.v1` e
+  packages independentes para validação, renderização, avaliação e autoria sob
+  demanda.
 
 Por trás dessa experiência, cada publicação existe como um artefato JSON
 imutável no Supabase Storage. O PostgreSQL guarda metadados, vínculos, o hash
@@ -98,8 +102,8 @@ do Supabase.
 
 O MCP remoto autentica a conta por OAuth 2.1 e não oferece chave estática
 alternativa. Publicar no catálogo exige permissão editorial separada.
-No ChatGPT, o Plugin recebe instruções do servidor e recupera conhecimento
-autoral sob demanda; o Chatbot personalizado combina instruções e conhecimento
+No ChatGPT, a integração MCP recebe instruções do servidor e recupera conhecimento
+autoral sob demanda; o GPT personalizado combina instruções e conhecimento
 anexados com uma Action OpenAPI fina sobre o mesmo executor e uma concessão
 OAuth confidencial compatível com o construtor de GPTs.
 
@@ -108,24 +112,29 @@ chat](docs/criar-cursos-pelo-chat.md). Ele explica a construção incremental, a
 revisão por microteorias, a presença automática em `Trilhas` e a submissão editorial sem exigir
 que a pessoa manipule JSON ou nomes de ferramentas.
 
-Cards produzidos por integrações usam envelopes JSON formais. Uma lacuna declara a instância e o caminho exatos que completa; o servidor valida o envelope e os contratos versionados dos packages escolhidos, sem interpretar instruções em português como HTML ou posição visual.
+Cards produzidos por integrações usam envelopes JSON estruturados e
+versionados. Uma lacuna declara a instância e o caminho exatos que completa; o
+servidor valida o envelope e os contratos versionados dos packages escolhidos,
+sem interpretar instruções em português como HTML ou posição visual.
 
 O registry oferece packages de conteúdo e resposta descobertos sob demanda.
 Escolhas podem ser simples ou múltiplas e são corrigidas pelo conjunto exato após confirmação da resposta do
 estudante. A assistência por API repara o card inteiro ou somente os resources
 selecionados. No nível da microssequência, selecionar todos os cards permite
-criar cards dentro dela; no nível da lição, selecionar todas as
-microssequências permite criar uma nova. O contexto adjacente permanece somente
-leitura. **Enviar** valida e grava a mudança em uma única transação, mostra o
-resultado no próprio conteúdo e conserva apenas a última ação para
-**Desfazer**. Não há tela **Atual/Proposta** nem etapa **Aplicar**. A aplicação
+criar até oito cards dentro dela; no nível da lição, selecionar todas as
+microssequências permite criar no máximo uma nova, também com até oito cards.
+O contexto adjacente permanece somente leitura. **Enviar** valida e grava a
+mudança em uma única transação e mostra o resultado no próprio conteúdo. No
+card, a conversa volátil conserva até oito turnos e nove versões, com
+**Desfazer**, **Refazer** e restauração de uma versão; ela não é persistida nem
+sincronizada. Não há tela **Atual/Proposta** nem etapa **Aplicar**. A aplicação
 usa o mesmo leitor em cursos privados e do catálogo selecionados em `Trilhas`.
 A edição aparece somente quando a conta tem permissão: o dono edita seu curso
 privado e uma conta editorial pode editar conteúdo oficial. Prompt e resposta
 do serviço não entram na
 sincronização pessoal.
 
-O [material de autoria](authoring/README.md) pode ser baixado já organizado para [ChatGPT](docs/downloads/authoring/aralearn-authoring-chatgpt.zip), [Gemini](docs/downloads/authoring/aralearn-authoring-gemini.zip), [Microsoft 365](docs/downloads/authoring/aralearn-authoring-microsoft-365.zip), [Claude](docs/downloads/authoring/aralearn-authoring-claude.zip) ou uma [integração genérica](docs/downloads/authoring/aralearn-authoring-generic.zip). No ChatGPT, o pacote inclui instruções, dois conhecimentos e o OpenAPI da Action; o endpoint MCP configura o Plugin independente.
+O [material de autoria](authoring/README.md) pode ser baixado já organizado para [ChatGPT](docs/downloads/authoring/aralearn-authoring-chatgpt.zip), [Gemini](docs/downloads/authoring/aralearn-authoring-gemini.zip), [Microsoft 365](docs/downloads/authoring/aralearn-authoring-microsoft-365.zip), [Claude](docs/downloads/authoring/aralearn-authoring-claude.zip) ou uma [integração genérica](docs/downloads/authoring/aralearn-authoring-generic.zip). No ChatGPT, o pacote inclui instruções, dois conhecimentos e o OpenAPI da Action; o pacote também descreve separadamente a integração MCP para clientes compatíveis.
 
 Os pacotes explicam como configurar uma integração; não dão acesso automático a nenhum catálogo. Cada instância do AraLearn controla quem pode publicar cursos por meio das permissões do próprio banco.
 
@@ -136,11 +145,11 @@ ranking ou acompanhamento individual por rastros comportamentais.
 ## Arquitetura, em uma frase
 
 O PostgreSQL mantém o estado pessoal e o workspace mutável por partes; o
-Storage conserva os artefatos canônicos de publicação, e a submissão aponta
+Storage conserva os artefatos imutáveis de publicação, e a submissão aponta
 para a revisão privada exata; o IndexedDB projeta cada curso selecionado para
 estudo sem conexão.
 
-O site e o APK não levam cursos operacionais embarcados, documentos integrais de progresso ou segredos administrativos. Sem rede, uma fila local preserva as alterações. Quando a rede volta, o aplicativo as envia sem duplicar dados e recebe as novidades da conta aos poucos. Para o estado pessoal, vale a última alteração válida confirmada pelo servidor, sem impor ao estudante uma tela de versões ou de combinação manual de dados.
+O site e o APK não levam cursos operacionais embarcados, documentos integrais de progresso ou segredos administrativos. Sem rede, outboxes e filas locais próprias de cada fluxo preservam as alterações. Quando a rede volta, o aplicativo as envia sem duplicar dados e recebe as novidades da conta aos poucos. Para o estado pessoal, vale a última alteração válida confirmada pelo servidor, sem impor ao estudante uma tela de versões ou de combinação manual de dados.
 
 A implantação validada usa arquivos estáticos em HTTPS com Supabase gerenciado. GitHub Pages possui publicação automatizada; outro servidor estático ou uma intranet podem servir o mesmo artefato quando atendem aos requisitos de tipos MIME, cache, retorno de autenticação, CSP e acesso ao Supabase. SharePoint/SPFx, Supabase auto-hospedado em produção e outros serviços de banco e autenticação ainda não possuem integração pronta. A [matriz de implantação](docs/implantacao.md#formas-de-implantação) apresenta esses limites.
 
@@ -180,9 +189,10 @@ leitura](docs/README.md#comece-pelo-seu-papel).
 | a experiência de autenticação, biblioteca, estudo sem conexão e sincronização | [Uso do app](docs/uso-do-app.md) |
 | registrar e interpretar observações situadas nos cards | [Observações pedagógicas](docs/observacoes-pedagogicas.md) |
 | catálogo compartilhado, workspaces compostos, artefatos publicados e segurança | [Arquitetura](docs/arquitetura.md) |
-| banco relacional, IndexedDB, fila de envio e estudo sem conexão | [Persistência relacional e sincronização](docs/persistencia-relacional.md) |
+| PostgreSQL, projeção e réplica local em IndexedDB, outbox e sincronização | [Persistência relacional e sincronização](docs/persistencia-relacional.md) |
 | retomar, marcar para rever e entender o que não é rastreado | [Estado de estudo não punitivo](docs/estado-de-estudo-nao-punitivo.md) |
 | contratos e recursos renderizáveis | [Contrato público](docs/aralearn-contract.md) e [Recursos de card](docs/recursos-de-card.md) |
+| termos, garantias, limites e evidências técnicas | [Glossário técnico](docs/glossario-tecnico.md) e [Matriz de conformidade técnica](docs/matriz-conformidade-tecnica.md) |
 | assistência durante o estudo e autoria pessoal | [Assistência por IA](docs/assistencia-por-ia.md) e [Fluxos, prompts e contratos](docs/fluxos-prompts-e-contratos.md) |
 | criar pelo chat, workspaces compostos, MCP e capacidades por conta | [Criar cursos pelo chat](docs/criar-cursos-pelo-chat.md), [Autoria e publicação do catálogo](docs/autoria-do-catalogo.md) e [Gateway MCP de autoria](docs/autoria-mcp.md) |
 | participar, convidar e administrar papéis locais | [Workspaces educacionais](docs/workspaces-educacionais.md) |

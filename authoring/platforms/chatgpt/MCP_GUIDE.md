@@ -1,6 +1,6 @@
 # Guia das ferramentas MCP do AraLearn
 
-O Plugin usa o endpoint MCP remoto para autoria estrutural. O Chatbot
+Clientes compatíveis usam o endpoint MCP remoto para autoria estrutural. O GPT
 personalizado usa uma Action OpenAPI gerada do mesmo registro de ferramentas.
 As duas superfícies executam o mesmo fluxo; a conta conectada determina quais
 capacidades ficam disponíveis. O registro público possui 30 ferramentas. As
@@ -39,7 +39,7 @@ posição formam a árvore, e o servidor recompõe `aralearn.library.v1` quando 
 leitura, validação ou publicação precisa dele.
 
 Cada alteração envia apenas as partes atingidas. O Storage recebe o artefato
-canônico imutável quando um curso é publicado; não recebe uma cópia integral a
+integral imutável quando um curso é publicado; não recebe uma cópia integral a
 cada comando. `listarAlteracoesRecentesDoWorkspace` devolve até 200 resumos
 pequenos para orientação e auditoria operacional, não versões anteriores do
 curso.
@@ -190,7 +190,7 @@ Os vínculos não são intercambiáveis: `link_comment_correction` aponta um rep
 confirmado para o comentário feito no estudo; `link_finding_correction` aponta
 um reparo confirmado para um achado formal de auditoria.
 
-`salvarCardsNaMicrossequencia` recebe os envelopes canônicos completos dos
+`salvarCardsNaMicrossequencia` recebe os envelopes completos dos
 cards da unidade. Para
 uma correção pontual, use `atualizarMetadadosDaEntidade` em curso, módulo,
 lição ou microssequência, ou `salvarCardNoWorkspace` para um único card
@@ -261,8 +261,8 @@ gravações incluem a revisão confirmada; publicação e exclusão têm recibos
 próprios. Nunca suponha campos que não estejam na resposta anunciada.
 
 Abertura estrutural existe somente dentro de `content`, quando foi solicitada
-uma entidade ou o documento canônico integral, e dentro de `definition`, que
-contém o contrato canônico variável de um `resource`. A árvore `outline`, a
+uma entidade ou o documento integral corrente, e dentro de `definition`, que
+contém o contrato exato e variável de um resource de card. A árvore `outline`, a
 projeção `microtheories` e todos os campos de controle são fechados. Falhas
 usam o mesmo ramo `{ ok: false, requestId, error }` em todas as ferramentas.
 

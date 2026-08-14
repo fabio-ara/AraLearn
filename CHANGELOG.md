@@ -4,6 +4,40 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 
 ## [Unreleased]
 
+## [0.0.19] - 2026-08-13
+
+### Added
+
+- corpus documental técnico-científico reconciliado com a implementação,
+  incluindo glossário técnico, matriz de conformidade entre documentação e
+  código, percurso de leitura para pesquisa e bibliografia acadêmica ampliada;
+- fundamentação explícita das decisões pedagógicas, arquiteturais e de
+  avaliação do artefato, distinguindo evidência, hipótese de projeto, decisão
+  vigente e limitação ainda aberta.
+
+### Changed
+
+- documentação pública, material autoral e pacotes derivados passam a usar
+  terminologia precisa de computação e educação, conforme a auditoria da issue
+  #94;
+- diagramas relacionais compatíveis com leitura vertical passam a priorizar o
+  eixo superior-inferior em telas móveis, preservando as convenções cuja
+  orientação horizontal é semanticamente relevante.
+
+### Fixed
+
+- `chart` e `plane` voltam a materializar gráficos sob a política de segurança
+  de conteúdo do app, por meio do interpretador de expressões do Vega
+  distribuído para operação local e offline;
+- lacunas repetidas em tabelas de transição e outros packages passam a manter
+  estado e opções independentes, sem preencher controles distintos em bloco;
+- enquadramento e orientação de diagramas densos reduzem rolagem lateral
+  desnecessária no celular sem comprimir a representação acadêmica.
+
+> As entradas de versões anteriores preservam os nomes e as interfaces usados
+> em seu contexto histórico. A terminologia vigente está definida em
+> `docs/glossario-tecnico.md`.
+
 ## [0.0.18] - 2026-08-13
 
 ### Added

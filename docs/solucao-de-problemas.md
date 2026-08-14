@@ -25,10 +25,10 @@ Ela já foi gravada localmente. Reconecte e sincronize. Se o servidor rejeitar a
 alteração por referência removida ou permissão revogada, o AraLearn mantém o
 aviso e não substitui o conteúdo corrente.
 
-## Chatbot ou Plugin não acessa a conta
+## GPT com Action ou cliente MCP não acessa a conta
 
 Confirme que a integração usa o endpoint mostrado pelo AraLearn e conclua o
-OAuth entrando na conta correta. O Chatbot personalizado também precisa ter a
+OAuth entrando na conta correta. O GPT personalizado também precisa ter a
 Action salva e vinculada. Não use chave estática. Veja [Gateway MCP de
 autoria](autoria-mcp.md).
 

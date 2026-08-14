@@ -10,15 +10,21 @@ da literatura e resultado de avaliação.
 1. [Visão do produto](visao-do-produto.md) — problema, público e limites.
 2. [Modelo didático](modelo-didatico.md) — microssequência, microteoria, prática
    e resources.
-3. [Revisão de literatura](revisao-de-literatura.md) — síntese temática,
+3. [Fundamentos, pesquisa e governança](fundamentos-pesquisa-e-governanca.md) —
+   porta de entrada para o corpus de dissertação ou tese e seus estados
+   epistêmicos.
+4. [Revisão de literatura](revisao-de-literatura.md) — síntese temática,
    controvérsias e lacunas.
-4. [Quadro teórico](quadro-teorico.md) e [Glossário de
+5. [Quadro teórico](quadro-teorico.md) e [Glossário de
    construtos](glossario-construtos.md) — definições e proposições.
-5. [Matriz de rastreabilidade](matriz-rastreabilidade-pedagogica.md) — ligação
+6. [Matriz de rastreabilidade](matriz-rastreabilidade-pedagogica.md) — ligação
    entre problema, hipótese, mecanismo, interpretação e teste.
-6. [Protocolo de avaliação](protocolo-avaliacao-artefato.md) — ciclos,
+7. [Glossário técnico](glossario-tecnico.md) e [Matriz de conformidade
+   técnica](matriz-conformidade-tecnica.md) — termos de implementação,
+   garantias, limites e evidências em código e testes.
+8. [Protocolo de avaliação](protocolo-avaliacao-artefato.md) — ciclos,
    participantes, instrumentos e análise.
-7. [Contribuição e originalidade](contribuicao-originalidade.md) — reivindicação
+9. [Contribuição e originalidade](contribuicao-originalidade.md) — reivindicação
    delimitada e limitações.
 
 Analytics é tratado como apoio a decisões compreensíveis, nunca como coleta

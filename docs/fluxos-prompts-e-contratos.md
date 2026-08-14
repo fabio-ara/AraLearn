@@ -2,7 +2,8 @@
 
 O AraLearn separa duas fronteiras de autoria:
 
-- Chatbot ou Plugin lê e reorganiza cursos, módulos, lições,
+- o GPT personalizado com Action ou um cliente MCP lê e reorganiza cursos,
+  módulos, lições,
   microssequências e cards em workspaces compostos;
 - a assistência local por API atua somente nos alvos selecionados em cards,
   microssequências ou lições.
@@ -13,7 +14,8 @@ inteira é confirmada em uma transação. Essa garantia é invisível na interfa
 
 No manifesto, `atomic-card-assistance` nomeia o fluxo local por API.
 `atomic-resource-authoring` nomeia separadamente a consulta de contratos e as
-mutações de workspace pelo Chatbot ou Plugin. Uma capacidade não é alias nem
+mutações de workspace pelo GPT personalizado com Action ou por um cliente MCP.
+Uma capacidade não é alias nem
 fallback da outra.
 
 ## Assistência bottom-up por API
@@ -173,9 +175,10 @@ A autorização é calculada a partir da sessão vigente:
 Uma alteração privada permanece na identidade privada. Uma alteração oficial
 autorizada mantém a continuidade oficial. Não existe fork automático do curso
 de Coleções. Elevar um curso privado ao catálogo é uma operação de autoria
-externa pelo Chatbot ou Plugin com MCP.
+externa pelo GPT personalizado com Action ou por um cliente compatível pela
+integração MCP.
 
-## Linguagem formal da autoria externa
+## Contratos estruturados da autoria externa
 
 A autoria por workspace usa diretamente o envelope de packages versionados. O
 agente primeiro escolhe pelo catálogo, carrega somente os contratos exatos e
@@ -190,7 +193,8 @@ autoria](autoria-mcp.md).
 
 A escala técnica e a escala da conversa são diferentes. Uma alteração é
 confirmada atomicamente, enquanto uma etapa conversacional pode reunir várias
-microssequências. Chatbot ou Plugin pode salvar o planejamento, materializar a
+microssequências. O GPT personalizado ou o cliente MCP pode salvar o
+planejamento, materializar a
 parte solicitada, auditá-la e repará-la em rodadas distintas. Essa disciplina
 vive nas instruções e no conhecimento recuperado, não numa trava de schema.
 
@@ -217,6 +221,8 @@ executa `validate_card` e usa `audit_representation` para distinguir
 Não existe chamada de lista global nem contrato que reúna todos os schemas.
 
 `search` classifica a cobertura como `canonical`, `versatile` ou `substitute`.
+São tokens do algoritmo de ajuste; `canonical` não certifica consenso
+acadêmico externo.
 Um `substitute` não é erro nem bloqueio: o agente prossegue com o melhor
 candidato, comunica brevemente o `chatDisclosure` e preserva a representação
 ideal numa decisão autoral. `preview_card` devolve um descritor com

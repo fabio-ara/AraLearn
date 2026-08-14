@@ -4,7 +4,11 @@
 
 O AraLearn está disponível na web e no Android, com a mesma aplicação JavaScript. A conta dá acesso ao catálogo oficial, às coleções, às trilhas pessoais, ao estudo, aos comentários e ao progresso.
 
-Os cursos oficiais ficam uma única vez no banco compartilhado. Selecionar um curso não cria uma cópia para a conta. O dispositivo baixa apenas a árvore necessária para estudo sem conexão; progresso, comentários, seleções e trilhas são gravados como dados pessoais.
+Cada revisão oficial integral fica como artefato imutável no Supabase Storage;
+o PostgreSQL conserva metadados, referências e o ponteiro da revisão vigente.
+Selecionar um curso não cria uma cópia remota para a conta. O dispositivo baixa
+e projeta a árvore necessária para estudo sem conexão; progresso, comentários,
+seleções e trilhas são gravados como dados pessoais.
 
 Uma alteração remota de conteúdo atualiza somente as partes necessárias do
 workspace composto. A publicação materializa o JSON imutável e troca a única
@@ -15,7 +19,7 @@ Também estão disponíveis:
 
 - cadastro, confirmação por e-mail, recuperação de senha, sessão persistida e saída;
 - tela inicial integrada para estudar e organizar `Trilhas`, com painel apenas
-  para `Coleções` e configuração do Chatbot/Plugin;
+  para `Coleções` e configuração do GPT personalizado e da integração MCP;
 - retomada por lição, conclusão estrutural, marca **Rever**, observações e estudo sem conexão depois do primeiro download, sem telemetria de abertura, tempo, tentativa ou resultado;
 - sincronização automática quando o aplicativo está aberto e encontra rede;
 - modos contextuais **Ler** e **Editar** na mesma superfície do card, sem aba
@@ -32,9 +36,9 @@ Também estão disponíveis:
   sem copiar o card ou guardar histórico da conversa;
 - edição no curso privado próprio e, para conta administrativa ou editorial,
   no curso oficial; conteúdo sem autoridade permanece somente leitura;
-- GPT externo com gateway MCP para planejamento e autoria extensa, com leitura,
-  edição estrutural, recombinação, estudo imediato em Trilhas e submissão editorial
-  (`atomic-resource-authoring`);
+- GPT personalizado com Action e, separadamente, integração MCP para clientes
+  compatíveis, ambos com leitura, edição estrutural, recombinação, estudo
+  imediato em Trilhas e submissão editorial (`atomic-resource-authoring`);
 - OAuth 2.1 como autenticação exclusiva do gateway MCP, com autoridade
   resolvida pelos papéis e permissões do banco;
 - capacidades por conta para autoria privada, submissão, revisão e publicação
@@ -43,8 +47,9 @@ Também estão disponíveis:
   o catálogo oficial; listas remotas são paginadas e abertas sob demanda;
 - workspaces pessoais, de turma ou equipe com seis papéis locais, convites,
   transferência, composição corrente dos planos e cursos e administração no próprio
-  app; o mesmo papel governa MCP, Action, autoria e artefato privado de submissão sem
-  copiar o curso; responsáveis recebem contagens e **Pontos de melhoria**
+  app; papéis e relações derivam capacidades efetivas, e cada operação via MCP,
+  Action ou app é autorizada sobre seu alvo e estado correntes, sem copiar o
+  curso; responsáveis recebem contagens e **Pontos de melhoria**
   calculados a partir das observações correntes, sem histórico ou telemetria;
 - sistema visual único em claro e escuro, sem paleta paralela, glifos de
   interface ou CSS do editor e do painel de submissão já substituídos;
@@ -89,7 +94,8 @@ sincronizar; o backend não aceita cópia do card nem campos fora do contrato.
 No workspace associado, papéis de revisão consultam e filtram a triagem,
 respondem e alteram o estado. O estudante acompanha a resposta no próprio
 card. Uma correção é uma operação de autoria separada e só pode ser vinculada
-depois de gravada. Chatbot e Plugin usam o mesmo contrato contextual.
+depois de gravada. O GPT personalizado com Action e os clientes da integração
+MCP usam o mesmo contrato contextual.
 
 O registro continua sem nota, histórico de conversa, agregado comportamental
 ou autorização automática para corrigir. Da triagem, o responsável abre o
@@ -111,8 +117,10 @@ uma cópia editorial independente e devolvida com pedido de ajustes ou rejeiçã
 
 Os próximos passos dessa área são testar o fluxo com cursos extensos, medir a
 qualidade das recombinações e avaliar o trabalho editorial com mais pessoas. A
-autoria estrutural remota já usa exclusivamente o gateway MCP com OAuth 2.1.
-Ela pode usar fontes recuperadas fora do AraLearn, desde que a pessoa autora
+integração MCP de autoria estrutural remota usa exclusivamente OAuth 2.1. O GPT
+personalizado usa a Action e sua fachada OAuth confidencial; as duas superfícies
+convergem para o mesmo registry e executor. Elas podem usar fontes recuperadas
+fora do AraLearn, desde que a pessoa autora
 examine o resultado e registre a procedência necessária.
 
 ## Ambiente docente

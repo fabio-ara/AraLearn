@@ -97,7 +97,7 @@ export function renderProviderConfigOverlay({
         ) +
         ((isCustomOpenAi || isCustomLocal)
           ? renderField(
-              isCustomLocal ? "Endpoint do bridge" : "Endpoint da operação",
+              isCustomLocal ? "Endpoint do serviço local" : "Endpoint da operação",
               `<input data-field="provider-config-endpoint" type="url" autocomplete="off" spellcheck="false" value="${escapeHtml(providerEndpoint)}" placeholder="${isCustomLocal ? "http://127.0.0.1:4183/assist" : "https://servico.example/v1/chat/completions"}" title="Endpoint">`,
               isCustomLocal
                 ? "HTTP só é aceito no próprio dispositivo."
@@ -107,15 +107,15 @@ export function renderProviderConfigOverlay({
         (providerProtocol
           ? renderField(
               isCustomLocal ? "Token" : "Chave da API",
-              `<input data-field="provider-config-secret" type="password" autocomplete="off" spellcheck="false" value="${escapeHtml(providerSecret)}" placeholder="${isCustomLocal ? "Token obrigatório (32–512 bytes)" : "Chave da API"}" title="${isCustomLocal ? "Token obrigatório do bridge local" : "Chave da API"}"${isCustomLocal ? ' required minlength="32" maxlength="512"' : ""}>`,
+              `<input data-field="provider-config-secret" type="password" autocomplete="off" spellcheck="false" value="${escapeHtml(providerSecret)}" placeholder="${isCustomLocal ? "Token obrigatório (32–512 bytes)" : "Chave da API"}" title="${isCustomLocal ? "Token obrigatório do serviço local" : "Chave da API"}"${isCustomLocal ? ' required minlength="32" maxlength="512"' : ""}>`,
               isCustomLocal
-                ? "Obrigatório: use o mesmo token local de 32 a 512 bytes configurado no bridge."
+                ? "Obrigatório: use o mesmo token de 32 a 512 bytes configurado no serviço local."
                 : "O valor permanece somente nesta página."
             )
           : "") +
         (isCustomLocal
           ? '<div class="assist-config-footer"><div class="assist-config-footer-actions provider-config-footer-actions">' +
-            '<button class="icon-ghost assist-config-icon-action provider-config-check-action" type="button" data-action="provider-config-check-codex" title="Verificar bridge local" aria-label="Verificar bridge local">' +
+            '<button class="icon-ghost assist-config-icon-action provider-config-check-action" type="button" data-action="provider-config-check-codex" title="Verificar serviço local" aria-label="Verificar serviço local">' +
             renderUiIcon("ready-state", "assist-config-action-icon") +
             "</button></div>" +
             (statusMessage ? `<p class="field-hint ${escapeHtml(statusClass)}">${escapeHtml(statusMessage)}</p>` : "") +
@@ -125,16 +125,16 @@ export function renderProviderConfigOverlay({
       ? renderField(
           "Endpoint local",
           `<input data-field="provider-config-codex-endpoint" type="text" autocomplete="off" spellcheck="false" value="${escapeHtml(codexEndpoint)}" placeholder="http://127.0.0.1:4183/assist" title="Endpoint local">`,
-          "Use o endpoint do bridge local."
+          "Use o endpoint do serviço HTTP local do Codex CLI."
         ) +
         renderField(
           "Token",
-          `<input data-field="provider-config-codex-token" type="password" autocomplete="off" spellcheck="false" value="${escapeHtml(codexToken)}" placeholder="Token obrigatório (32–512 bytes)" title="Token obrigatório do bridge local" required minlength="32" maxlength="512">`,
-          "Obrigatório: use o mesmo token local de 32 a 512 bytes configurado no bridge."
+          `<input data-field="provider-config-codex-token" type="password" autocomplete="off" spellcheck="false" value="${escapeHtml(codexToken)}" placeholder="Token obrigatório (32–512 bytes)" title="Token obrigatório do serviço local" required minlength="32" maxlength="512">`,
+          "Obrigatório: use o mesmo token de 32 a 512 bytes configurado no serviço local."
         ) +
         '<div class="assist-config-footer">' +
         '<div class="assist-config-footer-actions provider-config-footer-actions">' +
-        '<button class="icon-ghost assist-config-icon-action provider-config-check-action" type="button" data-action="provider-config-check-codex" title="Verificar bridge local" aria-label="Verificar bridge local">' +
+        '<button class="icon-ghost assist-config-icon-action provider-config-check-action" type="button" data-action="provider-config-check-codex" title="Verificar serviço local" aria-label="Verificar serviço local">' +
         renderUiIcon("ready-state", "assist-config-action-icon") +
         "</button>" +
         "</div>" +

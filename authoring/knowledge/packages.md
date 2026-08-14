@@ -1,6 +1,7 @@
 # Biblioteca e packages do AraLearn
 
-O documento canônico usa a raiz `aralearn.library.v1` e a hierarquia:
+O envelope operacional usa o identificador `aralearn.library.v1` e a
+hierarquia:
 
 ```text
 library > course > module > lesson > microsequence > card
@@ -49,6 +50,7 @@ visual fiel pertence ao renderer do aplicativo. Nunca invente campos ou
 coordenadas. Toda resposta dessa ferramenta segue
 `aralearn.resource-library.v1`.
 
+Os valores a seguir são tokens do protocolo, não certificações acadêmicas.
 `canonical` indica ajuste específico; `versatile`, uma representação
 transversal que preserva a estrutura; `substitute`, a melhor aproximação
 instalada. Somente `coverage.status: "substitute"` traz `chatDisclosure`. Um

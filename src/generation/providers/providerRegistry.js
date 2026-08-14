@@ -22,7 +22,7 @@ export const PROVIDER_PROTOCOL = Object.freeze({
 export const PROVIDER_PROTOCOL_OPTIONS = Object.freeze([
   Object.freeze({ value: PROVIDER_PROTOCOL.OPENAI_COMPATIBLE, label: "Compatível com OpenAI" }),
   Object.freeze({ value: PROVIDER_PROTOCOL.GEMINI, label: "Gemini" }),
-  Object.freeze({ value: PROVIDER_PROTOCOL.LOCAL_BRIDGE, label: "Bridge local" })
+  Object.freeze({ value: PROVIDER_PROTOCOL.LOCAL_BRIDGE, label: "Codex CLI local" })
 ]);
 
 export class ProviderConfigurationError extends Error {
@@ -64,7 +64,7 @@ function requireLocalBridgeToken(secret) {
   const normalized = text(secret);
   if (!isCodexBridgeTokenSecure(normalized)) {
     throw new ProviderConfigurationError(
-      "Informe um token do bridge local entre 32 e 512 bytes."
+      "Informe um token do serviço local entre 32 e 512 bytes."
     );
   }
   return normalized;

@@ -29,7 +29,7 @@ async function waitForBridge(endpoint, token, child) {
   let lastError = null;
   while (Date.now() < deadline) {
     if (child.exitCode !== null) {
-      throw new Error(`O bridge local terminou antes do health check (código ${child.exitCode}).`);
+      throw new Error(`O serviço local terminou antes da verificação de saúde (código ${child.exitCode}).`);
     }
     try {
       const response = await fetch(endpoint, {
@@ -43,7 +43,7 @@ async function waitForBridge(endpoint, token, child) {
     await new Promise((resolve) => setTimeout(resolve, 100));
   }
   throw new Error(
-    `O bridge local não respondeu ao health check: ${lastError?.message || "tempo esgotado"}.`
+    `O serviço local não respondeu à verificação de saúde: ${lastError?.message || "tempo esgotado"}.`
   );
 }
 
@@ -119,7 +119,7 @@ async function main() {
     const diagnostic = [stderr.trim(), stdout.trim()].filter(Boolean).join("\n");
     if (diagnostic) {
       throw new Error(
-        `${error.message}\nBridge: ${diagnostic.slice(0, 4_000)}`,
+        `${error.message}\nServiço local: ${diagnostic.slice(0, 4_000)}`,
         { cause: error }
       );
     }

@@ -31,9 +31,11 @@ No AraLearn, uma operação nova recebe a base conceitual necessária e, quando 
 
 Retirar apoio não significa omitir dados do problema. Valores, trechos, coordenadas, casos e demais elementos particulares permanecem no próprio card. O que diminui é a ajuda para decidir, não a informação indispensável para compreender a tarefa.
 
-## Recuperação ativa
+## Prática de recuperação
 
-Karpicke e Roediger (2008) demonstraram a importância da recuperação ativa para consolidar aprendizagem. Por isso, uma microssequência não deve ser apenas exposição. O padrão desejável é combinar explicação e prática: apresentar uma ideia, mostrar um caso, pedir uma decisão, variar o exemplo quando necessário e oferecer feedback.
+Karpicke e Roediger (2008) encontraram, na tarefa experimental que estudaram, vantagem da recuperação repetida sobre o estudo repetido para a retenção posterior. A evidência não autoriza chamar qualquer interação de recuperação nem garante o mesmo efeito em todo conteúdo, população ou intervalo. No AraLearn, **prática de recuperação** designa a tentativa de produzir conhecimento ou tomar uma decisão sem nova exposição integral ao conteúdo-alvo.
+
+Essa fundamentação sustenta uma hipótese de design, e não uma quantidade fixa de cards: depois de receber base suficiente, o estudante deve ter oportunidades pertinentes de lembrar, discriminar, explicar, ordenar ou aplicar. A operação exigida, o apoio disponível, o feedback e a medida posterior precisam ser declarados. Tocar em uma opção, reler ou reconhecer uma resposta já exposta não basta, por si só, para caracterizar prática de recuperação.
 
 Nem toda etapa precisa conter todos esses movimentos. O princípio, porém, é estável: entender uma explicação não equivale a conseguir usar o conceito.
 
@@ -49,11 +51,11 @@ apresentou ou o que uma dependência aprovada tornou disponível. Assim, a
 continuidade não depende de coincidência de palavras nem da memória da conversa
 usada na autoria.
 
-## Dificuldade útil
+## Dificuldades desejáveis
 
-Bjork e Bjork (2011) discutem dificuldades desejáveis: obstáculos que podem melhorar a aprendizagem quando exigem recuperação, discriminação ou reorganização, sem criar atrito gratuito. O AraLearn adota esse cuidado ao evitar perguntas que entregam a resposta no próprio enunciado, exercícios sem variação e sequências longas de recepção passiva.
+Bjork e Bjork (2011) usam **dificuldades desejáveis** para uma família de condições que pode prejudicar o desempenho imediato e, em circunstâncias apropriadas, favorecer retenção ou transferência posterior. O termo não transforma esforço, obstáculo ou decisão em benefício pedagógico automático. Para formular essa hipótese no AraLearn, é preciso nomear a operação cognitiva pretendida, as condições em que o estudante consegue realizá-la e o resultado adiado que será examinado.
 
-A dificuldade útil é aquela que obriga o estudante a decidir. A dificuldade inútil é aquela que consome energia sem ensinar.
+Confusão representacional, pré-requisito ausente, enunciado ambíguo, navegação desnecessária e carga cognitiva extrínseca não são dificuldades desejáveis. Se o estudante não dispõe de base ou apoio suficiente para se engajar na operação-alvo, aumentar o esforço apenas acrescenta atrito. A decisão de produto é, portanto, evitar dificuldade gratuita; a possível contribuição de recuperação, discriminação, espaçamento ou alternância permanece uma hipótese condicionada e empiricamente avaliável.
 
 ## Representação adequada
 
@@ -73,9 +75,9 @@ Quando o estudante completa uma estrutura, a lacuna fica no próprio lugar em qu
 
 Zimmerman (2002) define aprendizagem autorregulada como processo em que o estudante planeja, monitora e ajusta suas estratégias. O AraLearn tenta apoiar essa autorregulação ao oferecer uma estrutura visível: o estudante organiza trilhas, escolhe a etapa, acompanha o progresso, registra comentários e continua.
 
-Vygotsky (1978) ajuda a pensar a aprendizagem como processo mediado por instrumentos, linguagem e interação. Bruner (1978) contribui com a noção de apoio gradual. No AraLearn, a microssequência funciona como uma forma de apoio local: delimita o problema, oferece prática e permite retirada progressiva de suporte conforme a trilha avança.
+Vygotsky (1978) ajuda a pensar a aprendizagem como processo mediado por instrumentos, linguagem e interação. Wood, Bruner e Ross (1976) analisam formas contingentes de apoio em tarefas de resolução de problemas. No AraLearn, a microssequência funciona como uma forma de apoio local: delimita o problema, oferece prática e permite retirada progressiva de suporte conforme a trilha avança. Essa aproximação é uma hipótese de design; não demonstra, por si só, que a estrutura do produto realize o mecanismo estudado pelos autores.
 
-Freire (1996) é relevante por outra razão. Autonomia não significa abandono do estudante, nem consumo passivo de material pronto. No AraLearn, a pessoa escolhe cursos, organiza o próprio percurso e pode revisar, editar ou gerar uma nova revisão. A área de autoria local permite experimentar sem alterar o artefato oficial; somente uma nova publicação validada substitui o ponteiro do catálogo. A autoria precisa preservar revisão humana; a IA não deve ser tratada como professora automática.
+Freire (2021) é relevante por outra razão. Autonomia não significa abandono do estudante, nem consumo passivo de material pronto. No AraLearn, a pessoa escolhe cursos, organiza o próprio percurso e pode revisar, editar ou gerar uma nova revisão. A área de autoria local permite experimentar sem alterar o artefato oficial; somente uma nova publicação validada substitui o ponteiro do catálogo. A autoria precisa preservar revisão humana; a IA não deve ser tratada como professora automática.
 
 ## Erro como objeto de estudo
 
@@ -106,11 +108,9 @@ e referências adicionais, está em
 
 Bjork, R. A., & Bjork, E. L. (2011). Making things hard on yourself, but in a good way: Creating desirable difficulties to enhance learning. In M. A. Gernsbacher et al. (Eds.), *Psychology and the real world*. Worth.
 
-Bruner, J. S. (1978). The role of dialogue in language acquisition. In A. Sinclair, R. J. Jarvella, & W. J. M. Levelt (Eds.), *The child's conception of language*. Springer.
-
 Cepeda, N. J., Vul, E., Rohrer, D., Wixted, J. T., & Pashler, H. (2008). Spacing effects in learning: A temporal ridgeline of optimal retention. *Psychological Science*, 19(11), 1095-1102. <https://doi.org/10.1111/j.1467-9280.2008.02209.x>
 
-Freire, P. (1996). *Pedagogia da autonomia: saberes necessários à prática educativa*. Paz e Terra.
+Freire, P. (2021). *Pedagogia da autonomia: saberes necessários à prática educativa*. Paz e Terra.
 
 Karpicke, J. D., & Roediger III, H. L. (2008). The critical importance of retrieval for learning. *Science*, 319(5865), 966-968. <https://doi.org/10.1126/science.1152408>
 
@@ -127,5 +127,7 @@ Sweller, J., Van Merriënboer, J. J. G., & Paas, F. (1998). Cognitive architectu
 Taylor, K., & Rohrer, D. (2010). The effects of interleaved practice. *Applied Cognitive Psychology*, 24(6), 837-848. <https://doi.org/10.1002/acp.1598>
 
 Vygotsky, L. S. (1978). *Mind in society: The development of higher psychological processes*. Harvard University Press.
+
+Wood, D., Bruner, J. S., & Ross, G. (1976). The role of tutoring in problem solving. *Journal of Child Psychology and Psychiatry*, 17(2), 89-100. <https://doi.org/10.1111/j.1469-7610.1976.tb00381.x>
 
 Zimmerman, B. J. (2002). Becoming a self-regulated learner: An overview. *Theory Into Practice*, 41(2), 64-70. <https://doi.org/10.1207/s15430421tip4102_2>

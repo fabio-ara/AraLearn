@@ -2,131 +2,226 @@
 
 ## Posição cautelosa
 
-A originalidade do AraLearn não foi demonstrada por revisão sistemática nem por
-avaliação comparativa completa. Portanto, este documento formula uma
-**contribuição integrada a investigar**, não uma declaração de primazia.
+A originalidade do AraLearn não foi demonstrada por revisão sistemática,
+patenteabilidade, estudo de mercado exaustivo ou avaliação comparativa completa.
+Este documento formula uma **contribuição integrada a investigar**. Não afirma
+que o produto seja o primeiro, único ou superior.
+
+Gregor e Hevner (2013) recomendam posicionar contribuições de Design Science
+Research em relação à maturidade do problema e da solução. No estado atual, o
+AraLearn combina componentes conhecidos para um problema situado e introduz
+alguns mecanismos de integração cuja utilidade e transferibilidade precisam
+ser avaliadas. A contribuição pode envolver artefato, princípios de design,
+explicações de mecanismo, método de avaliação e resultados negativos.
 
 ## Problema de integração
 
-Ferramentas existentes cobrem partes relevantes:
+Famílias existentes cobrem partes relevantes:
 
-- LMS organizam oferta, matrícula e acompanhamento institucional;
+- LMS organizam oferta, matrícula, papéis e acompanhamento institucional;
 - flashcards e repetição espaçada apoiam revisão;
 - ambientes de microlearning distribuem unidades curtas;
-- wikis, buscadores e cadernos apoiam consulta e organização;
-- tutores e chats com IA explicam ou geram conteúdo;
+- tutores inteligentes e chats com IA explicam ou geram conteúdo;
 - ferramentas de autoria produzem cursos e objetos;
-- analytics apresentam dados de percurso;
-- aplicativos offline mantêm conteúdo no dispositivo.
+- bibliotecas de visualização representam domínios específicos;
+- learning analytics apresentam dados de percurso;
+- sistemas local-first mantêm réplicas no dispositivo.
 
-O AraLearn investiga a integração frugal destas necessidades para a mesma
-pessoa estudar, observar, revisar e criar sem transformar cada operação em
-cópia integral ou cada rastro em julgamento.
+O problema investigado não é a ausência absoluta desses componentes. É a
+coordenação, num app móvel e frugal, de estudo profundo, prática variada,
+representação acadêmica, retomada offline, autoria em duas escalas, proveniência,
+controle humano da IA e recusa de proxies comportamentais punitivos.
 
-## Síntese investigada
+## Configuração investigada
 
 ```text
-necessidade específica
-→ planejamento assistido
+necessidade educacional
+→ planejamento antes do custo de produção
 → composição por partes correntes
-→ microssequências com representação adequada
-→ prática não punitiva
-→ estudo móvel e offline
-→ retomada
-→ observação situada e retorno
-→ melhoria humana ou assistida de alvo mínimo
-→ nova publicação
-→ avaliação
+→ teoria progressiva sem quantidade fixa
+→ resource escolhido pelo gesto cognitivo
+→ prática variada e feedback acionável
+→ estudo móvel/offline e retomada
+→ observação situada
+→ reparo humano ou assistido de alvo mínimo
+→ versão distribuível
+→ avaliação DBR/DSR
 ```
 
-## Componentes da contribuição
+Nenhuma seta é um efeito demonstrado. A cadeia é uma teoria de mudança
+provisória.
 
-### Escala didática intermediária
+## Camadas de contribuição possíveis
 
-A microssequência tenta preservar contexto que o card isolado perde e
-manejabilidade que a lição extensa pode perder em uso móvel. “Microteoria” é
-um termo operacional, não um novo construto pedagógico estabelecido.
+### C1 — artefato instanciado
 
-### Autoria assistida em duas escalas
+Um kernel de curso que compõe packages independentes, contratos especializados,
+persistência local-first, autoria por MCP e assistência contextual por API. A
+evidência é técnica: código, schemas, testes, build e execução reproduzível.
 
-O fluxo top-down usa chat, recuperação e operações atômicas para compor curso,
-módulo, lição e microssequência. O bottom-up mantém o card em estudo, delimita
-resources, cards ou microssequências, valida internamente e grava o resultado
-de modo direto e reversível. A contribuição possível está na coordenação dessas
-escalas sob o mesmo contrato, não no uso de LLM em si.
+### C2 — arquitetura de representação
 
-### Composição frugal e publicação explícita
+Um catálogo legível por máquina e por autor organiza resources por intenção,
+gesto cognitivo, domínio, operação, risco e affordance. O agente consulta a
+lista antes do contrato específico, permitindo expansão sem contrato
+monolítico. A contribuição não é “usar Graphviz/Vega/MathML”, mas separar
+semântica autoral, package acadêmico e kernel de execução.
 
-Workspaces guardam uma linha corrente por parte. Publicar compõe um JSON
-imutável; selecionar um curso cria vínculo, não cópia. Essa arquitetura deve
-ser comparada por armazenamento, manutenção, conflito e compreensão do usuário.
+### C3 — modelo didático operacional
 
-### Ciclo qualitativo de melhoria
+Microssequência articula pré-requisitos, explicação progressiva, exemplo,
+prática e feedback em quantidade variável. “Microssequência” e “microteoria”
+são termos do artefato; só se tornam contribuição teórica após avaliação e
+abstração além do caso.
 
-Observações permanecem situadas no card, recebem resposta e podem ser ligadas a
-reparo confirmado. O ciclo privilegia manifestação explícita e diálogo em vez
-de inferir atenção ou dificuldade de telemetria ambígua.
+### C4 — autoria em duas escalas
 
-### Analytics por recusa produtiva
+Autoria top-down compõe curso e partes por chat/MCP. Autoria bottom-up mantém o
+card visível, separa contexto somente leitura de texto gravável, permite
+conversa iterável e conserva versões reversíveis. A contribuição possível está
+na coordenação de escopo, contrato, revisão e responsabilidade, não no uso de
+LLM em si.
 
-O AraLearn trata como decisão de design não armazenar tentativas, tempo em
-tela, ranking ou inferências de atenção. Indicadores futuros só entram quando
-pergunta, construto, intervenção, limite e custo estiverem definidos. A
-originalidade possível está tanto no que o sistema integra quanto no que se
-recusa a medir.
+### C5 — governança e proveniência frugais
 
-## Matriz comparativa a executar
+Partes correntes, histórico de mudanças, papéis locais e publicação como
+materialização explícita podem apoiar auditoria sem copiar integralmente o
+curso a cada ação. A alegação precisa ser sustentada por medidas de
+armazenamento, conflito, compreensão de permissões e capacidade de reconstruir
+decisões.
 
-| Família | Comparar | Pergunta para o AraLearn |
-| --- | --- | --- |
-| LMS | autoria, papéis, publicação, acompanhamento | é possível coordenar sem a complexidade e vigilância comuns? |
-| flashcards | recuperação, espaçamento, retomada | microssequência preserva mais coerência sem perder leveza? |
-| microlearning | tamanho, contexto e continuidade | a unidade curta evita superficialidade em percursos longos? |
-| tutor/ITS | adaptação, feedback e diagnóstico | controle humano e menor inferência sacrificam ou preservam valor? |
-| chat com IA | flexibilidade, factualidade e continuidade | contratos e composição reduzem deriva sem engessar a autoria? |
-| ferramenta de autoria | expressividade e esforço | duas escalas permitem correção pequena e estrutura extensa? |
-| analytics | dados, agência, intervenção e ética | quais decisões úteis sobrevivem sem telemetria punitiva? |
-| local-first/offline | disponibilidade, conflito e custo | a réplica favorece continuidade com regras compreensíveis? |
+### C6 — ciclo qualitativo de melhoria
 
-## Alegações permitidas hoje
+Observações voluntárias permanecem situadas no card, recebem retorno e podem
+ser relacionadas a reparo confirmado. O desenho privilegia manifestação e
+diálogo em vez de inferir dificuldade de telemetria ambígua.
 
-- o artefato implementa resources estruturados em packages versionados;
-- autoria bottom-up e top-down usam escopos e persistências distintas;
-- workspaces são compostos por partes correntes e publicações explícitas;
-- estudo selecionado funciona offline após sincronização;
-- observações são correntes, situadas e não copiam o card;
-- testes automatizados cobrem contratos e jornadas especificadas;
-- armazenamento e payload possuem orçamentos versionados.
+### C7 — recusa produtiva de analytics
 
-## Alegações ainda não permitidas
+O AraLearn não armazena tentativas, tempo, ranking ou proxies de atenção por
+padrão. Um indicador futuro exige pergunta, construto, manifestação,
+intervenção, limite e custo anteriores à coleta. Essa escolha é contribuição
+normativa e de governança; seus efeitos ainda precisam ser investigados.
 
-- o AraLearn melhora aprendizagem, retenção ou transferência;
+### C8 — conhecimento de design e limites
+
+Os episódios podem produzir princípios condicionais, por exemplo: “quando uma
+tarefa depende de estrutura relacional e o estudante conhece a convenção, um
+package especializado pode reduzir tradução; quando a convenção é desconhecida,
+o mesmo package pode aumentar carga”. Princípios devem incluir contexto,
+mecanismo, resultado, evidência e caso de falha.
+
+## Matriz de novidade a investigar
+
+| Dimensão | Elementos conhecidos | Configuração do AraLearn | Comparação necessária |
+| --- | --- | --- | --- |
+| escala didática | aula, lição, objeto, card, microlearning | microssequência sem duração fixa e sem teoria resumida | coerência, profundidade e manejabilidade |
+| representação | multimídia e bibliotecas de gráficos | catálogo semântico + package + contrato progressivo | adequação da escolha e compreensão por domínio |
+| prática | quiz, flashcard, gap, resposta aberta | resposta incorporada ao objeto e selecionada pela operação | recuperação, retenção e transferência |
+| autoria | editor, chat, gerador de curso | top-down por MCP + bottom-up contextual/reversível | esforço, erro de escopo e qualidade |
+| persistência | LMS remoto, cache, exportação | réplica local + partes correntes + versão distribuível | offline, conflito, armazenamento e auditabilidade |
+| governança | papéis globais e publicação | workspace local, proveniência e capacidades revogáveis | compreensão, segurança e coordenação |
+| feedback | resultado automático e comentário | feedback de prática + observação situada + reparo | interpretação, ação e responsabilidade |
+| analytics | dashboard e predição | coleta somente após pergunta/intervenção | utilidade que permanece sem vigilância |
+
+## Alegações por nível de evidência
+
+### Permitidas por inspeção e teste técnico
+
+- o artefato implementa packages versionados sob um kernel comum;
+- o catálogo permite descobrir intenção antes de solicitar contrato;
+- autoria bottom-up e top-down usam escopos distintos;
+- versões locais permitem desfazer, refazer e restaurar no fluxo definido;
+- estudo sincronizado funciona offline nos cenários automatizados;
+- observações são situadas e não precisam copiar o card;
+- armazenamento, payload e jornadas possuem verificações versionadas.
+
+Essas alegações devem apontar para a [Matriz de conformidade
+técnica](matriz-conformidade-tecnica.md).
+
+### Permitidas somente após avaliação de uso
+
+- pessoas leigas compreendem percurso, resources, papéis e reversão;
+- a retomada reduz atrito sob interrupção real;
+- o catálogo melhora a seleção autoral de representação;
+- a assistência reduz erro de escopo ou retrabalho;
+- workspaces sustentam coordenação compreensível;
+- o ciclo observação → retorno → reparo produz ação útil.
+
+### Permitidas somente após avaliação de aprendizagem
+
+- uma intervenção melhora compreensão, retenção ou transferência;
+- microssequências preservam profundidade melhor que alternativa;
+- um resource reduz carga extrínseca ou melhora interpretação;
+- prática e feedback favorecem aprendizagem posterior;
+- desenho não punitivo altera ansiedade ou estratégia.
+
+### Ainda proibidas
+
+- o AraLearn é universalmente eficaz;
 - microssequências são superiores a aulas, textos ou flashcards;
+- mais resources significam maior qualidade;
 - ausência de gamificação reduz ansiedade;
-- IA delimitada produz cursos pedagogicamente melhores;
+- IA delimitada produz cursos corretos;
 - workspaces aumentam colaboração;
-- modo claro, escuro ou minimalista reduz carga cognitiva;
-- observações melhoram automaticamente o material;
-- o artefato é único ou primeiro em sua combinação;
-- funciona igualmente em qualquer público, conteúdo ou instituição.
+- modo claro, escuro ou minimalista reduz carga;
+- publicação representa aprovação acadêmica;
+- o artefato é único ou primeiro em sua combinação.
 
-## Evidência necessária
+## Contribuição negativa e resultados adversos
 
-A contribuição se fortalece se estudos mostrarem, com limitações explícitas:
+Remover um resource redundante, abandonar uma representação incompreensível,
+demonstrar que um controle de IA é apenas simbólico ou identificar que uma
+microssequência fragmenta o conteúdo são resultados relevantes. O programa
+deve publicar:
 
-- jornada compreensível por estudantes-trabalhadores leigos;
-- retomada robusta em interrupção e conectividade variável;
-- coerência entre microteoria, prática e percurso;
-- controle compreendido sobre IA e publicação;
-- uso efetivo do ciclo observação → retorno → melhoria;
-- sustentabilidade do armazenamento com múltiplos usuários;
-- diferenças relevantes frente a ferramentas comparáveis;
-- casos em que o desenho falha ou precisa ser abandonado.
+- mecanismos que não funcionaram;
+- populações ou domínios em que falharam;
+- custos e efeitos adversos;
+- mudanças de hipótese;
+- packages fundidos, retirados ou restringidos;
+- resultados nulos e explicações rivais sobreviventes.
+
+Essa documentação reduz viés de sobrevivência e torna a contribuição útil para
+outros projetos.
+
+## Evidência necessária para sustentar a contribuição
+
+| Contribuição | Evidência mínima | Evidência mais forte |
+| --- | --- | --- |
+| artefato/kernel/packages | código, schema, testes e build reproduzível | avaliação externa de arquitetura e manutenção longitudinal |
+| catálogo progressivo | contrato e busca demonstrados | comparação de seleção, erro e contexto com alternativa monolítica |
+| modelo didático | rubrica e casos de estresse | ciclos DBR com novatos, retenção e transferência |
+| autoria em duas escalas | tarefas completas e escopo preservado | comparação de qualidade, retrabalho e controle percebido |
+| local-first/frugalidade | offline, sync, bytes e custos | uso longitudinal sob rede e dispositivos reais |
+| workspace/proveniência | isolamento, revogação e reconstrução | coordenação real e compreensão de responsabilidade |
+| observação situada | registro, retorno e reparo reencontráveis | evidência de ação e melhoria, com casos negativos |
+| recusa de proxies | ausência técnica e política explícita | co-design e comparação de decisões legítimas sem vigilância |
+
+## Forma de comunicação na dissertação ou tese
+
+Cada alegação deve seguir:
+
+```text
+contribuição alegada
+→ problema e literatura relacionada
+→ artefato/princípio produzido
+→ episódio de avaliação
+→ evidência e incerteza
+→ explicação rival
+→ limite de transferência
+```
+
+A seção de contribuição deve separar: (a) o que foi construído; (b) o que foi
+demonstrado tecnicamente; (c) o que foi observado com participantes; (d) o que
+foi aprendido sobre design; e (e) o que permanece hipótese.
 
 ## Relações documentais
 
+- [Fundamentos, pesquisa e governança](fundamentos-pesquisa-e-governanca.md)
 - [Revisão de literatura](revisao-de-literatura.md)
 - [Quadro teórico](quadro-teorico.md)
+- [Matriz de rastreabilidade pedagógica](matriz-rastreabilidade-pedagogica.md)
 - [Protocolo de avaliação](protocolo-avaliacao-artefato.md)
 - [Visão do produto](visao-do-produto.md)
 - [Arquitetura](arquitetura.md)

@@ -23,7 +23,13 @@ convenções e limitações pertencem ao próprio package. A versão do catálog
 derivada desse conjunto semântico, portanto muda quando a capacidade ou a
 política de seleção muda, mesmo que os IDs instalados permaneçam iguais.
 
-O card canônico não usa os antigos campos `resource`, `kind` ou `exercise`. Ele
+Esses três valores são tokens públicos do protocolo. Nesse campo,
+`canonical` quer dizer apenas que o algoritmo encontrou um package específico
+para as facetas consultadas; não é uma certificação de consenso acadêmico. O
+catálogo de resources também não é o catálogo de cursos mostrado em
+**Coleções**.
+
+O envelope de card vigente não usa os antigos campos `resource`, `kind` ou `exercise`. Ele
 declara `role`, uma lista `content`, no máximo uma instância `response` e uma
 lista `feedback`. Cada instância possui `{ id, package, version, data }`; o
 kernel conhece o envelope e cada package conhece seus dados.

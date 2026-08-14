@@ -135,7 +135,7 @@ test("modelo livre Gemini conserva o identificador informado e usa a API oficial
   }
 });
 
-test("presets DeepSeek V4, Gemini e bridge local mantêm seus adaptadores", () => {
+test("presets DeepSeek V4, Gemini e serviço local mantêm seus adaptadores", () => {
   const deepSeekFlash = createRegisteredProvider({
     selectedModel: "deepseek-v4-flash",
     apiKey: "deepseek-key"
@@ -225,7 +225,7 @@ test("endpoint precisa estar na lista exata da instalação", () => {
   );
 });
 
-test("bridge personalizado inválido não chega à verificação de saúde", async () => {
+test("serviço local personalizado inválido não chega à verificação de saúde", async () => {
   let healthChecks = 0;
   const readiness = await resolveCardAssistanceProviderReadiness({
     selectedModel: CUSTOM_PROVIDER_MODEL_ID,
@@ -245,7 +245,7 @@ test("bridge personalizado inválido não chega à verificação de saúde", asy
   assert.equal(healthChecks, 0);
 });
 
-test("HTTP no bridge é restrito ao próprio dispositivo", () => {
+test("HTTP no serviço local é restrito ao próprio dispositivo", () => {
   assert.equal(resolveCodexLocalEndpoint("http://127.0.0.1:4183"), "http://127.0.0.1:4183/assist");
   assert.equal(resolveCodexLocalEndpoint("http://localhost:4183/health"), "http://localhost:4183/assist");
   assert.throws(
@@ -258,7 +258,7 @@ test("HTTP no bridge é restrito ao próprio dispositivo", () => {
   );
 });
 
-test("bridge personalizado recebe o modelo livre e somente o token correspondente", async () => {
+test("serviço local personalizado recebe o modelo livre e somente o token correspondente", async () => {
   const bridgeToken = "aralearn-bridge-personalizado-token-2026";
   const originalFetch = globalThis.fetch;
   const requests = [];
@@ -291,7 +291,7 @@ test("bridge personalizado recebe o modelo livre e somente o token correspondent
   }
 });
 
-test("bridge personalizado vazio falha sem reaproveitar token de outro preset", async () => {
+test("serviço local personalizado vazio falha sem reaproveitar token de outro preset", async () => {
   let receivedToken = "não chamado";
   const readiness = await resolveCardAssistanceProviderReadiness({
     selectedModel: CUSTOM_PROVIDER_MODEL_ID,
@@ -308,7 +308,7 @@ test("bridge personalizado vazio falha sem reaproveitar token de outro preset", 
 
   assert.equal(readiness.ok, false);
   assert.equal(readiness.configurationError, true);
-  assert.match(readiness.error, /token do bridge local entre 32 e 512 bytes/u);
+  assert.match(readiness.error, /token do serviço local entre 32 e 512 bytes/u);
   assert.equal(receivedToken, "não chamado");
 });
 

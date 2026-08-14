@@ -1,11 +1,14 @@
-# Configuração do Chatbot e do Plugin
+# Configuração do GPT personalizado e da integração MCP
 
 O AraLearn oferece duas superfícies independentes sobre o mesmo motor de autoria:
 
-- **Chatbot**: GPT personalizado com instruções, dois arquivos de conhecimento e Action OpenAPI;
-- **Plugin**: MCP nativo para chamar o AraLearn em qualquer conversa do ChatGPT.
+- **GPT personalizado com Action**: usa instruções, dois arquivos de
+  conhecimento e uma Action OpenAPI; a tela atual do AraLearn o rotula como
+  **Chatbot**;
+- **integração MCP**: permite que clientes compatíveis chamem o servidor MCP do
+  AraLearn; a tela atual a rotula como **Plugin**.
 
-## Chatbot
+## GPT personalizado com Action
 
 No construtor de GPT:
 
@@ -25,12 +28,12 @@ No construtor de GPT:
 O GPT só recebe seu ID depois do primeiro salvamento. Por isso a credencial é
 criada antes, e o vínculo posterior registra os callbacks exatos desse GPT.
 
-O Chatbot chama um adaptador OpenAPI pequeno. Esse adaptador valida sua
+O GPT personalizado chama um adaptador OpenAPI pequeno. Esse adaptador valida sua
 concessão OAuth confidencial e
 executa exatamente o mesmo registro de ferramentas, schemas, autorização e
 motor de workspace usados pelo MCP; não existe um segundo modelo de autoria.
 
-## Plugin
+## Integração MCP
 
 No ChatGPT:
 
@@ -39,7 +42,7 @@ No ChatGPT:
 3. selecione **URL do servidor** e **OAuth**;
 4. confirme a instalação e conecte a conta AraLearn.
 
-O Plugin recebe instruções curtas na inicialização MCP e usa
+A integração recebe instruções curtas na inicialização MCP e usa
 `prepararAutoriaAraLearn` para recuperar somente o conhecimento pertinente ao
 pedido e ao contexto da conversa. Os guias completos também são publicados
 como resources MCP. Assim ele pode criar ou consultar cursos a partir de uma
@@ -50,7 +53,7 @@ conversa comum sem carregar toda a documentação a cada turno.
 Implante `aralearn-authoring-mcp`, `aralearn-authoring-action` e a entrega
 protegida de revisões. O Supabase OAuth 2.1 Server permanece com Dynamic Client
 Registration, PKCE `S256`, chave assimétrica, consentimento e o hook
-`public.aralearn_mcp_access_token_hook` para o Plugin MCP.
+`public.aralearn_mcp_access_token_hook` para clientes da integração MCP.
 
 A Action usa os endpoints `/oauth/authorize` e `/oauth/token` da própria
 `aralearn-authoring-action`. O construtor atual de GPT Actions não expõe os
@@ -60,9 +63,10 @@ rotação de refresh token e persiste somente hashes. A autorização continua
 sendo confirmada na conta AraLearn e as permissões continuam sendo resolvidas
 no mesmo banco.
 
-As credenciais administrativas existem somente nas Edge Functions. O Chatbot e
-o Plugin recebem tokens OAuth curtos da conta conectada; permissões efetivas
-continuam resolvidas no banco.
+As credenciais administrativas existem somente nas Edge Functions. O GPT
+personalizado e o cliente MCP recebem tokens OAuth curtos da conta conectada;
+capacidades efetivas continuam derivadas no banco, e a autorização é refeita
+para cada operação concreta.
 
 ## Teste mínimo
 
@@ -91,7 +95,8 @@ O smoke hospedado recebe um access token OAuth de uma conta descartável:
   -Origin https://chatgpt.com
 ```
 
-Execute esse conjunto uma vez no Chatbot e outra no Plugin.
+Execute esse conjunto uma vez no GPT personalizado com Action e outra por um
+cliente conectado à integração MCP.
 
 ## Pacotes
 

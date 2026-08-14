@@ -2,26 +2,28 @@
 
 O AraLearn oferece duas formas complementares de autoria:
 
-- Chatbot ou Plugin, conectados por MCP, para planejar e transformar cursos e
-  suas partes;
+- GPT personalizado com Action ou clientes compatíveis pela integração MCP,
+  para planejar e transformar cursos e suas partes;
 - assistência por API no próprio conteúdo, para intervenções delimitadas em
   cards, microssequências e lições.
 
 A assistência por API é bottom-up: parte do trecho que a pessoa está vendo e
 da seleção feita nessa tela. Ela não substitui a autoria estrutural ampla do
-Chatbot ou Plugin.
+GPT personalizado.
 
-## Autoria estrutural pelo Chatbot ou Plugin
+## Autoria estrutural pelo GPT personalizado
 
 Planejar cursos, organizar módulos, lições e microssequências, complementar
 árvores existentes e recombinar partes entre cursos são responsabilidades do
-Chatbot personalizado com Action ou do Plugin com MCP. O painel **Chatbot**
-fornece os materiais e endereços necessários para configurar essas duas
-formas de acesso.
+GPT personalizado. O painel da interface chamado **Chatbot** fornece os
+materiais e endereços necessários para configurar sua Action; a área
+**Plugin** descreve separadamente a integração MCP para clientes compatíveis.
+As duas superfícies chegam ao mesmo executor de autoria; não são dois motores
+de conteúdo.
 
-O mesmo MCP calcula as capacidades da conta conectada. A passagem de um curso
-privado para o catálogo ocorre somente por esse fluxo, nunca por um botão da
-assistência bottom-up.
+Ambas resolvem as capacidades da conta conectada no servidor. A passagem de um
+curso privado para o catálogo ocorre somente por esse fluxo de autoria
+estrutural, nunca por um botão da assistência bottom-up.
 
 ## Autoria integrada ao conteúdo
 
@@ -35,7 +37,7 @@ os mesmos nos três modos. Na edição, o texto digitável ocupa a caixa origina
 e rola dentro dela se ultrapassar o espaço disponível. Salvar e cancelar ficam
 no rodapé da tela, nunca dentro do card ou da instância selecionada.
 
-O modo Editar conserva o renderer canônico de cada package: muda apenas a
+O modo Editar conserva o renderer do package: muda apenas a
 editabilidade do texto que possui caminho inequívoco no contrato. Identidades,
 relações, respostas, topologia e demais elementos estruturais continuam
 somente leitura. Em packages estruturados, um texto só se torna editável
@@ -56,7 +58,8 @@ configuração do serviço e envio aparecem somente nesse momento. Fechar a caix
 não perde a seleção corrente. A caixa flutua acima do rodapé e não reduz nem
 desloca o card, suas representações ou a lista estrutural.
 
-Em lições e microssequências, o próprio card HTML é a superfície de seleção:
+Em lições e microssequências, o próprio componente de card renderizado é a
+superfície de seleção:
 toques sucessivos acumulam alvos, e a seleção permanece ao atualizar a tela.
 O contorno é desenhado para dentro, sem cortar a borda nem alterar a largura.
 
@@ -154,7 +157,7 @@ mesmo tempo uma unidade e o conjunto completo. O pedido define se a operação
 cria cards nela ou uma nova microssequência irmã.
 
 Não existe assistência por API nos níveis de módulo ou curso. Mudanças nessa
-escala pertencem ao Chatbot ou Plugin.
+escala pertencem ao GPT personalizado.
 
 ## Contexto compacto e somente leitura
 
@@ -206,7 +209,7 @@ Cada envio executa um turno e uma única intenção. O AraLearn:
 3. em `recompose_card`, consulta o catálogo, seleciona uma composição e carrega
    somente os contratos necessários;
 4. solicita uma saída estruturada ao serviço configurado;
-5. converte a resposta para o contrato canônico e a valida localmente quanto a
+5. converte a resposta para o contrato exato do escopo e a valida localmente quanto a
    schema, semântica, referências, compatibilidade e limites do escopo;
 6. confirma toda a mudança em uma única transação com compare-and-swap;
 7. mostra imediatamente o conteúdo e a explicação resultantes.
@@ -277,7 +280,8 @@ Uma edição de curso privado permanece no mesmo curso privado. Uma conta
 autorizada que edita um curso oficial atualiza sua continuidade oficial. O
 AraLearn não cria automaticamente uma cópia privada de curso do catálogo.
 Promover um curso privado para Coleções continua sendo uma operação explícita
-do Chatbot ou Plugin com MCP.
+do GPT personalizado com Action ou de um cliente compatível pela integração
+MCP.
 
 ## Dados e disponibilidade
 
@@ -285,7 +289,8 @@ Ao pedir assistência, o contexto delimitado é enviado ao serviço escolhido.
 Custos, limites, retenção de dados e disponibilidade dependem desse serviço.
 
 O seletor inclui DeepSeek V4 Flash, DeepSeek V4 Pro, Gemini 3.6 Flash,
-Gemini 3.5 Flash-Lite e o bridge local. Esses são os presets correntes do
+Gemini 3.5 Flash-Lite e o serviço local de integração com Codex CLI. Esses são
+os presets correntes do
 AraLearn e acompanham os modelos documentados pelo
 [DeepSeek](https://api-docs.deepseek.com/quick_start/pricing/) e pelo
 [Gemini](https://ai.google.dev/gemini-api/docs/latest-model). Modelos já
@@ -293,7 +298,7 @@ encerrados não permanecem como opções.
 Nenhum provider é escolhido silenciosamente: a pessoa faz uma seleção antes do
 primeiro envio. Os presets DeepSeek V4 usam o adaptador compatível com a API do
 DeepSeek; os presets Gemini 3.6 e 3.5 usam o adaptador oficial do Gemini. Ambos
-entregam a resposta ao mesmo validador canônico local. No Gemini, o pedido
+entregam a resposta ao mesmo validador local. No Gemini, o pedido
 estruturado usa `responseMimeType` e `responseJsonSchema` no `generateContent`;
 não há troca silenciosa para resposta livre quando o schema é recusado.
 
@@ -303,7 +308,7 @@ A opção **Outro modelo** aceita três protocolos:
   Completions com saída JSON estruturada; o endpoint oficial
   `https://api.openai.com/v1/responses` usa Structured Outputs estrito;
 - **Gemini:** requer modelo e chave e usa a API oficial do Gemini;
-- **Bridge local:** requer modelo e endereço do bridge. HTTP só é aceito em
+- **Codex CLI local:** requer modelo e endereço do serviço local. HTTP só é aceito em
   `localhost`, `127.0.0.1` ou no endereço local IPv6; endereços externos
   precisam de HTTPS.
 
@@ -366,12 +371,14 @@ caminhos autorizados mudaram, confere identidade, posição e destino, valida o
 envelope com packages e realiza o round-trip relacional.
 
 Há um teto não ampliável de 24 chamadas HTTP para a execução completa. Sem
-reconstruções, os seis cenários usam 19. O relatório ignorado pelo Git em
-`tests/reports/deepseek-bottom-up-real.json` contém somente contagens, tokens e
-fases; não registra chave, prompt, resposta nem conteúdo do curso. A chave deve
-ser temporária e removida do ambiente depois do teste.
+reconstruções, os seis cenários usam 19. Quando o smoke pago é executado, ele
+gera o relatório local, ignorado pelo Git,
+`tests/reports/deepseek-bottom-up-real.json`, com somente contagens, tokens e
+fases; o arquivo não integra o checkout nem registra chave, prompt, resposta ou
+conteúdo do curso. A chave deve ser temporária e removida do ambiente depois do
+teste.
 
-Na execução de referência de 7 de agosto de 2026, o V4 Flash concluiu os seis
+No relatório opcional da execução de referência de 7 de agosto de 2026, o V4 Flash concluiu os seis
 cenários nas 19 chamadas iniciais, sem reconstrução: 39.712 tokens de entrada e
 876 de saída. Pelos preços vigentes naquele dia e sem cache hit, o custo
 estimado foi de aproximadamente US$ 0,0058.
@@ -383,13 +390,14 @@ IndexedDB, no armazenamento do navegador nem em endereços. Ao recarregar ou
 fechar o aplicativo, é preciso informá-la novamente.
 
 A política de conteúdo da instalação precisa autorizar a origem usada pelo
-serviço. DeepSeek e Gemini entram na lista padrão. O Android admite o bridge do
+serviço. DeepSeek e Gemini entram na lista padrão. O Android admite o serviço
+local executado no próprio dispositivo em
 próprio dispositivo em `http://127.0.0.1:4183`; no servidor local, também é
 aceito `http://localhost:4183`. Para **Outro modelo**, informe somente a origem
 HTTPS necessária em `ARALEARN_ASSIST_ALLOWED_ORIGINS` durante o build.
 
 Pedido, resposta e contexto montado não são anexados ao curso. Providers
-remotos exigem rede. O bridge local pode prestar a assistência textual sem
+remotos exigem rede. O serviço local pode prestar a assistência textual sem
 internet quando continua acessível no próprio dispositivo; nesse caso, usa
 somente o conteúdo já baixado e a autoridade de edição previamente confirmada.
 A edição manual segue disponível na mesma condição. Ambas persistem o rascunho

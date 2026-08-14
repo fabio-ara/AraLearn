@@ -11,9 +11,12 @@ conexão.
 ## Conteúdo e organização
 
 A árvore didática é formada por curso, módulo, lição, microssequência e card. O
-`aralearn.library.v1`, com cards compostos por packages versionados, é a forma
-canônica de intercâmbio e publicação. Uma revisão
-publicada possui hash SHA-256 e não é alterada depois de gravada.
+envelope operacional `aralearn.library.v1`, com cards compostos por packages
+versionados, é o formato de intercâmbio e publicação da árvore completa. O
+kernel também valida o contrato unitário `aralearn.course.v1`, enquanto o
+catálogo usa o protocolo de descoberta `aralearn.resource-library.v1`; os três
+identificadores possuem raízes e finalidades distintas. Uma revisão publicada
+possui hash SHA-256 e não é alterada depois de gravada.
 
 Há duas representações remotas com finalidades diferentes:
 
@@ -76,7 +79,8 @@ alterá-lo mantendo sua continuidade oficial. O aplicativo não cria fork
 privado automático de conteúdo de Coleções. Curso privado de outra pessoa não
 é editável neste recorte. Cache e capacidade desconhecida sempre falham
 fechados. A passagem de privado para catálogo continua exclusiva da autoria
-por Chatbot ou Plugin com MCP.
+por GPT personalizado com Action ou por um cliente compatível pela integração
+MCP.
 
 A autoridade bottom-up é hierárquica e limitada: instâncias de packages ou o
 card inteiro no nível de card; cards selecionados ou o recipiente no nível de
@@ -89,8 +93,9 @@ lição.
 No card, a assistência mantém uma conversa volátil de até oito turnos e nove
 versões exatas, com desfazer, refazer e restauração. Um turno sem mudança guarda
 somente a explicação e não cria versão. O histórico não é persistido nem se
-confunde com cópias do curso. A autoria extensa pelo Chatbot ou Plugin consulta
-o mesmo catálogo de packages para operações maiores. Não há merge silencioso.
+confunde com cópias do curso. A autoria extensa consulta o mesmo catálogo de
+packages pelo GPT personalizado com Action ou por um cliente compatível pela
+integração MCP. Não há merge silencioso.
 
 Cada comando do workspace usa `expectedRevision` para recusar uma base
 desatualizada e `requestId` para permitir repetição segura depois de uma falha
@@ -174,14 +179,15 @@ O sinal de revisão publicada conserva somente a mudança mais recente por
 curso e audiência, inclusive quando ela é uma retirada. Como a mudança atual
 sempre recebe uma sequência nova, um dispositivo que consulta a partir de sua
 última sequência continua recebendo o estado vigente sem o banco acumular uma
-linha por republicação. A retirada conserva um tombstone por curso distinto;
+linha por republicação. A retirada conserva uma marca de exclusão (*tombstone*)
+por curso distinto;
 ele não expira enquanto esse feed não possuir watermark próprio para exigir
 full resync de clientes antigos.
 
 O feed pessoal de seleções, trilhas, progresso e comentários usa outro
 watermark, baseado nos dispositivos ativos. A primeira escrita elegível de cada
 dia tenta inativar dispositivos vencidos e compactar automaticamente o prefixo
-já seguro e o ledger de idempotência, sem depender de operação manual.
+já seguro e os registros de deduplicação, sem depender de operação manual.
 
 ## Atualização do catálogo
 
@@ -207,7 +213,8 @@ Também não existe pacote SharePoint/SPFx. O aplicativo protege a navegação c
 
 | Área | Responsabilidade |
 | --- | --- |
-| `src/domain/` e `src/resources/kernel/` | Entidades, envelope da biblioteca, kernel de cards e validação. |
+| `src/domain/` | Entidades e envelope operacional multi-curso. |
+| `src/resources/kernel/` | Envelope unitário de curso, composição de cards, registro de packages e validação do subconjunto de schema suportado. |
 | `src/resources/catalog/` | Famílias, vocabulário controlado, política de seleção e descoberta progressiva. |
 | `src/resources/packages/` | Manifests, contratos, schemas e renderers independentes. |
 | `src/model/` | Dados preparados para apresentação. |
@@ -278,8 +285,8 @@ Uma conta editorial também pode criar ou atualizar diretamente um curso
 `complete` de seu próprio workspace numa coleção, sem fabricar uma submissão
 para si mesma.
 
-Não há um GPT administrativo separado. Plugin e Chatbot chegam ao mesmo motor,
-e as capacidades são calculadas pela conta conectada: autoria privada,
+Não há um GPT administrativo separado. Action e MCP chegam ao mesmo motor de
+autoria, e as capacidades são calculadas pela conta conectada: autoria privada,
 submissão, revisão e publicação podem aparecer em combinações diferentes.
 
 Papéis editoriais globais não ampliam as regras de acesso aos dados pessoais. Em especial, `catalog_publisher` pode publicar conteúdo, mas não se torna administrador de progresso, observações ou cursos privados. A única leitura compartilhada de observações deriva de papel local no workspace associado, por uma projeção contextual que nunca expõe progresso ou trilhas.
@@ -289,3 +296,7 @@ O plano remoto está em [Plano de controle e artefatos](plano-de-controle-e-arte
 O formato de intercâmbio está em [Contrato público](aralearn-contract.md). O
 fluxo editorial está em [Autoria e publicação do catálogo](autoria-do-catalogo.md).
 O percurso de uso está em [Criar cursos pelo chat](criar-cursos-pelo-chat.md).
+As definições normativas usadas nesta descrição estão no [Glossário
+técnico](glossario-tecnico.md), e a correspondência entre afirmações,
+implementação e testes está na [Matriz de conformidade
+técnica](matriz-conformidade-tecnica.md).

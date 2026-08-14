@@ -18,6 +18,23 @@ const CONTEXTUAL_CONTENT_EXCEPTIONS = new Set([
   "supabase/fixtures/catalog/catalog-fixtures.json",
   "supabase/fixtures/catalog/dataprev-analista-processamento-seed-course.json"
 ]);
+const REQUIRED_TECHNICAL_DOCUMENTS = Object.freeze([
+  "docs/glossario-tecnico.md",
+  "docs/matriz-conformidade-tecnica.md"
+]);
+const LEGACY_FACTUAL_CLAIMS = Object.freeze([
+  {
+    pattern:
+      /\b(?:a\s+)?assist[eê]ncia(?:\s+(?:local|por\s+api|no\s+aplicativo)){0,3}\b(?:(?![.!?])[\s\S]){0,180}?\bcria\s+exatamente\s+(?:um|1)\s+card\b/giu,
+    label: "afirmação legada incorreta sobre a cardinalidade da assistência"
+  },
+  {
+    pattern: /\bos\s+cursos\s+oficiais\s+ficam\s+uma\s+única\s+vez\s+no\s+banco\s+compartilhado\b/giu,
+    label: "afirmação legada incorreta sobre o armazenamento dos cursos oficiais"
+  }
+]);
+const EXPLICIT_REJECTION =
+  /\b(?:não confirmado|incorreto|incorreta|obsoleto|obsoleta|falso|falsa|não deveria|não corresponde|não se aplica)\b/iu;
 
 function walkFiles(directory, predicate) {
   if (!fs.existsSync(directory)) return [];
@@ -98,8 +115,126 @@ function normalizedTarget(rawTarget) {
   };
 }
 
+function markdownLinkTargets(indexFile, source) {
+  const targets = new Set();
+  for (const match of source.matchAll(MARKDOWN_LINK)) {
+    const rawTarget = match[1].trim();
+    if (/^(?:https?:|mailto:|tel:)/iu.test(rawTarget)) continue;
+    const { pathPart } = normalizedTarget(rawTarget);
+    if (!pathPart) continue;
+    targets.add(path.resolve(path.dirname(indexFile), pathPart));
+  }
+  return targets;
+}
+
 function isGeneratedKnowledgeBundle(root, file) {
   return relativePath(root, file).startsWith("docs/downloads/authoring/aralearn-chatgpt-knowledge-");
+}
+
+function isGeneratedDocumentation(root, file) {
+  return relativePath(root, file).startsWith("docs/downloads/");
+}
+
+function comparableText(value) {
+  return value
+    .normalize("NFD")
+    .replace(/\p{M}/gu, "")
+    .toLocaleLowerCase("pt-BR");
+}
+
+function isHistoricalDocumentation(root, file) {
+  const relative = comparableText(relativePath(root, file));
+  return relative.split("/").some((part) =>
+    /^(?:archive|archives|historico|history)(?:[-.]|$)/u.test(part)
+  );
+}
+
+function isHistoricalHeading(title) {
+  const normalized = comparableText(title)
+    .replace(/<[^>]*>/gu, "")
+    .replace(/[`*~]/gu, "")
+    .trim();
+  return /^(?:changelog|historico|registro historico|registro de mudancas)(?:\b|\s|:|-)/u.test(normalized);
+}
+
+function maskText(value) {
+  return value.replace(/[^\r\n]/g, " ");
+}
+
+function linesWithEndings(source) {
+  const lines = [];
+  let start = 0;
+  for (const match of source.matchAll(/\r\n|\r|\n/gu)) {
+    const end = match.index + match[0].length;
+    lines.push(source.slice(start, end));
+    start = end;
+  }
+  if (start < source.length) lines.push(source.slice(start));
+  return lines;
+}
+
+function markdownProseForFactualAudit(source) {
+  let fence = "";
+  let historicalDepth = 0;
+  return linesWithEndings(source)
+    .map((line) => {
+      const body = line.replace(/[\r\n]+$/u, "");
+      if (fence) {
+        const trimmed = body.trim();
+        if (trimmed.length >= fence.length && [...trimmed].every((character) => character === fence[0])) {
+          fence = "";
+        }
+        return maskText(line);
+      }
+
+      const fenceMatch = /^[ \t]*(`{3,}|~{3,})/u.exec(body);
+      if (fenceMatch) {
+        fence = fenceMatch[1];
+        return maskText(line);
+      }
+
+      const heading = /^(#{1,6})\s+(.+?)\s*#*\s*$/u.exec(body);
+      if (historicalDepth && heading && heading[1].length <= historicalDepth) historicalDepth = 0;
+      if (!historicalDepth && heading && isHistoricalHeading(heading[2])) historicalDepth = heading[1].length;
+      if (historicalDepth) return maskText(line);
+
+      return line.replace(/(`+)([^`\r\n]*?)\1/gu, (literal) => maskText(literal));
+    })
+    .join("");
+}
+
+function claimContextAt(source, index, length) {
+  const start = source.lastIndexOf("\n", Math.max(0, index - 1)) + 1;
+  const nextBreak = source.indexOf("\n", index + length);
+  return source.slice(start, nextBreak < 0 ? source.length : nextBreak);
+}
+
+function auditLegacyFactualClaims({ root, markdown, sources, errors }) {
+  for (const file of markdown) {
+    if (isGeneratedDocumentation(root, file) || isHistoricalDocumentation(root, file)) continue;
+    const source = sources.get(file);
+    const prose = markdownProseForFactualAudit(source);
+    for (const claim of LEGACY_FACTUAL_CLAIMS) {
+      for (const match of prose.matchAll(claim.pattern)) {
+        if (EXPLICIT_REJECTION.test(claimContextAt(source, match.index, match[0].length))) continue;
+        errors.push(`${relativePath(root, file)}:${lineNumber(source, match.index)}: ${claim.label}`);
+      }
+    }
+  }
+}
+
+function auditRequiredTechnicalDocuments({ root, docsReadme, errors }) {
+  const indexFile = path.join(root, "docs", "README.md");
+  const indexedTargets = markdownLinkTargets(indexFile, docsReadme);
+  for (const relative of REQUIRED_TECHNICAL_DOCUMENTS) {
+    const requiredFile = path.join(root, ...relative.split("/"));
+    if (!fs.existsSync(requiredFile)) {
+      errors.push(`${relative}: documento técnico obrigatório ausente`);
+    }
+    if (!indexedTargets.has(path.resolve(requiredFile))) {
+      errors.push(`docs/README.md: documento técnico obrigatório não indexado: ${path.basename(requiredFile)}`);
+    }
+  }
 }
 
 function auditHeadingStructure({ root, file, source, errors }) {
@@ -170,6 +305,8 @@ export function auditDocumentation({ root = defaultRoot } = {}) {
 
   const rootReadme = sources.get(path.join(root, "README.md")) || "";
   const docsReadme = sources.get(path.join(root, "docs", "README.md")) || "";
+  auditRequiredTechnicalDocuments({ root, docsReadme, errors });
+  auditLegacyFactualClaims({ root, markdown, sources, errors });
   const indexes = `${rootReadme}\n${docsReadme}`;
   for (const file of markdown.filter((current) => path.dirname(current) === path.join(root, "docs"))) {
     if (path.basename(file) === "README.md") continue;

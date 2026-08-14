@@ -108,7 +108,7 @@ submissão como aceita.
 
 ## Capacidades por conta
 
-Não existe um GPT administrativo separado. Plugin e Chatbot usam o mesmo
+Não existe um GPT administrativo separado. Action e MCP usam o mesmo
 executor; o backend mostra apenas as capacidades que a conta conectada possui:
 
 - autoria privada e leitura da própria biblioteca em Trilhas;
@@ -118,8 +118,9 @@ executor; o backend mostra apenas as capacidades que a conta conectada possui:
 - publicação e organização do catálogo.
 
 Essas capacidades vêm do banco, não de um texto que o assistente possa inventar
-nem de um `scope` confiado ao modelo. A conexão usa OAuth, e a service role
-permanece exclusivamente no ambiente protegido da Edge Function. Nenhuma
+nem de um `scope` confiado ao modelo. A conexão usa OAuth; a credencial secreta
+do backend permanece exclusivamente no ambiente protegido da Edge Function e
+opera com o papel PostgreSQL/PostgREST `service_role`. Nenhuma
 capacidade editorial global concede acesso a progresso, observações ou trilhas
 de outras pessoas. A triagem exige papel de revisão no workspace específico;
 não deriva do catálogo.

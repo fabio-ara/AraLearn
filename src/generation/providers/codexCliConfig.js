@@ -29,17 +29,17 @@ export function resolveCodexLocalEndpoint(endpoint) {
   try {
     parsed = new URL(raw);
   } catch {
-    throw new Error("O endpoint do bridge local é inválido.");
+    throw new Error("O endpoint do serviço HTTP local do Codex CLI é inválido.");
   }
   if (!/^https?:$/i.test(parsed.protocol)) {
-    throw new Error("O endpoint do bridge local deve usar HTTP ou HTTPS.");
+    throw new Error("O endpoint do serviço HTTP local do Codex CLI deve usar HTTP ou HTTPS.");
   }
   if (parsed.username || parsed.password || parsed.search || parsed.hash) {
-    throw new Error("O endpoint do bridge local não pode conter credenciais, consulta nem fragmento.");
+    throw new Error("O endpoint do serviço HTTP local do Codex CLI não pode conter credenciais, consulta nem fragmento.");
   }
   const localHosts = new Set(["localhost", "127.0.0.1", "[::1]", "::1"]);
   if (parsed.protocol === "http:" && !localHosts.has(parsed.hostname.toLowerCase())) {
-    throw new Error("HTTP só é permitido para um bridge no próprio dispositivo.");
+    throw new Error("HTTP só é permitido para o serviço do Codex CLI executado no próprio dispositivo.");
   }
 
   let normalized = parsed.toString().replace(/\/+$/, "");
@@ -79,13 +79,13 @@ export async function checkCodexLocalHealth({ endpoint, token, timeoutMs = 3000 
     }
     return {
       ok: false,
-      error: sanitizeProviderMessage(data?.error || "O bridge local respondeu sem sinal de saúde válido.", [token]),
+      error: sanitizeProviderMessage(data?.error || "O serviço local respondeu sem sinal de saúde válido.", [token]),
       status: response.status
     };
   } catch (error) {
     return {
       ok: false,
-      error: sanitizeProviderMessage(text(error?.message), [token]) || "Não foi possível conectar ao bridge local.",
+      error: sanitizeProviderMessage(text(error?.message), [token]) || "Não foi possível conectar ao serviço local do Codex CLI.",
       status: 0
     };
   } finally {

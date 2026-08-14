@@ -86,7 +86,7 @@ export async function checkCodexCliConnection({ assistConfig = {}, checkCodexLoc
     setupStatus: createCodexCliSetupStatus({
       ok: status.ok,
       checking: false,
-      error: status.ok ? "" : status.error || "Bridge local não encontrado.",
+      error: status.ok ? "" : status.error || "Serviço local do Codex CLI não encontrado.",
       data: status.ok ? status.data : null
     })
   };

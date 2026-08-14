@@ -5,7 +5,8 @@ não concede poder global sobre a conta ou o catálogo.
 
 ## Criar e convidar
 
-Peça ao Chatbot ou Plugin para criar o projeto pessoal, de turma ou de equipe e
+Peça ao GPT personalizado com Action ou a um cliente MCP para criar o projeto
+pessoal, de turma ou de equipe e
 registrar sua estrutura inicial. Depois da confirmação, o plano aparece em
 **Trilhas**; o aplicativo não exige nem oferece a criação prévia de um plano
 vazio. Abra seu detalhe, informe e-mail e papel, copie o código mostrado uma

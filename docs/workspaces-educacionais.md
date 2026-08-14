@@ -15,14 +15,16 @@ O papel é sempre local ao workspace.
 | Estudante | estudar e registrar observações próprias |
 | Leitor | consultar |
 
-O banco calcula essas capacidades. A interface e o Chatbot apenas mostram e
+O banco calcula essas capacidades. A interface e os clientes de autoria apenas
+mostram e
 executam o que o papel vigente permite. Um papel global de catálogo continua
 necessário para publicar em Coleções; ser proprietário de um workspace não
 concede esse poder.
 
 ## Usar em Trilhas
 
-Peça ao Chatbot ou Plugin para criar o projeto e registrar sua estrutura. Assim
+Peça ao GPT personalizado com Action ou a um cliente MCP para criar o projeto e
+registrar sua estrutura. Assim
 que o backend confirmar a primeira composição, o plano aparece em **Trilhas**;
 não é necessário criar antes um contêiner vazio no aplicativo. Cards
 materializados passam a ser estudáveis no mesmo item, sem uma segunda cópia.
@@ -57,7 +59,7 @@ conta; grupos e itens aparecem em ordem alfabética. Excluir um grupo não apaga
 o projeto nem o curso. Coleções usam a mesma apresentação visual, mas são
 organização editorial do catálogo.
 
-## Chatbot e Plugin
+## GPT personalizado e integração MCP
 
 A ferramenta `gerirWorkspaceEducacional` usa `operation`:
 
@@ -138,7 +140,8 @@ por aquele workspace é revogado. Recibos não guardam curso, card, conversa ou
 conteúdo anterior.
 
 As listas de cursos e as observações exibidas em Trilhas e devolvidas
-ao Chatbot são calculadas sob demanda a partir dessas mesmas linhas. Portanto,
+ao GPT personalizado ou ao cliente MCP são calculadas sob demanda a partir
+dessas mesmas linhas. Portanto,
 não aumentam o armazenamento do banco. O cache local conserva apenas os
 metadados estreitos do último detalhe consultado, nunca a triagem compartilhada,
 os cards nem uma nova cópia do planejamento.

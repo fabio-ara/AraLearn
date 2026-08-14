@@ -436,8 +436,10 @@ Nenhum renderer depende de CDN ou cálculo remoto.
 
 ## Determinismo e autoridade da LLM
 
-JSON Schema 2020-12 define a forma declarativa. Structured Outputs, quando
-oferecido pelo provider, restringe a saída à forma do schema; JSON mode apenas
+Os schemas distribuídos declaram o dialeto JSON Schema 2020-12, enquanto o
+validador do kernel implementa somente o subconjunto de palavras-chave usado
+pelos packages. Structured Outputs, quando oferecido pelo provider, restringe
+a saída à forma do schema; JSON mode apenas
 garante JSON válido e é anunciado separadamente. A própria documentação do
 DeepSeek alerta que JSON Output pode ocasionalmente devolver conteúdo vazio.
 Por isso, o provider nunca é tratado como autoridade do contrato: resposta

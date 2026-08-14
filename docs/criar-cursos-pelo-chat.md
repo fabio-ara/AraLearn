@@ -12,7 +12,7 @@ consulta `outline` ou a entidade necessária. Assim, trocar de conversa ou de
 cliente não obriga a reconstruir o plano pela memória do chat. Tecnicamente, a
 retomada usa `lerWorkspaceDeAutoria` com `view: "resume"`.
 
-No Chatbot personalizado, mantenha **Pesquisa na Web** habilitada quando o
+No GPT personalizado, mantenha **Pesquisa na Web** habilitada quando o
 curso depender de editais, normas, produtos ou outras informações atuais.
 Habilite também **Intérprete de código e Análise de Dados** para trabalhar com
 PDFs, planilhas e outros anexos. Essas capacidades são configuradas no

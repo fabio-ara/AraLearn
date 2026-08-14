@@ -35,7 +35,8 @@ Depois da entrada, três etapas indicam a preparação do dispositivo, da conta 
 O botão de nuvem abre as funções complementares à tela inicial:
 
 - **Coleções** apresenta os cursos oficiais disponíveis;
-- **Chatbot** contém a configuração do Chatbot personalizado e do Plugin.
+- **Chatbot** contém a configuração do GPT personalizado com Action e da
+  integração MCP, apresentada na interface como **Plugin**.
 
 A tela inicial é a superfície única para percorrer, iniciar e organizar os
 cursos de `Trilhas`. O seletor mostra planos e cursos da mesma projeção; ações
@@ -64,8 +65,10 @@ como “parcial”, “pronto” ou “em avaliação”. Ao abrir um plano, a p
 permissão, pode renomear, descrever, mover, excluir e registrar observações na
 parte exata. O aplicativo não mostra IDs, hashes, revisões nem estados internos.
 
-O aplicativo não cria um plano vazio por um formulário próprio. O Chatbot ou o
-Plugin cria o workspace e registra a estrutura planejada; assim que o servidor
+O aplicativo não cria um plano vazio por um formulário próprio. O GPT
+personalizado cria o workspace pela Action; um cliente compatível pode realizar
+o mesmo fluxo pela integração MCP. A estrutura planejada é registrada e, assim
+que o servidor
 confirma esse trabalho, o plano aparece em `Trilhas`. Conforme os cards são
 materializados, o mesmo item passa a oferecer conteúdo estudável, sem criar uma
 cópia paralela. O controle de novo grupo na tela inicial administra a
@@ -234,7 +237,8 @@ semanticamente um exercício também limpa seu resultado e progresso anteriores,
 para que uma resposta antiga não continue marcada como correta.
 
 Providers remotos de IA exigem conexão. Estudo e edição manual do conteúdo já
-baixado continuam disponíveis sem rede; o bridge local também pode prestar
+baixado continuam disponíveis sem rede; o serviço local de integração com
+Codex CLI também pode prestar
 assistência textual se estiver acessível no próprio dispositivo. O app grava um
 rascunho durável, mantém a identidade da tentativa e sincroniza ao reconectar.
 Mudanças em folhas distintas são combinadas; se o mesmo texto tiver sido
@@ -254,16 +258,16 @@ Abra o painel e toque em **Chatbot**. A área separa:
 
 - **Chatbot**: instruções, dois conhecimentos, schema da Action e credenciais
   OAuth; depois de salvar o GPT, o ID `g-...` é vinculado no painel;
-- **Plugin**: nome, descrição, endpoint MCP e autenticação a copiar em
+- **Plugin**: rótulo da interface para nome, descrição, endpoint MCP e autenticação a copiar em
   **Plugins → Novo plugin**.
 
-O Chatbot reúne orientação persistente, conhecimento anexado e acesso à conta.
-O Plugin pode ser chamado em qualquer conversa: recebe instruções na
+O GPT reúne orientação persistente, conhecimento anexado e acesso à conta.
+A integração MCP pode ser chamada em qualquer conversa: recebe instruções na
 inicialização e recupera, sob demanda, somente o conhecimento autoral
 pertinente ao pedido. Os dois usam as mesmas ferramentas e o mesmo motor de
 workspace. Não é preciso copiar uma chave estática.
 
-Ao conectar o plugin no ChatGPT, o usuário entra na própria conta por OAuth e
+Ao conectar a integração MCP no ChatGPT, o usuário entra na própria conta por OAuth e
 aprova o consentimento.
 
 Contas que já receberam permissão editorial também veem a área **Catálogo**.

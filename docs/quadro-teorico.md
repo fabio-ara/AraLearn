@@ -1,125 +1,226 @@
 # Quadro teórico
 
-## Função
+## Função e unidade de explicação
 
-Este quadro transforma a literatura em proposições examináveis. Ele não afirma
-que as funcionalidades do AraLearn causam aprendizagem. Cada relação abaixo é
-uma hipótese de design sujeita a contexto, mecanismo e avaliação.
-
-## Cadeia explicativa
+Este quadro transforma literatura e decisões do produto em proposições
+examináveis. Ele não afirma que funcionalidades do AraLearn causam
+aprendizagem. A unidade de explicação adotada é:
 
 ```text
-condições do estudante-trabalhador
-  ↓
-controle do escopo + unidade manejável + retomada local
-  ↓
-representação adequada + prática + feedback não punitivo
-  ↓
-observação e autoria com agência
-  ↓
-continuidade, compreensão, retenção ou transferência a avaliar separadamente
+contexto (C) → mecanismo proposto (M) → manifestação observável (O)
+             ↘ explicação rival (R) → teste e limite
 ```
 
-IA, workspaces e analytics atravessam a cadeia como mediações. Não substituem
-o processo de aprender e não recebem interpretação causal automática.
+Uma cadeia C–M–O organiza a investigação sem converter correlação em causa. A
+manifestação observável deve ser mais específica que “engajamento” ou
+“eficácia”, e as explicações rivais precisam ser registradas antes da análise.
 
-## Construtos centrais
+## Teoria de mudança provisória
 
-| Construto | Papel no quadro | Manifestação no AraLearn | Limite |
+```text
+tempo fragmentado + interrupção + conectividade variável
+  ↓
+disponibilidade local + retomada explícita + percurso compreensível
+  ↓
+progressão suficiente + representação adequada à operação
+  ↓
+prática variada + feedback acionável + baixa consequência
+  ↓
+observação, revisão e autoria sob controle humano
+  ↓
+continuidade, compreensão, retenção, transferência e qualidade autoral
+avaliadas separadamente
+```
+
+IA, workspaces e analytics atravessam a cadeia como mediações sociotécnicas.
+Não substituem aprender, ensinar, julgar ou assumir responsabilidade.
+
+## Níveis analíticos
+
+| Nível | Unidade | Pergunta típica | Evidência adequada |
 | --- | --- | --- | --- |
-| agência do estudante | capacidade de escolher, interpretar e agir sobre o percurso | escopo escolhido, Trilhas, Ler/Editar, comentário e confirmação | escolha disponível não prova agência exercida |
-| autorregulação | planejar, executar, monitorar e refletir | estrutura visível, retomada e revisão | progresso não mede domínio nem esforço |
-| carga cognitiva extrínseca | esforço imposto pela apresentação e operação, não pelo conteúdo | contiguidade, poucos controles e resources semânticos | menos texto ou passos não prova menor carga |
-| prática de recuperação | produzir informação ou decisão a partir da memória | práticas variadas e retomadas | clique e reconhecimento não equivalem a recuperação robusta |
-| feedback literacy | compreender informação, julgar e tomar ação | feedback localizado, observação e resposta situada | receber mensagem não prova uso do feedback |
-| aprendizagem móvel situada | aprender em condições móveis e cotidianas | mobile-first, offline e interrupção retomável | mobilidade não é benefício pedagógico universal |
-| participação colaborativa | negociação de prática, responsabilidade e significado | workspaces e papéis locais | papel e presença não provam colaboração |
-| controle humano da IA | delimitar, revisar e assumir responsabilidade | contrato, seleção situada, resultado reversível e publicação separada | validação estrutural não garante verdade factual |
-| analytics centrado nas pessoas | dados interpretáveis que sustentam diálogo e ação | indicadores futuros ligados a perguntas explícitas | rastro comportamental ambíguo não autoriza inferência |
+| pessoa–tarefa | estudante executando operação num card | a representação foi compreendida? | desempenho, explicação e entrevista |
+| microssequência | progressão local de teoria e prática | há base suficiente e coerência? | análise de conteúdo, tarefa e retenção |
+| percurso | lição, módulo e curso | dependências e retomadas preservam continuidade? | auditoria curricular e estudo longitudinal |
+| autoria | pessoa, LLM, contrato e versão | o escopo e a responsabilidade são compreendidos? | erros de alvo, rubrica, reversão e entrevista |
+| workspace | papéis e contribuições situadas | a coordenação é compreensível e segura? | tarefa, análise qualitativa e auditoria de acesso |
+| infraestrutura | kernel, package, armazenamento e sync | o artefato é correto, frugal e resiliente? | teste, medição técnica e incidente |
+
+Não se deve usar uma medida de nível inferior para inferir automaticamente um
+construto de nível superior. Um clique num card, por exemplo, não mede
+continuidade do percurso nem colaboração.
+
+## Construtos centrais e operacionalização
+
+| Construto | Definição no quadro | Manifestação possível | Medida ou instrumento candidato | Limite |
+| --- | --- | --- | --- | --- |
+| agência do estudante | capacidade e possibilidade percebida de escolher, justificar e agir | decisão de escopo, rejeição, revisão e reversão | entrevista, tarefa de decisão e escala validada adequada | opções visíveis não provam agência |
+| aprendizagem autorregulada | planejamento, desempenho, monitoramento e reflexão | meta declarada, ajuste de estratégia e revisão escolhida | entrevista episódica, diário consentido e instrumento validado | progresso não mede autorregulação |
+| carga cognitiva extrínseca | demanda criada pelo modo de apresentação ou operação | busca desnecessária, atenção dividida e erro de leitura | tarefa comparativa, relato e escala apropriada | dificuldade do conteúdo não é carga extrínseca |
+| coerência pedagógica | alinhamento entre objetivo, pré-requisito, explicação, prática e feedback | ausência de salto e prática coberta pela teoria | rubrica de especialista e explicação do estudante | sequência formal não garante coerência |
+| prática de recuperação | produção de conhecimento ou decisão sem reexposição integral | resposta construída, discriminação ou ordenação | acurácia e justificativa em tarefa inicial e adiada | toque e reconhecimento isolados não bastam |
+| feedback literacy | capacidade de apreciar, julgar e usar feedback | interpretação e ação posterior justificadas | tarefa de uso do feedback e entrevista | receber mensagem não prova apropriação |
+| retomada | restabelecimento do objetivo e do estado necessários para continuar | localização correta e explicação do ponto corrente | sucesso, erro e relato após interrupção | abertura não mede retenção |
+| qualidade representacional | fidelidade acadêmica e apoio ao gesto cognitivo | relação visual interpretada sem ambiguidade | auditoria de domínio, tarefa e caso complexo | ausência de overflow não prova didática |
+| controle humano da IA | autoridade efetiva sobre intenção, escopo e consequência | rejeitar, iterar, reverter e justificar | tarefa de autoria, log consentido e entrevista | botão de confirmação pode ser controle simbólico |
+| colaboração situada | coordenação e construção de prática ou significado | negociação, revisão e responsabilidade compartilhada | análise de interação e produto coletivo | papel ou presença não provam colaboração |
+| frugalidade | adequação de custo, dados e manutenção ao contexto | armazenamento e payload proporcionais | bytes, latência, custo e crescimento | economia não autoriza perda de qualidade |
+
+Definições completas e distinções estão no [Glossário de
+construtos](glossario-construtos.md).
 
 ## Proposições de design
 
-### P1 — continuidade móvel
+Todas as proposições abaixo têm estado **hipótese de design**. Os identificadores
+são estáveis para ligar teoria, implementação e avaliação.
 
-Se a pessoa encontra rapidamente o ponto corrente e o material necessário já
-está no dispositivo, então a retomada após interrupção pode exigir menos
-trabalho operacional. Avaliar por tarefas, erros, relato e abandono da tarefa;
-não por tempo em tela armazenado.
+### P1 — retomada local após interrupção
 
-### P2 — unidade intermediária
+- **Contexto:** atividade móvel suspensa, conexão ausente ou instável.
+- **Mecanismo proposto:** réplica local, cursor corrente e contexto visível.
+- **Resultado esperado:** maior sucesso para localizar e continuar a tarefa,
+  com menos erro operacional.
+- **Explicações rivais:** familiaridade prévia, tarefa simples, memória recente.
+- **Evidência que enfraquece:** cursor não é compreendido ou não melhora a
+  retomada frente a uma alternativa.
 
-Uma microssequência pode equilibrar manejabilidade e coerência melhor que card
-isolado ou lição inteira em determinados conteúdos. Avaliar dimensionamento,
-compreensão do objetivo e continuidade conceitual. Não fixar duração universal.
+### P2 — microssequência coerente, sem teoria condensada
 
-### P3 — representação ligada à operação
+- **Contexto:** aprendiz novato diante de assunto técnico complexo.
+- **Mecanismo proposto:** pré-requisitos explícitos, aproximação progressiva,
+  exemplos e práticas distribuídos em quantidade variável.
+- **Resultado esperado:** melhor explicação conceitual e menos saltos
+  identificados por estudantes e especialistas.
+- **Explicações rivais:** tempo total maior, repetição ou qualidade do autor.
+- **Evidência que enfraquece:** conteúdo permanece incompreensível, redundante
+  ou perde profundidade apesar da divisão.
 
-Quando a forma visual preserva relações necessárias à tarefa, a pessoa pode
-executar a operação com menos tradução para texto linear. Comparar recursos
-adequados e inadequados para o mesmo objetivo, medindo compreensão e erros.
+### P3 — representação escolhida pela operação
 
-### P4 — prática sem punição
+- **Contexto:** tarefa depende de relação espacial, temporal, hierárquica,
+  formal ou notacional.
+- **Mecanismo proposto:** resource canônico selecionado por intenção e contrato
+  especializado consultado depois da escolha.
+- **Resultado esperado:** interpretação mais precisa e menos tradução para
+  prosa ou tabelas improvisadas.
+- **Explicações rivais:** efeito de novidade, familiaridade com a notação ou
+  dica presente no enunciado.
+- **Evidência que enfraquece:** texto/package geral produz compreensão igual ou
+  superior, ou o diagrama exige explicação adicional maior que seu benefício.
 
-Permitir tentar, revelar, limpar e repetir sem nota pode reduzir ameaça e
-preservar experimentação. Avaliar ansiedade percebida e estratégias; não
-contar tentativas nem tratar ajuda como fracasso.
+### P4 — apoio seguido de produção
 
-### P5 — autoria contextual
+- **Contexto:** aquisição inicial seguida de prática.
+- **Mecanismo proposto:** exemplo resolvido, retirada gradual e alternância de
+  reconhecimento, produção e ordenação conforme o objetivo.
+- **Resultado esperado:** melhora separada em compreensão imediata, retenção e
+  transferência.
+- **Explicações rivais:** maior tempo na tarefa ou maior quantidade de itens.
+- **Evidência que enfraquece:** apoio gera passividade ou prática não transfere
+  para problema novo.
 
-Manter o card visível ao editar ou pedir reparo pode reduzir divisão de atenção
-e tornar o escopo mais compreensível. Avaliar troca de contexto, erros de alvo
-e percepção de controle.
+### P5 — feedback acionável de baixa consequência
 
-### P6 — observação e feedback dialógico
+- **Contexto:** resposta incompleta ou incorreta em estudo autodidata.
+- **Mecanismo proposto:** feedback específico, possibilidade de revelar,
+  limpar, repetir e agir sem nota ou ranking.
+- **Resultado esperado:** melhor interpretação do erro e ação posterior.
+- **Explicações rivais:** repetição do mesmo item ou resposta explicitamente
+  fornecida.
+- **Evidência que enfraquece:** feedback não é compreendido, não muda a ação ou
+  introduz dependência de revelação.
 
-Uma observação curta, situada e respondida no mesmo card pode favorecer
-diálogo e ação posterior. Avaliar reencontro, compreensão da resposta e
-decisão de revisão; não inferir dificuldade pela presença ou categoria.
+### P6 — autoria contextual e reversível
 
-### P7 — governança local
+- **Contexto:** pessoa detecta problema no card durante o estudo.
+- **Mecanismo proposto:** seleção apenas de campos textuais visíveis, contexto
+  somente leitura, chat iterável e versões reversíveis.
+- **Resultado esperado:** menos erros de alvo, menor troca de contexto e maior
+  percepção de controle.
+- **Explicações rivais:** edição é simplesmente mais curta ou usuário já conhece
+  a estrutura.
+- **Evidência que enfraquece:** código estrutural aparece como texto editável,
+  a LLM altera alvo não autorizado ou a reversão não é compreendida.
 
-Papéis locais e revogáveis podem permitir colaboração sem universalizar
-privilégios. Avaliar compreensão do papel, capacidade de realizar tarefas e
-percepção de responsabilidade; não interpretar hierarquia como aprendizagem.
+### P7 — observação situada e ciclo de retorno
 
-### P8 — IA delimitada
+- **Contexto:** estudante identifica dúvida, ambiguidade ou possível erro.
+- **Mecanismo proposto:** observação ligada ao card, resposta situada e vínculo
+  opcional com reparo confirmado.
+- **Resultado esperado:** a pessoa reencontra, compreende e pode agir sobre o
+  retorno; autores distinguem manifestações de inferências.
+- **Explicações rivais:** contato externo ou memória do problema.
+- **Evidência que enfraquece:** observações se perdem, são tratadas como
+  diagnóstico ou não produzem decisão compreensível.
 
-Separar recuperação, escopo gravável e contexto somente leitura, com saída
-estruturada, validação interna e gravação reversível, pode aumentar
-previsibilidade e responsabilidade da autoria. Avaliar precisão do escopo,
-falhas detectadas, retrabalho e julgamento humano; não equiparar schema válido
-a conteúdo correto.
+### P8 — governança local em workspaces
 
-## Resultados distintos
+- **Contexto:** autoria individual ou coletiva com responsabilidades variadas.
+- **Mecanismo proposto:** papéis locais, capacidades explícitas e revogáveis,
+  proveniência de contribuições.
+- **Resultado esperado:** tarefas de coordenação e acesso são concluídas sem
+  privilégio global ou burocracia de publicação.
+- **Explicações rivais:** instrução prévia intensa ou cenário artificial.
+- **Evidência que enfraquece:** participantes confundem papel, propriedade,
+  visibilidade ou consequência de ações.
 
-O estudo não deve colapsar os seguintes resultados numa única noção de
-“eficácia”:
+### P9 — assistência de IA delimitada
+
+- **Contexto:** autoria extensa por MCP ou reparo local por API.
+- **Mecanismo proposto:** catálogo por intenção, contratos progressivos, escopo
+  gravável, validação, auditoria e responsabilidade humana.
+- **Resultado esperado:** menos deriva estrutural e menor retrabalho sem perda
+  de expressividade.
+- **Explicações rivais:** modelo maior, prompt específico ou tarefa simples.
+- **Evidência que enfraquece:** schema válido contém erro pedagógico persistente,
+  seleção inadequada de resource ou falsa sensação de controle.
+
+### P10 — analytics por finalidade e recusa de proxies
+
+- **Contexto:** decisão pedagógica ou de governança que demanda informação.
+- **Mecanismo proposto:** pergunta, construto, manifestação, intervenção e
+  retenção definidos antes da coleta.
+- **Resultado esperado:** informação compreensível e acionável com menor risco
+  de vigilância e inferência indevida.
+- **Explicações rivais:** menor utilidade apenas porque se coleta menos.
+- **Evidência que enfraquece:** decisões legítimas não podem ser sustentadas ou
+  dados ainda são reinterpretados como atenção, domínio ou qualidade docente.
+
+## Resultados que não podem ser colapsados
 
 - usabilidade e compreensão da interface;
 - continuidade e retomada;
-- conforto ou ansiedade percebida;
+- conforto, ameaça ou ansiedade percebida;
+- carga cognitiva durante uma tarefa;
 - compreensão conceitual imediata;
 - retenção posterior;
-- transferência para novos problemas;
-- qualidade do conteúdo produzido;
+- transferência para estrutura nova;
+- qualidade factual, pedagógica e representacional do conteúdo;
 - agência e responsabilidade percebidas;
-- sustentabilidade técnica e frugalidade.
+- colaboração e coordenação;
+- correção, resiliência e frugalidade técnica.
+
+Uma avaliação pode tratar vários resultados, mas precisa declarar a relação e
+o risco de multiplicidade. “Eficácia do AraLearn” não é variável única.
 
 ## Interpretações proibidas
 
 - abertura ou tempo como atenção;
 - progresso como domínio;
 - ausência de observação como compreensão;
-- erro ou resposta revelada como fracasso;
+- erro, ajuda ou resposta revelada como fracasso;
 - uso de IA como falta de conhecimento;
 - quantidade de cards ou resources como qualidade;
 - papel de workspace como colaboração;
 - publicação como validação pedagógica;
+- schema válido como correção factual;
+- preferência estética como usabilidade;
 - correlação de uso como efeito causal.
 
-## Rastreabilidade
+## Do quadro à avaliação
 
-A operacionalização detalhada fica na [Matriz de rastreabilidade
-pedagógica](matriz-rastreabilidade-pedagogica.md). Definições resumidas ficam no
-[Glossário de construtos](glossario-construtos.md); o plano de teste fica no
-[Protocolo de avaliação](protocolo-avaliacao-artefato.md).
+A [Matriz de rastreabilidade pedagógica](matriz-rastreabilidade-pedagogica.md)
+liga cada proposição a requisitos, código e instrumentos. O [Protocolo de
+avaliação](protocolo-avaliacao-artefato.md) separa episódios de DBR e DSR. Uma
+proposição só muda de hipótese para resultado sustentado quando a versão, o
+contexto, a população, a análise e os limites estão registrados.

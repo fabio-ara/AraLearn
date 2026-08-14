@@ -399,7 +399,7 @@ function parseAllowedOrigins(value) {
     try {
       parsed = new URL(origin);
     } catch {
-      throw new Error("Origem CORS inválida no bridge local.");
+      throw new Error("Origem CORS inválida no serviço local do Codex CLI.");
     }
     if (!["http:", "https:"].includes(parsed.protocol)
         || parsed.username
@@ -439,7 +439,7 @@ function respondJson(request, response, statusCode, payload, allowedOrigins, max
     statusCode = 502;
     body = JSON.stringify({
       ok: false,
-      error: "Resposta do bridge acima do limite configurado."
+      error: "Resposta do serviço local acima do limite configurado."
     });
   }
   response.writeHead(statusCode, {
@@ -505,7 +505,7 @@ function normalizeCodexExecutionError(error) {
   const code = normalizeText(error?.code).toUpperCase();
   const message = normalizeText(error?.message);
   if (code === "ENAMETOOLONG" || code === "E2BIG" || /ENAMETOOLONG|E2BIG/i.test(message)) {
-    return new Error("A entrada enviada ao Codex local ficou grande demais para a linha de comando. Configure o bridge para usar stdin.");
+    return new Error("A entrada enviada ao Codex local ficou grande demais para a linha de comando. Configure o serviço local para usar stdin.");
   }
   return error instanceof Error ? error : new Error(message || "Falha inesperada ao executar o Codex.");
 }
@@ -803,7 +803,7 @@ const server = http.createServer(async (request, response) => {
   );
 
   if (!originIsAllowed(request, allowedOrigins)) {
-    send(403, { ok: false, error: "Origem não autorizada pelo bridge local." });
+    send(403, { ok: false, error: "Origem não autorizada pelo serviço local do Codex CLI." });
     return;
   }
   if (!request.url) {
@@ -848,7 +848,7 @@ const server = http.createServer(async (request, response) => {
     if (!isCodexCardAssistancePhase(mode)) {
       send(400, {
         ok: false,
-        error: "O bridge local aceita somente fases de assistência autorizadas pelo AraLearn."
+        error: "O serviço local do Codex CLI aceita somente fases de assistência autorizadas pelo AraLearn."
       });
       return;
     }
@@ -940,7 +940,7 @@ const server = http.createServer(async (request, response) => {
     removeTemporaryFiles(cleanupPaths);
     send(statusCode, {
       ok: false,
-      error: normalizeText(error?.message) || "Falha inesperada no bridge local."
+      error: normalizeText(error?.message) || "Falha inesperada no serviço local do Codex CLI."
     });
   } finally {
     removeTemporaryFiles(cleanupPaths);
@@ -948,7 +948,7 @@ const server = http.createServer(async (request, response) => {
 });
 
 server.listen(port, host, () => {
-  console.log(\`AraLearn Codex bridge em http://\${host}:\${port}\`);
+  console.log(\`Serviço local do AraLearn para Codex CLI em http://\${host}:\${port}\`);
 });
 `;
 }

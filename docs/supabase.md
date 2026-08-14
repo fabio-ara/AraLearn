@@ -167,13 +167,14 @@ As funções de dados de usuário exigem JWT autenticado. Operações administra
 
 ## Gateway de autoria e entrega de revisões
 
-A função `aralearn-authoring-mcp` é a única superfície remota de autoria
-estrutural extensa. Ela atende agentes por MCP exclusivamente com OAuth 2.1 do
+A função `aralearn-authoring-mcp` é a superfície MCP de autoria estrutural
+extensa. Ela atende clientes MCP exclusivamente com OAuth 2.1 do
 Supabase Auth e aplica o núcleo de validação e autorização de workspaces
 compostos. O mesmo gateway expõe autoria privada, submissão, revisão e
 publicação conforme as capacidades da conta; não existe um gateway
-administrativo separado. A função `aralearn-authoring-action` também oferece
-ao aplicativo uma rota `app/` restrita. Ela valida o JWT da sessão comum,
+administrativo separado. A função `aralearn-authoring-action` expõe a Action
+do GPT personalizado e também oferece ao aplicativo uma rota `app/` restrita.
+Essa rota valida o JWT da sessão comum,
 resolve as capacidades no banco e reutiliza o mesmo registro, mapeamento e
 executor das ferramentas; a lista fechada contém apenas as operações privadas
 necessárias à edição contextual.
@@ -203,7 +204,8 @@ descritas em [Gateway MCP](autoria-mcp.md).
 
 No manifesto público, `granular-sync` designa somente a sincronização
 relacional incremental de progresso, trilhas, seleções e comentários. A
-autoria remota pelo Chatbot ou Plugin, incluindo consulta de contratos de
+autoria remota pelo GPT personalizado com Action ou por clientes compatíveis
+pela integração MCP, incluindo consulta de contratos de
 resources e mutações focadas em workspaces compostos, é
 `atomic-resource-authoring`. A assistência bottom-up local por API usa
 `atomic-card-assistance` para editar caminhos textuais ou recompor o card
@@ -320,10 +322,13 @@ feed e idempotência também não possuem leitura direta para o cliente.
 
 O workspace mutável ocupa linhas pequenas em
 `private.authoring_workspace_entities`. Um ajuste pontual não cria um objeto no
-Storage. O banco conserva também recibos idempotentes por 14 dias e até 200
-resumos recentes por workspace; esses eventos não são revisões restauráveis.
-Governança educacional acrescenta uma linha por membro, convites e recibos de
-sete dias. A seleção de uma publicação privada aponta para o mesmo curso; não
+Storage. O banco conserva a chave de idempotência (`requestId`), o hash do
+payload e o recibo necessário à repetição segura das mutações autorais, sem uma
+retenção universal declarada para essa tabela, além de até 200 resumos recentes
+por workspace. Esses eventos não são revisões restauráveis. Recibos de
+observações de workspace expiram em quatorze dias; governança educacional e
+estado pessoal usam janelas de sete dias. A seleção de uma publicação privada
+aponta para o mesmo curso; não
 cria artefato por pessoa. O orçamento medido está em
 [Workspaces educacionais](workspaces-educacionais.md#persistência-e-custo).
 
@@ -338,7 +343,8 @@ arquivo sem registro. Para diagnosticar órfãos sem removê-los:
 select public.list_unreferenced_artifacts_v4(interval '7 days', 100);
 ```
 
-A RPC exige service role e apenas lista candidatos que continuam sem referência
+A RPC exige uma chamada protegida do backend, executada com o papel
+PostgreSQL/PostgREST `service_role`, e apenas lista candidatos que continuam sem referência
 no instante da consulta. O coletor oportunista reivindica esses hashes em lote,
 move seus metadados para tombstones, apaga os objetos e confirma a exclusão. Se
 o Storage ainda conservar o objeto, a referência é restaurada. Revisões de curso
@@ -403,7 +409,8 @@ compartilhada sem cópia da árvore; isolamento de seleções, progresso, escrit
 feed; bootstrap leve; regra de última mutação válida; remoção da seleção de A
 sem afetar B; e autorização das funções `SECURITY DEFINER`. Um segundo ensaio
 usa o Mailpit para testar cadastro, confirmação PKCE e recuperação de senha. A
-service role usada para criar e remover os sujeitos de teste vem apenas de
+JWT local com o papel `service_role`, usada para criar e remover os sujeitos de
+teste, vem apenas de
 `supabase status` no runner local e nunca entra no build.
 
 PowerShell:
@@ -516,7 +523,7 @@ o MCP, ele registra um cliente OAuth público descartável, passa por
 Authorization Code com PKCE e consentimento e cria, lê e exclui um workspace
 com o token destinado ao recurso; cliente e usuário temporários são removidos
 mesmo se a jornada falhar. Ele descobre a URL e as chaves efêmeras do stack
-iniciado por `supabase status`; a service role prepara o Auth, mas nunca é
+iniciado por `supabase status`; a JWT local `service_role` prepara o Auth, mas nunca é
 usada como bearer do MCP. Não use segredos do projeto remoto nessa validação.
 Se Docker, Supabase CLI ou Deno não estiverem disponíveis, rode a etapa em
 outra máquina ou confira o job `supabase` da CI antes da implantação. Isso não

@@ -3,16 +3,21 @@
 Este diretório reúne instruções, conhecimento e contratos para duas escalas de
 autoria:
 
-- o Chatbot personalizado ou o Plugin externo planeja, lê, combina, move e
-  publica estruturas extensas;
+- o GPT personalizado com Action ou uma integração MCP planeja, lê, combina,
+  move e publica estruturas extensas;
 - a assistência por API no aplicativo repara recursos selecionados, repara um
-  card inteiro ou cria exatamente um card.
+  card inteiro, cria até oito cards em uma microssequência autorizada ou cria
+  no máximo uma microssequência, também com até oito cards, em uma lição
+  autorizada.
 
-Esses fluxos compartilham o envelope `aralearn.library.v1` e o registro de
-packages, sem contrato monolítico ou fallback de formato. Plugin MCP e Action
-do Chatbot usam o mesmo registro de ferramentas e o mesmo executor. Cada
-conexão usa o OAuth adequado ao cliente e as capacidades efetivas da conta
-AraLearn.
+Esses fluxos compartilham o envelope operacional `aralearn.library.v1` e o
+registry de packages, sem contrato monolítico ou fallback de formato. O
+servidor MCP e a Action do GPT personalizado usam o mesmo registro de
+ferramentas e o mesmo executor. Cada conexão usa o fluxo OAuth adequado ao
+cliente e as capacidades efetivas da conta AraLearn. O contrato unitário do
+kernel (`aralearn.course.v1`) e o protocolo de descoberta do catálogo
+(`aralearn.resource-library.v1`) têm finalidades diferentes e não substituem
+esse envelope.
 
 ## Workspace composto
 
@@ -21,7 +26,8 @@ PostgreSQL a partir de uma linha por projeto, curso, módulo, lição, tópico,
 microssequência e card. Uma alteração envia somente as partes que precisam ser
 criadas, atualizadas, movidas ou excluídas.
 
-Cada comando informa a revisão que leu e um identificador estável. Se duas
+Cada comando informa a revisão que leu, uma chave de idempotência (`requestId`)
+e o hash do payload. Se duas
 edições concorrem, a base antiga é recusada; se uma resposta se perde, repetir
 o mesmo pedido recupera o resultado sem duplicar conteúdo. O servidor mantém
 resumos recentes e pequenos das alterações, não cópias integrais antigas nem

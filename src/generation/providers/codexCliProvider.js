@@ -47,7 +47,7 @@ export function createCodexCliProvider({ endpoint = "http://127.0.0.1:4183/assis
     if (!isCodexBridgeTokenSecure(requestToken)) {
       throw new ProviderHttpError({
         statusCode: 401,
-        message: "O token do bridge local é obrigatório e deve ter entre 32 e 512 bytes."
+        message: "O token do serviço local é obrigatório e deve ter entre 32 e 512 bytes."
       });
     }
     const mode = text(request.mode || request.phase);
@@ -93,7 +93,7 @@ export function createCodexCliProvider({ endpoint = "http://127.0.0.1:4183/assis
         })
       },
       {
-        provider: "Bridge local",
+        provider: "Codex CLI local",
         timeoutMs
       }
     );
@@ -106,14 +106,14 @@ export function createCodexCliProvider({ endpoint = "http://127.0.0.1:4183/assis
     }
     if (!data || typeof data !== "object") {
       throw new ProviderStructuredOutputError(
-        "O bridge local devolveu uma resposta HTTP sem JSON utilizável.",
+        "O serviço local do Codex CLI devolveu uma resposta HTTP sem JSON utilizável.",
         "invalid_provider_response"
       );
     }
     if (data.ok === false) {
       throw new ProviderHttpError({
         statusCode: Number(data.statusCode) || (response.status >= 400 ? response.status : 502),
-        message: text(data.error?.message || data.error) || "O bridge local recusou a operação.",
+        message: text(data.error?.message || data.error) || "O serviço local do Codex CLI recusou a operação.",
         payload: data
       });
     }
@@ -142,7 +142,7 @@ export function createCodexCliProvider({ endpoint = "http://127.0.0.1:4183/assis
     async generateStructured(request = {}) {
       if (!isPlainObject(request.schema)) {
         throw new ProviderStructuredOutputError(
-          "O bridge local exige um schema JSON explícito para saída estruturada.",
+          "O serviço local do Codex CLI exige um schema JSON explícito para saída estruturada.",
           "invalid_structured_output"
         );
       }
@@ -155,7 +155,7 @@ export function createCodexCliProvider({ endpoint = "http://127.0.0.1:4183/assis
       const validation = validateJsonSchemaValue(value, request.schema);
       if (!validation.valid) {
         throw new ProviderStructuredOutputError(
-          `A saída do bridge local não satisfaz o schema solicitado: ${validation.error}`,
+          `A saída do serviço local do Codex CLI não satisfaz o schema solicitado: ${validation.error}`,
           "invalid_structured_output"
         );
       }

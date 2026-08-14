@@ -23,13 +23,22 @@ Os estados são:
 - **Resolvida**: houve encaminhamento sem alteração vinculada no curso;
 - **Incorporada**: uma correção concluída foi vinculada à observação.
 
-Responder não altera o curso. Para incorporar uma sugestão ou corrigir um erro, o responsável usa uma operação de autoria validada e só então vincula o identificador e o caminho desse reparo. O Chatbot e o Plugin seguem a mesma separação: primeiro leem e selecionam observações; depois, mediante pedido, corrigem o menor alvo; por fim, vinculam a correção que de fato foi gravada. Não existe reparo automático disparado por quantidade, categoria ou texto.
+Responder não altera o curso. Para incorporar uma sugestão ou corrigir um erro,
+o responsável usa uma operação de autoria validada e só então vincula o
+identificador e o caminho desse reparo. O GPT personalizado com Action e os
+clientes MCP seguem a mesma separação: primeiro leem e selecionam observações;
+depois, mediante pedido, corrigem o menor alvo; por fim, vinculam a correção que
+de fato foi gravada. Não existe reparo automático disparado por quantidade,
+categoria ou texto.
 
 ## Trilhas e acesso
 
 No plano correspondente em **Trilhas**, responsáveis encontram as observações correntes na parte exata. Estudantes não recebem acesso aos registros de colegas. O papel é local ao workspace e revalidado no servidor em cada leitura e escrita. A lista compartilhada requer conexão e não é guardada no cache de Trilhas; a observação própria e o retorno já sincronizado continuam na réplica do dispositivo.
 
-Chatbot e Plugin também podem consultar as observações autorizadas e ajudar a processá-las em operações explícitas. A consulta é calculada na leitura; não cria tabela de agregados, histórico nem cópia dos cards.
+O GPT personalizado com Action e os clientes MCP também podem consultar as
+observações autorizadas e ajudar a processá-las em operações explícitas. A
+consulta é calculada na leitura; não cria tabela de agregados, histórico nem
+cópia dos cards.
 
 Quando o card ainda existe na réplica corrente, o ícone de edição da observação abre diretamente esse card no modo contextual. O atalho valida curso, módulo, lição, microssequência e card antes de navegar. Se qualquer nível tiver sido retirado ou substituído, o AraLearn mantém a triagem aberta e informa que o alvo mudou; não desvia silenciosamente para outro conteúdo.
 
@@ -37,7 +46,7 @@ Se um curso estiver ligado de forma inequívoca a um único workspace do qual a 
 
 ## Persistência e custo
 
-Há uma linha corrente por pessoa e card. Além da categoria e do texto, o ciclo compartilhado acrescenta somente a identidade do workspace, o hash da revisão observada, resposta e resolução correntes e, quando aplicável, a referência compacta ao reparo. Não são guardadas cópias do card, do curso, da conversa, da resposta anterior, de cada mudança de estado nem dos agregados de triagem. Recibos idempotentes são pequenos e expiram com a janela operacional do workspace.
+Há uma linha corrente por pessoa e card. Além da categoria e do texto, o ciclo compartilhado acrescenta somente a identidade do workspace, o hash da revisão observada, resposta e resolução correntes e, quando aplicável, a referência compacta ao reparo. Não são guardadas cópias do card, do curso, da conversa, da resposta anterior, de cada mudança de estado nem dos agregados de triagem. A chave de idempotência (`requestId`), o hash do payload e o recibo temporário de repetição segura são compactos; para observações de workspace, a janela corrente é de quatorze dias.
 
 ## Como interpretar
 
