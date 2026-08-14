@@ -29,6 +29,7 @@ const BLOCK_FLOW_PACKAGES = Object.freeze([
   "aralearn.resource.software_container",
   "aralearn.resource.software_system_context",
   "aralearn.resource.state_machine",
+  "aralearn.resource.system_internal_block",
   "aralearn.resource.tree"
 ]);
 
@@ -72,5 +73,4 @@ test("diagramas relacionais seguem o fluxo sem transpor notações acadêmicas",
   );
   assert.doesNotMatch(renderExample("aralearn.resource.graph"), /rankdir=/u);
   assert.match(renderExample("aralearn.resource.relation_map"), /rankdir=&quot;LR&quot;/u);
-  assert.match(renderExample("aralearn.resource.system_internal_block"), /rankdir=&quot;LR&quot;/u);
 });

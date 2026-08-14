@@ -54,7 +54,9 @@ function gapResponse(instance, mode, id) {
   if (!targets.length) return null;
   const selectedTargets = mode === "choice" &&
     instance.package === "aralearn.resource.state_transition_table"
-    ? targets.slice(0, 3)
+    ? ["transitions[1].to", "transitions[5].to"]
+      .map((targetPath) => targets.find(({ path: candidatePath }) => candidatePath === targetPath))
+      .filter(Boolean)
     : targets.slice(0, 1);
   return normalizeInstance({
     id,
@@ -64,6 +66,10 @@ function gapResponse(instance, mode, id) {
     data: {
       blanks: selectedTargets.map((target, index) => {
         const answer = answerFragment(target.value);
+        const distractors = instance.package === "aralearn.resource.state_transition_table" &&
+          /^transitions\[\d+\]\.to$/u.test(target.path)
+          ? instance.data.states.map(({ id: stateId }) => stateId).filter((stateId) => stateId !== answer)
+          : [`não ${answer}`, `outro ${answer}`];
         return {
           id: `blank-${index + 1}`,
           targetInstanceId: instance.id,
@@ -72,7 +78,7 @@ function gapResponse(instance, mode, id) {
           responseMode: mode,
           answer,
           ...(mode === "choice"
-            ? { distractors: [`não ${answer}`, `outro ${answer}`] }
+            ? { distractors }
             : {})
         };
       })

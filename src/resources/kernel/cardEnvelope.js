@@ -106,7 +106,7 @@ export function renderCardEnvelope(card, registry, options = {}) {
   if (!validation.valid) throw new TypeError(validation.errors.join(" "));
   const renderList = (instances, slot) => instances.map((instance) => (
     `<section class="package-instance" data-package="${instance.package}" data-package-version="${instance.version}" data-package-instance-id="${instance.id}">` +
-    registry.renderInstance(instance, slot, options) +
+    registry.renderInstance(instance, slot, { ...options, card }) +
     "</section>"
   )).join("");
   return {

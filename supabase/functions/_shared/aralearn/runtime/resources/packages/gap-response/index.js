@@ -5,6 +5,7 @@ import {
   renderPackageInline
 } from "../../sdk/html.js";
 import { academicProfile } from "../../sdk/academic.js";
+import { setPackagePracticeMarker } from "../../sdk/practice.js";
 
 function normalizeAnswer(value) { return String(value ?? "").normalize("NFC").trim(); }
 
@@ -76,6 +77,30 @@ function feedbackHtml(blockKey, feedback) {
   return `<div class="inline-feedback err has-actions" data-complete-feedback-block-key="${key}"><p class="tiny">Incorreto. Tente novamente.</p><div class="feedback-icons"><button class="icon-pill" type="button" data-action="complete-view-answer" data-complete-block-key="${key}" title="Ver resposta" aria-label="Ver resposta">${renderPackageActionIcon("answer")}</button><button class="icon-pill primary" type="button" data-action="complete-try-again" data-complete-block-key="${key}" title="Tentar de novo" aria-label="Tentar de novo">${renderPackageActionIcon("retry")}</button></div></div>`;
 }
 
+function practiceValueLabel(blank, value, options) {
+  return typeof options?.practiceValueLabel === "function"
+    ? options.practiceValueLabel(blank.targetInstanceId, fieldPath(blank.targetPath), value)
+    : String(value ?? "");
+}
+
+function declaredPracticeTarget(practiceTargets, path) {
+  return Array.isArray(practiceTargets)
+    ? practiceTargets.find((target) => target.path === path)
+    : null;
+}
+
+function markerForBlank(blank, index, options) {
+  return createPackageGapMarker({
+    blockKey: options.responseBlockKey || options.blockKey,
+    index,
+    responseMode: blank.responseMode,
+    layoutText: [blank.answer, ...(blank.acceptedAnswers || [])]
+      .map((candidate) => practiceValueLabel(blank, candidate, options))
+      .reduce((widest, candidate) => candidate.length > widest.length ? candidate : widest, ""),
+    value: practiceValueLabel(blank, options.responseState?.values?.[index] ?? "", options)
+  });
+}
+
 function choicePrompt(data, options) {
   const active = options?.activeTextGapPrompt;
   if (!active || active.blockKey !== options.blockKey) return "";
@@ -83,7 +108,7 @@ function choicePrompt(data, options) {
   if (!blank || blank.responseMode !== "choice") return "";
   const current = options.responseState?.values?.[Number(active.blankIndex)] ?? "";
   const values = [blank.answer, ...(blank.distractors || [])];
-  return `<section class="runtime-flow-prompt" data-text-gap-prompt="true" tabindex="-1"><div class="runtime-flow-prompt-head"><span class="runtime-flow-prompt-badge">Opções</span></div><div class="token-options">${values.map((value) => `<button class="token-option${normalizeAnswer(value) === normalizeAnswer(current) ? " active" : ""}" type="button" dir="auto" data-action="text-gap-set-choice" data-complete-block-key="${escapePackageAttribute(options.blockKey)}" data-complete-blank-index="${escapePackageAttribute(active.blankIndex)}" data-text-gap-value="${escapePackageAttribute(value)}">${renderPackageInline(value)}</button>`).join("")}</div></section>`;
+  return `<section class="runtime-flow-prompt" data-text-gap-prompt="true" tabindex="-1"><div class="runtime-flow-prompt-head"><span class="runtime-flow-prompt-badge">Opções</span></div><div class="token-options">${values.map((value) => `<button class="token-option${normalizeAnswer(value) === normalizeAnswer(current) ? " active" : ""}" type="button" dir="auto" data-action="text-gap-set-choice" data-complete-block-key="${escapePackageAttribute(options.blockKey)}" data-complete-blank-index="${escapePackageAttribute(active.blankIndex)}" data-text-gap-value="${escapePackageAttribute(value)}">${renderPackageInline(practiceValueLabel(blank, value, options))}</button>`).join("")}</div></section>`;
 }
 
 export const gapResponsePackage = Object.freeze({
@@ -122,6 +147,24 @@ export const gapResponsePackage = Object.freeze({
         errors.push(`Lacuna ${blank.id} aponta para um campo textual inexistente.`);
         return;
       }
+      if (declaredTarget.preserveReference === true && source !== blank.answer) {
+        errors.push(`Lacuna ${blank.id} em referência estrutural precisa usar o valor integral do campo como resposta.`);
+        return;
+      }
+      if (declaredTarget.preserveReference === true &&
+          (blank.acceptedAnswers || []).some((candidate) => candidate !== source)) {
+        errors.push(`Lacuna ${blank.id} em referência estrutural não admite resposta equivalente que altere a referência.`);
+        return;
+      }
+      if (blank.responseMode === "choice" && declaredTarget.preserveReference === true) {
+        const visibleOptions = [blank.answer, ...(blank.distractors || [])]
+          .map((value) => registry?.practiceValueLabel?.(instance, path, value) ?? value)
+          .map(normalizeAnswer);
+        if (new Set(visibleOptions).size !== visibleOptions.length) {
+          errors.push(`Lacuna ${blank.id} em referência estrutural precisa de rótulos de opção distintos.`);
+          return;
+        }
+      }
       const key = `${blank.targetInstanceId}\u0000${path}\u0000${blank.answer}`;
       requiredByTarget.set(key, (requiredByTarget.get(key) || 0) + 1);
       if (countOccurrences(source, blank.answer) < requiredByTarget.get(key)) {
@@ -134,7 +177,7 @@ export const gapResponsePackage = Object.freeze({
     });
     return errors;
   },
-  prepareCardForSemantics(card) {
+  prepareCardForSemantics(card, registry = {}) {
     const visible = structuredClone(card);
     (visible.content || []).forEach((instance) => {
       const grouped = new Map();
@@ -147,6 +190,11 @@ export const gapResponsePackage = Object.freeze({
       grouped.forEach((blanks, path) => {
         const source = String(readPath(instance.data, path) ?? "");
         const locations = locateBlankAnswers(source, blanks);
+        const target = declaredPracticeTarget(registry.practiceTargets?.(instance), path);
+        if (target?.preserveReference === true) {
+          setPackagePracticeMarker(instance.data, path, " […] ");
+          return;
+        }
         writePath(instance.data, path, replaceLocatedAnswers(source, locations, () => " […] "));
       });
     });
@@ -164,16 +212,17 @@ export const gapResponsePackage = Object.freeze({
     grouped.forEach((blanks, path) => {
       const source = String(readPath(data, path) ?? "");
       const locations = locateBlankAnswers(source, blanks);
-      writePath(data, path, replaceLocatedAnswers(source, locations, ({ blank, index }) => (
-        createPackageGapMarker({
-          blockKey: options.responseBlockKey || options.blockKey,
-          index,
-          responseMode: blank.responseMode,
-          layoutText: [blank.answer, ...(blank.acceptedAnswers || [])]
-            .reduce((widest, candidate) => candidate.length > widest.length ? candidate : widest, ""),
-          value: options.responseState?.values?.[index] ?? ""
-        })
-      )));
+      const target = declaredPracticeTarget(options.practiceTargets, path);
+      if (target?.preserveReference === true) {
+        const [{ blank, index }] = locations;
+        setPackagePracticeMarker(data, path, markerForBlank(blank, index, options));
+        return;
+      }
+      writePath(data, path, replaceLocatedAnswers(
+        source,
+        locations,
+        ({ blank, index }) => markerForBlank(blank, index, options)
+      ));
     });
     return data;
   },

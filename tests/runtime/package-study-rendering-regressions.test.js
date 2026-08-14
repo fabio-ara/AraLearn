@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { renderPackageCardBlocks } from "../../src/render/renderPackageCard.js";
+import {
+  renderPackageCardArticle,
+  renderPackageCardBlocks
+} from "../../src/render/renderPackageCard.js";
 
 function cardWith(instance) {
   return {
@@ -16,6 +19,19 @@ function cardWith(instance) {
     sources: []
   };
 }
+
+test("artigos independentes isolam a memória visual pela identidade do card", () => {
+  const instance = {
+    id: "shared-instance",
+    package: "aralearn.resource.paragraph",
+    version: "1.0.0",
+    data: { text: "Mesmo conteúdo estrutural." }
+  };
+  const first = renderPackageCardArticle({ ...cardWith(instance), id: "first-card" });
+  const second = renderPackageCardArticle({ ...cardWith(instance), id: "second-card" });
+  assert.match(first, /data-package-render-key="card:first-card::content:shared-instance"/u);
+  assert.match(second, /data-package-render-key="card:second-card::content:shared-instance"/u);
+});
 
 test("modo Estudo não repete enunciado idêntico de paragraph e choice", () => {
   const question = "Qual protocolo confirma a entrega?";

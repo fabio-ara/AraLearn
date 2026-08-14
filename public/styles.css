@@ -1862,6 +1862,12 @@ input:-webkit-autofill:focus {
   margin: 0;
 }
 
+.package-instance {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+
 .runtime-choice-body strong,
 .runtime-table-block strong,
 .runtime-markdown-paragraph strong,
@@ -3216,8 +3222,11 @@ input:-webkit-autofill:focus {
   margin: 0;
 }
 
-.package-math-graph-canvas,
-.package-system-diagram-canvas {
+.package-system-diagram {
+  overflow: clip;
+}
+
+.package-math-graph-canvas {
   width: 100%;
   max-width: 100%;
   min-width: 0;
@@ -3233,6 +3242,239 @@ input:-webkit-autofill:focus {
   -webkit-overflow-scrolling: touch;
 }
 
+.package-diagram-viewport-home,
+.package-diagram-viewport {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.package-diagram-viewport {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 10px;
+}
+
+.package-diagram-toolbar {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.package-diagram-zoom-controls {
+  display: none;
+  min-width: 0;
+  align-items: center;
+  gap: 6px;
+}
+
+.package-diagram-toolbar button {
+  min-width: 48px;
+  min-height: 48px;
+  padding: 8px 12px;
+  border: 1px solid var(--resource-border);
+  border-radius: 12px;
+  background: var(--resource-surface);
+  color: var(--resource-text);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.package-diagram-toolbar button:focus-visible,
+.package-system-diagram-detail-picker select:focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.package-diagram-toolbar button:disabled {
+  cursor: default;
+  opacity: 0.45;
+}
+
+.package-diagram-fit-control {
+  display: inline-flex;
+  min-width: 112px;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.package-diagram-fit-control output {
+  color: var(--resource-text-secondary);
+  font-size: var(--type-sm);
+}
+
+.package-diagram-expand-control {
+  margin-inline-start: auto;
+}
+
+.package-system-diagram-canvas {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  height: clamp(220px, 34dvh, 300px);
+  padding: 10px;
+  overflow: hidden;
+  border: 1px solid var(--resource-border);
+  border-radius: 15px;
+  background: var(--resource-surface-subtle);
+  overscroll-behavior: auto;
+  touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;
+}
+
+.package-system-diagram-canvas[data-diagram-viewport-mode="explore"] {
+  overflow: auto;
+  overscroll-behavior: contain;
+  touch-action: pan-x pan-y;
+}
+
+.package-diagram-modal {
+  box-sizing: border-box;
+  width: 100dvw;
+  max-width: none;
+  height: 100dvh;
+  max-height: none;
+  margin: 0;
+  padding:
+    max(12px, env(safe-area-inset-top))
+    max(12px, env(safe-area-inset-right))
+    max(12px, env(safe-area-inset-bottom))
+    max(12px, env(safe-area-inset-left));
+  overflow: auto;
+  border: 0;
+  background: var(--resource-surface);
+  color: var(--resource-text);
+}
+
+.package-diagram-modal:not([open]) {
+  display: none;
+}
+
+.package-diagram-modal::backdrop {
+  background: var(--surface-overlay);
+}
+
+.package-diagram-modal[open] .package-diagram-viewport {
+  min-height: 100%;
+  align-content: start;
+}
+
+.package-diagram-modal[open] .package-diagram-toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 4;
+  flex-wrap: wrap;
+  padding-block: 2px;
+  background: var(--resource-surface);
+}
+
+.package-diagram-modal[open] .package-diagram-zoom-controls {
+  display: inline-flex;
+}
+
+.package-diagram-modal[open] .package-system-diagram-canvas {
+  height: min(60dvh, 620px);
+}
+
+.package-system-diagram-detail {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 7px;
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid var(--resource-border);
+  border-radius: 13px;
+  background: var(--resource-surface);
+}
+
+.package-system-diagram-detail-picker {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 5px;
+  min-width: 0;
+  max-width: 100%;
+  color: var(--resource-text-secondary);
+  font-size: var(--type-sm);
+  font-weight: 700;
+}
+
+.package-system-diagram-detail-picker select {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  min-height: 48px;
+  padding: 8px 36px 8px 10px;
+  border: 1px solid var(--resource-border);
+  border-radius: 10px;
+  background: var(--resource-surface-subtle);
+  color: var(--resource-text);
+  font: inherit;
+}
+
+.package-system-diagram-detail-body {
+  min-width: 0;
+}
+
+.package-system-diagram-detail-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 6px;
+  min-width: 0;
+}
+
+.package-system-diagram-detail-item[hidden] {
+  display: none;
+}
+
+.package-system-diagram-detail-item > small {
+  color: var(--resource-text-secondary);
+  font-size: var(--type-xs);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.package-system-diagram-detail-content {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.package-system-diagram-detail-content :is(
+  .package-system-diagram-node-content,
+  .package-er-entity-content,
+  .package-relational-table
+) {
+  width: 100%;
+  height: auto;
+  align-items: flex-start;
+  align-content: start;
+  justify-content: flex-start;
+  text-align: start;
+}
+
+.package-system-diagram-navigation-hint,
+.package-system-diagram-text {
+  margin: 0;
+  color: var(--resource-text-secondary);
+  font-size: var(--type-sm);
+  line-height: var(--leading-snug);
+}
+
+.package-system-diagram-text summary {
+  min-height: 32px;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.package-system-diagram-text p {
+  margin: 5px 0 0;
+}
+
 .package-math-graph-svg,
 .package-system-diagram-svg {
   display: block;
@@ -3240,6 +3482,19 @@ input:-webkit-autofill:focus {
   height: auto;
   margin-inline: auto;
   overflow: visible;
+}
+
+.package-system-diagram-svg [data-system-detail-key] {
+  cursor: pointer;
+}
+
+.package-system-diagram-svg [data-system-detail-key].is-selected,
+.package-system-diagram-svg [data-system-detail-key]:focus-visible {
+  filter: drop-shadow(0 0 3px var(--resource-accent));
+}
+
+.package-system-diagram-svg [data-system-detail-key]:focus-visible {
+  outline: none;
 }
 
 .package-math-graph-svg > .graph > polygon,
@@ -3340,6 +3595,18 @@ input:-webkit-autofill:focus {
 .package-system-diagram-edge-label .runtime-text-gap-blank {
   white-space: nowrap;
   overflow-wrap: normal;
+}
+
+.package-system-diagram-gap-preview {
+  display: inline-flex;
+  min-width: 2.4em;
+  min-height: 1.35em;
+  align-items: center;
+  justify-content: center;
+  border-bottom: 2px solid var(--resource-accent);
+  color: var(--resource-text);
+  font-weight: 700;
+  white-space: nowrap;
 }
 
 .package-system-diagram-node-content {
@@ -5804,7 +6071,7 @@ input:-webkit-autofill:focus {
   gap: 10px;
   min-width: 0;
   min-height: 0;
-  overflow: auto;
+  overflow: hidden;
 }
 
 .runtime-card-sheet.is-selected-for-edit {

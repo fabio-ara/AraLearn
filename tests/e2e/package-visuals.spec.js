@@ -127,6 +127,21 @@ const treeInstance = {
   }
 };
 
+const extremeTreeInstance = {
+  id: "extreme-tree-test",
+  package: "aralearn.resource.tree",
+  version: "1.0.0",
+  data: {
+    prompt: "Inspecione uma hierarquia extensa sem perder a visão global.",
+    variant: "hierarchy",
+    nodes: Array.from({ length: 80 }, (_, index) => ({
+      id: `level-${index + 1}`,
+      label: `Nível hierárquico ${index + 1}`,
+      parentId: index === 0 ? null : `level-${index}`
+    }))
+  }
+};
+
 const wrongChoiceCard = {
   id: "choice-test",
   position: 1,
@@ -206,6 +221,107 @@ test("gráfico estatístico e plano cartesiano materializam sob a CSP real e per
     await context.setOffline(false);
   }
   expect(relevantErrors).toEqual([]);
+});
+
+test("falha parcial do Graphviz mantém detalhes navegáveis sem expor resposta de medição", async ({ page }) => {
+  const contract = RESOURCE_PACKAGE_REGISTRY.getAuthoringContract(
+    "aralearn.resource.bpmn_process",
+    "1.0.0"
+  );
+  const content = {
+    id: "failing-bpmn",
+    package: "aralearn.resource.bpmn_process",
+    version: "1.0.0",
+    data: contract.contract.example
+  };
+  const card = {
+    id: "failing-bpmn-card",
+    position: 1,
+    title: "Falha controlada",
+    role: "practice",
+    content: [content],
+    response: {
+      id: "failing-bpmn-gap",
+      package: "aralearn.response.gap",
+      version: "1.0.0",
+      data: {
+        blanks: [{
+          id: "task-label",
+          targetInstanceId: content.id,
+          targetPath: "nodes[1].label",
+          responseMode: "choice",
+          answer: "Enviar solicitação",
+          distractors: ["Registrar solicitação", "Emitir decisão"]
+        }]
+      }
+    },
+    feedback: [],
+    topics: [],
+    sources: []
+  };
+
+  await page.goto("/");
+  await page.setContent(documentForHtml(renderPackageCardBlocks(card, {
+    blockKeyPrefix: "failing-bpmn-card"
+  }), "light"));
+  await page.evaluate(() => {
+    SVGGraphicsElement.prototype.getBBox = () => {
+      throw new Error("falha de geometria injetada");
+    };
+  });
+  const failure = await page.evaluate(async () => {
+    try {
+      const { RESOURCE_PACKAGE_REGISTRY: registry } = await import("/src/resources/packages/index.js");
+      await registry.hydrate(document);
+      return "";
+    } catch (error) {
+      return String(error?.message || error);
+    }
+  });
+
+  expect(failure).toContain("falha de geometria injetada");
+  await expect(page.locator(".package-system-diagram-layout-error")).toBeVisible();
+  await expect(page.locator(".package-system-diagram-svg")).toHaveCount(0);
+  await expect(page.locator('[data-diagram-action="toggle-expanded"]')).toBeDisabled();
+  await expect(page.locator("body")).not.toContainText("Enviar solicitação");
+  const picker = page.locator("[data-system-detail-picker]");
+  await picker.selectOption("node:register");
+  await expect(page.locator(
+    '.package-system-diagram-detail-item[data-system-detail-key="node:register"]'
+  )).toBeVisible();
+  await expect(page.locator(
+    '.package-system-diagram-detail-item[data-system-detail-key="node:send"]'
+  )).toBeHidden();
+});
+
+test("visão global extrema ajusta uma árvore no limite contratual em 320px", async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 700 });
+  await page.goto("/");
+  await page.setContent(documentFor(extremeTreeInstance, "light"));
+  await hydratePackages(page);
+
+  const state = await page.locator(".package-system-diagram-canvas").evaluate((canvas) => {
+    const svg = canvas.querySelector("svg");
+    const canvasRect = canvas.getBoundingClientRect();
+    const svgRect = svg.getBoundingClientRect();
+    return {
+      scale: Number(svg.dataset.diagramScale),
+      naturalHeight: svg.viewBox.baseVal.height,
+      overflowFree: canvas.scrollWidth - canvas.clientWidth <= 1 &&
+        canvas.scrollHeight - canvas.clientHeight <= 1,
+      contained: svgRect.left >= canvasRect.left - 1 && svgRect.right <= canvasRect.right + 1 &&
+        svgRect.top >= canvasRect.top - 1 && svgRect.bottom <= canvasRect.bottom + 1
+    };
+  });
+  expect(state.naturalHeight).toBeGreaterThan(4000);
+  expect(state.scale).toBeLessThan(0.08);
+  expect(state.overflowFree).toBe(true);
+  expect(state.contained).toBe(true);
+  await expect(page.locator("[data-system-detail-picker] option")).toHaveCount(80);
+  await page.locator("[data-system-detail-picker]").selectOption("node:level-80");
+  await expect(page.locator(
+    '.package-system-diagram-detail-item[data-system-detail-key="node:level-80"]'
+  )).toContainText("Nível hierárquico 80");
 });
 
 function studyCardFor(instance) {
@@ -307,7 +423,7 @@ for (const width of [360, 390, 412]) {
       await expect(page.locator(".package-relation-map .package-relation-map-set")).toHaveCount(2);
       await expect(page.locator(".package-relation-map .package-relation-map-node")).toHaveCount(8);
       await expect(page.locator(".package-relation-map .package-relation-map-edge")).toHaveCount(4);
-      await assertContained(page, ".package-math-graph-canvas, .package-relation-map .package-system-diagram-frame", width);
+      await assertContained(page, ".package-math-graph-canvas, .package-relation-map .package-system-diagram-canvas", width);
       expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
     });
 
@@ -356,6 +472,7 @@ for (const width of [360, 390, 412]) {
 }
 
 for (const { width, mode } of [
+  { width: 320, mode: "light" },
   { width: 360, mode: "dark" },
   { width: 412, mode: "light" }
 ]) {
@@ -383,22 +500,43 @@ for (const { width, mode } of [
       expect(dimensions.height, packageId).toBeGreaterThan(0);
 
       const navigation = await canvas.evaluate((element) => {
+        const svg = element.querySelector(".package-system-diagram-svg");
+        const canvasRect = element.getBoundingClientRect();
+        const svgRect = svg?.getBoundingClientRect();
         const maxX = Math.max(0, element.scrollWidth - element.clientWidth);
         const maxY = Math.max(0, element.scrollHeight - element.clientHeight);
-        element.scrollLeft = maxX;
-        element.scrollTop = maxY;
         return {
           maxX,
           maxY,
-          reachedX: Math.abs(element.scrollLeft - maxX) <= 1,
-          reachedY: Math.abs(element.scrollTop - maxY) <= 1,
-          touchAction: getComputedStyle(element).touchAction
+          mode: element.dataset.diagramViewportMode,
+          touchAction: getComputedStyle(element).touchAction,
+          svgContained: Boolean(svgRect) && (
+            svgRect.left >= canvasRect.left - 1
+            && svgRect.right <= canvasRect.right + 1
+            && svgRect.top >= canvasRect.top - 1
+            && svgRect.bottom <= canvasRect.bottom + 1
+          )
         };
       });
-      expect(navigation.touchAction, packageId).toBe("pan-x pan-y");
-      expect(navigation.reachedX, packageId).toBe(true);
-      expect(navigation.reachedY, packageId).toBe(true);
-      expect(navigation.maxX + navigation.maxY, packageId).toBeGreaterThan(0);
+      expect(navigation.mode, packageId).toBe("overview");
+      expect(navigation.touchAction, packageId).toBe("pan-y");
+      expect(navigation.maxX, packageId).toBeLessThanOrEqual(1);
+      expect(navigation.maxY, packageId).toBeLessThanOrEqual(1);
+      expect(navigation.svgContained, packageId).toBe(true);
+
+      const picker = root.locator("[data-system-detail-picker]");
+      await expect(picker).toBeVisible();
+      await expect(root.locator('[data-diagram-action="toggle-expanded"]')).toContainText("Explorar");
+      const selectableNodes = root.locator('[data-system-object-kind="node"]');
+      if (await selectableNodes.count() > 1) {
+        const nextNode = selectableNodes.nth(1);
+        const detailKey = await nextNode.getAttribute("data-system-detail-key");
+        expect(detailKey).toBeTruthy();
+        await nextNode.dispatchEvent("click");
+        await expect(nextNode).toHaveAttribute("aria-pressed", "true");
+        await expect(picker).toHaveValue(detailKey);
+        await expect(root.locator(`.package-system-diagram-detail-item[data-system-detail-key="${detailKey}"]`)).toBeVisible();
+      }
 
       const overlaps = await root.locator('[data-system-object-kind="node"]').evaluateAll((nodes) => {
         const boxes = nodes.map((node) => node.getBoundingClientRect());
@@ -432,6 +570,8 @@ for (const mode of ["light", "dark"]) {
     await expect(page.locator(".package-software-container-node")).toHaveCount(7);
     await expect(page.locator(".package-system-internal-part")).toHaveCount(3);
     await expect(page.locator(".package-system-internal-connector")).toHaveCount(3);
+    await expect(page.locator('[data-package="aralearn.resource.system_internal_block"] .package-system-diagram-canvas'))
+      .toHaveAttribute("data-graphviz-source", /rankdir="TB"/u);
     await assertContained(page, ".package-system-diagram-canvas", 390);
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
 
@@ -463,23 +603,62 @@ for (const mode of ["light", "dark"]) {
           : null;
         const canvasRect = canvas.getBoundingClientRect();
         const focusRect = focus?.getBoundingClientRect();
+        const svgRect = canvas.querySelector(".package-system-diagram-svg")?.getBoundingClientRect();
         return {
           overflowX: canvas.scrollWidth > canvas.clientWidth + 1,
           overflowY: canvas.scrollHeight > canvas.clientHeight + 1,
           boundedHeight: canvas.clientHeight <= 430,
+          mode: canvas.dataset.diagramViewportMode,
           touchAction: getComputedStyle(canvas).touchAction,
           startsAtTop: canvas.scrollTop === 0,
+          svgContained: Boolean(svgRect) && (
+            svgRect.left >= canvasRect.left - 1
+            && svgRect.right <= canvasRect.right + 1
+            && svgRect.top >= canvasRect.top - 1
+            && svgRect.bottom <= canvasRect.bottom + 1
+          ),
           focusContained: !focusRect || (
             focusRect.left >= canvasRect.left - 1
             && focusRect.right <= canvasRect.right + 1
+            && focusRect.top >= canvasRect.top - 1
+            && focusRect.bottom <= canvasRect.bottom + 1
           )
         };
       });
       expect(viewportState.boundedHeight).toBe(true);
-      expect(viewportState.touchAction).toBe("pan-x pan-y");
+      expect(viewportState.mode).toBe("overview");
+      expect(viewportState.touchAction).toBe("pan-y");
+      expect(viewportState.overflowX).toBe(false);
+      expect(viewportState.overflowY).toBe(false);
       expect(viewportState.startsAtTop).toBe(true);
+      expect(viewportState.svgContained).toBe(true);
       expect(viewportState.focusContained).toBe(true);
       await expect(figure.locator(".package-system-diagram-pan-hint")).toHaveCount(0);
+      await expect(figure.locator(".package-system-diagram-navigation-hint")).toBeVisible();
+      await expect(figure.locator('[data-diagram-action="toggle-expanded"]')).toContainText("Explorar");
+
+      const picker = figure.locator("[data-system-detail-picker]");
+      const selectableNodes = figure.locator('[data-system-object-kind="node"]');
+      await expect(picker).toBeVisible();
+      if (await selectableNodes.count() > 1) {
+        const nextNode = selectableNodes.nth(1);
+        const detailKey = await nextNode.getAttribute("data-system-detail-key");
+        expect(detailKey).toBeTruthy();
+        await nextNode.dispatchEvent("click");
+        await expect(nextNode).toHaveAttribute("aria-pressed", "true");
+        await expect(picker).toHaveValue(detailKey);
+        await expect(figure.locator(`.package-system-diagram-detail-item[data-system-detail-key="${detailKey}"]`)).toBeVisible();
+      }
+      const diagramTabStop = figure.locator(
+        '.package-system-diagram-svg [data-system-detail-key][tabindex="0"]'
+      );
+      await expect(diagramTabStop).toHaveCount(1);
+      const selectionBeforeArrow = await picker.inputValue();
+      await diagramTabStop.press("ArrowDown");
+      await expect(picker).not.toHaveValue(selectionBeforeArrow);
+      await expect(figure.locator(
+        '.package-system-diagram-svg [data-system-detail-key][tabindex="0"]'
+      )).toHaveCount(1);
 
       const overlaps = await figure.locator('[data-system-object-kind="node"]').evaluateAll((nodes) => {
         const boxes = nodes.map((node) => node.getBoundingClientRect());

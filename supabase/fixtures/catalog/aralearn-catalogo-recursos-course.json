@@ -2413,8 +2413,8 @@
                               "responseMode": "choice",
                               "answer": "true",
                               "distractors": [
-                                "false",
                                 "P → Q",
+                                "false",
                                 "¬P"
                               ]
                             }
@@ -4687,18 +4687,30 @@
                         "package": "aralearn.response.gap",
                         "version": "1.0.0",
                         "data": {
-                          "prompt": "Complete o campo destacado em Tabela de transição.",
+                          "prompt": "Complete os campos destacados em Tabela de transição.",
                           "blanks": [
                             {
-                              "id": "target",
+                              "id": "target-1",
                               "targetInstanceId": "catalog-aralearn-resource-state-transition-table-practice-example",
-                              "targetPath": "states[0].label",
-                              "label": "Lacuna no estado 1",
+                              "targetPath": "transitions[1].to",
+                              "label": "Lacuna no destino 2",
                               "responseMode": "choice",
-                              "answer": "q₀",
+                              "answer": "q0",
                               "distractors": [
-                                "q₁",
-                                "q₂"
+                                "q1",
+                                "q2"
+                              ]
+                            },
+                            {
+                              "id": "target-2",
+                              "targetInstanceId": "catalog-aralearn-resource-state-transition-table-practice-example",
+                              "targetPath": "transitions[5].to",
+                              "label": "Lacuna no destino 6",
+                              "responseMode": "choice",
+                              "answer": "q0",
+                              "distractors": [
+                                "q1",
+                                "q2"
                               ]
                             }
                           ]

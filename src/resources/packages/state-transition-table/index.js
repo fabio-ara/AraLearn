@@ -4,6 +4,7 @@ import {
   renderPackageInlineReference,
   renderPackageProse
 } from "../../sdk/html.js";
+import { getPackagePracticeMarker } from "../../sdk/practice.js";
 
 function text(value) {
   return String(value ?? "").trim();
@@ -11,6 +12,27 @@ function text(value) {
 
 function destinationText(transition, stateNames) {
   return `${stateNames.get(transition.to) || transition.to}${transition.action ? ` / ${transition.action}` : ""}`;
+}
+
+function renderDestination(data, transition, transitionIndex, stateNames) {
+  const practiceMarker = getPackagePracticeMarker(
+    data,
+    `transitions[${transitionIndex}].to`
+  );
+  const action = transition.action ? ` / ${renderPackageInline(transition.action)}` : "";
+  if (practiceMarker !== null) return renderPackageInline(practiceMarker) + action;
+  const knownState = stateNames.has(transition.to);
+  const destination = knownState
+    ? renderPackageInlineReference(stateNames.get(transition.to))
+    : renderPackageInline(transition.to);
+  return destination + action;
+}
+
+function accessibleDestination(data, transition, transitionIndex, stateNames) {
+  if (getPackagePracticeMarker(data, `transitions[${transitionIndex}].to`) === null) {
+    return destinationText(transition, stateNames);
+  }
+  return `lacuna${transition.action ? ` / ${transition.action}` : ""}`;
 }
 
 export const stateTransitionTablePackage = Object.freeze({
@@ -38,7 +60,7 @@ export const stateTransitionTablePackage = Object.freeze({
     intent: "Declare a função de transição quando a comparação tabular for o gesto cognitivo; use state_machine para percursos.",
     required: Object.freeze(["states", "events", "transitions"]),
     optional: Object.freeze(["prompt"]),
-    rules: Object.freeze(["Todo estado e evento referenciado existe.", "Ausência de transição é materializada por travessão.", "Destinos múltiplos permanecem na mesma célula."]),
+    rules: Object.freeze(["Todo estado e evento referenciado existe.", "Ausência de transição é materializada por travessão.", "Destinos múltiplos permanecem na mesma célula.", "Uma lacuna de destino aponta para transitions[i].to e usa o id estrutural do estado como resposta; o renderer apresenta o label correspondente."]),
     example: Object.freeze({
       prompt: "Compare a função de transição do autômato que reconhece cadeias binárias terminadas em 01.",
       states: [{ id: "q0", label: "q₀", initial: true, accepting: false }, { id: "q1", label: "q₁", initial: false, accepting: false }, { id: "q2", label: "q₂", initial: false, accepting: true }],
@@ -65,19 +87,23 @@ export const stateTransitionTablePackage = Object.freeze({
   },
   render(data) {
     const transitions = new Map();
-    data.transitions.forEach((transition) => { const key = `${transition.from}\u0000${transition.event}`; transitions.set(key, [...(transitions.get(key) || []), transition]); });
+    data.transitions.forEach((transition, index) => { const key = `${transition.from}\u0000${transition.event}`; transitions.set(key, [...(transitions.get(key) || []), { transition, index }]); });
     const stateNames = new Map(data.states.map(({ id, label }) => [id, label]));
-    return `<div class="runtime-block package-state-transition-table">${data.prompt ? renderPackageProse(data.prompt) : ""}<div class="runtime-table-wrap"><div class="runtime-table-frame"><table class="runtime-table"><thead><tr><th scope="col">Estado</th>${data.events.map((event) => `<th scope="col">${renderPackageInline(event.label)}</th>`).join("")}</tr></thead><tbody>${data.states.map((state) => `<tr><th scope="row"><span class="package-state-markers">${state.initial ? "→" : ""}${state.accepting ? "◎" : ""}</span>${renderPackageInline(state.label)}</th>${data.events.map((event) => `<td>${(transitions.get(`${state.id}\u0000${event.id}`) || []).map((transition) => `<span class="package-state-destination">${renderPackageInlineReference(destinationText(transition, stateNames))}</span>`).join("") || "—"}</td>`).join("")}</tr>`).join("")}</tbody></table></div></div><p class="package-state-legend">→ inicial · ◎ final ou aceitação</p></div>`;
+    return `<div class="runtime-block package-state-transition-table">${data.prompt ? renderPackageProse(data.prompt) : ""}<div class="runtime-table-wrap"><div class="runtime-table-frame"><table class="runtime-table"><thead><tr><th scope="col">Estado</th>${data.events.map((event) => `<th scope="col">${renderPackageInline(event.label)}</th>`).join("")}</tr></thead><tbody>${data.states.map((state) => `<tr><th scope="row"><span class="package-state-markers">${state.initial ? "→" : ""}${state.accepting ? "◎" : ""}</span>${renderPackageInline(state.label)}</th>${data.events.map((event) => `<td>${(transitions.get(`${state.id}\u0000${event.id}`) || []).map(({ transition, index }) => `<span class="package-state-destination">${renderDestination(data, transition, index, stateNames)}</span>`).join("") || "—"}</td>`).join("")}</tr>`).join("")}</tbody></table></div></div><p class="package-state-legend">→ inicial · ◎ final ou aceitação</p></div>`;
   },
   accessibleText(data) {
     const stateNames = new Map(data.states.map(({ id, label }) => [id, label]));
     const eventNames = new Map(data.events.map(({ id, label }) => [id, label]));
-    return `${data.prompt || "Tabela de transição."} ${data.transitions.map((transition) => `${stateNames.get(transition.from)}, com ${eventNames.get(transition.event)}, vai para ${destinationText(transition, stateNames)}`).join("; ")}.`;
+    return `${data.prompt || "Tabela de transição."} ${data.transitions.map((transition, index) => `${stateNames.get(transition.from)}, com ${eventNames.get(transition.event)}, vai para ${accessibleDestination(data, transition, index, stateNames)}`).join("; ")}.`;
   },
   editableTargets(data) {
     return [...(data.prompt ? [{ path: "prompt", label: "Editar orientação" }] : []), ...data.states.map((_, index) => ({ path: `states[${index}].label`, label: `Editar estado ${index + 1}` })), ...data.events.map((_, index) => ({ path: `events[${index}].label`, label: `Editar evento ${index + 1}` })), ...data.transitions.flatMap((transition, index) => transition.action ? [{ path: `transitions[${index}].action`, label: `Editar ação ${index + 1}` }] : [])];
   },
   practiceTargets(data) {
-    return [...data.states.map((_, index) => ({ path: `states[${index}].label`, label: `Lacuna no estado ${index + 1}`, modes: ["gap", "typing"] })), ...data.events.map((_, index) => ({ path: `events[${index}].label`, label: `Lacuna no evento ${index + 1}`, modes: ["gap", "typing"] })), ...data.transitions.flatMap((transition, index) => transition.action ? [{ path: `transitions[${index}].action`, label: `Lacuna na ação ${index + 1}`, modes: ["gap", "typing"] }] : [])];
+    return [...data.states.map((_, index) => ({ path: `states[${index}].label`, label: `Lacuna no estado ${index + 1}`, modes: ["gap", "typing"] })), ...data.events.map((_, index) => ({ path: `events[${index}].label`, label: `Lacuna no evento ${index + 1}`, modes: ["gap", "typing"] })), ...data.transitions.map((_, index) => ({ path: `transitions[${index}].to`, label: `Lacuna no destino ${index + 1}`, modes: ["gap"], preserveReference: true })), ...data.transitions.flatMap((transition, index) => transition.action ? [{ path: `transitions[${index}].action`, label: `Lacuna na ação ${index + 1}`, modes: ["gap", "typing"] }] : [])];
+  },
+  practiceValueLabel(data, targetPath, value) {
+    if (!/^transitions\[\d+\]\.to$/u.test(targetPath)) return String(value ?? "");
+    return data.states.find((state) => state.id === value)?.label || String(value ?? "");
   }
 });
