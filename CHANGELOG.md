@@ -26,7 +26,7 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
   prometida ausente, prática sem base, representação inadequada, perda de
   cobertura e dependência de meio externo indisponível;
 - os metadados Android da atualização da release `0.0.19` usam
-  `versionCode 162`, mantendo `applicationId com.aralearn.app` e
+  `versionCode 163`, mantendo `applicationId com.aralearn.app` e
   `versionName 0.0.19` para a substituição compatível do APK;
 - documentação pública reorganizada como material de aprendizagem, com
   apresentação do produto, percursos por finalidade, explicações progressivas
@@ -37,7 +37,17 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
   sem conexão e formas seguras de recuperação;
 - materiais humanos e instruções executáveis de autoria passam a ter funções
   editoriais explícitas, evitando que a concisão necessária aos modelos de
-  linguagem determine a profundidade da documentação destinada às pessoas.
+  linguagem determine a profundidade da documentação destinada às pessoas;
+- diagramas sistêmicos passam a combinar visão geral ajustada, detalhe textual
+  selecionável e um modo dedicado de exploração com zoom, ajuste e pan, com o
+  diagrama interno de blocos organizado no eixo vertical em telas estreitas.
+
+### Fixed
+
+- lacunas em destinos distintos da tabela de transição mantêm valor e opções
+  próprios, mesmo quando as respostas estruturais coincidem;
+- a visão embutida de diagramas complexos deixa a rolagem vertical com o card e
+  evita a disputa entre barras aninhadas observada no Android.
 
 ### Removed
 

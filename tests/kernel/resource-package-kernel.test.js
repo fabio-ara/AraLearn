@@ -332,6 +332,154 @@ test("lacunas múltiplas no mesmo campo não corrompem os marcadores umas das ou
   });
 });
 
+test("destinos repetidos da tabela de transição viram lacunas independentes com labels dos estados", () => {
+  const contract = RESOURCE_PACKAGE_REGISTRY.getAuthoringContract(
+    "aralearn.resource.state_transition_table",
+    "1.0.0"
+  );
+  const content = RESOURCE_PACKAGE_REGISTRY.normalizeInstance({
+    id: "transition-table-content",
+    package: "aralearn.resource.state_transition_table",
+    version: "1.0.0",
+    data: contract.contract.example
+  }, "content");
+  const destinationPaths = ["transitions[1].to", "transitions[5].to"];
+  const practiceTargets = RESOURCE_PACKAGE_REGISTRY.practiceTargets(content);
+  const declaredPaths = practiceTargets.filter(({ modes }) => modes.includes("gap"))
+    .map(({ path }) => path);
+  destinationPaths.forEach((path) => assert.ok(declaredPaths.includes(path), path));
+  assert.deepEqual(
+    practiceTargets.find(({ path }) => path === destinationPaths[0]),
+    {
+      path: destinationPaths[0],
+      label: "Lacuna no destino 2",
+      modes: ["gap"],
+      preserveReference: true
+    }
+  );
+  assert.equal(
+    RESOURCE_PACKAGE_REGISTRY.practiceValueLabel(content, destinationPaths[0], "q0"),
+    "q₀"
+  );
+
+  const stateLabelResponse = RESOURCE_PACKAGE_REGISTRY.normalizeInstance({
+    id: "transition-state-label-response",
+    package: "aralearn.response.gap",
+    version: "1.0.0",
+    data: { blanks: [{
+      id: "state-label",
+      targetInstanceId: content.id,
+      targetPath: "states[0].label",
+      responseMode: "choice",
+      answer: "q₀",
+      distractors: ["q₁", "q₂"]
+    }] }
+  }, "response");
+  const derivedReferences = renderCardEnvelope({
+    ...theoryCard(),
+    id: "transition-state-label-card",
+    role: "practice",
+    content: [content],
+    response: stateLabelResponse
+  }, RESOURCE_PACKAGE_REGISTRY, {
+    cardResponse: stateLabelResponse,
+    responseBlockKey: "transition-state-label",
+    blockKey: "transition-state-label",
+    responseState: { values: [] }
+  }).contentHtml;
+  assert.equal((derivedReferences.match(/…/gu) || []).length, 2);
+
+  const response = RESOURCE_PACKAGE_REGISTRY.normalizeInstance({
+    id: "transition-destinations-response",
+    package: "aralearn.response.gap",
+    version: "1.0.0",
+    data: { blanks: destinationPaths.map((targetPath, index) => ({
+      id: `destination-${index + 1}`,
+      targetInstanceId: content.id,
+      targetPath,
+      responseMode: "choice",
+      answer: "q0",
+      distractors: ["q1", "q2"]
+    })) }
+  }, "response");
+  const card = {
+    ...theoryCard(),
+    id: "transition-destinations-card",
+    role: "practice",
+    content: [content],
+    response
+  };
+  const validation = validateCardEnvelope(card, RESOURCE_PACKAGE_REGISTRY);
+  assert.equal(validation.valid, true, validation.errors.join(" "));
+  const labelAsStructuralAnswer = structuredClone(card);
+  labelAsStructuralAnswer.response.data.blanks[0].answer = "q₀";
+  assert.match(
+    validateCardEnvelope(labelAsStructuralAnswer, RESOURCE_PACKAGE_REGISTRY).errors.join(" "),
+    /referência estrutural precisa usar o valor integral do campo/u
+  );
+  const contradictoryEquivalent = structuredClone(card);
+  contradictoryEquivalent.response.data.blanks[0].acceptedAnswers = ["q1"];
+  assert.match(
+    validateCardEnvelope(contradictoryEquivalent, RESOURCE_PACKAGE_REGISTRY).errors.join(" "),
+    /não admite resposta equivalente que altere a referência/u
+  );
+  const duplicateVisibleOption = structuredClone(card);
+  duplicateVisibleOption.content[0].data.states[1].label = "q₀";
+  assert.match(
+    validateCardEnvelope(duplicateVisibleOption, RESOURCE_PACKAGE_REGISTRY).errors.join(" "),
+    /precisa de rótulos de opção distintos/u
+  );
+  const semanticCard = RESOURCE_PACKAGE_REGISTRY.prepareCardForSemantics(card);
+  assert.equal(semanticCard.content[0].data.transitions[1].to, "q0");
+  assert.equal(semanticCard.content[0].data.transitions[5].to, "q0");
+  assert.equal(
+    (RESOURCE_PACKAGE_REGISTRY.accessibleText(semanticCard.content[0], "content")
+      .match(/vai para lacuna/gu) || []).length,
+    2
+  );
+
+  const renderWithValues = (values, activeBlankIndex = null) => renderCardEnvelope(
+    card,
+    RESOURCE_PACKAGE_REGISTRY,
+    {
+      cardResponse: response,
+      responseBlockKey: "transition-destinations",
+      blockKey: "transition-destinations",
+      responseState: { values },
+      ...(activeBlankIndex === null ? {} : {
+        activeTextGapPrompt: {
+          blockKey: "transition-destinations",
+          blankIndex: activeBlankIndex
+        }
+      })
+    }
+  );
+  const firstFilled = renderWithValues(["q0", ""]);
+  assert.equal(content.data.transitions[1].to, "q0");
+  assert.equal(content.data.transitions[5].to, "q0");
+  assert.equal((firstFilled.contentHtml.match(/data-action="text-gap-open-choice"/gu) || []).length, 2);
+  assert.match(
+    firstFilled.contentHtml,
+    /data-complete-blank-index="0"[^>]+data-empty="false"[^>]*>q₀<\/span>/u
+  );
+  assert.match(
+    firstFilled.contentHtml,
+    /data-complete-blank-index="1"[^>]+data-empty="true"[^>]*><\/span>/u
+  );
+  assert.doesNotMatch(firstFilled.contentHtml, /…/u);
+
+  const prompt = renderWithValues(["q0", ""], 1).responseHtml;
+  assert.match(prompt, /data-text-gap-value="q0"[^>]*>q₀<\/button>/u);
+  assert.match(prompt, /data-text-gap-value="q1"[^>]*>q₁<\/button>/u);
+  assert.match(prompt, /data-text-gap-value="q2"[^>]*>q₂<\/button>/u);
+  assert.equal(
+    RESOURCE_PACKAGE_REGISTRY.evaluateResponse(response, {
+      values: { "destination-1": "q0", "destination-2": "q0" }
+    }).correct,
+    true
+  );
+});
+
 test("todo package materializa cada alvo como uma lacuna única e independente", () => {
   RESOURCE_PACKAGE_REGISTRY.listCatalog({ slot: "content" }).forEach((manifest, packageIndex) => {
     const contract = RESOURCE_PACKAGE_REGISTRY.getAuthoringContract(manifest.id, manifest.version);

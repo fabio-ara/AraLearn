@@ -55,12 +55,12 @@ function manualEditor(instance, slot, readOnlyHtml) {
     '</details></section>';
 }
 
-function wrapInstance(instance, slot, html, options = {}) {
+function wrapInstance(instance, slot, html, options = {}, renderKey = "") {
   const id = targetId(slot, instance);
   const selected = (options.selectedResourceTargetIds || []).includes(id);
   const inlineEditing = options.manualEditingTargetId === id;
   const packageContent = inlineEditing ? manualEditor(instance, slot, html) : html;
-  const packageHtml = `<section class="package-instance" data-package="${escapePackageAttribute(instance.package)}" data-package-version="${escapePackageAttribute(instance.version)}" data-package-instance-id="${escapePackageAttribute(instance.id)}">${packageContent}</section>`;
+  const packageHtml = `<section class="package-instance" data-package="${escapePackageAttribute(instance.package)}" data-package-version="${escapePackageAttribute(instance.version)}" data-package-instance-id="${escapePackageAttribute(instance.id)}"${renderKey ? ` data-package-render-key="${escapePackageAttribute(renderKey)}"` : ""}>${packageContent}</section>`;
   if (!options.resourceSelectionEnabled || !id) return packageHtml;
   const label = options.resourceSelectionLabels?.[id] || (selected ? "Retirar recurso do reparo" : "Selecionar recurso para reparo");
   return `<section class="runtime-resource-edit-target${selected ? " is-selected" : ""}${inlineEditing ? " is-inline-editing" : ""}" data-resource-edit-target="${escapePackageAttribute(id)}" data-package-id="${escapePackageAttribute(instance.package)}"${inlineEditing ? ` data-manual-target-id="${escapePackageAttribute(id)}"` : ""}>${inlineEditing ? `<div class="runtime-resource-selection-content">${packageHtml}</div>` : `<button class="runtime-resource-selection-surface" type="button" data-action="toggle-card-assistance-resource" data-resource-target-id="${escapePackageAttribute(id)}" aria-pressed="${selected ? "true" : "false"}" data-card-authoring-focus="resource:${escapePackageAttribute(id)}" aria-label="${escapePackageAttribute(label)}" title="${escapePackageAttribute(label)}"${options.resourceSelectionDisabled ? " disabled aria-disabled=\"true\"" : ""}></button><div class="runtime-resource-selection-content">${packageHtml}</div>`}</section>`;
@@ -83,7 +83,7 @@ function renderInstance(card, instance, slot, index, options, dockExerciseParts)
     cardResponse: slot === "content" ? card.response : null,
     dockExerciseParts
   });
-  return wrapInstance(instance, slot, html, options);
+  return wrapInstance(instance, slot, html, options, blockKey);
 }
 
 function assertPackageCard(card) {
@@ -143,7 +143,8 @@ export function renderPackageFeedback(entry, options = {}) {
 
 export function renderPackageCardArticle(card) {
   assertPackageCard(card);
-  return `<article class="card card-package" data-card-id="${escapePackageAttribute(card.id)}"><header class="card-head"><h4>${escapePackageHtml(card.title || "Card")}</h4></header><div class="card-body">${renderPackageCardBlocks(card)}</div></article>`;
+  const blockKeyPrefix = `card:${card.id}`;
+  return `<article class="card card-package" data-card-id="${escapePackageAttribute(card.id)}"><header class="card-head"><h4>${escapePackageHtml(card.title || "Card")}</h4></header><div class="card-body">${renderPackageCardBlocks(card, { blockKeyPrefix })}</div></article>`;
 }
 
 export function readPackageCardText(card) {

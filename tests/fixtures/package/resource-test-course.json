@@ -9231,37 +9231,25 @@
                             {
                               "id": "blank-1",
                               "targetInstanceId": "resource-test-27-choice-content",
-                              "targetPath": "states[0].label",
-                              "label": "Lacuna no estado 1",
+                              "targetPath": "transitions[1].to",
+                              "label": "Lacuna no destino 2",
                               "responseMode": "choice",
-                              "answer": "q₀",
+                              "answer": "q0",
                               "distractors": [
-                                "não q₀",
-                                "outro q₀"
+                                "q1",
+                                "q2"
                               ]
                             },
                             {
                               "id": "blank-2",
                               "targetInstanceId": "resource-test-27-choice-content",
-                              "targetPath": "states[1].label",
-                              "label": "Lacuna no estado 2",
+                              "targetPath": "transitions[5].to",
+                              "label": "Lacuna no destino 6",
                               "responseMode": "choice",
-                              "answer": "q₁",
+                              "answer": "q0",
                               "distractors": [
-                                "não q₁",
-                                "outro q₁"
-                              ]
-                            },
-                            {
-                              "id": "blank-3",
-                              "targetInstanceId": "resource-test-27-choice-content",
-                              "targetPath": "states[2].label",
-                              "label": "Lacuna no estado 3",
-                              "responseMode": "choice",
-                              "answer": "q₂",
-                              "distractors": [
-                                "não q₂",
-                                "outro q₂"
+                                "q1",
+                                "q2"
                               ]
                             }
                           ]

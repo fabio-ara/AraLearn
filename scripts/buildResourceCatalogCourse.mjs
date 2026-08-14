@@ -110,6 +110,10 @@ const PRACTICE_BLUEPRINTS = Object.freeze({
         rightItems: Object.freeze([])
       })
     })
+  }),
+  "aralearn.resource.state_transition_table": Object.freeze({
+    targetPaths: Object.freeze(["transitions[1].to", "transitions[5].to"]),
+    choiceValues: Object.freeze(["q0", "q1", "q2"])
   })
 });
 
@@ -225,40 +229,57 @@ function gapResponse(instance, manifest, id, responseMode) {
     }))
     .map((candidate) => ({ ...candidate, answer: answerForField(candidate.value) }))
     .filter((candidate) => typeof candidate.value === "string" && candidate.answer);
-  const preferredPath = PRACTICE_BLUEPRINTS[manifest.id]?.targetPath;
-  const target = targets.find((candidate) => candidate.path === preferredPath) || targets[0];
-  if (!target) return null;
-  const distractors = responseMode === "choice"
-    ? targets
-      .filter((candidate) => candidate.path !== target.path && candidate.answer !== target.answer)
-      .sort((left, right) => (
-        Number(right.signature === target.signature) - Number(left.signature === target.signature)
-        || Math.abs(left.answer.length - target.answer.length) - Math.abs(right.answer.length - target.answer.length)
-        || compareText(left.path, right.path)
-      ))
-      .map(({ answer }) => answer)
+  const blueprint = PRACTICE_BLUEPRINTS[manifest.id];
+  const preferredPaths = blueprint?.targetPaths || (blueprint?.targetPath
+    ? [blueprint.targetPath]
+    : []);
+  const selectedTargets = preferredPaths.length
+    ? preferredPaths
+      .map((preferredPath) => targets.find((candidate) => candidate.path === preferredPath))
+      .filter(Boolean)
+    : targets.slice(0, 1);
+  if (!selectedTargets.length) return null;
+  const distractorsFor = (target) => responseMode === "choice"
+    ? (blueprint?.choiceValues || targets.map(({ answer }) => answer))
+      .filter((answer) => answer !== target.answer)
       .filter((answer, index, values) => values.indexOf(answer) === index)
+      .sort((left, right) => {
+        const leftTarget = targets.find(({ answer }) => answer === left);
+        const rightTarget = targets.find(({ answer }) => answer === right);
+        if (!leftTarget || !rightTarget) return compareText(left, right);
+        return Number(rightTarget.signature === target.signature) -
+          Number(leftTarget.signature === target.signature) ||
+          Math.abs(left.length - target.answer.length) -
+          Math.abs(right.length - target.answer.length) ||
+          compareText(leftTarget.path, rightTarget.path);
+      })
       .slice(0, 3)
     : [];
-  if (responseMode === "choice" && distractors.length === 0) return null;
+  const preparedTargets = selectedTargets.map((target) => ({
+    ...target,
+    distractors: distractorsFor(target)
+  }));
+  if (responseMode === "choice" && preparedTargets.some(({ distractors }) => !distractors.length)) {
+    return null;
+  }
   return normalizeInstance({
     id,
     packageId: "aralearn.response.gap",
     version: manifestFor("aralearn.response.gap", "response").version,
     slot: "response",
     data: {
-      prompt: `Complete o campo destacado em ${manifest.label}.`,
-      blanks: [{
-        id: "target",
+      prompt: `Complete ${preparedTargets.length > 1 ? "os campos destacados" : "o campo destacado"} em ${manifest.label}.`,
+      blanks: preparedTargets.map((target, index) => ({
+        id: preparedTargets.length > 1 ? `target-${index + 1}` : "target",
         targetInstanceId: instance.id,
         targetPath: target.path,
         label: target.label,
         responseMode,
         answer: target.answer,
         ...(responseMode === "choice"
-          ? { distractors }
+          ? { distractors: target.distractors }
           : {})
-      }]
+      }))
     }
   });
 }

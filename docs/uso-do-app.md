@@ -238,6 +238,38 @@ não pode ser reconstruída apenas pelo nome exibido em Trilhas.
 se os demais abrirem, não limpe toda a réplica. Consulte [Solução de
 problemas](solucao-de-problemas.md).
 
+## Ler e explorar um diagrama complexo
+
+**Pré-condição:** abra um card que apresente a visão geral de um diagrama de
+dados, software ou sistemas.
+
+**Passos:**
+
+1. Use a visão geral para reconhecer a estrutura inteira. Arrastar na vertical
+   sobre esse quadro move o card, não uma área interna oculta.
+2. Toque num elemento ou numa relação do desenho. Também é possível escolhê-lo
+   em **Detalhe para leitura**.
+3. Leia o texto sincronizado abaixo da visão geral. Se o item contiver uma
+   lacuna, responda nesse detalhe; cada lacuna abre somente suas próprias
+   alternativas.
+4. Para examinar conexões ou partes pequenas, escolha **Explorar**.
+5. No diálogo, mova o diagrama nos dois eixos e use **−**, **+** ou
+   **Ajustar**. Escolha **Voltar ao card** ao terminar.
+
+**Resultado esperado:** a visão geral permanece inteira dentro de um quadro
+estável, enquanto o detalhe selecionado mantém o texto legível. A lacuna aparece
+como um único controle no detalhe; a marca correspondente no desenho é apenas
+uma prévia e não constitui outra resposta.
+
+**Sem conexão:** visão geral, seleção, detalhe, zoom e resposta funcionam com o
+resource já baixado. A seleção, a escala e a posição usadas para explorar são
+temporárias e não entram no progresso nem na sincronização.
+
+**Recuperação:** se perder uma parte do desenho durante a exploração, use
+**Ajustar**. Se for difícil tocar num elemento pequeno, escolha-o pelo seletor
+**Detalhe para leitura**. Grafos matemáticos e fluxogramas ainda podem apresentar
+navegação própria, diferente deste modo.
+
 ## Responder e avançar em um card
 
 **Pré-condição:** leia o enunciado e interaja com os campos da prática.

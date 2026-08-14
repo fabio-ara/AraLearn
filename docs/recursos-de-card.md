@@ -47,6 +47,8 @@ Cada diretório em `src/resources/packages/` oferece:
 - `accessibleText`: equivalente textual;
 - `editableTargets`: textos que podem ser alterados sem expor a estrutura;
 - `practiceTargets`: campos internos aptos a lacuna ou digitação;
+- `practiceValueLabel`: projeção textual opcional para apresentar ao estudante
+  um valor canônico de prática sem alterar o dado persistido;
 - `evaluate`: quando o package é uma resposta;
 - `hydrate`: somente quando a interação exige comportamento posterior.
 
@@ -111,13 +113,29 @@ Uma lacuna não é um marcador embutido no enunciado. Ela aponta para:
 targetInstanceId + targetPath
 ```
 
-`targetInstanceId` identifica a instância; `targetPath` identifica o campo textual declarado por `practiceTargets`. O package de resposta materializa o controle exatamente nesse local.
+`targetInstanceId` identifica a instância; `targetPath` identifica o campo
+declarado por `practiceTargets`. Em campos textuais comuns, o valor é substituído
+pelo marcador interativo. Uma referência estrutural só pode ser alvo quando o
+package declara `preserveReference: true`: nesse caso, o marcador fica associado
+ao caminho sem sobrescrever o identificador usado para resolver a estrutura.
+Quando o valor canônico não é o melhor rótulo para leitura, como um id de estado,
+`practiceValueLabel` projeta a forma apresentada nas alternativas e no controle.
 
 ### Independência entre lacunas
 
-Cada lacuna possui índice e estado próprios. Suas alternativas pertencem apenas àquela lacuna e aparecem quando ela recebe foco. Tocar numa lacuna preenchida novamente a esvazia sem alterar as demais. Digitação segue a mesma identidade, mas usa entrada textual e normalização declarada.
+Cada lacuna possui índice e estado próprios. Suas alternativas pertencem apenas
+àquela lacuna e aparecem quando ela recebe foco. Tocar numa lacuna preenchida
+novamente a esvazia sem alterar as demais. Digitação segue a mesma identidade,
+mas usa entrada textual e normalização declarada.
 
-Reutilizar o mesmo caminho ou chave para várias lacunas produziria seleção simultânea, portanto o kernel e os testes verificam unicidade e materialização de cada alvo. O preenchimento real também é medido no navegador: o rótulo substituído precisa caber ou provocar redimensionamento do nó, nunca ser recortado.
+Identidade não é deduzida pelo valor da resposta. Duas transições que apontam
+para o mesmo estado, por exemplo, continuam sendo lacunas distintas porque usam
+caminhos e índices distintos; preencher ou abrir as opções de uma não altera a
+outra. Reutilizar o mesmo caminho ou chave para várias lacunas produziria
+seleção simultânea, portanto o kernel e os testes verificam unicidade e
+materialização de cada alvo. O preenchimento real também é medido no navegador:
+o rótulo substituído precisa caber ou provocar redimensionamento do nó, nunca
+ser recortado.
 
 ## 7. Edição manual e assistência contextual
 
@@ -206,15 +224,37 @@ Teoria e prática admitem densidades diferentes. Um card de teoria apresenta uma
 
 ## 11. Mobile, orientação e escalabilidade
 
-O runtime não força todo diagrama a caber na largura do celular. A orientação decorre da estrutura:
+Os dez packages que usam a camada compartilhada `system-diagrams` apresentam,
+no card, uma visão geral ajustada simultaneamente à largura e à altura de um
+quadro estável. Essa visão não cria rolagem interna: um gesto vertical iniciado
+sobre ela continua movendo o card. Selecionar um elemento ou uma relação no
+desenho, ou no seletor associado, sincroniza um detalhe em HTML com texto em
+tamanho de leitura.
 
-- progressões e hierarquias longas tendem à vertical;
-- comparação entre duas colunas pode exigir horizontal;
-- grafos densos preservam tamanho natural e usam navegação interna.
+Quando houver prática, o detalhe contém o único controle real da lacuna. A visão
+geral mostra apenas uma projeção inerte, sem duplicar o controle nem revelar a
+resposta usada pelo Graphviz para dimensionar o objeto. Assim, seleção, teclado,
+tecnologia assistiva e avaliação convergem para a mesma ocorrência interativa.
 
-Diagramas extensos ficam num frame com altura limitada. Dentro do frame, o gesto move o diagrama; fora dele, move o card. Barras de rolagem permanecem acessíveis sem exigir alcançar o fim de uma figura muito alta. Rótulos completos dimensionam nós antes do layout, inclusive depois do preenchimento de lacuna.
+**Explorar** move a mesma viewport para um diálogo dedicado. Nesse modo, o
+estudante pode mover o diagrama nos dois eixos e usar **Diminuir zoom**,
+**Aumentar zoom** ou **Ajustar**; voltar ao card restaura a visão geral. Seleção,
+escala e posição de exploração formam estado efêmero do renderer: auxiliam a
+navegação corrente, mas não integram o curso, o progresso nem a sincronização.
 
-Escalabilidade significa que exemplos complexos continuam corretos, não que toda figura seja comprimida. A galeria inclui larguras móveis, temas e exemplos não triviais para expor cruzamentos, overflow, legendas, múltiplas lacunas e textos longos.
+A orientação continua decorrendo da estrutura. Hierarquias e sistemas tendem à
+progressão de cima para baixo; o diagrama interno de bloco SysML usa agora esse
+fluxo em bloco. Relações cuja leitura é genuinamente lateral podem conservar
+elementos no mesmo nível, pois a visão geral e o detalhe não dependem de forçar
+toda topologia para uma única coluna.
+
+Essa política inicial abrange `bpmn_process`, `database_schema`,
+`entity_relationship`, `network_topology`, `relation_map`, `software_container`,
+`software_system_context`, `state_machine`, `system_internal_block` e `tree`.
+`flow` e `graph` ainda usam seus navegadores próprios e não devem ser descritos
+como se já compartilhassem essa camada. A galeria continua incluindo larguras
+móveis, temas e exemplos não triviais para expor cruzamentos, overflow,
+legendas, múltiplas lacunas e textos longos.
 
 ## 12. Acessibilidade
 

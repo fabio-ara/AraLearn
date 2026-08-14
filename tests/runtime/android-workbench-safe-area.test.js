@@ -15,7 +15,7 @@ test("o workbench da microssequência zera o padding externo inferior para não 
   );
 });
 
-test("frames de diagramas preservam rolagem nativa nos dois eixos no Android", () => {
+test("diagramas sistêmicos separam rolagem do card e exploração bidimensional no Android", () => {
   const styles = fs.readFileSync(new URL("../../public/styles.css", import.meta.url), "utf8");
   const document = fs.readFileSync(new URL("../../public/index.html", import.meta.url), "utf8");
   const renderer = fs.readFileSync(
@@ -24,6 +24,10 @@ test("frames de diagramas preservam rolagem nativa nos dois eixos no Android", (
   );
   const graphvizSdk = fs.readFileSync(
     new URL("../../src/resources/sdk/graphviz.js", import.meta.url),
+    "utf8"
+  );
+  const viewportSdk = fs.readFileSync(
+    new URL("../../src/resources/sdk/diagramViewport.js", import.meta.url),
     "utf8"
   );
 
@@ -37,7 +41,13 @@ test("frames de diagramas preservam rolagem nativa nos dois eixos no Android", (
   assert.doesNotMatch(renderer, /package-flow-tree|package-flow-node-card/u);
   assert.match(renderer, /data-resource-scroll-frame="diagram"/u);
   assert.match(styles, /\.package-flowchart\s*\{[\s\S]*?max-height:\s*min\(48dvh, 430px\);[\s\S]*?overflow:\s*auto;[\s\S]*?overscroll-behavior-block:\s*auto;[\s\S]*?touch-action:\s*pan-x pan-y;/u);
-  assert.match(styles, /\.package-math-graph-canvas,[\s\S]*?\.package-system-diagram-canvas\s*\{[\s\S]*?max-height:\s*min\(48dvh, 430px\);[\s\S]*?overflow:\s*auto;[\s\S]*?touch-action:\s*pan-x pan-y;/u);
+  assert.match(styles, /\.package-system-diagram-canvas\s*\{[\s\S]*?height:\s*clamp\(220px, 34dvh, 300px\);[\s\S]*?overflow:\s*hidden;[\s\S]*?touch-action:\s*pan-y;/u);
+  assert.match(styles, /\.package-system-diagram-canvas\[data-diagram-viewport-mode="explore"\]\s*\{[\s\S]*?overflow:\s*auto;[\s\S]*?touch-action:\s*pan-x pan-y;/u);
+  assert.match(styles, /\.runtime-card-rendered-content\s*\{[\s\S]*?overflow:\s*hidden;/u);
+  assert.match(styles, /\.card-sheet-content\s*\{[\s\S]*?overflow-y:\s*auto;/u);
+  assert.match(viewportSdk, /showModal\(\)/u);
+  assert.match(viewportSdk, /data-diagram-action="zoom-in"/u);
   assert.doesNotMatch(renderer, /pointerdown|pointermove/iu);
+  assert.doesNotMatch(viewportSdk, /pointerdown|pointermove/iu);
   assert.doesNotMatch(styles, /\.runtime-flow-board/u);
 });

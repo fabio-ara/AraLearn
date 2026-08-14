@@ -35,6 +35,11 @@ export function createPackageGapMarker(value) {
   return `\uE000${encodeURIComponent(JSON.stringify(value))}\uE001`;
 }
 
+export function packageReferenceText(value, replacement = "\u2026") {
+  GAP_MARKER.lastIndex = 0;
+  return String(value ?? "").replace(GAP_MARKER, replacement);
+}
+
 function readPackageGapMarker(value) {
   try {
     return JSON.parse(decodeURIComponent(value));
@@ -94,8 +99,7 @@ export function renderPackageInline(value) {
 }
 
 export function renderPackageInlineReference(value) {
-  GAP_MARKER.lastIndex = 0;
-  return renderPackageInline(String(value || "").replace(GAP_MARKER, "\u2026"));
+  return renderPackageInline(packageReferenceText(value));
 }
 
 export function renderPackageCode(value) {

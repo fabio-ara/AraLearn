@@ -49,6 +49,9 @@ function validatePracticeTargets(definition, data) {
     if (!modes.length || modes.some((mode) => !["gap", "typing"].includes(mode))) {
       errors.push(`${definition.manifest.id}.practiceTargets()[${index}] declara modo inválido.`);
     }
+    if (target?.preserveReference !== undefined && target.preserveReference !== true) {
+      errors.push(`${definition.manifest.id}.practiceTargets()[${index}].preserveReference precisa ser true quando declarado.`);
+    }
     if (typeof readPath(normalizedData, target?.path) !== "string") {
       errors.push(`${definition.manifest.id}.practiceTargets()[${index}] não aponta para campo textual.`);
     }
@@ -144,6 +147,10 @@ export function assertPackageDefinition(definition) {
   if (definition.hydrate !== undefined && typeof definition.hydrate !== "function") {
     throw new TypeError(`${manifest.id}.hydrate precisa ser uma função.`);
   }
+  if (definition.practiceValueLabel !== undefined &&
+      typeof definition.practiceValueLabel !== "function") {
+    throw new TypeError(`${manifest.id}.practiceValueLabel precisa ser uma função.`);
+  }
   if (manifest.slots.includes("content") && typeof definition.practiceTargets !== "function") {
     throw new TypeError(`${manifest.id} ocupa content e precisa implementar practiceTargets().`);
   }
@@ -204,6 +211,21 @@ export function createPackageRegistry(packageDefinitions = []) {
     const definition = get(packageId, version);
     if (!definition) throw new RangeError(`Package não instalado: ${text(packageId)}@${text(version)}.`);
     return definition;
+  }
+
+  function labelPracticeValue(instance, targetPath, value) {
+    const original = String(value ?? "");
+    const definition = get(instance?.package, instance?.version);
+    if (!definition || typeof definition.practiceValueLabel !== "function") return original;
+    const label = definition.practiceValueLabel(clone(instance.data), text(targetPath), original);
+    return typeof label === "string" && label ? label : original;
+  }
+
+  function labelCardPracticeValue(card, targetInstanceId, targetPath, value) {
+    const target = Array.isArray(card?.content)
+      ? card.content.find((instance) => instance?.id === targetInstanceId)
+      : null;
+    return target ? labelPracticeValue(target, targetPath, value) : String(value ?? "");
   }
 
   function validateInstance(instance, slot) {
@@ -275,11 +297,14 @@ export function createPackageRegistry(packageDefinitions = []) {
       const definition = get(card.response.package, card.response.version);
       if (typeof definition?.validateCard !== "function") return [];
       const errors = definition.validateCard(clone(card), {
-        practiceTargets(instance) {
-          const contentDefinition = requirePackage(instance.package, instance.version);
-          return clone(resolvedPracticeTargets(contentDefinition, instance.data));
-        },
-        materializesGap(instance, response, blankIndex) {
+         practiceTargets(instance) {
+           const contentDefinition = requirePackage(instance.package, instance.version);
+           return clone(resolvedPracticeTargets(contentDefinition, instance.data));
+         },
+         practiceValueLabel(instance, targetPath, value) {
+           return labelPracticeValue(instance, targetPath, value);
+         },
+         materializesGap(instance, response, blankIndex) {
           const contentDefinition = requirePackage(instance.package, instance.version);
           if (typeof definition.prepareContentInstance !== "function") return false;
           try {
@@ -287,7 +312,8 @@ export function createPackageRegistry(packageDefinitions = []) {
             const prepared = definition.prepareContentInstance(clone(instance), clone(response.data), {
               responseBlockKey: blockKey,
               blockKey,
-              responseState: { values: [] }
+              responseState: { values: [] },
+              practiceTargets: clone(resolvedPracticeTargets(contentDefinition, instance.data))
             });
             const html = contentDefinition.render(prepared, {});
             return html.includes(`data-complete-block-key="${blockKey}"`) &&
@@ -303,7 +329,12 @@ export function createPackageRegistry(packageDefinitions = []) {
       if (!card?.response) return clone(card);
       const definition = get(card.response.package, card.response.version);
       return typeof definition?.prepareCardForSemantics === "function"
-        ? definition.prepareCardForSemantics(clone(card))
+        ? definition.prepareCardForSemantics(clone(card), {
+            practiceTargets(instance) {
+              const contentDefinition = requirePackage(instance.package, instance.version);
+              return clone(resolvedPracticeTargets(contentDefinition, instance.data));
+            }
+          })
         : clone(card);
     },
     renderInstance(instance, slot, options = {}) {
@@ -314,14 +345,28 @@ export function createPackageRegistry(packageDefinitions = []) {
       const responseDefinition = response
         ? get(response.package, response.version)
         : null;
+      const renderOptions = {
+        ...options,
+        ...(slot === "content" ? {
+          practiceTargets: clone(resolvedPracticeTargets(definition, instance.data))
+        } : {}),
+        practiceValueLabel(targetInstanceId, targetPath, value) {
+          return labelCardPracticeValue(
+            options.card,
+            targetInstanceId,
+            targetPath,
+            value
+          );
+        }
+      };
       const renderData = slot === "content" && typeof responseDefinition?.prepareContentInstance === "function"
         ? responseDefinition.prepareContentInstance(
             clone(instance),
             clone(response.data),
-            options
+            renderOptions
           )
         : clone(instance.data);
-      return definition.render(renderData, options);
+      return definition.render(renderData, renderOptions);
     },
     async hydrate(root) {
       if (!root?.querySelectorAll) return;
@@ -354,6 +399,11 @@ export function createPackageRegistry(packageDefinitions = []) {
       if (!validation.valid) throw new TypeError(validation.errors.join(" "));
       const definition = requirePackage(instance.package, instance.version);
       return clone(resolvedPracticeTargets(definition, instance.data));
+    },
+    practiceValueLabel(instance, targetPath, value, slot = "content") {
+      const validation = validateInstance(instance, slot);
+      if (!validation.valid) throw new TypeError(validation.errors.join(" "));
+      return labelPracticeValue(instance, targetPath, value);
     },
     evaluateResponse(instance, answer) {
       const validation = validateInstance(instance, "response");
