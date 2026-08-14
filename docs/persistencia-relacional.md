@@ -1,11 +1,26 @@
 # Persistência relacional e sincronização
 
-O Supabase guarda o estado compartilhado. O IndexedDB mantém, em cada
-dispositivo, uma projeção relacional para estudo sem conexão. Cursos oficiais
+O Supabase guarda o estado remoto compartilhado. O IndexedDB mantém, em cada
+dispositivo, uma projeção normalizada para estudo sem conexão; isso não o
+transforma num banco relacional nem numa réplica de toda a instalação. Cursos oficiais
 selecionados vêm de uma publicação `aralearn.library.v1` imutável no Storage;
 planos e cursos
 em materialização são compostos diretamente das partes correntes do workspace
 no PostgreSQL.
+
+Neste documento, os termos de persistência não são intercambiáveis:
+
+- **projeção** é a forma local derivada de outra fonte, otimizada para leitura;
+- **réplica local** é o conjunto sincronizável necessário ao uso offline, não
+  uma cópia integral do backend;
+- **cache** pode ser descartado e reconstruído, portanto não concede autoridade;
+- **rascunho** conserva uma alteração autoral local ainda não confirmada;
+- **outbox** é a fila durável das operações que o canal correspondente ainda
+  precisa enviar;
+- **materialização** compõe partes validadas num documento ou artefato concreto.
+
+O vocabulário completo e suas fronteiras estão no [Glossário
+técnico](glossario-tecnico.md).
 
 ## O que fica no banco
 
@@ -27,7 +42,7 @@ conteúdo e continua disponível além da janela curta dos recibos; não guarda
 snapshot nem transforma uma escrita parcial em reparo concluído.
 
 Quando o curso é publicado, essa árvore deixa de depender das linhas de autoria
-para ser estudada: o servidor materializa um documento canônico no Storage. A
+para ser estudada: o servidor materializa o envelope operacional no Storage. A
 publicação não é decomposta numa segunda árvore de tabelas remotas.
 
 Depois do download e da validação, o IndexedDB projeta o envelope e as
@@ -88,7 +103,7 @@ uma nova sessão executa a mesma reconciliação antes de reutilizar caches.
 Pessoas e governança ficam em `educational_workspace_members` e
 `educational_workspace_invitations`. O papel é uma relação pequena; não cria
 outra árvore. Convites guardam hash do código e expiram em sete dias. Recibos
-idempotentes também expiram. O workspace aparece em Trilhas por sua identidade
+de deduplicação também expiram conforme a política de cada fluxo. O workspace aparece em Trilhas por sua identidade
 estável, sem publicação nem cópia por participante. Um artefato privado só é
 fixado quando necessário para uma submissão editorial.
 
@@ -109,13 +124,15 @@ autora comum lê seus planos e cursos em Trilhas. Uma conta revisora
 lê somente o artefato submetido à fila que ela pode atender. Leituras grandes
 são recortadas por árvore, entidade ou documento. Criar, renomear ou excluir
 um grupo e classificar qualquer `trailItemId` continuam sendo comandos pessoais
-idempotentes vinculados ao UUID do proprietário. Excluir o grupo conserva os
+vinculados ao UUID do proprietário. Para repetição segura, cada comando associa
+uma chave de idempotência ao hash do payload e a um recibo temporário. Excluir o grupo conserva os
 cursos e seu estado de estudo; os itens passam a aparecer sem grupo até serem
 movidos.
 
 O catálogo possui outro plano de controle. Coleções e classificações guardam
-identidade e revisão; alterações administrativas deixam recibos privados de
-idempotência. O conteúdo integral é uma revisão JSON imutável no Storage.
+identidade e revisão; cada alteração administrativa associa uma chave de
+idempotência ao hash do payload e a um recibo privado de repetição segura. O
+conteúdo integral é uma revisão JSON imutável no Storage.
 Título e objetivo permanecem como metadados pequenos. Qualquer alteração de
 conteúdo passa novamente pelo fluxo de autoria, validação e troca atômica do
 ponteiro de revisão. O aplicativo pode expor a administração desses metadados a
@@ -125,7 +142,8 @@ alcance global da operação.
 A coleção `outros` é estrutural: o banco conserva seu nome e publicação, recusa
 sua retirada e permite usá-la como destino ao retirar a última coleção
 temática. Coleções e cursos são apresentados alfabeticamente; transferências
-entre coleções exigem a revisão corrente e deixam recibo idempotente curto.
+entre coleções exigem a revisão corrente e deixam um recibo temporário de
+deduplicação.
 
 ## Selecionar, editar e remover
 
@@ -153,7 +171,7 @@ Se outra aba gravou antes, a operação obsoleta falha e recarrega o conteúdo
 corrente; não há sobrescrita por último escritor. Pedido, contexto e resposta
 do provider não entram nas tabelas do curso.
 
-No card, o ledger volátil mantém por pouco tempo até oito turnos e nove versões
+No card, o histórico volátil mantém por pouco tempo até oito turnos e nove versões
 exatas para desfazer, refazer ou restaurar. Pedido, explicações e versões não
 entram no IndexedDB ou no Supabase e não criam snapshots do curso. Uma escrita
 externa no mesmo card invalida a conversa local.
@@ -166,12 +184,13 @@ desconhecida falha fechada, e nenhuma dessas operações cria fork automático.
 Para publicar um workspace, o comando informa sua revisão esperada. Ao
 atualizar um curso, informa também o hash publicado que serviu de base. Se
 qualquer um avançou, a publicação é recusada e nunca faz merge silencioso. A
-promoção de curso privado ao catálogo continua exclusiva da autoria com MCP.
+promoção de curso privado ao catálogo continua exclusiva da autoria pelo GPT
+personalizado com Action ou um cliente compatível pela integração MCP.
 
 `unselect_catalog_course` retira um curso da biblioteca da conta. A publicação
 oficial e sua revisão corrente continuam intactas.
 
-Pelo Chatbot ou Plugin, `remove_course_from_personal_library_v5` usa a seleção,
+Pelo GPT personalizado, `remove_course_from_personal_library_v5` usa a seleção,
 o curso e o hash que acabaram de ser lidos. Em um curso oficial, conserva a
 mesma retirada de seleção. Em publicação privada da própria conta, também
 arquiva o artefato e remove sua referência corrente; submissão editorial ativa
@@ -191,7 +210,8 @@ ou inválido não substitui o que já está disponível.
 
 ## Envio e recebimento
 
-Cada alteração recebe um identificador idempotente, mas os fluxos permanecem
+Cada alteração recebe uma chave estável de tentativa (`requestId` ou
+`mutationId`) para deduplicação, mas os fluxos permanecem
 separados pelo que realmente sincronizam:
 
 - a outbox relacional e `apply_sync_batch` transportam somente a seleção leve
@@ -210,7 +230,7 @@ cliente reler a linha corrente e reaplicar somente os patches ainda pendentes.
 O progresso v3 usa o `id` estável da lição como chave e guarda apenas
 `cursorCardId` e o conjunto `completedCardIds`; não cria uma entrada com
 timestamp para cada card. O
-orçamento canônico do cliente é 256 KiB, inclusive nos cursos grandes do
+orçamento operacional do cliente é 256 KiB, inclusive nos cursos grandes do
 catálogo.
 
 O feed de `pull_sync_changes` continua pequeno porque comunica seleções, não

@@ -1,5 +1,5 @@
 import { academicProfile } from "../../sdk/academic.js";
-import { dotAttributes, dotQuote, wrapGraphvizLabel } from "../../sdk/graphviz.js";
+import { dotAttributes, dotQuote, graphvizLayoutAttributes, wrapGraphvizLabel } from "../../sdk/graphviz.js";
 import { renderPackageInline, renderPackageProse } from "../../sdk/html.js";
 import {
   hydrateSystemDiagrams,
@@ -40,7 +40,7 @@ function erAccessibleText(data) {
 function graphvizSource(data) {
   return [
     "digraph EntityRelationship {",
-    `  graph ${dotAttributes({ bgcolor: "transparent", pad: "0.2", margin: "0", overlap: "false", splines: "polyline", outputorder: "edgesfirst", rankdir: "LR", nodesep: "0.48", ranksep: "0.95" })};`,
+    `  graph ${dotAttributes(graphvizLayoutAttributes("block", { bgcolor: "transparent", pad: "0.2", margin: "0", overlap: "false", splines: "polyline", outputorder: "edgesfirst", nodesep: "0.48", ranksep: "0.95" }))};`,
     "  node [fontname=\"Arial\", fontsize=\"15\", penwidth=\"1.15\", color=\"#64748b\", fontcolor=\"#111827\", shape=\"box\", style=\"rounded\", margin=\"0.17,0.12\"];",
     "  edge [fontname=\"Arial\", fontsize=\"13\", penwidth=\"1.15\", color=\"#64748b\", fontcolor=\"#111827\", arrowsize=\"0.72\"];",
     ...data.entities.map((entity) => `  ${dotQuote(entity.id)} ${dotAttributes({ id: `system-node-${entity.id}`, class: "package-er-entity", label: entityPlainLabel(entity) })};`),

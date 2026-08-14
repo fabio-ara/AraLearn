@@ -77,6 +77,26 @@ const systemDiagramInstances = [
   return { id: `system-diagram-${index + 1}`, package: packageId, version: "1.0.0", data: contract.contract.example };
 });
 
+const mobileVerticalDiagramExpectations = Object.freeze([
+  { packageId: "aralearn.resource.database_schema", maxNaturalWidth: 720 },
+  { packageId: "aralearn.resource.entity_relationship", maxNaturalWidth: 500 },
+  { packageId: "aralearn.resource.network_topology", maxNaturalWidth: 520 },
+  { packageId: "aralearn.resource.state_machine", maxNaturalWidth: 360 }
+]);
+
+const mobileVerticalDiagramInstances = mobileVerticalDiagramExpectations.map(({ packageId }, index) => {
+  const contract = RESOURCE_PACKAGE_REGISTRY.getAuthoringContract(packageId, "1.0.0");
+  return { id: `mobile-vertical-diagram-${index + 1}`, package: packageId, version: "1.0.0", data: contract.contract.example };
+});
+
+const vegaInstances = [
+  "aralearn.resource.chart",
+  "aralearn.resource.plane"
+].map((packageId, index) => {
+  const contract = RESOURCE_PACKAGE_REGISTRY.getAuthoringContract(packageId, "1.0.0");
+  return { id: `vega-csp-${index + 1}`, package: packageId, version: "1.0.0", data: contract.contract.example };
+});
+
 const matrixInstance = {
   id: "matrix-test",
   package: "aralearn.resource.matrix",
@@ -155,6 +175,39 @@ async function hydratePackages(page) {
   });
 }
 
+async function mountVegaInstances(page) {
+  const markup = vegaInstances.map(renderHydratableInstance).join("");
+  await page.locator("body").evaluate((body, html) => {
+    body.innerHTML = `<main style="box-sizing:border-box;width:100%;max-width:420px;margin:0 auto;padding:16px">${html}</main>`;
+  }, markup);
+  await hydratePackages(page);
+  await expect(page.locator("[data-vega-status='ready']")).toHaveCount(2);
+  await expect(page.locator(".package-chart-canvas svg, .package-plane-canvas svg")).toHaveCount(2);
+  await expect(page.locator(".package-chart-layout-error:visible, .package-plane-layout-error:visible")).toHaveCount(0);
+}
+
+test("gráfico estatístico e plano cartesiano materializam sob a CSP real e permanecem offline", async ({ context, page }) => {
+  const relevantErrors = [];
+  page.on("pageerror", (error) => {
+    if (/vega|unsafe-eval|content security policy/iu.test(error.message)) relevantErrors.push(error.message);
+  });
+  await page.goto("/");
+  const policy = await page.locator('meta[http-equiv="Content-Security-Policy"]').getAttribute("content");
+  expect(policy).toBeTruthy();
+  expect(policy).not.toMatch(/(?:^|\s)'unsafe-eval'(?:\s|$)/u);
+  await mountVegaInstances(page);
+  await page.evaluate(() => navigator.serviceWorker.ready);
+
+  await context.setOffline(true);
+  try {
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await mountVegaInstances(page);
+  } finally {
+    await context.setOffline(false);
+  }
+  expect(relevantErrors).toEqual([]);
+});
+
 function studyCardFor(instance) {
   return {
     id: `study-${instance.id}`,
@@ -221,6 +274,8 @@ for (const width of [360, 390, 412]) {
       await expect(page.locator(".package-relation-map-node")).toHaveCount(8);
       await expect(page.locator(".package-relation-map-edge")).toHaveCount(4);
       await expect(page.locator(".package-relation-map-edge text")).toHaveCount(0);
+      await expect(page.locator(".package-relation-map .package-system-diagram-canvas"))
+        .toHaveAttribute("data-graphviz-source", /rankdir="LR"/u);
       const relationNodes = await page.locator(".package-relation-map-node").evaluateAll((elements) => elements.map((element) => {
         const rect = element.getBoundingClientRect();
         return { left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom };
@@ -298,6 +353,70 @@ for (const width of [360, 390, 412]) {
       expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
     });
   }
+}
+
+for (const { width, mode } of [
+  { width: 360, mode: "dark" },
+  { width: 412, mode: "light" }
+]) {
+  test(`diagramas relacionais priorizam progressão vertical em ${width}px no modo ${mode}`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 1000 });
+    await page.goto("/");
+    const markup = mobileVerticalDiagramInstances.map(renderHydratableInstance).join("");
+    await page.setContent(documentForHtml(markup, mode));
+    await hydratePackages(page);
+
+    await expect(page.locator('[data-graphviz-status="ready"]')).toHaveCount(mobileVerticalDiagramInstances.length);
+    await expect(page.locator(".package-system-diagram-layout-error:visible")).toHaveCount(0);
+    await assertContained(page, ".package-system-diagram-canvas", width);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
+
+    for (const { packageId, maxNaturalWidth } of mobileVerticalDiagramExpectations) {
+      const root = page.locator(`[data-package="${packageId}"]`);
+      const canvas = root.locator(".package-system-diagram-canvas");
+      await expect(canvas).toHaveAttribute("data-graphviz-source", /rankdir="TB"/u);
+      const dimensions = await root.locator(".package-system-diagram-svg").evaluate((svg) => ({
+        width: svg.viewBox.baseVal.width,
+        height: svg.viewBox.baseVal.height
+      }));
+      expect(dimensions.width, packageId).toBeLessThanOrEqual(maxNaturalWidth);
+      expect(dimensions.height, packageId).toBeGreaterThan(0);
+
+      const navigation = await canvas.evaluate((element) => {
+        const maxX = Math.max(0, element.scrollWidth - element.clientWidth);
+        const maxY = Math.max(0, element.scrollHeight - element.clientHeight);
+        element.scrollLeft = maxX;
+        element.scrollTop = maxY;
+        return {
+          maxX,
+          maxY,
+          reachedX: Math.abs(element.scrollLeft - maxX) <= 1,
+          reachedY: Math.abs(element.scrollTop - maxY) <= 1,
+          touchAction: getComputedStyle(element).touchAction
+        };
+      });
+      expect(navigation.touchAction, packageId).toBe("pan-x pan-y");
+      expect(navigation.reachedX, packageId).toBe(true);
+      expect(navigation.reachedY, packageId).toBe(true);
+      expect(navigation.maxX + navigation.maxY, packageId).toBeGreaterThan(0);
+
+      const overlaps = await root.locator('[data-system-object-kind="node"]').evaluateAll((nodes) => {
+        const boxes = nodes.map((node) => node.getBoundingClientRect());
+        const collisions = [];
+        for (let leftIndex = 0; leftIndex < boxes.length; leftIndex += 1) {
+          for (let rightIndex = leftIndex + 1; rightIndex < boxes.length; rightIndex += 1) {
+            const left = boxes[leftIndex];
+            const right = boxes[rightIndex];
+            const overlapWidth = Math.max(0, Math.min(left.right, right.right) - Math.max(left.left, right.left));
+            const overlapHeight = Math.max(0, Math.min(left.bottom, right.bottom) - Math.max(left.top, right.top));
+            if (overlapWidth * overlapHeight > 0.5) collisions.push([leftIndex, rightIndex]);
+          }
+        }
+        return collisions;
+      });
+      expect(overlaps, packageId).toEqual([]);
+    }
+  });
 }
 
 for (const mode of ["light", "dark"]) {

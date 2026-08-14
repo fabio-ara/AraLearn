@@ -5,6 +5,45 @@ Esta matriz liga problemas educacionais, hipóteses, implementação e avaliaç�
 sustenta diretamente uma decisão do produto, a linha é marcada como hipótese a
 ser avaliada.
 
+## Como ler e manter a matriz
+
+Cada linha deve distinguir cinco objetos:
+
+1. **evidência externa**, produzida fora do AraLearn;
+2. **hipótese de design**, expressa como contexto–mecanismo–resultado;
+3. **decisão ou requisito**, que define o artefato vigente;
+4. **evidência técnica**, que demonstra implementação ou conformidade;
+5. **evidência empírica**, que poderá sustentar ou enfraquecer a hipótese.
+
+Teste unitário, jornada E2E, screenshot e schema pertencem ao quarto objeto.
+Eles não migram para o quinto sem participantes, tarefa, medida e análise
+compatíveis. A [Matriz de conformidade técnica](matriz-conformidade-tecnica.md)
+faz a auditoria código ↔ documentação; esta matriz preserva a ligação teoria ↔
+design ↔ avaliação.
+
+## Matriz do programa de pesquisa
+
+| ID | Contexto e problema | Base externa | Hipótese C–M–O | Decisão/requisito vigente | Evidência técnica | Episódio empírico necessário | Critério de revisão |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| P1 | estudo móvel interrompido e conexão variável | Monk et al. (2008); Foroughi et al. (2016); Ahmad Faudzi et al. (2023) | cursor e réplica local podem facilitar localização e continuação | estudo sincronizado disponível offline; estado corrente sem telemetria de atenção | `src/storage/progressStore.js`; `src/sync/RelationalSyncEngine.js`; `study-card-progression.spec.js`; `workspace-offline-authoring.spec.js` | tarefa interrompida com condições de rede e intervalos declarados; sucesso, erro, explicação e entrevista | alterar se o cursor não for compreendido, falhar entre dispositivos ou não superar alternativa |
+| P2 | novato recebe teoria condensada ou com premissas ocultas | Sweller et al. (1998); Rey et al. (2019); De Gagne et al. (2019) | progressão com pré-requisitos, exemplos e quantidade variável pode preservar profundidade e coerência | planejamento antecede número de cards; microssequência não tem duração fixa; teoria não é resumo | `src/authoring/pedagogicalBlueprint.js`; `authoring/core/quality.md`; `tests/kernel/pedagogical-authoring.test.js`; `academic-stress-courses.spec.js` | auditoria de especialistas e tarefas de explicação/aplicação com novatos | rejeitar sequência que introduz salto, redundância improdutiva ou perda de profundidade |
+| P3 | relação espacial, formal ou notacional se perde em prosa/package genérico | Ainsworth (2006); Mayer (2009); Ginns (2006) | resource canônico escolhido pela operação pode reduzir ambiguidade e tradução mental | package só se justifica por estrutura semântica própria; contrato recuperado depois da seleção | `src/resources/kernel/packageRegistry.js`; `src/resources/catalog/resourceCatalog.js`; `academic-resource-catalog.test.js`; `resource-test-matrix.spec.js` | comparar representação especializada, inadequada e texto para mesma tarefa; incluir caso complexo e especialista do domínio | remover ou fundir package sem ganho demonstrável; revisar catálogo quando seleção for imprevisível |
+| P4 | aquisição inicial exige apoio, mas prática precisa alcançar produção independente | Sweller & Cooper (1985); Renkl et al. (2004); Agarwal et al. (2021) | exemplo, fading e operações variadas podem apoiar compreensão, retenção e transferência | práticas escolhidas pelo gesto cognitivo; gaps internos e independentes; respostas não viram exposição | packages de resposta; `package-study-rendering-regressions.test.js`; `table-resource.spec.js` | tarefa imediata e adiada, com problema de transferência e controle do tempo total | revisar se apoio induzir passividade, lacunas forem artificiais ou desempenho não transferir |
+| P5 | feedback binário ou punitivo não oferece base para ação | Hattie & Timperley (2007); Carless & Boud (2018); Morris et al. (2021) | feedback específico, repetição e baixa consequência podem apoiar interpretação e ação | Play confirma e avança; resposta correta só é revelada por ação explícita; nenhuma nota/ranking | `src/ui/studyCardProgression.js`; `study-card-progression.test.js`; `study-card-progression.spec.js` | interpretar feedback, justificar revisão e resolver item novo; medida de ameaça/ansiedade somente com instrumento apropriado | alterar quando feedback não informar ação, revelar resposta cedo ou criar dependência |
+| P6 | edição/assistência fora do card pode ocultar alvo e misturar estrutura com texto | Carless & Boud (2018); Amershi et al. (2019) como fundamentos indiretos | seleção textual contextual, chat e reversibilidade podem reduzir erro de alvo e ampliar controle | somente rótulos/textos autorizados são editáveis; estrutura é contexto; iteração e versões locais | `src/assist/cardAssistanceScope.js`; `cardAssistanceLedger.js`; `card-assistance-semantics.test.js`; `card-assistance.spec.js` | tarefa de reparo, iteração, rejeição, desfazer/refazer e restauração; rubrica do resultado | bloquear entrega se estrutura surgir como texto, alvo extravasar ou pessoa não compreender reversão |
+| P7 | dúvida ou possível erro se perde quando separado do card | Nicol & Macfarlane-Dick (2006); Wood (2021); Nicol & Kushwah (2024) | observação situada e retorno no mesmo contexto podem apoiar diálogo e revisão | manifestação voluntária corrente; resposta e reparo confirmados permanecem distinguíveis | `contextual-observations-render.test.js`; `educational-workspace-comments-api.test.js`; schemas relacionais | registrar, reencontrar, compreender retorno e decidir ação; análise qualitativa de casos negativos | revisar se observação virar diagnóstico, não for reencontrável ou não houver responsabilidade pelo retorno |
+| P8 | colaboração exige contexto e permissão sem poder global | Wenger (1998); Bridwell-Mitchell (2016) | papéis locais e revogáveis podem tornar coordenação e responsabilidade compreensíveis | capacidades calculadas por workspace; proveniência; revogação | `educational-workspaces.test.js`; `workspace-postgres-concurrency.test.js`; `ui-course-permissions.test.js` | tarefas com estudante, autor e administrador; entrevista sobre papel, propriedade e consequência | alterar se participantes confundirem acesso, autoria, publicação ou responsabilidade |
+| P9 | LLM pode escolher resource inadequado, alterar escopo ou produzir conteúdo válido e ruim | Lewis et al. (2020); Amershi et al. (2019); Buçinca et al. (2021); UNESCO (2023) | catálogo progressivo, contrato especializado, validação e auditoria podem reduzir deriva e retrabalho | lista por intenção/faceta antes do schema; alvo gravável separado do contexto; revisão humana | `authoring/knowledge/packages.md`; `authoring/core/quality.md`; `authoring-mcp.test.js`; `authoring-catalog-search-v5.test.js`; `authoring-instruction-profile.test.js` | tarefas autorais com modelos/tamanhos variados; erros factuais, seleção, retrabalho, confiança e casos de cobertura ausente | revisar prompt, conhecimento, catálogo ou package conforme a causa; nunca promover validação estrutural a qualidade |
+| P10 | disponibilidade de logs incentiva proxies de atenção, domínio ou qualidade | Pardo & Siemens (2014); Prinsloo & Slade (2017); Tsai & Martinez-Maldonado (2022) | pergunta e intervenção anteriores à coleta podem tornar analytics mais legítimo e compreensível | não coletar tentativas, tempo e cliques por conveniência; observações explícitas não são diagnóstico | orçamento de Storage; schemas de estado corrente; testes de ausência de telemetria; documentação de privacidade | co-design de pergunta/indicador/intervenção e teste de interpretação com participantes | não implementar indicador sem validade, finalidade, retenção, acesso, custo e ação definidos |
+
+## Cobertura da matriz
+
+As linhas P1–P10 são o nível de programa. As entradas UX, colaboração e estado
+de estudo abaixo refinam mecanismos já implementados. Novas linhas devem
+referenciar uma proposição do [Quadro teórico](quadro-teorico.md) ou justificar
+por que uma nova proposição é necessária. Duplicar uma funcionalidade com novo
+nome não amplia evidência.
+
 ## Entradas iniciais da renovação do front-end
 
 | ID | Problema e contexto | Evidência ou construto | Hipótese de design | Mecanismo | Interpretação permitida | Interpretação proibida | Avaliação e custo | Rastreabilidade |

@@ -12,7 +12,7 @@ O usuário pode retirar cursos, apagar os dados deste dispositivo, encerrar a se
 
 O gateway MCP recebe comandos sobre entidades de `aralearn.library.v1` e conserva
 as partes atuais do workspace da própria conta. Cada mutação usa uma revisão
-esperada e um identificador idempotente. A submissão editorial expõe somente a
+esperada e uma chave de tentativa usada para deduplicação. A submissão editorial expõe somente a
 revisão privada escolhida, nunca os demais cursos da biblioteca.
 
 Para permitir retomada em outra conversa, o workspace conserva um estado
@@ -56,7 +56,8 @@ o contexto deve permanecer limitado ao necessário para a operação.
 
 ## Registros técnicos
 
-O servidor conserva registros de autenticação, recibos idempotentes, limites
+O servidor conserva registros de autenticação, recibos temporários de
+deduplicação, limites
 de requisição e resumos recentes de alterações suficientes para detectar
 falhas, impedir repetição indevida e investigar uma autoria. Esses resumos não
 contêm cópias antigas do workspace nem permitem restaurá-las.

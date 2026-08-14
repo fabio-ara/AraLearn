@@ -121,7 +121,10 @@ desejada, não se a sequência apresenta variedade visual.
 contrato declara tipo, domínio, escala e unidade de cada eixo; séries contêm
 pontos nomeados e podem incluir limites inferior e superior já calculados. A
 autoria também nomeia a medida de incerteza e a nota metodológica. O package
-compila essa semântica em Vega-Lite e Vega no próprio navegador. Vega-Lite
+compila essa semântica em Vega-Lite e Vega no próprio navegador. A árvore de
+expressões é executada pelo interpretador do Vega, sem geração dinâmica de
+código e sem relaxar a política de segurança do aplicativo. Os runtimes ficam
+locais e continuam disponíveis offline. Vega-Lite
 deriva eixos, escalas e marcas a partir dos campos e admite escalas contínuas,
 temporais e discretas, domínios explícitos, camadas, regras de referência e
 barras de erro com limites preagregados
@@ -211,6 +214,25 @@ diferentes. Lacunas e digitação substituem somente rótulos
 declarados pelo package; edição manual e assistência por API recebem as mesmas
 folhas textuais, enquanto ids, referências, tipos, direções e topologia ficam
 protegidos como contexto estrutural.
+
+A orientação também deriva da semântica, não de coordenadas autorais. Uma
+política compartilhada traduz progressão em bloco de cima para baixo,
+progressão em linha da esquerda para a direita e estruturas livres para o
+motor apropriado.
+No leitor móvel, esquemas relacionais de banco de dados, modelos
+entidade–relacionamento, topologias de rede e máquinas de estados priorizam a
+progressão vertical. A relação entre domínio e contradomínio e o diagrama
+interno de bloco SysML conservam a leitura lateral, pois lados, portas e
+incidência fazem parte da notação. Grafos não hierárquicos continuam livres.
+Essa política é interna ao package e não acrescenta orientação, largura ou
+posição ao contrato preenchido pelo GPT.
+
+Verticalizar o fluxo principal não significa transpor o objeto acadêmico.
+Tabelas, matrizes, equações, reações, layouts de pacote e eixos cartesianos
+preservam linhas, colunas, sintaxe e eixos convencionais; quando excedem a
+largura, a rolagem local é informação espacial legítima. Diagramas densos são
+recortados pedagogicamente ou divididos entre cards, nunca comprimidos até
+prejudicar a leitura.
 
 Esses packages não são intercambiáveis. Um processo com condição permanece
 `flow` quando o objeto é um algoritmo; um processo de negócio entre
@@ -414,8 +436,10 @@ Nenhum renderer depende de CDN ou cálculo remoto.
 
 ## Determinismo e autoridade da LLM
 
-JSON Schema 2020-12 define a forma declarativa. Structured Outputs, quando
-oferecido pelo provider, restringe a saída à forma do schema; JSON mode apenas
+Os schemas distribuídos declaram o dialeto JSON Schema 2020-12, enquanto o
+validador do kernel implementa somente o subconjunto de palavras-chave usado
+pelos packages. Structured Outputs, quando oferecido pelo provider, restringe
+a saída à forma do schema; JSON mode apenas
 garante JSON válido e é anunciado separadamente. A própria documentação do
 DeepSeek alerta que JSON Output pode ocasionalmente devolver conteúdo vazio.
 Por isso, o provider nunca é tratado como autoridade do contrato: resposta

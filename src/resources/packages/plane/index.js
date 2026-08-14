@@ -235,6 +235,8 @@ function applyVectorArrowMarkers(canvas, expectedCount) {
 async function hydratePlane(figure) {
   const canvas = figure.querySelector(".package-plane-canvas");
   if (!canvas || canvas.dataset.vegaStatus === "ready") return;
+  const message = figure.querySelector(".package-plane-layout-error");
+  if (message) message.hidden = true;
   try {
     const data = JSON.parse(decodeURIComponent(canvas.dataset.planeData || ""));
     const selectors = planeGroups(data).map((_, index) => `.package-plane-swatch.tone-${index % 6}`);
@@ -244,7 +246,6 @@ async function hydratePlane(figure) {
   } catch (error) {
     canvas.dataset.vegaStatus = "error";
     canvas.setAttribute("aria-busy", "false");
-    const message = figure.querySelector(".package-plane-layout-error");
     if (message) message.hidden = false;
     throw error;
   }

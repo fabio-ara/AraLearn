@@ -127,7 +127,7 @@ test("compilador Graphviz deriva a notação visual sem receber geometria autora
   });
 
   assert.match(source, /^digraph AraLearnFlow/u);
-  assert.match(source, /rankdir=TB/u);
+  assert.match(source, /rankdir="TB"/u);
   assert.match(source, /shape="oval"/u);
   assert.match(source, /shape="parallelogram"/u);
   assert.match(source, /shape="diamond"/u);

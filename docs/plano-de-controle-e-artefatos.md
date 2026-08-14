@@ -70,10 +70,13 @@ Se a resposta se perder, repetir o mesmo `requestId` e o mesmo conteúdo devolve
 o resultado anterior. Reutilizar o identificador com outro pedido é conflito.
 Uma base desatualizada é recusada, sem combinação silenciosa.
 
-Os recibos idempotentes duram 14 dias. Cada workspace conserva no máximo 200
-eventos recentes, com operação e resumo. Eventos servem para orientação e
-auditoria operacional; não guardam a árvore antiga e não oferecem restauração
-de uma revisão.
+Cada mutação associa a chave de idempotência (`requestId`) ao hash do payload e
+ao recibo usado na repetição segura. A tabela geral de pedidos autorais não
+declara uma expiração universal. Recibos de observações do workspace expiram
+em quatorze dias; governança educacional e estado pessoal usam sete dias. Cada
+workspace conserva no máximo 200 eventos recentes, com operação e resumo.
+Eventos servem para orientação e auditoria operacional; não guardam a árvore
+antiga e não oferecem restauração de uma revisão.
 
 Referências: [PostgreSQL `SELECT`](https://www.postgresql.org/docs/current/sql-select.html)
 e [transaction isolation](https://www.postgresql.org/docs/17/transaction-iso.html).

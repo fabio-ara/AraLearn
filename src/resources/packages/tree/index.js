@@ -1,5 +1,5 @@
 import { academicProfile } from "../../sdk/academic.js";
-import { dotAttributes, dotAttributesWithHtmlLabel, dotQuote, graphvizHtmlLines, wrapGraphvizLabel } from "../../sdk/graphviz.js";
+import { dotAttributes, dotAttributesWithHtmlLabel, dotQuote, graphvizHtmlLines, graphvizLayoutAttributes, wrapGraphvizLabel } from "../../sdk/graphviz.js";
 import { renderPackageInline, renderPackageProse } from "../../sdk/html.js";
 import {
   hydrateSystemDiagrams,
@@ -52,7 +52,7 @@ function graphvizSource(data) {
   const shape = data.variant === "filesystem" ? "folder" : data.variant === "syntax" ? "plaintext" : data.variant === "phylogeny" ? "point" : "ellipse";
   return [
     "digraph RootedTree {",
-    `  graph ${dotAttributes({ bgcolor: "transparent", pad: "0.2", margin: "0", overlap: "false", splines: data.variant === "phylogeny" ? "ortho" : "polyline", outputorder: "edgesfirst", rankdir: "TB", nodesep: "0.38", ranksep: "0.62", ordering: "out" })};`,
+    `  graph ${dotAttributes(graphvizLayoutAttributes("block", { bgcolor: "transparent", pad: "0.2", margin: "0", overlap: "false", splines: data.variant === "phylogeny" ? "ortho" : "polyline", outputorder: "edgesfirst", nodesep: "0.38", ranksep: "0.62", ordering: "out" }))};`,
     "  node [fontname=\"Arial\", fontsize=\"15\", penwidth=\"1.15\", color=\"#64748b\", fontcolor=\"#111827\", margin=\"0.13,0.08\"];",
     "  edge [penwidth=\"1.15\", color=\"#64748b\", arrowsize=\"0.68\"];",
     ...data.nodes.map((node) => nodeStatement(node, data.variant, shape)),

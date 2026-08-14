@@ -1,9 +1,11 @@
 const RUNTIME_ASSETS = Object.freeze([
-  Object.freeze({ globalName: "vega", fileName: "vega.min.js" }),
-  Object.freeze({ globalName: "vegaLite", fileName: "vega-lite.min.js" })
+  Object.freeze({ globalPath: "vega", fileName: "vega.min.js" }),
+  Object.freeze({ globalPath: "vega.expressionInterpreter", fileName: "vega-interpreter.js" }),
+  Object.freeze({ globalPath: "vegaLite", fileName: "vega-lite.min.js" })
 ]);
 
 let runtimePromise = null;
+const renderingByContainer = new WeakMap();
 
 function assetUrl(fileName) {
   const stylesheet = [...document.querySelectorAll('link[rel="stylesheet"]')]
@@ -14,26 +16,43 @@ function assetUrl(fileName) {
     : new URL(`public/vendor/${fileName}`, document.baseURI).href;
 }
 
-function loadScript({ globalName, fileName }) {
-  if (globalThis[globalName]) return Promise.resolve(globalThis[globalName]);
+function readGlobal(path) {
+  return path.split(".").reduce((value, segment) => value?.[segment], globalThis);
+}
+
+function loadScript({ globalPath, fileName }) {
+  const loaded = readGlobal(globalPath);
+  if (loaded) return Promise.resolve(loaded);
   return new Promise((resolve, reject) => {
     const script = document.createElement("script");
     script.src = assetUrl(fileName);
     script.async = false;
-    script.addEventListener("load", () => globalThis[globalName]
-      ? resolve(globalThis[globalName])
-      : reject(new Error(`${fileName} não inicializou.`)));
-    script.addEventListener("error", () => reject(new Error(`${fileName} não pôde ser carregado.`)));
+    script.addEventListener("load", () => {
+      const value = readGlobal(globalPath);
+      if (value) resolve(value);
+      else {
+        script.remove();
+        reject(new Error(`${fileName} não inicializou.`));
+      }
+    });
+    script.addEventListener("error", () => {
+      script.remove();
+      reject(new Error(`${fileName} não pôde ser carregado.`));
+    });
     document.head.append(script);
   });
 }
 
 export function loadVegaRuntime() {
   if (!runtimePromise) {
-    runtimePromise = RUNTIME_ASSETS.reduce(
+    const loading = RUNTIME_ASSETS.reduce(
       (promise, asset) => promise.then(() => loadScript(asset)),
       Promise.resolve()
     ).then(() => Object.freeze({ vega: globalThis.vega, vegaLite: globalThis.vegaLite }));
+    runtimePromise = loading.catch((error) => {
+      runtimePromise = null;
+      throw error;
+    });
   }
   return runtimePromise;
 }
@@ -80,19 +99,27 @@ export function readVegaTheme(container, colorSelectors = []) {
   });
 }
 
-export async function renderVegaLite(container, specification) {
+async function renderVegaLiteOnce(container, specification) {
   const { vega, vegaLite } = await loadVegaRuntime();
   const compiled = vegaLite.compile(specification).spec;
   const previous = container.__aralearnVegaView;
   if (previous) previous.finalize();
   container.replaceChildren();
-  const view = new vega.View(vega.parse(compiled), {
+  const runtime = vega.parse(compiled, null, { ast: true });
+  const view = new vega.View(runtime, {
+    expr: vega.expressionInterpreter,
     renderer: "svg",
     hover: false,
     logLevel: vega.Warn
   }).initialize(container);
   container.__aralearnVegaView = view;
-  await view.runAsync();
+  try {
+    await view.runAsync();
+  } catch (error) {
+    view.finalize();
+    if (container.__aralearnVegaView === view) delete container.__aralearnVegaView;
+    throw error;
+  }
   const svg = container.querySelector("svg");
   if (svg) {
     svg.setAttribute("aria-hidden", "true");
@@ -101,4 +128,16 @@ export async function renderVegaLite(container, specification) {
   container.dataset.vegaStatus = "ready";
   container.setAttribute("aria-busy", "false");
   return view;
+}
+
+export async function renderVegaLite(container, specification) {
+  const pending = renderingByContainer.get(container);
+  if (pending) return pending;
+  const rendering = renderVegaLiteOnce(container, specification);
+  renderingByContainer.set(container, rendering);
+  try {
+    return await rendering;
+  } finally {
+    if (renderingByContainer.get(container) === rendering) renderingByContainer.delete(container);
+  }
 }

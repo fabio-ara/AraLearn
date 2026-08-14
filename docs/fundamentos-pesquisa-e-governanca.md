@@ -1,154 +1,247 @@
 # Fundamentos, pesquisa e governança
 
-O AraLearn é um produto educacional, um artefato técnico e uma hipótese de pesquisa. Ele reúne catálogo remoto, estudo sem conexão e autoria pessoal manual ou assistida. A investigação envolve aprendizagem autodidata, estudo móvel, dependência de IA, privacidade, autoria e avaliação.
+## Função deste documento
 
-Este documento preserva a exposição histórica e conceitual ampla. A síntese
-governada pela issue #64 está organizada em [Revisão de
-literatura](revisao-de-literatura.md), [Quadro teórico](quadro-teorico.md),
-[Glossário de construtos](glossario-construtos.md), [Protocolo de avaliação do
-artefato](protocolo-avaliacao-artefato.md) e [Contribuição e
-originalidade](contribuicao-originalidade.md).
+Este é o ponto de entrada do corpus acadêmico-pedagógico do AraLearn. O
+produto é simultaneamente um artefato técnico, uma intervenção educacional em
+desenvolvimento e um possível objeto de investigação. Essas três condições não
+se confundem: uma propriedade implementada não constitui, por si só, evidência
+de aprendizagem; uma decisão de design não se torna teoria; e uma hipótese
+plausível não se torna resultado antes de avaliação.
 
-O ponto de partida é social: muitos estudantes trabalham, estudam à noite, usam
-o celular como principal dispositivo, dependem de intervalos fragmentados e nem
-sempre têm conexão estável. O projeto responde a essas condições com uma trilha
-que pode ser organizada e retomada. Durante a autoria, cada parte do curso tem
-um único estado corrente; ao publicar, o AraLearn compacta a composição
-validada em um documento oficial corrente, pronto para distribuição e estudo.
+A documentação foi organizada para poder sustentar um projeto de dissertação
+ou tese sem transformar memória de produto em conclusão científica. A
+bibliografia canônica está em [referencias.bib](referencias.bib), e toda
+afirmação de eficácia permanece condicionada ao [protocolo de avaliação do
+artefato](protocolo-avaliacao-artefato.md).
 
-## Informação, atenção e plataformas
+## Mapa do corpus para uma dissertação ou tese
 
-Simon (1971) mostrou que abundância de informação cria escassez de atenção. Castells (1996) descreveu a sociedade em rede como um ambiente em que fluxos informacionais passam a organizar relações sociais, econômicas e culturais. Covington, Adams e Sargin (2016) exemplificam, no caso do YouTube, como recomendações podem organizar o acesso a conteúdo por geração de candidatos e ranqueamento.
+| Função no trabalho acadêmico | Documento principal | Evidência que deve acompanhar | Limite de uso |
+| --- | --- | --- | --- |
+| problema, contexto e delimitação | este documento | caracterização do público e do contexto de estudo | não generalizar a qualquer estudante ou instituição |
+| revisão do conhecimento disponível | [Revisão de literatura](revisao-de-literatura.md) | estratégia de busca e tabela de fontes da investigação | a revisão atual é narrativa e orientada ao design |
+| modelo conceitual e proposições | [Quadro teórico](quadro-teorico.md) | definição de construtos e relações testáveis | proposições são hipóteses, não fatos |
+| definições operacionais | [Glossário de construtos](glossario-construtos.md) | fonte, manifestação e interpretação proibida | nomes da interface não são construtos científicos |
+| teoria → design → observação | [Matriz de rastreabilidade pedagógica](matriz-rastreabilidade-pedagogica.md) | requisito, mecanismo, código, teste e instrumento | teste de software não demonstra efeito pedagógico |
+| método de construção e avaliação | [Protocolo de avaliação](protocolo-avaliacao-artefato.md) | episódios DBR e DSR versionados | DBR e DSR são complementares, não sinônimos |
+| contribuição e novidade | [Contribuição e originalidade](contribuicao-originalidade.md) | comparação, avaliação e casos negativos | não alegar primazia sem busca comparativa |
+| conformidade técnica | [Matriz de conformidade técnica](matriz-conformidade-tecnica.md) | código, schemas, testes e artefatos de implantação | conformidade técnica não equivale a validade pedagógica |
+| memória operacional | manual privado versionado | decisões, incidentes e mudanças de versão | não citar como literatura científica |
 
-O problema educacional não é apenas encontrar material. É transformar material em percurso, prática e retomada. O AraLearn assume que o estudante precisa de uma estrutura que interrompa a dispersão sem tirar sua autoria.
+Uma estrutura possível de capítulos é: (1) problema e contexto; (2) revisão de
+literatura; (3) quadro teórico e proposições; (4) método DBR/DSR; (5) desenho e
+implementação do artefato; (6) episódios de avaliação; (7) discussão e limites;
+(8) contribuição e agenda futura. O código e os testes entram como evidência da
+construção e da conformidade do artefato; dados de participantes entram somente
+nos capítulos de avaliação, sob protocolo ético aprovado.
 
-## Carga cognitiva, prática e representação
+## Estados epistêmicos obrigatórios
 
-Sweller (1988) e Sweller, Van Merriënboer e Paas (1998) mostram que o desenho da informação afeta a carga cognitiva. O AraLearn tenta reduzir carga desnecessária ao explicitar sequência, dependências e recursos adequados ao conteúdo.
+O corpus usa seis rótulos. Eles devem aparecer em notas de pesquisa, matrizes e
+relatos de ciclo sempre que houver risco de ambiguidade.
 
-Karpicke e Roediger (2008) demonstram a importância da recuperação ativa. Por isso, o projeto não se limita à apresentação de explicações; ele inclui prática, feedback e revisão. Bjork e Bjork (2011) ajudam a formular o valor de dificuldades desejáveis: perguntas que exigem decisão real, sem criar obstáculos vazios.
+| Rótulo | Significado | Exemplo permitido |
+| --- | --- | --- |
+| **Evidência externa** | resultado publicado ou síntese de literatura, com população, tarefa e limites próprios | prática de recuperação costuma beneficiar retenção em condições estudadas |
+| **Inferência teórica** | relação argumentada entre evidências e o contexto do AraLearn | retomada visível pode reduzir custo operacional após interrupção |
+| **Hipótese de design** | proposição falseável sobre contexto, mecanismo e resultado | um cursor local pode facilitar a retomada de uma sessão móvel |
+| **Decisão de produto** | escolha normativa ou arquitetural vigente | não usar tempo em tela como proxy de atenção |
+| **Propriedade implementada** | comportamento demonstrável por código, inspeção ou teste | o estudo sincronizado permanece disponível offline |
+| **Resultado empírico** | achado produzido por episódio de avaliação descrito | participantes de uma amostra concluíram determinada tarefa sob certas condições |
 
-Cepeda et al. (2008) mostram que o efeito do espaçamento depende do intervalo até a recuperação futura. Taylor e Rohrer (2010) encontraram benefício da alternância entre tipos de problema mesmo com o espaçamento controlado. Essas evidências sustentam retomadas distribuídas e a alternância entre operações relacionadas, sem impor uma frequência universal nem misturar conteúdos antes de sua base.
+Ausência de rótulo não autoriza promoção automática. Em particular,
+“funciona”, “melhora”, “reduz” e “favorece” exigem sujeito, comparação, medida,
+contexto e fonte. Quando a relação ainda não foi avaliada, deve-se escrever
+“pretende”, “pode” ou “hipótese a testar”.
 
-Mayer (2009) contribui para a decisão de usar recursos como matriz, grafo, plano, tabela e fluxo. A representação visual entra quando preserva relações que o texto linear pode obscurecer.
+## Objeto, contexto e delimitação
 
-A matriz detalhada entre evidências, decisões dos packages e limites de
-inferência está em
-[Fundamentação pedagógica dos resources](fundamentacao-pedagogica-dos-resources.md).
-Ela inclui atenção dividida e contiguidade, DeFT, exemplos resolvidos e fading,
-prática de recuperação, feedback corretivo em múltipla escolha, quantidade de
-distratores, respostas múltiplas e acessibilidade móvel.
+O AraLearn investiga uma plataforma móvel e local-first para estudo e autoria
+de cursos estruturados em percursos, microssequências, cards e representações
+especializadas. O caso prioritário é o estudante adulto que concilia trabalho
+e estudo, usa celular, enfrenta interrupções e pode perder conectividade. Essa
+caracterização é uma delimitação de design; deve ser confirmada empiricamente
+na população de cada estudo.
 
-## Autonomia e mediação
+O problema não é somente disponibilizar informação. É tornar explícitos o
+percurso, os pré-requisitos, a prática e a possibilidade de retomada sem
+condensar teoria a ponto de ocultar fundamentos. No AraLearn,
+**microssequência** e **microteoria** são termos operacionais: não designam uma
+dose universal nem autorizam a fragmentação de conceitos. A literatura de
+segmentação mostra efeitos moderados por tarefa e desenho (Rey et al., 2019), e
+a literatura de microlearning permanece heterogênea (De Gagne et al., 2019).
 
-Zimmerman (2002) descreve aprendizagem autorregulada como processo de planejamento, monitoramento e ajuste. O AraLearn apoia esse processo ao mostrar trilha, etapa, progresso, erro e continuidade.
+## Questão central e subquestões
 
-Vygotsky (1978) ajuda a compreender aprendizagem como processo mediado por instrumentos e signos. Wood, Bruner e Ross (1976) contribuem com a ideia de apoio ajustado à dificuldade que a pessoa ainda não consegue superar sozinha. Freire (1996) reforça que autonomia não é abandono, mas participação crítica do estudante no próprio processo. O AraLearn, nesse sentido, tenta oferecer estrutura sem retirar autoria.
+A formulação de trabalho, ainda revisável antes de registro do estudo, é:
 
-## IA generativa e limites
+> Como uma plataforma móvel, local-first e orientada por representações pode
+> ser projetada e avaliada para apoiar estudo e autoria em contextos de tempo
+> fragmentado e conectividade variável, preservando coerência pedagógica,
+> agência humana e responsabilidade sobre IA?
 
-A arquitetura Transformer de Vaswani et al. (2017) tornou-se base relevante para modelos contemporâneos de linguagem. Brown et al. (2020) mostraram que modelos de grande escala podem realizar tarefas diversas a partir de instruções e poucos exemplos. Essa capacidade torna as LLMs úteis tanto para organizar trilhas por uma integração externa quanto para reparar e redigir cards por uma assistência local delimitada, mas também exige governança.
+Subquestões possíveis, todas abertas:
 
-Na autoria pessoal, o AraLearn não trata a IA como fonte final de verdade. O GPT
-externo com MCP pode propor e transformar estruturas em um workspace; a
-assistência por API dentro do aplicativo atua somente nas instâncias, cards ou
-microssequências expressamente autorizados pela seleção. Servidor e aplicativo
-validam suas fronteiras, a pessoa escolhe o escopo e, no card, pode desfazer,
-refazer ou restaurar versões da conversa curta. A publicação continua sendo
-uma decisão separada. A intenção é reduzir o esforço de autoria sem apagar
-responsabilidade editorial.
+1. **RQ1 — desenho pedagógico:** como tamanho, progressão e combinação de
+   explicação, exemplo, prática e feedback afetam compreensão, retenção e
+   transferência, considerados separadamente?
+2. **RQ2 — representação:** em que condições um resource especializado reduz
+   traduções desnecessárias sem criar carga extrínseca ou exigir gramática
+   visual não ensinada?
+3. **RQ3 — continuidade:** como offline, retomada e orientação mobile afetam a
+   capacidade de continuar uma atividade após interrupção?
+4. **RQ4 — autoria e IA:** como escopo explícito, contratos e reversibilidade
+   afetam controle percebido, qualidade autoral e retrabalho?
+5. **RQ5 — governança:** quais dados, papéis e intervenções são úteis sem
+   converter rastros ambíguos em vigilância ou diagnóstico indevido?
 
-Lewis et al. (2020) são relevantes para pensar RAG como geração apoiada por
-recuperação de informação. Na autoria extensa, o AraLearn usa uma forma leve:
-uma busca lexical determinística seleciona até oito unidades versionadas de
-fluxo, pedagogia, resources e segurança. Em paralelo, a biblioteca de packages
-é consultada progressivamente por intenção e facetas; somente os contratos das
-versões escolhidas entram no contexto. Não há embedding remoto, banco vetorial
-nem armazenamento da conversa nesse mecanismo.
+Essas perguntas não precisam compor um único estudo. Uma dissertação pode
+delimitar uma ou duas; uma tese pode articulá-las em programa de episódios.
 
-Fontes externas e outros RAGs ainda podem apoiar a pesquisa para um curso, mas
-não entram como verdade automática. A assistência bottom-up do aplicativo não
-faz recuperação interna: usa somente o contexto hierárquico delimitado e o
-serviço explicitamente configurado pela pessoa.
+## Duas tradições metodológicas complementares
 
-A UNESCO (2023) recomenda cautela no uso de IA generativa em educação e pesquisa, com atenção a qualidade, equidade, privacidade e responsabilidade humana. Esses critérios se aplicam diretamente ao AraLearn.
+### Design-Based Research — DBR
 
-## Pergunta de pesquisa
+DBR é usada para investigar uma intervenção educacional em contexto autêntico,
+por ciclos de análise, desenho, implementação e revisão com participantes e
+atores da prática. O produto esperado não é apenas uma interface corrigida,
+mas explicações situadas sobre **como**, **para quem**, **quando** e **por que**
+um mecanismo contribuiu ou falhou. Design-Based Research Collective (2003) e
+Wang e Hannafin (2005) fundamentam essa trilha.
 
-Uma formulação possível é:
+No AraLearn, DBR é a trilha adequada para microssequências, compreensão de
+representações, retomada no cotidiano, feedback, agência e práticas de autoria.
+Ela requer contexto real, participação, dados qualitativos e quantitativos
+coerentes com a pergunta e registro das mudanças entre ciclos.
 
-> De que modo uma plataforma móvel, orientada por microssequências e capaz de funcionar sem conexão, com catálogo compartilhado, cards visuais e autoria pessoal assistida, pode apoiar o estudo autodidata de conteúdos técnicos em contextos de excesso informacional, pouco tempo, atenção fragmentada e conectividade instável?
+### Design Science Research — DSR
 
-Essa pergunta não pretende provar eficácia geral do projeto em larga escala. Ela delimita uma investigação de desenvolvimento sobre desenho, uso, limites e percepção do estudante.
+DSR é usada para construir e avaliar o artefato e o conhecimento de design que
+ele incorpora. Hevner et al. (2004), Peffers et al. (2007), Gregor e Hevner
+(2013) e Venable et al. (2016) ajudam a distinguir problema, objetivos,
+artefato, demonstração, avaliação e contribuição.
 
-## Hipóteses de design
+No AraLearn, DSR é a trilha adequada para kernel e packages, contrato de curso,
+catálogo progressivo de resources, persistência local-first, escopo de autoria,
+validação e frugalidade. Testes automatizados sustentam correção e
+conformidade; utilidade educacional e uso real exigem episódios adicionais.
 
-As hipóteses de design são:
+### Como as trilhas se encontram
 
-1. A microssequência reduz a distância entre explicação isolada e lição extensa.
-2. Uma linguagem JSON formal e compilada de modo determinístico pode tornar a autoria assistida mais auditável sem converter prosa em marcação.
-3. Tópicos, cobertura, evidências e dependências explícitos em `aralearn.library.v1`
-   podem preservar continuidade quando microssequências são criadas ou
-   reorganizadas separadamente.
-4. Escopo determinístico, saída estruturada, validação interna e gravação
-   direta reversível podem reduzir ambiguidade e custo de geração.
-5. Recursos escolhidos pela operação, com lacunas incorporadas à própria representação, podem apoiar conteúdos estruturais.
-6. Progresso e comentários granulares apoiam retomada e revisão do estudo.
-7. Uma réplica local relacionada ao catálogo compartilhado favorece estudantes com conexão instável.
-8. Em qualquer autoria, a LLM deve atuar como assistência, não como autoridade final.
+```text
+DBR: problema educacional situado → intervenção → uso autêntico → explicação
+                                      ↕
+DSR: problema do artefato → construção → demonstração → avaliação → contribuição
+```
 
-A metodologia adequada se aproxima da pesquisa baseada em design, conforme o Design-Based Research Collective (2003): o artefato é concebido, testado, analisado e ajustado em ciclos.
+Uma mudança pode pertencer às duas trilhas, mas os produtos de evidência não
+são intercambiáveis. Um teste visual pode demonstrar ausência de sobreposição;
+somente uma tarefa com participantes pode informar se a representação foi
+compreendida; e somente uma medida posterior pode informar retenção.
 
-## Governança e risco
+## Fundamentos que orientam, sem determinar, o design
 
-O mesmo sistema que apoia autonomia pode, em contexto institucional, ser usado para vigilância ou normalização. Foucault (1975) ajuda a pensar a relação entre exame, disciplina e controle. Lyotard (1979) alerta para a redução do saber a desempenho mensurável em sociedades orientadas por performatividade.
+### Carga, segmentação e representações
 
-Por isso, métricas de uso, desempenho e progresso precisam ser tratadas com cuidado. Indicadores podem apoiar revisão e orientação; também podem virar mecanismo de punição ou classificação indevida. A governança do AraLearn deve separar apoio pedagógico de controle disciplinar.
+A teoria da carga cognitiva distingue demandas inerentes à tarefa das demandas
+criadas pelo desenho (Sweller, 1988; Sweller et al., 1998). DeFT trata múltiplas
+representações por suas funções, restrições e tarefas (Ainsworth, 2006).
+Contiguidade e segmentação podem apoiar integração, mas não tornam qualquer
+imagem ou card curto pedagogicamente bom (Ginns, 2006; Rey et al., 2019).
 
-Selwyn (2017) lembra que tecnologia educacional não é neutra: ela incorpora interesses, práticas e formas de poder. No AraLearn, isso exige transparência sobre o que é salvo pelo aplicativo e sobre o que é enviado a serviços externos, gerado por IA e submetido à revisão humana.
+**Decisão de produto:** um resource só se justifica quando sua estrutura
+preserva uma operação acadêmica que texto linear ou package mais geral não
+representaria com a mesma precisão. **Hipótese:** a seleção por intenção e a
+renderização canônica podem reduzir tradução mental; isso ainda requer
+comparação por tarefa e domínio.
 
-## Referências citadas
+### Aprendizagem inicial, recuperação e distribuição
 
-Bjork, E. L., & Bjork, R. A. (2011). Making things hard on yourself, but in a good way: Creating desirable difficulties to enhance learning. In M. A. Gernsbacher, R. W. Pew, L. M. Hough, & J. R. Pomerantz (Eds.), *Psychology and the real world: Essays illustrating fundamental contributions to society* (pp. 56-64). Worth Publishers.
+Exemplos resolvidos e retirada gradual de apoio podem beneficiar aprendizes
+novatos em tarefas complexas (Sweller & Cooper, 1985; Renkl et al., 2004).
+Prática de recuperação e distribuição possuem respaldo amplo, mas efeitos
+dependem do conteúdo, formato, conhecimento prévio, intervalo e feedback
+(Cepeda et al., 2006; Agarwal et al., 2021; Carpenter et al., 2022).
+Intercalação não é sinônimo de espaçamento e apresenta moderadores próprios
+(Brunmair & Richter, 2019).
 
-Brown, T. B., Mann, B., Ryder, N., Subbiah, M., Kaplan, J., Dhariwal, P., et al. (2020). Language models are few-shot learners. *Advances in Neural Information Processing Systems*, 33, 1877-1901. <https://arxiv.org/abs/2005.14165>
+**Decisão de produto:** planejamento pedagógico antecede quantidade de cards e
+resources. Teoria não é resumida para caber num número fixo; práticas variam
+conforme os gestos cognitivos necessários. **Hipótese:** uma microssequência
+coerente pode articular explicação progressiva, apoio, recuperação e feedback.
 
-Castells, M. (1996). *The rise of the network society*. Blackwell.
+### Agência, mediação e feedback
 
-Cepeda, N. J., Vul, E., Rohrer, D., Wixted, J. T., & Pashler, H. (2008). Spacing effects in learning: A temporal ridgeline of optimal retention. *Psychological Science*, 19(11), 1095-1102. <https://doi.org/10.1111/j.1467-9280.2008.02209.x>
+Autorregulação envolve planejamento, desempenho e reflexão, não apenas
+liberdade de navegação (Zimmerman, 2002; Panadero, 2017). Controle do aprendiz
+tem resultados heterogêneos (Karich et al., 2014). Feedback depende da
+informação, da interpretação e da possibilidade de ação (Hattie & Timperley,
+2007; Carless & Boud, 2018; Morris et al., 2021).
 
-Covington, P., Adams, J., & Sargin, E. (2016). Deep neural networks for YouTube recommendations. *Proceedings of the 10th ACM Conference on Recommender Systems*, 191-198. <https://doi.org/10.1145/2959100.2959190>
+**Decisão de produto:** o estado de estudo é não punitivo; tentativas, tempo e
+respostas reveladas não se transformam em nota ou diagnóstico. Essa é uma
+política normativa. Não deve ser apresentada como evidência de que ansiedade
+foi reduzida.
 
-Design-Based Research Collective. (2003). Design-based research: An emerging paradigm for educational inquiry. *Educational Researcher*, 32(1), 5-8. <https://doi.org/10.3102/0013189X032001005>
+### IA, analytics e governança
 
-Foucault, M. (1975). *Surveiller et punir: naissance de la prison*. Gallimard.
+Geração apoiada por recuperação pode restringir contexto, mas não garante
+verdade (Lewis et al., 2020). Diretrizes de interação humano-IA recomendam
+comunicar limites, permitir correção e sustentar controle humano (Amershi et
+al., 2019); funções de fricção podem reduzir confiança automática em certos
+contextos (Buçinca et al., 2021). UNESCO (2023) e NIST (2024) situam
+responsabilidade, privacidade e avaliação de risco.
 
-Freire, P. (1996). *Pedagogia da autonomia: saberes necessários à prática educativa*. Paz e Terra.
+Learning analytics exige finalidade, transparência, proporcionalidade e
+possibilidade de ação (Pardo & Siemens, 2014; Prinsloo & Slade, 2017). **Decisão
+de produto:** só se coleta dado associado a pergunta e intervenção declaradas;
+clique e tempo não são proxies de atenção, esforço ou aprendizagem.
 
-Karpicke, J. D., & Roediger III, H. L. (2008). The critical importance of retrieval for learning. *Science*, 319(5865), 966-968. <https://doi.org/10.1126/science.1152408>
+## Proveniência do corpus
 
-Lewis, P., Perez, E., Piktus, A., Petroni, F., Karpukhin, V., Goyal, N., et al. (2020). Retrieval-augmented generation for knowledge-intensive NLP tasks. *Advances in Neural Information Processing Systems*, 33, 9459-9474. <https://arxiv.org/abs/2005.11401>
+O repositório histórico
+[ARA-pre-consolidation](https://github.com/fabio-ara/ARA-pre-consolidation)
+foi usado como corpus de descoberta. Suas sínteses e bibliografias registram
+hipóteses acumuladas e trilhas de busca, não decisões vigentes. Nesta
+consolidação, uma referência só foi promovida para
+[referencias.bib](referencias.bib) após conferência de DOI, ISBN ou URL
+persistente; implicações antigas foram reclassificadas como evidência externa,
+inferência, hipótese, decisão ou lacuna.
 
-Lyotard, J.-F. (1979). *La condition postmoderne: rapport sur le savoir*. Les Éditions de Minuit.
+Para uma revisão de escopo formal, o protocolo deve seguir JBI e PRISMA-ScR
+(Peters et al., 2024; Tricco et al., 2018), com bases, strings, datas,
+duplicatas, seleção, avaliação crítica e fluxograma preservados fora do código
+do produto.
 
-Mayer, R. E. (2009). *Multimedia learning* (2nd ed.). Cambridge University Press. <https://doi.org/10.1017/CBO9780511811678>
+## Limitações e lacunas atuais
 
-Selwyn, N. (2017). *Education and technology: Key issues and debates* (2nd ed.). Bloomsbury Academic.
+- a revisão atual é narrativa e orientada ao design, não sistemática;
+- ainda não há comparação exaustiva com LMS, flashcards, tutores, ferramentas
+  autorais, sistemas local-first e catálogos extensíveis de representações;
+- a população prioritária precisa ser caracterizada empiricamente;
+- não há evidência consolidada de aprendizagem produzida pelo AraLearn;
+- a validade entre áreas do conhecimento e níveis de formação permanece
+  aberta;
+- modelos de IA, provedores, prompts e conhecimento recuperado podem mudar
+  entre ciclos;
+- qualidade visual, correção de schema e cobertura de testes não demonstram
+  adequação acadêmica nem compreensão;
+- frugalidade de armazenamento e custo precisa ser medida longitudinalmente;
+- participação institucional, autoria coletiva e riscos de poder exigem
+  estudos próprios.
 
-Simon, H. A. (1971). Designing organizations for an information-rich world. In M. Greenberger (Ed.), *Computers, communications, and the public interest* (pp. 37-72). Johns Hopkins Press.
+## Regra de governança científica
 
-Sweller, J. (1988). Cognitive load during problem solving: Effects on learning. *Cognitive Science*, 12(2), 257-285. <https://doi.org/10.1207/s15516709cog1202_4>
+Toda mudança relevante deve deixar quatro rastros separados:
 
-Sweller, J., Van Merriënboer, J. J. G., & Paas, F. (1998). Cognitive architecture and instructional design. *Educational Psychology Review*, 10, 251-296. <https://doi.org/10.1023/A:1022193728205>
+1. **decisão operacional**, no manual privado;
+2. **implementação**, no código, schemas e testes;
+3. **justificação**, na matriz pedagógica e na literatura;
+4. **avaliação**, no protocolo e nos dados autorizados do estudo.
 
-Taylor, K., & Rohrer, D. (2010). The effects of interleaved practice. *Applied Cognitive Psychology*, 24(6), 837-848. <https://doi.org/10.1002/acp.1598>
-
-UNESCO. (2023). *Guidance for generative AI in education and research*. <https://doi.org/10.54675/EWZM9535>
-
-Vaswani, A., Shazeer, N., Parmar, N., Uszkoreit, J., Jones, L., Gomez, A. N., Kaiser, L., & Polosukhin, I. (2017). Attention is all you need. *Advances in Neural Information Processing Systems*, 30. <https://arxiv.org/abs/1706.03762>
-
-Vygotsky, L. S. (1978). *Mind in society: The development of higher psychological processes*. Harvard University Press.
-
-Wood, D., Bruner, J. S., & Ross, G. (1976). The role of tutoring in problem solving. *Journal of Child Psychology and Psychiatry, 17*(2), 89-100. <https://doi.org/10.1111/j.1469-7610.1976.tb00381.x>
-
-Zimmerman, B. J. (2002). Becoming a self-regulated learner: An overview. *Theory Into Practice*, 41(2), 64-70. <https://doi.org/10.1207/s15430421tip4102_2>
+Não se deve preencher retrospectivamente uma justificativa para legitimar uma
+decisão. Quando a evidência não sustenta diretamente o mecanismo, registra-se a
+inferência e testa-se a hipótese. Resultados negativos, abandono de recursos e
+limites de transferência são contribuições do programa de pesquisa, não falhas
+documentais a ocultar.

@@ -5,11 +5,17 @@ import {
   dotQuote,
   graphvizGroupById,
   hasGraphvizGap,
+  graphvizLayoutAttributes,
   plainGraphvizLabel,
   renderGraphvizSvg,
   unionGraphvizTextBounds
 } from "../../sdk/graphviz.js";
-import { escapePackageAttribute, renderPackageInline, renderPackageProse } from "../../sdk/html.js";
+import {
+  escapePackageAttribute,
+  renderPackageInline,
+  renderPackageInlineReference,
+  renderPackageProse
+} from "../../sdk/html.js";
 
 const LAYOUTS = Object.freeze(["auto", "force", "hierarchical", "circular", "radial"]);
 
@@ -77,7 +83,7 @@ function graphvizSource(data) {
   const engine = graphvizEngine(data);
   const operator = data.directed ? "->" : "--";
   const graphType = data.directed ? "digraph" : "graph";
-  const graphAttributes = {
+  const graphAttributes = graphvizLayoutAttributes(engine === "dot" ? "block" : "free", {
     id: `graph-${data.name}`,
     bgcolor: "transparent",
     pad: "0.18",
@@ -85,9 +91,9 @@ function graphvizSource(data) {
     overlap: "false",
     splines: "true",
     outputorder: "edgesfirst",
-    ...(engine === "dot" ? { rankdir: "TB", nodesep: "0.48", ranksep: "0.58" } : {}),
+    ...(engine === "dot" ? { nodesep: "0.48", ranksep: "0.58" } : {}),
     ...(engine === "twopi" ? { root: radialRoot(data), ranksep: "1.05" } : {})
-  };
+  });
   const nodeLines = data.vertices.map((vertex) => `  ${dotQuote(vertex.id)} ${dotAttributes({
     id: `graph-vertex-${vertex.id}`,
     class: `package-math-graph-vertex${data.highlight?.vertices?.includes(vertex.id) ? " is-highlighted" : ""}`,
@@ -128,7 +134,7 @@ function renderGraphFigure(data) {
     ...data.vertices.map((vertex) => labelTemplate("vertex", vertex.id, vertex.label)),
     ...data.edges.filter((edge) => edgeLabel(edge)).map((edge) => labelTemplate("edge", edge.id, edgeLabel(edge)))
   ].join("");
-  return `<figure class="package-math-graph" data-graphviz-engine="${engine}"><div class="package-math-graph-canvas" data-resource-scroll-frame="diagram" role="img" aria-label="${escapePackageAttribute(graphAccessibleText(data))}" aria-busy="true" tabindex="0" data-graphviz-source="${escapePackageAttribute(source)}"></div>${templates}<figcaption><i>${renderPackageInline(data.name)}</i> = (<i>V</i>, <i>E</i>) · |<i>V</i>| = ${data.vertices.length} · |<i>E</i>| = ${data.edges.length}</figcaption><p class="package-math-graph-layout-error" hidden>Não foi possível diagramar o grafo.</p><ol class="visually-hidden">${data.edges.map((edge) => `<li>${renderPackageInline(edgeAccessibleText(data, edge))}</li>`).join("")}</ol></figure>`;
+  return `<figure class="package-math-graph" data-graphviz-engine="${engine}"><div class="package-math-graph-canvas" data-resource-scroll-frame="diagram" role="img" aria-label="${escapePackageAttribute(graphAccessibleText(data))}" aria-busy="true" tabindex="0" data-graphviz-source="${escapePackageAttribute(source)}"></div>${templates}<figcaption><i>${renderPackageInline(data.name)}</i> = (<i>V</i>, <i>E</i>) · |<i>V</i>| = ${data.vertices.length} · |<i>E</i>| = ${data.edges.length}</figcaption><p class="package-math-graph-layout-error" hidden>Não foi possível diagramar o grafo.</p><ol class="visually-hidden">${data.edges.map((edge) => `<li>${renderPackageInlineReference(edgeAccessibleText(data, edge))}</li>`).join("")}</ol></figure>`;
 }
 
 function vertexBounds(group) {

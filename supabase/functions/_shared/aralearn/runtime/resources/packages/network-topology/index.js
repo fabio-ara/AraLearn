@@ -1,5 +1,5 @@
 import { academicProfile } from "../../sdk/academic.js";
-import { dotAttributes, dotAttributesWithHtmlLabel, dotQuote, graphvizHtmlLines, wrapGraphvizLabel } from "../../sdk/graphviz.js";
+import { dotAttributes, dotAttributesWithHtmlLabel, dotQuote, graphvizHtmlLines, graphvizLayoutAttributes, wrapGraphvizLabel } from "../../sdk/graphviz.js";
 import { renderPackageInline, renderPackageProse } from "../../sdk/html.js";
 import {
   hydrateSystemDiagrams,
@@ -71,7 +71,7 @@ function graphvizSource(data) {
   const clustered = new Set();
   const lines = [
     "digraph NetworkTopology {",
-    `  graph ${dotAttributes({ bgcolor: "transparent", pad: "0.2", margin: "0", overlap: "false", splines: "polyline", outputorder: "edgesfirst", rankdir: "LR", nodesep: "0.48", ranksep: "0.82", newrank: "true", compound: "true" })};`,
+    `  graph ${dotAttributes(graphvizLayoutAttributes("block", { bgcolor: "transparent", pad: "0.2", margin: "0", overlap: "false", splines: "polyline", outputorder: "edgesfirst", nodesep: "0.48", ranksep: "0.82", newrank: "true", compound: "true" }))};`,
     "  node [fontname=\"Arial\", fontsize=\"15\", penwidth=\"1.15\", color=\"#64748b\", fontcolor=\"#111827\", margin=\"0.14,0.09\"];",
     "  edge [fontname=\"Arial\", fontsize=\"13\", penwidth=\"1.15\", color=\"#64748b\", fontcolor=\"#111827\", arrowsize=\"0.72\"];"
   ];

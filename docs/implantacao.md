@@ -301,8 +301,8 @@ Depois de definir essas variáveis no terminal protegido, execute `npm.cmd run a
 ## 8. Ativar a autoria assistida
 
 A autoria externa deve ser implantada somente depois que banco, Auth e
-aplicativo estiverem funcionando. O roteiro instala o gateway MCP, sua
-projeção OpenAPI para o Chatbot e a entrega protegida de revisões:
+aplicativo estiverem funcionando. O roteiro instala o gateway MCP, o adaptador
+OpenAPI da Action do GPT personalizado e a entrega protegida de revisões:
 
 ```powershell
 pwsh -NoProfile -File .\scripts\deploySupabase.ps1 `
@@ -325,9 +325,9 @@ O roteiro sempre preserva as origens obrigatórias do site, do servidor local e
 do WebView Android (`https://appassets.androidplatform.net`). Isso impede que
 uma implantação do site deixe o APK sem acesso às revisões dos cursos.
 A Action inclui ainda `https://chatgpt.com` e `https://chat.openai.com`.
-Plugin e Chatbot usam o mesmo registro de ferramentas e o mesmo motor,
-mas não o mesmo cliente OAuth: o Plugin usa OAuth 2.1 com PKCE do Supabase; o
-Chatbot usa a concessão confidencial da própria Action.
+MCP e Action usam o mesmo registro de ferramentas e o mesmo motor,
+mas não o mesmo cliente OAuth: a integração MCP usa OAuth 2.1 com PKCE do
+Supabase; o GPT usa a concessão confidencial da própria Action.
 Não implante um segundo GPT para administração: o backend calcula, para a conta
 conectada, as capacidades de autoria privada, submissão, revisão e publicação.
 `-PublicAppUrl` define onde a Action abrirá o consentimento da conta. A
@@ -359,8 +359,9 @@ consentimento. Na implantação pública atual, mantenha a Site URL
 Path: o Supabase acrescenta esse caminho à Site URL e encaminha
 `authorization_id` para o próprio shell do AraLearn. Ative o hook
 `public.aralearn_mcp_access_token_hook` e solicite `openid`. O access token não
-carrega permissões de aplicação: papéis e permissões efetivas são resolvidos no
-banco do AraLearn para a conta autenticada. Confirme a descoberta em
+carrega permissões de aplicação: papéis e relações derivam capacidades
+efetivas no banco do AraLearn, e cada operação é autorizada sobre o alvo e o
+estado correntes. Confirme a descoberta em
 `/.well-known/oauth-authorization-server/auth/v1` e os metadados do recurso em
 `/functions/v1/aralearn-authoring-mcp/.well-known/oauth-protected-resource`.
 
@@ -425,7 +426,8 @@ pwsh -NoProfile -File .\scripts\verifyDeploymentArtifacts.ps1 `
 
 A verificação reprova:
 
-- service role, senha, connection string ou chave privada;
+- JWT local `service_role`, secret key hospedada, senha, connection string ou
+  chave privada;
 - `.env`, keystore e arquivos equivalentes;
 - fixture, curso ou catálogo operacional empacotado;
 - publishable key ausente ou administrativa;

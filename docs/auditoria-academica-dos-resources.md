@@ -127,6 +127,7 @@ limita aos valores anteriores à compilação.
 - RFC Editor. [RFC 9293 — Transmission Control Protocol](https://www.rfc-editor.org/rfc/rfc9293.html).
 - Graphviz. [`dot`: hierarchical drawing of directed graphs](https://graphviz.org/docs/layouts/dot/).
 - Vega-Lite. [Documentation](https://vega.github.io/vega-lite/docs/).
+- Vega. [CSP-safe expression interpreter](https://github.com/vega/vega/tree/main/packages/vega-interpreter).
 - UpSet.js. [Venn and Euler diagram layout](https://upset.js.org/venn.js/).
 - Leipzig Glossing Rules. [Conventions for interlinear morpheme-by-morpheme glosses](https://www.eva.mpg.de/lingua/resources/glossing-rules.php).
 

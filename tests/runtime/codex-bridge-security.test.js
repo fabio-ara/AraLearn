@@ -152,7 +152,7 @@ async function waitUntilListening(child) {
     };
     const onStdout = (chunk) => {
       stdout += String(chunk);
-      if (stdout.includes("AraLearn Codex bridge em")) {
+      if (stdout.includes("Serviço local do AraLearn para Codex CLI em")) {
         finish(resolve);
       }
     };
@@ -695,7 +695,7 @@ test("bridge falha fechado em body, stdout, stderr, resposta e schema inválido"
     prebuiltPrompt: "[response-overflow]"
   });
   assert.equal(oversizedResponse.status, 502);
-  assert.match((await oversizedResponse.json()).error, /Resposta do bridge/u);
+  assert.match((await oversizedResponse.json()).error, /Resposta do serviço local/u);
 
   const schemaMismatch = await sendAssist(bridge.baseUrl, {
     prebuiltPrompt: "[schema-mismatch]",

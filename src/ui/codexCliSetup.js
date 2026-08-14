@@ -131,11 +131,11 @@ export function getCodexCliSetupPresentation(platform) {
         platformLabel: "Android",
         shellLabel: "Termux",
         introText:
-          "No APK Android, o AraLearn não pode instalar apps nem executar shell diretamente. Para usar Codex como API local, rode o bridge abaixo no Termux.",
+          "No APK Android, o AraLearn não pode instalar apps nem executar shell diretamente. Para usar o Codex CLI como serviço local, rode o script abaixo no Termux.",
         quickSteps: [
           "Instale ou abra o Termux.",
           "Copie o script abaixo para o Termux.",
-          "Aguarde o bridge iniciar em 127.0.0.1.",
+          "Aguarde o serviço local iniciar em 127.0.0.1.",
           "Volte ao AraLearn e toque em Testar conexão.",
           "Se o status ficar ativo, use o modelo normalmente."
         ],
@@ -149,11 +149,11 @@ export function getCodexCliSetupPresentation(platform) {
         platformLabel: "Windows",
         shellLabel: "PowerShell",
         introText:
-          "No Windows, o AraLearn usa um bridge HTTP local para chamar o Codex CLI no PowerShell. Rode o script abaixo numa janela do PowerShell e mantenha essa janela aberta enquanto usar o provider.",
+          "No Windows, o AraLearn usa um serviço HTTP local para chamar o Codex CLI no PowerShell. Rode o script abaixo numa janela do PowerShell e mantenha essa janela aberta enquanto usar o provedor.",
         quickSteps: [
           "Abra o PowerShell.",
           "Copie e execute o script abaixo.",
-          "Mantenha a janela do PowerShell aberta com o bridge ativo.",
+          "Mantenha a janela do PowerShell aberta com o serviço local ativo.",
           "Volte ao AraLearn e toque em Testar conexão.",
           "Se o status ficar ativo, use o modelo normalmente."
         ],
@@ -167,11 +167,11 @@ export function getCodexCliSetupPresentation(platform) {
         platformLabel: "Linux",
         shellLabel: "Shell",
         introText:
-          "No Linux, o AraLearn usa um bridge HTTP local para chamar o Codex CLI no terminal. Rode o script abaixo no shell da sua distribuição e mantenha esse terminal aberto enquanto usar o provider.",
+          "No Linux, o AraLearn usa um serviço HTTP local para chamar o Codex CLI no terminal. Rode o script abaixo no shell da sua distribuição e mantenha esse terminal aberto enquanto usar o provedor.",
         quickSteps: [
           "Abra um terminal.",
           "Copie e execute o script abaixo no shell.",
-          "Mantenha o terminal aberto com o bridge ativo.",
+          "Mantenha o terminal aberto com o serviço local ativo.",
           "Volte ao AraLearn e toque em Testar conexão.",
           "Se o status ficar ativo, use o modelo normalmente."
         ],
@@ -189,10 +189,10 @@ export function getCodexCliSetupPresentation(platform) {
         quickSteps: [
           "Confirme se o endpoint local está correto.",
           "Abra o app em Android, Windows ou Linux.",
-          "Use Testar conexão após subir o bridge manualmente."
+          "Use Testar conexão após iniciar o serviço manualmente."
         ],
         copyScriptButtonLabel: "Copiar script",
-        scriptFieldLabel: "Script do bridge local",
+        scriptFieldLabel: "Script do serviço local",
         healthCommandButtonLabel: "Copiar comando de teste"
       };
   }
@@ -263,13 +263,13 @@ if ! command -v codex >/dev/null 2>&1; then
 fi
 
 echo
-echo "[5/6] Gravando bridge local..."
+echo "[5/6] Gravando serviço local..."
 cat > "$HOME/aralearn-codex/aralearnCodexBridge.mjs" <<'ARALearnCodexBridgeEOF'
 ${bridgeSource}
 ARALearnCodexBridgeEOF
 
 echo
-echo "[6/6] Iniciando bridge local..."
+echo "[6/6] Iniciando serviço local..."
 export ARALEARN_CODEX_HOST=127.0.0.1
 export ARALEARN_CODEX_PORT=4183
 export ARALEARN_CODEX_COMMAND=codex
@@ -305,20 +305,20 @@ if ! command -v codex >/dev/null 2>&1; then
 fi
 
 echo
-echo "[3/5] Gravando bridge local..."
+echo "[3/5] Gravando serviço local..."
 cat > "$HOME/aralearn-codex/aralearnCodexBridge.mjs" <<'ARALearnCodexBridgeEOF'
 ${bridgeSource}
 ARALearnCodexBridgeEOF
 
 echo
-echo "[4/5] Definindo variáveis do bridge..."
+echo "[4/5] Definindo variáveis do serviço local..."
 export ARALEARN_CODEX_HOST=127.0.0.1
 export ARALEARN_CODEX_PORT=4183
 export ARALEARN_CODEX_COMMAND=codex
 ${bridgeEnvironment}
 
 echo
-echo "[5/5] Iniciando bridge local..."
+echo "[5/5] Iniciando serviço local..."
 node "$HOME/aralearn-codex/aralearnCodexBridge.mjs"
 `;
 }
@@ -350,20 +350,20 @@ if (-not $codexCommand -or $codexCommand.CommandType -ne "Application") {
 }
 
 Write-Host ""
-Write-Host "[3/5] Gravando bridge local..."
+Write-Host "[3/5] Gravando serviço local..."
 @'
 ${bridgeSource}
 '@ | Set-Content -LiteralPath (Join-Path $BridgeRoot "aralearnCodexBridge.mjs") -Encoding utf8
 
 Write-Host ""
-Write-Host "[4/5] Definindo variáveis do bridge..."
+Write-Host "[4/5] Definindo variáveis do serviço local..."
 $env:ARALEARN_CODEX_HOST = "127.0.0.1"
 $env:ARALEARN_CODEX_PORT = "4183"
 $env:ARALEARN_CODEX_COMMAND = $codexCommand.Source
 ${bridgeEnvironment}
 
 Write-Host ""
-Write-Host "[5/5] Iniciando bridge local..."
+Write-Host "[5/5] Iniciando serviço local..."
 node (Join-Path $BridgeRoot "aralearnCodexBridge.mjs")
 `;
 }

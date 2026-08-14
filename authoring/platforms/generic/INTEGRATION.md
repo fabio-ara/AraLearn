@@ -1,8 +1,8 @@
 # Integração genérica de autoria
 
 Use o MCP remoto do AraLearn como única superfície de ferramentas. O servidor
-autentica cada chamada por OAuth 2.1, resolve no banco as permissões efetivas
-da conta e devolve `structuredContent`.
+autentica cada chamada por OAuth 2.1, deriva no banco as capacidades efetivas
+da conta, autoriza a operação concreta e devolve `structuredContent`.
 
 ## Estado e ciclo mínimo
 
@@ -79,7 +79,7 @@ fila, ler o artefato submetido, criar uma cópia editorial independente, pedir
 ajustes, rejeitar e organizar o curso em uma Coleção. O envio não
 expõe outros conteúdos privados.
 
-## Permissões efetivas
+## Capacidades efetivas
 
 - `authoring:read` / `authoring:private:read`;
 - `authoring:write` / `authoring:private:write`;

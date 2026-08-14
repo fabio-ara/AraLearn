@@ -3,7 +3,8 @@
 O gateway MCP é a superfície de autoria extensa do AraLearn. Ele permite ler,
 criar, complementar, reorganizar e publicar cursos sem entregar acesso direto
 ao banco ou ao Storage. O estado atual é um workspace composto no PostgreSQL;
-`aralearn.library.v1` é recomposto para leitura, validação e publicação.
+o envelope operacional `aralearn.library.v1` é recomposto para leitura,
+validação e publicação.
 
 ## Transporte e autenticação
 
@@ -15,7 +16,7 @@ https://<project-ref>.supabase.co/functions/v1/aralearn-authoring-mcp
 
 O servidor usa Streamable HTTP stateless e o protocolo `2025-11-25`. Ele
 anuncia instruções de servidor, ferramentas e resources de conhecimento, não
-emite `MCP-Session-Id` e devolve
+emite `MCP-Session-Id` e limita cada corpo JSON a 32 MiB. Ele devolve
 `structuredContent` em um envelope comum de sucesso ou erro. No ramo de
 sucesso, cada ferramenta fecha `data` com o contrato próprio de sua rota:
 itens e cursores de listas, metadados de leitura, controle de revisão,
@@ -25,13 +26,13 @@ exclusão. Não existe
 
 Objetos abertos aparecem somente dentro de um campo semanticamente nomeado
 cuja forma integral necessariamente varia: `content` ao ler uma entidade ou o
-documento canônico e `definition` ao consultar o contrato canônico de um
+envelope operacional e `definition` ao consultar o contrato exato de um
 `resource`. `outline` e `microtheories` têm árvores fechadas. Em todos os
 casos, os campos de controle que circundam esse conteúdo permanecem fechados.
 O ramo de erro é comum a todas as ferramentas.
 
 O MCP aceita somente access token OAuth 2.1 emitido pelo Supabase Auth para a
-URL exata do recurso. Não existe credencial estática. O Chatbot personalizado
+URL exata do recurso. Não existe credencial estática. O GPT personalizado
 usa uma Action OpenAPI que traduz suas operações para o mesmo registro de
 ferramentas e o mesmo executor interno; ela não constitui outro motor de
 autoria nem possui contrato independente. A identidade e as permissões de
@@ -48,7 +49,8 @@ Authorization Code com PKCE `S256` e envia o token em `Authorization: Bearer`.
 O backend valida o token no Auth, além de `iss`, `aud`, `client_id`, `sub`,
 `exp` e `nbf`. O Supabase não emite as permissões de aplicação como claims do
 access token; por isso o backend não inventa nem exige `scope` no JWT. Papéis e
-permissões efetivas são resolvidos no banco para o usuário autenticado.
+relações derivam capacidades efetivas no banco; cada operação ainda passa por
+autorização sobre o alvo e o estado correntes.
 
 O consentimento usa a sessão normal do AraLearn. Com a Site URL pública
 `https://fabio-ara.github.io/AraLearn/`, a configuração hospedada usa `/` como
@@ -64,7 +66,7 @@ Uma falha de autenticação devolve `WWW-Authenticate` com
 `resource_metadata`; uma falha durante `tools/call` também devolve o desafio
 em `_meta["mcp/www_authenticate"]`.
 
-A Action do Chatbot usa Authorization Code confidencial nos endpoints da
+A Action do GPT usa Authorization Code confidencial nos endpoints da
 própria Edge Function. O contrato atual de autenticação de GPT Actions
 documenta `client_id`, `client_secret`, URL de autorização e Token URL, mas não
 expõe os parâmetros PKCE obrigatórios do OAuth Server do Supabase. A fachada
@@ -130,9 +132,12 @@ campo de primeiro nível da chamada, ao lado de `workspaceId`, `requestId` e
 `operation`; nunca deve ser aninhado em outro objeto. A exclusão não ignora o
 compare-and-swap.
 
-Os recibos de repetição segura têm retenção de 14 dias. A lista de alterações
-conserva até 200 eventos recentes com resumos pequenos; ela não guarda versões
-integrais do curso e não serve para restaurar uma revisão antiga.
+Não há uma retenção universal para todo recibo de mutação autoral. Observações
+de workspace conservam recibos de repetição segura por 14 dias; operações de
+governança educacional e de estado pessoal usam janelas de 7 dias. A lista de
+alterações conserva até 200 eventos recentes com resumos pequenos; ela não
+guarda versões integrais do curso e não serve para restaurar uma revisão
+antiga.
 
 O Storage não recebe arquivos a cada mutação. A publicação fixa um artefato
 canônico e imutável; uma submissão editorial aponta para o hash exato desse
@@ -207,7 +212,7 @@ aprovação, `record_approved_plan` substitui em uma única revisão todas as
 Partes, decisões e o mandato. Cada Parte é uma lista ordenada dos ids exatos de
 suas microssequências; as operações unitárias servem a ajustes posteriores.
 
-O registro canônico tem 30 ferramentas tanto no MCP quanto na Action. Oito
+O registro único tem 30 ferramentas tanto no MCP quanto na Action. Oito
 nomes concentram famílias relacionadas com contratos fechados. A biblioteca de
 resources usa uma única ferramenta progressiva; acrescentar um package não
 altera a lista de ferramentas nem incorpora seus ids ao schema público:
@@ -291,7 +296,9 @@ e só então pede `contracts`. Depois de compor o card, executa `validate_card` 
 por `basis`: `semantic_fit` para conteúdo, `response_affordance` para resposta
 e `feedback_legibility` para feedback.
 
-`canonical` representa o ajuste específico; `versatile`, uma convenção
+Os valores `canonical`, `versatile` e `substitute` são tokens públicos do campo
+de ajuste. Nesse protocolo, `canonical` representa o resultado específico do
+algoritmo de facetas, e não uma certificação acadêmica externa; `versatile`, uma convenção
 transversal que preserva a estrutura; `substitute`, a melhor aproximação
 instalada. Somente a cobertura `substitute` traz `chatDisclosure`. Ela nunca
 bloqueia a produção: o agente usa o melhor candidato, incorpora a observação em
@@ -357,10 +364,15 @@ consultável individualmente.
 Os mesmos quatro grupos são publicados como resources MCP
 `aralearn://knowledge/...`. Resources são úteis para clientes que controlam a
 injeção de contexto; `prepararAutoriaAraLearn` permanece model-controlled e,
-portanto, funciona no Plugin do ChatGPT sem depender de o host anexar
+portanto, funciona na integração MCP sem depender de o host anexar
 documentos previamente.
 
-## Chatbot personalizado
+Aqui, **resource MCP** é um documento consultável do protocolo MCP. Ele não é
+um **resource de card**, que no domínio do AraLearn é uma instância visual de
+um package registrada no catálogo. A coincidência do termo não implica o mesmo
+contrato nem o mesmo ciclo de vida.
+
+## GPT personalizado com Action
 
 O GPT personalizado usa:
 
@@ -369,9 +381,9 @@ O GPT personalizado usa:
 - `ACTION_OPENAPI.yaml`;
 - OAuth individual da conta AraLearn.
 
-O OpenAPI é gerado do registro canônico das ferramentas MCP. Cada
+O OpenAPI é gerado do mesmo registro das ferramentas MCP. Cada
 `operationId`, descrição, input schema e indicação de consequência deriva da
-mesma definição executada pelo Plugin. A Action limita corpo e resposta a
+mesma definição executada pela integração MCP. A Action limita corpo e resposta a
 96 KiB para manter um orçamento previsível e devolve orientação para ler
 `outline` ou uma entidade menor quando o recorte excede esse limite. O
 `outline` lista a hierarquia e `cardCount`, mas não repete a lista de cards.
@@ -484,7 +496,7 @@ As outras famílias de sucesso também são explícitas:
 O arquivo distribuído
 `authoring/schemas/workspace-envelope.schema.json` valida somente o envelope de
 `aralearn.library.v1` (`contract`, `scope` e `courses`). Ele não é o
-`outputSchema` das ferramentas MCP nem substitui os contratos canônicos da
+`outputSchema` das ferramentas MCP nem substitui os contratos exatos da
 árvore pedagógica e dos packages instalados.
 
 ## Trilhas e publicação editorial
@@ -559,8 +571,9 @@ continuidade permanecem; excluí-los exige `excluirDoWorkspace` sobre a raiz ou
 o projeto. A confirmação explícita deve referir-se ao alcance global da
 retirada, sem afirmar que o workspace será apagado.
 
-Não existe uma integração administrativa separada. O mesmo Plugin ou Chatbot
-recebe apenas as ferramentas autorizadas para a conta conectada.
+Não existe uma integração administrativa separada. O mesmo executor, acessado
+por MCP ou Action, recebe apenas as ferramentas autorizadas para a conta
+conectada.
 
 ## Contrato e robustez
 

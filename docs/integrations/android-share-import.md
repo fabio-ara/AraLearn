@@ -40,5 +40,6 @@ consiga ler. Para uma importação previsível, compartilhe um documento por vez
 A leitura e a validação inicial ocorrem no dispositivo. Importar não envia o
 arquivo a um provider nem concede acesso administrativo. O conteúdo passa a
 integrar o projeto local somente após confirmação. Uma publicação remota exige
-o fluxo separado de workspace por GPT com MCP, autenticação OAuth e revisão
+o fluxo separado de workspace por GPT personalizado com Action ou cliente pela
+integração MCP, autenticação OAuth e revisão
 explícita da pessoa autora.

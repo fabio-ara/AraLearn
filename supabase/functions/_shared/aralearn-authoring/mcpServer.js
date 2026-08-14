@@ -15,7 +15,7 @@ import {
 
 export const ARALEARN_MCP_PROTOCOL_VERSION = "2025-11-25";
 const JSON_RPC_VERSION = "2.0";
-const SERVER_INFO = Object.freeze({ name: "aralearn-authoring", version: "0.0.18" });
+const SERVER_INFO = Object.freeze({ name: "aralearn-authoring", version: "0.0.19" });
 const MCP_BODY_LIMIT = 32 * 1024 * 1024;
 const MCP_OAUTH_SCOPES = Object.freeze(["openid"]);
 const BASE_HEADERS = Object.freeze({

@@ -3,9 +3,14 @@ import {
   dotAttributes,
   dotQuote,
   graphvizHtmlLines,
+  graphvizLayoutAttributes,
   plainGraphvizLabel
 } from "../../sdk/graphviz.js";
-import { renderPackageInline, renderPackageProse } from "../../sdk/html.js";
+import {
+  renderPackageInline,
+  renderPackageInlineReference,
+  renderPackageProse
+} from "../../sdk/html.js";
 import {
   hydrateSystemDiagrams,
   renderSystemDiagramFigure,
@@ -73,10 +78,9 @@ function graphvizSource(data) {
   })};`);
   return [
     `digraph ${dotQuote(data.name)} {`,
-    `  graph ${dotAttributes({
+    `  graph ${dotAttributes(graphvizLayoutAttributes("inline", {
       id: `relation-map-${data.name}`,
       bgcolor: "transparent",
-      rankdir: "LR",
       pad: "0.18",
       margin: "0",
       nodesep: "0.42",
@@ -85,7 +89,7 @@ function graphvizSource(data) {
       outputorder: "edgesfirst",
       remincross: "true",
       mclimit: "2"
-    })};`,
+    }))};`,
     "  node [fontname=\"Arial\", fontsize=\"15\", penwidth=\"1.15\", color=\"#64748b\", fontcolor=\"#111827\", style=\"solid\"];",
     "  edge [penwidth=\"1.15\", color=\"#64748b\"];",
     "  subgraph cluster_left {",
@@ -124,7 +128,7 @@ function relationNotation(data) {
   const pairs = data.relations
     .map(({ from, to }) => `(${left.get(from)}, ${right.get(to)})`)
     .join(", ");
-  return `<i>${renderPackageInline(data.name)}</i> = {${renderPackageInline(pairs)}}`;
+  return `<i>${renderPackageInline(data.name)}</i> = {${renderPackageInlineReference(pairs)}}`;
 }
 
 export const relationMapPackage = Object.freeze({

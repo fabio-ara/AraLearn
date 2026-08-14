@@ -175,6 +175,8 @@ export function compileChartVegaLite(data, theme) {
 async function hydrateChart(figure) {
   const canvas = figure.querySelector(".package-chart-canvas");
   if (!canvas || canvas.dataset.vegaStatus === "ready") return;
+  const message = figure.querySelector(".package-chart-layout-error");
+  if (message) message.hidden = true;
   try {
     const data = JSON.parse(decodeURIComponent(canvas.dataset.chartData || ""));
     const selectors = data.series.map((_, index) => `.package-chart-swatch.tone-${index % 6}`);
@@ -183,7 +185,6 @@ async function hydrateChart(figure) {
   } catch (error) {
     canvas.dataset.vegaStatus = "error";
     canvas.setAttribute("aria-busy", "false");
-    const message = figure.querySelector(".package-chart-layout-error");
     if (message) message.hidden = false;
     throw error;
   }

@@ -4,8 +4,9 @@
 
 - A credencial administrativa do Supabase permanece somente no servidor.
 - O navegador, o APK e os pacotes deste diretório não contêm `service_role`, senha de banco ou chave privada.
-- A autoria estrutural remota aceita somente access token OAuth 2.1 no gateway MCP.
-- O token identifica a conta; papéis e permissões efetivas são resolvidos no banco.
+- A autoria estrutural remota aceita somente credenciais OAuth 2.1 nas fachadas MCP e Action.
+- O token identifica a conta; papéis e relações derivam capacidades efetivas no banco,
+  e cada operação passa por autorização sobre o alvo e o estado correntes.
 - Uma conta sem permissão editorial não publica no catálogo.
 
 ## Limites de acesso
@@ -24,7 +25,9 @@
 
 ## Integridade
 
-- Toda operação mutável usa um `requestId` idempotente.
+- Toda operação mutável associa uma chave de idempotência (`requestId`) ao hash
+  do payload e ao recibo de repetição segura; o identificador, isoladamente,
+  não é “idempotente”.
 - `revision` controla concorrência; o workspace conserva somente o estado
   corrente por parte e até 200 resumos recentes, sem snapshots nem restauração.
 - O gateway MCP rejeita escrita baseada em revisão desatualizada.

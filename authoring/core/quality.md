@@ -60,8 +60,9 @@
   conteúdo, `response_affordance` na resposta e `feedback_legibility` no
   feedback. Não reduza a autoria a texto e escolha quando outro package
   preservar melhor o raciocínio.
-- A ausência de package canônico não paralisa a produção. `canonical` é o
-  ajuste específico e `versatile` preserva a estrutura por uma convenção
+- A ausência de package com ajuste `canonical` não paralisa a produção. Esse
+  token expressa o ajuste específico do algoritmo, e `versatile` preserva a
+  estrutura por uma convenção
   transversal. Se `coverage.status` for `substitute`, use o melhor candidato,
   incorpore brevemente o `chatDisclosure` devolvido e registre a representação
   desejada na decisão autoral. Não esconda a perda nem transforme a observação

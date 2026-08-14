@@ -25,7 +25,8 @@ máximo uma nova microssequência. O resultado estruturado é validado e gravado
 diretamente. No card, uma conversa curta permite desfazer, refazer e restaurar
 versões; um `no-op` conserva a explicação sem simular mudança. Planejamento,
 reorganização e publicação de estruturas extensas
-pertencem ao Chatbot personalizado ou ao Plugin; cada mutação aceita altera
+pertencem ao GPT personalizado com Action ou a clientes compatíveis pela
+integração MCP; cada mutação aceita altera
 somente as partes necessárias de um workspace composto. É o mesmo assistente
 na autoria e na revisão editorial; as ferramentas visíveis dependem das
 capacidades da conta.
@@ -39,7 +40,7 @@ O estudante não precisa conhecer a arquitetura para usar o produto. Em
 estudar nunca faz essa seleção por conta própria. Em `Trilhas`, cria e organiza
 grupos pessoais sem alterar o catálogo. Quando tiver autoridade, pode reparar
 cards e seus textos ou solicitar cards e microssequências pelos escopos locais;
-para estruturas maiores, pede ao Chatbot ou Plugin que abra um workspace. O
+para estruturas maiores, pede ao GPT personalizado que abra um workspace. O
 plano resultante aparece em `Trilhas`, e uma publicação oficial só muda por uma
 operação autorizada. Quando o conteúdo pede outra forma, o card pode combinar
 packages instalados, da escrita e do código a representações
@@ -73,11 +74,13 @@ A contribuição do AraLearn está na combinação de elementos que, isoladament
 
 - microssequências como unidade intermediária entre card e lição;
 - autoria assistida em duas escalas: intervenção bottom-up delimitada até a
-  lição e planejamento estrutural externo pelo Chatbot ou Plugin;
+  lição e planejamento estrutural externo pelo GPT personalizado com Action ou
+  por um cliente compatível pela integração MCP;
 - catálogo compartilhado, workspace composto e revisões publicadas imutáveis;
 - contrato JSON público para intercâmbio e validação;
 - validação antes da persistência;
-- PostgreSQL/Supabase como fonte compartilhada e réplica relacional no IndexedDB;
+- PostgreSQL/Supabase como fonte compartilhada e projeção/réplica local
+  normalizada no IndexedDB;
 - cards renderizados a partir de dados verificáveis;
 - foco explícito em estudo móvel e estudantes-trabalhadores.
 

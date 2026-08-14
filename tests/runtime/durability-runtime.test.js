@@ -46,9 +46,21 @@ const trailStateMigration = read(
 test("motor de diagramação de fluxogramas integra o shell offline e o staging integral", () => {
   assert.match(serviceWorker, /\.\/vendor\/viz-global\.js/u);
   assert.match(serviceWorker, /\.\/vendor\/venn\.esm\.js/u);
+  assert.match(serviceWorker, /\.\/vendor\/vega-interpreter\.js/u);
   assert.match(staging, /copyTree\(path\.join\(repositoryRoot, "public"\), publicDestination\)/u);
   assert.equal(fs.existsSync(new URL("../../public/vendor/viz-global.js", import.meta.url)), true);
   assert.equal(fs.existsSync(new URL("../../public/vendor/venn.esm.js", import.meta.url)), true);
+  assert.equal(fs.existsSync(new URL("../../public/vendor/vega-interpreter.js", import.meta.url)), true);
+});
+
+test("Vega usa o interpretador de expressões sem liberar avaliação dinâmica", () => {
+  const vegaRuntime = read("src/resources/sdk/vegaRuntime.js");
+  assert.match(vegaRuntime, /vega\.parse\(compiled, null, \{ ast: true \}\)/u);
+  assert.match(vegaRuntime, /expr: vega\.expressionInterpreter/u);
+  assert.match(vegaRuntime, /globalPath: "vega\.expressionInterpreter"/u);
+  assert.match(vegaRuntime, /fileName: "vega-interpreter\.js"/u);
+  assert.match(vegaRuntime, /renderingByContainer/u);
+  assert.doesNotMatch(index, /'unsafe-eval'/u);
 });
 
 test("runtime torna a durabilidade local visível e faz flush nos caminhos de saída", () => {

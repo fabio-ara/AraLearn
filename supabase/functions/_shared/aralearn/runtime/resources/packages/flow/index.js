@@ -7,6 +7,7 @@ import {
   dotQuote,
   graphvizGroupById,
   hasGraphvizGap,
+  graphvizLayoutAttributes,
   plainGraphvizLabel,
   renderGraphvizSvg,
   unionGraphvizTextBounds
@@ -253,7 +254,7 @@ export function compileFlowGraphviz(structure) {
     graph,
     source: [
       "digraph AraLearnFlow {",
-      "  graph [rankdir=TB, bgcolor=\"transparent\", pad=\"0.08\", nodesep=\"0.34\", ranksep=\"0.46\", splines=\"polyline\", outputorder=\"edgesfirst\"];",
+      `  graph ${dotAttributes(graphvizLayoutAttributes("block", { bgcolor: "transparent", pad: "0.08", nodesep: "0.34", ranksep: "0.46", splines: "polyline", outputorder: "edgesfirst" }))};`,
       "  node [fontname=\"Arial\", fontsize=\"16\", penwidth=\"1\", color=\"#64748b\", fontcolor=\"#111827\", style=\"solid\"];",
       "  edge [fontname=\"Arial\", fontsize=\"14\", penwidth=\"1\", arrowsize=\"0.68\", color=\"#3b82f6\", fontcolor=\"#2563eb\"];",
       ...nodes,

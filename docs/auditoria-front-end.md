@@ -17,7 +17,7 @@ Início
 ├── organização contextual de grupos e cursos de Trilhas
 └── painel
     ├── Coleções: grupos e cursos oficiais
-    └── Chatbot: Chatbot personalizado e Plugin
+    └── Chatbot: GPT personalizado com Action
 ```
 
 `Trilhas` não é uma fila de estados. Plano é a composição que a pessoa ainda
@@ -39,11 +39,11 @@ O topo da tela inicial e das hierarquias contém somente a entrada do painel.
 No leitor, ficam somente **Editar card** e **Abrir painel**. Foram removidos os
 atalhos redundantes para Chatbot, criação rápida e importação/exportação, além
 do menu genérico sem alvo, do editor de fonte-guia já desativado e da criação
-manual de um plano vazio. Planos criados pelo Chatbot ou Plugin continuam
+manual de um plano vazio. Planos criados pelo GPT personalizado continuam
 visíveis e administráveis em `Trilhas`. O ícone de mais abre somente as ações
 contextuais do item correspondente.
 
-Cada card HTML estrutural de navegação oferece diretamente somente as ações de
+Cada componente estrutural de navegação oferece diretamente somente as ações de
 uso frequente:
 
 - zerar o progresso daquela parte;
@@ -84,7 +84,8 @@ curso continua explícita e editável.
 Ao abrir um plano, a árvore corrente permite renomear, descrever, reordenar,
 excluir e observar cursos, módulos, lições e microssequências. Observações
 guardam apenas alvo e texto corrente, sem copiar card, curso, prompt ou
-conversa. Chatbot e Plugin podem ler essas observações pelo mesmo contrato MCP.
+conversa. O GPT personalizado pode ler essas observações pelo mesmo contrato
+de autoria, pela Action; clientes compatíveis usam a integração MCP separada.
 
 Falhas de escrita deixam o formulário utilizável e mostram uma mensagem curta.
 Ações estruturais só são aplicadas após confirmação remota. Edição textual pode
@@ -107,7 +108,7 @@ adjacente e o índice compacto da lição entram somente para leitura. O pedido
 fica junto ao conteúdo e o resultado validado aparece diretamente. A conversa
 curta permite desfazer, refazer e restaurar versões do card; um resultado sem
 mudança conserva apenas a explicação. Providers remotos de IA
-exigem rede; a edição manual e o bridge local continuam disponíveis para
+exigem rede; a edição manual e o serviço local de integração com Codex CLI continuam disponíveis para
 conteúdo já baixado e anteriormente autorizado. Respostas, gaps, identidades,
 ordem e topologia não se tornam editáveis nesse modo.
 
@@ -120,6 +121,7 @@ seletores órfãos, zero ramos órfãos e zero glifos usados como ícones.
 
 As jornadas automatizadas cobrem Android, teclado, toque, diferentes larguras,
 abertura de plano e curso, carregamento tardio de Coleções, administração de
-grupos, seleção explícita, permissões, Chatbot/Plugin, estudo, retorno e
+grupos, seleção explícita, permissões, GPT personalizado com Action, integração
+MCP, estudo, retorno e
 assistência contextual. Também verificam que `play` não produz mutação.
 Nenhum teste preserva componentes removidos apenas por compatibilidade.

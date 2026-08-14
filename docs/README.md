@@ -11,6 +11,20 @@
 | instalar, alterar, testar ou implantar | [Guia do desenvolvedor](guia-desenvolvedor.md) |
 | recuperar-se de uma falha comum | [Solução de problemas](solucao-de-problemas.md) |
 
+## Percurso técnico verificável
+
+Para confrontar uma afirmação com o produto implementado, leia nesta ordem:
+
+1. [Glossário técnico](glossario-tecnico.md), que desambigua contratos,
+   packages, persistência, MCP e autorização;
+2. [Arquitetura](arquitetura.md), para as fronteiras e fontes de autoridade;
+3. [Contratos públicos de conteúdo](aralearn-contract.md), para os três
+   identificadores de contrato e o envelope dos cards;
+4. [Persistência relacional e sincronização](persistencia-relacional.md) e
+   [Gateway MCP de autoria](autoria-mcp.md), para os fluxos operacionais;
+5. [Matriz de conformidade técnica](matriz-conformidade-tecnica.md), que liga
+   cada afirmação a código, migrations, testes e limites conhecidos.
+
 ## Produto e uso
 
 | Assunto | Leitura |
@@ -27,16 +41,18 @@
 | Assunto | Leitura |
 | --- | --- |
 | Catálogo compartilhado, dados pessoais, segurança e réplica local | [Arquitetura](arquitetura.md) |
-| Banco relacional, réplica local e sincronização | [Persistência relacional e sincronização](persistencia-relacional.md) |
+| PostgreSQL, projeção e réplica local em IndexedDB, outbox e sincronização | [Persistência relacional e sincronização](persistencia-relacional.md) |
 | Configuração, migrations, publicação e validação no Supabase | [Supabase: desenvolvimento e implantação](supabase.md) |
 | Workspace composto, economia de Storage e artefatos publicados | [Workspaces compostos e artefatos](plano-de-controle-e-artefatos.md) |
 | Perfis suportados, implantação em intranet e limites de portabilidade | [Implantação](implantacao.md) |
 | Criar, continuar e testar cursos numa conversa | [Criar cursos pelo chat](criar-cursos-pelo-chat.md) |
 | Workspaces, capacidades por conta, submissão e catálogo | [Autoria e publicação do catálogo](autoria-do-catalogo.md) |
-| Plugin MCP, Chatbot com Action e ferramentas de autoria | [Gateway MCP de autoria](autoria-mcp.md) |
+| Integração MCP, GPT personalizado com Action e ferramentas de autoria | [Gateway MCP de autoria](autoria-mcp.md) |
 | Dados da conta, réplica local e autoria | [Privacidade](privacidade.md) |
 | Formato de intercâmbio do conteúdo | [Contrato público](aralearn-contract.md) |
 | Formas de apresentação dos cards | [Recursos de card](recursos-de-card.md) |
+| Vocabulário técnico preciso | [Glossário técnico](glossario-tecnico.md) |
+| Afirmações confrontadas com código, migrations e testes | [Matriz de conformidade técnica](matriz-conformidade-tecnica.md) |
 
 ## Autoria e pesquisa
 

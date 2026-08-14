@@ -10,6 +10,7 @@ const SHELL = [
   "./styles-shell-baseline.css",
   "./styles.css",
   "./vendor/vega.min.js",
+  "./vendor/vega-interpreter.js",
   "./vendor/vega-lite.min.js",
   "./vendor/venn.esm.js",
   "./vendor/viz-global.js",

@@ -111,6 +111,35 @@ test("cada lacuna abre somente as próprias alternativas", async ({ page }) => {
   await expect(blanks.nth(1)).toHaveAttribute("data-empty", "true");
 });
 
+test("tabela de transição mantém lacunas e alternativas independentes", async ({ page }) => {
+  await openModuleByKey(page, "resource-test-27-module", 1);
+  const blanks = page.locator('.package-state-transition-table [data-action="text-gap-open-choice"]');
+  await expect(blanks).toHaveCount(3);
+
+  await blanks.nth(0).click();
+  await expect(page.locator('[data-action="text-gap-set-choice"]')).toHaveText([
+    "q₀", "não q₀", "outro q₀"
+  ]);
+  await page.locator('[data-action="text-gap-set-choice"][data-text-gap-value="q₀"]').click();
+  await expect(blanks.nth(0)).toHaveText("q₀");
+  await expect(blanks.nth(1)).toBeEmpty();
+  await expect(blanks.nth(2)).toBeEmpty();
+
+  await blanks.nth(1).click();
+  await expect(page.locator('[data-action="text-gap-set-choice"]')).toHaveText([
+    "q₁", "não q₁", "outro q₁"
+  ]);
+  await page.locator('[data-action="text-gap-set-choice"][data-text-gap-value="q₁"]').click();
+  await expect(blanks.nth(0)).toHaveText("q₀");
+  await expect(blanks.nth(1)).toHaveText("q₁");
+  await expect(blanks.nth(2)).toBeEmpty();
+
+  await blanks.nth(0).click();
+  await expect(blanks.nth(0)).toBeEmpty();
+  await expect(blanks.nth(1)).toHaveText("q₁");
+  await expect(blanks.nth(2)).toBeEmpty();
+});
+
 test("code recebe a lacuna no editor e não no enunciado", async ({ page }) => {
   await openModule(page, 1, 1);
   await expect(page.locator(".runtime-code-block pre [data-action='text-gap-open-choice']"))

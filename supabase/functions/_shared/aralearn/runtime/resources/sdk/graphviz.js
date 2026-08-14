@@ -1,5 +1,10 @@
 const GAP_MARKER = /\uE000[^\uE001]+\uE001/gu;
 const SVG_NAMESPACE = "http://www.w3.org/2000/svg";
+const GRAPHVIZ_READING_AXES = Object.freeze({
+  block: "TB",
+  inline: "LR",
+  free: null
+});
 
 let vizInstancePromise = null;
 
@@ -43,6 +48,17 @@ export function dotAttributes(attributes) {
     .filter(([, value]) => value !== undefined && value !== null && value !== "")
     .map(([key, value]) => `${key}=${dotQuote(value)}`)
     .join(", ")}]`;
+}
+
+export function graphvizLayoutAttributes(readingAxis, attributes = {}) {
+  if (!Object.hasOwn(GRAPHVIZ_READING_AXES, readingAxis)) {
+    throw new RangeError(`Eixo de leitura Graphviz inválido: ${String(readingAxis)}`);
+  }
+  if (Object.hasOwn(attributes, "rankdir")) {
+    throw new TypeError("rankdir pertence à política compartilhada de layout Graphviz.");
+  }
+  const rankdir = GRAPHVIZ_READING_AXES[readingAxis];
+  return rankdir ? { ...attributes, rankdir } : { ...attributes };
 }
 
 export function escapeGraphvizHtml(value) {

@@ -37,6 +37,12 @@ function theoryCard() {
   };
 }
 
+function readTargetPath(root, path) {
+  return (String(path).match(/[^.[\]]+|\[(\d+)\]/gu) || [])
+    .map((segment) => segment.startsWith("[") ? Number(segment.slice(1, -1)) : segment)
+    .reduce((current, segment) => current?.[segment], root);
+}
+
 function choiceResponse(question = "Qual protocolo confirma a entrega?") {
   return {
     id: "response-1",
@@ -323,6 +329,78 @@ test("lacunas múltiplas no mesmo campo não corrompem os marcadores umas das ou
   });
   answers.forEach((_, index) => {
     assert.match(rendered.contentHtml, new RegExp(`data-complete-blank-index="${index}"`, "u"));
+  });
+});
+
+test("todo package materializa cada alvo como uma lacuna única e independente", () => {
+  RESOURCE_PACKAGE_REGISTRY.listCatalog({ slot: "content" }).forEach((manifest, packageIndex) => {
+    const contract = RESOURCE_PACKAGE_REGISTRY.getAuthoringContract(manifest.id, manifest.version);
+    const content = RESOURCE_PACKAGE_REGISTRY.normalizeInstance({
+      id: `independent-content-${packageIndex}`,
+      package: manifest.id,
+      version: manifest.version,
+      data: contract.contract.example
+    }, "content");
+    const targets = RESOURCE_PACKAGE_REGISTRY.practiceTargets(content)
+      .filter((target) => target.modes.includes("gap"));
+    assert.equal(
+      new Set(targets.map(({ path }) => path)).size,
+      targets.length,
+      `${manifest.id}: caminhos de prática precisam ser únicos`
+    );
+
+    for (let offset = 0; offset < targets.length; offset += 12) {
+      const group = targets.slice(offset, offset + 12);
+      if (!group.length) continue;
+      const blanks = group.map((target, index) => ({
+        id: `blank-${offset + index}`,
+        targetInstanceId: content.id,
+        targetPath: target.path,
+        responseMode: "choice",
+        answer: String(readTargetPath(content.data, target.path)),
+        distractors: [`distrator-${offset + index}`]
+      }));
+      const response = RESOURCE_PACKAGE_REGISTRY.normalizeInstance({
+        id: `independent-response-${packageIndex}-${offset}`,
+        package: "aralearn.response.gap",
+        version: "1.0.0",
+        data: { blanks }
+      }, "response");
+      const card = {
+        ...theoryCard(),
+        id: `independent-card-${packageIndex}-${offset}`,
+        role: "practice",
+        content: [content],
+        response
+      };
+      const validation = validateCardEnvelope(card, RESOURCE_PACKAGE_REGISTRY);
+      assert.equal(validation.valid, true, `${manifest.id}: ${validation.errors.join(" ")}`);
+
+      const renderWithValues = (values) => renderCardEnvelope(card, RESOURCE_PACKAGE_REGISTRY, {
+        cardResponse: response,
+        responseBlockKey: "independent-response",
+        blockKey: "independent-response",
+        responseState: { values }
+      }).contentHtml;
+      const firstFilled = renderWithValues(group.map((target, index) => (
+        index === 0 ? String(readTargetPath(content.data, target.path)) : ""
+      )));
+      group.forEach((_, index) => {
+        const controls = firstFilled.match(new RegExp(
+          `<span[^>]+data-complete-blank-index="${index}"[^>]+data-empty="${index === 0 ? "false" : "true"}"[^>]*>`,
+          "gu"
+        )) || [];
+        assert.equal(controls.length, 1, `${manifest.id}: lacuna ${index} precisa de um único estado próprio`);
+      });
+
+      if (group.length > 1) {
+        const secondFilled = renderWithValues(group.map((target, index) => (
+          index === 1 ? String(readTargetPath(content.data, target.path)) : ""
+        )));
+        assert.match(secondFilled, /data-complete-blank-index="0"[^>]+data-empty="true"/u, manifest.id);
+        assert.match(secondFilled, /data-complete-blank-index="1"[^>]+data-empty="false"/u, manifest.id);
+      }
+    }
   });
 });
 

@@ -115,7 +115,7 @@ Regras verificadas:
   1280 pixels, nos modos claro e escuro, em
   [`screenshots/resources-v4`](screenshots/resources-v4/).
 
-A galeria é recompilada do registro canônico por
+A galeria é recompilada do registry de packages por
 `npm run resources:gallery:visual`. O comando rejeita recurso ausente, erro no
 browser e `overflow` horizontal antes de gravar as oito capturas.
 

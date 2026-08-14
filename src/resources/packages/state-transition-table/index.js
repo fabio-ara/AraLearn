@@ -1,5 +1,9 @@
 import { academicProfile } from "../../sdk/academic.js";
-import { renderPackageInline, renderPackageProse } from "../../sdk/html.js";
+import {
+  renderPackageInline,
+  renderPackageInlineReference,
+  renderPackageProse
+} from "../../sdk/html.js";
 
 function text(value) {
   return String(value ?? "").trim();
@@ -63,7 +67,7 @@ export const stateTransitionTablePackage = Object.freeze({
     const transitions = new Map();
     data.transitions.forEach((transition) => { const key = `${transition.from}\u0000${transition.event}`; transitions.set(key, [...(transitions.get(key) || []), transition]); });
     const stateNames = new Map(data.states.map(({ id, label }) => [id, label]));
-    return `<div class="runtime-block package-state-transition-table">${data.prompt ? renderPackageProse(data.prompt) : ""}<div class="runtime-table-wrap"><div class="runtime-table-frame"><table class="runtime-table"><thead><tr><th scope="col">Estado</th>${data.events.map((event) => `<th scope="col">${renderPackageInline(event.label)}</th>`).join("")}</tr></thead><tbody>${data.states.map((state) => `<tr><th scope="row"><span class="package-state-markers">${state.initial ? "→" : ""}${state.accepting ? "◎" : ""}</span>${renderPackageInline(state.label)}</th>${data.events.map((event) => `<td>${(transitions.get(`${state.id}\u0000${event.id}`) || []).map((transition) => `<span class="package-state-destination">${renderPackageInline(destinationText(transition, stateNames))}</span>`).join("") || "—"}</td>`).join("")}</tr>`).join("")}</tbody></table></div></div><p class="package-state-legend">→ inicial · ◎ final ou aceitação</p></div>`;
+    return `<div class="runtime-block package-state-transition-table">${data.prompt ? renderPackageProse(data.prompt) : ""}<div class="runtime-table-wrap"><div class="runtime-table-frame"><table class="runtime-table"><thead><tr><th scope="col">Estado</th>${data.events.map((event) => `<th scope="col">${renderPackageInline(event.label)}</th>`).join("")}</tr></thead><tbody>${data.states.map((state) => `<tr><th scope="row"><span class="package-state-markers">${state.initial ? "→" : ""}${state.accepting ? "◎" : ""}</span>${renderPackageInline(state.label)}</th>${data.events.map((event) => `<td>${(transitions.get(`${state.id}\u0000${event.id}`) || []).map((transition) => `<span class="package-state-destination">${renderPackageInlineReference(destinationText(transition, stateNames))}</span>`).join("") || "—"}</td>`).join("")}</tr>`).join("")}</tbody></table></div></div><p class="package-state-legend">→ inicial · ◎ final ou aceitação</p></div>`;
   },
   accessibleText(data) {
     const stateNames = new Map(data.states.map(({ id, label }) => [id, label]));
