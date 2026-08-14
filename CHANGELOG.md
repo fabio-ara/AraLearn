@@ -26,7 +26,7 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
   prometida ausente, prática sem base, representação inadequada, perda de
   cobertura e dependência de meio externo indisponível;
 - os metadados Android da atualização da release `0.0.19` usam
-  `versionCode 162`, mantendo `applicationId com.aralearn.app` e
+  `versionCode 163`, mantendo `applicationId com.aralearn.app` e
   `versionName 0.0.19` para a substituição compatível do APK;
 - documentação pública reorganizada como material de aprendizagem, com
   apresentação do produto, percursos por finalidade, explicações progressivas
