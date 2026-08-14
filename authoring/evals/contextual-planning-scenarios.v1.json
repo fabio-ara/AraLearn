@@ -1,0 +1,390 @@
+{
+  "contract": "aralearn.authoring-contextual-planning-scenarios.v1",
+  "version": 1,
+  "evaluationKind": "engineering-regression",
+  "claimBoundary": "O corpus verifica propriedades das instruções e dos planos simulados; não mede resultados de aprendizagem nem qualidade docente.",
+  "reviewRoles": [
+    "author_or_learner",
+    "aralearn_assistant",
+    "reviewer"
+  ],
+  "scopeSets": [
+    {
+      "id": "technical-syllabus-v1",
+      "sourceKind": "versioned-request-scope",
+      "items": [
+        {
+          "id": "technical-linux",
+          "label": "Linux"
+        },
+        {
+          "id": "technical-git",
+          "label": "Git"
+        },
+        {
+          "id": "technical-databases",
+          "label": "bancos de dados"
+        },
+        {
+          "id": "technical-cloud-administration",
+          "label": "administração de nuvem"
+        }
+      ]
+    },
+    {
+      "id": "argument-analysis-syllabus-v1",
+      "sourceKind": "versioned-request-scope",
+      "items": [
+        {
+          "id": "argument-thesis",
+          "label": "tese"
+        },
+        {
+          "id": "argument-evidence",
+          "label": "evidência"
+        },
+        {
+          "id": "argument-inference",
+          "label": "inferência"
+        },
+        {
+          "id": "argument-presupposition",
+          "label": "pressuposto"
+        }
+      ]
+    },
+    {
+      "id": "geometry-plane-syllabus-v1",
+      "sourceKind": "versioned-attachment-fixture",
+      "items": [
+        {
+          "id": "angles-and-parallel-lines",
+          "label": "ângulos, transversais e retas paralelas"
+        },
+        {
+          "id": "triangles-congruence-similarity",
+          "label": "triângulos, congruência e semelhança"
+        },
+        {
+          "id": "polygons-and-quadrilaterals",
+          "label": "polígonos e quadriláteros"
+        },
+        {
+          "id": "circles",
+          "label": "circunferência e círculo"
+        },
+        {
+          "id": "perimeter-and-area",
+          "label": "perímetro e área de figuras planas"
+        }
+      ]
+    },
+    {
+      "id": "operating-systems-syllabus-v1",
+      "sourceKind": "versioned-request-scope",
+      "items": [
+        {
+          "id": "os-processes",
+          "label": "processos"
+        },
+        {
+          "id": "os-virtual-memory",
+          "label": "memória virtual"
+        },
+        {
+          "id": "os-concurrency",
+          "label": "concorrência"
+        },
+        {
+          "id": "os-scheduling",
+          "label": "escalonamento"
+        },
+        {
+          "id": "os-file-systems",
+          "label": "sistemas de arquivos"
+        },
+        {
+          "id": "os-input-output",
+          "label": "entrada e saída"
+        }
+      ]
+    }
+  ],
+  "sharedRubric": {
+    "required": [
+      "use-known-context-first",
+      "ask-only-materially-decisive-questions",
+      "link-each-material-difficulty-to-a-design-response",
+      "make-design-decisions-per-microsequence",
+      "preserve-approved-scope-coverage",
+      "pause-for-human-decision-before-cards",
+      "persist-only-approved-compact-decisions",
+      "use-deterministic-practice",
+      "audit-diagnosis-plan-cards-coherence"
+    ],
+    "forbidden": [
+      "fixed-questionnaire",
+      "generic-level-question",
+      "global-pedagogical-style",
+      "silent-scope-reduction",
+      "private-reasoning-persistence",
+      "regex-or-llm-answer-assessment",
+      "educational-effectiveness-claim"
+    ]
+  },
+  "scenarios": [
+    {
+      "id": "A",
+      "title": "Conteúdo técnico sem computador",
+      "initialRequest": "Preciso estudar uma ementa extensa de Linux, Git, bancos de dados e administração de nuvem para uma avaliação. Produza um curso completo para alguém sem conhecimentos prévios.",
+      "knownContext": [
+        "escopo técnico extenso e obrigatório",
+        "público sem conhecimentos prévios",
+        "uso principal para estudo e avaliação"
+      ],
+      "scopeSetRef": "technical-syllabus-v1",
+      "materialUnknowns": [
+        {
+          "id": "regular-computer-access",
+          "whyMaterial": "Acesso regular a um ambiente executável altera como comandos, erros e mudanças de estado podem ser observados e praticados."
+        }
+      ],
+      "authorContinuation": "Vou estudar principalmente pelo celular e não terei acesso regular a computador ou laboratório.",
+      "questionPolicy": {
+        "mode": "ask-material",
+        "acceptableIntent": "Descobrir se existe acesso regular a um ambiente em que as interações técnicas possam ser executadas.",
+        "forbidden": [
+          "perguntar genericamente o nível",
+          "perguntar quantos exemplos a pessoa prefere",
+          "aplicar lista fixa de perguntas"
+        ]
+      },
+      "difficultyResponseLinks": [
+        {
+          "microsequence": "permissões e execução no Linux",
+          "contentDemand": "Acompanhar comando, erro, alteração de permissão e novo resultado.",
+          "anticipatedDifficulty": "Sem ambiente regular, a pessoa não observa a evolução temporal de uma sessão real.",
+          "designResponse": "Tornar ações, stdout, stderr e estado sucessivo observáveis em uma sessão textual; explicitar que isso não substitui prática real."
+        },
+        {
+          "microsequence": "estado do repositório Git",
+          "contentDemand": "Relacionar operação ao estado anterior e posterior do working tree.",
+          "anticipatedDifficulty": "Comandos isolados podem virar vocabulário sem consequência observável.",
+          "designResponse": "Contrastar estados antes e depois e pedir decisões determinísticas sobre a próxima ação."
+        }
+      ],
+      "resourceDiscovery": {
+        "maySelect": [
+          "aralearn.resource.terminal_session",
+          "aralearn.resource.code",
+          "aralearn.resource.tree",
+          "aralearn.resource.network_topology",
+          "aralearn.resource.database_schema",
+          "aralearn.resource.packet_layout"
+        ],
+        "selectionRule": "Escolher pela estrutura e pela operação cognitiva, sem hardcode disciplinar."
+      },
+      "humanPlan": "Mostrar cobertura integral, dependências, dificuldades e respostas; pausar antes dos cards.",
+      "practicePolicy": "Usar choice, ordering, matching ou gap com opções apenas quando a resposta for inequívoca.",
+      "practiceExpectation": {
+        "mode": "required",
+        "whyMaterial": "A avaliação informada exige decidir a próxima ação a partir de estados técnicos observáveis."
+      }
+    },
+    {
+      "id": "B",
+      "title": "Mesmo conteúdo com laboratório disponível",
+      "initialRequest": "Preciso estudar a mesma ementa de Linux, Git, bancos de dados e administração de nuvem. Sou iniciante, tenho laboratório regular e posso executar atividades entre as sessões de estudo.",
+      "knownContext": [
+        "escopo técnico extenso e obrigatório",
+        "público sem conhecimentos prévios",
+        "acesso regular a computador e laboratório",
+        "possibilidade de execução entre sessões"
+      ],
+      "scopeSetRef": "technical-syllabus-v1",
+      "contextFacts": {
+        "regularComputerAccess": true,
+        "laboratoryAccess": "regular"
+      },
+      "materialUnknowns": [],
+      "authorContinuation": null,
+      "questionPolicy": {
+        "mode": "do-not-ask",
+        "acceptableIntent": "Planejar diretamente porque a condição operacional relevante já foi informada.",
+        "forbidden": [
+          "repetir pergunta sobre computador",
+          "presumir que toda observação precisa ser simulada no curso"
+        ]
+      },
+      "difficultyResponseLinks": [
+        {
+          "microsequence": "permissões e execução no Linux",
+          "contentDemand": "Executar, observar erro, alterar permissão e verificar o resultado.",
+          "anticipatedDifficulty": "Uma atividade real sem preparação pode ocultar a relação entre estado, comando e consequência.",
+          "designResponse": "Preparar o gesto e o critério de observação no AraLearn e usar o laboratório como experiência complementar disponível."
+        }
+      ],
+      "resourceDiscovery": {
+        "maySelect": [
+          "aralearn.resource.terminal_session",
+          "aralearn.resource.code"
+        ],
+        "selectionRule": "A sessão textual pode servir como referente ou preparação, mas não é compensação obrigatória quando há laboratório."
+      },
+      "humanPlan": "Explicitar o uso planejado do laboratório e pausar antes dos cards.",
+      "practicePolicy": "Distinguir verificação determinística no AraLearn de execução externa orientada.",
+      "practiceExpectation": {
+        "mode": "required",
+        "whyMaterial": "O plano precisa preparar uma decisão verificável antes da execução complementar no laboratório."
+      }
+    },
+    {
+      "id": "C",
+      "title": "Área não técnica",
+      "initialRequest": "Quero um curso para aprender a identificar tese, evidência, inferência e pressuposto em textos jornalísticos. O público lê textos cotidianos, mas nunca estudou análise argumentativa.",
+      "knownContext": [
+        "objeto de estudo textual",
+        "público com leitura cotidiana",
+        "ausência de vocabulário formal de argumentação"
+      ],
+      "scopeSetRef": "argument-analysis-syllabus-v1",
+      "materialUnknowns": [],
+      "authorContinuation": null,
+      "questionPolicy": {
+        "mode": "do-not-ask",
+        "acceptableIntent": "Não perguntar sobre computador porque essa condição não muda materialmente o desenho.",
+        "forbidden": [
+          "perguntar acesso a laboratório",
+          "transportar respostas do cenário técnico"
+        ]
+      },
+      "difficultyResponseLinks": [
+        {
+          "microsequence": "tese e evidência",
+          "contentDemand": "Distinguir funções argumentativas em trechos próximos.",
+          "anticipatedDifficulty": "Confundir a informação mais chamativa com a tese defendida.",
+          "designResponse": "Usar trechos curtos contrastivos, anotação das funções e escolha com distratores baseados nas confusões previstas."
+        },
+        {
+          "microsequence": "pressupostos",
+          "contentDemand": "Reconhecer informação necessária que não foi afirmada diretamente.",
+          "anticipatedDifficulty": "Tratar inferência plausível e pressuposto necessário como equivalentes.",
+          "designResponse": "Comparar pares de enunciados e retirar apoio gradualmente somente nesta unidade."
+        }
+      ],
+      "resourceDiscovery": {
+        "maySelect": [
+          "aralearn.resource.annotated_text",
+          "aralearn.resource.paragraph"
+        ],
+        "selectionRule": "Preservar a estrutura textual e a operação de discriminação."
+      },
+      "humanPlan": "Mostrar as dificuldades próprias da análise argumentativa e pausar antes dos cards.",
+      "practicePolicy": "Usar decisões determinísticas sobre trechos integralmente visíveis.",
+      "practiceExpectation": {
+        "mode": "required",
+        "whyMaterial": "Distinguir funções argumentativas é uma operação solicitada e admite pares fechados no corpus."
+      }
+    },
+    {
+      "id": "D",
+      "title": "Pedido já completo",
+      "initialRequest": "Planeje geometria plana para uma pessoa que domina frações e álgebra elementar, estuda no celular em sessões de 20 minutos, precisa interpretar diagramas e resolver questões de múltipla escolha, possui a ementa anexada e não usará software de geometria. Preserve todo o escopo e apresente o plano antes dos cards.",
+      "knownContext": [
+        "pré-requisitos observáveis",
+        "condição e duração aproximada de estudo",
+        "operação de avaliação",
+        "meio indisponível",
+        "fonte e cobertura obrigatória",
+        "pedido explícito de revisão do plano"
+      ],
+      "scopeSetRef": "geometry-plane-syllabus-v1",
+      "materialUnknowns": [],
+      "authorContinuation": null,
+      "questionPolicy": {
+        "mode": "do-not-ask",
+        "acceptableIntent": "Usar as condições fornecidas e apresentar o plano sem perguntas performáticas.",
+        "forbidden": [
+          "perguntar nível",
+          "perguntar quantidade preferida de exemplos",
+          "pedir confirmação de cada dado já informado"
+        ]
+      },
+      "difficultyResponseLinks": [
+        {
+          "microsequence": "relações em diagramas geométricos",
+          "contentDemand": "Coordenar notação, relações espaciais e dados numéricos.",
+          "anticipatedDifficulty": "Ler posição ou aparência como prova em vez de usar propriedades declaradas.",
+          "designResponse": "Explicitar convenções e propriedades, variar diagramas sem mudar a relação e cobrar justificativa determinística."
+        }
+      ],
+      "resourceDiscovery": {
+        "maySelect": [
+          "aralearn.resource.plane",
+          "aralearn.resource.formula"
+        ],
+        "selectionRule": "Escolher a representação que preserve a relação geométrica necessária."
+      },
+      "humanPlan": "Apresentar cobertura, dependências, dificuldade e resposta; pausar uma única vez para a decisão solicitada.",
+      "practicePolicy": "Usar respostas inequívocas e dados completos no próprio card.",
+      "practiceExpectation": {
+        "mode": "required",
+        "whyMaterial": "O pedido informa explicitamente resolução de questões de múltipla escolha."
+      }
+    },
+    {
+      "id": "E",
+      "title": "Risco de densidade",
+      "initialRequest": "Crie um curso introdutório completo sobre processos, memória virtual, concorrência, escalonamento, sistemas de arquivos e entrada/saída. A pessoa nunca estudou sistemas operacionais, estudará no celular e não tem prazo curto.",
+      "knownContext": [
+        "público sem conhecimentos prévios",
+        "escopo conceitualmente denso",
+        "estudo móvel",
+        "ausência de pressão para condensar"
+      ],
+      "scopeSetRef": "operating-systems-syllabus-v1",
+      "planningConstraints": {
+        "fixedCardTargetAllowed": false,
+        "cardCountSource": "scope-decomposition"
+      },
+      "materialUnknowns": [],
+      "authorContinuation": null,
+      "questionPolicy": {
+        "mode": "do-not-ask",
+        "acceptableIntent": "Decompor com as informações existentes.",
+        "forbidden": [
+          "pedir um número alvo de cards",
+          "condensar para reduzir chamadas ou armazenamento"
+        ]
+      },
+      "difficultyResponseLinks": [
+        {
+          "microsequence": "processo, execução e estado",
+          "contentDemand": "Relacionar abstração, mudança de estado e recursos mantidos pelo sistema.",
+          "anticipatedDifficulty": "Muitos conceitos novos podem ser comprimidos em definições sem referente.",
+          "designResponse": "Separar situação observável, mecanismo, estados e relações em camadas causais antes da prática."
+        },
+        {
+          "microsequence": "concorrência e escalonamento",
+          "contentDemand": "Distinguir simultaneidade, interleaving, política e efeito observado.",
+          "anticipatedDifficulty": "Confundir conceitos vizinhos quando apresentados no mesmo resumo.",
+          "designResponse": "Criar microssequências dependentes, contrastes locais e práticas após cada fundamentação; deixar a quantidade de cards resultar da decomposição."
+        }
+      ],
+      "resourceDiscovery": {
+        "maySelect": [
+          "aralearn.resource.state_machine",
+          "aralearn.resource.memory_layout",
+          "aralearn.resource.flow"
+        ],
+        "selectionRule": "Usar cada representação somente onde torne a estrutura necessária observável."
+      },
+      "humanPlan": "Justificar a decomposição, demonstrar cobertura integral sem fixar quantidade de cards e pausar para decisão.",
+      "practicePolicy": "Praticar somente operações já fundamentadas, com avaliação determinística.",
+      "practiceExpectation": {
+        "mode": "required",
+        "whyMaterial": "Os contrastes conceituais previstos incluem associações fechadas depois da fundamentação."
+      }
+    }
+  ]
+}

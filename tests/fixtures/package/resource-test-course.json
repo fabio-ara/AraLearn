@@ -9686,6 +9686,199 @@
           ]
         },
         {
+          "id": "resource-test-29-module",
+          "title": "Sessão de terminal",
+          "guide": {
+            "goal": "Avaliar aralearn.resource.terminal_session somente nas modalidades declaradas pelo próprio package.",
+            "include": [
+              "representação canônica e interação declarada"
+            ],
+            "exclude": [
+              "adaptação artificial de outra operação cognitiva"
+            ],
+            "notation": [
+              "interações em ordem temporal",
+              "prompt visual separado da entrada",
+              "stdout e stderr identificados",
+              "espaços e quebras preservados",
+              "efeito ligado à interação que o produziu"
+            ],
+            "avoid": [
+              "usar a forma quando ela não acrescenta significado"
+            ]
+          },
+          "lessons": [
+            {
+              "id": "resource-test-29-lesson",
+              "title": "Sessão de terminal",
+              "guide": {
+                "goal": "Avaliar aralearn.resource.terminal_session somente nas modalidades declaradas pelo próprio package.",
+                "include": [
+                  "exposição e práticas semanticamente suportadas"
+                ],
+                "exclude": [
+                  "práticas universais presumidas"
+                ],
+                "notation": [
+                  "interações em ordem temporal",
+                  "prompt visual separado da entrada",
+                  "stdout e stderr identificados",
+                  "espaços e quebras preservados",
+                  "efeito ligado à interação que o produziu"
+                ],
+                "avoid": [
+                  "lacuna fora da representação"
+                ]
+              },
+              "topics": [],
+              "microsequences": [
+                {
+                  "id": "resource-test-29-microsequence",
+                  "title": "Sessão de terminal",
+                  "goal": "Avaliar aralearn.resource.terminal_session somente nas modalidades declaradas pelo próprio package.",
+                  "role": "practice",
+                  "dependsOn": [],
+                  "covers": [],
+                  "checks": [
+                    "sem sobreposição",
+                    "alvo de prática dentro da representação",
+                    "Play como confirmação"
+                  ],
+                  "errors": [],
+                  "cards": [
+                    {
+                      "id": "resource-test-29-exposition",
+                      "position": 1,
+                      "title": "Exposição",
+                      "role": "theory",
+                      "content": [
+                        {
+                          "id": "resource-test-29-exposition-content",
+                          "package": "aralearn.resource.terminal_session",
+                          "version": "1.0.0",
+                          "data": {
+                            "prompt": "Acompanhe como a permissão de execução altera o resultado observado a cada tentativa.",
+                            "environment": "Bash 5.2 · GNU/Linux",
+                            "initialContext": "O arquivo script.sh pertence ao usuário aluno e começa sem permissão de execução.",
+                            "interactions": [
+                              {
+                                "prompt": "$",
+                                "input": "ls -l script.sh",
+                                "stdout": "-rw-r--r-- 1 aluno grupo 340 ago 14 09:12 script.sh",
+                                "exitCode": 0,
+                                "effect": "permissão de execução ausente"
+                              },
+                              {
+                                "prompt": "$",
+                                "input": "./script.sh",
+                                "stdout": "",
+                                "stderr": "bash: ./script.sh: Permission denied",
+                                "exitCode": 126,
+                                "effect": "execução recusada"
+                              },
+                              {
+                                "prompt": "$",
+                                "input": "chmod u+x script.sh",
+                                "stdout": "",
+                                "exitCode": 0,
+                                "effect": "permissão de execução concedida"
+                              },
+                              {
+                                "prompt": "$",
+                                "input": "./script.sh",
+                                "stdout": "Processamento concluído.",
+                                "exitCode": 0,
+                                "effect": "execução concluída"
+                              }
+                            ]
+                          }
+                        }
+                      ],
+                      "response": null,
+                      "feedback": [],
+                      "topics": [],
+                      "sources": []
+                    },
+                    {
+                      "id": "resource-test-29-choice",
+                      "position": 2,
+                      "title": "Lacuna com alternativas",
+                      "role": "practice",
+                      "content": [
+                        {
+                          "id": "resource-test-29-choice-content",
+                          "package": "aralearn.resource.terminal_session",
+                          "version": "1.0.0",
+                          "data": {
+                            "prompt": "Acompanhe como a permissão de execução altera o resultado observado a cada tentativa.",
+                            "environment": "Bash 5.2 · GNU/Linux",
+                            "initialContext": "O arquivo script.sh pertence ao usuário aluno e começa sem permissão de execução.",
+                            "interactions": [
+                              {
+                                "prompt": "$",
+                                "input": "ls -l script.sh",
+                                "stdout": "-rw-r--r-- 1 aluno grupo 340 ago 14 09:12 script.sh",
+                                "exitCode": 0,
+                                "effect": "permissão de execução ausente"
+                              },
+                              {
+                                "prompt": "$",
+                                "input": "./script.sh",
+                                "stdout": "",
+                                "stderr": "bash: ./script.sh: Permission denied",
+                                "exitCode": 126,
+                                "effect": "execução recusada"
+                              },
+                              {
+                                "prompt": "$",
+                                "input": "chmod u+x script.sh",
+                                "stdout": "",
+                                "exitCode": 0,
+                                "effect": "permissão de execução concedida"
+                              },
+                              {
+                                "prompt": "$",
+                                "input": "./script.sh",
+                                "stdout": "Processamento concluído.",
+                                "exitCode": 0,
+                                "effect": "execução concluída"
+                              }
+                            ]
+                          }
+                        }
+                      ],
+                      "response": {
+                        "id": "resource-test-29-choice-response",
+                        "package": "aralearn.response.gap",
+                        "version": "1.0.0",
+                        "data": {
+                          "blanks": [
+                            {
+                              "id": "blank-1",
+                              "targetInstanceId": "resource-test-29-choice-content",
+                              "targetPath": "interactions[0].input",
+                              "label": "Lacuna de escolha na entrada 1",
+                              "responseMode": "choice",
+                              "answer": "script.sh",
+                              "distractors": [
+                                "não script.sh",
+                                "outro script.sh"
+                              ]
+                            }
+                          ]
+                        }
+                      },
+                      "feedback": [],
+                      "topics": [],
+                      "sources": []
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
           "id": "response-choice-test-module",
           "title": "Escolha",
           "guide": {

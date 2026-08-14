@@ -392,16 +392,13 @@ conta autenticada.
    integração; crie as credenciais OAuth e vincule o identificador do GPT salvo.
 3. Na superfície **Plugin**, copie nome, descrição, endpoint e método de
    autenticação para configurar um cliente compatível com MCP.
-4. Em **Calibração**, leia o núcleo protegido, ajuste somente as preferências
-   expostas e baixe as instruções calibradas quando necessário.
 
 **Resultado esperado:** a ferramenta externa autentica a própria conta por
 OAuth e recebe somente as operações permitidas. As duas superfícies acessam o
 mesmo modelo de workspaces; diferem na forma de configuração do cliente.
 
-**Sem conexão:** os textos pessoais de calibração ficam no dispositivo e podem
-ser consultados; registrar credenciais, autorizar a conta e operar o servidor
-exige rede.
+**Sem conexão:** materiais de configuração já baixados podem ser consultados;
+registrar credenciais, autorizar a conta e operar o servidor exige rede.
 
 **Recuperação:** se falhar, não substitua OAuth por uma chave pessoal estática.
 Confirme o endereço da instalação, a conta usada no consentimento e o

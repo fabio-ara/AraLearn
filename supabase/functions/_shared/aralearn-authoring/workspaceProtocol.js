@@ -892,10 +892,40 @@ function continuityPartArgument(rawValue, label) {
   };
 }
 
+function pedagogicalDiagnosisArgument(rawValue, label) {
+  const value = object(rawValue, label);
+  only(value, ["difficultyResponses"], label);
+  if (!Array.isArray(value.difficultyResponses)
+      || value.difficultyResponses.length < 1
+      || value.difficultyResponses.length > 4) {
+    fail(
+      "invalid_authoring_decision",
+      `${label}.difficultyResponses deve ter de 1 a 4 vínculos compactos.`
+    );
+  }
+  const difficultyResponses = value.difficultyResponses.map((rawEntry, index) => {
+    const field = `${label}.difficultyResponses[${index}]`;
+    const entry = object(rawEntry, field);
+    only(entry, ["difficulty", "response"], field);
+    return {
+      difficulty: requiredText(entry, "difficulty", 240),
+      response: requiredText(entry, "response", 400)
+    };
+  });
+  if (new Set(difficultyResponses.map(({ difficulty }) => difficulty)).size
+      !== difficultyResponses.length) {
+    fail(
+      "invalid_authoring_decision",
+      `${label}.difficultyResponses não aceita dificuldade repetida.`
+    );
+  }
+  return { difficultyResponses };
+}
 function continuityDecisionArgument(rawValue, label) {
   const value = object(rawValue, label);
   only(value, [
-    "id", "summary", "entityType", "entityId", "representationSelection"
+    "id", "summary", "entityType", "entityId", "representationSelection",
+    "pedagogicalDiagnosis"
   ], label);
   const entityType = optionalText(value, "entityType", 30);
   const entityId = optionalText(value, "entityId", 240);
@@ -964,11 +994,24 @@ function continuityDecisionArgument(rawValue, label) {
       chatDisclosure
     };
   }
+  const pedagogicalDiagnosis = value.pedagogicalDiagnosis == null
+    ? null
+    : pedagogicalDiagnosisArgument(
+      value.pedagogicalDiagnosis,
+      `${label}.pedagogicalDiagnosis`
+    );
+  if (pedagogicalDiagnosis && entityType !== "microsequence") {
+    fail(
+      "invalid_authoring_decision_target",
+      `${label}.pedagogicalDiagnosis deve estar ligado a uma microssequência.`
+    );
+  }
   return {
     id: requiredText(value, "id", 240),
     summary: requiredText(value, "summary", 1_000),
     ...(entityType ? { entityType, entityId } : {}),
-    ...(representationSelection ? { representationSelection } : {})
+    ...(representationSelection ? { representationSelection } : {}),
+    ...(pedagogicalDiagnosis ? { pedagogicalDiagnosis } : {})
   };
 }
 

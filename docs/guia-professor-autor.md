@@ -123,14 +123,26 @@ acesso sem entregar sua senha ao cliente.
 **Passos:**
 
 1. Pela conversa externa, crie ou abra o workspace.
-2. Defina público, finalidade, escopo, profundidade e fontes.
-3. Registre a progressão antes de produzir os cards.
-4. Divida o trabalho em partes pequenas e ordenadas.
-5. Materialize uma microssequência por vez.
-6. Depois de cada parte, audite conteúdo, pré-requisitos, recursos, práticas e
+2. Defina público, finalidade, escopo, profundidade e fontes ainda ausentes do
+   contexto disponível.
+3. Responda somente às perguntas cuja informação possa mudar materialmente o
+   desenho; o assistente deve indicar qual decisão depende da resposta.
+4. Revise a síntese de condições de aprendizagem, exigências do conteúdo,
+   dificuldades previstas e respostas de desenho propostas.
+5. Aprove ou corrija esses vínculos e a progressão antes de produzir os cards.
+6. Divida o trabalho em partes pequenas e ordenadas.
+7. Materialize uma microssequência por vez.
+8. Depois de cada parte, audite conteúdo, pré-requisitos, recursos, práticas e
    feedback.
-7. Repare os achados aprovados e reavalie.
-8. Abra o mesmo item em Trilhas para testar a experiência real de estudo.
+9. Verifique também se cada resposta prometida foi materializada, se alguma
+   prática antecede sua base e se o curso depende de um meio indisponível.
+10. Repare os achados aprovados e reavalie.
+11. Abra o mesmo item em Trilhas para testar a experiência real de estudo.
+
+Condições descrevem o cenário; respostas são decisões locais. Não escolha um
+estilo pedagógico global para todo o curso. A síntese é uma hipótese de
+planejamento, não um diagnóstico automático dos estudantes: a responsabilidade
+por confirmá-la e aprovar o desenho continua sendo da pessoa autora.
 
 **Resultado esperado:** o conteúdo já materializado pode ser estudado sem esperar uma
 categoria burocrática de “pronto”. O planejamento corrente indica o que ainda
@@ -142,7 +154,8 @@ publicação dependem do servidor.
 
 **Recuperação:** retome pelo estado compacto do workspace, releia a parte atual
 e confirme a revisão antes de continuar. Não use a lembrança da conversa como
-única fonte do planejamento.
+única fonte do planejamento. O estado guarda contexto e decisões aprovadas
+úteis, não raciocínio privado nem o transcript integral da sessão.
 
 O procedimento completo está em [Criar cursos pelo
 chat](criar-cursos-pelo-chat.md).

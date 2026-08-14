@@ -1,0 +1,129 @@
+{
+  "contract": "aralearn.resource.terminal_session.fixture.v1",
+  "cases": [
+    {
+      "id": "linux-permission-transition",
+      "description": "Permissão ausente, tentativa recusada, alteração e execução bem-sucedida.",
+      "data": {
+        "prompt": "Acompanhe a relação entre a permissão do arquivo, o erro observado e a execução posterior.",
+        "environment": "Bash 5.2 · GNU/Linux",
+        "initialContext": "O arquivo script.sh pertence a aluno:grupo e começa sem permissão de execução.",
+        "interactions": [
+          {
+            "prompt": "$",
+            "input": "ls -l script.sh",
+            "stdout": "-rw-r--r-- 1 aluno grupo 340 ago 14 09:12 script.sh",
+            "exitCode": 0,
+            "effect": "permissão de execução ausente"
+          },
+          {
+            "prompt": "$",
+            "input": "./script.sh",
+            "stdout": "",
+            "stderr": "bash: ./script.sh: Permission denied",
+            "exitCode": 126,
+            "effect": "execução recusada"
+          },
+          {
+            "prompt": "$",
+            "input": "chmod u+x script.sh",
+            "stdout": "",
+            "exitCode": 0,
+            "effect": "permissão de execução concedida"
+          },
+          {
+            "prompt": "$",
+            "input": "./script.sh",
+            "stdout": "Processamento concluído.",
+            "exitCode": 0,
+            "effect": "execução concluída"
+          }
+        ]
+      }
+    },
+    {
+      "id": "git-working-tree-transition",
+      "description": "Estado do working tree, operação sobre o índice e novo estado observado.",
+      "data": {
+        "prompt": "Compare as duas saídas de status e identifique o que mudou depois de adicionar somente um arquivo ao índice.",
+        "environment": "Git 2.45 · Bash",
+        "initialContext": "Repositório na branch main, com uma alteração rastreada e um arquivo ainda não rastreado.",
+        "interactions": [
+          {
+            "prompt": "aluno@lab:~/projeto$",
+            "input": "git status --short",
+            "stdout": " M src/app.js\n?? notas & rascunhos.txt",
+            "exitCode": 0,
+            "effect": "alteração fora do índice e arquivo não rastreado"
+          },
+          {
+            "prompt": "aluno@lab:~/projeto$",
+            "input": "git add -- src/app.js",
+            "stdout": "",
+            "exitCode": 0,
+            "effect": "src/app.js adicionado ao índice"
+          },
+          {
+            "prompt": "aluno@lab:~/projeto$",
+            "input": "git status --short",
+            "stdout": "M  src/app.js\n?? notas & rascunhos.txt",
+            "exitCode": 0,
+            "effect": "alteração preparada; arquivo não rastreado permanece"
+          }
+        ]
+      }
+    },
+    {
+      "id": "sql-error-and-update",
+      "description": "Consulta SQL, erro do sistema e comando multilinha que produz nova consequência.",
+      "data": {
+        "prompt": "Acompanhe a consulta, diagnostique o nome incorreto da relação e observe a atualização confirmada por RETURNING.",
+        "environment": "psql 16 · PostgreSQL",
+        "initialContext": "Conexão de estudo com a base escola; nenhuma transação explícita está aberta.",
+        "interactions": [
+          {
+            "prompt": "escola=>",
+            "input": "SELECT id, nome, ativo FROM estudantes ORDER BY id;",
+            "stdout": " id | nome  | ativo\n----+-------+-------\n  1 | Ana   | t\n  2 | Ícaro | f\n(2 rows)",
+            "exitCode": 0,
+            "effect": "dois registros lidos"
+          },
+          {
+            "prompt": "escola=>",
+            "input": "SELECT * FROM estudante;",
+            "stdout": "",
+            "stderr": "ERROR:  relation \"estudante\" does not exist\nLINE 1: SELECT * FROM estudante;\n                      ^",
+            "exitCode": 1,
+            "effect": "consulta recusada por nome de relação inexistente"
+          },
+          {
+            "prompt": "escola=>",
+            "input": "UPDATE estudantes\nSET ativo = true\nWHERE id = 2\nRETURNING id, nome, ativo;",
+            "stdout": " id | nome  | ativo\n----+-------+-------\n  2 | Ícaro | t\n(1 row)\n\nUPDATE 1",
+            "exitCode": 0,
+            "effect": "registro 2 passou ao estado ativo"
+          }
+        ]
+      }
+    },
+    {
+      "id": "administrative-cloud-long-output",
+      "description": "Ferramenta administrativa genérica com caracteres especiais e saída extensa rolável.",
+      "data": {
+        "prompt": "Interprete o estado global sem confundir a lista extensa de verificações com novos comandos.",
+        "environment": "Console administrativo textual · cloudctl 4.3",
+        "initialContext": "Sessão autenticada no escopo laboratório/produção-α, em modo somente leitura.",
+        "interactions": [
+          {
+            "prompt": "cloud[produção-α]>",
+            "input": "cloudctl service inspect --name \"api <principal> & worker\" --output text",
+            "stdout": "service: api <principal> & worker\nstate: degraded\nowner: equipe \"Plataforma & Dados\"\nregion: sul-1\nchecks:\n  01 gateway ........ ok\n  02 identidade ..... ok\n  03 configuração ... ok\n  04 fila-entrada .... ok\n  05 fila-saída ...... warning\n  06 cache-a ......... ok\n  07 cache-b ......... ok\n  08 banco-primário .. ok\n  09 réplica-01 ...... ok\n  10 réplica-02 ...... ok\n  11 réplica-03 ...... ok\n  12 worker-01 ....... ok\n  13 worker-02 ....... ok\n  14 worker-03 ....... ok\n  15 worker-04 ....... ok\n  16 worker-05 ....... ok\n  17 worker-06 ....... ok\n  18 worker-07 ....... ok\n  19 worker-08 ....... ok\n  20 telemetria ...... ok\n  21 métricas ........ ok\n  22 logs ............ ok\n  23 tracing ......... ok\n  24 alerta-latência . warning\n  25 alerta-erros .... ok\n  26 política-a ...... ok\n  27 política-b ...... ok\n  28 política-c ...... ok\n  29 segredo-a ....... ok\n  30 segredo-b ....... ok\n  31 rota-interna .... ok\n  32 rota-externa .... ok\n  33 dns ............. ok\n  34 certificado ..... ok\n  35 quota-cpu ....... ok\n  36 quota-memória ... ok\n  37 quota-disco ..... ok\n  38 escalonamento ... ok\n  39 atualização ..... pending\n  40 auditoria ....... ok\ndigest: sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08-0123456789abcdef0123456789abcdef0123456789abcdef",
+            "stderr": "",
+            "exitCode": 3,
+            "effect": "serviço degradado por avisos e atualização pendente"
+          }
+        ]
+      }
+    }
+  ]
+}

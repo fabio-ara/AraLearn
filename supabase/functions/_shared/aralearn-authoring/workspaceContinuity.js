@@ -203,6 +203,43 @@ function normalizeRepresentationSelection(value, field) {
   };
 }
 
+function normalizePedagogicalDiagnosis(value, field) {
+  if (!plainObject(value)) {
+    fail("invalid_authoring_continuity", `${field} deve ser um objeto.`, { field });
+  }
+  only(value, ["difficultyResponses"], field);
+  if (!Array.isArray(value.difficultyResponses)
+      || value.difficultyResponses.length < 1
+      || value.difficultyResponses.length > 4) {
+    fail(
+      "invalid_authoring_continuity",
+      `${field}.difficultyResponses deve ter de 1 a 4 vínculos compactos.`,
+      { field: `${field}.difficultyResponses` }
+    );
+  }
+  const difficultyResponses = value.difficultyResponses.map((entry, index) => {
+    const itemField = `${field}.difficultyResponses[${index}]`;
+    if (!plainObject(entry)) {
+      fail("invalid_authoring_continuity", `${itemField} deve ser objeto.`, {
+        field: itemField
+      });
+    }
+    only(entry, ["difficulty", "response"], itemField);
+    return {
+      difficulty: text(entry.difficulty, `${itemField}.difficulty`, 240),
+      response: text(entry.response, `${itemField}.response`, 400)
+    };
+  });
+  if (new Set(difficultyResponses.map(({ difficulty }) => difficulty)).size
+      !== difficultyResponses.length) {
+    fail(
+      "invalid_authoring_continuity",
+      `${field}.difficultyResponses não aceita dificuldade repetida.`,
+      { field: `${field}.difficultyResponses` }
+    );
+  }
+  return { difficultyResponses };
+}
 function normalizePart(value, field = "part") {
   if (!plainObject(value)) {
     fail("invalid_authoring_continuity", `${field} deve ser um objeto.`, { field });
@@ -224,7 +261,8 @@ function normalizeDecision(value, field = "decision") {
     fail("invalid_authoring_continuity", `${field} deve ser um objeto.`, { field });
   }
   only(value, [
-    "id", "summary", "entityType", "entityId", "representationSelection"
+    "id", "summary", "entityType", "entityId", "representationSelection",
+    "pedagogicalDiagnosis"
   ], field);
   const entityType = optionalText(value.entityType, `${field}.entityType`, 30);
   const entityId = optionalText(value.entityId, `${field}.entityId`, 240);
@@ -249,11 +287,25 @@ function normalizeDecision(value, field = "decision") {
       { field: `${field}.representationSelection` }
     );
   }
+  const pedagogicalDiagnosis = value.pedagogicalDiagnosis == null
+    ? null
+    : normalizePedagogicalDiagnosis(
+      value.pedagogicalDiagnosis,
+      `${field}.pedagogicalDiagnosis`
+    );
+  if (pedagogicalDiagnosis && entityType !== "microsequence") {
+    fail(
+      "invalid_authoring_continuity",
+      `${field}.pedagogicalDiagnosis deve estar ligado a uma microssequência.`,
+      { field: `${field}.pedagogicalDiagnosis` }
+    );
+  }
   return {
     id: identifier(value.id, `${field}.id`),
     summary: text(value.summary, `${field}.summary`, 1_000),
     ...(entityType ? { entityType, entityId } : {}),
-    ...(representationSelection ? { representationSelection } : {})
+    ...(representationSelection ? { representationSelection } : {}),
+    ...(pedagogicalDiagnosis ? { pedagogicalDiagnosis } : {})
   };
 }
 
@@ -358,7 +410,10 @@ export function normalizeContinuityState(value) {
   };
   if (new TextEncoder().encode(JSON.stringify(result)).byteLength
       > CONTINUITY_STATE_MAX_BYTES) {
-    fail("authoring_continuity_too_large", "A continuidade ultrapassa 48 KiB.");
+    fail(
+      "authoring_continuity_too_large",
+      "A continuidade ultrapassa 48 KiB. Resuma as decisões e agrupe pares de dificuldade e resposta sem remover o escopo aprovado."
+    );
   }
   return result;
 }
@@ -616,7 +671,8 @@ export function applyContinuityStateOperation({
     next.parts = next.parts.filter(({ id }) => id !== partId);
   } else if (operation === "record_decision") {
     only(operationArguments, [
-      "id", "summary", "entityType", "entityId", "representationSelection"
+      "id", "summary", "entityType", "entityId", "representationSelection",
+      "pedagogicalDiagnosis"
     ], "arguments");
     const decision = normalizeDecision(operationArguments, "arguments");
     const existingIndex = next.decisions.findIndex(({ id }) => id === decision.id);

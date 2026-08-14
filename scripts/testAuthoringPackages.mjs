@@ -478,6 +478,11 @@ const representationSelectionReference =
 const representationSelectionComponent = actionSchema.components.schemas
   .RepresentationSelection;
 assert.equal(representationSelectionComponent.type, "object");
+const pedagogicalDiagnosisReference =
+  "#/components/schemas/PedagogicalDiagnosis";
+const pedagogicalDiagnosisComponent = actionSchema.components.schemas
+  .PedagogicalDiagnosis;
+assert.equal(pedagogicalDiagnosisComponent.type, "object");
 const continuityActionInput = actionSchema.components.schemas
   .InputGerirContinuidadeDaAutoria;
 assert.deepEqual(
@@ -488,6 +493,15 @@ assert.deepEqual(
   continuityActionInput.properties.decisions.items.properties
     .representationSelection,
   { $ref: representationSelectionReference }
+);
+assert.deepEqual(
+  continuityActionInput.properties.pedagogicalDiagnosis,
+  { $ref: pedagogicalDiagnosisReference }
+);
+assert.deepEqual(
+  continuityActionInput.properties.decisions.items.properties
+    .pedagogicalDiagnosis,
+  { $ref: pedagogicalDiagnosisReference }
 );
 const continuityDefinition = AUTHORING_WORKSPACE_MCP_TOOLS.find(
   ({ name }) => name === "gerirContinuidadeDaAutoria"
@@ -500,6 +514,14 @@ assert.deepEqual(
   ),
   continuityDefinition.inputSchema.properties.representationSelection,
   "O componente RepresentationSelection divergiu do contrato MCP canônico."
+);
+assert.deepEqual(
+  dereferenceLocalSchema(
+    actionSchema,
+    continuityActionInput.properties.pedagogicalDiagnosis
+  ),
+  continuityDefinition.inputSchema.properties.pedagogicalDiagnosis,
+  "O componente PedagogicalDiagnosis divergiu do contrato MCP canônico."
 );
 assertAllLocalReferencesResolve(actionSchema);
 for (const [name, schema] of Object.entries(actionSchema.components.schemas)) {

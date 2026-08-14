@@ -252,6 +252,7 @@ previstos nas WCAG 2.2 ([World Wide Web Consortium (2023)](referencias.md#ref-w3
 | fluxograma | símbolos de início/fim, processo, decisão, entrada/saída e fluxo de controle | árvore ou BPMN |
 | BPMN | participantes, raias, eventos, atividades, gateways e fluxos normativos | fluxograma com caixas agrupadas |
 | máquina de estados | estados, eventos, guardas, ações e transições | sequência cronológica |
+| sessão textual pessoa–sistema | ambiente, contexto inicial e sequência ordenada de entrada, `stdout`, `stderr`, código de saída e efeito observável | código-fonte ou configuração estática, tabela de registros ou explicação em prosa |
 | modelo entidade–relacionamento | entidades, atributos, relacionamentos e cardinalidades conceituais | esquema relacional com chaves |
 | glosa interlinear | alinhamento entre forma, segmentação, glosa morfêmica e tradução | linhas independentes de texto |
 | equação química | espécies, coeficientes, estados, carga, condições e tipo de seta | fórmula matemática genérica |
@@ -264,6 +265,22 @@ As referências técnicas primárias orientam cada package, por exemplo:
 [RFC 9293](https://www.rfc-editor.org/rfc/rfc9293.html),
 [Leipzig Glossing Rules](https://www.eva.mpg.de/lingua/resources/glossing-rules.php)
 e [MathML](https://www.w3.org/TR/mathml-core/).
+
+O package `aralearn.resource.terminal_session` preserva um processo textual
+observável, não emula um terminal. Seu renderer não executa ou interpreta
+comandos e não acessa shell, banco, rede ou outro ambiente; apenas torna
+explícito o registro autoral e sua ordem. Um resultado observado também não
+garante repetição sob outro estado ou sistema.
+
+Como hipótese de desenho, uma sessão trabalhada pode tornar passos e
+consequências disponíveis para análise, de modo semelhante à função de exemplos
+resolvidos. A evidência sobre exemplos, porém, é condicional: conhecimento
+prévio e ordem entre exemplo e problema podem alterar sua utilidade
+([Sweller e Cooper (1985)](referencias.md#ref-sweller1985workedexamples); [Renkl et al. (2004)](referencias.md#ref-renkl2004fading); [Kalyuga (2007)](referencias.md#ref-kalyuga2007expertisereversal); [Reisslein et al. (2006)](referencias.md#ref-reisslein2006expertisereversal)). Essas fontes não avaliaram o AraLearn nem demonstram que observar
+uma sessão substitua executar a operação. Quando o objetivo for desempenho em
+ambiente real, a sessão pode preparar leitura, previsão ou diagnóstico, mas a
+autoria deve incluir prática real adequada ou declarar que esse meio não está
+disponível.
 
 **Consequências.** Um mesmo domínio pode possuir vários packages, desde que
 cada um corresponda a uma operação e um nível de análise distintos. O catálogo
@@ -304,6 +321,11 @@ equivalentes ([Karpicke e Roediger (2008)](referencias.md#ref-karpicke2008retrie
 - resposta ou respostas aceitas;
 - alternativas e feedback próprios, quando aplicável;
 - descrição acessível independente da posição visual.
+
+Em `terminal_session`, somente a entrada de cada interação pode ser alvo de
+lacuna com opções exatas e inequívocas. Saídas, erros, códigos e efeitos
+continuam contexto observável; não há avaliação por digitação, expressão
+regular, equivalência aproximada ou interpretação por modelo.
 
 Tocar numa lacuna vazia abre somente suas opções. Tocar novamente numa lacuna
 preenchida pode limpá-la. Confirmar é uma ação distinta de selecionar, e a

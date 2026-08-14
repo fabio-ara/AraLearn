@@ -28,7 +28,8 @@ construir e testar um curso privado sem elas.
 
 ## O que informar no primeiro pedido
 
-Um pedido inicial útil responde, em linguagem comum:
+Quando essas informações ainda não estiverem nas fontes, no curso ou no
+workspace, um pedido inicial útil pode informar, em linguagem comum:
 
 1. quem estudará;
 2. qual desempenho se espera ao final;
@@ -37,6 +38,11 @@ Um pedido inicial útil responde, em linguagem comum:
 5. que conhecimento prévio pode ser comprovadamente presumido;
 6. qual idioma, notação ou convenção precisa ser preservado;
 7. se a tarefa cria, complementa, reorganiza ou revisa um curso.
+
+Essa lista é uma ajuda para formular o pedido, não um questionário obrigatório.
+O assistente consulta primeiro o contexto disponível e só pede uma informação
+ausente quando a resposta puder mudar materialmente objetivo, escopo,
+pré-requisito, sequência, representação, prática ou dependência de outro meio.
 
 Não determine uma quantidade arbitrária de cards nem escolha recursos visuais
 sem necessidade. O planejamento deve derivar o volume da cobertura, dos
@@ -60,11 +66,16 @@ Avise quando houver uma unidade coerente disponível para teste em Trilhas.
 Não é necessário escrever JSON, identificar ferramentas ou conhecer a versão
 dos contratos.
 
-## Etapa 1 — delimitar o curso
+## Etapa 1 — delimitar o contexto
 
 O assistente transforma o pedido num **brief**, isto é, um registro curto do
 contexto que deve permanecer estável entre as etapas. Ele inclui público,
 objetivo, fontes, inclusões, exclusões, idioma e notação.
+
+Antes de perguntar ou propor o desenho, o assistente relê o brief, as fontes, o
+curso e as decisões registradas. Se uma lacuna não alterar o desenho, ela não
+justifica interromper a autoria. Se alterar, a pergunta deve explicitar qual
+decisão depende da resposta, sem aplicar um roteiro fixo.
 
 Verifique se:
 
@@ -75,13 +86,25 @@ Verifique se:
 - fontes atuais foram realmente consultadas;
 - lacunas de informação foram declaradas, em vez de preenchidas por suposição.
 
-O brief não aparece como texto para o estudante. Ele orienta a autoria. A
-conversa também não é a única memória do projeto: decisões, partes e achados
-são registrados no workspace, de modo que outra sessão possa retomar o
-trabalho.
+O diagnóstico contextual que orientará o planejamento distingue:
 
-Resultado esperado: contexto estável confirmado e nenhuma produção iniciada
-antes de resolver contradições relevantes.
+- **condições de aprendizagem**: fatos ou hipóteses explícitas sobre público,
+  conhecimentos presumíveis, convenções e meios disponíveis;
+- **exigências do conteúdo**: operações, relações e pré-requisitos impostos pelo
+  objeto de estudo;
+- **dificuldades previstas**: hipóteses revisáveis sobre onde essas exigências
+  podem criar obstáculo nas condições declaradas;
+- **respostas de desenho**: decisões locais propostas para enfrentar cada
+  dificuldade numa microssequência.
+
+O brief e o diagnóstico não aparecem como texto para o estudante. Eles orientam
+a autoria, mas não constituem medição de capacidade, perfil individual ou
+predição de aprendizagem. A pessoa autora confirma as condições e julga as
+hipóteses; o assistente não substitui responsabilidade disciplinar ou
+pedagógica.
+
+Resultado esperado: contexto estável, lacunas materiais identificadas e
+contradições relevantes resolvidas antes do planejamento detalhado.
 
 ## Etapa 2 — planejar a progressão
 
@@ -91,10 +114,18 @@ explicita:
 - objetivo de cada unidade;
 - conceitos e relações cobertos;
 - pré-requisitos;
-- erros ou confusões que a prática deverá revelar;
+- condições e exigências pertinentes a cada microssequência;
+- dificuldades previstas e a resposta de desenho ligada a cada uma;
+- erros ou confusões que a prática poderá tornar observáveis;
 - tipos de prática previstos;
 - razão para separar ou reunir os assuntos;
 - fontes que sustentam o recorte.
+
+A decisão pedagógica é local: a existência de uma condição contextual não
+prescreve o mesmo estilo para o curso inteiro. Cada microssequência seleciona
+explicação, exemplo, representação, prática e apoio conforme seu objetivo e as
+dificuldades aprovadas. Não existe uma calibração pedagógica global que dispense
+esse julgamento.
 
 A unidade central de produção é a microssequência. Ela deve ensinar um avanço
 conceitual delimitado e praticá-lo. “Delimitado” não significa resumido: uma
@@ -106,8 +137,9 @@ independentes ou exceder o limite operacional de oito cards, ela é decomposta.
 A quantidade maior é consequência pedagógica aceitável; omitir etapas para
 reduzir custo não é.
 
-Analise a proposta e responda com aprovação ou ajustes. O assistente não deve
-começar a produção na mesma resposta em que pede essa decisão.
+Analise a proposta, inclusive os vínculos dificuldade–resposta, e responda com
+aprovação ou ajustes. O assistente não deve começar a produção na mesma resposta
+em que pede essa decisão.
 
 Resultado esperado: árvore planejada, dividida em partes de revisão
 compreensíveis e visível como plano em Trilhas.
@@ -190,14 +222,19 @@ problemas que exigem auditoria ou reparo.
 Auditoria é uma rodada somente para leitura. Ela examina:
 
 - cobertura do escopo;
+- rastreabilidade entre diagnóstico, plano e cards materializados;
+- respostas de desenho prometidas, mas ausentes;
 - progressão e pré-requisitos;
 - densidade dos cards de teoria;
+- prática introduzida antes da fundamentação necessária;
 - ligação entre teoria, prática e feedback;
 - terminologia, siglas e ausência de vocabulário de bastidor;
-- pertinência e legibilidade das representações;
+- pertinência, convenção e legibilidade das representações;
 - variedade funcional das práticas;
 - qualidade e procedência das fontes;
-- continuidade com as partes vizinhas.
+- continuidade com as partes vizinhas;
+- perdas de cobertura causadas por uma resposta local;
+- dependências de laboratório, sistema ou outro meio externo indisponível.
 
 Cada achado deve informar localização, tipo, impacto, gravidade e reparo
 recomendado. O assistente não corrige na mesma rodada. A pessoa aprova, rejeita
@@ -265,8 +302,14 @@ catálogo](autoria-do-catalogo.md).
 ## Como retomar em outra conversa
 
 Uma nova sessão deve começar lendo a retomada compacta do workspace: brief,
-estrutura, partes, decisões, achados e revisões pendentes. O curso não depende
-de o modelo recordar mensagens anteriores.
+condições confirmadas, diagnósticos e respostas aprovados, estrutura, partes,
+decisões, achados e revisões pendentes. O curso não depende de o modelo recordar
+mensagens anteriores.
+
+Persistem somente informações aprovadas e úteis para continuar ou auditar o
+trabalho. O raciocínio privado do modelo e o transcript integral do diálogo não
+fazem parte desse estado; justificativas necessárias à revisão devem aparecer
+como decisões explícitas e inspecionáveis.
 
 Pedidos de retomada úteis:
 

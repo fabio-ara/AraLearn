@@ -578,17 +578,37 @@ const AUTHORING_PACKAGE_CONTRACT_SCHEMA = schema(["packageId", "version", "tool"
   tool: { const: "consultarBibliotecaDeResources" },
   operation: { const: "contracts" }
 });
-const PEDAGOGICAL_BLUEPRINT_SCHEMA = schema(["version", "principle", "requiredSections"], {
-  version: { const: 1 },
+const PEDAGOGICAL_BLUEPRINT_COMPONENT_SCHEMA = schema(["required", "rule"], {
+  required: {
+    type: "array",
+    minItems: 1,
+    maxItems: 8,
+    uniqueItems: true,
+    items: NON_EMPTY_STRING
+  },
+  rule: NON_EMPTY_STRING
+});
+const PEDAGOGICAL_BLUEPRINT_SCHEMA = schema([
+  "version", "principle", "requiredSections", "learningCondition",
+  "contentDemand", "anticipatedDifficulty", "designResponse", "layer",
+  "theoryStep", "practiceStep"
+], {
+  version: { const: 2 },
   principle: NON_EMPTY_STRING,
   requiredSections: {
     type: "array",
-    minItems: 8,
+    minItems: 13,
+    maxItems: 13,
     uniqueItems: true,
     items: {
       type: "string",
       enum: [
+        "goal",
         "learnerSituation",
+        "learningConditions",
+        "contentDemands",
+        "anticipatedDifficulties",
+        "designResponses",
         "prerequisiteEvidence",
         "conceptualLayers",
         "theorySteps",
@@ -598,6 +618,22 @@ const PEDAGOGICAL_BLUEPRINT_SCHEMA = schema(["version", "principle", "requiredSe
         "packageCandidates"
       ]
     }
+  },
+  learningCondition: PEDAGOGICAL_BLUEPRINT_COMPONENT_SCHEMA,
+  contentDemand: PEDAGOGICAL_BLUEPRINT_COMPONENT_SCHEMA,
+  anticipatedDifficulty: PEDAGOGICAL_BLUEPRINT_COMPONENT_SCHEMA,
+  designResponse: PEDAGOGICAL_BLUEPRINT_COMPONENT_SCHEMA,
+  layer: PEDAGOGICAL_BLUEPRINT_COMPONENT_SCHEMA,
+  theoryStep: PEDAGOGICAL_BLUEPRINT_COMPONENT_SCHEMA,
+  practiceStep: PEDAGOGICAL_BLUEPRINT_COMPONENT_SCHEMA
+});
+const PROTECTED_AUTHORING_CORE_SCHEMA = schema(["version", "moduleIds"], {
+  version: { const: 2 },
+  moduleIds: {
+    type: "array",
+    minItems: 5,
+    uniqueItems: true,
+    items: NON_EMPTY_STRING
   }
 });
 const STRUCTURAL_ENTITY_TYPE = Object.freeze({
@@ -635,12 +671,12 @@ const AUTHORING_CONTEXT_DATA_SCHEMA = schema([
   "workflow",
   "recommendedTools",
   "guidance",
+  "protectedCore",
   "blueprintContract",
-  "calibrationContract",
   "packageContracts",
   "access"
 ], {
-  briefVersion: { const: 2 },
+  briefVersion: { const: 3 },
   intent: AUTHORING_INTENT,
   targetEntity: {
     type: ["string", "null"],
@@ -654,29 +690,8 @@ const AUTHORING_CONTEXT_DATA_SCHEMA = schema([
     maxItems: 8,
     items: AUTHORING_GUIDANCE_SCHEMA
   },
+  protectedCore: PROTECTED_AUTHORING_CORE_SCHEMA,
   blueprintContract: PEDAGOGICAL_BLUEPRINT_SCHEMA,
-  calibrationContract: schema([
-    "version",
-    "presetId",
-    "precedence",
-    "protectedModuleIds",
-    "editablePreferenceIds"
-  ], {
-    version: { const: 1 },
-    presetId: { const: "aralearn-progressive-dense" },
-    precedence: {
-      type: "array",
-      prefixItems: [
-        { const: "protected_core" },
-        { const: "protected_knowledge" },
-        { const: "user_preferences" }
-      ],
-      minItems: 3,
-      maxItems: 3
-    },
-    protectedModuleIds: STRING_LIST,
-    editablePreferenceIds: STRING_LIST
-  }),
   packageContracts: {
     type: "array",
     maxItems: 16,
@@ -1201,13 +1216,29 @@ const REPRESENTATION_SELECTION_SCHEMA = Object.freeze({
     }
   ]
 });
+const PEDAGOGICAL_DIAGNOSIS_SCHEMA = schema(["difficultyResponses"], {
+  difficultyResponses: {
+    type: "array",
+    minItems: 1,
+    maxItems: 4,
+    items: schema(["difficulty", "response"], {
+      difficulty: {
+        type: "string", minLength: 1, maxLength: 240, pattern: "\\S"
+      },
+      response: {
+        type: "string", minLength: 1, maxLength: 400, pattern: "\\S"
+      }
+    })
+  }
+});
 const CONTINUITY_DECISION_SCHEMA = Object.freeze({
   ...schema(["id", "summary"], {
     id: ID,
     summary: { type: "string", minLength: 1, maxLength: 1_000, pattern: "\\S" },
     entityType: ENTITY_TYPE,
     entityId: ID,
-    representationSelection: REPRESENTATION_SELECTION_SCHEMA
+    representationSelection: REPRESENTATION_SELECTION_SCHEMA,
+    pedagogicalDiagnosis: PEDAGOGICAL_DIAGNOSIS_SCHEMA
   }),
   allOf: [
     {
@@ -1226,6 +1257,19 @@ const CONTINUITY_DECISION_SCHEMA = Object.freeze({
       then: {
         properties: {
           entityType: { type: "string", enum: ["microsequence", "card"] },
+          entityId: ID
+        },
+        required: ["entityType", "entityId"]
+      }
+    },
+    {
+      if: {
+        properties: { pedagogicalDiagnosis: {} },
+        required: ["pedagogicalDiagnosis"]
+      },
+      then: {
+        properties: {
+          entityType: { const: "microsequence" },
           entityId: ID
         },
         required: ["entityType", "entityId"]
@@ -2610,7 +2654,8 @@ const CONTINUITY_INPUT_SCHEMA = discriminatedInputSchema([
       summary: { type: "string", minLength: 1, maxLength: 1_000, pattern: "\\S" },
       entityType: ENTITY_TYPE,
       entityId: ID,
-      representationSelection: REPRESENTATION_SELECTION_SCHEMA
+      representationSelection: REPRESENTATION_SELECTION_SCHEMA,
+      pedagogicalDiagnosis: PEDAGOGICAL_DIAGNOSIS_SCHEMA
     }),
     allOf: [
       {
@@ -2629,6 +2674,19 @@ const CONTINUITY_INPUT_SCHEMA = discriminatedInputSchema([
         then: {
           properties: {
             entityType: { type: "string", enum: ["microsequence", "card"] },
+            entityId: ID
+          },
+          required: ["entityType", "entityId"]
+        }
+      },
+      {
+        if: {
+          properties: { pedagogicalDiagnosis: {} },
+          required: ["pedagogicalDiagnosis"]
+        },
+        then: {
+          properties: {
+            entityType: { const: "microsequence" },
             entityId: ID
           },
           required: ["entityType", "entityId"]
@@ -2898,7 +2956,7 @@ const INDIVIDUAL_AUTHORING_WORKSPACE_MCP_TOOLS = Object.freeze([
   tool(
     "prepararAutoriaAraLearn",
     "Preparar autoria AraLearn",
-    "Use no início da etapa: create planeja/cria, extend amplia/constrói, audit audita sem alterar conteúdo ou estrutura, repair repara, restructure reorganiza e publish prepara submissão ou distribui em Coleções.",
+    "Use no início da etapa. Create e extend recuperam o mandato de diagnóstico contextual, planejamento dialogado e construção; audit confronta diagnóstico, plano e cards sem alterar conteúdo; repair repara; restructure reorganiza; publish prepara submissão ou distribui em Coleções.",
     readSchema(["intent"], {
       intent: AUTHORING_INTENT,
       targetEntity: {
@@ -3508,7 +3566,7 @@ const INDIVIDUAL_AUTHORING_WORKSPACE_MCP_TOOLS = Object.freeze([
   tool(
     "gerirContinuidadeDaAutoria",
     "Gerir continuidade da autoria",
-    "Mantém contexto estável, Partes, decisões, mandato e achados sem copiar árvore ou conversa. record_approved_plan persiste o plano aprovado em uma escrita; replace_stable_brief substitui somente público, objetivo, fontes, recorte e restrições.",
+    "Mantém brief estável, Partes, decisões — inclusive diagnóstico aprovado por microssequência —, mandato e achados sem copiar árvore, conversa ou raciocínio privado. record_approved_plan grava o plano em uma escrita; replace_stable_brief substitui somente contexto estável.",
     CONTINUITY_INPUT_SCHEMA,
     CONTINUITY_MUTATION_DATA_SCHEMA
   ),

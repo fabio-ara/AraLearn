@@ -878,9 +878,9 @@ test("jornada Dataprev atravessa Chatbot autoral e Plugin editorial sem snapshot
     [
       "authoring-brief",
       "source-discipline",
+      "contextual-planning",
       "incremental-materialization",
       "coverage-and-dimensioning",
-      "microtheory-design",
       "blueprint-before-materialization",
       "practice-design",
       "resource-selection"

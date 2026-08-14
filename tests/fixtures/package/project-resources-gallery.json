@@ -3016,6 +3016,68 @@
                       ],
                       "topics": [],
                       "sources": []
+                    },
+                    {
+                      "id": "gallery-33",
+                      "position": 33,
+                      "title": "Sessão de terminal",
+                      "role": "theory",
+                      "content": [
+                        {
+                          "id": "instance-33",
+                          "package": "aralearn.resource.terminal_session",
+                          "version": "1.0.0",
+                          "data": {
+                            "prompt": "Acompanhe como a permissão de execução altera o resultado observado a cada tentativa.",
+                            "environment": "Bash 5.2 · GNU/Linux",
+                            "initialContext": "O arquivo script.sh pertence ao usuário aluno e começa sem permissão de execução.",
+                            "interactions": [
+                              {
+                                "prompt": "$",
+                                "input": "ls -l script.sh",
+                                "stdout": "-rw-r--r-- 1 aluno grupo 340 ago 14 09:12 script.sh",
+                                "exitCode": 0,
+                                "effect": "permissão de execução ausente"
+                              },
+                              {
+                                "prompt": "$",
+                                "input": "./script.sh",
+                                "stdout": "",
+                                "stderr": "bash: ./script.sh: Permission denied",
+                                "exitCode": 126,
+                                "effect": "execução recusada"
+                              },
+                              {
+                                "prompt": "$",
+                                "input": "chmod u+x script.sh",
+                                "stdout": "",
+                                "exitCode": 0,
+                                "effect": "permissão de execução concedida"
+                              },
+                              {
+                                "prompt": "$",
+                                "input": "./script.sh",
+                                "stdout": "Processamento concluído.",
+                                "exitCode": 0,
+                                "effect": "execução concluída"
+                              }
+                            ]
+                          }
+                        }
+                      ],
+                      "response": null,
+                      "feedback": [
+                        {
+                          "id": "feedback-33",
+                          "package": "aralearn.resource.paragraph",
+                          "version": "1.0.0",
+                          "data": {
+                            "text": "A sessão é uma lista cronológica; entrada, stdout, stderr, código de saída e efeito têm rótulos textuais, e todo conteúdo monoespaçado permanece selecionável."
+                          }
+                        }
+                      ],
+                      "topics": [],
+                      "sources": []
                     }
                   ]
                 }

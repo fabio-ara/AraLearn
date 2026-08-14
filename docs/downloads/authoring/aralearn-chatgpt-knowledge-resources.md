@@ -362,6 +362,20 @@ Um contrato de alto nível deve usar conceitos da área. Exemplos:
 
 O contrato não pede SVG, LaTeX livre, uma tabela improvisada ou frases concatenadas. Isso reduz erro do modelo e permite que o renderer preserve convenções. Quando duas áreas usam diagramas superficialmente parecidos com semânticas distintas, packages separados são preferíveis a um contrato genérico repleto de exceções.
 
+### Sessões textuais observáveis
+
+`aralearn.resource.terminal_session` representa uma sequência temporal de interações textuais entre pessoa e sistema. Ele é apropriado para acompanhar entrada, resposta e efeito em shell, PowerShell, Git, SQL ou outra interface textual quando a ordem e o estado observável fazem parte do objeto de estudo.
+
+O contrato declara uma orientação pedagógica em `prompt`, o `environment`, um `initialContext` opcional e uma lista ordenada de `interactions`. Cada interação possui `input` e pode registrar separadamente o prompt visual, `stdout`, `stderr`, `exitCode` e um efeito curto. Espaços e quebras de linha são preservados num conteúdo declarativo e determinístico. Em `stdout` e `stderr`, a string vazia significa que o stream foi observado sem conteúdo; a omissão significa que ele não foi registrado ou não é pertinente.
+
+As operações previstas são rastrear interação, interpretar saída, identificar erro, relacionar ação e consequência, comparar estado, diagnosticar situação, prever resultado e reconhecer comando.
+
+Esse objeto não é `code`, que preserva código-fonte ou configuração estática; não é `table`, que compara registros por atributos; e não é `paragraph`, que expõe uma explicação em prosa. O package apresenta um registro fornecido pela autoria: não executa nem interpreta comandos, não abre shell ou banco e não acessa rede ou ambiente externo. O mesmo texto pode produzir outro resultado em outro estado, sistema ou momento.
+
+Quando houver prática, somente `interactions[i].input` pode receber lacuna de escolha com alternativas exatas e inequívocas. O package não avalia digitação, expressões regulares, equivalência semântica nem resposta livre por modelo. Sua lista cronológica, os rótulos de streams e o texto monoespaçado selecionável fornecem uma ordem de leitura acessível; no celular, conteúdo largo usa rolagem local sem alterar espaços ou quebrar o fluxo do card.
+
+Observar e interpretar uma sessão pode preparar reconhecimento, previsão ou diagnóstico, mas não substitui operar um ambiente real quando executar a ação é o objetivo de aprendizagem. Nessa situação, a autoria precisa oferecer prática externa adequada ou declarar explicitamente a limitação.
+
 ## 10. Leitura sem gramática adicional
 
 O estudante não deve aprender uma legenda inventada pelo AraLearn para só então compreender o objeto. O package segue a notação reconhecida na área e o card introduz termos ou convenções que façam parte do próprio conteúdo. Uma breve instrução de leitura é apropriada quando a disciplina realmente ensina aquela representação; vocabulário de implementação ou instruções óbvias de rolagem não são conteúdo didático.

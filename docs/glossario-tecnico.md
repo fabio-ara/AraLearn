@@ -236,6 +236,15 @@ seguem `aralearn.resource.*` ou `aralearn.response.*` e as versões seguem
 SemVer estrito. Implementação: `src/resources/packages/` e
 `src/resources/kernel/packageRegistry.js`.
 
+**Sessão textual observável (`terminal_session`).** Resource de conteúdo
+`aralearn.resource.terminal_session` que preserva uma sequência ordenada de
+entradas, respostas textuais e efeitos sob ambiente e contexto declarados. É um
+registro para leitura e prática determinística por lacuna de escolha na entrada;
+não executa ou interpreta comandos, não acessa ambiente externo e não substitui
+prática real. Difere de `code` (fonte ou configuração estática), `table`
+(registros comparáveis) e `paragraph` (prosa expositiva). Implementação:
+`src/resources/packages/terminal-session/`.
+
 **Registry de packages.** Mapa, em memória, das definições efetivamente
 instaladas, indexadas por `package@version`. O registry rejeita ids, versões,
 slots, taxonomias ou funções obrigatórias inválidas e oferece as operações de

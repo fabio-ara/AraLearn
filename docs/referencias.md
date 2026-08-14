@@ -219,6 +219,14 @@ International Organization for Standardization (2018). **ISO 9241-11:2018: Ergon
 
 Chave bibliográfica: `iso2018usability`.
 
+<a id="ref-kalyuga2007expertisereversal"></a>
+
+### Kalyuga (2007)
+
+Slava Kalyuga (2007). **Expertise Reversal Effect and Its Implications for Learner-Tailored Instruction.** *Educational Psychology Review*, 19(4), p. 509–539. [DOI 10.1007/s10648-007-9054-3](https://doi.org/10.1007/s10648-007-9054-3).
+
+Chave bibliográfica: `kalyuga2007expertisereversal`.
+
 <a id="ref-karich2014learnercontrol"></a>
 
 ### Karich et al. (2014)
@@ -354,6 +362,14 @@ Chave bibliográfica: `piepenbrock2014polarity`.
 Paul Prinsloo; Sharon Slade (2017). **Ethics and Learning Analytics: Charting the (Un)Charted.** In: *Handbook of Learning Analytics*, Society for Learning Analytics Research, p. 49–57. [DOI 10.18608/hla17.004](https://doi.org/10.18608/hla17.004) · ISBN 9780995240803.
 
 Chave bibliográfica: `prinsloo2017ethics`.
+
+<a id="ref-reisslein2006expertisereversal"></a>
+
+### Reisslein et al. (2006)
+
+Jana Reisslein; Robert K. Atkinson; Patrick Seeling; Martin Reisslein (2006). **Encountering the Expertise Reversal Effect with a Computer-Based Environment on Electrical Circuit Analysis.** *Learning and Instruction*, 16(2), p. 92–103. [DOI 10.1016/j.learninstruc.2006.02.008](https://doi.org/10.1016/j.learninstruc.2006.02.008).
+
+Chave bibliográfica: `reisslein2006expertisereversal`.
 
 <a id="ref-renkl2004fading"></a>
 

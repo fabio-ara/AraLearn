@@ -267,6 +267,14 @@ brief compacto e fontes identificadas. Uma fonte só pode ser citada no card
 depois de declarada nesse contexto. Conteúdo importado conserva as referências
 que já possuía.
 
+O modelo usa primeiro pedido, workspace, curso e fontes disponíveis. Só abre
+diálogo quando uma informação ausente ou contraditória puder mudar
+materialmente o desenho. Antes de construir, o planejamento de cada
+microssequência distingue condições de aprendizagem, exigências do conteúdo,
+dificuldades previstas e respostas locais ligadas a elas, e apresenta essa
+síntese para decisão humana. O contrato não oferece uma preferência pedagógica
+global nem infere um perfil individual de estudante.
+
 ## Continuidade entre sessões
 
 Conversas podem terminar antes do curso. Guardar o transcript completo seria
@@ -275,7 +283,10 @@ uma continuidade estruturada:
 
 - **brief estável**: finalidade, público, escopo e fontes;
 - **Parte**: lote ordenado de microssequências planejadas;
-- **decisão**: escolha editorial que precisa sobreviver à conversa;
+- **decisão**: escolha editorial que precisa sobreviver à conversa; quando
+  pertinente, o resumo conserva condição e demanda, enquanto
+  `pedagogicalDiagnosis.difficultyResponses` guarda somente pares compactos de
+  dificuldade e resposta aprovados para uma microssequência;
 - **mandato**: autorização temporária e delimitada para construir, auditar,
   reparar ou reorganizar;
 - **achado**: problema verificável, seu estado e eventual correção vinculada.
@@ -285,6 +296,10 @@ memória textual de uma conversa anterior. Auditoria e reparo são etapas
 separadas: a auditoria registra achados; uma autorização posterior define quais
 podem ser corrigidos; a nova auditoria verifica o resultado. Essa separação
 reduz o risco de um diagnóstico ampliar sozinho a autoridade de escrita.
+
+A continuidade conserva somente contexto, decisões, justificativas públicas e
+vínculos necessários para continuar e auditar. Raciocínio privado do modelo e
+transcript integral do diálogo não integram o estado operacional.
 
 Comentários feitos durante o estudo e achados formais de auditoria também são
 distintos. Um comentário pode orientar uma correção, mas não modifica o curso.

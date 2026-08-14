@@ -97,6 +97,65 @@ Não se demonstrou que essa unidade seja superior a toda alternativa; sua
 coerência e utilidade precisam ser avaliadas em cursos, públicos e domínios
 concretos.
 
+## Diagnóstico contextual antes da construção
+
+**Problema.** Um pedido de autoria não contém necessariamente tudo o que muda o
+desenho do curso. Ao mesmo tempo, transformar a abertura em questionário fixo
+produz perguntas irrelevantes, repete informações já disponíveis e pode
+confundir uma condição do contexto com uma regra pedagógica universal.
+
+**Alternativas e requisitos.** A autoria poderia aplicar sempre o mesmo estilo,
+perguntar tudo novamente ou começar a produzir com lacunas silenciosas. Em vez
+disso, precisa consultar primeiro o brief, as fontes, o curso e as decisões já
+registradas; distinguir o que está documentado do que é apenas hipótese; e
+interromper para dialogar somente quando uma informação ausente ou contraditória
+mudaria materialmente objetivo, escopo, pré-requisito, sequência, representação,
+prática ou dependência de um ambiente externo.
+
+**Decisão.** Antes de materializar cards, a autoria assume uma
+**responsabilidade diagnóstica contextual**: organiza as condições de
+aprendizagem conhecidas, as exigências do conteúdo e as dificuldades previstas,
+e liga cada dificuldade relevante a uma resposta de desenho proposta, aos
+passos e packages que a concretizam e a critérios observáveis. Essa
+síntese é apresentada à pessoa autora para confirmação ou correção. Ela não é
+um diagnóstico clínico, psicométrico ou automático dos estudantes.
+
+Uma **condição contextual** descreve o cenário, por exemplo, conhecimento prévio
+que pode ser presumido, convenção disciplinar, dispositivo, idioma ou acesso a
+laboratório. Uma **decisão local** define o que fazer numa microssequência, como
+introduzir um pré-requisito, usar um exemplo, escolher uma representação,
+acrescentar prática ou declarar que um meio indispensável não está disponível.
+A mesma condição pode exigir respostas diferentes conforme a operação e o
+conteúdo. Por isso, o AraLearn não adota uma pedagogia global calibrável que
+determine o curso inteiro. Objetivos, cobertura e invariantes continuam comuns;
+o que não existe é uma configuração global de estilo que substitua as decisões
+locais.
+
+**Fundamentação.** A utilidade de orientação, exemplos e resolução de problemas
+pode mudar com o conhecimento prévio e a tarefa, fenômeno discutido como
+*expertise reversal* ([Kalyuga (2007)](referencias.md#ref-kalyuga2007expertisereversal)). Em análise de circuitos, por exemplo, a ordem entre exemplo e problema
+produziu resultados diferentes conforme o conhecimento prévio
+([Reisslein et al. (2006)](referencias.md#ref-reisslein2006expertisereversal)). Esses achados sustentam a necessidade de tratar a escolha como
+contextual; não fornecem um mecanismo para inferir automaticamente o que cada
+pessoa sabe nem demonstram a eficácia do produto.
+
+**Operacionalização.** Condições estáveis ficam no brief; o resumo da decisão
+conserva condição e exigência; `pedagogicalDiagnosis.difficultyResponses`
+preserva somente os pares relevantes de dificuldade e resposta ligados à
+microssequência. As referências locais aos passos e packages existem no
+blueprint de trabalho, mas não são copiadas para a continuidade. Não persistem
+raciocínio privado do modelo nem o transcript integral do diálogo. Na
+auditoria, cada resposta prometida deve aparecer no plano e nos cards; também
+se procuram resposta ausente, densidade excessiva, prática antes da base,
+representação inadequada, perda de cobertura e dependência de meio externo
+indisponível.
+
+**Consequências, limites e responsabilidade.** A pessoa autora continua
+responsável por confirmar o público, julgar as hipóteses, revisar fontes e
+aprovar decisões. O sistema pode tornar inconsistências e lacunas observáveis,
+mas não mede domínio individual, não produz sozinho diagnóstico de domínio, não
+certifica adequação disciplinar e não prediz resultados de aprendizagem.
+
 ## Profundidade sem condensação
 
 ### Explicação progressiva

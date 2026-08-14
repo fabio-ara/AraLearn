@@ -4720,6 +4720,171 @@
                       "sources": []
                     }
                   ]
+                },
+                {
+                  "id": "catalog-aralearn-resource-terminal-session-microsequence",
+                  "title": "Sessão de terminal",
+                  "goal": "Compreender quando usar Sessão de terminal e experimentar sua interação canônica.",
+                  "role": "practice",
+                  "dependsOn": [],
+                  "covers": [
+                    "aralearn.resource.terminal_session"
+                  ],
+                  "checks": [
+                    "a representação comunica a estrutura pretendida",
+                    "a prática usa uma modalidade declarada pelo package"
+                  ],
+                  "errors": [],
+                  "cards": [
+                    {
+                      "id": "catalog-aralearn-resource-terminal-session-theory-card",
+                      "position": 1,
+                      "title": "Como ler: Sessão de terminal",
+                      "role": "theory",
+                      "content": [
+                        {
+                          "id": "catalog-aralearn-resource-terminal-session-theory-introduction",
+                          "package": "aralearn.resource.paragraph",
+                          "version": "1.0.0",
+                          "data": {
+                            "text": "Sessão de terminal: Representar uma interação textual temporal entre pessoa e sistema, preservando entradas, saídas, erros e mudanças observáveis de estado. É apropriado quando a aprendizagem depende de acompanhar ação textual, resposta do sistema e evolução observável da sessão. Na leitura, observe esta convenção: interações em ordem temporal. Limite importante: Não executa nem interpreta comandos e não consulta shell, banco de dados, rede ou ambiente externo.",
+                            "languageTag": "pt-BR",
+                            "textDirection": "auto"
+                          }
+                        },
+                        {
+                          "id": "catalog-aralearn-resource-terminal-session-theory-example",
+                          "package": "aralearn.resource.terminal_session",
+                          "version": "1.0.0",
+                          "data": {
+                            "prompt": "Acompanhe como a permissão de execução altera o resultado observado a cada tentativa.",
+                            "environment": "Bash 5.2 · GNU/Linux",
+                            "initialContext": "O arquivo script.sh pertence ao usuário aluno e começa sem permissão de execução.",
+                            "interactions": [
+                              {
+                                "prompt": "$",
+                                "input": "ls -l script.sh",
+                                "stdout": "-rw-r--r-- 1 aluno grupo 340 ago 14 09:12 script.sh",
+                                "exitCode": 0,
+                                "effect": "permissão de execução ausente"
+                              },
+                              {
+                                "prompt": "$",
+                                "input": "./script.sh",
+                                "stdout": "",
+                                "stderr": "bash: ./script.sh: Permission denied",
+                                "exitCode": 126,
+                                "effect": "execução recusada"
+                              },
+                              {
+                                "prompt": "$",
+                                "input": "chmod u+x script.sh",
+                                "stdout": "",
+                                "exitCode": 0,
+                                "effect": "permissão de execução concedida"
+                              },
+                              {
+                                "prompt": "$",
+                                "input": "./script.sh",
+                                "stdout": "Processamento concluído.",
+                                "exitCode": 0,
+                                "effect": "execução concluída"
+                              }
+                            ]
+                          }
+                        }
+                      ],
+                      "response": null,
+                      "feedback": [],
+                      "topics": [],
+                      "sources": []
+                    },
+                    {
+                      "id": "catalog-aralearn-resource-terminal-session-practice-card",
+                      "position": 2,
+                      "title": "Pratique: Sessão de terminal",
+                      "role": "practice",
+                      "content": [
+                        {
+                          "id": "catalog-aralearn-resource-terminal-session-practice-example",
+                          "package": "aralearn.resource.terminal_session",
+                          "version": "1.0.0",
+                          "data": {
+                            "prompt": "Acompanhe como a permissão de execução altera o resultado observado a cada tentativa.",
+                            "environment": "Bash 5.2 · GNU/Linux",
+                            "initialContext": "O arquivo script.sh pertence ao usuário aluno e começa sem permissão de execução.",
+                            "interactions": [
+                              {
+                                "prompt": "$",
+                                "input": "ls -l script.sh",
+                                "stdout": "-rw-r--r-- 1 aluno grupo 340 ago 14 09:12 script.sh",
+                                "exitCode": 0,
+                                "effect": "permissão de execução ausente"
+                              },
+                              {
+                                "prompt": "$",
+                                "input": "./script.sh",
+                                "stdout": "",
+                                "stderr": "bash: ./script.sh: Permission denied",
+                                "exitCode": 126,
+                                "effect": "execução recusada"
+                              },
+                              {
+                                "prompt": "$",
+                                "input": "chmod u+x script.sh",
+                                "stdout": "",
+                                "exitCode": 0,
+                                "effect": "permissão de execução concedida"
+                              },
+                              {
+                                "prompt": "$",
+                                "input": "./script.sh",
+                                "stdout": "Processamento concluído.",
+                                "exitCode": 0,
+                                "effect": "execução concluída"
+                              }
+                            ]
+                          }
+                        }
+                      ],
+                      "response": {
+                        "id": "catalog-aralearn-resource-terminal-session-practice-response",
+                        "package": "aralearn.response.gap",
+                        "version": "1.0.0",
+                        "data": {
+                          "prompt": "Complete o campo destacado em Sessão de terminal.",
+                          "blanks": [
+                            {
+                              "id": "target",
+                              "targetInstanceId": "catalog-aralearn-resource-terminal-session-practice-example",
+                              "targetPath": "interactions[0].input",
+                              "label": "Lacuna de escolha na entrada 1",
+                              "responseMode": "choice",
+                              "answer": "ls -l script.sh",
+                              "distractors": [
+                                "./script.sh",
+                                "chmod u+x script.sh"
+                              ]
+                            }
+                          ]
+                        }
+                      },
+                      "feedback": [
+                        {
+                          "id": "catalog-aralearn-resource-terminal-session-practice-feedback",
+                          "package": "aralearn.resource.paragraph",
+                          "version": "1.0.0",
+                          "data": {
+                            "text": "Critério de revisão para Sessão de terminal: a representação deve realizar a finalidade declarada — Representar uma interação textual temporal entre pessoa e sistema, preservando entradas, saídas, erros e mudanças observáveis de estado. A operação cognitiva em foco é acompanhar e percorrer. Evite este recurso quando apenas a sintaxe de um trecho de código ou configuração importa.",
+                            "languageTag": "pt-BR",
+                            "textDirection": "auto"
+                          }
+                        }
+                      ],
+                      "topics": [],
+                      "sources": []
+                    }
+                  ]
                 }
               ]
             }

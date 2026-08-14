@@ -120,8 +120,9 @@ linguagem](assistencia-por-ia.md#autoridade-por-nível).
 ## Fluxo da autoria estrutural
 
 ```text
-brief e fontes
-→ planejamento da árvore
+contexto disponível e fontes
+→ diálogo somente sobre lacunas materiais
+→ diagnóstico contextual e planejamento local
 → aprovação humana
 → materialização incremental
 → revisão conceitual
@@ -136,13 +137,27 @@ exclusões, idioma e convenções. Ele não é texto de card. Estrutura, decisõ
 mandatos e achados possuem registros próprios, para que uma conversa não seja
 a única memória do trabalho.
 
+Antes do diálogo, o modelo consulta o que já existe no pedido, no workspace, no
+curso e nas fontes. Uma pergunta só é necessária quando a resposta ausente ou
+uma contradição puder mudar materialmente objetivo, escopo, pré-requisito,
+sequência, representação, prática ou dependência de ambiente externo. Não há
+questionário fixo de diagnóstico.
+
 ### Planejar antes de produzir
 
-O planejamento pedagógico precede o custo de geração. A quantidade de cards
-não é escolhida por cota fixa: decorre dos conceitos, pré-requisitos, erros
-prováveis, formas de prática e necessidade de revisão. Depois da aprovação, a
-produção ocorre por microssequência, em lotes que podem ser validados e
-retomados.
+O planejamento pedagógico precede o custo de geração. Para cada
+microssequência, ele explicita condições de aprendizagem pertinentes, exigências
+do conteúdo, dificuldades previstas e respostas de desenho vinculadas às
+dificuldades, aos passos/packages que as concretizam e a critérios observáveis. A
+condição descreve o cenário; a resposta é uma decisão local sobre explicação,
+exemplo, representação, prática, apoio ou sequência. Uma não determina
+automaticamente a outra.
+
+A quantidade de cards não é escolhida por cota fixa: decorre dos conceitos,
+pré-requisitos, dificuldades, respostas aprovadas, formas de prática e
+necessidade de revisão. A pessoa autora examina essa síntese antes da
+materialização. Depois da aprovação, a produção ocorre por microssequência, em
+lotes que podem ser validados e retomados.
 
 ### Separar auditoria e reparo
 
@@ -200,20 +215,27 @@ vantagem suficiente para compensar custo, opacidade e manutenção adicionais.
 Conhecimento recuperado orienta o modelo. Contratos e validadores continuam
 determinando o que pode ser salvo.
 
-## Instruções parametrizáveis e invariantes
+## Invariantes protegidos e decisões pedagógicas locais
 
-Algumas preferências pedagógicas podem ser apresentadas à pessoa autora em
-blocos compreensíveis, como estilo de explicação, notação ou exigência de
-contextualização. Elas partem de um preset e podem ser calibradas.
+Limites de autorização, fechamento de schema, integridade referencial,
+proibição de pistas indevidas, preservação de identidade, cobertura e revisão
+humana são invariantes do produto. Eles não são preferências editáveis e não
+podem ser anulados por conversa ou configuração.
 
-Outras regras não são preferências. Limites de autorização, fechamento de
-schema, integridade referencial, proibição de pistas indevidas e preservação de
-identidade pertencem ao funcionamento do produto. Expô-las como texto
-editável permitiria que uma configuração anulasse a segurança ou tornasse o
-conteúdo irrenderizável.
+Também é invariante consultar o contexto existente, explicitar dificuldades e
+respostas e obter revisão humana antes da materialização. O conteúdo dessas
+hipóteses e decisões, porém, permanece contextual e revisável.
 
-A parametrização, portanto, atua sobre instruções declarativas autorizadas;
-não substitui o kernel, os contratos ou a política de acesso.
+Idioma, notação, acesso a meios e conhecimentos prévios presumíveis são dados do
+contexto. Explicação, exemplo, representação, prática, apoio e sequência são
+decisões de desenho tomadas por microssequência. O AraLearn não aplica preset,
+perfil ou “pedagogia calibrada” ao curso inteiro: a autoria liga cada decisão a
+uma dificuldade pertinente e submete o conjunto à pessoa responsável.
+
+Essa responsabilidade diagnóstica organiza hipóteses para planejamento; ela não
+mede estudantes nem certifica adequação ou eficácia. Contratos e validadores
+controlam o que pode ser persistido, mas julgamento factual, disciplinar e
+pedagógico permanece humano.
 
 ## Confirmação, concorrência e idempotência
 
@@ -239,10 +261,14 @@ autoria estrutural, decisões sobre representações substitutivas podem registr
 intenção, package escolhido, ajuste, limitação e versão do catálogo sem inserir
 esses metadados no card público.
 
-Essa separação economiza armazenamento e permite analisar a evolução autoral
-sem transformar todo diálogo em dado permanente. Quando uma investigação
-exigir preservar conversas, isso deve ser outro protocolo de coleta, com
-finalidade, consentimento e retenção próprios.
+O mesmo vale para diagnóstico e planejamento: condições estáveis ficam no
+brief; a decisão resume condição e demanda; somente pares relevantes de
+dificuldade e resposta seguem em `pedagogicalDiagnosis.difficultyResponses`.
+Não se persistem ids locais do blueprint, raciocínio privado do modelo nem o
+transcript integral do diálogo. Essa separação economiza armazenamento e permite
+analisar a evolução autoral sem transformar toda conversa em dado permanente.
+Quando uma investigação exigir preservar conversas, isso deve ser outro
+protocolo de coleta, com finalidade, consentimento e retenção próprios.
 
 ## Falhas e recuperação
 

@@ -346,6 +346,39 @@ computacionais que propõem, transformam ou analisam conteúdo durante a autoria
 Continuidade entre objetivo, pré-requisito, explicação, exemplo, prática,
 feedback e retomada. Não equivale a sequência longa ou uniformidade visual.
 
+### Diagnóstico pedagógico contextual
+
+Síntese de planejamento que relaciona condições de aprendizagem, exigências do
+conteúdo, dificuldades previstas e respostas de desenho antes da
+materialização. Não equivale a avaliação clínica ou psicométrica, perfil
+individual, medição de domínio nem predição de eficácia.
+
+### Condição de aprendizagem
+
+Informação contextual verificável ou hipótese explicitada sobre público,
+conhecimento prévio presumível, tarefa, fonte, idioma, convenção, dispositivo ou
+meio disponível. Não equivale a prescrição pedagógica, perfil individual nem
+diagnóstico de capacidade.
+
+### Exigência do conteúdo
+
+Operação, relação, convenção ou pré-requisito que o objetivo e o objeto de
+estudo exigem coordenar. Não equivale a dificuldade já demonstrada pelo
+estudante nem a estratégia escolhida para ensiná-la.
+
+### Dificuldade prevista
+
+Hipótese revisável de que uma exigência específica do conteúdo pode dificultar
+o objetivo para o público nas condições declaradas. Não equivale a déficit do
+estudante, erro já observado ou resultado de aprendizagem medido.
+
+### Resposta de desenho
+
+Decisão local aprovada e ligada a uma dificuldade prevista, como introduzir um
+pré-requisito, decompor uma explicação, oferecer exemplo, escolher uma
+representação ou planejar prática. Não equivale a estilo global do curso nem a
+alegação de que a resposta será eficaz.
+
 ### Microssequência
 
 Unidade situada entre card e lição que trabalha objetivo delimitado com

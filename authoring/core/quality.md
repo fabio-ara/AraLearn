@@ -3,18 +3,64 @@
 ## Ponto de partida
 
 - Na falta de evidência concreta, planeje para uma pessoa sem conhecimentos prévios sobre o tema.
+- Use primeiro o pedido, a conversa, o `brief`, as fontes e as restrições já
+  disponíveis. Não peça novamente uma informação que já possa ser extraída
+  desse contexto.
 - Não acrescente um campo de pré-requisitos ao curso: o contrato persistido de
   `course` contém somente `id`, `title`, `goal` e `modules`. Quando um
   conhecimento anterior for realmente necessário, materialize-o numa
   microssequência anterior ou numa dependência verificável.
-- Não pergunte se a pessoa é iniciante, intermediária ou avançada. Pergunte somente por um pré-requisito observável quando a resposta mudar o plano, como saber ler uma fórmula, executar um comando ou interpretar uma tabela.
+- Não aplique questionário fixo nem pergunte se a pessoa é iniciante,
+  intermediária ou avançada. Pergunte somente por uma condição ou
+  pré-requisito observável quando a resposta puder mudar materialmente o
+  plano, como saber ler uma fórmula, executar um comando, interpretar uma
+  tabela ou dispor do ambiente necessário. Se o contexto já bastar, planeje
+  sem perguntas adicionais.
 - Apresente termos, símbolos, notações e operações antes de exigi-los. Familiaridade presumida precisa estar apoiada no pedido, nos materiais ou em uma resposta objetiva do autor.
+
+## Diagnóstico contextual
+
+Antes de fechar a estrutura, faça um diagnóstico de trabalho por
+microssequência. Ele não é um perfil genérico da pessoa nem um questionário:
+
+1. em `learningConditions`, registre somente condições de estudo que alterem
+   o desenho;
+2. em `contentDemands`, explicite o que a natureza do conteúdo exige para ser
+   compreendido ou aplicado;
+3. em `anticipatedDifficulties`, relacione público, condições, pré-requisitos
+   e demandas para identificar dificuldades previsíveis;
+4. em `designResponses`, ligue cada resposta à dificuldade, aos `theoryStepIds`,
+   `practiceStepIds` e `packageCandidateIds` que a concretizam e registre em
+   `materializationChecks` como conferir sua presença nos cards.
+
+Esses nomes descrevem dimensões do blueprint de trabalho, não campos novos do
+card ou da árvore pública. As relações entre dificuldade e resposta precisam
+ser explícitas; quatro listas independentes não constituem diagnóstico. Não há
+catálogo fechado de respostas: fundamentação anterior, decomposição, contraste,
+caso observável, exemplo resolvido, retirada de apoio, representação específica
+e retomada são possibilidades, não uma receita.
+
+Se nenhuma dificuldade for materialmente relevante, mantenha
+`anticipatedDifficulties` e `designResponses` vazios; não fabrique problema ou
+estratégia para preencher o contrato. Do mesmo modo, `practiceSteps` pode ficar
+vazio quando a prática não for uma decisão pertinente desta microssequência.
+
+Identifique também o que ainda não se sabe. Faça uma pergunta apenas quando
+respostas plausíveis levarem a planos materialmente diferentes. Acesso a
+computador pode ser decisivo para uma unidade operacional e irrelevante para
+outra disciplina; preferência por “muitos exemplos” não é informação
+diagnóstica. Não faça perguntas apenas para tornar o processo aparentemente
+dialogado.
 
 ## Planejamento didático
 
 - O dimensionamento é uma decisão pedagógica obrigatória, feita mesmo quando o
   autor não pede quantidade de lições, cards ou práticas. Decomponha a ementa,
   o objetivo e as fontes em unidades ensináveis.
+- Demonstre ao mesmo tempo cobertura, dependências e, apenas onde forem
+  materiais, as dificuldades previstas e suas respostas de desenho. Apresente
+  esse resumo em linguagem humana antes da construção e pare para que a pessoa
+  possa corrigir ou aprovar o diagnóstico e o plano.
 - Em `lesson.topics`, registre cada unidade compartilhada com `id`, `label`,
   `kind`, `checks` e `errors`. Use `kind` somente como `concept`, `procedure`,
   `representation` ou `term`.
@@ -36,8 +82,8 @@
   percurso apenas para produzir menos lições, microssequências ou cards, nem
   acrescente repetição sem nova oportunidade de aprender ou recuperar.
 - Quando materiais de avaliação ou critérios externos forem fornecidos, inclua
-  práticas que reproduzam as decisões cognitivas observadas. O material calibra
-  estilo e lacunas de prática, mas não limita o conteúdo ao exemplo recebido.
+  práticas que reproduzam as decisões cognitivas observadas. O material informa
+  a forma da tarefa e lacunas de prática, mas não limita o conteúdo ao exemplo recebido.
   A ancoragem formal, a adaptação e a rastreabilidade seguem a política de
   `sources.md`; não copie a questão nem mencione seu bastidor no card.
 - As dependências formam um grafo justificável. `dependsOn` aponta para IDs de
@@ -47,6 +93,9 @@
   prática guiada e prática com menor apoio, quando essas etapas forem
   pertinentes. Não invente metadados de função por card; a sequência e o
   conteúdo precisam demonstrar a progressão.
+- Decida fundamento, exemplo, contraste, quantidade de prática, grau de apoio,
+  retomada e representação localmente em cada microssequência. Não transforme
+  nenhuma dessas estratégias em estilo obrigatório do curso inteiro.
 - Uma microssequência que ensina uma operação nova não começa pela cobrança da
   operação nem termina apenas na explicação.
 - A quantidade de práticas decorre da complexidade de `checks`, dos erros
@@ -70,7 +119,7 @@
 - A escolha fica materializada em uma instância de package de `card.content`,
   `card.response` ou `card.feedback`. Confira se ela preserva
   `microsequence.goal`, `covers` e `checks`; não acrescente ao JSON um bloco
-  paralelo de preferências de representação.
+  paralelo de escolhas de representação.
 - A diversidade de recursos decorre do conteúdo. Não estabeleça cota e não troque o formato apenas para variar a aparência.
 - A retomada de conhecimentos anteriores usa `dependsOn`, os tópicos da lição
   e conteúdo anterior visível. Um conceito só pode ser recuperado depois de uma
@@ -116,6 +165,10 @@
   normalizada sem exigir grafia arbitrariamente exata. Variantes aceitas devem
   ser literais, distintas e auditáveis. Não use regex nem pressuponha
   equivalência semântica.
+- Toda correção durante o estudo é determinística. Não use avaliação por LLM,
+  correspondência aproximada, heurística de comando ou “prompt melhor” para
+  compensar uma resposta ambígua. Quando a digitação livre exigir equivalência
+  difícil, prefira gap com opções ou outra operação de resposta inequívoca.
 - O título não entrega a resposta.
 - O enunciado não contém a resposta por repetição involuntária.
 - Alternativas erradas representam equívocos plausíveis e não simples absurdos.
@@ -178,12 +231,23 @@ validação automática e inspeção do conteúdo:
    package versionado, sem propriedades desconhecidas;
 2. compare `lesson.topics`, `microsequence.goal`, `role`, `covers`, `checks`,
    `errors` e `dependsOn` com os cards realmente presentes;
-3. leia a sequência na ordem em que a pessoa estudará e confirme que base,
+3. confronte as decisões aprovadas da microssequência com os cards: cada
+   dificuldade material precisa ter a resposta prometida, sem eliminar
+   cobertura obrigatória nem depender silenciosamente de um meio declarado
+   indisponível;
+4. leia a sequência na ordem em que a pessoa estudará e confirme que base,
    exemplo, prática e retomada aparecem quando necessários;
-4. confirme que o recurso preserva a operação, que os dados são
+5. confirme que o recurso preserva a operação, que os dados são
    autossuficientes e que resposta e feedback permanecem coerentes;
-5. confira fontes, linguagem, integridade estrutural, acessibilidade e respeito
+6. confira fontes, linguagem, integridade estrutural, acessibilidade e respeito
    a `guide.exclude` e `guide.avoid`.
+
+Crie achado quando diagnóstico, plano e materialização divergirem: dificuldade
+sem resposta, estratégia aprovada ausente, teoria condensada apesar do risco,
+prática anterior à fundamentação, representação que não torna a estrutura
+observável, perda de cobertura ou dependência externa incompatível com as
+condições aprovadas. Não atribua nota automática de eficácia, aprendizagem,
+domínio ou qualidade docente.
 
 As verificações automáticas da assistência podem detectar propriedades
 inválidas, fontes não autorizadas, referências externas explícitas, termos de

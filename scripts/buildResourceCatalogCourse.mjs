@@ -271,11 +271,17 @@ function contentPackageCards(manifest, prefix, packageIndex) {
     PRACTICE_BLUEPRINTS[manifest.id]?.data
   );
   const preferredMode = packageIndex % 2 === 0 ? "choice" : "text";
+  const alternateMode = preferredMode === "choice" ? "text" : "choice";
   const response = gapResponse(
     practiceExample,
     manifest,
     `${prefix}-practice-response`,
     preferredMode
+  ) || gapResponse(
+    practiceExample,
+    manifest,
+    `${prefix}-practice-response`,
+    alternateMode
   ) || semanticChoiceResponse(`${prefix}-practice-response`, manifest);
   if (!response) {
     throw new Error(

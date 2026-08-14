@@ -1,0 +1,1125 @@
+{
+  "contract": "aralearn.authoring-contextual-planning-runs.v1",
+  "version": 1,
+  "scenarioContract": "aralearn.authoring-contextual-planning-scenarios.v1",
+  "recordedAt": "2026-08-14",
+  "executionMethod": {
+    "id": "structured-replay-with-controlled-divergence",
+    "generatorKind": "deterministic-fixture",
+    "description": "Cada run registra entradas do cenário, saídas observáveis em rodadas, uma mutação controlada, revisão por papel separado, ajuste, decisão humana e persistência aprovada. O replay é determinístico e não depende de um provedor externo.",
+    "reviewIndependence": "O participantId do revisor difere do assistente; o revisor usa o cenário e sharedRubric, aponta evidência na saída e não altera a rodada revisada.",
+    "roundProtocol": [
+      "context-and-assistant-output",
+      "controlled-divergence",
+      "independent-review",
+      "assistant-adjustment",
+      "human-decision",
+      "approved-compact-persistence"
+    ]
+  },
+  "claimBoundary": "Este replay verifica contratos e regressões observáveis; não mede aprendizagem nem eficácia educacional e não avalia qualidade docente.",
+  "executionEvidence": {
+    "command": "node scripts/evaluateContextualPlanningRuns.mjs",
+    "executedAt": "2026-08-14",
+    "initialAudit": {
+      "status": "nonconformant",
+      "findingCodes": [
+        "A.PRACTICE_NONDETERMINISTIC",
+        "B.KNOWN_CONDITION_IGNORED",
+        "C.DIFFICULTY_RESPONSE_MISMATCH",
+        "D.PERSISTENCE_BOUNDARY",
+        "E.FIXED_CARD_TARGET"
+      ]
+    },
+    "independentReviewRoundIds": [
+      "A-review",
+      "B-review",
+      "C-review",
+      "D-review",
+      "E-review"
+    ],
+    "reexecution": {
+      "status": "conformant",
+      "findingCodes": []
+    }
+  },
+  "runs": [
+    {
+      "scenarioId": "A",
+      "runId": "contextual-planning-A-v1",
+      "participants": {
+        "assistantId": "assistant-A",
+        "reviewerId": "reviewer-A",
+        "humanId": "human-A"
+      },
+      "rounds": [
+        {
+          "id": "A-question",
+          "participantId": "assistant-A",
+          "kind": "material-question",
+          "observedOutput": {
+            "contextUsed": [
+              "escopo técnico extenso e obrigatório",
+              "público sem conhecimentos prévios",
+              "uso principal para estudo e avaliação"
+            ],
+            "questions": [
+              {
+                "materialUnknownId": "regular-computer-access",
+                "text": "Você terá acesso regular a um computador ou laboratório em que possa executar os comandos durante o estudo?"
+              }
+            ],
+            "cardsCreated": 0
+          }
+        },
+        {
+          "id": "A-answer",
+          "participantId": "human-A",
+          "kind": "material-answer",
+          "observedOutput": {
+            "text": "Vou estudar principalmente pelo celular e não terei acesso regular a computador ou laboratório."
+          }
+        },
+        {
+          "id": "A-draft",
+          "participantId": "assistant-A",
+          "kind": "draft-plan",
+          "observedOutput": {
+            "contextUsed": [
+              "escopo técnico extenso e obrigatório",
+              "público sem conhecimentos prévios",
+              "uso principal para estudo e avaliação",
+              "Vou estudar principalmente pelo celular e não terei acesso regular a computador ou laboratório."
+            ],
+            "questions": [],
+            "difficultyResponseLinks": [
+              {
+                "microsequence": "permissões e execução no Linux",
+                "contentDemand": "Acompanhar comando, erro, alteração de permissão e novo resultado.",
+                "anticipatedDifficulty": "Sem ambiente regular, a pessoa não observa a evolução temporal de uma sessão real.",
+                "designResponse": "Tornar ações, stdout, stderr e estado sucessivo observáveis em uma sessão textual; explicitar que isso não substitui prática real."
+              },
+              {
+                "microsequence": "estado do repositório Git",
+                "contentDemand": "Relacionar operação ao estado anterior e posterior do working tree.",
+                "anticipatedDifficulty": "Comandos isolados podem virar vocabulário sem consequência observável.",
+                "designResponse": "Contrastar estados antes e depois e pedir decisões determinísticas sobre a próxima ação."
+              }
+            ],
+            "planText": "Cobrir Linux, Git, bancos e nuvem em microssequências; onde houver mudança de estado, tornar a sucessão observável no celular sem alegar substituição da prática real.",
+            "scopeCoverage": [
+              "technical-linux",
+              "technical-git",
+              "technical-databases",
+              "technical-cloud-administration"
+            ],
+            "humanPause": {
+              "beforeCards": true,
+              "status": "awaiting-human-decision",
+              "prompt": "Revise a cobertura e as respostas propostas antes dos cards."
+            },
+            "cardsCreated": 0,
+            "practiceChecks": [
+              {
+                "microsequence": "permissões e execução no Linux",
+                "responsePackage": "aralearn.response.choice",
+                "evaluationMode": "llm-semantic",
+                "observableTask": "Escolher o próximo comando a partir de estado e saída integralmente mostrados."
+              }
+            ]
+          }
+        },
+        {
+          "id": "A-review",
+          "participantId": "reviewer-A",
+          "kind": "independent-review",
+          "observedOutput": {
+            "reviewedRoundId": "A-draft",
+            "reviewBasis": [
+              "aralearn.authoring-contextual-planning-scenarios.v1",
+              "sharedRubric"
+            ],
+            "findings": [
+              {
+                "code": "A.PRACTICE_NONDETERMINISTIC",
+                "evidencePath": "/practiceChecks/0/evaluationMode",
+                "message": "A prática delega a correção a julgamento semântico; o cenário exige resposta inequívoca e correção determinística."
+              }
+            ]
+          }
+        },
+        {
+          "id": "A-final",
+          "participantId": "assistant-A",
+          "kind": "revised-plan",
+          "addressesFindingCodes": [
+            "A.PRACTICE_NONDETERMINISTIC"
+          ],
+          "adjustmentSummary": "A prática passou a usar opção identificada e estado integralmente visível.",
+          "observedOutput": {
+            "contextUsed": [
+              "escopo técnico extenso e obrigatório",
+              "público sem conhecimentos prévios",
+              "uso principal para estudo e avaliação",
+              "Vou estudar principalmente pelo celular e não terei acesso regular a computador ou laboratório."
+            ],
+            "questions": [],
+            "difficultyResponseLinks": [
+              {
+                "microsequence": "permissões e execução no Linux",
+                "contentDemand": "Acompanhar comando, erro, alteração de permissão e novo resultado.",
+                "anticipatedDifficulty": "Sem ambiente regular, a pessoa não observa a evolução temporal de uma sessão real.",
+                "designResponse": "Tornar ações, stdout, stderr e estado sucessivo observáveis em uma sessão textual; explicitar que isso não substitui prática real."
+              },
+              {
+                "microsequence": "estado do repositório Git",
+                "contentDemand": "Relacionar operação ao estado anterior e posterior do working tree.",
+                "anticipatedDifficulty": "Comandos isolados podem virar vocabulário sem consequência observável.",
+                "designResponse": "Contrastar estados antes e depois e pedir decisões determinísticas sobre a próxima ação."
+              }
+            ],
+            "planText": "Cobrir Linux, Git, bancos e nuvem em microssequências; onde houver mudança de estado, tornar a sucessão observável no celular sem alegar substituição da prática real.",
+            "scopeCoverage": [
+              "technical-linux",
+              "technical-git",
+              "technical-databases",
+              "technical-cloud-administration"
+            ],
+            "humanPause": {
+              "beforeCards": true,
+              "status": "awaiting-human-decision",
+              "prompt": "Revise a cobertura e as respostas propostas antes dos cards."
+            },
+            "cardsCreated": 0,
+            "practiceChecks": [
+              {
+                "microsequence": "permissões e execução no Linux",
+                "responsePackage": "aralearn.response.choice",
+                "evaluationMode": "exact-option-id",
+                "observableTask": "Escolher o próximo comando a partir de estado e saída integralmente mostrados."
+              }
+            ]
+          }
+        },
+        {
+          "id": "A-approval",
+          "participantId": "human-A",
+          "kind": "human-decision",
+          "observedOutput": {
+            "decision": "approved",
+            "approvedPlanRoundId": "A-final"
+          }
+        },
+        {
+          "id": "A-persist",
+          "participantId": "assistant-A",
+          "kind": "approved-plan-persistence",
+          "observedOutput": {
+            "afterHumanApproval": true,
+            "toolName": "gerirContinuidadeDaAutoria",
+            "toolCallArguments": {
+              "requestId": "eval:A:approved-plan:0001",
+              "workspaceId": "00000000-0000-4000-8000-000000000096",
+              "expectedRevision": 1,
+              "operation": "record_approved_plan",
+              "parts": [
+                {
+                  "id": "part-a-technical-foundations",
+                  "title": "Fundamentos técnicos",
+                  "microsequenceIds": [
+                    "technical-linux",
+                    "technical-git",
+                    "technical-databases",
+                    "technical-cloud-administration"
+                  ]
+                }
+              ],
+              "decisions": [
+                {
+                  "id": "decision-a-linux-permissions",
+                  "summary": "Acompanhar comando, erro, alteração de permissão e novo resultado.",
+                  "entityType": "microsequence",
+                  "entityId": "technical-linux",
+                  "pedagogicalDiagnosis": {
+                    "difficultyResponses": [
+                      {
+                        "difficulty": "Sem ambiente regular, a pessoa não observa a evolução temporal de uma sessão real.",
+                        "response": "Tornar ações, stdout, stderr e estado sucessivo observáveis em uma sessão textual; explicitar que isso não substitui prática real."
+                      }
+                    ]
+                  }
+                },
+                {
+                  "id": "decision-a-git-state",
+                  "summary": "Relacionar operação ao estado anterior e posterior do working tree.",
+                  "entityType": "microsequence",
+                  "entityId": "technical-git",
+                  "pedagogicalDiagnosis": {
+                    "difficultyResponses": [
+                      {
+                        "difficulty": "Comandos isolados podem virar vocabulário sem consequência observável.",
+                        "response": "Contrastar estados antes e depois e pedir decisões determinísticas sobre a próxima ação."
+                      }
+                    ]
+                  }
+                }
+              ],
+              "mandate": null
+            }
+          }
+        }
+      ],
+      "injectedDivergence": {
+        "roundId": "A-draft",
+        "path": "/practiceChecks/0/evaluationMode",
+        "injectedValue": "llm-semantic",
+        "expectedFindingCode": "A.PRACTICE_NONDETERMINISTIC",
+        "expectedAuditFinding": "A prática delega a correção a julgamento semântico; o cenário exige resposta inequívoca e correção determinística.",
+        "correction": {
+          "path": "/practiceChecks/0/evaluationMode",
+          "value": "exact-option-id"
+        }
+      },
+      "finalResult": {
+        "planRoundId": "A-final",
+        "humanDecisionRoundId": "A-approval",
+        "persistenceRoundId": "A-persist",
+        "status": "approved-plan-recorded-before-cards"
+      }
+    },
+    {
+      "scenarioId": "B",
+      "runId": "contextual-planning-B-v1",
+      "participants": {
+        "assistantId": "assistant-B",
+        "reviewerId": "reviewer-B",
+        "humanId": "human-B"
+      },
+      "rounds": [
+        {
+          "id": "B-draft",
+          "participantId": "assistant-B",
+          "kind": "draft-plan",
+          "observedOutput": {
+            "contextUsed": [
+              "escopo técnico extenso e obrigatório",
+              "público sem conhecimentos prévios",
+              "acesso regular a computador e laboratório",
+              "possibilidade de execução entre sessões"
+            ],
+            "questions": [],
+            "difficultyResponseLinks": [
+              {
+                "microsequence": "permissões e execução no Linux",
+                "contentDemand": "Executar, observar erro, alterar permissão e verificar o resultado.",
+                "anticipatedDifficulty": "Uma atividade real sem preparação pode ocultar a relação entre estado, comando e consequência.",
+                "designResponse": "Preparar o gesto e o critério de observação no AraLearn e usar o laboratório como experiência complementar disponível."
+              }
+            ],
+            "planText": "Preparar conceitos e critérios de observação antes das atividades externas.",
+            "laboratoryRole": "replace-laboratory-with-terminal-simulation",
+            "humanPause": {
+              "beforeCards": true,
+              "status": "awaiting-human-decision",
+              "prompt": "Revise o papel do laboratório antes dos cards."
+            },
+            "cardsCreated": 0,
+            "practiceChecks": [
+              {
+                "microsequence": "permissões e execução no Linux",
+                "responsePackage": "aralearn.response.ordering",
+                "evaluationMode": "exact-order",
+                "observableTask": "Ordenar preparação, execução externa e verificação do resultado."
+              }
+            ]
+          }
+        },
+        {
+          "id": "B-review",
+          "participantId": "reviewer-B",
+          "kind": "independent-review",
+          "observedOutput": {
+            "reviewedRoundId": "B-draft",
+            "reviewBasis": [
+              "aralearn.authoring-contextual-planning-scenarios.v1",
+              "sharedRubric"
+            ],
+            "findings": [
+              {
+                "code": "B.KNOWN_CONDITION_IGNORED",
+                "evidencePath": "/laboratoryRole",
+                "message": "O plano substitui um laboratório que o diagnóstico declara disponível; a resposta deve usar essa condição em vez de compensar sua ausência."
+              }
+            ]
+          }
+        },
+        {
+          "id": "B-final",
+          "participantId": "assistant-B",
+          "kind": "revised-plan",
+          "addressesFindingCodes": [
+            "B.KNOWN_CONDITION_IGNORED"
+          ],
+          "adjustmentSummary": "O laboratório passou a ser experiência complementar depois da preparação no curso.",
+          "observedOutput": {
+            "contextUsed": [
+              "escopo técnico extenso e obrigatório",
+              "público sem conhecimentos prévios",
+              "acesso regular a computador e laboratório",
+              "possibilidade de execução entre sessões"
+            ],
+            "questions": [],
+            "difficultyResponseLinks": [
+              {
+                "microsequence": "permissões e execução no Linux",
+                "contentDemand": "Executar, observar erro, alterar permissão e verificar o resultado.",
+                "anticipatedDifficulty": "Uma atividade real sem preparação pode ocultar a relação entre estado, comando e consequência.",
+                "designResponse": "Preparar o gesto e o critério de observação no AraLearn e usar o laboratório como experiência complementar disponível."
+              }
+            ],
+            "planText": "Preparar conceitos e critérios de observação no curso e orientar a execução complementar no laboratório disponível.",
+            "scopeCoverage": [
+              "technical-linux",
+              "technical-git",
+              "technical-databases",
+              "technical-cloud-administration"
+            ],
+            "laboratoryRole": "external-complement-after-preparation",
+            "humanPause": {
+              "beforeCards": true,
+              "status": "awaiting-human-decision",
+              "prompt": "Revise o papel do laboratório antes dos cards."
+            },
+            "cardsCreated": 0,
+            "practiceChecks": [
+              {
+                "microsequence": "permissões e execução no Linux",
+                "responsePackage": "aralearn.response.ordering",
+                "evaluationMode": "exact-order",
+                "observableTask": "Ordenar preparação, execução externa e verificação do resultado."
+              }
+            ]
+          }
+        },
+        {
+          "id": "B-approval",
+          "participantId": "human-B",
+          "kind": "human-decision",
+          "observedOutput": {
+            "decision": "approved",
+            "approvedPlanRoundId": "B-final"
+          }
+        },
+        {
+          "id": "B-persist",
+          "participantId": "assistant-B",
+          "kind": "approved-plan-persistence",
+          "observedOutput": {
+            "afterHumanApproval": true,
+            "toolName": "gerirContinuidadeDaAutoria",
+            "toolCallArguments": {
+              "requestId": "eval:B:approved-plan:0001",
+              "workspaceId": "00000000-0000-4000-8000-000000000096",
+              "expectedRevision": 1,
+              "operation": "record_approved_plan",
+              "parts": [
+                {
+                  "id": "part-b-technical-foundations",
+                  "title": "Fundamentos técnicos com laboratório",
+                  "microsequenceIds": [
+                    "technical-linux",
+                    "technical-git",
+                    "technical-databases",
+                    "technical-cloud-administration"
+                  ]
+                }
+              ],
+              "decisions": [
+                {
+                  "id": "decision-b-linux-permissions",
+                  "summary": "Executar, observar erro, alterar permissão e verificar o resultado.",
+                  "entityType": "microsequence",
+                  "entityId": "technical-linux",
+                  "pedagogicalDiagnosis": {
+                    "difficultyResponses": [
+                      {
+                        "difficulty": "Uma atividade real sem preparação pode ocultar a relação entre estado, comando e consequência.",
+                        "response": "Preparar o gesto e o critério de observação no AraLearn e usar o laboratório como experiência complementar disponível."
+                      }
+                    ]
+                  }
+                }
+              ],
+              "mandate": null
+            }
+          }
+        }
+      ],
+      "injectedDivergence": {
+        "roundId": "B-draft",
+        "path": "/laboratoryRole",
+        "injectedValue": "replace-laboratory-with-terminal-simulation",
+        "expectedFindingCode": "B.KNOWN_CONDITION_IGNORED",
+        "expectedAuditFinding": "O plano substitui um laboratório que o diagnóstico declara disponível; a resposta deve usar essa condição em vez de compensar sua ausência.",
+        "correction": {
+          "path": "/laboratoryRole",
+          "value": "external-complement-after-preparation"
+        }
+      },
+      "finalResult": {
+        "planRoundId": "B-final",
+        "humanDecisionRoundId": "B-approval",
+        "persistenceRoundId": "B-persist",
+        "status": "approved-plan-recorded-before-cards"
+      }
+    },
+    {
+      "scenarioId": "C",
+      "runId": "contextual-planning-C-v1",
+      "participants": {
+        "assistantId": "assistant-C",
+        "reviewerId": "reviewer-C",
+        "humanId": "human-C"
+      },
+      "rounds": [
+        {
+          "id": "C-draft",
+          "participantId": "assistant-C",
+          "kind": "draft-plan",
+          "observedOutput": {
+            "contextUsed": [
+              "objeto de estudo textual",
+              "público com leitura cotidiana",
+              "ausência de vocabulário formal de argumentação"
+            ],
+            "questions": [],
+            "difficultyResponseLinks": [
+              {
+                "microsequence": "tese e evidência",
+                "contentDemand": "Distinguir funções argumentativas em trechos próximos.",
+                "anticipatedDifficulty": "Confundir a informação mais chamativa com a tese defendida.",
+                "designResponse": "Aplicar o mesmo formato pedagógico global usado em todas as unidades."
+              },
+              {
+                "microsequence": "pressupostos",
+                "contentDemand": "Reconhecer informação necessária que não foi afirmada diretamente.",
+                "anticipatedDifficulty": "Tratar inferência plausível e pressuposto necessário como equivalentes.",
+                "designResponse": "Comparar pares de enunciados e retirar apoio gradualmente somente nesta unidade."
+              }
+            ],
+            "planText": "Separar as funções argumentativas em microssequências com trechos integralmente visíveis.",
+            "humanPause": {
+              "beforeCards": true,
+              "status": "awaiting-human-decision",
+              "prompt": "Revise as dificuldades e respostas da análise argumentativa."
+            },
+            "cardsCreated": 0,
+            "practiceChecks": [
+              {
+                "microsequence": "tese e evidência",
+                "responsePackage": "aralearn.response.matching",
+                "evaluationMode": "exact-pairs",
+                "observableTask": "Associar trechos visíveis às funções tese e evidência."
+              }
+            ]
+          }
+        },
+        {
+          "id": "C-review",
+          "participantId": "reviewer-C",
+          "kind": "independent-review",
+          "observedOutput": {
+            "reviewedRoundId": "C-draft",
+            "reviewBasis": [
+              "aralearn.authoring-contextual-planning-scenarios.v1",
+              "sharedRubric"
+            ],
+            "findings": [
+              {
+                "code": "C.DIFFICULTY_RESPONSE_MISMATCH",
+                "evidencePath": "/difficultyResponseLinks/0/designResponse",
+                "message": "A resposta observada não corresponde ao vínculo dificuldade→resposta definido no cenário."
+              }
+            ]
+          }
+        },
+        {
+          "id": "C-final",
+          "participantId": "assistant-C",
+          "kind": "revised-plan",
+          "addressesFindingCodes": [
+            "C.DIFFICULTY_RESPONSE_MISMATCH"
+          ],
+          "adjustmentSummary": "A resposta foi ligada à dificuldade local por contraste, anotação e distratores derivados da confusão prevista.",
+          "observedOutput": {
+            "contextUsed": [
+              "objeto de estudo textual",
+              "público com leitura cotidiana",
+              "ausência de vocabulário formal de argumentação"
+            ],
+            "questions": [],
+            "difficultyResponseLinks": [
+              {
+                "microsequence": "tese e evidência",
+                "contentDemand": "Distinguir funções argumentativas em trechos próximos.",
+                "anticipatedDifficulty": "Confundir a informação mais chamativa com a tese defendida.",
+                "designResponse": "Usar trechos curtos contrastivos, anotação das funções e escolha com distratores baseados nas confusões previstas."
+              },
+              {
+                "microsequence": "pressupostos",
+                "contentDemand": "Reconhecer informação necessária que não foi afirmada diretamente.",
+                "anticipatedDifficulty": "Tratar inferência plausível e pressuposto necessário como equivalentes.",
+                "designResponse": "Comparar pares de enunciados e retirar apoio gradualmente somente nesta unidade."
+              }
+            ],
+            "planText": "Separar as funções argumentativas em microssequências com contrastes locais e trechos integralmente visíveis.",
+            "scopeCoverage": [
+              "argument-thesis",
+              "argument-evidence",
+              "argument-inference",
+              "argument-presupposition"
+            ],
+            "humanPause": {
+              "beforeCards": true,
+              "status": "awaiting-human-decision",
+              "prompt": "Revise as dificuldades e respostas da análise argumentativa."
+            },
+            "cardsCreated": 0,
+            "practiceChecks": [
+              {
+                "microsequence": "tese e evidência",
+                "responsePackage": "aralearn.response.matching",
+                "evaluationMode": "exact-pairs",
+                "observableTask": "Associar trechos visíveis às funções tese e evidência."
+              }
+            ]
+          }
+        },
+        {
+          "id": "C-approval",
+          "participantId": "human-C",
+          "kind": "human-decision",
+          "observedOutput": {
+            "decision": "approved",
+            "approvedPlanRoundId": "C-final"
+          }
+        },
+        {
+          "id": "C-persist",
+          "participantId": "assistant-C",
+          "kind": "approved-plan-persistence",
+          "observedOutput": {
+            "afterHumanApproval": true,
+            "toolName": "gerirContinuidadeDaAutoria",
+            "toolCallArguments": {
+              "requestId": "eval:C:approved-plan:0001",
+              "workspaceId": "00000000-0000-4000-8000-000000000096",
+              "expectedRevision": 1,
+              "operation": "record_approved_plan",
+              "parts": [
+                {
+                  "id": "part-c-argument-analysis",
+                  "title": "Análise argumentativa",
+                  "microsequenceIds": [
+                    "argument-thesis",
+                    "argument-evidence",
+                    "argument-inference",
+                    "argument-presupposition"
+                  ]
+                }
+              ],
+              "decisions": [
+                {
+                  "id": "decision-c-thesis-evidence",
+                  "summary": "Distinguir funções argumentativas em trechos próximos.",
+                  "entityType": "microsequence",
+                  "entityId": "argument-thesis",
+                  "pedagogicalDiagnosis": {
+                    "difficultyResponses": [
+                      {
+                        "difficulty": "Confundir a informação mais chamativa com a tese defendida.",
+                        "response": "Usar trechos curtos contrastivos, anotação das funções e escolha com distratores baseados nas confusões previstas."
+                      }
+                    ]
+                  }
+                },
+                {
+                  "id": "decision-c-presuppositions",
+                  "summary": "Reconhecer informação necessária que não foi afirmada diretamente.",
+                  "entityType": "microsequence",
+                  "entityId": "argument-presupposition",
+                  "pedagogicalDiagnosis": {
+                    "difficultyResponses": [
+                      {
+                        "difficulty": "Tratar inferência plausível e pressuposto necessário como equivalentes.",
+                        "response": "Comparar pares de enunciados e retirar apoio gradualmente somente nesta unidade."
+                      }
+                    ]
+                  }
+                }
+              ],
+              "mandate": null
+            }
+          }
+        }
+      ],
+      "injectedDivergence": {
+        "roundId": "C-draft",
+        "path": "/difficultyResponseLinks/0/designResponse",
+        "injectedValue": "Aplicar o mesmo formato pedagógico global usado em todas as unidades.",
+        "expectedFindingCode": "C.DIFFICULTY_RESPONSE_MISMATCH",
+        "expectedAuditFinding": "A resposta observada não corresponde ao vínculo dificuldade→resposta definido no cenário.",
+        "correction": {
+          "path": "/difficultyResponseLinks/0/designResponse",
+          "value": "Usar trechos curtos contrastivos, anotação das funções e escolha com distratores baseados nas confusões previstas."
+        }
+      },
+      "finalResult": {
+        "planRoundId": "C-final",
+        "humanDecisionRoundId": "C-approval",
+        "persistenceRoundId": "C-persist",
+        "status": "approved-plan-recorded-before-cards"
+      }
+    },
+    {
+      "scenarioId": "D",
+      "runId": "contextual-planning-D-v1",
+      "participants": {
+        "assistantId": "assistant-D",
+        "reviewerId": "reviewer-D",
+        "humanId": "human-D"
+      },
+      "rounds": [
+        {
+          "id": "D-draft",
+          "participantId": "assistant-D",
+          "kind": "draft-plan",
+          "observedOutput": {
+            "contextUsed": [
+              "pré-requisitos observáveis",
+              "condição e duração aproximada de estudo",
+              "operação de avaliação",
+              "meio indisponível",
+              "fonte e cobertura obrigatória",
+              "pedido explícito de revisão do plano"
+            ],
+            "questions": [],
+            "difficultyResponseLinks": [
+              {
+                "microsequence": "relações em diagramas geométricos",
+                "contentDemand": "Coordenar notação, relações espaciais e dados numéricos.",
+                "anticipatedDifficulty": "Ler posição ou aparência como prova em vez de usar propriedades declaradas.",
+                "designResponse": "Explicitar convenções e propriedades, variar diagramas sem mudar a relação e cobrar justificativa determinística."
+              }
+            ],
+            "scopeCoverage": [
+              "angles-and-parallel-lines",
+              "triangles-congruence-similarity",
+              "polygons-and-quadrilaterals",
+              "circles",
+              "perimeter-and-area"
+            ],
+            "planText": "Preservar a ementa, trabalhar diagramas legíveis no celular e preparar questões de múltipla escolha com dados completos.",
+            "persistenceProposal": {
+              "record": {
+                "approvedScope": [
+                  "ementa anexada"
+                ],
+                "decisions": [
+                  {
+                    "microsequence": "relações em diagramas geométricos",
+                    "contentDemand": "Coordenar notação, relações espaciais e dados numéricos.",
+                    "anticipatedDifficulty": "Ler posição ou aparência como prova em vez de usar propriedades declaradas.",
+                    "designResponse": "Explicitar convenções e propriedades, variar diagramas sem mudar a relação e cobrar justificativa determinística."
+                  }
+                ],
+                "dialogTranscript": "Pedido, alternativas cogitadas e raciocínio interno da rodada."
+              }
+            },
+            "humanPause": {
+              "beforeCards": true,
+              "status": "awaiting-human-decision",
+              "prompt": "Revise uma vez o plano completo antes dos cards."
+            },
+            "cardsCreated": 0,
+            "practiceChecks": [
+              {
+                "microsequence": "relações em diagramas geométricos",
+                "responsePackage": "aralearn.response.choice",
+                "evaluationMode": "exact-option-id",
+                "observableTask": "Escolher a justificativa válida a partir das propriedades declaradas."
+              }
+            ]
+          }
+        },
+        {
+          "id": "D-review",
+          "participantId": "reviewer-D",
+          "kind": "independent-review",
+          "observedOutput": {
+            "reviewedRoundId": "D-draft",
+            "reviewBasis": [
+              "aralearn.authoring-contextual-planning-scenarios.v1",
+              "sharedRubric"
+            ],
+            "findings": [
+              {
+                "code": "D.PERSISTENCE_BOUNDARY",
+                "evidencePath": "/persistenceProposal/record/dialogTranscript",
+                "message": "A proposta persiste transcrição e raciocínio não aprovados; somente escopo e decisões compactas aprovadas podem ser registrados."
+              }
+            ]
+          }
+        },
+        {
+          "id": "D-final",
+          "participantId": "assistant-D",
+          "kind": "revised-plan",
+          "addressesFindingCodes": [
+            "D.PERSISTENCE_BOUNDARY"
+          ],
+          "adjustmentSummary": "A transcrição foi excluída e o registro ficou limitado ao escopo e às decisões aprovadas.",
+          "observedOutput": {
+            "contextUsed": [
+              "pré-requisitos observáveis",
+              "condição e duração aproximada de estudo",
+              "operação de avaliação",
+              "meio indisponível",
+              "fonte e cobertura obrigatória",
+              "pedido explícito de revisão do plano"
+            ],
+            "questions": [],
+            "difficultyResponseLinks": [
+              {
+                "microsequence": "relações em diagramas geométricos",
+                "contentDemand": "Coordenar notação, relações espaciais e dados numéricos.",
+                "anticipatedDifficulty": "Ler posição ou aparência como prova em vez de usar propriedades declaradas.",
+                "designResponse": "Explicitar convenções e propriedades, variar diagramas sem mudar a relação e cobrar justificativa determinística."
+              }
+            ],
+            "scopeCoverage": [
+              "angles-and-parallel-lines",
+              "triangles-congruence-similarity",
+              "polygons-and-quadrilaterals",
+              "circles",
+              "perimeter-and-area"
+            ],
+            "planText": "Preservar a ementa, trabalhar diagramas legíveis no celular e preparar questões de múltipla escolha com dados completos.",
+            "persistenceBoundary": {
+              "dialogTranscript": "excluded",
+              "privateReasoning": "excluded",
+              "unapprovedOptions": "excluded"
+            },
+            "humanPause": {
+              "beforeCards": true,
+              "status": "awaiting-human-decision",
+              "prompt": "Revise uma vez o plano completo antes dos cards."
+            },
+            "cardsCreated": 0,
+            "practiceChecks": [
+              {
+                "microsequence": "relações em diagramas geométricos",
+                "responsePackage": "aralearn.response.choice",
+                "evaluationMode": "exact-option-id",
+                "observableTask": "Escolher a justificativa válida a partir das propriedades declaradas."
+              }
+            ]
+          }
+        },
+        {
+          "id": "D-approval",
+          "participantId": "human-D",
+          "kind": "human-decision",
+          "observedOutput": {
+            "decision": "approved",
+            "approvedPlanRoundId": "D-final"
+          }
+        },
+        {
+          "id": "D-persist",
+          "participantId": "assistant-D",
+          "kind": "approved-plan-persistence",
+          "observedOutput": {
+            "afterHumanApproval": true,
+            "toolName": "gerirContinuidadeDaAutoria",
+            "toolCallArguments": {
+              "requestId": "eval:D:approved-plan:0001",
+              "workspaceId": "00000000-0000-4000-8000-000000000096",
+              "expectedRevision": 1,
+              "operation": "record_approved_plan",
+              "parts": [
+                {
+                  "id": "part-d-plane-geometry",
+                  "title": "Geometria plana",
+                  "microsequenceIds": [
+                    "angles-and-parallel-lines",
+                    "triangles-congruence-similarity",
+                    "polygons-and-quadrilaterals",
+                    "circles",
+                    "perimeter-and-area"
+                  ]
+                }
+              ],
+              "decisions": [
+                {
+                  "id": "decision-d-diagram-relations",
+                  "summary": "Coordenar notação, relações espaciais e dados numéricos.",
+                  "entityType": "microsequence",
+                  "entityId": "angles-and-parallel-lines",
+                  "pedagogicalDiagnosis": {
+                    "difficultyResponses": [
+                      {
+                        "difficulty": "Ler posição ou aparência como prova em vez de usar propriedades declaradas.",
+                        "response": "Explicitar convenções e propriedades, variar diagramas sem mudar a relação e cobrar justificativa determinística."
+                      }
+                    ]
+                  }
+                }
+              ],
+              "mandate": null
+            }
+          }
+        }
+      ],
+      "injectedDivergence": {
+        "roundId": "D-draft",
+        "path": "/persistenceProposal/record/dialogTranscript",
+        "injectedValue": "Pedido, alternativas cogitadas e raciocínio interno da rodada.",
+        "expectedFindingCode": "D.PERSISTENCE_BOUNDARY",
+        "expectedAuditFinding": "A proposta persiste transcrição e raciocínio não aprovados; somente escopo e decisões compactas aprovadas podem ser registrados.",
+        "correction": {
+          "path": "/persistenceBoundary/dialogTranscript",
+          "value": "excluded"
+        }
+      },
+      "finalResult": {
+        "planRoundId": "D-final",
+        "humanDecisionRoundId": "D-approval",
+        "persistenceRoundId": "D-persist",
+        "status": "approved-plan-recorded-before-cards"
+      }
+    },
+    {
+      "scenarioId": "E",
+      "runId": "contextual-planning-E-v1",
+      "participants": {
+        "assistantId": "assistant-E",
+        "reviewerId": "reviewer-E",
+        "humanId": "human-E"
+      },
+      "rounds": [
+        {
+          "id": "E-draft",
+          "participantId": "assistant-E",
+          "kind": "draft-plan",
+          "observedOutput": {
+            "contextUsed": [
+              "público sem conhecimentos prévios",
+              "escopo conceitualmente denso",
+              "estudo móvel",
+              "ausência de pressão para condensar"
+            ],
+            "questions": [],
+            "difficultyResponseLinks": [
+              {
+                "microsequence": "processo, execução e estado",
+                "contentDemand": "Relacionar abstração, mudança de estado e recursos mantidos pelo sistema.",
+                "anticipatedDifficulty": "Muitos conceitos novos podem ser comprimidos em definições sem referente.",
+                "designResponse": "Separar situação observável, mecanismo, estados e relações em camadas causais antes da prática."
+              },
+              {
+                "microsequence": "concorrência e escalonamento",
+                "contentDemand": "Distinguir simultaneidade, interleaving, política e efeito observado.",
+                "anticipatedDifficulty": "Confundir conceitos vizinhos quando apresentados no mesmo resumo.",
+                "designResponse": "Criar microssequências dependentes, contrastes locais e práticas após cada fundamentação; deixar a quantidade de cards resultar da decomposição."
+              }
+            ],
+            "planText": "Decompor os seis blocos da ementa em relações causais e contrastes locais.",
+            "decomposition": {
+              "cardLimit": 10,
+              "countPolicy": "fixed-before-scope"
+            },
+            "humanPause": {
+              "beforeCards": true,
+              "status": "awaiting-human-decision",
+              "prompt": "Revise a decomposição e a cobertura antes dos cards."
+            },
+            "cardsCreated": 0,
+            "practiceChecks": [
+              {
+                "microsequence": "concorrência e escalonamento",
+                "responsePackage": "aralearn.response.matching",
+                "evaluationMode": "exact-pairs",
+                "observableTask": "Associar estados e políticas a efeitos explicitamente apresentados."
+              }
+            ]
+          }
+        },
+        {
+          "id": "E-review",
+          "participantId": "reviewer-E",
+          "kind": "independent-review",
+          "observedOutput": {
+            "reviewedRoundId": "E-draft",
+            "reviewBasis": [
+              "aralearn.authoring-contextual-planning-scenarios.v1",
+              "sharedRubric"
+            ],
+            "findings": [
+              {
+                "code": "E.FIXED_CARD_TARGET",
+                "evidencePath": "/decomposition/cardLimit",
+                "message": "O teto prévio de cards contradiz a ausência de pressão para condensar e pode reduzir silenciosamente a cobertura do escopo denso."
+              }
+            ]
+          }
+        },
+        {
+          "id": "E-final",
+          "participantId": "assistant-E",
+          "kind": "revised-plan",
+          "addressesFindingCodes": [
+            "E.FIXED_CARD_TARGET"
+          ],
+          "adjustmentSummary": "O teto foi removido; a quantidade passa a resultar da decomposição e da cobertura integral.",
+          "observedOutput": {
+            "contextUsed": [
+              "público sem conhecimentos prévios",
+              "escopo conceitualmente denso",
+              "estudo móvel",
+              "ausência de pressão para condensar"
+            ],
+            "questions": [],
+            "difficultyResponseLinks": [
+              {
+                "microsequence": "processo, execução e estado",
+                "contentDemand": "Relacionar abstração, mudança de estado e recursos mantidos pelo sistema.",
+                "anticipatedDifficulty": "Muitos conceitos novos podem ser comprimidos em definições sem referente.",
+                "designResponse": "Separar situação observável, mecanismo, estados e relações em camadas causais antes da prática."
+              },
+              {
+                "microsequence": "concorrência e escalonamento",
+                "contentDemand": "Distinguir simultaneidade, interleaving, política e efeito observado.",
+                "anticipatedDifficulty": "Confundir conceitos vizinhos quando apresentados no mesmo resumo.",
+                "designResponse": "Criar microssequências dependentes, contrastes locais e práticas após cada fundamentação; deixar a quantidade de cards resultar da decomposição."
+              }
+            ],
+            "planText": "Decompor os seis blocos da ementa em relações causais, dependências e contrastes locais, preservando a cobertura integral.",
+            "scopeCoverage": [
+              "os-processes",
+              "os-virtual-memory",
+              "os-concurrency",
+              "os-scheduling",
+              "os-file-systems",
+              "os-input-output"
+            ],
+            "decomposition": {
+              "cardLimit": null,
+              "countPolicy": "derived-from-scope-decomposition"
+            },
+            "humanPause": {
+              "beforeCards": true,
+              "status": "awaiting-human-decision",
+              "prompt": "Revise a decomposição e a cobertura antes dos cards."
+            },
+            "cardsCreated": 0,
+            "practiceChecks": [
+              {
+                "microsequence": "concorrência e escalonamento",
+                "responsePackage": "aralearn.response.matching",
+                "evaluationMode": "exact-pairs",
+                "observableTask": "Associar estados e políticas a efeitos explicitamente apresentados."
+              }
+            ]
+          }
+        },
+        {
+          "id": "E-approval",
+          "participantId": "human-E",
+          "kind": "human-decision",
+          "observedOutput": {
+            "decision": "approved",
+            "approvedPlanRoundId": "E-final"
+          }
+        },
+        {
+          "id": "E-persist",
+          "participantId": "assistant-E",
+          "kind": "approved-plan-persistence",
+          "observedOutput": {
+            "afterHumanApproval": true,
+            "toolName": "gerirContinuidadeDaAutoria",
+            "toolCallArguments": {
+              "requestId": "eval:E:approved-plan:0001",
+              "workspaceId": "00000000-0000-4000-8000-000000000096",
+              "expectedRevision": 1,
+              "operation": "record_approved_plan",
+              "parts": [
+                {
+                  "id": "part-e-operating-systems",
+                  "title": "Fundamentos de sistemas operacionais",
+                  "microsequenceIds": [
+                    "os-processes",
+                    "os-virtual-memory",
+                    "os-concurrency",
+                    "os-scheduling",
+                    "os-file-systems",
+                    "os-input-output"
+                  ]
+                }
+              ],
+              "decisions": [
+                {
+                  "id": "decision-e-process-state",
+                  "summary": "Relacionar abstração, mudança de estado e recursos mantidos pelo sistema.",
+                  "entityType": "microsequence",
+                  "entityId": "os-processes",
+                  "pedagogicalDiagnosis": {
+                    "difficultyResponses": [
+                      {
+                        "difficulty": "Muitos conceitos novos podem ser comprimidos em definições sem referente.",
+                        "response": "Separar situação observável, mecanismo, estados e relações em camadas causais antes da prática."
+                      }
+                    ]
+                  }
+                },
+                {
+                  "id": "decision-e-concurrency-scheduling",
+                  "summary": "Distinguir simultaneidade, interleaving, política e efeito observado.",
+                  "entityType": "microsequence",
+                  "entityId": "os-concurrency",
+                  "pedagogicalDiagnosis": {
+                    "difficultyResponses": [
+                      {
+                        "difficulty": "Confundir conceitos vizinhos quando apresentados no mesmo resumo.",
+                        "response": "Criar microssequências dependentes, contrastes locais e práticas após cada fundamentação; deixar a quantidade de cards resultar da decomposição."
+                      }
+                    ]
+                  }
+                }
+              ],
+              "mandate": null
+            }
+          }
+        }
+      ],
+      "injectedDivergence": {
+        "roundId": "E-draft",
+        "path": "/decomposition/cardLimit",
+        "injectedValue": 10,
+        "expectedFindingCode": "E.FIXED_CARD_TARGET",
+        "expectedAuditFinding": "O teto prévio de cards contradiz a ausência de pressão para condensar e pode reduzir silenciosamente a cobertura do escopo denso.",
+        "correction": {
+          "path": "/decomposition/cardLimit",
+          "value": null
+        }
+      },
+      "finalResult": {
+        "planRoundId": "E-final",
+        "humanDecisionRoundId": "E-approval",
+        "persistenceRoundId": "E-persist",
+        "status": "approved-plan-recorded-before-cards"
+      }
+    }
+  ]
+}

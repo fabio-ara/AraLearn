@@ -71,6 +71,7 @@ const STRUCTURE_RECORDS = [
   { id: "structure.data_model", label: "Modelo de dados", aliases: ["entidade", "relacionamento", "chave primária", "chave estrangeira", "esquema relacional"] },
   { id: "structure.process", label: "Processo e decisão", aliases: ["processo", "fluxograma", "atividade", "gateway", "decisão"] },
   { id: "structure.state_transition", label: "Estado e transição", aliases: ["transição", "autômato", "máquina de estados"] },
+  { id: "structure.terminal_session", label: "Sessão textual observável", aliases: ["sessão de terminal", "sessão textual", "interação textual", "comando e saída", "terminal", "stdout", "stderr"] },
   { id: "structure.call_stack", label: "Pilha de execução", aliases: ["pilha de chamadas", "pilha de execução", "quadro de ativação"] },
   { id: "structure.system_architecture", label: "Arquitetura de sistema", aliases: ["sistema", "contêiner", "bloco", "porta", "dependência"] },
   { id: "structure.memory_layout", label: "Layout de memória", aliases: ["memória", "endereço de memória", "segmento de memória"] },
@@ -156,9 +157,9 @@ function operationIds(cognitiveOperations) {
   const direct = controlledVocabularyIds("operations", values);
   const prefixRules = [
     [/^(?:explain|situate|exemplify)/u, "operation.explain"],
-    [/^(?:identify|locate|recognize|inspect|lookup|read)/u, "operation.identify"],
+    [/^(?:identify|interpret|locate|recognize|inspect|lookup|read)/u, "operation.identify"],
     [/^(?:compare|contrast|distinguish)/u, "operation.compare"],
-    [/^(?:trace|predict)/u, "operation.trace"],
+    [/^(?:trace|predict|relate)/u, "operation.trace"],
     [/^(?:calculate|evaluate|balance|test)/u, "operation.calculate"],
     [/^(?:transform|derive|normalize|reconstruct)/u, "operation.transform"],
     [/^(?:classify|associate|map|match)/u, "operation.classify"],
@@ -178,7 +179,8 @@ function operationIds(cognitiveOperations) {
 function familyId({ structureIds, disciplineIds, practiceModeIds }) {
   if (!practiceModeIds.includes("practice.exposition")) return "family.response";
   if (structureIds.some((id) => new Set([
-    "structure.process", "structure.state_transition", "structure.call_stack"
+    "structure.process", "structure.state_transition", "structure.terminal_session",
+    "structure.call_stack"
   ]).has(id))) return "family.process_state";
   if (structureIds.some((id) => new Set([
     "structure.system_architecture", "structure.data_model"

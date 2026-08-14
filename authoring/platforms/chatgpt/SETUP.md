@@ -28,9 +28,7 @@ valores que pertencem ao ambiente implantado:
 
 - **Chatbot**: Instructions, Knowledge, Resources, schema da Action, criação de
   credencial OAuth e vínculo do identificador do GPT;
-- **Plugin**: nome, descrição, endpoint MCP e indicação de OAuth;
-- **Calibração**: preferências autorais permitidas pelo produto; ela não
-  substitui os contratos de segurança e persistência.
+- **Plugin**: nome, descrição, endpoint MCP e indicação de OAuth.
 
 Nunca copie `service_role`, senha do banco ou segredo administrativo para o
 ChatGPT. A integração recebe somente credenciais OAuth destinadas à conta que
