@@ -4,6 +4,19 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 
 ## [Unreleased]
 
+### Changed
+
+- documentação pública reorganizada como material de aprendizagem, com
+  apresentação do produto, percursos por finalidade, explicações progressivas
+  dos conceitos técnicos e pedagógicos, justificativas das decisões e
+  referências bibliográficas legíveis;
+- guias de uso, autoria, administração, desenvolvimento e implantação passam a
+  declarar pré-condições, procedimentos, resultados esperados, comportamento
+  sem conexão e formas seguras de recuperação;
+- materiais humanos e instruções executáveis de autoria passam a ter funções
+  editoriais explícitas, evitando que a concisão necessária aos modelos de
+  linguagem determine a profundidade da documentação destinada às pessoas.
+
 ## [0.0.19] - 2026-08-13
 
 ### Added
@@ -18,8 +31,8 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 ### Changed
 
 - documentação pública, material autoral e pacotes derivados passam a usar
-  terminologia precisa de computação e educação, conforme a auditoria da issue
-  #94;
+  terminologia precisa de computação e educação, conforme a revisão
+  técnico-documental do estado implementado;
 - diagramas relacionais compatíveis com leitura vertical passam a priorizar o
   eixo superior-inferior em telas móveis, preservando as convenções cuja
   orientação horizontal é semanticamente relevante.

@@ -1,302 +1,518 @@
-# Arquitetura
+# Arquitetura do AraLearn
 
-O AraLearn separa conteúdo compartilhado, autoria em andamento e dados
-pessoais. Revisões publicadas de curso ficam como JSON imutável no Supabase
-Storage; uma submissão editorial aponta para o hash exato de uma publicação
-privada. O workspace em edição é composto no PostgreSQL por partes atuais, sem
-gravar uma cópia integral a cada comando. O IndexedDB conserva, em cada
-dispositivo, o material e o estado necessários para continuar estudando sem
-conexão.
+Este documento explica como o AraLearn distribui responsabilidades entre a
+aplicação executada no navegador ou no Android e os serviços remotos. O objetivo
+não é ensinar a sintaxe dos arquivos-fonte, mas tornar compreensíveis as
+decisões que determinam segurança, funcionamento sem conexão, custo de
+armazenamento, concorrência de autoria e extensibilidade dos recursos de card.
 
-## Conteúdo e organização
+Arquitetura de software é a organização das partes relevantes de um sistema,
+das relações entre elas e das restrições que orientam sua evolução. Uma
+descrição arquitetural, portanto, precisa responder a três perguntas:
 
-A árvore didática é formada por curso, módulo, lição, microssequência e card. O
-envelope operacional `aralearn.library.v1`, com cards compostos por packages
-versionados, é o formato de intercâmbio e publicação da árvore completa. O
-kernel também valida o contrato unitário `aralearn.course.v1`, enquanto o
-catálogo usa o protocolo de descoberta `aralearn.resource-library.v1`; os três
-identificadores possuem raízes e finalidades distintas. Uma revisão publicada
-possui hash SHA-256 e não é alterada depois de gravada.
+1. qual componente é responsável por cada dado ou operação;
+2. por que essa responsabilidade foi colocada ali;
+3. o que acontece quando rede, autorização ou concorrência falham.
 
-Há duas representações remotas com finalidades diferentes:
+## Vocabulário necessário
 
-- durante a autoria, o PostgreSQL mantém uma linha corrente para projeto,
-  curso, módulo, lição, tópico, microssequência e card;
-- depois da publicação, a árvore completa existe uma vez como artefato JSON no
-  Storage, e o PostgreSQL conserva seu hash e os metadados de acesso.
+As definições abaixo bastam para acompanhar este capítulo. O
+[glossário técnico](glossario-tecnico.md) apresenta distinções e referências
+adicionais.
 
-O dispositivo projeta o artefato publicado em tabelas do IndexedDB, onde a
-normalização ajuda navegação, estudo e atualização transacional.
+- **Android Package (APK)**: arquivo instalável que distribui o aplicativo no
+  Android;
+- **HTML, CSS e JavaScript**: tecnologias que, respectivamente, estruturam,
+  apresentam e dão comportamento à aplicação web;
+- **WebView**: componente do Android que incorpora um motor de navegador dentro
+  do APK e permite executar a mesma interface web;
+- **Supabase**: plataforma de serviços remotos usada pelo AraLearn; seu Auth
+  verifica identidade e sessão, seu Storage conserva objetos e suas Edge
+  Functions executam código protegido no servidor;
+- **PostgreSQL**: banco de dados relacional que conserva estado compartilhado;
+- **PostgREST**: componente que oferece operações do PostgreSQL por uma
+  interface web;
+- **Hypertext Transfer Protocol (HTTP)**: protocolo usado nas requisições entre
+  a aplicação e os serviços; uma **interface de programação de aplicações
+  (API)** define quais operações e dados podem ser trocados por esse protocolo;
+- **Remote Procedure Call (RPC)**: função do banco chamada pela API para
+  executar uma operação transacional de domínio;
+- **Indexed Database API (IndexedDB)**: banco de objetos local oferecido pelo
+  navegador para conservar dados estruturados no dispositivo;
+- **fonte de autoridade**: componente cujo estado decide o valor válido numa
+  determinada operação;
+- **workspace**: espaço de autoria mutável, composto por entidades correntes no
+  PostgreSQL;
+- **artefato**: documento integral e imutável produzido por materialização;
+- **materialização**: composição e validação das partes de um curso para gerar
+  um documento concreto;
+- **hash**: resumo de tamanho fixo calculado a partir de bytes; no AraLearn,
+  SHA-256 identifica o conteúdo canônico e permite detectar se o documento
+  recebido difere daquele que foi publicado;
+- **projeção**: representação derivada, organizada para uma consulta ou tela;
+- **réplica local**: subconjunto sincronizado necessário para operar no
+  dispositivo; não é cópia integral do backend;
+- **cache**: dado derivado que pode ser descartado e reconstruído e, por isso,
+  não concede permissão;
+- **Service Worker**: script controlado pelo navegador que pode interceptar
+  requisições da aplicação e responder com arquivos previamente armazenados;
+  no AraLearn, ele mantém o shell estático disponível sem conexão, mas não
+  substitui o IndexedDB nem concede acesso a dados protegidos;
+- **pacote de recurso** (`package`): módulo versionado que define contrato,
+  validação, renderização e
+  comportamento de uma representação ou resposta de card;
+- **núcleo** (`kernel`): componente que conhece a composição geral dos cards e a
+  interface dos pacotes, sem conhecer o formato interno de cada representação.
 
-Coleções organizam o catálogo oficial. Trilhas projetam, para cada pessoa,
-planos de workspace, cursos em materialização e cursos oficiais selecionados.
-As duas projeções usam grupos e cards equivalentes na
-interface, mas não compartilham autoridade: grupos de Trilhas pertencem à conta;
-grupos de Coleções são metadados editoriais globais. Workspaces contextualizam
-autoria e participação: o mesmo usuário pode ter papéis diferentes em espaços
-distintos. Trilhas e Coleções continuam vistas simples, não autoridades
-paralelas.
+## Visão geral
 
-O workspace composto é também o workspace educacional. `owner_id` identifica o
-proprietário principal; `educational_workspace_members` contém os papéis locais.
-Capacidades são derivadas no PostgreSQL e revalidadas a cada operação remota.
-Convites são efêmeros e armazenam hash do código. O workspace aparece
-diretamente em Trilhas para cada membro autorizado; isso não cria seleção,
-publicação nem artefato por participante.
-
-O detalhe administrativo deriva até 50 raízes de curso diretamente de
-`authoring_workspace_entities`, contando descendentes e microssequências
-prontas e consultando os vínculos `private|catalog` já existentes. A projeção
-não cria tabela, artefato ou histórico; o total separado permite indicar quando
-há mais raízes do que a página estreita devolvida.
-
-## Catálogo oficial e autoria pessoal
-
-Cada publicação oficial aponta para uma revisão imutável no Storage. A
-biblioteca mostra coleções e metadados. Uma ação explícita de seleção concede à
-conta apenas o vínculo com o curso e o hash vigente; o documento é baixado para
-o dispositivo quando necessário. Abrir ou iniciar o estudo é uma consulta e não
-executa seleção, movimentação, cópia, publicação ou outra mutação.
-
-Grupos pessoais são mantidos por `study_paths` e `study_path_items`, vinculados
-ao `trailItemId` estável. Criar, renomear ou excluir um grupo afeta
-somente a conta e aceita tanto um plano quanto um curso materializado ou
-selecionado. A exclusão do grupo preserva o item e o estado de estudo,
-deixando-o em **Outros** até nova organização. Grupos e cursos usam ordem
-alfabética automática. Coleções e classificações pertencem ao plano de controle
-editorial; contas autorizadas podem administrá-las pelo aplicativo, com
-confirmação explícita para operações de alcance global.
-
-Edição manual e assistência por API acontecem no próprio conteúdo renderizado.
-A seleção congela a autoridade, o fragmento e a revisão correntes; a resposta
-estruturada é validada em memória e confirmada inteira com compare-and-swap. A
-interface mostra diretamente o resultado, sem etapa intermediária nem
-validação exposta como tarefa da pessoa.
-
-Curso privado próprio permanece na mesma identidade privada. Curso oficial é
-somente leitura para conta comum; uma conta administrativa ou editorial pode
-alterá-lo mantendo sua continuidade oficial. O aplicativo não cria fork
-privado automático de conteúdo de Coleções. Curso privado de outra pessoa não
-é editável neste recorte. Cache e capacidade desconhecida sempre falham
-fechados. A passagem de privado para catálogo continua exclusiva da autoria
-por GPT personalizado com Action ou por um cliente compatível pela integração
-MCP.
-
-A autoridade bottom-up é hierárquica e limitada: instâncias de packages ou o
-card inteiro no nível de card; cards selecionados ou o recipiente no nível de
-microssequência; microssequências selecionadas ou o recipiente no nível de
-lição. Todos os filhos precisam estar selecionados para autorizar criação no
-recipiente. O fluxo local não atua em módulo ou curso. Contexto não selecionado
-entra somente para leitura, com vizinhos limitados e um índice compacto da
-lição.
-
-No card, a assistência mantém uma conversa volátil de até oito turnos e nove
-versões exatas, com desfazer, refazer e restauração. Um turno sem mudança guarda
-somente a explicação e não cria versão. O histórico não é persistido nem se
-confunde com cópias do curso. A autoria extensa consulta o mesmo catálogo de
-packages pelo GPT personalizado com Action ou por um cliente compatível pela
-integração MCP. Não há merge silencioso.
-
-Cada comando do workspace usa `expectedRevision` para recusar uma base
-desatualizada e `requestId` para permitir repetição segura depois de uma falha
-de rede. A exclusão do próprio workspace segue o mesmo compare-and-swap: a
-revisão lida precisa ser informada antes de descartá-lo. Eventos recentes
-registram resumos pequenos das alterações; não são cópias do curso e não
-permitem restaurar estados antigos.
-
-Para localizar um card, o chat pagina diretamente os filhos da
-microssequência no PostgreSQL e recebe apenas metadados curtos. Só o card
-escolhido é lido integralmente. Essa consulta existe para workspace; conteúdo
-publicado precisa ser aberto ou importado antes de uma correção.
-
-Copiar uma entidade cria uma subárvore independente com identidades novas.
-Mover transfere a entidade atual e remove a origem na mesma alteração. Essa
-regra permite recombinar partes entre cursos sem compartilhar, por acidente, o
-mesmo conteúdo mutável.
-
-Excluir a raiz que representava um curso publicado remove também seu vínculo
-de continuidade naquele workspace, sem apagar outras raízes do projeto nem a
-publicação já distribuída. Se o curso publicado for aberto outra vez, o backend
-pode criar uma nova composição a partir da revisão corrente, sem encontrar um
-vínculo órfão.
-
-Retirar um curso oficial da biblioteca remove a seleção, sem remover a
-publicação oficial nem interferir na biblioteca de outra conta. Estado pessoal
-e posição pertencem ao `trailItemId` estável: se ainda existir a composição de
-workspace da mesma identidade, ela continua em `Trilhas`. Excluir essa
-composição é outra operação, baseada na revisão corrente da raiz ou do
-workspace. Uma submissão editorial ativa continua protegendo seu artefato até
-ser retirada ou concluída.
-
-A retirada administrativa de um curso oficial tem outro alcance: retira sua
-classificação e publicação de `Coleções`, elimina todas as seleções e os estados
-pessoais dependentes e desativa o alias distribuído. Se houver um workspace
-vinculado, sua composição e o vínculo leve de continuidade permanecem; remover
-a raiz ou o workspace é outra operação explícita. Os tombstones dos feeds
-impedem que uma réplica antiga ressuscite a publicação. O botão correspondente
-só é habilitado por uma capacidade editorial autenticada.
-
-O aplicativo serializa a exclusão com a réplica: conclui a fila local e exige
-uma sincronização fresca antes do commit remoto; depois dele, confirma a
-retirada local, sincroniza novamente e recompõe a projeção. O `requestId` é
-determinístico para a seleção, o curso e a revisão que formam a intenção. Uma
-resposta ambígua de rede pode repetir essa mesma intenção uma única vez; falha
-determinística, conflito ou nova revisão não produzem repetição automática. Se
-o commit remoto ocorreu e só a reconciliação local falhou, o erro marca a ação
-como concluída para evitar uma segunda exclusão.
-
-## Dados pessoais e réplica local
-
-Seleções, trilhas, estado funcional de estudo e comentários são dados pessoais. O estado funcional limita-se a cursor, conclusão estrutural e marca **Rever**; não contém abertura, tempo, tentativas ou resultados. As regras de acesso do Supabase permitem que a pessoa leia e altere somente os próprios dados.
-
-Cada conta usa um banco local identificado por seu UUID. Entrar em outra conta abre outro banco. Sair não apaga o material local nem as alterações que aguardam envio.
-
-Ao abrir o aplicativo, o servidor entrega a projeção corrente de `Trilhas` e o
-ponto a partir do qual novas mudanças devem ser recebidas. O dispositivo grava
-essa lista de uma vez. A composição de um workspace é baixada somente quando a
-pessoa abre seu plano ou curso e substitui o cache anterior pela revisão
-corrente; artefatos oficiais selecionados continuam na réplica para estudo sem
-conexão.
-
-## Sincronização
-
-Uma ação de estudo passa por quatro etapas:
+O AraLearn executa a mesma aplicação web na hospedagem estática e no APK. O
+APK contém um WebView Android e os mesmos arquivos JavaScript, CSS e HTML da
+versão web; não há uma segunda implementação nativa do domínio.
 
 ```text
-alteração na tela
-→ gravação no dispositivo
-→ fila de envio
-→ envio e recebimento das mudanças remotas
+interface web ou WebView Android
+├── núcleo de cards e pacotes de recursos
+├── regras de estudo e autoria situada
+├── IndexedDB por conta
+└── cliente HTTP autenticado
+        │
+        ▼
+Supabase gerenciado
+├── Auth: identidade e sessão
+├── PostgreSQL/PostgREST: estado corrente, permissões e RPCs
+├── Storage: revisões imutáveis de cursos
+└── Edge Functions: autoria externa e entrega protegida de revisões
 ```
 
-O aplicativo tenta sincronizar quando está aberto e há conexão. Cada alteração tem um identificador próprio; se uma resposta se perder, a mesma alteração pode ser enviada novamente sem duplicar dados.
+Essa composição não significa que todas as camadas sejam intercambiáveis. O
+PostgreSQL, o Auth, o PostgREST, o Storage e as Edge Functions formam os
+serviços remotos operacionais vigentes. Um servidor PostgreSQL isolado ou outro
+conjunto de serviços somente seria equivalente depois de implementar e testar
+esses contratos.
 
-Mudanças remotas são recebidas em páginas. Cada página é aplicada no dispositivo antes da próxima. Se faltar rede, se a sessão expirar ou se o aplicativo for fechado, o que ainda não foi enviado permanece guardado.
+## Decisão 1 — aplicação estática com serviços remotos especializados
 
-Para seleções, trilhas, estado funcional e comentários, vale a última alteração válida aceita pelo servidor. Conteúdo de curso não viaja nessa fila.
+### Problema
 
-O sinal de revisão publicada conserva somente a mudança mais recente por
-curso e audiência, inclusive quando ela é uma retirada. Como a mudança atual
-sempre recebe uma sequência nova, um dispositivo que consulta a partir de sua
-última sequência continua recebendo o estado vigente sem o banco acumular uma
-linha por republicação. A retirada conserva uma marca de exclusão (*tombstone*)
-por curso distinto;
-ele não expira enquanto esse feed não possuir watermark próprio para exigir
-full resync de clientes antigos.
+O produto precisa funcionar na web e no Android, continuar leve no dispositivo
+e oferecer autenticação, autorização por usuário, sincronização, autoria
+concorrente e distribuição de cursos.
 
-O feed pessoal de seleções, trilhas, progresso e comentários usa outro
-watermark, baseado nos dispositivos ativos. A primeira escrita elegível de cada
-dia tenta inativar dispositivos vencidos e compactar automaticamente o prefixo
-já seguro e os registros de deduplicação, sem depender de operação manual.
+### Alternativas consideradas
 
-## Atualização do catálogo
+- manter duas aplicações nativas independentes, uma web e outra Android;
+- executar um servidor de aplicação próprio que renderizasse todas as telas;
+- distribuir uma aplicação estática e delegar persistência e identidade a um
+  backend gerenciado.
 
-Uma nova publicação é baixada e validada antes de substituir a árvore local. Se houver falha no download, o material anterior continua disponível. Partes que conservam a mesma identidade mantêm progresso e comentários.
+### Decisão e funcionamento
 
-Uma atualização que alcançaria uma alteração local ainda não resolvida é adiada. O aplicativo conserva o material local e aguarda uma ação válida, em vez de substituir dados sem aviso.
+O AraLearn adota a terceira alternativa. A interface é um artefato estático; a
+mesma base é empacotada no APK. Operações locais usam APIs do navegador. As
+operações que exigem identidade, coordenação entre contas ou publicação passam
+pelas interfaces do Supabase.
 
-## Autenticação e segurança
+### Consequências
 
-O aplicativo usa Supabase Auth para cadastro, confirmação de e-mail, recuperação de senha, renovação de sessão e saída. Sem sessão, apenas a tela de acesso é exibida.
+- correções de interface e de domínio chegam aos dois destinos pela mesma base;
+- a hospedagem do front-end não precisa executar código do servidor;
+- o APK pode estudar material já sincronizado sem depender da disponibilidade
+  imediata do site;
+- o funcionamento completo depende dos serviços remotos declarados no contrato
+  de implantação.
 
-Web e Android recebem somente a URL pública do projeto e a chave pública de acesso. Senha de banco, chave administrativa e outros segredos não entram no site, no APK ou no armazenamento local. As operações sensíveis passam por funções autorizadas no banco.
+### Limites e evidência
 
-## Limites de portabilidade
+O repositório valida GitHub Pages e Supabase gerenciado. Servidor estático
+institucional é um caminho disponível que ainda precisa de ensaio no destino.
+Supabase auto-hospedado, SharePoint/SPFx e outro backend não possuem automação
+nem suíte de conformidade. A verificação executável está em
+`scripts/verifyDeploymentArtifacts.ps1`, nos testes Android e no roteiro de
+[Implantação](implantacao.md#formas-de-implantação).
 
-A aplicação web é composta por arquivos estáticos e pode ser servida por GitHub Pages, outro servidor HTTPS ou uma intranet que permita acesso ao projeto Supabase. Essa portabilidade não torna os serviços intercambiáveis: autenticação, RLS, PostgREST, RPCs e Edge Functions fazem parte do contrato operacional atual.
+## Decisão 2 — três formas de persistência, cada uma com uma função
 
-Uma migração para outro BaaS ou para PostgreSQL sem os serviços do Supabase precisa de adaptadores e testes de conformidade para todos esses contratos. O repositório ainda não contém essa camada. O Supabase local em Docker serve para desenvolvimento e ensaios descartáveis; não constitui um roteiro de operação auto-hospedada em produção.
+### Problema
 
-Também não existe pacote SharePoint/SPFx. O aplicativo protege a navegação contra incorporação em `iframe`, portanto deve ser aberto diretamente quando servido em uma intranet. Os perfis efetivamente disponíveis estão em [Implantação](implantacao.md#formas-de-implantação).
+Um único armazenamento teria de atender simultaneamente a quatro necessidades
+incompatíveis: alteração frequente de partes pequenas, distribuição eficiente
+de cursos integrais, estudo offline e dados pessoais por conta.
 
-## Código
+### Alternativas consideradas
 
-| Área | Responsabilidade |
+- guardar todo o curso em uma única coluna JSON do PostgreSQL e regravá-la a
+  cada edição;
+- decompor também cada publicação em uma segunda árvore relacional remota;
+- guardar snapshots integrais de todas as operações de autoria;
+- separar estado mutável, artefato publicado e réplica do dispositivo.
+
+### Decisão e funcionamento
+
+O AraLearn separa responsabilidades:
+
+| Componente | Conteúdo mantido | Razão principal |
+| --- | --- | --- |
+| PostgreSQL | partes correntes do workspace, metadados, permissões, seleções, grupos, estado pessoal e ponteiros de publicação | transações, relações, restrições e coordenação concorrente |
+| Supabase Storage | documento JSON integral de cada revisão publicada | distribuição de objetos imutáveis sem duplicar a árvore no banco |
+| IndexedDB | projeção dos cursos necessários, estado local e filas pendentes da conta autenticada | leitura e escrita transacionais no dispositivo, inclusive sem rede |
+
+Durante a autoria, `private.authoring_workspace_entities` conserva uma linha
+por projeto, curso, módulo, lição, tópico, microssequência ou card. Na
+publicação, o servidor recompõe a árvore, valida `aralearn.library.v1`, calcula
+o SHA-256 e grava uma única revisão integral no Storage. No dispositivo, essa
+revisão é validada e projetada em object stores do IndexedDB.
+
+### Consequências
+
+- editar um título não reenvia o curso inteiro;
+- estudar um curso não exige remontar sua árvore no PostgreSQL;
+- a tela pode consultar entidades por identidade e posição localmente;
+- o banco remoto conserva relações e autoridade, enquanto o Storage absorve o
+  volume dos documentos publicados;
+- a réplica local continua disponível quando a conexão desaparece.
+
+### Limites e evidência
+
+IndexedDB oferece object stores, índices e transações; não oferece SQL nem
+converte a aplicação num SGBD relacional. A réplica também não contém todos os
+workspaces ou cursos da instalação. A separação é implementada em
+`src/persistence/IndexedDbRelationalStore.js`,
+`private.authoring_workspace_entities` e
+`supabase/functions/_shared/aralearn-authoring/artifactStore.js`. A
+especificação do navegador está em [Indexed Database API
+3.0](https://www.w3.org/TR/IndexedDB/).
+
+## Decisão 3 — cursos publicados como artefatos endereçados pelo conteúdo
+
+### Problema
+
+Uma publicação precisa identificar exatamente o documento distribuído. Um
+nome de arquivo mutável permite que o conteúdo mude sem que a referência mude,
+o que dificulta validação, cache, submissão editorial e diagnóstico.
+
+### Alternativas consideradas
+
+- sobrescrever sempre `curso.json`;
+- usar somente um número sequencial de versão;
+- derivar a identidade física do objeto de um hash criptográfico do conteúdo
+  canônico.
+
+### Decisão e funcionamento
+
+O documento é serializado de forma determinística e recebe um hash SHA-256. O
+caminho no bucket deriva desse hash:
+
+```text
+artifacts/sha256/ab/cd/abcdef...json
+```
+
+O objeto não é sobrescrito. Um registro no PostgreSQL aponta para o hash
+corrente do curso; uma submissão editorial aponta para o hash exato que foi
+enviado. Atualizar um curso significa produzir outro artefato e trocar o
+ponteiro mediante comparação da base esperada.
+
+Esse modelo é chamado **armazenamento endereçado por conteúdo**: a identidade
+do objeto depende dos bytes que ele contém. O princípio é semelhante ao dos
+objetos do Git, embora o formato e o protocolo do AraLearn sejam próprios.
+
+### Consequências
+
+- o cliente confere integridade antes de instalar uma revisão;
+- duas publicações byte a byte iguais podem reutilizar o mesmo objeto;
+- caches não confundem conteúdo novo com um caminho antigo;
+- a revisão examinada editorialmente permanece identificável mesmo depois de
+  nova edição no workspace.
+
+### Limites e evidência
+
+SHA-256 comprova igualdade dos bytes canônicos recebidos; não comprova autoria,
+qualidade pedagógica ou ausência de conteúdo malicioso. O artefato continua
+dependente de validação contratual e autorização. A implementação e os testes
+estão no `artifactStore.js`, em `canonicalJson.js`, na migration
+`20260728010000_storage_artifact_control_plane.sql` e em
+`tests/runtime/authoring-artifact-store.test.js`.
+
+## Decisão 4 — workspace composto em vez de snapshots por comando
+
+### Problema
+
+Cursos podem crescer para milhares de partes. Guardar o documento integral
+depois de cada correção multiplicaria armazenamento, CPU de serialização e
+tráfego, especialmente sob limites de um projeto compartilhado.
+
+### Alternativas consideradas
+
+- snapshot integral por alteração;
+- log completo de eventos capaz de reconstituir qualquer estado;
+- uma linha corrente por entidade, acrescida de recibos de idempotência e
+  resumos operacionais limitados.
+
+### Decisão e funcionamento
+
+O workspace conserva somente a versão corrente de cada entidade. Uma mutação
+informa a revisão global e as versões esperadas das partes tocadas. O servidor
+bloqueia a raiz, compara essas revisões, aplica a alteração mínima, recompõe e
+valida o documento e então avança a revisão.
+
+Eventos recentes registram operação e resumo; não são snapshots nem permitem
+restaurar arbitrariamente um estado antigo. O histórico temporário da
+assistência no card também é volátil e não se confunde com versionamento do
+curso.
+
+### Consequências
+
+- o custo cresce com a estrutura atual, não com o número histórico de
+  comandos;
+- cópia e movimento podem operar sobre subárvores específicas;
+- a aplicação consegue detectar concorrência sem executar merge silencioso;
+- auditoria operacional existe, mas não equivale a um repositório Git.
+
+### Limites e evidência
+
+O workspace aceita até 10 mil partes, 1 MiB por parte e 32 MiB recomposto. Os
+eventos recentes têm limite de 200 por workspace. Não existe restauração geral
+de revisões. Esses limites são aplicados em `workspaceEngine.js`,
+`workspaceIncremental.js` e nas migrations de autoria. O modelo completo está
+em [Workspaces compostos e artefatos](plano-de-controle-e-artefatos.md).
+
+## Decisão 5 — concorrência otimista, CAS e idempotência
+
+### Problema
+
+Duas abas ou duas ferramentas podem editar a mesma base. Além disso, uma
+operação pode ser confirmada no servidor e a resposta se perder na rede. Sem
+proteções distintas, o primeiro caso sobrescreve trabalho; o segundo duplica a
+intenção ao repetir a requisição.
+
+### Decisão e funcionamento
+
+O AraLearn combina dois mecanismos:
+
+- **compare-and-swap (CAS)**: a gravação só ocorre se a revisão corrente ainda
+  for a revisão que o cliente leu;
+- **idempotência**: `requestId` ou `mutationId` identifica a intenção, e o
+  servidor associa esse identificador ao hash do payload e ao recibo.
+
+CAS protege contra base obsoleta. Idempotência protege contra repetição da
+mesma intenção depois de timeout. Reutilizar a mesma chave com payload diferente
+é conflito, não uma nova operação.
+
+### Consequências
+
+- conteúdo concorrente não é combinado sem conhecimento da pessoa;
+- uma resposta perdida pode ser consultada novamente sem duplicar a escrita;
+- o cliente precisa reler e reaplicar conscientemente quando a base avançou;
+- recibos possuem políticas de retenção próprias e não formam histórico
+  permanente.
+
+### Limites e evidência
+
+CAS não resolve semanticamente duas edições conflitantes; apenas impede a
+sobrescrita. Idempotência só vale no escopo e na janela definidos pelo fluxo.
+As transações e bloqueios seguem as garantias do PostgreSQL descritas em
+[Transaction Isolation](https://www.postgresql.org/docs/current/transaction-iso.html)
+e [Explicit Locking](https://www.postgresql.org/docs/current/explicit-locking.html).
+
+## Decisão 6 — réplica local para continuidade, não autoridade offline
+
+### Problema
+
+O uso móvel inclui perda de sinal, retomada depois de interrupções e latência
+variável. Fazer cada toque esperar uma consulta remota prejudicaria a leitura e
+impediria estudo no metrô ou em redes instáveis.
+
+### Decisão e funcionamento
+
+Cursos já baixados, cursor, conclusão estrutural, marca **Rever**, observações e
+operações pendentes permanecem no IndexedDB da conta. A interação de estudo é
+confirmada localmente e a sincronização ocorre em canal posterior. Cada conta
+usa banco identificado por UUID; trocar de conta abre outro namespace.
+
+Ao recuperar conexão, o cliente envia pendências, recebe mudanças remotas em
+páginas e instala novas revisões somente depois de validar contrato e hash. Um
+cache offline nunca concede edição, exclusão ou capacidade editorial: essas
+capacidades ficam falsas até nova leitura autenticada completa.
+
+### Consequências
+
+- o caminho crítico do estudo não depende da rede;
+- fechar o aplicativo não descarta operações já registradas;
+- a pessoa pode continuar com a revisão válida anterior se um download falhar;
+- revogação de acesso somente pode ser conhecida na próxima sincronização.
+
+### Limites e evidência
+
+Primeiro login, primeiro download, autoria externa, governança e publicação
+continuam dependentes de rede. A implementação está em
+`IndexedDbRelationalStore.js`, `RelationalSyncEngine.js` e
+`TrailPersonalStateRepository.js`; os testes relevantes incluem
+`workspace-offline-authoring.spec.js` e `study-card-progression.spec.js`.
+
+## Decisão 7 — kernel pequeno e packages autônomos
+
+### Problema
+
+Representações acadêmicas têm estruturas diferentes. Uma matriz, um grafo, uma
+glosa interlinear e uma reação química não deveriam compartilhar um contrato
+monolítico cheio de campos opcionais nem exigir alteração do núcleo a cada novo
+tipo.
+
+### Alternativas consideradas
+
+- um contrato geral com uma enumeração crescente de tipos;
+- renderizadores condicionais dentro do leitor;
+- envelope estável de card e packages versionados, registrados por interface.
+
+### Decisão e funcionamento
+
+O kernel conhece os slots `content`, `response` e `feedback`, a identidade da
+instância e a interface obrigatória de um package. Cada package declara seu
+manifest, contrato autoral de alto nível, schema, validação semântica,
+renderer, acessibilidade, alvos textuais e, quando aplicável, alvos de prática
+ou avaliação.
+
+O catálogo deriva descrições e facetas dos packages instalados. A autoria busca
+pela intenção, inspeciona poucos candidatos e carrega somente os contratos
+escolhidos. Acrescentar um package compatível exige atualizar o índice gerado e
+os testes do package, não introduzir um ramo no kernel.
+
+### Consequências
+
+- o crescimento da biblioteca não amplia indefinidamente um contrato central;
+- correções de um renderer ficam localizadas;
+- a ferramenta de autoria recebe linguagem de alto nível antes de receber JSON
+  detalhado;
+- compatibilidade entre conteúdo e resposta é validada explicitamente.
+
+### Limites e evidência
+
+Modularidade não garante, por si, adequação acadêmica ou acessibilidade. Cada
+package ainda precisa de corpus, testes visuais e revisão pedagógica. O kernel
+implementa apenas o subconjunto de JSON Schema usado pelo catálogo, sem alegar
+conformidade integral com JSON Schema 2020-12. Consulte [Contratos públicos de
+conteúdo](aralearn-contract.md) e [Packages de card](recursos-de-card.md).
+
+## Decisão 8 — autorização derivada de relações e estado
+
+### Problema
+
+Um nome de papel isolado não responde a perguntas como “esta pessoa pode editar
+este card deste workspace nesta revisão?”. A autorização depende do papel, do
+vínculo com o workspace, do objeto-alvo, do destino da publicação e do estado
+corrente.
+
+### Decisão e funcionamento
+
+O PostgreSQL deriva capacidades contextuais e as revalida em cada operação.
+Row-Level Security (RLS) restringe as linhas visíveis ou graváveis pelo cliente;
+RPCs e Edge Functions sensíveis conferem também a operação e o alvo. A ausência
+de capacidade confirmada resulta em negação.
+
+O aplicativo recebe somente a URL do projeto e a chave publicável. Segredos
+administrativos permanecem em processos protegidos. A documentação do
+PostgreSQL explica que, com RLS habilitada e sem política aplicável, o
+comportamento é de negação por padrão: [Row Security
+Policies](https://www.postgresql.org/docs/current/ddl-rowsecurity.html).
+
+### Consequências
+
+- papel editorial global não expõe automaticamente progresso ou observações
+  pessoais;
+- um membro pode ter capacidades diferentes em workspaces distintos;
+- a interface pode apresentar controles a partir da projeção autenticada, mas
+  o servidor continua sendo a autoridade;
+- cache, erro de rede ou capacidade desconhecida não liberam escrita.
+
+### Limites e evidência
+
+RLS é parte da defesa, não sua totalidade. Funções `SECURITY DEFINER` precisam
+fixar `search_path`, limitar `EXECUTE` e verificar a conta internamente. Esses
+aspectos são exercitados pelos testes pgTAP, PostgREST e pelas jornadas com duas
+contas descritas em [Supabase](supabase.md).
+
+## Organização didática e publicação
+
+A árvore didática segue esta hierarquia:
+
+```text
+curso
+└── módulo
+    └── lição
+        ├── tópicos
+        └── microssequências
+            └── cards
+```
+
+O envelope `aralearn.library.v1` transporta a árvore completa. O estado de
+autoria não introduz categorias burocráticas dentro do documento didático:
+uma microssequência com cards já pode ser estudada. A publicação é uma operação
+separada que materializa e referencia uma revisão.
+
+Uma revisão privada pode ser `partial` ou `complete`; o destino de catálogo
+aceita apenas `complete`. Esses valores pertencem ao controle de publicação,
+não à navegação cotidiana do estudante. O percurso editorial é:
+
+```text
+workspace privado estudável
+→ revisão privada exata
+→ submissão editorial
+→ revisão em workspace independente
+→ publicação em Coleções
+```
+
+Trilhas projetam, para uma conta, workspaces acessíveis, cursos privados e
+seleções oficiais. Coleções organizam o catálogo global. A semelhança visual
+entre grupos não transfere autoridade: grupos de Trilhas pertencem à conta;
+coleções pertencem ao plano editorial.
+
+## Autoria situada e integrações externas
+
+Na interface, a edição manual e a assistência selecionam apenas objetos e
+caminhos textuais autorizados. O contexto adjacente pode ser lido, mas não
+amplia a área gravável. No card, uma conversa volátil mantém até oito turnos e
+nove versões para desfazer, refazer e restaurar; esse histórico não é enviado
+ao Supabase.
+
+A autoria extensa pode chegar por dois adaptadores:
+
+- servidor MCP protegido por OAuth 2.1 com PKCE;
+- Action descrita por OpenAPI, com fachada OAuth confidencial compatível com o
+  cliente correspondente.
+
+Os adaptadores convergem para o mesmo registro de ferramentas e o mesmo
+executor. Protocolos de autenticação diferentes não significam motores de
+autoria diferentes. A autoridade efetiva continua sendo calculada pela conta
+conectada e pelo alvo da operação.
+
+## Mapa do código
+
+| Diretório | Responsabilidade arquitetural |
 | --- | --- |
-| `src/domain/` | Entidades e envelope operacional multi-curso. |
-| `src/resources/kernel/` | Envelope unitário de curso, composição de cards, registro de packages e validação do subconjunto de schema suportado. |
-| `src/resources/catalog/` | Famílias, vocabulário controlado, política de seleção e descoberta progressiva. |
-| `src/resources/packages/` | Manifests, contratos, schemas e renderers independentes. |
-| `src/model/` | Dados preparados para apresentação. |
-| `src/render/` | Composição única dos packages no card. |
-| `src/ui/` | Telas de acesso, biblioteca, estudo e autoria pessoal. |
-| `src/persistence/` | Normalização, montagem e transações locais. |
-| `src/supabase/` | Configuração pública, autenticação e catálogo. |
-| `src/sync/` | Identidade do dispositivo e sincronização. |
-| `src/generation/` | Schemas, providers e compilação da assistência bottom-up. |
+| `src/domain/` | contrato da árvore didática e invariantes de domínio |
+| `src/resources/kernel/` | envelope de card, registro de packages e validação comum |
+| `src/resources/catalog/` | vocabulário controlado, busca e política de seleção |
+| `src/resources/packages/` | contratos, validação e renderização de cada package |
+| `src/render/` | composição das instâncias no card |
+| `src/persistence/` | projeção, montagem e transações locais |
+| `src/sync/` | identidade do dispositivo e canais de sincronização |
+| `src/supabase/` | Auth, HTTP, catálogo e configuração pública |
+| `src/assist/` e `src/generation/` | escopos, providers e assistência contextual |
+| `src/ui/` | navegação, estudo, edição e painéis |
+| `supabase/migrations/` | evolução versionada do esquema e das funções SQL |
+| `supabase/functions/` | interfaces HTTP protegidas e entrega de artefatos |
 
-## Publicação de cursos
+## Propriedades demonstradas e propriedades ainda abertas
 
-Criar a raiz do curso já a inclui na projeção de `Trilhas`; materializar cards
-torna essas partes estudáveis diretamente das linhas correntes do workspace.
-Isso não chama publicação nem grava JSON no Storage.
+Os testes automatizados demonstram contratos executáveis, isolamento entre
+contas nos cenários cobertos, troca atômica da réplica, validação de hashes,
+recusa de revisões obsoletas, funcionamento offline em jornadas definidas e
+ausência de segredos nos artefatos examinados.
 
-A publicação explícita seleciona um curso do workspace, compõe e valida o
-documento e só então grava uma revisão imutável no Storage. A escrita final
-troca atomicamente o ponteiro vigente. Uma revisão privada `partial` pode fixar
-o conteúdo exato de uma submissão editorial; o catálogo aceita somente
-`complete`.
-
-Cada raiz de curso guarda um vínculo compacto e separado para os destinos
-privado e catálogo. Por isso a primeira publicação cria o curso e as seguintes
-atualizam automaticamente a mesma identidade, inclusive depois de retomar a
-autoria em outra conversa. O vínculo contém apenas identidade, hash-base e
-datas; não duplica o conteúdo. Existe no máximo uma composição ativa vinculada
-a cada identidade de publicação e destino; abrir novamente o curso reutiliza
-essa composição. O título não participa dessa identidade, portanto projetos
-independentes com o mesmo nome não são unidos. Importar uma cópia para consulta
-ou reaproveitamento não cria o vínculo.
-
-A interface percorre todas as páginas de `Trilhas`, rejeita item sem identidade
-e cursor repetido e só troca o cache quando a projeção terminou. Uma falha em
-qualquer página conserva a projeção anterior, mas revoga as capacidades
-exibidas. A leitura offline do cache é sempre somente leitura: `canEdit`,
-`canDelete`, `canRemove` e as capacidades editoriais são forçadas para falso.
-Cada item informa a origem corrente (`workspace` ou `selection`), as contagens
-estruturais e `completedCardCount`; a tela inicial não baixa a árvore apenas
-para calcular progresso. Ao abrir uma composição de workspace, o cliente lê
-suas partes em páginas sob uma única revisão e só monta o curso depois de
-validar o conjunto completo.
-O bloqueio temporário contra comandos repetidos é contado por operação, para
-que chamadas encadeadas ou uma falha não deixem abas e botões desabilitados.
-
-Na web, a marca monocromática acompanha o tema por CSS. O launcher Android usa
-um ícone adaptativo com o desenho dentro da zona segura, kanji escuro sobre
-fundo claro e uma camada `monochrome` que o launcher pode colorir quando o
-usuário ativa ícones temáticos.
-
-O caminho editorial é:
-
-```text
-autoria privada visível em Trilhas
-→ artefato privado da revisão a submeter
-→ submissão de uma revisão específica
-→ revisão em workspace editorial independente
-→ catálogo
-```
-
-A submissão fixa o hash exato que será avaliado. A pessoa revisora não recebe a
-biblioteca privada do autor; lê apenas o artefato enviado. Se precisar
-corrigi-lo, abre uma cópia editorial independente. Pedir ajustes e rejeitar
-exigem justificativa; publicar no catálogo conclui a submissão e exige curso
-completo e coleção.
-
-Uma conta editorial também pode criar ou atualizar diretamente um curso
-`complete` de seu próprio workspace numa coleção, sem fabricar uma submissão
-para si mesma.
-
-Não há um GPT administrativo separado. Action e MCP chegam ao mesmo motor de
-autoria, e as capacidades são calculadas pela conta conectada: autoria privada,
-submissão, revisão e publicação podem aparecer em combinações diferentes.
-
-Papéis editoriais globais não ampliam as regras de acesso aos dados pessoais. Em especial, `catalog_publisher` pode publicar conteúdo, mas não se torna administrador de progresso, observações ou cursos privados. A única leitura compartilhada de observações deriva de papel local no workspace associado, por uma projeção contextual que nunca expõe progresso ou trilhas.
-
-Detalhes da réplica local estão em [Persistência relacional e sincronização](persistencia-relacional.md).
-O plano remoto está em [Plano de controle e artefatos](plano-de-controle-e-artefatos.md).
-O formato de intercâmbio está em [Contrato público](aralearn-contract.md). O
-fluxo editorial está em [Autoria e publicação do catálogo](autoria-do-catalogo.md).
-O percurso de uso está em [Criar cursos pelo chat](criar-cursos-pelo-chat.md).
-As definições normativas usadas nesta descrição estão no [Glossário
-técnico](glossario-tecnico.md), e a correspondência entre afirmações,
-implementação e testes está na [Matriz de conformidade
-técnica](matriz-conformidade-tecnica.md).
+Eles não demonstram adequação pedagógica universal, usabilidade com todas as
+populações, disponibilidade prolongada, custo real em escala ou equivalência
+com outro backend. Essas afirmações exigem métodos próprios de avaliação. A
+[Matriz de conformidade técnica](matriz-conformidade-tecnica.md) relaciona cada
+propriedade com código, migrations e testes; [Persistência relacional e
+sincronização](persistencia-relacional.md) aprofunda a réplica, a outbox e as
+falhas esperadas.

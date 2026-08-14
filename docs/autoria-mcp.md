@@ -1,628 +1,387 @@
-# Gateway MCP de autoria
+# Autoria remota por modelos de linguagem
 
-O gateway MCP é a superfície de autoria extensa do AraLearn. Ele permite ler,
-criar, complementar, reorganizar e publicar cursos sem entregar acesso direto
-ao banco ou ao Storage. O estado atual é um workspace composto no PostgreSQL;
-o envelope operacional `aralearn.library.v1` é recomposto para leitura,
-validação e publicação.
+O AraLearn permite que uma pessoa descreva, em linguagem natural, o curso que
+pretende criar e conduza a produção com um modelo de linguagem. O modelo não
+recebe acesso direto ao banco de dados. Ele atua por operações pequenas,
+tipadas e autorizadas, oferecidas por um serviço intermediário. Essa separação
+é importante porque gerar texto e alterar um sistema persistente são tarefas
+diferentes: a primeira admite interpretação; a segunda precisa de limites,
+validação, controle de concorrência e rastreabilidade.
 
-## Transporte e autenticação
+Este documento explica o serviço de autoria remota, o protocolo usado para
+conectá-lo a assistentes e as decisões de segurança e arquitetura que sustentam
+o fluxo. Para conhecer primeiro a experiência de autoria, leia
+[Criar cursos pelo chat](criar-cursos-pelo-chat.md). Para os conceitos gerais de
+curso, workspace, artefato e publicação, consulte
+[Autoria do catálogo](autoria-do-catalogo.md).
 
-O endpoint remoto é:
+Três conceitos técnicos aparecem ao longo do capítulo:
+
+- **JSON** é um formato textual que organiza dados em objetos, listas e valores identificados por nomes;
+- **schema** é o conjunto de regras que declara quais campos, tipos e combinações uma entrada ou saída aceita;
+- **kernel** é o núcleo estável do AraLearn que verifica a estrutura comum das partes de um card e coordena sua execução sem incorporar os detalhes de cada representação.
+
+## O problema que o serviço resolve
+
+Uma conversa sobre um curso pode conter pedidos de naturezas muito diferentes:
+
+- planejar uma sequência de ensino;
+- consultar o que já existe;
+- produzir ou corrigir cards;
+- escolher uma representação visual;
+- reorganizar módulos e lições;
+- registrar uma decisão editorial;
+- submeter um curso a revisão ou publicá-lo.
+
+Se todo pedido fosse convertido em uma escrita genérica de JSON, um erro de
+interpretação poderia substituir conteúdo fora do escopo, ignorar uma revisão
+mais recente ou produzir uma estrutura que o aplicativo não consegue abrir. O
+AraLearn, por isso, expõe operações com entradas e resultados definidos. O
+modelo escolhe uma operação; o servidor confere identidade, autorização,
+versão e contrato; apenas então a alteração é aplicada.
+
+Esse desenho segue uma regra de engenharia simples: quanto maior a
+imprevisibilidade de um componente, menor deve ser sua autoridade direta. O
+modelo propõe e compõe; o kernel valida; a camada de persistência decide se a
+gravação ainda é válida.
+
+## O que é MCP
+
+O *Model Context Protocol* (MCP) é um protocolo aberto para conectar modelos de
+linguagem a capacidades e informações externas. Em vez de embutir no prompt
+toda a documentação de um sistema, um servidor pode anunciar ferramentas com
+schemas de entrada e saída e disponibilizar recursos de consulta. O cliente
+apresenta essas capacidades ao modelo e encaminha as chamadas autorizadas,
+conforme as [primitivas definidas pela especificação do MCP](https://modelcontextprotocol.io/specification/2025-11-25/server).
+
+No AraLearn, os termos têm os seguintes sentidos:
+
+- **cliente MCP**: o aplicativo que hospeda a conversa com o modelo;
+- **servidor MCP**: a Edge Function que recebe chamadas autenticadas;
+- **ferramenta MCP**: uma operação que lê ou altera dados do AraLearn;
+- **MCP Resource**: um texto de conhecimento lido sob demanda pelo modelo;
+- **resource de card**: um package que materializa conteúdo ou resposta em um
+  card, como fórmula, grafo ou lacuna.
+
+As duas acepções de *resource* são distintas. Um MCP Resource fornece contexto
+ao modelo; um resource de card faz parte do material que o estudante vê.
+
+O servidor usa Streamable HTTP sem estado de sessão e implementa a versão
+`2025-11-25` do protocolo. Cada requisição carrega tudo o que o servidor
+precisa para processar aquela chamada; não há `MCP-Session-Id`. Essa opção
+facilita a execução distribuída em Edge Functions e evita depender da memória
+de uma instância que pode ser encerrada entre duas mensagens.
+
+## Componentes e fluxo de uma alteração
+
+```text
+pessoa
+  │ pedido em linguagem natural
+  ▼
+assistente com modelo de linguagem
+  │ chamada tipada e token individual
+  ▼
+gateway de autoria
+  ├─ autentica a conta
+  ├─ deriva capacidades e escopo
+  ├─ valida o schema
+  ├─ confere a revisão esperada
+  └─ executa a operação fechada
+  ▼
+workspace e persistência do AraLearn
+  │ resultado estruturado
+  ▼
+assistente explica o que ocorreu
+```
+
+O gateway não é um segundo editor de cursos. Ele é uma fronteira de confiança:
+traduz chamadas externas para o mesmo executor e as mesmas regras usados pelo
+produto. O MCP e a integração por Action compartilham o registro de operações;
+assim, uma plataforma não ganha uma forma privilegiada de escrever dados.
+
+## Autenticação e autorização
+
+### Por que autenticar cada pessoa
+
+Uma chave administrativa compartilhada não permite distinguir quem criou uma
+alteração, revogar apenas um participante nem aplicar permissões de workspace.
+Ela também ampliaria o efeito de um vazamento. O AraLearn usa, portanto, um
+access token OAuth 2.1 emitido pelo Supabase Auth para a conta que conduz a
+autoria, seguindo o modelo do
+[servidor OAuth do Supabase](https://supabase.com/docs/guides/auth/oauth-server)
+e as práticas atuais de segurança consolidadas na
+[RFC 9700](https://www.rfc-editor.org/rfc/rfc9700).
+
+O backend valida emissor, audiência, cliente, titular e tempo de validade do
+token. O token identifica a sessão, mas não decide sozinho o que ela pode
+fazer. Depois da autenticação, o servidor consulta o papel da conta e deriva
+suas capacidades no workspace. Essa separação evita confundir três conceitos:
+
+- **autenticação** confirma quem é a pessoa;
+- **capacidade** descreve uma ação que o sistema conhece;
+- **autorização** decide se aquela pessoa pode exercer a capacidade naquele
+  objeto e naquele momento.
+
+O fluxo interativo usa Authorization Code com PKCE S256. PKCE vincula o código
+temporário ao cliente que iniciou a autenticação e reduz o risco de interceptá-
+lo durante o redirecionamento, conforme a
+[RFC 7636](https://www.rfc-editor.org/rfc/rfc7636).
+
+### MCP e Action
+
+Algumas plataformas conectam-se diretamente por MCP. Outras consomem uma
+especificação OpenAPI chamada Action. No AraLearn, a Action é uma fachada de
+transporte: ela converte a chamada HTTP para o mesmo registro interno usado
+pelo MCP. Como a interface de configuração da plataforma não expõe todas as
+exigências de PKCE do servidor OAuth do Supabase, a Edge Function oferece a
+fachada confidencial necessária a esse cliente. Essa diferença não cria dois
+modelos de autorização nem duas implementações da autoria.
+
+Corpos e respostas da Action são limitados a 96 KiB. O limite obriga a usar
+leituras progressivas e resultados compactos, o que reduz truncamentos e torna
+o custo de contexto mais previsível. O MCP aceita corpos JSON de até 32 MiB,
+mas as ferramentas continuam desenhadas para lotes pequenos; capacidade de
+transporte não é justificativa para enviar um curso inteiro em toda chamada.
+
+## Workspace, revisão e concorrência
+
+O **workspace** é a área de trabalho em que um curso está sendo planejado e
+modificado. Ele possui identidade própria, participantes, estado editorial e
+uma revisão crescente. A revisão funciona como um marcador de concorrência:
+
+1. o cliente lê o workspace e recebe a revisão `r`;
+2. prepara uma alteração com `expectedRevision: r`;
+3. o servidor grava somente se `r` ainda for a revisão corrente;
+4. em caso de sucesso, devolve uma revisão posterior;
+5. se outra sessão tiver alterado o workspace, a operação falha sem escrita
+   parcial e o cliente precisa reler o alvo.
+
+Esse mecanismo é *compare-and-swap* (CAS). Ele evita a situação em que duas
+conversas leem a mesma versão, escrevem respostas incompatíveis e a última
+silenciosamente apaga a primeira.
+
+Toda mutação também recebe um `requestId`. Repetir a mesma requisição após uma
+falha de rede devolve o resultado anterior, em vez de executar a mudança duas
+vezes. Essa propriedade é chamada **idempotência**. Ela é especialmente útil
+em celulares e redes móveis, nas quais o cliente pode não saber se a resposta
+se perdeu antes ou depois da gravação.
+
+O workspace é composto por partes versionadas. O servidor recompõe o documento
+somente quando precisa lê-lo como unidade e valida relações entre as partes
+antes do commit. O objetivo é não transferir nem reescrever a árvore inteira
+para alterar um card, sem abrir mão da verificação global quando ela é
+necessária.
+
+## Ferramentas fechadas e agrupadas
+
+Uma ferramenta é fechada quando seu schema determina o que pode ser lido ou
+alterado. O servidor não oferece uma operação universal de “substituir qualquer
+JSON”. Em vez disso, separa ações como criar estrutura, materializar uma
+microssequência, corrigir um card, mover uma entidade e publicar um artefato.
+
+Operações próximas são agrupadas por finalidade para que a lista permaneça
+compreensível e estável. O valor `operation` escolhe uma variante fechada; ele
+não transforma a ferramenta em mutação genérica. Entre os grupos principais
+estão:
+
+| Grupo | Finalidade |
+| --- | --- |
+| `consultarBibliotecaDeResources` | descobrir, inspecionar, validar e auditar representações de cards |
+| `consultarCatalogo` | listar coleções e localizar cursos publicados |
+| `editarCatalogo` | criar ou atualizar coleções e mover cursos |
+| `retirarDoCatalogo` | retirar coleções ou cursos de circulação |
+| `reorganizarWorkspace` | copiar, renomear, mover, juntar, separar, promover ou rebaixar entidades |
+| `excluirDoWorkspace` | excluir uma entidade ou o workspace |
+| `gerirContinuidadeDaAutoria` | manter planejamento, Partes, decisões, mandatos e achados |
+| `gerirWorkspaceEducacional` | administrar membros, convites, observações e comentários de estudo |
+
+O registro público contém trinta ferramentas. Esse número descreve a versão
+atual, não um princípio arquitetural. Novos packages de representação não
+acrescentam uma ferramenta: entram no catálogo consultado pela ferramenta da
+biblioteca.
+
+Leituras que podem crescer são paginadas. Exclusões e retiradas permanecem
+separadas das edições usuais para que sua consequência seja visível ao cliente.
+Uma operação inequívoca não pede confirmação redundante; uma ambiguidade que
+altera escopo, identidade ou efeito destrutivo precisa ser resolvida antes da
+execução.
+
+## Descoberta progressiva de resources
+
+O catálogo pode crescer para dezenas ou centenas de representações. Enviar
+todos os contratos ao modelo em toda conversa consumiria contexto, reduziria a
+atenção disponível para o conteúdo e exigiria mudar o schema público a cada
+package. A biblioteca adota uma consulta progressiva:
+
+1. `explore` apresenta famílias e vocabulários, sem schemas extensos;
+2. `search` procura uma lista curta pela intenção, disciplina, estrutura,
+   operação cognitiva e modalidade de prática;
+3. `inspect` compara até oito perfis completos;
+4. `contracts` entrega os contratos de até quatro escolhas;
+5. `validate_card` verifica schema, referências e compatibilidade;
+6. `audit_representation` compara a composição com a intenção declarada;
+7. `preview_card` devolve um descritor estrutural.
+
+O último passo não produz screenshot. Graphviz, Vega, dimensões de viewport,
+fontes e interações são materializados no navegador. Por isso,
+`preview_card` informa `rendered: false`; a inspeção visual fiel precisa ocorrer
+no renderer real do aplicativo.
+
+### Adequação e substituição
+
+A busca classifica candidatos com três tokens do contrato:
+
+- `canonical`: o perfil especializado corresponde às facetas pedidas;
+- `versatile`: uma representação transversal preserva a estrutura necessária;
+- `substitute`: é a melhor aproximação disponível, mas falta uma representação
+  mais apropriada.
+
+Esses termos descrevem o resultado do algoritmo de catálogo; `canonical` não é
+uma certificação externa de consenso acadêmico. Quando o ajuste é
+`substitute`, a autoria não é bloqueada. O modelo usa a melhor alternativa,
+informa brevemente a limitação no chat e registra a representação desejada na
+continuidade. Quando um package especializado for instalado, o ranking poderá
+preferi-lo sem mudar o kernel.
+
+A decisão estruturada guarda intenção, package e versão escolhidos, ajuste,
+catálogo consultado e limitações. Ela pertence à proveniência da autoria e não
+é inserida no card exibido ao estudante.
+
+## Conhecimento sob demanda
+
+Além de ferramentas, o serviço oferece documentos curtos sobre fluxo,
+qualidade, fontes, segurança, continuidade e semântica dos resources. O modelo
+consulta apenas os trechos pertinentes ao trabalho atual. Essa recuperação
+seletiva é uma forma simples e determinística de *retrieval-augmented
+generation* (RAG): a consulta lexical ranqueia trechos versionados, limita o
+resultado e preserva a identificação da fonte ([Lewis et al. (2020)](referencias.md#ref-lewis2020rag)).
+
+A recuperação não substitui a validação do kernel. Ela ajuda o modelo a tomar
+decisões; schemas e regras continuam decidindo o que pode ser persistido. Essa
+divisão evita tratar texto de orientação como se fosse uma restrição executável
+e evita sobrecarregar o prompt-base com todo o conhecimento do produto.
+
+Antes de iniciar uma autoria, `prepararAutoriaAraLearn` recebe a intenção, o
+nível estrutural e um resumo do contexto relevante. O resultado oferece um
+brief compacto e fontes identificadas. Uma fonte só pode ser citada no card
+depois de declarada nesse contexto. Conteúdo importado conserva as referências
+que já possuía.
+
+## Continuidade entre sessões
+
+Conversas podem terminar antes do curso. Guardar o transcript completo seria
+caro, repetitivo e pouco confiável como estado operacional. O AraLearn mantém
+uma continuidade estruturada:
+
+- **brief estável**: finalidade, público, escopo e fontes;
+- **Parte**: lote ordenado de microssequências planejadas;
+- **decisão**: escolha editorial que precisa sobreviver à conversa;
+- **mandato**: autorização temporária e delimitada para construir, auditar,
+  reparar ou reorganizar;
+- **achado**: problema verificável, seu estado e eventual correção vinculada.
+
+Ao retomar, o modelo lê essa projeção e os alvos atuais, em vez de confiar na
+memória textual de uma conversa anterior. Auditoria e reparo são etapas
+separadas: a auditoria registra achados; uma autorização posterior define quais
+podem ser corrigidos; a nova auditoria verifica o resultado. Essa separação
+reduz o risco de um diagnóstico ampliar sozinho a autoridade de escrita.
+
+Comentários feitos durante o estudo e achados formais de auditoria também são
+distintos. Um comentário pode orientar uma correção, mas não modifica o curso.
+Depois de uma escrita confirmada, a operação de vínculo registra qual revisão
+incorporou o comentário ou resolveu o achado.
+
+## Artefato e publicação
+
+Durante a autoria, o curso é renderizável mesmo incompleto. Não existe uma
+categoria intermediária de “rascunho invisível” necessária para estudá-lo. A
+publicação é outro ato: o servidor valida a composição, produz um artefato
+imutável, calcula seu hash e atualiza a referência oficial do catálogo por
+CAS.
+
+O Storage conserva artefatos de publicação, não uma cópia integral para cada
+pequena modificação. Estado relacional, eventos compactos e objetos imutáveis
+têm funções diferentes; essa distribuição é explicada em
+[Persistência relacional](persistencia-relacional.md).
+
+A revisão editorial usa submissões privadas. O autor envia um artefato, o
+revisor lê aquela versão fixa e registra uma decisão. Se o curso mudar depois,
+uma nova submissão gera outro artefato. Assim, a avaliação não se desloca sob o
+revisor e a publicação pode apontar exatamente para o conteúdo aprovado.
+
+## Respostas, erros e limites
+
+As ferramentas devolvem envelopes com resultado estruturado. O texto humano é
+uma síntese; o objeto tipado é a fonte para automação. Erros distinguem, entre
+outros casos:
+
+- argumento incompatível com o schema;
+- autenticação ausente ou inválida;
+- capacidade insuficiente;
+- entidade inexistente;
+- revisão divergente;
+- contrato de card inválido;
+- limite de lote ou de payload excedido.
+
+Um erro de revisão não deve ser contornado repetindo a escrita com a nova
+revisão sem leitura. O procedimento correto é reler, comparar a intenção com o
+estado atual e reconstruir a operação. Da mesma forma, um erro de contrato não
+autoriza gravar parcialmente o card.
+
+Recibos e estados auxiliares possuem retenções próprias, proporcionais à sua
+função. Não existe uma retenção universal de quatorze dias para toda mutação:
+observações de workspace e estados de governança educacional, por exemplo,
+seguem políticas distintas. Os prazos implementados e suas migrations estão
+documentados em [Supabase e banco de dados](supabase.md).
+
+## Configuração
+
+O endpoint tem a forma:
 
 ```text
 https://<project-ref>.supabase.co/functions/v1/aralearn-authoring-mcp
 ```
 
-O servidor usa Streamable HTTP stateless e o protocolo `2025-11-25`. Ele
-anuncia instruções de servidor, ferramentas e resources de conhecimento, não
-emite `MCP-Session-Id` e limita cada corpo JSON a 32 MiB. Ele devolve
-`structuredContent` em um envelope comum de sucesso ou erro. No ramo de
-sucesso, cada ferramenta fecha `data` com o contrato próprio de sua rota:
-itens e cursores de listas, metadados de leitura, controle de revisão,
-alterações recentes, recibo editorial, recibo de publicação ou recibo de
-exclusão. Não existe
-`data: {}` genérico.
-
-Objetos abertos aparecem somente dentro de um campo semanticamente nomeado
-cuja forma integral necessariamente varia: `content` ao ler uma entidade ou o
-envelope operacional e `definition` ao consultar o contrato exato de um
-`resource`. `outline` e `microtheories` têm árvores fechadas. Em todos os
-casos, os campos de controle que circundam esse conteúdo permanecem fechados.
-O ramo de erro é comum a todas as ferramentas.
-
-O MCP aceita somente access token OAuth 2.1 emitido pelo Supabase Auth para a
-URL exata do recurso. Não existe credencial estática. O GPT personalizado
-usa uma Action OpenAPI que traduz suas operações para o mesmo registro de
-ferramentas e o mesmo executor interno; ela não constitui outro motor de
-autoria nem possui contrato independente. A identidade e as permissões de
-ambas as superfícies convergem para a mesma conta, mas os protocolos de
-concessão são separados. O servidor MCP publica os metadados do
-recurso em:
-
-```text
-https://<project-ref>.supabase.co/functions/v1/aralearn-authoring-mcp/.well-known/oauth-protected-resource
-```
-
-O cliente descobre o servidor de autorização, solicita `openid`, executa
-Authorization Code com PKCE `S256` e envia o token em `Authorization: Bearer`.
-O backend valida o token no Auth, além de `iss`, `aud`, `client_id`, `sub`,
-`exp` e `nbf`. O Supabase não emite as permissões de aplicação como claims do
-access token; por isso o backend não inventa nem exige `scope` no JWT. Papéis e
-relações derivam capacidades efetivas no banco; cada operação ainda passa por
-autorização sobre o alvo e o estado correntes.
-
-O consentimento usa a sessão normal do AraLearn. Com a Site URL pública
-`https://fabio-ara.github.io/AraLearn/`, a configuração hospedada usa `/` como
-Authorization Path. O shell preserva `authorization_id` durante confirmação de
-e-mail ou login, consulta os dados do cliente e o pedido de identidade no
-Supabase Auth, permite autorizar ou negar e só então segue o `redirect_url`
-validado. A tela distingue o consentimento de identidade da autoridade efetiva:
-ler cursos acessíveis, editar ou excluir composições de workspace e preparar
-uma submissão editorial são permissões calculadas no banco. Publicação no catálogo
-continua condicionada ao papel editorial ali atribuído.
-
-Uma falha de autenticação devolve `WWW-Authenticate` com
-`resource_metadata`; uma falha durante `tools/call` também devolve o desafio
-em `_meta["mcp/www_authenticate"]`.
-
-A Action do GPT usa Authorization Code confidencial nos endpoints da
-própria Edge Function. O contrato atual de autenticação de GPT Actions
-documenta `client_id`, `client_secret`, URL de autorização e Token URL, mas não
-expõe os parâmetros PKCE obrigatórios do OAuth Server do Supabase. A fachada
-evita depender dessa incompatibilidade: exige `state` e callback exato, consome
-o código uma única vez, rotaciona refresh tokens e guarda no banco somente
-hashes de segredo, código e tokens. Ela não aceita API key nem cria outra
-política de acesso.
-
-## Ciclo editorial
-
-O backend continua flexível e sem máquina de aprovação conversacional. A
-separação ocorre nas instruções e no conhecimento recuperado:
-
-```text
-planejamento -> decisão -> construção -> decisão -> auditoria -> decisão
--> reparo -> decisão -> reauditoria
-```
-
-`prepararAutoriaAraLearn` distingue `audit`, que recomenda somente leituras, de
-`repair`, que recomenda mutações focadas. A intenção histórica `revise`
-permanece disponível para revisão geral, mas não deve ser usada como atalho
-ambíguo quando a etapa já é conhecida. Revisão editorial do catálogo é outro
-processo, ligado a submissões e capacidades administrativas.
-
-Cada rodada editorial apresenta o resultado, sugere exatamente uma próxima
-etapa e espera. A pessoa pode dispensar auditoria ou reauditoria. Não existe
-token de aprovação, estado obrigatório ou bloqueio de publicação associado à
-conversa. `revision` controla concorrência; `ready` representa aceitação
-explícita do conteúdo corrente; validação estrutural não comprova qualidade
-pedagógica.
-
-O chat é descartável. No início de cada etapa sobre um workspace existente, o
-cliente chama `lerWorkspaceDeAutoria` com `view: "resume"`. Essa projeção reúne
-contagens compactas da árvore, os ids e estados das Partes, decisões, mandato,
-achados ativos, sínteses e vínculos de publicação. A árvore e o conteúdo são
-lidos depois com `outline` ou `entity`; nada é inferido das mensagens antigas.
-
-## Modelo de workspace
-
-Um workspace contém zero ou mais cursos AraLearn e pode reunir conteúdo de cursos
-existentes. PostgreSQL mantém uma linha corrente por projeto, curso, módulo,
-lição, tópico, microssequência e card. Os campos de pai e posição formam a
-árvore; o servidor recompõe `aralearn.library.v1` quando necessário.
-
-Cada gravação:
-
-1. informa a revisão lida em `expectedRevision`;
-2. expressa uma única intenção com um `requestId` estável;
-3. envia somente as partes criadas, atualizadas ou excluídas;
-4. confere também as versões das partes atingidas;
-5. recompõe e valida o documento completo;
-6. confirma por compare-and-swap a nova revisão.
-
-Se a resposta se perder, repetir exatamente a chamada recupera o resultado já
-confirmado. Reutilizar o mesmo `requestId` com outros dados é conflito. Se
-outra edição avançou o workspace, o servidor recusa a base desatualizada e o
-agente deve reler antes de preparar uma nova intenção.
-
-Excluir o workspace inteiro obedece ao mesmo contrato: exige a
-`expectedRevision` lida imediatamente antes e falha por conflito se a
-composição tiver avançado. Em `excluirDoWorkspace`, `expectedRevision` é um
-campo de primeiro nível da chamada, ao lado de `workspaceId`, `requestId` e
-`operation`; nunca deve ser aninhado em outro objeto. A exclusão não ignora o
-compare-and-swap.
-
-Não há uma retenção universal para todo recibo de mutação autoral. Observações
-de workspace conservam recibos de repetição segura por 14 dias; operações de
-governança educacional e de estado pessoal usam janelas de 7 dias. A lista de
-alterações conserva até 200 eventos recentes com resumos pequenos; ela não
-guarda versões integrais do curso e não serve para restaurar uma revisão
-antiga.
-
-O Storage não recebe arquivos a cada mutação. A publicação fixa um artefato
-canônico e imutável; uma submissão editorial aponta para o hash exato desse
-artefato.
-
-Nesse contrato, “publicado” significa somente fixado para submissão ou
-distribuído. A composição corrente e suas partes materializadas podem ser
-estudadas em Trilhas sem publicação; publicação não é um gate pedagógico.
-
-Cada curso do workspace mantém, por destino, um vínculo compacto com sua
-publicação. A leitura devolve esses vínculos em `publications` e a listagem de
-workspaces traz `publicationCount`. A primeira publicação cria; as seguintes
-atualizam automaticamente a mesma identidade, inclusive em outra conversa.
-Quando hash, destino e estado já coincidem, a confirmação retorna
-`unchanged: true`, preserva `publicationSeq` e não produz upload, revisão ou
-evento de sincronização.
-
-Abrir um curso publicado semeia seu vínculo real; importar uma cópia para
-reaproveitamento não o faz. O par opcional `existingCourseId` e
-`expectedContentHash` só anexa uma publicação preexistente quando ainda não
-houver vínculo e nunca é enviado pela metade.
-
-Uma identidade de publicação e destino possui no máximo uma composição ativa.
-Ao pedir outro workspace a partir do mesmo curso, o motor devolve o já ligado
-que a conta pode editar. O título não é usado para detectar duplicidade:
-tentativas criadas de forma independente, ainda que homônimas, continuam
-separadas.
-
-## Ferramentas
-
-As ferramentas são pequenas e previsíveis:
-
-- preparar a autoria recuperando um brief pertinente ao pedido;
-- explorar a biblioteca por facetas, buscar representações pela intenção,
-  inspecionar candidatos, consultar seus contratos e auditar a composição;
-- listar a projeção canônica de Trilhas, incluindo planos, cursos em
-  materialização e seleções, com `completedCardCount` sem carregar a árvore;
-  retirar uma seleção continua sendo operação separada; somente uma conta com capacidade
-  editorial recebe também a listagem de Coleções, de seus cursos e a busca
-  global em `consultarCatalogo`;
-- ler árvore, entidade, documento ou microteorias de um curso;
-- listar, criar e ler workspaces, além de consultar resumos recentes;
-- retomar a continuidade e registrar contexto estável, Partes, decisões,
-  mandatos e achados com operações fechadas;
-- importar um curso existente para reaproveitar conteúdo;
-- registrar uma estrutura planejada em lote pequeno;
-- materializar uma microssequência, atualizar metadados ou corrigir um card;
-- copiar, renomear, mover ou excluir uma entidade;
-- juntar ou separar microssequências;
-- transformar módulo em curso ou curso em módulo;
-- fixar ou atualizar o artefato privado de uma submissão, distribuir um curso
-  completo em Coleções e excluir o workspace com a revisão corrente;
-- enviar uma revisão privada, acompanhar a fila e, quando a conta permitir,
-  revisar ou publicar no catálogo.
-
-Não há operação genérica de inserir ou substituir uma subárvore arbitrária nem
-operação de restaurar revisão. Lotes grandes são decompostos em estrutura,
-microssequências, metadados e cards.
-
-No `brief`, cada fonte aprovada recebe a declaração compacta `[source:id]`
-seguida de sua identificação. Uma mutação só pode introduzir esse `id` em
-`card.sources` depois da declaração; fontes já presentes em conteúdo importado
-continuam válidas. Em `append`, a ordem recebida é anexada ao fim, as posições
-são renumeradas e `change.positionsNormalized` torna essa normalização
-explícita.
-
-O `brief` contém apenas contexto estável e fontes, nunca Partes, decisões,
-mandatos ou achados. `gerirContinuidadeDaAutoria` substitui a antiga atualização
-de contexto: `replace_stable_brief` exige releitura e substituição integral do
-valor, enquanto as demais operações mantêm registros próprios. Depois da
-aprovação, `record_approved_plan` substitui em uma única revisão todas as
-Partes, decisões e o mandato. Cada Parte é uma lista ordenada dos ids exatos de
-suas microssequências; as operações unitárias servem a ajustes posteriores.
-
-O registro único tem 30 ferramentas tanto no MCP quanto na Action. Oito
-nomes concentram famílias relacionadas com contratos fechados. A biblioteca de
-resources usa uma única ferramenta progressiva; acrescentar um package não
-altera a lista de ferramentas nem incorpora seus ids ao schema público:
-
-| Ferramenta | Operações |
-| --- | --- |
-| `consultarBibliotecaDeResources` | `explore`, `search`, `inspect`, `contracts`, `validate_card`, `audit_representation`, `preview_card` |
-| `consultarCatalogo` | `list_collections`, `list_collection_courses`, `search_courses` |
-| `editarCatalogo` | `create_collection`, `update_collection`, `move_course` |
-| `retirarDoCatalogo` | `retire_collection`, `remove_course` |
-| `reorganizarWorkspace` | `copy_entity`, `rename_entity`, `move_entity`, `merge_microsequences`, `split_microsequence`, `promote_module`, `demote_course` |
-| `excluirDoWorkspace` | `delete_entity`, `delete_workspace` |
-| `gerirContinuidadeDaAutoria` | `replace_stable_brief`, `record_approved_plan`, `define_part`, `remove_part`, `record_decision`, `remove_decision`, `set_mandate`, `clear_mandate`, `record_finding`, `decide_finding`, `link_finding_correction`, `verify_finding`, `delete_finding` |
-| `gerirWorkspaceEducacional` | `read`, `create`, `update`, `invite`, `accept_invite`, `cancel_invite`, `set_role`, `remove_member`, `transfer_owner`, `leave`, `list_comments`, `respond_comment`, `set_comment_status`, `link_comment_correction`, `list_observations`, `create_observation`, `delete_observation` |
-
-`list_comments` é uma leitura paginada e filtrável por categoria e estado. Um
-estudante recebe somente as próprias observações; papéis de revisão recebem a
-triagem do workspace. `respond_comment` não modifica o curso. Para incorporar
-um comentário de estudo, faça primeiro a mutação focada do card ou da entidade, confirme seu
-sucesso e só então use `link_comment_correction` com o mesmo caminho corrigido.
-O servidor comprova request, autor, workspace, revisão posterior e alcance do card;
-`set_comment_status` não pode declarar `incorporated`. Uma auditoria não responde,
-corrige ou encerra observações automaticamente.
-
-`list_comments` cobre observações feitas durante o estudo;
-`list_observations` com `kinds: ["note"]` cobre notas situadas na árvore. Achados
-ativos já estão em `resume`; a consulta histórica usa
-`kinds: ["audit_finding"]`, filtro de estados e paginação. Uma auditoria consulta ambas
-antes de reler o alvo, persiste achados compactos e para. O reparo posterior
-exige decisão e mandato persistidos, altera somente achados aprovados, vincula
-a correção depois da escrita confirmada e termina com nova auditoria.
-
-Cada commit autorizado registra no achado aprovado apenas
-`pendingCorrectionRequestId` e `pendingRevision` correntes. Uma sessão nova
-recupera esse par em `resume`, relê o alvo e continua o trabalho ou confirma o
-vínculo; a presença do par não muda o status para reparado.
-
-A máscara de cada Parte usa `r` para microssequência pronta com cards, `m`
-para materializada ainda não pronta, `p` para planejada sem cards e `x` para
-referência ausente. A lista curta de achados ativos traz síntese e reparo
-proposto; quando vier truncada, o cliente pagina `list_observations`. Cada nova
-autorização humana usa outro `mandate.id`. `build_part` termina ao completar a
-Parte com cards `ready`; `audit` e `restructure` são limpos ao fim da rodada;
-cada `link_finding_correction` retira o achado confirmado de `repair_findings`
-e o último vínculo encerra o mandato. A reauditoria usa outro mandato `audit`;
-se autorizada para uma Parte, ele leva seu `targetPartId`.
-
-Um mandato ativo também limita o commit: construção fica na Parte indicada,
-reparo nos alvos aprovados, auditoria não escreve conteúdo e reestruturação
-não materializa cards. Lote misto ou resumo truncado falha por inteiro. Sem
-mandato, pedidos humanos diretos continuam sujeitos à capacidade da conta e ao
-escopo fechado de cada ferramenta.
-
-`link_comment_correction` vincula o comentário feito durante o estudo;
-`link_finding_correction` vincula o achado formal de auditoria. Os dois registros
-podem apontar para o mesmo reparo confirmado, mas uma operação nunca substitui
-a outra.
-
-Esse agrupamento não transforma o backend em uma mutação genérica. Cada valor
-de `operation` seleciona uma leitura fechada. Retiradas e exclusões continuam
-separadas das edições comuns.
-
-Toda resposta da ferramenta usa `aralearn.resource-library.v1`. A sequência
-operacional é progressiva e não possui uma variante que despeje o catálogo
-inteiro:
-
-| Operação | Entrada essencial | Decisão apoiada |
-| --- | --- | --- |
-| `explore` | `slot` opcional | Conhecer famílias e vocabulários de disciplina, estrutura, operação e modalidade, sem schemas. |
-| `search` | intenção em `query` e facetas pertinentes | Obter uma lista curta, seus motivos e `coverage.status`. |
-| `inspect` | até oito pares de package e versão opcional | Comparar perfis completos antes da escolha. |
-| `contracts` | até quatro pares exatos de `packageId` e `version` | Receber somente contrato autoral, schema e `practiceTargets` das escolhas. |
-| `validate_card` | envelope em `cardJson` | Verificar schema, referências e compatibilidades da composição. |
-| `audit_representation` | `cardJson` e a intenção representacional | Avaliar adequação semântica, operação de resposta e legibilidade do feedback. |
-| `preview_card` | `cardJson` | Obter um descritor estrutural, nunca uma imagem. |
-
-O agente começa por `explore`, formula `search` com a operação cognitiva e a
-estrutura que precisam permanecer visíveis, reduz os candidatos com `inspect`
-e só então pede `contracts`. Depois de compor o card, executa `validate_card` e
-`audit_representation` antes da escrita. A auditoria identifica cada seleção
-por `basis`: `semantic_fit` para conteúdo, `response_affordance` para resposta
-e `feedback_legibility` para feedback.
-
-Os valores `canonical`, `versatile` e `substitute` são tokens públicos do campo
-de ajuste. Nesse protocolo, `canonical` representa o resultado específico do
-algoritmo de facetas, e não uma certificação acadêmica externa; `versatile`, uma convenção
-transversal que preserva a estrutura; `substitute`, a melhor aproximação
-instalada. Somente a cobertura `substitute` traz `chatDisclosure`. Ela nunca
-bloqueia a produção: o agente usa o melhor candidato, incorpora a observação em
-uma linha natural do feedback do chat e registra a representação ideal numa
-decisão da continuidade. Quando um package especializado for instalado, ele
-passa a superar o substituto pelo ranking, sem refatoração do kernel ou da
-ferramenta.
-
-A decisão fica ligada à microssequência ou ao card por
-`gerirContinuidadeDaAutoria` com `operation: record_decision`. Seu campo
-`representationSelection` guarda a intenção, o package e a versão escolhidos,
-o ajuste `canonical`, `versatile` ou `substitute`, a representação ideal, a
-versão do catálogo, as limitações e o `chatDisclosure`. Em uma substituição, a
-representação ideal e a comunicação breve são obrigatórias; o estado continua
-válido e a autoria prossegue. Esse registro pertence somente à continuidade
-autoral e não amplia o envelope público do card.
-
-`preview_card` sempre informa `rendered: false`. O Edge não simula viewport,
-hidratação, Graphviz, Vega ou screenshot; a prévia visual fiel pertence ao
-renderer real do aplicativo. O descritor pode antecipar packages e problemas
-estruturais, mas não comprova layout ou legibilidade visual.
-
-No MCP, `destructiveHint` conserva a semântica normativa do protocolo para
-mutações não aditivas. Na Action, o metadado próprio de consequência marca
-somente retiradas e exclusões; gravações normais não provocam uma confirmação
-extra a cada lote. Em qualquer superfície, um pedido já inequívoco é executado
-depois da releitura do alvo, e só uma ambiguidade real volta para a pessoa.
-
-`consultarCatalogo` com `operation: "search_courses"` exige uma consulta de 2
-a 200 caracteres e aplica semântica AND: cada token precisa aparecer, sem
-distinção entre maiúsculas e minúsculas, no título, objetivo ou `contractKey`
-do curso, ou no título ou descrição da coleção. A resposta, limitada a 50
-itens, contém somente metadados, hash, revisão, contagens e a coleção. O cursor
-pareado `afterTitle` + `afterCourseId` mantém a paginação determinística. A RPC
-`search_authoring_catalog_courses_v5` não lê artefatos nem acessa o Storage.
-
-## Conhecimento sob demanda
-
-O campo `instructions` da inicialização concentra a ordem operacional
-indispensável nos primeiros caracteres: preparar pedidos autorais, consultar
-estado atual, usar revisões e mostrar microteorias. As descrições e os schemas
-continuam específicos a cada ferramenta.
-
-Antes de criar, ampliar, revisar pedagogicamente, reorganizar ou publicar, o
-modelo chama `prepararAutoriaAraLearn` com:
-
-- intenção fechada;
-- nível estrutural alvo;
-- resumo do contexto útil da conversa;
-- resources já previstos, quando houver.
-
-O servidor faz recuperação lexical determinística sobre unidades pequenas e
-versionadas de fluxo, pedagogia, resources e segurança. O resultado contém no
-máximo oito trechos, uma sequência operacional e ferramentas recomendadas. Em
-criação ou ampliação, entram sempre o contrato operacional, o brief, a
-disciplina de fontes, a materialização incremental, o dimensionamento da
-cobertura, o desenho de microteoria e prática e a seleção de resources. Não há
-embedding remoto, banco vetorial, geração intermediária ou armazenamento do
-texto da conversa. Isso reduz latência, custo, exposição de dados e variação
-em um domínio pequeno, ao mesmo tempo que mantém o contrato dos resources
-consultável individualmente.
-
-Os mesmos quatro grupos são publicados como resources MCP
-`aralearn://knowledge/...`. Resources são úteis para clientes que controlam a
-injeção de contexto; `prepararAutoriaAraLearn` permanece model-controlled e,
-portanto, funciona na integração MCP sem depender de o host anexar
-documentos previamente.
-
-Aqui, **resource MCP** é um documento consultável do protocolo MCP. Ele não é
-um **resource de card**, que no domínio do AraLearn é uma instância visual de
-um package registrada no catálogo. A coincidência do termo não implica o mesmo
-contrato nem o mesmo ciclo de vida.
-
-## GPT personalizado com Action
-
-O GPT personalizado usa:
-
-- instruções próprias;
-- dois arquivos de conhecimento;
-- `ACTION_OPENAPI.yaml`;
-- OAuth individual da conta AraLearn.
-
-O OpenAPI é gerado do mesmo registro das ferramentas MCP. Cada
-`operationId`, descrição, input schema e indicação de consequência deriva da
-mesma definição executada pela integração MCP. A Action limita corpo e resposta a
-96 KiB para manter um orçamento previsível e devolve orientação para ler
-`outline` ou uma entidade menor quando o recorte excede esse limite. O
-`outline` lista a hierarquia e `cardCount`, mas não repete a lista de cards.
-
-O painel autenticado cria primeiro o cliente OAuth confidencial da Action, sem
-exigir o ID ainda inexistente do GPT. Depois que o construtor salva o GPT e
-atribui `g-...`, o painel vincula esse cliente e grava os dois callbacks exatos
-com `client_secret_post`, compatível com o método POST do construtor. O segredo
-é mostrado somente na sessão de configuração; somente seu hash entra no banco,
-e o valor bruto não entra no repositório, site ou APK.
-
-`course`, `module`, `lesson`, `microsequence` e `card` são entidades
-endereçáveis. A referência é sempre um `entityPath` estrutural, por exemplo
-`[courseId, moduleId, lessonId]`; ele informa a localização completa que a
-pessoa reconhece.
-
-As identidades são únicas por tipo dentro do workspace. Uma cópia profunda
-recebe uma nova raiz e remapeia também seus descendentes e referências internas,
-preservando a origem. Um movimento mantém a entidade atual, troca pai e posição
-e remove a localização anterior na mesma revisão. Módulos, lições,
-microssequências e cards podem atravessar cursos sem compartilhar conteúdo
-mutável.
-
-Uma importação é uma cópia independente. Portanto, mover uma entidade do curso
-importado retira-a somente dessa cópia no workspace, não da publicação que foi
-lida. Para transferir uma parte entre dois cursos já publicados, o assistente
-mantém um workspace baseado na revisão corrente de cada curso, publica primeiro
-o destino com a parte copiada e só então publica a origem sem ela. Cada
-publicação usa seu próprio hash de compare-and-swap e o chat explicita o estado
-intermediário.
-
-## Revisão no chat
-
-Por padrão, o GPT usa `revisarMicroteoriasDoWorkspace`. A projeção devolve os
-conteúdos teóricos consolidados, cobertura, checks, erros, resources, tópicos e
-a contagem das práticas por microteoria. Isso permite à pessoa avaliar seleção,
-recorte e explicação
-conceitual sem receber no chat uma enumeração de cards teóricos ou de práticas
-abundantes. Todos os cards continuam integralmente no documento e podem ser
-lidos quando a pessoa pedir.
-
-Os parâmetros da ferramenta são:
-
-- `workspaceId` obrigatório, no formato UUID;
-- `entityPath` obrigatório, com três ou quatro IDs, identificando uma lição ou
-  microssequência. Para revisar um módulo ou curso, o assistente percorre as
-  lições em chamadas sucessivas.
-
-No sucesso, `structuredContent` contém `ok: true`, `requestId: null` e `data`.
-O campo `data` combina o controle atual — `workspaceId`, `title`, `revision`,
-`currentRevision`, `entityCount`, origens opcionais, timestamps,
-`idempotent: false` e `brief` — com `view: "microtheories"` e esta árvore:
-
-```text
-content
-└── courses[]
-    ├── id, entityPath[1], title
-    └── modules[]
-        ├── id, entityPath[2], title
-        └── lessons[]
-            ├── id, entityPath[3], title
-            └── microtheories[]
-                ├── id, entityPath[4], title, goal, status
-                ├── content: string conceitual consolidada
-                ├── covers[], checks[], errors[], resources[], topics[] legíveis
-                └── practiceCount: inteiro não negativo
-```
-
-O schema fecha todos esses objetos e recusa conteúdo card a card, campos
-extras, caminhos com profundidade incorreta e estados fora de `planned`,
-`generated`, `needs_review` ou `ready`. Falhas preservam o envelope comum
-`{ ok: false, requestId, error: { code, message, details? } }`.
-
-### Correção pontual de card
-
-`listarCardsDaMicrossequencia` recebe `workspaceId`, o caminho estrutural de
-quatro ids e paginação opcional. Consulta diretamente as rows correntes e
-devolve `revision`, id, posição, `kind`, resources e título resumido, sem
-recompor o documento nem devolver o conteúdo dos cards. `afterPosition` e
-`afterId` formam um cursor inseparável. A ferramenta é exclusiva de workspace;
-um curso publicado deve ser aberto ou importado antes da edição.
-
-Depois de localizar o alvo, o assistente usa `lerWorkspaceDeAutoria` com
-`view: "entity"` para ler somente o card e o substitui integralmente por
-`salvarCardNoWorkspace`, preservando o id. Essa escrita conclui o reparo
-atômico e mantém a microssequência executável. Movimento de card invalida origem e destino;
-cópia invalida apenas o destino. Alterações semânticas de guias, tópicos,
-relações e subárvores invalidam apenas os descendentes afetados; renomeação
-nominal preserva o estado. Os estados técnicos não exigem uma chancela separada
-no chat; `revision` continua sendo apenas o contador de concorrência.
-
-As outras famílias de sucesso também são explícitas:
-
-- listas fecham o formato de cada item e do cursor seguinte;
-- a busca global do catálogo fecha consulta normalizada, coleção, hash, revisão,
-  contagens e cursor por título e curso;
-- leituras de curso fecham `courseId`, título, hash, completude e `view`;
-- leituras de workspace fecham revisão lida, revisão vigente, quantidade de
-  partes, origem, contexto curto, timestamps e visão;
-- mutações devolvem controle de revisão e contagem de partes alteradas;
-- a lista de cards fecha revisão, caminho, itens resumidos e cursor;
-- eventos fecham revisão, operação, resumo e timestamp;
-- publicação fecha curso, hash, destino, completude, submissão opcional e
-  idempotência;
-- submissões e decisões editoriais fecham identidade e estado;
-- exclusão fecha workspace, confirmação e idempotência;
-- retirada de Trilhas fecha seleção, curso, origem oficial ou privada,
-  arquivamento e idempotência.
-
-O arquivo distribuído
-`authoring/schemas/workspace-envelope.schema.json` valida somente o envelope de
-`aralearn.library.v1` (`contract`, `scope` e `courses`). Ele não é o
-`outputSchema` das ferramentas MCP nem substitui os contratos exatos da
-árvore pedagógica e dos packages instalados.
-
-## Trilhas e publicação editorial
-
-Um curso em construção aparece em Trilhas assim que sua estrutura é confirmada.
-Microssequências com cards ficam estudáveis no mesmo item; as demais continuam
-visíveis como planejamento. Esse fluxo lê as partes correntes do workspace e
-não exige `publicarCursoDoWorkspace` nem grava um artefato no Storage.
-
-Uma revisão `partial` ainda pode ser fixada com `target: "private"` quando o
-autor decide submetê-la à avaliação. O artefato privado dá à fila editorial um
-hash exato; ele não é requisito para teste em Trilhas.
-
-`complete` exige todas as microssequências com estado `ready`. O catálogo
-aceita apenas `complete` aprovado e exige permissão editorial. Se o pedido já
-identifica inequivocamente publicação e alvo, o assistente relê o estado e
-executa; só uma ambiguidade real exige esclarecimento adicional.
-Atualizações também usam o hash da revisão vigente do curso como compare-and-
-swap.
-
-Uma revisão privada, inclusive `partial`, pode ser submetida para inspeção
-editorial. A avaliação não a transforma automaticamente em catálogo: uma conta
-com capacidade de revisão assume o envio e pode pedir ajustes ou rejeitar; uma
-conta com capacidade de publicação só conclui o catálogo com um curso
-`complete` e uma coleção válida.
-
-O autor acompanha os próprios envios com a visão `mine`. A visão `queue` e o
-conteúdo de envios de outras pessoas continuam exclusivos da conta editorial.
-Cada item informa `sourceRevisionHash`, `authorNote`, `reviewerNote`,
-`submittedAt`, `decidedAt` e o estado atual. Esses metadados pequenos continuam
-consultáveis depois que uma submissão encerrada libera sua referência ao
-artefato.
-
-Existe no máximo uma submissão ativa por autor e curso. Repetir o mesmo hash
-ativo devolve o envio existente. Uma revisão nova substitui atomicamente um
-envio ainda `submitted`, marcando-o como `superseded`; se o envio já estiver
-`in_review`, a operação falha com `catalog_review_in_progress`. O autor pode
-então aguardar a decisão ou retirar explicitamente o envio. Depois de
-`changes_requested`, ele corrige a composição, fixa uma nova revisão privada e
-submete o novo hash; a revisão recusada já pode ser coletada, enquanto a decisão
-anterior permanece visível sem duplicar o JSON.
-
-`claim_catalog_review_v5` concede a revisão por 30 minutos. O mesmo revisor
-renova a concessão e retoma idempotentemente o workspace já vinculado. Uma
-concessão expirada pode ser transferida; antes disso, workspaces editoriais
-abandonados ligados à submissão são fechados. Uma disputa ou uma fila já
-alterada produz `catalog_review_unavailable`, e o cliente deve reler a fila.
-`link_catalog_review_workspace_v5` também renova a concessão.
-
-`retirarCursoDasTrilhas` opera somente sobre a seleção exata acabada de listar e exige
-`selectionId`, `courseId` e `expectedContentHash`. Para curso oficial, remove
-somente a seleção da conta, com a mesma semântica de progresso já usada pelo
-aplicativo. Para publicação privada própria, também arquiva o artefato e solta
-sua revisão corrente. Se ainda existir um workspace ativo, a identidade estável
-do item, seu grupo e seu estado pessoal continuam ligados à composição; para
-retirá-la é necessária a exclusão explícita da raiz ou do workspace. Submissões
-`submitted`, `in_review` ou `changes_requested` bloqueiam a retirada do
-curso-fonte; em `changes_requested`, a revisão recusada pode já ter sido
-coletada. Submissões encerradas não bloqueiam a retirada. O `requestId` permite repetir com
-segurança uma resposta perdida, e um hash desatualizado produz conflito
-explícito.
-Um item cuja fonte seja apenas o workspace não usa essa ferramenta. Nesse caso,
-`excluirDoWorkspace` remove a raiz do curso ou o projeto inteiro com a revisão
-corrente, conforme o pedido.
-
-Uma conta editorial usa `retirarDoCatalogo` com `operation: remove_course` para
-retirar a publicação oficial, não `retirarCursoDasTrilhas`. Essa operação exige
-a revisão corrente da classificação e o hash corrente do curso; no mesmo
-commit, o backend remove a publicação de `Coleções`, todas as seleções e o
-alias distribuído. A composição oficial vinculada e seu vínculo leve de
-continuidade permanecem; excluí-los exige `excluirDoWorkspace` sobre a raiz ou
-o projeto. A confirmação explícita deve referir-se ao alcance global da
-retirada, sem afirmar que o workspace será apagado.
-
-Não existe uma integração administrativa separada. O mesmo executor, acessado
-por MCP ou Action, recebe apenas as ferramentas autorizadas para a conta
-conectada.
-
-## Contrato e robustez
-
-Schemas recusam campos desconhecidos. Ferramentas de leitura têm
-`readOnlyHint`; exclusões declaram `destructiveHint`; as chamadas não acessam
-domínios externos e anunciam `openWorldHint: false`. O servidor não pede que o
-modelo memorize estado: revisão, IDs e resultados permanecem persistidos.
-
-O desenho segue recomendações de OAuth, ferramentas focadas, schemas precisos,
-recuperação seletiva e avaliação representativa:
-
-- [OpenAI — Build an MCP server](https://developers.openai.com/plugins/build/mcp-server)
-- [OpenAI — Authentication for MCP servers](https://developers.openai.com/plugins/build/auth)
-- [OpenAI — Getting started with GPT Actions](https://developers.openai.com/api/docs/actions/getting-started)
-- [OpenAI — GPT Action authentication](https://developers.openai.com/api/docs/actions/authentication)
-- [OpenAI — Production notes on GPT Actions](https://developers.openai.com/api/docs/actions/production)
-- [OpenAI — MCP and Connectors](https://developers.openai.com/api/docs/guides/tools-connectors-mcp)
-- [OpenAI — Structured model outputs](https://developers.openai.com/api/docs/guides/structured-outputs)
-- [Model Context Protocol — server primitives](https://modelcontextprotocol.io/specification/2025-11-25/server)
-- [Supabase Auth as an OAuth 2.1 server](https://supabase.com/docs/guides/auth/oauth-server)
-- [Supabase — OAuth 2.1 Authorization Code com PKCE](https://supabase.com/docs/guides/auth/oauth-server/oauth-flows)
-- [Supabase — autenticação de servidores MCP](https://supabase.com/docs/guides/auth/oauth-server/mcp-authentication)
-- [Lewis et al. — Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks](https://arxiv.org/abs/2005.11401)
-- [Asai et al. — Self-RAG](https://arxiv.org/abs/2310.11511)
-
-## Validação local
+Para conectar um cliente MCP:
+
+1. confirme que as migrations e as Edge Functions da mesma versão estão
+   implantadas;
+2. cadastre o cliente OAuth e seus endereços de redirecionamento;
+3. configure no cliente o endpoint acima;
+4. autentique-se com uma conta individual do AraLearn;
+5. confira se o cliente descobriu ferramentas e recursos;
+6. faça primeiro uma leitura sem mutação;
+7. execute uma jornada descartável de criação, leitura, alteração e limpeza.
+
+Os pacotes prontos para plataformas específicas ficam em
+[`authoring/platforms`](../authoring/platforms/). O guia principal de instalação
+é [`authoring/README.md`](../authoring/README.md). Nunca use uma chave
+administrativa do Supabase como token do cliente.
+
+## Verificação
+
+Uma verificação local adequada cobre três camadas:
 
 ```powershell
-npm test
-npm run test:authoring:mcp
+npm run test:authoring-packages
 npm run test:authoring:mcp:local
-npm run test:authoring:mcp:local:oauth
+npm run lint
 ```
 
-Sem um token OAuth local, o smoke verifica a descoberta e o desafio de
-autenticação para uma requisição sem Bearer válido. Com
-`ARALEARN_AUTHORING_MCP_OAUTH_TOKEN`, também cria, lê e remove um workspace.
-O comando terminado em `:oauth`, usado pela CI, não admite esse atalho: cria
-um usuário temporário, registra um cliente público pelo DCR, executa
-Authorization Code com PKCE `S256` e consentimento, confere `iss`, `aud`,
-`client_id` e `sub`, roda a mesma jornada de criação, leitura e exclusão e
-remove cliente, concessão e usuário ao final. A chave administrativa local
-serve apenas aos endpoints de preparação e limpeza do Auth; o bearer enviado
-ao MCP é sempre o access token OAuth destinado à URL exata do recurso.
-Na stack local, a descoberta usa o alias sob o próprio issuer
-`/auth/v1/.well-known/oauth-authorization-server`, porque o Kong do CLI não
-encaminha a forma equivalente iniciada na raiz que o gateway hospedado expõe.
-A Edge Function valida `iss` contra essa identidade pública; a `SUPABASE_URL`
-interna do container continua reservada às chamadas de Auth e PostgREST.
-O emissor e o recurso MCP são derivados da mesma base canônica usada pelo hook
-de access token; não há overrides independentes capazes de produzir uma
-`audience` diferente da URL anunciada.
+O primeiro comando compara instruções, schemas e pacotes gerados. O segundo
+exercita o protocolo e o executor em ambiente local. O lint detecta erros
+estáticos. Quando houver um ambiente hospedado autorizado, o smoke test deve
+usar uma conta descartável, criar um workspace próprio e removê-lo ao final;
+descoberta pública e CORS, sozinhos, não comprovam uma mutação autenticada.
+
+## Referências normativas e técnicas
+
+- [Model Context Protocol — especificação 2025-11-25](https://modelcontextprotocol.io/specification/2025-11-25)
+- [Supabase Auth como servidor OAuth 2.1](https://supabase.com/docs/guides/auth/oauth-server)
+- [OAuth 2.0 Security Best Current Practice — RFC 9700](https://www.rfc-editor.org/rfc/rfc9700)
+- [Proof Key for Code Exchange — RFC 7636](https://www.rfc-editor.org/rfc/rfc7636)
+- [OpenAI — autenticação de GPT Actions](https://developers.openai.com/api/docs/actions/authentication)
+- [OpenAI — notas de produção para GPT Actions](https://developers.openai.com/api/docs/actions/production)
+
+As referências bibliográficas usadas na fundamentação acadêmica estão em
+[`referencias.bib`](referencias.bib).

@@ -1,41 +1,109 @@
-# Configuração no Gemini
+# Configurar autoria no Gemini
 
-Este roteiro é uma orientação técnica inicial. O fluxo por arquivos não depende de conexão direta; o suporte a MCP remoto varia conforme o ambiente e ainda precisa ser validado na instalação escolhida. A implantação do servidor está no [roteiro do AraLearn](https://github.com/fabio-ara/AraLearn/blob/main/docs/implantacao.md).
+Uma Gem e um cliente MCP resolvem problemas diferentes:
 
-## Gem no aplicativo Gemini
+- a **Gem** conserva instruções e arquivos de conhecimento para planejamento e
+  produção por documentos;
+- um **cliente MCP compatível** consulta o catálogo atual, lê workspaces — os
+  espaços persistentes que guardam cursos em construção — e executa ferramentas
+  remotas.
 
-1. Crie uma Gem no aplicativo Gemini.
+Adicionar arquivos a uma Gem não instala uma conexão MCP. Para gravar
+diretamente no AraLearn, o ambiente escolhido precisa oferecer Streamable HTTP,
+OAuth 2.1 com PKCE e controle explícito das ferramentas.
+
+## Usar uma Gem por arquivos
+
+### Pré-condição
+
+Tenha acesso à criação de Gems e ao pacote Gemini gerado pelo AraLearn.
+
+### Passos
+
+1. Crie uma Gem.
 2. Cole `GEM_INSTRUCTIONS.md` nas instruções.
-3. Adicione `core/`, `knowledge/`, `schemas/`, `docs/aralearn-contract.md` e `docs/recursos-de-card.md` ao conhecimento. Se a plataforma limitar a quantidade de anexos, reúna esses textos num único arquivo antes do envio, sem retirar os esquemas.
-4. Use a Gem para planejamento, revisão ou conteúdo cujos contratos exatos
-   tenham sido fornecidos. Sem MCP, ela não pode descobrir packages nem obter
-   schemas; não autorize que os invente.
-5. Se não houver ferramenta de escrita, valide e importe o documento final como
-   curso privado pelo AraLearn. A publicação no catálogo continua dependendo
-   do gateway MCP e de permissão editorial.
+3. Adicione `core/`, `knowledge/`, `schemas/`,
+   `docs/aralearn-contract.md` e `docs/recursos-de-card.md` ao conhecimento.
+4. Se houver limite de anexos, reúna os textos sem retirar schemas nem
+   cabeçalhos que distinguem cada responsabilidade.
+5. Planeje ou revise apenas com os contratos disponíveis nos arquivos.
+6. Valide o documento final no AraLearn antes de incorporá-lo ao estado
+   relacional.
 
-Uma Gem conserva instruções e arquivos, mas essa configuração não lhe dá acesso
-ao gateway do AraLearn. Nesse modo, o resultado é um arquivo para importação;
-para materializar uma representação nova com segurança, forneça a saída exata
-de `contracts` ou use um ambiente conectado. Não coloque credenciais nas
-instruções ou nos anexos.
+### Resultado esperado
 
-## Ambiente com ferramentas
+A Gem produz ou revisa documentos, mas não lista workspaces, não descobre novos
+packages e não publica no catálogo.
 
-Ambientes de desenvolvimento que aceitam MCP remoto podem escrever diretamente
-no AraLearn pelo endpoint Streamable HTTP:
+### Offline e recuperação
+
+O acesso aos arquivos segue as condições da plataforma; validação e gravação no
+AraLearn exigem rede. Quando faltar o contrato exato, forneça a saída atual de
+`contracts` ou use um ambiente MCP. Não coloque tokens ou credenciais em
+instruções e anexos.
+
+## Usar um ambiente com MCP
+
+### Pré-condição
+
+Escolha um cliente Gemini ou ambiente de desenvolvimento que aceite servidor
+MCP remoto e OAuth. O suporte varia entre produtos; confirme-o na documentação
+do cliente, e não apenas na disponibilidade de Gems ou Skills.
+
+### Passos
+
+1. Registre o endpoint Streamable HTTP do AraLearn no cliente.
+2. Ative OAuth 2.1 e conclua o fluxo com PKCE.
+3. Conserve o access token no cofre do próprio cliente.
+4. Inicie com `prepararAutoriaAraLearn` e uma leitura `resume` do workspace.
+5. Descubra os resources progressivamente antes de pedir contratos.
+6. Faça uma escrita pequena e confirme a revisão devolvida.
+
+Endpoint:
 
 ```text
 https://<project-ref>.supabase.co/functions/v1/aralearn-authoring-mcp
 ```
 
-O cliente deve descobrir os metadados protegidos, executar OAuth 2.1 com PKCE
-e conservar o access token no próprio cofre. A autoridade efetiva não vem no
-token: o gateway a resolve no banco para a conta autenticada.
+O token identifica a sessão, mas as capacidades efetivas continuam sendo
+resolvidas no banco para a conta autenticada.
 
-`SKILL.md` pode orientar ambientes compatíveis com Agent Skills, como o Gemini CLI. Ele não instala o conector nem concede acesso por si só. Se o ambiente escolhido não oferecer OAuth para MCP remoto e controle das ferramentas, use a Gem por arquivos e faça a importação privada no aplicativo.
+### Resultado esperado
 
-Documentação oficial:
+O cliente acessa somente ferramentas e workspaces autorizados. A estrutura
+criada aparece em Trilhas sem depender de publicação.
 
-- [Tips for creating custom Gems](https://support.google.com/gemini/answer/15235603)
-- [Set up your coding assistant with Gemini MCP and Skills](https://ai.google.dev/gemini-api/docs/coding-agents)
+### Offline e recuperação
+
+MCP remoto exige conexão. Depois de uma interrupção, releia `resume`; não
+reconstrua a revisão a partir do histórico do chat. Repita um `requestId`
+somente com os mesmos argumentos.
+
+## Agent Skills
+
+Ambientes compatíveis, como determinadas configurações do Gemini CLI, podem
+usar `SKILL.md`. O arquivo orienta o fluxo e a escolha de ferramentas; não
+instala o servidor nem concede acesso. A conexão e a autorização continuam
+etapas separadas.
+
+## Teste mínimo
+
+1. Liste workspaces da conta.
+2. Leia um workspace em `view: "resume"`.
+3. Consulte a biblioteca por `explore`, `search`, `inspect` e `contracts`.
+4. Execute `validate_card` e `audit_representation`.
+5. Grave um card com revisão atual.
+6. Confirme o conflito ao usar uma revisão antiga.
+
+## Diagnóstico
+
+| Sintoma | Causa provável | Recuperação |
+| --- | --- | --- |
+| A Gem não encontra ferramentas | Gem não é conexão MCP | Use um cliente MCP compatível ou trabalhe por documentos. |
+| O cliente aceita Skills, mas não conecta | Skill e transporte são recursos diferentes | Configure endpoint e OAuth separadamente. |
+| O OAuth não conclui | Cliente sem descoberta, PKCE ou armazenamento de token compatíveis | Use outro cliente ou o fluxo por arquivos. |
+| O modelo inventa campos do resource | Contrato atual não foi consultado | Obtenha `contracts` depois de escolher o package. |
+| A escrita parece perdida após queda | O chat não conserva o estado canônico | Releia o workspace e use a revisão devolvida pelo servidor. |
+
+Consulte as [fontes oficiais](../SOURCES.md) e o roteiro de
+[implantação](../../../docs/implantacao.md).

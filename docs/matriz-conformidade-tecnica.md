@@ -1,116 +1,146 @@
 # Matriz de conformidade técnica
 
-Esta matriz confronta afirmações documentais com a implementação observável.
-O recorte auditado é a release **0.0.19**, no estado local de **13 de agosto de
-2026**. Nenhum SHA é fixado aqui antes do commit que incorpora a própria
-documentação.
+Uma matriz de conformidade liga uma afirmação sobre o sistema à implementação que pretende realizá-la e ao teste que pode refutá-la. Ela evita que documentação, código e validação evoluam como descrições independentes.
 
-Ela não certifica propriedades que exigem avaliação externa, teste com pessoas
-ou operação prolongada em produção. “Confirmado” significa apenas que há um
-caminho de código e uma verificação automatizada coerentes no repositório
-corrente; “parcial” explicita limites ou garantias restritas.
+Esta matriz é versionada junto com o repositório. Não fixa contagem de testes nem data de uma execução: esses valores envelhecem sem que a propriedade mude. O resultado de uma rodada deve ser registrado pelo processo de integração ou de release.
 
-As linhas distinguem três naturezas de afirmação:
+## 1. Como interpretar
 
-- **afirmação verificada**: comportamento observável confirmado por código e
-  teste citado;
-- **limite conhecido**: propriedade que o sistema deliberadamente não oferece,
-  teto mensurável ou ponto ainda não demonstrado;
-- **decisão de projeto**: escolha arquitetural efetivamente implementada, sem
-  pretensão de ser a única solução possível nem evidência científica externa.
+| Estado | Significado |
+|---|---|
+| demonstrado | código e teste citado cobrem a propriedade no escopo descrito |
+| demonstrado com limite | a propriedade existe, mas possui teto, janela ou cenário não coberto |
+| não oferecido | a arquitetura deliberadamente não promete a propriedade |
+| avaliação externa | código não basta; requer participantes, operação ou análise especializada |
 
-Resultados “Confirmado” registram afirmações verificadas. “Não confirmado” e
-“Parcial” registram limites conhecidos. São decisões de projeto, em especial,
-a separação kernel/package, o armazenamento endereçado por conteúdo, CAS sem
-merge silencioso, os canais de sincronização separados, MCP sem sessão, o
-executor comum de MCP/Action e o histórico de assistência deliberadamente
-volátil.
+“Demonstrado” não significa prova formal, segurança absoluta ou eficácia pedagógica universal. Significa que há uma cadeia rastreável entre requisito, implementação e ensaio automatizado. Um teste pode conter defeito, e uma fixture não representa todas as entradas.
 
-## Contratos, kernel e catálogo
+## 2. Contratos, kernel e catálogo
 
-| Afirmação verificável | Evidência de implementação | Verificação | Resultado e limite |
-| --- | --- | --- | --- |
-| O envelope operacional aceita `contract`, `scope` opcional e `courses`. | `src/domain/aralearnProject.js`; `authoring/schemas/workspace-envelope.schema.json` | `tests/runtime/aralearn-project-strict.test.js`; `tests/kernel/package-contract-editor.test.js` | Confirmado para `aralearn.library.v1`; o schema de raiz não substitui a validação profunda executada em JavaScript. |
-| O kernel também expõe um contrato unitário de curso. | `src/resources/kernel/courseContract.js`; `src/resources/kernel/cardEnvelope.js` | `tests/kernel/resource-package-kernel.test.js` | Confirmado para `aralearn.course.v1`; não é o envelope multi-curso persistido/publicado. |
-| A descoberta de packages usa protocolo próprio. | `src/resources/catalog/resourceCatalog.js` | `tests/kernel/resource-catalog.test.js`; `tests/runtime/authoring-mcp.test.js` | Confirmado para `aralearn.resource-library.v1`; não contém a árvore de curso. |
-| Um card possui envelope estável e instâncias versionadas por slot. | `src/resources/kernel/cardEnvelope.js` | `tests/kernel/resource-package-kernel.test.js`; `tests/kernel/resource-package-edge.test.js` | Confirmado. Cards de teoria exigem conteúdo; cards de prática exigem resposta. |
-| Um package novo não exige uma ramificação no kernel. | `src/resources/kernel/packageRegistry.js`; `src/resources/packages/generated.js` | `tests/kernel/resource-package-autoindex.test.js`; `tests/kernel/resource-package-kernel.test.js` | Confirmado para packages que satisfazem a interface obrigatória. O índice gerado ainda precisa ser sincronizado pelos scripts do repositório. |
-| Manifest, contrato autoral, schema e renderer têm responsabilidades separadas. | `src/resources/kernel/packageRegistry.js`; `src/resources/packages/*/index.js` | `tests/kernel/package-contract-editor.test.js`; `tests/kernel/package-card-assistance.test.js` | Confirmado. O contrato autoral orienta preenchimento; o schema e o validador decidem aceitação estrutural/semântica. |
-| A validação de schema é compatível com todas as palavras-chave de JSON Schema 2020-12. | `src/resources/kernel/schemaValidation.js` | `tests/kernel/resource-package-kernel.test.js` | **Não confirmado.** Há um subconjunto explícito de palavras-chave e referências JSON Pointer locais; a documentação não alega conformidade integral com o dialeto. |
-| A busca progressiva limita o volume de contratos entregue ao modelo. | `src/resources/catalog/resourceCatalog.js` | `tests/kernel/resource-catalog.test.js`; `tests/runtime/authoring-catalog-search-v5.test.js` | Confirmado: busca padrão 12 e máximo 32; inspeção até 8; contratos de até 4 packages por chamada. |
-| `canonical`, `versatile` e `substitute` são estados públicos do ajuste. | `src/resources/catalog/resourceCatalog.js` | `tests/kernel/resource-catalog.test.js` | Confirmado como tokens de protocolo. `canonical` expressa o resultado do algoritmo de facetas; não certifica consenso acadêmico externo. |
-| Contrato, package, catálogo, banco local, protocolo e aplicativo possuem ciclos de versão distintos. | `src/resources/kernel/packageRegistry.js`; `src/resources/catalog/resourceCatalog.js`; `src/persistence/IndexedDbRelationalStore.js`; `supabase/functions/_shared/aralearn-authoring/mcpServer.js`; `package.json` | `tests/kernel/resource-package-kernel.test.js`; `tests/kernel/resource-catalog.test.js`; `tests/runtime/relational-sync.test.js`; `tests/runtime/authoring-mcp.test.js` | Confirmado: identificador de contrato, SemVer de package, `catalogVersion`, versão IndexedDB, versão MCP e versão do app não são intercambiáveis. `revision` é contador de concorrência e `cursor` é marcador de leitura, não outra versão. |
-| A auditoria de representação executa uma prévia visual completa. | `src/resources/catalog/resourceCatalog.js` | `tests/kernel/resource-catalog.test.js` | **Não confirmado.** `preview_card` e a auditoria retornam `rendered: false`; viewport, Graphviz, Vega e interação só são avaliados no renderer do app e nas jornadas visuais. |
-| Resources instalados passam por corpus, viewport móvel e estresse acadêmico. | `scripts/runResourceCorpusValidation.js`; `scripts/buildAcademicStressCourses.mjs`; `scripts/captureResourceGallery.mjs` | `tests/resource-course/resource-test-matrix.spec.js`; `tests/resource-course/academic-stress-courses.spec.js`; `tests/e2e/package-visuals.spec.js` | Parcial: há testes estruturais e visuais automatizados, mas eles não demonstram adequação pedagógica universal nem cobertura de todas as áreas. |
+| Propriedade | Implementação | Verificação | Estado e limite |
+|---|---|---|---|
+| `aralearn.library.v1` aceita `contract`, `scope` opcional e `courses` | `src/domain/aralearnProject.js`; `authoring/schemas/workspace-envelope.schema.json` | `tests/runtime/aralearn-project-strict.test.js`; `tests/kernel/package-contract-editor.test.js` | demonstrado; o schema da raiz não substitui invariantes profundos do validador |
+| o kernel oferece `aralearn.course.v1` para um curso unitário | `src/resources/kernel/courseContract.js` | `tests/kernel/resource-package-kernel.test.js` | demonstrado; não é o envelope persistido multi-curso |
+| cards usam slots e instâncias `package@version` | `src/resources/kernel/cardEnvelope.js`; `src/resources/kernel/packageRegistry.js` | `tests/kernel/resource-package-kernel.test.js`; `tests/kernel/resource-package-edge.test.js` | demonstrado; teoria exige conteúdo e prática exige resposta |
+| package novo entra pelo registry sem branch no kernel | `src/resources/packages/generated.js`; `src/resources/kernel/packageRegistry.js` | `tests/kernel/resource-package-autoindex.test.js`; `tests/kernel/resource-package-kernel.test.js` | demonstrado para packages que cumprem a interface; índice derivado precisa ser regenerado |
+| manifest, contrato autoral, schema e renderer têm papéis separados | `src/resources/packages/*/index.js`; `src/resources/kernel/packageRegistry.js` | `tests/kernel/package-contract-editor.test.js`; `tests/kernel/package-card-assistance.test.js` | demonstrado |
+| descoberta usa `aralearn.resource-library.v1` | `src/resources/catalog/resourceCatalog.js` | `tests/kernel/resource-catalog.test.js`; `tests/runtime/authoring-mcp.test.js` | demonstrado; o protocolo não transporta árvore de curso |
+| busca entrega lista curta e contratos sob demanda | `src/resources/catalog/resourceCatalog.js` | `tests/kernel/resource-catalog.test.js`; `tests/runtime/authoring-catalog-search-v5.test.js` | demonstrado: busca padrão 12, máximo 32; inspeção 8; contratos 4 |
+| `canonical`, `versatile` e `substitute` representam cobertura calculada | `src/resources/catalog/resourceCatalog.js` | `tests/kernel/resource-catalog.test.js` | demonstrado; não certifica consenso acadêmico externo |
+| o validador implementa todo JSON Schema 2020-12 | `src/resources/kernel/schemaValidation.js` | `tests/kernel/resource-package-kernel.test.js` | não oferecido; apenas o subconjunto documentado é aceito |
+| auditoria catalográfica reproduz layout real | `src/resources/catalog/resourceCatalog.js` | `tests/kernel/resource-catalog.test.js` | não oferecido; `rendered: false`; layout exige navegador e motores reais |
+| contratos, packages, catálogo, IndexedDB, MCP e app possuem versões próprias | registry, catálogo, store, servidor MCP e `package.json` | testes de cada fronteira | demonstrado; `revision` é CAS e `cursor` é paginação, não versão de contrato |
 
-## Persistência, publicação e operação offline
+## 3. Representações e interação
 
-| Afirmação verificável | Evidência de implementação | Verificação | Resultado e limite |
-| --- | --- | --- | --- |
-| Cada conta usa namespace local próprio. | `src/persistence/IndexedDbRelationalStore.js` | `tests/runtime/relational-sync.test.js`; `tests/e2e/workspace-offline-authoring.spec.js` | Confirmado: base `aralearn-relational-v4-r3`, versão IndexedDB 4, sufixada pelo UUID da conta. Sair não equivale a apagar o banco. |
-| O IndexedDB é um banco relacional completo. | `src/persistence/IndexedDbRelationalStore.js`; `src/persistence/relationalSchema.js` | `tests/runtime/relational-sync.test.js` | **Não confirmado.** É uma projeção normalizada sobre object stores e índices do IndexedDB; não oferece SQL, constraints ou transações multicliente de um SGBD relacional. |
-| Toda mutação do produto usa a mesma outbox. | `src/persistence/DomainMutationService.js`; `src/sync/RelationalSyncEngine.js`; `src/persistence/TrailPersonalStateRepository.js` | `tests/runtime/relational-sync.test.js`; `tests/runtime/integrated-course-sync.test.js` | **Não confirmado.** A outbox relacional sincroniza seleção leve; Trilhas, estado pessoal e autoria remota usam RPCs/filas próprias. |
-| O estudo de material já baixado independe de conexão. | `src/persistence/RelationalProjectRepository.js`; `src/persistence/IndexedDbRelationalStore.js` | `tests/e2e/workspace-offline-authoring.spec.js`; `tests/e2e/study-card-progression.spec.js` | Confirmado no escopo testado. Login, primeiro download, governança e autoria MCP permanecem online. |
-| Revisões oficiais são instaladas somente após validação e hash. | `src/sync/RelationalSyncEngine.js`; `src/persistence/canonicalCourseHash.js` | `tests/runtime/relational-sync.test.js`; `tests/runtime/integrated-course-sync.test.js` | Confirmado. Falha conserva a projeção anterior; isso não transforma a réplica em fonte de autoridade. |
-| Conteúdo publicado fica como JSON imutável endereçado por conteúdo. | `supabase/functions/_shared/aralearn-authoring/artifactStore.js`; `supabase/migrations/20260728010000_storage_artifact_control_plane.sql`; `supabase/migrations/20260728030000_finalize_catalog_artifact_cutover.sql` | `tests/runtime/authoring-artifact-store.test.js`; `supabase/functions/tests/aralearn-course-revisions.test.ts` | Confirmado: SHA-256, JSON determinístico, objeto `artifacts/sha256/...`, máximo de 32 MiB; upload recomeçável acima de 6 MiB. |
-| PostgreSQL contém todos os cursos oficiais decompostos em tabelas. | `supabase/functions/_shared/aralearn-authoring/artifactStore.js`; `supabase/migrations/20260728030000_finalize_catalog_artifact_cutover.sql` | `tests/runtime/catalog-control-plane.test.js`; `tests/runtime/authoring-artifact-store.test.js` | **Não confirmado.** PostgreSQL mantém metadados e referências; o artefato integral publicado fica no Storage. A composição mutável do workspace, esta sim, usa linhas por entidade. |
-| Um artefato deixa de existir assim que perde uma referência. | `supabase/functions/_shared/aralearn-authoring/artifactGarbageCollector.js`; `supabase/migrations/20260729020000_harden_workspace_artifact_gc.sql` | `tests/runtime/artifact-garbage-collector.test.js` | **Não confirmado.** Ele se torna candidato; o coletor reivindica em lotes, usa idade mínima padrão de sete dias e conclui o descarte após verificar a reivindicação. |
-| Concorrência de autoria é recusada por CAS. | `supabase/functions/_shared/aralearn-authoring/workspaceEngine.js`; `supabase/migrations/20260729070000_authoring_workspace_hardening.sql`; `supabase/migrations/20260809010000_authoring_continuity.sql`; `supabase/migrations/20260812160000_reuse_catalog_authoring_root.sql` | `tests/runtime/authoring-workspace-engine.test.js`; `tests/runtime/authoring-continuity-pglite.test.js` | Confirmado nos fluxos cobertos: `expectedRevision` compara a base lida; conflito exige nova leitura. |
-| Repetir uma intenção confirmada é seguro. | `supabase/migrations/20260801210000_educational_workspaces.sql`; `supabase/migrations/20260807220000_trail_personal_state.sql`; `supabase/migrations/20260809010000_authoring_continuity.sql` | `tests/runtime/authoring-continuity-pglite.test.js`; `tests/runtime/integrated-course-sync.test.js` | Parcial e qualificado: chave + hash do payload recuperam recibo; janelas variam por fluxo (sete dias para workspaces educacionais e estado pessoal; quatorze dias para observações de workspace). A tabela geral de pedidos autorais não declara uma retenção universal. |
-| Eventos recentes constituem versionamento restaurável do curso. | `supabase/functions/_shared/aralearn-authoring/workspaceContinuity.js`; `supabase/migrations/20260809011000_align_authoring_continuity_volatility.sql` | `tests/runtime/authoring-workspace-continuity.test.js` | **Não confirmado.** São resumos compactos de continuidade/auditoria; não há snapshots integrais nem restauração arbitrária de revisão. |
+| Propriedade | Implementação | Verificação | Estado e limite |
+|---|---|---|---|
+| packages expõem texto acessível, edição e alvos de prática | `src/resources/kernel/packageRegistry.js`; packages instalados | `tests/kernel/package-card-assistance.test.js`; testes de package | demonstrado para o registry corrente |
+| lacunas distintas mantêm estado e opções próprios | `gap-response`; mediação do registry e renderer | `tests/e2e/table-resource.spec.js`; matriz do curso de resources | demonstrado nos packages com múltiplos alvos |
+| Graphviz calcula layout de grafos e fluxos sem coordenadas autorais | `src/resources/sdk/graphviz.js`; packages diagramáticos | `tests/e2e/package-visuals.spec.js`; testes acadêmicos de resources | demonstrado com limite; pertinência e semântica dependem do contrato preenchido |
+| Vega/Vega-Lite materializa gráficos e planos | `src/resources/sdk/vegaRuntime.js`; `chart`; `plane` | testes de packages e galeria visual | demonstrado com limite; escala e interpretação científicas exigem dados corretos |
+| MathML preserva estrutura de fórmulas, matrizes e reações | `formula`; `matrix`; `reaction`; `stretchDelimiter.js` | testes de package e geometrias em navegador | demonstrado nos exemplos cobertos; suporte depende também do motor do navegador |
+| corpus, viewport móvel e estresse acadêmico exercitam o catálogo | scripts de corpus, cursos acadêmicos e galeria | `tests/resource-course/`; `tests/e2e/package-visuals.spec.js` | demonstrado com limite; não cobre todas as áreas nem eficácia com estudantes |
+| um package é pedagogicamente necessário | manifest e documentação de fundamentação | auditoria acadêmica e avaliação disciplinar | avaliação externa; testes técnicos não demonstram necessidade didática |
 
-## MCP, Action, autenticação e autorização
+## 4. Persistência local e sincronização
 
-| Afirmação verificável | Evidência de implementação | Verificação | Resultado e limite |
-| --- | --- | --- | --- |
-| O endpoint de autoria implementa servidor/gateway MCP por Streamable HTTP sem sessão. | `supabase/functions/_shared/aralearn-authoring/mcpServer.js`; `supabase/functions/aralearn-authoring-mcp/index.ts` | `tests/runtime/authoring-mcp.test.js`; `supabase/functions/tests/aralearn-authoring-mcp.test.ts`; `tests/runtime/authoring-mcp-journey.test.js` | Confirmado: protocolo `2025-11-25`, JSON-RPC, `tools/*`, `resources/*`, `structuredContent`; não emite `MCP-Session-Id`. Limite de corpo: 32 MiB. |
-| MCP usa credencial estática de autoria. | `supabase/functions/_shared/aralearn-authoring/mcpServer.js`; `supabase/functions/_shared/aralearn-authoring/security.js` | `tests/runtime/authoring-oauth-adapter.test.js`; `tests/runtime/local-mcp-oauth-smoke.test.js` | **Não confirmado.** O endpoint exige access token OAuth para o recurso protegido e anuncia metadata por `WWW-Authenticate`. |
-| MCP e Action são dois motores de autoria. | `supabase/functions/_shared/aralearn-authoring/actionServer.js`; `supabase/functions/_shared/aralearn-authoring/authoringToolExecutor.js`; `supabase/functions/_shared/aralearn-authoring/mcpServer.js` | `tests/runtime/authoring-action.test.js`; `tests/runtime/authoring-mcp.test.js` | **Não confirmado.** São adaptadores de protocolo sobre o mesmo registry/executor. |
-| A Action usa exatamente o mesmo fluxo PKCE do MCP. | `supabase/functions/_shared/aralearn-authoring/actionOAuthServer.js` | `tests/runtime/authoring-oauth-adapter.test.js`; `tests/runtime/authoring-action.test.js` | **Não confirmado.** A Action usa fachada Authorization Code confidencial, com hashes de códigos/tokens; o MCP usa PKCE `S256` no Supabase Auth. |
-| Um papel nominal autoriza diretamente todas as operações associadas. | `supabase/functions/_shared/aralearn-authoring/supabaseAdapter.js`; `supabase/migrations/20260801210000_educational_workspaces.sql`; `supabase/migrations/20260801213000_workspace_capability_enforcement.sql` | `tests/runtime/authoring-access-script.test.js`; `tests/runtime/authoring-workspace-protocol.test.js` | **Não confirmado.** Papel e relações derivam capacidades; cada operação revalida capacidade, objeto e estado. |
-| A chave secreta do backend é publicada no site ou APK. | `src/supabase/runtimeConfig.js`; `supabase/functions/_shared/aralearn-authoring/supabaseEnvironment.js`; `scripts/verifyDeploymentArtifacts.ps1` | `tests/runtime/supabase-server-environment.test.js`; `tests/runtime/deployment-automation.test.js`; `tests/runtime/android-relational-cutover.test.js` | **Não confirmado.** Clientes recebem URL e chave publicável; a secret key fica no backend. `service_role` permanece apenas como papel literal/compatibilidade local da CLI. |
+| Propriedade | Implementação | Verificação | Estado e limite |
+|---|---|---|---|
+| cada conta possui namespace IndexedDB próprio | `src/persistence/IndexedDbRelationalStore.js` | `tests/runtime/relational-sync.test.js`; `tests/e2e/workspace-offline-authoring.spec.js` | demonstrado: `aralearn-relational-v4-r3`, versão 4, sufixo da conta |
+| IndexedDB funciona como SGBD SQL completo | store e `relationalSchema.js` | testes de persistência | não oferecido; é projeção normalizada sobre object stores e índices |
+| conteúdo já materializado pode ser estudado sem rede | repositório relacional e store | `tests/e2e/study-card-progression.spec.js`; `workspace-offline-authoring.spec.js` | demonstrado; login inicial, primeiro download e serviços remotos continuam online |
+| revisão remota só substitui a local depois de contrato e hash válidos | `src/sync/RelationalSyncEngine.js`; `canonicalCourseHash.js` | `tests/runtime/relational-sync.test.js`; `integrated-course-sync.test.js` | demonstrado; falha conserva a projeção anterior |
+| todas as mutações usam uma outbox universal | `DomainMutationService.js`; sync engine; repositórios contextuais | testes de sync e estado pessoal | não oferecido; seleção, trilhas, estado e autoria têm protocolos limitados próprios |
+| mutação repetida não duplica efeito dentro de sua janela | sync engine e RPCs de idempotência | testes de sync integrado e PGlite | demonstrado com limite; retenções variam por família |
+| dispositivo ausente indefinidamente pode reproduzir todo feed | compactação e bootstrap | testes de retenção/sync | não oferecido; após a janela segura, novo bootstrap pode ser necessário |
 
-## Assistência contextual por API
+## 5. Workspaces, concorrência e artefatos
 
-| Afirmação verificável | Evidência de implementação | Verificação | Resultado e limite |
-| --- | --- | --- | --- |
-| A seleção visual delimita a autoridade do provider. | `src/assist/cardAssistanceScope.js`; `src/assist/bottomUpAssistanceScope.js` | `tests/kernel/card-assistance-operations.test.js`; `tests/runtime/bottom-up-sync-scope.test.js` | Confirmado. Contexto não selecionado pode ser lido, mas não amplia os caminhos graváveis. |
-| A assistência cria exatamente um card por envio. | `src/assist/bottomUpAssistanceRuntime.js` | `tests/runtime/bottom-up-assistance-render.test.js`; `tests/e2e/authoring-assistant.spec.js` | **Não confirmado.** Pode criar até oito cards numa microssequência autorizada; no nível de lição, pode criar no máximo uma microssequência, também com até oito cards. |
-| A conversa mantém somente um nível de desfazer. | `src/assist/cardAssistanceLedger.js`; `src/assist/cardAssistanceNavigation.js` | `tests/kernel/card-assistance-ledger.test.js`; `tests/kernel/card-assistance-navigation.test.js` | **Não confirmado.** O histórico volátil admite até oito turnos e nove versões, com desfazer, refazer e restauração; um novo ramo elimina o refazer abandonado. |
-| A conversa da assistência é histórico de proveniência durável. | `src/assist/cardAssistanceLedger.js`; `src/assist/cardAssistanceLocalState.js` | `tests/runtime/card-assistance-local-state.test.js`; `tests/runtime/card-assistance-semantics.test.js` | **Não confirmado.** Prompt, resposta e versões não são persistidos nem sincronizados; mudanças aceitas no curso seguem o fluxo normal de conteúdo. |
-| O provider pode editar qualquer JSON selecionado. | `src/assist/cardAssistanceScope.js`; `src/resources/kernel/packageRegistry.js` | `tests/kernel/package-card-assistance.test.js`; `tests/runtime/card-assistance-semantics.test.js` | **Não confirmado.** `edit_text` limita-se a alvos textuais declarados; `recompose_card` exige o card inteiro e contratos exatos. Mudanças estruturais fora do escopo são rejeitadas. |
-| Os pedidos podem enviar contexto sem limite. | `src/assist/bottomUpAssistanceRuntime.js` | `tests/runtime/bottom-up-assistance-ui-state.test.js`; `tests/runtime/deepseek-card-assistance-policy.test.js` | **Não confirmado.** Prompt: 12.000 caracteres; envelope do provider: 64.000; índice: 48 itens; informação de cards selecionados: 8 itens, 12.000 no total e 4.000 por card; até duas tentativas do provider. |
+| Propriedade | Implementação | Verificação | Estado e limite |
+|---|---|---|---|
+| workspace mutável é armazenado por entidades correntes | migrations de workspaces; `workspaceEngine.js` | `tests/runtime/authoring-workspace-engine.test.js` | demonstrado; até 10 mil partes, 1 MiB por parte e 32 MiB recomposto |
+| commit usa CAS global e versões das partes | `workspaceEngine.js`; migrations de hardening/continuidade | testes de engine e `authoring-continuity-pglite.test.js` | demonstrado; conflito exige reler, não há merge silencioso |
+| repetir `requestId` com mesmo payload recupera recibo | migrations de idempotência e executor | testes de continuidade e integração | demonstrado com limite; prazo depende do fluxo |
+| eventos permitem restaurar qualquer revisão passada | `workspaceContinuity.js`; eventos recentes | `authoring-workspace-continuity.test.js` | não oferecido; eventos são resumos compactos, não snapshots |
+| publicação gera JSON imutável por SHA-256 | `artifactStore.js`; migrations do plano de artefatos | `authoring-artifact-store.test.js`; teste Deno de revisões | demonstrado; máximo 32 MiB e TUS acima de 6 MiB |
+| PostgreSQL guarda a árvore integral de toda publicação | plano de artefatos e `artifactStore.js` | testes de catálogo e artefato | não oferecido; o banco guarda descritor e relação; bytes ficam no Storage |
+| objeto órfão é removido imediatamente | `artifactGarbageCollector.js`; migration de GC | `artifact-garbage-collector.test.js` | não oferecido; coleta usa tombstone, lotes e idade mínima padrão de sete dias |
+| hash prova autoria e qualidade | canonicalização e SHA-256 | testes de hash | não oferecido; hash prova identidade dos bytes, não autoria ou mérito |
 
-## Implantação, testes e limites da auditoria
+## 6. Auth, RLS, MCP e Action
 
-| Afirmação verificável | Evidência de implementação | Verificação | Resultado e limite |
-| --- | --- | --- | --- |
-| Web e Android executam a mesma aplicação web empacotada. | `public/`; `android/app/src/main/`; `scripts/buildAndroidRelease.ps1` | `tests/runtime/android-relational-cutover.test.js`; `scripts/verifyDeploymentArtifacts.ps1` | Confirmado para o pipeline atual. A versão do APK e `versionCode` são ciclo de release, não versão de contrato. |
-| Qualquer backend SQL é substituto direto do Supabase. | `src/supabase/`; `supabase/functions/`; `supabase/migrations/` | `npm run validate:cutover`; `npm run test:supabase:smoke` | **Não confirmado.** Auth, RLS, PostgREST, RPCs, Storage e Edge Functions fazem parte do contrato operacional; não há adaptador BaaS geral. |
-| `npm test` cobre todas as propriedades pedagógicas e operacionais. | `package.json`; `scripts/runTests.mjs`; `scripts/testAuthoringPackages.mjs` | `npm test` | **Não confirmado.** A suíte cobre contratos e regressões codificadas. Adequação pedagógica, acessibilidade com participantes, operação prolongada e custo real exigem outros métodos. |
-| Pacotes de conhecimento baixáveis são fontes autorais. | `authoring/`; `scripts/buildAuthoringPackages.mjs` | `npm run test:authoring-packages` | **Não confirmado.** `docs/downloads/authoring/` é saída derivada; mudanças devem ser feitas nas fontes e regeneradas pelo script antes de publicar. |
+| Propriedade | Implementação | Verificação | Estado e limite |
+|---|---|---|---|
+| dados pessoais são isolados por JWT, RLS e RPC | migrations, políticas e cliente Auth | pgTAP, PostgREST e smoke com duas contas | demonstrado nos fluxos cobertos |
+| papel nominal concede toda operação sem examinar alvo | adaptador Supabase e migrations de capacidade | testes de acesso e protocolo | não oferecido; papel e relações derivam capacidade e cada operação revalida alvo/estado |
+| MCP usa Streamable HTTP sem sessão de servidor | `mcpServer.js`; função `aralearn-authoring-mcp` | testes runtime, Deno e jornada MCP | demonstrado: protocolo `2025-11-25`, JSON-RPC e sem `MCP-Session-Id`; corpo até 32 MiB |
+| MCP aceita credencial estática de autoria | servidor MCP e segurança | testes OAuth e smoke local | não oferecido; exige access token OAuth do recurso protegido |
+| MCP e Action mantêm dois motores de autoria | `mcpServer.js`; `actionServer.js`; `authoringToolExecutor.js` | testes MCP e Action | não oferecido; são adaptadores sobre registry/executor comuns |
+| MCP e Action usam o mesmo fluxo OAuth | `actionOAuthServer.js`; integração MCP | testes do adaptador OAuth | não oferecido; MCP usa PKCE S256; Action usa fachada confidencial apropriada ao cliente |
+| secret key entra no site ou APK | runtime config, ambiente de função e verificador de artefato | testes de ambiente/deployment/Android | não oferecido; clientes recebem apenas URL e publishable key |
+| callback customizado Android prova propriedade do aplicativo | Auth client e manifesto Android | testes de callback | não oferecido; PKCE protege a troca, mas App Link HTTPS é necessário contra interceptação/DoS |
 
-## Cobertura documental da auditoria
+## 7. Assistência contextual por API
 
-A revisão técnica confrontou **75 documentos Markdown**: os 74 arquivos que já
-existiam no recorte e o novo glossário técnico. A própria matriz é o relatório
-da auditoria e foi excluída dessa contagem para evitar autorreferência. Dos 75,
-71 são fontes autorais e quatro são saídas derivadas em
-`docs/downloads/authoring/`. As fontes estão agrupadas da seguinte forma. Um
-arquivo sem alteração foi mantido porque não continha
-afirmação técnica divergente no recorte examinado; sua presença nesta lista
-registra a leitura, não uma certificação científica.
+| Propriedade | Implementação | Verificação | Estado e limite |
+|---|---|---|---|
+| seleção delimita caminhos graváveis | `cardAssistanceScope.js`; `bottomUpAssistanceScope.js` | testes de operações e sync scope | demonstrado; contexto não selecionado é somente leitura |
+| edição textual expõe apenas rótulos declarados | registry e renderer de edição | `package-card-assistance.test.js`; E2E de card assistance | demonstrado |
+| provider pode gravar qualquer JSON que retornar | escopo e validação semântica | testes de assistência | não oferecido; `edit_text` limita caminhos e recomposição exige contrato completo |
+| conversa admite iteração e navegação de versões | ledger e navigation | testes de ledger/navigation | demonstrado com limite: até oito turnos e nove versões; novo ramo elimina redo abandonado |
+| conversa é proveniência persistida e sincronizada | ledger e local state | testes de estado local | não oferecido; prompts/respostas são voláteis; somente mudança aceita segue a persistência do curso |
+| pedido pode criar conteúdo fora do escopo | bottom-up runtime | testes runtime e E2E | não oferecido; até oito cards na microssequência e no máximo uma nova microssequência quando a lição é o escopo |
+| contexto e resposta são ilimitados | bottom-up runtime e políticas de provider | testes de UI/política | não oferecido; prompt 12 mil, envelope 64 mil, índice 48 itens e limites por card; até duas tentativas |
 
-| Categoria | Fontes confrontadas |
-| --- | --- |
-| Entrada e rotas de leitura | `README.md`, `docs/README.md`, `docs/guia-*.md`, `docs/solucao-de-problemas.md` |
-| Produto e estudo | `docs/visao-do-produto.md`, `docs/modelo-didatico.md`, `docs/uso-do-app.md`, `docs/estado-de-estudo-nao-punitivo.md`, `docs/observacoes-pedagogicas.md`, `docs/workspaces-educacionais.md` |
-| Arquitetura e operação | `docs/arquitetura.md`, `docs/persistencia-relacional.md`, `docs/plano-de-controle-e-artefatos.md`, `docs/supabase.md`, `docs/implantacao.md`, `docs/privacidade.md`, `docs/estado-atual-e-roadmap.md` |
-| Contratos, resources e assistência | `docs/aralearn-contract.md`, `docs/recursos-de-card.md`, `docs/assistencia-por-ia.md`, `docs/fluxos-prompts-e-contratos.md`, `docs/autoria-mcp.md`, `docs/autoria-do-catalogo.md`, `docs/criar-cursos-pelo-chat.md`, `docs/integrations/*.md` |
-| Interface | `docs/auditoria-front-end.md`, `docs/sistema-visual.md` |
-| Autoria distribuída | `authoring/README.md`, `authoring/core/*.md`, `authoring/knowledge/*.md`, `authoring/platforms/**/*.md`, `authoring/examples/README.md` |
-| Pesquisa e fundamentação | `docs/fundamentos-pesquisa-e-governanca.md`, `docs/revisao-de-literatura.md`, `docs/quadro-teorico.md`, `docs/glossario-construtos.md`, `docs/matriz-rastreabilidade-pedagogica.md`, `docs/protocolo-avaliacao-artefato.md`, `docs/contribuicao-originalidade.md`, `docs/fundamentacao-pedagogica-dos-resources.md`, `docs/auditoria-academica-dos-resources.md` |
+## 8. Front-end, offline e acessibilidade
 
-Saídas em `docs/downloads/authoring/` não foram editadas diretamente. A
-conformidade delas depende de regeneração a partir de `authoring/` e de
-`npm run test:authoring-packages` no ciclo de release.
+| Propriedade | Implementação | Verificação | Estado e limite |
+|---|---|---|---|
+| Play avalia e avança sem aguardar a rede | `studyCardProgression.js`; `lessonEditorApp.js` | `tests/e2e/study-card-progression.spec.js` | demonstrado inclusive com rede pendente e CPU reduzida |
+| troca de tema depende de requisição | tokens e resolução local de tema | jornadas visuais/de estudo | não oferecido; preferência e aplicação são locais |
+| abrir curso oficial equivale a selecioná-lo | painel e controlador de Trilhas | `learning-spaces-panel.spec.js` | não oferecido; seleção possui ação própria |
+| edição manual apresenta só textos do package | `renderPackageCard.js`; `editableTargets()` | `card-assistance.spec.js`; testes kernel | demonstrado |
+| claro e escuro compartilham semântica visual | tokens e packages | galeria visual, E2E de packages | demonstrado nas fixtures e viewports cobertas |
+| todos os usuários compreenderão toda representação | UI e packages | requer ensaios de leitura e usabilidade | avaliação externa |
+| WCAG integral está certificada | sistema visual e testes automatizados | auditorias e jornadas | avaliação externa; automação cobre critérios selecionados, não certificação completa |
+
+## 9. Implantação e artefatos
+
+| Propriedade | Implementação | Verificação | Estado e limite |
+|---|---|---|---|
+| web e Android executam o mesmo aplicativo web | `public/`; Android; scripts de build | testes Android e `verifyDeploymentArtifacts.ps1` | demonstrado para o pipeline corrente |
+| qualquer backend SQL substitui Supabase | cliente, migrations e Edge Functions | `validate:cutover`; smoke remoto | não oferecido; Auth, RLS, PostgREST, Storage e funções integram o contrato operacional |
+| build contém apenas configuração pública | scripts de build e runtime config | verificador de Pages/Android | demonstrado nos artefatos examinados; segredo operacional ainda exige disciplina externa |
+| versão do APK equivale à versão do contrato | `package.json`, Gradle e contracts | testes de versão | não oferecido; são ciclos diferentes |
+| downloads de autoria são fontes primárias | `authoring/`; builder de packages | `test:authoring-packages` | não oferecido; `docs/downloads/authoring/` é saída derivada |
+| `npm test` demonstra todos os requisitos | `package.json`; runners | suíte geral | não oferecido; não cobre pessoas, operação prolongada, custo ou disponibilidade futura |
+
+## 10. Validações de referência
+
+```powershell
+npm.cmd run lint
+npm.cmd test
+npm.cmd run test:e2e
+npm.cmd run validate:example
+npm.cmd run validate:cutover
+npm.cmd run catalog:validate
+npm.cmd run audit:frontend
+npm.cmd run audit:residues
+npm.cmd run audit:docs
+```
+
+Quando banco ou funções mudarem, acrescente `validateLocalSupabase.ps1`; quando o ambiente remoto mudar, execute smoke hospedado; quando site ou APK mudar, examine os artefatos finais.
+
+## 11. Como manter a matriz
+
+Ao alterar uma propriedade:
+
+1. reescreva a afirmação de modo observável;
+2. identifique a fonte normativa da regra;
+3. acrescente teste capaz de falhar diante da regressão;
+4. registre limite e cenário não coberto;
+5. evite contagens e datas que não sejam geradas automaticamente;
+6. não transforme ausência de teste em alegação de conformidade.
+
+Saídas derivadas são regeneradas a partir das fontes. Avaliação pedagógica, acessibilidade com participantes, segurança independente e custo em produção pertencem a protocolos próprios e não devem ser convertidos em “demonstrado” apenas porque a suíte técnica passou.

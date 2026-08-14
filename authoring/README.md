@@ -1,119 +1,188 @@
-# Autoria AraLearn por packages
+# Kit de autoria do AraLearn
 
-Este diretório reúne instruções, conhecimento e contratos para duas escalas de
-autoria:
+Este diretório contém as instruções, os contratos e o conhecimento usados por
+modelos de linguagem para trabalhar com cursos do AraLearn. Ele não contém os
+cursos e não substitui a interface de estudo. Sua função é tornar a autoria
+externa reproduzível: clientes diferentes recebem as mesmas regras, chamam o
+mesmo conjunto de operações e produzem estruturas validadas pelo mesmo núcleo
+de execução, chamado de `kernel` nos identificadores técnicos.
 
-- o GPT personalizado com Action ou uma integração MCP planeja, lê, combina,
-  move e publica estruturas extensas;
-- a assistência por API no aplicativo repara recursos selecionados, repara um
-  card inteiro, cria até oito cards em uma microssequência autorizada ou cria
-  no máximo uma microssequência, também com até oito cards, em uma lição
-  autorizada.
+Para usar a autoria sem estudar sua implementação, consulte
+[Criar cursos pelo chat](../docs/criar-cursos-pelo-chat.md). Para compreender o
+serviço e seu modelo de segurança, leia
+[Autoria remota por modelos de linguagem](../docs/autoria-mcp.md).
 
-Esses fluxos compartilham o envelope operacional `aralearn.library.v1` e o
-registry de packages, sem contrato monolítico ou fallback de formato. O
-servidor MCP e a Action do GPT personalizado usam o mesmo registro de
-ferramentas e o mesmo executor. Cada conexão usa o fluxo OAuth adequado ao
-cliente e as capacidades efetivas da conta AraLearn. O contrato unitário do
-kernel (`aralearn.course.v1`) e o protocolo de descoberta do catálogo
-(`aralearn.resource-library.v1`) têm finalidades diferentes e não substituem
-esse envelope.
+## Duas escalas de autoria
 
-## Workspace composto
+O AraLearn possui duas formas complementares de assistência:
 
-Um workspace pode conter vários cursos. Seu estado atual é composto no
-PostgreSQL a partir de uma linha por projeto, curso, módulo, lição, tópico,
-microssequência e card. Uma alteração envia somente as partes que precisam ser
-criadas, atualizadas, movidas ou excluídas.
+1. **assistência contextual no aplicativo** — atua sobre o card, a
+   microssequência ou a lição selecionada. É adequada a correções e pequenas
+   recomposições durante a leitura;
+2. **autoria remota de estrutura extensa** — planeja, materializa, reorganiza,
+   audita e submete cursos por um cliente que implemente o **Model Context
+   Protocol (MCP)**, protocolo de integração entre modelos e ferramentas, ou
+   por um GPT personalizado com uma **Action**, conexão HTTP descrita por um
+   contrato OpenAPI.
 
-Cada comando informa a revisão que leu, uma chave de idempotência (`requestId`)
-e o hash do payload. Se duas
-edições concorrem, a base antiga é recusada; se uma resposta se perde, repetir
-o mesmo pedido recupera o resultado sem duplicar conteúdo. O servidor mantém
-resumos recentes e pequenos das alterações, não cópias integrais antigas nem
-uma função de restauração de revisão.
+As duas formas usam o mesmo modelo de card e a mesma biblioteca de pacotes de
+recursos,
+mas não têm a mesma autoridade. A seleção feita no aplicativo delimita o que a
+assistência contextual pode alterar. A autoria remota opera em um espaço de
+trabalho autoral (`workspace`), com revisão, capacidades da conta e ferramentas
+explícitas.
 
-O Storage fica reservado aos artefatos imutáveis materializados na publicação
-privada ou no catálogo. A submissão editorial aponta para o hash exato de uma
-publicação privada. Assim, corrigir um título ou um card não grava outra cópia
-integral do workspace.
+## Por que há instruções, conhecimento e esquemas separados
 
-Copiar e mover são operações diferentes. A cópia cria identidades novas para a
-subárvore e deixa a origem intacta; o movimento transfere a parte atual e
-remove a origem na mesma confirmação. Não existe compartilhamento oculto entre
-as duas posições.
+Um único prompt extenso mistura responsabilidades diferentes:
 
-## Conversa e revisão
+- regras invariantes do produto;
+- orientação pedagógica consultada conforme o problema;
+- formato exato dos dados;
+- particularidades da plataforma que hospeda o modelo.
 
-O assistente começa por um contexto curto, registra a estrutura planejada em
-lotes pequenos e materializa uma microssequência por vez. Para escolher cada
-representação, usa a única ferramenta `consultarBibliotecaDeResources` em
-descoberta progressiva: explora facetas, busca pela intenção, inspeciona uma
-lista curta, carrega somente os contratos exatos escolhidos, valida o card e
-audita sua adequação. O chat mostra por padrão as microteorias consolidadas e a
-quantidade de práticas, sem despejar todos os cards para a pessoa autora.
+Essa mistura torna a manutenção difícil e ocupa contexto mesmo quando uma
+parte não é necessária. O kit separa essas funções:
 
-O ciclo editorial acontece por rodadas distintas: planejamento, construção de
-uma parte, auditoria independente, reparo autorizado e reauditoria. Cada rodada
-mostra o resultado, sugere exatamente uma próxima etapa e espera a decisão da
-pessoa. “Parte” é o recorte conversacional e pode reunir várias lições ou
-microssequências; “microssequência” continua sendo a unidade técnica de
-gravação. A pessoa pode pular auditoria ou reauditoria sem criar erro
-estrutural.
+- `core/` reúne o procedimento estável, a segurança e os critérios de
+  qualidade;
+- `knowledge/` contém conhecimento recuperável sobre cards, representações,
+  publicação e continuidade;
+- `schemas/` contém os esquemas que definem os formatos executáveis aceitos pelo
+  servidor;
+- `platforms/` adapta instalação e instruções às plataformas compatíveis;
+- `examples/` mostra envelopes e operações completas.
 
-Quando a conta possui leitura editorial, `consultarCatalogo` com
-`operation: "search_courses"` localiza referências em todas as Coleções com
-uma única consulta de metadados. Todos os termos informados precisam ocorrer
-no título, objetivo, chave do curso ou nos metadados da coleção. O resultado
-traz ids, hash, revisão e contagens, sem abrir o JSON do curso; o assistente lê
-depois somente o recorte que realmente usará.
+O modelo recebe instruções curtas no início e consulta conhecimento adicional
+sob demanda. O servidor, porém, não confia apenas nessas instruções: valida
+esquemas, relações, revisão e autorização antes de gravar. O
+[glossário técnico](../docs/glossario-tecnico.md) aprofunda os termos usados
+neste kit.
 
-Em correção pontual, o assistente pagina metadados curtos dos cards da
-microssequência, lê integralmente só o alvo e preserva seu id na substituição.
-Para criar conteúdo, não carrega uma lista global de schemas. O catálogo pode
-crescer sem mudar a ferramenta ou estas instruções: um resultado
-`substitute` permite prosseguir e gera somente uma observação breve sobre a
-aproximação usada.
-Uma mudança semântica altera somente as entidades afetadas. A revisão técnica
-controla concorrência e não representa aceitação pedagógica.
+## Pacotes de recursos e núcleo
 
-Instruções curtas controlam o procedimento estável. Conhecimento sob demanda é
-recuperado lexicalmente conforme a intenção, o nível estrutural e os resources
-do pedido, com no máximo oito unidades relevantes. Não há embedding remoto,
-banco vetorial nem armazenamento da conversa nesse mecanismo. O modelo propõe;
-schemas fechados, validadores e operações determinísticas decidem o que pode
-ser salvo.
+Cada representação de card é um **pacote de recurso** (`package`) independente.
+O pacote declara:
 
-O guia completo para pessoas autoras está em [Criar cursos pelo
-chat](../docs/criar-cursos-pelo-chat.md). Os detalhes técnicos ficam em
-[Gateway MCP](../docs/autoria-mcp.md) e a fronteira com a assistência local em
-[Fluxos e contratos de geração](../docs/fluxos-prompts-e-contratos.md).
+- quando a representação é apropriada ou deve ser evitada;
+- quais operações cognitivas ela apoia;
+- seu contrato de conteúdo;
+- os alvos válidos de prática;
+- como validar e renderizar a estrutura.
 
-## Publicação e capacidades da conta
+O **núcleo** (`kernel`) conhece a interface comum dos pacotes, mas não incorpora os
+detalhes de cada gráfico, fórmula ou diagrama. Essa separação permite adicionar
+uma representação sem criar outra versão monolítica do contrato e sem alterar
+o fluxo básico de autoria.
 
-É sempre o mesmo assistente. As ferramentas disponíveis mudam conforme a conta:
+Três identificadores aparecem nos arquivos porque representam camadas
+distintas:
 
-- autoria privada: criar, reorganizar e estudar imediatamente o materializado;
-- submissão: enviar uma revisão privada para avaliação;
-- revisão: ler o artefato submetido, assumir a fila, abrir uma cópia editorial
-  independente e solicitar ajustes ou rejeitar;
-- publicação: aprovar um curso completo em uma coleção do catálogo.
+| Identificador | O que descreve |
+| --- | --- |
+| `aralearn.library.v1` | envelope operacional que reúne um ou mais cursos, ou um recorte indicado por `scope` |
+| `aralearn.course.v1` | contrato de um curso consumido pelo núcleo de estudo e pelos recursos |
+| `aralearn.resource-library.v1` | protocolo de consulta progressiva ao catálogo de pacotes |
 
-Criar a estrutura já faz o plano aparecer em Trilhas; materializar cards torna
-essas partes estudáveis e mantém o restante visível como planejamento. Uma
-publicação privada é criada somente para fixar o hash de uma submissão
-editorial. Coleções são organizadas por uma conta editorial. O trabalho enviado
-por outro autor passa por submissão e revisão; uma conta editorial também pode
-distribuir diretamente seu próprio curso.
+Eles não são versões concorrentes do mesmo objeto. A distinção impede que uma
+estrutura de armazenamento seja confundida com um curso ou com uma resposta
+de busca no catálogo.
 
-## Pastas
+## Fluxo de autoria remota
 
-- `core/`: ciclo editorial, fluxo, estados, qualidade, fontes e segurança;
-- `knowledge/`: packages e decisões didáticas;
-- `platforms/`: instruções específicas;
-- `schemas/`: contratos fechados de workspace, mutação, eventos, publicação e
-  revisão editorial;
-- `examples/`: exemplos de envelopes e operações de autoria.
+Uma produção completa segue esta ordem:
 
-Execute `npm run authoring:packages` para regenerar os pacotes e
-`npm run test:authoring-packages` para validá-los.
+1. interpretar finalidade, público, profundidade e fontes;
+2. ler o workspace existente ou criar um vazio;
+3. registrar a estrutura planejada em lotes pequenos;
+4. dividir o trabalho em Partes coerentes;
+5. materializar uma microssequência por vez;
+6. descobrir recursos pela intenção e carregar somente seus contratos;
+7. validar cada composição antes da gravação;
+8. mostrar uma síntese para revisão humana;
+9. auditar conteúdo e representação em rodada separada;
+10. corrigir somente achados autorizados e reauditar;
+11. estudar o que já está pronto em Trilhas;
+12. fixar um artefato apenas quando houver submissão ou publicação.
+
+“Parte” é uma unidade de organização da conversa; “microssequência” é a unidade
+didática e técnica que recebe cards. A diferença permite produzir cursos
+extensos sem enviar toda a árvore a cada turno.
+
+## Concorrência e repetição segura
+
+Toda mutação informa:
+
+- `expectedRevision`, a revisão que o cliente leu;
+- `requestId`, a identidade estável daquela tentativa;
+- o hash dos argumentos relevantes.
+
+Se outra sessão alterou o workspace, a revisão esperada deixa de coincidir e a
+escrita é recusada. Se a rede perde apenas a resposta, repetir o mesmo
+`requestId` com os mesmos argumentos recupera o resultado já produzido. O
+primeiro mecanismo protege contra sobrescrita concorrente; o segundo protege
+contra duplicação acidental.
+
+O PostgreSQL conserva as entidades correntes do workspace. O Storage recebe
+artefatos integrais e imutáveis somente quando uma versão precisa ser fixada.
+Essa arquitetura reduz cópias redundantes e mantém a identidade exata do que
+foi submetido ou publicado.
+
+## Continuidade e revisão
+
+O transcript do chat não é o estado do curso. O servidor conserva um resumo
+estruturado do que precisa sobreviver entre sessões: brief, Partes, decisões,
+mandato vigente e achados de auditoria. O assistente retoma por esse estado e
+pela leitura dos objetos atuais.
+
+Construção, auditoria, reparo e reauditoria são rodadas diferentes. Uma
+auditoria registra problemas; ela não se autoriza a corrigi-los. O reparo atua
+apenas sobre achados aprovados, e a reauditoria verifica se a correção resolveu
+o problema sem introduzir outro.
+
+## Integrações disponíveis
+
+- [GPT personalizado com Action](platforms/chatgpt/SETUP.md)
+- [Cliente MCP genérico](platforms/generic/INTEGRATION.md)
+- [Claude](platforms/claude/SETUP.md)
+- [Gemini](platforms/gemini/SETUP.md)
+- [Microsoft 365](platforms/microsoft-365/SETUP.md)
+
+Os arquivos de instrução em cada pasta são lidos pela plataforma ou enviados
+ao modelo. Os guias `SETUP.md` são destinados a pessoas e explicam a
+configuração. Não acrescente explicações extensas aos prompts executáveis
+quando elas pertencem à documentação humana: isso aumenta custo de contexto e
+pode enfraquecer a prioridade das regras operacionais.
+
+## Fontes e arquivos gerados
+
+Os arquivos em `authoring/` são fontes versionadas. Os pacotes distribuídos em
+`docs/downloads/authoring/` são derivados dessas fontes e não devem ser
+editados diretamente. Depois de qualquer alteração em instruções, conhecimento
+ou schemas, regenere-os:
+
+```powershell
+npm run authoring:packages
+```
+
+O processo produz os arquivos de conhecimento, o prompt, a especificação
+OpenAPI, manifests, checksums e arquivos compactados para cada plataforma.
+
+## Validação
+
+Execute:
+
+```powershell
+npm run test:authoring-packages
+npm run audit:docs
+npm run lint
+```
+
+O primeiro comando verifica paridade, tamanho e integridade dos pacotes. A
+auditoria documental confere links, estrutura e afirmações obsoletas. O lint
+detecta erros estáticos. Alterações no executor, nos schemas ou na persistência
+também exigem a suíte geral do projeto.
+
+Exemplos em [`examples/`](examples/) servem para aprender o formato, não como
+credenciais nem como dados de produção. Segredos administrativos nunca devem
+entrar em prompts, pacotes, APKs ou repositórios.

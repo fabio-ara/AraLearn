@@ -5,6 +5,141 @@ do AraLearn. Quando um identificador público aparece entre crases, sua grafia
 faz parte do contrato e não deve ser traduzida. Os conceitos pedagógicos e de
 pesquisa têm glossários próprios.
 
+O glossário é um material de consulta, não o ponto inicial da leitura. Quem
+busca compreender o sistema pela primeira vez deve começar por [Visão do
+produto](visao-do-produto.md) e seguir o percurso de engenharia indicado no
+[índice da documentação](README.md). Cada capítulo introduz os conceitos antes
+de empregar os termos abaixo.
+
+## Fundamentos de software e infraestrutura
+
+**API (Application Programming Interface).** Interface pela qual dois
+componentes de software trocam operações e dados segundo regras publicadas.
+Uma API não precisa ter interface visual. No AraLearn, o navegador usa APIs do
+próprio navegador, como IndexedDB; o aplicativo também usa APIs HTTP do
+Supabase. A existência de uma API não concede acesso: autenticação e autorização
+continuam necessárias.
+
+**Backend.** Parte do sistema executada fora do dispositivo da pessoa usuária e
+responsável por operações compartilhadas. O backend do AraLearn combina
+PostgreSQL, autenticação, armazenamento de objetos e Edge Functions no
+Supabase. Ele não renderiza os cards nem substitui a réplica local.
+
+**Frontend.** Parte do sistema com a qual a pessoa interage. No AraLearn, é o
+mesmo runtime web executado no navegador e dentro do WebView Android. “Mesmo
+runtime” significa que regras de domínio, renderização e persistência local são
+compartilhadas; o invólucro Android ainda possui responsabilidades nativas
+próprias.
+
+**Runtime.** Conjunto de código e serviços efetivamente carregado durante a
+execução. Ele se distingue do código-fonte, dos scripts de build e dos
+artefatos gerados. O runtime do AraLearn contém kernel, packages, telas,
+persistência e sincronização que chegaram ao site ou ao APK validado.
+
+**JSON.** Formato textual de intercâmbio composto por objetos, arrays, strings,
+números, booleanos e `null`, padronizado pela
+[RFC 8259](https://www.rfc-editor.org/rfc/rfc8259). JSON define uma sintaxe, não
+o significado pedagógico dos campos. Por isso, o AraLearn combina JSON com
+contratos, schemas e validadores semânticos.
+
+**HTTP.** Protocolo de aplicação usado para pedidos e respostas entre clientes
+e serviços, definido pela [RFC 9110](https://www.rfc-editor.org/rfc/rfc9110).
+Código de estado, cabeçalhos e corpo têm funções diferentes: um corpo JSON bem
+formado não transforma uma resposta de erro em sucesso.
+
+**Origem web (`origin`).** Combinação de protocolo, host e porta que delimita
+uma fronteira de segurança no navegador. `https://exemplo.org` e
+`http://exemplo.org` são origens distintas; portas diferentes também as
+distinguem. Site, desenvolvimento local e WebView Android possuem origens
+próprias para que armazenamento e permissões não se misturem.
+
+**Banco de dados relacional.** Sistema que organiza dados em relações —
+representadas operacionalmente por tabelas — com tipos, chaves, restrições e
+transações. “Relacional” não significa apenas “dados em tabelas”: o modelo
+permite declarar identidades e vínculos que o banco pode verificar. No
+AraLearn, o PostgreSQL guarda o estado compartilhado; o IndexedDB guarda a
+projeção e as filas locais.
+
+**PostgreSQL.** Sistema gerenciador de banco de dados relacional usado como
+fonte canônica do estado compartilhado. Ele executa transações, restrições,
+funções e políticas de segurança. A [documentação do
+PostgreSQL](https://www.postgresql.org/docs/current/) é a referência primária
+para esses mecanismos.
+
+**Supabase.** Plataforma que fornece, sobre PostgreSQL, autenticação, API de
+dados, Storage, Edge Functions e ferramentas de implantação. O AraLearn usa
+esses serviços como uma composição, e não como uma substituição do modelo de
+domínio: contratos e regras do produto continuam no repositório e no banco.
+
+**IndexedDB.** Banco transacional de objetos oferecido pelo navegador para
+armazenamento persistente no dispositivo. Diferentemente de `localStorage`,
+admite volumes maiores, índices e transações assíncronas. O AraLearn o escolhe
+para manter réplica relacional, progresso e filas sem bloquear a interface. A
+especificação é mantida pelo [W3C](https://www.w3.org/TR/IndexedDB/).
+
+**Migration de banco de dados.** Alteração versionada que leva o schema e as
+regras do banco de um estado conhecido ao seguinte. Pode criar tabelas,
+restrições, índices, funções ou políticas e também transformar dados. Manter
+migrations ordenadas permite reproduzir e auditar a evolução; editar apenas o
+banco hospedado produziria um estado que o repositório não consegue explicar.
+
+**Transação.** Unidade de trabalho confirmada integralmente ou desfeita
+integralmente. Ela evita que uma operação composta deixe metade dos dados no
+estado novo e metade no antigo. Transação não resolve, por si só, conflito entre
+duas edições concorrentes; por isso o AraLearn também usa revisão e CAS.
+
+**RLS (`Row-Level Security`).** Segurança em nível de linha do PostgreSQL. Uma
+política RLS decide quais linhas uma identidade pode ler ou modificar mesmo que
+o cliente tente formular outro pedido. É a última barreira de autorização no
+banco, não um substituto para uma interface clara ou para validação anterior.
+Consulte a [documentação oficial de
+RLS](https://www.postgresql.org/docs/current/ddl-rowsecurity.html).
+
+**RPC (`Remote Procedure Call`).** Chamada remota de uma operação implementada
+como função do backend. No AraLearn, RPCs concentram mutações que precisam de
+transação, autorização e invariantes comuns. Isso reduz a chance de clientes
+diferentes recomporem regras críticas de maneiras divergentes.
+
+**Storage de objetos.** Serviço para armazenar objetos integrais identificados
+por uma chave, como os artefatos JSON imutáveis de publicação. É apropriado para
+documentos grandes e endereçados por hash; já consultas relacionais e políticas
+de vínculo permanecem no PostgreSQL. “Storage” sem qualificação pode também
+designar armazenamento local, por isso a documentação explicita o serviço.
+
+**Edge Function.** Função HTTP implantada na infraestrutura do Supabase e
+executada próxima à borda da rede. No AraLearn, Edge Functions expõem autoria,
+integração e leitura de revisões sem entregar credenciais administrativas ao
+cliente. “Edge” descreve o local de execução; não elimina latência, validação ou
+dependência de rede.
+
+**WebView Android.** Componente nativo que executa conteúdo web dentro de um
+aplicativo Android. O APK do AraLearn usa um WebView com origem HTTPS interna e
+o mesmo frontend da web. Isso evita duas implementações do domínio, mas exige
+configurar navegação, armazenamento, autenticação e comunicação nativa de modo
+explícito.
+
+**Service Worker.** Programa associado a uma origem web que pode interceptar
+requisições e servir arquivos já armazenados. No site, ele mantém o shell da
+aplicação disponível sem conexão. No APK, os arquivos já estão empacotados e
+servidos pelo carregador nativo, portanto o funcionamento offline não depende
+de um Service Worker.
+
+**CORS (`Cross-Origin Resource Sharing`).** Mecanismo HTTP pelo qual um servidor
+declara quais origens de navegador podem ler suas respostas. CORS limita a
+leitura pelo frontend; não autentica a pessoa nem deve proteger sozinho uma
+operação administrativa.
+
+**CSP (`Content Security Policy`).** Política enviada ou declarada pela página
+para restringir fontes de scripts, estilos, imagens e outras capacidades. No
+AraLearn, ela reduz execução inesperada e impede avaliação dinâmica de código.
+Renderizadores que normalmente dependeriam dessa avaliação usam variantes
+compatíveis com a política, mantendo o funcionamento offline.
+
+**Hash criptográfico.** Resumo de tamanho fixo calculado a partir de bytes. O
+AraLearn usa SHA-256 para identificar conteúdo serializado
+deterministicamente. Igualdade de hash é usada como identidade do artefato e
+verificação de integridade; hash não cifra o conteúdo nem concede autorização.
+
 ## Contratos e representação de conteúdo
 
 **Artefato (`artifact`).** Objeto integral produzido por materialização e tratado como uma

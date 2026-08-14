@@ -1,37 +1,142 @@
-# Guia do pesquisador
+# Guia de investigação
 
-O AraLearn é investigado como artefato sociotécnico para estudo autodirigido em
-condições de tempo fragmentado, mobilidade e conectividade variável. A
-documentação separa funcionamento implementado, hipótese de design, evidência
-da literatura e resultado de avaliação.
+Este guia orienta a formulação de estudos sobre o AraLearn como artefato
+sociotécnico: um sistema de software cuja operação depende de pessoas, regras,
+conteúdo, instituições e infraestrutura. O objetivo é impedir que propriedades
+do código sejam confundidas com efeitos educacionais.
 
-## Percurso recomendado
+## Antes de formular a pergunta
 
-1. [Visão do produto](visao-do-produto.md) — problema, público e limites.
-2. [Modelo didático](modelo-didatico.md) — microssequência, microteoria, prática
-   e resources.
-3. [Fundamentos, pesquisa e governança](fundamentos-pesquisa-e-governanca.md) —
-   porta de entrada para o corpus de dissertação ou tese e seus estados
-   epistêmicos.
-4. [Revisão de literatura](revisao-de-literatura.md) — síntese temática,
-   controvérsias e lacunas.
-5. [Quadro teórico](quadro-teorico.md) e [Glossário de
-   construtos](glossario-construtos.md) — definições e proposições.
-6. [Matriz de rastreabilidade](matriz-rastreabilidade-pedagogica.md) — ligação
-   entre problema, hipótese, mecanismo, interpretação e teste.
-7. [Glossário técnico](glossario-tecnico.md) e [Matriz de conformidade
-   técnica](matriz-conformidade-tecnica.md) — termos de implementação,
-   garantias, limites e evidências em código e testes.
-8. [Protocolo de avaliação](protocolo-avaliacao-artefato.md) — ciclos,
-   participantes, instrumentos e análise.
-9. [Contribuição e originalidade](contribuicao-originalidade.md) — reivindicação
-   delimitada e limitações.
+Comece por três documentos:
 
-Analytics é tratado como apoio a decisões compreensíveis, nunca como coleta
-exploratória de rastros. O catálogo de estados e inferências proibidas está em
-[Estado de estudo não punitivo](estado-de-estudo-nao-punitivo.md).
+1. [Visão do produto](visao-do-produto.md), para delimitar o problema e o
+   público;
+2. [Modelo didático](modelo-didatico.md), para compreender a intervenção
+   educacional pretendida;
+3. [Arquitetura](arquitetura.md), para identificar os componentes que
+   materializam essa intervenção.
 
-Referências verificadas ficam em [referencias.bib](referencias.bib). Resultados
-de testes de software demonstram conformidade do artefato, não eficácia
-educacional; essa distinção deve permanecer explícita na dissertação.
+Ao ler, classifique cada afirmação em uma destas categorias:
 
+- **evidência externa:** resultado ou argumento encontrado na literatura;
+- **decisão de design:** escolha feita para atender a um problema declarado;
+- **propriedade implementada:** comportamento verificável do artefato;
+- **hipótese:** relação ainda sujeita a investigação;
+- **resultado empírico:** conclusão derivada de dados coletados e analisados
+  por um estudo adequado.
+
+Essa classificação evita inferências como “o sistema tem prática de
+recuperação, logo melhora a aprendizagem”. A literatura pode justificar a
+decisão de incorporar uma forma de prática; o efeito no contexto do AraLearn
+continua dependendo de população, conteúdo, exposição, comparação e medida.
+
+## Escolher a unidade de análise
+
+A pergunta deve informar o que será observado. Exemplos de unidades distintas:
+
+- uma pessoa retomando uma microssequência depois de uma interrupção;
+- um card e a relação entre sua microteoria, representação e prática;
+- uma sessão de autoria assistida e as revisões humanas realizadas;
+- um workspace educacional e sua divisão de responsabilidades;
+- uma publicação e o custo de armazenamento de suas revisões;
+- um pipeline de validação e sua capacidade de impedir estados inválidos.
+
+Misturar unidades produz conclusões vagas. Desempenho de sincronização não é
+medida de aprendizagem; quantidade de alterações feitas por um modelo não é
+medida de qualidade autoral.
+
+## Selecionar uma estratégia de investigação
+
+O corpus distingue duas famílias metodológicas complementares:
+
+- **pesquisa baseada em design** investiga uma intervenção educacional em
+  contexto, por ciclos de concepção, uso, análise e refinamento
+  ([Design-Based Research Collective (2003)](referencias.md#ref-dbrc2003designbased); [Wang e Hannafin (2005)](referencias.md#ref-wang2005designbased));
+- **Design Science Research** investiga um artefato, sua utilidade e o
+  conhecimento de design produzido por sua construção e avaliação
+  ([Hevner et al. (2004)](referencias.md#ref-hevner2004designscience); [Peffers et al. (2007)](referencias.md#ref-peffers2007dsrm); [Venable et al. (2016)](referencias.md#ref-venable2016feds)).
+
+Elas podem compartilhar episódios e dados, mas não são sinônimas. A primeira
+acentua a intervenção e a aprendizagem situada; a segunda acentua o artefato,
+seus requisitos e sua avaliação. O [protocolo de avaliação do
+artefato](protocolo-avaliacao-artefato.md) apresenta trilhas separadas para as
+duas estratégias.
+
+## Construir a cadeia de evidência
+
+Para cada pergunta, registre:
+
+| Elemento | Pergunta de controle |
+| --- | --- |
+| problema | o que ocorre hoje e para quem isso constitui problema? |
+| construto | qual conceito não observável se pretende estudar? |
+| indicador | qual dado pode representar parte desse construto? |
+| mecanismo | por que a intervenção poderia produzir mudança? |
+| rival | que outra explicação produziria o mesmo resultado? |
+| decisão | qual resultado levaria a manter, alterar ou rejeitar o desenho? |
+| limite | para quais pessoas, tarefas e contextos a interpretação é válida? |
+
+O [quadro teórico](quadro-teorico.md) formula proposições e mecanismos; o
+[glossário de construtos](glossario-construtos.md) impede que termos cotidianos
+sejam usados como medidas; a [matriz de rastreabilidade
+pedagógica](matriz-rastreabilidade-pedagogica.md) liga fundamento, decisão,
+implementação e avaliação.
+
+## Verificar afirmações técnicas
+
+Quando a pergunta envolve computação, formule a propriedade de modo
+observável. Por exemplo:
+
+- uma operação repetida com a mesma chave não cria duas mudanças;
+- uma réplica local permite abrir o curso sem conexão;
+- uma migration transforma um schema conhecido em outro estado conhecido;
+- um package inválido não pode ser registrado no catálogo;
+- uma publicação aponta para o hash do artefato efetivamente validado.
+
+A [matriz de conformidade técnica](matriz-conformidade-tecnica.md) aponta para
+código, schemas, migrations e testes. Esses materiais permitem replicar a
+verificação, mas também devem ser criticados: um teste cobre entradas e
+ambientes delimitados e pode não revelar falhas fora deles.
+
+## Planejar dados educacionais
+
+O AraLearn não coleta automaticamente todo rastro possível. Antes de propor um
+novo dado, responda:
+
+1. qual pergunta ele atende;
+2. qual construto pode e não pode representar;
+3. que decisão legítima poderá apoiar;
+4. por quanto tempo precisa existir;
+5. quem poderá acessá-lo;
+6. qual risco de vigilância, coerção ou interpretação indevida introduz.
+
+Esse procedimento segue a preocupação ética de que analytics educacionais
+devem ser orientados por finalidade, transparência e possibilidade de ação,
+não por disponibilidade técnica ([Pardo e Siemens (2014)](referencias.md#ref-pardo2014ethical); [Prinsloo e Slade (2017)](referencias.md#ref-prinsloo2017ethics)). O
+[estado de estudo não punitivo](estado-de-estudo-nao-punitivo.md) documenta os
+dados funcionais atuais e as inferências que não são autorizadas.
+
+## Executar e relatar
+
+Antes da coleta:
+
+- defina participantes, critérios de inclusão e contexto;
+- obtenha a apreciação ética aplicável;
+- registre instrumentos, protocolo, hipóteses e plano de análise;
+- identifique versões do aplicativo, dos cursos e dos contratos;
+- prepare um procedimento de interrupção e proteção de dados.
+
+Durante a análise, preserve resultados negativos e divergências. Ao relatar,
+separe claramente:
+
+- o que a literatura já sustentava;
+- o que o artefato implementava;
+- o que o estudo observou;
+- que explicações rivais permanecem;
+- quais mudanças foram feitas depois da observação.
+
+A [revisão de literatura](revisao-de-literatura.md) atual é uma síntese
+orientada ao design, não uma revisão sistemática concluída. As referências
+canônicas estão em [referencias.bib](referencias.bib), e o [protocolo de
+avaliação](protocolo-avaliacao-artefato.md) deve ser adaptado à pergunta, à
+população e à instituição responsável pelo estudo.

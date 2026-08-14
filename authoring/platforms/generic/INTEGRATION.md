@@ -1,96 +1,200 @@
-# Integração genérica de autoria
+# Integrar um cliente de autoria ao AraLearn
 
-Use o MCP remoto do AraLearn como única superfície de ferramentas. O servidor
-autentica cada chamada por OAuth 2.1, deriva no banco as capacidades efetivas
-da conta, autoriza a operação concreta e devolve `structuredContent`.
+Este guia atende clientes que implementem Model Context Protocol remoto. O
+servidor MCP é a superfície canônica de ferramentas: ele autentica a conta por
+OAuth 2.1, verifica a operação concreta no banco e devolve dados estruturados.
 
-## Estado e ciclo mínimo
+O cliente não deve manter uma cópia paralela do curso como fonte de verdade.
+Chat, cache e arquivos de conhecimento ajudam a formular ações; o workspace,
+espaço persistente que guarda a árvore e sua revisão, continua sendo o estado
+corrente.
 
-O PostgreSQL conserva uma entidade corrente por projeto, curso, módulo, lição,
-tópico, microssequência e card. O servidor compõe `aralearn.library.v1` quando
-precisa ler, validar ou publicar e grava somente as partes modificadas por cada
-comando. O Storage recebe o artefato canônico imutável na publicação.
+## Requisitos do cliente
 
-1. chame `prepararAutoriaAraLearn` para a intenção e, se o workspace já existir, chame
-   `lerWorkspaceDeAutoria` com `view: "resume"`; o chat não é estado;
-2. liste cursos ou workspaces e leia primeiro `outline`;
-3. leia somente a entidade necessária e conserve seu `entityPath` completo;
-4. registre a árvore planejada em lotes pequenos com
-   `criarEstruturaNoWorkspace`;
-5. após a aprovação, use uma única `record_approved_plan` com todas as Partes
-   por ids de microssequências, decisões e o mandato humano;
-6. na única `consultarBibliotecaDeResources`, percorra `explore`, `search`,
-   `inspect` (até oito), `contracts` (até quatro versões exatas), componha o
-   card e use `validate_card` seguido de `audit_representation`; então salve os
-   cards de uma microssequência por vez com
-   `salvarCardsNaMicrossequencia`, sem enviar um curso populado inteiro;
-7. para corrigir, use `atualizarMetadadosDaEntidade` ou
-   `salvarCardNoWorkspace`;
-8. conserve a nova revisão e use `microtheories` para revisão humana;
-9. audite depois de consultar `list_comments` e `list_observations` com
-   `kinds: ["note"]`; achados ativos já vêm em `resume`; registre
-   achados compactos, repare somente os aprovados e reaudite;
-10. estude em Trilhas sem publicar; somente para submissão, fixe o artefato
-   privado com `publicarCursoDoWorkspace`, ou distribua em Coleções quando a
-   conta puder e a pessoa pedir.
+O cliente precisa oferecer:
 
-O `brief` contém somente contexto estável e fontes. Para alterá-lo, releia o
-valor completo e use `gerirContinuidadeDaAutoria` com
-`replace_stable_brief`; não grave ali partes, decisões, mandatos ou achados.
+- transporte Streamable HTTP para endpoint HTTPS;
+- descoberta de protected resource;
+- OAuth 2.1 com PKCE;
+- armazenamento protegido de access e refresh tokens;
+- ferramentas com schemas de entrada e saída;
+- preservação de `requestId` e `expectedRevision` entre tentativa e resposta.
 
-O documento integral é uma visão composta, não o estado que o cliente deve
-reenviar em toda alteração. `listarAlteracoesRecentesDoWorkspace` oferece
-apenas resumos pequenos de até 200 eventos recentes.
+Endpoint:
 
-`preview_card` devolve sempre um descritor com `rendered: false`; não representa
-screenshot nem validação visual. Se `search` retornar
-`coverage.status: "substitute"`, prossiga com o melhor candidato, use
-brevemente o `chatDisclosure` no chat e preserve a representação ideal na
-decisão autoral. A biblioteca não possui uma operação para despejar todos os
-schemas.
+```text
+https://<project-ref>.supabase.co/functions/v1/aralearn-authoring-mcp
+```
 
-## Idempotência
+As capacidades efetivas não são claims confiadas ao cliente. O gateway as
+resolve no banco em cada chamada para a conta autenticada.
 
-Gere um `requestId` estável antes da chamada. Repita-o somente com argumentos
-idênticos. Não confunda esse identificador com `expectedRevision`: o primeiro
-recupera uma chamada; o segundo protege contra escrita concorrente.
+## Conceitos de estado
 
-## Cópia e movimento
+### Entidade e caminho
 
-`reorganizarWorkspace` recebe uma operação estrutural explícita. Use
-`copy_entity` para criar ids para a nova raiz e seus descendentes, remapear
-referências internas e preservar a origem. Use `move_entity` para manter a
-identidade, trocar pai ou posição e remover a localização anterior
-atomicamente. Origem e destino podem estar em cursos diferentes do mesmo
-workspace; use sempre seus `entityPath` completos. Não há compartilhamento de
-conteúdo mutável entre os locais. Exclusões usam `excluirDoWorkspace` com
-`delete_entity` ou `delete_workspace`, sempre com a `expectedRevision` lida,
-nunca uma operação estrutural genérica.
+Projeto, curso, módulo, lição, tópico, microssequência e card são entidades
+correntes no PostgreSQL. Relações de pai e posição formam a árvore.
+`entityPath` é a sequência completa de ids desde o curso até o alvo; não o
+reduza ao último id.
 
-## Âmbitos privado e editorial
+### Revisão
 
-O plano e as partes materializadas aparecem e podem ser testados em Trilhas sem
-publicação. “Publicado” significa somente fixado para submissão ou distribuído,
-nunca condição para estudar. Para submeter, `publicarCursoDoWorkspace` com `target: "private"`
-fixa o artefato; `submeterCursoParaRevisaoEditorial` aponta para o hash exato,
-sem criar outro artefato, e aceita também conteúdo parcial. Conforme as
-capacidades da conta, a mesma integração pode listar os próprios envios ou a
-fila, ler o artefato submetido, criar uma cópia editorial independente, pedir
-ajustes, rejeitar e organizar o curso em uma Coleção. O envio não
-expõe outros conteúdos privados.
+Uma leitura devolve `expectedRevision`. A escrita só prossegue se essa revisão
+ainda for atual. Esse controle impede que uma sessão apague silenciosamente a
+alteração de outra.
 
-## Capacidades efetivas
+### Identidade da tentativa
 
-- `authoring:read` / `authoring:private:read`;
-- `authoring:write` / `authoring:private:write`;
-- `catalog:read`, `catalog:submit`, `catalog:review`, `catalog:publish` e
-  `catalog:manage`, conforme a função da conta.
+`requestId` identifica uma chamada para repetição segura. Gere-o antes da
+escrita e repita-o somente com argumentos idênticos. Ele não substitui a
+revisão.
 
-Esses identificadores pertencem ao modelo de autorização do banco. Eles não
-são escopos OAuth solicitados ao provedor nem claims do access token. O
-catálogo recebe somente revisão completa; o workspace em Trilhas pode continuar
-parcial.
+### Artefato publicado
 
-Consulte o percurso para pessoas autoras em
-[Criar cursos pelo chat](../../../docs/criar-cursos-pelo-chat.md) e o contrato
-de integração em [Gateway MCP de autoria](../../../docs/autoria-mcp.md).
+O workspace é relacional e incremental. O Storage recebe um artefato integral
+imutável somente quando uma revisão é fixada para submissão ou distribuição.
+Criar estrutura e cards já os torna visíveis em Trilhas; publicação não é
+pré-condição de estudo.
+
+## Conectar e testar o cliente
+
+### Pré-condição
+
+Implante o gateway, configure OAuth e use uma conta de teste com acesso a um
+workspace não crítico.
+
+### Passos
+
+1. Registre o endpoint no cliente.
+2. Conclua OAuth com a conta AraLearn.
+3. Confira o registro de ferramentas e seus `outputSchema`.
+4. Chame `listarWorkspacesDeAutoria`.
+5. Leia um workspace em `view: "resume"`.
+6. Faça uma leitura `outline` e outra `entity`.
+7. Execute uma escrita mínima com a revisão lida.
+8. Repita a chamada com o mesmo `requestId` e argumentos.
+9. Tente uma escrita com revisão antiga e confirme o conflito.
+
+### Resultado esperado
+
+O replay devolve a mesma tentativa, a revisão antiga não sobrescreve a nova e
+uma conta não lê o workspace de outra sem permissão.
+
+### Offline e recuperação
+
+MCP remoto não funciona offline. Após queda durante uma escrita, consulte
+`resume` antes de criar uma nova tentativa. Os resumos de alterações não
+reconstroem o documento integral e não devem ser usados para adivinhar a
+revisão.
+
+## Ciclo mínimo de autoria
+
+1. Use `prepararAutoriaAraLearn` para obter orientação pertinente à intenção.
+2. Se o workspace existir, leia `resume`; se não, crie-o vazio.
+3. Leia somente o recorte necessário.
+4. Planeje a árvore e crie a estrutura em lotes de até 40 entidades.
+5. Apresente o plano à pessoa e aguarde aprovação.
+6. Registre Partes, decisões e mandato em uma única operação
+   `record_approved_plan`.
+7. Descubra os resources e materialize uma microssequência por vez.
+8. Revise microteorias, cobertura e quantidade de práticas.
+9. Audite em leitura, registre achados compactos e repare apenas os aprovados.
+10. Estude em Trilhas; fixe uma revisão somente quando houver intenção de
+    submissão ou distribuição.
+
+O `brief` contém apenas contexto estável e fontes. Para substituí-lo, releia o
+valor completo e use `replace_stable_brief`. Partes, decisões, mandatos e
+achados têm operações próprias e não pertencem ao `brief`.
+
+## Descobrir e usar resources
+
+Uma única ferramenta, `consultarBibliotecaDeResources`, organiza a descoberta:
+
+1. `explore` apresenta famílias e facetas;
+2. `search` procura pela intenção e informa cobertura `canonical`, `versatile`
+   ou `substitute`;
+3. `inspect` compara até oito perfis;
+4. `contracts` entrega até quatro contratos exatos;
+5. `validate_card` verifica o envelope montado;
+6. `audit_representation` verifica adequação semântica, interação de resposta e
+   legibilidade do feedback.
+
+`preview_card` devolve `rendered: false`: é um descritor, não uma captura. Se a
+cobertura for `substitute`, use o melhor candidato, informe brevemente o
+`chatDisclosure` e preserve na decisão autoral qual representação seria ideal.
+Não invente um schema nem tente obter todos os contratos em uma chamada.
+
+## Gravar e corrigir
+
+`salvarCardsNaMicrossequencia` recebe os envelopes completos dos cards de uma
+unidade. Para correção pontual, use `salvarCardNoWorkspace` no card completo ou
+`atualizarMetadadosDaEntidade` em curso, módulo, lição ou microssequência.
+
+Depois da escrita:
+
+1. guarde a revisão confirmada;
+2. releia o alvo quando o resultado precisar de conferência;
+3. apresente o efeito em linguagem humana;
+4. não trate validação estrutural como aprovação pedagógica.
+
+## Reorganizar e excluir
+
+`reorganizarWorkspace` usa operações explícitas:
+
+- `copy_entity` cria ids novos para raiz e descendentes, remapeia referências
+  internas e preserva a origem;
+- `move_entity` mantém a identidade, muda pai ou posição e remove a localização
+  anterior atomicamente;
+- `rename_entity`, `merge_microsequences`, `split_microsequence`,
+  `promote_module` e `demote_course` tratam transformações delimitadas.
+
+Origem e destino podem estar em cursos diferentes do mesmo workspace, mas
+precisam de `entityPath` completos. Não há conteúdo mutável compartilhado entre
+uma cópia e sua origem.
+
+Exclusões usam `excluirDoWorkspace` com `delete_entity` ou
+`delete_workspace`, sempre protegidas pela revisão atual. Não esconda uma
+exclusão dentro de uma operação genérica.
+
+## Comentários, auditoria e continuidade
+
+Antes de uma auditoria, leia comentários de estudo com `list_comments` e notas
+do workspace com `list_observations` e `kinds: ["note"]`. Achados formais
+ativos aparecem em `resume`; o histórico pode ser paginado com
+`kinds: ["audit_finding"]`.
+
+Registre achados compactos com localização, categoria, gravidade, síntese e
+reparo proposto. A pessoa decide quais serão corrigidos. Vincule uma correção
+somente depois da escrita confirmada; depois, faça outra auditoria.
+
+`link_comment_correction` liga um reparo a um comentário de estudo.
+`link_finding_correction` liga um reparo a um achado formal. Esses vínculos não
+são intercambiáveis.
+
+## Submissão e Coleções
+
+Para submeter, fixe o curso com `publicarCursoDoWorkspace` e
+`target: "private"`. `submeterCursoParaRevisaoEditorial` aponta para o hash
+exato sem duplicar o workspace. Pessoas revisoras autorizadas podem ler o
+artefato, criar uma cópia editorial, pedir ajustes, rejeitar ou distribuí-lo.
+
+Distribuir em Coleções usa `target: "catalog"` e `collectionId` e exige
+capacidade editorial. Capacidade local no workspace não concede administração
+global do catálogo.
+
+## Diagnóstico
+
+| Falha | Interpretação | Recuperação |
+| --- | --- | --- |
+| `401` ou consentimento ausente | Token inválido, expirado ou audience incorreta | Reinicie OAuth; não substitua o token por credencial administrativa. |
+| `403` em uma operação específica | Conta autenticada, mas sem capacidade efetiva | Confirme papel, âmbito e operação solicitada. |
+| Conflito de revisão | Outra sessão alterou o workspace | Releia o alvo e reconstrua a menor mutação. |
+| Replay rejeitado | `requestId` foi repetido com argumentos diferentes | Gere um novo id para a nova intenção. |
+| Resource não materializa | Contrato inventado, desatualizado ou envelope inválido | Refaça `inspect`, `contracts`, `validate_card` e `audit_representation`. |
+| O cliente envia o documento inteiro a cada ajuste | Estado composto foi tratado como payload de mutação | Use comandos incrementais por entidade ou microssequência. |
+
+O percurso humano está em
+[Criar cursos pelo chat](../../../docs/criar-cursos-pelo-chat.md). O contrato de
+transporte e autorização está em
+[Gateway MCP de autoria](../../../docs/autoria-mcp.md).

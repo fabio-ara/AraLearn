@@ -1,284 +1,392 @@
 # Persistência relacional e sincronização
 
-O Supabase guarda o estado remoto compartilhado. O IndexedDB mantém, em cada
-dispositivo, uma projeção normalizada para estudo sem conexão; isso não o
-transforma num banco relacional nem numa réplica de toda a instalação. Cursos oficiais
-selecionados vêm de uma publicação `aralearn.library.v1` imutável no Storage;
-planos e cursos
-em materialização são compostos diretamente das partes correntes do workspace
-no PostgreSQL.
+Este documento explica como o AraLearn conserva dados no dispositivo e nos
+serviços remotos, por que a aplicação continua funcionando sem conexão e como
+alterações atravessam uma rede que pode desaparecer a qualquer momento.
 
-Neste documento, os termos de persistência não são intercambiáveis:
+Persistir significa manter um dado além da execução corrente do programa.
+Sincronizar significa reconciliar estados mantidos em locais diferentes. Os
+termos não são sinônimos: um dado pode estar persistido no celular e ainda não
+ter sido sincronizado com o servidor.
 
-- **projeção** é a forma local derivada de outra fonte, otimizada para leitura;
-- **réplica local** é o conjunto sincronizável necessário ao uso offline, não
-  uma cópia integral do backend;
-- **cache** pode ser descartado e reconstruído, portanto não concede autoridade;
-- **rascunho** conserva uma alteração autoral local ainda não confirmada;
-- **outbox** é a fila durável das operações que o canal correspondente ainda
-  precisa enviar;
-- **materialização** compõe partes validadas num documento ou artefato concreto.
+## Conceitos fundamentais
 
-O vocabulário completo e suas fronteiras estão no [Glossário
-técnico](glossario-tecnico.md).
+- **Supabase**: plataforma remota que reúne banco de dados, autenticação,
+  armazenamento de arquivos e funções executadas no servidor;
+- **IndexedDB**: banco de objetos do navegador, usado para conservar no
+  dispositivo o conteúdo necessário ao estudo e as operações ainda não
+  sincronizadas;
+- **banco de dados relacional**: sistema que organiza fatos em relações
+  estruturadas e aplica chaves, restrições e transações para preservar a
+  coerência entre elas;
+- **PostgreSQL**: sistema gerenciador de banco de dados relacional usado pelo
+  Supabase como autoridade compartilhada do AraLearn; a documentação oficial
+  introduz relações, linhas, colunas e consultas em [PostgreSQL — Relational
+  Database Concepts](https://www.postgresql.org/docs/current/tutorial-concepts.html);
+- **projeção**: forma derivada de outra fonte e organizada para determinada
+  consulta;
+- **réplica local**: subconjunto sincronizado necessário para continuidade no
+  dispositivo, não uma cópia integral da instalação;
+- **cache**: dado reconstruível que não constitui fonte de autoridade;
+- **Storage**: serviço de armazenamento de arquivos do Supabase;
+- **artefato**: arquivo gerado e verificável que reúne uma versão materializada
+  de um curso;
+- **workspace**: espaço de trabalho autoral no qual cursos e suas revisões são
+  mantidos como entidades estruturadas;
+- **rascunho local**: alteração autoral persistida no dispositivo, mas ainda
+  não confirmada no workspace remoto;
+- **outbox**: fila durável de operações que precisam ser enviadas;
+- **bootstrap**: carga inicial que estabelece uma base e um cursor confiáveis
+  antes da sincronização incremental;
+- **cursor** ou **watermark**: marcador até o qual mudanças remotas já foram
+  observadas;
+- **tombstone**: registro de retirada que impede uma réplica antiga de
+  ressuscitar um item excluído;
+- **idempotência**: propriedade pela qual repetir a mesma intenção produz o
+  mesmo efeito observável, sem duplicação;
+- **chamada de procedimento remoto (RPC)**: pedido para que o servidor execute
+  uma operação definida junto ao banco de dados;
+- **compare-and-swap (CAS)**: gravação condicional à permanência da revisão que
+  foi lida.
 
-## O que fica no banco
+O [glossário técnico](glossario-tecnico.md) reúne definições mais amplas e
+remissões para os capítulos em que esses conceitos são desenvolvidos.
 
-O PostgreSQL remoto guarda metadados de curso, seleção, trilhas, autorização,
-progresso, revisão vigente e feed de sincronização. Também compõe o workspace
-de autoria com uma linha corrente por projeto, curso, módulo, lição, tópico,
-microssequência e card.
+## Modelo mental
 
-O mesmo workspace possui um único estado corrente de continuidade. Ele guarda
-somente Partes por ids de microssequência, decisões e o mandato humano atual;
-não guarda conversa, prompt, resposta, card nem snapshot de revisão. Achados
-formais de auditoria reutilizam registros situados compactos e são lidos por
-paginação. A retomada compõe esse estado com contagens da árvore, sem criar uma
-segunda representação do curso.
+O AraLearn possui três classes de dados:
 
-Durante um reparo amplo, o achado aprovado conserva apenas o `requestId` e a
-revisão pendentes mais recentes. O par é atualizado na mesma transação do
-conteúdo e continua disponível além da janela curta dos recibos; não guarda
-snapshot nem transforma uma escrita parcial em reparo concluído.
+1. **conteúdo pedagógico**, como cursos, microssequências, cards e pacotes de
+   recursos;
+2. **estado pessoal**, como seleção, grupo, cursor, conclusão, marca **Rever** e
+   observação;
+3. **controle operacional**, como revisão, cursor de sincronização, recibo de
+   idempotência e operação pendente.
 
-Quando o curso é publicado, essa árvore deixa de depender das linhas de autoria
-para ser estudada: o servidor materializa o envelope operacional no Storage. A
-publicação não é decomposta numa segunda árvore de tabelas remotas.
+Essas classes não percorrem necessariamente o mesmo canal. Um curso oficial é
+baixado como artefato imutável; uma seleção é uma relação pequena; o estado de
+estudo é uma linha pessoal corrente; um workspace autoral é composto por
+entidades no PostgreSQL.
 
-Depois do download e da validação, o IndexedDB projeta o envelope e as
-instâncias de package em tabelas locais. Isso preserva o funcionamento offline
-sem transferir o custo de autoria para o banco remoto.
+```text
+publicação oficial no Storage
+          │ download, hash e validação
+          ▼
+projeção do curso no IndexedDB
 
-## Metadados pedagógicos
+estado pessoal no PostgreSQL ◄── sincronização ──► estado e filas locais
 
-A biblioteca usa `guide` no módulo e na lição para delimitar objetivo,
-inclusões, exclusões, notação e cuidados. Cada tópico da lição declara `id`,
-`label`, `kind`, `checks` e `errors`. Cada microssequência declara `goal`,
-`role`, `dependsOn`, `covers`, `checks` e, quando necessário,
-`errors`.
+workspace no PostgreSQL ◄── RPC com CAS ──► edição autorizada
+```
 
-`dependsOn` referencia somente microssequências da mesma lição, por identidade
-explícita, e precisa formar um grafo acíclico. `covers` e `checks` descrevem a
-cobertura e as evidências esperadas; não criam relações implícitas. Cards e
-recursos também conservam ids estáveis no documento.
+## Por que usar IndexedDB
 
-A aplicação aceita apenas campos, identificadores e referências definidos pelo
-contrato. Ela não aproxima rótulos, não converte frases livres em relações e
-não mantém um plano pedagógico paralelo a `aralearn.library.v1`.
+### Problema
 
-Para artefatos publicados, o PostgreSQL conserva hashes, ponteiros e metadados;
-texto e estrutura dos cards não recebem uma segunda cópia relacional. No
-workspace, cada parte corrente existe uma vez e deixa de ser duplicada num
-arquivo integral a cada alteração.
+O estudo precisa responder imediatamente e continuar em redes instáveis. O
+armazenamento local também precisa consultar cards por curso, lição,
+microssequência e posição e confirmar várias alterações como uma unidade.
 
-A consulta paginada de cards de uma microssequência usa diretamente o índice
-de filhos de `authoring_workspace_entities`. Ela devolve somente identidade,
-posição, `role`, packages, título resumido e a revisão corrente. Não compõe o
-documento, não baixa Storage e não duplica conteúdo. O card integral é lido
-como entidade apenas quando uma operação pontual realmente precisa dele.
+### Alternativas
 
-O estado pessoal ocupa tabelas separadas:
+- `localStorage`: simples, porém síncrono, orientado a pequenas strings e sem
+  transações ou índices adequados ao volume de uma árvore de curso;
+- arquivo JSON único: fácil de exportar, mas caro para atualizar parcialmente
+  e inadequado para consultas localizadas;
+- memória da página: rápida, mas perdida ao fechar o aplicativo;
+- IndexedDB: banco de objetos assíncrono, com chaves, índices e transações.
 
-| Finalidade | PostgreSQL | IndexedDB |
+### Decisão
+
+O AraLearn usa IndexedDB. A [especificação Indexed Database API
+3.0](https://www.w3.org/TR/IndexedDB/) define object stores, índices e
+transações atômicas assíncronas, além de persistência entre sessões sujeita à
+política de armazenamento do navegador. Essas propriedades permitem gravar a
+árvore normalizada, o estado pessoal e a outbox sem bloquear a interface.
+
+### Funcionamento no AraLearn
+
+Cada conta autenticada abre um banco cujo nome contém o UUID da conta. O
+namespace atual é `aralearn-relational-v4-r3`, com versão IndexedDB `4`. O
+e-mail não participa da identidade porque pode mudar; o UUID do Auth é a chave
+estável. Sair encerra a sessão, mas não apaga a réplica nem as pendências.
+
+Os principais object stores são:
+
+| Grupo | Object stores representativos | Finalidade |
 | --- | --- | --- |
-| Cursos selecionados | `user_course_selections` | `courseSelections` |
-| Identidade de Trilhas | `private.trail_items` | projeção em `syncState` |
-| Grupos e vínculos | `study_paths`, `study_path_items` | projeção em `syncState` |
-| Progresso, Rever e observações | `trail_personal_states` | cache por `trailItemId` em `syncState` |
-| Sincronização de seleção oficial | tabelas privadas | fila leve de envio (`outbox`) |
+| árvore didática | `courses`, `modules`, `lessons`, `topics`, `microsequences`, `cards` | navegação e reconstrução do curso |
+| metadados estruturais | `guides`, `guideItems`, `topicStatements`, `microsequenceStatements`, `dependencies` | objetivos, limites e relações pedagógicas |
+| packages | `packageInstances`, `cardSources`, `cardTopics` | composição dos cards |
+| dados sincronizados | `courseSelections` | seleção oficial leve |
+| controle local | `outbox`, `syncState` | operações pendentes, curso instalado, curso adiado e curso de workspace |
 
-A tela inicial não possui uma árvore remota paralela. `list_trail_items_v1` projeta planos e
-cursos correntes, com cursor estável por UUID, sem copiar conteúdo. O dispositivo
-sobrescreve uma única entrada `learning.spaces.v1:<userId>` em `syncState` com
-a projeção completa de Trilhas, depois de percorrer todas as páginas. Resultado
-parcial e Coleções não são persistidos por essa superfície. O registro é uma
-lembrança offline sem autoridade: os indicadores de edição, exclusão e retirada
-ficam falsos até uma nova leitura autenticada completa.
+Índices como `byCourseId`, `byLessonPosition` e
+`byMicrosequencePosition` evitam varrer o banco inteiro para abrir uma parte.
+Uma transação de leitura e escrita abrange os stores necessários: ou todos os
+registros daquele commit são aceitos, ou nenhum é.
 
-O dispositivo não pode descobrir uma revogação enquanto está desconectado. Na
-primeira leitura autenticada posterior, compara a projeção anterior com a nova e
-remove composição e estado pessoal de todo item cuja última autoridade acabou;
-uma nova sessão executa a mesma reconciliação antes de reutilizar caches.
+### Consequências e limites
 
-Pessoas e governança ficam em `educational_workspace_members` e
-`educational_workspace_invitations`. O papel é uma relação pequena; não cria
-outra árvore. Convites guardam hash do código e expiram em sete dias. Recibos
-de deduplicação também expiram conforme a política de cada fluxo. O workspace aparece em Trilhas por sua identidade
-estável, sem publicação nem cópia por participante. Um artefato privado só é
-fixado quando necessário para uma submissão editorial.
+O IndexedDB reduz a dependência da rede e permite consultas localizadas. Ele
+não oferece SQL, chaves estrangeiras nativas ou as garantias de um servidor
+relacional multiusuário. As invariantes entre stores são verificadas pelo
+domínio e pelas transações da aplicação. O navegador também pode remover dados
+sob pressão de armazenamento; por isso, o servidor continua sendo autoridade
+para dados compartilhados e cursos publicados.
 
-O dispositivo abre um banco por UUID de conta no namespace físico
-`aralearn-relational-v4-r3`. O endereço de e-mail não participa dessa identidade.
-Esse namespace é uma geração limpa da biblioteca por packages: cópias locais de gerações
-encerradas não são abertas, migradas nem disputadas. Após autenticar, a seleção
-e as revisões oficiais são reconstruídas pela sincronização remota.
-Namespaces de contratos anteriores não são abertos nem migrados. Uma conta não
-pode acessar os dados locais de outra.
+A implementação está em `src/persistence/IndexedDbRelationalStore.js`,
+`relationalSchema.js` e `RelationalTransaction.js`; os testes de banco real no
+navegador estão em `tests/runtime/relational-indexed-db.test.js` e nas jornadas
+offline.
 
-Uma revisão baixada que não passe na validação do envelope e dos packages ou na conferência
-do hash é isolada daquele curso e removida da projeção local. A biblioteca
-continua abrindo os demais cursos; o leitor nunca reutiliza a revisão inválida.
+## Por que normalizar a árvore no dispositivo
 
-As consultas usadas por assistentes também respeitam essa separação. Uma conta
-autora comum lê seus planos e cursos em Trilhas. Uma conta revisora
-lê somente o artefato submetido à fila que ela pode atender. Leituras grandes
-são recortadas por árvore, entidade ou documento. Criar, renomear ou excluir
-um grupo e classificar qualquer `trailItemId` continuam sendo comandos pessoais
-vinculados ao UUID do proprietário. Para repetição segura, cada comando associa
-uma chave de idempotência ao hash do payload e a um recibo temporário. Excluir o grupo conserva os
-cursos e seu estado de estudo; os itens passam a aparecer sem grupo até serem
-movidos.
+Normalização, neste contexto, significa guardar entidades relacionadas em
+coleções distintas, ligadas por identidades estáveis, em vez de repetir toda a
+subárvore em cada registro.
 
-O catálogo possui outro plano de controle. Coleções e classificações guardam
-identidade e revisão; cada alteração administrativa associa uma chave de
-idempotência ao hash do payload e a um recibo privado de repetição segura. O
-conteúdo integral é uma revisão JSON imutável no Storage.
-Título e objetivo permanecem como metadados pequenos. Qualquer alteração de
-conteúdo passa novamente pelo fluxo de autoria, validação e troca atômica do
-ponteiro de revisão. O aplicativo pode expor a administração desses metadados a
-contas editoriais, mas a semelhança visual com uma trilha pessoal não muda o
-alcance global da operação.
+### Problema e alternativas
 
-A coleção `outros` é estrutural: o banco conserva seu nome e publicação, recusa
-sua retirada e permite usá-la como destino ao retirar a última coleção
-temática. Coleções e cursos são apresentados alfabeticamente; transferências
-entre coleções exigem a revisão corrente e deixam um recibo temporário de
-deduplicação.
+Um JSON aninhado é conveniente para transporte e publicação, mas uma pequena
+alteração num card exigiria substituir uma estrutura grande. A alternativa é
+projetar o documento em linhas locais e remontá-lo quando necessário.
 
-## Selecionar, editar e remover
+### Decisão e funcionamento
 
-`select_catalog_course` é chamado somente pela ação explícita de adicionar um
-curso oficial a Trilhas e registra que a conta selecionou a publicação. O
-dispositivo recebe o `revision_hash` e baixa o documento pelo endpoint
-`aralearn-course-revisions`. A rota que remontava a árvore remota foi removida.
-O endpoint responde ao preflight da origem pública com `GET`, `apikey` e
-`Authorization`; essa verificação faz parte do bloqueio de publicação do site.
+Depois do download, `contractToRelationalRows.js` decompõe o envelope em linhas.
+`relationalRowsToContract.js` executa o caminho inverso. O documento publicado
+continua sendo a unidade canônica de intercâmbio; a forma relacional é uma
+projeção local de execução.
 
-Abrir um card de curso ou pressionar `play` não chama essa RPC nem qualquer
-comando de organização. É uma navegação de leitura sobre a seleção já existente
-ou sobre o curso consultado em Coleções.
+Metadados pedagógicos permanecem explícitos:
 
-Os controles de autoria alteram somente as linhas correspondentes ao escopo
-selecionado. Caminhos textuais de instâncias e o card inteiro são o limite no
-card; uma
-microssequência pode receber cards quando seu recipiente foi autorizado; uma
-lição pode receber no máximo uma nova microssequência quando todos os filhos
-foram selecionados. Não há escrita bottom-up em módulo ou curso.
+- módulo e lição usam `guide` para objetivo, inclusões, exclusões, notação e
+  cuidados;
+- tópicos declaram identidade, rótulo, tipo, verificações e erros esperados;
+- microssequências declaram objetivo, papel, dependências, cobertura e
+  verificações;
+- cards e instâncias de package conservam identidades estáveis.
 
-Cada gravação consulta a revisão carregada e a confere novamente dentro da
-transação IndexedDB. O commit das linhas e o avanço da revisão são indivisíveis.
-Se outra aba gravou antes, a operação obsoleta falha e recarrega o conteúdo
-corrente; não há sobrescrita por último escritor. Pedido, contexto e resposta
-do provider não entram nas tabelas do curso.
+`dependsOn` só referencia microssequências da mesma lição e precisa formar
+grafo acíclico. O código não infere relações por semelhança textual.
 
-No card, o histórico volátil mantém por pouco tempo até oito turnos e nove versões
-exatas para desfazer, refazer ou restaurar. Pedido, explicações e versões não
-entram no IndexedDB ou no Supabase e não criam snapshots do curso. Uma escrita
-externa no mesmo card invalida a conversa local.
+### Consequências e limites
 
-Curso privado próprio mantém seu `courseId`. Curso oficial é somente leitura
-para conta comum; uma conta administrativa ou editorial altera a continuidade
-oficial. Curso privado de outra pessoa não é editável neste recorte. A origem
-desconhecida falha fechada, e nenhuma dessas operações cria fork automático.
+É possível substituir um curso inteiro atomicamente e preservar estados
+associados a identidades que permaneceram. Em contrapartida, qualquer mudança
+do envelope exige paridade entre conversores e validador; os testes de
+round-trip são parte obrigatória da alteração.
 
-Para publicar um workspace, o comando informa sua revisão esperada. Ao
-atualizar um curso, informa também o hash publicado que serviu de base. Se
-qualquer um avançou, a publicação é recusada e nunca faz merge silencioso. A
-promoção de curso privado ao catálogo continua exclusiva da autoria pelo GPT
-personalizado com Action ou um cliente compatível pela integração MCP.
+## O que fica no PostgreSQL
 
-`unselect_catalog_course` retira um curso da biblioteca da conta. A publicação
-oficial e sua revisão corrente continuam intactas.
+O PostgreSQL é a fonte de autoridade para relações compartilhadas e
+coordenação concorrente. Ele mantém:
 
-Pelo GPT personalizado, `remove_course_from_personal_library_v5` usa a seleção,
-o curso e o hash que acabaram de ser lidos. Em um curso oficial, conserva a
-mesma retirada de seleção. Em publicação privada da própria conta, também
-arquiva o artefato e remove sua referência corrente; submissão editorial ativa
-bloqueia essa limpeza. Uma composição de workspace ainda existente preserva o
-mesmo `trailItemId`, o grupo e o estado pessoal.
+- seleção de cursos oficiais;
+- grupos e vínculos de Trilhas;
+- estado pessoal corrente;
+- membros, convites e capacidades de workspace;
+- composição mutável do workspace;
+- metadados e hash da revisão publicada;
+- feeds, cursores e recibos necessários à repetição segura.
 
-## Início da réplica
+O PostgreSQL não conserva uma segunda decomposição de cada publicação oficial.
+O artefato integral fica no Storage. Essa decisão evita pagar simultaneamente
+pelo documento no Storage e por toda a mesma árvore em tabelas remotas.
 
-`bootstrap_replica` devolve seleções leves e o ponto atual do histórico de
-mudanças. Grupos e estado pessoal usam as RPCs de Trilhas e são gravados por
-`trailItemId`; revisões oficiais ausentes são baixadas separadamente.
+### Estado pessoal por `trailItemId`
 
-Uma revisão é baixada apenas quando o hash mudou. Antes da troca, o dispositivo
-confere o envelope, os packages e o SHA-256, projeta o documento em linhas locais e
-substitui a cópia do curso na mesma transação do IndexedDB. Material incompleto
-ou inválido não substitui o que já está disponível.
+`trailItemId` é a identidade estável de um item em Trilhas, independentemente
+de sua fonte corrente. Por isso, grupo, progresso, **Rever** e observação podem
+permanecer quando uma publicação é atualizada ou quando um item continua
+acessível por workspace depois da retirada de uma seleção.
 
-## Envio e recebimento
+| Finalidade | PostgreSQL | Projeção local |
+| --- | --- | --- |
+| seleção oficial | `user_course_selections` | `courseSelections` |
+| identidade integrada | `private.trail_items` | entrada de `syncState` |
+| grupos | `study_paths`, `study_path_items` | entrada de `syncState` |
+| cursor, conclusão, Rever e observação | `trail_personal_states` | cache e fila compacta em `syncState` |
 
-Cada alteração recebe uma chave estável de tentativa (`requestId` ou
-`mutationId`) para deduplicação, mas os fluxos permanecem
-separados pelo que realmente sincronizam:
+A projeção de Trilhas é paginada por `list_trail_items_v1`. O cliente percorre
+todas as páginas, rejeita cursor repetido e só então substitui o snapshot
+local. Uma página incompleta nunca se torna a nova projeção. Offline, essa
+projeção é somente leitura e todas as capacidades de mutação permanecem falsas.
 
-- a outbox relacional e `apply_sync_batch` transportam somente a seleção leve
-  de cursos oficiais;
-- criar, renomear e excluir grupos ou mover um item entre grupos usa uma RPC transacional de
-  Trilhas e um `requestId`, sem projeção otimista concorrente;
-- cursor, conclusão, **Rever** e o texto autoral da observação usam operações
-  pontuais sobre a única linha corrente de `trail_personal_states`.
+## Por que não existe uma outbox universal
 
-O cache do estado pessoal conserva apenas a revisão atual e uma fila compacta
-de `set|delete` por chave estável. `mutate_trail_personal_state_v1` recebe no máximo
-512 operações ou 64 KiB por lote, aplica compare-and-swap e devolve somente
-revisão e data. O documento inteiro não volta no recibo nem é enviado a cada
-mudança. Uma resposta perdida pode repetir o mesmo `mutationId`; conflito faz o
-cliente reler a linha corrente e reaplicar somente os patches ainda pendentes.
-O progresso v3 usa o `id` estável da lição como chave e guarda apenas
-`cursorCardId` e o conjunto `completedCardIds`; não cria uma entrada com
-timestamp para cada card. O
-orçamento operacional do cliente é 256 KiB, inclusive nos cursos grandes do
-catálogo.
+### Problema
 
-O feed de `pull_sync_changes` continua pequeno porque comunica seleções, não
-grupos nem o estado funcional. Abertura, tempo, tentativa e resultado não
-pertencem a nenhum desses contratos. A revisão do curso também não pode ser
-alterada por esse caminho.
+“Sincronizar” pode significar transportar um vínculo pequeno, aplicar patches
+num documento pessoal ou alterar um workspace compartilhado sob CAS. Forçar
+todas essas operações a um único protocolo esconderia diferenças de
+autoridade, conflito e tamanho.
 
-## Falhas esperadas
+### Decisão
 
-| Situação | Resultado |
+O AraLearn mantém canais separados:
+
+1. a outbox relacional e `apply_sync_batch` transportam a seleção leve de
+   cursos oficiais;
+2. grupos de Trilhas usam RPCs transacionais e `requestId`;
+3. estado pessoal usa patches compactos por `trailItemId`, CAS e `mutationId`;
+4. workspace autoral usa revisão global, versões de partes e RPCs próprias;
+5. revisões de cursos são baixadas como artefatos por hash.
+
+### Consequências
+
+Cada canal explicita o tipo de conflito que consegue resolver. Uma falha num
+canal não autoriza escrita por outro e conteúdo pedagógico integral nunca é
+empurrado pela outbox de seleção.
+
+### Limites
+
+A multiplicidade de canais aumenta a responsabilidade de observabilidade e
+testes. O código precisa classificar corretamente falha retentável, sessão
+ausente, rejeição definitiva e conflito. A matriz de testes em
+`tests/runtime/relational-sync.test.js`,
+`integrated-course-sync.test.js` e
+`trail-personal-state-repository.test.js` protege essas fronteiras.
+
+## Ciclo de uma sincronização
+
+Uma interação local segue este princípio:
+
+```text
+gesto na interface
+→ transação local
+→ registro da intenção pendente, quando aplicável
+→ envio remoto posterior
+→ confirmação ou classificação da falha
+→ recebimento das mudanças remotas
+```
+
+O ciclo executado por `RelationalSyncEngine` é mais específico:
+
+1. **push**: tenta enviar operações pendentes;
+2. **bootstrap**, se necessário: estabelece snapshot e cursor de base;
+3. **pull**: recebe mudanças remotas em páginas;
+4. **reconciliação de revisões**: baixa os cursos cujo hash mudou;
+5. **commit local**: instala somente a revisão validada.
+
+Cada página de pull é aplicada antes da seguinte. Se o aplicativo fechar, o
+cursor local registra apenas o prefixo realmente confirmado. Se a sessão
+expirar, a outbox permanece; chamadas remotas param até novo login.
+
+### Bootstrap
+
+`bootstrap_replica` devolve seleções leves e `highWaterSequence`. Bootstrap não
+é download de todo o catálogo: revisões ausentes são obtidas separadamente. Um
+dispositivo cuja retenção expirou precisa repetir o bootstrap antes de retomar
+o feed incremental.
+
+### Download e troca de revisão
+
+Para cada seleção, o manifesto informa `courseId`, sequência de publicação e
+hash. O cliente:
+
+1. compara o hash remoto com o hash instalado;
+2. baixa o JSON por `aralearn-course-revisions`;
+3. valida o envelope e os packages;
+4. calcula o hash canônico recebido;
+5. converte a revisão em linhas;
+6. substitui a projeção inteira na mesma transação.
+
+Falha de download, contrato ou hash não substitui uma revisão válida anterior.
+Uma revisão inválida é isolada daquele curso; os demais continuam disponíveis.
+
+### Atualização adiada
+
+Se uma nova publicação alcança um curso com rascunho local ou operação ainda
+não resolvida, o cliente não descarta silenciosamente o trabalho. A revisão
+remota é marcada como adiada. Restaurar a publicação exige informar a revisão
+do rascunho que foi lida; se outra aba alterou o rascunho, a restauração falha
+por CAS.
+
+## Estado pessoal compacto
+
+O estado funcional não registra abertura, tempo, tentativa, acerto ou erro. Ele
+contém apenas cursor, conclusão estrutural, marca **Rever** e observação
+autoral. A representação v3 de progresso usa o ID da lição e conjuntos de
+`completedCardIds`, em vez de criar uma linha temporal para cada toque.
+
+`mutate_trail_personal_state_v1` recebe no máximo 512 operações ou 64 KiB por
+lote e devolve revisão e data, não o documento inteiro. O orçamento do cliente
+para a linha é 256 KiB. Uma resposta perdida pode repetir `mutationId`; um
+conflito relê o estado corrente e reaplica somente os patches pendentes.
+
+Essa compactação reduz armazenamento e evita transformar estudo em telemetria
+comportamental. Ela também limita análises posteriores: o sistema não pode
+reconstruir duração, número de tentativas ou sequência detalhada de respostas
+porque escolheu não coletá-las.
+
+## Falhas e comportamento esperado
+
+| Situação | Comportamento seguro |
 | --- | --- |
-| Sem rede, demora de resposta, 429 ou erro temporário do servidor | Seleção e estado pessoal permanecem nas filas próprias; organização remota não é simulada localmente. |
-| Sessão ausente ou expirada | O aplicativo preserva a pendência local e pede novo acesso. |
-| Dado inválido ou referência inexistente | A operação é recusada sem escrita parcial. |
-| Permissão revogada | Na próxima sincronização online, composição, estado e cache de autoridade são apagados; a operação falha fechada. |
-| A revisão do conteúdo mudou durante a escrita | A operação obsoleta é recusada e a tela recarrega o estado corrente. |
-| A seleção avançou durante o download da revisão | A revisão capturada não é instalada; a operação pode ser repetida com o novo hash. |
+| sem rede, timeout, HTTP 429 ou 5xx | conserva pendência e revisão local; tenta depois |
+| sessão ausente ou expirada | classifica `auth_required`, preserva filas e pede novo acesso |
+| payload inválido ou referência inexistente | rejeita sem commit parcial |
+| capacidade revogada | nega a operação; na leitura autenticada seguinte remove cache cuja autoridade terminou |
+| revisão avançou | recusa CAS e exige nova leitura |
+| resposta remota se perdeu | repete a mesma chave e o mesmo payload para recuperar o recibo |
+| artefato baixado não corresponde ao hash | isola a revisão e não substitui o curso válido |
+| outra aba substituiu a conexão IndexedDB | encerra a conexão antiga e repete a operação por uma conexão corrente |
 
-Uma falha em um canal não autoriza gravação por outro nem altera o conteúdo
-do curso.
+O cliente pode detectar que está offline; não pode deduzir que uma permissão
+foi revogada enquanto não fala com o servidor. Por isso, o cache permite
+leitura do conteúdo já autorizado, mas nunca inventa capacidades de escrita.
 
-## Atualização, retirada e limpeza
+## Tombstones, feeds e retenção
 
-Quando uma publicação oficial muda ou uma composição é promovida, o
-`trailItemId` preservado mantém grupo, progresso, **Rever** e observações. O
-dispositivo valida uma revisão oficial antes de trocar sua projeção e conserva
-a anterior se o download ou a validação falhar. Partes que deixaram a árvore
-não reaparecem na navegação.
+### Problema
 
-Retirar a seleção de um curso oficial o oculta de Trilhas sem apagar a
-publicação global. Se a mesma identidade também possui workspace acessível, o
-item continua visível pela composição. Excluir de fato a última fonte de um
-item remove por cascata seus vínculos de grupo e estado pessoal; itens e cursos
-homônimos independentes não são atingidos.
+Apagar imediatamente um evento remoto pode fazer um dispositivo antigo não
+perceber a retirada e restaurar estado obsoleto. Conservar todos os eventos
+para sempre, por outro lado, cresce sem limite.
 
-O histórico de sincronização é mantido enquanto houver dispositivos ativos que possam precisar dele. A limpeza usa o menor ponto já recebido por esses dispositivos e nunca elimina apenas parte de uma sequência. Dispositivos inativos fazem uma nova carga inicial quando voltam a ser usados.
+### Decisão
 
-O feed separado de revisões de curso é ainda mais compacto: mantém somente a
-linha de maior sequência para cada combinação de audiência e curso, inclusive
-o tombstone de retirada. Uma nova publicação ou retirada sempre recebe uma
-sequência maior, portanto `afterSequence` continua encontrando o estado atual
-sem acumular sinais superados.
+O feed pessoal usa o menor cursor dos dispositivos ativos como watermark e
+mantém janela mínima de retenção. Dispositivos são considerados ativos por 90
+dias; `private.sync_changes` permanece por pelo menos 30 dias; deduplicação de
+mutações de dispositivo usa 90 dias. Um dispositivo vencido volta pelo
+bootstrap.
 
-## Acesso
+O feed de revisão oficial é ainda mais compacto: mantém somente a mudança mais
+recente por curso e audiência, inclusive o tombstone. Cada atualização recebe
+sequência maior; assim, um dispositivo que consulta depois de sua sequência
+continua encontrando o estado vigente sem uma linha por republicação.
 
-As regras de acesso por linha protegem dados pessoais. Usuários autenticados podem ler cursos oficiais publicados; seleções, trilhas, estado funcional e o texto mutável da própria observação pertencem à conta. Em workspace, funções contextuais permitem que papéis de revisão leiam categoria, texto e resposta necessários à triagem; estudantes continuam vendo somente os próprios registros. A tabela de observações não aceita acesso direto do navegador, e a página compartilhada não entra no cache leve do painel. Tabelas internas de sincronização também permanecem fechadas. Os limites de interpretação estão em [Estado de estudo não punitivo](estado-de-estudo-nao-punitivo.md).
+Uma manutenção oportunista diária inativa dispositivos vencidos e compacta o
+prefixo seguro sob advisory lock. A RPC administrativa
+`compact_sync_history` oferece dry-run antes da exclusão efetiva.
 
-Autoria privada, submissão, revisão e publicação editorial são capacidades
-calculadas para a conta autenticada. Funções de diagnóstico, limpeza e
-implantação continuam exigindo credenciais administrativas em ambiente seguro;
-essas credenciais não são usadas pela aplicação web ou Android.
+### Consequências e limites
+
+Retenção é uma política de disponibilidade do feed, não backup. O bootstrap
+reconstrói a base corrente, mas não recupera um histórico excluído. Tombstones
+de revisão precisam permanecer enquanto não houver watermark específico que
+prove que todos os clientes relevantes observaram a retirada.
+
+## Segurança da persistência
+
+Cada conta usa banco local distinto. No servidor, Row-Level Security e RPCs
+contextuais restringem dados pessoais. Tabelas internas de feed e
+deduplicação não têm leitura direta pelo navegador. Funções administrativas
+exigem canal protegido e não usam a chave publicável do site.
+
+Dados locais continuam sujeitos à segurança física do dispositivo e do perfil
+do navegador. Sair do AraLearn não constitui apagamento seguro do IndexedDB;
+exclusão de conta e limpeza de dispositivo são operações distintas. A política
+de dados pessoais está em [Privacidade](privacidade.md).
+
+## Evidência e pontos não demonstrados
+
+A suíte verifica transações locais, round-trip, troca de réplica, conflitos,
+falhas de rede simuladas, isolamento de conta, retenção e Auth/PostgREST no
+stack local. Esses testes não demonstram disponibilidade prolongada, perda
+física do dispositivo, comportamento de todos os navegadores sob pressão de
+armazenamento ou custo real em escala. A [Matriz de conformidade
+técnica](matriz-conformidade-tecnica.md) explicita esse limite.

@@ -20,7 +20,42 @@ const CONTEXTUAL_CONTENT_EXCEPTIONS = new Set([
 ]);
 const REQUIRED_TECHNICAL_DOCUMENTS = Object.freeze([
   "docs/glossario-tecnico.md",
-  "docs/matriz-conformidade-tecnica.md"
+  "docs/matriz-conformidade-tecnica.md",
+  "docs/principios-editoriais.md"
+]);
+const REQUIRED_PRODUCT_PRESENTATION_HEADINGS = Object.freeze([
+  "o problema educacional",
+  "como se estuda",
+  "como se cria e revisa conteudo",
+  "funcionamento sem conexao e sincronizacao",
+  "estado e limites",
+  "documentacao"
+]);
+const REQUIRED_DOCUMENTATION_ROUTES = Object.freeze([
+  "comecar a usar",
+  "estudar o modelo pedagogico",
+  "estudar a engenharia",
+  "estudar a autoria de cursos",
+  "avaliar o artefato",
+  "operar e implantar"
+]);
+const BACKSTAGE_DOCUMENTATION = Object.freeze([
+  {
+    pattern: /(?<![\p{L}\p{N}_])(?:disserta(?:ção|cao)|tese)(?![\p{L}\p{N}_])/giu,
+    label: "vocabulário de finalidade acadêmica externa ao produto"
+  },
+  {
+    pattern: /\bissue\s*#?\d+\b/giu,
+    label: "referência a issue em documentação do estado corrente"
+  },
+  {
+    pattern: /\b(?:nesta|naquela)\s+conversa\b/giu,
+    label: "referência à conversa que originou a documentação"
+  },
+  {
+    pattern: /\b(?:como|conforme)\s+(?:foi\s+)?solicitad[oa]\b/giu,
+    label: "referência ao processo de solicitação"
+  }
 ]);
 const LEGACY_FACTUAL_CLAIMS = Object.freeze([
   {
@@ -98,6 +133,9 @@ function anchors(source) {
     const occurrence = occurrences.get(base) || 0;
     occurrences.set(base, occurrence + 1);
     result.add(occurrence ? `${base}-${occurrence}` : base);
+  }
+  for (const anchor of source.matchAll(/<a\s+[^>]*(?:id|name)=["']([^"']+)["'][^>]*>/giu)) {
+    result.add(anchor[1].toLocaleLowerCase("pt-BR"));
   }
   return result;
 }
@@ -237,6 +275,91 @@ function auditRequiredTechnicalDocuments({ root, docsReadme, errors }) {
   }
 }
 
+function auditEditorialIndependence({ root, markdown, sources, errors }) {
+  for (const file of markdown) {
+    if (isGeneratedDocumentation(root, file) || isHistoricalDocumentation(root, file)) continue;
+    const source = sources.get(file);
+    const prose = markdownProseForFactualAudit(source);
+    for (const rule of BACKSTAGE_DOCUMENTATION) {
+      for (const match of prose.matchAll(rule.pattern)) {
+        errors.push(`${relativePath(root, file)}:${lineNumber(source, match.index)}: ${rule.label}`);
+      }
+    }
+  }
+
+  const rootReadme = sources.get(path.join(root, "README.md")) || "";
+  const firstSection = /^##\s+/mu.exec(rootReadme);
+  const introduction = rootReadme.slice(0, firstSection?.index ?? rootReadme.length);
+  const unexplainedAcronym = /\b(?:MCP|Action)\b/gu.exec(markdownProseForFactualAudit(introduction));
+  if (unexplainedAcronym) {
+    errors.push(
+      `README.md:${lineNumber(rootReadme, unexplainedAcronym.index)}: integração técnica aparece antes da apresentação do produto`
+    );
+  }
+}
+
+function normalizedHeadingTitles(source, depth) {
+  return new Set(
+    headingList(source)
+      .filter((heading) => heading.depth === depth)
+      .map((heading) => comparableText(heading.title).replace(/[^\p{L}\p{N}]+/gu, " ").trim())
+  );
+}
+
+function auditLearningArchitecture({ rootReadme, docsReadme, errors }) {
+  const presentation = normalizedHeadingTitles(rootReadme, 2);
+  for (const required of REQUIRED_PRODUCT_PRESENTATION_HEADINGS) {
+    if (!presentation.has(required)) {
+      errors.push(`README.md: seção de apresentação obrigatória ausente: ${required}`);
+    }
+  }
+
+  const routes = normalizedHeadingTitles(docsReadme, 2);
+  for (const required of REQUIRED_DOCUMENTATION_ROUTES) {
+    if (!routes.has(required)) {
+      errors.push(`docs/README.md: percurso de aprendizagem obrigatório ausente: ${required}`);
+    }
+  }
+}
+
+function bibliographyKeys(source) {
+  return new Set([...source.matchAll(/^@\w+\{([^,\s]+),/gmu)].map((match) => match[1]));
+}
+
+function auditBibliographicCitations({ root, markdown, sources, errors }) {
+  const bibliographyFile = path.join(root, "docs", "referencias.bib");
+  if (!fs.existsSync(bibliographyFile)) {
+    errors.push("docs/referencias.bib: bibliografia canônica ausente");
+    return;
+  }
+  const keys = bibliographyKeys(fs.readFileSync(bibliographyFile, "utf8"));
+  for (const file of markdown) {
+    if (isGeneratedDocumentation(root, file)) continue;
+    const source = markdownProseForFactualAudit(sources.get(file));
+    for (const citation of source.matchAll(/\[([^\]]*?@[^\]]+)\]/gu)) {
+      errors.push(
+        `${relativePath(root, file)}:${lineNumber(source, citation.index)}: citação Pandoc exposta ao leitor; use o link legível para referencias.md`
+      );
+      for (const key of citation[1].matchAll(/@([A-Za-z0-9:_-]+)/gu)) {
+        const value = key[1];
+        if (!keys.has(value)) {
+          errors.push(
+            `${relativePath(root, file)}:${lineNumber(source, citation.index)}: citação bibliográfica desconhecida @${value}`
+          );
+        }
+      }
+    }
+    for (const citation of source.matchAll(/\[[^\]]+\]\((?:\.\/)?referencias\.md#ref-([A-Za-z0-9:_-]+)\)/gu)) {
+      const value = citation[1];
+      if (!keys.has(value)) {
+        errors.push(
+          `${relativePath(root, file)}:${lineNumber(source, citation.index)}: link bibliográfico aponta para chave desconhecida ${value}`
+        );
+      }
+    }
+  }
+}
+
 function auditHeadingStructure({ root, file, source, errors }) {
   if (isGeneratedKnowledgeBundle(root, file)) return;
   const headings = headingList(source);
@@ -307,6 +430,9 @@ export function auditDocumentation({ root = defaultRoot } = {}) {
   const docsReadme = sources.get(path.join(root, "docs", "README.md")) || "";
   auditRequiredTechnicalDocuments({ root, docsReadme, errors });
   auditLegacyFactualClaims({ root, markdown, sources, errors });
+  auditEditorialIndependence({ root, markdown, sources, errors });
+  auditLearningArchitecture({ rootReadme, docsReadme, errors });
+  auditBibliographicCitations({ root, markdown, sources, errors });
   const indexes = `${rootReadme}\n${docsReadme}`;
   for (const file of markdown.filter((current) => path.dirname(current) === path.join(root, "docs"))) {
     if (path.basename(file) === "README.md") continue;

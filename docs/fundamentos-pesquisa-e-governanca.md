@@ -1,247 +1,384 @@
-# Fundamentos, pesquisa e governança
+# Fundamentos de pesquisa e governança científica
 
-## Função deste documento
+## Finalidade
 
-Este é o ponto de entrada do corpus acadêmico-pedagógico do AraLearn. O
-produto é simultaneamente um artefato técnico, uma intervenção educacional em
-desenvolvimento e um possível objeto de investigação. Essas três condições não
-se confundem: uma propriedade implementada não constitui, por si só, evidência
-de aprendizagem; uma decisão de design não se torna teoria; e uma hipótese
-plausível não se torna resultado antes de avaliação.
+O AraLearn pode ser examinado simultaneamente como:
 
-A documentação foi organizada para poder sustentar um projeto de dissertação
-ou tese sem transformar memória de produto em conclusão científica. A
-bibliografia canônica está em [referencias.bib](referencias.bib), e toda
-afirmação de eficácia permanece condicionada ao [protocolo de avaliação do
-artefato](protocolo-avaliacao-artefato.md).
+1. **produto de software**, constituído por código, dados, contratos,
+   interfaces e infraestrutura;
+2. **artefato de design**, construído para responder a um conjunto de problemas
+   e incorporar conhecimentos de projeto;
+3. **intervenção educacional**, utilizada por pessoas em atividades de estudo,
+   autoria e colaboração;
+4. **objeto de investigação**, sobre o qual se formulam perguntas, hipóteses e
+   avaliações.
 
-## Mapa do corpus para uma dissertação ou tese
+Essas perspectivas se relacionam, mas não são equivalentes. Um teste pode
+demonstrar que um card abre offline; não demonstra que a disponibilidade local
+melhora a aprendizagem. Uma fonte pode sustentar a plausibilidade de exemplos
+resolvidos; não prova que uma microssequência concreta foi bem escrita. Uma
+entrevista pode revelar como participantes compreenderam uma permissão; não
+substitui um teste de isolamento do banco de dados.
 
-| Função no trabalho acadêmico | Documento principal | Evidência que deve acompanhar | Limite de uso |
+Este documento ensina como separar essas formas de conhecimento, como organizar
+uma investigação responsável e como manter a documentação auditável.
+
+Nos trechos técnicos, **kernel** significa o núcleo comum que coordena o
+aplicativo; **package**, um módulo de recurso com contrato e renderização
+próprios; **workspace**, um espaço de trabalho com membros e permissões locais;
+e **inteligência artificial (IA)**, os modelos e serviços usados para auxiliar
+autoria. **Local-first** designa a arquitetura em que a cópia local sustenta a
+operação corrente e a sincronização remota ocorre fora do caminho crítico da
+interação.
+
+## O que significa governança científica
+
+**Governança científica** é o conjunto de regras que controla como perguntas,
+fontes, decisões, implementações, dados e conclusões são produzidos e
+relacionados. Sua finalidade não é burocratizar o desenvolvimento; é impedir
+que memória de produto, convicção de projetista e resultado empírico sejam
+tratados como se fossem a mesma coisa.
+
+No AraLearn, a governança precisa responder:
+
+- de onde vem uma afirmação;
+- em que contexto ela foi produzida;
+- que decisão ela fundamenta e com qual grau de indireção;
+- onde a decisão foi implementada;
+- que teste demonstra a implementação;
+- que avaliação poderia sustentar ou enfraquecer a hipótese;
+- quais dados são necessários e quem pode acessá-los;
+- que versão do artefato foi examinada;
+- que limites impedem generalização indevida.
+
+## Estados epistêmicos
+
+“Epistêmico” refere-se ao estatuto de uma afirmação como conhecimento. O corpus
+do AraLearn utiliza seis estados:
+
+| Estado | Definição | Evidência necessária | Linguagem adequada |
 | --- | --- | --- | --- |
-| problema, contexto e delimitação | este documento | caracterização do público e do contexto de estudo | não generalizar a qualquer estudante ou instituição |
-| revisão do conhecimento disponível | [Revisão de literatura](revisao-de-literatura.md) | estratégia de busca e tabela de fontes da investigação | a revisão atual é narrativa e orientada ao design |
-| modelo conceitual e proposições | [Quadro teórico](quadro-teorico.md) | definição de construtos e relações testáveis | proposições são hipóteses, não fatos |
-| definições operacionais | [Glossário de construtos](glossario-construtos.md) | fonte, manifestação e interpretação proibida | nomes da interface não são construtos científicos |
-| teoria → design → observação | [Matriz de rastreabilidade pedagógica](matriz-rastreabilidade-pedagogica.md) | requisito, mecanismo, código, teste e instrumento | teste de software não demonstra efeito pedagógico |
-| método de construção e avaliação | [Protocolo de avaliação](protocolo-avaliacao-artefato.md) | episódios DBR e DSR versionados | DBR e DSR são complementares, não sinônimos |
-| contribuição e novidade | [Contribuição e originalidade](contribuicao-originalidade.md) | comparação, avaliação e casos negativos | não alegar primazia sem busca comparativa |
-| conformidade técnica | [Matriz de conformidade técnica](matriz-conformidade-tecnica.md) | código, schemas, testes e artefatos de implantação | conformidade técnica não equivale a validade pedagógica |
-| memória operacional | manual privado versionado | decisões, incidentes e mudanças de versão | não citar como literatura científica |
+| **evidência externa** | resultado ou argumento publicado fora do AraLearn | fonte identificável e limites de população, tarefa e método | “a revisão encontrou...”, “o estudo observou...” |
+| **inferência teórica** | relação argumentada entre literatura e contexto do produto | encadeamento explícito e alternativas | “isso torna plausível...”, “pode ser relevante...” |
+| **hipótese de design** | relação falseável entre contexto, mecanismo e resultado | comparação, medida e critério de revisão propostos | “a hipótese é que...” |
+| **decisão de produto** | escolha pedagógica, normativa ou arquitetural vigente | problema, alternativas, fundamento e consequências | “o AraLearn adota...” |
+| **propriedade implementada** | comportamento demonstrável do artefato | código, esquema de dados, teste, inspeção ou medição | “a versão implementa...” |
+| **resultado empírico** | achado produzido em avaliação documentada | participantes ou corpus, procedimento, análise e incerteza | “nestas condições, observou-se...” |
 
-Uma estrutura possível de capítulos é: (1) problema e contexto; (2) revisão de
-literatura; (3) quadro teórico e proposições; (4) método DBR/DSR; (5) desenho e
-implementação do artefato; (6) episódios de avaliação; (7) discussão e limites;
-(8) contribuição e agenda futura. O código e os testes entram como evidência da
-construção e da conformidade do artefato; dados de participantes entram somente
-nos capítulos de avaliação, sob protocolo ético aprovado.
+### Por que essa separação é necessária
 
-## Estados epistêmicos obrigatórios
+Considere a afirmação “o funcionamento offline reduz o abandono”. Ela contém
+duas relações distintas:
 
-O corpus usa seis rótulos. Eles devem aparecer em notas de pesquisa, matrizes e
-relatos de ciclo sempre que houver risco de ambiguidade.
+```text
+conteúdo disponível sem rede
+  → propriedade técnica demonstrável
 
-| Rótulo | Significado | Exemplo permitido |
-| --- | --- | --- |
-| **Evidência externa** | resultado publicado ou síntese de literatura, com população, tarefa e limites próprios | prática de recuperação costuma beneficiar retenção em condições estudadas |
-| **Inferência teórica** | relação argumentada entre evidências e o contexto do AraLearn | retomada visível pode reduzir custo operacional após interrupção |
-| **Hipótese de design** | proposição falseável sobre contexto, mecanismo e resultado | um cursor local pode facilitar a retomada de uma sessão móvel |
-| **Decisão de produto** | escolha normativa ou arquitetural vigente | não usar tempo em tela como proxy de atenção |
-| **Propriedade implementada** | comportamento demonstrável por código, inspeção ou teste | o estudo sincronizado permanece disponível offline |
-| **Resultado empírico** | achado produzido por episódio de avaliação descrito | participantes de uma amostra concluíram determinada tarefa sob certas condições |
+disponibilidade sem rede
+  → continuidade ou abandono
+  → hipótese que exige população, comparação e medida
+```
 
-Ausência de rótulo não autoriza promoção automática. Em particular,
-“funciona”, “melhora”, “reduz” e “favorece” exigem sujeito, comparação, medida,
-contexto e fonte. Quando a relação ainda não foi avaliada, deve-se escrever
-“pretende”, “pode” ou “hipótese a testar”.
+O teste de rede pode sustentar a primeira; não pode sustentar a segunda.
+Expressões como “melhora”, “reduz”, “favorece” e “aumenta” precisam nomear
+sujeito, comparação, resultado, contexto e fonte. Quando isso ainda não existe,
+usa-se “pretende”, “pode” ou “hipótese a avaliar”.
 
 ## Objeto, contexto e delimitação
 
-O AraLearn investiga uma plataforma móvel e local-first para estudo e autoria
-de cursos estruturados em percursos, microssequências, cards e representações
-especializadas. O caso prioritário é o estudante adulto que concilia trabalho
-e estudo, usa celular, enfrenta interrupções e pode perder conectividade. Essa
-caracterização é uma delimitação de design; deve ser confirmada empiricamente
-na população de cada estudo.
+O objeto investigado é uma plataforma móvel e local-first para estudo e autoria
+de cursos organizados em percursos, microssequências, cards e representações
+especializadas. O contexto prioritário inclui pessoas adultas que conciliam
+trabalho e estudo, utilizam celular, enfrentam interrupções e podem perder
+conectividade.
 
-O problema não é somente disponibilizar informação. É tornar explícitos o
-percurso, os pré-requisitos, a prática e a possibilidade de retomada sem
-condensar teoria a ponto de ocultar fundamentos. No AraLearn,
-**microssequência** e **microteoria** são termos operacionais: não designam uma
-dose universal nem autorizam a fragmentação de conceitos. A literatura de
-segmentação mostra efeitos moderados por tarefa e desenho (Rey et al., 2019), e
-a literatura de microlearning permanece heterogênea (De Gagne et al., 2019).
+Essa prioridade é uma **delimitação de design**, não uma descrição empírica de
+todos os usuários. Cada avaliação precisa caracterizar sua própria população,
+incluindo experiência com tecnologia, domínio de conhecimento, dispositivo,
+condições de rede e contexto de uso.
 
-## Questão central e subquestões
+O problema de pesquisa não se reduz a disponibilizar conteúdo. Ele envolve:
 
-A formulação de trabalho, ainda revisável antes de registro do estudo, é:
+- construir explicações profundas sem pressupostos ocultos;
+- dividir o percurso sem fragmentar relações;
+- escolher representações apropriadas às operações;
+- articular teoria, prática, feedback e retomada;
+- sustentar estudo em condições móveis e offline;
+- permitir autoria assistida sem transferir responsabilidade à IA;
+- coordenar pessoas e permissões sem vigilância ou poder global;
+- manter custo, armazenamento e manutenção proporcionais.
 
-> Como uma plataforma móvel, local-first e orientada por representações pode
-> ser projetada e avaliada para apoiar estudo e autoria em contextos de tempo
-> fragmentado e conectividade variável, preservando coerência pedagógica,
-> agência humana e responsabilidade sobre IA?
+## Pergunta orientadora e subproblemas
 
-Subquestões possíveis, todas abertas:
+Uma pergunta ampla capaz de organizar o programa é:
 
-1. **RQ1 — desenho pedagógico:** como tamanho, progressão e combinação de
-   explicação, exemplo, prática e feedback afetam compreensão, retenção e
-   transferência, considerados separadamente?
-2. **RQ2 — representação:** em que condições um resource especializado reduz
-   traduções desnecessárias sem criar carga extrínseca ou exigir gramática
-   visual não ensinada?
-3. **RQ3 — continuidade:** como offline, retomada e orientação mobile afetam a
-   capacidade de continuar uma atividade após interrupção?
-4. **RQ4 — autoria e IA:** como escopo explícito, contratos e reversibilidade
-   afetam controle percebido, qualidade autoral e retrabalho?
-5. **RQ5 — governança:** quais dados, papéis e intervenções são úteis sem
-   converter rastros ambíguos em vigilância ou diagnóstico indevido?
+> Como projetar e avaliar uma plataforma móvel, local-first e orientada por
+> representações para apoiar estudo e autoria em condições de tempo fragmentado
+> e conectividade variável, preservando coerência pedagógica, agência humana e
+> responsabilidade no uso de IA?
 
-Essas perguntas não precisam compor um único estudo. Uma dissertação pode
-delimitar uma ou duas; uma tese pode articulá-las em programa de episódios.
+Essa pergunta deve ser decomposta em estudos delimitados:
 
-## Duas tradições metodológicas complementares
+1. **progressão didática:** em que condições a distribuição de explicação,
+   exemplo, prática e feedback sustenta compreensão, retenção e transferência?
+2. **representação:** quando um recurso especializado ajuda a executar uma
+   operação sem introduzir gramática visual ou carga desnecessária?
+3. **continuidade:** como disponibilidade local, sincronização e marco de
+   retomada afetam a capacidade de continuar após interrupção?
+4. **autoria assistida:** como catálogo, contrato, escopo e reversibilidade
+   afetam erro de alvo, qualidade e controle humano?
+5. **governança:** que papéis, dados e intervenções são legítimos e úteis sem
+   converter rastros ambíguos em diagnóstico?
+6. **frugalidade:** como custo, armazenamento, payload e manutenção evoluem sem
+   comprometer segurança, acessibilidade e rigor?
 
-### Design-Based Research — DBR
+Essas perguntas podem ser investigadas separadamente. Colocá-las num único
+estudo produziria unidades, medidas e explicações rivais demais para uma análise
+coerente.
 
-DBR é usada para investigar uma intervenção educacional em contexto autêntico,
-por ciclos de análise, desenho, implementação e revisão com participantes e
-atores da prática. O produto esperado não é apenas uma interface corrigida,
-mas explicações situadas sobre **como**, **para quem**, **quando** e **por que**
-um mecanismo contribuiu ou falhou. Design-Based Research Collective (2003) e
-Wang e Hannafin (2005) fundamentam essa trilha.
+## Design-Based Research
 
-No AraLearn, DBR é a trilha adequada para microssequências, compreensão de
-representações, retomada no cotidiano, feedback, agência e práticas de autoria.
-Ela requer contexto real, participação, dados qualitativos e quantitativos
-coerentes com a pergunta e registro das mudanças entre ciclos.
+### Conceito
 
-### Design Science Research — DSR
+Design-Based Research (DBR) é uma tradição de investigação de intervenções
+educacionais em contextos autênticos. Ela articula análise do problema,
+desenho, implementação, observação e revisão, buscando compreender como a
+intervenção opera em condições concretas e produzir conhecimentos de design
+transferíveis com limites explícitos ([Design-Based Research Collective (2003)](referencias.md#ref-dbrc2003designbased); [Wang e Hannafin (2005)](referencias.md#ref-wang2005designbased)).
 
-DSR é usada para construir e avaliar o artefato e o conhecimento de design que
-ele incorpora. Hevner et al. (2004), Peffers et al. (2007), Gregor e Hevner
-(2013) e Venable et al. (2016) ajudam a distinguir problema, objetivos,
-artefato, demonstração, avaliação e contribuição.
+DBR não significa simplesmente “desenvolver iterativamente”. Um ciclo precisa
+ter:
 
-No AraLearn, DSR é a trilha adequada para kernel e packages, contrato de curso,
-catálogo progressivo de resources, persistência local-first, escopo de autoria,
-validação e frugalidade. Testes automatizados sustentam correção e
-conformidade; utilidade educacional e uso real exigem episódios adicionais.
+- problema educacional situado;
+- conjectura ou mecanismo explícito;
+- intervenção descrita e versionada;
+- participação de atores relevantes;
+- dados coerentes com a pergunta;
+- análise de processo, resultado e casos negativos;
+- revisão da intervenção e da explicação.
 
-### Como as trilhas se encontram
+### Aplicação ao AraLearn
+
+- **Problema:** decisões didáticas e de uso só podem ser compreendidas no
+  contexto em que pessoas estudam, retomam, interpretam e revisam.
+- **Alternativas:** avaliação laboratorial isolada, coleta de satisfação ou
+  ciclos situados com mecanismos declarados.
+- **Decisão:** usar DBR para investigar progressão, representações, feedback,
+  retomada cotidiana, observações e práticas de autoria em contexto.
+- **Fundamentação:** DBR relaciona teoria, desenho e prática sem presumir que a
+  intervenção funcione da mesma forma em todos os ambientes
+  ([Design-Based Research Collective (2003)](referencias.md#ref-dbrc2003designbased); [Wang e Hannafin (2005)](referencias.md#ref-wang2005designbased)).
+- **Operacionalização:** cada ciclo registra contexto, versão, conjectura C–M–O,
+  processo, resultados, rivais, efeitos adversos e revisão.
+- **Consequências:** mudanças no produto tornam-se parte da explicação, e não
+  ruído ocultado.
+- **Limites:** resultados permanecem situados; abstração exige comparação entre
+  ciclos e justificativa de transferência.
+
+## Design Science Research
+
+### Conceito
+
+Design Science Research (DSR) investiga a construção e a avaliação de artefatos
+destinados a resolver problemas relevantes, além do conhecimento de design que
+esses artefatos incorporam ([Hevner et al. (2004)](referencias.md#ref-hevner2004designscience); [Peffers et al. (2007)](referencias.md#ref-peffers2007dsrm)). A contribuição pode ser o próprio artefato, um método, uma
+arquitetura, um princípio ou conhecimento sobre condições de sucesso e falha.
+
+Gregor e Hevner propõem posicionar a contribuição conforme a maturidade do
+problema e da solução ([Gregor e Hevner (2013)](referencias.md#ref-gregor2013positioning)). O framework FEDS ajuda a
+planejar avaliações formativas ou somativas, artificiais ou naturalísticas
+([Venable et al. (2016)](referencias.md#ref-venable2016feds)).
+
+### Aplicação ao AraLearn
+
+- **Problema:** o produto combina kernel, packages, contratos, armazenamento,
+  sincronização, autoria e governança; é necessário demonstrar correção,
+  utilidade e custo sem confundir esses resultados.
+- **Alternativas:** relatar apenas implementação, executar testes sem argumento
+  de design ou organizar problema, objetivo, construção, demonstração,
+  avaliação e contribuição.
+- **Decisão:** usar DSR para investigar arquitetura de recursos, contratos,
+  persistência local-first, delimitação de autoria, validação e frugalidade.
+- **Fundamentação:** DSR oferece estrutura para relacionar relevância,
+  rigor, artefato e avaliação ([Hevner et al. (2004)](referencias.md#ref-hevner2004designscience); [Peffers et al. (2007)](referencias.md#ref-peffers2007dsrm); [Gregor e Hevner (2013)](referencias.md#ref-gregor2013positioning)).
+- **Operacionalização:** requisitos verificáveis, versão identificada, cenário
+  nominal e adverso, comparação, medição e decisão de manter, alterar ou
+  remover.
+- **Consequências:** testes e medições tornam-se evidência do artefato, enquanto
+  resultados educacionais permanecem em episódios próprios.
+- **Limites:** construir software de qualidade não constitui automaticamente
+  pesquisa em DSR; é preciso explicitar contribuição e avaliação.
+
+## Relação entre DBR e DSR
+
+DBR e DSR são complementares, não sinônimos. A primeira parte de um problema
+educacional situado e investiga uma intervenção em contexto; a segunda parte
+de um problema de projeto e investiga a construção e a avaliação de um
+artefato. No AraLearn, as duas perspectivas podem compartilhar episódios e
+dados, mas não compartilham automaticamente a mesma pergunta nem o mesmo tipo
+de conclusão.
 
 ```text
-DBR: problema educacional situado → intervenção → uso autêntico → explicação
-                                      ↕
-DSR: problema do artefato → construção → demonstração → avaliação → contribuição
+DBR
+problema educacional situado
+  → intervenção
+  → uso em contexto
+  → explicação e princípio educacional
+
+DSR
+problema do artefato
+  → construção
+  → demonstração e avaliação
+  → contribuição de design
 ```
 
-Uma mudança pode pertencer às duas trilhas, mas os produtos de evidência não
-são intercambiáveis. Um teste visual pode demonstrar ausência de sobreposição;
-somente uma tarefa com participantes pode informar se a representação foi
-compreendida; e somente uma medida posterior pode informar retenção.
+As duas tradições podem examinar a mesma versão, mas usam os dados para
+perguntas diferentes. Um teste visual demonstra que rótulos não se sobrepõem;
+uma tarefa com participantes informa se a relação foi interpretada; uma medida
+posterior informa retenção. Nenhum desses resultados substitui os demais.
 
-## Fundamentos que orientam, sem determinar, o design
+## Fundamentos que orientam o desenho
 
-### Carga, segmentação e representações
+### Carga, segmentação e representação
 
-A teoria da carga cognitiva distingue demandas inerentes à tarefa das demandas
-criadas pelo desenho (Sweller, 1988; Sweller et al., 1998). DeFT trata múltiplas
-representações por suas funções, restrições e tarefas (Ainsworth, 2006).
-Contiguidade e segmentação podem apoiar integração, mas não tornam qualquer
-imagem ou card curto pedagogicamente bom (Ginns, 2006; Rey et al., 2019).
+A teoria da carga cognitiva destaca demandas introduzidas pelo desenho
+([Sweller (1988)](referencias.md#ref-sweller1988cognitiveload); [Sweller et al. (1998)](referencias.md#ref-sweller1998architecture)). O quadro DeFT examina
+funções e tarefas de representações externas ([Ainsworth (2006)](referencias.md#ref-ainsworth2006deft)). Evidências de
+contiguidade e segmentação sustentam atenção à integração, mas não tornam
+qualquer card curto ou imagem pedagogicamente adequado
+([Ginns (2006)](referencias.md#ref-ginns2006contiguity); [Rey et al. (2019)](referencias.md#ref-rey2019segmenting)).
 
-**Decisão de produto:** um resource só se justifica quando sua estrutura
-preserva uma operação acadêmica que texto linear ou package mais geral não
-representaria com a mesma precisão. **Hipótese:** a seleção por intenção e a
-renderização canônica podem reduzir tradução mental; isso ainda requer
-comparação por tarefa e domínio.
+**Decisão:** um recurso especializado só se justifica quando preserva uma
+estrutura acadêmica relevante. **Hipótese:** seleção por operação e
+representação canônica podem reduzir tradução mental. **Limite:** essa relação
+precisa ser comparada por tarefa e domínio.
 
-### Aprendizagem inicial, recuperação e distribuição
+### Aquisição inicial, recuperação e distribuição
 
-Exemplos resolvidos e retirada gradual de apoio podem beneficiar aprendizes
-novatos em tarefas complexas (Sweller & Cooper, 1985; Renkl et al., 2004).
-Prática de recuperação e distribuição possuem respaldo amplo, mas efeitos
-dependem do conteúdo, formato, conhecimento prévio, intervalo e feedback
-(Cepeda et al., 2006; Agarwal et al., 2021; Carpenter et al., 2022).
-Intercalação não é sinônimo de espaçamento e apresenta moderadores próprios
-(Brunmair & Richter, 2019).
+Exemplos resolvidos e retirada gradual podem favorecer novatos em determinadas
+tarefas ([Sweller e Cooper (1985)](referencias.md#ref-sweller1985workedexamples); [Renkl et al. (2004)](referencias.md#ref-renkl2004fading)). Recuperação e
+distribuição possuem suporte amplo, com efeitos condicionados por conteúdo,
+formato, intervalo e medida ([Cepeda et al. (2006)](referencias.md#ref-cepeda2006distributed); [Agarwal et al. (2021)](referencias.md#ref-agarwal2021retrieval); [Carpenter et al. (2022)](referencias.md#ref-carpenter2022spacing)). Intercalação possui moderadores
+próprios ([Brunmair e Richter (2019)](referencias.md#ref-brunmair2019interleaving)).
 
-**Decisão de produto:** planejamento pedagógico antecede quantidade de cards e
-resources. Teoria não é resumida para caber num número fixo; práticas variam
-conforme os gestos cognitivos necessários. **Hipótese:** uma microssequência
-coerente pode articular explicação progressiva, apoio, recuperação e feedback.
+**Decisão:** planejamento antecede a quantidade de cards; prática é escolhida
+pela operação e retomada não segue intervalo universal. **Hipótese:** uma
+microssequência coerente pode articular apoio, produção, feedback e retomada.
+**Limite:** resultados imediatos, posteriores e de transferência permanecem
+separados.
 
-### Agência, mediação e feedback
+### Agência e feedback
 
-Autorregulação envolve planejamento, desempenho e reflexão, não apenas
-liberdade de navegação (Zimmerman, 2002; Panadero, 2017). Controle do aprendiz
-tem resultados heterogêneos (Karich et al., 2014). Feedback depende da
-informação, da interpretação e da possibilidade de ação (Hattie & Timperley,
-2007; Carless & Boud, 2018; Morris et al., 2021).
+Autorregulação inclui planejamento, desempenho, monitoramento e reflexão
+([Zimmerman (2002)](referencias.md#ref-zimmerman2002selfregulated); [Panadero (2017)](referencias.md#ref-panadero2017selfregulated)). Controle oferecido
+pela tecnologia apresenta efeitos heterogêneos ([Karich et al. (2014)](referencias.md#ref-karich2014learnercontrol)).
+Feedback depende de informação, interpretação e ação
+([Hattie e Timperley (2007)](referencias.md#ref-hattie2007feedback); [Carless e Boud (2018)](referencias.md#ref-carless2018feedbackliteracy); [Morris et al. (2021)](referencias.md#ref-morris2021formative)).
 
-**Decisão de produto:** o estado de estudo é não punitivo; tentativas, tempo e
-respostas reveladas não se transformam em nota ou diagnóstico. Essa é uma
-política normativa. Não deve ser apresentada como evidência de que ansiedade
-foi reduzida.
+**Decisão:** o estudo não converte tentativas e ajuda em punição ou diagnóstico;
+autoria e revisão permanecem reversíveis. **Hipótese:** feedback específico e
+controle compreensível podem apoiar ação posterior. **Limite:** nenhum efeito
+sobre ansiedade ou autonomia é presumido.
 
-### IA, analytics e governança
+### IA e governança de dados
 
-Geração apoiada por recuperação pode restringir contexto, mas não garante
-verdade (Lewis et al., 2020). Diretrizes de interação humano-IA recomendam
-comunicar limites, permitir correção e sustentar controle humano (Amershi et
-al., 2019); funções de fricção podem reduzir confiança automática em certos
-contextos (Buçinca et al., 2021). UNESCO (2023) e NIST (2024) situam
-responsabilidade, privacidade e avaliação de risco.
+Recuperação pode condicionar a geração, mas não garante factualidade
+([Lewis et al. (2020)](referencias.md#ref-lewis2020rag)). Interação humano–IA requer comunicação de limites, correção e
+controle ([Amershi et al. (2019)](referencias.md#ref-amershi2019humanai)). Orientações de risco destacam responsabilidade
+e proteção de dados ([UNESCO (2023)](referencias.md#ref-unesco2023genai); [Autio et al. (2024)](referencias.md#ref-nist2024genai)). Learning analytics exige
+finalidade, transparência e proporcionalidade ([Pardo e Siemens (2014)](referencias.md#ref-pardo2014ethical); [Prinsloo e Slade (2017)](referencias.md#ref-prinsloo2017ethics)).
 
-Learning analytics exige finalidade, transparência, proporcionalidade e
-possibilidade de ação (Pardo & Siemens, 2014; Prinsloo & Slade, 2017). **Decisão
-de produto:** só se coleta dado associado a pergunta e intervenção declaradas;
-clique e tempo não são proxies de atenção, esforço ou aprendizagem.
+**Decisão:** contexto, escopo, validação e responsabilidade permanecem
+explícitos; dados só entram quando ligados a pergunta e intervenção. **Hipótese:**
+essa arquitetura pode reduzir deriva e vigilância indevida. **Limite:** esquema de dados
+válido e coleta mínima não demonstram qualidade ou confiança.
 
-## Proveniência do corpus
+## Proveniência bibliográfica
 
-O repositório histórico
-[ARA-pre-consolidation](https://github.com/fabio-ara/ARA-pre-consolidation)
-foi usado como corpus de descoberta. Suas sínteses e bibliografias registram
-hipóteses acumuladas e trilhas de busca, não decisões vigentes. Nesta
-consolidação, uma referência só foi promovida para
-[referencias.bib](referencias.bib) após conferência de DOI, ISBN ou URL
-persistente; implicações antigas foram reclassificadas como evidência externa,
-inferência, hipótese, decisão ou lacuna.
+O arquivo [`referencias.bib`](referencias.bib) é a fonte bibliográfica
+canônica. Uma referência entra nele depois da conferência de autoria, título,
+ano e identificador persistente. Repositórios históricos, notas e buscas podem
+servir à descoberta, mas não se tornam evidência externa sem conferência da
+fonte original.
 
-Para uma revisão de escopo formal, o protocolo deve seguir JBI e PRISMA-ScR
-(Peters et al., 2024; Tricco et al., 2018), com bases, strings, datas,
-duplicatas, seleção, avaliação crítica e fluxograma preservados fora do código
-do produto.
+Uma revisão reproduzível futura deve registrar o protocolo fora do código do
+produto: bases, strings, datas, critérios, duplicatas, seleção, avaliação
+crítica e fluxograma ([Peters et al. (2024)](referencias.md#ref-peters2024scoping); [Tricco et al. (2018)](referencias.md#ref-tricco2018prismascr)).
 
-## Limitações e lacunas atuais
+## Governança de decisões
 
-- a revisão atual é narrativa e orientada ao design, não sistemática;
-- ainda não há comparação exaustiva com LMS, flashcards, tutores, ferramentas
-  autorais, sistemas local-first e catálogos extensíveis de representações;
-- a população prioritária precisa ser caracterizada empiricamente;
-- não há evidência consolidada de aprendizagem produzida pelo AraLearn;
-- a validade entre áreas do conhecimento e níveis de formação permanece
-  aberta;
-- modelos de IA, provedores, prompts e conhecimento recuperado podem mudar
-  entre ciclos;
-- qualidade visual, correção de schema e cobertura de testes não demonstram
-  adequação acadêmica nem compreensão;
-- frugalidade de armazenamento e custo precisa ser medida longitudinalmente;
-- participação institucional, autoria coletiva e riscos de poder exigem
-  estudos próprios.
+### Registro mínimo
 
-## Regra de governança científica
+Toda decisão relevante deve responder, em documento versionado:
 
-Toda mudança relevante deve deixar quatro rastros separados:
+1. **problema:** qual situação requer decisão;
+2. **alternativas e requisitos:** que soluções eram plausíveis e o que não
+   poderia ser perdido;
+3. **decisão:** o que foi adotado;
+4. **fundamentação:** que literatura, norma, evidência técnica ou valor a
+   sustenta;
+5. **operacionalização:** onde aparece no produto e como será verificada;
+6. **consequências:** benefícios esperados, custos e dependências;
+7. **limites e evidência:** o que ainda não se sabe e que achado exigiria
+   revisão.
 
-1. **decisão operacional**, no manual privado;
-2. **implementação**, no código, schemas e testes;
-3. **justificação**, na matriz pedagógica e na literatura;
-4. **avaliação**, no protocolo e nos dados autorizados do estudo.
+### Rastreabilidade separada
 
-Não se deve preencher retrospectivamente uma justificativa para legitimar uma
-decisão. Quando a evidência não sustenta diretamente o mecanismo, registra-se a
-inferência e testa-se a hipótese. Resultados negativos, abandono de recursos e
-limites de transferência são contribuições do programa de pesquisa, não falhas
-documentais a ocultar.
+Uma mudança deixa rastros diferentes:
+
+- justificação conceitual e pedagógica na documentação pública;
+- decisão operacional e incidentes no registro operacional apropriado;
+- implementação no código, contratos e esquemas de dados;
+- conformidade em testes e medições técnicas;
+- avaliação em protocolo, instrumentos e dados autorizados.
+
+Não se deve inventar retrospectivamente uma justificativa para legitimar uma
+decisão já tomada. Quando a evidência é indireta, isso precisa ser dito; quando
+uma hipótese falha, a documentação deve registrar a revisão.
+
+## Governança de dados e ética
+
+Antes de coletar um dado, devem ser definidos:
+
+- pergunta e finalidade;
+- construto ou resultado;
+- unidade de análise;
+- manifestação observada;
+- interpretações permitidas e proibidas;
+- explicações alternativas;
+- intervenção possível;
+- acesso, retenção, exclusão e descarte;
+- custo de armazenamento e risco;
+- informação e consentimento necessários.
+
+Cliques, tempo e conclusão não entram apenas por estarem disponíveis. Ética é
+parte do desenho de analytics, não etapa posterior
+([Pardo e Siemens (2014)](referencias.md#ref-pardo2014ethical); [Prinsloo e Slade (2017)](referencias.md#ref-prinsloo2017ethics); [Tsai e Martinez-Maldonado (2022)](referencias.md#ref-tsai2022humancentered)). Dados de pesquisa devem permanecer separados do banco
+operacional sempre que o desenho e o risco assim exigirem.
+
+## Limitações atuais do programa
+
+- a revisão bibliográfica é narrativa e não exaustiva;
+- o público prioritário ainda precisa ser caracterizado em cada estudo;
+- não há evidência consolidada de eficácia educacional do AraLearn;
+- validade entre áreas do conhecimento, níveis de formação e instituições
+  permanece aberta;
+- modelos, provedores e instruções de IA podem mudar entre avaliações;
+- qualidade visual, esquema de dados e testes não demonstram compreensão;
+- frugalidade precisa ser medida longitudinalmente;
+- autoria coletiva, poder institucional e participação exigem estudos próprios;
+- resultados negativos e mecanismos removidos precisam ser preservados para
+  evitar viés de sobrevivência.
+
+## Mapa do corpus acadêmico
+
+| Função | Documento | Limite principal |
+| --- | --- | --- |
+| síntese do conhecimento externo | [Revisão de literatura](revisao-de-literatura.md) | revisão narrativa, não exaustiva |
+| modelo conceitual e hipóteses | [Quadro teórico](quadro-teorico.md) | proposições ainda não são resultados |
+| definições operacionais | [Glossário de construtos](glossario-construtos.md) | nomes do produto não se tornam construtos universais |
+| teoria, decisão, código e avaliação | [Matriz de rastreabilidade](matriz-rastreabilidade-pedagogica.md) | teste técnico não demonstra aprendizagem |
+| desenho de episódios | [Protocolo de avaliação](protocolo-avaliacao-artefato.md) | precisa ser particularizado e aprovado quando houver participantes |
+| justificativa dos recursos | [Fundamentação pedagógica dos recursos](fundamentacao-pedagogica-dos-resources.md) | representação correta ainda exige avaliação de compreensão |
+| contribuição possível | [Contribuição e originalidade](contribuicao-originalidade.md) | originalidade e superioridade não são presumidas |
+| bibliografia canônica | [`referencias.bib`](referencias.bib) | presença na lista não determina força da evidência |

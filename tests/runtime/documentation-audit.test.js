@@ -18,7 +18,28 @@ function temporaryDocumentation() {
   fs.mkdirSync(path.join(temporaryRoot, "docs", "nested"), { recursive: true });
   fs.mkdirSync(path.join(temporaryRoot, "authoring", "platforms"), { recursive: true });
   fs.mkdirSync(path.join(temporaryRoot, "src", "ui"), { recursive: true });
-  fs.writeFileSync(path.join(temporaryRoot, "README.md"), "# Produto\n\n[Documentação](docs/README.md)\n", "utf8");
+  fs.writeFileSync(
+    path.join(temporaryRoot, "README.md"),
+    [
+      "# Produto",
+      "",
+      "[Documentação](docs/README.md)",
+      "",
+      "## O problema educacional",
+      "",
+      "## Como se estuda",
+      "",
+      "## Como se cria e revisa conteúdo",
+      "",
+      "## Funcionamento sem conexão e sincronização",
+      "",
+      "## Estado e limites",
+      "",
+      "## Documentação",
+      ""
+    ].join("\n"),
+    "utf8"
+  );
   fs.writeFileSync(
     path.join(temporaryRoot, "docs", "README.md"),
     [
@@ -27,6 +48,19 @@ function temporaryDocumentation() {
       "[Guia](guia.md)",
       "[Glossário técnico](glossario-tecnico.md)",
       "[Matriz de conformidade técnica](matriz-conformidade-tecnica.md)",
+      "[Princípios editoriais](principios-editoriais.md)",
+      "",
+      "## Começar a usar",
+      "",
+      "## Estudar o modelo pedagógico",
+      "",
+      "## Estudar a engenharia",
+      "",
+      "## Estudar a autoria de cursos",
+      "",
+      "## Avaliar o artefato",
+      "",
+      "## Operar e implantar",
       ""
     ].join("\n"),
     "utf8"
@@ -36,6 +70,12 @@ function temporaryDocumentation() {
   fs.writeFileSync(
     path.join(temporaryRoot, "docs", "matriz-conformidade-tecnica.md"),
     "# Matriz de conformidade técnica\n",
+    "utf8"
+  );
+  fs.writeFileSync(path.join(temporaryRoot, "docs", "principios-editoriais.md"), "# Princípios editoriais\n", "utf8");
+  fs.writeFileSync(
+    path.join(temporaryRoot, "docs", "referencias.bib"),
+    "@article{fonte2026,\n  title = {Fonte de teste},\n  year = {2026},\n  url = {https://example.org/fonte}\n}\n",
     "utf8"
   );
   fs.writeFileSync(path.join(temporaryRoot, "docs", "nested", "detalhe.md"), "# Detalhe\n", "utf8");
@@ -61,6 +101,123 @@ test("auditoria exige os documentos técnicos e links reais no índice público"
   assert.ok(
     errors.includes("docs/README.md: documento técnico obrigatório não indexado: matriz-conformidade-tecnica.md")
   );
+  assert.ok(
+    errors.includes("docs/README.md: documento técnico obrigatório não indexado: principios-editoriais.md")
+  );
+});
+
+test("auditoria rejeita vocabulário de bastidor e integração antes da apresentação do produto", (context) => {
+  const temporaryRoot = temporaryDocumentation();
+  context.after(() => fs.rmSync(temporaryRoot, { recursive: true, force: true }));
+  fs.writeFileSync(
+    path.join(temporaryRoot, "README.md"),
+    [
+      "# Produto",
+      "",
+      "Integrações MCP e Action estão disponíveis.",
+      "",
+      "## Visão",
+      "",
+      "Este texto foi escrito conforme solicitado na issue #42 para uma tese.",
+      ""
+    ].join("\n"),
+    "utf8"
+  );
+
+  const errors = auditDocumentation({ root: temporaryRoot });
+  assert.ok(errors.some((error) => error.includes("integração técnica aparece antes da apresentação do produto")));
+  assert.ok(errors.some((error) => error.includes("referência a issue")));
+  assert.ok(errors.some((error) => error.includes("vocabulário de finalidade acadêmica")));
+  assert.ok(errors.some((error) => error.includes("referência ao processo de solicitação")));
+});
+
+test("auditoria valida chaves bibliográficas sem confundir texto entre citações", (context) => {
+  const temporaryRoot = temporaryDocumentation();
+  context.after(() => fs.rmSync(temporaryRoot, { recursive: true, force: true }));
+  fs.writeFileSync(
+    path.join(temporaryRoot, "docs", "guia.md"),
+    "# Guia\n\nAfirmação sustentada por duas fontes [@fonte2026; @ausente].\n",
+    "utf8"
+  );
+
+  const errors = auditDocumentation({ root: temporaryRoot });
+  assert.equal(errors.filter((error) => error.includes("citação bibliográfica desconhecida")).length, 1);
+  assert.ok(errors.some((error) => error.endsWith("citação bibliográfica desconhecida @ausente")));
+  assert.ok(errors.some((error) => error.includes("citação Pandoc exposta ao leitor")));
+});
+
+test("auditoria reconhece âncoras bibliográficas explícitas e rejeita chaves legíveis desconhecidas", (context) => {
+  const temporaryRoot = temporaryDocumentation();
+  context.after(() => fs.rmSync(temporaryRoot, { recursive: true, force: true }));
+  fs.writeFileSync(
+    path.join(temporaryRoot, "docs", "referencias.md"),
+    "# Referências\n\n<a id=\"ref-fonte2026\"></a>\n\n## Fonte (2026)\n",
+    "utf8"
+  );
+  fs.writeFileSync(
+    path.join(temporaryRoot, "docs", "guia.md"),
+    [
+      "# Guia",
+      "",
+      "Fonte conhecida ([Fonte (2026)](referencias.md#ref-fonte2026)).",
+      "Fonte ausente ([Ausente (2026)](referencias.md#ref-ausente)).",
+      ""
+    ].join("\n"),
+    "utf8"
+  );
+  fs.appendFileSync(
+    path.join(temporaryRoot, "docs", "README.md"),
+    "\n[Referências](referencias.md)\n",
+    "utf8"
+  );
+
+  const errors = auditDocumentation({ root: temporaryRoot });
+  assert.ok(!errors.some((error) => error.includes("âncora inexistente referencias.md#ref-fonte2026")));
+  assert.ok(errors.some((error) => error.includes("chave desconhecida ausente")));
+});
+
+test("auditoria aceita integrações técnicas depois da apresentação do produto", (context) => {
+  const temporaryRoot = temporaryDocumentation();
+  context.after(() => fs.rmSync(temporaryRoot, { recursive: true, force: true }));
+  fs.writeFileSync(
+    path.join(temporaryRoot, "README.md"),
+    [
+      "# Produto",
+      "",
+      "Ambiente de estudo e autoria.",
+      "",
+      "## O problema educacional",
+      "",
+      "## Como se estuda",
+      "",
+      "## Como se cria e revisa conteúdo",
+      "",
+      "## Funcionamento sem conexão e sincronização",
+      "",
+      "## Estado e limites",
+      "",
+      "## Documentação",
+      "",
+      "## Integrações",
+      "",
+      "MCP e Action são explicados nesta seção.",
+      ""
+    ].join("\n"),
+    "utf8"
+  );
+
+  assert.deepEqual(auditDocumentation({ root: temporaryRoot }), []);
+});
+
+test("auditoria preserva apresentação do produto e percursos de aprendizagem", (context) => {
+  const temporaryRoot = temporaryDocumentation();
+  context.after(() => fs.rmSync(temporaryRoot, { recursive: true, force: true }));
+  fs.writeFileSync(path.join(temporaryRoot, "README.md"), "# Produto\n\nDescrição curta.\n", "utf8");
+  fs.writeFileSync(path.join(temporaryRoot, "docs", "README.md"), "# Guias\n", "utf8");
+
+  const errors = auditDocumentation({ root: temporaryRoot });
+  assert.ok(errors.some((error) => error.includes("seção de apresentação obrigatória ausente")));
+  assert.ok(errors.some((error) => error.includes("percurso de aprendizagem obrigatório ausente")));
 });
 
 test("auditoria detecta afirmações factuais legadas em prosa autoral", (context) => {
@@ -111,6 +268,7 @@ test("auditoria não confunde histórico, material gerado ou literais com afirma
       "`aralearn.resource-library.v1` continuam públicos e distintos.",
       "GPT personalizado, Action, integração MCP, kernel, package, registry e catalog",
       "continuam corretos quando o contexto técnico os desambigua.",
+      "Uma hipótese de pesquisa pode ser explicitamente testada.",
       "",
       "`A assistência cria exatamente um card.` é um literal de teste.",
       "",

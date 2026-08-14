@@ -1,65 +1,191 @@
 # Observações pedagógicas nos cards
 
-Durante o estudo, a pessoa pode registrar uma observação sem sair do card. O ícone de observação abre uma folha curta com cinco tipos:
+## Problema educacional
 
-- **Dúvida**: algo que a pessoa quer compreender melhor;
-- **Possível erro**: informação que parece incorreta;
-- **Confuso**: explicação, exemplo ou prática difícil de interpretar;
-- **Sugestão**: proposta de melhoria do material;
-- **Observação**: registro que não cabe nos tipos anteriores.
+Uma dúvida ou percepção de erro costuma surgir enquanto a pessoa lê ou resolve
+um card. Se o registro exigir sair da lição, localizar outra tela e reconstruir
+o contexto, parte da informação situada se perde e a interrupção pode dificultar
+a retomada. O AraLearn oferece uma observação curta no próprio card para
+preservar alvo e contexto.
 
-Escolher um tipo não classifica a aprendizagem nem produz nota. O texto tem até 1.000 caracteres. Salvar substitui a observação corrente daquele card; retirar apaga essa observação. O contador discreto indica apenas que existe um registro da própria pessoa no card atual.
+Uma observação não é uma nota sobre o estudante. Ela registra somente o que a
+pessoa decidiu declarar naquele card. Presença, ausência, categoria e quantidade
+de observações não demonstram compreensão, dificuldade, atenção ou domínio.
 
-## Da anotação ao retorno
+## Tipos de observação
 
-A observação é gravada primeiro no dispositivo e sincronizada quando houver conexão. O conteúdo do card não é copiado e não há histórico das edições do texto. Mover ou renomear o card preserva o vínculo pela identidade estável; se ele for retirado do curso corrente, o alvo é indicado como indisponível.
+O ícone de observação apresenta cinco categorias:
 
-Quando o curso pertence a um workspace educacional, a observação passa a compor a triagem desse espaço. A própria pessoa continua vendo somente seus registros. Proprietário, administrador, professor/autor e revisor podem consultar as observações do workspace, filtrar por tipo e estado e responder. A resposta e o estado corrente voltam ao dispositivo e aparecem na mesma folha do card.
+| Tipo | Quando usar |
+| --- | --- |
+| **Dúvida** | há uma pergunta que precisa de esclarecimento |
+| **Possível erro** | uma informação parece incorreta ou incompatível com outra fonte |
+| **Confuso** | a redação, o exemplo, a prática ou a representação é difícil de interpretar |
+| **Sugestão** | existe uma proposta concreta de melhoria |
+| **Observação** | o registro não corresponde aos tipos anteriores |
 
-Os estados são:
+A categoria organiza a triagem; ela não confirma que o diagnóstico está
+correto. “Possível erro”, por exemplo, pede verificação e não autoriza uma
+correção automática.
 
-- **Aberta**: ainda não foi tratada;
-- **Considerada**: foi lida ou recebeu resposta, mas não foi encerrada;
-- **Resolvida**: houve encaminhamento sem alteração vinculada no curso;
-- **Incorporada**: uma correção concluída foi vinculada à observação.
+## Registrar ou atualizar uma observação
 
-Responder não altera o curso. Para incorporar uma sugestão ou corrigir um erro,
-o responsável usa uma operação de autoria validada e só então vincula o
-identificador e o caminho desse reparo. O GPT personalizado com Action e os
-clientes MCP seguem a mesma separação: primeiro leem e selecionam observações;
-depois, mediante pedido, corrigem o menor alvo; por fim, vinculam a correção que
-de fato foi gravada. Não existe reparo automático disparado por quantidade,
-categoria ou texto.
+**Pré-condição:** estar em um card. A conta precisa ter permissão de comentário
+quando o curso pertence a um workspace.
 
-## Trilhas e acesso
+**Passos:**
 
-No plano correspondente em **Trilhas**, responsáveis encontram as observações correntes na parte exata. Estudantes não recebem acesso aos registros de colegas. O papel é local ao workspace e revalidado no servidor em cada leitura e escrita. A lista compartilhada requer conexão e não é guardada no cache de Trilhas; a observação própria e o retorno já sincronizado continuam na réplica do dispositivo.
+1. Toque no ícone de observação.
+2. Escolha a categoria que melhor descreve sua finalidade.
+3. Escreva um texto específico, com até 1.000 caracteres. Indique o que foi
+   entendido, onde surgiu o problema e, quando pertinente, o resultado esperado.
+4. Salve.
 
-O GPT personalizado com Action e os clientes MCP também podem consultar as
-observações autorizadas e ajudar a processá-las em operações explícitas. A
-consulta é calculada na leitura; não cria tabela de agregados, histórico nem
-cópia dos cards.
+**Resultado esperado:** o dispositivo conserva uma observação corrente para
+aquela pessoa e aquele card. Salvar novamente substitui categoria e texto
+correntes; não cria uma pilha de versões do comentário.
 
-Quando o card ainda existe na réplica corrente, o ícone de edição da observação abre diretamente esse card no modo contextual. O atalho valida curso, módulo, lição, microssequência e card antes de navegar. Se qualquer nível tiver sido retirado ou substituído, o AraLearn mantém a triagem aberta e informa que o alvo mudou; não desvia silenciosamente para outro conteúdo.
+**Sem conexão:** a observação é gravada primeiro no dispositivo. Ela fica
+disponível no card e aguarda sincronização.
 
-Se um curso estiver ligado de forma inequívoca a um único workspace do qual a pessoa participa, a observação recebe esse vínculo ao ser criada. Um curso presente em vários workspaces não é associado por suposição: o registro permanece pessoal para evitar que um comentário apareça no contexto errado.
+**Recuperação:** se houver aviso de envio pendente, mantenha os dados do
+aplicativo e sincronize quando a conexão voltar. Não limpe o armazenamento
+local antes do envio, pois a edição pode existir somente naquele dispositivo.
 
-## Persistência e custo
+### Exemplo de registro útil
 
-Há uma linha corrente por pessoa e card. Além da categoria e do texto, o ciclo compartilhado acrescenta somente a identidade do workspace, o hash da revisão observada, resposta e resolução correntes e, quando aplicável, a referência compacta ao reparo. Não são guardadas cópias do card, do curso, da conversa, da resposta anterior, de cada mudança de estado nem dos agregados de triagem. A chave de idempotência (`requestId`), o hash do payload e o recibo temporário de repetição segura são compactos; para observações de workspace, a janela corrente é de quatorze dias.
+> Possível erro — O enunciado afirma que UDP confirma a entrega. No card
+> anterior, a ausência dessa confirmação foi apresentada como diferença em
+> relação ao TCP. Verificar se o termo pretendido era “não confirma”.
 
-## Como interpretar
+O exemplo identifica a afirmação, explicita o conflito e evita atribuir intenção
+ao autor.
 
-Uma observação é evidência qualitativa do que a pessoa decidiu registrar em um momento e contexto específicos. Pode orientar diálogo e revisão humana do material, mas não demonstra, isoladamente, erro do curso, dificuldade, atenção ou falta de domínio. A ausência de observações também não demonstra compreensão. Tipo, estado, resposta, quantidade e tempo não devem virar ranking, nota ou indicador automático de aprendizagem ou de desempenho docente.
+## Retirar uma observação
 
-A hipótese de design é que uma manifestação curta e situada, seguida de retorno específico quando pertinente, ofereça agência com pouca interrupção do estudo. Ela deve ser avaliada por tarefas de uso, entrevistas e análise qualitativa. A literatura sobre feedback sustenta diálogo, interpretação e possibilidade de ação; não prova a eficácia específica desta implementação.
+**Pré-condição:** existir uma observação própria no card.
 
-## Fundamentação
+**Passos:** abra a folha de observação e use a ação de retirada.
 
-- Nicol, D. J., & Macfarlane-Dick, D. (2006). Formative assessment and self-regulated learning: a model and seven principles of good feedback practice. *Studies in Higher Education, 31*(2), 199–218. <https://doi.org/10.1080/03075070600572090>
-- Shute, V. J. (2008). Focus on formative feedback. *Review of Educational Research, 78*(1), 153–189. <https://doi.org/10.3102/0034654307313795>
-- Carless, D., & Boud, D. (2018). The development of student feedback literacy: enabling uptake of feedback. *Assessment & Evaluation in Higher Education, 43*(8), 1315–1325. <https://doi.org/10.1080/02602938.2018.1463354>
-- Nicol, D., & Kushwah, L. (2024). Shifting feedback agency to students by having them write their own feedback comments. *Assessment & Evaluation in Higher Education, 49*(3), 419–439. <https://doi.org/10.1080/02602938.2023.2265080>
-- Wood, J. (2021). A dialogic technology-mediated model of feedback uptake and literacy. *Assessment & Evaluation in Higher Education, 46*(8), 1173–1190. <https://doi.org/10.1080/02602938.2020.1852174>
+**Resultado esperado:** a observação corrente deixa de aparecer. A retirada
+remove o registro pessoal; não apaga uma alteração de curso que já tenha sido
+feita por outra pessoa.
 
-Os limites e a primeira medição do recorte pessoal permanecem no [registro de evidência](evidence/situated-personal-comments-stage-2026-08-01.json). O [orçamento do ciclo compartilhado](evidence/workspace-pedagogical-comments-storage-budget-2026-08-01.json) mede 440 bytes para uma observação representativa já respondida e ligada a uma correção e estima 22,46 MiB, com margens para índices, para 10.000 observações correntes e 2.000 recibos na janela de sete dias. O valor não representa o consumo total do projeto.
+**Sem conexão:** a retirada entra na fila local e será sincronizada depois.
+
+**Recuperação:** se outro dispositivo ainda mostrar o texto anterior, sincronize
+ambos. Evite recriar a observação até confirmar o estado remoto.
+
+## Vínculo com um workspace
+
+Quando um curso se relaciona de forma inequívoca com um único workspace do qual
+a conta participa, a observação recebe esse contexto. Se a mesma identidade de
+curso puder pertencer a mais de um workspace, o AraLearn não escolhe um deles
+por aproximação: o registro permanece pessoal para não expor o comentário no
+projeto errado.
+
+Mover ou renomear o card preserva o vínculo quando sua identidade permanece a
+mesma. Se o alvo for retirado, a triagem informa que ele está indisponível; o
+aplicativo não redireciona silenciosamente para outro card semelhante.
+
+## Triar observações em um workspace
+
+**Pré-condição:** estar conectado e ter papel de proprietário, administrador,
+professor/autor ou revisor no workspace.
+
+**Passos:**
+
+1. Abra o item correspondente em **Trilhas** e consulte suas observações.
+2. Filtre por categoria ou estado quando isso ajudar a localizar o registro.
+3. Leia o card e a observação antes de responder.
+4. Escolha uma ação coerente: responder, considerar, resolver sem alteração ou
+   executar uma correção de autoria.
+5. Se houve correção, confirme que ela foi gravada antes de vinculá-la à
+   observação.
+
+**Resultado esperado:** a pessoa que registrou a observação pode receber a
+resposta e o estado corrente no mesmo contexto do card. Estudantes não recebem
+acesso aos registros de colegas.
+
+**Sem conexão:** a triagem compartilhada não é disponibilizada pela réplica de
+**Trilhas**. Observações próprias e retornos já sincronizados continuam
+visíveis localmente.
+
+**Recuperação:** se o alvo não existir mais, mantenha o registro no contexto de
+triagem e verifique a mudança estrutural; não associe o comentário a outro card
+por semelhança textual. Se o papel tiver sido alterado, sincronize e confirme a
+permissão antes de repetir a escrita.
+
+## Estados da triagem
+
+| Estado | Significado operacional |
+| --- | --- |
+| **Aberta** | o registro ainda aguarda tratamento |
+| **Considerada** | o registro foi lido ou recebeu resposta, mas não foi encerrado |
+| **Resolvida** | houve encaminhamento sem correção de curso vinculada |
+| **Incorporada** | uma correção concluída foi vinculada ao registro |
+
+O estado descreve o tratamento do registro, não a validade de uma afirmação nem
+a aprendizagem da pessoa. Uma resposta não modifica o curso. “Incorporada” só
+é apropriada depois de uma mudança efetivamente gravada e verificada.
+
+## Corrigir a partir de uma observação
+
+**Pré-condição:** ter permissão de autoria, compreender o problema e conseguir
+localizar o alvo exato.
+
+**Passos:**
+
+1. Leia o card, a observação e o contexto pedagógico da microssequência.
+2. Determine se o problema é factual, textual, representacional, interativo ou
+   de planejamento.
+3. Corrija o menor conjunto de objetos capaz de resolver a causa sem quebrar a
+   progressão didática.
+4. Valide estrutura, renderização e comportamento da prática.
+5. Vincule a correção concluída e responda em linguagem compreensível.
+
+**Resultado esperado:** curso e triagem permanecem relacionados sem confundir a
+manifestação original com a decisão autoral.
+
+**Sem conexão:** a edição textual de um workspace previamente carregado pode
+ser preservada localmente, mas consulta compartilhada, vínculo de correção e
+mudanças estruturais dependem de rede.
+
+**Recuperação:** diante de conflito no mesmo texto, releia a revisão remota e
+escolha qual redação deve prevalecer. Não marque a observação como incorporada
+enquanto a mudança estiver apenas na fila local ou tiver falhado.
+
+## Interpretação pedagógica responsável
+
+Feedback educacional envolve informação que precisa ser interpretada e
+transformada em ação por pessoas situadas; retorno específico e utilizável é
+mais informativo do que um marcador genérico ([Shute (2008)](referencias.md#ref-shute2008feedback); [Nicol e Macfarlane-Dick (2006)](referencias.md#ref-nicol2006formative)). A literatura também chama atenção para a participação do
+estudante na produção e no uso do feedback ([Carless e Boud (2018)](referencias.md#ref-carless2018feedbackliteracy); [Nicol e Kushwah (2024)](referencias.md#ref-nicol2024feedbackagency); [Wood (2021)](referencias.md#ref-wood2021dialogic)).
+
+Esses trabalhos fundamentam o desenho de hipóteses, não comprovam a eficácia
+desta funcionalidade. A implementação deve ser avaliada por tarefas de uso,
+entrevistas e análise qualitativa de registros autorizados. São interpretações
+indevidas:
+
+- “não comentou, portanto compreendeu”;
+- “comentou muito, portanto tem dificuldade”;
+- “marcou possível erro, portanto o curso está errado”;
+- “a turma produziu poucos registros, portanto a docência foi eficaz”;
+- “a observação foi resolvida, portanto houve aprendizagem”.
+
+O AraLearn não transforma categorias, estados, quantidades ou datas em nota,
+ranking ou perfil de risco.
+
+## Dados conservados
+
+Para cada pessoa e card, mantém-se o estado corrente necessário à função:
+identidades do item e do card, categoria, texto e data de atualização. Quando
+há workspace, podem existir também resposta, estado de triagem e referência a
+uma correção concluída. O conteúdo integral do card não é copiado para o
+registro, e as versões anteriores do texto da observação não formam um
+histórico de conversa.
+
+Essa minimização reduz duplicação e limita inferências indevidas, mas não torna
+o texto anônimo: participantes autorizados do workspace podem lê-lo de acordo
+com seu papel. A pessoa deve evitar inserir senhas, chaves, documentos pessoais
+ou dados de terceiros.

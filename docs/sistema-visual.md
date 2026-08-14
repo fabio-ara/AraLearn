@@ -1,174 +1,212 @@
 # Sistema visual do AraLearn
 
-O novo sistema visual adota uma base clara, neutra e predominantemente branca,
-com densidade baixa, tipografia legível e cor reservada para ação, seleção e
-estado. Google Material, Microsoft Fluent e Wikimedia Codex são referências de
-engenharia de temas e consistência, não modelos para copiar componentes ou
-transformar o AraLearn em outro produto.
+O sistema visual organiza como conteúdo, ações e estados são percebidos. Sua função não é decorar o aplicativo: é reduzir ambiguidade, conservar continuidade entre telas e permitir que representações acadêmicas ocupem o primeiro plano.
 
-## Princípios
+A unidade básica dessa organização é o **token de design**, nome estável atribuído a uma decisão visual. Um componente pode pedir, por exemplo, a cor de uma ação primária sem conhecer o valor usado em cada tema.
 
-- conteúdo didático ocupa o primeiro plano;
-- uma superfície clara é o modo visual de referência;
-- claro, escuro e preferência do sistema compartilham a mesma semântica;
-- cor nunca é o único meio de comunicar seleção, erro, sucesso ou relação;
-- poucos níveis de superfície substituem gradientes decorativos e sombras
-  extensas;
-- controles frequentes permanecem reconhecíveis e alcançáveis com uma mão;
-- ações avançadas aparecem progressivamente;
-- o tema não altera o significado pedagógico nem o contrato dos `resources`;
-- preferência visual é local ao dispositivo e não produz telemetria.
+A base é neutra, de baixa densidade decorativa e tipografia legível. Cor é reservada para ação, seleção, origem e estado. Modos claro, escuro e do sistema preservam a mesma semântica.
 
-`Trilhas` é percorrida e estudada na tela inicial. O painel usa a mesma
-linguagem de grupos, mas a reduz a um índice de organização, sem reproduzir
-descrições, progresso, play ou cards de estudo. `Coleções` começa como catálogo
-de consulta; uma conta autorizada revela seus controles editoriais por um modo
-explícito. A semelhança reduz o custo de navegação, mas nunca serve para inferir
-permissão.
+## 1. Problema de design
 
-## Ruptura com a apresentação anterior
+Uma interface construída com valores locais de cor, tamanho e espaçamento pode parecer correta numa tela e falhar em outra. Temas passam a exigir substituições manuais; um novo resource inventa uma paleta; estados como erro e seleção deixam de ser consistentes. A alternativa de copiar componentes completos de outro design system introduziria linguagem visual e pressupostos que não pertencem ao fluxo de estudo.
 
-A migração não mantém tema, aliases de tokens, glifos, componentes duplicados,
-folhas de compatibilidade ou fallback para a apresentação anterior. Cada
-superfície substituída perde o código antigo no mesmo recorte. A estrutura em
-cards de curso, módulo, lição e microssequência é preservada como decisão de
-interação, não como obrigação de conservar posição, decoração ou CSS legado.
+### Decisão
 
-No leitor, **Visualizar**, **Editar** e **IA** são estados contextuais da mesma
-superfície, não abas permanentes. O conteúdo continua em primeiro plano; a
-seleção acontece por contorno sobre instâncias de packages, card, cards da
-microssequência ou microssequências da lição. O resultado validado ocupa
-diretamente a árvore corrente, e a conversa curta permite desfazer, refazer ou
-restaurar versões do card. Toda a autoria contextual desaparece ao retornar à
-visualização. Conteúdo e controles acompanham a rolagem da página; diagramas
-extensos podem usar um frame interno limitado e rolável sem prender o gesto
-feito fora dele.
+O AraLearn adota:
 
-## Arquitetura de tokens
+- tokens semânticos compartilhados;
+- componentes próprios, pequenos e consistentes;
+- tipografia e controles nativos quando suficientes;
+- renderizadores especializados subordinados aos mesmos tokens;
+- critérios verificáveis de contraste, toque, reflow e movimento.
 
-O código usará três níveis, inspirados na separação adotada pelo Codex:
+Material Design, Fluent e Wikimedia Codex servem como referências de engenharia de temas e tokens, não como bibliotecas obrigatórias nem modelos de produto.
+
+## 2. Princípios
+
+1. o conteúdo didático ocupa o primeiro plano;
+2. hierarquia é produzida primeiro por posição, espaço, tamanho e peso;
+3. cor nunca é o único meio de comunicar estado ou relação;
+4. ações frequentes são reconhecíveis e alcançáveis com uma mão;
+5. ações avançadas aparecem no contexto em que são necessárias;
+6. o tema não altera conteúdo, resposta ou contrato de package;
+7. preferência visual é local ao dispositivo e não produz telemetria;
+8. o aplicativo mantém largura de leitura móvel também no desktop;
+9. diagramas preservam sua convenção acadêmica, ainda que precisem de frame rolável;
+10. latência de rede não bloqueia uma transição que pode ser concluída localmente.
+
+## 3. Tokens de design
+
+Em vez de declarar `#1a73e8` num botão, o componente usa um token com papel como `action-primary`. O valor concreto pode mudar entre temas sem alterar o componente.
+
+A arquitetura em `public/styles-tokens.css` possui três níveis:
 
 1. **opções**: valores primitivos de cor, espaço, raio, tipografia e movimento;
-2. **decisões**: papéis semânticos como `surface-canvas`, `text-secondary`,
-   `border-default`, `action-primary`, `status-danger` e os acentos de origem
-   `origin-plan`, `origin-private` e `origin-catalog`;
-3. **componentes**: exceções realmente locais, derivadas dos papéis semânticos.
+2. **decisões**: papéis como `surface-canvas`, `text-secondary`, `border-default`, `action-primary`, `status-danger` e `origin-catalog`;
+3. **componentes**: ajustes locais derivados das decisões semânticas.
 
-Somente o primeiro nível contém cores literais. Componentes e renderizadores
-não escolhem hexadecimal, `rgb()` ou opacidade de marca diretamente.
+Somente opções contêm cores literais. Componentes, SVGs e renderizadores usam decisões. Isso impede que um resource fique invisível no modo escuro porque escolheu uma cor adequada apenas ao modo claro.
 
-A implementação vigente está em `public/styles-tokens.css`. Atributos
-`data-theme-preference` e `data-color-mode` distinguem a escolha do usuário do
-modo efetivamente resolvido, evitando que componentes conheçam `matchMedia` ou
-o armazenamento local.
+### Famílias semânticas
 
-### Famílias semânticas mínimas
+| Família | Papéis representados |
+|---|---|
+| superfícies | página, base, elevada, rebaixada, sobreposição |
+| texto | principal, secundário, discreto, desabilitado, invertido |
+| bordas | discreta, padrão, forte, foco, desabilitada |
+| ações | primária, secundária, silenciosa, destrutiva |
+| estados | informação, sucesso, atenção, erro, seleção |
+| estudo | progresso, resposta, lacuna, realce, explicação |
+| dados | séries categóricas, sequenciais, divergentes |
+| estrutura | nó, aresta, eixo, grade, dependência, agrupamento |
 
-- superfícies: página, base, elevada, rebaixada e sobreposição;
-- texto: principal, secundário, discreto, desabilitado e invertido;
-- borda: discreta, padrão, forte, foco e desabilitada;
-- ação: primária, secundária, silenciosa e destrutiva;
-- estado: informação, sucesso, atenção, erro e seleção;
-- estudo: progresso, resposta, lacuna, realce e explicação;
-- dados: séries categóricas, sequenciais e divergentes;
-- estrutura: nó, aresta, eixo, grade, dependência e agrupamento.
+Tokens reduzem duplicação, mas não garantem contraste por si sós. Cada combinação efetivamente usada precisa ser medida.
 
-## Modos de cor
+## 4. Modos claro, escuro e sistema
 
-O seletor oferece `Sistema`, `Claro` e `Escuro`. O modo claro é a referência de
-design; `Sistema` respeita `prefers-color-scheme`. A escolha explícita vence a
-preferência do sistema e é armazenada apenas no dispositivo.
+O seletor oferece `Sistema`, `Claro` e `Escuro`. `Sistema` acompanha `prefers-color-scheme`; uma escolha explícita prevalece e fica apenas no dispositivo.
 
-O documento declara o `color-scheme` efetivamente resolvido antes de carregar o
-CSS, para que controles nativos, scrollbars e autofill acompanhem o modo desde
-a primeira pintura. O tema escuro usa superfícies cinza
-escuras, não preto absoluto, e texto claro sem branco máximo em todos os níveis.
+`data-theme-preference` registra a preferência e `data-color-mode` registra o modo resolvido. O documento define `color-scheme` antes do CSS principal, de modo que controles nativos, scrollbar e autofill acompanhem a primeira pintura. A troca de modo altera tokens; não recarrega curso, não consulta a rede e não perde card, resposta ou seleção.
 
-Não se afirma que um modo seja universalmente melhor. Estudos de polaridade
-encontram vantagens de desempenho para texto escuro sobre fundo claro em certas
-tarefas, enquanto experimentos noturnos encontram redução de fadiga em modo
-escuro com contraste adequado. Por isso, a decisão é oferecer controle, manter
-alto contraste e avaliar ambos em contextos reais.
+O modo escuro usa superfícies cinza-escuras e níveis de texto distintos. Preto e branco absolutos não são aplicados indiscriminadamente. Não se presume que uma polaridade seja melhor para todas as pessoas e tarefas; a decisão é oferecer controle e validar contraste em ambas.
 
-## Resources
+## 5. Organização e navegação
 
-Todos os packages registrados integram o sistema de temas e atravessam o mesmo
-contrato cromático do leitor. A lista corrente é derivada do catálogo; acrescentar
-uma representação não exige manter uma enumeração paralela neste documento.
+`Trilhas` é a superfície de organização e estudo. `Coleções` é a superfície de descoberta e, para contas autorizadas, de administração editorial. Semelhança entre cartões reduz reaprendizagem, mas nunca comunica permissão: capacidade é derivada do servidor e controles editoriais aparecem em modo explícito.
 
-As decisões `resource-*` separam superfície, texto, borda, grade, eixo,
-estrutura, lacuna e feedback. As seis decisões `data-series-*` possuem valores
-próprios em claro e escuro. O renderer em JavaScript não contém cores literais
-nem fallbacks cromáticos; SVGs e estilos inline recebem somente essas decisões.
+No leitor, **Visualizar**, **Editar** e **IA** são estados contextuais da mesma superfície. Em Visualizar, não permanecem controles de autoria. Em Editar, somente textos declarados pelos packages recebem affordance de edição. Em IA, a seleção delimita o escopo enviado à conversa.
 
-Regras verificadas:
+Uma **affordance** é uma pista perceptível de como um elemento pode ser usado. Contorno de seleção, cursor, foco e rótulo precisam corresponder à operação disponível; aparência de botão não pode ser aplicada a texto sem ação.
 
-- SVG usa classes ou variáveis semânticas e `currentColor` quando apropriado;
-- paletas de séries possuem versões clara e escura verificadas separadamente;
-- séries também se distinguem por rótulo, forma, traço ou padrão quando houver
-  risco de ambiguidade;
-- grade, eixo e aresta preservam contraste não textual mínimo;
-- sintaxe de código não depende somente de matiz;
-- lacuna, resposta e erro mantêm o mesmo significado nos dois modos;
-- conteúdo autoral não pode injetar cores que tornem o card ilegível;
-- capturas de todos os resources são comparadas em larguras de 360, 390, 412 e
-  1280 pixels, nos modos claro e escuro, em
-  [`screenshots/resources-v4`](screenshots/resources-v4/).
+## 6. Tipografia, espaço e forma
 
-A galeria é recompilada do registry de packages por
-`npm run resources:gallery:visual`. O comando rejeita recurso ausente, erro no
-browser e `overflow` horizontal antes de gravar as oito capturas.
-
-## Ícones
-
-O sistema deixa de misturar emoji, entidades tipográficas e SVG. Ícones de
-interface serão SVG simples, monocromáticos, desenhados em uma grade comum e
-coloridos por `currentColor`.
-
-- tamanho visual consistente em controles de 44 px ou maiores;
-- `aria-label` obrigatório quando não houver rótulo visível;
-- estados não dependem apenas da troca de ícone;
-- setas respeitam direção do conteúdo quando necessário;
-- o símbolo de marca permanece um ativo independente e pode ser substituído
-  sem alterar o sistema de ícones da interface.
-
-## Tipografia, espaço e forma
-
-- família de sistema, sem download obrigatório de fonte;
-- largura confortável para blocos extensos e alinhamento não justificado;
-- hierarquia por tamanho, peso e espaço antes de cor;
-- o resumo do nível atual e os cards filhos conservam a mesma escala de título
-  e corpo em curso, módulo, lição e microssequência;
-- escala curta de espaçamento baseada em múltiplos previsíveis;
+- família de sistema, sem download obrigatório;
+- corpo e rótulos de resources na mesma escala básica do `paragraph`;
+- largura de leitura confortável e alinhamento não justificado;
+- hierarquia curta por tamanho e peso, sem títulos gigantes;
+- espaços derivados de uma escala previsível;
 - cantos discretos e consistentes;
-- sombras reservadas a sobreposição e elevação funcional;
-- nenhuma redução do alvo de toque para produzir aparência mais compacta.
+- sombras apenas em sobreposição ou elevação funcional;
+- metadados menores que o conteúdo, mas ainda legíveis;
+- nenhum alvo de toque é reduzido para produzir aparência compacta.
 
-## Movimento
+Fórmulas e símbolos podem ter métricas próprias da notação matemática. Isso não autoriza ampliação arbitrária: o tamanho óptico deve permanecer coerente com o texto ao redor, e delimitadores devem acompanhar a altura real do conteúdo com traço fino.
 
-Transições existem apenas para preservar continuidade espacial ou explicar
-mudança de estado. Navegação, voltar e play não aguardam animação. O sistema
-respeita `prefers-reduced-motion` e não usa movimento decorativo contínuo.
-`Play` também não seleciona, copia, move, publica ou reorganiza um curso; a
-seleção em Coleções possui um controle próprio.
+## 7. Ícones e rótulos
 
-## Critérios de aceite
+Ícones da interface são SVG monocromáticos numa grade comum e usam `currentColor`. Emoji e caracteres tipográficos não são usados como substitutos intercambiáveis de ícones.
 
-- contraste textual WCAG 2.2 AA nos dois modos;
-- contraste não textual e foco perceptível em controles e recursos;
-- alvo mínimo e alternativa a arrastar conforme WCAG 2.2;
-- zoom de 200% e reflow sem perda de operação;
-- teclado, toque, leitor de tela e Android WebView;
-- nenhuma cor literal fora da fundação ou de fixtures explicitamente testadas;
-- nenhum resource depende de uma paleta exclusiva do modo claro;
-- troca de modo não recarrega curso nem perde card, resposta, seleção ou prompt;
-- primeira pintura não exibe o modo incorreto de forma perceptível;
-- funcionamento offline depois que o aplicativo estiver instalado.
+- controles principais têm área interativa de 44 px ou maior;
+- ícone sem texto visível exige nome acessível;
+- estado não depende apenas da troca de glifo;
+- setas acompanham a direção do conteúdo;
+- o símbolo de marca é um ativo separado do conjunto funcional.
 
-## Referências iniciais
+Rótulos usam a linguagem da tarefa. Textos autorreferentes como “deslize para ver este resource” são evitados quando o gesto já é evidente pela própria superfície. Uma instrução de leitura só existe quando ensina uma convenção disciplinar necessária.
+
+## 8. Resources e dados visuais
+
+Todos os packages consomem tokens `resource-*` para superfície, texto, borda, grade, eixo, estrutura, lacuna e feedback. Séries de dados usam `data-series-*` com valores próprios em claro e escuro.
+
+Regras:
+
+- SVG usa classes, variáveis e `currentColor` quando apropriado;
+- JavaScript não contém fallback cromático literal no renderer;
+- séries se distinguem por rótulo, forma, traço ou padrão, além da cor;
+- grade, eixo, seta e aresta preservam contraste não textual;
+- sintaxe de código não depende só de matiz;
+- lacuna, resposta, erro e foco mantêm semântica entre temas;
+- conteúdo autoral não injeta cor arbitrária;
+- legendas explicitam variável, unidade e categoria, sem abreviação obscura.
+
+Vega/Vega-Lite, Graphviz/Viz.js e MathML calculam aspectos especializados, mas recebem tokens do AraLearn. Uma paleta acessível não corrige escala estatística inadequada; um layout sem sobreposição não prova que o diagrama é pedagogicamente pertinente.
+
+## 9. Frames internos e gestos móveis
+
+Diagramas extensos não são comprimidos até perder legibilidade. Eles ficam num frame de altura limitada, com rolagem nativa nos dois eixos quando necessária.
+
+### Contrato de interação
+
+- toque ou arrasto dentro do frame navega no diagrama;
+- gesto fora do frame navega no card;
+- a barra horizontal permanece no rodapé visível do frame;
+- o diagrama abre no início de sua leitura, não numa posição arbitrária;
+- foco por teclado alcança o frame e seus controles;
+- preenchimento de lacuna redimensiona o elemento antes de recalcular o layout;
+- orientação vertical é preferida para progressões longas no celular; comparação lateral permanece horizontal quando sua semântica depende disso.
+
+A rolagem interna adiciona um contexto de navegação e deve ser usada apenas quando preservar o tamanho natural é melhor que dividir a representação. O teste precisa incluir gesto dentro e fora do frame em WebView e navegador móvel.
+
+## 10. Estado, feedback e Play
+
+Seleção, resposta correta, resposta incorreta, foco e desabilitação combinam texto, forma e cor. A resposta correta não é revelada antes de o estudante pedir explicitamente “Ver resposta”. Ações de feedback usam os mesmos tokens de ação nos modos claro e escuro.
+
+Play é o controle único de confirmação e avanço:
+
+```text
+responder localmente
+→ tocar Play
+→ avaliar e mostrar feedback
+→ tocar Play novamente
+→ avançar
+```
+
+Uma persistência remota é enfileirada depois da transição local. O botão não aguarda rede, troca de tema ou recarga de página. Controles redundantes de “Conferir” dentro de packages são rejeitados porque fragmentariam o fluxo.
+
+## 11. Movimento e preferência reduzida
+
+Movimento existe para preservar continuidade espacial ou explicar mudança de estado. Navegação, voltar e Play não aguardam animação. `prefers-reduced-motion` reduz transições e elimina movimento decorativo contínuo.
+
+Uma animação aprovada demonstra a relação entre dois estados; não serve para mascarar espera de rede. Quando há processamento inevitável, a interface indica estado e permanece cancelável quando a operação permitir.
+
+## 12. Acessibilidade
+
+Os critérios adotam [WCAG 2.2](https://www.w3.org/TR/WCAG22/) como referência técnica:
+
+- contraste textual nível AA;
+- contraste não textual de controles e foco;
+- reflow e zoom de 200% sem perda de operação;
+- operação por teclado e toque;
+- nome, papel e estado acessíveis;
+- alternativa a gestos de arrastar quando exigida;
+- respeito a preferência de movimento reduzido.
+
+O alvo interno de 44 px é uma decisão conservadora de produto, superior ao mínimo AA de Target Size (Minimum). Conformidade automatizada não demonstra usabilidade com tecnologia assistiva; leitor de tela, WebView, teclado e aparelho real continuam necessários.
+
+## 13. Evidência visual e automatizada
+
+`npm run resources:gallery:visual` recompõe a galeria a partir do registry, abre Chromium em 360, 390, 412 e 1280 px, aplica claro e escuro, rejeita erro de browser e overflow horizontal do card e grava capturas em [`docs/screenshots/resources-packages`](screenshots/resources-packages/).
+
+Outros testes exercitam:
+
+- troca de tema sem recarga;
+- foco e nomes acessíveis;
+- Play sob CPU reduzida e sem rede;
+- rolagem dentro e fora de frames;
+- materialização de lacunas com texto real;
+- geometrias de Graphviz, Vega e MathML;
+- edição e seleção contextual.
+
+Captura aprovada é evidência de um conjunto de dados e viewport, não prova universal. Por isso fixtures incluem textos longos, várias relações, múltiplas lacunas, escalas e exemplos disciplinares não triviais.
+
+## 14. Critérios de aceite
+
+Uma mudança visual está pronta quando:
+
+1. usa tokens semânticos e não introduz cor literal fora da fundação;
+2. preserva claro, escuro e Sistema;
+3. não muda significado ou estrutura pedagógica;
+4. funciona em 360, 390, 412 e 1280 px;
+5. mantém toque, teclado, zoom e leitor de tela;
+6. não cria scroll da página por overflow acidental;
+7. não bloqueia interação local por rede;
+8. atualiza testes e capturas pertinentes;
+9. remove responsabilidade duplicada no componente substituído.
+
+## Referências técnicas
 
 - [Material Design 3: temas acessíveis](https://developer.android.com/codelabs/m3-design-theming)
 - [Fluent 2: design tokens](https://fluent2.microsoft.design/design-tokens)
 - [Wikimedia Codex: estrutura de tokens](https://doc.wikimedia.org/codex/latest/design-tokens/definition-and-structure.html)
 - [Wikimedia Codex: modos alternativos](https://doc.wikimedia.org/codex/latest/using-codex/adrs/08-adr-color-modes.html)
-- [WCAG 2.2](https://www.w3.org/TR/WCAG22/)
+- [Web Content Accessibility Guidelines 2.2](https://www.w3.org/TR/WCAG22/)

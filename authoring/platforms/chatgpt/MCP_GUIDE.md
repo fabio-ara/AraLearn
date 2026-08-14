@@ -1,279 +1,380 @@
-# Guia das ferramentas MCP do AraLearn
+# Guia das ferramentas de autoria
 
-Clientes compatíveis usam o endpoint MCP remoto para autoria estrutural. O GPT
-personalizado usa uma Action OpenAPI gerada do mesmo registro de ferramentas.
-As duas superfícies executam o mesmo fluxo; a conta conectada determina quais
-capacidades ficam disponíveis. O registro público possui 30 ferramentas. As
-famílias de catálogo, transformação e continuidade usam `operation` explícita.
-Resources usam somente `consultarBibliotecaDeResources`, também com operações
-fechadas; a descoberta progressiva evita schemas ou ids de package hardcoded na
-superfície pública.
+O gateway de autoria permite criar, revisar e organizar cursos por operações
+pequenas e verificáveis. Ele evita dois riscos de uma integração baseada apenas
+em chat: tratar a conversa como banco de dados e reenviar um curso inteiro para
+alterar um único card.
 
-## Preparação contextual
+O servidor expõe 30 ferramentas por Model Context Protocol. O GPT personalizado
+com Action usa um schema OpenAPI gerado do mesmo registro. Portanto, os nomes,
+os contratos, as regras de autorização e o estado persistido são os mesmos; o
+que muda é apenas o transporte e o fluxo de autenticação.
 
-- `prepararAutoriaAraLearn`: antes de criar, ampliar, revisar
-  pedagogicamente, reorganizar ou publicar, recupera um brief curto a partir
-  da intenção, do alvo, dos resources previstos e do contexto útil da conversa.
-  Use `audit` para auditoria pedagógica sem alterar conteúdo ou estrutura —
-  mandato e achados compactos ainda são registrados — e `repair` para um
-  reparo já autorizado; não confunda nenhuma das duas com revisão editorial do
-  catálogo.
+## Modelo mental
 
-Essa preparação seleciona orientação para o pedido atual; não recupera o estado
-autoral. O chat é descartável. No começo de qualquer nova etapa de um workspace
-existente, use `lerWorkspaceDeAutoria` com `view: "resume"` antes de decidir ou
-escrever. A retomada devolve contagens compactas da árvore, os ids e a máscara
-de estado das Partes, decisões, mandato, achados ativos e sínteses persistidas.
-Leia `outline` ou `entity` para obter a árvore ou o conteúdo necessário.
+### O chat formula; o workspace conserva
 
-O servidor também anuncia instruções de uso na inicialização e publica
-conhecimentos de fluxo, pedagogia, resources e segurança como resources MCP.
-Esses mecanismos complementam os schemas das ferramentas; não substituem
-validação, autorização nem leitura do estado atual.
+Mensagens ajudam a compreender a intenção, mas podem ser resumidas ou
+descartadas. O workspace guarda a árvore corrente, as decisões estáveis, a
+autorização humana e os achados de auditoria. Ao começar uma nova etapa, leia o
+workspace; não tente reconstruí-lo da memória da conversa.
 
-## Estado atual
+### A árvore é relacional
 
-O workspace é composto no PostgreSQL. Há uma entidade corrente para cada
-projeto, curso, módulo, lição, tópico, microssequência e card. Relações de pai e
-posição formam a árvore, e o servidor recompõe `aralearn.library.v1` quando uma
-leitura, validação ou publicação precisa dele.
+Projeto, curso, módulo, lição, tópico, microssequência e card são entidades no
+PostgreSQL. Relações de pai e posição formam a árvore. O servidor recompõe um
+documento `aralearn.library.v1` quando uma leitura, validação ou publicação
+precisa dessa visão integral.
 
-Cada alteração envia apenas as partes atingidas. O Storage recebe o artefato
-integral imutável quando um curso é publicado; não recebe uma cópia integral a
-cada comando. `listarAlteracoesRecentesDoWorkspace` devolve até 200 resumos
-pequenos para orientação e auditoria operacional, não versões anteriores do
-curso.
+Cada alteração grava somente as entidades atingidas. O Storage recebe um
+artefato integral imutável quando uma revisão é fixada para submissão ou
+distribuição; ele não recebe uma cópia completa a cada comando.
 
-## Participação e papéis locais
+### A revisão protege outras edições
 
-`gerirWorkspaceEducacional` lê ou administra o espaço educacional. Suas
-variantes fechadas são `read`, `create`, `update`, `invite`, `accept_invite`,
-`cancel_invite`, `set_role`, `remove_member`, `transfer_owner`, `leave`,
-`list_comments`, `respond_comment`, `set_comment_status` e
-`link_comment_correction`, além de `list_observations`, `create_observation` e
-`delete_observation` para notas situadas na árvore.
-Convite e mudança de papel não copiam a árvore; o banco reavalia autorização
-em cada comando.
+Toda escrita possui `requestId`. Mutações de conteúdo ou estrutura também usam
+a `expectedRevision` devolvida pela última leitura:
 
-Proprietário e administrador gerem pessoas; professor/autor cria e publica no
-âmbito local; revisor revisa; estudante estuda e comenta; leitor apenas lê.
-Publicar em Coleções ainda exige capacidade editorial da conta. Não confunda
-propriedade local com administração global.
+- `requestId` identifica uma tentativa. Repita-o somente com argumentos
+  idênticos;
+- `expectedRevision` afirma qual estado foi lido. Se outra sessão avançou a
+  revisão, releia e reconstrua a menor alteração.
 
-`list_comments` pagina e filtra a triagem por categoria e estado. Estudantes
-recebem somente as próprias observações; papéis com capacidade `review`
-recebem as observações do workspace. Resposta e estado são correntes e não
-modificam o curso.
+Os resumos de `listarAlteracoesRecentesDoWorkspace` ajudam a compreender até
+200 eventos recentes, mas não substituem a leitura do estado atual.
 
-O campo `summary` cobre todo o conjunto visível, não só a página filtrada. Suas
-contagens e `focusCards` servem para priorizar a leitura de até vinte cards; não
-classifique autores, estudantes, turma, aprendizagem ou qualidade docente.
+### O caminho identifica o alvo
 
-Para usar uma observação como insumo de reparo, apresente os achados
-selecionados e obtenha a intenção de correção. Depois leia o alvo, execute a
-menor mutação autoral e confirme o resultado. Somente após esse sucesso use
-`link_comment_correction`, com o `requestId` do reparo e seu `entityPath`.
-Nunca vincule planejamento ou tentativa rejeitada. Auditoria, resposta, reparo
-e vínculo são etapas distintas.
+`entityPath` contém todos os ids entre o curso e a entidade. Copie o caminho
+devolvido pela leitura. Um id isolado não informa em qual ramo a entidade está,
+especialmente depois de cópias ou movimentos.
 
-Na auditoria, consulte tanto `list_comments`, que reúne observações feitas no
-estudo, quanto `list_observations` com `kinds: ["note"]`, que reúne notas
-situadas no workspace. Achados ativos já aparecem em `resume`; para consultar
-histórico, use `kinds: ["audit_finding"]`, estados e paginação. Grave
-como achados somente localização, categoria, gravidade, síntese e reparo
-proposto. A decisão humana e o mandato de reparo também precisam ser
-persistidos; o histórico da conversa não os substitui.
+## Como começar uma etapa
 
-## Leitura
+### Pré-condição
 
-- `listarCursosDaBibliotecaPessoal`: cursos privados e selecionados;
-- `consultarCatalogo`: descoberta do catálogo publicado quando a conta possui
-  `catalog:read`, sem conceder publicação; use `list_collections`,
-  `list_collection_courses` ou `search_courses`;
-- `lerConteudoDoCurso`: árvore, entidade ou documento publicado;
-- `listarWorkspacesDeAutoria`: projetos em andamento;
-- `lerWorkspaceDeAutoria`: árvore, entidade ou documento composto atual;
-- `revisarMicroteoriasDoWorkspace`: projeção conceitual de uma lição ou
-  microssequência com cobertura, checks, erros, resources, tópicos e contagem
-  de práticas para o chat;
-- `listarAlteracoesRecentesDoWorkspace`: resumos das últimas alterações;
-- `gerirWorkspaceEducacional`: também lista, registra e exclui notas de
-  curadoria ligadas a partes do plano ou curso, sem copiar conteúdo;
-- `consultarBibliotecaDeResources`: `explore` apresenta famílias e facetas;
-  `search` classifica `coverage.status` como `canonical`, `versatile` ou
-  `substitute`; `inspect` confere até oito perfis; `contracts` devolve até
-  quatro contratos exatos por chamada. Depois de compor o envelope,
-  `validate_card` verifica schemas, referências e compatibilidade, e
-  `audit_representation` distingue `semantic_fit`, `response_affordance` e
-  `feedback_legibility`. `preview_card` é somente um descritor com
-  `rendered: false`, não screenshot. Um `substitute` nunca bloqueia: prossiga e
-  use brevemente o `chatDisclosure` que só esse estado devolve.
+Autentique uma conta AraLearn e confirme que ela possui acesso ao workspace ou
+permissão para criar um.
 
-Em workspace já existente, a primeira leitura da etapa usa `view: "resume"`.
-Depois, `outline` e `entity` reduzem o contexto ao recorte necessário.
+### Passos
 
-Comece por listas e `outline`. Use `entity` para o recorte que será alterado.
-Use `document` apenas quando a tarefa realmente precisar do projeto inteiro.
-Copie o `entityPath` devolvido pela leitura; ele é a sequência de ids desde o
-curso até a entidade. Não reduza a referência ao último id.
+1. Chame `prepararAutoriaAraLearn` com intenção, alvo e contexto útil.
+2. Se o workspace existir, chame `lerWorkspaceDeAutoria` com
+   `view: "resume"`.
+3. Leia `outline` para a árvore ou `entity` para o recorte que será alterado.
+4. Use `document` somente quando a tarefa exigir de fato a visão composta
+   integral.
 
-## Concorrência e repetição segura
+### Resultado esperado
 
-Toda escrita recebe um `requestId`. Mutações de conteúdo também recebem a
-`expectedRevision` devolvida pela última leitura.
+`resume` devolve contagens compactas, ids e estado das Partes, decisões,
+mandato, achados ativos e sínteses persistidas. A preparação, por sua vez,
+devolve orientação pertinente ao pedido; ela não recupera o estado autoral.
 
-Gere o `requestId` antes da chamada e repita-o somente com argumentos
-idênticos. Se outra edição avançar a revisão, releia o recorte atual e prepare
-um novo comando; não tente reconstruir estado a partir dos resumos de eventos.
+### Offline e recuperação
 
-## Criação incremental
+O gateway remoto exige conexão. Depois de uma queda, repita uma leitura. Se a
+queda ocorreu durante escrita, preserve o mesmo `requestId` apenas para replay
+idêntico e confira a revisão atual antes de iniciar outra tentativa.
 
-O fluxo recomendado evita pedir ao modelo uma árvore grande e populada:
+## Famílias de ferramentas
 
-1. chame `prepararAutoriaAraLearn`;
-2. procure cursos ou partes reutilizáveis e leia apenas o recorte necessário;
-3. crie o workspace com `criarWorkspaceDeAutoria`; se ele já existir, retome-o
-   com `lerWorkspaceDeAutoria` e `view: "resume"`;
-4. use `criarEstruturaNoWorkspace` para cursos, módulos, lições e
-   microssequências planejadas em lotes de até 40 entidades estruturais;
-5. apresente o planejamento, sugira aprovação ou ajuste e espere;
-6. após aprovação, use uma única `record_approved_plan` para substituir
-   atomicamente todas as Partes, decisões e o mandato autorizado;
-7. faça o blueprint didático e, na única
-   `consultarBibliotecaDeResources`, percorra `explore`, `search`, `inspect`,
-   `contracts`, `validate_card` e `audit_representation`; materialize uma
-   microssequência por chamada até concluir somente a Parte autorizada;
-8. apresente `revisarMicroteoriasDoWorkspace`, contagens e resources, sugira
-   auditoria independente e espere;
-9. audite em rodada somente leitura após `list_comments` e
-   `list_observations` com `kinds: ["note"]`; registre achados compactos;
-10. persista a decisão e o mandato, repare somente achados aprovados, vincule a
-   correção apenas depois da escrita confirmada e reaudite;
-11. se a pessoa decidir submeter, fixe a revisão privada; se a conta puder e a
-   pessoa pedir, distribua a revisão em Coleções.
+### Preparação e leitura
 
-O `brief` guarda somente contexto estável e fontes. Para substituí-lo, releia o
-valor inteiro e use `gerirContinuidadeDaAutoria` com
-`replace_stable_brief`, preservando tudo que ainda for válido. Partes, decisões,
-mandatos e achados nunca pertencem ao `brief`.
+| Ferramenta | Finalidade |
+| --- | --- |
+| `prepararAutoriaAraLearn` | Selecionar orientação de criação, ampliação, revisão, reorganização, auditoria ou reparo. |
+| `listarCursosDaBibliotecaPessoal` | Listar cursos privados ou selecionados da conta. |
+| `consultarCatalogo` | Procurar coleções e cursos publicados quando a conta possui leitura de catálogo. |
+| `lerConteudoDoCurso` | Ler árvore, entidade ou documento de um curso acessível. |
+| `listarWorkspacesDeAutoria` | Localizar projetos em andamento. |
+| `lerWorkspaceDeAutoria` | Ler `resume`, `outline`, `entity` ou documento composto do workspace. |
+| `revisarMicroteoriasDoWorkspace` | Projetar microteorias, cobertura, checks, erros, resources, tópicos e quantidade de práticas. |
+| `listarCardsDaMicrossequencia` | Localizar os cards de uma unidade sem carregar o curso inteiro. |
+| `listarAlteracoesRecentesDoWorkspace` | Ler resumos recentes para orientação operacional. |
 
-Na mesma ferramenta, `record_approved_plan` evita que uma queda deixe apenas
-parte do plano aprovado. `define_part` e `remove_part` mantêm ajustes locais;
-`record_decision` e `remove_decision` mantêm decisões; `set_mandate` e
-`clear_mandate` delimitam a autorização corrente. A auditoria usa
-`record_finding`; a pessoa decide com `decide_finding`; somente uma escrita
-confirmada usa `link_finding_correction`; a reauditoria conclui com
-`verify_finding`. `delete_finding` serve à exclusão explícita, não a esconder um
-problema rejeitado ou ainda aberto.
+### Estrutura e conteúdo
 
-Enquanto o achado continua aprovado, cada commit coberto atualiza
-`pendingCorrectionRequestId` e `pendingRevision`. `resume` recupera esse par
-mesmo depois do prazo dos recibos; releia o alvo e só então continue ou faça o
+| Ferramenta | Finalidade |
+| --- | --- |
+| `criarWorkspaceDeAutoria` | Criar o projeto vazio com contexto estável inicial. |
+| `importarCursoNoWorkspace` | Acrescentar ao workspace um curso ao qual a conta já tem acesso. |
+| `criarEstruturaNoWorkspace` | Criar entidades estruturais em lotes de até 40 itens. |
+| `atualizarMetadadosDaEntidade` | Corrigir metadados de curso, módulo, lição ou microssequência. |
+| `salvarCardsNaMicrossequencia` | Salvar os envelopes completos dos cards de uma microssequência. |
+| `salvarCardNoWorkspace` | Corrigir ou criar um único card completo. |
+| `reorganizarWorkspace` | Copiar, mover, renomear, reunir, dividir, promover ou rebaixar entidades. |
+| `excluirDoWorkspace` | Excluir entidade ou workspace por uma operação destrutiva explícita. |
+
+### Resources de card
+
+`consultarBibliotecaDeResources` concentra a descoberta progressiva. Ela não
+oferece uma operação para despejar todos os schemas:
+
+1. `explore` apresenta famílias, áreas e facetas;
+2. `search` relaciona intenção e candidatos, classificando a cobertura como
+   `canonical`, `versatile` ou `substitute`;
+3. `inspect` compara até oito perfis;
+4. `contracts` devolve até quatro contratos exatos;
+5. `validate_card` verifica schema, referências e compatibilidade do envelope;
+6. `audit_representation` distingue `semantic_fit`,
+   `response_affordance` e `feedback_legibility`;
+7. `preview_card` devolve um descritor com `rendered: false`, não uma captura de
+   tela.
+
+Escolha primeiro a representação pela intenção pedagógica e consulte seu
+contrato depois. Não codifique ids de package nem sintaxe interna do
+renderizador nas instruções do cliente.
+
+Se `search` devolver `coverage.status: "substitute"`, prossiga com o melhor
+candidato disponível e use brevemente o `chatDisclosure`. Esse aviso informa a
+limitação sem bloquear a produção e preserva a representação ideal na decisão
+autoral.
+
+### Participação e observações
+
+`gerirWorkspaceEducacional` reúne operações fechadas:
+
+- espaço e membros: `read`, `create`, `update`, `invite`, `accept_invite`,
+  `cancel_invite`, `set_role`, `remove_member`, `transfer_owner` e `leave`;
+- comentários de estudo: `list_comments`, `respond_comment`,
+  `set_comment_status` e `link_comment_correction`;
+- observações situadas: `list_observations`, `create_observation` e
+  `delete_observation`.
+
+Proprietário e administrador gerem pessoas. Professor/autor escreve no âmbito
+local; revisor revisa; estudante estuda e comenta; leitor apenas lê. Esses
+papéis não concedem administração global do catálogo. O banco reavalia a
+autorização em cada comando; convite ou mudança de papel não copia a árvore.
+
+`list_comments` permite paginação e filtros por categoria e estado. Estudantes
+veem somente as próprias observações; papéis com capacidade de revisão veem o
+conjunto autorizado do workspace. O `summary` descreve todo o conjunto visível,
+e não apenas a página filtrada. Use contagens e até vinte `focusCards` para
+priorizar leitura, sem classificar pessoas, turma ou aprendizagem.
+
+### Continuidade e auditoria
+
+`gerirContinuidadeDaAutoria` guarda o que precisa sobreviver ao chat. O `brief`
+contém somente contexto estável e fontes. Para alterá-lo, releia o valor inteiro
+e use `replace_stable_brief`, preservando o que ainda for válido.
+
+Partes, decisões, mandatos e achados não pertencem ao `brief`. Depois da
+aprovação do planejamento, use uma única `record_approved_plan` para substituir
+atomicamente todas as Partes, decisões e o mandato autorizado. A atomicidade
+impede que uma interrupção deixe apenas parte do plano aprovado.
+
+Operações de continuidade:
+
+- `define_part` e `remove_part` ajustam Partes;
+- `record_decision` e `remove_decision` mantêm decisões;
+- `set_mandate` e `clear_mandate` delimitam autorização corrente;
+- `record_finding` registra achado de auditoria;
+- `decide_finding` conserva a decisão humana;
+- `link_finding_correction` aponta para a escrita que corrigiu o achado;
+- `verify_finding` registra a reauditoria;
+- `delete_finding` representa exclusão explícita, nunca o ocultamento de um
+  problema aberto, rejeitado ou ainda não decidido.
+
+Cada autorização recebe um `mandate.id` novo. `build_part` é consumido quando
+todas as microssequências da Parte possuem cards `ready`. `audit` e
+`restructure` são encerrados explicitamente. Cada
+`link_finding_correction` retira o achado correspondente de
+`repair_findings`; o último vínculo encerra esse mandato. A reauditoria usa
+outro mandato `audit`; inclua `targetPartId` quando o âmbito estiver limitado a
+uma Parte.
+
+Enquanto um achado aprovado aguarda correção, cada escrita coberta atualiza
+`pendingCorrectionRequestId` e `pendingRevision`. `resume` devolve esse par
+mesmo depois do prazo dos recibos. Releia o alvo antes de continuar ou criar o
 vínculo final.
 
-Cada autorização humana recebe um `mandate.id` novo. `build_part` é consumido
-quando todas as microssequências da Parte têm cards `ready`; `audit` e
-`restructure` são limpos explicitamente ao fim da rodada; cada
-`link_finding_correction` retira seu achado de `repair_findings`, e o último
-vínculo encerra esse mandato. A reauditoria usa outro mandato `audit`; inclua
-`targetPartId` quando a autorização estiver limitada a uma Parte. A máscara usa
-`r` para unidade pronta com cards, `m` para materializada ainda não pronta,
-`p` para planejada sem cards e `x` para id ausente. Se achados vierem
-truncados, percorra `list_observations` com `kinds: ["audit_finding"]`.
+A máscara de Parte usa `r` para microssequência pronta com cards, `m` para
+materializada ainda não pronta, `p` para planejada sem cards e `x` para id
+ausente.
 
-Enquanto houver mandato, o commit respeita seu escopo: `build_part` escreve
-somente na Parte; `repair_findings`, somente nos alvos aprovados; `audit` não
-altera conteúdo; `restructure` aceita apenas estrutura. Qualquer lote misto ou
-prova de alvo truncada é rejeitado por inteiro.
+## Construir uma Parte do curso
 
-Os vínculos não são intercambiáveis: `link_comment_correction` aponta um reparo
-confirmado para o comentário feito no estudo; `link_finding_correction` aponta
-um reparo confirmado para um achado formal de auditoria.
+### Pré-condição
 
-`salvarCardsNaMicrossequencia` recebe os envelopes completos dos
-cards da unidade. Para
-uma correção pontual, use `atualizarMetadadosDaEntidade` em curso, módulo,
-lição ou microssequência, ou `salvarCardNoWorkspace` para um único card
-completo, preservando seu id e sua posição. Esses comandos fechados reduzem a
-quantidade de contexto e impedem alterações acidentais fora do alvo.
+Tenha escopo, fontes, profundidade e público definidos. A autorização para
+planejar não autoriza automaticamente a materialização.
 
-## Reaproveitamento e reorganização
+### Passos
 
-- `importarCursoNoWorkspace` acrescenta um curso acessível ao workspace;
-- `reorganizarWorkspace` reúne transformações estruturais:
-  `copy_entity`, `rename_entity`, `move_entity`, `merge_microsequences`,
-  `split_microsequence`, `promote_module` e `demote_course`;
-- `excluirDoWorkspace` separa as ações destrutivas:
-  `delete_entity` e `delete_workspace`; ambas usam a `expectedRevision` da
-  leitura corrente.
+1. Prepare o contexto e leia `resume`.
+2. Procure cursos ou partes reutilizáveis e leia somente os recortes
+   necessários.
+3. Crie o workspace vazio, caso ele ainda não exista.
+4. Registre a árvore planejada em lotes de até 40 entidades.
+5. Apresente o planejamento e aguarde aprovação ou ajuste.
+6. Grave a aprovação com `record_approved_plan`.
+7. Faça o blueprint didático antes de escolher os resources.
+8. Percorra `explore`, `search`, `inspect`, `contracts`, `validate_card` e
+   `audit_representation`.
+9. Salve uma microssequência por chamada e apenas dentro da Parte autorizada.
+10. Revise a projeção de microteorias, cobertura, práticas e resources.
+11. Apresente o resultado e proponha uma auditoria independente.
 
-Em `reorganizarWorkspace`, `copy_entity` cria uma cópia profunda com novos ids
-e mantém a origem; `move_entity` preserva a identidade, troca pai ou posição e
-remove a localização anterior na mesma revisão. As demais operações renomeiam,
-recompõem microssequências ou mudam o nível estrutural conforme o discriminador
-enviado.
+### Resultado esperado
 
-Para atravessar cursos, origem e destino ficam no mesmo workspace e são
-informados por `entityPath` completos. A cópia remapeia descendentes e
-referências internas; não existe conteúdo mutável compartilhado entre origem e
-destino.
+A Parte aparece em Trilhas. Microssequências prontas são estudáveis e as ainda
+planejadas permanecem visíveis como planejamento, sem estado burocrático de
+publicação.
 
-## Trilhas, Coleções e revisão editorial
+### Recuperação
 
-Criar a estrutura já faz o plano aparecer em Trilhas. Partes com cards ficam
-executáveis e partes sem cards continuam visíveis como planejamento, sem
-chamar `publicarCursoDoWorkspace`.
+Se a criação estrutural parar no meio, leia `resume` e a máscara da Parte. Não
+recrie entidades já existentes. Se a validação de um card falhar, corrija o
+envelope antes de gravá-lo; não introduza fallback para um contrato antigo.
 
-“Publicado” significa apenas que um artefato foi fixado para submissão ou
-distribuído. Não é requisito para visualizar, estudar ou testar a composição
-corrente em Trilhas.
+## Auditar e reparar
 
-Para preparar uma submissão editorial, use `publicarCursoDoWorkspace` com
-`target: "private"` e depois envie o `courseId` e o hash confirmados. Não envie
-`completion`. O mesmo vínculo é atualizado nas chamadas seguintes, portanto o
-assistente não escolhe entre criar e atualizar.
+Auditoria e reparo são fases diferentes. `prepararAutoriaAraLearn` usa intenção
+`audit` para leitura e registro de achados; `repair` serve a reparos já
+autorizados. Nenhuma das duas é revisão editorial do catálogo.
 
-Para levar o curso a Coleções, use `target: "catalog"` e `collectionId`.
-Isso exige capacidade editorial. O backend valida o contrato corrente sem
-obrigar a pessoa a administrar estados de conclusão.
+### Pré-condição
 
-O artefato privado corrente pode ser enviado por
-`submeterCursoParaRevisaoEditorial`. O envio aponta para seu hash exato, sem
-duplicar o workspace. `listarRevisoesEditoriais` mostra os próprios envios ou
-a fila administrativa, e `lerRevisaoEditorial` abre somente o artefato
-submetido.
+Defina o âmbito da auditoria e registre um mandato `audit`. Se a auditoria
+abranger somente uma Parte, inclua `targetPartId`.
 
-Uma conta revisora pode assumir o envio e usar
-`criarWorkspaceDeRevisaoEditorial` para corrigir uma cópia editorial. Ela pode
-pedir ajustes, rejeitar ou levar o resultado a Coleções. O autor pode retirar
-um envio ainda pendente.
+### Passos
 
-Com `catalog:manage`, o mesmo assistente cria e atualiza coleções ou transfere
-cursos entre elas com `editarCatalogo`. A apresentação é alfabética, sem um
-comando de reordenação. Retiradas usam `retirarDoCatalogo`. Essas operações
-conferem revisão, classificação e hash atuais.
+1. Leia `resume` e o recorte autorizado.
+2. Consulte `list_comments` para comentários feitos no estudo.
+3. Consulte `list_observations` com `kinds: ["note"]` para notas situadas no
+   workspace.
+4. Registre achados compactos: localização, categoria, gravidade, síntese e
+   reparo proposto.
+5. Apresente os achados e registre a decisão humana.
+6. Defina `repair_findings` somente para os achados aprovados.
+7. Releia cada alvo, execute a menor mutação e confirme a nova revisão.
+8. Vincule a correção somente depois da escrita confirmada.
+9. Encerre o mandato de reparo e faça outra auditoria em leitura.
+10. Verifique ou reabra cada achado conforme a evidência.
 
-## Respostas
+### Resultado esperado
 
-Cada ferramenta anuncia um `outputSchema` fechado para seu `data`: listas
-incluem itens e cursor tipados; leituras incluem seus metadados de controle;
-gravações incluem a revisão confirmada; publicação e exclusão têm recibos
-próprios. Nunca suponha campos que não estejam na resposta anunciada.
+Achados ativos ficam disponíveis em `resume`. Se a lista vier truncada,
+percorra o histórico com `list_observations`, paginação e
+`kinds: ["audit_finding"]`. Uma reauditoria usa outro mandato `audit`, não o
+mandato consumido pelo reparo.
 
-Abertura estrutural existe somente dentro de `content`, quando foi solicitada
-uma entidade ou o documento integral corrente, e dentro de `definition`, que
-contém o contrato exato e variável de um resource de card. A árvore `outline`, a
-projeção `microtheories` e todos os campos de controle são fechados. Falhas
-usam o mesmo ramo `{ ok: false, requestId, error }` em todas as ferramentas.
+Os vínculos têm sentidos diferentes: `link_comment_correction` liga uma escrita
+confirmada a um comentário feito no estudo; `link_finding_correction` liga uma
+escrita confirmada a um achado formal de auditoria. Não troque um pelo outro.
 
-Depois de alterar, informe o resultado humano e a nova revisão. Na revisão
-conceitual, apresente microteorias e quantidades de práticas; não transcreva as
-práticas por padrão. Se forem pedidas, use a listagem para localizar os cards e
-leia como entidade os alvos necessários antes de apresentá-los em texto. Uma
-escrita validada estruturalmente não equivale a aprovação pedagógica. Em
-conflito, releia e nunca invente uma revisão.
+### Recuperação
 
-O guia leigo do percurso completo está em
-[Criar cursos pelo chat](../../../docs/criar-cursos-pelo-chat.md). Detalhes de
-transporte, autenticação, permissões e contratos ficam em
-[Gateway MCP de autoria](../../../docs/autoria-mcp.md).
+Se a conversa terminar depois da escrita e antes do vínculo, `resume` devolve
+`pendingCorrectionRequestId` e `pendingRevision`. Releia o alvo, confirme o
+resultado e finalize o vínculo. Não registre um planejamento ou uma tentativa
+rejeitada como correção.
+
+## Limites do mandato
+
+Enquanto houver mandato, a escrita respeita o tipo autorizado:
+
+- `build_part` escreve somente na Parte indicada;
+- `repair_findings` escreve apenas nos alvos aprovados;
+- `audit` não altera conteúdo;
+- `restructure` aceita apenas mudanças estruturais.
+
+Um lote que mistura âmbitos ou não comprova todos os alvos é rejeitado por
+inteiro. Essa regra impede que uma autorização restrita seja ampliada por uma
+chamada conveniente.
+
+## Corrigir uma entidade
+
+Para metadados de curso, módulo, lição ou microssequência, use
+`atualizarMetadadosDaEntidade`. Para um card, use `salvarCardNoWorkspace` e
+envie o card completo, preservando id e posição. Para uma microssequência
+inteira, use `salvarCardsNaMicrossequencia` com todos os envelopes da unidade.
+
+Esses comandos fechados reduzem contexto e limitam o raio de uma alteração.
+Depois de qualquer escrita, informe o efeito humano e a nova revisão.
+
+## Reaproveitar e reorganizar
+
+`importarCursoNoWorkspace` acrescenta um curso acessível ao projeto. Para
+transformações internas, `reorganizarWorkspace` aceita:
+
+- `copy_entity`: cria cópia profunda com novos ids, remapeia referências
+  internas e preserva a origem;
+- `move_entity`: preserva identidade, muda pai ou posição e remove a localização
+  anterior na mesma revisão;
+- `rename_entity`, `merge_microsequences`, `split_microsequence`,
+  `promote_module` e `demote_course`: executam somente a transformação nomeada.
+
+Origem e destino podem pertencer a cursos diferentes do mesmo workspace. Use
+os dois `entityPath` completos. A cópia não compartilha conteúdo mutável com a
+origem.
+
+Exclusões usam `excluirDoWorkspace` com `delete_entity` ou
+`delete_workspace`, sempre com a revisão corrente. Uma exclusão não deve ser
+disfarçada como reorganização.
+
+## Estudar, submeter e distribuir
+
+Criar estrutura já torna o plano visível em Trilhas. Cards prontos podem ser
+estudados enquanto outras Partes ainda estão planejadas. “Publicado” significa
+apenas que uma revisão foi fixada para submissão ou distribuída em Coleções.
+
+Para submissão editorial:
+
+1. use `publicarCursoDoWorkspace` com `target: "private"`;
+2. guarde `courseId` e hash confirmados;
+3. chame `submeterCursoParaRevisaoEditorial` apontando para esse artefato;
+4. não envie um campo `completion` inventado.
+
+`listarRevisoesEditoriais` mostra os próprios envios ou a fila autorizada.
+`lerRevisaoEditorial` abre somente o artefato submetido.
+`criarWorkspaceDeRevisaoEditorial` produz uma cópia editorial independente. A
+pessoa revisora pode pedir ajustes, rejeitar ou distribuir o resultado; a
+pessoa autora pode retirar um envio pendente.
+
+Para Coleções, use `publicarCursoDoWorkspace` com `target: "catalog"` e
+`collectionId`. Isso exige capacidade editorial. Contas com `catalog:manage`
+podem criar, atualizar e transferir cursos por `editarCatalogo`; retiradas usam
+`retirarDoCatalogo`. A apresentação das coleções é alfabética, sem comando de
+reordenação manual.
+
+## Como interpretar respostas
+
+Cada ferramenta anuncia um `outputSchema` fechado para `data`:
+
+- listas incluem itens e cursor tipados;
+- leituras incluem metadados de controle;
+- gravações incluem revisão confirmada;
+- publicação, retirada e exclusão possuem recibos próprios;
+- falhas usam `{ ok: false, requestId, error }`.
+
+Abertura estrutural existe somente em `content`, quando uma entidade ou o
+documento integral foi solicitado, e em `definition`, que contém o contrato
+variável de um resource. `outline`, `microtheories` e os campos de controle são
+fechados. Não suponha campos ausentes do schema.
+
+Na revisão conceitual, apresente microteorias e quantidades de práticas. Não
+transcreva todas as práticas por padrão. Quando a pessoa pedir uma prática,
+localize seus ids, leia as entidades necessárias e então apresente o conteúdo.
+Validação estrutural não equivale a aprovação pedagógica.
+
+## Diagnóstico
+
+| Sintoma | Significado | Recuperação |
+| --- | --- | --- |
+| A orientação não contém o curso atual | `prepararAutoriaAraLearn` não lê estado | Chame `lerWorkspaceDeAutoria` com `view: "resume"`. |
+| Uma alteração relata conflito | Outra sessão avançou a revisão | Releia o alvo e prepare uma nova operação. |
+| O replay é recusado | O mesmo `requestId` recebeu argumentos diferentes | Gere outro id para a nova tentativa. |
+| O modelo tenta montar um resource sem contrato | A descoberta progressiva foi pulada | Faça `search`, `inspect` e `contracts`, depois valide. |
+| A auditoria altera conteúdo | Mandato ou intenção incorretos | Use mandato `audit` em leitura; abra reparo somente após decisão. |
+| Um comentário foi marcado como corrigido sem escrita | Vínculo ocorreu cedo demais | Reabra o estado, execute e confirme a menor correção antes do vínculo. |
+| Um curso parcial não aparece no catálogo | Trilhas e Coleções têm finalidades diferentes | Estude em Trilhas ou siga a submissão editorial. |
+| A conta administra o workspace, mas não publica em Coleções | Papel local não concede capacidade editorial global | Submeta para revisão ou use conta explicitamente autorizada. |
+
+O percurso explicado para pessoas autoras está em
+[Criar cursos pelo chat](../../../docs/criar-cursos-pelo-chat.md). Transporte,
+autenticação e políticas estão em
+[Gateway MCP de autoria](../../../docs/autoria-mcp.md). A configuração do
+ChatGPT está em [Configurar autoria no ChatGPT](SETUP.md).
