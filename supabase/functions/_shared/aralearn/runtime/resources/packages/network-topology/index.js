@@ -96,6 +96,13 @@ function graphvizSource(data) {
 
 function labels(data) {
   return [
+    ...data.segments.map((segment) => ({
+      kind: "boundary",
+      id: segment.id,
+      graphvizId: `network-segment-${segment.id}`,
+      plain: segment.label,
+      html: `<span>${renderPackageInline(segment.label)}</span>`
+    })),
     ...data.devices.map((device) => ({ kind: "node", id: device.id, plain: devicePlainLabel(device), html: deviceTemplate(device) })),
     ...data.links.map((link) => ({ kind: "edge", id: link.id, plain: linkPlainLabel(link), html: `<span>${renderPackageInline(linkPlainLabel(link))}</span>` }))
   ];

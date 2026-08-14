@@ -517,9 +517,9 @@
             "practiceChecks": [
               {
                 "microsequence": "tese e evidência",
-                "responsePackage": "aralearn.response.matching",
-                "evaluationMode": "exact-pairs",
-                "observableTask": "Associar trechos visíveis às funções tese e evidência."
+                "responsePackage": "aralearn.response.gap",
+                "evaluationMode": "normalized-gap-key",
+                "observableTask": "Completar, nos trechos visíveis, as funções tese e evidência."
               }
             ]
           }
@@ -588,9 +588,9 @@
             "practiceChecks": [
               {
                 "microsequence": "tese e evidência",
-                "responsePackage": "aralearn.response.matching",
-                "evaluationMode": "exact-pairs",
-                "observableTask": "Associar trechos visíveis às funções tese e evidência."
+                "responsePackage": "aralearn.response.gap",
+                "evaluationMode": "normalized-gap-key",
+                "observableTask": "Completar, nos trechos visíveis, as funções tese e evidência."
               }
             ]
           }
@@ -948,9 +948,9 @@
             "practiceChecks": [
               {
                 "microsequence": "concorrência e escalonamento",
-                "responsePackage": "aralearn.response.matching",
-                "evaluationMode": "exact-pairs",
-                "observableTask": "Associar estados e políticas a efeitos explicitamente apresentados."
+                "responsePackage": "aralearn.response.gap",
+                "evaluationMode": "normalized-gap-key",
+                "observableTask": "Completar os efeitos apresentados para cada estado ou política."
               }
             ]
           }
@@ -1026,9 +1026,9 @@
             "practiceChecks": [
               {
                 "microsequence": "concorrência e escalonamento",
-                "responsePackage": "aralearn.response.matching",
-                "evaluationMode": "exact-pairs",
-                "observableTask": "Associar estados e políticas a efeitos explicitamente apresentados."
+                "responsePackage": "aralearn.response.gap",
+                "evaluationMode": "normalized-gap-key",
+                "observableTask": "Completar os efeitos apresentados para cada estado ou política."
               }
             ]
           }

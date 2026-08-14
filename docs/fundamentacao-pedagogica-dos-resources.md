@@ -305,8 +305,10 @@ alvo precisa conservar identidade própria, conjunto próprio de respostas e
 estado independente.
 
 **Decisão.** Lacuna e digitação são materializadas dentro do elemento em que a
-decisão ocorre. Ordenação e associação são packages de resposta próprios e só
-são usados quando ordenar ou relacionar constitui o gesto cognitivo.
+decisão ocorre. Uma correspondência simples usa lacunas independentes nos
+campos textuais correspondentes. A ordenação conserva um package de resposta,
+mas move pelo menos dois trechos entre os próprios alvos declarados por
+`paragraph` ou `table`; não cria uma lista paralela de itens.
 
 **Fundamentação.** A contiguidade pode reduzir a necessidade de integrar fontes
 separadas ([Ginns (2006)](referencias.md#ref-ginns2006contiguity)). A recuperação ativa apresenta benefícios em
@@ -321,6 +323,11 @@ equivalentes ([Karpicke e Roediger (2008)](referencias.md#ref-karpicke2008retrie
 - resposta ou respostas aceitas;
 - alternativas e feedback próprios, quando aplicável;
 - descrição acessível independente da posição visual.
+
+Na ordenação, os alvos também seguem a ordem canônica de leitura e cada
+expressão oferece setas por ícone para uma posição à esquerda ou à direita.
+Respostas visualmente iguais, ocorrências ambíguas e targets de diagramas ou
+fluxos espaciais são rejeitados.
 
 Em `terminal_session`, somente a entrada de cada interação pode ser alvo de
 lacuna com opções exatas e inequívocas. Saídas, erros, códigos e efeitos

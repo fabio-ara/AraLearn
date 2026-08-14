@@ -185,7 +185,7 @@
         "selectionRule": "Escolher pela estrutura e pela operação cognitiva, sem hardcode disciplinar."
       },
       "humanPlan": "Mostrar cobertura integral, dependências, dificuldades e respostas; pausar antes dos cards.",
-      "practicePolicy": "Usar choice, ordering, matching ou gap com opções apenas quando a resposta for inequívoca.",
+      "practicePolicy": "Usar choice, ordering ou gap com opções apenas quando a resposta for inequívoca; correspondências simples usam gap no resource textual.",
       "practiceExpectation": {
         "mode": "required",
         "whyMaterial": "A avaliação informada exige decidir a próxima ação a partir de estados técnicos observáveis."

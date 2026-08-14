@@ -610,7 +610,7 @@
                               "id": "target",
                               "targetInstanceId": "catalog-aralearn-resource-paragraph-practice-example",
                               "targetPath": "text",
-                              "label": "Lacuna na explicação",
+                              "label": "Trecho na explicação",
                               "responseMode": "text",
                               "answer": "previsível"
                             }
@@ -4075,7 +4075,7 @@
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
-                            "text": "Fluxograma: Representar sequência, decisão, ramificação e repetição com a convenção visual de fluxogramas. É apropriado quando o caminho depende de decisão ou repetição. Na leitura, observe esta convenção: terminais arredondados. Limite importante: Sem decisão ou repetição, prefira prosa enumerada ou uma resposta de ordenação.",
+                            "text": "Fluxograma: Representar sequência, decisão, ramificação e repetição com a convenção visual de fluxogramas. É apropriado quando o caminho depende de decisão ou repetição. Na leitura, observe esta convenção: terminais arredondados. Limite importante: Sem decisão ou repetição, prefira prosa enumerada ou uma prática de ordenação textual.",
                             "languageTag": "pt-BR",
                             "textDirection": "auto"
                           }
@@ -7318,129 +7318,6 @@
                   ]
                 },
                 {
-                  "id": "catalog-aralearn-response-matching-microsequence",
-                  "title": "Encaixe de correspondências",
-                  "goal": "Compreender quando usar Encaixe de correspondências e experimentar sua interação canônica.",
-                  "role": "practice",
-                  "dependsOn": [],
-                  "covers": [
-                    "aralearn.response.matching"
-                  ],
-                  "checks": [
-                    "a representação comunica a estrutura pretendida",
-                    "a prática usa uma modalidade declarada pelo package"
-                  ],
-                  "errors": [],
-                  "cards": [
-                    {
-                      "id": "catalog-aralearn-response-matching-theory-card",
-                      "position": 1,
-                      "title": "Como funciona: Encaixe de correspondências",
-                      "role": "theory",
-                      "content": [
-                        {
-                          "id": "catalog-aralearn-response-matching-theory-introduction",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Encaixe de correspondências: Pedir que o estudante encaixe cada item na correspondência ou categoria adequada. É apropriado quando reconstruir pares ou classificar itens é a evidência desejada. Na leitura, observe esta convenção: cada origem permanece visível. Limite importante: Não use para associações ambíguas sem critério explicitado.",
-                            "languageTag": "pt-BR",
-                            "textDirection": "auto"
-                          }
-                        }
-                      ],
-                      "response": null,
-                      "feedback": [],
-                      "topics": [],
-                      "sources": []
-                    },
-                    {
-                      "id": "catalog-aralearn-response-matching-practice-card",
-                      "position": 2,
-                      "title": "Pratique: Encaixe de correspondências",
-                      "role": "practice",
-                      "content": [],
-                      "response": {
-                        "id": "catalog-aralearn-response-matching-practice-response",
-                        "package": "aralearn.response.matching",
-                        "version": "1.0.0",
-                        "data": {
-                          "prompt": "Associe cada protocolo à função que desempenha predominantemente.",
-                          "mode": "one-to-one",
-                          "leftItems": [
-                            {
-                              "id": "dns",
-                              "label": "DNS"
-                            },
-                            {
-                              "id": "dhcp",
-                              "label": "DHCP"
-                            },
-                            {
-                              "id": "https",
-                              "label": "HTTPS"
-                            },
-                            {
-                              "id": "icmp",
-                              "label": "ICMP"
-                            }
-                          ],
-                          "rightItems": [
-                            {
-                              "id": "names",
-                              "label": "Resolver nomes"
-                            },
-                            {
-                              "id": "configuration",
-                              "label": "Configurar hosts"
-                            },
-                            {
-                              "id": "web",
-                              "label": "Proteger comunicação web"
-                            },
-                            {
-                              "id": "diagnostics",
-                              "label": "Sinalizar erros e diagnóstico"
-                            }
-                          ],
-                          "answerPairs": [
-                            {
-                              "leftId": "dns",
-                              "rightId": "names"
-                            },
-                            {
-                              "leftId": "dhcp",
-                              "rightId": "configuration"
-                            },
-                            {
-                              "leftId": "https",
-                              "rightId": "web"
-                            },
-                            {
-                              "leftId": "icmp",
-                              "rightId": "diagnostics"
-                            }
-                          ]
-                        }
-                      },
-                      "feedback": [
-                        {
-                          "id": "catalog-aralearn-response-matching-practice-feedback",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Critério de revisão para Encaixe de correspondências: a representação deve realizar a finalidade declarada — Pedir que o estudante encaixe cada item na correspondência ou categoria adequada. A operação cognitiva em foco é classificar e associar. Evite este recurso quando a ordem ou a produção livre é a operação central.",
-                            "languageTag": "pt-BR",
-                            "textDirection": "auto"
-                          }
-                        }
-                      ],
-                      "topics": [],
-                      "sources": []
-                    }
-                  ]
-                },
-                {
                   "id": "catalog-aralearn-response-ordering-microsequence",
                   "title": "Ordenação",
                   "goal": "Compreender quando usar Ordenação e experimentar sua interação canônica.",
@@ -7466,7 +7343,7 @@
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
-                            "text": "Ordenação: Pedir que o estudante reconstrua uma ordem causal, temporal ou procedimental. É apropriado quando reconstruir a ordem é a evidência de aprendizagem. Na leitura, observe esta convenção: posição explícita. Limite importante: Não use para ordem arbitrária ou mera decoração.",
+                            "text": "Ordenação: Pedir que o estudante reconstrua a ordem de expressões nos próprios campos textuais em que elas são lidas. É apropriado quando reconstruir a ordem entre ao menos duas expressões textuais é a evidência de aprendizagem. Na leitura, observe esta convenção: expressões nos campos de origem. Limite importante: Cada alvo precisa pertencer a um campo textual que declare a modalidade ordering.",
                             "languageTag": "pt-BR",
                             "textDirection": "auto"
                           }
@@ -7482,36 +7359,78 @@
                       "position": 2,
                       "title": "Pratique: Ordenação",
                       "role": "practice",
-                      "content": [],
+                      "content": [
+                        {
+                          "id": "catalog-aralearn-response-ordering-practice-resolver",
+                          "package": "aralearn.resource.paragraph",
+                          "version": "1.0.0",
+                          "data": {
+                            "text": "O cliente envia a consulta ao resolvedor recursivo",
+                            "languageTag": "pt-BR",
+                            "textDirection": "auto"
+                          }
+                        },
+                        {
+                          "id": "catalog-aralearn-response-ordering-practice-root",
+                          "package": "aralearn.resource.paragraph",
+                          "version": "1.0.0",
+                          "data": {
+                            "text": "O resolvedor consulta um servidor raiz",
+                            "languageTag": "pt-BR",
+                            "textDirection": "auto"
+                          }
+                        },
+                        {
+                          "id": "catalog-aralearn-response-ordering-practice-authoritative",
+                          "package": "aralearn.resource.paragraph",
+                          "version": "1.0.0",
+                          "data": {
+                            "text": "O resolvedor alcança o servidor autoritativo",
+                            "languageTag": "pt-BR",
+                            "textDirection": "auto"
+                          }
+                        },
+                        {
+                          "id": "catalog-aralearn-response-ordering-practice-reply",
+                          "package": "aralearn.resource.paragraph",
+                          "version": "1.0.0",
+                          "data": {
+                            "text": "O resolvedor devolve a resposta ao cliente",
+                            "languageTag": "pt-BR",
+                            "textDirection": "auto"
+                          }
+                        }
+                      ],
                       "response": {
                         "id": "catalog-aralearn-response-ordering-practice-response",
                         "package": "aralearn.response.ordering",
-                        "version": "2.0.0",
+                        "version": "3.0.0",
                         "data": {
-                          "prompt": "Ordene as etapas de uma consulta DNS recursiva sem resposta em cache.",
-                          "items": [
-                            {
-                              "id": "authoritative",
-                              "label": "O resolvedor alcança o servidor autoritativo"
-                            },
+                          "targets": [
                             {
                               "id": "resolver",
-                              "label": "O cliente envia a consulta ao resolvedor recursivo"
-                            },
-                            {
-                              "id": "reply",
-                              "label": "O resolvedor devolve a resposta ao cliente"
+                              "targetInstanceId": "catalog-aralearn-response-ordering-practice-resolver",
+                              "targetPath": "text",
+                              "answer": "O cliente envia a consulta ao resolvedor recursivo"
                             },
                             {
                               "id": "root",
-                              "label": "O resolvedor consulta um servidor raiz"
+                              "targetInstanceId": "catalog-aralearn-response-ordering-practice-root",
+                              "targetPath": "text",
+                              "answer": "O resolvedor consulta um servidor raiz"
+                            },
+                            {
+                              "id": "authoritative",
+                              "targetInstanceId": "catalog-aralearn-response-ordering-practice-authoritative",
+                              "targetPath": "text",
+                              "answer": "O resolvedor alcança o servidor autoritativo"
+                            },
+                            {
+                              "id": "reply",
+                              "targetInstanceId": "catalog-aralearn-response-ordering-practice-reply",
+                              "targetPath": "text",
+                              "answer": "O resolvedor devolve a resposta ao cliente"
                             }
-                          ],
-                          "answerOrder": [
-                            "resolver",
-                            "root",
-                            "authoritative",
-                            "reply"
                           ]
                         }
                       },
@@ -7521,7 +7440,7 @@
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
-                            "text": "Critério de revisão para Ordenação: a representação deve realizar a finalidade declarada — Pedir que o estudante reconstrua uma ordem causal, temporal ou procedimental. A operação cognitiva em foco é ordenar e sequenciar. Evite este recurso quando a ordem é arbitrária.",
+                            "text": "Critério de revisão para Ordenação: a representação deve realizar a finalidade declarada — Pedir que o estudante reconstrua a ordem de expressões nos próprios campos textuais em que elas são lidas. A operação cognitiva em foco é ordenar e sequenciar. Evite este recurso quando a ordem é arbitrária.",
                             "languageTag": "pt-BR",
                             "textDirection": "auto"
                           }

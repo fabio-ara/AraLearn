@@ -240,34 +240,30 @@ problemas](solucao-de-problemas.md).
 
 ## Ler e explorar um diagrama complexo
 
-**Pré-condição:** abra um card que apresente a visão geral de um diagrama de
-dados, software ou sistemas.
+**Pré-condição:** abra um card que apresente um diagrama de dados, software ou
+sistemas.
 
 **Passos:**
 
-1. Use a visão geral para reconhecer a estrutura inteira. Arrastar na vertical
-   sobre esse quadro move o card, não uma área interna oculta.
-2. Toque num elemento ou numa relação do desenho. Também é possível escolhê-lo
-   em **Detalhe para leitura**.
-3. Leia o texto sincronizado abaixo da visão geral. Se o item contiver uma
-   lacuna, responda nesse detalhe; cada lacuna abre somente suas próprias
-   alternativas.
-4. Para examinar conexões ou partes pequenas, escolha **Explorar**.
-5. No diálogo, mova o diagrama nos dois eixos e use **−**, **+** ou
-   **Ajustar**. Escolha **Voltar ao card** ao terminar.
+1. Use a composição vertical para reconhecer a estrutura.
+2. No celular, afaste ou aproxime dois dedos sobre o desenho para aumentar ou
+   diminuir o zoom. Arraste o conteúdo ampliado para percorrer os dois eixos.
+3. Se houver uma lacuna, responda diretamente no ponto correspondente do
+   diagrama; cada lacuna abre somente suas próprias alternativas.
+4. Para usar toda a tela, acione o botão de expansão identificado pelo ícone.
+5. Em tela cheia, continue usando pinça e arraste ou os ícones de diminuir,
+   aumentar e ajustar. Use o ícone de recolher ao terminar.
 
-**Resultado esperado:** a visão geral permanece inteira dentro de um quadro
-estável, enquanto o detalhe selecionado mantém o texto legível. A lacuna aparece
-como um único controle no detalhe; a marca correspondente no desenho é apenas
-uma prévia e não constitui outra resposta.
+**Resultado esperado:** o diagrama permanece em um quadro de tamanho estável e
+pode ser ampliado sem criar um painel adicional. A prática continua no próprio
+desenho no card e em tela cheia.
 
-**Sem conexão:** visão geral, seleção, detalhe, zoom e resposta funcionam com o
-resource já baixado. A seleção, a escala e a posição usadas para explorar são
-temporárias e não entram no progresso nem na sincronização.
+**Sem conexão:** zoom, movimentação, tela cheia e resposta funcionam com o
+resource já baixado. Escala e posição são temporárias e não entram no progresso
+nem na sincronização.
 
-**Recuperação:** se perder uma parte do desenho durante a exploração, use
-**Ajustar**. Se for difícil tocar num elemento pequeno, escolha-o pelo seletor
-**Detalhe para leitura**. Grafos matemáticos e fluxogramas ainda podem apresentar
+**Recuperação:** se perder uma parte do desenho durante a exploração, use o
+ícone de ajuste. Grafos matemáticos e fluxogramas ainda podem apresentar
 navegação própria, diferente deste modo.
 
 ## Responder e avançar em um card
@@ -276,12 +272,16 @@ navegação própria, diferente deste modo.
 
 **Passos:**
 
-1. Preencha, selecione, digite ou ordene conforme a representação.
-2. Pressione **Play**.
-3. Quando houver resposta avaliável, o primeiro toque confirma a tentativa e
+1. Preencha, selecione ou digite diretamente no campo indicado. Uma atividade
+   de correspondência usa lacunas independentes no próprio texto ou tabela.
+2. Numa ordenação, use as setas por ícone ao lado de cada expressão para
+   movê-la uma posição à esquerda ou à direita; os trechos permanecem nos
+   parágrafos ou células em que são lidos.
+3. Pressione **Play**.
+4. Quando houver resposta avaliável, o primeiro toque confirma a tentativa e
    mostra o feedback.
-4. Leia o retorno. Pressione **Play** novamente para avançar.
-5. Quando o recurso oferecer **Ver resposta**, use-o somente se decidir revelar
+5. Leia o retorno. Pressione **Play** novamente para avançar.
+6. Quando o recurso oferecer **Ver resposta**, use-o somente se decidir revelar
    a solução; uma resposta correta não deve ser exposta antes disso.
 
 **Resultado esperado:** a confirmação e a navegação respondem localmente; não
@@ -362,13 +362,14 @@ pedagógicas](observacoes-pedagogicas.md).
 
 1. Entre no modo **Editar**.
 2. Selecione o card ou a instância de recurso pelo contorno.
-3. Altere somente os campos textuais apresentados.
+3. Toque no rótulo textual desejado e edite-o no próprio resource. O contorno e
+   o cursor de digitação identificam o texto ativo sem abrir outra tela.
 4. Salve.
 
 **Resultado esperado:** títulos, parágrafos, rótulos, células e outros textos
-autorizados podem mudar. Identidades, tipos de recurso, relações, ordem e
-respostas estruturais permanecem protegidos; a edição comum não apresenta o
-JSON do card.
+autorizados podem mudar sem redimensionar o card. Identidades, tipos de recurso,
+relações, ordem e respostas estruturais permanecem protegidos; a edição comum
+não apresenta formulário auxiliar, campo técnico nem JSON do card.
 
 **Sem conexão:** em conteúdo de workspace já carregado e autorizado, uma edição
 textual pode ser guardada na fila local. Mover, excluir ou publicar continua

@@ -39,18 +39,18 @@ Use o manifest recuperado por MCP para comparar a operação cognitiva com a fin
 - código, tabela, fórmula, reação, gráfico quantitativo, fluxo, árvore, grafo, matriz, plano, diagramas de software, mapa de relações, diagrama de conjuntos, tabela-verdade, cabeçalho de pacote, esquema relacional, máquina de estados, topologia de rede, mapa de memória, glosa interlinear e texto anotado pedem seus packages estruturais específicos;
 - discriminação por alternativas pede `aralearn.response.choice`;
 - recuperação dentro de um campo textual visível pede `aralearn.response.gap`;
-- reconstrução de uma ordem pede `aralearn.response.ordering`.
-- reconstrução de pares ou classificação pede `aralearn.response.matching`.
+- reconstrução de uma ordem entre ao menos duas expressões já visíveis em `paragraph` ou células de `table` pede `aralearn.response.ordering`;
+- reconstrução de pares ou classificação usa `gap` sobre os campos correspondentes de um `paragraph` ou de uma `table`.
 
 Essa orientação não substitui o catálogo. Nunca memorize um schema, invente campos, use coordenadas de tela ou presuma que todos os packages aceitam toda resposta. A combinação é válida somente quando manifest, contrato e validação do package concordam.
 
-## Lacunas, ordenação e encaixe
+## Lacunas e ordenação
 
 Uma lacuna declara `targetInstanceId` e `targetPath` para um campo textual real de uma instância em `content`. A resposta precisa ocorrer nesse campo e será substituída pelo controle interativo somente na renderização. A notação de `targetPath` pertence ao contrato recuperado de `aralearn.response.gap`; não codifique lacunas em strings.
 
-Uma ordenação aponta para uma instância de conteúdo que preserve a sequência e declara os identificadores na ordem correta. Os itens visíveis vêm da representação alvo. Não duplique a sequência no enunciado nem use a posição visual como resposta implícita.
+Uma ordenação declara ao menos dois alvos com `targetInstanceId`, `targetPath` e a expressão que já ocorre no campo textual. Os alvos aparecem na ordem correta de leitura; o estudante move as expressões para esquerda ou direita pelos ícones no próprio ponto. Quando mais de uma expressão pertence ao mesmo campo, cada `targetPath` recebe um sufixo de ocorrência distinto. Use somente texto plano visível, fora de marcação Markdown. Não duplique a sequência no response nem aplique ordering a diagramas, fluxos ou outra leitura espacial. Use somente `responseCompatibility` e `practiceTargets` do contrato exato e confirme a composição com `validate_card`.
 
-Um encaixe declara origens, destinos e pares corretos. Ele pode reconstruir uma bijeção ou classificar várias origens na mesma categoria. A interface usa controles nativos acessíveis; arrastar nunca é obrigatório. Nenhuma modalidade é universal: use somente `responseCompatibility` e `practiceTargets` do contrato exato e confirme a composição com `validate_card`.
+Uma correspondência simples não cria outro tipo de resposta. Represente os pares no resource textual adequado e aplique uma lacuna independente ao campo a completar; cada lacuna conserva resposta, opções e estado próprios.
 
 ## Representações visuais
 
@@ -58,7 +58,7 @@ O JSON descreve significado; o renderer do package decide geometria e dimensiona
 
 Em `graph`, vértices são entidades estáveis e relações são apresentadas sem sobrepor rótulos às arestas. Use direção somente quando ela mudar a interpretação. Não force um grafo para representar uma simples sequência ou lista.
 
-Em `relation_map`, deixe explícitos domínio, contradomínio e pares ordenados. O renderer apresenta os dois conjuntos e uma seta sem rótulo para cada par; a notação extensional complementar registra os pares sem disputar espaço com as arestas. Use-o somente quando imagem, preimagem ou cardinalidade fizer parte do raciocínio. Use `table` ou `matching` para uma simples correspondência e `set_diagram` quando interseção, união ou pertencimento simultâneo for o objeto. Nesse package, escolha `venn` quando todas as combinações lógicas precisam permanecer visíveis e `euler` quando a ausência de uma região é parte da topologia observada. Declare conjuntos, símbolos curtos e pertencimento; não declare círculos, coordenadas ou tamanhos. Mais de três conjuntos exigem outra representação, não um diagrama ilegível comprimido.
+Em `relation_map`, deixe explícitos domínio, contradomínio e pares ordenados. O renderer apresenta os dois conjuntos e uma seta sem rótulo para cada par; a notação extensional complementar registra os pares sem disputar espaço com as arestas. Use-o somente quando imagem, preimagem ou cardinalidade fizer parte do raciocínio. Use `table` com lacunas para uma simples correspondência e `set_diagram` quando interseção, união ou pertencimento simultâneo for o objeto. Nesse package, escolha `venn` quando todas as combinações lógicas precisam permanecer visíveis e `euler` quando a ausência de uma região é parte da topologia observada. Declare conjuntos, símbolos curtos e pertencimento; não declare círculos, coordenadas ou tamanhos. Mais de três conjuntos exigem outra representação, não um diagrama ilegível comprimido.
 
 `matrix` é reservado a arranjos algébricos de escalares ou expressões, sem cabeçalhos de atributos nem grade de registros. Para dados tabulares use `table`; para esquema relacional use `database_schema`. Mudanças de variáveis por passo permanecem em `table` enquanto não houver uma representação sincronizada de execução que preserve estrutura adicional.
 
@@ -97,7 +97,7 @@ Escolha o recurso pela operação que o estudante precisa realizar:
 | compreender uma definição ou distinção | `paragraph`, `choice` ou combinação justificada de packages |
 | acompanhar execução, sintaxe ou comando | `code`, `table`, `flow` |
 | comparar casos, registros ou valores | `table`, `chart`, `choice` |
-| reconhecer hierarquia ou classificação | `tree`, `matching` |
+| reconhecer hierarquia ou classificação | `tree`, ou `table` com `gap` quando for preciso completar categorias |
 | analisar adjacência, caminhos, ciclos ou conectividade abstrata | `graph` |
 | analisar equipamentos, segmentos ou rotas de rede | `network_topology` |
 | situar pessoas e sistemas externos em relação a um software | `software_system_context` |
@@ -304,9 +304,9 @@ Um card possui:
 
 Packages complementares podem coexistir quando cada um desempenha uma função diferente, como um parágrafo que situa o fenômeno, uma fórmula que o formaliza e um gráfico que mostra o comportamento. A composição é inadequada quando duplica o estímulo ou obriga o estudante a reconciliar representações sem finalidade.
 
-A prática acrescenta uma resposta compatível com o conteúdo. `choice`, `ordering` e `matching` são packages de resposta, não “modos visuais” que qualquer diagrama deve reimplementar. Lacuna e digitação podem atuar dentro do próprio objeto representado quando o package declara alvos apropriados.
+A prática acrescenta uma resposta compatível com o conteúdo. `choice` apresenta alternativas próprias. `gap` e `ordering` atuam nos campos que os packages de conteúdo declaram como alvos: não duplicam o texto numa lista ou num painel de resposta. Uma correspondência simples é expressa por lacunas independentes nos campos reais de um `paragraph` ou de uma `table`, sem um package paralelo de encaixe.
 
-## 6. Lacunas e digitação internas
+## 6. Lacunas, digitação e ordenação internas
 
 Uma lacuna não é um marcador embutido no enunciado. Ela aponta para:
 
@@ -320,11 +320,19 @@ targetInstanceId + targetPath
 
 Cada lacuna possui índice e estado próprios. Suas alternativas pertencem apenas àquela lacuna e aparecem quando ela recebe foco. Tocar numa lacuna preenchida novamente a esvazia sem alterar as demais. Digitação segue a mesma identidade, mas usa entrada textual e normalização declarada.
 
-Identidade não é deduzida pelo valor da resposta. Duas transições que apontam para o mesmo estado, por exemplo, continuam sendo lacunas distintas porque usam caminhos e índices distintos; preencher ou abrir as opções de uma não altera a outra. Reutilizar o mesmo caminho ou chave para várias lacunas produziria seleção simultânea, portanto o kernel e os testes verificam unicidade e materialização de cada alvo. O preenchimento real também é medido no navegador: o rótulo substituído precisa caber ou provocar redimensionamento do nó, nunca ser recortado.
+Identidade não é deduzida pelo valor da resposta. Duas transições que apontam para o mesmo estado, por exemplo, continuam sendo lacunas distintas porque usam caminhos e índices distintos; preencher ou abrir as opções de uma não altera a outra. Reutilizar o mesmo caminho ou chave para várias lacunas produziria seleção simultânea, portanto o kernel e os testes verificam unicidade e materialização de cada alvo. O preenchimento real também é medido no navegador: o controle precisa caber na reserva calculada antes da interação, sem ser recortado nem redimensionar o resource depois de uma resposta.
+
+### Ordenação situada
+
+Uma ordenação aponta para pelo menos dois trechos já existentes em campos de leitura textual de `paragraph` ou `table`. Cada alvo declara instância, caminho e expressão; a lista de alvos segue a ordem correta de leitura. Durante a prática, as expressões são permutadas entre esses mesmos pontos. Cada uma traz botões de seta, apenas por ícone, para mover uma posição à esquerda ou à direita.
+
+O response não repete os itens numa lista própria. Ele apenas coordena o estado da permutação e o feedback. Alvos em parágrafos e células diferentes podem participar da mesma sequência, desde que a ordem de leitura seja inequívoca e os textos permaneçam distintos. Diagramas, fluxos verticais e outras representações espaciais não recebem essa modalidade por conveniência.
+
+Em `paragraph`, o alvo precisa ser texto plano visível, fora de ênfase, código, link ou outra marcação. A ordenação não corta sintaxe Markdown nem a apresenta como se fosse conteúdo. Ocorrências repetidas ou sobrepostas são recusadas em vez de receber uma posição inferida.
 
 ## 7. Edição manual e assistência contextual
 
-O autor edita textos visíveis, não JSON estrutural. `editableTargets()` devolve rótulos com identificação compreensível e caminho interno. Campos como coordenadas, ids relacionais, tipos de nó e índices ficam disponíveis apenas como contexto de leitura.
+O autor edita os textos visíveis no próprio resource, não JSON estrutural nem uma tela paralela de campos. `editableTargets()` delimita os caminhos permitidos; o renderer associa esses caminhos aos rótulos já apresentados e habilita apenas contorno, cursor de texto e caret. Entrar no modo de edição não muda a geometria do card. Coordenadas, ids relacionais, tipos de nó, índices e textos apenas acessíveis continuam fora da superfície editável.
 
 A seleção visual pode abranger uma instância, um card ou um recorte hierárquico autorizado. A assistência por API recebe:
 
@@ -385,13 +393,13 @@ Teoria e prática admitem densidades diferentes. Um card de teoria apresenta uma
 
 ## 11. Mobile, orientação e escalabilidade
 
-Os dez packages que usam a camada compartilhada `system-diagrams` apresentam, no card, uma visão geral ajustada simultaneamente à largura e à altura de um quadro estável. Essa visão não cria rolagem interna: um gesto vertical iniciado sobre ela continua movendo o card. Selecionar um elemento ou uma relação no desenho, ou no seletor associado, sincroniza um detalhe em HTML com texto em tamanho de leitura.
+Os dez packages que usam a camada compartilhada `system-diagrams` apresentam um único diagrama dentro de um quadro estável. A orientação continua favorecendo a leitura vertical, mas o estudante pode ampliar e mover o próprio desenho no card. Em telas táteis, uma pinça com dois dedos altera a escala em torno do ponto tocado; quando o conteúdo ampliado ultrapassa o quadro, o arraste percorre os dois eixos sem redimensionar o card.
 
-Quando houver prática, o detalhe contém o único controle real da lacuna. A visão geral mostra apenas uma projeção inerte, sem duplicar o controle nem revelar a resposta usada pelo Graphviz para dimensionar o objeto. Assim, seleção, teclado, tecnologia assistiva e avaliação convergem para a mesma ocorrência interativa.
+Quando houver prática, o controle real da lacuna permanece no ponto semântico do diagrama. Ele não é duplicado em painel, legenda ou projeção paralela. A mesma ocorrência continua ativa depois do zoom e quando o desenho é levado para tela cheia.
 
-**Explorar** move a mesma viewport para um diálogo dedicado. Nesse modo, o estudante pode mover o diagrama nos dois eixos e usar **Diminuir zoom**, **Aumentar zoom** ou **Ajustar**; voltar ao card restaura a visão geral. Seleção, escala e posição de exploração formam estado efêmero do renderer: auxiliam a navegação corrente, mas não integram o curso, o progresso nem a sincronização.
+O botão de expansão, apresentado somente por ícone e com nome acessível, move a mesma viewport para um diálogo dedicado. Nesse modo, ícones permitem diminuir, aumentar, ajustar ou recolher o diagrama; pinça e arraste continuam disponíveis. Escala e posição são estado efêmero do renderer: auxiliam a navegação corrente, mas não integram curso, progresso ou sincronização.
 
-A orientação continua decorrendo da estrutura. Hierarquias e sistemas tendem à progressão de cima para baixo; o diagrama interno de bloco SysML usa agora esse fluxo em bloco. Relações cuja leitura é genuinamente lateral podem conservar elementos no mesmo nível, pois a visão geral e o detalhe não dependem de forçar toda topologia para uma única coluna.
+A orientação continua decorrendo da estrutura. Hierarquias e sistemas tendem à progressão de cima para baixo; o diagrama interno de bloco SysML usa agora esse fluxo em bloco. Relações cuja leitura é genuinamente lateral podem conservar elementos no mesmo nível, pois o zoom não depende de forçar toda topologia para uma única coluna.
 
 Essa política inicial abrange `bpmn_process`, `database_schema`, `entity_relationship`, `network_topology`, `relation_map`, `software_container`, `software_system_context`, `state_machine`, `system_internal_block` e `tree`. `flow` e `graph` ainda usam seus navegadores próprios e não devem ser descritos como se já compartilhassem essa camada. A galeria continua incluindo larguras móveis, temas e exemplos não triviais para expor cruzamentos, overflow, legendas, múltiplas lacunas e textos longos.
 

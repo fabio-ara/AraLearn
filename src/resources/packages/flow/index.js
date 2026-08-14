@@ -1,6 +1,12 @@
 import { FLOWCHART_STRUCTURE_INPUT_SCHEMA, normalizeFlowchartStructure, validateFlowchartStructureContract } from "../../../flowchart/flowchartStructure.js";
-import { escapePackageAttribute, renderPackageInline, renderPackageProse } from "../../sdk/html.js";
+import {
+  escapePackageAttribute,
+  renderPackageInline,
+  renderPackageInlineReference,
+  renderPackageProse
+} from "../../sdk/html.js";
 import { academicProfile } from "../../sdk/academic.js";
+import { stripPackageManualTextMarkersDeep } from "../../kernel/manualTextMarkers.js";
 import {
   appendGraphvizForeignLabel,
   dotAttributes,
@@ -178,7 +184,7 @@ function renderAccessibleOutline(node) {
   const children = flowChildren(node);
   const summary = `${FLOW_KIND_LABELS[node.kind] || node.kind}: ${nodeSummary(node) || FLOW_KIND_LABELS[node.kind] || node.kind}`
     .replace(GAP_MARKER, "lacuna");
-  return `<li>${renderPackageInline(summary)}${children.length ? `<ol>${children.map(renderAccessibleOutline).join("")}</ol>` : ""}</li>`;
+  return `<li>${renderPackageInlineReference(summary)}${children.length ? `<ol>${children.map(renderAccessibleOutline).join("")}</ol>` : ""}</li>`;
 }
 
 function flowEditableTargets(value, path = "structure", output = []) {
@@ -278,7 +284,7 @@ function renderFlowGraph(structure) {
   const edgeSpecs = graph.edges.map((edge) =>
     `<span data-flow-edge-id="${escapePackageAttribute(edge.id)}" data-flow-source="${escapePackageAttribute(edge.source)}" data-flow-target="${escapePackageAttribute(edge.target)}" data-flow-edge-kind="${escapePackageAttribute(edge.kind)}" data-flow-edge-visible="${edge.visible ? "true" : "false"}" hidden></span>`
   ).join("");
-  const encodedGraph = encodeURIComponent(JSON.stringify(graph));
+  const encodedGraph = encodeURIComponent(JSON.stringify(stripPackageManualTextMarkersDeep(graph)));
   return `<div class="package-flowchart" data-resource-scroll-frame="diagram" role="group" aria-label="Fluxograma" tabindex="0"><div class="package-flow-canvas" data-flow-layout-status="pending" aria-busy="true" data-flow-graph="${escapePackageAttribute(encodedGraph)}" data-flow-graphviz-source="${escapePackageAttribute(source)}"></div>${templates}${edgeSpecs}<p class="package-flow-layout-error" hidden>Não foi possível diagramar o fluxograma.</p></div>`;
 }
 
@@ -302,8 +308,8 @@ function nodeLabelBounds(group) {
 function replaceGraphvizLabels(chart, svg, graph) {
   graph.nodes.filter((node) => node.kind !== "merge").forEach((node) => {
     const group = graphvizGroupById(svg, node.id);
-    if (hasGraphvizGap(node.label)) {
-      const template = chart.querySelector(`template[data-flow-node-template="${CSS.escape(node.id)}"]`);
+    const template = chart.querySelector(`template[data-flow-node-template="${CSS.escape(node.id)}"]`);
+    if (hasGraphvizGap(node.label) || template?.content.querySelector("[data-package-manual-field-path]")) {
       group?.querySelectorAll("text").forEach((text) => { text.style.visibility = "hidden"; });
       appendGraphvizForeignLabel(group, template, nodeLabelBounds(group), "package-flow-node-label");
     }
@@ -317,13 +323,14 @@ function replaceGraphvizLabels(chart, svg, graph) {
     const group = graphvizGroupById(svg, edge.id);
     const texts = [...(group?.querySelectorAll("text") || [])];
     texts.forEach((text) => text.classList.add("package-flow-edge-label"));
-    if (!hasGraphvizGap(edge.label)) return;
-    const box = unionGraphvizTextBounds(texts);
     const template = chart.querySelector(`template[data-flow-edge-template="${CSS.escape(edge.id)}"]`);
+    const hasGap = hasGraphvizGap(edge.label);
+    if (!hasGap && !template?.content.querySelector("[data-package-manual-field-path]")) return;
+    const box = unionGraphvizTextBounds(texts);
     texts.forEach((text) => { text.style.visibility = "hidden"; });
     if (box) {
-      const width = Math.max(48, box.width + 16);
-      const height = Math.max(24, box.height + 8);
+      const width = hasGap ? Math.max(48, box.width + 16) : box.width;
+      const height = hasGap ? Math.max(24, box.height + 8) : box.height;
       appendGraphvizForeignLabel(group, template, {
         x: box.x + (box.width - width) / 2,
         y: box.y + (box.height - height) / 2,
@@ -363,7 +370,7 @@ async function layoutFlowchart(chart) {
 }
 
 export const flowPackage = Object.freeze({
-  manifest: Object.freeze({ id: "aralearn.resource.flow", version: "1.0.0", label: "Fluxograma", purpose: "Representar sequência, decisão, ramificação e repetição com a convenção visual de fluxogramas.", slots: Object.freeze(["content", "feedback"]), cognitiveOperations: Object.freeze(["trace-control-flow", "decide", "recognize-loop", "predict-path"]), academic: academicProfile({ domains: ["algoritmos", "processos", "engenharia de software"], knowledgeObjects: ["fluxograma", "decisão", "ramificação", "repetição"], conventions: ["terminais arredondados", "processos retangulares", "entrada e saída em paralelogramo", "decisões em losango", "ramos nomeados na própria aresta", "fluxo orientado", "junções explícitas"], appropriateWhen: ["o caminho depende de decisão ou repetição"], avoidWhen: ["há apenas ordem linear ou estados persistentes"], technologies: ["Graphviz dot", "Viz.js WebAssembly", "SVG", "HTML semântico"], practiceModes: ["exposition", "gap", "typing", "selection", "ordering"] }), responseCompatibility: Object.freeze(["aralearn.response.gap", "aralearn.response.choice", "aralearn.response.ordering"]), limitations: Object.freeze(["Sem decisão ou repetição, prefira prosa enumerada ou uma resposta de ordenação.", "A geometria é derivada e nunca autoral."]), accessibility: "O fluxograma visual possui uma descrição linear equivalente para tecnologia assistiva." }),
+  manifest: Object.freeze({ id: "aralearn.resource.flow", version: "1.0.0", label: "Fluxograma", purpose: "Representar sequência, decisão, ramificação e repetição com a convenção visual de fluxogramas.", slots: Object.freeze(["content", "feedback"]), cognitiveOperations: Object.freeze(["trace-control-flow", "decide", "recognize-loop", "predict-path"]), academic: academicProfile({ domains: ["algoritmos", "processos", "engenharia de software"], knowledgeObjects: ["fluxograma", "decisão", "ramificação", "repetição"], conventions: ["terminais arredondados", "processos retangulares", "entrada e saída em paralelogramo", "decisões em losango", "ramos nomeados na própria aresta", "fluxo orientado", "junções explícitas"], appropriateWhen: ["o caminho depende de decisão ou repetição"], avoidWhen: ["há apenas ordem linear ou estados persistentes"], technologies: ["Graphviz dot", "Viz.js WebAssembly", "SVG", "HTML semântico"], practiceModes: ["exposition", "gap", "typing", "selection"] }), responseCompatibility: Object.freeze(["aralearn.response.gap", "aralearn.response.choice"]), limitations: Object.freeze(["Sem decisão ou repetição, prefira prosa enumerada ou uma prática de ordenação textual.", "A geometria é derivada e nunca autoral."]), accessibility: "O fluxograma visual possui uma descrição linear equivalente para tecnologia assistiva." }),
   authoringContract: Object.freeze({ intent: "Declare a lógica do fluxograma; o renderer escolhe símbolos, conectores, ramos, junções e retornos.", required: Object.freeze(["structure"]), optional: Object.freeze(["prompt"]), rules: Object.freeze(["A raiz é sequence.", "Use start e end para terminais, process para transformação, input/output para dados e estruturas condicionais para losangos.", "Toda decisão declara rótulos semanticamente inequívocos para seus ramos.", "Não declare coordenadas, símbolos, arestas ou pontos de junção.", "Use a menor estrutura que preserve a lógica."]), example: Object.freeze({ prompt: "Acompanhe os dois caminhos possíveis.", structure: { id: "root", kind: "sequence", items: [{ id: "start", kind: "start", text: "Início" }, { id: "read", kind: "input", text: "Ler credenciais" }, { id: "decision", kind: "if_then_else", condition: "Credenciais válidas?", branchLabels: { yes: "Sim", no: "Não" }, thenBranch: [{ id: "open", kind: "process", text: "Abrir sessão" }], elseBranch: [{ id: "error", kind: "output", text: "Exibir erro" }] }, { id: "end", kind: "end", text: "Fim" }] } }) }),
   schema: Object.freeze({ type: "object", additionalProperties: false, required: ["structure"], properties: { prompt: { type: "string" }, structure: FLOWCHART_STRUCTURE_INPUT_SCHEMA } }),
   normalize(data) { return { ...(data?.prompt ? { prompt: String(data.prompt).trim() } : {}), structure: normalizeFlowchartStructure(data?.structure) }; },

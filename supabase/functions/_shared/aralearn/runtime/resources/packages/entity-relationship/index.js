@@ -71,9 +71,9 @@ export const entityRelationshipPackage = Object.freeze({
       appropriateWhen: ["o modelo conceitual e as regras de cardinalidade são o objeto"],
       avoidWhen: ["o objeto é o esquema relacional com PK e FK já transformadas", "é preciso mostrar instâncias de dados"],
       technologies: ["notação pé-de-galinha", "Graphviz", "Viz.js WebAssembly", "SVG"],
-      practiceModes: ["exposition", "gap", "typing", "selection", "matching"]
+      practiceModes: ["exposition", "gap", "typing", "selection"]
     }),
-    responseCompatibility: Object.freeze(["aralearn.response.gap", "aralearn.response.choice", "aralearn.response.matching"]),
+    responseCompatibility: Object.freeze(["aralearn.response.gap", "aralearn.response.choice"]),
     limitations: Object.freeze(["Relacionamentos ternários complexos devem ser reificados ou receber package próprio.", "O renderer não mistura modelo conceitual e físico."]),
     accessibility: "Entidades, atributos, relações e cardinalidades possuem descrição textual equivalente."
   }),

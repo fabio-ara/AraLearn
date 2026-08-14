@@ -67,8 +67,8 @@ usar esse chat efêmero como registro longitudinal de pesquisa.
 
 O catálogo é composto por packages independentes do kernel. Cada package
 declara contrato autoral, perfil acadêmico, capacidades de prática e renderer.
-O catálogo atual contém trinta e dois packages, dos quais vinte e oito
-materializam conteúdo e quatro materializam respostas.
+O catálogo atual contém trinta e dois packages, dos quais vinte e nove
+materializam conteúdo e três materializam respostas.
 
 Representações diagramáticas usam motores especializados quando isso reduz
 medição manual de coordenadas: Graphviz/Viz.js para diferentes grafos e

@@ -388,56 +388,31 @@ function responsePackagePractice(manifest, prefix) {
       })
     };
   }
-  if (manifest.id === "aralearn.response.matching") {
-    return {
-      content: [],
-      response: normalizeInstance({
-        id: `${prefix}-practice-response`,
-        packageId: manifest.id,
-        version: manifest.version,
-        slot: "response",
-        data: {
-          prompt: "Associe cada protocolo à função que desempenha predominantemente.",
-          mode: "one-to-one",
-          leftItems: [
-            { id: "dns", label: "DNS" },
-            { id: "dhcp", label: "DHCP" },
-            { id: "https", label: "HTTPS" },
-            { id: "icmp", label: "ICMP" }
-          ],
-          rightItems: [
-            { id: "names", label: "Resolver nomes" },
-            { id: "configuration", label: "Configurar hosts" },
-            { id: "web", label: "Proteger comunicação web" },
-            { id: "diagnostics", label: "Sinalizar erros e diagnóstico" }
-          ],
-          answerPairs: [
-            { leftId: "dns", rightId: "names" },
-            { leftId: "dhcp", rightId: "configuration" },
-            { leftId: "https", rightId: "web" },
-            { leftId: "icmp", rightId: "diagnostics" }
-          ]
-        }
-      })
-    };
-  }
   if (manifest.id === "aralearn.response.ordering") {
+    const steps = [
+      { id: "resolver", text: "O cliente envia a consulta ao resolvedor recursivo" },
+      { id: "root", text: "O resolvedor consulta um servidor raiz" },
+      { id: "authoritative", text: "O resolvedor alcança o servidor autoritativo" },
+      { id: "reply", text: "O resolvedor devolve a resposta ao cliente" }
+    ];
+    const content = steps.map(({ id, text }) => paragraphInstance(
+      `${prefix}-practice-${id}`,
+      text
+    ));
     return {
-      content: [],
+      content,
       response: normalizeInstance({
         id: `${prefix}-practice-response`,
         packageId: manifest.id,
         version: manifest.version,
         slot: "response",
         data: {
-          prompt: "Ordene as etapas de uma consulta DNS recursiva sem resposta em cache.",
-          items: [
-            { id: "authoritative", label: "O resolvedor alcança o servidor autoritativo" },
-            { id: "resolver", label: "O cliente envia a consulta ao resolvedor recursivo" },
-            { id: "reply", label: "O resolvedor devolve a resposta ao cliente" },
-            { id: "root", label: "O resolvedor consulta um servidor raiz" }
-          ],
-          answerOrder: ["resolver", "root", "authoritative", "reply"]
+          targets: steps.map(({ id, text }, index) => ({
+            id,
+            targetInstanceId: content[index].id,
+            targetPath: "text",
+            answer: text
+          }))
         }
       })
     };

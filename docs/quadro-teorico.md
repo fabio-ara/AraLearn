@@ -206,8 +206,10 @@ operacionalização, consequências esperadas, explicações rivais e limites.
   variedade ornamental não muda a operação.
 - **Alternativas ou requisitos:** formato fixo, rotação aleatória ou seleção
   pela evidência de aprendizagem.
-- **Decisão:** escolher entre seleção, lacuna, digitação, ordenação e associação
-  conforme o gesto cognitivo; posicionar a resposta dentro do objeto.
+- **Decisão:** escolher entre seleção, lacuna, digitação e ordenação conforme o
+  gesto cognitivo; expressar correspondências simples por lacunas e posicionar
+  cada resposta dentro do objeto, inclusive os trechos permutados pela
+  ordenação.
 - **Fundamentação:** recuperação pode beneficiar aprendizagem, com moderadores e
   limites de transferência ([Agarwal et al. (2021)](referencias.md#ref-agarwal2021retrieval); [Pan e Rickard (2018)](referencias.md#ref-pan2018transfer)).
 - **Operacionalização:** cada prática declara o que verifica; lacunas são

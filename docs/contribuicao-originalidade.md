@@ -212,14 +212,17 @@ representação em formulário ou autorizar alvos semânticos internos. A intera
 precisa preservar notação e identidade de cada alvo.
 
 **Decisão.** Lacuna e digitação podem ocupar folhas semânticas de código,
-matriz, tabela, fórmula ou diagrama; escolha, ordenação e associação são usadas
-quando correspondem à operação.
+matriz, tabela, fórmula ou diagrama; escolha e ordenação são usadas quando
+correspondem à operação. Quando a tarefa exige estabelecer correspondências,
+cada relação ocupa uma lacuna independente no campo textual de `paragraph` ou
+`table` em que já é lida, sem bloco autônomo de associação.
 
 **Fundamentação.** Recuperação pode beneficiar aprendizagem, mas tarefa e
 transferência são moderadores ([Agarwal et al. (2021)](referencias.md#ref-agarwal2021retrieval); [Pan e Rickard (2018)](referencias.md#ref-pan2018transfer)).
 
 **Operacionalização.** O package declara alvos, respostas e feedback; o package
-de resposta controla estado e confirmação sem modificar a topologia.
+de resposta controla estado e confirmação sem modificar a topologia. Lacunas
+que integram a mesma correspondência conservam opções e estado próprios.
 
 **Consequências.** A contribuição potencial é um mecanismo para coordenar representação
 especializada e resposta sem descaracterizar a notação.

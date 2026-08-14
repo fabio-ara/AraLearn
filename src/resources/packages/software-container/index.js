@@ -91,6 +91,13 @@ function graphvizSource(data) {
 
 function labels(data) {
   return [
+    {
+      kind: "boundary",
+      id: "system",
+      graphvizId: "software-container-boundary",
+      plain: `Sistema · ${data.system.label}\n${data.system.description}`,
+      html: `<span class="package-system-diagram-node-content"><strong>Sistema · ${renderPackageInline(data.system.label)}</strong><span>${renderPackageInline(data.system.description)}</span></span>`
+    },
     ...data.containers.map((item) => ({ kind: "node", id: item.id, plain: containerPlainLabel(item), html: containerTemplate(item) })),
     ...externalObjects(data).map((item) => ({ kind: "node", id: item.id, plain: externalPlainLabel(item), html: externalTemplate(item) })),
     ...data.relationships.map((item) => ({ kind: "edge", id: item.id, plain: item.label, html: `<span>${renderPackageInline(item.label)}</span>` }))

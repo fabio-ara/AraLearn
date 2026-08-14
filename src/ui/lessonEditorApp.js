@@ -1904,15 +1904,6 @@ export function createLessonEditorApp({
         }
       }
 
-      const matchings = getCurrentCardMatchingResponse(currentCard);
-      for (const entry of matchings) {
-        const exercise = state.responseExerciseByBlockKey[entry.blockKey] || { matches: {}, feedback: null };
-        if (exercise.feedback !== "correct") {
-          const status = validateMatching(entry.blockKey, { renderCorrect: false });
-          if (status !== "correct") return;
-        }
-      }
-
       const popupEntry = getCurrentPackageFeedbackEntry(currentCard);
       const popupIsOpen = isCurrentContinuePopupOpen(popupEntry);
 
@@ -3585,11 +3576,6 @@ export function createLessonEditorApp({
     }
   }
 
-  function getCurrentCardMatchingResponse(card = getRenderContext().card) {
-    const entry = getPackageResponseEntry(card, buildCardPathKey(state.selection));
-    return entry?.instance?.package === "aralearn.response.matching" ? [entry] : [];
-  }
-
   function getCurrentChoiceEntry(blockKey) {
     return (
       [
@@ -3662,35 +3648,16 @@ export function createLessonEditorApp({
     };
     getCurrentCardOrderingResponse().forEach((entry) => {
       const current = state.responseExerciseByBlockKey[entry.blockKey];
-      const itemIds = Array.isArray(entry.block?.items)
-        ? entry.block.items.map(({ id }) => String(id))
+      const itemIds = Array.isArray(entry.block?.targets)
+        ? entry.block.targets.map(({ id }) => String(id))
         : [];
       let order = Array.isArray(current?.order) ? current.order.slice() : [];
-      if (order.length !== itemIds.length || order.some((id) => !itemIds.includes(id))) {
+      if (order.length !== itemIds.length || new Set(order).size !== itemIds.length ||
+          order.some((id) => !itemIds.includes(id))) {
         order = itemIds.length > 1 ? [...itemIds.slice(1), itemIds[0]] : itemIds;
       }
       state.responseExerciseByBlockKey[entry.blockKey] = {
         order,
-        feedback: current?.feedback || null
-      };
-      runtimeOptions.responseStateByBlockKey[entry.blockKey] = state.responseExerciseByBlockKey[entry.blockKey];
-    });
-    return runtimeOptions;
-  }
-
-  function ensureCurrentMatchingExerciseState() {
-    const runtimeOptions = {
-      blockKeyPrefix: buildCardPathKey(state.selection),
-      responseStateByBlockKey: {}
-    };
-    getCurrentCardMatchingResponse().forEach((entry) => {
-      const current = state.responseExerciseByBlockKey[entry.blockKey];
-      const leftIds = new Set((entry.block?.leftItems || []).map(({ id }) => String(id)));
-      const matches = Object.fromEntries(Object.entries(current?.matches || {})
-        .filter(([leftId]) => leftIds.has(leftId))
-        .map(([leftId, rightId]) => [leftId, String(rightId)]));
-      state.responseExerciseByBlockKey[entry.blockKey] = {
-        matches,
         feedback: current?.feedback || null
       };
       runtimeOptions.responseStateByBlockKey[entry.blockKey] = state.responseExerciseByBlockKey[entry.blockKey];
@@ -3922,15 +3889,19 @@ export function createLessonEditorApp({
 
   function moveOrderingItem(blockKey, itemId, direction) {
     const entry = getCurrentOrderingEntry(blockKey);
-    if (!entry) return;
+    if (!entry || !["left", "right"].includes(direction)) return;
     ensureCurrentOrderingExerciseState();
     const exercise = state.responseExerciseByBlockKey[blockKey];
     const order = exercise.order.slice();
     const index = order.indexOf(itemId);
-    const target = direction === "up" ? index - 1 : index + 1;
+    const target = direction === "left" ? index - 1 : index + 1;
     if (index < 0 || target < 0 || target >= order.length) return;
     [order[index], order[target]] = [order[target], order[index]];
     state.responseExerciseByBlockKey[blockKey] = { order, feedback: null };
+    const escapedItemId = globalThis.CSS?.escape
+      ? globalThis.CSS.escape(String(itemId))
+      : String(itemId).replace(/["\\]/gu, "\\$&");
+    queueExerciseFocus(`.runtime-ordering-slot[data-ordering-item-id="${escapedItemId}"]`);
     render({ preserveState: true });
   }
 
@@ -3954,7 +3925,7 @@ export function createLessonEditorApp({
     const entry = getCurrentOrderingEntry(blockKey);
     if (!entry) return;
     state.responseExerciseByBlockKey[blockKey] = {
-      order: entry.block.answerOrder.slice(),
+      order: entry.block.targets.map(({ id }) => String(id)),
       feedback: "correct"
     };
     render({ preserveState: true });
@@ -3963,7 +3934,7 @@ export function createLessonEditorApp({
   function tryOrderingAgain(blockKey) {
     const entry = getCurrentOrderingEntry(blockKey);
     if (!entry) return;
-    const itemIds = entry.block.items.map(({ id }) => String(id));
+    const itemIds = entry.block.targets.map(({ id }) => String(id));
     state.responseExerciseByBlockKey[blockKey] = {
       order: itemIds.length > 1 ? [...itemIds.slice(1), itemIds[0]] : itemIds,
       feedback: null
@@ -3971,73 +3942,16 @@ export function createLessonEditorApp({
     render({ preserveState: true });
   }
 
-  function getCurrentMatchingEntry(blockKey) {
-    return getCurrentCardMatchingResponse().find((entry) => entry.blockKey === blockKey) || null;
-  }
-
-  function setMatchingValue(blockKey, leftId, rightId) {
-    const entry = getCurrentMatchingEntry(blockKey);
-    if (!entry) return;
-    ensureCurrentMatchingExerciseState();
-    const exercise = state.responseExerciseByBlockKey[blockKey];
-    state.responseExerciseByBlockKey[blockKey] = {
-      matches: { ...exercise.matches, [leftId]: String(rightId || "") },
-      feedback: null
-    };
-    render({ preserveState: true });
-  }
-
-  function validateMatching(blockKey, { renderCorrect = true } = {}) {
-    const entry = getCurrentMatchingEntry(blockKey);
-    if (!entry) return null;
-    ensureCurrentMatchingExerciseState();
-    const exercise = state.responseExerciseByBlockKey[blockKey];
-    const leftIds = (entry.block.leftItems || []).map(({ id }) => String(id));
-    if (leftIds.some((id) => !String(exercise.matches[id] || ""))) {
-      state.responseExerciseByBlockKey[blockKey] = { ...exercise, feedback: "incomplete" };
-      notifyIncompleteExercise("Complete todos os encaixes.");
-      render({ preserveState: true });
-      return "incomplete";
-    }
-    const evaluation = RESOURCE_PACKAGE_REGISTRY.evaluateResponse(entry.instance, {
-      matches: exercise.matches
-    });
-    state.responseExerciseByBlockKey[blockKey] = {
-      ...exercise,
-      feedback: evaluation.correct ? "correct" : "wrong"
-    };
-    if (!evaluation.correct || renderCorrect) render({ preserveState: true });
-    return evaluation.correct ? "correct" : "wrong";
-  }
-
-  function viewMatchingAnswer(blockKey) {
-    const entry = getCurrentMatchingEntry(blockKey);
-    if (!entry) return;
-    state.responseExerciseByBlockKey[blockKey] = {
-      matches: Object.fromEntries(entry.block.answerPairs.map(({ leftId, rightId }) => [leftId, rightId])),
-      feedback: "correct"
-    };
-    render({ preserveState: true });
-  }
-
-  function tryMatchingAgain(blockKey) {
-    if (!getCurrentMatchingEntry(blockKey)) return;
-    state.responseExerciseByBlockKey[blockKey] = { matches: {}, feedback: null };
-    render({ preserveState: true });
-  }
-
   function ensureCurrentPackageCardOptions() {
     const choiceOptions = ensureCurrentChoiceExerciseState();
     const completeOptions = ensureCurrentCompleteExerciseState();
     const orderingOptions = ensureCurrentOrderingExerciseState();
-    const matchingOptions = ensureCurrentMatchingExerciseState();
     return {
       blockKeyPrefix: buildCardPathKey(state.selection),
       responseStateByBlockKey: {
         ...(choiceOptions.responseStateByBlockKey || {}),
         ...(completeOptions.responseStateByBlockKey || {}),
-        ...(orderingOptions.responseStateByBlockKey || {}),
-        ...(matchingOptions.responseStateByBlockKey || {})
+        ...(orderingOptions.responseStateByBlockKey || {})
       },
       activeTextGapPrompt: state.activeTextGapPrompt,
       exerciseShuffleSeed: choiceOptions.exerciseShuffleSeed || "package"
@@ -4219,6 +4133,8 @@ export function createLessonEditorApp({
       if (state.inlineStructureEditor) queueAuthoringFocus("inline-structure-title");
     }
     if (level === "card") {
+      if (mode !== "view") invalidateResponseExerciseState();
+      else state.activeTextGapPrompt = null;
       state.microsequenceMode = mode === "view" ? "play" : "assist";
       state.assistDraft.composerOpen = false;
       state.assistDraft.errorMessage = "";
@@ -4911,6 +4827,7 @@ export function createLessonEditorApp({
 
   function bindCompleteResponseControls(scope) {
     scope.querySelectorAll("[data-action='complete-input']").forEach((node) => {
+      if (node.closest("[data-manual-target-id]")) return;
       if (node.dataset.responseControlBound === "true") return;
       node.dataset.responseControlBound = "true";
       if (node.tagName === "TEXTAREA" || node.tagName === "INPUT") {
@@ -4956,6 +4873,7 @@ export function createLessonEditorApp({
     });
 
     scope.querySelectorAll("[data-action='text-gap-open-choice']").forEach((node) => {
+      if (node.closest("[data-manual-target-id]")) return;
       if (node.dataset.responseControlBound === "true") return;
       node.dataset.responseControlBound = "true";
       const openPrompt = () => {
@@ -4974,6 +4892,7 @@ export function createLessonEditorApp({
     });
 
     scope.querySelectorAll("[data-action='text-gap-set-choice']").forEach((node) => {
+      if (node.closest("[data-manual-target-id]")) return;
       if (node.dataset.responseControlBound === "true") return;
       node.dataset.responseControlBound = "true";
       node.addEventListener("click", () => {
@@ -5147,7 +5066,8 @@ export function createLessonEditorApp({
           cardAssistanceState: state.assistDraft.assistance,
           cardResourceTargets: rendersCardAssistance
             ? listCardResourceTargets(context.card).filter((target) =>
-                target.location !== "after_text" || text(context.card?.after).trim()
+                (target.location !== "after_text" || text(context.card?.after).trim()) &&
+                (state.entityModes.card !== "edit" || target.editableTextLabels.length > 0)
               )
             : [],
           manualCardEditDraft: state.assistDraft.manualDraft,
@@ -5219,6 +5139,9 @@ export function createLessonEditorApp({
         : "") +
       "</div>";
 
+    const manualResourceEditor = root.querySelector(
+      ".runtime-resource-edit-target[data-manual-target-id]"
+    );
     void RESOURCE_PACKAGE_REGISTRY.hydrate(root)
       .then(() => bindCompleteResponseControls(root))
       .catch((error) => {
@@ -5226,27 +5149,28 @@ export function createLessonEditorApp({
           bubbles: true,
           detail: { error }
         }));
+      })
+      .finally(() => {
+        if (!manualResourceEditor?.isConnected || !root.contains(manualResourceEditor)) return;
+        activateManualCardEdit(
+          manualResourceEditor,
+          state.assistDraft.manualDraft?.targetId === manualResourceEditor.dataset.manualTargetId
+            ? state.assistDraft.manualDraft.values
+            : null
+        );
+        if (renderState) {
+          restoreRenderState(root, renderState, { restoreFocus: preserveFocus });
+        }
+        syncPendingAuthoringFocus();
       });
 
-    const manualResourceEditor = root.querySelector(
-      ".runtime-resource-edit-target[data-manual-target-id]"
-    );
-    if (manualResourceEditor) {
-      activateManualCardEdit(
-        manualResourceEditor,
-        state.assistDraft.manualDraft?.targetId === manualResourceEditor.dataset.manualTargetId
-          ? state.assistDraft.manualDraft.values
-          : null
-      );
-    }
-
-    if (renderState) {
+    if (renderState && !manualResourceEditor) {
       restoreRenderState(root, renderState, { restoreFocus: preserveFocus });
     }
 
     syncCardStripScroller({ keepActiveCardInView: true });
     syncPendingExerciseFocus();
-    syncPendingAuthoringFocus();
+    if (!manualResourceEditor) syncPendingAuthoringFocus();
 
     root.querySelector("[data-action='go-back']")?.addEventListener("click", () => goBack());
     root.querySelectorAll("[data-action='open-central']").forEach((node) => {
@@ -5811,6 +5735,7 @@ export function createLessonEditorApp({
     });
     root.querySelectorAll("[data-action='choice-try-again']").forEach((node) => {
       node.addEventListener("click", () => {
+        if (node.closest("[data-manual-target-id]")) return;
         const blockKey = node.getAttribute("data-choice-block-key");
         if (!blockKey) return;
         tryAgainChoice(blockKey);
@@ -5818,6 +5743,7 @@ export function createLessonEditorApp({
     });
     root.querySelectorAll("[data-action='choice-view-answer']").forEach((node) => {
       node.addEventListener("click", () => {
+        if (node.closest("[data-manual-target-id]")) return;
         const blockKey = node.getAttribute("data-choice-block-key");
         if (!blockKey) return;
         viewAnswerChoice(blockKey);
@@ -5825,6 +5751,7 @@ export function createLessonEditorApp({
     });
     root.querySelectorAll("[data-action='choice-validate']").forEach((node) => {
       node.addEventListener("click", () => {
+        if (node.closest("[data-manual-target-id]")) return;
         const blockKey = node.getAttribute("data-choice-block-key");
         if (!blockKey) return;
         validateChoice(blockKey);
@@ -5855,6 +5782,7 @@ export function createLessonEditorApp({
     bindCompleteResponseControls(root);
     root.querySelectorAll("[data-action='complete-try-again']").forEach((node) => {
       node.addEventListener("click", () => {
+        if (node.closest("[data-manual-target-id]")) return;
         const blockKey = node.getAttribute("data-complete-block-key");
         if (!blockKey) return;
         tryAgainComplete(blockKey);
@@ -5862,6 +5790,7 @@ export function createLessonEditorApp({
     });
     root.querySelectorAll("[data-action='complete-view-answer']").forEach((node) => {
       node.addEventListener("click", () => {
+        if (node.closest("[data-manual-target-id]")) return;
         const blockKey = node.getAttribute("data-complete-block-key");
         if (!blockKey) return;
         viewAnswerComplete(blockKey);
@@ -5869,6 +5798,7 @@ export function createLessonEditorApp({
     });
     root.querySelectorAll("[data-action='complete-validate']").forEach((node) => {
       node.addEventListener("click", () => {
+        if (node.closest("[data-manual-target-id]")) return;
         const blockKey = node.getAttribute("data-complete-block-key");
         if (!blockKey) return;
         validateComplete(blockKey);
@@ -5876,6 +5806,7 @@ export function createLessonEditorApp({
     });
     root.querySelectorAll("[data-action='ordering-move']").forEach((node) => {
       node.addEventListener("click", () => {
+        if (node.closest("[data-manual-target-id]")) return;
         moveOrderingItem(
           node.getAttribute("data-response-block-key"),
           node.getAttribute("data-ordering-item-id"),
@@ -5884,14 +5815,16 @@ export function createLessonEditorApp({
       });
     });
     root.querySelectorAll("[data-action='ordering-view-answer']").forEach((node) => {
-      node.addEventListener("click", () => viewOrderingAnswer(
-        node.getAttribute("data-response-block-key")
-      ));
+      node.addEventListener("click", () => {
+        if (node.closest("[data-manual-target-id]")) return;
+        viewOrderingAnswer(node.getAttribute("data-response-block-key"));
+      });
     });
     root.querySelectorAll("[data-action='ordering-try-again']").forEach((node) => {
-      node.addEventListener("click", () => tryOrderingAgain(
-        node.getAttribute("data-response-block-key")
-      ));
+      node.addEventListener("click", () => {
+        if (node.closest("[data-manual-target-id]")) return;
+        tryOrderingAgain(node.getAttribute("data-response-block-key"));
+      });
     });
     root.querySelectorAll("[data-action='annotation-toggle']").forEach((node) => {
       node.addEventListener("click", () => {
@@ -5914,23 +5847,6 @@ export function createLessonEditorApp({
           note?.scrollIntoView({ block: "nearest", inline: "nearest", behavior: "smooth" });
         }
       });
-    });
-    root.querySelectorAll("[data-action='matching-set']").forEach((node) => {
-      node.addEventListener("change", () => setMatchingValue(
-        node.getAttribute("data-response-block-key"),
-        node.getAttribute("data-matching-left-id"),
-        node.value
-      ));
-    });
-    root.querySelectorAll("[data-action='matching-view-answer']").forEach((node) => {
-      node.addEventListener("click", () => viewMatchingAnswer(
-        node.getAttribute("data-response-block-key")
-      ));
-    });
-    root.querySelectorAll("[data-action='matching-try-again']").forEach((node) => {
-      node.addEventListener("click", () => tryMatchingAgain(
-        node.getAttribute("data-response-block-key")
-      ));
     });
 
     root.querySelectorAll("[data-action='open-card-index']").forEach((node) => {
@@ -6135,7 +6051,11 @@ export function createLessonEditorApp({
           targetId
         );
         state.assistDraft.manualDraft = null;
-        queueAuthoringFocus(`resource:${targetId}`);
+        queueAuthoringFocus(
+          state.entityModes.card === "edit" && !current.resourceTargetIds?.includes(targetId)
+            ? "manual-first-field"
+            : `resource:${targetId}`
+        );
         render({ preserveState: true });
       });
     });
@@ -6183,7 +6103,7 @@ export function createLessonEditorApp({
           "select",
           "a",
           "summary",
-          "[contenteditable='true']"
+          "[contenteditable]:not([contenteditable='false'])"
         ].join(","))) return;
         toggleCurrentCardWholeSelection();
       });

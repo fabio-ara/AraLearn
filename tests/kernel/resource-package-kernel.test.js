@@ -96,7 +96,7 @@ test("kernel registra package sem conhecer paragraph", () => {
       practiceTargets.forEach((target) => {
         assert.notEqual(target.path, "prompt", `${manifest.id} não pode usar o enunciado como lacuna.`);
         assert.ok(target.modes.length, manifest.id);
-        target.modes.forEach((mode) => assert.ok(["gap", "typing"].includes(mode), manifest.id));
+        target.modes.forEach((mode) => assert.ok(["gap", "typing", "ordering"].includes(mode), manifest.id));
       });
     }
   });
@@ -552,12 +552,11 @@ test("todo package materializa cada alvo como uma lacuna única e independente",
   });
 });
 
-test("packages de resposta avaliam escolha, lacuna, ordenação e encaixe", () => {
+test("packages de resposta avaliam escolha, lacuna e ordenação", () => {
   const cases = [
     ["aralearn.response.choice", { selectedIds: ["tcp"] }],
     ["aralearn.response.gap", { values: { protocol: "protocolo" } }],
-    ["aralearn.response.ordering", { order: ["s1", "s2"] }],
-    ["aralearn.response.matching", { matches: { tcp: "transport", ip: "network" } }]
+    ["aralearn.response.ordering", { order: ["prepare", "execute"] }]
   ];
   cases.forEach(([packageId, answer], index) => {
     const manifest = RESOURCE_PACKAGE_REGISTRY.listCatalog().find(({ id }) => id === packageId);
@@ -567,22 +566,206 @@ test("packages de resposta avaliam escolha, lacuna, ordenação e encaixe", () =
   });
 });
 
-test("ordering possui blocos próprios e não depende da estrutura de conteúdo", () => {
+test("ordering atua em ao menos dois alvos textuais sem renderer independente", () => {
   const contract = RESOURCE_PACKAGE_REGISTRY.getAuthoringContract(
     "aralearn.response.ordering",
-    "2.0.0"
+    "3.0.0"
   );
-  assert.deepEqual(contract.contract.required, ["prompt", "items", "answerOrder"]);
-  assert.equal(Object.hasOwn(contract.schema.properties, "targetInstanceId"), false);
-  assert.equal(Object.hasOwn(contract.schema.properties, "itemIds"), false);
+  assert.deepEqual(contract.contract.required, ["targets"]);
+  assert.deepEqual(contract.contract.optional, []);
+  assert.equal(Object.hasOwn(contract.schema.properties, "prompt"), false);
+  assert.equal(Object.hasOwn(contract.schema.properties, "items"), false);
+  assert.equal(Object.hasOwn(contract.schema.properties, "answerOrder"), false);
   const instance = RESOURCE_PACKAGE_REGISTRY.normalizeInstance({
-    id: "ordering-independent",
+    id: "ordering-situated",
     package: "aralearn.response.ordering",
-    version: "2.0.0",
+    version: "3.0.0",
     data: contract.contract.example
   }, "response");
-  const card = { ...theoryCard(), role: "practice", response: instance };
-  assert.equal(validateCardEnvelope(card, RESOURCE_PACKAGE_REGISTRY).valid, true);
+  const card = {
+    ...theoryCard(),
+    role: "practice",
+    content: [
+      { ...paragraphInstance({ text: "Preparar" }), id: "step-1" },
+      { ...paragraphInstance({ text: "Executar" }), id: "step-2" }
+    ],
+    response: instance
+  };
+  const validation = validateCardEnvelope(card, RESOURCE_PACKAGE_REGISTRY);
+  assert.equal(validation.valid, true, validation.errors.join(" "));
+  const rendered = renderCardEnvelope(card, RESOURCE_PACKAGE_REGISTRY, {
+    cardResponse: instance,
+    responseBlockKey: "ordering-situated",
+    blockKey: "ordering-situated",
+    responseState: { order: ["execute", "prepare"] }
+  });
+  assert.equal((rendered.contentHtml.match(/class="runtime-ordering-slot"/gu) || []).length, 2);
+  assert.equal((rendered.contentHtml.match(/contenteditable="false"/gu) || []).length, 2);
+  assert.doesNotMatch(rendered.contentHtml, /contenteditable="true"/u);
+  assert.equal(rendered.responseHtml, "<section class=\"package-instance\" data-package=\"aralearn.response.ordering\" data-package-version=\"3.0.0\" data-package-instance-id=\"ordering-situated\"></section>");
+  assert.throws(() => RESOURCE_PACKAGE_REGISTRY.getAuthoringContract(
+    "aralearn.response.ordering",
+    "2.0.0"
+  ), /Package não instalado/u);
+});
+
+test("ordering valida ocorrências, ordem de leitura e respostas observáveis", () => {
+  const content = paragraphInstance({ text: "Preparar, executar e verificar." });
+  const response = (targets) => ({
+    id: "ordering-occurrences",
+    package: "aralearn.response.ordering",
+    version: "3.0.0",
+    data: { targets }
+  });
+  const targets = [
+    { id: "prepare", targetInstanceId: content.id, targetPath: "text:prepare", answer: "Preparar" },
+    { id: "execute", targetInstanceId: content.id, targetPath: "text:execute", answer: "executar" },
+    { id: "verify", targetInstanceId: content.id, targetPath: "text:verify", answer: "verificar" }
+  ];
+  const validCard = { ...theoryCard(), role: "practice", content: [content], response: response(targets) };
+  assert.equal(validateCardEnvelope(validCard, RESOURCE_PACKAGE_REGISTRY).valid, true);
+
+  const reversed = { ...validCard, response: response([...targets].reverse()) };
+  const reversedValidation = validateCardEnvelope(reversed, RESOURCE_PACKAGE_REGISTRY);
+  assert.equal(reversedValidation.valid, false);
+  assert.match(reversedValidation.errors.join(" "), /ordem de leitura/u);
+
+  const duplicate = response([
+    targets[0],
+    { ...targets[1], answer: "Preparar" }
+  ]);
+  const duplicateValidation = RESOURCE_PACKAGE_REGISTRY.validateInstance(duplicate, "response");
+  assert.equal(duplicateValidation.valid, false);
+  assert.match(duplicateValidation.errors.join(" "), /respostas textuais distintas/u);
+
+  const ambiguousContent = paragraphInstance({ text: "executar, depois executar" });
+  const ambiguousCard = {
+    ...theoryCard(),
+    role: "practice",
+    content: [ambiguousContent],
+    response: response([
+      { id: "execute", targetInstanceId: ambiguousContent.id, targetPath: "text:execute", answer: "executar" },
+      { id: "after", targetInstanceId: ambiguousContent.id, targetPath: "text:after", answer: "depois" }
+    ])
+  };
+  const ambiguousValidation = validateCardEnvelope(ambiguousCard, RESOURCE_PACKAGE_REGISTRY);
+  assert.equal(ambiguousValidation.valid, false);
+  assert.match(ambiguousValidation.errors.join(" "), /única ocorrência/u);
+
+  const overlappingContent = paragraphInstance({ text: "banana e kiwi" });
+  const overlappingCard = {
+    ...theoryCard(),
+    role: "practice",
+    content: [overlappingContent],
+    response: response([
+      { id: "ana", targetInstanceId: overlappingContent.id, targetPath: "text:ana", answer: "ana" },
+      { id: "kiwi", targetInstanceId: overlappingContent.id, targetPath: "text:kiwi", answer: "kiwi" }
+    ])
+  };
+  const overlappingValidation = validateCardEnvelope(overlappingCard, RESOURCE_PACKAGE_REGISTRY);
+  assert.equal(overlappingValidation.valid, false);
+  assert.match(overlappingValidation.errors.join(" "), /única ocorrência/u);
+
+  const markedContent = paragraphInstance({ text: "**Preparar** e executar" });
+  const markedCard = {
+    ...theoryCard(),
+    role: "practice",
+    content: [markedContent],
+    response: response([
+      { id: "prepare", targetInstanceId: markedContent.id, targetPath: "text:prepare", answer: "Preparar" },
+      { id: "execute", targetInstanceId: markedContent.id, targetPath: "text:execute", answer: "executar" }
+    ])
+  };
+  const markedValidation = validateCardEnvelope(markedCard, RESOURCE_PACKAGE_REGISTRY);
+  assert.equal(markedValidation.valid, false);
+  assert.match(markedValidation.errors.join(" "), /texto plano fora da marcação Markdown/u);
+
+  const delimitedCard = structuredClone(markedCard);
+  delimitedCard.response.data.targets[0].answer = "**Preparar**";
+  const delimitedValidation = validateCardEnvelope(delimitedCard, RESOURCE_PACKAGE_REGISTRY);
+  assert.equal(delimitedValidation.valid, false);
+  assert.match(delimitedValidation.errors.join(" "), /texto plano fora da marcação Markdown/u);
+});
+
+test("ordering atravessa células distintas da tabela sem expor o contrato técnico", () => {
+  const content = {
+    id: "steps-table",
+    package: "aralearn.resource.table",
+    version: "1.0.0",
+    data: {
+      columns: ["Primeiro", "Depois", "Por fim"],
+      rows: [["Preparar", "Executar", "Verificar"]]
+    }
+  };
+  const response = {
+    id: "table-ordering",
+    package: "aralearn.response.ordering",
+    version: "3.0.0",
+    data: {
+      targets: content.data.rows[0].map((answer, index) => ({
+        id: `step-${index + 1}`,
+        targetInstanceId: content.id,
+        targetPath: `rows[0][${index}]`,
+        answer
+      }))
+    }
+  };
+  const card = { ...theoryCard(), role: "practice", content: [content], response };
+  const validation = validateCardEnvelope(card, RESOURCE_PACKAGE_REGISTRY);
+  assert.equal(validation.valid, true, validation.errors.join(" "));
+  const rendered = renderCardEnvelope(card, RESOURCE_PACKAGE_REGISTRY, {
+    cardResponse: response,
+    responseBlockKey: "table-ordering",
+    blockKey: "table-ordering",
+    responseState: { order: ["step-2", "step-3", "step-1"] }
+  }).contentHtml;
+  assert.equal((rendered.match(/data-ordering-slot-index=/gu) || []).length, 3);
+  assert.equal((rendered.match(/data-action="ordering-move"/gu) || []).length, 6);
+  assert.doesNotMatch(rendered, /targetInstanceId|targetPath|rows\[0\]/u);
+  assert.doesNotMatch(rendered, />\s*(?:←|→)\s*</u);
+});
+
+test("ordering atravessa paragraph e célula de table na mesma ordem de leitura", () => {
+  const paragraph = { ...paragraphInstance({ text: "Preparar" }), id: "cross-paragraph" };
+  const table = {
+    id: "cross-table",
+    package: "aralearn.resource.table",
+    version: "1.0.0",
+    data: {
+      columns: ["Etapa"],
+      rows: [["Executar"], ["Verificar"]]
+    }
+  };
+  const response = {
+    id: "cross-ordering",
+    package: "aralearn.response.ordering",
+    version: "3.0.0",
+    data: {
+      targets: [
+        { id: "prepare", targetInstanceId: paragraph.id, targetPath: "text", answer: "Preparar" },
+        { id: "execute", targetInstanceId: table.id, targetPath: "rows[0][0]", answer: "Executar" },
+        { id: "verify", targetInstanceId: table.id, targetPath: "rows[1][0]", answer: "Verificar" }
+      ]
+    }
+  };
+  const card = {
+    ...theoryCard(),
+    role: "practice",
+    content: [paragraph, table],
+    response
+  };
+  const validation = validateCardEnvelope(card, RESOURCE_PACKAGE_REGISTRY);
+  assert.equal(validation.valid, true, validation.errors.join(" "));
+  const rendered = renderCardEnvelope(card, RESOURCE_PACKAGE_REGISTRY, {
+    cardResponse: response,
+    responseBlockKey: "cross-ordering",
+    blockKey: "cross-ordering",
+    responseState: { order: ["verify", "prepare", "execute"] }
+  }).contentHtml;
+  assert.equal((rendered.match(/data-ordering-slot-index=/gu) || []).length, 3);
+  assert.match(rendered, /data-ordering-slot-index="0"[^>]*>[\s\S]*?runtime-ordering-value">Verificar</u);
+  assert.match(rendered, /data-ordering-slot-index="1"[^>]*>[\s\S]*?runtime-ordering-value">Preparar</u);
+  assert.match(rendered, /data-ordering-slot-index="2"[^>]*>[\s\S]*?runtime-ordering-value">Executar</u);
 });
 
 test("contrato completo é obtido somente para o package escolhido", () => {
@@ -595,8 +778,8 @@ test("contrato completo é obtido somente para o package escolhido", () => {
   assert.equal(contract.schema.properties.text.type, "string");
   assert.deepEqual(contract.practiceTargets, [{
     path: "text",
-    label: "Lacuna na explicação",
-    modes: ["gap", "typing"]
+    label: "Trecho na explicação",
+    modes: ["gap", "typing", "ordering"]
   }]);
 });
 

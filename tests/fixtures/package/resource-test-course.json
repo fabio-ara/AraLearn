@@ -111,7 +111,7 @@
                               "id": "blank-1",
                               "targetInstanceId": "resource-test-1-choice-content",
                               "targetPath": "text",
-                              "label": "Lacuna na explicação",
+                              "label": "Trecho na explicação",
                               "responseMode": "choice",
                               "answer": "previsível.",
                               "distractors": [
@@ -153,7 +153,7 @@
                               "id": "blank-1",
                               "targetInstanceId": "resource-test-1-text-content",
                               "targetPath": "text",
-                              "label": "Lacuna na explicação",
+                              "label": "Trecho na explicação",
                               "responseMode": "text",
                               "answer": "previsível."
                             }
@@ -10108,7 +10108,7 @@
           "id": "response-ordering-test-module",
           "title": "Ordenação",
           "guide": {
-            "goal": "Avaliar reconstrução de ordem como resposta independente.",
+            "goal": "Avaliar reconstrução de ordem nas expressões do resource textual.",
             "include": [
               "representação canônica e interação declarada"
             ],
@@ -10127,7 +10127,7 @@
               "id": "response-ordering-test-lesson",
               "title": "Ordenação",
               "guide": {
-                "goal": "Avaliar reconstrução de ordem como resposta independente.",
+                "goal": "Avaliar reconstrução de ordem nas expressões do resource textual.",
                 "include": [
                   "exposição e práticas semanticamente suportadas"
                 ],
@@ -10146,7 +10146,7 @@
                 {
                   "id": "response-ordering-test-microsequence",
                   "title": "Ordenação",
-                  "goal": "Avaliar reconstrução de ordem como resposta independente.",
+                  "goal": "Avaliar reconstrução de ordem nas expressões do resource textual.",
                   "role": "practice",
                   "dependsOn": [],
                   "covers": [],
@@ -10160,140 +10160,52 @@
                     {
                       "id": "ordering-card",
                       "position": 1,
-                      "title": "Blocos de ordenação",
+                      "title": "Ordene as etapas da resolução",
                       "role": "practice",
-                      "content": [],
+                      "content": [
+                        {
+                          "id": "response-ordering-content",
+                          "package": "aralearn.resource.table",
+                          "version": "1.0.0",
+                          "data": {
+                            "columns": [
+                              "Primeiro",
+                              "Depois",
+                              "Por fim"
+                            ],
+                            "rows": [
+                              [
+                                "Receber a consulta do cliente",
+                                "Consultar um servidor raiz",
+                                "Devolver o endereço encontrado"
+                              ]
+                            ]
+                          }
+                        }
+                      ],
                       "response": {
                         "id": "response-ordering",
                         "package": "aralearn.response.ordering",
-                        "version": "2.0.0",
+                        "version": "3.0.0",
                         "data": {
-                          "prompt": "Ordene as etapas da resolução iterativa de um nome.",
-                          "items": [
-                            {
-                              "id": "root",
-                              "label": "Consultar um servidor raiz"
-                            },
+                          "targets": [
                             {
                               "id": "query",
-                              "label": "Receber a consulta do cliente"
+                              "targetInstanceId": "response-ordering-content",
+                              "targetPath": "rows[0][0]",
+                              "answer": "Receber a consulta do cliente"
+                            },
+                            {
+                              "id": "root",
+                              "targetInstanceId": "response-ordering-content",
+                              "targetPath": "rows[0][1]",
+                              "answer": "Consultar um servidor raiz"
                             },
                             {
                               "id": "answer",
-                              "label": "Devolver o endereço encontrado"
-                            }
-                          ],
-                          "answerOrder": [
-                            "query",
-                            "root",
-                            "answer"
-                          ]
-                        }
-                      },
-                      "feedback": [],
-                      "topics": [],
-                      "sources": []
-                    }
-                  ]
-                }
-              ]
-            }
-          ]
-        },
-        {
-          "id": "response-matching-test-module",
-          "title": "Encaixe",
-          "guide": {
-            "goal": "Avaliar correspondências como resposta independente.",
-            "include": [
-              "representação canônica e interação declarada"
-            ],
-            "exclude": [
-              "adaptação artificial de outra operação cognitiva"
-            ],
-            "notation": [
-              "representação legível"
-            ],
-            "avoid": [
-              "usar a forma quando ela não acrescenta significado"
-            ]
-          },
-          "lessons": [
-            {
-              "id": "response-matching-test-lesson",
-              "title": "Encaixe",
-              "guide": {
-                "goal": "Avaliar correspondências como resposta independente.",
-                "include": [
-                  "exposição e práticas semanticamente suportadas"
-                ],
-                "exclude": [
-                  "práticas universais presumidas"
-                ],
-                "notation": [
-                  "representação legível"
-                ],
-                "avoid": [
-                  "lacuna fora da representação"
-                ]
-              },
-              "topics": [],
-              "microsequences": [
-                {
-                  "id": "response-matching-test-microsequence",
-                  "title": "Encaixe",
-                  "goal": "Avaliar correspondências como resposta independente.",
-                  "role": "practice",
-                  "dependsOn": [],
-                  "covers": [],
-                  "checks": [
-                    "sem sobreposição",
-                    "alvo de prática dentro da representação",
-                    "Play como confirmação"
-                  ],
-                  "errors": [],
-                  "cards": [
-                    {
-                      "id": "matching-card",
-                      "position": 1,
-                      "title": "Encaixe de correspondências",
-                      "role": "practice",
-                      "content": [],
-                      "response": {
-                        "id": "response-matching",
-                        "package": "aralearn.response.matching",
-                        "version": "1.0.0",
-                        "data": {
-                          "prompt": "Associe cada protocolo à função principal.",
-                          "mode": "one-to-one",
-                          "leftItems": [
-                            {
-                              "id": "dns",
-                              "label": "DNS"
-                            },
-                            {
-                              "id": "dhcp",
-                              "label": "DHCP"
-                            }
-                          ],
-                          "rightItems": [
-                            {
-                              "id": "names",
-                              "label": "Resolver nomes"
-                            },
-                            {
-                              "id": "address",
-                              "label": "Configurar endereços"
-                            }
-                          ],
-                          "answerPairs": [
-                            {
-                              "leftId": "dns",
-                              "rightId": "names"
-                            },
-                            {
-                              "leftId": "dhcp",
-                              "rightId": "address"
+                              "targetInstanceId": "response-ordering-content",
+                              "targetPath": "rows[0][2]",
+                              "answer": "Devolver o endereço encontrado"
                             }
                           ]
                         }

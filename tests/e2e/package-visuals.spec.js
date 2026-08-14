@@ -223,7 +223,7 @@ test("gráfico estatístico e plano cartesiano materializam sob a CSP real e per
   expect(relevantErrors).toEqual([]);
 });
 
-test("falha parcial do Graphviz mantém detalhes navegáveis sem expor resposta de medição", async ({ page }) => {
+test("falha do Graphviz remove o canvas sem expor resposta de medição", async ({ page }) => {
   const contract = RESOURCE_PACKAGE_REGISTRY.getAuthoringContract(
     "aralearn.resource.bpmn_process",
     "1.0.0"
@@ -284,17 +284,10 @@ test("falha parcial do Graphviz mantém detalhes navegáveis sem expor resposta 
   await expect(page.locator(".package-system-diagram-svg")).toHaveCount(0);
   await expect(page.locator('[data-diagram-action="toggle-expanded"]')).toBeDisabled();
   await expect(page.locator("body")).not.toContainText("Enviar solicitação");
-  const picker = page.locator("[data-system-detail-picker]");
-  await picker.selectOption("node:register");
-  await expect(page.locator(
-    '.package-system-diagram-detail-item[data-system-detail-key="node:register"]'
-  )).toBeVisible();
-  await expect(page.locator(
-    '.package-system-diagram-detail-item[data-system-detail-key="node:send"]'
-  )).toBeHidden();
+  await expect(page.locator(".package-system-diagram-detail")).toHaveCount(0);
 });
 
-test("visão global extrema ajusta uma árvore no limite contratual em 320px", async ({ page }) => {
+test("ajuste extremo mantém uma árvore no limite contratual em 320px", async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 700 });
   await page.goto("/");
   await page.setContent(documentFor(extremeTreeInstance, "light"));
@@ -317,11 +310,9 @@ test("visão global extrema ajusta uma árvore no limite contratual em 320px", a
   expect(state.scale).toBeLessThan(0.08);
   expect(state.overflowFree).toBe(true);
   expect(state.contained).toBe(true);
-  await expect(page.locator("[data-system-detail-picker] option")).toHaveCount(80);
-  await page.locator("[data-system-detail-picker]").selectOption("node:level-80");
-  await expect(page.locator(
-    '.package-system-diagram-detail-item[data-system-detail-key="node:level-80"]'
-  )).toContainText("Nível hierárquico 80");
+  await expect(page.locator('[data-system-object-kind="node"]')).toHaveCount(80);
+  await expect(page.locator("#system-node-level-80")).toContainText("Nível hierárquico 80");
+  await expect(page.locator(".package-system-diagram-detail")).toHaveCount(0);
 });
 
 function studyCardFor(instance) {
@@ -518,25 +509,17 @@ for (const { width, mode } of [
           )
         };
       });
-      expect(navigation.mode, packageId).toBe("overview");
-      expect(navigation.touchAction, packageId).toBe("pan-y");
+      expect(navigation.mode, packageId).toBe("inline");
+      expect(navigation.touchAction, packageId).toBe("none");
       expect(navigation.maxX, packageId).toBeLessThanOrEqual(1);
       expect(navigation.maxY, packageId).toBeLessThanOrEqual(1);
       expect(navigation.svgContained, packageId).toBe(true);
 
-      const picker = root.locator("[data-system-detail-picker]");
-      await expect(picker).toBeVisible();
-      await expect(root.locator('[data-diagram-action="toggle-expanded"]')).toContainText("Explorar");
-      const selectableNodes = root.locator('[data-system-object-kind="node"]');
-      if (await selectableNodes.count() > 1) {
-        const nextNode = selectableNodes.nth(1);
-        const detailKey = await nextNode.getAttribute("data-system-detail-key");
-        expect(detailKey).toBeTruthy();
-        await nextNode.dispatchEvent("click");
-        await expect(nextNode).toHaveAttribute("aria-pressed", "true");
-        await expect(picker).toHaveValue(detailKey);
-        await expect(root.locator(`.package-system-diagram-detail-item[data-system-detail-key="${detailKey}"]`)).toBeVisible();
-      }
+      await expect(root.locator("[data-system-detail-picker]")).toHaveCount(0);
+      const expand = root.locator('[data-diagram-action="toggle-expanded"]');
+      await expect(expand).toHaveText("");
+      await expect(expand.locator("svg")).toHaveCount(1);
+      await expect(root.locator("[data-diagram-expanded-controls]")).toBeHidden();
 
       const overlaps = await root.locator('[data-system-object-kind="node"]').evaluateAll((nodes) => {
         const boxes = nodes.map((node) => node.getBoundingClientRect());
@@ -626,39 +609,19 @@ for (const mode of ["light", "dark"]) {
         };
       });
       expect(viewportState.boundedHeight).toBe(true);
-      expect(viewportState.mode).toBe("overview");
-      expect(viewportState.touchAction).toBe("pan-y");
+      expect(viewportState.mode).toBe("inline");
+      expect(viewportState.touchAction).toBe("none");
       expect(viewportState.overflowX).toBe(false);
       expect(viewportState.overflowY).toBe(false);
       expect(viewportState.startsAtTop).toBe(true);
       expect(viewportState.svgContained).toBe(true);
       expect(viewportState.focusContained).toBe(true);
       await expect(figure.locator(".package-system-diagram-pan-hint")).toHaveCount(0);
-      await expect(figure.locator(".package-system-diagram-navigation-hint")).toBeVisible();
-      await expect(figure.locator('[data-diagram-action="toggle-expanded"]')).toContainText("Explorar");
-
-      const picker = figure.locator("[data-system-detail-picker]");
-      const selectableNodes = figure.locator('[data-system-object-kind="node"]');
-      await expect(picker).toBeVisible();
-      if (await selectableNodes.count() > 1) {
-        const nextNode = selectableNodes.nth(1);
-        const detailKey = await nextNode.getAttribute("data-system-detail-key");
-        expect(detailKey).toBeTruthy();
-        await nextNode.dispatchEvent("click");
-        await expect(nextNode).toHaveAttribute("aria-pressed", "true");
-        await expect(picker).toHaveValue(detailKey);
-        await expect(figure.locator(`.package-system-diagram-detail-item[data-system-detail-key="${detailKey}"]`)).toBeVisible();
-      }
-      const diagramTabStop = figure.locator(
-        '.package-system-diagram-svg [data-system-detail-key][tabindex="0"]'
-      );
-      await expect(diagramTabStop).toHaveCount(1);
-      const selectionBeforeArrow = await picker.inputValue();
-      await diagramTabStop.press("ArrowDown");
-      await expect(picker).not.toHaveValue(selectionBeforeArrow);
-      await expect(figure.locator(
-        '.package-system-diagram-svg [data-system-detail-key][tabindex="0"]'
-      )).toHaveCount(1);
+      await expect(figure.locator(".package-system-diagram-navigation-hint")).toHaveCount(0);
+      await expect(figure.locator(".package-system-diagram-detail")).toHaveCount(0);
+      const expand = figure.locator('[data-diagram-action="toggle-expanded"]');
+      await expect(expand).toHaveText("");
+      await expect(expand.locator("svg")).toHaveCount(1);
 
       const overlaps = await figure.locator('[data-system-object-kind="node"]').evaluateAll((nodes) => {
         const boxes = nodes.map((node) => node.getBoundingClientRect());

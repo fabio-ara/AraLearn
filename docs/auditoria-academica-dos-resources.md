@@ -180,8 +180,13 @@ um novo estilo para relações já preservadas.
 | --- | --- | --- | --- |
 | `choice` | discriminar uma ou mais alternativas | distratores representam erros plausíveis; modo simples ou múltiplo é explícito | alternativa correta revelada antes da solicitação, enunciado duplicado ou avaliação a cada toque |
 | `gap` | completar elemento localizado | alvo pertence ao package de conteúdo; cada lacuna tem opções e estado próprios | lacuna aparece no enunciado por conveniência, ou todas as lacunas compartilham resposta |
-| `ordering` | reconstruir uma sequência | ordem é o conhecimento avaliado, não uma forma arbitrária de variar a interface | itens já aparecem em ordem ou a sequência não tem fundamento semântico |
-| `matching` | estabelecer correspondências | cada lado e regra de pareamento são claros; cardinalidade é declarada | a mesma tarefa seria melhor expressa por `relation_map` expositivo ou tabela |
+| `ordering` | reconstruir uma sequência entre trechos textuais | pelo menos dois alvos pertencem a `paragraph` ou `table`, aparecem na ordem correta de leitura e são movidos no próprio ponto por setas à esquerda ou à direita | itens são duplicados numa lista de resposta, a sequência é espacial/vertical ou a ordem não tem fundamento semântico |
+
+Correspondências simples são lacunas de escolha aplicadas aos campos reais de
+um `paragraph` ou de uma `table`. Não constituem outro package de resposta. Um
+`relation_map` continua apropriado quando a relação, a imagem, a preimagem ou a
+cardinalidade são o próprio objeto de estudo, e não apenas o formato de uma
+pergunta.
 
 Digitação é uma modalidade de resposta aplicada a um alvo autorizado. Ela não
 constitui package de conteúdo. O controle principal do card confirma a

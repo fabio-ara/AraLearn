@@ -32,6 +32,10 @@ function paragraph(id, text) {
   return normalizeInstance({ id, packageId: "aralearn.resource.paragraph", data: { text, languageTag: "pt-BR", textDirection: "auto" } });
 }
 
+function table(id, columns, rows) {
+  return normalizeInstance({ id, packageId: "aralearn.resource.table", data: { columns, rows } });
+}
+
 function feedback(id, text) {
   return normalizeInstance({ id, packageId: "aralearn.resource.paragraph", data: { text, languageTag: "pt-BR", textDirection: "auto" }, slot: "feedback" });
 }
@@ -44,12 +48,41 @@ function gap(id, targetInstanceId, targetPath, answer, responseMode = "choice", 
   return normalizeInstance({ id, packageId: "aralearn.response.gap", slot: "response", data: { blanks: [{ id: `${id}-blank`, targetInstanceId, targetPath, label: "Complete o elemento na própria representação", responseMode, answer, ...(responseMode === "choice" ? { distractors } : {}) }] } });
 }
 
-function ordering(id, prompt, items, answerOrder) {
-  return normalizeInstance({ id, packageId: "aralearn.response.ordering", version: "2.0.0", slot: "response", data: { prompt, items, answerOrder } });
+function ordering(id, content) {
+  return normalizeInstance({
+    id,
+    packageId: "aralearn.response.ordering",
+    version: "3.0.0",
+    slot: "response",
+    data: {
+      targets: content.map((instance, index) => ({
+        id: `${id}-target-${index + 1}`,
+        targetInstanceId: instance.id,
+        targetPath: "text",
+        answer: instance.data.text
+      }))
+    }
+  });
 }
 
-function matching(id, prompt, leftItems, rightItems, answerPairs) {
-  return normalizeInstance({ id, packageId: "aralearn.response.matching", slot: "response", data: { prompt, mode: "one-to-one", leftItems, rightItems, answerPairs } });
+function correspondenceGaps(id, content) {
+  const answers = content.data.rows.map((row) => row[1]);
+  return normalizeInstance({
+    id,
+    packageId: "aralearn.response.gap",
+    slot: "response",
+    data: {
+      blanks: answers.map((answer, index) => ({
+        id: `${id}-blank-${index + 1}`,
+        targetInstanceId: content.id,
+        targetPath: `rows[${index}][1]`,
+        label: `Complete a correspondência ${index + 1}`,
+        responseMode: "choice",
+        answer,
+        distractors: answers.filter((_, candidateIndex) => candidateIndex !== index)
+      }))
+    }
+  });
 }
 
 function card({ id, position, title, content, response = null, feedbackItems = [], topics, sources }) {
@@ -88,6 +121,11 @@ function algorithmTrace(id) {
 }
 const algorithmTraceCard = algorithmTrace("ifsp-alg-trace");
 const algorithmGapContent = algorithmTrace("ifsp-alg-gap-content");
+const algorithmOrderingContent = [
+  paragraph("ifsp-alg-order-middle", "Calcular o índice central do intervalo"),
+  paragraph("ifsp-alg-order-compare", "Comparar o valor central com o alvo"),
+  paragraph("ifsp-alg-order-reduce", "Reduzir o intervalo conforme a comparação")
+];
 const algorithms = moduleValue({
   id: "ifsp-algorithms",
   title: "Algoritmos: do problema à execução",
@@ -105,7 +143,7 @@ const algorithms = moduleValue({
     ] }),
     microsequence({ id: "alg-practice", title: "Reconstruir e transferir", goal: "Praticar estado, ordem e invariantes em situações já fundamentadas.", role: "practice", dependsOn: ["alg-representation"], covers: ["alg-state", "alg-binary"], cards: [
       card({ id: "alg-6", position: 1, title: "Complete o estado", content: [algorithmGapContent], response: gap("alg-6-response", algorithmGapContent.id, "rows[1][3]", "4", "text"), feedbackItems: [feedback("alg-6-feedback", "O índice central é 4 depois que o início passa a 3 e o fim permanece 5.")], topics: ["alg-state"], sources: [SOURCES.ifspPpc] }),
-      card({ id: "alg-7", position: 2, title: "Reconstrua uma iteração", content: [], response: ordering("alg-7-response", "Ordene os gestos de uma iteração da busca binária.", [{ id: "middle", label: "Calcular o índice central do intervalo" }, { id: "compare", label: "Comparar o valor central com o alvo" }, { id: "reduce", label: "Reduzir o intervalo conforme a comparação" }], ["middle", "compare", "reduce"]), feedbackItems: [feedback("alg-7-feedback", "Primeiro se escolhe o centro; a comparação fornece a informação que permite reduzir o intervalo.")], topics: ["alg-binary"], sources: [SOURCES.ifspPpc] }),
+      card({ id: "alg-7", position: 2, title: "Ordene os gestos de uma iteração", content: algorithmOrderingContent, response: ordering("alg-7-response", algorithmOrderingContent), feedbackItems: [feedback("alg-7-feedback", "Primeiro se escolhe o centro; a comparação fornece a informação que permite reduzir o intervalo.")], topics: ["alg-binary"], sources: [SOURCES.ifspPpc] }),
       card({ id: "alg-8", position: 3, title: "Condição de uso", content: [], response: choice("alg-8-response", "Em qual situação a busca binária pode descartar metade dos candidatos com segurança?", [{ id: "ordered", text: "Os valores estão ordenados segundo o mesmo critério da comparação." }, { id: "distinct", text: "Todos os valores são necessariamente diferentes." }, { id: "short", text: "A lista contém menos de dez valores." }, { id: "memory", text: "A lista ocupa posições contíguas de memória." }], ["ordered"]), feedbackItems: [feedback("alg-8-feedback", "A ordenação é o fundamento lógico do descarte; tamanho, unicidade e posição física não bastam.")], topics: ["alg-binary"], sources: [SOURCES.ifspPpc] })
     ] })
   ]
@@ -114,6 +152,15 @@ const algorithms = moduleValue({
 const erDiagram = example("ifsp-db-er", "aralearn.resource.entity_relationship");
 const relationalSchema = example("ifsp-db-schema", "aralearn.resource.database_schema");
 const erGapContent = example("ifsp-db-er-gap", "aralearn.resource.entity_relationship");
+const databaseCorrespondenceContent = table(
+  "ifsp-db-correspondence",
+  ["Símbolo", "Função"],
+  [
+    ["PK", "Identificar univocamente uma tupla"],
+    ["FK", "Referenciar chave de outra relação"],
+    ["NULL permitido", "Admitir ausência de valor"]
+  ]
+);
 const databases = moduleValue({
   id: "ifsp-databases", title: "Modelagem de dados: do domínio às relações", goal: "Distinguir modelo conceitual, modelo lógico e dados sem confundir suas notações.",
   topics: [topic("db-conceptual", "Modelo conceitual", "concept", ["reconhece entidades e cardinalidades"], ["trata entidade como tabela pronta"]), topic("db-relational", "Modelo relacional", "representation", ["segue PK e FK"], ["confunde linhas com esquema"]), topic("db-transform", "Transformação entre modelos", "procedure", ["resolve muitos-para-muitos por relação associativa"], ["perde atributo do relacionamento"])],
@@ -126,7 +173,7 @@ const databases = moduleValue({
     ] }),
     microsequence({ id: "db-practice", title: "Transformar sem decorar", goal: "Praticar a função de entidade associativa, PK e FK.", role: "practice", dependsOn: ["db-foundation"], covers: ["db-conceptual", "db-relational", "db-transform"], cards: [
       card({ id: "db-5", position: 1, title: "Complete o relacionamento", content: [erGapContent], response: gap("db-5-response", erGapContent.id, "relationships[0].label", "realiza", "choice", ["contém", "substitui"]), feedbackItems: [feedback("db-5-feedback", "O rótulo deve formar uma proposição compreensível no domínio: estudante realiza matrícula.")], topics: ["db-conceptual"], sources: [SOURCES.ifspPpc] }),
-      card({ id: "db-6", position: 2, title: "Associe símbolo e função", content: [], response: matching("db-6-response", "Associe cada elemento do esquema à função que exerce.", [{ id: "pk", label: "PK" }, { id: "fk", label: "FK" }, { id: "null", label: "NULL permitido" }], [{ id: "identify", label: "Identificar univocamente uma tupla" }, { id: "reference", label: "Referenciar chave de outra relação" }, { id: "absence", label: "Admitir ausência de valor" }], [{ leftId: "pk", rightId: "identify" }, { leftId: "fk", rightId: "reference" }, { leftId: "null", rightId: "absence" }]), feedbackItems: [feedback("db-6-feedback", "Os três sinais descrevem propriedades distintas: identidade, referência e admissibilidade de ausência.")], topics: ["db-relational"], sources: [SOURCES.ifspPpc] }),
+      card({ id: "db-6", position: 2, title: "Complete a função de cada símbolo", content: [databaseCorrespondenceContent], response: correspondenceGaps("db-6-response", databaseCorrespondenceContent), feedbackItems: [feedback("db-6-feedback", "Os três sinais descrevem propriedades distintas: identidade, referência e admissibilidade de ausência.")], topics: ["db-relational"], sources: [SOURCES.ifspPpc] }),
       card({ id: "db-7", position: 3, title: "Preserve o fato histórico", content: [], response: choice("db-7-response", "Por que ITEM_PEDIDO conserva preco_venda se PRODUTO já possui preco_atual?", [{ id: "history", text: "Para preservar o preço efetivamente praticado quando o pedido foi feito." }, { id: "duplicate", text: "Porque toda tabela deve repetir todos os atributos relacionados." }, { id: "foreign", text: "Porque preço é sempre uma chave estrangeira." }, { id: "null", text: "Para permitir que o produto não tenha identificador." }], ["history"]), feedbackItems: [feedback("db-7-feedback", "Preço atual pode mudar; o item registra um fato histórico do pedido.")], topics: ["db-transform"], sources: [SOURCES.ifspPpc] })
     ] })
   ]
@@ -136,6 +183,15 @@ const tcpPacket = example("dataprev-tcp-packet", "aralearn.resource.packet_layou
 const tcpState = example("dataprev-tcp-state", "aralearn.resource.state_machine");
 const networkTopology = example("dataprev-tcp-topology", "aralearn.resource.network_topology");
 const packetGapContent = example("dataprev-tcp-gap", "aralearn.resource.packet_layout");
+const networkCorrespondenceContent = table(
+  "dataprev-tcp-correspondence",
+  ["Objeto", "Representação"],
+  [
+    ["Largura e posição do campo Janela", "Layout de pacote"],
+    ["Transição até ESTABLISHED", "Diagrama de estados"],
+    ["Ligação entre firewall e DMZ", "Topologia de rede"]
+  ]
+);
 const networking = moduleValue({
   id: "dataprev-networking", title: "TCP: serviço, segmento e estado", goal: "Ensinar TCP do zero e conectar serviço percebido, campos do segmento, estados e caminho na rede.",
   topics: [topic("tcp-service", "Serviço de transporte", "concept", ["distingue fluxo de bytes e datagrama"], ["confunde TCP com aplicação"]), topic("tcp-header", "Cabeçalho TCP", "representation", ["localiza sequência, ACK e janela"], ["decora bit sem função"]), topic("tcp-state", "Estado da conexão", "concept", ["relaciona evento e transição"], ["trata estado como etapa linear"]), topic("tcp-path", "Caminho e papéis na rede", "representation", ["distingue enlace e processo"], ["confunde topologia com grafo abstrato"])],
@@ -152,7 +208,7 @@ const networking = moduleValue({
     ] }),
     microsequence({ id: "tcp-practice", title: "Recuperar, distinguir e transferir", goal: "Praticar campos, estados e papéis sem exigir informação não ensinada.", role: "practice", dependsOn: ["tcp-representations"], covers: ["tcp-header", "tcp-state", "tcp-path"], cards: [
       card({ id: "tcp-7", position: 1, title: "Localize a confirmação", content: [packetGapContent], response: gap("tcp-7-response", packetGapContent.id, "fields[3].label", "Número de confirmação", "choice", ["Porta de origem", "Ponteiro urgente"]), feedbackItems: [feedback("tcp-7-feedback", "O número de confirmação indica o próximo octeto esperado pelo receptor.")], topics: ["tcp-header"], sources: [SOURCES.tcp] }),
-      card({ id: "tcp-8", position: 2, title: "Não confunda campo e estado", content: [], response: matching("tcp-8-response", "Associe cada objeto à representação que permite estudá-lo diretamente.", [{ id: "window", label: "Largura e posição do campo Janela" }, { id: "established", label: "Transição até ESTABLISHED" }, { id: "dmz", label: "Ligação entre firewall e DMZ" }], [{ id: "packet", label: "Layout de pacote" }, { id: "state", label: "Diagrama de estados" }, { id: "topology", label: "Topologia de rede" }], [{ leftId: "window", rightId: "packet" }, { leftId: "established", rightId: "state" }, { leftId: "dmz", rightId: "topology" }]), feedbackItems: [feedback("tcp-8-feedback", "Cada representação responde a uma pergunta diferente: estrutura binária, comportamento por estado ou conectividade física/lógica.")], topics: ["tcp-header", "tcp-state", "tcp-path"], sources: [SOURCES.dataprev, SOURCES.tcp] }),
+      card({ id: "tcp-8", position: 2, title: "Complete a representação de cada objeto", content: [networkCorrespondenceContent], response: correspondenceGaps("tcp-8-response", networkCorrespondenceContent), feedbackItems: [feedback("tcp-8-feedback", "Cada representação responde a uma pergunta diferente: estrutura binária, comportamento por estado ou conectividade física/lógica.")], topics: ["tcp-header", "tcp-state", "tcp-path"], sources: [SOURCES.dataprev, SOURCES.tcp] }),
       card({ id: "tcp-9", position: 3, title: "Transfira para um caso novo", content: [], response: choice("tcp-9-response", "Um receptor recebeu continuamente até o byte 5000 e anuncia que espera o próximo. Qual campo expressa diretamente essa informação?", [{ id: "ack", text: "Número de confirmação" }, { id: "source", text: "Porta de origem" }, { id: "checksum", text: "Checksum" }, { id: "offset", text: "Data Offset" }], ["ack"]), feedbackItems: [feedback("tcp-9-feedback", "A confirmação é cumulativa e informa o próximo octeto esperado.")], topics: ["tcp-header"], sources: [SOURCES.tcp] })
     ] })
   ]
@@ -160,6 +216,12 @@ const networking = moduleValue({
 
 const bpmn = example("dataprev-bpmn-process", "aralearn.resource.bpmn_process");
 const bpmnGapContent = example("dataprev-bpmn-gap", "aralearn.resource.bpmn_process");
+const bpmnOrderingContent = [
+  paragraph("dataprev-bpmn-order-register", "Registrar solicitação"),
+  paragraph("dataprev-bpmn-order-analyze", "Analisar requisitos"),
+  paragraph("dataprev-bpmn-order-decide", "Verificar se os dados estão completos"),
+  paragraph("dataprev-bpmn-order-issue", "Emitir decisão")
+];
 const businessProcess = moduleValue({
   id: "dataprev-bpmn", title: "BPMN: responsabilidade, decisão e mensagem", goal: "Introduzir BPMN a partir de um processo reconhecível antes de exigir leitura da notação.",
   topics: [topic("bpmn-responsibility", "Participantes e raias", "concept", ["localiza responsável"], ["confunde raia com etapa"]), topic("bpmn-flow", "Fluxos BPMN", "representation", ["distingue sequência e mensagem"], ["faz sequência cruzar pool"]), topic("bpmn-gateway", "Gateway exclusivo", "concept", ["interpreta condições mutuamente exclusivas"], ["trata gateway como tarefa"])],
@@ -173,7 +235,7 @@ const businessProcess = moduleValue({
     microsequence({ id: "bpmn-practice", title: "Ler sem decorar figuras", goal: "Praticar responsabilidade, decisão e tipo de fluxo no próprio diagrama.", role: "practice", dependsOn: ["bpmn-foundation"], covers: ["bpmn-responsibility", "bpmn-flow", "bpmn-gateway"], cards: [
       card({ id: "bpmn-5", position: 1, title: "Complete a condição", content: [bpmnGapContent], response: gap("bpmn-5-response", bpmnGapContent.id, "flows[5].label", "Sim", "choice", ["Não", "mensagem"]), feedbackItems: [feedback("bpmn-5-feedback", "A condição “Sim” conduz da verificação de completude à emissão da decisão.")], topics: ["bpmn-gateway"], sources: [SOURCES.bpmn] }),
       card({ id: "bpmn-6", position: 2, title: "Escolha o fluxo correto", content: [], response: choice("bpmn-6-response", "Qual fluxo deve representar a solicitação enviada do pool Cliente ao pool Organização?", [{ id: "message", text: "Fluxo de mensagem, porque cruza participantes." }, { id: "sequence", text: "Fluxo de sequência, porque toda seta indica sequência." }, { id: "association", text: "Uma associação sem direção, porque não há comunicação." }, { id: "gateway", text: "Um gateway paralelo, porque há dois pools." }], ["message"]), feedbackItems: [feedback("bpmn-6-feedback", "Fluxo de sequência permanece dentro do participante; a comunicação entre pools usa fluxo de mensagem.")], topics: ["bpmn-flow"], sources: [SOURCES.bpmn] }),
-      card({ id: "bpmn-7", position: 3, title: "Reconstrua o trecho principal", content: [], response: ordering("bpmn-7-response", "Ordene o caminho quando os dados estão completos.", [{ id: "register", label: "Registrar solicitação" }, { id: "analyze", label: "Analisar requisitos" }, { id: "decide", label: "Verificar se os dados estão completos" }, { id: "issue", label: "Emitir decisão" }], ["register", "analyze", "decide", "issue"]), feedbackItems: [feedback("bpmn-7-feedback", "A ordenação reproduz apenas o caminho “Sim”; o retorno para complemento pertence ao outro ramo.")], topics: ["bpmn-gateway", "bpmn-flow"], sources: [SOURCES.bpmn] })
+      card({ id: "bpmn-7", position: 3, title: "Ordene o caminho quando os dados estão completos", content: bpmnOrderingContent, response: ordering("bpmn-7-response", bpmnOrderingContent), feedbackItems: [feedback("bpmn-7-feedback", "A ordenação reproduz apenas o caminho “Sim”; o retorno para complemento pertence ao outro ramo.")], topics: ["bpmn-gateway", "bpmn-flow"], sources: [SOURCES.bpmn] })
     ] })
   ]
 });

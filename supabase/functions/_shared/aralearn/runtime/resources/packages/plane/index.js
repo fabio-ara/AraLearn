@@ -1,6 +1,11 @@
 import { escapePackageAttribute, renderPackageInline, renderPackageProse } from "../../sdk/html.js";
 import { academicProfile } from "../../sdk/academic.js";
+import {
+  listPackageManualTextPaths,
+  stripPackageManualTextMarkersDeep
+} from "../../kernel/manualTextMarkers.js";
 import { readVegaTheme, renderVegaLite } from "../../sdk/vegaRuntime.js";
+import { annotateVegaManualAxisTitles } from "../../sdk/vegaManualLabels.js";
 
 function coordinate(value) {
   return Array.isArray(value) && value.length === 2 ? value.map(Number) : null;
@@ -243,6 +248,22 @@ async function hydratePlane(figure) {
     const theme = readVegaTheme(canvas, selectors);
     await renderVegaLite(canvas, compilePlaneVegaLite(data, theme));
     applyVectorArrowMarkers(canvas, data.vectors?.length || 0);
+    annotateVegaManualAxisTitles(canvas, [
+      {
+        axis: "x",
+        path: canvas.dataset.packageManualXAxisPath,
+        suffix: canvas.dataset.packageManualXAxisSuffix
+      },
+      {
+        axis: "y",
+        path: canvas.dataset.packageManualYAxisPath,
+        suffix: canvas.dataset.packageManualYAxisSuffix
+      }
+    ]);
+    delete canvas.dataset.packageManualXAxisPath;
+    delete canvas.dataset.packageManualXAxisSuffix;
+    delete canvas.dataset.packageManualYAxisPath;
+    delete canvas.dataset.packageManualYAxisSuffix;
   } catch (error) {
     canvas.dataset.vegaStatus = "error";
     canvas.setAttribute("aria-busy", "false");
@@ -342,10 +363,16 @@ export const planePackage = Object.freeze({
     return findings;
   },
   render(data) {
-    const encoded = encodeURIComponent(JSON.stringify(data));
+    const encoded = encodeURIComponent(JSON.stringify(stripPackageManualTextMarkersDeep(data)));
+    const xAxisPath = listPackageManualTextPaths(data.xAxis.label)[0] || "";
+    const yAxisPath = listPackageManualTextPaths(data.yAxis.label)[0] || "";
+    const manualAxes = `${xAxisPath ? ` data-package-manual-x-axis-path="${escapePackageAttribute(xAxisPath)}"` : ""}` +
+      `${xAxisPath && data.xAxis.unit ? ` data-package-manual-x-axis-suffix="${escapePackageAttribute(` (${data.xAxis.unit})`)}"` : ""}` +
+      `${yAxisPath ? ` data-package-manual-y-axis-path="${escapePackageAttribute(yAxisPath)}"` : ""}` +
+      `${yAxisPath && data.yAxis.unit ? ` data-package-manual-y-axis-suffix="${escapePackageAttribute(` (${data.yAxis.unit})`)}"` : ""}`;
     const legend = planeGroups(data).map((group, index) => `<li><span class="package-plane-swatch group-line tone-${index % 6}" aria-hidden="true"></span><span><strong>${renderPackageInline(group.label)}</strong><small>${group.objects.map(({ label }) => renderPackageInline(label)).join(", ")}</small></span></li>`).join("");
     const objectKey = `<ul class="package-plane-object-key" aria-label="Convenções geométricas"><li><span class="package-plane-key-symbol point" aria-hidden="true"></span>Ponto</li><li><span class="package-plane-key-symbol vector" aria-hidden="true"></span>Vetor</li><li><span class="package-plane-key-symbol region" aria-hidden="true"></span>Região ou trajetória</li></ul>`;
-    return `<div class="runtime-block runtime-plane-block">${data.prompt ? renderPackageProse(data.prompt) : ""}<figure class="package-plane-figure"><ul class="package-plane-legend" aria-label="Categorias comparadas">${legend}</ul>${objectKey}<div class="package-plane-canvas" role="img" aria-label="${escapePackageAttribute(planeAccessibleText(data))}" aria-busy="true" data-vega-status="pending" data-plane-data="${escapePackageAttribute(encoded)}"></div><p class="package-plane-layout-error" hidden>Não foi possível materializar o plano cartesiano.</p></figure></div>`;
+    return `<div class="runtime-block runtime-plane-block">${data.prompt ? renderPackageProse(data.prompt) : ""}<figure class="package-plane-figure"><ul class="package-plane-legend" aria-label="Categorias comparadas">${legend}</ul>${objectKey}<div class="package-plane-canvas" role="img" aria-label="${escapePackageAttribute(planeAccessibleText(data))}" aria-busy="true" data-vega-status="pending" data-plane-data="${escapePackageAttribute(encoded)}"${manualAxes}></div><p class="package-plane-layout-error" hidden>Não foi possível materializar o plano cartesiano.</p></figure></div>`;
   },
   async hydrate(instanceRoot) { await Promise.all([...instanceRoot.querySelectorAll(".package-plane-figure")].map(hydratePlane)); },
   accessibleText(data) { return planeAccessibleText(data); },

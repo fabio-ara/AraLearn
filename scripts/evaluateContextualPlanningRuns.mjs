@@ -24,7 +24,6 @@ const PLAN_ROUND_KINDS = new Set(["draft-plan", "revised-plan"]);
 const DETERMINISTIC_EVALUATION_MODES = new Set([
   "exact-option-id",
   "exact-order",
-  "exact-pairs",
   "normalized-gap-key"
 ]);
 const PROPOSED_PLAN_RECORD_KEYS = ["approvedScope", "decisions"];

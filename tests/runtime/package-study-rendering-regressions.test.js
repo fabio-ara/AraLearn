@@ -3,7 +3,8 @@ import test from "node:test";
 
 import {
   renderPackageCardArticle,
-  renderPackageCardBlocks
+  renderPackageCardBlocks,
+  renderPackageCardBlocksWithDock
 } from "../../src/render/renderPackageCard.js";
 
 function cardWith(instance) {
@@ -31,6 +32,288 @@ test("artigos independentes isolam a memória visual pela identidade do card", (
   const second = renderPackageCardArticle({ ...cardWith(instance), id: "second-card" });
   assert.match(first, /data-package-render-key="card:first-card::content:shared-instance"/u);
   assert.match(second, /data-package-render-key="card:second-card::content:shared-instance"/u);
+});
+
+test("edição manual preserva o resource e publica somente o mapa textual invisível", () => {
+  const instance = {
+    id: "paragraph-edit",
+    package: "aralearn.resource.paragraph",
+    version: "1.0.0",
+    data: { text: "O próprio rótulo permanece na interface." }
+  };
+  const html = renderPackageCardBlocks(cardWith(instance), {
+    resourceSelectionEnabled: true,
+    selectedResourceTargetIds: ["content:paragraph-edit"],
+    manualEditingTargetId: "content:paragraph-edit"
+  });
+  assert.match(html, /class="runtime-block runtime-paragraph-block"/u);
+  assert.match(html, /data-package-manual-targets=/u);
+  assert.match(html, /O próprio rótulo permanece na interface\./u);
+  assert.doesNotMatch(html, /class="package-manual-(?:editor|field)|<textarea/u);
+  assert.doesNotMatch(html, /Textos editáveis|Representação — somente leitura/u);
+});
+
+test("edição manual mostra conteúdo canônico e suprime a prática de lacuna", () => {
+  const card = {
+    ...cardWith({
+      id: "body",
+      package: "aralearn.resource.paragraph",
+      version: "1.0.0",
+      data: { text: "Use DNS aqui." }
+    }),
+    role: "practice",
+    response: {
+      id: "gap",
+      package: "aralearn.response.gap",
+      version: "1.0.0",
+      data: {
+        blanks: [{
+          id: "protocol",
+          targetInstanceId: "body",
+          targetPath: "text:protocol",
+          responseMode: "choice",
+          answer: "DNS",
+          distractors: ["HTTP"]
+        }]
+      }
+    }
+  };
+  const rendered = renderPackageCardBlocksWithDock(card, {
+    resourceSelectionEnabled: true,
+    selectedResourceTargetIds: ["content:body"],
+    manualEditingTargetId: "content:body"
+  });
+  assert.match(rendered.bodyHtml, /Use DNS aqui\./u);
+  assert.match(rendered.bodyHtml, /data-package-manual-field-path="text"/u);
+  assert.doesNotMatch(rendered.bodyHtml, /runtime-text-gap|text-gap-open-choice|data-package="aralearn\.response/u);
+  assert.equal(rendered.dockHtml, "");
+});
+
+test("edição manual de célula suprime ordering e conserva a tabela", () => {
+  const card = {
+    ...cardWith({
+      id: "steps",
+      package: "aralearn.resource.table",
+      version: "1.0.0",
+      data: { columns: ["Etapa"], rows: [["Preparar"], ["Executar"]] }
+    }),
+    role: "practice",
+    response: {
+      id: "order",
+      package: "aralearn.response.ordering",
+      version: "3.0.0",
+      data: {
+        targets: [
+          { id: "prepare", targetInstanceId: "steps", targetPath: "rows[0][0]", answer: "Preparar" },
+          { id: "execute", targetInstanceId: "steps", targetPath: "rows[1][0]", answer: "Executar" }
+        ]
+      }
+    }
+  };
+  const rendered = renderPackageCardBlocksWithDock(card, {
+    resourceSelectionEnabled: true,
+    selectedResourceTargetIds: ["content:steps"],
+    manualEditingTargetId: "content:steps"
+  });
+  assert.match(rendered.bodyHtml, /<table class="runtime-table">/u);
+  assert.match(rendered.bodyHtml, /data-package-manual-field-path="rows%5B0%5D%5B0%5D"/u);
+  assert.doesNotMatch(rendered.bodyHtml, /runtime-ordering|ordering-move|data-package="aralearn\.response/u);
+  assert.equal(rendered.dockHtml, "");
+});
+
+test("edição manual de choice preserva a aparência sem resposta revelada ou controles de estudo", () => {
+  const responseId = "answer";
+  const blockKeyPrefix = "lesson::card";
+  const blockKey = `${blockKeyPrefix}::response:${responseId}`;
+  const card = {
+    ...cardWith({
+      id: "context",
+      package: "aralearn.resource.paragraph",
+      version: "1.0.0",
+      data: { text: "Compare os requisitos de transporte." }
+    }),
+    role: "practice",
+    response: {
+      id: responseId,
+      package: "aralearn.response.choice",
+      version: "1.0.0",
+      data: {
+        question: "Qual protocolo entrega um fluxo confiável?",
+        selectionMode: "single",
+        selectionCriterion: "correct",
+        options: [
+          { id: "tcp", text: "TCP" },
+          { id: "udp", text: "UDP" }
+        ],
+        answerIds: ["tcp"]
+      }
+    }
+  };
+  const rendered = renderPackageCardBlocksWithDock(card, {
+    blockKeyPrefix,
+    resourceSelectionEnabled: true,
+    selectedResourceTargetIds: [`response:${responseId}`],
+    manualEditingTargetId: `response:${responseId}`,
+    responseStateByBlockKey: {
+      [blockKey]: { selected: ["tcp"], feedback: "wrong" }
+    }
+  });
+  assert.match(rendered.bodyHtml, /<div class="multiple-choice-option"/u);
+  assert.match(rendered.bodyHtml, /data-package-manual-field-path="question"/u);
+  assert.match(rendered.bodyHtml, /data-package-manual-field-path="options%5B0%5D\.text"/u);
+  assert.doesNotMatch(rendered.bodyHtml, /<button class="multiple-choice-option|data-action="choice-/u);
+  assert.doesNotMatch(rendered.bodyHtml, /\bactive\b|multiple-choice-dot|selected-(?:correct|incorrect)|inline-feedback/u);
+  assert.equal(rendered.dockHtml, "");
+});
+
+test("edição manual ignora prompt de lacuna aberto e não inventa editor na response", () => {
+  const responseId = "gap";
+  const blockKeyPrefix = "lesson::card";
+  const blockKey = `${blockKeyPrefix}::response:${responseId}`;
+  const card = {
+    ...cardWith({
+      id: "body",
+      package: "aralearn.resource.paragraph",
+      version: "1.0.0",
+      data: { text: "Use DNS aqui." }
+    }),
+    role: "practice",
+    response: {
+      id: responseId,
+      package: "aralearn.response.gap",
+      version: "1.0.0",
+      data: {
+        blanks: [{
+          id: "protocol",
+          targetInstanceId: "body",
+          targetPath: "text:protocol",
+          responseMode: "choice",
+          answer: "DNS",
+          distractors: ["TCP"]
+        }]
+      }
+    }
+  };
+  const rendered = renderPackageCardBlocksWithDock(card, {
+    blockKeyPrefix,
+    resourceSelectionEnabled: true,
+    selectedResourceTargetIds: [`response:${responseId}`],
+    manualEditingTargetId: `response:${responseId}`,
+    activeTextGapPrompt: { blockKey, blankIndex: 0 },
+    responseStateByBlockKey: {
+      [blockKey]: { values: [""], feedback: "wrong" }
+    }
+  });
+  assert.doesNotMatch(rendered.bodyHtml, /text-gap-(?:set-choice|open-choice)|runtime-flow-prompt/u);
+  assert.doesNotMatch(rendered.bodyHtml, /data-manual-edit-path|data-package-manual-field-path/u);
+  assert.doesNotMatch(rendered.bodyHtml, /package-manual-(?:editor|field)|textarea/u);
+  assert.equal(rendered.dockHtml, "");
+});
+
+test("seleção manual omite response sem folha textual visível", () => {
+  const responseId = "order";
+  const card = {
+    ...cardWith({
+      id: "first",
+      package: "aralearn.resource.paragraph",
+      version: "1.0.0",
+      data: { text: "Preparar" }
+    }),
+    role: "practice",
+    content: [{
+      id: "first",
+      package: "aralearn.resource.paragraph",
+      version: "1.0.0",
+      data: { text: "Preparar" }
+    }, {
+      id: "second",
+      package: "aralearn.resource.paragraph",
+      version: "1.0.0",
+      data: { text: "Executar" }
+    }],
+    response: {
+      id: responseId,
+      package: "aralearn.response.ordering",
+      version: "3.0.0",
+      data: {
+        targets: [
+          { id: "first", targetInstanceId: "first", targetPath: "text", answer: "Preparar" },
+          { id: "second", targetInstanceId: "second", targetPath: "text", answer: "Executar" }
+        ]
+      }
+    }
+  };
+  const rendered = renderPackageCardBlocks(card, {
+    resourceSelectionEnabled: true,
+    resourceSelectionTargetIds: ["content:first", "content:second"],
+    responseStateByBlockKey: {
+      "runtime-card::response:order": { order: ["first", "second"], feedback: "wrong" }
+    }
+  });
+  assert.doesNotMatch(rendered, /data-resource-edit-target="response:order"/u);
+  assert.match(rendered, /data-resource-edit-target="content:first"/u);
+  assert.match(rendered, /data-resource-edit-target="content:second"/u);
+
+  const explicitManual = renderPackageCardBlocksWithDock(card, {
+    resourceSelectionEnabled: true,
+    selectedResourceTargetIds: [`response:${responseId}`],
+    manualEditingTargetId: `response:${responseId}`,
+    responseStateByBlockKey: {
+      "runtime-card::response:order": { order: ["first", "second"], feedback: "wrong" }
+    }
+  });
+  assert.doesNotMatch(explicitManual.bodyHtml, /ordering-(?:view-answer|try-again)|inline-feedback/u);
+  assert.doesNotMatch(explicitManual.bodyHtml, /data-manual-edit-path|data-package-manual-field-path/u);
+  assert.equal(explicitManual.dockHtml, "");
+});
+
+test("opções de cada lacuna usam ordem estável e independente do gabarito e do estado", () => {
+  const card = {
+    ...cardWith({
+      id: "body",
+      package: "aralearn.resource.paragraph",
+      version: "1.0.0",
+      data: { text: "DNS depois TCP" }
+    }),
+    role: "practice",
+    response: {
+      id: "gap",
+      package: "aralearn.response.gap",
+      version: "1.0.0",
+      data: {
+        blanks: [{
+          id: "dns",
+          targetInstanceId: "body",
+          targetPath: "text:dns",
+          responseMode: "choice",
+          answer: "DNS",
+          distractors: ["UDP", "HTTP"]
+        }, {
+          id: "tcp",
+          targetInstanceId: "body",
+          targetPath: "text:tcp",
+          responseMode: "choice",
+          answer: "TCP",
+          distractors: ["IP", "ICMP"]
+        }]
+      }
+    }
+  };
+  const blockKeyPrefix = "lesson";
+  const blockKey = `${blockKeyPrefix}::response:gap`;
+  const optionOrder = (blankIndex, values) => {
+    const rendered = renderPackageCardBlocksWithDock(card, {
+      blockKeyPrefix,
+      exerciseShuffleSeed: "stable",
+      activeTextGapPrompt: { blockKey, blankIndex },
+      responseStateByBlockKey: { [blockKey]: { values, feedback: null } }
+    });
+    return [...rendered.dockHtml.matchAll(/data-text-gap-value="([^"]+)"/gu)]
+      .map((match) => match[1]);
+  };
+  assert.deepEqual(optionOrder(0, ["", ""]), ["UDP", "HTTP", "DNS"]);
+  assert.deepEqual(optionOrder(0, ["UDP", ""]), ["UDP", "HTTP", "DNS"]);
+  assert.deepEqual(optionOrder(1, ["", ""]), ["ICMP", "TCP", "IP"]);
 });
 
 test("modo Estudo não repete enunciado idêntico de paragraph e choice", () => {
@@ -97,7 +380,8 @@ test("modo Estudo materializa relation_map como diagrama sem rótulos sobre ares
       relations: [{ id: "r1", from: "agent", to: "read" }]
     }
   }));
-  assert.doesNotMatch(html, /<svg/u);
+  assert.doesNotMatch(html, /package-system-diagram-svg/u);
+  assert.match(html, /package-diagram-control-icon/u);
   assert.match(html, /package-relation-map/u);
   assert.match(html, /data-system-diagram-engine="dot"/u);
   assert.match(html, /digraph/u);

@@ -179,6 +179,6 @@ export const formulaPackage = Object.freeze({
       FORMULA_FENCE_OBSERVERS.set(figure, observer);
     }
   },
-  accessibleText(data) { return data.accessibleText; }, editableTargets(data) { return [...(data.prompt ? [{ path: "prompt", label: "Editar orientação" }] : []), { path: "accessibleText", label: "Editar descrição acessível" }]; },
+  accessibleText(data) { return data.accessibleText; }, editableTargets(data) { return data.prompt ? [{ path: "prompt", label: "Editar orientação" }] : []; },
   practiceTargets() { return []; }
 });

@@ -82,9 +82,9 @@ export const databaseSchemaPackage = Object.freeze({
       appropriateWhen: ["estrutura lógica relacional, normalização ou integridade referencial são parte da tarefa"],
       avoidWhen: ["é necessário representar instâncias de dados", "a tarefa exige o modelo conceitual ER"],
       technologies: ["notação de esquema relacional", "Graphviz", "Viz.js WebAssembly", "SVG", "HTML semântico"],
-      practiceModes: ["exposition", "gap", "typing", "selection", "matching", "classification"]
+      practiceModes: ["exposition", "gap", "typing", "selection", "classification"]
     }),
-    responseCompatibility: Object.freeze(["aralearn.response.gap", "aralearn.response.choice", "aralearn.response.matching"]),
+    responseCompatibility: Object.freeze(["aralearn.response.gap", "aralearn.response.choice"]),
     limitations: Object.freeze(["Não confunde esquema com linhas de dados.", "Esquemas densos devem ser recortados pela dependência em estudo."]),
     accessibility: "Cada relação lista atributos, chaves, tipos e nulabilidade; cada referência é repetida em texto."
   }),

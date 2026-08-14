@@ -62,7 +62,15 @@ function graphvizSource(data) {
 }
 
 function diagramLabels(data) {
-  if (data.variant === "phylogeny") return [];
+  if (data.variant === "phylogeny") {
+    return data.nodes.map((node) => ({
+      kind: "annotation",
+      id: node.id,
+      graphvizId: `system-node-${node.id}`,
+      plain: node.label,
+      html: `<span>${renderPackageInline(node.label)}</span>`
+    }));
+  }
   return data.nodes.map((node) => ({ kind: "node", id: node.id, plain: nodePlainLabel(node, data.variant), html: nodeTemplate(node, data.variant) }));
 }
 

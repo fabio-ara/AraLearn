@@ -18,50 +18,23 @@ function targetId(slot, instance) {
   return instance?.id ? `${slot}:${instance.id}` : "";
 }
 
-function conciseEditLabel(value) {
-  return String(value || "Texto").replace(/^Editar\s+/iu, "");
-}
-
-function packageLabel(instance) {
-  return RESOURCE_PACKAGE_REGISTRY.listCatalog()
-    .find(({ id, version }) => id === instance.package && version === instance.version)?.label
-    || instance.package;
-}
-
-function textareaRows(value, preserveWhitespace) {
-  const lines = String(value).split("\n").length;
-  const wrappedLines = Math.ceil(String(value).length / (preserveWhitespace ? 44 : 36));
-  return Math.max(2, Math.min(8, Math.max(lines, wrappedLines)));
-}
-
-function manualEditor(instance, slot, readOnlyHtml) {
-  const targets = RESOURCE_PACKAGE_REGISTRY.editableTargets(instance, slot)
+function manualTargets(instance, slot) {
+  return RESOURCE_PACKAGE_REGISTRY.editableTargets(instance, slot)
     .map((target) => ({ ...target, value: readPath(instance.data, target.path) }))
     .filter(({ value }) => typeof value === "string");
-  if (!targets.length) return "";
-  const label = packageLabel(instance);
-  return '<section class="package-manual-editor" aria-label="Editar textos de ' +
-    escapePackageAttribute(label) + '">' +
-    '<header class="package-manual-editor-head"><strong>Textos editáveis</strong><span>' +
-    escapePackageHtml(label) + '</span><small>A estrutura do recurso permanece somente leitura.</small></header>' +
-    '<div class="package-manual-fields">' +
-    targets.map((target) => {
-      const fieldLabel = conciseEditLabel(target.label || target.path);
-      const preserveWhitespace = target.preserveWhitespace === true;
-      return `<label class="package-manual-field"><span>${escapePackageHtml(fieldLabel)}</span><textarea class="package-manual-field-value${preserveWhitespace ? " preserves-whitespace" : ""}" rows="${textareaRows(target.value, preserveWhitespace)}" data-manual-edit-path="${escapePackageAttribute(target.path)}" data-manual-edit-original="${escapePackageAttribute(target.value)}"${preserveWhitespace ? ' spellcheck="false"' : ' spellcheck="true"'} aria-label="${escapePackageAttribute(`Editar ${fieldLabel}`)}">${escapePackageHtml(target.value)}</textarea></label>`;
-    }).join("") +
-    '</div><details class="package-manual-context"><summary>Representação — somente leitura</summary>' +
-    `<div class="package-manual-preview" inert aria-hidden="true">${readOnlyHtml}</div>` +
-    '</details></section>';
 }
 
-function wrapInstance(instance, slot, html, options = {}, renderKey = "") {
+function wrapInstance(instance, slot, html, options = {}, renderKey = "", editTargets = []) {
   const id = targetId(slot, instance);
   const selected = (options.selectedResourceTargetIds || []).includes(id);
   const inlineEditing = options.manualEditingTargetId === id;
-  const packageContent = inlineEditing ? manualEditor(instance, slot, html) : html;
-  const packageHtml = `<section class="package-instance" data-package="${escapePackageAttribute(instance.package)}" data-package-version="${escapePackageAttribute(instance.version)}" data-package-instance-id="${escapePackageAttribute(instance.id)}"${renderKey ? ` data-package-render-key="${escapePackageAttribute(renderKey)}"` : ""}>${packageContent}</section>`;
+  const encodedTargets = inlineEditing && editTargets.length
+    ? encodeURIComponent(JSON.stringify(editTargets))
+    : "";
+  const packageHtml = `<section class="package-instance" data-package="${escapePackageAttribute(instance.package)}" data-package-version="${escapePackageAttribute(instance.version)}" data-package-instance-id="${escapePackageAttribute(instance.id)}"${renderKey ? ` data-package-render-key="${escapePackageAttribute(renderKey)}"` : ""}${encodedTargets ? ` data-package-manual-targets="${escapePackageAttribute(encodedTargets)}"` : ""}>${html}</section>`;
   if (!options.resourceSelectionEnabled || !id) return packageHtml;
+  if (Array.isArray(options.resourceSelectionTargetIds) &&
+      !options.resourceSelectionTargetIds.includes(id)) return packageHtml;
   const label = options.resourceSelectionLabels?.[id] || (selected ? "Retirar recurso do reparo" : "Selecionar recurso para reparo");
   return `<section class="runtime-resource-edit-target${selected ? " is-selected" : ""}${inlineEditing ? " is-inline-editing" : ""}" data-resource-edit-target="${escapePackageAttribute(id)}" data-package-id="${escapePackageAttribute(instance.package)}"${inlineEditing ? ` data-manual-target-id="${escapePackageAttribute(id)}"` : ""}>${inlineEditing ? `<div class="runtime-resource-selection-content">${packageHtml}</div>` : `<button class="runtime-resource-selection-surface" type="button" data-action="toggle-card-assistance-resource" data-resource-target-id="${escapePackageAttribute(id)}" aria-pressed="${selected ? "true" : "false"}" data-card-authoring-focus="resource:${escapePackageAttribute(id)}" aria-label="${escapePackageAttribute(label)}" title="${escapePackageAttribute(label)}"${options.resourceSelectionDisabled ? " disabled aria-disabled=\"true\"" : ""}></button><div class="runtime-resource-selection-content">${packageHtml}</div>`}</section>`;
 }
@@ -73,17 +46,24 @@ function renderInstance(card, instance, slot, index, options, dockExerciseParts)
     : `${prefix}::${slot}:${instance.id || index}`;
   const responseKey = responseBlockKey(card, prefix);
   const responseState = options.responseStateByBlockKey?.[responseKey] || null;
+  const id = targetId(slot, instance);
+  const inlineEditing = options.manualEditingTargetId === id;
+  const editTargets = inlineEditing ? manualTargets(instance, slot) : [];
+  const manualEditing = Boolean(options.manualEditingTargetId);
   const html = RESOURCE_PACKAGE_REGISTRY.renderInstance(instance, slot, {
     ...options,
     card,
     instanceId: instance.id,
     blockKey,
     responseBlockKey: responseKey,
-    responseState,
-    cardResponse: slot === "content" ? card.response : null,
-    dockExerciseParts
+    responseState: manualEditing ? null : responseState,
+    activeTextGapPrompt: manualEditing ? null : options.activeTextGapPrompt,
+    cardResponse: slot === "content" && !manualEditing ? card.response : null,
+    dockExerciseParts: manualEditing ? null : dockExerciseParts,
+    manualEditing: inlineEditing,
+    manualEditTargets: editTargets
   });
-  return wrapInstance(instance, slot, html, options, blockKey);
+  return wrapInstance(instance, slot, html, options, blockKey, editTargets);
 }
 
 function assertPackageCard(card) {
@@ -99,7 +79,9 @@ export function renderPackageCardBlocks(card, options = {}) {
   const content = card.content.map((instance, index) =>
     renderInstance(card, instance, "content", index, options, dockExerciseParts)
   ).join("");
-  const response = card.response
+  const manualEditing = Boolean(options.manualEditingTargetId);
+  const editingResponse = String(options.manualEditingTargetId || "").startsWith("response:");
+  const response = card.response && (!manualEditing || editingResponse)
     ? renderInstance(card, card.response, "response", 0, options, dockExerciseParts)
     : "";
   const authoringFeedback = options.resourceSelectionEnabled
@@ -149,10 +131,11 @@ export function renderPackageCardArticle(card) {
 
 export function readPackageCardText(card) {
   assertPackageCard(card);
+  const visibleCard = RESOURCE_PACKAGE_REGISTRY.prepareCardForSemantics(card);
   return [
-    ...card.content.map((instance) => RESOURCE_PACKAGE_REGISTRY.accessibleText(instance, "content")),
-    ...(card.response ? [RESOURCE_PACKAGE_REGISTRY.accessibleText(card.response, "response")] : []),
-    ...card.feedback.map((instance) => RESOURCE_PACKAGE_REGISTRY.accessibleText(instance, "feedback"))
+    ...visibleCard.content.map((instance) => RESOURCE_PACKAGE_REGISTRY.accessibleText(instance, "content")),
+    ...(visibleCard.response ? [RESOURCE_PACKAGE_REGISTRY.accessibleText(visibleCard.response, "response")] : []),
+    ...visibleCard.feedback.map((instance) => RESOURCE_PACKAGE_REGISTRY.accessibleText(instance, "feedback"))
   ].filter(Boolean).join(" ");
 }
 

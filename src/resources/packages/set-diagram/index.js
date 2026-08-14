@@ -1,4 +1,5 @@
 import { academicProfile } from "../../sdk/academic.js";
+import { stripPackageManualTextMarkersDeep } from "../../kernel/manualTextMarkers.js";
 import { escapePackageAttribute, renderPackageInline, renderPackageProse } from "../../sdk/html.js";
 
 const VIEWBOX = Object.freeze({ width: 300, height: 250, padding: 20 });
@@ -250,7 +251,7 @@ export const setDiagramPackage = Object.freeze({
   },
   render(data) {
     const setById = new Map(data.sets.map((set) => [set.id, set]));
-    const encoded = encodeURIComponent(JSON.stringify(data));
+    const encoded = encodeURIComponent(JSON.stringify(stripPackageManualTextMarkersDeep(data)));
     const diagramLabel = `${data.kind === "venn" ? "Diagrama de Venn" : "Diagrama de Euler"}: ${data.sets.map(({ label }) => label).join(", ")}.`;
     return `<div class="runtime-block package-set-diagram">${data.prompt ? renderPackageProse(data.prompt) : ""}<figure><div class="package-set-canvas" data-set-diagram="${escapePackageAttribute(encoded)}" data-set-diagram-state="pending"><svg viewBox="0 0 ${VIEWBOX.width} ${VIEWBOX.height}" role="img" aria-label="${escapePackageAttribute(diagramLabel)}" aria-busy="true"></svg></div><dl class="package-set-key">${data.sets.map((set, index) => `<div class="tone-${index}"><dt>${renderPackageInline(set.symbol)}</dt><dd>${renderPackageInline(set.label)}</dd></div>`).join("")}</dl><figcaption>${data.universeLabel ? `<strong>Universo: ${renderPackageInline(data.universeLabel)}</strong>` : ""}<ol>${data.regions.map((region, index) => `<li><b aria-hidden="true">${index + 1}</b><span>${region.setIds.length ? region.setIds.map((id) => renderPackageInline(setById.get(id)?.symbol || id)).join(" ∩ ") : "Fora dos conjuntos"}</span>${region.label ? `<strong>${renderPackageInline(region.label)}</strong>` : ""}<small>${region.items.length ? region.items.map(renderPackageInline).join(", ") : "∅"}</small></li>`).join("")}</ol></figcaption><p class="package-set-layout-error" hidden>Não foi possível diagramar os conjuntos.</p></figure></div>`;
   },

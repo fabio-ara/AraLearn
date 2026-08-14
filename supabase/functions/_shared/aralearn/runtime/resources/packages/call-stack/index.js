@@ -28,7 +28,7 @@ export const callStackPackage = Object.freeze({
       appropriateWhen: ["o encadeamento de chamadas e o conteúdo de cada quadro participam do raciocínio"],
       avoidWhen: ["endereços e segmentos do espaço de memória são o objeto", "a estrutura é uma pilha abstrata sem chamadas"],
       technologies: ["HTML semântico", "CSS Grid"],
-      practiceModes: ["exposition", "gap", "typing", "selection", "ordering"]
+      practiceModes: ["exposition", "gap", "typing", "selection"]
     }),
     responseCompatibility: Object.freeze(["aralearn.response.gap", "aralearn.response.choice"]),
     limitations: Object.freeze(["Recursões profundas devem ser recortadas aos quadros relevantes."]),

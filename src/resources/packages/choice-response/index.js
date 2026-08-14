@@ -52,8 +52,9 @@ export const choiceResponsePackage = Object.freeze({
   validate(data) { const ids = new Set(data.options.map(({ id }) => id)); const errors = []; if (ids.size !== data.options.length) errors.push("Alternativas precisam de ids únicos."); if (data.answerIds.some((id) => !ids.has(id))) errors.push("answerIds precisa referenciar alternativas existentes."); if (data.selectionMode === "single" && data.answerIds.length !== 1) errors.push("Escolha single exige uma resposta."); if (data.selectionMode === "multiple" && data.answerIds.length === data.options.length) errors.push("Escolha multiple não pode tornar todas as opções corretas."); if (data.selectionCriterion === "best" && data.selectionMode !== "single") errors.push("Critério best exige seleção single."); if (data.options.some((option) => option.kind === "code" ? !option.code || !option.language : !option.text)) errors.push("Toda alternativa precisa de texto ou código."); return errors; },
   render(data, options = {}) {
     const blockKey = String(options.blockKey || options.instanceId || "package-choice");
-    const selected = new Set((options.responseState?.selected || []).map(String));
-    const feedback = options.responseState?.feedback || null;
+    const manualEditing = options.manualEditing === true;
+    const selected = new Set((manualEditing ? [] : options.responseState?.selected || []).map(String));
+    const feedback = manualEditing ? null : options.responseState?.feedback || null;
     const expected = new Set(data.answerIds);
     const items = data.options.map((option, index) => ({ option, index }));
     const displayed = options.manualEditEnabled
@@ -75,11 +76,16 @@ export const choiceResponsePackage = Object.freeze({
       const optionFeedback = checked && (evaluatedCorrect || evaluatedWrong) && option.feedback
         ? `<div class="multiple-choice-option-feedback">${renderPackageProse(option.feedback)}</div>`
         : "";
-      return `<button class="multiple-choice-option${classes ? ` ${classes}` : ""}" type="button" data-action="choice-toggle" data-choice-block-key="${escapePackageAttribute(blockKey)}" data-choice-option-id="${escapePackageAttribute(option.id)}" role="${data.selectionMode === "single" ? "radio" : "checkbox"}" aria-checked="${checked ? "true" : "false"}"><span class="multiple-choice-mark">${checked ? '<span class="multiple-choice-dot" aria-hidden="true"></span>' : ""}</span><span class="multiple-choice-label"><span>${value}</span>${optionFeedback}</span></button>`;
+      const tag = manualEditing ? "div" : "button";
+      const interaction = manualEditing
+        ? ""
+        : ` type="button" data-action="choice-toggle" data-choice-block-key="${escapePackageAttribute(blockKey)}" role="${data.selectionMode === "single" ? "radio" : "checkbox"}" aria-checked="${checked ? "true" : "false"}"`;
+      return `<${tag} class="multiple-choice-option${classes ? ` ${classes}` : ""}"${interaction} data-choice-option-id="${escapePackageAttribute(option.id)}"><span class="multiple-choice-mark">${checked ? '<span class="multiple-choice-dot" aria-hidden="true"></span>' : ""}</span><span class="multiple-choice-label"><span>${value}</span>${optionFeedback}</span></${tag}>`;
     }).join("");
     const feedbackHtml = responseFeedback(blockKey, feedback);
     if (feedbackHtml && Array.isArray(options.dockExerciseParts)) options.dockExerciseParts.push(feedbackHtml);
-    return `<section class="runtime-block runtime-choice-block multiple-choice-exercise package-choice-response"><div class="runtime-choice-body"><div>${renderPackageProse(data.question)}</div><p class="multiple-choice-instruction" id="${escapePackageAttribute(`${blockKey}::instruction`)}">${instruction(data)}</p></div><div class="multiple-choice-list" role="${data.selectionMode === "single" ? "radiogroup" : "group"}" aria-labelledby="${escapePackageAttribute(`${blockKey}::instruction`)}">${optionsHtml}</div>${Array.isArray(options.dockExerciseParts) ? "" : feedbackHtml}</section>`;
+    const listRole = manualEditing ? "group" : data.selectionMode === "single" ? "radiogroup" : "group";
+    return `<section class="runtime-block runtime-choice-block multiple-choice-exercise package-choice-response"><div class="runtime-choice-body"><div>${renderPackageProse(data.question)}</div><p class="multiple-choice-instruction" id="${escapePackageAttribute(`${blockKey}::instruction`)}">${instruction(data)}</p></div><div class="multiple-choice-list" role="${listRole}" aria-labelledby="${escapePackageAttribute(`${blockKey}::instruction`)}">${optionsHtml}</div>${Array.isArray(options.dockExerciseParts) ? "" : feedbackHtml}</section>`;
   },
   accessibleText(data) { return `${data.question} ${data.options.map((option, index) => `${index + 1}: ${optionValue(option)}`).join("; ")}`; },
   editableTargets(data) { return [{ path: "question", label: "Editar pergunta" }, ...data.options.flatMap((option, index) => [{ path: `options[${index}].${option.kind === "code" ? "code" : "text"}`, label: `Editar alternativa ${index + 1}` }, ...(option.feedback ? [{ path: `options[${index}].feedback`, label: `Editar feedback ${index + 1}` }] : [])])]; },

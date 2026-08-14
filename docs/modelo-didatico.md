@@ -276,7 +276,9 @@ representado.
   diagrama;
 - digitação quando produzir a resposta faz parte do objetivo;
 - ordenação quando a sequência é o próprio objeto de conhecimento;
-- associação quando estabelecer correspondências é a operação pretendida.
+- correspondência por lacunas independentes nos campos textuais de parágrafos
+  ou tabelas em que cada relação já é lida, sem uma modalidade autônoma de
+  associação.
 
 **Fundamentação.** A prática de recuperação apresenta benefícios em diferentes
 contextos educacionais, com variação entre tarefas e resultados
@@ -285,8 +287,9 @@ transferência para tarefas novas não é automática ([Pan e Rickard (2018)](re
 
 **Operacionalização.** Cada prática declara o que verifica e qual conhecimento
 anterior a torna respondível. Lacunas são independentes e permanecem no lugar
-estrutural em que a decisão ocorre. A resposta não aparece antecipadamente na
-exposição nem é revelada antes de ação explícita.
+estrutural em que a decisão ocorre, inclusive quando várias delas compõem uma
+correspondência. A resposta não aparece antecipadamente na exposição nem é
+revelada antes de ação explícita.
 
 **Consequências.** A diversidade passa a ter função, e não valor ornamental.
 Uma mesma representação pode servir à exposição e a práticas diferentes sem

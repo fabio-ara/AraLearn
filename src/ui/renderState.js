@@ -62,6 +62,68 @@ function getElementByPath(root, path) {
   return current;
 }
 
+function contentSelectionOffset(root, node, offset) {
+  if (!root?.contains(node) && root !== node) return null;
+  try {
+    const range = root.ownerDocument.createRange();
+    range.selectNodeContents(root);
+    range.setEnd(node, offset);
+    return range.toString().length;
+  } catch {
+    return null;
+  }
+}
+
+function captureContentSelection(active) {
+  if (!active.matches("[contenteditable]:not([contenteditable='false'])")) return null;
+  const selection = active.ownerDocument.getSelection?.();
+  if (!selection?.rangeCount) return null;
+  const range = selection.getRangeAt(0);
+  if ((!active.contains(range.startContainer) && active !== range.startContainer) ||
+      (!active.contains(range.endContainer) && active !== range.endContainer)) return null;
+  return {
+    start: contentSelectionOffset(active, range.startContainer, range.startOffset),
+    end: contentSelectionOffset(active, range.endContainer, range.endOffset)
+  };
+}
+
+function contentSelectionBoundary(root, requestedOffset) {
+  const offset = Math.max(0, Number(requestedOffset) || 0);
+  const walker = root.ownerDocument.createTreeWalker(
+    root,
+    globalThis.NodeFilter?.SHOW_TEXT ?? 4
+  );
+  let remaining = offset;
+  let lastText = null;
+  let node = walker.nextNode();
+  while (node) {
+    lastText = node;
+    const size = String(node.data || "").length;
+    if (remaining <= size) return { node, offset: remaining };
+    remaining -= size;
+    node = walker.nextNode();
+  }
+  return lastText
+    ? { node: lastText, offset: String(lastText.data || "").length }
+    : { node: root, offset: 0 };
+}
+
+function restoreContentSelection(target, snapshot) {
+  if (!snapshot || snapshot.start === null || snapshot.end === null) return;
+  try {
+    const start = contentSelectionBoundary(target, snapshot.start);
+    const end = contentSelectionBoundary(target, snapshot.end);
+    const range = target.ownerDocument.createRange();
+    range.setStart(start.node, start.offset);
+    range.setEnd(end.node, end.offset);
+    const selection = target.ownerDocument.getSelection?.();
+    selection?.removeAllRanges();
+    selection?.addRange(range);
+  } catch {
+    // Focus restoration is still useful when the edited markup changed shape.
+  }
+}
+
 function captureFocusedElement(root) {
   if (typeof document === "undefined" || !root) {
     return null;
@@ -72,7 +134,9 @@ function captureFocusedElement(root) {
     return null;
   }
 
-  if (!active.matches("input, textarea, select, button, [tabindex], [contenteditable='true']")) {
+  if (!active.matches(
+    "input, textarea, select, button, [tabindex], [contenteditable]:not([contenteditable='false'])"
+  )) {
     return null;
   }
 
@@ -80,6 +144,7 @@ function captureFocusedElement(root) {
     path: getElementPath(root, active),
     selectionStart: typeof active.selectionStart === "number" ? active.selectionStart : null,
     selectionEnd: typeof active.selectionEnd === "number" ? active.selectionEnd : null,
+    contentSelection: captureContentSelection(active),
     scrollTop: typeof active.scrollTop === "number" ? active.scrollTop : 0,
     scrollLeft: typeof active.scrollLeft === "number" ? active.scrollLeft : 0
   };
@@ -107,6 +172,8 @@ function restoreFocusedElement(root, snapshot) {
     typeof target.setSelectionRange === "function"
   ) {
     target.setSelectionRange(snapshot.selectionStart, snapshot.selectionEnd);
+  } else {
+    restoreContentSelection(target, snapshot.contentSelection);
   }
 
   if (typeof snapshot.scrollTop === "number") {
