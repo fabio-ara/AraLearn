@@ -16,15 +16,16 @@ const outputPath = path.join(repositoryRoot, "public", "vendor", "vega-interpret
 const importStatement = "import { ascending, isString, DisallowedObjectProperties } from 'vega-util';";
 const exportStatement = "export { expression as expressionInterpreter };";
 
-function buildClassicRuntime(source) {
-  if (!source.startsWith(importStatement)) {
+export function buildClassicRuntime(source) {
+  const normalizedSource = source.replace(/\r\n?/gu, "\n");
+  if (!normalizedSource.startsWith(importStatement)) {
     throw new Error("A entrada de vega-interpreter mudou; revise a geração do vendor clássico.");
   }
-  if (!source.includes(exportStatement)) {
+  if (!normalizedSource.includes(exportStatement)) {
     throw new Error("A saída de vega-interpreter mudou; revise a geração do vendor clássico.");
   }
 
-  const body = source
+  const body = normalizedSource
     .slice(importStatement.length)
     .replace(exportStatement, "global.vega.expressionInterpreter = expression;")
     .replace(/\n?\/\/# sourceMappingURL=vega-interpreter\.js\.map\s*$/u, "")
@@ -46,15 +47,22 @@ function buildClassicRuntime(source) {
   ].join("\n");
 }
 
-const expected = buildClassicRuntime(await fs.readFile(packagePath, "utf8"));
-const current = await fs.readFile(outputPath, "utf8").catch(() => null);
-const checkOnly = process.argv.includes("--check");
+async function main() {
+  const expected = buildClassicRuntime(await fs.readFile(packagePath, "utf8"));
+  const current = await fs.readFile(outputPath, "utf8").catch(() => null);
+  const normalizedCurrent = current?.replace(/\r\n?/gu, "\n") ?? null;
+  const checkOnly = process.argv.includes("--check");
 
-if (current === expected) {
-  if (!checkOnly) console.log("Vendor CSP-safe do Vega já está atualizado.");
-} else if (checkOnly) {
-  throw new Error("public/vendor/vega-interpreter.js está divergente da dependência instalada.");
-} else {
-  await fs.writeFile(outputPath, expected, "utf8");
-  console.log("Vendor CSP-safe do Vega atualizado.");
+  if (normalizedCurrent === expected) {
+    if (!checkOnly) console.log("Vendor CSP-safe do Vega já está atualizado.");
+  } else if (checkOnly) {
+    throw new Error("public/vendor/vega-interpreter.js está divergente da dependência instalada.");
+  } else {
+    await fs.writeFile(outputPath, expected, "utf8");
+    console.log("Vendor CSP-safe do Vega atualizado.");
+  }
+}
+
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  await main();
 }
