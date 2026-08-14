@@ -13,10 +13,10 @@
   "scenarioLinkage": {
     "scenarioContract": "aralearn.authoring-contextual-planning-scenarios.v1",
     "scenarioCorpusPath": "authoring/evals/contextual-planning-scenarios.v1.json",
-    "scenarioCorpusSha256": "61bd6c7b119b043bf452c22a4dcc01aae6454f5b7b4c5242fe8b4590343a352c",
+    "scenarioCorpusSha256": "7a1f18f279da7505e510364db9939be951f6bf6e841ce1fda67a72df270d2fdb",
     "runContract": "aralearn.authoring-contextual-planning-runs.v1",
     "runCorpusPath": "authoring/evals/contextual-planning-runs.v1.json",
-    "runCorpusSha256": "0c524793de95a8715373c55679ea5f3976454832a919e8e1311c2a0bfe806685",
+    "runCorpusSha256": "08cb10481a10531a20a5d60bddc74f0715bdeb7e8152a27d0c76657ac9ad2b76",
     "scenarioIds": [
       "A",
       "B",
@@ -309,8 +309,8 @@
       {
         "id": "authoring-knowledge",
         "path": "supabase/functions/_shared/aralearn-authoring/authoringKnowledge.js",
-        "sha256": "f6ce9b2ca56c38111ece4e30649bb65bfd0f1bc3a3224b1acb9046acde708b83",
-        "bytes": 43994
+        "sha256": "119d0626ad6bc257cbddeda098905d0ec27c2faf93179bf04aa2d8ca82b10aae",
+        "bytes": 44080
       }
     ],
     "findings": []

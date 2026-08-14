@@ -3,6 +3,7 @@ import {
   inferAcademicTaxonomy,
   validateAcademicTaxonomy
 } from "../catalog/vocabularies.js";
+import { instrumentPackageManualTextTargets } from "./manualTextMarkers.js";
 
 const PACKAGE_ID_PATTERN = /^aralearn\.(?:resource|response)\.[a-z][a-z0-9]*(?:[._-][a-z0-9]+)*$/u;
 const PACKAGE_VERSION_PATTERN = /^(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)$/u;
@@ -13,7 +14,6 @@ const PRACTICE_MODES = Object.freeze([
   "typing",
   "selection",
   "ordering",
-  "matching",
   "classification"
 ]);
 function clone(value) {
@@ -46,7 +46,7 @@ function validatePracticeTargets(definition, data) {
     if (!text(target?.path) || !text(target?.label)) {
       errors.push(`${definition.manifest.id}.practiceTargets()[${index}] precisa de path e label.`);
     }
-    if (!modes.length || modes.some((mode) => !["gap", "typing"].includes(mode))) {
+    if (!modes.length || modes.some((mode) => !["gap", "typing", "ordering"].includes(mode))) {
       errors.push(`${definition.manifest.id}.practiceTargets()[${index}] declara modo inválido.`);
     }
     if (target?.preserveReference !== undefined && target.preserveReference !== true) {
@@ -321,6 +321,26 @@ export function createPackageRegistry(packageDefinitions = []) {
           } catch {
             return false;
           }
+        },
+        materializesOrdering(instance, response, targetIndex) {
+          const contentDefinition = requirePackage(instance.package, instance.version);
+          if (typeof definition.prepareContentInstance !== "function") return false;
+          try {
+            const blockKey = "aralearn-ordering-materialization";
+            const prepared = definition.prepareContentInstance(clone(instance), clone(response.data), {
+              responseBlockKey: blockKey,
+              blockKey,
+              responseState: {
+                order: response.data.targets.map(({ id }) => id)
+              },
+              practiceTargets: clone(resolvedPracticeTargets(contentDefinition, instance.data))
+            });
+            const html = contentDefinition.render(prepared, {});
+            const token = `data-ordering-slot-index="${targetIndex}"`;
+            return html.split(token).length - 1 === 1;
+          } catch {
+            return false;
+          }
         }
       });
       return Array.isArray(errors) ? errors.filter(Boolean).map(String) : [];
@@ -359,13 +379,16 @@ export function createPackageRegistry(packageDefinitions = []) {
           );
         }
       };
-      const renderData = slot === "content" && typeof responseDefinition?.prepareContentInstance === "function"
+      const preparedData = slot === "content" && typeof responseDefinition?.prepareContentInstance === "function"
         ? responseDefinition.prepareContentInstance(
             clone(instance),
             clone(response.data),
             renderOptions
           )
         : clone(instance.data);
+      const renderData = Array.isArray(options.manualEditTargets) && options.manualEditTargets.length
+        ? instrumentPackageManualTextTargets(preparedData, options.manualEditTargets)
+        : preparedData;
       return definition.render(renderData, renderOptions);
     },
     async hydrate(root) {

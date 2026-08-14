@@ -114,17 +114,14 @@ test("curso deriva as famílias correntes sem fixar o crescimento do catálogo",
         if (packageId === "aralearn.response.choice") {
           assert.ok(practice.response.data.options.length >= 4);
         }
-        if (packageId === "aralearn.response.matching") {
-          assert.ok(practice.response.data.leftItems.length >= 4);
-          assert.ok(practice.response.data.rightItems.length >= 4);
-        }
         if (packageId === "aralearn.response.ordering") {
-          assert.ok(practice.response.data.items.length >= 4);
-          assert.notDeepEqual(
-            practice.response.data.items.map(({ id }) => id),
-            practice.response.data.answerOrder,
-            "A prática de ordenação não pode começar resolvida."
-          );
+          assert.ok(practice.response.data.targets.length >= 4);
+          const contentIds = new Set(practice.content.map(({ id }) => id));
+          assert.ok(practice.response.data.targets.every(({ targetInstanceId }) => (
+            contentIds.has(targetInstanceId)
+          )));
+          assert.equal(new Set(practice.response.data.targets.map(({ id }) => id)).size,
+            practice.response.data.targets.length);
         }
       }
     });

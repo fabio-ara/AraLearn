@@ -1,4 +1,5 @@
 import { academicProfile } from "../../sdk/academic.js";
+import { stripPackageManualTextMarkersDeep } from "../../kernel/manualTextMarkers.js";
 import {
   appendGraphvizForeignLabel,
   dotAttributes,
@@ -149,8 +150,9 @@ function replaceInteractiveLabels(figure, svg, data) {
     const group = graphvizGroupById(svg, `graph-vertex-${vertex.id}`);
     if (!group) return;
     group.dataset.graphVertexId = vertex.id;
-    if (!hasGraphvizGap(vertex.label)) return;
     const template = figure.querySelector(`template[data-math-graph-vertex-template="${CSS.escape(vertex.id)}"]`);
+    if (!hasGraphvizGap(vertex.label) &&
+        !template?.content.querySelector("[data-package-manual-field-path]")) return;
     group.querySelectorAll("text").forEach((element) => { element.style.visibility = "hidden"; });
     appendGraphvizForeignLabel(group, template, vertexBounds(group), "package-math-graph-vertex-label");
   });
@@ -159,18 +161,20 @@ function replaceInteractiveLabels(figure, svg, data) {
     if (!group) return;
     group.dataset.graphEdgeId = edge.id;
     const label = edgeLabel(edge);
-    if (!label || !hasGraphvizGap(label)) return;
+    if (!label) return;
     const texts = [...group.querySelectorAll("text")];
     const bounds = unionGraphvizTextBounds(texts);
     const template = figure.querySelector(`template[data-math-graph-edge-template="${CSS.escape(edge.id)}"]`);
+    const hasGap = hasGraphvizGap(label);
+    if (!hasGap && !template?.content.querySelector("[data-package-manual-field-path]")) return;
     texts.forEach((element) => { element.style.visibility = "hidden"; });
     if (!bounds) return;
-    appendGraphvizForeignLabel(group, template, {
+    appendGraphvizForeignLabel(group, template, hasGap ? {
       x: bounds.x - 8,
       y: bounds.y - 4,
       width: Math.max(54, bounds.width + 16),
       height: Math.max(26, bounds.height + 8)
-    }, "package-math-graph-edge-label");
+    } : bounds, "package-math-graph-edge-label");
   });
 }
 
@@ -293,7 +297,7 @@ export const graphPackage = Object.freeze({
     return errors;
   },
   render(data) {
-    const encodedData = encodeURIComponent(JSON.stringify(data));
+    const encodedData = encodeURIComponent(JSON.stringify(stripPackageManualTextMarkersDeep(data)));
     return `<div class="runtime-block runtime-graph-block">${renderPackageProse(data.prompt)}<div data-graph-data="${escapePackageAttribute(encodedData)}">${renderGraphFigure(data)}</div></div>`;
   },
   async hydrate(instanceRoot) {

@@ -54,6 +54,34 @@ async function touchSwipe(page, { from, to }) {
   await session.detach();
 }
 
+async function touchPinch(page, { center, startDistance = 36, endDistance = 90 }) {
+  const session = await page.context().newCDPSession(page);
+  const points = (distance) => ([
+    { id: 0, x: center.x - distance, y: center.y },
+    { id: 1, x: center.x + distance, y: center.y }
+  ]);
+  await session.send("Input.dispatchTouchEvent", {
+    type: "touchStart",
+    touchPoints: points(startDistance)
+  });
+  for (let step = 1; step <= 8; step += 1) {
+    const distance = startDistance + ((endDistance - startDistance) * step) / 8;
+    await session.send("Input.dispatchTouchEvent", {
+      type: "touchMove",
+      touchPoints: points(distance)
+    });
+    await page.waitForTimeout(16);
+  }
+  await session.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+  await session.detach();
+}
+
+async function expectGapChoiceSet(page, expectedValues) {
+  const values = await page.locator('[data-action="text-gap-set-choice"]')
+    .evaluateAll((buttons) => buttons.map((button) => button.dataset.textGapValue).sort());
+  expect(values).toEqual([...expectedValues].sort());
+}
+
 test.beforeEach(async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 900 });
   await page.goto("/tests/gallery/resource-test-course.html");
@@ -63,14 +91,13 @@ test.beforeEach(async ({ page }) => {
   await page.waitForFunction(() => globalThis.__RESOURCE_TEST_COURSE_READY__ === true);
 });
 
-test("curso separa representações dos quatro packages de resposta", async ({ page }) => {
+test("curso separa representações dos três packages de resposta", async ({ page }) => {
   await expect(page.locator('[data-action="open-course"]')).toBeVisible();
   await page.locator('[data-action="open-course"]').click();
   expect(await page.locator('[data-action="open-module"]').count()).toBeGreaterThan(4);
   await expect(page.locator('[data-action="open-module"][data-module-key="response-choice-test-module"]')).toHaveCount(1);
   await expect(page.locator('[data-action="open-module"][data-module-key="response-gap-test-module"]')).toHaveCount(1);
   await expect(page.locator('[data-action="open-module"][data-module-key="response-ordering-test-module"]')).toHaveCount(1);
-  await expect(page.locator('[data-action="open-module"][data-module-key="response-matching-test-module"]')).toHaveCount(1);
 });
 
 test("paragraph usa alternativas sob demanda e segundo toque esvazia a lacuna", async ({ page }) => {
@@ -97,15 +124,11 @@ test("cada lacuna abre somente as próprias alternativas", async ({ page }) => {
   await expect(page.locator('[data-action="text-gap-set-choice"]')).toHaveCount(0);
 
   await blanks.nth(0).click();
-  await expect(page.locator('[data-action="text-gap-set-choice"]')).toHaveText([
-    "cliente", "servidor", "roteador"
-  ]);
+  await expectGapChoiceSet(page, ["cliente", "servidor", "roteador"]);
   await page.locator('[data-action="text-gap-set-choice"][data-text-gap-value="cliente"]').click();
 
   await blanks.nth(1).click();
-  await expect(page.locator('[data-action="text-gap-set-choice"]')).toHaveText([
-    "resposta", "requisição", "conexão"
-  ]);
+  await expectGapChoiceSet(page, ["resposta", "requisição", "conexão"]);
   await page.locator('[data-action="text-gap-set-choice"][data-text-gap-value="resposta"]').click();
   await blanks.nth(1).click();
   await expect(blanks.nth(1)).toHaveAttribute("data-empty", "true");
@@ -125,17 +148,13 @@ test("tabela de transição mantém lacunas e alternativas independentes", async
   ).toHaveCount(1);
 
   await blanks.nth(0).click();
-  await expect(page.locator('[data-action="text-gap-set-choice"]')).toHaveText([
-    "q₀", "q₁", "q₂"
-  ]);
+  await expectGapChoiceSet(page, ["q0", "q1", "q2"]);
   await page.locator('[data-action="text-gap-set-choice"][data-text-gap-value="q0"]').click();
   await expect(blanks.nth(0)).toHaveText("q₀");
   await expect(blanks.nth(1)).toBeEmpty();
 
   await blanks.nth(1).click();
-  await expect(page.locator('[data-action="text-gap-set-choice"]')).toHaveText([
-    "q₀", "q₁", "q₂"
-  ]);
+  await expectGapChoiceSet(page, ["q0", "q1", "q2"]);
   await page.locator('[data-action="text-gap-set-choice"][data-text-gap-value="q0"]').click();
   await expect(blanks.nth(0)).toHaveText("q₀");
   await expect(blanks.nth(1)).toHaveText("q₀");
@@ -160,7 +179,7 @@ test("table recebe alternativa e digitação dentro de células", async ({ page 
   await expect(page.locator(".runtime-table-block > p [data-action='text-gap-open-choice']"))
     .toHaveCount(0);
   await page.locator(".runtime-table tbody [data-action='text-gap-open-choice']").click();
-  await page.locator('[data-action="text-gap-set-choice"]').first().click();
+  await page.locator('[data-action="text-gap-set-choice"][data-text-gap-value="start"]').click();
   await page.locator('[data-action="next-card"]').click();
   await page.locator('[data-action="next-card"]').click();
   await expect(page.locator(".runtime-table tbody [data-action='complete-input']"))
@@ -186,10 +205,10 @@ test("BPMN preserva participantes, raias, gateways e fluxos em um caso não triv
   await expect(page.locator(".package-bpmn-node.is-exclusive_gateway")).toHaveCount(1);
   await expect(page.locator(".package-bpmn-flow.is-message")).toHaveCount(1);
   await expect(page.locator(".package-bpmn-flow.is-sequence")).toHaveCount(8);
-  const visibleEventText = await page.locator(".package-bpmn-process svg text").allTextContents();
+  const visibleEventText = await page.locator(".package-bpmn-process .package-system-diagram-svg text").allTextContents();
   expect(visibleEventText.map((value) => value.trim())).not.toContain("need");
   expect(visibleEventText.map((value) => value.trim())).not.toContain("finish");
-  const geometry = await page.locator(".package-bpmn-process svg").evaluate((svg) => {
+  const geometry = await page.locator(".package-bpmn-process .package-system-diagram-svg").evaluate((svg) => {
     const boxes = [...svg.querySelectorAll("g.package-bpmn-node")].map((node) => ({
       id: node.id,
       rect: node.getBoundingClientRect()
@@ -223,17 +242,31 @@ test("BPMN preserva participantes, raias, gateways e fluxos em um caso não triv
   await expect(page.locator(".package-bpmn-process [data-graphviz-source]"))
     .toHaveAttribute("data-graphviz-source", /rankdir="TB"/u);
   await page.locator('[data-action="next-card"]').click();
-  const nodeGap = page.locator('.package-system-diagram-detail [data-action="text-gap-open-choice"]');
+  const nodeGap = page.locator('.package-system-diagram-svg [data-action="text-gap-open-choice"]');
   await expect(nodeGap).toHaveCount(1);
-  await expect(page.locator('.package-system-diagram-svg [data-action="text-gap-open-choice"]')).toHaveCount(0);
-  await expect(page.locator("#system-node-send .package-system-diagram-gap-preview"))
-    .not.toContainText("solicitação");
+  await expect(page.locator(".package-system-diagram-detail")).toHaveCount(0);
+  await expect(page.locator("#system-node-send foreignObject")).not.toContainText("solicitação");
+  await expect(page.locator("body")).not.toContainText("Detalhe para leitura");
+  await page.locator('.package-bpmn-process [data-diagram-action="toggle-expanded"]').click();
+  const dialog = page.locator(".package-bpmn-process [data-diagram-modal]");
+  await expect(dialog).toHaveAttribute("open", "");
+  await page.locator('.package-bpmn-process [data-diagram-action="zoom-in"]').click();
+  const practicedScale = Number(await page.locator(".package-bpmn-process .package-system-diagram-svg")
+    .getAttribute("data-diagram-scale"));
   await nodeGap.click();
-  await page.locator('[data-action="text-gap-set-choice"][data-text-gap-value="solicitação"]').click();
+  await expect(dialog).toHaveAttribute("open", "");
+  const prompt = dialog.locator('[data-text-gap-prompt="true"]');
+  await expect(prompt).toBeVisible();
+  await expect.poll(async () => Number(await page.locator(".package-bpmn-process .package-system-diagram-svg")
+    .getAttribute("data-diagram-scale"))).toBeGreaterThanOrEqual(practicedScale - 0.01);
+  const answer = prompt.locator(
+    '[data-action="text-gap-set-choice"][data-text-gap-value="solicitação"]'
+  );
+  await expect(answer).toHaveAttribute("data-response-control-bound", "true");
+  await answer.click();
+  await expect(dialog).toHaveAttribute("open", "");
   await expect(page.locator('[data-graphviz-status="ready"]')).toHaveCount(1);
-  await expect(page.locator("[data-system-detail-picker]")).toHaveValue("node:send");
-  await expect(page.locator('.package-system-diagram-detail-item[data-system-detail-key="node:send"]'))
-    .toContainText("solicitação");
+  await expect(page.locator("#system-node-send foreignObject")).toContainText("solicitação");
   const completedLabel = await page.locator("#system-node-send").evaluate((node) => {
     const shape = node.querySelector("path, polygon").getBoundingClientRect();
     const label = node.querySelector("foreignObject").getBoundingClientRect();
@@ -246,14 +279,17 @@ test("BPMN preserva participantes, raias, gateways e fluxos em um caso não triv
   });
   expect(completedLabel.insideShape).toBe(true);
   expect(completedLabel.label).toBe(true);
-  expect(completedLabel.activeControls).toBe(0);
+  expect(completedLabel.activeControls).toBe(1);
+  await page.locator('.package-bpmn-process [data-diagram-action="toggle-expanded"]').click();
+  await expect(dialog).not.toHaveAttribute("open", "");
 });
 
-test("frame BPMN entrega o gesto vertical ao card e reserva pan e zoom ao modo Explorar", async ({ page }) => {
+test("frame BPMN permite pinça e pan no card e preserva o mesmo canvas em tela inteira", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 700 });
   await openModuleByKey(page, "resource-test-5-module");
   const frame = page.locator('.package-bpmn-process [data-resource-scroll-frame="diagram"]');
-  const card = page.locator(".card-sheet-content");
+  const svg = page.locator(".package-bpmn-process .package-system-diagram-svg");
+  const expand = page.locator('.package-bpmn-process [data-diagram-action="toggle-expanded"]');
   await expect(frame).toHaveAttribute("data-graphviz-status", "ready");
 
   const geometry = await frame.evaluate((element) => {
@@ -273,35 +309,63 @@ test("frame BPMN entrega o gesto vertical ao card e reserva pan e zoom ao modo E
   expect(geometry.scrollHeight - geometry.clientHeight).toBeLessThanOrEqual(1);
   expect(geometry.scrollWidth - geometry.clientWidth).toBeLessThanOrEqual(1);
   expect(geometry.frameBottom).toBeLessThanOrEqual(geometry.cardBottom + 3);
-  expect(geometry.touchAction).toBe("pan-y");
-  await expect(frame).toHaveAttribute("data-diagram-viewport-mode", "overview");
+  expect(geometry.touchAction).toBe("none");
+  await expect(frame).toHaveAttribute("data-diagram-viewport-mode", "inline");
+  await expect(page.locator('.package-bpmn-process [data-diagram-expanded-controls]')).toBeHidden();
+  await expect(expand).toHaveText("");
+  await expect(expand.locator("svg")).toHaveCount(1);
 
-  const visible = await frame.evaluate((element) => {
-    const rect = element.getBoundingClientRect();
-    const cardRect = element.closest(".card-sheet-content").getBoundingClientRect();
-    return {
-      left: Math.max(rect.left, cardRect.left),
-      right: Math.min(rect.right, cardRect.right),
-      top: Math.max(rect.top, cardRect.top),
-      bottom: Math.min(rect.bottom, cardRect.bottom)
-    };
-  });
+  const card = page.locator(".card-sheet-content");
+  const fittedBox = await frame.boundingBox();
   await card.evaluate((element) => { element.scrollTop = 0; });
   await touchSwipe(page, {
-    from: { x: (visible.left + visible.right) / 2, y: visible.bottom - 28 },
-    to: { x: (visible.left + visible.right) / 2, y: visible.top + 28 }
+    from: { x: fittedBox.x + fittedBox.width / 2, y: fittedBox.y + fittedBox.height - 28 },
+    to: { x: fittedBox.x + fittedBox.width / 2, y: fittedBox.y + 28 }
   });
   await expect.poll(() => card.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
   expect(await frame.evaluate((element) => element.scrollTop)).toBe(0);
+  await card.evaluate((element) => { element.scrollTop = 0; });
 
-  await page.locator('.package-bpmn-process [data-diagram-action="toggle-expanded"]').click();
+  const inlineBox = await frame.boundingBox();
+  const scaleBeforePinch = Number(await svg.getAttribute("data-diagram-scale"));
+  await touchPinch(page, {
+    center: { x: inlineBox.x + inlineBox.width / 2, y: inlineBox.y + inlineBox.height / 2 }
+  });
+  await expect.poll(async () => Number(await svg.getAttribute("data-diagram-scale")))
+    .toBeGreaterThan(scaleBeforePinch);
+  await expect.poll(() => frame.evaluate((element) => Math.max(
+    element.scrollWidth - element.clientWidth,
+    element.scrollHeight - element.clientHeight
+  ))).toBeGreaterThan(0);
+
+  const beforePan = await frame.evaluate((element) => ({
+    left: element.scrollLeft,
+    top: element.scrollTop
+  }));
+  await touchSwipe(page, {
+    from: { x: inlineBox.x + inlineBox.width * 0.7, y: inlineBox.y + inlineBox.height * 0.7 },
+    to: { x: inlineBox.x + inlineBox.width * 0.3, y: inlineBox.y + inlineBox.height * 0.3 }
+  });
+  await expect.poll(() => frame.evaluate((element) => ({
+    left: element.scrollLeft,
+    top: element.scrollTop
+  }))).not.toEqual(beforePan);
+
+  await svg.evaluate((element) => { element.dataset.sameViewportProbe = "true"; });
+  await expand.click();
   const dialog = page.locator(".package-bpmn-process [data-diagram-modal]");
   await expect(dialog).toHaveAttribute("open", "");
   await expect(frame).toHaveAttribute("data-diagram-viewport-mode", "explore");
-  expect(await frame.evaluate((element) => getComputedStyle(element).touchAction)).toBe("pan-x pan-y");
+  expect(await frame.evaluate((element) => getComputedStyle(element).touchAction)).toBe("none");
+  await expect(dialog.locator('svg[data-same-viewport-probe="true"]')).toHaveCount(1);
+  await expect(page.locator('.package-bpmn-process [data-diagram-expanded-controls]')).toBeVisible();
+  for (const action of ["zoom-out", "fit", "zoom-in", "toggle-expanded"]) {
+    const button = page.locator(`.package-bpmn-process [data-diagram-action="${action}"]`);
+    await expect(button).toHaveText("");
+    await expect(button.locator("svg")).toHaveCount(1);
+  }
 
-  const scaleBefore = Number(await page.locator(".package-bpmn-process svg").getAttribute("data-diagram-scale"));
-  await page.locator('.package-bpmn-process [data-diagram-action="zoom-in"]').click();
+  const scaleBefore = Number(await svg.getAttribute("data-diagram-scale"));
   await page.locator('.package-bpmn-process [data-diagram-action="zoom-in"]').click();
   const explored = await frame.evaluate((element) => ({
     overflowX: element.scrollWidth - element.clientWidth,
@@ -319,7 +383,7 @@ test("frame BPMN entrega o gesto vertical ao card e reserva pan e zoom ao modo E
 
   await page.locator('.package-bpmn-process [data-diagram-action="toggle-expanded"]').click();
   await expect(dialog).not.toHaveAttribute("open", "");
-  await expect(frame).toHaveAttribute("data-diagram-viewport-mode", "overview");
+  await expect(frame).toHaveAttribute("data-diagram-viewport-mode", "inline");
   await expect.poll(() => frame.evaluate((element) => ({
     x: element.scrollWidth - element.clientWidth,
     y: element.scrollHeight - element.clientHeight
@@ -335,13 +399,6 @@ test("frame BPMN entrega o gesto vertical ao card e reserva pan e zoom ao modo E
         svgRect.top >= frameRect.top - 1 && svgRect.bottom <= frameRect.bottom + 1
     };
   })).toEqual({ overflowFree: true, contained: true });
-  await card.evaluate((element) => { element.scrollTop = 0; });
-  const inline = await frame.boundingBox();
-  await touchSwipe(page, {
-    from: { x: inline.x + inline.width / 2, y: inline.y + inline.height - 28 },
-    to: { x: inline.x + inline.width / 2, y: inline.y + 28 }
-  });
-  await expect.poll(() => card.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
 });
 
 test("contêineres de software preservam todo rótulo na exposição e após preencher a lacuna", async ({ page }) => {
@@ -376,15 +433,12 @@ test("contêineres de software preservam todo rótulo na exposição e após pre
   });
 
   await page.locator('[data-action="next-card"]').click();
-  const gap = page.locator('.package-system-diagram-detail [data-action="text-gap-open-choice"]');
+  const gap = page.locator('.package-system-diagram-svg [data-action="text-gap-open-choice"]');
   await expect(gap).toHaveCount(1);
-  await expect(page.locator('.package-system-diagram-svg [data-action="text-gap-open-choice"]')).toHaveCount(0);
+  await expect(page.locator(".package-system-diagram-detail")).toHaveCount(0);
   await gap.click();
-  await page.locator('[data-action="text-gap-set-choice"]').first().click();
+  await page.locator('[data-action="text-gap-set-choice"][data-text-gap-value="Aplicação"]').click();
   await expect(page.locator('.runtime-software-container-block [data-graphviz-status="ready"]')).toHaveCount(1);
-  const selectedKey = await page.locator("[data-system-detail-picker]").inputValue();
-  await expect(page.locator(`.package-system-diagram-detail-item[data-system-detail-key="${selectedKey}"]`))
-    .toBeVisible();
 
   const interactiveLabel = await page.locator(".package-software-container-node foreignObject").evaluate((foreignObject) => {
     const node = foreignObject.closest(".package-software-container-node");
@@ -404,12 +458,12 @@ test("contêineres de software preservam todo rótulo na exposição e após pre
     };
   });
   expect(interactiveLabel.inside).toBe(true);
-  expect(interactiveLabel.activeControls).toBe(0);
+  expect(interactiveLabel.activeControls).toBe(1);
 
   await page.locator('[data-action="next-card"]').click();
-  const typing = page.locator('.package-system-diagram-detail [data-action="complete-input"]');
+  const typing = page.locator('.package-system-diagram-svg [data-action="complete-input"]');
   await expect(typing).toHaveCount(1);
-  await expect(page.locator('.package-system-diagram-svg [data-action="complete-input"]')).toHaveCount(0);
+  await expect(page.locator(".package-system-diagram-detail")).toHaveCount(0);
   await typing.fill("Aplicação web");
   await expect(typing).toHaveText("Aplicação web");
   await expect(page.locator('[data-action="complete-input"]')).toHaveCount(1);
@@ -488,7 +542,7 @@ test("reaction materializa escolha e digitação dentro da equação química", 
   const coefficientGap = page.locator("math.package-reaction-equation [data-action='text-gap-open-choice']");
   await expect(coefficientGap).toHaveCount(1);
   await coefficientGap.click();
-  await page.locator('[data-action="text-gap-set-choice"]').first().click();
+  await page.locator('[data-action="text-gap-set-choice"][data-text-gap-value="2"]').click();
   await page.locator('[data-action="next-card"]').click();
   await expect(page.locator("math.package-reaction-equation [data-action='complete-input']")).toHaveCount(1);
   await expect(page.locator(".inline-feedback")).toHaveCount(0);
@@ -540,7 +594,7 @@ test("flow usa convenções de fluxograma e não a estrutura visual de tree", as
   await expect(page.locator('.package-flow-node [data-action="text-gap-open-choice"]')).toHaveCount(1);
   await expect(page.locator('[data-action="text-gap-open-choice"]')).toHaveCount(1);
   await page.locator('.package-flow-node [data-action="text-gap-open-choice"]').click();
-  await page.locator('[data-action="text-gap-set-choice"]').first().click();
+  await page.locator('[data-action="text-gap-set-choice"][data-text-gap-value="Início"]').click();
   await page.locator('[data-action="next-card"]').click();
   await page.locator('[data-action="next-card"]').click();
   await expect(page.locator('.package-flow-node [data-action="complete-input"]')).toHaveCount(1);
@@ -832,11 +886,45 @@ test("gráfico acadêmico mostra escala logarítmica, incerteza e referência se
   expect(geometry.verticalIntervals).toBeGreaterThanOrEqual(12);
 });
 
-test("ordenação é resposta independente e o Play é o único controle de confirmação", async ({ page }) => {
+test("ordenação atua nas células com setas por ícone e largura estável", async ({ page }) => {
   await openModuleByKey(page, "response-ordering-test-module");
-  await expect(page.locator(".package-ordering-response li")).toHaveCount(3);
+  const slots = page.locator(".runtime-ordering-slot");
+  await expect(slots).toHaveCount(3);
+  await expect(page.locator(".package-ordering-response")).toHaveCount(0);
+  const moveButtons = page.locator('[data-action="ordering-move"]');
+  await expect(moveButtons).toHaveCount(6);
+  expect(await moveButtons.allTextContents()).toEqual(["", "", "", "", "", ""]);
+  await expect(moveButtons.first()).toHaveAttribute("aria-label", /esquerda/u);
+  const moveTarget = await moveButtons.nth(1).evaluate((node) => {
+    const bounds = node.getBoundingClientRect();
+    return { width: bounds.width, height: bounds.height };
+  });
+  expect(moveTarget.width).toBeGreaterThanOrEqual(44);
+  expect(moveTarget.height).toBeGreaterThanOrEqual(44);
   await expect(page.getByRole("button", { name: "Conferir" })).toHaveCount(0);
+  for (const width of [360, 320]) {
+    await page.setViewportSize({ width, height: 900 });
+    expect(await page.evaluate(() => document.documentElement.scrollWidth))
+      .toBeLessThanOrEqual(width);
+  }
+  const widthsBefore = await slots.evaluateAll((nodes) => nodes.map((node) => (
+    Math.round(node.getBoundingClientRect().width)
+  )));
   await page.locator('[data-action="next-card"]').click();
   await expect(page.locator(".inline-feedback.err")).toBeVisible();
-  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+  const query = page.locator('.runtime-ordering-slot[data-ordering-item-id="query"]');
+  await query.locator('[data-ordering-direction="left"]').click();
+  await expect(query).toBeFocused();
+  await expect(query).toHaveAttribute("aria-label", /posição 2 de 3/u);
+  await page.locator('.runtime-ordering-slot[data-ordering-item-id="query"] [data-ordering-direction="left"]').click();
+  await expect(query).toBeFocused();
+  await expect(query).toHaveAttribute("aria-label", /posição 1 de 3/u);
+  const widthsAfter = await slots.evaluateAll((nodes) => nodes.map((node) => (
+    Math.round(node.getBoundingClientRect().width)
+  )));
+  expect(widthsAfter).toEqual(widthsBefore);
+  await page.locator('[data-action="next-card"]').click();
+  await expect(page.getByRole("heading", { name: "Microssequências" })).toBeVisible();
+  await expect(page.locator(".inline-feedback.err")).toHaveCount(0);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(320);
 });

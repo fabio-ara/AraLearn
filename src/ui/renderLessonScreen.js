@@ -1256,6 +1256,7 @@ function renderMicrosequenceScreen({ course, lesson, microsequence, cards, selec
     resourceSelectionDisabled: Boolean(editorSupport.isSubmitting),
     selectedResourceTargetIds: cardAssistanceState.resourceTargetIds,
     resourceSelectionLabels,
+    resourceSelectionTargetIds: cardResourceTargets.map(({ targetId }) => targetId),
     manualEditingTargetId: cardEditorMode === "manual" && manualEditTargetId !== "card"
       ? manualEditTargetId
       : "",
@@ -1271,6 +1272,7 @@ function renderMicrosequenceScreen({ course, lesson, microsequence, cards, selec
           resourceSelectionDisabled: Boolean(editorSupport.isSubmitting),
           selectedResourceTargetIds: cardAssistanceState.resourceTargetIds,
           resourceSelectionLabels,
+          resourceSelectionTargetIds: cardResourceTargets.map(({ targetId }) => targetId),
           manualEditingTargetId: cardEditorMode === "manual" && manualEditTargetId !== "card"
             ? manualEditTargetId
             : ""

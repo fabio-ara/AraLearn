@@ -39,9 +39,9 @@ const SCENARIO_CONTRACT =
   "aralearn.authoring-contextual-planning-scenarios.v1";
 const RUN_CONTRACT = "aralearn.authoring-contextual-planning-runs.v1";
 const SCENARIO_CORPUS_SHA256 =
-  "61bd6c7b119b043bf452c22a4dcc01aae6454f5b7b4c5242fe8b4590343a352c";
+  "7a1f18f279da7505e510364db9939be951f6bf6e841ce1fda67a72df270d2fdb";
 const RUN_CORPUS_SHA256 =
-  "0c524793de95a8715373c55679ea5f3976454832a919e8e1311c2a0bfe806685";
+  "08cb10481a10531a20a5d60bddc74f0715bdeb7e8152a27d0c76657ac9ad2b76";
 const SCENARIO_IDS = Object.freeze(["A", "B", "C", "D", "E"]);
 
 const SOURCES = Object.freeze([

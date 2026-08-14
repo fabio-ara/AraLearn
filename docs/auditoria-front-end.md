@@ -103,7 +103,7 @@ Entretanto, esconder o controle não é a barreira de segurança. Toda escrita r
 | publicação oficial | editar classificação, retirar de Coleções | capacidade editorial |
 | parte do workspace | editar texto, estrutura autorizada, observar | revisão e capacidade correntes |
 
-Falha de escrita mantém o formulário e seu texto. Edição textual pode permanecer como mudança local pendente; conflito CAS conserva a proposta e pede reconciliação, sem sobrescrever silenciosamente o remoto.
+Falha de escrita mantém a superfície de edição e seu texto. Edição textual pode permanecer como mudança local pendente; conflito CAS conserva a proposta e pede reconciliação, sem sobrescrever silenciosamente o remoto.
 
 ## 6. Edição situada
 
@@ -115,7 +115,12 @@ Mostra o resultado do card e os controles de estudo. Não exibe JSON, caminhos d
 
 ### Editar
 
-Um contorno discreto indica a instância escolhida sem alterar sua geometria. O formulário contém somente os valores devolvidos por `editableTargets()`: rótulos, texto, legenda e descrição visíveis. Ids, coordenadas, topologia e tipos de nó são contexto protegido.
+Um contorno discreto indica a instância escolhida sem alterar sua geometria.
+Os rótulos, textos, legendas e descrições visíveis autorizados por
+`editableTargets()` recebem cursor de texto e caret exatamente onde já aparecem.
+Não surge formulário, painel de campos, caminho de schema ou prévia paralela.
+Ids, coordenadas, topologia, tipos de nó e textos apenas acessíveis são contexto
+protegido.
 
 ### Assistência por IA
 

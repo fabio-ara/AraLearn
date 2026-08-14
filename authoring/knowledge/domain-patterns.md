@@ -11,7 +11,7 @@ Escolha o recurso pela operação que o estudante precisa realizar:
 | compreender uma definição ou distinção | `paragraph`, `choice` ou combinação justificada de packages |
 | acompanhar execução, sintaxe ou comando | `code`, `table`, `flow` |
 | comparar casos, registros ou valores | `table`, `chart`, `choice` |
-| reconhecer hierarquia ou classificação | `tree`, `matching` |
+| reconhecer hierarquia ou classificação | `tree`, ou `table` com `gap` quando for preciso completar categorias |
 | analisar adjacência, caminhos, ciclos ou conectividade abstrata | `graph` |
 | analisar equipamentos, segmentos ou rotas de rede | `network_topology` |
 | situar pessoas e sistemas externos em relação a um software | `software_system_context` |

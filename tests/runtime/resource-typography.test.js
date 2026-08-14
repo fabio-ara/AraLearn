@@ -27,7 +27,7 @@ test("conteúdo primário dos resources compartilha a escala tipográfica do tex
     ".runtime-code-block pre",
     ".package-terminal-session pre",
     ".multiple-choice-option",
-    ".package-matching-response label",
+    ".runtime-ordering-value",
     ".package-packet-legend li",
     ".package-er-entity-content",
     ".package-relational-table",

@@ -64,16 +64,17 @@ finalidade do package. Em termos gerais:
 - discriminação por alternativas pede `aralearn.response.choice`;
 - recuperação dentro de um campo textual visível pede
   `aralearn.response.gap`;
-- reconstrução de uma ordem pede `aralearn.response.ordering`.
-- reconstrução de pares ou classificação pede
-  `aralearn.response.matching`.
+- reconstrução de uma ordem entre ao menos duas expressões já visíveis em
+  `paragraph` ou células de `table` pede `aralearn.response.ordering`;
+- reconstrução de pares ou classificação usa `gap` sobre os campos
+  correspondentes de um `paragraph` ou de uma `table`.
 
 Essa orientação não substitui o catálogo. Nunca memorize um schema, invente
 campos, use coordenadas de tela ou presuma que todos os packages aceitam toda
 resposta. A combinação é válida somente quando manifest, contrato e validação
 do package concordam.
 
-## Lacunas, ordenação e encaixe
+## Lacunas e ordenação
 
 Uma lacuna declara `targetInstanceId` e `targetPath` para um campo textual real
 de uma instância em `content`. A resposta precisa ocorrer nesse campo e será
@@ -81,16 +82,20 @@ substituída pelo controle interativo somente na renderização. A notação de
 `targetPath` pertence ao contrato recuperado de
 `aralearn.response.gap`; não codifique lacunas em strings.
 
-Uma ordenação aponta para uma instância de conteúdo que preserve a sequência e
-declara os identificadores na ordem correta. Os itens visíveis vêm da
-representação alvo. Não duplique a sequência no enunciado nem use a posição
-visual como resposta implícita.
+Uma ordenação declara ao menos dois alvos com `targetInstanceId`, `targetPath`
+e a expressão que já ocorre no campo textual. Os alvos aparecem na ordem
+correta de leitura; o estudante move as expressões para esquerda ou direita
+pelos ícones no próprio ponto. Quando mais de uma expressão pertence ao mesmo
+campo, cada `targetPath` recebe um sufixo de ocorrência distinto. Use somente
+texto plano visível, fora de marcação Markdown. Não duplique a sequência no
+response nem aplique ordering a diagramas, fluxos ou outra leitura espacial.
+Use somente `responseCompatibility` e
+`practiceTargets` do contrato exato e confirme a composição com
+`validate_card`.
 
-Um encaixe declara origens, destinos e pares corretos. Ele pode reconstruir
-uma bijeção ou classificar várias origens na mesma categoria. A interface usa
-controles nativos acessíveis; arrastar nunca é obrigatório. Nenhuma modalidade
-é universal: use somente `responseCompatibility` e `practiceTargets` do
-contrato exato e confirme a composição com `validate_card`.
+Uma correspondência simples não cria outro tipo de resposta. Represente os
+pares no resource textual adequado e aplique uma lacuna independente ao campo
+a completar; cada lacuna conserva resposta, opções e estado próprios.
 
 ## Representações visuais
 
@@ -108,7 +113,7 @@ Em `relation_map`, deixe explícitos domínio, contradomínio e pares ordenados.
 O renderer apresenta os dois conjuntos e uma seta sem rótulo para cada par; a
 notação extensional complementar registra os pares sem disputar espaço com as
 arestas. Use-o somente quando imagem, preimagem ou cardinalidade fizer parte
-do raciocínio. Use `table` ou `matching` para uma simples correspondência e
+do raciocínio. Use `table` com lacunas para uma simples correspondência e
 `set_diagram` quando interseção, união ou pertencimento simultâneo for o objeto.
 Nesse package, escolha `venn` quando todas as combinações lógicas precisam
 permanecer visíveis e `euler` quando a ausência de uma região é parte da

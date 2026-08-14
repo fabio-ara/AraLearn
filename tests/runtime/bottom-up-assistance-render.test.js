@@ -219,3 +219,95 @@ test("edição estrutural mantém o conteúdo no lugar e expõe ações fora do 
   assert.match(html, /data-action="save-inline-entity" data-structure-level="course"/u);
   assert.doesNotMatch(html, /inline-entity-editor|structure-inline-entity-editor/u);
 });
+
+function renderFallbackLessonDescription(card) {
+  const value = fixture();
+  value.lesson.description = "";
+  delete value.lesson.guide;
+  value.microsequence.dependsOn = [];
+  value.microsequence.cards = [card];
+  return renderLessonScreen({
+    ...value,
+    view: "lesson",
+    cards: [card],
+    microsequenceMode: "play",
+    editorSupport: support()
+  });
+}
+
+test("descrição derivada da lição oculta respostas de gap e ordering", () => {
+  const content = [
+    {
+      id: "preview-paragraph",
+      package: "aralearn.resource.paragraph",
+      version: "1.0.0",
+      data: { text: "Preparar DNS" }
+    },
+    {
+      id: "preview-table",
+      package: "aralearn.resource.table",
+      version: "1.0.0",
+      data: { columns: ["Etapa"], rows: [["Executar TCP"]] }
+    }
+  ];
+  const card = (response) => ({
+    id: `preview-${response.package}`,
+    position: 1,
+    title: "Prática",
+    role: "practice",
+    content,
+    response,
+    feedback: [],
+    topics: [],
+    sources: []
+  });
+  const gapHtml = renderFallbackLessonDescription(card({
+    id: "preview-gap",
+    package: "aralearn.response.gap",
+    version: "1.0.0",
+    data: {
+      blanks: [
+        {
+          id: "first-blank",
+          targetInstanceId: "preview-paragraph",
+          targetPath: "text:dns",
+          responseMode: "text",
+          answer: "DNS"
+        },
+        {
+          id: "second-blank",
+          targetInstanceId: "preview-table",
+          targetPath: "rows[0][0]:tcp",
+          responseMode: "text",
+          answer: "TCP"
+        }
+      ]
+    }
+  }));
+  assert.match(gapHtml, /\[…\]/u);
+  assert.doesNotMatch(gapHtml, /\b(?:DNS|TCP)\b/u);
+
+  const orderingHtml = renderFallbackLessonDescription(card({
+    id: "preview-ordering",
+    package: "aralearn.response.ordering",
+    version: "3.0.0",
+    data: {
+      targets: [
+        {
+          id: "prepare",
+          targetInstanceId: "preview-paragraph",
+          targetPath: "text:prepare",
+          answer: "Preparar"
+        },
+        {
+          id: "execute",
+          targetInstanceId: "preview-table",
+          targetPath: "rows[0][0]:execute",
+          answer: "Executar"
+        }
+      ]
+    }
+  }));
+  assert.match(orderingHtml, /\[…\]/u);
+  assert.doesNotMatch(orderingHtml, /\b(?:Preparar|Executar)\b/u);
+});

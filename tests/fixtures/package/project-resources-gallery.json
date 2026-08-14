@@ -611,33 +611,40 @@
                       "role": "practice",
                       "content": [
                         {
-                          "id": "body-1",
+                          "id": "step-1",
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
-                            "text": "Organize as etapas do procedimento na ordem em que devem ser executadas."
+                            "text": "Preparar"
+                          }
+                        },
+                        {
+                          "id": "step-2",
+                          "package": "aralearn.resource.paragraph",
+                          "version": "1.0.0",
+                          "data": {
+                            "text": "Executar"
                           }
                         }
                       ],
                       "response": {
                         "id": "instance-9",
                         "package": "aralearn.response.ordering",
-                        "version": "2.0.0",
+                        "version": "3.0.0",
                         "data": {
-                          "prompt": "Ordene as etapas.",
-                          "items": [
+                          "targets": [
                             {
-                              "id": "s1",
-                              "label": "Preparar"
+                              "id": "prepare",
+                              "targetInstanceId": "step-1",
+                              "targetPath": "text",
+                              "answer": "Preparar"
                             },
                             {
-                              "id": "s2",
-                              "label": "Executar"
+                              "id": "execute",
+                              "targetInstanceId": "step-2",
+                              "targetPath": "text",
+                              "answer": "Executar"
                             }
-                          ],
-                          "answerOrder": [
-                            "s1",
-                            "s2"
                           ]
                         }
                       },
@@ -647,7 +654,7 @@
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
-                            "text": "Oferece botões de mover e posição anunciada; arrastar nunca é obrigatório."
+                            "text": "Cada expressão conserva sua posição anunciada e oferece botões nomeados de movimento para esquerda e direita."
                           }
                         }
                       ],
@@ -2662,78 +2669,11 @@
                     {
                       "id": "gallery-29",
                       "position": 29,
-                      "title": "Encaixe de correspondências",
-                      "role": "practice",
-                      "content": [
-                        {
-                          "id": "context-aralearn.response.matching",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Pedir que o estudante encaixe cada item na correspondência ou categoria adequada."
-                          }
-                        }
-                      ],
-                      "response": {
-                        "id": "instance-29",
-                        "package": "aralearn.response.matching",
-                        "version": "1.0.0",
-                        "data": {
-                          "prompt": "Associe cada protocolo à camada.",
-                          "mode": "classification",
-                          "leftItems": [
-                            {
-                              "id": "tcp",
-                              "label": "TCP"
-                            },
-                            {
-                              "id": "ip",
-                              "label": "IP"
-                            }
-                          ],
-                          "rightItems": [
-                            {
-                              "id": "transport",
-                              "label": "Transporte"
-                            },
-                            {
-                              "id": "network",
-                              "label": "Rede"
-                            }
-                          ],
-                          "answerPairs": [
-                            {
-                              "leftId": "tcp",
-                              "rightId": "transport"
-                            },
-                            {
-                              "leftId": "ip",
-                              "rightId": "network"
-                            }
-                          ]
-                        }
-                      },
-                      "feedback": [
-                        {
-                          "id": "feedback-29",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Cada origem possui um seletor nativo rotulado; arrastar nunca é obrigatório."
-                          }
-                        }
-                      ],
-                      "topics": [],
-                      "sources": []
-                    },
-                    {
-                      "id": "gallery-30",
-                      "position": 30,
                       "title": "Modelo entidade-relacionamento",
                       "role": "theory",
                       "content": [
                         {
-                          "id": "instance-30",
+                          "id": "instance-29",
                           "package": "aralearn.resource.entity_relationship",
                           "version": "1.0.0",
                           "data": {
@@ -2833,7 +2773,7 @@
                       "response": null,
                       "feedback": [
                         {
-                          "id": "feedback-30",
+                          "id": "feedback-29",
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
@@ -2845,13 +2785,13 @@
                       "sources": []
                     },
                     {
-                      "id": "gallery-31",
-                      "position": 31,
+                      "id": "gallery-30",
+                      "position": 30,
                       "title": "Tabela de transição",
                       "role": "theory",
                       "content": [
                         {
-                          "id": "instance-31",
+                          "id": "instance-30",
                           "package": "aralearn.resource.state_transition_table",
                           "version": "1.0.0",
                           "data": {
@@ -2930,7 +2870,7 @@
                       "response": null,
                       "feedback": [
                         {
-                          "id": "feedback-31",
+                          "id": "feedback-30",
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
@@ -2942,13 +2882,13 @@
                       "sources": []
                     },
                     {
-                      "id": "gallery-32",
-                      "position": 32,
+                      "id": "gallery-31",
+                      "position": 31,
                       "title": "Pilha de chamadas",
                       "role": "theory",
                       "content": [
                         {
-                          "id": "instance-32",
+                          "id": "instance-31",
                           "package": "aralearn.resource.call_stack",
                           "version": "1.0.0",
                           "data": {
@@ -3006,7 +2946,7 @@
                       "response": null,
                       "feedback": [
                         {
-                          "id": "feedback-32",
+                          "id": "feedback-31",
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
@@ -3018,13 +2958,13 @@
                       "sources": []
                     },
                     {
-                      "id": "gallery-33",
-                      "position": 33,
+                      "id": "gallery-32",
+                      "position": 32,
                       "title": "Sessão de terminal",
                       "role": "theory",
                       "content": [
                         {
-                          "id": "instance-33",
+                          "id": "instance-32",
                           "package": "aralearn.resource.terminal_session",
                           "version": "1.0.0",
                           "data": {
@@ -3068,7 +3008,7 @@
                       "response": null,
                       "feedback": [
                         {
-                          "id": "feedback-33",
+                          "id": "feedback-32",
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {

@@ -79,8 +79,7 @@ const STRUCTURE_RECORDS = [
   { id: "structure.binary_layout", label: "Layout binário", aliases: ["layout de pacote", "cabeçalho binário", "campo de bits", "offset"] },
   { id: "structure.response_options", label: "Seleção de alternativas", aliases: ["alternativas", "distratores", "escolha"] },
   { id: "structure.response_gap", label: "Preenchimento de lacuna", aliases: ["lacuna", "resposta curta", "completamento"] },
-  { id: "structure.response_order", label: "Reconstrução de ordem", aliases: ["ordenação", "ordem de itens", "sequência reconstruída"] },
-  { id: "structure.response_matching", label: "Encaixe e classificação", aliases: ["matching", "encaixe", "classificação", "correspondência avaliável"] }
+  { id: "structure.response_order", label: "Reconstrução de ordem", aliases: ["ordenação", "ordem de itens", "sequência reconstruída"] }
 ];
 
 const OPERATION_RECORDS = [
@@ -103,7 +102,6 @@ const PRACTICE_MODE_RECORDS = [
   { id: "practice.typing", label: "Digitação", aliases: ["typing", "digitação"] },
   { id: "practice.selection", label: "Seleção", aliases: ["selection", "escolha"] },
   { id: "practice.ordering", label: "Ordenação", aliases: ["ordering", "ordenação"] },
-  { id: "practice.matching", label: "Encaixe", aliases: ["matching", "encaixe"] },
   { id: "practice.classification", label: "Classificação", aliases: ["classification", "classificação"] }
 ];
 

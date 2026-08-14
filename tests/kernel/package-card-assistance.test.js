@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
+import Ajv2020 from "ajv/dist/2020.js";
 
 import {
   buildCardAssistanceScopeSnapshot,
@@ -9,6 +10,11 @@ import {
   projectCardAssistanceTextChange
 } from "../../src/assist/cardAssistanceScope.js";
 import { generateCardAssistanceChangeSet } from "../../src/generation/runtime/cardAssistanceRuntime.js";
+import {
+  buildCardAssistanceAuthoringCardSchema,
+  compileAndValidateAuthoringCard,
+  listCardRepresentationCandidates
+} from "../../src/generation/engine/cardAuthoringSchema.js";
 
 async function context() {
   const document = JSON.parse(await readFile(
@@ -119,4 +125,97 @@ test("edit_text envia patch compacto e aplica somente folhas autorizadas", async
     resourceTargetIds: [`content:${card.content[0].id}`]
   });
   assert.equal(snapshot.target.resources[0].resourceType, "aralearn.resource.paragraph");
+});
+
+test("autoria oferece ordering v3 entre dois parágrafos e entre parágrafo e tabela", () => {
+  const ordering = listCardRepresentationCandidates().filter(({ response }) => (
+    response?.package === "aralearn.response.ordering"
+  ));
+  const packageLists = ordering.map(({ content }) => (
+    content.map(({ package: packageId }) => packageId)
+  ));
+  assert.ok(packageLists.some((packages) => (
+    packages.length === 2
+    && packages.every((packageId) => packageId === "aralearn.resource.paragraph")
+  )));
+  assert.ok(packageLists.some((packages) => (
+    packages.length === 2
+    && packages[0] === "aralearn.resource.paragraph"
+    && packages[1] === "aralearn.resource.table"
+  )));
+  assert.ok(packageLists.some((packages) => (
+    packages.length === 2
+    && packages[0] === "aralearn.resource.table"
+    && packages[1] === "aralearn.resource.paragraph"
+  )));
+  ordering.forEach(({ response }) => assert.equal(response.version, "3.0.0"));
+});
+
+test("schema de autoria materializa ordering v3 em instâncias textuais distintas", () => {
+  const representation = listCardRepresentationCandidates().find(({ content, response }) => (
+    response?.package === "aralearn.response.ordering"
+    && content.length === 2
+    && content[0].package === "aralearn.resource.paragraph"
+    && content[1].package === "aralearn.resource.table"
+  ));
+  assert.ok(representation);
+  const cardId = "ordering-cross-instance";
+  const plan = { ...representation, id: cardId, position: 1 };
+  const schema = buildCardAssistanceAuthoringCardSchema(plan);
+  const validate = new Ajv2020({ allErrors: true, strict: false }).compile(schema);
+  const card = {
+    id: cardId,
+    position: 1,
+    title: "Ordene autenticação e autorização",
+    role: "practice",
+    content: [
+      {
+        id: `${cardId}-content-1`,
+        package: "aralearn.resource.paragraph",
+        version: "1.0.0",
+        data: { text: "Primeiro, autenticar a identidade." }
+      },
+      {
+        id: `${cardId}-content-2`,
+        package: "aralearn.resource.table",
+        version: "1.0.0",
+        data: { columns: ["Etapa"], rows: [["Depois, autorizar o acesso."]] }
+      }
+    ],
+    response: {
+      id: `${cardId}-response-1`,
+      package: "aralearn.response.ordering",
+      version: "3.0.0",
+      data: {
+        targets: [
+          {
+            id: "authenticate",
+            targetInstanceId: `${cardId}-content-1`,
+            targetPath: "text",
+            answer: "autenticar"
+          },
+          {
+            id: "authorize",
+            targetInstanceId: `${cardId}-content-2`,
+            targetPath: "rows[0][0]",
+            answer: "autorizar"
+          }
+        ]
+      }
+    },
+    feedback: [{
+      id: `${cardId}-feedback-1`,
+      package: "aralearn.resource.paragraph",
+      version: "1.0.0",
+      data: { text: "A identidade vem antes da decisão de acesso." }
+    }],
+    topics: [],
+    sources: []
+  };
+  assert.equal(validate(card), true, JSON.stringify(validate.errors));
+  assert.doesNotThrow(() => compileAndValidateAuthoringCard(card));
+
+  const reversed = structuredClone(card);
+  reversed.content.reverse();
+  assert.equal(validate(reversed), false);
 });

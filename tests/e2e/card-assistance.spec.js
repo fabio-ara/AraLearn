@@ -98,8 +98,7 @@ function projectFixture() {
   };
 }
 
-async function bootAuthoring(page) {
-  const initialProject = projectFixture();
+async function bootAuthoring(page, initialProject = projectFixture()) {
   const trailSnapshot = homeTrailSnapshotForProject(initialProject, {
     permissions: {
       "course-a": {
@@ -344,15 +343,27 @@ test("edição manual altera só data e preserva o package", async ({ page }) =>
   await bootAuthoring(page);
   await openFirstCard(page);
   await selectMode(page, "edit");
+  const resourceBefore = await page.locator(
+    '[data-resource-edit-target="content:paragraph-1"]'
+  ).boundingBox();
   await packageTarget(page, "content:paragraph-1").click();
-  await expect(page.locator(".package-manual-editor-head")).toContainText("Textos editáveis");
-  await expect(page.locator(".package-manual-editor-head")).toContainText("Texto explicado");
-  await expect(page.locator(".package-manual-context")).not.toHaveAttribute("open", "");
+  await expect(page.locator(".package-manual-editor")).toHaveCount(0);
+  await expect(page.getByText("Textos editáveis", { exact: true })).toHaveCount(0);
+  await expect(page.getByText("Representação — somente leitura", { exact: true })).toHaveCount(0);
   const field = page.locator(
     '[data-resource-edit-target="content:paragraph-1"] [data-manual-edit-path="text"]'
   );
   await expect(field).toBeEditable();
+  await expect(field).toHaveText("P e Q precisam ser verdadeiras.");
+  await expect(field).toBeFocused();
+  const resourceEditing = await page.locator(
+    '[data-resource-edit-target="content:paragraph-1"]'
+  ).boundingBox();
+  expect(resourceEditing).toEqual(resourceBefore);
   await field.fill("As duas proposições precisam ser verdadeiras.");
+  expect(await page.locator(
+    '[data-resource-edit-target="content:paragraph-1"]'
+  ).boundingBox()).toEqual(resourceBefore);
   await page.locator('[data-action="save-manual-card-edit"]').click();
   const result = await page.evaluate(() => {
     const card = globalThis.__packageAuthoringProbe.project.courses[0].modules[0]
@@ -381,6 +392,50 @@ test("edição manual alcança feedback sem projeção after", async ({ page }) 
   expect(await page.evaluate(() => globalThis.__packageAuthoringProbe.project.courses[0]
     .modules[0].lessons[0].microsequences[0].cards[0].feedback[0].data.text))
     .toBe("Compare agora com a operação de disjunção.");
+});
+
+test("entrar em edição fecha a lacuna aberta e remove responses sem texto editável", async ({ page }) => {
+  const project = projectFixture();
+  const card = project.courses[0].modules[0].lessons[0].microsequences[0].cards[0];
+  card.role = "practice";
+  card.content = [{
+    id: "paragraph-1",
+    package: "aralearn.resource.paragraph",
+    version: "1.0.0",
+    data: { text: "Use DNS aqui." }
+  }];
+  card.response = {
+    id: "gap-1",
+    package: "aralearn.response.gap",
+    version: "1.0.0",
+    data: {
+      blanks: [{
+        id: "protocol",
+        targetInstanceId: "paragraph-1",
+        targetPath: "text:protocol",
+        responseMode: "choice",
+        answer: "DNS",
+        distractors: ["TCP", "HTTP"]
+      }]
+    }
+  };
+  card.feedback = [];
+  await bootAuthoring(page, project);
+  await openFirstCard(page);
+  await page.locator('[data-action="text-gap-open-choice"]').click();
+  await expect(page.locator('[data-action="text-gap-set-choice"]')).toHaveCount(3);
+
+  await selectMode(page, "edit");
+  await expect(page.locator('[data-action="text-gap-set-choice"]')).toHaveCount(0);
+  await expect(page.locator('[data-resource-edit-target="response:gap-1"]')).toHaveCount(0);
+  await expect(packageTarget(page, "content:paragraph-1")).toBeVisible();
+  await packageTarget(page, "content:paragraph-1").click();
+  const field = page.locator(
+    '[data-resource-edit-target="content:paragraph-1"] [data-manual-edit-path="text"]'
+  );
+  await expect(field).toHaveText("Use DNS aqui.");
+  await field.click();
+  await expect(page.locator('[data-action^="text-gap-"]')).toHaveCount(0);
 });
 
 test("chat edita o card e restaura versões anteriores e posteriores sem nova chamada", async ({ page }) => {

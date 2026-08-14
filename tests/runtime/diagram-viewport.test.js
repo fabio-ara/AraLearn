@@ -41,18 +41,20 @@ test("escala respeita visão global extrema e limite de leitura ampliada", () =>
   assert.equal(normalizeDiagramScale(8), 2.4);
 });
 
-test("shell separa exploração, zoom explícito e detalhe sem gesto obrigatório", () => {
+test("shell usa um único canvas e controles somente por ícones", () => {
   const markup = renderDiagramViewportShell({
-    canvasHtml: '<div data-test-canvas></div>',
-    detailHtml: '<section data-test-detail></section>'
+    canvasHtml: '<div data-test-canvas></div>'
   });
   assert.match(markup, /data-diagram-action="zoom-out"/u);
   assert.match(markup, /data-diagram-action="fit"/u);
   assert.match(markup, /data-diagram-action="zoom-in"/u);
   assert.match(markup, /data-diagram-action="toggle-expanded"/u);
+  assert.match(markup, /data-diagram-expanded-controls hidden/u);
+  assert.match(markup, /package-diagram-control-icon/u);
   assert.match(markup, /<dialog[^>]+data-diagram-modal/u);
   assert.equal((markup.match(/data-test-canvas/gu) || []).length, 1);
-  assert.equal((markup.match(/data-test-detail/gu) || []).length, 1);
+  assert.doesNotMatch(markup, />\s*(?:Explorar|Ajustar|Voltar ao card|\d+%)\s*</u);
+  assert.doesNotMatch(markup, /data-system-detail|package-system-diagram-detail/u);
 });
 
 test("texto de referência neutraliza marker e nunca expõe resposta de medição", () => {

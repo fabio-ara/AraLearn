@@ -123,16 +123,20 @@ Vega/Vega-Lite, Graphviz/Viz.js e MathML calculam aspectos especializados, mas r
 
 ## 9. Frames internos e gestos móveis
 
-Diagramas extensos não são comprimidos até perder legibilidade. Eles ficam num frame de altura limitada, com rolagem nativa nos dois eixos quando necessária.
+Diagramas extensos não são comprimidos até perder legibilidade. Eles ficam num
+frame de altura estável, com zoom e movimentação nos dois eixos sem alterar o
+tamanho do card.
 
 ### Contrato de interação
 
-- toque ou arrasto dentro do frame navega no diagrama;
+- toque ou arrasto dentro do frame navega no diagrama ampliado;
+- pinça com dois dedos amplia ou reduz o desenho no celular;
 - gesto fora do frame navega no card;
-- a barra horizontal permanece no rodapé visível do frame;
 - o diagrama abre no início de sua leitura, não numa posição arbitrária;
-- foco por teclado alcança o frame e seus controles;
-- preenchimento de lacuna redimensiona o elemento antes de recalcular o layout;
+- foco por teclado alcança o frame e seus controles por ícone;
+- o mesmo diagrama pode ocupar a tela cheia sem ganhar um painel paralelo;
+- preenchimento de lacuna usa a reserva prevista pelo layout, sem redimensionar
+  o frame ou o card;
 - orientação vertical é preferida para progressões longas no celular; comparação lateral permanece horizontal quando sua semântica depende disso.
 
 A rolagem interna adiciona um contexto de navegação e deve ser usada apenas quando preservar o tamanho natural é melhor que dividir a representação. O teste precisa incluir gesto dentro e fora do frame em WebView e navegador móvel.

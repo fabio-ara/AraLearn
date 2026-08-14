@@ -1,6 +1,11 @@
 import { escapePackageAttribute, renderPackageInline, renderPackageProse } from "../../sdk/html.js";
 import { academicProfile } from "../../sdk/academic.js";
+import {
+  listPackageManualTextPaths,
+  stripPackageManualTextMarkersDeep
+} from "../../kernel/manualTextMarkers.js";
 import { readVegaTheme, renderVegaLite } from "../../sdk/vegaRuntime.js";
+import { annotateVegaManualAxisTitles } from "../../sdk/vegaManualLabels.js";
 
 const AXIS_TYPES = Object.freeze(["quantitative", "temporal", "ordinal"]);
 const SCALE_TYPES = Object.freeze(["linear", "log", "symlog", "sqrt"]);
@@ -182,6 +187,22 @@ async function hydrateChart(figure) {
     const selectors = data.series.map((_, index) => `.package-chart-swatch.tone-${index % 6}`);
     const theme = readVegaTheme(canvas, selectors);
     await renderVegaLite(canvas, compileChartVegaLite(data, theme));
+    annotateVegaManualAxisTitles(canvas, [
+      {
+        axis: "x",
+        path: canvas.dataset.packageManualXAxisPath,
+        suffix: canvas.dataset.packageManualXAxisSuffix
+      },
+      {
+        axis: "y",
+        path: canvas.dataset.packageManualYAxisPath,
+        suffix: canvas.dataset.packageManualYAxisSuffix
+      }
+    ]);
+    delete canvas.dataset.packageManualXAxisPath;
+    delete canvas.dataset.packageManualXAxisSuffix;
+    delete canvas.dataset.packageManualYAxisPath;
+    delete canvas.dataset.packageManualYAxisSuffix;
   } catch (error) {
     canvas.dataset.vegaStatus = "error";
     canvas.setAttribute("aria-busy", "false");
@@ -285,9 +306,15 @@ export const chartPackage = Object.freeze({
     return findings;
   },
   render(data) {
-    const encoded = encodeURIComponent(JSON.stringify(data));
+    const encoded = encodeURIComponent(JSON.stringify(stripPackageManualTextMarkersDeep(data)));
+    const xAxisPath = listPackageManualTextPaths(data.xAxis.label)[0] || "";
+    const yAxisPath = listPackageManualTextPaths(data.yAxis.label)[0] || "";
+    const manualAxes = `${xAxisPath ? ` data-package-manual-x-axis-path="${escapePackageAttribute(xAxisPath)}"` : ""}` +
+      `${xAxisPath && data.xAxis.unit ? ` data-package-manual-x-axis-suffix="${escapePackageAttribute(` (${data.xAxis.unit})`)}"` : ""}` +
+      `${yAxisPath ? ` data-package-manual-y-axis-path="${escapePackageAttribute(yAxisPath)}"` : ""}` +
+      `${yAxisPath && data.yAxis.unit ? ` data-package-manual-y-axis-suffix="${escapePackageAttribute(` (${data.yAxis.unit})`)}"` : ""}`;
     const legend = data.series.map((series, index) => `<li><span class="package-chart-swatch mark-${data.chartType} tone-${index % 6}" aria-hidden="true"></span>${renderPackageInline(series.name)}</li>`).join("");
-    return `<div class="runtime-block runtime-chart-block">${data.prompt ? renderPackageProse(data.prompt) : ""}<figure class="package-chart-figure"><ul class="package-chart-legend">${legend}</ul>${data.uncertainty?.label ? `<p class="package-chart-uncertainty">${renderPackageInline(data.uncertainty.label)}</p>` : ""}<div class="package-chart-canvas" role="img" aria-label="${escapePackageAttribute(chartAccessibleText(data))}" aria-busy="true" data-vega-status="pending" data-chart-data="${escapePackageAttribute(encoded)}"></div>${data.caption ? `<figcaption class="package-chart-caption">${renderPackageInline(data.caption)}</figcaption>` : ""}<p class="package-chart-layout-error" hidden>Não foi possível materializar o gráfico estatístico.</p></figure></div>`;
+    return `<div class="runtime-block runtime-chart-block">${data.prompt ? renderPackageProse(data.prompt) : ""}<figure class="package-chart-figure"><ul class="package-chart-legend">${legend}</ul>${data.uncertainty?.label ? `<p class="package-chart-uncertainty">${renderPackageInline(data.uncertainty.label)}</p>` : ""}<div class="package-chart-canvas" role="img" aria-label="${escapePackageAttribute(chartAccessibleText(data))}" aria-busy="true" data-vega-status="pending" data-chart-data="${escapePackageAttribute(encoded)}"${manualAxes}></div>${data.caption ? `<figcaption class="package-chart-caption">${renderPackageInline(data.caption)}</figcaption>` : ""}<p class="package-chart-layout-error" hidden>Não foi possível materializar o gráfico estatístico.</p></figure></div>`;
   },
   async hydrate(instanceRoot) { await Promise.all([...instanceRoot.querySelectorAll(".package-chart-figure")].map(hydrateChart)); },
   accessibleText(data) { return chartAccessibleText(data); },

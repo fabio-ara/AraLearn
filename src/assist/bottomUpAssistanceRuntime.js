@@ -1616,6 +1616,8 @@ async function buildNewCard({
         invariants: [
           "Preserve literalmente id, position, role e as identidades de package determinadas pelo schema.",
           "Em gap, use targetInstanceId e targetPath; não codifique lacunas dentro de strings.",
+          "Em ordering, declare ao menos dois targets textuais com targetInstanceId e targetPath, inclusive entre instâncias quando o plano trouxer mais de um conteúdo.",
+          "Em ordering, mantenha targets na ordem correta de leitura e use somente expressões de texto plano inequívocas fora de Markdown.",
           "Não repita respostas de lacunas em conteúdo já visível.",
           "Produza somente este card."
         ]

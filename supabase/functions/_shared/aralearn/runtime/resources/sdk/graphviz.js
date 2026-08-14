@@ -1,3 +1,10 @@
+import {
+  createPackageManualTextMarker,
+  hasPackageManualTextMarker,
+  listPackageManualTextPaths,
+  stripPackageManualTextMarkers
+} from "../kernel/manualTextMarkers.js";
+
 const GAP_MARKER = /\uE000[^\uE001]+\uE001/gu;
 const SVG_NAMESPACE = "http://www.w3.org/2000/svg";
 const GRAPHVIZ_READING_AXES = Object.freeze({
@@ -37,14 +44,18 @@ export function loadGraphvizInstance() {
 }
 
 export function dotQuote(value) {
-  return `"${String(value ?? "")
+  return `"${stripPackageManualTextMarkers(value)
     .replace(/\\/gu, "\\\\")
     .replace(/"/gu, '\\"')
     .replace(/\r?\n/gu, "\\n")}"`;
 }
 
 export function dotAttributes(attributes) {
-  return `[${Object.entries(attributes)
+  const normalized = Object.fromEntries(Object.entries(attributes).map(([key, value]) => [
+    key,
+    typeof value === "string" ? stripPackageManualTextMarkers(value) : value
+  ]));
+  return `[${Object.entries(normalized)
     .filter(([, value]) => value !== undefined && value !== null && value !== "")
     .map(([key, value]) => `${key}=${dotQuote(value)}`)
     .join(", ")}]`;
@@ -62,7 +73,7 @@ export function graphvizLayoutAttributes(readingAxis, attributes = {}) {
 }
 
 export function escapeGraphvizHtml(value) {
-  return String(value ?? "")
+  return stripPackageManualTextMarkers(value)
     .replace(/&/gu, "&amp;")
     .replace(/</gu, "&lt;")
     .replace(/>/gu, "&gt;")
@@ -70,22 +81,29 @@ export function escapeGraphvizHtml(value) {
 }
 
 export function graphvizHtmlLines(value, lineLength = 32) {
-  return wrapGraphvizLabel(value, lineLength)
+  const markers = listPackageManualTextPaths(value)
+    .map((path) => createPackageManualTextMarker(path, ""))
+    .join("");
+  return markers + wrapGraphvizLabel(stripPackageManualTextMarkers(value), lineLength)
     .split("\n")
     .map(escapeGraphvizHtml)
     .join("<BR/>");
 }
 
 export function dotAttributesWithHtmlLabel(attributes, htmlLabel) {
-  const serialized = Object.entries(attributes)
+  const normalized = { ...attributes };
+  const serialized = Object.entries(normalized)
     .filter(([, value]) => value !== undefined && value !== null && value !== "")
     .map(([key, value]) => `${key}=${dotQuote(value)}`);
-  serialized.push(`label=<${String(htmlLabel || " ")}>`);
+  serialized.push(`label=<${stripPackageManualTextMarkers(htmlLabel) || " "}>`);
   return `[${serialized.join(", ")}]`;
 }
 
 export function plainGraphvizLabel(value) {
-  return String(value || "")
+  const markers = listPackageManualTextPaths(value)
+    .map((path) => createPackageManualTextMarker(path, ""))
+    .join("");
+  const plain = stripPackageManualTextMarkers(value)
     .replace(GAP_MARKER, (encoded) => {
       try {
         const marker = JSON.parse(decodeURIComponent(encoded.slice(1, -1)));
@@ -99,10 +117,14 @@ export function plainGraphvizLabel(value) {
     .replace(/`([^`]+)`/gu, "$1")
     .replace(/\s+/gu, " ")
     .trim() || " ";
+  return markers + plain;
 }
 
 export function wrapGraphvizLabel(value, lineLength = 32) {
-  const words = plainGraphvizLabel(value).split(/\s+/u);
+  const markers = listPackageManualTextPaths(value)
+    .map((path) => createPackageManualTextMarker(path, ""))
+    .join("");
+  const words = plainGraphvizLabel(stripPackageManualTextMarkers(value)).split(/\s+/u);
   const lines = [];
   let line = "";
   words.forEach((word) => {
@@ -115,12 +137,16 @@ export function wrapGraphvizLabel(value, lineLength = 32) {
     }
   });
   if (line) lines.push(line);
-  return lines.join("\n");
+  return markers + lines.join("\n");
 }
 
 export function hasGraphvizGap(value) {
   GAP_MARKER.lastIndex = 0;
   return GAP_MARKER.test(String(value || ""));
+}
+
+export function hasGraphvizInlineControl(value) {
+  return hasGraphvizGap(value) || hasPackageManualTextMarker(value);
 }
 
 export function graphvizGroupById(svg, id) {

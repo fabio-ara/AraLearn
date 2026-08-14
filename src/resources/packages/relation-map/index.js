@@ -1,6 +1,7 @@
 import { academicProfile } from "../../sdk/academic.js";
 import {
   dotAttributes,
+  dotAttributesWithHtmlLabel,
   dotQuote,
   graphvizHtmlLines,
   graphvizLayoutAttributes,
@@ -45,13 +46,12 @@ function relationMapAccessibleText(data) {
 }
 
 function graphvizNode(id, label, side, highlighted) {
-  return `    ${dotQuote(`${side}-${id}`)} [${[
-    `id=${dotQuote(`system-node-${side}-${id}`)}`,
-    `class=${dotQuote(`package-relation-map-node is-${side}${highlighted ? " is-highlighted" : ""}`)}`,
-    "shape=ellipse",
-    "margin=\"0.16,0.10\"",
-    `label=<${graphvizHtmlLines(plainGraphvizLabel(label), 22)}>`
-  ].join(", ")}];`;
+  return `    ${dotQuote(`${side}-${id}`)} ${dotAttributesWithHtmlLabel({
+    id: `system-node-${side}-${id}`,
+    class: `package-relation-map-node is-${side}${highlighted ? " is-highlighted" : ""}`,
+    shape: "ellipse",
+    margin: "0.16,0.10"
+  }, graphvizHtmlLines(plainGraphvizLabel(label), 22))};`;
 }
 
 function graphvizSource(data) {
@@ -107,6 +107,20 @@ function graphvizSource(data) {
 
 function diagramLabels(data) {
   return [
+    {
+      kind: "boundary",
+      id: "left-set",
+      graphvizId: "relation-set-left",
+      plain: data.leftSet.label,
+      html: `<span>${renderPackageInline(data.leftSet.label)}</span>`
+    },
+    {
+      kind: "boundary",
+      id: "right-set",
+      graphvizId: "relation-set-right",
+      plain: data.rightSet.label,
+      html: `<span>${renderPackageInline(data.rightSet.label)}</span>`
+    },
     ...data.leftSet.items.map((item) => ({
       kind: "node",
       id: `left-${item.id}`,
@@ -146,9 +160,9 @@ export const relationMapPackage = Object.freeze({
       appropriateWhen: ["as incidências entre elementos dos dois conjuntos precisam ser percebidas simultaneamente"],
       avoidWhen: ["pares independentes cabem em tabela", "a tarefa é apenas associar respostas", "há interseção de conjuntos"],
       technologies: ["Graphviz", "Viz.js WebAssembly", "SVG", "HTML semântico"],
-      practiceModes: ["exposition", "gap", "typing", "selection", "matching"]
+      practiceModes: ["exposition", "gap", "typing", "selection"]
     }),
-    responseCompatibility: Object.freeze(["aralearn.response.choice", "aralearn.response.gap", "aralearn.response.matching"]),
+    responseCompatibility: Object.freeze(["aralearn.response.choice", "aralearn.response.gap"]),
     limitations: Object.freeze([
       "Não representa interseção de conjuntos; para isso use diagrama de conjuntos.",
       "Uma relação densa deve ser dividida ou apresentada por matriz de incidência, conforme o gesto cognitivo."
@@ -163,7 +177,7 @@ export const relationMapPackage = Object.freeze({
       "Cada from pertence ao conjunto esquerdo e cada to ao conjunto direito.",
       "Uma seta representa somente a pertença do par à relação; não escreva o par sobre a seta.",
       "Use este package somente quando imagem, preimagem ou cardinalidade forem parte do raciocínio.",
-      "Para uma simples lista de correspondências sem leitura relacional, use tabela ou matching."
+      "Para uma simples lista de correspondências sem leitura relacional, use tabela com lacunas."
     ]),
     example: Object.freeze({
       prompt: "Examine a relação R de A em B: a possui duas imagens e 4 não possui preimagem.",

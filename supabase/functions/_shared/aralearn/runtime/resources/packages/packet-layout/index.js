@@ -56,7 +56,7 @@ export const packetLayoutPackage = Object.freeze({
       appropriateWhen: ["posição, largura e fronteira dos campos alteram a interpretação"],
       avoidWhen: ["é preciso comparar registros heterogêneos", "o conteúdo não possui layout binário"],
       technologies: ["CSS Grid", "HTML semântico"],
-      practiceModes: ["exposition", "gap", "typing", "selection", "ordering"]
+      practiceModes: ["exposition", "gap", "typing", "selection"]
     }),
     responseCompatibility: Object.freeze(["aralearn.response.gap", "aralearn.response.choice"]),
     limitations: Object.freeze(["Cabeçalhos extensos mantêm tamanho natural e rolagem horizontal.", "Descrições longas ficam na legenda, não comprimidas dentro do campo."]),

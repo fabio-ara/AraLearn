@@ -21,7 +21,7 @@ export const annotatedTextPackage = Object.freeze({
     id: "aralearn.resource.annotated_text", version: "1.0.0", label: "Texto anotado",
     purpose: "Relacionar trechos precisos de um texto a observações, funções ou explicações.", slots: Object.freeze(["content", "feedback"]),
     cognitiveOperations: Object.freeze(["annotate", "identify-function", "connect-evidence", "close-reading"]),
-    academic: academicProfile({ domains: ["linguagens", "direito", "humanidades", "programação"], knowledgeObjects: ["trecho", "evidência", "anotação localizada"], conventions: ["alvo e comentário identificados", "citação preservada", "anotação próxima ao alvo"], appropriateWhen: ["a tarefa exige leitura minuciosa ou associação entre evidência e explicação"], avoidWhen: ["a observação não possui alvo textual preciso"], technologies: ["HTML semântico", "ARIA"], practiceModes: ["exposition", "gap", "typing", "selection", "matching"] }),
+    academic: academicProfile({ domains: ["linguagens", "direito", "humanidades", "programação"], knowledgeObjects: ["trecho", "evidência", "anotação localizada"], conventions: ["alvo e comentário identificados", "citação preservada", "anotação próxima ao alvo"], appropriateWhen: ["a tarefa exige leitura minuciosa ou associação entre evidência e explicação"], avoidWhen: ["a observação não possui alvo textual preciso"], technologies: ["HTML semântico", "ARIA"], practiceModes: ["exposition", "gap", "typing", "selection"] }),
     responseCompatibility: Object.freeze(["aralearn.response.choice", "aralearn.response.gap"]), limitations: Object.freeze(["Não use para comentários sem alvo textual preciso."]),
     accessibility: "Trechos e notas usam marcadores numerados, controles associados e repetição textual do excerto."
   }),

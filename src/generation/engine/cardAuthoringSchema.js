@@ -19,8 +19,29 @@ function responsePackages() {
 }
 
 function compositionId(content, response) {
-  const contentId = content?.id || "sem-conteudo";
+  const contentItems = Array.isArray(content) ? content : content ? [content] : [];
+  const contentId = contentItems.length
+    ? contentItems.map(({ id }) => id).join("+")
+    : "sem-conteudo";
   return response ? `${contentId}+${response.id}` : `${contentId}+teoria`;
+}
+
+function crossInstanceOrderingCandidates(contents, responses) {
+  const response = responses.find(({ id }) => id === "aralearn.response.ordering");
+  if (!response) return [];
+  const compatible = contents.filter(({ responseCompatibility }) => (
+    responseCompatibility.includes(response.id)
+  ));
+  return compatible.flatMap((left) => compatible.map((right) => ({
+      id: compositionId([left, right], response),
+      role: "practice",
+      content: [left, right].map(({ id: packageId, version }) => ({
+        package: packageId,
+        version
+      })),
+      response: { package: response.id, version: response.version },
+      feedback: [{ package: "aralearn.resource.paragraph", version: "1.0.0" }]
+    })));
 }
 
 export function listCardRepresentationCandidates() {
@@ -34,7 +55,7 @@ export function listCardRepresentationCandidates() {
     feedback: []
   }));
   const standalonePractice = responses
-    .filter(({ id }) => ["aralearn.response.choice", "aralearn.response.matching"].includes(id))
+    .filter(({ id }) => id === "aralearn.response.choice")
     .map((response) => ({
       id: compositionId(null, response),
       role: "practice",
@@ -51,7 +72,12 @@ export function listCardRepresentationCandidates() {
       response: { package: response.id, version: response.version },
       feedback: [{ package: "aralearn.resource.paragraph", version: "1.0.0" }]
     })));
-  return [...theory, ...standalonePractice, ...contextualPractice].map(clone);
+  return [
+    ...theory,
+    ...standalonePractice,
+    ...contextualPractice,
+    ...crossInstanceOrderingCandidates(contents, responses)
+  ].map(clone);
 }
 
 export function parseCardRepresentation(value, candidates = listCardRepresentationCandidates()) {
@@ -101,7 +127,7 @@ function plannedListSchema(specs, cardId, slot) {
     minItems: schemas.length,
     maxItems: schemas.length,
     ...(schemas.length
-      ? { items: schemas.length === 1 ? schemas[0] : { anyOf: schemas } }
+      ? { prefixItems: schemas, items: false }
       : { items: false })
   };
 }

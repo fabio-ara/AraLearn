@@ -1,4 +1,9 @@
-export function escapePackageHtml(value) {
+import {
+  parsePackageManualTextSegments,
+  stripPackageManualTextMarkers
+} from "../kernel/manualTextMarkers.js";
+
+function escapePackageHtmlText(value) {
   return String(value ?? "")
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
@@ -17,6 +22,12 @@ export function renderPackageActionIcon(kind) {
   }
   if (kind === "retry") {
     return '<svg class="runtime-feedback-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 12a8 8 0 1 0 2.3-5.7L4 8.6M4 4v4.6h4.6"/></svg>';
+  }
+  if (kind === "left") {
+    return '<svg class="runtime-feedback-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m15 18-6-6 6-6"/></svg>';
+  }
+  if (kind === "right") {
+    return '<svg class="runtime-feedback-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m9 18 6-6-6-6"/></svg>';
   }
   throw new RangeError(`Ícone de ação desconhecido: ${String(kind || "ausente")}.`);
 }
@@ -37,7 +48,7 @@ export function createPackageGapMarker(value) {
 
 export function packageReferenceText(value, replacement = "\u2026") {
   GAP_MARKER.lastIndex = 0;
-  return String(value ?? "").replace(GAP_MARKER, replacement);
+  return stripPackageManualTextMarkers(value).replace(GAP_MARKER, replacement);
 }
 
 function readPackageGapMarker(value) {
@@ -48,8 +59,29 @@ function readPackageGapMarker(value) {
   }
 }
 
+export function escapePackageHtml(value) {
+  return escapePackageHtmlText(stripPackageManualTextMarkers(value));
+}
+
+function renderPackageOrderingMarker(marker) {
+  const current = String(marker.value ?? "");
+  const blockKey = escapePackageAttribute(marker.blockKey);
+  const itemId = escapePackageAttribute(marker.itemId);
+  const position = Number(marker.slotIndex) + 1;
+  const total = Math.max(position, Number(marker.totalSlots) || position);
+  const layoutLength = Array.from(String(marker.layoutText ?? current)).length;
+  const slotWidth = Math.max(4, Math.min(80, Math.ceil(layoutLength * 1.2)));
+  const groupLabel = `Expressão ${current}, posição ${position} de ${total}`;
+  const moveButton = (direction, enabled) => {
+    const directionLabel = direction === "left" ? "esquerda" : "direita";
+    return `<button class="runtime-ordering-move" type="button" data-action="ordering-move" data-response-block-key="${blockKey}" data-ordering-item-id="${itemId}" data-ordering-direction="${direction}" aria-label="Mover ${escapePackageAttribute(current)} para a ${directionLabel}" title="Mover para a ${directionLabel}"${enabled ? "" : " disabled"}>${renderPackageActionIcon(direction)}</button>`;
+  };
+  return `<span class="runtime-ordering-slot" role="group" tabindex="-1" contenteditable="false" dir="auto" data-ordering-slot-index="${escapePackageAttribute(marker.slotIndex)}" data-ordering-item-id="${itemId}" aria-label="${escapePackageAttribute(groupLabel)}" aria-atomic="true" style="--ordering-slot-ch:${slotWidth}ch">${moveButton("left", marker.canMoveLeft)}<span class="runtime-ordering-value">${escapePackageHtml(current)}</span>${moveButton("right", marker.canMoveRight)}</span>`;
+}
+
 function renderPackageGapMarker(marker) {
   if (!marker) return "";
+  if (marker.responseMode === "ordering") return renderPackageOrderingMarker(marker);
   const blockKey = escapePackageAttribute(marker.blockKey);
   const blankIndex = escapePackageAttribute(marker.index);
   const current = String(marker.value ?? "");
@@ -62,7 +94,7 @@ function renderPackageGapMarker(marker) {
 }
 
 function renderInlineMarkup(value) {
-  return escapePackageHtml(value)
+  return escapePackageHtmlText(value)
     .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
     .replace(/\*([^*]+)\*/g, "<em>$1</em>")
     .replace(/\n/g, "<br>");
@@ -74,7 +106,7 @@ function renderPackageInlineText(value, state) {
   let html = "";
   segments.forEach((segment, index) => {
     const code = state ? state.inCode : inCode;
-    html += code ? escapePackageHtml(segment).replace(/\n/g, "<br>") : renderInlineMarkup(segment);
+    html += code ? escapePackageHtmlText(segment).replace(/\n/g, "<br>") : renderInlineMarkup(segment);
     if (index < segments.length - 1) {
       html += code ? "</code>" : "<code>";
       if (state) state.inCode = !code;
@@ -84,9 +116,17 @@ function renderPackageInlineText(value, state) {
   return html;
 }
 
-export function renderPackageInline(value) {
+function manualFieldMarkup(path, html, tagName = "span") {
+  if (!path) return html;
+  return `<${tagName} data-package-manual-field-path="${escapePackageAttribute(encodeURIComponent(path))}">${html}</${tagName}>`;
+}
+
+function manualFieldAttribute(path) {
+  return ` data-package-manual-field-path="${escapePackageAttribute(encodeURIComponent(path))}"`;
+}
+
+function renderPackageInlineSegment(value, state) {
   const source = String(value || "");
-  const state = { inCode: false };
   let cursor = 0;
   let html = "";
   for (const match of source.matchAll(GAP_MARKER)) {
@@ -95,27 +135,50 @@ export function renderPackageInline(value) {
     cursor = Number(match.index) + match[0].length;
   }
   html += renderPackageInlineText(source.slice(cursor), state);
+  return html;
+}
+
+export function renderPackageInline(value) {
+  const state = { inCode: false };
+  const html = parsePackageManualTextSegments(value).map((segment) =>
+    manualFieldMarkup(segment.path, renderPackageInlineSegment(segment.value, state))
+  ).join("");
+  return html + (state.inCode ? "</code>" : "");
+}
+
+function renderPackageInlineParsed(value) {
+  const state = { inCode: false };
+  const html = renderPackageInlineSegment(value, state);
   return html + (state.inCode ? "</code>" : "");
 }
 
 export function renderPackageInlineReference(value) {
-  return renderPackageInline(packageReferenceText(value));
+  const reference = parsePackageManualTextSegments(value)
+    .map(({ value: segment }) => segment)
+    .join("");
+  GAP_MARKER.lastIndex = 0;
+  return renderPackageInlineParsed(reference.replace(GAP_MARKER, "\u2026"));
 }
 
 export function renderPackageCode(value) {
-  const source = String(value || "");
-  let cursor = 0;
-  let html = "";
-  for (const match of source.matchAll(GAP_MARKER)) {
-    html += escapePackageHtml(source.slice(cursor, match.index));
-    const marker = readPackageGapMarker(match[1]);
-    html += renderPackageGapMarker(marker ? { ...marker, code: true } : null);
-    cursor = Number(match.index) + match[0].length;
-  }
-  return html + escapePackageHtml(source.slice(cursor));
+  return parsePackageManualTextSegments(value).map((segment) => {
+    const source = String(segment.value || "");
+    let cursor = 0;
+    let html = "";
+    for (const match of source.matchAll(GAP_MARKER)) {
+      html += escapePackageHtmlText(source.slice(cursor, match.index));
+      const marker = readPackageGapMarker(match[1]);
+      html += renderPackageGapMarker(marker ? { ...marker, code: true } : null);
+      cursor = Number(match.index) + match[0].length;
+    }
+    return manualFieldMarkup(
+      segment.path,
+      html + escapePackageHtmlText(source.slice(cursor))
+    );
+  }).join("");
 }
 
-export function renderPackageProse(value, metadata = {}) {
+function renderPackageProseText(value, metadata = {}) {
   const source = String(value || "").replace(/\r/g, "");
   const blocks = [];
   let paragraph = [];
@@ -123,12 +186,12 @@ export function renderPackageProse(value, metadata = {}) {
   const attrs = packageTextAttributes(metadata);
   const flushParagraph = () => {
     if (!paragraph.length) return;
-    blocks.push(`<p class="runtime-markdown-paragraph"${attrs}>${renderPackageInline(paragraph.join("\n"))}</p>`);
+    blocks.push(`<p class="runtime-markdown-paragraph"${attrs}>${renderPackageInlineParsed(paragraph.join("\n"))}</p>`);
     paragraph = [];
   };
   const flushList = () => {
     if (!activeList) return;
-    blocks.push(`<${activeList.tag} class="runtime-markdown-list"${attrs}>${activeList.items.map((item) => `<li${attrs}>${renderPackageInline(item)}</li>`).join("")}</${activeList.tag}>`);
+    blocks.push(`<${activeList.tag} class="runtime-markdown-list"${attrs}>${activeList.items.map((item) => `<li${attrs}>${renderPackageInlineParsed(item)}</li>`).join("")}</${activeList.tag}>`);
     activeList = null;
   };
   source.split("\n").forEach((line) => {
@@ -156,4 +219,23 @@ export function renderPackageProse(value, metadata = {}) {
   flushParagraph();
   flushList();
   return blocks.join("") || `<p class="runtime-markdown-paragraph"${attrs}></p>`;
+}
+
+export function renderPackageProse(value, metadata = {}) {
+  const segments = parsePackageManualTextSegments(value);
+  if (segments.length === 1 && segments[0].path) {
+    const rendered = renderPackageProseText(segments[0].value, metadata);
+    const topLevelBlocks = rendered.match(/<(?:p|ul|ol)\b/gu) || [];
+    if (topLevelBlocks.length === 1) {
+      return rendered.replace(
+        /^<(p|ul|ol)\b/u,
+        `<$1${manualFieldAttribute(segments[0].path)}`
+      );
+    }
+    return manualFieldMarkup(segments[0].path, rendered, "div");
+  }
+  return renderPackageProseText(
+    segments.map(({ value: segment }) => segment).join(""),
+    metadata
+  );
 }

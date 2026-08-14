@@ -7,8 +7,8 @@ export const tablePackage = Object.freeze({
     purpose: "Comparar atributos repetidos ou consultar valores organizados por linhas e colunas.",
     slots: Object.freeze(["content", "feedback"]),
     cognitiveOperations: Object.freeze(["compare-fields", "lookup", "classify", "contrast-cases"]),
-    academic: academicProfile({ domains: ["transversal", "estatística descritiva"], knowledgeObjects: ["registros homogêneos", "atributos comparáveis"], conventions: ["cabeçalhos explícitos", "unidade declarada", "uma observação por linha"], appropriateWhen: ["os mesmos atributos são comparados entre casos"], avoidWhen: ["os valores formam uma matriz algébrica", "há apenas uma lista sem comparação bidimensional"], technologies: ["tabela HTML semântica"], practiceModes: ["exposition", "gap", "typing", "selection", "classification"] }),
-    responseCompatibility: Object.freeze(["aralearn.response.gap", "aralearn.response.choice"]),
+    academic: academicProfile({ domains: ["transversal", "estatística descritiva"], knowledgeObjects: ["registros homogêneos", "atributos comparáveis"], conventions: ["cabeçalhos explícitos", "unidade declarada", "uma observação por linha"], appropriateWhen: ["os mesmos atributos são comparados entre casos"], avoidWhen: ["os valores formam uma matriz algébrica", "há apenas uma lista sem comparação bidimensional"], technologies: ["tabela HTML semântica"], practiceModes: ["exposition", "gap", "typing", "selection", "classification", "ordering"] }),
+    responseCompatibility: Object.freeze(["aralearn.response.gap", "aralearn.response.choice", "aralearn.response.ordering"]),
     limitations: Object.freeze(["Não introduz sozinha siglas, números ou categorias ainda não explicados.", "Evite tabelas densas em primeiro contato."]),
     accessibility: "Cabeçalhos e células usam semântica de tabela e leitura linear."
   }),
@@ -59,7 +59,7 @@ export const tablePackage = Object.freeze({
     return data.rows.flatMap((row, rowIndex) => row.map((_, columnIndex) => ({
       path: `rows[${rowIndex}][${columnIndex}]`,
       label: `Lacuna na célula ${rowIndex + 1}, ${columnIndex + 1}`,
-      modes: ["gap", "typing"]
+      modes: ["gap", "typing", "ordering"]
     })));
   }
 });

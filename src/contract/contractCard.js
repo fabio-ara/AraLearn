@@ -61,7 +61,9 @@ export function listContractAnswerValues(card) {
   if (!response) return [];
   if (response.package === "aralearn.response.choice") return [...response.data.answerIds];
   if (response.package === "aralearn.response.gap") return response.data.blanks.map(({ answer }) => answer);
-  if (response.package === "aralearn.response.ordering") return [...response.data.answerOrder];
+  if (response.package === "aralearn.response.ordering") {
+    return response.data.targets.map(({ id }) => id);
+  }
   return [];
 }
 

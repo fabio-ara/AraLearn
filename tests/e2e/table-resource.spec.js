@@ -135,10 +135,10 @@ test("listas e multilinhas permanecem contidas ao selecionar e editar table", as
     wrapCard: true
   }));
   const resource = page.locator(".runtime-resource-edit-target");
-  await resource.evaluate((element, height) => {
-    element.style.setProperty("--manual-edit-height", `${height}px`);
-    element.classList.add("is-manual-edit-ready");
-  }, resourceBefore.height);
+  await resource.evaluate(async (element) => {
+    const { activateManualCardEdit } = await import("/src/ui/manualCardEdit.js");
+    activateManualCardEdit(element);
+  });
 
   expectSameBox(
     await page.locator(".table-test-card").boundingBox(),

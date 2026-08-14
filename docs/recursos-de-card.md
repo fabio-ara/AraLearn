@@ -103,9 +103,14 @@ Um card possui:
 
 Packages complementares podem coexistir quando cada um desempenha uma função diferente, como um parágrafo que situa o fenômeno, uma fórmula que o formaliza e um gráfico que mostra o comportamento. A composição é inadequada quando duplica o estímulo ou obriga o estudante a reconciliar representações sem finalidade.
 
-A prática acrescenta uma resposta compatível com o conteúdo. `choice`, `ordering` e `matching` são packages de resposta, não “modos visuais” que qualquer diagrama deve reimplementar. Lacuna e digitação podem atuar dentro do próprio objeto representado quando o package declara alvos apropriados.
+A prática acrescenta uma resposta compatível com o conteúdo. `choice` apresenta
+alternativas próprias. `gap` e `ordering` atuam nos campos que os packages de
+conteúdo declaram como alvos: não duplicam o texto numa lista ou num painel de
+resposta. Uma correspondência simples é expressa por lacunas independentes nos
+campos reais de um `paragraph` ou de uma `table`, sem um package paralelo de
+encaixe.
 
-## 6. Lacunas e digitação internas
+## 6. Lacunas, digitação e ordenação internas
 
 Uma lacuna não é um marcador embutido no enunciado. Ela aponta para:
 
@@ -134,12 +139,37 @@ caminhos e índices distintos; preencher ou abrir as opções de uma não altera
 outra. Reutilizar o mesmo caminho ou chave para várias lacunas produziria
 seleção simultânea, portanto o kernel e os testes verificam unicidade e
 materialização de cada alvo. O preenchimento real também é medido no navegador:
-o rótulo substituído precisa caber ou provocar redimensionamento do nó, nunca
-ser recortado.
+o controle precisa caber na reserva calculada antes da interação, sem ser
+recortado nem redimensionar o resource depois de uma resposta.
+
+### Ordenação situada
+
+Uma ordenação aponta para pelo menos dois trechos já existentes em campos de
+leitura textual de `paragraph` ou `table`. Cada alvo declara instância, caminho
+e expressão; a lista de alvos segue a ordem correta de leitura. Durante a
+prática, as expressões são permutadas entre esses mesmos pontos. Cada uma traz
+botões de seta, apenas por ícone, para mover uma posição à esquerda ou à
+direita.
+
+O response não repete os itens numa lista própria. Ele apenas coordena o estado
+da permutação e o feedback. Alvos em parágrafos e células diferentes podem
+participar da mesma sequência, desde que a ordem de leitura seja inequívoca e
+os textos permaneçam distintos. Diagramas, fluxos verticais e outras
+representações espaciais não recebem essa modalidade por conveniência.
+
+Em `paragraph`, o alvo precisa ser texto plano visível, fora de ênfase, código,
+link ou outra marcação. A ordenação não corta sintaxe Markdown nem a apresenta
+como se fosse conteúdo. Ocorrências repetidas ou sobrepostas são recusadas em
+vez de receber uma posição inferida.
 
 ## 7. Edição manual e assistência contextual
 
-O autor edita textos visíveis, não JSON estrutural. `editableTargets()` devolve rótulos com identificação compreensível e caminho interno. Campos como coordenadas, ids relacionais, tipos de nó e índices ficam disponíveis apenas como contexto de leitura.
+O autor edita os textos visíveis no próprio resource, não JSON estrutural nem
+uma tela paralela de campos. `editableTargets()` delimita os caminhos permitidos;
+o renderer associa esses caminhos aos rótulos já apresentados e habilita apenas
+contorno, cursor de texto e caret. Entrar no modo de edição não muda a geometria
+do card. Coordenadas, ids relacionais, tipos de nó, índices e textos apenas
+acessíveis continuam fora da superfície editável.
 
 A seleção visual pode abranger uma instância, um card ou um recorte hierárquico autorizado. A assistência por API recebe:
 
@@ -224,29 +254,29 @@ Teoria e prática admitem densidades diferentes. Um card de teoria apresenta uma
 
 ## 11. Mobile, orientação e escalabilidade
 
-Os dez packages que usam a camada compartilhada `system-diagrams` apresentam,
-no card, uma visão geral ajustada simultaneamente à largura e à altura de um
-quadro estável. Essa visão não cria rolagem interna: um gesto vertical iniciado
-sobre ela continua movendo o card. Selecionar um elemento ou uma relação no
-desenho, ou no seletor associado, sincroniza um detalhe em HTML com texto em
-tamanho de leitura.
+Os dez packages que usam a camada compartilhada `system-diagrams` apresentam um
+único diagrama dentro de um quadro estável. A orientação continua favorecendo a
+leitura vertical, mas o estudante pode ampliar e mover o próprio desenho no
+card. Em telas táteis, uma pinça com dois dedos altera a escala em torno do ponto
+tocado; quando o conteúdo ampliado ultrapassa o quadro, o arraste percorre os
+dois eixos sem redimensionar o card.
 
-Quando houver prática, o detalhe contém o único controle real da lacuna. A visão
-geral mostra apenas uma projeção inerte, sem duplicar o controle nem revelar a
-resposta usada pelo Graphviz para dimensionar o objeto. Assim, seleção, teclado,
-tecnologia assistiva e avaliação convergem para a mesma ocorrência interativa.
+Quando houver prática, o controle real da lacuna permanece no ponto semântico
+do diagrama. Ele não é duplicado em painel, legenda ou projeção paralela. A
+mesma ocorrência continua ativa depois do zoom e quando o desenho é levado para
+tela cheia.
 
-**Explorar** move a mesma viewport para um diálogo dedicado. Nesse modo, o
-estudante pode mover o diagrama nos dois eixos e usar **Diminuir zoom**,
-**Aumentar zoom** ou **Ajustar**; voltar ao card restaura a visão geral. Seleção,
-escala e posição de exploração formam estado efêmero do renderer: auxiliam a
-navegação corrente, mas não integram o curso, o progresso nem a sincronização.
+O botão de expansão, apresentado somente por ícone e com nome acessível, move a
+mesma viewport para um diálogo dedicado. Nesse modo, ícones permitem diminuir,
+aumentar, ajustar ou recolher o diagrama; pinça e arraste continuam disponíveis.
+Escala e posição são estado efêmero do renderer: auxiliam a navegação corrente,
+mas não integram curso, progresso ou sincronização.
 
 A orientação continua decorrendo da estrutura. Hierarquias e sistemas tendem à
 progressão de cima para baixo; o diagrama interno de bloco SysML usa agora esse
 fluxo em bloco. Relações cuja leitura é genuinamente lateral podem conservar
-elementos no mesmo nível, pois a visão geral e o detalhe não dependem de forçar
-toda topologia para uma única coluna.
+elementos no mesmo nível, pois o zoom não depende de forçar toda topologia para
+uma única coluna.
 
 Essa política inicial abrange `bpmn_process`, `database_schema`,
 `entity_relationship`, `network_topology`, `relation_map`, `software_container`,

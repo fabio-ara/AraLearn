@@ -221,37 +221,38 @@ const gapTypingResponse = normalizeInstance({
   }
 });
 
+const orderingContent = normalizeInstance({
+  id: "response-ordering-content",
+  packageId: "aralearn.resource.table",
+  version: "1.0.0",
+  slot: "content",
+  data: {
+    columns: ["Primeiro", "Depois", "Por fim"],
+    rows: [[
+      "Receber a consulta do cliente",
+      "Consultar um servidor raiz",
+      "Devolver o endereço encontrado"
+    ]]
+  }
+});
 const orderingResponse = normalizeInstance({
   id: "response-ordering",
   packageId: "aralearn.response.ordering",
-  version: "2.0.0",
+  version: "3.0.0",
   slot: "response",
   data: {
-    prompt: "Ordene as etapas da resolução iterativa de um nome.",
-    items: [{ id: "root", label: "Consultar um servidor raiz" }, { id: "query", label: "Receber a consulta do cliente" }, { id: "answer", label: "Devolver o endereço encontrado" }],
-    answerOrder: ["query", "root", "answer"]
-  }
-});
-
-const matchingResponse = normalizeInstance({
-  id: "response-matching",
-  packageId: "aralearn.response.matching",
-  version: "1.0.0",
-  slot: "response",
-  data: {
-    prompt: "Associe cada protocolo à função principal.",
-    mode: "one-to-one",
-    leftItems: [{ id: "dns", label: "DNS" }, { id: "dhcp", label: "DHCP" }],
-    rightItems: [{ id: "names", label: "Resolver nomes" }, { id: "address", label: "Configurar endereços" }],
-    answerPairs: [{ leftId: "dns", rightId: "names" }, { leftId: "dhcp", rightId: "address" }]
+    targets: [
+      { id: "query", targetInstanceId: orderingContent.id, targetPath: "rows[0][0]", answer: "Receber a consulta do cliente" },
+      { id: "root", targetInstanceId: orderingContent.id, targetPath: "rows[0][1]", answer: "Consultar um servidor raiz" },
+      { id: "answer", targetInstanceId: orderingContent.id, targetPath: "rows[0][2]", answer: "Devolver o endereço encontrado" }
+    ]
   }
 });
 
 const responseModules = [
   moduleForCards({ id: "response-choice-test", title: "Escolha", goal: "Avaliar seleção e feedback por Play.", cards: [card({ id: "choice-card", position: 1, title: "Escolha", response: choiceResponse })] }),
   moduleForCards({ id: "response-gap-test", title: "Lacuna", goal: "Avaliar lacunas independentes por alternativas e digitação.", cards: [card({ id: "gap-choice-card", position: 1, title: "Alternativas por lacuna", content: [gapChoiceContent], response: gapChoiceResponse }), card({ id: "gap-typing-card", position: 2, title: "Digitação na lacuna", content: [gapTypingContent], response: gapTypingResponse })] }),
-  moduleForCards({ id: "response-ordering-test", title: "Ordenação", goal: "Avaliar reconstrução de ordem como resposta independente.", cards: [card({ id: "ordering-card", position: 1, title: "Blocos de ordenação", response: orderingResponse })] }),
-  moduleForCards({ id: "response-matching-test", title: "Encaixe", goal: "Avaliar correspondências como resposta independente.", cards: [card({ id: "matching-card", position: 1, title: "Encaixe de correspondências", response: matchingResponse })] })
+  moduleForCards({ id: "response-ordering-test", title: "Ordenação", goal: "Avaliar reconstrução de ordem nas expressões do resource textual.", cards: [card({ id: "ordering-card", position: 1, title: "Ordene as etapas da resolução", content: [orderingContent], response: orderingResponse })] })
 ];
 
 const modules = [...contentModules, ...responseModules];

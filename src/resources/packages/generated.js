@@ -27,7 +27,6 @@ import { packetLayoutPackage } from "./packet-layout/index.js";
 import { setDiagramPackage } from "./set-diagram/index.js";
 import { stateMachinePackage } from "./state-machine/index.js";
 import { truthTablePackage } from "./truth-table/index.js";
-import { matchingResponsePackage } from "./matching-response/index.js";
 import { entityRelationshipPackage } from "./entity-relationship/index.js";
 import { stateTransitionTablePackage } from "./state-transition-table/index.js";
 import { callStackPackage } from "./call-stack/index.js";
@@ -62,7 +61,6 @@ export const RESOURCE_PACKAGE_DEFINITIONS = Object.freeze([
   setDiagramPackage,
   stateMachinePackage,
   truthTablePackage,
-  matchingResponsePackage,
   entityRelationshipPackage,
   stateTransitionTablePackage,
   callStackPackage,
@@ -98,7 +96,6 @@ export {
   setDiagramPackage,
   stateMachinePackage,
   truthTablePackage,
-  matchingResponsePackage,
   entityRelationshipPackage,
   stateTransitionTablePackage,
   callStackPackage,

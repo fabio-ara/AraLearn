@@ -2495,46 +2495,6 @@ input:-webkit-autofill:focus {
   margin: 2px 0 0;
 }
 
-.package-matching-response {
-  display: grid;
-  gap: 12px;
-}
-
-.package-matching-response > div {
-  display: grid;
-  gap: 8px;
-}
-
-.package-matching-response label {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 10px;
-  align-items: center;
-  min-width: 0;
-  padding: 8px 10px;
-  border: 1px solid var(--resource-border);
-  border-radius: 10px;
-  background: var(--resource-surface-subtle);
-  color: var(--resource-text);
-  font-size: var(--type-base);
-}
-
-.package-matching-response label > span {
-  min-width: 0;
-  overflow-wrap: anywhere;
-}
-
-.package-matching-response select {
-  min-width: 0;
-  min-height: 42px;
-  padding: 7px 8px;
-  border: 1px solid var(--resource-border-strong);
-  border-radius: 8px;
-  background: var(--resource-surface);
-  color: var(--resource-text);
-  font: inherit;
-}
-
 .package-packet-legend,
 .package-memory-stack {
   margin: 0;
@@ -3252,7 +3212,7 @@ input:-webkit-autofill:focus {
 .package-diagram-viewport {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  gap: 10px;
+  gap: 8px;
 }
 
 .package-diagram-toolbar {
@@ -3264,16 +3224,28 @@ input:-webkit-autofill:focus {
 }
 
 .package-diagram-zoom-controls {
-  display: none;
+  display: inline-flex;
   min-width: 0;
   align-items: center;
   gap: 6px;
 }
 
+.package-diagram-zoom-controls[hidden],
+.package-diagram-expand-control > [hidden] {
+  display: none;
+}
+
 .package-diagram-toolbar button {
+  display: inline-flex;
+  width: 48px;
   min-width: 48px;
+  max-width: 48px;
+  height: 48px;
   min-height: 48px;
-  padding: 8px 12px;
+  max-height: 48px;
+  align-items: center;
+  justify-content: center;
+  padding: 9px;
   border: 1px solid var(--resource-border);
   border-radius: 12px;
   background: var(--resource-surface);
@@ -3283,8 +3255,7 @@ input:-webkit-autofill:focus {
   cursor: pointer;
 }
 
-.package-diagram-toolbar button:focus-visible,
-.package-system-diagram-detail-picker select:focus-visible {
+.package-diagram-toolbar button:focus-visible {
   outline: 3px solid var(--focus-ring);
   outline-offset: 2px;
 }
@@ -3295,20 +3266,22 @@ input:-webkit-autofill:focus {
 }
 
 .package-diagram-fit-control {
-  display: inline-flex;
-  min-width: 112px;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-}
-
-.package-diagram-fit-control output {
-  color: var(--resource-text-secondary);
-  font-size: var(--type-sm);
+  min-width: 48px;
 }
 
 .package-diagram-expand-control {
   margin-inline-start: auto;
+}
+
+.package-diagram-control-icon {
+  display: block;
+  width: 24px;
+  height: 24px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .package-system-diagram-canvas {
@@ -3317,22 +3290,28 @@ input:-webkit-autofill:focus {
   min-width: 0;
   height: clamp(220px, 34dvh, 300px);
   padding: 10px;
-  overflow: hidden;
+  overflow: auto;
   border: 1px solid var(--resource-border);
   border-radius: 15px;
   background: var(--resource-surface-subtle);
-  overscroll-behavior: auto;
-  touch-action: pan-y;
+  cursor: grab;
+  overscroll-behavior: contain;
+  touch-action: none;
   -webkit-overflow-scrolling: touch;
+}
+
+.package-system-diagram-canvas.is-diagram-panning {
+  cursor: grabbing;
 }
 
 .package-system-diagram-canvas[data-diagram-viewport-mode="explore"] {
   overflow: auto;
   overscroll-behavior: contain;
-  touch-action: pan-x pan-y;
+  touch-action: none;
 }
 
 .package-diagram-modal {
+  position: fixed;
   box-sizing: border-box;
   width: 100dvw;
   max-width: none;
@@ -3344,7 +3323,7 @@ input:-webkit-autofill:focus {
     max(12px, env(safe-area-inset-right))
     max(12px, env(safe-area-inset-bottom))
     max(12px, env(safe-area-inset-left));
-  overflow: auto;
+  overflow: hidden;
   border: 0;
   background: var(--resource-surface);
   color: var(--resource-text);
@@ -3359,15 +3338,14 @@ input:-webkit-autofill:focus {
 }
 
 .package-diagram-modal[open] .package-diagram-viewport {
+  height: 100%;
   min-height: 100%;
-  align-content: start;
+  grid-template-rows: auto minmax(0, 1fr);
+  align-content: stretch;
 }
 
 .package-diagram-modal[open] .package-diagram-toolbar {
-  position: sticky;
-  top: 0;
   z-index: 4;
-  flex-wrap: wrap;
   padding-block: 2px;
   background: var(--resource-surface);
 }
@@ -3377,102 +3355,21 @@ input:-webkit-autofill:focus {
 }
 
 .package-diagram-modal[open] .package-system-diagram-canvas {
-  height: min(60dvh, 620px);
+  height: 100%;
+  min-height: 0;
 }
 
-.package-system-diagram-detail {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 7px;
-  min-width: 0;
-  padding: 10px;
-  border: 1px solid var(--resource-border);
-  border-radius: 13px;
-  background: var(--resource-surface);
-}
-
-.package-system-diagram-detail-picker {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 5px;
-  min-width: 0;
-  max-width: 100%;
-  color: var(--resource-text-secondary);
-  font-size: var(--type-sm);
-  font-weight: 700;
-}
-
-.package-system-diagram-detail-picker select {
-  box-sizing: border-box;
-  width: 100%;
-  min-width: 0;
-  max-width: 100%;
-  min-height: 48px;
-  padding: 8px 36px 8px 10px;
-  border: 1px solid var(--resource-border);
-  border-radius: 10px;
-  background: var(--resource-surface-subtle);
-  color: var(--resource-text);
-  font: inherit;
-}
-
-.package-system-diagram-detail-body {
-  min-width: 0;
-}
-
-.package-system-diagram-detail-item {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 6px;
-  min-width: 0;
-}
-
-.package-system-diagram-detail-item[hidden] {
-  display: none;
-}
-
-.package-system-diagram-detail-item > small {
-  color: var(--resource-text-secondary);
-  font-size: var(--type-xs);
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
-
-.package-system-diagram-detail-content {
-  min-width: 0;
-  overflow-wrap: anywhere;
-}
-
-.package-system-diagram-detail-content :is(
-  .package-system-diagram-node-content,
-  .package-er-entity-content,
-  .package-relational-table
-) {
-  width: 100%;
-  height: auto;
-  align-items: flex-start;
-  align-content: start;
-  justify-content: flex-start;
-  text-align: start;
-}
-
-.package-system-diagram-navigation-hint,
-.package-system-diagram-text {
-  margin: 0;
-  color: var(--resource-text-secondary);
-  font-size: var(--type-sm);
-  line-height: var(--leading-snug);
-}
-
-.package-system-diagram-text summary {
-  min-height: 32px;
-  cursor: pointer;
-  font-weight: 700;
-}
-
-.package-system-diagram-text p {
-  margin: 5px 0 0;
+.package-diagram-modal[open] > [data-text-gap-prompt="true"] {
+  position: absolute;
+  right: max(12px, env(safe-area-inset-right));
+  bottom: max(12px, env(safe-area-inset-bottom));
+  left: max(12px, env(safe-area-inset-left));
+  z-index: 6;
+  width: min(560px, calc(100% - 24px));
+  max-height: min(38dvh, 320px);
+  margin-inline: auto;
+  overflow: auto;
+  box-shadow: var(--shadow-floating);
 }
 
 .package-math-graph-svg,
@@ -3482,19 +3379,6 @@ input:-webkit-autofill:focus {
   height: auto;
   margin-inline: auto;
   overflow: visible;
-}
-
-.package-system-diagram-svg [data-system-detail-key] {
-  cursor: pointer;
-}
-
-.package-system-diagram-svg [data-system-detail-key].is-selected,
-.package-system-diagram-svg [data-system-detail-key]:focus-visible {
-  filter: drop-shadow(0 0 3px var(--resource-accent));
-}
-
-.package-system-diagram-svg [data-system-detail-key]:focus-visible {
-  outline: none;
 }
 
 .package-math-graph-svg > .graph > polygon,
@@ -3595,18 +3479,6 @@ input:-webkit-autofill:focus {
 .package-system-diagram-edge-label .runtime-text-gap-blank {
   white-space: nowrap;
   overflow-wrap: normal;
-}
-
-.package-system-diagram-gap-preview {
-  display: inline-flex;
-  min-width: 2.4em;
-  min-height: 1.35em;
-  align-items: center;
-  justify-content: center;
-  border-bottom: 2px solid var(--resource-accent);
-  color: var(--resource-text);
-  font-weight: 700;
-  white-space: nowrap;
 }
 
 .package-system-diagram-node-content {
@@ -6183,106 +6055,8 @@ input:-webkit-autofill:focus {
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--resource-accent) 20%, transparent);
 }
 
-.package-manual-editor {
-  display: grid;
-  gap: 9px;
-  min-width: 0;
-  padding: 9px;
-  border: 1px solid var(--resource-border);
-  border-radius: 10px;
-  background: var(--resource-surface);
-  color: var(--resource-text);
-}
-
-.package-manual-editor-head {
-  display: grid;
-  gap: 2px;
-}
-
-.package-manual-editor-head > strong {
-  font-size: var(--type-sm);
-}
-
-.package-manual-editor-head > span,
-.package-manual-editor-head > small {
-  color: var(--resource-text-secondary);
-  font-size: var(--type-xs);
-}
-
-.package-manual-fields {
-  display: grid;
-  gap: 8px;
-}
-
-.package-manual-field {
-  display: grid;
-  gap: 4px;
-  min-width: 0;
-  color: var(--resource-text-secondary);
-  font-size: var(--type-xs);
-  font-weight: 700;
-}
-
-.package-manual-field-value {
-  width: 100%;
-  min-width: 0;
-  padding: 7px 8px;
-  border: 1px solid var(--input-border);
-  border-radius: 8px;
-  background: var(--input-surface);
-  color: var(--text-primary);
-  font: 400 var(--type-sm)/1.45 var(--font-ui);
-  resize: vertical;
-  box-sizing: border-box;
-}
-
-.package-manual-field-value.preserves-whitespace {
-  font-family: var(--font-mono);
-  white-space: pre;
-  tab-size: 2;
-}
-
-.package-manual-context {
-  min-width: 0;
-  border-top: 1px solid var(--resource-border);
-  padding-top: 7px;
-}
-
-.package-manual-context > summary {
-  color: var(--resource-text-secondary);
-  cursor: pointer;
-  font-size: var(--type-xs);
-  font-weight: 700;
-}
-
-.package-manual-preview {
-  min-width: 0;
-  margin-top: 8px;
-  pointer-events: none;
-}
-
 .runtime-resource-edit-target .is-manual-edit-source-hidden {
   visibility: hidden;
-}
-
-.runtime-resource-edit-target [data-manual-edit-placeholder]:empty::before {
-  content: attr(data-manual-edit-placeholder);
-  color: var(--resource-text-secondary);
-  font-style: italic;
-  opacity: 0.8;
-  pointer-events: none;
-}
-
-.runtime-resource-edit-target [data-manual-gap-locked="true"] {
-  caret-color: transparent;
-  cursor: help;
-  outline: 1px dashed color-mix(in srgb, var(--resource-border-strong) 72%, transparent);
-  outline-offset: 2px;
-}
-
-.runtime-resource-edit-target [data-manual-gap-locked="true"]:focus-visible {
-  outline: 2px solid var(--focus-ring);
-  outline-offset: 2px;
 }
 
 .runtime-authoring-support-resources {
@@ -7002,35 +6776,65 @@ input:-webkit-autofill:focus {
   font-size: var(--type-xs);
   overflow-wrap: anywhere;
 }
-.package-ordering-response ol {
-  display: grid;
-  gap: 8px;
-  margin: 12px 0 0;
-  padding: 0;
-  list-style: none;
-}
-
-.package-ordering-response li {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+.runtime-ordering-slot {
+  display: inline-grid;
+  grid-template-columns: 44px minmax(0, 1fr) 44px;
   align-items: center;
-  gap: 10px;
-  padding: 10px 12px;
-  border: 1px solid var(--resource-border);
+  gap: 4px;
+  box-sizing: border-box;
+  inline-size: min(100%, calc(var(--ordering-slot-ch, 4ch) + 96px));
+  max-inline-size: 100%;
+  min-block-size: 48px;
+  margin: 0 0.12em;
+  padding: 1px;
+  vertical-align: middle;
+  border: 1px dashed var(--resource-gap-border);
   border-radius: 10px;
-  background: var(--resource-surface-subtle);
-}
-
-.package-ordering-controls {
-  display: flex;
-  gap: 6px;
-}
-
-.package-ordering-controls button {
-  min-width: 38px;
-  min-height: 38px;
-  border: 1px solid var(--resource-border-strong);
-  border-radius: 9px;
+  background: var(--resource-gap-surface);
   color: var(--resource-text);
-  background: var(--resource-surface);
+  line-height: 1.25;
+}
+
+.runtime-ordering-slot:focus {
+  outline: none;
+  border-color: var(--resource-gap-focus);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--resource-gap-focus) 28%, transparent);
+}
+
+.runtime-ordering-value {
+  min-width: 0;
+  inline-size: 100%;
+  font-size: var(--type-base);
+  overflow-wrap: anywhere;
+  text-align: center;
+  unicode-bidi: plaintext;
+}
+
+.runtime-ordering-move {
+  display: inline-grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--resource-accent);
+  cursor: pointer;
+}
+
+.runtime-ordering-move:hover:not(:disabled),
+.runtime-ordering-move:focus-visible {
+  background: color-mix(in srgb, var(--resource-accent) 12%, transparent);
+  outline: none;
+}
+
+.runtime-ordering-move:disabled {
+  opacity: 0.28;
+  cursor: default;
+}
+
+.runtime-ordering-move .runtime-feedback-icon {
+  width: 18px;
+  height: 18px;
 }

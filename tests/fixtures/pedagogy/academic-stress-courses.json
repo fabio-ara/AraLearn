@@ -429,33 +429,64 @@
                     {
                       "id": "alg-7",
                       "position": 2,
-                      "title": "Reconstrua uma iteração",
+                      "title": "Ordene os gestos de uma iteração",
                       "role": "practice",
-                      "content": [],
+                      "content": [
+                        {
+                          "id": "ifsp-alg-order-middle",
+                          "package": "aralearn.resource.paragraph",
+                          "version": "1.0.0",
+                          "data": {
+                            "text": "Calcular o índice central do intervalo",
+                            "languageTag": "pt-BR",
+                            "textDirection": "auto"
+                          }
+                        },
+                        {
+                          "id": "ifsp-alg-order-compare",
+                          "package": "aralearn.resource.paragraph",
+                          "version": "1.0.0",
+                          "data": {
+                            "text": "Comparar o valor central com o alvo",
+                            "languageTag": "pt-BR",
+                            "textDirection": "auto"
+                          }
+                        },
+                        {
+                          "id": "ifsp-alg-order-reduce",
+                          "package": "aralearn.resource.paragraph",
+                          "version": "1.0.0",
+                          "data": {
+                            "text": "Reduzir o intervalo conforme a comparação",
+                            "languageTag": "pt-BR",
+                            "textDirection": "auto"
+                          }
+                        }
+                      ],
                       "response": {
                         "id": "alg-7-response",
                         "package": "aralearn.response.ordering",
-                        "version": "2.0.0",
+                        "version": "3.0.0",
                         "data": {
-                          "prompt": "Ordene os gestos de uma iteração da busca binária.",
-                          "items": [
+                          "targets": [
                             {
-                              "id": "middle",
-                              "label": "Calcular o índice central do intervalo"
+                              "id": "alg-7-response-target-1",
+                              "targetInstanceId": "ifsp-alg-order-middle",
+                              "targetPath": "text",
+                              "answer": "Calcular o índice central do intervalo"
                             },
                             {
-                              "id": "compare",
-                              "label": "Comparar o valor central com o alvo"
+                              "id": "alg-7-response-target-2",
+                              "targetInstanceId": "ifsp-alg-order-compare",
+                              "targetPath": "text",
+                              "answer": "Comparar o valor central com o alvo"
                             },
                             {
-                              "id": "reduce",
-                              "label": "Reduzir o intervalo conforme a comparação"
+                              "id": "alg-7-response-target-3",
+                              "targetInstanceId": "ifsp-alg-order-reduce",
+                              "targetPath": "text",
+                              "answer": "Reduzir o intervalo conforme a comparação"
                             }
-                          ],
-                          "answerOrder": [
-                            "middle",
-                            "compare",
-                            "reduce"
                           ]
                         }
                       },
@@ -1154,56 +1185,76 @@
                     {
                       "id": "db-6",
                       "position": 2,
-                      "title": "Associe símbolo e função",
+                      "title": "Complete a função de cada símbolo",
                       "role": "practice",
-                      "content": [],
+                      "content": [
+                        {
+                          "id": "ifsp-db-correspondence",
+                          "package": "aralearn.resource.table",
+                          "version": "1.0.0",
+                          "data": {
+                            "columns": [
+                              "Símbolo",
+                              "Função"
+                            ],
+                            "rows": [
+                              [
+                                "PK",
+                                "Identificar univocamente uma tupla"
+                              ],
+                              [
+                                "FK",
+                                "Referenciar chave de outra relação"
+                              ],
+                              [
+                                "NULL permitido",
+                                "Admitir ausência de valor"
+                              ]
+                            ]
+                          }
+                        }
+                      ],
                       "response": {
                         "id": "db-6-response",
-                        "package": "aralearn.response.matching",
+                        "package": "aralearn.response.gap",
                         "version": "1.0.0",
                         "data": {
-                          "prompt": "Associe cada elemento do esquema à função que exerce.",
-                          "mode": "one-to-one",
-                          "leftItems": [
+                          "blanks": [
                             {
-                              "id": "pk",
-                              "label": "PK"
+                              "id": "db-6-response-blank-1",
+                              "targetInstanceId": "ifsp-db-correspondence",
+                              "targetPath": "rows[0][1]",
+                              "label": "Complete a correspondência 1",
+                              "responseMode": "choice",
+                              "answer": "Identificar univocamente uma tupla",
+                              "distractors": [
+                                "Referenciar chave de outra relação",
+                                "Admitir ausência de valor"
+                              ]
                             },
                             {
-                              "id": "fk",
-                              "label": "FK"
+                              "id": "db-6-response-blank-2",
+                              "targetInstanceId": "ifsp-db-correspondence",
+                              "targetPath": "rows[1][1]",
+                              "label": "Complete a correspondência 2",
+                              "responseMode": "choice",
+                              "answer": "Referenciar chave de outra relação",
+                              "distractors": [
+                                "Identificar univocamente uma tupla",
+                                "Admitir ausência de valor"
+                              ]
                             },
                             {
-                              "id": "null",
-                              "label": "NULL permitido"
-                            }
-                          ],
-                          "rightItems": [
-                            {
-                              "id": "identify",
-                              "label": "Identificar univocamente uma tupla"
-                            },
-                            {
-                              "id": "reference",
-                              "label": "Referenciar chave de outra relação"
-                            },
-                            {
-                              "id": "absence",
-                              "label": "Admitir ausência de valor"
-                            }
-                          ],
-                          "answerPairs": [
-                            {
-                              "leftId": "pk",
-                              "rightId": "identify"
-                            },
-                            {
-                              "leftId": "fk",
-                              "rightId": "reference"
-                            },
-                            {
-                              "leftId": "null",
-                              "rightId": "absence"
+                              "id": "db-6-response-blank-3",
+                              "targetInstanceId": "ifsp-db-correspondence",
+                              "targetPath": "rows[2][1]",
+                              "label": "Complete a correspondência 3",
+                              "responseMode": "choice",
+                              "answer": "Admitir ausência de valor",
+                              "distractors": [
+                                "Identificar univocamente uma tupla",
+                                "Referenciar chave de outra relação"
+                              ]
                             }
                           ]
                         }
@@ -1967,56 +2018,76 @@
                     {
                       "id": "tcp-8",
                       "position": 2,
-                      "title": "Não confunda campo e estado",
+                      "title": "Complete a representação de cada objeto",
                       "role": "practice",
-                      "content": [],
+                      "content": [
+                        {
+                          "id": "dataprev-tcp-correspondence",
+                          "package": "aralearn.resource.table",
+                          "version": "1.0.0",
+                          "data": {
+                            "columns": [
+                              "Objeto",
+                              "Representação"
+                            ],
+                            "rows": [
+                              [
+                                "Largura e posição do campo Janela",
+                                "Layout de pacote"
+                              ],
+                              [
+                                "Transição até ESTABLISHED",
+                                "Diagrama de estados"
+                              ],
+                              [
+                                "Ligação entre firewall e DMZ",
+                                "Topologia de rede"
+                              ]
+                            ]
+                          }
+                        }
+                      ],
                       "response": {
                         "id": "tcp-8-response",
-                        "package": "aralearn.response.matching",
+                        "package": "aralearn.response.gap",
                         "version": "1.0.0",
                         "data": {
-                          "prompt": "Associe cada objeto à representação que permite estudá-lo diretamente.",
-                          "mode": "one-to-one",
-                          "leftItems": [
+                          "blanks": [
                             {
-                              "id": "window",
-                              "label": "Largura e posição do campo Janela"
+                              "id": "tcp-8-response-blank-1",
+                              "targetInstanceId": "dataprev-tcp-correspondence",
+                              "targetPath": "rows[0][1]",
+                              "label": "Complete a correspondência 1",
+                              "responseMode": "choice",
+                              "answer": "Layout de pacote",
+                              "distractors": [
+                                "Diagrama de estados",
+                                "Topologia de rede"
+                              ]
                             },
                             {
-                              "id": "established",
-                              "label": "Transição até ESTABLISHED"
+                              "id": "tcp-8-response-blank-2",
+                              "targetInstanceId": "dataprev-tcp-correspondence",
+                              "targetPath": "rows[1][1]",
+                              "label": "Complete a correspondência 2",
+                              "responseMode": "choice",
+                              "answer": "Diagrama de estados",
+                              "distractors": [
+                                "Layout de pacote",
+                                "Topologia de rede"
+                              ]
                             },
                             {
-                              "id": "dmz",
-                              "label": "Ligação entre firewall e DMZ"
-                            }
-                          ],
-                          "rightItems": [
-                            {
-                              "id": "packet",
-                              "label": "Layout de pacote"
-                            },
-                            {
-                              "id": "state",
-                              "label": "Diagrama de estados"
-                            },
-                            {
-                              "id": "topology",
-                              "label": "Topologia de rede"
-                            }
-                          ],
-                          "answerPairs": [
-                            {
-                              "leftId": "window",
-                              "rightId": "packet"
-                            },
-                            {
-                              "leftId": "established",
-                              "rightId": "state"
-                            },
-                            {
-                              "leftId": "dmz",
-                              "rightId": "topology"
+                              "id": "tcp-8-response-blank-3",
+                              "targetInstanceId": "dataprev-tcp-correspondence",
+                              "targetPath": "rows[2][1]",
+                              "label": "Complete a correspondência 3",
+                              "responseMode": "choice",
+                              "answer": "Topologia de rede",
+                              "distractors": [
+                                "Layout de pacote",
+                                "Diagrama de estados"
+                              ]
                             }
                           ]
                         }
@@ -2772,38 +2843,80 @@
                     {
                       "id": "bpmn-7",
                       "position": 3,
-                      "title": "Reconstrua o trecho principal",
+                      "title": "Ordene o caminho quando os dados estão completos",
                       "role": "practice",
-                      "content": [],
+                      "content": [
+                        {
+                          "id": "dataprev-bpmn-order-register",
+                          "package": "aralearn.resource.paragraph",
+                          "version": "1.0.0",
+                          "data": {
+                            "text": "Registrar solicitação",
+                            "languageTag": "pt-BR",
+                            "textDirection": "auto"
+                          }
+                        },
+                        {
+                          "id": "dataprev-bpmn-order-analyze",
+                          "package": "aralearn.resource.paragraph",
+                          "version": "1.0.0",
+                          "data": {
+                            "text": "Analisar requisitos",
+                            "languageTag": "pt-BR",
+                            "textDirection": "auto"
+                          }
+                        },
+                        {
+                          "id": "dataprev-bpmn-order-decide",
+                          "package": "aralearn.resource.paragraph",
+                          "version": "1.0.0",
+                          "data": {
+                            "text": "Verificar se os dados estão completos",
+                            "languageTag": "pt-BR",
+                            "textDirection": "auto"
+                          }
+                        },
+                        {
+                          "id": "dataprev-bpmn-order-issue",
+                          "package": "aralearn.resource.paragraph",
+                          "version": "1.0.0",
+                          "data": {
+                            "text": "Emitir decisão",
+                            "languageTag": "pt-BR",
+                            "textDirection": "auto"
+                          }
+                        }
+                      ],
                       "response": {
                         "id": "bpmn-7-response",
                         "package": "aralearn.response.ordering",
-                        "version": "2.0.0",
+                        "version": "3.0.0",
                         "data": {
-                          "prompt": "Ordene o caminho quando os dados estão completos.",
-                          "items": [
+                          "targets": [
                             {
-                              "id": "register",
-                              "label": "Registrar solicitação"
+                              "id": "bpmn-7-response-target-1",
+                              "targetInstanceId": "dataprev-bpmn-order-register",
+                              "targetPath": "text",
+                              "answer": "Registrar solicitação"
                             },
                             {
-                              "id": "analyze",
-                              "label": "Analisar requisitos"
+                              "id": "bpmn-7-response-target-2",
+                              "targetInstanceId": "dataprev-bpmn-order-analyze",
+                              "targetPath": "text",
+                              "answer": "Analisar requisitos"
                             },
                             {
-                              "id": "decide",
-                              "label": "Verificar se os dados estão completos"
+                              "id": "bpmn-7-response-target-3",
+                              "targetInstanceId": "dataprev-bpmn-order-decide",
+                              "targetPath": "text",
+                              "answer": "Verificar se os dados estão completos"
                             },
                             {
-                              "id": "issue",
-                              "label": "Emitir decisão"
+                              "id": "bpmn-7-response-target-4",
+                              "targetInstanceId": "dataprev-bpmn-order-issue",
+                              "targetPath": "text",
+                              "answer": "Emitir decisão"
                             }
-                          ],
-                          "answerOrder": [
-                            "register",
-                            "analyze",
-                            "decide",
-                            "issue"
                           ]
                         }
                       },

@@ -39,7 +39,6 @@ const STABLE_PACKAGE_SEQUENCE = Object.freeze([
   "aralearn.resource.set_diagram",
   "aralearn.resource.state_machine",
   "aralearn.resource.truth_table",
-  "aralearn.response.matching",
   "aralearn.resource.entity_relationship",
   "aralearn.resource.state_transition_table",
   "aralearn.resource.call_stack"

@@ -6,8 +6,8 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 
 ### Added
 
-- a issue `#96` introduz o diagnóstico pedagógico contextual protegido na
-  autoria estrutural: condições de aprendizagem, exigências do conteúdo,
+- o diagnóstico pedagógico contextual passa a integrar a autoria estrutural:
+  condições de aprendizagem, exigências do conteúdo,
   dificuldades previstas e respostas de desenho ficam vinculadas por
   microssequência e são apresentadas para decisão humana antes dos cards;
 - o package `aralearn.resource.terminal_session` representa sessões textuais
@@ -25,9 +25,6 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 - auditorias passam a confrontar diagnóstico, plano e cards, incluindo resposta
   prometida ausente, prática sem base, representação inadequada, perda de
   cobertura e dependência de meio externo indisponível;
-- os metadados Android da atualização da release `0.0.19` usam
-  `versionCode 163`, mantendo `applicationId com.aralearn.app` e
-  `versionName 0.0.19` para a substituição compatível do APK;
 - documentação pública reorganizada como material de aprendizagem, com
   apresentação do produto, percursos por finalidade, explicações progressivas
   dos conceitos técnicos e pedagógicos, justificativas das decisões e
@@ -38,23 +35,32 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 - materiais humanos e instruções executáveis de autoria passam a ter funções
   editoriais explícitas, evitando que a concisão necessária aos modelos de
   linguagem determine a profundidade da documentação destinada às pessoas;
-- diagramas sistêmicos passam a combinar visão geral ajustada, detalhe textual
-  selecionável e um modo dedicado de exploração com zoom, ajuste e pan, com o
-  diagrama interno de blocos organizado no eixo vertical em telas estreitas.
+- diagramas sistêmicos preservam a organização vertical e usam uma única
+  superfície praticável, com zoom e pan no card, pinça no celular e exploração
+  em tela cheia por controles compactos em ícones;
+- a ordenação passa a permutar pelo menos dois trechos nos próprios campos de
+  `paragraph` e `table`, inclusive entre instâncias ou células diferentes, com
+  setas por ícone para a esquerda e a direita.
 
 ### Fixed
 
 - lacunas em destinos distintos da tabela de transição mantêm valor e opções
   próprios, mesmo quando as respostas estruturais coincidem;
-- a visão embutida de diagramas complexos deixa a rolagem vertical com o card e
-  evita a disputa entre barras aninhadas observada no Android.
+- diagramas complexos deixam de depender de barras aninhadas no Android; o
+  quadro mantém sua geometria enquanto o próprio desenho recebe zoom e pan;
+- a edição manual volta a atuar diretamente nos rótulos textuais visíveis, com
+  caret e contorno no próprio resource, sem formulário auxiliar, texto técnico
+  ou alteração da geometria do card.
 
 ### Removed
 
 - a calibração pedagógica global, seu perfil local, a terceira superfície do
   painel e as exportações de instruções calibradas deixam de integrar o produto;
   as decisões pedagógicas passam a ser locais e justificadas por
-  microssequência.
+  microssequência;
+- o encaixe de correspondências deixa de existir como resposta autônoma;
+  correspondências simples passam a usar lacunas independentes nos campos
+  textuais em que cada relação é lida.
 
 ## [0.0.19] - 2026-08-13
 

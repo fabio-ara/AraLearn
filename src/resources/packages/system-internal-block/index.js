@@ -1,5 +1,5 @@
 import { academicProfile } from "../../sdk/academic.js";
-import { dotAttributes, dotQuote, graphvizLayoutAttributes, plainGraphvizLabel, wrapGraphvizLabel } from "../../sdk/graphviz.js";
+import { dotAttributes, dotAttributesWithHtmlLabel, dotQuote, graphvizLayoutAttributes, plainGraphvizLabel, wrapGraphvizLabel } from "../../sdk/graphviz.js";
 import { renderPackageInline, renderPackageProse } from "../../sdk/html.js";
 import {
   hydrateSystemDiagrams,
@@ -77,8 +77,13 @@ function graphvizSource(data) {
       portName.set(port.id, { node: part.id, port: name, direction: port.direction });
       return portRow(port, name);
     }).join("");
-    const label = `<<TABLE BORDER="1" COLOR="#64748b" CELLBORDER="0" CELLSPACING="0" CELLPADDING="6"><TR><TD><FONT POINT-SIZE="11">Parte · ${htmlLines(part.type, 24)}</FONT></TD></TR><TR><TD><B>${htmlLines(part.label, 24)}</B></TD></TR>${rows}</TABLE>>`;
-    return `    ${dotQuote(part.id)} [id=${dotQuote(`system-node-${part.id}`)}, class=${dotQuote("package-system-internal-part")}, shape=plain, margin=0, label=${label}];`;
+    const label = `<TABLE BORDER="1" COLOR="#64748b" CELLBORDER="0" CELLSPACING="0" CELLPADDING="6"><TR><TD><FONT POINT-SIZE="11">Parte · ${htmlLines(part.type, 24)}</FONT></TD></TR><TR><TD><B>${htmlLines(part.label, 24)}</B></TD></TR>${rows}</TABLE>`;
+    return `    ${dotQuote(part.id)} ${dotAttributesWithHtmlLabel({
+      id: `system-node-${part.id}`,
+      class: "package-system-internal-part",
+      shape: "plain",
+      margin: "0"
+    }, label)};`;
   });
   const connectorLines = data.connectors.map((connector) => {
     const from = portName.get(connector.fromPort);
@@ -102,6 +107,13 @@ function labels(data) {
   const portsByPart = new Map(data.parts.map(({ id }) => [id, []]));
   data.ports.forEach((port) => portsByPart.get(port.partId)?.push(port));
   return [
+    {
+      kind: "boundary",
+      id: "block",
+      graphvizId: "system-internal-block-boundary",
+      plain: `ibd · ${data.block.label}`,
+      html: `<span>ibd · ${renderPackageInline(data.block.label)}</span>`
+    },
     ...data.parts.map((part) => ({ kind: "node", id: part.id, plain: partPlainLabel(part, portsByPart.get(part.id)), html: partTemplate(part, portsByPart.get(part.id)) })),
     ...data.connectors.map((item) => ({ kind: "edge", id: item.id, plain: item.label, html: `<span>${renderPackageInline(item.label)}</span>` }))
   ];

@@ -6,6 +6,7 @@ import {
 } from "../../sdk/html.js";
 import { academicProfile } from "../../sdk/academic.js";
 import { setPackagePracticeMarker } from "../../sdk/practice.js";
+import { shuffleExerciseOptions } from "../../../core/exerciseOptions.js";
 
 function normalizeAnswer(value) { return String(value ?? "").normalize("NFC").trim(); }
 
@@ -107,7 +108,11 @@ function choicePrompt(data, options) {
   const blank = data.blanks[Number(active.blankIndex)];
   if (!blank || blank.responseMode !== "choice") return "";
   const current = options.responseState?.values?.[Number(active.blankIndex)] ?? "";
-  const values = [blank.answer, ...(blank.distractors || [])];
+  const values = shuffleExerciseOptions(
+    [blank.answer, ...(blank.distractors || [])],
+    `${options.exerciseShuffleSeed || "runtime"}::${options.responseBlockKey || options.blockKey}` +
+      `::gap:${blank.id}:${Number(active.blankIndex)}`
+  );
   return `<section class="runtime-flow-prompt" data-text-gap-prompt="true" tabindex="-1"><div class="runtime-flow-prompt-head"><span class="runtime-flow-prompt-badge">Opções</span></div><div class="token-options">${values.map((value) => `<button class="token-option${normalizeAnswer(value) === normalizeAnswer(current) ? " active" : ""}" type="button" dir="auto" data-action="text-gap-set-choice" data-complete-block-key="${escapePackageAttribute(options.blockKey)}" data-complete-blank-index="${escapePackageAttribute(active.blankIndex)}" data-text-gap-value="${escapePackageAttribute(value)}">${renderPackageInline(practiceValueLabel(blank, value, options))}</button>`).join("")}</div></section>`;
 }
 
@@ -227,6 +232,7 @@ export const gapResponsePackage = Object.freeze({
     return data;
   },
   render(data, options = {}) {
+    if (options.manualEditing === true) return "";
     const prompt = choicePrompt(data, options);
     const feedback = feedbackHtml(options.blockKey, options.responseState?.feedback);
     if (Array.isArray(options.dockExerciseParts)) {
@@ -237,6 +243,6 @@ export const gapResponsePackage = Object.freeze({
     return prompt + feedback;
   },
   accessibleText(data) { return `${data.prompt || "Complete as lacunas."} ${data.blanks.map((blank) => blank.label || blank.id).join("; ")}`; },
-  editableTargets(data) { return [...(data.prompt ? [{ path: "prompt", label: "Editar pergunta" }] : []), ...data.blanks.flatMap((blank, index) => [...(blank.label ? [{ path: `blanks[${index}].label`, label: `Editar rótulo ${index + 1}` }] : []), ...(blank.distractors || []).map((_, distractorIndex) => ({ path: `blanks[${index}].distractors[${distractorIndex}]`, label: `Editar distrator ${index + 1}.${distractorIndex + 1}` }))])]; },
+  editableTargets() { return []; },
   evaluate(data, answer) { const values = answer?.values && typeof answer.values === "object" ? answer.values : {}; const results = data.blanks.map((blank) => { const received = normalizeAnswer(values[blank.id]); const accepted = [blank.answer, ...(blank.acceptedAnswers || [])].map(normalizeAnswer); return { id: blank.id, correct: accepted.includes(received), received, expected: blank.answer }; }); return { correct: results.every(({ correct }) => correct), results }; }
 });
