@@ -947,18 +947,18 @@ input:-webkit-autofill:focus {
 
 .topbar {
   display: grid;
-  grid-template-columns: 34px minmax(0, 1fr) auto;
+  grid-template-columns: var(--tap) minmax(0, 1fr) var(--tap);
   align-items: center;
   gap: 10px;
   padding-top: max(var(--safe-top), 8px);
-  padding-right: var(--shell-scrollbar-comp);
+  padding-inline: 12px;
 }
 
 .lesson-topbar {
   display: grid;
-  grid-template-columns: 40px minmax(0, 1fr) auto;
+  grid-template-columns: var(--tap) minmax(0, 1fr) auto;
   align-items: center;
-  padding-left: 12px;
+  padding-inline: 12px;
   position: relative;
   isolation: isolate;
 }
@@ -966,17 +966,17 @@ input:-webkit-autofill:focus {
 .lesson-topbar::before {
   content: "";
   position: absolute;
-  inset: 0 -10px 0;
+  inset: 0;
   z-index: -1;
   pointer-events: none;
   background: transparent;
 }
 
 .navigation-topbar {
-  grid-template-columns: minmax(84px, 1fr) minmax(0, auto) minmax(84px, 1fr);
+  grid-template-columns: var(--tap) minmax(0, 1fr) var(--tap);
   gap: 10px;
   padding-top: max(var(--safe-top), 8px);
-  padding-right: calc(var(--shell-scrollbar-comp) + 12px);
+  padding-inline: 12px;
 }
 
 .navigation-topbar > .icon-ghost,
@@ -991,23 +991,30 @@ input:-webkit-autofill:focus {
 }
 
 .navigation-topbar .topbar-heading {
-  position: absolute;
-  left: 50%;
-  max-width: calc(100% - 210px);
-  transform: translateX(-50%);
+  grid-column: 2;
+  max-width: 100%;
   pointer-events: none;
 }
 
+.topbar-mode-slot {
+  grid-column: 2;
+  min-width: 0;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .navigation-topbar .topbar-space {
-  width: 40px;
-  height: 40px;
+  width: var(--tap);
+  height: var(--tap);
 }
 
 .navigation-topbar .icon-ghost {
-  min-width: 40px;
-  min-height: 40px;
-  width: 40px;
-  height: 40px;
+  min-width: var(--tap);
+  min-height: var(--tap);
+  width: var(--tap);
+  height: var(--tap);
   border-radius: 12px;
 }
 
@@ -1027,7 +1034,7 @@ input:-webkit-autofill:focus {
 
 .lesson-top-actions,
 .topbar-space {
-  min-height: 40px;
+  min-height: var(--tap);
 }
 
 .lesson-top-actions {
@@ -1040,15 +1047,15 @@ input:-webkit-autofill:focus {
 }
 
 .topbar-space {
-  width: 40px;
-  height: 40px;
+  width: var(--tap);
+  height: var(--tap);
 }
 
 .lesson-topbar .icon-ghost {
-  min-width: 40px;
-  min-height: 40px;
-  width: 40px;
-  height: 40px;
+  min-width: var(--tap);
+  min-height: var(--tap);
+  width: var(--tap);
+  height: var(--tap);
   border-radius: 12px;
 }
 
@@ -1290,7 +1297,7 @@ input:-webkit-autofill:focus {
 }
 
 .home-topbar {
-  padding-left: calc(var(--shell-scrollbar-comp) + 12px);
+  padding-inline: 12px;
 }
 
 .home-topbar .brand-mark {
@@ -1697,7 +1704,7 @@ input:-webkit-autofill:focus {
   font-size: var(--type-sm);
   font-weight: 600;
   line-height: var(--leading-snug);
-  letter-spacing: 0.08em;
+  letter-spacing: var(--tracking-heading);
   font-variant-caps: all-small-caps;
   text-transform: lowercase;
   text-align: center;
@@ -1815,7 +1822,7 @@ input:-webkit-autofill:focus {
   font-size: var(--type-base);
   font-weight: 700;
   line-height: var(--leading-snug);
-  letter-spacing: 0.08em;
+  letter-spacing: var(--tracking-heading);
   font-variant-caps: all-small-caps;
   text-transform: lowercase;
   color: var(--study-card-title);
@@ -1834,10 +1841,11 @@ input:-webkit-autofill:focus {
   width: 100%;
   max-width: 100%;
   color: var(--text-primary);
-  line-height: var(--leading-relaxed);
+  line-height: var(--leading-prose);
   overflow-y: auto;
   overflow-x: auto;
-  font-size: var(--type-base);
+  scrollbar-gutter: stable both-edges;
+  font-size: var(--type-prose);
   overflow-wrap: anywhere;
   display: grid;
   align-content: start;
@@ -1873,14 +1881,14 @@ input:-webkit-autofill:focus {
 .runtime-markdown-paragraph strong,
 .runtime-markdown-list strong {
   color: var(--action-primary-hover);
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .runtime-markdown-paragraph + .runtime-markdown-paragraph,
 .runtime-markdown-paragraph + .runtime-markdown-list,
 .runtime-markdown-list + .runtime-markdown-paragraph,
 .runtime-markdown-list + .runtime-markdown-list {
-  margin-top: 10px;
+  margin-top: 8px;
 }
 
 .runtime-choice-body code,
@@ -1893,8 +1901,8 @@ input:-webkit-autofill:focus {
   background: var(--resource-surface-sunken);
   color: var(--resource-text);
   font-family: "Cascadia Code", "Consolas", "SFMono-Regular", "Cascadia Mono", monospace;
-  font-size: 0.92em;
-  line-height: 1.3;
+  font-size: var(--type-dense);
+  line-height: 1.4;
   white-space: break-spaces;
   overflow-wrap: anywhere;
   word-break: normal;
@@ -1934,7 +1942,7 @@ input:-webkit-autofill:focus {
 }
 
 .runtime-choice-body {
-  line-height: 1.62;
+  line-height: var(--leading-prose);
 }
 
 .runtime-text-gap-blank {
@@ -1947,6 +1955,7 @@ input:-webkit-autofill:focus {
   background: var(--resource-gap-surface);
   color: var(--text-primary);
   font: inherit;
+  font-size: var(--type-base);
   line-height: inherit;
   box-sizing: border-box;
   white-space: pre-wrap;
@@ -1991,14 +2000,14 @@ input:-webkit-autofill:focus {
 
 .runtime-code-block pre {
   margin: 0;
-  padding: 12px 14px;
+  padding: 10px 12px;
   border-radius: 10px;
   border: 1px solid var(--resource-border);
   background: var(--resource-surface-sunken);
   color: var(--resource-text);
   font-family: "Cascadia Code", "Consolas", "SFMono-Regular", "Cascadia Mono", monospace;
-  font-size: var(--type-base);
-  line-height: 1.58;
+  font-size: var(--type-dense);
+  line-height: var(--leading-dense);
   overflow-x: auto;
 }
 
@@ -2008,7 +2017,7 @@ input:-webkit-autofill:focus {
 
 .package-terminal-session {
   display: grid;
-  gap: 12px;
+  gap: 10px;
   min-width: 0;
 }
 
@@ -2144,8 +2153,8 @@ input:-webkit-autofill:focus {
   background: var(--resource-surface-sunken);
   color: var(--resource-text);
   font-family: "Cascadia Code", "Consolas", "SFMono-Regular", "Cascadia Mono", monospace;
-  font-size: var(--type-base);
-  line-height: 1.5;
+  font-size: var(--type-dense);
+  line-height: var(--leading-dense);
   tab-size: 2;
   touch-action: pan-x pan-y;
   scrollbar-width: thin;
@@ -2170,7 +2179,7 @@ input:-webkit-autofill:focus {
 
 .package-terminal-prompt {
   color: var(--resource-accent);
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .package-terminal-empty {
@@ -2442,7 +2451,7 @@ input:-webkit-autofill:focus {
 .card-assistance-message-bubble > small {
   color: var(--resource-text-secondary);
   font-size: 0.62rem;
-  font-weight: 750;
+  font-weight: 700;
   text-transform: uppercase;
 }
 
@@ -2468,7 +2477,7 @@ input:-webkit-autofill:focus {
 
 .card-assistance-scope > strong,
 .card-assistance-scope li > span {
-  font-weight: 750;
+  font-weight: 700;
 }
 
 .card-assistance-scope ul {
@@ -2505,7 +2514,7 @@ input:-webkit-autofill:focus {
 .package-truth-table .runtime-table th.is-derived,
 .package-truth-table .runtime-table td.is-derived {
   border-inline-start: 2px solid var(--resource-border-strong);
-  font-weight: 750;
+  font-weight: 700;
 }
 
 .package-packet-layout,
@@ -2619,7 +2628,7 @@ input:-webkit-autofill:focus {
   display: inline-block;
   min-width: 28px;
   color: var(--resource-accent);
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .package-packet-layout figure,
@@ -2724,7 +2733,8 @@ input:-webkit-autofill:focus {
   border-radius: 9px;
   background: var(--resource-surface-subtle);
   color: var(--resource-text);
-  font-size: var(--type-base);
+  font-size: var(--type-dense);
+  line-height: var(--leading-dense);
 }
 
 .package-packet-legend small {
@@ -2787,7 +2797,7 @@ input:-webkit-autofill:focus {
   fill: var(--resource-text);
   font-family: var(--font-ui);
   font-size: var(--type-xs);
-  font-weight: 750;
+  font-weight: 700;
 }
 
 .package-set-key {
@@ -2808,7 +2818,7 @@ input:-webkit-autofill:focus {
 
 .package-set-key dt {
   color: var(--resource-accent);
-  font-weight: 750;
+  font-weight: 700;
 }
 
 .package-set-key .tone-1 dt {
@@ -2827,7 +2837,8 @@ input:-webkit-autofill:focus {
   display: grid;
   gap: 7px;
   color: var(--resource-text);
-  font-size: var(--type-base);
+  font-size: var(--type-prose);
+  line-height: var(--leading-prose);
 }
 
 .package-set-diagram figcaption ol {
@@ -2962,7 +2973,7 @@ input:-webkit-autofill:focus {
 .runtime-table td {
   border-right: 1px solid var(--resource-border);
   border-bottom: 1px solid var(--resource-border);
-  padding: 11px 12px;
+  padding: 10px 11px;
   min-width: 5.5rem;
   text-align: left;
   vertical-align: middle;
@@ -2970,8 +2981,8 @@ input:-webkit-autofill:focus {
   word-break: normal;
   hyphens: auto;
   white-space: normal;
-  font-size: var(--type-base);
-  line-height: 1.42;
+  font-size: var(--type-dense);
+  line-height: var(--leading-dense);
   background: color-mix(in srgb, var(--resource-surface-subtle) 92%, transparent);
 }
 
@@ -2999,8 +3010,8 @@ input:-webkit-autofill:focus {
 .runtime-table-wrap.is-layout-compact .runtime-table th,
 .runtime-table-wrap.is-layout-compact .runtime-table td {
   min-width: 4.75rem;
-  padding: 8px 9px;
-  font-size: var(--type-base);
+  padding: 7px 8px;
+  font-size: var(--type-dense);
 }
 
 .runtime-table-wrap.is-layout-wide .runtime-table-frame {
@@ -3055,10 +3066,10 @@ input:-webkit-autofill:focus {
     radial-gradient(circle at top, color-mix(in srgb, var(--resource-surface-subtle) 8%, transparent), transparent 62%);
   color: var(--resource-text);
   font-family: var(--font-display);
-  font-size: var(--type-base);
+  font-size: var(--type-dense);
   font-weight: 700;
-  line-height: var(--leading-snug);
-  letter-spacing: 0.08em;
+  line-height: var(--leading-dense);
+  letter-spacing: var(--tracking-heading);
   font-variant-caps: all-small-caps;
   text-transform: lowercase;
 }
@@ -3209,10 +3220,20 @@ input:-webkit-autofill:focus {
   min-width: 0;
 }
 
-.package-diagram-viewport {
+.package-diagram-frame {
+  position: relative;
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  gap: 8px;
+  grid-template-rows: calc(var(--tap) + 12px) minmax(0, 1fr);
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  height: clamp(220px, 34dvh, 300px);
+  min-height: 0;
+  overflow: hidden;
+  border: 1px solid var(--resource-border);
+  border-radius: 15px;
+  background: var(--resource-surface-subtle);
 }
 
 .package-diagram-toolbar {
@@ -3220,32 +3241,29 @@ input:-webkit-autofill:focus {
   min-width: 0;
   align-items: center;
   justify-content: flex-end;
-  gap: 8px;
+  gap: 6px;
+  padding: 6px;
+  background: var(--resource-surface-subtle);
 }
 
 .package-diagram-zoom-controls {
   display: inline-flex;
   min-width: 0;
   align-items: center;
-  gap: 6px;
-}
-
-.package-diagram-zoom-controls[hidden],
-.package-diagram-expand-control > [hidden] {
-  display: none;
+  gap: 4px;
 }
 
 .package-diagram-toolbar button {
   display: inline-flex;
-  width: 48px;
-  min-width: 48px;
-  max-width: 48px;
-  height: 48px;
-  min-height: 48px;
-  max-height: 48px;
+  width: var(--tap);
+  min-width: var(--tap);
+  max-width: var(--tap);
+  height: var(--tap);
+  min-height: var(--tap);
+  max-height: var(--tap);
   align-items: center;
   justify-content: center;
-  padding: 9px;
+  padding: 8px;
   border: 1px solid var(--resource-border);
   border-radius: 12px;
   background: var(--resource-surface);
@@ -3265,12 +3283,8 @@ input:-webkit-autofill:focus {
   opacity: 0.45;
 }
 
-.package-diagram-fit-control {
-  min-width: 48px;
-}
-
 .package-diagram-expand-control {
-  margin-inline-start: auto;
+  margin-inline-start: 0;
 }
 
 .package-diagram-control-icon {
@@ -3288,11 +3302,13 @@ input:-webkit-autofill:focus {
   width: 100%;
   max-width: 100%;
   min-width: 0;
-  height: clamp(220px, 34dvh, 300px);
+  height: 100%;
+  min-height: 0;
   padding: 10px;
   overflow: auto;
-  border: 1px solid var(--resource-border);
-  border-radius: 15px;
+  border: 0;
+  border-top: 1px solid var(--resource-border);
+  border-radius: 0;
   background: var(--resource-surface-subtle);
   cursor: grab;
   overscroll-behavior: contain;
@@ -3312,12 +3328,13 @@ input:-webkit-autofill:focus {
 
 .package-diagram-modal {
   position: fixed;
+  inset: 0;
   box-sizing: border-box;
-  width: 100dvw;
-  max-width: none;
+  width: min(100dvw, 430px);
+  max-width: min(100dvw, 430px);
   height: 100dvh;
-  max-height: none;
-  margin: 0;
+  max-height: 100dvh;
+  margin: 0 auto;
   padding:
     max(12px, env(safe-area-inset-top))
     max(12px, env(safe-area-inset-right))
@@ -3340,23 +3357,19 @@ input:-webkit-autofill:focus {
 .package-diagram-modal[open] .package-diagram-viewport {
   height: 100%;
   min-height: 100%;
-  grid-template-rows: auto minmax(0, 1fr);
-  align-content: stretch;
+}
+
+.package-diagram-modal[open] .package-diagram-frame {
+  height: 100%;
+  min-height: 0;
 }
 
 .package-diagram-modal[open] .package-diagram-toolbar {
-  z-index: 4;
-  padding-block: 2px;
-  background: var(--resource-surface);
+  justify-content: flex-start;
 }
 
-.package-diagram-modal[open] .package-diagram-zoom-controls {
-  display: inline-flex;
-}
-
-.package-diagram-modal[open] .package-system-diagram-canvas {
-  height: 100%;
-  min-height: 0;
+.package-diagram-modal[open] .package-diagram-expand-control {
+  margin-inline-start: auto;
 }
 
 .package-diagram-modal[open] > [data-text-gap-prompt="true"] {
@@ -3448,7 +3461,7 @@ input:-webkit-autofill:focus {
   align-items: center;
   justify-content: center;
   color: var(--resource-text);
-  font-size: var(--type-base);
+  font-size: var(--type-diagram);
   line-height: var(--leading-snug);
   text-align: center;
 }
@@ -3459,7 +3472,7 @@ input:-webkit-autofill:focus {
   height: 100%;
   align-content: center;
   color: var(--resource-text);
-  font-size: var(--type-sm);
+  font-size: var(--type-diagram-secondary);
   line-height: 1.15;
   text-align: center;
   white-space: normal;
@@ -3473,6 +3486,7 @@ input:-webkit-autofill:focus {
 .package-system-diagram-edge-label .runtime-text-gap-blank {
   display: inline-block;
   max-width: 100%;
+  font-size: var(--type-diagram);
   vertical-align: middle;
 }
 
@@ -3490,12 +3504,12 @@ input:-webkit-autofill:focus {
 
 .package-system-diagram-node-content :is(small, em) {
   color: var(--resource-text-secondary);
-  font-size: var(--type-xs);
+  font-size: var(--type-diagram-detail);
   font-style: normal;
 }
 
 .package-system-diagram-node-content code {
-  font-size: var(--type-xs);
+  font-size: var(--type-diagram-detail);
   line-height: 1.15;
 }
 
@@ -4184,9 +4198,9 @@ input:-webkit-autofill:focus {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.69rem;
+  font-size: var(--type-base);
   font-weight: 600;
-  line-height: 1.14;
+  line-height: 1.25;
   cursor: pointer;
   flex: 0 0 auto;
   max-width: 100%;
@@ -4775,6 +4789,16 @@ input:-webkit-autofill:focus {
   flex: 1 1 auto;
   min-height: 0;
   padding-bottom: 0;
+  scrollbar-gutter: auto;
+}
+
+.microsequence-workbench-screen .study-reader-footer {
+  padding-right: 0;
+}
+
+.microsequence-workbench-screen .study-continue-popup-shell,
+.microsequence-workbench-screen .runtime-card-authoring {
+  right: 0;
 }
 
 .workbench-editor-panel {
@@ -5054,8 +5078,8 @@ input:-webkit-autofill:focus {
 .runtime-annotated-text-source {
   margin: 0;
   color: var(--resource-text);
-  font-size: var(--type-base);
-  line-height: 1.8;
+  font-size: var(--type-prose);
+  line-height: var(--leading-prose);
 }
 
 .runtime-annotated-text-segment {
@@ -6171,7 +6195,7 @@ input:-webkit-autofill:focus {
   font-size: var(--type-base);
   font-weight: 700;
   line-height: var(--leading-snug);
-  letter-spacing: 0.08em;
+  letter-spacing: var(--tracking-heading);
   font-variant-caps: all-small-caps;
   text-transform: lowercase;
   resize: none;
@@ -6226,16 +6250,49 @@ input:-webkit-autofill:focus {
   background: var(--surface-sunken);
 }
 
+.topbar-mode-slot .entity-mode-switcher {
+  margin: 0;
+}
+
+.entity-context-title {
+  width: min(100%, 320px);
+  min-width: 0;
+  min-height: var(--tap);
+  margin: 0 auto 12px;
+  padding: 0 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-primary);
+  font-family: var(--font-display);
+  font-size: 1.02rem;
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: 0.01em;
+  text-align: center;
+}
+
+.entity-context-title > span {
+  min-width: 0;
+  max-width: 100%;
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .entity-mode-button {
   flex: 1 1 0;
   width: auto;
   min-width: 0;
-  height: 40px;
+  height: var(--tap);
   padding: 0;
   border: 0;
   border-radius: 8px;
   color: var(--text-secondary);
   background: transparent;
+  display: grid;
+  place-items: center;
 }
 
 .entity-mode-button.is-selected {
@@ -6259,6 +6316,31 @@ input:-webkit-autofill:focus {
   color: var(--text-primary);
   background: var(--surface-raised);
   text-align: left;
+}
+
+.entity-summary-wrap {
+  position: relative;
+  width: 100%;
+  margin: 0 0 12px;
+}
+
+.entity-summary-wrap > :is(.entity-summary, .bottom-up-container-target) {
+  margin-bottom: 0;
+}
+
+.entity-summary-wrap.has-context-action > :is(.entity-summary, .bottom-up-container-target) {
+  padding-right: 58px;
+}
+
+.entity-context-action {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: var(--tap);
+  min-width: var(--tap);
+  height: var(--tap);
+  min-height: var(--tap);
+  z-index: 2;
 }
 
 .entity-summary > strong,

@@ -51,7 +51,7 @@
   align-items: center;
   gap: 8px;
   padding-top: max(var(--safe-top), 10px);
-  padding-right: var(--shell-scrollbar-comp);
+  padding-inline: 12px;
 }
 
 .topbar-title {

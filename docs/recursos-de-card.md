@@ -266,11 +266,15 @@ do diagrama. Ele não é duplicado em painel, legenda ou projeção paralela. A
 mesma ocorrência continua ativa depois do zoom e quando o desenho é levado para
 tela cheia.
 
-O botão de expansão, apresentado somente por ícone e com nome acessível, move a
-mesma viewport para um diálogo dedicado. Nesse modo, ícones permitem diminuir,
-aumentar, ajustar ou recolher o diagrama; pinça e arraste continuam disponíveis.
-Escala e posição são estado efêmero do renderer: auxiliam a navegação corrente,
-mas não integram curso, progresso ou sincronização.
+Uma faixa superior reservada no quadro apresenta, no canto direito e somente
+por ícones e nomes acessíveis, os comandos de diminuir, aumentar e expandir. Ela
+não é sobreposta ao desenho. A expansão move a mesma viewport para um diálogo cuja
+largura não excede a largura móvel do aplicativo; ali, diminuir e aumentar ficam
+à esquerda e o retorno ao card fica à direita. Não há botão visível de ajuste:
+reduzir até o limite retoma automaticamente o enquadramento global e responsivo.
+Pinça e arraste continuam disponíveis. Escala e posição são estado efêmero do
+renderer: auxiliam a navegação corrente, mas não integram curso, progresso ou
+sincronização.
 
 A orientação continua decorrendo da estrutura. Hierarquias e sistemas tendem à
 progressão de cima para baixo; o diagrama interno de bloco SysML usa agora esse

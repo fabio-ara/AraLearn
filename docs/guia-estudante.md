@@ -25,7 +25,7 @@ seleção sem mudar o curso nem afetar outras pessoas.
 
 1. Entre com e-mail e senha.
 2. Aguarde o término da preparação inicial.
-3. Abra o painel pelo botão de nuvem e escolha **Coleções**.
+3. Abra o painel pelo botão de áreas e escolha **Coleções**.
 4. Localize o curso e use **Adicionar a Trilhas**.
 5. Aguarde o download antes de testar sem rede.
 
