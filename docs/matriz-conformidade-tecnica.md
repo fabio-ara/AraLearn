@@ -10,6 +10,7 @@ Esta matriz é versionada junto com o repositório. Não fixa contagem de testes
 |---|---|
 | demonstrado | código e teste citado cobrem a propriedade no escopo descrito |
 | demonstrado com limite | a propriedade existe, mas possui teto, janela ou cenário não coberto |
+| proposta conceitual verificada | contrato exploratório e fixtures cobrem a forma proposta, sem integração à produção |
 | não oferecido | a arquitetura deliberadamente não promete a propriedade |
 | avaliação externa | código não basta; requer participantes, operação ou análise especializada |
 
@@ -30,6 +31,11 @@ Esta matriz é versionada junto com o repositório. Não fixa contagem de testes
 | o validador implementa todo JSON Schema 2020-12 | `src/resources/kernel/schemaValidation.js` | `tests/kernel/resource-package-kernel.test.js` | não oferecido; apenas o subconjunto documentado é aceito |
 | auditoria catalográfica reproduz layout real | `src/resources/catalog/resourceCatalog.js` | `tests/kernel/resource-catalog.test.js` | não oferecido; `rendered: false`; layout exige navegador e motores reais |
 | contratos, packages, catálogo, IndexedDB, MCP e app possuem versões próprias | registry, catálogo, store, servidor MCP e `package.json` | testes de cada fronteira | demonstrado; `revision` é CAS e `cursor` é paginação, não versão de contrato |
+| a proposta de desenho separa análise, definição, atribuição, valores efetivos, manifesto e disponibilidade de resources | `src/authoring/instructionalDesignContracts.js` | `tests/kernel/instructional-design-contracts.test.js`; corpus em `tests/fixtures/pedagogy/` | proposta conceitual verificada; não integra `authoring/schemas/`, persistência, MCP, Action, publicação ou UI |
+| parâmetros propostos preservam grandezas não escalares | `DesignParameterDefinition` em `src/authoring/instructionalDesignContracts.js` | casos de inteiro, faixa, categoria, conjunto, vetor e relação no teste focado | proposta conceitual verificada; tipo representável não valida unidade, limite nem decisão pedagógica |
+| valor efetivo proposto conserva escopo, definição, atribuição e proveniência exatos | `EffectiveDesignSnapshot` em `src/authoring/instructionalDesignContracts.js` | referências fechadas no teste focado | proposta conceitual verificada; não é snapshot restaurável do workspace e ainda não há resolução ou CAS em produção |
+| `ResourceSet` proposto separa disponibilidade, seleção e materialização | `ResourceSet` e `MaterializationManifest` em `src/authoring/instructionalDesignContracts.js` | corpus multidomínio e testes de referência | proposta conceitual verificada; conjunto não escolhe package, não copia contracts e não finge equivalência quando falta representação adequada |
+| cards, palavras, caracteres e total de resources são métricas posteriores | `MaterializationManifest` em `src/authoring/instructionalDesignContracts.js` | teste de métricas derivadas e algoritmo versionado | proposta conceitual verificada; métricas descrevem materialização e não comandam decomposição pedagógica |
 
 ## 3. Representações e interação
 

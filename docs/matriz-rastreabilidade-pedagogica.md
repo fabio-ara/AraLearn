@@ -57,7 +57,29 @@ espaço de trabalho com membros e permissões locais. Inteligência artificial
 | P9 | Colaboração e automação podem ampliar privilégios ou tornar responsabilidade opaca. | Papéis globais, espaço pessoal isolado ou permissões locais e revogáveis; automação irrestrita ou escopo delimitado. | Workspaces calculam capacidades locais e registram proveniência; modelos de linguagem recebem contexto de leitura e alvos graváveis separados. | Participação ocorre em contextos sociais específicos ([Wenger (1998)](referencias.md#ref-wenger1998communities); [Bridwell-Mitchell (2016)](referencias.md#ref-bridwellmitchell2016collaborative)). Diretrizes para IA generativa e interação humano–IA enfatizam transparência, revisão e responsabilidade ([UNESCO (2023)](referencias.md#ref-unesco2023genai); [Autio et al. (2024)](referencias.md#ref-nist2024genai); [Amershi et al. (2019)](referencias.md#ref-amershi2019humanai)). | Uma pessoa pode exercer papéis diferentes em espaços isolados; alterações assistidas permanecem atribuíveis e revisáveis. | Papéis não produzem colaboração automaticamente; validação estrutural não torna saída de modelo confiável. |
 | P10 | Coletar cliques, tempo e tentativas por disponibilidade técnica favorece interpretações sem validade. | Registrar tudo, manter telemetria mínima ou definir primeiro pergunta, construto e intervenção. | Dados comportamentais não são coletados por padrão; qualquer indicador futuro exige finalidade, interpretação, ação, retenção, acesso e custo explícitos. | Ética de *learning analytics* exige propósito, transparência, proporcionalidade e participação ([Pardo e Siemens (2014)](referencias.md#ref-pardo2014ethical); [Prinsloo e Slade (2017)](referencias.md#ref-prinsloo2017ethics); [Tsai e Martinez-Maldonado (2022)](referencias.md#ref-tsai2022humancentered)). | Estado operacional permanece compacto; observações voluntárias não são convertidas automaticamente em perfil. | Ausência de telemetria pode limitar certas perguntas; novos dados só se justificam por protocolo específico. |
 
-## 4. Matriz de operacionalização e avaliação
+## 4. Matriz da análise instrucional proposta
+
+As linhas abaixo rastreiam uma proposta conceitual. “Representável” significa
+que um contrato e uma fixture podem conservar a distinção; não significa que o
+dado já seja persistido, que esteja disponível na interface ou que constitua
+medida validada.
+
+| Dimensão | Estatuto | Fundamentação externa | Representação proposta | Hipótese e evidência necessária |
+| --- | --- | --- | --- | --- |
+| unidade de análise e conhecimento prévio presumido | operacionalização do AraLearn | componentes de conhecimento são latentes e dependem da granularidade, população e tarefa ([Koedinger et al. (2012)](referencias.md#ref-koedinger2012kli)) | unidades com referências e categoria `novo`, `parcial`, `integrado` ou `desconhecido`, sempre com base declarada | autores podem tornar pressupostos revisáveis; testar interpretação, correção e correspondência com fontes, sem tratar categoria como diagnóstico |
+| coordenação simultânea | operacionalização do AraLearn | interatividade depende da estrutura e do conhecimento prévio e só pode ser estimada aproximadamente ([Chen et al. (2023)](referencias.md#ref-chen2023elementinteractivity)) | hipergrafo de conjuntos e relações; cardinalidade derivada com unidade explícita | limites locais podem revelar compressão; comparar auditoria e compreensão sem chamar cardinalidade de carga cognitiva |
+| requisitos de explicação | operacionalização do AraLearn | autoexplicação pode elaborar condições e princípios, mas explicações instrucionais dependem de conhecimento e atividade ([Chi et al. (1989)](referencias.md#ref-chi1989selfexplanations); [Wittwer e Renkl (2008)](referencias.md#ref-wittwer2008explanations)) | conjunto de categorias aplicáveis ligado a unidades e relações | requisitos explícitos podem localizar menção sem desenvolvimento; requer revisão independente e tarefas de explicação, não soma como nota |
+| requisito de evidência | transposição de quadro externo para autoria | alegação, evidência observável e tarefa têm responsabilidades distintas no ECD ([Mislevy et al. (2003)](referencias.md#ref-mislevy2003ecd)) | relação alvo–operação–tarefa–forma de desempenho | ligação pode reduzir prática desalinhada; exige validade de conteúdo e avaliação própria antes de qualquer inferência sobre domínio |
+| prática, variação, apoio e fidelidade | operacionalização do AraLearn | tarefas integrais, apoio, informação procedimental e prática de partes dependem do desempenho e contexto ([van Merriënboer (2019)](referencias.md#ref-vanmerrienboer2019fourcomponent)) | faixa de oportunidades, assinaturas semânticas, vetores de variação/apoio e categorias de fidelidade | distinções podem revelar repetição cosmética ou simulação insuficiente; testar por domínio, sem score universal de dosagem ou fidelidade |
+| disponibilidade representacional | política técnica e experimental proposta | representações têm funções e demandas de coordenação diferentes ([Ainsworth (2006)](referencias.md#ref-ainsworth2006deft)) | `ResourceSet` como conjunto exato de `package@version`; seleção e materialização referenciadas separadamente | conjunto reproduzível pode permitir comparação de condições; auditar violações, adequação local e lacunas sem alegar equivalência |
+| manifesto posterior | propriedade técnica proposta | não é construto externo | referências planejado–materializado e métricas derivadas com algoritmo versionado | pode tornar divergências reproduzíveis; cobertura estrutural ainda exige auditoria semântica e decisão humana |
+
+A proposta completa está em [Desenho instrucional
+parametrizado](desenho-instrucional-parametrizado.md). Cards, palavras,
+caracteres e total de resources aparecem somente no manifesto posterior à
+materialização e não definem a decomposição pedagógica.
+
+## 5. Matriz de operacionalização e avaliação
 
 Os caminhos indicam pontos verificáveis da implementação atual. Eles podem
 mudar em refatorações; a decisão conceitual permanece identificada pelo ID.
@@ -75,7 +97,7 @@ mudar em refatorações; a decisão conceitual permanece identificada pelo ID.
 | P9 | Em colaboração e autoria assistida, capacidades locais e proveniência podem tornar escopo e responsabilidade mais compreensíveis. | serviços de workspace, permissões e autoria via catálogo/contrato | isolamento, revogação, atribuição, validação e concorrência | tarefas com diferentes papéis e modelos; entrevista sobre autorização, autoria e confiança | alterar se houver confusão de papel, privilégio excessivo ou aceitação automática |
 | P10 | Quando a coleta começa por uma pergunta e uma intervenção, indicadores podem ser mais interpretáveis e proporcionais. | política de dados e estado corrente compacto | inventário de dados, ausência de telemetria não autorizada, retenção e acesso verificáveis | co-design de pergunta, indicador e ação; teste de interpretação e dano potencial | não coletar ou descontinuar indicador sem validade, ação ou proporcionalidade |
 
-## 5. O que cada fonte de evidência autoriza afirmar
+## 6. O que cada fonte de evidência autoriza afirmar
 
 | Fonte | Interpretação permitida | Interpretação não permitida |
 | --- | --- | --- |
@@ -91,7 +113,7 @@ Um resultado empírico deve registrar população, tarefa, comparação, medida,
 procedimento, incerteza e casos adversos. Sem esses elementos, a matriz conserva
 o campo como evidência necessária, não como efeito observado.
 
-## 6. Manutenção da rastreabilidade
+## 7. Manutenção da rastreabilidade
 
 Uma alteração relevante segue esta sequência:
 
@@ -110,12 +132,15 @@ se verifica se ela operacionaliza uma hipótese existente. Uma nova proposição
 só é necessária quando introduz problema, mecanismo ou resultado que não pode
 ser rastreado de forma responsável pelas linhas atuais.
 
-## 7. Cobertura documental
+## 8. Cobertura documental
 
 - O [Modelo didático](modelo-didatico.md) explica a progressão de ensino e
   prática.
 - A [Fundamentação dos recursos](fundamentacao-pedagogica-dos-resources.md)
   detalha as decisões representacionais.
+- O [Desenho instrucional parametrizado](desenho-instrucional-parametrizado.md)
+  separa fundamento externo, operacionalizações, contratos propostos e agenda
+  empírica.
 - O [Glossário de construtos](glossario-construtos.md) fixa definições e
   indicadores.
 - O [Protocolo de avaliação](protocolo-avaliacao-artefato.md) transforma as

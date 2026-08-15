@@ -178,6 +178,44 @@ que permitem a uma pessoa ou a um modelo preencher `data` sem conhecer o
 renderer. É devolvido junto com o manifest e o schema por `contracts`. Não é
 um contrato monolítico de todos os resources.
 
+**Contratos conceituais de desenho instrucional.** Proposta versionada que
+separa `InstructionalAnalysis`, `DesignParameterDefinition`,
+`DesignParameterAssignment`, `EffectiveDesignSnapshot`,
+`MaterializationManifest` e `ResourceSet`. Nesta etapa, os schemas servem para
+examinar forma, referências e invariantes; ainda não são documentos persistidos,
+operações MCP, schemas de publicação nem estado aceito pelo backend. A proposta
+está em [Desenho instrucional
+parametrizado](desenho-instrucional-parametrizado.md).
+
+**Análise instrucional (`InstructionalAnalysis`).** Documento conceitual que
+relaciona fontes, objetivo, unidades editoriais, pressupostos, relações,
+conjuntos de coordenação e requisitos de explicação, evidência, variação,
+fidelidade e representação. Não contém cards nem diagnostica domínio
+individual.
+
+**Definição de parâmetro (`DesignParameterDefinition`).** Descrição conceitual
+versionada da identidade, tipo, unidade, escopos válidos, resolução, estatuto e
+limites de um parâmetro. Seus tipos admitem inteiro, faixa, categoria, conjunto,
+vetor ou relação; a definição não é o valor efetivo.
+
+**Atribuição de parâmetro (`DesignParameterAssignment`).** Valor conceitual
+explícito num escopo: proposta automática (`auto`), alteração estruturada
+(`manual_override`) ou lock de pesquisa (`research_lock`), sempre com autoridade
+e proveniência. “Herdado” não é uma atribuição gravada; é proveniência calculada
+ao resolver o valor efetivo.
+
+**Instantâneo efetivo de desenho (`EffectiveDesignSnapshot`).** Documento
+conceitual compacto e imutável com valores já resolvidos, referências às
+definições e atribuições, proveniência e versões exatas. Apesar do nome, não é
+snapshot integral restaurável do workspace e não guarda conversa ou raciocínio
+privado.
+
+**Conjunto de resources (`ResourceSet`).** Conjunto conceitual versionado de
+identidades exatas `package@version` que delimita o que pode ser escolhido num
+escopo. Disponibilidade no conjunto, seleção no planejamento e instância
+materializada são estados diferentes. O conjunto não copia todos os contracts,
+não escolhe um package por card e não torna representações equivalentes.
+
 **Envelope.** Estrutura externa que identifica um protocolo e delimita os
 campos admitidos antes de validar o conteúdo interno. O envelope operacional de
 biblioteca, o envelope unitário de curso, o envelope de card e o envelope de
@@ -333,6 +371,13 @@ backend.
 por exemplo, o workspace em um envelope integral para validação/publicação ou o
 artefato remoto em linhas locais para estudo. Materializar não significa
 publicar, selecionar nem conceder permissão.
+
+**Manifesto de materialização (`MaterializationManifest`).** Documento
+conceitual que liga análise, parâmetros efetivos, blueprint, resources
+selecionados e conteúdo realmente produzido. Pode registrar cobertura com
+numerador, denominador e referências, limitações e métricas derivadas com
+algoritmo versionado. Não é artefato de publicação, avaliação de estudante nem
+parecer semântico concluído; ainda não integra a persistência de produção.
 
 **Outbox.** Fila durável de intenções locais ainda não confirmadas pelo
 servidor. No banco IndexedDB corrente, a outbox relacional transporta a seleção

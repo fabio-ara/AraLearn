@@ -212,7 +212,93 @@ base para as regras “um conceito por card” ou “quanto menor, melhor”.
   aparência minimalista não medem carga nem qualidade. São necessárias auditoria de especialistas e tarefas com novatos,
   examinando saltos, compreensão, integração e navegação.
 
-## 4. Exemplos resolvidos e retirada de apoio
+## 4. Unidades, evidência e parâmetros de desenho
+
+### Unidades de conhecimento não são observações diretas
+
+O quadro KLI relaciona tipos de componentes de conhecimento, eventos de
+aprendizagem e princípios instrucionais, mas trata os componentes como
+entidades não observáveis inferidas a partir de tarefas. A granularidade da
+análise depende da população e do desempenho que se pretende explicar
+([Koedinger et al. (2012)](referencias.md#ref-koedinger2012kli)).
+Esse fundamento não autoriza um sistema de autoria a declarar que um tópico é
+um componente psicológico validado ou que conhece o domínio de cada estudante.
+
+Para planejar conteúdo de modo rastreável, o AraLearn adota como proposta uma
+**unidade de análise instrucional**. Ela é um recorte editorial revisável,
+ligado a fonte e objetivo. O conhecimento prévio presumido pode ser descrito
+como novo, parcial, integrado ou desconhecido, desde que a base da suposição
+permaneça explícita. Trata-se de operacionalização própria, não de diagnóstico,
+proficiência ou probabilidade de domínio.
+
+### Interatividade depende da estrutura e do público
+
+Na teoria da carga cognitiva, elemento designa a unidade que precisa ser
+processada para aprender ou executar algo, e interatividade se refere aos
+elementos que precisam ser coordenados simultaneamente. A estimativa depende
+da estrutura da informação e do conhecimento prévio, é necessariamente
+aproximada e não equivale à dificuldade geral da tarefa
+([Chen et al. (2023)](referencias.md#ref-chen2023elementinteractivity)).
+
+A consequência para o desenho não é criar um score de carga. Unidades e
+relações que precisam permanecer juntas são registradas como conjuntos de
+coordenação; sua cardinalidade pode ser calculada com unidade e escopo
+explícitos. Relações de pré-requisito, causalidade, contraste, composição ou
+mapeamento representacional permanecem grafos ou conjuntos, porque reduzi-las a
+um escalar elimina a informação necessária à revisão.
+
+### Requisito de evidência não é medida validada
+
+O *Evidence-Centered Design* organiza a avaliação como argumento entre
+alegações, evidência observável e tarefas capazes de produzir essa evidência
+([Mislevy et al. (2003)](referencias.md#ref-mislevy2003ecd)). O
+AraLearn aproveita a separação para ligar objetivo, operação, requisito de
+evidência e forma aceitável de desempenho. A transposição serve à coerência
+autoral; não cria instrumento psicométrico, não estima variável latente e não
+autoriza inferência de domínio.
+
+O 4C/ID acrescenta distinções úteis entre tarefas integrais, informação de
+apoio, informação procedimental e prática de partes quando a automatização é
+necessária. Variação, apoio e fidelidade dependem da tarefa e do estágio de
+aprendizagem; não compõem uma receita universal
+([van Merriënboer (2019)](referencias.md#ref-vanmerrienboer2019fourcomponent)).
+Por isso, formas de desempenho e fidelidade devem permanecer categorias e
+relações com limitações declaradas, em vez de uma escala ordinal artificial.
+
+### Explicação, prática e materialização
+
+Autoexplicações podem elaborar condições de aplicação e relacionar passos a
+princípios, mas seus efeitos e formas variam entre participantes e tarefas
+([Chi et al. (1989)](referencias.md#ref-chi1989selfexplanations);
+[Chi et al. (1994)](referencias.md#ref-chi1994eliciting)). Explicações
+instrucionais também podem falhar quando não se ajustam ao conhecimento prévio,
+aos conceitos relevantes ou à atividade cognitiva em curso
+([Wittwer e Renkl (2008)](referencias.md#ref-wittwer2008explanations)). Não há,
+portanto, base para um checklist universal ou para uma nota de “qualidade da
+explicação”.
+
+A proposta registra requisitos aplicáveis — como definição, mecanismo,
+condição de aplicação, limite, contraste, exemplo ou justificativa de
+procedimento — ligados às unidades e relações pertinentes. O mesmo princípio
+se aplica à prática: oportunidades distintas são reconhecidas por alvo,
+operação e estrutura semântica, não por troca cosmética de texto ou componente.
+
+- **Decisão:** separar fontes e objetivo, análise instrucional, parâmetros,
+  seleção de resources, blueprint contextual e conteúdo materializado.
+- **Operacionalização:** usar categorias, conjuntos, vetores e relações quando
+  preservam a estrutura; aceitar números somente com unidade, denominador,
+  escopo, algoritmo e versão explícitos.
+- **Hipóteses:** limites locais de novidade e coordenação, faixas de
+  oportunidades de prática e requisitos explícitos podem ajudar a revelar
+  compressão, desalinhamento e repetição superficial.
+- **Limites:** essas unidades e parâmetros são criações do AraLearn. Sua
+  utilidade, compreensão por autores e relação com resultados educacionais
+  exigem avaliação empírica.
+
+A fundamentação e a proposta conceitual de contratos estão detalhadas em
+[Desenho instrucional parametrizado](desenho-instrucional-parametrizado.md).
+
+## 5. Exemplos resolvidos e retirada de apoio
 
 Exemplos resolvidos podem ser mais adequados do que resolução não apoiada para
 novatos em determinadas tarefas ([Sweller e Cooper (1985)](referencias.md#ref-sweller1985workedexamples)). A retirada
@@ -238,7 +324,7 @@ natureza da operação.
   aprendizagem; apoio pode tornar-se redundante ou insuficiente. É necessário comparar compreensão do procedimento, solução sem
   apoio e transferência, controlando tempo e experiência.
 
-## 5. Representações externas e múltiplas representações
+## 6. Representações externas e múltiplas representações
 
 ### Representar não é decorar
 
@@ -277,7 +363,7 @@ imagens ou aumentar a variedade visual melhora automaticamente a aprendizagem.
   e biblioteca consolidada são evidências técnicas, não prova de compreensão. A avaliação deve comparar texto, recurso geral e especializado para
   a mesma tarefa; incluir especialista do domínio, novato e caso de estresse.
 
-## 6. Prática de recuperação e formato de resposta
+## 7. Prática de recuperação e formato de resposta
 
 **Prática de recuperação** exige produzir conhecimento ou tomar uma decisão sem
 reexposição integral ao conteúdo-alvo. Estudos experimentais e revisões
@@ -307,7 +393,7 @@ de um formato não o torna automaticamente mais educativo.
   dificuldade percebida não demonstra aprendizagem. É necessário medir compreensão imediata, retenção e transferência
   separadamente.
 
-## 7. Prática distribuída e intercalação
+## 8. Prática distribuída e intercalação
 
 A prática distribuída apresenta base empírica ampla, mas o intervalo favorável
 depende do horizonte de retenção e de outras características
@@ -334,7 +420,7 @@ discriminação, com moderadores como similaridade
   intercalação. É necessária tarefa posterior em intervalo justificado e casos
   que realmente exigem discriminação.
 
-## 8. Feedback, ação e baixa consequência
+## 9. Feedback, ação e baixa consequência
 
 O feedback não é eficaz apenas por ser imediato. Seus efeitos variam conforme
 foco, conteúdo, timing, tarefa e possibilidade de ação
@@ -367,7 +453,7 @@ redução de ansiedade.
   demonstra uso do feedback. A avaliação precisa pedir que a pessoa explique o feedback, revise sua
   estratégia e aplique o aprendizado em outro item.
 
-## 9. Participação, colaboração e autoria
+## 10. Participação, colaboração e autoria
 
 Aprendizagem ocorre por mediações, instrumentos e relações sociais
 ([Vygotsky (1978)](referencias.md#ref-vygotsky1978mind)). Apoio pode ser contingente e retirado à medida que a pessoa
@@ -395,7 +481,7 @@ comentário de colaboração.
   mensagens não demonstram colaboração. São necessárias tarefas de convite, contribuição, revisão,
   revogação e explicação de papéis, acompanhadas de análise qualitativa.
 
-## 10. Inteligência artificial generativa, recuperação de contexto e controle humano
+## 11. Inteligência artificial generativa, recuperação de contexto e controle humano
 
 Um **modelo de linguagem de grande porte** (LLM, do inglês *large language
 model*) estima e produz sequências de linguagem a partir de instruções e
@@ -436,7 +522,7 @@ risco, transparência, proteção de dados e responsabilidade humana
   garantem qualidade factual, pedagógica ou acadêmica. São necessárias tarefas com modelos e contextos variados, incluindo
   erro factual, lacuna do catálogo, mudança de escopo, rejeição e reversão.
 
-## 11. Learning analytics, privacidade e interpretação
+## 12. Learning analytics, privacidade e interpretação
 
 Learning analytics envolve mais que coletar e exibir dados. Transparência,
 controle, responsabilidade e finalidade são princípios éticos relevantes
@@ -466,7 +552,7 @@ qualidade docente.
   investigados por co-design, teste de interpretação, utilidade para
   decisões reais e análise de efeitos adversos.
 
-## 12. Construção e avaliação do artefato
+## 13. Construção e avaliação do artefato
 
 Design-Based Research (DBR) investiga intervenções educacionais por ciclos em
 contextos autênticos e busca explicar relações entre teoria, design e prática
@@ -494,7 +580,10 @@ Para o AraLearn, as tradições são complementares:
 | Alegação simplificada | Estado desta revisão | Consequência responsável |
 | --- | --- | --- |
 | unidades menores são sempre melhores | não sustentada | dimensionar por objetivo, relações e conhecimentos prévios |
+| cardinalidade de unidades mede carga cognitiva | não sustentada | conservar estrutura, público e relações; usar contagem apenas como descrição operacional |
+| toda dimensão pedagógica deve receber score | falso | manter categorias, conjuntos, vetores e relações quando preservam melhor a decisão |
 | mais representações melhoram aprendizagem | não sustentada | exigir função e adequação de cada representação |
+| resource disponível foi selecionado e usado | falso | distinguir conjunto permitido, escolha local e instância materializada |
 | recuperação e distribuição podem beneficiar aprendizagem | sustentada em múltiplos contextos, com moderadores | escolher operação, intervalo, feedback e medida |
 | oferecer controle produz autonomia | não sustentada como regra | combinar escolha significativa, estrutura e avaliação de agência |
 | feedback funciona por ser imediato | simplificação indevida | estudar conteúdo, foco, interpretação e ação |
@@ -516,6 +605,12 @@ O corpus atual ainda precisa ser ampliado para:
   conhecimento;
 - estudar composição de múltiplas representações num mesmo card;
 - investigar explicação progressiva para novatos sem perda de profundidade;
+- avaliar se autores compreendem e corrigem unidades, conjuntos de coordenação,
+  requisitos de explicação e requisitos de evidência;
+- validar limites locais de novidade, coordenação e oportunidades de prática
+  sem promovê-los a escalas psicológicas;
+- comparar condições de `ResourceSet` e registrar quando nenhuma representação
+  permitida é adequada;
 - separar compreensão imediata, retenção e transferência em formatos de
   prática diferentes;
 - investigar modelos de IA de capacidades e custos distintos na autoria;
@@ -525,6 +620,7 @@ O corpus atual ainda precisa ser ampliado para:
 ## Documentos de operacionalização
 
 - [Modelo didático](modelo-didatico.md)
+- [Desenho instrucional parametrizado](desenho-instrucional-parametrizado.md)
 - [Fundamentos de pesquisa e governança](fundamentos-pesquisa-e-governanca.md)
 - [Quadro teórico](quadro-teorico.md)
 - [Glossário de construtos](glossario-construtos.md)

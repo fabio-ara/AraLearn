@@ -131,6 +131,35 @@ computacionais que propõem, transformam ou analisam conteúdo durante a autoria
 
 ## Construtos relacionados ao processamento da tarefa
 
+### Componente de conhecimento
+
+- **Tipo:** unidade teórica latente.
+- **Definição:** componente inferido que relaciona condições, respostas e
+  mudanças de desempenho em uma análise de aprendizagem; sua granularidade
+  depende da população e das tarefas
+  ([Koedinger et al. (2012)](referencias.md#ref-koedinger2012kli)).
+- **Manifestação possível:** padrão de sucesso, erro, explicação ou aplicação
+  em conjunto apropriado de tarefas.
+- **Não equivale a:** tópico, card, unidade editorial, campo de banco ou algo
+  que o sistema observe diretamente.
+- **Evidência necessária:** modelo explícito, tarefas alinhadas, inferência e
+  exame de alternativas compatíveis com a finalidade da avaliação.
+
+### Interatividade de elementos
+
+- **Tipo:** propriedade teórica da relação pessoa–tarefa.
+- **Definição:** necessidade de processar simultaneamente elementos que
+  interagem para compreender ou realizar uma tarefa; depende da estrutura da
+  informação e do conhecimento prévio
+  ([Chen et al. (2023)](referencias.md#ref-chen2023elementinteractivity)).
+- **Manifestação possível:** relações que não podem ser aprendidas ou
+  executadas isolando seus componentes sem perder a operação.
+- **Não equivale a:** quantidade de objetos na tela, extensão do texto,
+  dificuldade percebida ou score calculado pelo AraLearn.
+- **Evidência necessária:** definição do elemento, público, tarefa e relações
+  simultâneas, acompanhada de medida compatível quando houver alegação sobre
+  carga.
+
 ### Carga cognitiva extrínseca
 
 - **Tipo:** construto teórico.
@@ -346,6 +375,44 @@ computacionais que propõem, transformam ou analisam conteúdo durante a autoria
 Continuidade entre objetivo, pré-requisito, explicação, exemplo, prática,
 feedback e retomada. Não equivale a sequência longa ou uniformidade visual.
 
+### Unidade de análise instrucional
+
+Recorte editorial revisável que relaciona fonte, objetivo, pressuposto de
+conhecimento prévio, explicação e evidência pretendida. É uma
+operacionalização do AraLearn; não equivale a componente de conhecimento
+validado, conceito psicológico ou unidade pedagógica universal.
+
+### Conjunto de coordenação
+
+Conjunto de unidades e relações que o planejamento presume que precisam
+permanecer disponíveis simultaneamente. Sua cardinalidade pode ser calculada,
+mas não mede carga cognitiva, capacidade ou dificuldade individual.
+
+### Requisito de explicação
+
+Necessidade contextual ligada a unidades ou relações, como definição,
+mecanismo, condição de aplicação, limite, contraste, exemplo ou justificativa
+de procedimento. É instrumento de planejamento e auditoria, não checklist
+universal nem nota de qualidade.
+
+### Requisito de evidência
+
+Relação entre objetivo, alvo, operação, tarefa e forma aceitável de desempenho.
+Serve para auditar correspondência entre plano e prática; não transforma uma
+atividade em instrumento psicométrico nem demonstra domínio.
+
+### Oportunidade distinta de prática
+
+Ocorrência em que alvo, operação e estrutura semântica permitem produzir a
+evidência pretendida sob um caso ou condição declarado. Troca cosmética de
+texto, ordem visual ou componente não cria necessariamente outra oportunidade.
+
+### Fidelidade da tarefa
+
+Descrição categorial dos aspectos do desempenho, ambiente e restrições que uma
+tarefa preserva ou omite. Não equivale a escala universal de autenticidade;
+uma representação pode ser adequada a uma evidência e insuficiente para outra.
+
 ### Diagnóstico pedagógico contextual
 
 Síntese de planejamento que relaciona condições de aprendizagem, exigências do
@@ -383,6 +450,13 @@ alegação de que a resposta será eficaz.
 
 Unidade situada entre card e lição que trabalha objetivo delimitado com
 contexto, teoria e prática suficientes. Não possui duração ou quantidade fixa.
+
+### Parte
+
+Unidade operacional que agrupa trabalho autoral manejável segundo coesão,
+dependências, complexidade das microssequências e carga de revisão. Não é
+unidade pedagógica e não possui cota fixa de cards ou quantidade universal por
+curso.
 
 ### Microteoria
 
@@ -448,7 +522,9 @@ Qualquer indicador futuro deve registrar:
 5. interpretação permitida;
 6. explicações alternativas;
 7. intervenção possível;
-8. retenção, acesso, exclusão e custo do dado.
+8. retenção, acesso, exclusão e custo do dado;
+9. unidade, denominador e algoritmo quando houver valor numérico;
+10. versão e proveniência da operacionalização.
 
 Se essa cadeia não puder ser preenchida, o dado não deve entrar apenas por
 estar tecnicamente disponível. Um termo operacional pode tornar-se objeto de

@@ -1,0 +1,469 @@
+{
+  "fixtureVersion": "1.0.0",
+  "purpose": "Casos de consistência da operacionalização do AraLearn; não constituem validação educacional nem psicométrica.",
+  "scenarios": [
+    {
+      "id": "computing-short-high-novelty",
+      "domain": "conceptual_computing",
+      "caseTags": ["short_high_novelty", "simultaneous_coordination"],
+      "sourceExcerpt": "Processos usam portas e sockets; TCP e UDP oferecem compromissos distintos.",
+      "analysis": {
+        "contract": "InstructionalAnalysis@1",
+        "modelVersion": "1.0.0",
+        "id": "analysis-computing-transport",
+        "version": "1.0.0",
+        "scope": { "kind": "microsequence", "ref": "ms-computing-transport" },
+        "objective": "Explicar como processos são identificados e como requisitos da aplicação orientam a escolha entre TCP e UDP.",
+        "sourceRefs": ["source:computing:transport-short"],
+        "derivedFrom": { "workspaceRevision": 7, "scopeEntityVersion": 3 },
+        "learnerContext": {
+          "audience": "Pessoa que usa aplicações de rede, mas ainda não estudou transporte.",
+          "conditions": ["Sessão individual no celular ou desktop."],
+          "uncertainties": ["Não há evidência prévia de compreensão de sockets."]
+        },
+        "units": [
+          {
+            "id": "process",
+            "label": "Processo de aplicação",
+            "kind": "concept",
+            "priorKnowledge": { "state": "new", "basis": "brief", "evidenceRefs": ["source:computing:transport-short"], "note": "O brief só informa uso cotidiano de aplicações." },
+            "knowledgeFormHypothesis": { "conditions": ["application_context"], "responses": ["identify_process"], "expression": "mixed", "rationaleAvailability": "partial", "basisRefs": ["source:computing:transport-short"], "note": "Hipótese de forma útil ao desenho, não classificação de conhecimento medida." }
+          },
+          {
+            "id": "port",
+            "label": "Porta como identificação do processo",
+            "kind": "relation",
+            "priorKnowledge": { "state": "new", "basis": "inference", "evidenceRefs": ["analysis:audience"], "note": "Não há indício de conhecimento técnico de portas." },
+            "knowledgeFormHypothesis": { "conditions": ["multiple_processes_on_host"], "responses": ["map_port_to_process"], "expression": "mixed", "rationaleAvailability": "available", "basisRefs": ["analysis:audience"], "note": "Condição e resposta são hipóteses revisáveis." }
+          },
+          {
+            "id": "socket",
+            "label": "Socket como extremidade de comunicação",
+            "kind": "concept",
+            "priorKnowledge": { "state": "new", "basis": "inference", "evidenceRefs": ["analysis:audience"], "note": "O termo não aparece no repertório informado." },
+            "knowledgeFormHypothesis": { "conditions": ["endpoint_description"], "responses": ["identify_socket_components"], "expression": "verbal", "rationaleAvailability": "partial", "basisRefs": ["analysis:audience"], "note": "A hipótese orienta exemplos e pode mudar com nova evidência." }
+          },
+          {
+            "id": "tcp",
+            "label": "Serviço oferecido pelo TCP",
+            "kind": "concept",
+            "priorKnowledge": { "state": "new", "basis": "brief", "evidenceRefs": ["source:computing:transport-short"], "note": "A sigla é nova para o público descrito." },
+            "knowledgeFormHypothesis": { "conditions": ["reliable_delivery_required"], "responses": ["select_tcp"], "expression": "mixed", "rationaleAvailability": "available", "basisRefs": ["source:computing:transport-short"], "note": "A forma combina decisão e justificativa." }
+          },
+          {
+            "id": "udp",
+            "label": "Serviço oferecido pelo UDP",
+            "kind": "concept",
+            "priorKnowledge": { "state": "new", "basis": "brief", "evidenceRefs": ["source:computing:transport-short"], "note": "A sigla é nova para o público descrito." },
+            "knowledgeFormHypothesis": { "conditions": ["latency_priority_and_loss_tolerance"], "responses": ["select_udp"], "expression": "mixed", "rationaleAvailability": "available", "basisRefs": ["source:computing:transport-short"], "note": "A forma combina decisão e justificativa." }
+          }
+        ],
+        "relations": [
+          { "id": "process-port", "fromUnitRef": "process", "toUnitRef": "port", "kind": "identified_by", "rationale": "A entrega precisa distinguir processos no mesmo host." },
+          { "id": "port-socket", "fromUnitRef": "port", "toUnitRef": "socket", "kind": "component_of", "rationale": "A identificação participa da extremidade usada pela aplicação." },
+          { "id": "tcp-udp-contrast", "fromUnitRef": "tcp", "toUnitRef": "udp", "kind": "contrast", "rationale": "A escolha depende dos requisitos de entrega e latência." }
+        ],
+        "coordinationRequirements": [
+          { "id": "transport-choice", "unitRefs": ["process", "port", "socket", "tcp", "udp"], "assumedNewUnitRefs": ["process", "port", "socket", "tcp", "udp"], "rationale": "A decisão de transporte exige relacionar a aplicação à extremidade e ao serviço disponível." }
+        ],
+        "explanationRequirements": [
+          { "id": "exp-process-delivery", "targetUnitRefs": ["process", "port", "socket"], "features": ["mechanism", "boundary", "worked_example"], "applicabilityRationale": "Apenas mencionar os termos não explica como um segmento chega ao processo correto." },
+          { "id": "exp-transport-choice", "targetUnitRefs": ["tcp", "udp"], "features": ["contrast", "application_condition", "limitation"], "applicabilityRationale": "A escolha precisa ser ligada a requisitos concretos, não a uma lista de siglas." }
+        ],
+        "evidenceRequirements": [
+          { "id": "ev-process-delivery", "targetUnitRefs": ["process", "port", "socket"], "operation": "trace_delivery", "claim": "A pessoa consegue acompanhar a entrega até o processo correto.", "acceptablePerformanceForms": ["ordered_trace", "explain_choice"], "taskFeatures": ["multiple_processes", "explicit_endpoint_data"], "criterion": { "observable": "Sequência e destino escolhidos.", "successCondition": "A sequência termina no processo compatível com a porta e explicita o papel do socket." }, "fidelityRequirementRef": null },
+          { "id": "ev-transport-choice", "targetUnitRefs": ["tcp", "udp"], "operation": "discriminate_by_requirement", "claim": "A pessoa escolhe o serviço coerente com requisitos declarados.", "acceptablePerformanceForms": ["scenario_decision_with_reason"], "taskFeatures": ["explicit_delivery_requirement", "plausible_protocol_alternatives"], "criterion": { "observable": "Protocolo selecionado e razão declarada.", "successCondition": "A escolha e a justificativa correspondem aos requisitos do cenário." }, "fidelityRequirementRef": null }
+        ],
+        "practiceVariationRequirements": [
+          { "id": "var-transport-context", "evidenceRequirementRef": "ev-transport-choice", "dimensions": ["delivery_requirement", "latency_tolerance", "loss_tolerance"], "rationale": "Mudar somente nomes próprios não cria uma decisão semanticamente nova." }
+        ],
+        "fidelityRequirements": [],
+        "representationRequirements": [
+          { "id": "rep-process-delivery", "targetUnitRefs": ["process", "port", "socket"], "structures": ["flow", "endpoint_mapping"], "cognitiveOperations": ["trace_delivery"], "acceptableFits": ["canonical", "versatile"], "rationale": "O resource deve preservar direção e correspondência entre mensagem e processo." }
+        ],
+        "assumptions": ["A pessoa reconhece dispositivos e aplicações como referentes cotidianos."],
+        "limitations": ["O estado de conhecimento prévio foi inferido do brief, não medido."]
+      },
+      "expectations": { "sourceLengthClass": "short", "analysisUnitCount": 5, "assumedNewUnitCount": 5 }
+    },
+    {
+      "id": "mathematics-summary-versus-development",
+      "domain": "mathematics",
+      "caseTags": ["summary_versus_developed_explanation"],
+      "sourceExcerpt": "A derivada em um ponto pode ser definida como o limite do quociente incremental quando o incremento tende a zero.",
+      "analysis": {
+        "contract": "InstructionalAnalysis@1",
+        "modelVersion": "1.0.0",
+        "id": "analysis-math-derivative",
+        "version": "1.0.0",
+        "scope": { "kind": "microsequence", "ref": "ms-math-derivative" },
+        "objective": "Relacionar variação média, limite e variação instantânea sem tratar a fórmula como definição autossuficiente.",
+        "sourceRefs": ["source:math:derivative-summary"],
+        "derivedFrom": { "workspaceRevision": 7, "scopeEntityVersion": 3 },
+        "learnerContext": { "audience": "Estudante que já calcula razões, mas inicia cálculo diferencial.", "conditions": ["Pode explorar exemplos numéricos."], "uncertainties": ["Não foi demonstrado domínio de limites."] },
+        "units": [
+          { "id": "average-rate", "label": "Taxa média de variação", "kind": "relation", "priorKnowledge": { "state": "partial", "basis": "brief", "evidenceRefs": ["brief:math"], "note": "Razões são conhecidas, mas ainda não ligadas à variação." }, "knowledgeFormHypothesis": { "conditions": ["two_points_on_function"], "responses": ["compute_and_interpret_ratio"], "expression": "mixed", "rationaleAvailability": "partial", "basisRefs": ["brief:math"], "note": "A hipótese combina cálculo e interpretação." } },
+          { "id": "limit-process", "label": "Processo de aproximação por limite", "kind": "process", "priorKnowledge": { "state": "unknown", "basis": "brief", "evidenceRefs": ["brief:math"], "note": "O brief não demonstra entendimento de limite." }, "knowledgeFormHypothesis": { "conditions": ["decreasing_interval"], "responses": ["track_approach"], "expression": "mixed", "rationaleAvailability": "available", "basisRefs": ["brief:math"], "note": "A forma precisa relacionar valores e representação." } },
+          { "id": "instantaneous-rate", "label": "Taxa instantânea de variação", "kind": "relation", "priorKnowledge": { "state": "new", "basis": "brief", "evidenceRefs": ["source:math:derivative-summary"], "note": "É o alvo novo da microssequência." }, "knowledgeFormHypothesis": { "conditions": ["limit_exists_at_point"], "responses": ["interpret_instantaneous_rate"], "expression": "mixed", "rationaleAvailability": "available", "basisRefs": ["source:math:derivative-summary"], "note": "A justificativa depende do processo de limite." } }
+        ],
+        "relations": [
+          { "id": "average-to-limit", "fromUnitRef": "average-rate", "toUnitRef": "limit-process", "kind": "transformed_by", "rationale": "O intervalo é reduzido e as taxas médias formam uma aproximação." },
+          { "id": "limit-to-instantaneous", "fromUnitRef": "limit-process", "toUnitRef": "instantaneous-rate", "kind": "supports", "rationale": "O limite, quando existe, define a taxa instantânea." }
+        ],
+        "coordinationRequirements": [
+          { "id": "derivative-coordination", "unitRefs": ["average-rate", "limit-process", "instantaneous-rate"], "assumedNewUnitRefs": ["limit-process", "instantaneous-rate"], "rationale": "A definição exige coordenar uma relação parcialmente conhecida com duas unidades ainda não integradas." }
+        ],
+        "explanationRequirements": [
+          { "id": "exp-derivative-development", "targetUnitRefs": ["average-rate", "limit-process", "instantaneous-rate"], "features": ["mechanism", "worked_example", "boundary"], "applicabilityRationale": "Uma síntese formula o limite; uma exposição desenvolvida também torna observável a aproximação e suas condições." }
+        ],
+        "evidenceRequirements": [
+          { "id": "ev-derivative-interpretation", "targetUnitRefs": ["average-rate", "limit-process", "instantaneous-rate"], "operation": "interpret_relation", "claim": "A pessoa explica o papel do limite na passagem de taxa média a instantânea.", "acceptablePerformanceForms": ["explanation_with_example"], "taskFeatures": ["varying_intervals", "linked_numeric_and_graphical_evidence"], "criterion": { "observable": "Explicação e exemplo vinculados.", "successCondition": "A resposta relaciona a redução do intervalo ao valor-limite sem apenas repetir a fórmula." }, "fidelityRequirementRef": null }
+        ],
+        "practiceVariationRequirements": [],
+        "fidelityRequirements": [],
+        "representationRequirements": [
+          { "id": "rep-rate-approach", "targetUnitRefs": ["average-rate", "limit-process", "instantaneous-rate"], "structures": ["function_plot", "approach_sequence"], "cognitiveOperations": ["interpret_relation"], "acceptableFits": ["canonical", "versatile"], "rationale": "A representação precisa preservar a aproximação, não apenas exibir a fórmula final." }
+        ],
+        "assumptions": ["O exemplo pode usar uma função elementar."],
+        "limitations": ["O diagnóstico de limites precisa ser confirmado durante a autoria."]
+      },
+      "expectations": { "summaryStatus": "mentioned", "developedStatus": "developed", "sameRequirementRef": "exp-derivative-development" }
+    },
+    {
+      "id": "programming-prior-knowledge-contrast",
+      "domain": "programming",
+      "caseTags": ["novice_versus_expert_prior_knowledge"],
+      "sourceExcerpt": "Uma função recursiva chama a si mesma até alcançar um caso base.",
+      "analysis": {
+        "contract": "InstructionalAnalysis@1",
+        "modelVersion": "1.0.0",
+        "id": "analysis-programming-recursion-novice",
+        "version": "1.0.0",
+        "scope": { "kind": "microsequence", "ref": "ms-programming-recursion" },
+        "objective": "Rastrear chamadas recursivas e justificar o caso base.",
+        "sourceRefs": ["source:programming:recursion"],
+        "derivedFrom": { "workspaceRevision": 7, "scopeEntityVersion": 3 },
+        "learnerContext": { "audience": "Pessoa que conhece funções e condicionais, mas ainda não estudou recursão.", "conditions": ["Pode executar exemplos pequenos."], "uncertainties": [] },
+        "units": [
+          { "id": "self-call", "label": "Autorreferência da chamada", "kind": "operation", "priorKnowledge": { "state": "new", "basis": "brief", "evidenceRefs": ["brief:programming-novice"], "note": "O público ainda não estudou recursão." }, "knowledgeFormHypothesis": { "conditions": ["recursive_branch"], "responses": ["identify_next_call"], "expression": "mixed", "rationaleAvailability": "available", "basisRefs": ["brief:programming-novice"], "note": "A forma relaciona código e execução." } },
+          { "id": "call-stack", "label": "Quadros de chamada pendentes", "kind": "state_transition", "priorKnowledge": { "state": "new", "basis": "brief", "evidenceRefs": ["brief:programming-novice"], "note": "A pilha não consta nos pré-requisitos demonstrados." }, "knowledgeFormHypothesis": { "conditions": ["nested_calls"], "responses": ["update_stack_trace"], "expression": "nonverbal", "rationaleAvailability": "partial", "basisRefs": ["brief:programming-novice"], "note": "A representação de estado é central." } },
+          { "id": "base-case", "label": "Caso base", "kind": "condition", "priorKnowledge": { "state": "new", "basis": "brief", "evidenceRefs": ["brief:programming-novice"], "note": "É uma condição nova aplicada à autorreferência." }, "knowledgeFormHypothesis": { "conditions": ["base_condition_true"], "responses": ["stop_self_call"], "expression": "mixed", "rationaleAvailability": "available", "basisRefs": ["brief:programming-novice"], "note": "A condição precisa ser ligada à terminação." } }
+        ],
+        "relations": [
+          { "id": "self-call-stack", "fromUnitRef": "self-call", "toUnitRef": "call-stack", "kind": "changes_state", "rationale": "Cada chamada cria trabalho pendente." },
+          { "id": "base-stops", "fromUnitRef": "base-case", "toUnitRef": "self-call", "kind": "terminates", "rationale": "O caso base impede novas chamadas." }
+        ],
+        "coordinationRequirements": [
+          { "id": "recursion-trace", "unitRefs": ["self-call", "call-stack", "base-case"], "assumedNewUnitRefs": ["self-call", "call-stack", "base-case"], "rationale": "O novato precisa coordenar chamada, estado pendente e condição de parada." }
+        ],
+        "explanationRequirements": [
+          { "id": "exp-recursion-mechanism", "targetUnitRefs": ["self-call", "call-stack", "base-case"], "features": ["mechanism", "worked_example", "procedure_rationale"], "applicabilityRationale": "A regra verbal não torna visível o estado das chamadas." }
+        ],
+        "evidenceRequirements": [
+          { "id": "ev-recursion-trace", "targetUnitRefs": ["self-call", "call-stack", "base-case"], "operation": "trace_state", "claim": "A pessoa prevê a sequência de chamadas e retornos.", "acceptablePerformanceForms": ["state_trace", "code_completion_with_reason"], "taskFeatures": ["visible_input", "nontrivial_return_path"], "criterion": { "observable": "Sequência de quadros e retornos produzida.", "successCondition": "O rastreamento preserva valores, ordem e parada do caso base." }, "fidelityRequirementRef": null }
+        ],
+        "practiceVariationRequirements": [
+          { "id": "var-recursion", "evidenceRequirementRef": "ev-recursion-trace", "dimensions": ["input_depth", "base_condition", "return_operation"], "rationale": "A variação altera decisões do rastreamento." }
+        ],
+        "fidelityRequirements": [],
+        "representationRequirements": [
+          { "id": "rep-call-stack", "targetUnitRefs": ["self-call", "call-stack", "base-case"], "structures": ["stack_frames", "execution_trace"], "cognitiveOperations": ["trace_state"], "acceptableFits": ["canonical", "versatile"], "rationale": "O resource precisa preservar estado e ordem de retorno." }
+        ],
+        "assumptions": ["Funções e condicionais já foram praticadas."],
+        "limitations": []
+      },
+      "expectations": { "noviceAssumedNewUnitCount": 3, "expertIntegratedUnitRefs": ["self-call", "call-stack", "base-case"], "expertAssumedNewUnitCount": 0 }
+    },
+    {
+      "id": "systems-administration-service-diagnosis",
+      "domain": "systems_administration",
+      "caseTags": ["infrastructure_procedure", "relation_not_score"],
+      "sourceExcerpt": "Quando um serviço não inicia, examine estado, dependências e registros antes de alterar a configuração.",
+      "analysis": {
+        "contract": "InstructionalAnalysis@1",
+        "modelVersion": "1.0.0",
+        "id": "analysis-sysadmin-service",
+        "version": "1.0.0",
+        "scope": { "kind": "microsequence", "ref": "ms-sysadmin-service" },
+        "objective": "Diagnosticar a falha de inicialização de um serviço sem aplicar mudança prematura.",
+        "sourceRefs": ["source:sysadmin:service-diagnosis"],
+        "derivedFrom": { "workspaceRevision": 7, "scopeEntityVersion": 3 },
+        "learnerContext": { "audience": "Pessoa com acesso a um laboratório Linux isolado.", "conditions": ["Comandos são executados em ambiente descartável."], "uncertainties": ["A familiaridade com logs varia."] },
+        "units": [
+          { "id": "service-state", "label": "Estado observado do serviço", "kind": "system_state", "priorKnowledge": { "state": "partial", "basis": "brief", "evidenceRefs": ["brief:sysadmin"], "note": "A pessoa já inicia serviços, mas não demonstrou diagnóstico." }, "knowledgeFormHypothesis": { "conditions": ["service_start_failure"], "responses": ["inspect_state"], "expression": "mixed", "rationaleAvailability": "partial", "basisRefs": ["brief:sysadmin"], "note": "A ação e a leitura do retorno compõem a hipótese." } },
+          { "id": "dependency", "label": "Dependência de inicialização", "kind": "relation", "priorKnowledge": { "state": "unknown", "basis": "brief", "evidenceRefs": ["brief:sysadmin"], "note": "Não há evidência suficiente." }, "knowledgeFormHypothesis": { "conditions": ["dependency_unavailable"], "responses": ["relate_dependency_to_failure"], "expression": "mixed", "rationaleAvailability": "available", "basisRefs": ["brief:sysadmin"], "note": "A relação causal precisa ser justificada." } },
+          { "id": "log-evidence", "label": "Registro como evidência do mecanismo de falha", "kind": "evidence", "priorKnowledge": { "state": "partial", "basis": "brief", "evidenceRefs": ["brief:sysadmin"], "note": "Logs são conhecidos, mas sua triangulação não foi demonstrada." }, "knowledgeFormHypothesis": { "conditions": ["ambiguous_external_state"], "responses": ["select_and_interpret_log_evidence"], "expression": "verbal", "rationaleAvailability": "available", "basisRefs": ["brief:sysadmin"], "note": "A interpretação requer uma justificativa baseada no registro." } }
+        ],
+        "relations": [
+          { "id": "dependency-state", "fromUnitRef": "dependency", "toUnitRef": "service-state", "kind": "constrains", "rationale": "Uma dependência ausente pode impedir o estado ativo." },
+          { "id": "log-explains-state", "fromUnitRef": "log-evidence", "toUnitRef": "service-state", "kind": "evidences", "rationale": "O registro pode discriminar mecanismos compatíveis com o mesmo estado externo." }
+        ],
+        "coordinationRequirements": [
+          { "id": "diagnostic-triangulation", "unitRefs": ["service-state", "dependency", "log-evidence"], "assumedNewUnitRefs": ["dependency"], "rationale": "O diagnóstico coordena estado, dependência e evidência, mas só uma unidade é assumida como nova." }
+        ],
+        "explanationRequirements": [
+          { "id": "exp-diagnostic-order", "targetUnitRefs": ["service-state", "dependency", "log-evidence"], "features": ["procedure_rationale", "causal_relation", "boundary"], "applicabilityRationale": "A ordem precisa ser justificada para evitar mudanças que apaguem evidências." }
+        ],
+        "evidenceRequirements": [
+          { "id": "ev-diagnostic-decision", "targetUnitRefs": ["service-state", "dependency", "log-evidence"], "operation": "diagnose_from_evidence", "claim": "A pessoa seleciona e justifica a próxima inspeção sem alterar estado prematuramente.", "acceptablePerformanceForms": ["terminal_session", "ordered_diagnostic_plan"], "taskFeatures": ["ambiguous_failure", "inspectable_state_and_logs", "state_changing_distractors"], "criterion": { "observable": "Próxima inspeção e justificativa selecionadas.", "successCondition": "A decisão usa evidência disponível e evita alteração prematura de estado." }, "fidelityRequirementRef": null }
+        ],
+        "practiceVariationRequirements": [
+          { "id": "var-diagnostic", "evidenceRequirementRef": "ev-diagnostic-decision", "dimensions": ["failure_mechanism", "available_evidence", "dependency_state"], "rationale": "Casos diferentes exigem interpretar relações, não repetir o mesmo comando." }
+        ],
+        "fidelityRequirements": [],
+        "representationRequirements": [
+          { "id": "rep-terminal-diagnosis", "targetUnitRefs": ["service-state", "dependency", "log-evidence"], "structures": ["terminal_session", "dependency_graph"], "cognitiveOperations": ["diagnose_from_evidence"], "acceptableFits": ["canonical", "versatile", "substitute"], "rationale": "Uma substituição textual deve registrar que não reproduz estado executável." }
+        ],
+        "assumptions": ["O laboratório não contém dados de produção."],
+        "limitations": ["Uma simulação textual não equivale à execução no terminal."]
+      },
+      "expectations": { "coordinationUnitCount": 3, "assumedNewUnitCount": 1 }
+    },
+    {
+      "id": "education-long-redundant-low-novelty",
+      "domain": "education_theory",
+      "caseTags": ["long_low_novelty", "length_not_content_measure"],
+      "sourceExcerpt": "A recuperação ativa pede que a pessoa tente trazer uma informação à mente antes de revê-la. Em outras palavras, em vez de apenas reler uma passagem, ela procura recordar o que estudou. Essa tentativa de recuperação pode ocorrer com uma pergunta, uma pista ou uma explicação produzida sem consultar o material. O ponto central permanece o mesmo ao longo desses exemplos: há uma tentativa de recuperar, seguida de informação que permite conferir ou corrigir a resposta. Repetir a definição em frases diferentes não cria, por si só, novas unidades de análise.",
+      "analysis": {
+        "contract": "InstructionalAnalysis@1",
+        "modelVersion": "1.0.0",
+        "id": "analysis-education-retrieval",
+        "version": "1.0.0",
+        "scope": { "kind": "microsequence", "ref": "ms-education-retrieval" },
+        "objective": "Distinguir tentativa de recuperação de releitura e explicar a função da conferência posterior.",
+        "sourceRefs": ["source:education:retrieval-long"],
+        "derivedFrom": { "workspaceRevision": 7, "scopeEntityVersion": 3 },
+        "learnerContext": { "audience": "Professor que conhece estudo por releitura.", "conditions": ["Busca aplicar a ideia ao próprio material."], "uncertainties": [] },
+        "units": [
+          { "id": "retrieval-attempt", "label": "Tentativa de recuperação sem consulta", "kind": "learning_event", "priorKnowledge": { "state": "new", "basis": "brief", "evidenceRefs": ["brief:education"], "note": "O repertório informado privilegia releitura." }, "knowledgeFormHypothesis": { "conditions": ["material_not_visible"], "responses": ["attempt_recall"], "expression": "verbal", "rationaleAvailability": "partial", "basisRefs": ["brief:education"], "note": "O evento é inferido pela condição e pela resposta observável." } },
+          { "id": "post-attempt-information", "label": "Informação posterior para conferir ou corrigir", "kind": "instructional_event", "priorKnowledge": { "state": "partial", "basis": "brief", "evidenceRefs": ["brief:education"], "note": "Feedback é conhecido de modo genérico." }, "knowledgeFormHypothesis": { "conditions": ["retrieval_attempt_completed"], "responses": ["compare_and_correct"], "expression": "verbal", "rationaleAvailability": "available", "basisRefs": ["brief:education"], "note": "A sequência condiciona a função da informação posterior." } }
+        ],
+        "relations": [
+          { "id": "attempt-before-feedback", "fromUnitRef": "retrieval-attempt", "toUnitRef": "post-attempt-information", "kind": "precedes", "rationale": "Consultar antes elimina a tentativa de recuperar sem apoio." }
+        ],
+        "coordinationRequirements": [
+          { "id": "retrieval-cycle", "unitRefs": ["retrieval-attempt", "post-attempt-information"], "assumedNewUnitRefs": ["retrieval-attempt"], "rationale": "Somente a distinção entre tentativa e consulta é assumida como nova." }
+        ],
+        "explanationRequirements": [
+          { "id": "exp-retrieval-cycle", "targetUnitRefs": ["retrieval-attempt", "post-attempt-information"], "features": ["sequence", "contrast", "application_condition"], "applicabilityRationale": "A explicação precisa distinguir a ordem dos eventos de uma releitura comum." }
+        ],
+        "evidenceRequirements": [
+          { "id": "ev-classify-study-event", "targetUnitRefs": ["retrieval-attempt", "post-attempt-information"], "operation": "classify_sequence", "claim": "A pessoa identifica se um episódio contém tentativa antes da consulta.", "acceptablePerformanceForms": ["sequence_classification_with_reason"], "taskFeatures": ["event_order_visible", "retrieval_and_rereading_contrasts"], "criterion": { "observable": "Classificação e razão declaradas.", "successCondition": "A resposta usa a ordem tentativa-antes-da-consulta como critério." }, "fidelityRequirementRef": null }
+        ],
+        "practiceVariationRequirements": [],
+        "fidelityRequirements": [],
+        "representationRequirements": [
+          { "id": "rep-retrieval-cycle", "targetUnitRefs": ["retrieval-attempt", "post-attempt-information"], "structures": ["sequence"], "cognitiveOperations": ["classify_sequence"], "acceptableFits": ["canonical", "versatile"], "rationale": "A ordem precisa permanecer visível." }
+        ],
+        "assumptions": ["A pessoa reconhece exemplos de releitura."],
+        "limitations": ["O fixture testa consistência da contagem; não estima efeito de aprendizagem."]
+      },
+      "expectations": { "sourceLengthClass": "long", "analysisUnitCount": 2, "assumedNewUnitCount": 1 }
+    },
+    {
+      "id": "professional-multimeter-performance",
+      "domain": "technical_professional_training",
+      "caseTags": ["recognition_not_execution", "explicit_fidelity_limitation", "superficial_repetition"],
+      "sourceExcerpt": "Antes de medir tensão, selecione função e faixa adequadas, conecte as pontas nos bornes corretos e confirme os limites do instrumento.",
+      "analysis": {
+        "contract": "InstructionalAnalysis@1",
+        "modelVersion": "1.0.0",
+        "id": "analysis-professional-multimeter",
+        "version": "1.0.0",
+        "scope": { "kind": "microsequence", "ref": "ms-professional-multimeter" },
+        "objective": "Preparar o multímetro corretamente antes de uma medição de tensão em laboratório supervisionado.",
+        "sourceRefs": ["source:professional:multimeter-procedure"],
+        "derivedFrom": { "workspaceRevision": 7, "scopeEntityVersion": 3 },
+        "learnerContext": { "audience": "Aprendiz técnico sem prática comprovada com o instrumento.", "conditions": ["A execução real depende de laboratório e supervisão qualificada."], "uncertainties": ["Destreza manual e inspeção do equipamento não são observáveis no AraLearn."] },
+        "units": [
+          { "id": "measurement-function", "label": "Função de medição", "kind": "procedure_decision", "priorKnowledge": { "state": "partial", "basis": "brief", "evidenceRefs": ["brief:professional"], "note": "A pessoa reconhece símbolos, sem execução comprovada." }, "knowledgeFormHypothesis": { "conditions": ["target_quantity_declared"], "responses": ["select_measurement_function"], "expression": "mixed", "rationaleAvailability": "available", "basisRefs": ["brief:professional"], "note": "Reconhecimento simbólico e execução física permanecem distintos." } },
+          { "id": "measurement-range", "label": "Faixa de medição", "kind": "procedure_decision", "priorKnowledge": { "state": "new", "basis": "brief", "evidenceRefs": ["brief:professional"], "note": "A escolha de faixa não foi demonstrada." }, "knowledgeFormHypothesis": { "conditions": ["expected_value_and_instrument_limits"], "responses": ["select_safe_range"], "expression": "mixed", "rationaleAvailability": "available", "basisRefs": ["brief:professional"], "note": "A decisão depende do contexto e dos limites informados." } },
+          { "id": "lead-terminal", "label": "Correspondência entre ponta e borne", "kind": "spatial_relation", "priorKnowledge": { "state": "new", "basis": "brief", "evidenceRefs": ["brief:professional"], "note": "A conexão física ainda não foi praticada." }, "knowledgeFormHypothesis": { "conditions": ["selected_function_and_terminal_layout"], "responses": ["connect_leads_to_matching_terminals"], "expression": "nonverbal", "rationaleAvailability": "partial", "basisRefs": ["brief:professional"], "note": "A relação espacial é executada fisicamente, embora possa ser representada." } }
+        ],
+        "relations": [
+          { "id": "function-range", "fromUnitRef": "measurement-function", "toUnitRef": "measurement-range", "kind": "constrains", "rationale": "A função selecionada determina as faixas pertinentes." },
+          { "id": "terminal-function", "fromUnitRef": "lead-terminal", "toUnitRef": "measurement-function", "kind": "must_match", "rationale": "O borne precisa corresponder à grandeza e ao limite do instrumento." }
+        ],
+        "coordinationRequirements": [
+          { "id": "instrument-setup", "unitRefs": ["measurement-function", "measurement-range", "lead-terminal"], "assumedNewUnitRefs": ["measurement-range", "lead-terminal"], "rationale": "A preparação exige coordenar três decisões, duas assumidas como novas." }
+        ],
+        "explanationRequirements": [
+          { "id": "exp-setup-rationale", "targetUnitRefs": ["measurement-function", "measurement-range", "lead-terminal"], "features": ["procedure_rationale", "consequence", "boundary"], "applicabilityRationale": "Memorizar uma ordem não explica os riscos de combinações incompatíveis." }
+        ],
+        "evidenceRequirements": [
+          { "id": "ev-recognize-setup", "targetUnitRefs": ["measurement-function", "measurement-range", "lead-terminal"], "operation": "recognize_compatible_setup", "claim": "A pessoa reconhece uma configuração compatível em uma representação.", "acceptablePerformanceForms": ["diagram_selection_with_reason"], "taskFeatures": ["instrument_layout_visible", "target_measurement_declared", "plausible_unsafe_alternatives"], "criterion": { "observable": "Configuração representada e justificativa escolhidas.", "successCondition": "Função, faixa e bornes são compatíveis com a medição declarada." }, "fidelityRequirementRef": null },
+          { "id": "ev-execute-setup", "targetUnitRefs": ["measurement-function", "measurement-range", "lead-terminal"], "operation": "execute_instrument_setup", "claim": "A pessoa prepara fisicamente o instrumento e confirma seus limites.", "acceptablePerformanceForms": ["supervised_physical_performance"], "taskFeatures": ["physical_instrument", "supervisor_observation", "safety_checklist"], "criterion": { "observable": "Preparação física observada pelo supervisor.", "successCondition": "A preparação segue o procedimento e os limites do instrumento antes da medição." }, "fidelityRequirementRef": "fid-physical-setup" }
+        ],
+        "practiceVariationRequirements": [
+          { "id": "var-setup", "evidenceRequirementRef": "ev-recognize-setup", "dimensions": ["target_voltage", "instrument_layout", "available_ranges"], "rationale": "Trocar apenas cores ou nomes não adiciona evidência sobre a decisão." }
+        ],
+        "fidelityRequirements": [
+          { "id": "fid-physical-setup", "targetPerformanceForms": ["supervised_physical_performance"], "offeredPerformanceForms": ["diagram_selection_with_reason"], "unrepresentedAspects": ["manual_connection", "equipment_inspection", "supervisor_observation"], "rationale": "O AraLearn pode apoiar reconhecimento e decisão, mas não certificar execução física segura." }
+        ],
+        "representationRequirements": [
+          { "id": "rep-instrument-layout", "targetUnitRefs": ["measurement-function", "measurement-range", "lead-terminal"], "structures": ["instrument_diagram", "spatial_mapping"], "cognitiveOperations": ["recognize_compatible_setup"], "acceptableFits": ["canonical"], "rationale": "Texto puro não preserva a correspondência espacial necessária." }
+        ],
+        "assumptions": ["Nenhum exercício do aplicativo substitui supervisão e procedimento de segurança."],
+        "limitations": ["Reconhecimento em diagrama não equivale à execução no instrumento."]
+      },
+      "expectations": { "recognitionEvidenceRef": "ev-recognize-setup", "executionEvidenceRef": "ev-execute-setup", "fidelityRequirementRef": "fid-physical-setup" }
+    }
+  ],
+  "canonicalLifecycle": {
+    "analysisScenarioRef": "computing-short-high-novelty",
+    "parameterAssignments": [
+      {
+        "contract": "DesignParameterAssignment@1",
+        "modelVersion": "1.0.0",
+        "id": "assignment-novelty-auto",
+        "version": "1.0.0",
+        "definitionRef": { "id": "new_units_per_theory_step_ceiling", "version": "1.0.0" },
+        "scope": { "kind": "microsequence", "ref": "ms-computing-transport" },
+        "mode": "auto",
+        "value": { "kind": "integer", "value": 2 },
+        "authority": { "kind": "gpt", "actorRef": null, "locked": false },
+        "rationale": "O GPT resolveu e persistiu o valor a partir da análise corrente; a ausência de assignment representaria Auto ainda não resolvido neste escopo.",
+        "provenanceRefs": ["analysis-computing-transport@1.0.0"]
+      },
+      {
+        "contract": "DesignParameterAssignment@1",
+        "modelVersion": "1.0.0",
+        "id": "assignment-explanation-manual",
+        "version": "1.0.0",
+        "definitionRef": { "id": "applicable_explanation_requirement_refs", "version": "1.0.0" },
+        "scope": { "kind": "microsequence", "ref": "ms-computing-transport" },
+        "mode": "manual_override",
+        "value": { "kind": "set", "values": ["exp-process-delivery", "exp-transport-choice"] },
+        "authority": { "kind": "author", "actorRef": "author:fixture", "locked": false },
+        "rationale": "O autor confirmou explicitamente os requisitos aplicáveis.",
+        "provenanceRefs": ["author-decision:explanation:1"]
+      },
+      {
+        "contract": "DesignParameterAssignment@1",
+        "modelVersion": "1.0.0",
+        "id": "assignment-fallback-lock",
+        "version": "1.0.0",
+        "definitionRef": { "id": "representation_fallback_policy", "version": "1.0.0" },
+        "scope": { "kind": "course", "ref": "course-research-a" },
+        "mode": "research_lock",
+        "value": { "kind": "enum", "value": "allow_substitute_with_limitation" },
+        "authority": { "kind": "research_protocol", "actorRef": "research-protocol:condition-a", "locked": true },
+        "rationale": "A condição experimental permite substitute somente com limitação registrada.",
+        "provenanceRefs": ["research-protocol:condition-a"]
+      }
+    ],
+    "effectiveSnapshot": {
+      "contract": "EffectiveDesignSnapshot@1",
+      "modelVersion": "1.0.0",
+      "id": "snapshot-computing-transport-1",
+      "version": "1.0.0",
+      "scope": { "kind": "microsequence", "ref": "ms-computing-transport" },
+      "analysisRef": { "id": "analysis-computing-transport", "version": "1.0.0" },
+      "parameterCatalogVersion": "1.0.0",
+      "basedOnWorkspaceRevision": 7,
+      "scopeEntityVersion": 3,
+      "resolutionVersion": "1.0.0",
+      "resolutionPath": [
+        { "kind": "workspace", "ref": "workspace-research-a" },
+        { "kind": "course", "ref": "course-research-a" },
+        { "kind": "module", "ref": "module-transport" },
+        { "kind": "lesson", "ref": "lesson-transport" },
+        { "kind": "microsequence", "ref": "ms-computing-transport" }
+      ],
+      "resolvedValues": [
+        {
+          "definitionRef": { "id": "new_units_per_theory_step_ceiling", "version": "1.0.0" },
+          "value": { "kind": "integer", "value": 2 },
+          "resolution": { "assignmentMode": "auto", "inheritance": "local", "assignmentRef": { "id": "assignment-novelty-auto", "version": "1.0.0" }, "sourceScope": { "kind": "microsequence", "ref": "ms-computing-transport" }, "rationale": "A coordenação explícita será decomposta em passos menores.", "provenanceRefs": ["analysis-computing-transport@1.0.0"] }
+        },
+        {
+          "definitionRef": { "id": "applicable_explanation_requirement_refs", "version": "1.0.0" },
+          "value": { "kind": "set", "values": ["exp-process-delivery", "exp-transport-choice"] },
+          "resolution": { "assignmentMode": "manual_override", "inheritance": "local", "assignmentRef": { "id": "assignment-explanation-manual", "version": "1.0.0" }, "sourceScope": { "kind": "microsequence", "ref": "ms-computing-transport" }, "rationale": "Override confirmado no próprio escopo.", "provenanceRefs": ["author-decision:explanation:1"] }
+        },
+        {
+          "definitionRef": { "id": "representation_fallback_policy", "version": "1.0.0" },
+          "value": { "kind": "enum", "value": "allow_substitute_with_limitation" },
+          "resolution": { "assignmentMode": "research_lock", "inheritance": "inherited", "assignmentRef": { "id": "assignment-fallback-lock", "version": "1.0.0" }, "sourceScope": { "kind": "course", "ref": "course-research-a" }, "rationale": "O lock do curso foi herdado sem criar um assignment artificial na microssequência.", "provenanceRefs": ["research-protocol:condition-a"] }
+        }
+      ],
+      "resourceSetRefs": [{ "id": "resource-set-condition-a", "version": "1.0.0" }],
+      "frozenAt": "2026-08-15T00:00:00Z"
+    },
+    "resourceSets": [
+      {
+        "contract": "ResourceSet@1",
+        "modelVersion": "1.0.0",
+        "id": "resource-set-condition-a",
+        "version": "1.0.0",
+        "scope": { "kind": "course", "ref": "course-research-a" },
+        "packages": [
+          { "packageId": "aralearn.resource.paragraph", "version": "1.0.0" },
+          { "packageId": "aralearn.resource.relation_map", "version": "1.0.0" },
+          { "packageId": "aralearn.response.choice", "version": "1.0.0" }
+        ],
+        "resolvedCatalogVersion": "1.0.0",
+        "facetBasis": { "catalogVersion": "1.0.0", "families": ["exposition", "response"], "disciplines": ["computing"], "structures": ["prose", "relation"], "cognitiveOperations": ["explain", "discriminate"], "practiceModalities": ["selected_response"] },
+        "selectionConstraints": { "allowedFits": ["canonical", "versatile", "substitute"], "allowEmbeddedPractice": false, "allowResponsePackages": true, "onNoAdequateRepresentation": "record_limitation" },
+        "provenanceRefs": ["research-protocol:condition-a", "catalog-query:condition-a:1"]
+      }
+    ],
+    "materializationManifest": {
+      "contract": "MaterializationManifest@1",
+      "modelVersion": "1.0.0",
+      "id": "manifest-computing-transport-1",
+      "version": "1.0.0",
+      "scope": { "kind": "microsequence", "ref": "ms-computing-transport" },
+      "analysisRef": { "id": "analysis-computing-transport", "version": "1.0.0" },
+      "effectiveSnapshotRef": { "id": "snapshot-computing-transport-1", "version": "1.0.0" },
+      "blueprintRef": { "id": "blueprint-computing-transport", "version": "2" },
+      "materializedWorkspaceRevision": 8,
+      "scopeEntityVersion": 4,
+      "contentHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "blueprintHash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "createdAt": "2026-08-15T00:05:00Z",
+      "resourceSetRefs": [{ "id": "resource-set-condition-a", "version": "1.0.0" }],
+      "plannedSteps": [
+        { "stepRef": "theory-process-delivery", "kind": "theory", "unitRefs": ["process", "port", "socket"] },
+        { "stepRef": "theory-transport-choice", "kind": "theory", "unitRefs": ["tcp", "udp"] },
+        { "stepRef": "practice-transport-choice", "kind": "practice", "unitRefs": ["tcp", "udp"] }
+      ],
+      "materializedSteps": [
+        { "stepRef": "theory-process-delivery", "kind": "theory", "unitRefs": ["process", "port", "socket"], "artifactRefs": ["card:theory:1"] },
+        { "stepRef": "theory-transport-choice", "kind": "theory", "unitRefs": ["tcp", "udp"], "artifactRefs": ["card:theory:2"] },
+        { "stepRef": "practice-transport-choice", "kind": "practice", "unitRefs": ["tcp", "udp"], "artifactRefs": ["card:practice:1", "card:practice:2", "card:practice:3"] }
+      ],
+      "explanationCoverage": [
+        { "requirementRef": "exp-process-delivery", "status": "developed", "evidenceRefs": ["card:theory:1"] },
+        { "requirementRef": "exp-transport-choice", "status": "mentioned", "evidenceRefs": ["card:theory:2"] }
+      ],
+      "evidenceCoverage": [
+        { "requirementRef": "ev-process-delivery", "status": "missing", "practiceOpportunityRefs": [], "evidenceRefs": [] },
+        { "requirementRef": "ev-transport-choice", "status": "partial", "practiceOpportunityRefs": ["practice-a", "practice-a-cosmetic", "practice-b"], "evidenceRefs": ["card:practice:1", "card:practice:2", "card:practice:3"] }
+      ],
+      "practiceOpportunities": [
+        { "id": "practice-a", "evidenceRequirementRefs": ["ev-transport-choice"], "semanticSignature": "delivery_required|latency_flexible|loss_intolerant", "variation": { "kind": "vector", "components": [{ "dimension": "scenario_label", "value": "file transfer", "unit": "category" }] }, "artifactRefs": ["card:practice:1"] },
+        { "id": "practice-a-cosmetic", "evidenceRequirementRefs": ["ev-transport-choice"], "semanticSignature": "delivery_required|latency_flexible|loss_intolerant", "variation": { "kind": "vector", "components": [{ "dimension": "scenario_label", "value": "document transfer", "unit": "category" }] }, "artifactRefs": ["card:practice:2"] },
+        { "id": "practice-b", "evidenceRequirementRefs": ["ev-transport-choice"], "semanticSignature": "delivery_best_effort|latency_strict|loss_tolerant", "variation": { "kind": "vector", "components": [{ "dimension": "latency_tolerance", "value": "strict", "unit": "category" }] }, "artifactRefs": ["card:practice:3"] }
+      ],
+      "resourceSelections": [
+        { "id": "selection-prose", "stepRef": "theory-process-delivery", "package": { "packageId": "aralearn.resource.paragraph", "version": "1.0.0" }, "authorizedByResourceSetRef": { "id": "resource-set-condition-a", "version": "1.0.0" }, "role": "exposition", "fit": "versatile", "rationale": "A prosa desenvolve o mecanismo com exemplo curto.", "limitations": [] },
+        { "id": "selection-prose-transport", "stepRef": "theory-transport-choice", "package": { "packageId": "aralearn.resource.paragraph", "version": "1.0.0" }, "authorizedByResourceSetRef": { "id": "resource-set-condition-a", "version": "1.0.0" }, "role": "exposition", "fit": "versatile", "rationale": "A prosa contrasta os requisitos dos dois serviços.", "limitations": [] },
+        { "id": "selection-choice", "stepRef": "practice-transport-choice", "package": { "packageId": "aralearn.response.choice", "version": "1.0.0" }, "authorizedByResourceSetRef": { "id": "resource-set-condition-a", "version": "1.0.0" }, "role": "response", "fit": "canonical", "rationale": "A resposta exige discriminar opções pelo requisito do cenário.", "limitations": [] }
+      ],
+      "materializedResources": [
+        { "id": "materialized-prose", "selectionRef": "selection-prose", "artifactRef": "card:theory:1", "package": { "packageId": "aralearn.resource.paragraph", "version": "1.0.0" }, "role": "exposition" },
+        { "id": "materialized-prose-transport", "selectionRef": "selection-prose-transport", "artifactRef": "card:theory:2", "package": { "packageId": "aralearn.resource.paragraph", "version": "1.0.0" }, "role": "exposition" },
+        { "id": "materialized-choice-1", "selectionRef": "selection-choice", "artifactRef": "card:practice:1", "package": { "packageId": "aralearn.response.choice", "version": "1.0.0" }, "role": "response" },
+        { "id": "materialized-choice-2", "selectionRef": "selection-choice", "artifactRef": "card:practice:2", "package": { "packageId": "aralearn.response.choice", "version": "1.0.0" }, "role": "response" },
+        { "id": "materialized-choice-3", "selectionRef": "selection-choice", "artifactRef": "card:practice:3", "package": { "packageId": "aralearn.response.choice", "version": "1.0.0" }, "role": "response" }
+      ],
+      "derivedMetrics": [
+        { "id": "card_count", "kind": "derived", "value": 5, "unit": "card", "scope": { "kind": "microsequence", "ref": "ms-computing-transport" }, "denominator": { "count": 1, "unit": "materialization_manifest", "refs": ["manifest-computing-transport-1"] }, "algorithm": { "id": "count_materialized_cards", "version": "1.0.0", "inputRefs": ["materialization:cards"] } },
+        { "id": "character_count", "kind": "derived", "value": 812, "unit": "unicode_code_point", "scope": { "kind": "microsequence", "ref": "ms-computing-transport" }, "denominator": { "count": 1, "unit": "materialization_manifest", "refs": ["manifest-computing-transport-1"] }, "algorithm": { "id": "count_unicode_code_points", "version": "1.0.0", "inputRefs": ["materialization:text_fields"] } }
+      ],
+      "assumptions": ["A escolha não materializada permanece distinta do uso efetivo."],
+      "limitations": ["As contagens descrevem esta materialização e não demonstram aprendizagem."]
+    }
+  }
+}

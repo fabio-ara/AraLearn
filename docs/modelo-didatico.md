@@ -97,6 +97,19 @@ Não se demonstrou que essa unidade seja superior a toda alternativa; sua
 coerência e utilidade precisam ser avaliadas em cursos, públicos e domínios
 concretos.
 
+### Parte como coordenação operacional
+
+Em cursos extensos, a autoria pode reunir microssequências em **Partes** para
+que planejamento, construção, auditoria, reparo e reauditoria permaneçam
+manejáveis. A divisão considera coesão semântica, dependências, quantidade e
+complexidade das microssequências e carga provável de revisão humana.
+
+Parte não aparece na hierarquia acima porque não é unidade pedagógica. Também
+não é definida por duração, número de cards ou uma quantidade universal de
+blocos por curso. É uma unidade operacional de coordenação entre pessoa e
+modelo; qualquer contagem histórica funciona, no máximo, como heurística
+configurável a ser avaliada.
+
 ## Diagnóstico contextual antes da construção
 
 **Problema.** Um pedido de autoria não contém necessariamente tudo o que muda o
@@ -155,6 +168,55 @@ responsável por confirmar o público, julgar as hipóteses, revisar fontes e
 aprovar decisões. O sistema pode tornar inconsistências e lacunas observáveis,
 mas não mede domínio individual, não produz sozinho diagnóstico de domínio, não
 certifica adequação disciplinar e não prediz resultados de aprendizagem.
+
+## Análise instrucional e parâmetros locais
+
+O diagnóstico contextual informa a análise de cada microssequência, mas não a
+substitui. A proposta de desenho parametrizado separa o percurso abaixo:
+
+```text
+fontes e objetivo → análise instrucional → parâmetros efetivos
+  → seleção e composição de resources → blueprint contextual
+  → teoria, prática e cards → manifesto de materialização
+```
+
+A **unidade de análise instrucional** é um recorte editorial ligado a fontes,
+objetivo e relações. Ela não é automaticamente um componente de conhecimento
+validado: componentes de conhecimento e eventos de aprendizagem não são
+observados diretamente, e sua granularidade depende da análise e da população
+([Koedinger et al. (2012)](referencias.md#ref-koedinger2012kli)).
+Do mesmo modo, classificar uma unidade como presumidamente nova, parcial,
+integrada ou desconhecida descreve uma hipótese para o desenho, não o domínio
+de uma pessoa.
+
+Quando unidades precisam ser processadas juntas, a análise conserva um
+conjunto de coordenação e suas relações. A cardinalidade é uma descrição do
+conjunto, não uma medida de carga cognitiva ou dificuldade. Interatividade de
+elementos depende da estrutura e do conhecimento prévio, e sua estimação é
+aproximada ([Chen et al. (2023)](referencias.md#ref-chen2023elementinteractivity)).
+
+Parâmetros podem variar por microssequência. O workspace pode fornecer defaults
+e políticas, mas não uma pedagogia global calibrável. A autoria pode manter um
+valor automático, aplicar uma alteração estruturada ou, em pesquisa, respeitar
+um lock. Números são admitidos somente com unidade e denominador claros; muitas
+decisões precisam continuar como categorias, conjuntos, vetores ou relações:
+
+- requisitos de explicação vinculados a conceitos e relações;
+- alvo, operação, tarefa e forma de desempenho esperada;
+- dimensões de variação e invariantes entre oportunidades de prática;
+- formas de apoio e sua retirada;
+- fidelidade e limitações do ambiente representado;
+- conjunto versionado de resources disponíveis.
+
+O **blueprint pedagógico v2** permanece o plano contextual que transforma essa
+análise em passos concretos. Ele não é substituído por um score nem por um
+perfil global. O manifesto posterior registra o que realmente foi produzido,
+inclusive cobertura e divergências, e só então deriva contagens de cards,
+palavras, caracteres e resources.
+
+Os contratos correspondentes são, neste estágio, uma proposta conceitual ainda
+não persistida. Sua fundamentação, seu estatuto e seus limites estão em
+[Desenho instrucional parametrizado](desenho-instrucional-parametrizado.md).
 
 ## Profundidade sem condensação
 
@@ -488,6 +550,12 @@ Uma microssequência pode ser auditada pelas seguintes perguntas:
 10. há retomada quando retenção ou discriminação posterior são relevantes?
 11. o card permanece autocontido nos dados particulares necessários à tarefa?
 12. hipóteses, decisões e resultados estão descritos sem alegações indevidas?
+13. unidades presumidas novas e relações simultâneas estão explícitas sem ser
+    apresentadas como medida de carga?
+14. cada prática exige a operação pretendida e representa uma oportunidade
+    semanticamente distinta quando conta como variação?
+15. a seleção de resource respeita a disponibilidade autorizada e registra
+    limitações quando não há representação adequada?
 
 ## Exemplo abstrato de progressão
 
@@ -513,6 +581,8 @@ progressão, não uma cota de produção.
   e seus limites.
 - O [Quadro teórico](quadro-teorico.md) converte decisões em proposições
   examináveis.
+- O [Desenho instrucional parametrizado](desenho-instrucional-parametrizado.md)
+  fundamenta unidades, parâmetros e contratos conceituais.
 - O [Glossário de construtos](glossario-construtos.md) distingue conceitos
   teóricos, resultados e termos do produto.
 - A [Fundamentação pedagógica dos recursos](fundamentacao-pedagogica-dos-resources.md)

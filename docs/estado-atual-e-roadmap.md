@@ -121,6 +121,24 @@ contratos escolhidos, valida o card e pode auditar a adequação da
 representação. Continuidade estruturada conserva brief, planejamento, decisões,
 mandatos e achados entre sessões sem armazenar o transcript inteiro.
 
+## Proposta conceitual em avaliação
+
+Uma análise bibliográfica focal fundamenta uma proposta versionada para
+análise instrucional, parâmetros por escopo, valores efetivos, manifesto de
+materialização e `ResourceSet`. A proposta preserva unidades e relações não
+escalares, admite números somente com unidade e denominador explícitos e separa
+disponibilidade, seleção e materialização de resources.
+
+Essa proposta ainda **não** é persistida no IndexedDB ou PostgreSQL, não é
+operada pelo MCP ou pela Action e não aparece na interface. Seus schemas e
+fixtures verificam coerência estrutural, não suporte de produção nem validade
+educacional. O blueprint pedagógico v2 permanece contextual por
+microssequência; não foi substituído por calibração global. Parte permanece
+unidade operacional de coordenação, sem cota fixa de cards.
+
+O fundamento, o fluxo e os limites estão em [Desenho instrucional
+parametrizado](desenho-instrucional-parametrizado.md).
+
 ## O que foi verificado tecnicamente
 
 A suíte automatizada cobre, entre outros aspectos:
@@ -134,6 +152,8 @@ A suíte automatizada cobre, entre outros aspectos:
 - concorrência, idempotência e autorização relacional;
 - geração dos pacotes de integração e do aplicativo Android;
 - integridade das fixtures do catálogo.
+- forma e referências internas da proposta conceitual de desenho instrucional
+  em corpus multidomínio, sem integração aos contratos de produção.
 
 Esses testes sustentam afirmações de conformidade da implementação. Não
 demonstram que uma microssequência produz aprendizagem maior, que um diagrama é
@@ -147,6 +167,9 @@ trabalho de autoria.
 Ainda não há evidência empírica suficiente para atribuir ganhos de aprendizagem
 ao AraLearn. A relação entre microteoria, prática, retomada e compreensão é uma
 hipótese de design apoiada por literatura, não um resultado causal já medido.
+As unidades, limites e parâmetros propostos para a autoria também são
+operacionalizações do AraLearn e hipóteses a avaliar; suas contagens não medem
+carga cognitiva, domínio, fidelidade ou qualidade.
 
 ### Cobertura disciplinar
 
@@ -192,6 +215,8 @@ mas o crescimento do catálogo e de workspaces precisa ser medido continuamente.
 - medir cobertura e diversidade das práticas;
 - comparar a representação escolhida com convenções da área;
 - observar transferência entre o que foi explicado e o que foi praticado.
+- testar se unidades, relações e requisitos explícitos revelam compressão e
+  desalinhamento sem induzir fragmentação ou falsa precisão.
 
 ### Prioridade 3 — autoria e revisão
 
@@ -201,6 +226,11 @@ mas o crescimento do catálogo e de workspaces precisa ser medido continuamente.
 - estudar confiança, contestação e reversão das sugestões do modelo;
 - verificar se observações de estudantes apoiam correções sem se tornarem
   vigilância comportamental.
+- promover os contratos conceituais somente depois de definir persistência,
+  resolução por escopo, concorrência, autorização, offline e linguagem simples
+  na interface;
+- avaliar `ResourceSet` com disponibilidade, seleção e uso real auditados
+  separadamente, inclusive quando não houver representação adequada.
 
 ### Prioridade 4 — infraestrutura
 
@@ -215,6 +245,12 @@ mas o crescimento do catálogo e de workspaces precisa ser medido continuamente.
 
 - A organização em microssequências melhora a retomada depois de interrupções?
 - A combinação entre microteoria e práticas variadas reduz premissas ocultas?
+- Limites locais de novidade e coordenação ajudam a encontrar compressão sem
+  se transformar em scores artificiais?
+- Requisitos de explicação e evidência são compreendidos e corrigidos por
+  autores de diferentes áreas?
+- `ResourceSet` permite condições reproduzíveis sem produzir equivalência
+  falsa entre representações?
 - Resources especializados melhoram a interpretação de estruturas complexas?
 - A autoria assistida reduz trabalho mecânico sem reduzir a responsabilidade
   editorial humana?

@@ -41,15 +41,18 @@ até as proposições avaliáveis:
 
 1. [Modelo didático](modelo-didatico.md) — microssequência, microteoria,
    prática e progressão;
-2. [Revisão de literatura](revisao-de-literatura.md) — bases, controvérsias e
+2. [Desenho instrucional parametrizado](desenho-instrucional-parametrizado.md)
+   — unidades defensáveis, parâmetros locais, `ResourceSet` e limites de
+   interpretação;
+3. [Revisão de literatura](revisao-de-literatura.md) — bases, controvérsias e
    lacunas;
-3. [Quadro teórico](quadro-teorico.md) — construtos, mecanismos e relações
+4. [Quadro teórico](quadro-teorico.md) — construtos, mecanismos e relações
    propostas;
-4. [Fundamentação pedagógica dos recursos](fundamentacao-pedagogica-dos-resources.md)
+5. [Fundamentação pedagógica dos recursos](fundamentacao-pedagogica-dos-resources.md)
    — quando uma representação visual é justificada;
-5. [Estado de estudo não punitivo](estado-de-estudo-nao-punitivo.md) — retomada,
+6. [Estado de estudo não punitivo](estado-de-estudo-nao-punitivo.md) — retomada,
    autorregulação e dados que deliberadamente não são coletados;
-6. [Observações pedagógicas](observacoes-pedagogicas.md) — feedback situado sem
+7. [Observações pedagógicas](observacoes-pedagogicas.md) — feedback situado sem
    converter interação em vigilância.
 
 Para consulta, use o [glossário de construtos](glossario-construtos.md). A
@@ -88,13 +91,15 @@ Comece pela tarefa em linguagem comum e só depois avance para os protocolos:
 
 1. [Criar cursos pelo chat](criar-cursos-pelo-chat.md) — planejar, construir,
    auditar, reparar e continuar;
-2. [Autoria e publicação do catálogo](autoria-do-catalogo.md) — workspace,
+2. [Desenho instrucional parametrizado](desenho-instrucional-parametrizado.md)
+   — análise, parâmetros e manifesto propostos antes da implementação;
+3. [Autoria e publicação do catálogo](autoria-do-catalogo.md) — workspace,
    revisão humana, submissão e publicação;
-3. [Assistência por modelo de linguagem](assistencia-por-ia.md) — seleção,
+4. [Assistência por modelo de linguagem](assistencia-por-ia.md) — seleção,
    conversa, versões locais, autoridade e limites;
-4. [Fluxos, instruções e contratos](fluxos-prompts-e-contratos.md) — como texto
+5. [Fluxos, instruções e contratos](fluxos-prompts-e-contratos.md) — como texto
    livre é separado de operações estruturadas;
-5. [Autoria por Model Context Protocol](autoria-mcp.md) — descoberta de
+6. [Autoria por Model Context Protocol](autoria-mcp.md) — descoberta de
    ferramentas, autenticação, chamadas e robustez.
 
 O [plano de controle e artefatos](plano-de-controle-e-artefatos.md) aprofunda a
@@ -139,6 +144,7 @@ abertas, sem tratar teste de software como evidência de aprendizagem.
 | [Princípios editoriais](principios-editoriais.md) | critérios de clareza, profundidade e evidência |
 | [Glossário técnico](glossario-tecnico.md) | termos de computação e contratos |
 | [Glossário de construtos](glossario-construtos.md) | termos pedagógicos e metodológicos |
+| [Desenho instrucional parametrizado](desenho-instrucional-parametrizado.md) | análise científica e proposta conceitual de parâmetros e contratos |
 | [Contrato público](aralearn-contract.md) | formatos canônicos de conteúdo |
 | [Recursos de card](recursos-de-card.md) | catálogo de representações e arquitetura de packages |
 | [Matriz de conformidade técnica](matriz-conformidade-tecnica.md) | afirmação técnica e ponto de verificação |

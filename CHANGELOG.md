@@ -6,6 +6,14 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 
 ### Added
 
+- proposta conceitual versionada de análise instrucional, definições e
+  atribuições de parâmetros, valores efetivos, manifesto de materialização e
+  `ResourceSet`, acompanhada de corpus multidomínio e sem integração prematura
+  à persistência, ao MCP ou à interface;
+- capítulo de desenho instrucional parametrizado distingue construtos
+  científicos, operacionalizações do AraLearn, propriedades técnicas e
+  hipóteses empíricas, preservando conjuntos, vetores e relações quando um
+  score apagaria informação;
 - o diagnóstico pedagógico contextual passa a integrar a autoria estrutural:
   condições de aprendizagem, exigências do conteúdo,
   dificuldades previstas e respostas de desenho ficam vinculadas por
@@ -19,6 +27,13 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 
 ### Changed
 
+- o planejamento proposto separa fontes e objetivo, análise instrucional,
+  parâmetros, disponibilidade e seleção de resources, blueprint contextual e
+  materialização; cards, palavras, caracteres e quantidade de resources passam
+  a ser descritos apenas como métricas derivadas;
+- `ResourceSet` separa o conjunto exato de `package@version` disponível da
+  seleção local e das instâncias realmente materializadas, sem tratar
+  `canonical`, `versatile` e `substitute` como equivalência;
 - a autoria passa a consultar primeiro o contexto disponível, perguntar somente
   quando a informação ausente muda materialmente o desenho e persistir apenas
   contexto e decisões aprovadas, sem persistir conversa ou raciocínio privado;
