@@ -37,6 +37,7 @@ function renderTopbar({
   backAction = "go-back",
   subtitle = "",
   centerHtml = "",
+  hideTitle = false,
   actions = []
 }) {
   const actionMarkup = actions.length
@@ -62,6 +63,16 @@ function renderTopbar({
       })
       .join("")
     : '<div class="topbar-space"></div>';
+  const headingMarkup = centerHtml
+    ? '<div class="topbar-mode-slot">' + centerHtml + "</div>"
+    : hideTitle
+      ? '<div class="topbar-heading" aria-hidden="true"></div>'
+      : '<div class="topbar-heading">' +
+        '<div class="topbar-title">' +
+        escapeHtml(title) +
+        "</div>" +
+        (subtitle ? '<div class="topbar-subtitle tiny muted">' + escapeHtml(subtitle) + "</div>" : "") +
+        "</div>";
 
   return (
     '<header class="topbar lesson-topbar navigation-topbar' +
@@ -77,14 +88,7 @@ function renderTopbar({
         renderUiIcon("arrow-left", "home-tab-icon") +
         "</button>"
       : '<div class="topbar-space"></div>') +
-    (centerHtml
-      ? '<div class="topbar-mode-slot">' + centerHtml + "</div>"
-      : '<div class="topbar-heading">' +
-        '<div class="topbar-title">' +
-        escapeHtml(title) +
-        "</div>" +
-        (subtitle ? '<div class="topbar-subtitle tiny muted">' + escapeHtml(subtitle) + "</div>" : "") +
-        "</div>") +
+    headingMarkup +
     '<div class="lesson-top-actions">' +
     actionMarkup +
     "</div>" +
@@ -92,9 +96,10 @@ function renderTopbar({
   );
 }
 
-function renderEntityContextTitle(title) {
+function renderEntityContextTitle(title, { visuallyHidden = false } = {}) {
   return (
-    '<h1 class="entity-context-title" title="' + escapeHtml(title) + '">' +
+    '<h1 class="' + (visuallyHidden ? "visually-hidden" : "entity-context-title") + '"' +
+    (visuallyHidden ? "" : ' title="' + escapeHtml(title) + '"') + ">" +
     '<span>' + escapeHtml(title) + "</span></h1>"
   );
 }
@@ -1537,6 +1542,7 @@ function renderMicrosequenceScreen({ course, lesson, microsequence, cards, selec
       canGoBack: true,
       backTitle: "Voltar para a lição",
       centerHtml: modeSwitcher,
+      hideTitle: true,
       actions: [
         {
           action: "open-central",
@@ -1546,9 +1552,9 @@ function renderMicrosequenceScreen({ course, lesson, microsequence, cards, selec
       ]
     }) +
     '<main class="screen-content microsequence-generator-screen">' +
-    (modeSwitcher
-      ? renderEntityContextTitle(course?.title || course?.id || "Curso")
-      : "") +
+    renderEntityContextTitle(course?.title || course?.id || "Curso", {
+      visuallyHidden: true
+    }) +
     renderAuthoringStatus(editorSupport, cardMode) +
     '<section class="workbench-surface' + (authoringMode ? " is-editing" : "") + '">' +
     '<div class="workbench-surface-body">' +

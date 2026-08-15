@@ -100,6 +100,8 @@ async function renderLevel(page, {
     const cardContent = document.querySelector(".card-sheet-content");
     const cardTitle = document.querySelector(".runtime-card-title");
     const firstParagraph = cardContent?.querySelector(".runtime-markdown-paragraph");
+    const screenContent = document.querySelector(".microsequence-generator-screen");
+    const workbench = document.querySelector(".workbench-surface");
     const cardRectBefore = cardSheet?.getBoundingClientRect();
     if (cardContent) {
       const overflowProbe = document.createElement("div");
@@ -130,6 +132,11 @@ async function renderLevel(page, {
       headerObservationCount: header.querySelectorAll('[data-action="open-context-observation"]').length,
       observationInSummary: Boolean(observation?.closest(".entity-summary-wrap")),
       contextTitle: document.querySelector(".entity-context-title")?.textContent.trim() || "",
+      accessibleContextTitle: screenContent?.querySelector("h1.visually-hidden")?.textContent.trim() || "",
+      visibleContextTitleCount: screenContent?.querySelectorAll(".entity-context-title").length || 0,
+      workbenchTopDelta: screenContent && workbench
+        ? workbench.getBoundingClientRect().top - screenContent.getBoundingClientRect().top
+        : null,
       topbarTitle: header.querySelector(".topbar-title")?.textContent.trim() || "",
       workbenchGutter: document.querySelector(".microsequence-workbench-screen > .screen-content")
         ? getComputedStyle(document.querySelector(".microsequence-workbench-screen > .screen-content")).scrollbarGutter
@@ -213,7 +220,7 @@ test("dois modos usam a app bar e somente leitura conserva o título nela", asyn
   expect(readonly.observationInSummary).toBe(true);
 });
 
-test("o card delega a rolagem sem reservar uma coluna externa", async ({ page }) => {
+test("o card delega a rolagem e remove o título visual redundante", async ({ page }) => {
   await page.goto("/");
   await page.setViewportSize({ width: 320, height: 760 });
   const result = await renderLevel(page, { level: "card", canComment: false });
@@ -222,7 +229,23 @@ test("o card delega a rolagem sem reservar uma coluna externa", async ({ page })
   expect(result.workbenchFooterPaddingRight).toBe("0px");
   expect(result.cardRectStable).toBe(true);
   expect(result.modeCount).toBe(3);
-  expect(result.contextTitle).toBe("AraLearn: Catálogo de lógica proposicional e matemática discreta");
+  expect(result.contextTitle).toBe("");
+  expect(result.visibleContextTitleCount).toBe(0);
+  expect(result.accessibleContextTitle).toBe("AraLearn: Catálogo de lógica proposicional e matemática discreta");
+  expect(Math.abs(result.workbenchTopDelta)).toBeLessThanOrEqual(1);
+  await expect(page.getByRole("heading", {
+    name: "AraLearn: Catálogo de lógica proposicional e matemática discreta"
+  })).toHaveCount(1);
+
+  const readonly = await renderLevel(page, {
+    level: "card",
+    canEdit: false,
+    canAi: false,
+    canComment: false
+  });
+  expect(readonly.topbarTitle).toBe("");
+  expect(readonly.visibleContextTitleCount).toBe(0);
+  expect(readonly.accessibleContextTitle).toBe("AraLearn: Catálogo de lógica proposicional e matemática discreta");
 });
 
 test("título e prosa do card compartilham o mesmo eixo com scrollbar estável", async ({ page }) => {

@@ -108,9 +108,10 @@ Falha de escrita mantém a superfície de edição e seu texto. Edição textual
 ## 6. Edição situada
 
 **Visualizar**, **Editar** e **Assistência por IA** pertencem à superfície montada
-e ocupam o centro da barra superior quando disponíveis. O título contextual é
-mantido no início do conteúdo. Voltar permanece à esquerda e o painel global,
-identificado por um ícone de áreas, à direita.
+e ocupam o centro da barra superior quando disponíveis. No leitor de cards, o
+nome do curso não cria outra linha visual: permanece apenas como contexto
+acessível. Voltar permanece à esquerda e o painel global, identificado por um
+ícone de áreas, à direita.
 
 ### Visualizar
 
