@@ -19,6 +19,17 @@ function largeCourseRows() {
   ), "utf8")));
 }
 
+function resourceCatalogDocument() {
+  return JSON.parse(readFileSync(new URL(
+    "../../supabase/fixtures/catalog/aralearn-catalogo-recursos-course.json",
+    import.meta.url
+  ), "utf8"));
+}
+
+function resourceCatalogRows() {
+  return contractToRelationalRows(resourceCatalogDocument());
+}
+
 async function expectSvgControlsCentered(page, selector = "button[title][aria-label]") {
   const measurements = await page.locator(selector).evaluateAll((buttons) => buttons.flatMap((button) => {
     const graphic = button.querySelector("svg, .comment-glyph");
@@ -52,9 +63,10 @@ async function mockSupabase(page, {
   includeSelectedCourse = true,
   holdPush = false,
   replicaRows = EXAMPLE_ROWS,
+  replicaDocument = null,
   initialTrailPersonalState = null
 } = {}) {
-  const revisionDocument = createExampleProjectDocument();
+  const revisionDocument = replicaDocument || createExampleProjectDocument();
   const revisionHash = await canonicalRevisionHash(revisionDocument);
   const graph = structuredClone(replicaRows);
   for (const retiredStore of [
@@ -1007,6 +1019,135 @@ test("play abre a microssequência escolhida no primeiro card sem avanço implí
   await expect(page.locator(".runtime-card-title")).toHaveText("Adjacência e incidência");
   await expect.poll(() => page.evaluate(() => globalThis.__nextCardClickCount)).toBe(0);
   expect(pageErrors).toEqual([]);
+});
+
+test("duplo clique no Play abre somente o primeiro card", async ({ page }) => {
+  await signIn(page);
+  await page.locator('[data-action="open-course"]').click();
+  await page.locator(
+    '[data-action="open-module"][data-module-key="module-teoria-dos-grafos"]'
+  ).click();
+  const lesson = page.locator(
+    '[data-action="open-lesson"][data-lesson-key="lesson-vocabulario-contagem"]'
+  );
+  if (await lesson.isVisible()) await lesson.click();
+  await openMicrosequenceOverview(page, "micro-adjacencia-incidencia");
+
+  const play = page.locator(
+    '[data-action="open-microsequence-card"]' +
+      '[data-microsequence-key="micro-adjacencia-incidencia"]' +
+      '[data-card-index="0"]'
+  );
+  const nextFound = await play.evaluate((button) => {
+    button.dispatchEvent(new MouseEvent("click", {
+      bubbles: true,
+      cancelable: true,
+      detail: 1
+    }));
+    const next = document.querySelector('[data-action="next-card"]');
+    next?.dispatchEvent(new MouseEvent("click", {
+      bubbles: true,
+      cancelable: true,
+      detail: 2
+    }));
+    return Boolean(next);
+  });
+
+  expect(nextFound).toBe(true);
+  await expect(page.locator(".runtime-card-title")).toHaveText("Adjacência e incidência");
+  await expect(page.locator(".study-continue-popup")).toHaveCount(0);
+});
+
+test("Processo BPMN abre a prática sem validar a lacuna durante o avanço", async ({ page }) => {
+  await signIn(page, {
+    replicaRows: resourceCatalogRows(),
+    replicaDocument: resourceCatalogDocument()
+  });
+  await page.locator('[data-action="open-course"]').tap();
+  await openStudyCardFromCourse(page, {
+    moduleKey: "catalog-family-family-process-state",
+    lessonKey: "catalog-family-family-process-state-lesson",
+    microsequenceKey: "catalog-aralearn-resource-bpmn-process-microsequence"
+  });
+
+  await expect(page.locator(".runtime-card-title")).toHaveText("Como ler: Processo BPMN");
+  await page.locator('[data-action="next-card"]').tap();
+
+  await expect(page.locator(".runtime-card-title")).toHaveText("Pratique: Processo BPMN");
+  await expect(page.locator("[data-text-gap-prompt='true']")).toHaveCount(0);
+  await expect(page.locator("[data-complete-feedback-block-key]")).toHaveCount(0);
+
+  await page.locator('[data-action="next-card"]').press("Enter");
+  await expect(page.locator("[data-text-gap-prompt='true']")).toBeVisible();
+  await expect(page.locator("[data-complete-feedback-block-key]")).toContainText(
+    "Complete todas as lacunas."
+  );
+});
+
+test("Processo BPMN não reaplica no novo card a ativação repetida do avanço", async ({ page }) => {
+  await signIn(page, {
+    replicaRows: resourceCatalogRows(),
+    replicaDocument: resourceCatalogDocument()
+  });
+  await page.locator('[data-action="open-course"]').click();
+  await openStudyCardFromCourse(page, {
+    moduleKey: "catalog-family-family-process-state",
+    lessonKey: "catalog-family-family-process-state-lesson",
+    microsequenceKey: "catalog-aralearn-resource-bpmn-process-microsequence",
+    interaction: "click"
+  });
+
+  await expect(page.locator(".runtime-card-title")).toHaveText("Como ler: Processo BPMN");
+  await page.locator('[data-action="next-card"]').dblclick({ delay: 40 });
+
+  await expect(page.locator(".runtime-card-title")).toHaveText("Pratique: Processo BPMN");
+  await expect(page.locator("[data-text-gap-prompt='true']")).toHaveCount(0);
+  await expect(page.locator("[data-complete-feedback-block-key]")).toHaveCount(0);
+
+  await page.locator('[data-action="next-card"]').click();
+  await expect(page.locator("[data-text-gap-prompt='true']")).toBeVisible();
+  await expect(page.locator("[data-complete-feedback-block-key]")).toContainText(
+    "Complete todas as lacunas."
+  );
+});
+
+test("Processo BPMN não reaplica dois toques rápidos ao botão do novo card", async ({ page }) => {
+  await signIn(page, {
+    replicaRows: resourceCatalogRows(),
+    replicaDocument: resourceCatalogDocument()
+  });
+  await page.locator('[data-action="open-course"]').tap();
+  await openStudyCardFromCourse(page, {
+    moduleKey: "catalog-family-family-process-state",
+    lessonKey: "catalog-family-family-process-state-lesson",
+    microsequenceKey: "catalog-aralearn-resource-bpmn-process-microsequence"
+  });
+
+  await page.locator('[data-action="next-card"]').tap();
+  await page.locator('[data-action="next-card"]').tap();
+
+  await expect(page.locator(".runtime-card-title")).toHaveText("Pratique: Processo BPMN");
+  await expect(page.locator("[data-text-gap-prompt='true']")).toHaveCount(0);
+  await expect(page.locator("[data-complete-feedback-block-key]")).toHaveCount(0);
+});
+
+test("ativação repetida mantém aberto o popup antes do avanço", async ({ page }) => {
+  await signIn(page);
+  await page.locator('[data-action="open-course"]').click();
+  await openStudyCardFromCourse(page, {
+    moduleKey: "module-teoria-dos-grafos",
+    lessonKey: "lesson-vocabulario-contagem",
+    microsequenceKey: "micro-grafo-como-conjuntos",
+    interaction: "click"
+  });
+
+  await expect(page.locator(".runtime-card-title")).toHaveText("Grafo como dois conjuntos");
+  await page.locator('[data-action="next-card"]').dblclick({ delay: 40 });
+  await expect(page.locator(".runtime-card-title")).toHaveText("Grafo como dois conjuntos");
+  await expect(page.locator(".study-continue-popup")).toBeVisible();
+
+  await page.locator('[data-action="continue-popup-next"]').click();
+  await expect(page.locator(".runtime-card-title")).toHaveText("Um grafo pequeno");
 });
 
 test("navegação de estudo permanece imediata em um curso extenso", async ({ page }) => {

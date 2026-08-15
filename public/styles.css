@@ -1832,6 +1832,9 @@ input:-webkit-autofill:focus {
   overflow-wrap: anywhere;
   word-break: break-word;
   white-space: normal;
+  overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-gutter: stable both-edges;
 }
 
 .card-sheet-content {

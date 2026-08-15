@@ -98,6 +98,8 @@ async function renderLevel(page, {
     const modeButtons = [...header.querySelectorAll('[data-action="select-entity-mode"]')];
     const cardSheet = document.querySelector(".runtime-card-sheet");
     const cardContent = document.querySelector(".card-sheet-content");
+    const cardTitle = document.querySelector(".runtime-card-title");
+    const firstParagraph = cardContent?.querySelector(".runtime-markdown-paragraph");
     const cardRectBefore = cardSheet?.getBoundingClientRect();
     if (cardContent) {
       const overflowProbe = document.createElement("div");
@@ -133,6 +135,23 @@ async function renderLevel(page, {
         ? getComputedStyle(document.querySelector(".microsequence-workbench-screen > .screen-content")).scrollbarGutter
         : "",
       cardGutter: cardContent ? getComputedStyle(cardContent).scrollbarGutter : "",
+      cardTitleGutter: cardTitle ? getComputedStyle(cardTitle).scrollbarGutter : "",
+      cardTitleTextLeft: cardTitle?.firstChild
+        ? (() => {
+          const range = document.createRange();
+          range.setStart(cardTitle.firstChild, 0);
+          range.setEnd(cardTitle.firstChild, 1);
+          return range.getBoundingClientRect().left;
+        })()
+        : null,
+      cardBodyTextLeft: firstParagraph?.firstChild
+        ? (() => {
+          const range = document.createRange();
+          range.setStart(firstParagraph.firstChild, 0);
+          range.setEnd(firstParagraph.firstChild, 1);
+          return range.getBoundingClientRect().left;
+        })()
+        : null,
       workbenchFooterPaddingRight: document.querySelector(".microsequence-workbench-screen .study-reader-footer")
         ? getComputedStyle(document.querySelector(".microsequence-workbench-screen .study-reader-footer")).paddingRight
         : "",
@@ -204,4 +223,16 @@ test("o card delega a rolagem sem reservar uma coluna externa", async ({ page })
   expect(result.cardRectStable).toBe(true);
   expect(result.modeCount).toBe(3);
   expect(result.contextTitle).toBe("AraLearn: Catálogo de lógica proposicional e matemática discreta");
+});
+
+test("título e prosa do card compartilham o mesmo eixo com scrollbar estável", async ({ page }) => {
+  await page.goto("/");
+  for (const width of [320, 360, 390, 430, 1280]) {
+    await page.setViewportSize({ width, height: 760 });
+    const result = await renderLevel(page, { level: "card", canComment: false });
+    expect(result.cardGutter).toBe("stable both-edges");
+    expect(result.cardTitleGutter).toBe("stable both-edges");
+    expect(Math.abs(result.cardTitleTextLeft - result.cardBodyTextLeft), `alinhamento do título em ${width}px`)
+      .toBeLessThanOrEqual(1);
+  }
 });

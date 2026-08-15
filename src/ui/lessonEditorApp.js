@@ -1837,10 +1837,25 @@ export function createLessonEditorApp({
     return true;
   }
 
-  function advanceToNextCard(event) {
+  function runForwardCardInteraction(event, action) {
     event?.preventDefault();
     event?.stopImmediatePropagation();
-    stepCard(1);
+
+    const clickCount = Number.isFinite(Number(event?.detail))
+      ? Math.max(0, Number(event.detail))
+      : 0;
+    // O contador nativo continua a mesma sequência mesmo quando o primeiro clique
+    // substitui o botão pelo controle equivalente do card ou popup seguinte.
+    if (clickCount > 1) {
+      return false;
+    }
+
+    action();
+    return true;
+  }
+
+  function advanceToNextCard(event) {
+    runForwardCardInteraction(event, () => stepCard(1));
   }
 
   function isCurrentContinuePopupOpen(popupEntry = getCurrentPackageFeedbackEntry()) {
@@ -1864,7 +1879,7 @@ export function createLessonEditorApp({
       return;
     }
 
-    stepCard(1);
+    runForwardCardInteraction(event, () => stepCard(1));
   }
 
   function stepCard(delta) {
