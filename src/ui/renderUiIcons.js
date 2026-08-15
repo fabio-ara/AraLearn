@@ -421,6 +421,17 @@ export function renderUiIcon(iconName, className = "ui-icon") {
     );
   }
 
+  if (iconName === "panel") {
+    return (
+      '<svg class="' + classes + '" viewBox="0 0 16 16" aria-hidden="true" focusable="false">' +
+      '<rect x="2.3" y="2.3" width="4.5" height="4.5" rx=".8" fill="none" stroke="currentColor" stroke-width="1.2"></rect>' +
+      '<rect x="9.2" y="2.3" width="4.5" height="4.5" rx=".8" fill="none" stroke="currentColor" stroke-width="1.2"></rect>' +
+      '<rect x="2.3" y="9.2" width="4.5" height="4.5" rx=".8" fill="none" stroke="currentColor" stroke-width="1.2"></rect>' +
+      '<rect x="9.2" y="9.2" width="4.5" height="4.5" rx=".8" fill="none" stroke="currentColor" stroke-width="1.2"></rect>' +
+      "</svg>"
+    );
+  }
+
   if (iconName === "drag") {
     return (
       '<svg class="' + classes + '" viewBox="0 0 16 16" aria-hidden="true" focusable="false">' +

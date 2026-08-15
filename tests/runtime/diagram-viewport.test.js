@@ -41,18 +41,22 @@ test("escala respeita visão global extrema e limite de leitura ampliada", () =>
   assert.equal(normalizeDiagramScale(8), 2.4);
 });
 
-test("shell usa um único canvas e controles somente por ícones", () => {
+test("shell usa um único canvas e controles internos somente por ícones", () => {
   const markup = renderDiagramViewportShell({
     canvasHtml: '<div data-test-canvas></div>'
   });
   assert.match(markup, /data-diagram-action="zoom-out"/u);
-  assert.match(markup, /data-diagram-action="fit"/u);
   assert.match(markup, /data-diagram-action="zoom-in"/u);
   assert.match(markup, /data-diagram-action="toggle-expanded"/u);
-  assert.match(markup, /data-diagram-expanded-controls hidden/u);
+  assert.match(markup, /class="package-diagram-frame" data-diagram-frame/u);
+  assert.match(markup, /role="group" aria-label="Controles do diagrama"/u);
+  assert.match(markup, /aria-expanded="false" disabled/u);
+  assert.equal((markup.match(/data-diagram-action=/gu) || []).length, 3);
+  assert.equal((markup.match(/ disabled/gu) || []).length, 3);
   assert.match(markup, /package-diagram-control-icon/u);
   assert.match(markup, /<dialog[^>]+data-diagram-modal/u);
   assert.equal((markup.match(/data-test-canvas/gu) || []).length, 1);
+  assert.doesNotMatch(markup, /data-diagram-action="fit"|Ajustar diagrama/u);
   assert.doesNotMatch(markup, />\s*(?:Explorar|Ajustar|Voltar ao card|\d+%)\s*</u);
   assert.doesNotMatch(markup, /data-system-detail|package-system-diagram-detail/u);
 });

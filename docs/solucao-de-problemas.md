@@ -14,7 +14,7 @@ Use esta ordem geral:
 
 1. anote a tela, a mensagem e a ação que produziu o problema;
 2. confira se o dispositivo está conectado;
-3. abra o painel pelo ícone de nuvem e verifique sessão e sincronização;
+3. abra o painel pelo ícone de áreas e verifique sessão e sincronização;
 4. tente novamente sem limpar dados;
 5. use uma ação destrutiva somente quando a seção correspondente explicar sua consequência.
 
@@ -60,7 +60,7 @@ Use esta ordem geral:
 
 **Passos.**
 
-1. Abra o painel pelo ícone de nuvem.
+1. Abra o painel pelo ícone de áreas.
 2. Entre em **Coleções** e localize o curso.
 3. Use a ação explícita **Adicionar a Trilhas** no card do curso.
 4. Volte a **Trilhas** e, se estiver conectado, sincronize.

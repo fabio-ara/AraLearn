@@ -199,8 +199,8 @@ function renderCoursesTopbar() {
     "</span>" +
     "</h1>" +
     '<div class="lesson-top-actions">' +
-    '<button class="icon-ghost" type="button" data-action="open-central" title="Abrir painel" aria-label="Abrir painel">' +
-    renderUiIcon("cloud", "home-tab-icon") +
+    '<button class="icon-ghost" type="button" data-action="open-central" title="Abrir painel AraLearn" aria-label="Abrir painel AraLearn">' +
+    renderUiIcon("panel", "home-tab-icon") +
     "</button>" +
     "</div>" +
     "</header>"

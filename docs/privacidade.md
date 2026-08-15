@@ -93,7 +93,7 @@ Sair da conta encerra a sessão e fecha as conexões locais, mas não deve ser c
 
 **Passos.**
 
-1. Abra o painel pelo ícone de nuvem.
+1. Abra o painel pelo ícone de áreas.
 2. Verifique o indicador de sincronização.
 3. Escolha **Sair**.
 4. Se houver aviso de alterações pendentes, cancele, restabeleça a conexão e sincronize antes de tentar novamente.
@@ -126,7 +126,7 @@ Sair da conta encerra a sessão e fecha as conexões locais, mas não deve ser c
 
 **Passos.**
 
-1. Abra o painel pelo ícone de nuvem.
+1. Abra o painel pelo ícone de áreas.
 2. Escolha **Excluir conta**.
 3. Leia a confirmação e prossiga somente se a exclusão for intencional.
 

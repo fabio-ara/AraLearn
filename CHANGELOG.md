@@ -37,7 +37,15 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
   linguagem determine a profundidade da documentação destinada às pessoas;
 - diagramas sistêmicos preservam a organização vertical e usam uma única
   superfície praticável, com zoom e pan no card, pinça no celular e exploração
-  em tela cheia por controles compactos em ícones;
+  em tela cheia por controles compactos em ícones, sem sobrepor o desenho;
+- os comandos de diminuir e aumentar ficam disponíveis no próprio quadro; a
+  exploração conserva a largura móvel, deixa o retorno separado e recupera o
+  enquadramento global ao atingir o menor zoom;
+- os modos contextuais passam à barra superior, liberando altura para o card; o
+  título ocupa a antiga posição do seletor, o painel recebe um ícone de áreas e
+  a geometria móvel fica simétrica mesmo quando há scrollbar;
+- a prosa principal passa a 15,5 px, com entrelinha e espaçamentos proporcionais,
+  sem reduzir alvos de toque nem controles e textos interativos;
 - a ordenação passa a permutar pelo menos dois trechos nos próprios campos de
   `paragraph` e `table`, inclusive entre instâncias ou células diferentes, com
   setas por ícone para a esquerda e a direita.

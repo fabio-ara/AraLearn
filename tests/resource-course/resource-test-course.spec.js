@@ -100,6 +100,38 @@ test("curso separa representações dos três packages de resposta", async ({ pa
   await expect(page.locator('[data-action="open-module"][data-module-key="response-ordering-test-module"]')).toHaveCount(1);
 });
 
+test("prosa do card mantém 15,5 px e entrelinha de 1,5 nas larguras móveis", async ({ page }) => {
+  await openModule(page, 0);
+  const card = page.locator(".card-sheet-content");
+
+  for (const width of [320, 360, 390, 430]) {
+    await page.setViewportSize({ width, height: 900 });
+    const typography = await card.evaluate((element) => {
+      const paragraphElement = element.querySelector(".runtime-markdown-paragraph");
+      const cardStyle = getComputedStyle(element);
+      const paragraphStyle = getComputedStyle(paragraphElement);
+      return {
+        cardFontSize: cardStyle.fontSize,
+        cardLineHeight: cardStyle.lineHeight,
+        paragraphFontSize: paragraphStyle.fontSize,
+        paragraphLineHeight: paragraphStyle.lineHeight
+      };
+    });
+    expect(typography).toEqual({
+      cardFontSize: "15.5px",
+      cardLineHeight: "23.25px",
+      paragraphFontSize: "15.5px",
+      paragraphLineHeight: "23.25px"
+    });
+  }
+
+  await page.locator('[data-action="next-card"]').click();
+  const gap = page.locator('[data-action="text-gap-open-choice"]');
+  await expect(gap).toHaveCSS("font-size", "16px");
+  await gap.click();
+  await expect(page.locator('[data-action="text-gap-set-choice"]').first()).toHaveCSS("font-size", "16px");
+});
+
 test("paragraph usa alternativas sob demanda e segundo toque esvazia a lacuna", async ({ page }) => {
   await openModule(page, 0);
   await expect(page.locator(".runtime-card-title")).toHaveText("Exposição");
@@ -166,19 +198,27 @@ test("tabela de transição mantém lacunas e alternativas independentes", async
 
 test("code recebe a lacuna no editor e não no enunciado", async ({ page }) => {
   await openModule(page, 1, 1);
-  await expect(page.locator(".runtime-code-block pre [data-action='text-gap-open-choice']"))
-    .toHaveCount(1);
+  const code = page.locator(".runtime-code-block pre");
+  const gap = code.locator("[data-action='text-gap-open-choice']");
+  await expect(gap).toHaveCount(1);
   await expect(page.locator(".runtime-code-block > p [data-action='text-gap-open-choice']"))
     .toHaveCount(0);
+  await expect(code).toHaveCSS("font-size", "15px");
+  await expect(code).toHaveCSS("line-height", "21.6px");
+  await expect(gap).toHaveCSS("font-size", "16px");
 });
 
 test("table recebe alternativa e digitação dentro de células", async ({ page }) => {
   await openModule(page, 2, 1);
-  await expect(page.locator(".runtime-table tbody [data-action='text-gap-open-choice']"))
-    .toHaveCount(1);
+  const cell = page.locator(".runtime-table tbody td").first();
+  const gap = page.locator(".runtime-table tbody [data-action='text-gap-open-choice']");
+  await expect(gap).toHaveCount(1);
   await expect(page.locator(".runtime-table-block > p [data-action='text-gap-open-choice']"))
     .toHaveCount(0);
-  await page.locator(".runtime-table tbody [data-action='text-gap-open-choice']").click();
+  await expect(cell).toHaveCSS("font-size", "15px");
+  await expect(cell).toHaveCSS("line-height", "21.6px");
+  await expect(gap).toHaveCSS("font-size", "16px");
+  await gap.click();
   await page.locator('[data-action="text-gap-set-choice"][data-text-gap-value="start"]').click();
   await page.locator('[data-action="next-card"]').click();
   await page.locator('[data-action="next-card"]').click();
@@ -247,6 +287,26 @@ test("BPMN preserva participantes, raias, gateways e fluxos em um caso não triv
   await expect(page.locator(".package-system-diagram-detail")).toHaveCount(0);
   await expect(page.locator("#system-node-send foreignObject")).not.toContainText("solicitação");
   await expect(page.locator("body")).not.toContainText("Detalhe para leitura");
+  await page.evaluate(() => { document.documentElement.style.fontSize = "32px"; });
+  const textZoomGeometry = await page.locator("#system-node-send foreignObject").evaluate((foreignObject) => {
+    const content = foreignObject.querySelector(".package-system-diagram-node-content");
+    const gap = content.querySelector(".runtime-text-gap-blank");
+    const foreignRect = foreignObject.getBoundingClientRect();
+    const gapRect = gap.getBoundingClientRect();
+    return {
+      contentFontSize: getComputedStyle(content).fontSize,
+      gapFontSize: getComputedStyle(gap).fontSize,
+      contentOverflow: content.scrollWidth - content.clientWidth,
+      gapContained: gapRect.left >= foreignRect.left - 1 && gapRect.right <= foreignRect.right + 1
+    };
+  });
+  expect(textZoomGeometry).toEqual({
+    contentFontSize: "16px",
+    gapFontSize: "16px",
+    contentOverflow: 0,
+    gapContained: true
+  });
+  await page.evaluate(() => { document.documentElement.style.fontSize = ""; });
   await page.locator('.package-bpmn-process [data-diagram-action="toggle-expanded"]').click();
   const dialog = page.locator(".package-bpmn-process [data-diagram-modal]");
   await expect(dialog).toHaveAttribute("open", "");
@@ -311,12 +371,25 @@ test("frame BPMN permite pinça e pan no card e preserva o mesmo canvas em tela 
   expect(geometry.frameBottom).toBeLessThanOrEqual(geometry.cardBottom + 3);
   expect(geometry.touchAction).toBe("none");
   await expect(frame).toHaveAttribute("data-diagram-viewport-mode", "inline");
-  await expect(page.locator('.package-bpmn-process [data-diagram-expanded-controls]')).toBeHidden();
+  await expect(page.locator('.package-bpmn-process [data-diagram-zoom-controls]')).toBeVisible();
+  await expect(page.locator('.package-bpmn-process [data-diagram-action="fit"]')).toHaveCount(0);
+  await expect(page.locator('.package-bpmn-process [data-diagram-action="zoom-out"]')).toBeDisabled();
+  await expect(page.locator('.package-bpmn-process [data-diagram-action="zoom-in"]')).toBeEnabled();
   await expect(expand).toHaveText("");
   await expect(expand.locator("svg")).toHaveCount(1);
+  await expect(expand).toHaveAttribute("aria-expanded", "false");
 
   const card = page.locator(".card-sheet-content");
   const fittedBox = await frame.boundingBox();
+  await card.evaluate((element) => {
+    const spacer = document.createElement("div");
+    spacer.dataset.diagramGestureTestSpacer = "true";
+    spacer.style.height = "360px";
+    spacer.setAttribute("aria-hidden", "true");
+    element.append(spacer);
+  });
+  await expect.poll(() => card.evaluate((element) => element.scrollHeight - element.clientHeight))
+    .toBeGreaterThan(100);
   await card.evaluate((element) => { element.scrollTop = 0; });
   await touchSwipe(page, {
     from: { x: fittedBox.x + fittedBox.width / 2, y: fittedBox.y + fittedBox.height - 28 },
@@ -324,7 +397,10 @@ test("frame BPMN permite pinça e pan no card e preserva o mesmo canvas em tela 
   });
   await expect.poll(() => card.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
   expect(await frame.evaluate((element) => element.scrollTop)).toBe(0);
-  await card.evaluate((element) => { element.scrollTop = 0; });
+  await card.evaluate((element) => {
+    element.scrollTop = 0;
+    element.querySelector('[data-diagram-gesture-test-spacer="true"]')?.remove();
+  });
 
   const inlineBox = await frame.boundingBox();
   const scaleBeforePinch = Number(await svg.getAttribute("data-diagram-scale"));
@@ -351,6 +427,28 @@ test("frame BPMN permite pinça e pan no card e preserva o mesmo canvas em tela 
     top: element.scrollTop
   }))).not.toEqual(beforePan);
 
+  await touchPinch(page, {
+    center: { x: inlineBox.x + inlineBox.width / 2, y: inlineBox.y + inlineBox.height / 2 },
+    startDistance: 90,
+    endDistance: 4
+  });
+  const zoomOutAtFit = page.locator('.package-bpmn-process [data-diagram-action="zoom-out"]');
+  await expect(zoomOutAtFit).toBeDisabled();
+  await expect.poll(() => frame.evaluate((element) => Math.max(
+    element.scrollWidth - element.clientWidth,
+    element.scrollHeight - element.clientHeight
+  ))).toBeLessThanOrEqual(1);
+
+  const compactFitScale = Number(await svg.getAttribute("data-diagram-scale"));
+  await page.setViewportSize({ width: 390, height: 900 });
+  await expect.poll(async () => Number(await svg.getAttribute("data-diagram-scale")))
+    .toBeGreaterThan(compactFitScale);
+  await expect(zoomOutAtFit).toBeDisabled();
+  await page.setViewportSize({ width: 390, height: 700 });
+  await expect.poll(async () => Number(await svg.getAttribute("data-diagram-scale")))
+    .toBeLessThanOrEqual(compactFitScale + 0.001);
+  await page.locator('.package-bpmn-process [data-diagram-action="zoom-in"]').click();
+
   await svg.evaluate((element) => { element.dataset.sameViewportProbe = "true"; });
   await expand.click();
   const dialog = page.locator(".package-bpmn-process [data-diagram-modal]");
@@ -358,12 +456,34 @@ test("frame BPMN permite pinça e pan no card e preserva o mesmo canvas em tela 
   await expect(frame).toHaveAttribute("data-diagram-viewport-mode", "explore");
   expect(await frame.evaluate((element) => getComputedStyle(element).touchAction)).toBe("none");
   await expect(dialog.locator('svg[data-same-viewport-probe="true"]')).toHaveCount(1);
-  await expect(page.locator('.package-bpmn-process [data-diagram-expanded-controls]')).toBeVisible();
-  for (const action of ["zoom-out", "fit", "zoom-in", "toggle-expanded"]) {
+  await expect(page.locator('.package-bpmn-process [data-diagram-zoom-controls]')).toBeVisible();
+  await expect(expand).toHaveAttribute("aria-expanded", "true");
+  for (const action of ["zoom-out", "zoom-in", "toggle-expanded"]) {
     const button = page.locator(`.package-bpmn-process [data-diagram-action="${action}"]`);
     await expect(button).toHaveText("");
     await expect(button.locator("svg")).toHaveCount(1);
   }
+
+  const explorationLayout = await dialog.evaluate((element) => {
+    const rect = element.getBoundingClientRect();
+    const zoomOutRect = element.querySelector('[data-diagram-action="zoom-out"]').getBoundingClientRect();
+    const zoomInRect = element.querySelector('[data-diagram-action="zoom-in"]').getBoundingClientRect();
+    const returnRect = element.querySelector('[data-diagram-action="toggle-expanded"]').getBoundingClientRect();
+    const canvasRect = element.querySelector(".package-system-diagram-canvas").getBoundingClientRect();
+    const toolbarRect = element.querySelector(".package-diagram-toolbar").getBoundingClientRect();
+    return {
+      width: rect.width,
+      height: rect.height,
+      zoomAtLeft: zoomOutRect.left < zoomInRect.left && zoomInRect.right < returnRect.left,
+      returnAtRight: returnRect.right <= rect.right && rect.right - returnRect.right <= 20,
+      reserved: toolbarRect.bottom <= canvasRect.top + 1
+    };
+  });
+  expect(explorationLayout.width).toBeLessThanOrEqual(390);
+  expect(explorationLayout.height).toBe(700);
+  expect(explorationLayout.zoomAtLeft).toBe(true);
+  expect(explorationLayout.returnAtRight).toBe(true);
+  expect(explorationLayout.reserved).toBe(true);
 
   const scaleBefore = Number(await svg.getAttribute("data-diagram-scale"));
   await page.locator('.package-bpmn-process [data-diagram-action="zoom-in"]').click();
@@ -375,15 +495,21 @@ test("frame BPMN permite pinça e pan no card e preserva o mesmo canvas em tela 
   expect(explored.scale).toBeGreaterThan(scaleBefore);
   expect(Math.max(explored.overflowX, explored.overflowY)).toBeGreaterThan(0);
 
-  await page.locator('.package-bpmn-process [data-diagram-action="fit"]').click();
+  const zoomOut = page.locator('.package-bpmn-process [data-diagram-action="zoom-out"]');
+  for (let attempt = 0; attempt < 16 && await zoomOut.isEnabled(); attempt += 1) {
+    await zoomOut.click();
+  }
+  await expect(zoomOut).toBeDisabled();
   await expect.poll(() => frame.evaluate((element) => Math.max(
     element.scrollWidth - element.clientWidth,
     element.scrollHeight - element.clientHeight
   ))).toBeLessThanOrEqual(1);
 
-  await page.locator('.package-bpmn-process [data-diagram-action="toggle-expanded"]').click();
+  await page.keyboard.press("Escape");
   await expect(dialog).not.toHaveAttribute("open", "");
   await expect(frame).toHaveAttribute("data-diagram-viewport-mode", "inline");
+  await expect(expand).toHaveAttribute("aria-expanded", "false");
+  await expect(expand).toBeFocused();
   await expect.poll(() => frame.evaluate((element) => ({
     x: element.scrollWidth - element.clientWidth,
     y: element.scrollHeight - element.clientHeight
@@ -399,6 +525,19 @@ test("frame BPMN permite pinça e pan no card e preserva o mesmo canvas em tela 
         svgRect.top >= frameRect.top - 1 && svgRect.bottom <= frameRect.bottom + 1
     };
   })).toEqual({ overflowFree: true, contained: true });
+
+  await expand.click();
+  await expect(dialog).toHaveAttribute("open", "");
+  expect(await dialog.evaluate((element) => element.getBoundingClientRect().width)).toBe(320);
+  await page.keyboard.press("Escape");
+  await expect(dialog).not.toHaveAttribute("open", "");
+
+  await page.setViewportSize({ width: 760, height: 700 });
+  await expand.click();
+  await expect(dialog).toHaveAttribute("open", "");
+  expect(await dialog.evaluate((element) => element.getBoundingClientRect().width)).toBe(430);
+  await page.keyboard.press("Escape");
+  await expect(dialog).not.toHaveAttribute("open", "");
 });
 
 test("contêineres de software preservam todo rótulo na exposição e após preencher a lacuna", async ({ page }) => {
@@ -692,7 +831,7 @@ test("flow complexo diagrama laço e decisão aninhada sem sobrepor nós", async
   expect(geometry.documentOverflow).toBeLessThanOrEqual(1);
 });
 
-test("formula combina texto e notação avançada na mesma escala tipográfica", async ({ page }) => {
+test("formula combina prosa compacta e notação matemática preservada em 16 px", async ({ page }) => {
   await openModuleByKey(page, "resource-test-11-module");
   await expect(page.locator(".runtime-formula-block > p")).toContainText("teoria de campos");
   await expect(page.locator(".package-formula math")).toBeVisible();
@@ -728,7 +867,7 @@ test("formula combina texto e notação avançada na mesma escala tipográfica",
     prose: getComputedStyle(document.querySelector(".runtime-formula-block > p")).fontSize,
     formula: getComputedStyle(document.querySelector(".package-formula math")).fontSize
   }));
-  expect(sizes.formula).toBe(sizes.prose);
+  expect(sizes).toEqual({ prose: "15.5px", formula: "16px" });
 });
 
 test("plano cartesiano complexo preserva eixos, objetos e rótulos sem colisão", async ({ page }) => {

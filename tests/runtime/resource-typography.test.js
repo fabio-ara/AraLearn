@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 
 const styles = fs.readFileSync(new URL("../../public/styles.css", import.meta.url), "utf8").replace(/\r\n?/gu, "\n");
+const tokens = fs.readFileSync(new URL("../../public/styles-tokens.css", import.meta.url), "utf8").replace(/\r\n?/gu, "\n");
 const graphvizPackageSources = [
   "../../src/resources/packages/graph/index.js",
   "../../src/resources/packages/software-system-context/index.js",
@@ -24,27 +25,49 @@ function assertUsesType(selector, token) {
 
 test("conteúdo primário dos resources compartilha a escala tipográfica do texto explicado", () => {
   for (const selector of [
-    ".runtime-code-block pre",
-    ".package-terminal-session pre",
     ".multiple-choice-option",
     ".runtime-ordering-value",
-    ".package-packet-legend li",
     ".package-er-entity-content",
     ".package-relational-table",
     ".package-set-name",
-    ".runtime-table th,\n.runtime-table td",
     ".runtime-matrix-item",
+    ".token-option",
     ".package-math-graph-label-content",
     ".package-chart-legend",
     ".package-plane-legend",
-    ".package-system-diagram-node-content",
     ".package-formula math",
     ".package-reaction-equation",
-    ".package-flow-node",
-    ".runtime-annotated-text-source"
+    ".package-flow-node"
   ]) assertUsesType(selector, "base");
 
   assert.doesNotMatch(styles, /\.package-formula math\s*\{[^}]*font-size:\s*clamp/gu);
+});
+
+test("prosa e estruturas densas usam degraus próprios sem encolher controles", () => {
+  assert.match(tokens, /--type-prose:\s*0\.96875rem;/u);
+  assert.match(tokens, /--leading-prose:\s*1\.5;/u);
+  assert.match(tokens, /--type-dense:\s*0\.9375rem;/u);
+  assert.match(tokens, /--leading-dense:\s*1\.44;/u);
+  assert.match(tokens, /--type-diagram:\s*16px;/u);
+  assert.match(tokens, /--type-diagram-secondary:\s*14\.5px;/u);
+  assert.match(tokens, /--type-diagram-detail:\s*13\.5px;/u);
+
+  assertUsesType(".card-sheet-content", "prose");
+  assertUsesType(".runtime-annotated-text-source", "prose");
+
+  for (const selector of [
+    ".runtime-code-block pre",
+    ".package-terminal-session pre",
+    ".package-packet-legend li",
+    ".runtime-table th,\n.runtime-table td"
+  ]) assertUsesType(selector, "dense");
+
+  assert.match(styles, /\.card-sheet-content\s*\{[^}]*line-height:\s*var\(--leading-prose\)/u);
+  assert.match(styles, /\.runtime-table th,\n\.runtime-table td\s*\{[^}]*line-height:\s*var\(--leading-dense\)/u);
+  assert.match(styles, /\.runtime-text-gap-blank\s*\{[^}]*font-size:\s*var\(--type-base\)/u);
+  assertUsesType(".package-system-diagram-node-content", "diagram");
+  assert.match(styles, /\.package-system-diagram-node-label \.runtime-text-gap-blank,[^{]*\{[^}]*font-size:\s*var\(--type-diagram\)/u);
+  assert.match(styles, /\.runtime-markdown-paragraph \+ \.runtime-markdown-paragraph,[^{]*\{[^}]*margin-top:\s*8px/u);
 });
 
 test("metadados acadêmicos compactos usam apenas os degraus tipográficos secundários", () => {

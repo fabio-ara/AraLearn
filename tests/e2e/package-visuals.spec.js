@@ -264,6 +264,8 @@ test("falha do Graphviz remove o canvas sem expor resposta de medição", async 
   await page.setContent(documentForHtml(renderPackageCardBlocks(card, {
     blockKeyPrefix: "failing-bpmn-card"
   }), "light"));
+  await expect(page.locator("[data-diagram-action]")).toHaveCount(3);
+  await expect(page.locator("[data-diagram-action]:disabled")).toHaveCount(3);
   await page.evaluate(() => {
     SVGGraphicsElement.prototype.getBBox = () => {
       throw new Error("falha de geometria injetada");
@@ -282,7 +284,13 @@ test("falha do Graphviz remove o canvas sem expor resposta de medição", async 
   expect(failure).toContain("falha de geometria injetada");
   await expect(page.locator(".package-system-diagram-layout-error")).toBeVisible();
   await expect(page.locator(".package-system-diagram-svg")).toHaveCount(0);
-  await expect(page.locator('[data-diagram-action="toggle-expanded"]')).toBeDisabled();
+  await expect(page.locator('[data-resource-scroll-frame="diagram"]')).not.toHaveAttribute("tabindex");
+  await expect(page.locator('[data-resource-scroll-frame="diagram"]'))
+    .toHaveAttribute("aria-disabled", "true");
+  await expect(page.locator("[data-diagram-action]")).toHaveCount(3);
+  await expect(page.locator("[data-diagram-action]:disabled")).toHaveCount(3);
+  await expect(page.locator('[data-diagram-action="toggle-expanded"]'))
+    .toHaveAttribute("aria-expanded", "false");
   await expect(page.locator("body")).not.toContainText("Enviar solicitação");
   await expect(page.locator(".package-system-diagram-detail")).toHaveCount(0);
 });
@@ -519,7 +527,34 @@ for (const { width, mode } of [
       const expand = root.locator('[data-diagram-action="toggle-expanded"]');
       await expect(expand).toHaveText("");
       await expect(expand.locator("svg")).toHaveCount(1);
-      await expect(root.locator("[data-diagram-expanded-controls]")).toBeHidden();
+      await expect(root.locator("[data-diagram-zoom-controls]")).toBeVisible();
+      await expect(root.locator('[data-diagram-action="fit"]')).toHaveCount(0);
+      await expect(root.locator('[data-diagram-action="zoom-out"]')).toBeDisabled();
+      await expect(root.locator('[data-diagram-action="zoom-in"]')).toBeEnabled();
+      await expect(expand).toBeEnabled();
+      await expect(expand).toHaveAttribute("aria-expanded", "false");
+
+      const controls = await root.locator("[data-diagram-frame]").evaluate((frame) => {
+        const toolbar = frame.querySelector(".package-diagram-toolbar");
+        const canvas = frame.querySelector(".package-system-diagram-canvas");
+        const frameRect = frame.getBoundingClientRect();
+        const toolbarRect = toolbar.getBoundingClientRect();
+        const canvasRect = canvas.getBoundingClientRect();
+        return {
+          reserved: toolbarRect.bottom <= canvasRect.top + 1,
+          contained: toolbarRect.left >= frameRect.left - 1 && toolbarRect.right <= frameRect.right + 1,
+          targetSizes: [...toolbar.querySelectorAll("button")].map((button) => {
+            const rect = button.getBoundingClientRect();
+            return { width: rect.width, height: rect.height };
+          })
+        };
+      });
+      expect(controls.reserved, packageId).toBe(true);
+      expect(controls.contained, packageId).toBe(true);
+      controls.targetSizes.forEach(({ width: targetWidth, height: targetHeight }) => {
+        expect(targetWidth, packageId).toBeGreaterThanOrEqual(44);
+        expect(targetHeight, packageId).toBeGreaterThanOrEqual(44);
+      });
 
       const overlaps = await root.locator('[data-system-object-kind="node"]').evaluateAll((nodes) => {
         const boxes = nodes.map((node) => node.getBoundingClientRect());

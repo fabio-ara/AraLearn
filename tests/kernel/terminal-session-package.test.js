@@ -322,5 +322,5 @@ test("renderer é somente leitura, copiável e limita saída extensa à rolagem 
   assert.match(styles, /\.package-terminal-session pre\s*\{[^}]*overflow:\s*auto;/su);
   assert.match(styles, /\.package-terminal-stream pre\s*\{[^}]*max-height:\s*min\(38vh, 20rem\);/su);
   assert.match(styles, /\.package-terminal-session pre\s*\{[^}]*user-select:\s*text;/su);
-  assert.match(styles, /\.package-terminal-session pre\s*\{[^}]*font-size:\s*var\(--type-base\);/su);
+  assert.match(styles, /\.package-terminal-session pre\s*\{[^}]*font-size:\s*var\(--type-dense\);/su);
 });

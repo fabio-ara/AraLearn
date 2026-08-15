@@ -50,30 +50,29 @@ function rememberViewport(key, patch) {
 
 const DIAGRAM_ICONS = Object.freeze({
   "zoom-out": '<svg class="package-diagram-control-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="8"/><path d="M8.5 12h7"/></svg>',
-  fit: '<svg class="package-diagram-control-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M8 3H3v5M16 3h5v5M8 21H3v-5M16 21h5v-5"/></svg>',
   "zoom-in": '<svg class="package-diagram-control-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="8"/><path d="M8.5 12h7M12 8.5v7"/></svg>',
   expand: '<svg class="package-diagram-control-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M9 3H3v6M15 3h6v6M9 21H3v-6M15 21h6v-6"/></svg>',
   collapse: '<svg class="package-diagram-control-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M3 9h6V3M21 9h-6V3M3 15h6v6M21 15h-6v6"/></svg>'
 });
 
-function iconButton(action, label, icon, className = "") {
-  return `<button type="button"${className ? ` class="${className}"` : ""} ` +
-    `data-diagram-action="${action}" aria-label="${label}">${DIAGRAM_ICONS[icon]}</button>`;
+function iconButton(action, label, icon) {
+  return `<button type="button" data-diagram-action="${action}" ` +
+    `aria-label="${label}" disabled>${DIAGRAM_ICONS[icon]}</button>`;
 }
 
 export function renderDiagramViewportShell({ canvasHtml }) {
   return '<div class="package-diagram-viewport-home" data-diagram-viewport-home>' +
     '<section class="package-diagram-viewport" data-diagram-viewport data-diagram-expanded="false">' +
-    '<div class="package-diagram-toolbar" role="toolbar" aria-label="Controles do diagrama">' +
-    '<div class="package-diagram-zoom-controls" data-diagram-expanded-controls hidden>' +
+    '<div class="package-diagram-frame" data-diagram-frame>' +
+    '<div class="package-diagram-toolbar" role="group" aria-label="Controles do diagrama">' +
+    '<div class="package-diagram-zoom-controls" data-diagram-zoom-controls>' +
     iconButton("zoom-out", "Diminuir zoom", "zoom-out") +
-    iconButton("fit", "Ajustar diagrama à tela", "fit", "package-diagram-fit-control") +
     iconButton("zoom-in", "Aumentar zoom", "zoom-in") +
     '</div>' +
     '<button type="button" class="package-diagram-expand-control" data-diagram-action="toggle-expanded" ' +
-    'aria-label="Explorar diagrama em tela inteira">' +
+    'aria-label="Explorar diagrama em tela inteira" aria-expanded="false" disabled>' +
     `<span data-diagram-toggle-icon>${DIAGRAM_ICONS.expand}</span></button>` +
-    '</div>' + canvasHtml + '</section></div>' +
+    '</div>' + canvasHtml + '</div></section></div>' +
     '<dialog class="package-diagram-modal" data-diagram-modal aria-label="Diagrama em tela inteira"></dialog>';
 }
 
@@ -103,14 +102,12 @@ export async function hydrateDiagramViewport({ figure, canvas, svg, stateKey }) 
   const home = figure.querySelector("[data-diagram-viewport-home]");
   const viewport = figure.querySelector("[data-diagram-viewport]");
   const dialog = figure.querySelector("[data-diagram-modal]");
-  const expandedControls = viewport?.querySelector("[data-diagram-expanded-controls]");
   const zoomOut = viewport?.querySelector('[data-diagram-action="zoom-out"]');
   const zoomIn = viewport?.querySelector('[data-diagram-action="zoom-in"]');
-  const fit = viewport?.querySelector('[data-diagram-action="fit"]');
   const toggleExpanded = viewport?.querySelector('[data-diagram-action="toggle-expanded"]');
   const toggleIcon = viewport?.querySelector("[data-diagram-toggle-icon]");
-  if (!home || !viewport || !dialog || !canvas || !svg || !expandedControls ||
-      !zoomOut || !zoomIn || !fit || !toggleExpanded || !toggleIcon) {
+  if (!home || !viewport || !dialog || !canvas || !svg ||
+      !zoomOut || !zoomIn || !toggleExpanded || !toggleIcon) {
     throw new Error("Navegador de diagrama incompleto.");
   }
 
@@ -121,6 +118,7 @@ export async function hydrateDiagramViewport({ figure, canvas, svg, stateKey }) 
   let currentScale = 1;
   let expanded = false;
   let scaleMode = "fit";
+  let controlsReady = false;
   let resizeFrame = 0;
   let scrollFrame = 0;
   let panOrigin = null;
@@ -136,14 +134,13 @@ export async function hydrateDiagramViewport({ figure, canvas, svg, stateKey }) 
   });
 
   const updateControls = () => {
-    const minimum = fitScale();
-    zoomOut.disabled = currentScale <= minimum + 0.001;
-    zoomIn.disabled = currentScale >= MAX_DIAGRAM_SCALE - 0.001;
-    fit.disabled = scaleMode === "fit" && Math.abs(currentScale - minimum) <= 0.001;
-    expandedControls.hidden = !expanded;
+    zoomOut.disabled = !controlsReady || scaleMode === "fit";
+    zoomIn.disabled = !controlsReady || currentScale >= MAX_DIAGRAM_SCALE - 0.001;
+    toggleExpanded.disabled = !controlsReady;
     toggleIcon.innerHTML = expanded ? DIAGRAM_ICONS.collapse : DIAGRAM_ICONS.expand;
     viewport.dataset.diagramExpanded = expanded ? "true" : "false";
     canvas.dataset.diagramViewportMode = expanded ? "explore" : "inline";
+    toggleExpanded.setAttribute("aria-expanded", expanded ? "true" : "false");
     toggleExpanded.setAttribute("aria-label", expanded
       ? "Voltar ao card"
       : "Explorar diagrama em tela inteira");
@@ -244,6 +241,10 @@ export async function hydrateDiagramViewport({ figure, canvas, svg, stateKey }) 
   };
 
   const zoomBy = (factor, event = null) => {
+    if (factor < 1 && currentScale * factor <= fitScale() + 0.001) {
+      applyFit();
+      return;
+    }
     scaleMode = "custom";
     setScale(currentScale * factor, {
       anchorClientX: event?.clientX,
@@ -325,7 +326,6 @@ export async function hydrateDiagramViewport({ figure, canvas, svg, stateKey }) 
 
   zoomOut.addEventListener("click", () => zoomBy(1 / DIAGRAM_SCALE_STEP));
   zoomIn.addEventListener("click", () => zoomBy(DIAGRAM_SCALE_STEP));
-  fit.addEventListener("click", () => applyFit());
   toggleExpanded.addEventListener("click", () => {
     if (expanded) dialog.close();
     else void openExpandedViewport();
@@ -361,8 +361,14 @@ export async function hydrateDiagramViewport({ figure, canvas, svg, stateKey }) 
       if (!pinchOrigin) beginPinch();
       const [first, second] = [...activePointers.values()];
       const midpoint = pointerMidpoint(first, second);
+      const requestedScale = pinchOrigin.scale *
+        pointerDistance(first, second) / pinchOrigin.distance;
+      if (requestedScale <= fitScale() + 0.001) {
+        applyFit();
+        return;
+      }
       scaleMode = "custom";
-      setScale(pinchOrigin.scale * pointerDistance(first, second) / pinchOrigin.distance, {
+      setScale(requestedScale, {
         anchorClientX: midpoint.clientX,
         anchorClientY: midpoint.clientY,
         anchorContent: pinchOrigin.content
@@ -424,6 +430,8 @@ export async function hydrateDiagramViewport({ figure, canvas, svg, stateKey }) 
   } else {
     applyFit({ persist: false });
   }
+  controlsReady = true;
+  updateControls();
   if (remembered?.expanded === true) await openExpandedViewport();
 
   return Object.freeze({

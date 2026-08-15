@@ -36,6 +36,7 @@ function renderTopbar({
   backTitle = "Voltar",
   backAction = "go-back",
   subtitle = "",
+  centerHtml = "",
   actions = []
 }) {
   const actionMarkup = actions.length
@@ -63,7 +64,8 @@ function renderTopbar({
     : '<div class="topbar-space"></div>';
 
   return (
-    '<header class="topbar lesson-topbar navigation-topbar">' +
+    '<header class="topbar lesson-topbar navigation-topbar' +
+    (centerHtml ? " has-mode-switcher" : "") + '">' +
     (canGoBack
       ? '<button class="icon-ghost" type="button" data-action="' +
         escapeHtml(backAction) +
@@ -75,16 +77,25 @@ function renderTopbar({
         renderUiIcon("arrow-left", "home-tab-icon") +
         "</button>"
       : '<div class="topbar-space"></div>') +
-    '<div class="topbar-heading">' +
-    '<div class="topbar-title">' +
-    escapeHtml(title) +
-    "</div>" +
-    (subtitle ? '<div class="topbar-subtitle tiny muted">' + escapeHtml(subtitle) + "</div>" : "") +
-    "</div>" +
+    (centerHtml
+      ? '<div class="topbar-mode-slot">' + centerHtml + "</div>"
+      : '<div class="topbar-heading">' +
+        '<div class="topbar-title">' +
+        escapeHtml(title) +
+        "</div>" +
+        (subtitle ? '<div class="topbar-subtitle tiny muted">' + escapeHtml(subtitle) + "</div>" : "") +
+        "</div>") +
     '<div class="lesson-top-actions">' +
     actionMarkup +
     "</div>" +
     "</header>"
+  );
+}
+
+function renderEntityContextTitle(title) {
+  return (
+    '<h1 class="entity-context-title" title="' + escapeHtml(title) + '">' +
+    '<span>' + escapeHtml(title) + "</span></h1>"
   );
 }
 
@@ -469,7 +480,8 @@ function renderEntitySummary({
   assistanceState,
   submitting = false,
   target,
-  inlineEditing = false
+  inlineEditing = false,
+  observationTitle = ""
 }) {
   const selected = mode === "ai"
     ? assistanceState?.kind === "container"
@@ -489,16 +501,16 @@ function renderEntitySummary({
     label: "Descrição",
     multiline: true
   });
+  let summaryHtml;
   if (mode === "ai") {
-    return (
+    summaryHtml = (
       '<button class="bottom-up-container-target' + (selected ? " is-selected" : "") +
       '" type="button" data-action="toggle-bottom-up-container" data-assistance-level="' +
       escapeHtml(level) + '" aria-pressed="' + (selected ? "true" : "false") + '"' +
       (submitting ? ' disabled aria-disabled="true"' : "") + '>' + content + "</button>"
     );
-  }
-  if (mode === "edit") {
-    return (
+  } else if (mode === "edit") {
+    summaryHtml = (
       '<section class="entity-summary bottom-up-container-target' + (selected ? " is-selected" : "") +
       '" role="button" tabindex="' + (submitting ? "-1" : "0") +
       '" data-action="select-inline-structure-entity"' + structureTargetAttributes(target) +
@@ -507,9 +519,18 @@ function renderEntitySummary({
       (selected ? ' data-inline-structure-editor="true"' : "") +
       (submitting ? ' aria-disabled="true"' : "") + '>' + content + "</section>"
     );
+  } else {
+    summaryHtml = '<section class="entity-summary">' + content + "</section>";
   }
+
+  if (!observationTitle) return summaryHtml;
   return (
-    '<section class="entity-summary">' + content + "</section>"
+    '<div class="entity-summary-wrap has-context-action">' +
+    summaryHtml +
+    '<button class="icon-ghost entity-context-action" type="button" data-action="open-context-observation"' +
+    ' title="' + escapeHtml(observationTitle) + '" aria-label="' + escapeHtml(observationTitle) + '">' +
+    renderUiIcon("prompt", "home-tab-icon") +
+    "</button></div>"
   );
 }
 
@@ -739,6 +760,7 @@ function renderCourseScreen({ course, progress, editorSupport }) {
   const permissions = editorSupport.coursePermissions;
   const canEdit = authoringCapability(permissions, "canEditMetadata");
   const mode = permittedEntityMode(editorSupport, "course", { canEdit });
+  const modeSwitcher = renderEntityModeSwitcher("course", mode, { canEdit });
   const moduleValues = Array.isArray(course.modules) ? course.modules : [];
   const modules = moduleValues
     .map((moduleValue) => {
@@ -779,17 +801,15 @@ function renderCourseScreen({ course, progress, editorSupport }) {
       canGoBack: true,
       backAction: "go-back",
       backTitle: "Menu principal",
+      centerHtml: modeSwitcher,
       actions: [
-        permissions?.canComment === true
-          ? { action: "open-context-observation", title: "Observações do curso", icon: renderUiIcon("prompt", "home-tab-icon") }
-          : null,
-        { action: "open-central", title: "Abrir painel", icon: renderUiIcon("cloud", "home-tab-icon") }
-      ].filter(Boolean)
+        { action: "open-central", title: "Abrir painel AraLearn", icon: renderUiIcon("panel", "home-tab-icon") }
+      ]
     }) +
     '<main class="screen-content course-screen" data-structure-collection="module" data-course-key="' +
     escapeHtml(entityId(course)) +
     '">' +
-    renderEntityModeSwitcher("course", mode, { canEdit }) +
+    (modeSwitcher ? renderEntityContextTitle("Curso") : "") +
     renderAuthoringStatus(editorSupport, mode) +
     renderEntitySummary({
       level: "course",
@@ -802,7 +822,8 @@ function renderCourseScreen({ course, progress, editorSupport }) {
         courseKey: entityId(course)
       }),
       submitting: editorSupport.entitySaving,
-      errorMessage: editorSupport.entityMutationError
+      errorMessage: editorSupport.entityMutationError,
+      observationTitle: permissions?.canComment === true ? "Observações do curso" : ""
     }) +
     renderSectionHeading("Módulos") +
     '<section class="navigation-list structure-navigation-list" data-structure-collection="module" data-course-key="' +
@@ -833,6 +854,7 @@ function renderModuleScreen({ course, moduleValue, progress, editorSupport }) {
   const permissions = editorSupport.coursePermissions;
   const canEdit = authoringCapability(permissions, "canEditMetadata");
   const mode = permittedEntityMode(editorSupport, "module", { canEdit });
+  const modeSwitcher = renderEntityModeSwitcher("module", mode, { canEdit });
   const lessonValues = Array.isArray(moduleValue.lessons) ? moduleValue.lessons : [];
   const lessons = lessonValues
     .map((lesson) => {
@@ -875,19 +897,17 @@ function renderModuleScreen({ course, moduleValue, progress, editorSupport }) {
       canGoBack: true,
       backAction: "go-back",
       backTitle: "Voltar",
+      centerHtml: modeSwitcher,
       actions: [
-        permissions?.canComment === true
-          ? { action: "open-context-observation", title: "Observações do módulo", icon: renderUiIcon("prompt", "home-tab-icon") }
-          : null,
-        { action: "open-central", title: "Abrir painel", icon: renderUiIcon("cloud", "home-tab-icon") }
-      ].filter(Boolean)
+        { action: "open-central", title: "Abrir painel AraLearn", icon: renderUiIcon("panel", "home-tab-icon") }
+      ]
     }) +
     '<main class="screen-content course-screen" data-structure-collection="lesson" data-course-key="' +
     escapeHtml(entityId(course)) +
     '" data-module-key="' +
     escapeHtml(entityId(moduleValue)) +
     '">' +
-    renderEntityModeSwitcher("module", mode, { canEdit }) +
+    (modeSwitcher ? renderEntityContextTitle("Módulo") : "") +
     renderAuthoringStatus(editorSupport, mode) +
     renderEntitySummary({
       level: "module",
@@ -905,7 +925,8 @@ function renderModuleScreen({ course, moduleValue, progress, editorSupport }) {
         moduleKey: entityId(moduleValue)
       }),
       submitting: editorSupport.entitySaving,
-      errorMessage: editorSupport.entityMutationError
+      errorMessage: editorSupport.entityMutationError,
+      observationTitle: permissions?.canComment === true ? "Observações do módulo" : ""
     }) +
     renderSectionHeading("Lições") +
     '<section class="navigation-list structure-navigation-list" data-structure-collection="lesson" data-course-key="' +
@@ -937,6 +958,7 @@ function renderLessonScreenView({ course, lesson, moduleValue, progress, editorS
   const canEdit = authoringCapability(permissions, "canEditMetadata");
   const canAi = authoringCapability(permissions, "canUseBottomUpAi");
   const mode = permittedEntityMode(editorSupport, "lesson", { canEdit, canAi });
+  const modeSwitcher = renderEntityModeSwitcher("lesson", mode, { canEdit, canAi });
   const assistanceState = editorSupport.bottomUpAssistance || {};
   const selectedIds = new Set(assistanceState.selectedIds || []);
   const microsequences = Array.isArray(lesson.microsequences) ? lesson.microsequences : [];
@@ -997,15 +1019,13 @@ function renderLessonScreenView({ course, lesson, moduleValue, progress, editorS
       canGoBack: true,
       backAction: "go-back",
       backTitle: "Voltar",
+      centerHtml: modeSwitcher,
       actions: [
-        permissions?.canComment === true
-          ? { action: "open-context-observation", title: "Observações da lição", icon: renderUiIcon("prompt", "home-tab-icon") }
-          : null,
-        { action: "open-central", title: "Abrir painel", icon: renderUiIcon("cloud", "home-tab-icon") }
-      ].filter(Boolean)
+        { action: "open-central", title: "Abrir painel AraLearn", icon: renderUiIcon("panel", "home-tab-icon") }
+      ]
     }) +
     '<main class="screen-content lesson-structure-screen navigation-screen">' +
-    renderEntityModeSwitcher("lesson", mode, { canEdit, canAi }) +
+    (modeSwitcher ? renderEntityContextTitle("Lições") : "") +
     renderAuthoringStatus(editorSupport, mode) +
     renderEntitySummary({
       level: "lesson",
@@ -1026,7 +1046,8 @@ function renderLessonScreenView({ course, lesson, moduleValue, progress, editorS
         lessonKey: entityId(lesson)
       }),
       submitting: assistanceState.isSubmitting || editorSupport.entitySaving,
-      errorMessage: editorSupport.entityMutationError
+      errorMessage: editorSupport.entityMutationError,
+      observationTitle: permissions?.canComment === true ? "Observações da lição" : ""
     }) +
     renderSectionHeading("Microssequências") +
     '<section data-structure-collection="microsequence" data-course-key="' +
@@ -1070,6 +1091,7 @@ function renderMicrosequenceOverview({
   const canEdit = authoringCapability(permissions, "canEditMetadata");
   const canAi = authoringCapability(permissions, "canUseBottomUpAi");
   const mode = permittedEntityMode(editorSupport, "microsequence", { canEdit, canAi });
+  const modeSwitcher = renderEntityModeSwitcher("microsequence", mode, { canEdit, canAi });
   const assistanceState = editorSupport.bottomUpAssistance || {};
   const selectedIds = new Set(assistanceState.selectedIds || []);
   const lessonProgress = readLessonProgressEntry(progress, {
@@ -1127,15 +1149,13 @@ function renderMicrosequenceOverview({
       title: "Microssequência",
       canGoBack: true,
       backTitle: "Voltar para a lição",
+      centerHtml: modeSwitcher,
       actions: [
-        permissions?.canComment === true
-          ? { action: "open-context-observation", title: "Observações da microssequência", icon: renderUiIcon("prompt", "home-tab-icon") }
-          : null,
-        { action: "open-central", title: "Abrir painel", icon: renderUiIcon("cloud", "home-tab-icon") }
-      ].filter(Boolean)
+        { action: "open-central", title: "Abrir painel AraLearn", icon: renderUiIcon("panel", "home-tab-icon") }
+      ]
     }) +
     '<main class="screen-content microsequence-overview-content navigation-screen">' +
-    renderEntityModeSwitcher("microsequence", mode, { canEdit, canAi }) +
+    (modeSwitcher ? renderEntityContextTitle("Microssequência") : "") +
     renderAuthoringStatus(editorSupport, mode) +
     renderEntitySummary({
       level: "microsequence",
@@ -1146,7 +1166,8 @@ function renderMicrosequenceOverview({
       target: microsequenceTarget,
       inlineEditing: inlineStructureTargetMatches(editorSupport, microsequenceTarget),
       submitting: assistanceState.isSubmitting || editorSupport.entitySaving,
-      errorMessage: editorSupport.entityMutationError
+      errorMessage: editorSupport.entityMutationError,
+      observationTitle: permissions?.canComment === true ? "Observações da microssequência" : ""
     }) +
     renderSectionHeading("Cards") +
     '<section class="navigation-list structure-navigation-list" data-structure-collection="card" data-course-key="' +
@@ -1190,6 +1211,10 @@ function renderMicrosequenceScreen({ course, lesson, microsequence, cards, selec
   const canEdit = authoringCapability(permissions, "canEditCards");
   const canAi = authoringCapability(permissions, "canUseCardAi");
   const cardMode = permittedEntityMode(editorSupport, "card", { canEdit, canAi });
+  const modeSwitcher = renderEntityModeSwitcher("card", cardMode, {
+    canEdit: canEdit && hasCards,
+    canAi: canAi && hasCards
+  });
   const authoringMode = Boolean(hasCards && (cardMode === "edit" || cardMode === "ai"));
   const lessonStudyCount = visibleCards.length;
   const prevDisabled = safeIndex <= 0;
@@ -1511,19 +1536,19 @@ function renderMicrosequenceScreen({ course, lesson, microsequence, cards, selec
       title: course?.title || course?.id || "Curso",
       canGoBack: true,
       backTitle: "Voltar para a lição",
+      centerHtml: modeSwitcher,
       actions: [
         {
           action: "open-central",
-          title: "Abrir painel",
-          icon: renderUiIcon("cloud", "home-tab-icon")
+          title: "Abrir painel AraLearn",
+          icon: renderUiIcon("panel", "home-tab-icon")
         }
-      ].filter(Boolean)
+      ]
     }) +
     '<main class="screen-content microsequence-generator-screen">' +
-    renderEntityModeSwitcher("card", cardMode, {
-      canEdit: canEdit && hasCards,
-      canAi: canAi && hasCards
-    }) +
+    (modeSwitcher
+      ? renderEntityContextTitle(course?.title || course?.id || "Curso")
+      : "") +
     renderAuthoringStatus(editorSupport, cardMode) +
     '<section class="workbench-surface' + (authoringMode ? " is-editing" : "") + '">' +
     '<div class="workbench-surface-body">' +

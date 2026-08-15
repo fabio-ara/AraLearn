@@ -116,9 +116,15 @@ async function hydrateFigure(figure, stateKey) {
     canvas.replaceChildren();
     canvas.dataset.graphvizStatus = "error";
     canvas.setAttribute("aria-busy", "false");
+    canvas.removeAttribute("tabindex");
+    canvas.setAttribute("aria-disabled", "true");
+    canvas.setAttribute("aria-label", "Diagrama indisponível");
+    figure.querySelectorAll("[data-diagram-action]").forEach((control) => {
+      control.disabled = true;
+    });
     const explore = figure.querySelector('[data-diagram-action="toggle-expanded"]');
     if (explore) {
-      explore.disabled = true;
+      explore.setAttribute("aria-expanded", "false");
       explore.setAttribute("aria-label", "Exploração indisponível");
     }
     const message = figure.querySelector(".package-system-diagram-layout-error");

@@ -41,12 +41,15 @@ test("diagramas sistêmicos oferecem pan e pinça no card e na exploração Andr
   assert.doesNotMatch(renderer, /package-flow-tree|package-flow-node-card/u);
   assert.match(renderer, /data-resource-scroll-frame="diagram"/u);
   assert.match(styles, /\.package-flowchart\s*\{[\s\S]*?max-height:\s*min\(48dvh, 430px\);[\s\S]*?overflow:\s*auto;[\s\S]*?overscroll-behavior-block:\s*auto;[\s\S]*?touch-action:\s*pan-x pan-y;/u);
-  assert.match(styles, /\.package-system-diagram-canvas\s*\{[\s\S]*?height:\s*clamp\(220px, 34dvh, 300px\);[\s\S]*?overflow:\s*auto;[\s\S]*?touch-action:\s*none;/u);
+  assert.match(styles, /\.package-diagram-frame\s*\{[\s\S]*?grid-template-rows:\s*calc\(var\(--tap\) \+ 12px\) minmax\(0, 1fr\);[\s\S]*?height:\s*clamp\(220px, 34dvh, 300px\);[\s\S]*?overflow:\s*hidden;/u);
+  assert.match(styles, /\.package-system-diagram-canvas\s*\{[\s\S]*?height:\s*100%;[\s\S]*?overflow:\s*auto;[\s\S]*?touch-action:\s*none;/u);
   assert.match(styles, /\.package-system-diagram-canvas\[data-diagram-viewport-mode="explore"\]\s*\{[\s\S]*?overflow:\s*auto;[\s\S]*?touch-action:\s*none;/u);
+  assert.match(styles, /\.package-diagram-modal\s*\{[\s\S]*?width:\s*min\(100dvw, 430px\);[\s\S]*?height:\s*100dvh;/u);
   assert.match(styles, /\.runtime-card-rendered-content\s*\{[\s\S]*?overflow:\s*hidden;/u);
   assert.match(styles, /\.card-sheet-content\s*\{[\s\S]*?overflow-y:\s*auto;/u);
   assert.match(viewportSdk, /showModal\(\)/u);
   assert.match(viewportSdk, /data-diagram-action="zoom-in"/u);
+  assert.doesNotMatch(viewportSdk, /data-diagram-action="fit"/u);
   assert.doesNotMatch(renderer, /pointerdown|pointermove/iu);
   assert.match(viewportSdk, /pointerdown/iu);
   assert.match(viewportSdk, /pointermove/iu);

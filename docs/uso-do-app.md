@@ -110,7 +110,7 @@ os dados da identidade anterior.
 
 **Passos:**
 
-1. Abra o painel pelo botão de nuvem.
+1. Abra o painel pelo botão de áreas, no canto superior direito.
 2. No grupo **Aparência**, escolha **Tema do sistema**, **Tema claro** ou
    **Tema escuro**.
 
@@ -129,7 +129,7 @@ apagar os cursos.
 
 **Passos:**
 
-1. Abra o painel pelo botão de nuvem.
+1. Abra o painel pelo botão de áreas, no canto superior direito.
 2. Selecione a aba **Coleções**.
 3. Use **Pesquisar cursos em Coleções** para restringir a lista.
 4. Examine título e descrição do resultado.
@@ -246,13 +246,14 @@ sistemas.
 **Passos:**
 
 1. Use a composição vertical para reconhecer a estrutura.
-2. No celular, afaste ou aproxime dois dedos sobre o desenho para aumentar ou
-   diminuir o zoom. Arraste o conteúdo ampliado para percorrer os dois eixos.
+2. Use os ícones de diminuir e aumentar no canto superior direito do quadro ou,
+   no celular, aproxime e afaste dois dedos sobre o desenho. Arraste o conteúdo
+   ampliado para percorrer os dois eixos.
 3. Se houver uma lacuna, responda diretamente no ponto correspondente do
    diagrama; cada lacuna abre somente suas próprias alternativas.
 4. Para usar toda a tela, acione o botão de expansão identificado pelo ícone.
-5. Em tela cheia, continue usando pinça e arraste ou os ícones de diminuir,
-   aumentar e ajustar. Use o ícone de recolher ao terminar.
+5. Em tela cheia, continue usando pinça e arraste ou os ícones de diminuir e
+   aumentar, à esquerda. Use o ícone de retorno, à direita, ao terminar.
 
 **Resultado esperado:** o diagrama permanece em um quadro de tamanho estável e
 pode ser ampliado sem criar um painel adicional. A prática continua no próprio
@@ -262,9 +263,10 @@ desenho no card e em tela cheia.
 resource já baixado. Escala e posição são temporárias e não entram no progresso
 nem na sincronização.
 
-**Recuperação:** se perder uma parte do desenho durante a exploração, use o
-ícone de ajuste. Grafos matemáticos e fluxogramas ainda podem apresentar
-navegação própria, diferente deste modo.
+**Recuperação:** se perder uma parte do desenho durante a exploração, diminua o
+zoom até o limite; o enquadramento global responsivo é retomado automaticamente.
+Grafos matemáticos e fluxogramas ainda podem apresentar navegação própria,
+diferente deste modo.
 
 ## Responder e avançar em um card
 

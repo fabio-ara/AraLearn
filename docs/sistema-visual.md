@@ -74,14 +74,19 @@ O modo escuro usa superfícies cinza-escuras e níveis de texto distintos. Preto
 
 `Trilhas` é a superfície de organização e estudo. `Coleções` é a superfície de descoberta e, para contas autorizadas, de administração editorial. Semelhança entre cartões reduz reaprendizagem, mas nunca comunica permissão: capacidade é derivada do servidor e controles editoriais aparecem em modo explícito.
 
-No leitor, **Visualizar**, **Editar** e **IA** são estados contextuais da mesma superfície. Em Visualizar, não permanecem controles de autoria. Em Editar, somente textos declarados pelos packages recebem affordance de edição. Em IA, a seleção delimita o escopo enviado à conversa.
+No leitor, **Visualizar**, **Editar** e **IA** são estados contextuais da mesma superfície. Seus controles ocupam o centro da barra superior; o título contextual aparece no início do conteúdo, sem consumir uma segunda faixa exclusiva. Em Visualizar, não permanecem controles de autoria. Em Editar, somente textos declarados pelos packages recebem affordance de edição. Em IA, a seleção delimita o escopo enviado à conversa.
 
 Uma **affordance** é uma pista perceptível de como um elemento pode ser usado. Contorno de seleção, cursor, foco e rótulo precisam corresponder à operação disponível; aparência de botão não pode ser aplicada a texto sem ação.
 
 ## 6. Tipografia, espaço e forma
 
-- família de sistema, sem download obrigatório;
-- corpo e rótulos de resources na mesma escala básica do `paragraph`;
+- família de sistema, sem download obrigatório, para conservar sobriedade,
+  disponibilidade offline e métricas adequadas a cada plataforma;
+- prosa principal em 15,5 px com entrelinha de 1,5 e espaçamento vertical
+  proporcional; campos interativos, lacunas, alternativas, matemática e texto
+  interno de diagramas conservam o piso necessário à leitura e à operação;
+- corpo e rótulos textuais de resources seguem a escala básica do `paragraph`,
+  salvo notação cuja geometria dependa de métricas próprias;
 - largura de leitura confortável e alinhamento não justificado;
 - hierarquia curta por tamanho e peso, sem títulos gigantes;
 - espaços derivados de uma escala previsível;
@@ -89,6 +94,11 @@ Uma **affordance** é uma pista perceptível de como um elemento pode ser usado.
 - sombras apenas em sobreposição ou elevação funcional;
 - metadados menores que o conteúdo, mas ainda legíveis;
 - nenhum alvo de toque é reduzido para produzir aparência compacta.
+
+Em diagramas cujo motor calcula previamente as caixas, rótulos HTML e lacunas
+internas permanecem em 16 px para não divergir da geometria medida. O zoom do
+próprio frame amplia texto e desenho em conjunto; a escala tipográfica externa
+não pode aumentar apenas o rótulo e recortá-lo dentro do nó.
 
 Fórmulas e símbolos podem ter métricas próprias da notação matemática. Isso não autoriza ampliação arbitrária: o tamanho óptico deve permanecer coerente com o texto ao redor, e delimitadores devem acompanhar a altura real do conteúdo com traço fino.
 
@@ -134,7 +144,11 @@ tamanho do card.
 - gesto fora do frame navega no card;
 - o diagrama abre no início de sua leitura, não numa posição arbitrária;
 - foco por teclado alcança o frame e seus controles por ícone;
+- uma faixa superior reservada no frame mantém diminuir, aumentar e expandir no
+  canto direito, sem se sobrepor ao desenho;
 - o mesmo diagrama pode ocupar a tela cheia sem ganhar um painel paralelo;
+- em tela cheia, a largura não supera a largura móvel do aplicativo; diminuir e
+  aumentar ficam à esquerda, enquanto retornar ao card fica à direita;
 - preenchimento de lacuna usa a reserva prevista pelo layout, sem redimensionar
   o frame ou o card;
 - orientação vertical é preferida para progressões longas no celular; comparação lateral permanece horizontal quando sua semântica depende disso.
