@@ -731,7 +731,32 @@ export function createLessonEditorApp({
     state.responseExerciseByBlockKey = {};
     state.continuePopup = null;
     state.activeTextGapPrompt = null;
+    state.pendingExerciseFocus = null;
     state.cardExerciseLoadVersion += 1;
+  }
+
+  function prepareCurrentCardExerciseEntry() {
+    const currentCard = getRenderContext().card;
+    const entries = [
+      ...getCurrentCardChoiceResponse(currentCard),
+      ...getCurrentCardGapResponse(currentCard),
+      ...getCurrentCardOrderingResponse(currentCard)
+    ];
+
+    entries.forEach((entry) => {
+      const exercise = state.responseExerciseByBlockKey[entry.blockKey];
+      if (!exercise) {
+        return;
+      }
+      state.responseExerciseByBlockKey[entry.blockKey] = {
+        ...exercise,
+        feedback: null
+      };
+    });
+
+    state.continuePopup = null;
+    state.activeTextGapPrompt = null;
+    state.pendingExerciseFocus = null;
   }
 
   function homeReviewItems() {
@@ -1592,8 +1617,7 @@ export function createLessonEditorApp({
     state.assistDraft.assistance = createCardAssistanceUiState(state.selection);
     syncAssistDraft();
     state.cardCommentOpen = false;
-    state.continuePopup = null;
-    state.activeTextGapPrompt = null;
+    prepareCurrentCardExerciseEntry();
     state.cardExerciseLoadVersion += 1;
     render({ preserveState: false });
     void loadCardAssistanceLocalState(state.selection.courseKey);
@@ -1637,8 +1661,7 @@ export function createLessonEditorApp({
     state.microsequenceMode = "assist";
     syncAssistDraft();
     state.cardCommentOpen = false;
-    state.continuePopup = null;
-    state.activeTextGapPrompt = null;
+    prepareCurrentCardExerciseEntry();
     state.cardExerciseLoadVersion += 1;
     render({ preserveState: false });
     void loadCardAssistanceLocalState(state.selection.courseKey);
@@ -1696,8 +1719,7 @@ export function createLessonEditorApp({
       };
     }
 
-    state.continuePopup = null;
-    state.activeTextGapPrompt = null;
+    prepareCurrentCardExerciseEntry();
     state.cardExerciseLoadVersion += 1;
     // Um novo card possui foco e posição de leitura próprios. Capturar e
     // restaurar toda a árvore anterior aqui só alonga o caminho crítico do Play.

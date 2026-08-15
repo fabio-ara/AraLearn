@@ -1084,6 +1084,81 @@ test("Processo BPMN abre a prática sem validar a lacuna durante o avanço", asy
   );
 });
 
+test("Processo BPMN reentra neutro após uma tentativa incompleta", async ({ page }) => {
+  await signIn(page, {
+    replicaRows: resourceCatalogRows(),
+    replicaDocument: resourceCatalogDocument()
+  });
+  await page.locator('[data-action="open-course"]').tap();
+  await openStudyCardFromCourse(page, {
+    moduleKey: "catalog-family-family-process-state",
+    lessonKey: "catalog-family-family-process-state-lesson",
+    microsequenceKey: "catalog-aralearn-resource-bpmn-process-microsequence"
+  });
+
+  await page.locator('[data-action="next-card"]').tap();
+  await expect(page.locator(".runtime-card-title")).toHaveText("Pratique: Processo BPMN");
+  await page.locator('[data-action="next-card"]').press("Enter");
+  await expect(page.locator("[data-text-gap-prompt='true']")).toBeVisible();
+  await expect(page.locator("[data-complete-feedback-block-key]")).toContainText(
+    "Complete todas as lacunas."
+  );
+
+  await page.locator('[data-action="prev-card"]').tap();
+  await expect(page.locator(".runtime-card-title")).toHaveText("Como ler: Processo BPMN");
+  await page.locator('[data-action="next-card"]').tap();
+
+  await expect(page.locator(".runtime-card-title")).toHaveText("Pratique: Processo BPMN");
+  await expect(page.locator("[data-text-gap-prompt='true']")).toHaveCount(0);
+  await expect(page.locator("[data-complete-feedback-block-key]")).toHaveCount(0);
+
+  await page.locator('[data-action="next-card"]').press("Enter");
+  await expect(page.locator("[data-text-gap-prompt='true']")).toBeVisible();
+  await expect(page.locator("[data-complete-feedback-block-key]")).toContainText(
+    "Complete todas as lacunas."
+  );
+});
+
+test("Processo BPMN preserva a resposta sem reapresentar o erro na reentrada", async ({ page }) => {
+  await signIn(page, {
+    replicaRows: resourceCatalogRows(),
+    replicaDocument: resourceCatalogDocument()
+  });
+  await page.locator('[data-action="open-course"]').tap();
+  await openStudyCardFromCourse(page, {
+    moduleKey: "catalog-family-family-process-state",
+    lessonKey: "catalog-family-family-process-state-lesson",
+    microsequenceKey: "catalog-aralearn-resource-bpmn-process-microsequence"
+  });
+
+  await page.locator('[data-action="next-card"]').tap();
+  const gap = page.locator(
+    '.package-bpmn-process [data-action="text-gap-open-choice"]'
+  );
+  await gap.click();
+  await page.locator(
+    '[data-action="text-gap-set-choice"][data-text-gap-value="Analisar requisitos"]'
+  ).click();
+  await expect(gap).toContainText("Analisar requisitos");
+  await page.locator('[data-action="next-card"]').press("Enter");
+  await expect(page.locator("[data-complete-feedback-block-key]")).toContainText(
+    "Incorreto. Tente novamente."
+  );
+
+  await page.locator('[data-action="prev-card"]').tap();
+  await page.locator('[data-action="next-card"]').tap();
+
+  await expect(page.locator(".runtime-card-title")).toHaveText("Pratique: Processo BPMN");
+  await expect(gap).toContainText("Analisar requisitos");
+  await expect(page.locator("[data-text-gap-prompt='true']")).toHaveCount(0);
+  await expect(page.locator("[data-complete-feedback-block-key]")).toHaveCount(0);
+
+  await page.locator('[data-action="next-card"]').press("Enter");
+  await expect(page.locator("[data-complete-feedback-block-key]")).toContainText(
+    "Incorreto. Tente novamente."
+  );
+});
+
 test("Processo BPMN não reaplica no novo card a ativação repetida do avanço", async ({ page }) => {
   await signIn(page, {
     replicaRows: resourceCatalogRows(),

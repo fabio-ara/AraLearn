@@ -4154,13 +4154,13 @@ input:-webkit-autofill:focus {
   bottom: 8px;
   z-index: 12;
   border: 1px solid color-mix(in srgb, var(--resource-border) 30%, transparent);
-  border-radius: 14px;
+  border-radius: 12px;
   background:
     linear-gradient(180deg, color-mix(in srgb, var(--resource-surface-subtle) 90%, transparent), color-mix(in srgb, var(--resource-surface-sunken) 94%, transparent)),
     radial-gradient(circle at top, color-mix(in srgb, var(--resource-accent) 8%, transparent), transparent 64%);
-  padding: 10px;
+  padding: 6px;
   display: grid;
-  gap: 10px;
+  gap: 4px;
   box-shadow: 0 12px 28px color-mix(in srgb, var(--resource-surface-sunken) 24%, transparent);
 }
 
@@ -4172,8 +4172,8 @@ input:-webkit-autofill:focus {
 }
 
 .runtime-flow-prompt-badge {
-  font-size: 0.74rem;
-  font-weight: 700;
+  font-size: 0.7rem;
+  font-weight: 600;
   letter-spacing: 0.04em;
   color: var(--resource-text);
   text-transform: uppercase;
@@ -4182,31 +4182,32 @@ input:-webkit-autofill:focus {
 .token-options {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 4px;
   align-items: flex-start;
   align-content: flex-start;
   max-height: 32vh;
   overflow: auto;
-  padding: 1px 0 6px;
+  padding: 0;
   box-sizing: border-box;
 }
 
 .token-option {
-  min-height: 36px;
+  min-height: 28px;
   border: 1px solid var(--resource-border);
-  border-radius: 10px;
+  border-radius: 8px;
   background: linear-gradient(180deg, var(--resource-surface-subtle), var(--resource-surface-subtle));
   color: var(--text-primary);
-  padding: 7px 11px;
+  padding: 3px 6px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: var(--type-base);
-  font-weight: 600;
-  line-height: 1.25;
+  font-size: 0.69rem;
+  font-weight: 400;
+  line-height: 1.14;
   cursor: pointer;
   flex: 0 0 auto;
   max-width: 100%;
+  overflow-wrap: anywhere;
   transition: background 0.2s ease, border-color 0.2s ease, transform 0.05s ease, box-shadow 0.2s ease;
 }
 

@@ -82,9 +82,12 @@ Uma **affordance** é uma pista perceptível de como um elemento pode ser usado.
 
 - família de sistema, sem download obrigatório, para conservar sobriedade,
   disponibilidade offline e métricas adequadas a cada plataforma;
-- prosa principal em 15,5 px com entrelinha de 1,5 e espaçamento vertical
-  proporcional; campos interativos, lacunas, alternativas, matemática e texto
-  interno de diagramas conservam o piso necessário à leitura e à operação;
+- prosa principal em 15,5 px, com entrelinha de 1,5; alternativas repetidas de
+  lacuna recuperam a escala compacta de 0,69 rem, cerca de 11 px no tamanho
+  padrão, peso regular, padding reduzido e altura mínima de 28 px. A unidade
+  relativa acompanha a ampliação de texto, enquanto os demais campos
+  interativos, a matemática e o texto interno de diagramas conservam o piso
+  necessário à leitura e à operação;
 - corpo e rótulos textuais de resources seguem a escala básica do `paragraph`,
   salvo notação cuja geometria dependa de métricas próprias;
 - largura de leitura confortável e alinhamento não justificado;
@@ -93,7 +96,9 @@ Uma **affordance** é uma pista perceptível de como um elemento pode ser usado.
 - cantos discretos e consistentes;
 - sombras apenas em sobreposição ou elevação funcional;
 - metadados menores que o conteúdo, mas ainda legíveis;
-- nenhum alvo de toque é reduzido para produzir aparência compacta.
+- controles principais conservam alvo de 44 px; alternativas repetidas de
+  lacuna equilibram leitura e área útil com alvo mínimo de 28 px, ainda acima
+  do mínimo AA.
 
 Em diagramas cujo motor calcula previamente as caixas, rótulos HTML e lacunas
 internas permanecem em 16 px para não divergir da geometria medida. O zoom do
@@ -189,7 +194,11 @@ Os critérios adotam [WCAG 2.2](https://www.w3.org/TR/WCAG22/) como referência 
 - alternativa a gestos de arrastar quando exigida;
 - respeito a preferência de movimento reduzido.
 
-O alvo interno de 44 px é uma decisão conservadora de produto, superior ao mínimo AA de Target Size (Minimum). Conformidade automatizada não demonstra usabilidade com tecnologia assistiva; leitor de tela, WebView, teclado e aparelho real continuam necessários.
+O alvo de 44 px permanece a decisão conservadora para controles principais.
+Alternativas repetidas de lacuna podem usar 28 px para preservar a densidade do
+card; esse tamanho continua superior ao mínimo AA de Target Size (Minimum).
+Conformidade automatizada não demonstra usabilidade com tecnologia assistiva;
+leitor de tela, WebView, teclado e aparelho real continuam necessários.
 
 ## 13. Evidência visual e automatizada
 
