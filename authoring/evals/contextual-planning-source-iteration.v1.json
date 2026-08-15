@@ -303,14 +303,14 @@
       {
         "id": "chatgpt-instructions",
         "path": "authoring/platforms/chatgpt/INSTRUCTIONS.md",
-        "sha256": "07e0751dc809677705e42601f9ced2df55534f6fb4e661c720777f02d6e2bc53",
-        "bytes": 7454
+        "sha256": "7b39d8969d2ab3b87d05b91ae45602765c336791c271f92539dccc0bfea77186",
+        "bytes": 7601
       },
       {
         "id": "authoring-knowledge",
         "path": "supabase/functions/_shared/aralearn-authoring/authoringKnowledge.js",
-        "sha256": "119d0626ad6bc257cbddeda098905d0ec27c2faf93179bf04aa2d8ca82b10aae",
-        "bytes": 44080
+        "sha256": "861816e9401e3651dc19847b3ba7a3d3cf402c41743bc2c77766a7eb19632877",
+        "bytes": 44141
       }
     ],
     "findings": []

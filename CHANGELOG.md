@@ -48,7 +48,10 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
   sem reduzir alvos de toque nem controles e textos interativos;
 - a ordenação passa a permutar pelo menos dois trechos nos próprios campos de
   `paragraph` e `table`, inclusive entre instâncias ou células diferentes, com
-  setas por ícone para a esquerda e a direita.
+  setas por ícone para a esquerda e a direita;
+- o dimensionamento da autoria estrutural volta a decorrer do escopo, das
+  dependências, das dificuldades e da progressão, sem cotas pedagógicas de
+  cards, microssequências, Partes ou alternativas.
 
 ### Fixed
 
@@ -58,7 +61,9 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
   quadro mantém sua geometria enquanto o próprio desenho recebe zoom e pan;
 - a edição manual volta a atuar diretamente nos rótulos textuais visíveis, com
   caret e contorno no próprio resource, sem formulário auxiliar, texto técnico
-  ou alteração da geometria do card.
+  ou alteração da geometria do card;
+- o embaralhamento de alternativas volta a admitir qualquer permutação,
+  inclusive a ordem autoral original, sem viés de rotação.
 
 ### Removed
 

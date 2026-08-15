@@ -50,10 +50,5 @@ export function shuffleExerciseOptions(list, seed) {
     [source[index], source[swapIndex]] = [source[swapIndex], source[index]];
   }
 
-  const unchanged = source.every((item, index) => item === list[index]);
-  if (unchanged) {
-    source.push(source.shift());
-  }
-
   return source;
 }

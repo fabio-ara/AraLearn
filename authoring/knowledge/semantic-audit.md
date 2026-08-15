@@ -55,8 +55,9 @@ sequência pronta.
   justifica reproduzir sua densidade.
 - Recuse frase ou card que coordene conceitos novos independentes apenas para
   reduzir extensão. Recomende separação em mais cards ou microssequências e não
-  trate a quantidade resultante como defeito. Se o limite técnico de oito cards
-  for alcançado, a correção é decompor a unidade, não condensar ou omitir teoria.
+  trate a quantidade resultante como defeito. Se a ferramenta recusar o tamanho
+  do payload, preserve a progressão e divida no menor limite causal, sem
+  condensar ou omitir teoria.
 - Divida uma representação quando ela exigir simultaneamente comparação, cálculo, leitura de várias relações independentes e memorização de legenda extensa. Simplificar não significa omitir a condição que decide a resposta.
 
 ## 4. Coerência entre operação, recurso e lacuna

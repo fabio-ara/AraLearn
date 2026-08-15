@@ -51,9 +51,9 @@ O schema selecionado por `operation` já contém todos os argumentos da transfor
 
 Quando o pedido for transferir uma parte entre dois cursos já publicados, trate as duas publicações como estados independentes: abra cada curso atual em seu próprio workspace, grave e publique primeiro a cópia adaptada no destino e, após esse sucesso, remova a parte original e publique a origem. Use o hash corrente de cada curso e descreva o estado intermediário e o resultado final. Mover a cópia importada sozinho não conta como retirada da publicação de origem.
 
-## Estrutura planejada em lotes pequenos
+## Estrutura planejada em lotes técnicos
 
-Use `criarEstruturaNoWorkspace` para registrar curso, módulos, lições e microssequências em lotes pequenos. Uma microssequência planejada ainda não contém cards.
+Use `criarEstruturaNoWorkspace` para registrar curso, módulos, lições e microssequências em lotes técnicos de até 40 entidades. O teto protege a operação e não dimensiona o curso nem suas Partes. Uma microssequência planejada ainda não contém cards.
 
 Evite duas formas frágeis:
 
@@ -325,7 +325,7 @@ Identifique também o que ainda não se sabe. Faça uma pergunta apenas quando r
 - Alternativas erradas representam equívocos plausíveis e não simples absurdos.
 - No package de escolha, selecione resposta única ou múltipla conforme a evidência pretendida e verifique o conjunto exato de identificadores.
 - A pergunta de `aralearn.response.choice` é o único enunciado da escolha. Não copie a mesma pergunta para um `paragraph` de `content`; use `content: []` quando não houver cenário, dado ou representação adicional.
-- Use de 2 a 7 opções. Três alternativas costumam bastar; cinco só se justificam quando houver quatro distratores ou decisões realmente competitivos. Não infle a lista.
+- Use somente alternativas necessárias à evidência pretendida e distratores funcionalmente plausíveis. Não infle nem reduza a lista para cumprir uma quantidade predeterminada; o schema do package aplica apenas seus limites técnicos.
 - Detecte opções equivalentes, pistas gramaticais, diferença injustificada de extensão, repetição exclusiva do enunciado e alternativa parcialmente correta tratada como errada sem condição explícita.
 - O feedback explica a regra, o detalhe decisivo e o motivo do erro provável.
 - Termos são apresentados com explicação antes do primeiro uso exigido.
@@ -585,7 +585,7 @@ Esta verificação ocorre antes de construir os cards e volta a ser aplicada à 
 - Dados visuais não podem existir apenas na posição, na cor, no destaque, em um card anterior, no feedback ou na resposta oculta. O estudante precisa conseguir identificar o que é solicitado antes de interagir.
 - Um termo técnico, símbolo, sigla, convenção, papel, unidade ou relação nova recebe explicação suficiente antes de ser exigido. Não use uma palavra mais avançada para explicar outra sem introduzi-la na mesma cadeia causal.
 - Teoria não é resumo. Sinalize texto que empilhe termos, relações ou mecanismos novos antes de apresentar em linguagem comum a necessidade ou a situação que eles explicam. Na primeira ocorrência, procure uma explicação simples e, quando útil, um exemplo concreto antes da formulação técnica. Fidelidade à fonte não justifica reproduzir sua densidade.
-- Recuse frase ou card que coordene conceitos novos independentes apenas para reduzir extensão. Recomende separação em mais cards ou microssequências e não trate a quantidade resultante como defeito. Se o limite técnico de oito cards for alcançado, a correção é decompor a unidade, não condensar ou omitir teoria.
+- Recuse frase ou card que coordene conceitos novos independentes apenas para reduzir extensão. Recomende separação em mais cards ou microssequências e não trate a quantidade resultante como defeito. Se a ferramenta recusar o tamanho do payload, preserve a progressão e divida no menor limite causal, sem condensar ou omitir teoria.
 - Divida uma representação quando ela exigir simultaneamente comparação, cálculo, leitura de várias relações independentes e memorização de legenda extensa. Simplificar não significa omitir a condição que decide a resposta.
 
 ## 4. Coerência entre operação, recurso e lacuna
@@ -689,7 +689,7 @@ Ao mover uma microssequência entre lições ou cursos, verifique se os tópicos
 
 Cards teóricos apresentam conceitos, representações e exemplos resolvidos. Cards de exercício recuperam e aplicam essa base. Uma prática não pode introduzir silenciosamente notação, regra, ferramenta ou procedimento novo.
 
-Teoria não é resumo do material-fonte. Na ausência de pré-requisito comprovado, introduza a necessidade ou a situação em linguagem comum, mostre um exemplo concreto quando ele tornar a ideia observável e só então apresente o termo formal e suas relações. Um termo novo não pode ser definido por vários outros termos ainda não explicados. Quando uma frase ou card precisar coordenar conceitos novos independentes, distribua a progressão em mais cards ou em outra microssequência. A quantidade resultante não é penalidade nem deve ser reduzida por condensação; o limite técnico de oito cards por gravação exige decomposição da unidade, não omissão de passos.
+Teoria não é resumo do material-fonte. Na ausência de pré-requisito comprovado, introduza a necessidade ou a situação em linguagem comum, mostre um exemplo concreto quando ele tornar a ideia observável e só então apresente o termo formal e suas relações. Um termo novo não pode ser definido por vários outros termos ainda não explicados. Quando uma frase ou card precisar coordenar conceitos novos independentes, distribua a progressão em mais cards ou em outra microssequência. A quantidade resultante não é penalidade nem deve ser reduzida por condensação. Dimensione a unidade pela progressão; se a ferramenta recusar o tamanho do payload, divida no menor limite causal sem omitir passos.
 
 Variações de prática mudam dados, contexto, representação ou grau de apoio, mas continuam vinculadas à mesma microteoria. Uma necessidade conceitual nova gera outra microteoria.
 

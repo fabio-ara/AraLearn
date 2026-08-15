@@ -177,7 +177,10 @@ dialogado.
 - A pergunta de `aralearn.response.choice` é o único enunciado da escolha. Não
   copie a mesma pergunta para um `paragraph` de `content`; use `content: []`
   quando não houver cenário, dado ou representação adicional.
-- Use de 2 a 7 opções. Três alternativas costumam bastar; cinco só se justificam quando houver quatro distratores ou decisões realmente competitivos. Não infle a lista.
+- Use somente alternativas necessárias à evidência pretendida e distratores
+  funcionalmente plausíveis. Não infle nem reduza a lista para cumprir uma
+  quantidade predeterminada; o schema do package aplica apenas seus limites
+  técnicos.
 - Detecte opções equivalentes, pistas gramaticais, diferença injustificada de extensão, repetição exclusiva do enunciado e alternativa parcialmente correta tratada como errada sem condição explícita.
 - O feedback explica a regra, o detalhe decisivo e o motivo do erro provável.
 - Termos são apresentados com explicação antes do primeiro uso exigido.

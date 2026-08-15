@@ -148,6 +148,27 @@ test("materiais executáveis não conservam a configuração pedagógica global 
   }
 });
 
+test("autoria estrutural dimensiona o curso sem cotas pedagógicas numéricas", () => {
+  const sources = [
+    readAuthoring("platforms/chatgpt/INSTRUCTIONS.md"),
+    readAuthoring("core/quality.md"),
+    readAuthoring("knowledge/continuity.md"),
+    readAuthoring("knowledge/semantic-audit.md"),
+    fs.readFileSync(
+      path.join(
+        ROOT,
+        "supabase/functions/_shared/aralearn-authoring/authoringKnowledge.js"
+      ),
+      "utf8"
+    )
+  ].join("\n");
+
+  assert.doesNotMatch(sources, /(?:limite|teto)[^\n]{0,80}oito cards/iu);
+  assert.doesNotMatch(sources, /use de 2 a 7 opções/iu);
+  assert.match(sources, /não de uma cota fixa de cards/iu);
+  assert.match(sources, /cobertura[\s\S]{0,180}progressão/iu);
+});
+
 test("corpus A–E é versionado e contém rubricas observáveis", () => {
   const corpus = JSON.parse(fs.readFileSync(CORPUS_PATH, "utf8"));
   assert.equal(

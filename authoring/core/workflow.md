@@ -103,11 +103,12 @@ corrente de cada curso e descreva o estado intermediário e o resultado final.
 Mover a cópia importada sozinho não conta como retirada da publicação de
 origem.
 
-## Estrutura planejada em lotes pequenos
+## Estrutura planejada em lotes técnicos
 
 Use `criarEstruturaNoWorkspace` para registrar curso, módulos, lições e
-microssequências em lotes pequenos. Uma microssequência planejada ainda não
-contém cards.
+microssequências em lotes técnicos de até 40 entidades. O teto protege a
+operação e não dimensiona o curso nem suas Partes. Uma microssequência planejada
+ainda não contém cards.
 
 Evite duas formas frágeis:
 

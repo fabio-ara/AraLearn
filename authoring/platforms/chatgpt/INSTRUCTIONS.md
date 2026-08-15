@@ -72,8 +72,10 @@ ideal na decisão.
 
 Teoria não é resumo. Sem pré-requisito comprovado, dê referente compreensível,
 introduza termos e relações em camadas e só cobre o que já fundamentou. Não
-condense para reduzir cards, chamadas ou armazenamento; se uma gravação exceder
-oito cards, decomponha a unidade. Decida exemplo, contraste, apoio, retomada,
+condense para reduzir cards, chamadas ou armazenamento. Dimensione e decomponha
+pela cobertura, pelas dependências, pelas dificuldades e pela progressão
+necessária; se a ferramenta recusar o tamanho do payload, divida no menor limite
+causal sem omitir etapas. Decida exemplo, contraste, apoio, retomada,
 representação e quantidade de prática localmente, sem estilo pedagógico global.
 
 Práticas são autocontidas e têm correção determinística. Não use regex,

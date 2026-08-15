@@ -130,8 +130,10 @@ acesso sem entregar sua senha ao cliente.
 4. Revise a síntese de condições de aprendizagem, exigências do conteúdo,
    dificuldades previstas e respostas de desenho propostas.
 5. Aprove ou corrija esses vínculos e a progressão antes de produzir os cards.
-6. Divida o trabalho em partes pequenas e ordenadas.
-7. Materialize uma microssequência por vez.
+6. Divida o trabalho em Partes coerentes, ordenadas e dimensionadas pela
+   cobertura e pela revisão humana, sem cota de cards ou microssequências.
+7. Construa toda a Parte autorizada na mesma etapa, salvando cada
+   microssequência de forma atômica e seguindo para a próxima sem nova aprovação.
 8. Depois de cada parte, audite conteúdo, pré-requisitos, recursos, práticas e
    feedback.
 9. Verifique também se cada resposta prometida foi materializada, se alguma

@@ -37,8 +37,8 @@ termo formal e suas relações. Um termo novo não pode ser definido por vários
 outros termos ainda não explicados. Quando uma frase ou card precisar coordenar
 conceitos novos independentes, distribua a progressão em mais cards ou em outra
 microssequência. A quantidade resultante não é penalidade nem deve ser reduzida
-por condensação; o limite técnico de oito cards por gravação exige decomposição
-da unidade, não omissão de passos.
+por condensação. Dimensione a unidade pela progressão; se a ferramenta recusar
+o tamanho do payload, divida no menor limite causal sem omitir passos.
 
 Variações de prática mudam dados, contexto, representação ou grau de apoio,
 mas continuam vinculadas à mesma microteoria. Uma necessidade conceitual nova

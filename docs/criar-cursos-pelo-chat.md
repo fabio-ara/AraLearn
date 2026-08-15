@@ -132,10 +132,11 @@ conceitual delimitado e praticá-lo. “Delimitado” não significa resumido: u
 explicação difícil pode ocupar vários cards, desde a aproximação concreta até a
 formalização.
 
-Não há cota fixa de cards. Quando uma unidade precisaria concentrar conceitos
-independentes ou exceder o limite operacional de oito cards, ela é decomposta.
-A quantidade maior é consequência pedagógica aceitável; omitir etapas para
-reduzir custo não é.
+Não há cota fixa de cards. Uma unidade é decomposta quando precisaria concentrar
+conceitos, dependências, decisões ou formas de prática que exigem progressões
+próprias. Se a ferramenta recusar o tamanho do payload, a divisão respeita o
+menor limite causal. A quantidade resultante é consequência pedagógica
+aceitável; omitir etapas para reduzir custo não é.
 
 Analise a proposta, inclusive os vínculos dificuldade–resposta, e responda com
 aprovação ou ajustes. O assistente não deve começar a produção na mesma resposta

@@ -135,7 +135,8 @@ test("microteoria progride sem pré-requisitos e não se condensa para reduzir c
     /Quantidade de cards, chamadas ou armazenamento não autoriza condensar teoria/iu
   );
   assert.match(semanticAudit, /Fidelidade à fonte não\s+justifica reproduzir sua densidade/iu);
-  assert.match(continuity, /limite técnico de oito cards.*decomposição/isu);
+  assert.doesNotMatch(continuity, /(?:limite|teto).*oito cards/iu);
+  assert.match(continuity, /progressão.*payload.*menor limite causal/isu);
   assert.match(
     domainPatterns,
     /associação entre um nome e um endereço.*hierarquia, registros distribuídos e resolução/isu

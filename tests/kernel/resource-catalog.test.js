@@ -41,7 +41,7 @@ test("catálogo organiza todo package em sete famílias canônicas e facetas con
   assert.deepEqual(RESOURCE_CATALOG.families, RESOURCE_FAMILIES);
   assert.equal(explored.packageCount, manifests.length);
   assert.equal(explored.policy.contract, "aralearn.resource-selection-policy.v1");
-  assert.match(explored.policy.theoryDensity, /um avanço conceitual por card/u);
+  assert.match(explored.policy.theoryDensity, /foco conceitual identificável/u);
   assert.equal(explored.families.length, 7);
   explored.families.forEach(({ count }) => assert.ok(count > 0));
 

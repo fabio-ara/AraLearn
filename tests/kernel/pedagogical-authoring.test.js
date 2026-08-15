@@ -274,6 +274,10 @@ test("MCP expõe núcleo protegido, blueprint contextual e somente contrato esco
   assert.ok(context.blueprintContract.requiredSections.includes("contentDemands"));
   assert.ok(context.blueprintContract.requiredSections.includes("anticipatedDifficulties"));
   assert.ok(context.blueprintContract.requiredSections.includes("designResponses"));
+  assert.match(
+    context.blueprintContract.learningCondition.rule,
+    /condições reais de estudo/iu
+  );
   assert.deepEqual(context.blueprintContract.designResponse.required, [
     "id", "difficultyIds", "decision", "theoryStepIds",
     "practiceStepIds", "packageCandidateIds", "materializationChecks"
