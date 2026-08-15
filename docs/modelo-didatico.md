@@ -156,8 +156,10 @@ pessoa sabe nem demonstram a eficácia do produto.
 conserva condição e exigência; `pedagogicalDiagnosis.difficultyResponses`
 preserva somente os pares relevantes de dificuldade e resposta ligados à
 microssequência. As referências locais aos passos e packages existem no
-blueprint de trabalho, mas não são copiadas para a continuidade. Não persistem
-raciocínio privado do modelo nem o transcript integral do diálogo. Na
+blueprint de trabalho, mas não são copiadas para a continuidade compacta. O
+subsistema instrucional persiste separadamente análise, snapshot, blueprint v2,
+binding e manifesto versionados. Nenhuma camada persiste raciocínio privado do
+modelo nem o transcript integral do diálogo. Na
 auditoria, cada resposta prometida deve aparecer no plano e nos cards; também
 se procuram resposta ausente, densidade excessiva, prática antes da base,
 representação inadequada, perda de cobertura e dependência de meio externo
@@ -172,7 +174,7 @@ certifica adequação disciplinar e não prediz resultados de aprendizagem.
 ## Análise instrucional e parâmetros locais
 
 O diagnóstico contextual informa a análise de cada microssequência, mas não a
-substitui. A proposta de desenho parametrizado separa o percurso abaixo:
+substitui. O modelo de desenho parametrizado separa o percurso abaixo:
 
 ```text
 fontes e objetivo → análise instrucional → parâmetros efetivos
@@ -214,8 +216,9 @@ perfil global. O manifesto posterior registra o que realmente foi produzido,
 inclusive cobertura e divergências, e só então deriva contagens de cards,
 palavras, caracteres e resources.
 
-Os contratos correspondentes são, neste estágio, uma proposta conceitual ainda
-não persistida. Sua fundamentação, seu estatuto e seus limites estão em
+Os contratos correspondentes possuem validação, resolução e persistência
+internas; sua exposição no MCP e na interface pertence às etapas seguintes. Sua
+fundamentação, seu estatuto e seus limites estão em
 [Desenho instrucional parametrizado](desenho-instrucional-parametrizado.md).
 
 ## Profundidade sem condensação

@@ -95,12 +95,15 @@ só, menor carga cognitiva ou melhor aprendizagem
 O AraLearn não exige um estado binário de “rascunho” versus “publicado” para
 que o curso possa ser lido. A construção pode ocorrer progressivamente:
 
-1. a autoria define finalidade, público e planejamento;
-2. cria a estrutura de partes e microssequências;
-3. materializa teoria, prática e recursos de card;
-4. estuda e revisa o que já existe;
-5. corrige a composição corrente;
-6. distribui uma revisão somente quando houver uma finalidade editorial.
+1. a autoria registra fontes, finalidade, público e objetivo;
+2. cria o mapa operacional de Partes e microssequências;
+3. analisa uma microssequência e resolve seus parâmetros;
+4. delimita os resources disponíveis, seleciona e compõe os adequados;
+5. vincula análise e parâmetros ao blueprint contextual;
+6. materializa teoria, prática e cards;
+7. registra um manifesto factual do que foi produzido;
+8. estuda, audita e repara o que já existe;
+9. distribui uma revisão somente quando houver uma finalidade editorial.
 
 Isso aproxima validação pedagógica e autoria: uma parte pronta pode ser
 experimentada sem fingir que o projeto inteiro terminou. Publicação continua
@@ -148,6 +151,13 @@ workspace conserva um estado operacional compacto: partes planejadas, decisões
 correntes, mandato de trabalho e achados formais ainda relevantes. Ele não usa
 o histórico integral da conversa como fonte de verdade.
 
+O desenho parametrizado possui registros duráveis próprios para análise,
+assignments, `ResourceSet`s, snapshot efetivo, blueprint v2 e manifesto. Esses
+objetos não são reconstruídos da conversa nem comprimidos dentro da continuidade
+textual. Parte permanece no mapa como coordenação de trabalho, mas não integra a
+cadeia de parâmetros, que segue
+`workspace → course → module → lesson → microsequence`.
+
 Essa escolha resolve dois problemas:
 
 - uma conversa longa é uma memória instável e dispendiosa para reconstruir o
@@ -174,6 +184,19 @@ composição de autoria, ao contrário, continua mutável e é protegida por nú
 de revisão. Essa divisão oferece uma origem estável para distribuição sem
 guardar uma cópia integral a cada pequena edição.
 
+Análise, snapshots efetivos, `ResourceSet`s, blueprints e manifestos também são
+imutáveis e versionados, mas não são publicações nem cópias integrais do curso.
+Um binding corrente aponta qual blueprint v2, análise e snapshot pertencem à
+microssequência; uma nova decisão cria nova versão em vez de reescrever a
+proveniência anterior. Assignments registram `auto`, override manual ou lock de
+pesquisa como valores explícitos; “herdado” é um resultado calculado.
+
+Cada `ResourceSet` registra disponibilidade exata. O manifesto mantém separadas
+a seleção autorizada e a instância usada. Se não houver representação adequada,
+a limitação permanece explícita. Workspaces anteriores a esse modelo ficam
+`unresolved`; conteúdo já materializado aparece como `legacy_untracked` e
+`legacy_unrestricted` até nova análise, sem preenchimento retroativo fictício.
+
 Recibos temporários permitem reconhecer a repetição acidental do mesmo comando
 após uma falha de conexão. Eles não são versões do curso e expiram. Convites
 pendentes também expiram. Limites de retenção e medições de armazenamento devem
@@ -187,6 +210,12 @@ os cursos necessários à continuidade do estudo. A composição previamente
 carregada pode ser lida sem rede. Edições textuais autorizadas em cursos de
 workspace também podem ser guardadas em uma fila local e enviadas depois.
 
+Quando uma fatia do desenho de uma microssequência já foi sincronizada, análise,
+valor efetivo e manifesto podem ser consultados offline. O cache em `syncState`
+é somente uma réplica do último estado remoto. Override manual e restauração de
+Auto podem entrar numa fila separada quando a capacidade havia sido observada;
+o valor pendente não altera o snapshot remoto exibido como canônico.
+
 Nem toda tarefa admite execução offline:
 
 | Tarefa | Sem conexão |
@@ -194,6 +223,9 @@ Nem toda tarefa admite execução offline:
 | estudar curso já sincronizado | disponível |
 | marcar **Rever** e escrever observação própria | disponível; sincroniza depois |
 | editar texto de card ou metadado em workspace já carregado | pode entrar na fila local |
+| consultar desenho já sincronizado | disponível como réplica, com proveniência remota |
+| ajustar parâmetro manual ou restaurar Auto | pode entrar na fila; exige revalidação remota |
+| criar `ResourceSet`, definir condição ou alterar lock de pesquisa | indisponível |
 | resolver conflito de escrita | depende de comparação com o estado remoto |
 | convidar, aceitar convite ou mudar papel | indisponível |
 | publicar ou consultar triagem compartilhada | indisponível |
@@ -203,6 +235,8 @@ Uma fila local não transforma o dispositivo na autoridade sobre permissões.
 Na reconexão, o servidor volta a verificar o papel e a revisão. Se o mesmo
 texto mudou remotamente, a pessoa escolhe entre conservar a redação local ou
 descartá-la; o sistema não mistura redações incompatíveis sem decisão.
+Parâmetros seguem a mesma fronteira de autoridade: capacidade, revisão e locks
+são relidos, e conflitos continuam explícitos.
 
 ## Hipóteses educacionais e limites
 
@@ -231,7 +265,11 @@ um curso parcialmente materializado e conexão para as operações de autoridade
 4. se somente pessoas autorizadas conseguem modificar o projeto;
 5. se uma observação pode receber resposta sem alterar o curso;
 6. se uma correção concorrente produz conflito, e não sobrescrita silenciosa;
-7. se o curso já sincronizado continua estudável sem rede.
+7. se análise, valor efetivo, `ResourceSet` disponível, blueprint e manifesto
+   apontam para versões compatíveis;
+8. se o estado legado aparece sem parâmetros inventados;
+9. se o curso e o desenho já sincronizados continuam legíveis sem rede e uma
+   intenção manual permanece separada do estado remoto.
 
 **Resultado esperado:** leitura, autoria, revisão e administração obedecem aos
 papéis; o curso usa a mesma identidade em Estudo e Autoria; conflitos e

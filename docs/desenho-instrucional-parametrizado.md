@@ -2,18 +2,19 @@
 
 ## Finalidade e estado
 
-Este capítulo reúne a fundamentação e a proposta conceitual para representar
+Este capítulo reúne a fundamentação e o modelo operacional para representar
 análise instrucional, parâmetros locais, disponibilidade de resources e a
 comparação entre planejamento e conteúdo materializado. A ordem é deliberada:
 primeiro se define o que a literatura permite sustentar; depois se propõem
 unidades operacionais e, somente então, contratos de software.
 
-Os contratos descritos aqui são uma **proposta conceitual versionada**. Eles
-ainda não constituem estado persistido, migração de banco, ferramenta MCP,
-interface de autoria ou formato aceito para publicação. Testes estruturais
-podem demonstrar que a proposta é coerente e representável; não demonstram que
-seus parâmetros medem aprendizagem nem que seus valores são pedagogicamente
-ótimos.
+Os contratos descritos aqui possuem schemas promovidos, validadores de runtime,
+resolução determinística, persistência relacional e réplica local desde a #103.
+Ainda não constituem ferramenta MCP, Action, interface de autoria ou formato de
+publicação; essas superfícies pertencem às etapas seguintes. Testes estruturais
+e de persistência demonstram comportamento técnico nos casos cobertos; não
+demonstram que os parâmetros medem aprendizagem nem que seus valores são
+pedagogicamente ótimos.
 
 ## Quatro estatutos que não se confundem
 
@@ -140,7 +141,8 @@ pedagógica global que determine todas as microssequências.
 A **Parte** continua sendo unidade operacional de coordenação humano–modelo em
 cursos extensos. Ela agrupa trabalho manejável segundo coesão, dependências,
 complexidade das microssequências e carga de revisão. Parte não é unidade
-pedagógica e não é definida por número fixo de cards.
+pedagógica, não é definida por número fixo de cards e não integra a cadeia de
+resolução dos parâmetros.
 
 Cards, palavras, caracteres e total de resources só existem como métricas
 derivadas depois da materialização. Não comandam a decomposição do objetivo.
@@ -168,34 +170,59 @@ presumidas novas por passo” ou “entre *a* e *b* oportunidades distintas por
 requisito” são políticas locais e hipóteses ajustáveis, não constantes da
 aprendizagem humana.
 
-## Proposta conceitual de contratos
+## Contratos operacionais
 
 Seis documentos fechados separam responsabilidades:
 
-| Documento proposto | Responsabilidade | Não deve conter ou substituir |
+| Documento | Responsabilidade | Não deve conter ou substituir |
 | --- | --- | --- |
 | `InstructionalAnalysis` | fontes, objetivo, unidades, estado prévio presumido, relações, conjuntos de coordenação e requisitos de explicação, evidência, variação, fidelidade e representação | cards, contagem-alvo de cards, diagnóstico individual ou passos finais do blueprint |
 | `DesignParameterDefinition` | identidade, tipo (`integer`, `range`, `enum`, `set`, `vector` ou `relation`), unidade, escopos válidos, regra de resolução, estatuto científico e limites | valor efetivo de uma microssequência ou alegação de validade |
 | `DesignParameterAssignment` | valor explícito proposto em `auto`, aplicado por `manual_override` ou imposto por `research_lock`, com escopo, autoridade e proveniência | “herdado” como intenção; herança é resultado da resolução |
 | `EffectiveDesignSnapshot` | conjunto compacto e imutável de valores resolvidos, com definições, atribuições, referências e proveniência exatas | snapshot restaurável do workspace, conversa ou raciocínio privado |
 | `MaterializationManifest` | vínculo entre plano, conteúdo realmente produzido, cobertura, resources usados, limitações e métricas derivadas versionadas | publicação, avaliação de estudante ou auditoria semântico-instrucional concluída |
-| `ResourceSet` | disponibilidade permitida como conjunto versionado de `package@version`, escopo, proveniência e eventuais locks | escolha local de package, instância materializada ou cópia dos contracts dos packages |
+| `ResourceSet` | disponibilidade permitida como conjunto versionado de `package@version`, escopo, proveniência e restrições de seleção | escolha local de package, instância materializada, lock de pesquisa ou cópia dos contracts dos packages |
+
+A revisão derivadora da análise identifica o estado que foi analisado; a
+revisão do snapshot identifica o CAS posterior em que parâmetros e
+disponibilidade foram resolvidos. Ela pode avançar após assignments ou
+`ResourceSet`s, mas nunca antecede a análise. A versão da entidade pedagógica
+permanece igual; mudança de conteúdo torna a análise stale.
 
 Uma definição de parâmetro pode admitir herança entre workspace, curso, módulo,
 lição e microssequência, mas o valor efetivo pertence ao escopo resolvido. Atribuição
 manual e lock de pesquisa têm autoridades diferentes: uma condição de pesquisa
 não pode ser alterada pelo modelo porque outra opção pareça melhor.
 
-Na versão conceitual inicial, a resolução usa o ancestral aplicável mais próximo,
-uma atribuição mais local substitui o valor completo e duas atribuições concorrentes
-no mesmo escopo produzem conflito explícito. Conjuntos também são valores completos,
-não deltas combinados pela ordem acidental de objetos. Locks de pesquisa são
-verificados antes de qualquer substituição inferior.
+O resolvedor aplica primeiro a classe de autoridade: `research_lock` como gate,
+depois `manual_override`, `auto` e default. Dentro da mesma classe, usa o
+ancestral aplicável mais próximo e substitui o valor completo; duas atribuições
+correntes do mesmo modo no mesmo escopo produzem conflito explícito. Assim, um
+override manual deliberado não é apagado por uma nova sugestão Auto mais local.
+Conjuntos também são valores completos, não deltas combinados pela ordem
+acidental de objetos. Locks de pesquisa são verificados antes de qualquer
+substituição inferior.
 
-Esta proposta não muda o envelope de curso, o blueprint v2, os schemas de
-produção ou o banco atual. Sua promoção a contrato persistente exige revisão de
-migração, CAS, autorização, operação offline, compatibilidade e paridade entre
-as superfícies de integração.
+A cadeia v1 é fechada:
+
+```text
+workspace → course → module → lesson → microsequence
+```
+
+O servidor deriva essa ancestria da árvore corrente. Parte não aparece nela.
+Cada modo (`auto`, `manual_override` ou `research_lock`) conserva valor explícito;
+`local` ou `inherited` é proveniência do resultado, não outro modo. Definição
+requerida sem assignment ou default aplicável permanece não resolvida.
+
+O blueprint pedagógico continua no contrato v2. Um
+`PedagogicalBlueprintBinding@1` referencia análise e snapshot e liga suas
+unidades e requisitos às camadas, demandas, respostas, teoria e prática do
+blueprint. O binding exige cobertura fechada das seções, mas não copia nem
+substitui o plano.
+
+A referência versionada identifica a versão imutável do **objeto** blueprint
+(por exemplo, `1.0.0`); `blueprintContractVersion: 2` identifica separadamente
+o formato pedagógico validado. Esses números não são intercambiáveis.
 
 ## `ResourceSet`: disponibilidade não é escolha
 
@@ -210,11 +237,27 @@ estados distintos:
 3. **materializado**: uma instância concreta do package apareceu no conteúdo
    produzido.
 
+Cada seleção identifica o `ResourceSet` versionado que a autorizou. Package,
+ajuste e papel são verificados nesse mesmo conjunto; permissões de conjuntos
+diferentes não são unidas artificialmente. A instância materializada referencia
+a seleção correspondente.
+
 `canonical`, `versatile` e `substitute` continuam qualificando o ajuste
 calculado pelo catálogo; não significam que membros de um conjunto sejam
 equivalentes. Se nenhum package disponível preservar a representação
-necessária, o planejamento registra a lacuna e suas consequências. O modelo não
-seleciona fora do conjunto e não apresenta substituição como equivalência.
+necessária, a política do conjunto bloqueia ou registra a lacuna e suas
+consequências. O modelo não seleciona fora do conjunto e não apresenta
+substituição como equivalência.
+
+Na operacionalização v1, `versatile` ainda designa representação adequada que
+preserva intenção e estrutura; não é rebaixado automaticamente a substituto.
+Uma seleção `substitute` só é aceita quando o valor efetivo de
+`representation_fallback_policy` permite substituição com limitação **e** o
+`ResourceSet` autorizador manda registrar a lacuna; qualquer bloqueio prevalece.
+A distinção entre `block` e `allow_versatile_with_limitation` diante de uma
+representação desejada mais específica requer que essa intenção seja registrada
+explicitamente pelo blueprint/auditoria. Até esse vínculo existir, o sistema não
+inventa uma falta nem atribui equivalência; ambos bloqueiam `substitute`.
 
 Esse desenho permite condições experimentais com bibliotecas diferentes sem
 obrigar o pesquisador a escolher manualmente o resource de cada card. O
@@ -240,13 +283,68 @@ encontradas segundo a regra declarada. Ainda são necessários julgamento
 semântico-instrucional, revisão humana e, quando a pergunta for educacional,
 avaliação empírica.
 
+O `InstructionalMaterializationDiff@1` automatiza apenas a comparação factual:
+compatibilidade entre referências e escopos, passos ausentes ou extras,
+divergências de tipo ou unidades no mesmo passo, cobertura declarada, seleções
+sem instância, instâncias sem seleção e diferenças de package ou papel entre o
+selecionado e o usado. Ele conserva denominadores e listas de referências, não
+produz score e não decide se uma explicação foi de fato suficiente ou se a
+prática mede a operação pretendida.
+
+## Persistência, concorrência e retomada
+
+PostgreSQL é a autoridade compartilhada. Definições, análises, assignments,
+`ResourceSet`s, snapshots efetivos, blueprints e manifestos são normalizados e
+versionados. Suas tabelas raiz rejeitam atualização in-place; o binding corrente
+da microssequência é a única projeção mutável. Uma nova versão preserva a
+proveniência anterior; uma remoção de assignment é outra entrada append-only.
+
+Cada mutação reavalia capacidade e usa revisão esperada, hash do pedido e chave
+idempotente. A resolução e as gravações de snapshot, blueprint e manifesto são
+atômicas com a revisão do workspace. O manifesto referencia exatamente uma
+análise, um snapshot efetivo e um blueprint, além das revisões e hashes do
+conteúdo materializado.
+
+No IndexedDB, `WorkspaceDesignOfflineStore` reutiliza `syncState` para fatias
+por conta, workspace e microssequência. A última fatia `remote_synced` pode ser
+lida sem rede. Uma intenção de override manual ou restauração de Auto fica em
+fila separada e nunca modifica o snapshot canônico. Ao reconectar, revisão,
+capacidade e locks são relidos antes do envio; `ResourceSet`, condição e lock de
+pesquisa não podem ser criados ou alterados offline.
+
+Workspaces anteriores permanecem explicitamente `unresolved` para análise. Se
+já houver conteúdo sem manifesto, materialização fica `legacy_untracked` e
+disponibilidade, `legacy_unrestricted`; sem conteúdo, ambas ficam `unresolved`.
+Não há backfill silencioso, inferência retroativa nem `ResourceSet` fictício.
+
+Os limites técnicos atuais incluem 256 KiB por análise, 64 KiB por definição ou
+valor parametrizado, até 4.096 packages por `ResourceSet`, 512 KiB por blueprint
+e 1 MiB por manifesto. No dispositivo, cada fatia admite 2 MiB e cada fila
+512 KiB ou 100 operações; o cache reconstruível de desenho usa até 32 MiB por
+workspace e remove primeiro a fatia mais antiga. Esses números protegem a
+operação; não determinam quantidade de conteúdo, cards ou resources.
+
+A coleta relacional usa por padrão corte de 180 dias e lotes de 256. Só remove
+versões substituídas e sem referência; assignments usados em snapshot,
+blueprints ou snapshots ligados, análises referenciadas e `ResourceSet`s usados
+permanecem. Manifestos não são coletados por idade na #103. A [medição pública
+do cenário de 500 microssequências](evidence/parameterized-authoring-storage-budget-2026-08-15.json)
+registra o payload JSON observado e suas exclusões.
+
 ## Validação e agenda empírica
 
-A proposta deve ser tensionada por cenários de domínios diferentes, incluindo
+O modelo deve ser tensionado por cenários de domínios diferentes, incluindo
 conceito verbal, estrutura formal, procedimento, sistema relacional, tarefa
 profissional e coordenação entre representações. Fixtures e testes podem
 verificar fechamento de referências, tipos não escalares, versionamento,
 distinção entre disponibilidade e uso e derivação reproduzível de métricas.
+
+Na sequência de Autoria, cada issue executa testes proporcionais ao seu escopo:
+a #103 concentra contratos, resolvedor, binding, persistência SQL e offline. A
+regressão integral de código, banco, integrações, UI e artefatos distribuídos é
+concentrada no fechamento da #109. Falha focada não é adiada; ausência de uma
+suíte transversal numa etapa intermediária não deve ser descrita como suporte
+que ainda não foi integrado.
 
 Permanecem perguntas empíricas:
 

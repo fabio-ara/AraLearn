@@ -86,6 +86,8 @@ acadêmica da escolha continua sujeita a revisão humana e avaliação no domín
 - IndexedDB conserva no dispositivo cursos, progresso e operações pendentes;
 - PostgreSQL conserva identidades, relações, revisões e estado colaborativo;
 - Supabase Storage conserva artefatos integrais e imutáveis de publicação;
+- análises, parâmetros, conjuntos disponíveis, snapshots efetivos, blueprints
+  v2 e manifestos possuem persistência relacional versionada própria;
 - compare-and-swap impede sobrescrita silenciosa entre revisões concorrentes;
 - chaves de idempotência tornam a repetição de uma requisição segura;
 - hashes identificam o conteúdo exato submetido ou publicado;
@@ -121,20 +123,43 @@ contratos escolhidos, valida o card e pode auditar a adequação da
 representação. Continuidade estruturada conserva brief, planejamento, decisões,
 mandatos e achados entre sessões sem armazenar o transcript inteiro.
 
-## Proposta conceitual em avaliação
+## Núcleo persistente de desenho parametrizado
 
-Uma análise bibliográfica focal fundamenta uma proposta versionada para
+Uma análise bibliográfica focal fundamenta contratos versionados para
 análise instrucional, parâmetros por escopo, valores efetivos, manifesto de
 materialização e `ResourceSet`. A proposta preserva unidades e relações não
 escalares, admite números somente com unidade e denominador explícitos e separa
 disponibilidade, seleção e materialização de resources.
 
-Essa proposta ainda **não** é persistida no IndexedDB ou PostgreSQL, não é
-operada pelo MCP ou pela Action e não aparece na interface. Seus schemas e
-fixtures verificam coerência estrutural, não suporte de produção nem validade
-educacional. O blueprint pedagógico v2 permanece contextual por
-microssequência; não foi substituído por calibração global. Parte permanece
-unidade operacional de coordenação, sem cota fixa de cards.
+O núcleo da #103 promove esses contratos para validação de runtime, entidades
+normalizadas no PostgreSQL e uma réplica fracionada no IndexedDB. Os artefatos
+instrucionais são imutáveis e versionados; a revisão corrente do workspace,
+CAS e idempotência coordenam cada gravação. O resolvedor segue
+`workspace → course → module → lesson → microsequence`: o ancestral aplicável
+mais próximo dentro da classe de autoridade vencedora substitui o valor
+completo. A prioridade é lock, override manual, Auto e default; duplicidades do
+mesmo modo no mesmo escopo falham e locks são verificados como gate separado.
+
+`ResourceSet` conserva a disponibilidade exata de `package@version`; o
+manifesto distingue a seleção autorizada e a instância efetivamente usada. O
+blueprint pedagógico v2 permanece contextual por microssequência e recebe um
+binding versionado com análise e snapshot, sem ser substituído por calibração
+global. Um diff determinístico aponta divergências factuais entre referências,
+passos, cobertura declarada e resources; ele não realiza a auditoria semântica.
+
+Workspaces anteriores permanecem `unresolved` até uma análise explícita;
+conteúdo já materializado é marcado `legacy_unrestricted`: o sistema não
+inventa parâmetros nem disponibilidade retroativos. Parte continua unidade
+operacional de coordenação e não integra a cadeia de herança dos parâmetros. A
+réplica local permite consultar a última fatia sincronizada e enfileirar somente
+override manual ou restauração de Auto;
+ela nunca concede autoridade e revalida revisão, capacidade e locks ao voltar à
+rede.
+
+Essas operações ainda **não** estão expostas pelo MCP, pela Action ou pela nova
+interface de Autoria; essa integração pertence às etapas seguintes. Schemas,
+persistência e testes demonstram coerência e comportamento técnico no escopo
+coberto, não validade educacional nem adequação dos valores escolhidos.
 
 O fundamento, o fluxo e os limites estão em [Desenho instrucional
 parametrizado](desenho-instrucional-parametrizado.md).
@@ -151,14 +176,24 @@ A suíte automatizada cobre, entre outros aspectos:
 - retomada, avanço e troca de tema sem dependência da rede;
 - concorrência, idempotência e autorização relacional;
 - geração dos pacotes de integração e do aplicativo Android;
-- integridade das fixtures do catálogo.
-- forma e referências internas da proposta conceitual de desenho instrucional
-  em corpus multidomínio, sem integração aos contratos de produção.
+- integridade das fixtures do catálogo;
+- contratos promovidos e referências internas do desenho instrucional em corpus
+  multidomínio;
+- resolução por escopo, precedência de locks, autorização por `ResourceSet`,
+  binding do blueprint v2, diff factual e projeção legada explícita;
+- cache fracionado e fila não canônica de desenho no IndexedDB, incluindo
+  isolamento por conta, concorrência entre instâncias e revalidação remota.
 
 Esses testes sustentam afirmações de conformidade da implementação. Não
 demonstram que uma microssequência produz aprendizagem maior, que um diagrama é
 compreendido por todos os públicos ou que uma assistência reduz efetivamente o
 trabalho de autoria.
+
+Na sequência de Autoria, a regressão intermediária é proporcional ao escopo de
+cada issue; a #103 concentra contratos, domínio, SQL/PG emulado, IndexedDB e
+documentação. Falhas focadas precisam ser resolvidas na própria etapa. A
+regressão integral entre código, banco, integrações, UI e distribuições fica
+concentrada no fechamento da #109, conforme o requisito normativo da sequência.
 
 ## Limitações conhecidas
 
@@ -197,6 +232,9 @@ sem bloquear operações que são estritamente locais.
 O projeto opera com orçamento restrito de banco e Storage. Artefatos imutáveis,
 projeções compactas, retenções específicas e coleta de lixo reduzem o consumo,
 mas o crescimento do catálogo e de workspaces precisa ser medido continuamente.
+A [medição reproduzível do payload parametrizado](evidence/parameterized-authoring-storage-budget-2026-08-15.json)
+cobre um cenário sintético de 500 microssequências; não estima páginas, índices
+ou custo real de produção.
 
 ## Agenda de avaliação e desenvolvimento
 
@@ -226,9 +264,8 @@ mas o crescimento do catálogo e de workspaces precisa ser medido continuamente.
 - estudar confiança, contestação e reversão das sugestões do modelo;
 - verificar se observações de estudantes apoiam correções sem se tornarem
   vigilância comportamental.
-- promover os contratos conceituais somente depois de definir persistência,
-  resolução por escopo, concorrência, autorização, offline e linguagem simples
-  na interface;
+- expor o núcleo persistente por MCP e Action sem duplicar o motor, e depois pela
+  interface responsiva com linguagem simples e exposição progressiva;
 - avaliar `ResourceSet` com disponibilidade, seleção e uso real auditados
   separadamente, inclusive quando não houver representação adequada.
 

@@ -14,6 +14,11 @@ import {
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const OUTPUT = path.join(ROOT, "docs", "downloads", "authoring");
+const DESIGN_SCHEMA_SYNC_SCRIPT = path.join(
+  ROOT,
+  "scripts",
+  "syncInstructionalDesignSchemas.mjs"
+);
 const CHATGPT_INSTRUCTIONS_MAX_CHARACTERS = 7_600;
 const forbiddenStaticAuthoring =
   /aralearn-authoring-api|X-AraLearn-API-Key|\barl_(?:\.{3}|[A-Za-z0-9_-]{4,})|ARALEARN_AUTHORING_(?:INTEGRATION|RECEIPT)_SECRET|authoring_api_(?:clients|keys)/iu;
@@ -219,6 +224,11 @@ function build() {
     stdio: "pipe"
   });
 }
+
+execFileSync(process.execPath, [DESIGN_SCHEMA_SYNC_SCRIPT, "--check"], {
+  cwd: ROOT,
+  stdio: "pipe"
+});
 
 function readStoredZipEntries(archive) {
   const entries = new Map();
@@ -1074,6 +1084,12 @@ for (const artifact of [...manifest.archives, ...manifest.files]) {
 const schemaNames = (await readdir(path.join(ROOT, "authoring", "schemas"))).sort();
 assert.deepEqual(schemaNames, [
   "catalog-review.schema.json",
+  "design-parameter-assignment.schema.json",
+  "design-parameter-definition.schema.json",
+  "effective-design-snapshot.schema.json",
+  "instructional-analysis.schema.json",
+  "materialization-manifest.schema.json",
+  "resource-set.schema.json",
   "workspace-envelope.schema.json",
   "workspace-events.schema.json",
   "workspace-mutation.schema.json",

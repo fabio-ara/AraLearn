@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { execFileSync } from "node:child_process";
 import { mkdir, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -13,6 +14,10 @@ const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const REPOSITORY_ROOT = path.resolve(SCRIPT_DIR, "..");
 const AUTHORING_ROOT = path.join(REPOSITORY_ROOT, "authoring");
 const OUTPUT_ROOT = path.join(REPOSITORY_ROOT, "docs", "downloads", "authoring");
+const DESIGN_SCHEMA_SYNC_SCRIPT = path.join(
+  SCRIPT_DIR,
+  "syncInstructionalDesignSchemas.mjs"
+);
 const PUBLIC_SUPABASE_URL = "https://jrfkphuhcseqmratijjr.supabase.co";
 const NORMATIVE_DOCS = ["aralearn-contract.md", "recursos-de-card.md"];
 const DISTRIBUTED_DOCS = [
@@ -735,6 +740,11 @@ async function buildArchive(name, platform = null) {
     }))
   };
 }
+
+execFileSync(process.execPath, [DESIGN_SCHEMA_SYNC_SCRIPT, "--check"], {
+  cwd: REPOSITORY_ROOT,
+  stdio: "inherit"
+});
 
 await mkdir(OUTPUT_ROOT, { recursive: true });
 for (const fileName of [

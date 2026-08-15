@@ -1,3 +1,9 @@
 src/resources/packages/generated.js text eol=lf
 supabase/fixtures/catalog/aralearn-catalogo-recursos-course.json text eol=lf
 supabase/functions/_shared/aralearn/runtime/resources/packages/generated.js text eol=lf
+authoring/schemas/design-parameter-assignment.schema.json text eol=lf
+authoring/schemas/design-parameter-definition.schema.json text eol=lf
+authoring/schemas/effective-design-snapshot.schema.json text eol=lf
+authoring/schemas/instructional-analysis.schema.json text eol=lf
+authoring/schemas/materialization-manifest.schema.json text eol=lf
+authoring/schemas/resource-set.schema.json text eol=lf

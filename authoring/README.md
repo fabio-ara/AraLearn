@@ -156,17 +156,29 @@ pode enfraquecer a prioridade das regras operacionais.
 
 ## Fontes e arquivos gerados
 
-Os arquivos em `authoring/` são fontes versionadas. Os pacotes distribuídos em
-`docs/downloads/authoring/` são derivados dessas fontes e não devem ser
-editados diretamente. Depois de qualquer alteração em instruções, conhecimento
-ou schemas, regenere-os:
+As instruções e o conhecimento em `authoring/` são fontes versionadas. Para os
+seis contratos de desenho parametrizado, a fonte canônica é
+`src/authoring/instructionalDesignContracts.js`; os respectivos JSONs em
+`authoring/schemas/` são gerados e não devem ser editados diretamente. Para
+regenerar somente esses schemas, execute:
+
+```powershell
+npm run authoring:schemas
+```
+
+Os pacotes distribuídos em `docs/downloads/authoring/` também são derivados e
+não devem ser editados diretamente. Depois de qualquer alteração em instruções,
+conhecimento ou contratos, regenere-os com o procedimento canônico:
 
 ```powershell
 npm run authoring:packages
 ```
 
-O processo produz os arquivos de conhecimento, o prompt, a especificação
-OpenAPI, manifests, checksums e arquivos compactados para cada plataforma.
+Esse comando sincroniza primeiro os schemas de desenho e depois produz os
+arquivos de conhecimento, o prompt, a especificação OpenAPI, manifests,
+checksums e arquivos compactados para cada plataforma. A chamada direta ao
+script de build recusa schemas divergentes, para que um artefato nunca seja
+empacotado com contratos obsoletos.
 
 ## Validação
 
@@ -179,9 +191,10 @@ npm run lint
 ```
 
 O primeiro comando verifica paridade, tamanho e integridade dos pacotes. A
-auditoria documental confere links, estrutura e afirmações obsoletas. O lint
-detecta erros estáticos. Alterações no executor, nos schemas ou na persistência
-também exigem a suíte geral do projeto.
+validação também recusa os seis schemas de desenho quando eles divergem da fonte
+JavaScript canônica. A auditoria documental confere links, estrutura e
+afirmações obsoletas. O lint detecta erros estáticos. Alterações no executor,
+nos schemas ou na persistência também exigem a suíte geral do projeto.
 
 Exemplos em [`examples/`](examples/) servem para aprender o formato, não como
 credenciais nem como dados de produção. Segredos administrativos nunca devem

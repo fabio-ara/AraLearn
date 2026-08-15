@@ -46,6 +46,12 @@ adicionais.
 - **artefato**: documento integral e imutável produzido por materialização;
 - **materialização**: composição e validação das partes de um curso para gerar
   um documento concreto;
+- **snapshot efetivo de desenho**: registro compacto e imutável dos parâmetros,
+  fontes de resolução e `ResourceSet`s usados no desenho de um escopo; não é
+  cópia restaurável do workspace;
+- **conjunto de resources** (`ResourceSet`): lista versionada de
+  `package@version` que estava disponível numa condição, distinta do package
+  selecionado e da instância materializada;
 - **hash**: resumo de tamanho fixo calculado a partir de bytes; no AraLearn,
   SHA-256 identifica o conteúdo canônico e permite detectar se o documento
   recebido difere daquele que foi publicado;
@@ -153,7 +159,7 @@ O AraLearn separa responsabilidades:
 
 | Componente | Conteúdo mantido | Razão principal |
 | --- | --- | --- |
-| PostgreSQL | partes correntes do workspace, metadados, permissões, seleções, grupos, estado pessoal e ponteiros de publicação | transações, relações, restrições e coordenação concorrente |
+| PostgreSQL | partes correntes do workspace, estado instrucional versionado, metadados, permissões, seleções, grupos, estado pessoal e ponteiros de publicação | transações, relações, restrições e coordenação concorrente |
 | Supabase Storage | documento JSON integral de cada revisão publicada | distribuição de objetos imutáveis sem duplicar a árvore no banco |
 | IndexedDB | projeção dos cursos necessários, estado local e filas pendentes da conta autenticada | leitura e escrita transacionais no dispositivo, inclusive sem rede |
 
@@ -161,7 +167,10 @@ Durante a autoria, `private.authoring_workspace_entities` conserva uma linha
 por projeto, curso, módulo, lição, tópico, microssequência ou card. Na
 publicação, o servidor recompõe a árvore, valida `aralearn.library.v1`, calcula
 o SHA-256 e grava uma única revisão integral no Storage. No dispositivo, essa
-revisão é validada e projetada em object stores do IndexedDB.
+revisão é validada e projetada em object stores do IndexedDB. Análises,
+assignments, `ResourceSet`s, snapshots efetivos, blueprints v2 e manifestos usam
+tabelas relacionais próprias: são referências de desenho e proveniência, não
+uma duplicação da árvore publicada.
 
 ### Consequências
 
@@ -260,6 +269,41 @@ restaurar arbitrariamente um estado antigo. O histórico temporário da
 assistência no card também é volátil e não se confunde com versionamento do
 curso.
 
+### Estado instrucional versionado
+
+O documento corrente do curso continua mutável por entidade. Em paralelo, os
+artefatos que registram **qual desenho fundamentou uma materialização** são
+imutáveis e versionados:
+
+```text
+InstructionalAnalysis
+  → valores resolvidos + ResourceSet(s) no EffectiveDesignSnapshot
+  → binding do blueprint pedagógico v2
+  → MaterializationManifest
+```
+
+Definições de parâmetros são catalogadas por identidade e versão. Assignments
+formam um histórico append-only: uma remoção é outra operação versionada, não a
+reescrita do registro anterior. A resolução deriva no servidor o caminho
+`workspace → course → module → lesson → microsequence`; o cliente não escolhe a
+ancestria. Parte não aparece nessa cadeia porque coordena trabalho humano–GPT,
+mas não é unidade pedagógica nem entidade de herança.
+
+A resolução prioriza `research_lock`, `manual_override`, `auto` e default. Em
+cada classe de autoridade, o ancestral aplicável mais próximo substitui o valor
+completo (`nearest_scope_replaces`), inclusive para conjuntos, vetores e
+relações. Duas atribuições atuais do mesmo modo no mesmo escopo são conflito. Um
+lock é barreira independente e impede substituição inferior. Ausência de valor
+requerido permanece não resolvida; ordem de propriedades JSON nunca decide
+precedência.
+
+Cada blueprint persistido preserva o contrato pedagógico v2 e referencia a
+análise e o snapshot exatos. O binding liga unidades e requisitos aos passos sem
+copiar ou reduzir o blueprint. Depois da materialização, o manifesto referencia
+um único snapshot, o blueprint e as revisões materializadas. Uma projeção de
+diff compara apenas identidades, passos, cobertura declarada e resources; a
+auditoria semântico-instrucional continua responsabilidade separada.
+
 ### Consequências
 
 - o custo cresce com a estrutura atual, não com o número histórico de
@@ -329,10 +373,19 @@ operações pendentes permanecem no IndexedDB da conta. A interação de estudo 
 confirmada localmente e a sincronização ocorre em canal posterior. Cada conta
 usa banco identificado por UUID; trocar de conta abre outro namespace.
 
+O estado de desenho previamente sincronizado usa fatias por workspace e
+microssequência no `syncState`, sem criar um segundo banco local. A fatia remota
+é o único estado apresentado como canônico. Uma fila separada pode conservar
+apenas a intenção de definir override manual ou restaurar Auto; ela não altera o
+snapshot em cache, não cria `ResourceSet`, não concede autoridade de pesquisa e
+não modifica locks.
+
 Ao recuperar conexão, o cliente envia pendências, recebe mudanças remotas em
 páginas e instala novas revisões somente depois de validar contrato e hash. Um
 cache offline nunca concede edição, exclusão ou capacidade editorial: essas
-capacidades ficam falsas até nova leitura autenticada completa.
+capacidades ficam falsas até nova leitura autenticada completa. Para o desenho,
+a sincronização relê revisão, capacidade e locks antes do envio e só retira a
+intenção da fila depois de armazenar a nova fatia confirmada pelo servidor.
 
 ### Consequências
 
@@ -343,11 +396,13 @@ capacidades ficam falsas até nova leitura autenticada completa.
 
 ### Limites e evidência
 
-Primeiro login, primeiro download, autoria externa, governança e publicação
-continuam dependentes de rede. A implementação está em
+Primeiro login, primeiro download, autoria externa, governança, alterações de
+lock e publicação continuam dependentes de rede. A implementação está em
 `IndexedDbRelationalStore.js`, `RelationalSyncEngine.js` e
-`TrailPersonalStateRepository.js`; os testes relevantes incluem
-`workspace-offline-authoring.spec.js` e `study-card-progression.spec.js`.
+`TrailPersonalStateRepository.js`, além de `WorkspaceDesignOfflineStore.js` para
+o desenho parametrizado; os testes relevantes incluem
+`workspace-design-offline-store.test.js`, `workspace-offline-authoring.spec.js`
+e `study-card-progression.spec.js`.
 
 ## Decisão 7 — kernel pequeno e packages autônomos
 
@@ -490,6 +545,7 @@ conectada e pelo alvo da operação.
 | Diretório | Responsabilidade arquitetural |
 | --- | --- |
 | `src/domain/` | contrato da árvore didática e invariantes de domínio |
+| `src/authoring/` | contratos, validação, resolução, `ResourceSet`, binding e diff do desenho instrucional |
 | `src/resources/kernel/` | envelope de card, registro de packages e validação comum |
 | `src/resources/catalog/` | vocabulário controlado, busca e política de seleção |
 | `src/resources/packages/` | contratos, validação e renderização de cada package |
@@ -506,12 +562,15 @@ conectada e pelo alvo da operação.
 
 Os testes automatizados demonstram contratos executáveis, isolamento entre
 contas nos cenários cobertos, troca atômica da réplica, validação de hashes,
-recusa de revisões obsoletas, funcionamento offline em jornadas definidas e
-ausência de segredos nos artefatos examinados.
+recusa de revisões obsoletas, resolução determinística do desenho, fronteiras de
+`ResourceSet`, funcionamento offline em jornadas definidas e ausência de
+segredos nos artefatos examinados.
 
-Eles não demonstram adequação pedagógica universal, usabilidade com todas as
-populações, disponibilidade prolongada, custo real em escala ou equivalência
-com outro backend. Essas afirmações exigem métodos próprios de avaliação. A
+Eles não demonstram adequação pedagógica universal, qualidade semântica do
+blueprint ou da materialização, usabilidade com todas as populações,
+disponibilidade prolongada, custo real em escala ou equivalência com outro
+backend. A exposição do novo estado por MCP, Action e interface também pertence
+às etapas posteriores. Essas afirmações exigem métodos próprios de avaliação. A
 [Matriz de conformidade técnica](matriz-conformidade-tecnica.md) relaciona cada
 propriedade com código, migrations e testes; [Persistência relacional e
 sincronização](persistencia-relacional.md) aprofunda a réplica, a outbox e as

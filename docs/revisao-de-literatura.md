@@ -295,7 +295,7 @@ operação e estrutura semântica, não por troca cosmética de texto ou compone
   utilidade, compreensão por autores e relação com resultados educacionais
   exigem avaliação empírica.
 
-A fundamentação e a proposta conceitual de contratos estão detalhadas em
+A fundamentação e o modelo operacional de contratos estão detalhados em
 [Desenho instrucional parametrizado](desenho-instrucional-parametrizado.md).
 
 ## 5. Exemplos resolvidos e retirada de apoio

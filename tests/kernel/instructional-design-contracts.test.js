@@ -316,6 +316,42 @@ test("autorização não combina package e fit vindos de ResourceSets diferentes
   const result = evaluateInstructionalDesignBundle(mixedAuthorization);
   assert.equal(result.valid, false);
   assert.match(result.errors.join(" "), /fit não permitido pelo ResourceSet autorizador/iu);
+
+  const policies = canonicalBundle();
+  const recordingSet = policies.resourceSets[0];
+  const blockingSet = structuredClone(recordingSet);
+  blockingSet.id = "resource-set-blocking";
+  blockingSet.selectionConstraints.onNoAdequateRepresentation = "block";
+  const blockingRef = { id: blockingSet.id, version: blockingSet.version };
+  policies.resourceSets.push(blockingSet);
+  policies.effectiveSnapshot.resourceSetRefs.push(blockingRef);
+  policies.materializationManifest.resourceSetRefs.push(blockingRef);
+  policies.materializationManifest.resourceSelections[0].fit = "substitute";
+  policies.materializationManifest.resourceSelections[0].limitations = [
+    "A prosa não preserva integralmente a estrutura pretendida."
+  ];
+  const authorizedByRecordingSet = evaluateInstructionalDesignBundle(policies);
+  assert.equal(
+    authorizedByRecordingSet.valid,
+    true,
+    authorizedByRecordingSet.errors.join("\n")
+  );
+  policies.materializationManifest.resourceSelections[0].authorizedByResourceSetRef = blockingRef;
+  const blockedByAuthorizer = evaluateInstructionalDesignBundle(policies);
+  assert.equal(blockedByAuthorizer.valid, false);
+  assert.match(blockedByAuthorizer.errors.join(" "), /bloqueio do ResourceSet autorizador/iu);
+
+  const blockedByEffectivePolicy = canonicalBundle();
+  blockedByEffectivePolicy.materializationManifest.resourceSelections[0].fit = "substitute";
+  blockedByEffectivePolicy.materializationManifest.resourceSelections[0].limitations = [
+    "A representação substituta perde uma faceta relevante."
+  ];
+  blockedByEffectivePolicy.effectiveSnapshot.resolvedValues.find(({ definitionRef }) => (
+    definitionRef.id === "representation_fallback_policy"
+  )).value = { kind: "enum", value: "block" };
+  const effectivePolicyResult = evaluateInstructionalDesignBundle(blockedByEffectivePolicy);
+  assert.equal(effectivePolicyResult.valid, false);
+  assert.match(effectivePolicyResult.errors.join(" "), /política efetiva block/iu);
 });
 
 test("snapshot e manifesto usam o mesmo conjunto e respeitam papéis autorizados", () => {
@@ -336,6 +372,26 @@ test("snapshot e manifesto usam o mesmo conjunto e respeitam papéis autorizados
   const embeddedResult = evaluateInstructionalDesignBundle(embeddedBlocked);
   assert.equal(embeddedResult.valid, false);
   assert.match(embeddedResult.errors.join(" "), /prática incorporada não permitida/iu);
+});
+
+test("avaliador não apaga coleções inválidas nem aceita identidades versionadas ambíguas", () => {
+  const lockAsObject = canonicalBundle();
+  lockAsObject.parameterAssignments = lockAsObject.parameterAssignments[0];
+  const collectionResult = evaluateInstructionalDesignBundle(lockAsObject);
+  assert.equal(collectionResult.valid, false);
+  assert.match(collectionResult.errors.join(" "), /parameterAssignments precisa ser uma lista/iu);
+
+  const ambiguousIdentity = canonicalBundle();
+  ambiguousIdentity.analysis.id = "analysis@v";
+  ambiguousIdentity.analysis.version = "1";
+  ambiguousIdentity.effectiveSnapshot.analysisRef = { id: "analysis", version: "v@1" };
+  ambiguousIdentity.materializationManifest.analysisRef = {
+    id: ambiguousIdentity.analysis.id,
+    version: ambiguousIdentity.analysis.version
+  };
+  const identityResult = evaluateInstructionalDesignBundle(ambiguousIdentity);
+  assert.equal(identityResult.valid, false);
+  assert.match(identityResult.errors.join(" "), /analysisRef diverge/iu);
 });
 
 test("resolução rejeita conflito no mesmo escopo e preserva modo e valor completos", () => {
@@ -410,11 +466,18 @@ test("revisões, versões de entidade, hashes e catálogo resolvido preservam pr
     bundle.resourceSets[0].facetBasis.catalogVersion
   );
 
-  const staleAnalysis = canonicalBundle();
-  staleAnalysis.effectiveSnapshot.basedOnWorkspaceRevision += 1;
-  const staleResult = evaluateInstructionalDesignBundle(staleAnalysis);
-  assert.equal(staleResult.valid, false);
-  assert.match(staleResult.errors.join(" "), /diverge da revisão usada pela análise/iu);
+  const resolvedAfterAssignments = canonicalBundle();
+  resolvedAfterAssignments.effectiveSnapshot.basedOnWorkspaceRevision += 1;
+  const laterResolution = evaluateInstructionalDesignBundle(resolvedAfterAssignments);
+  assert.equal(laterResolution.valid, true, laterResolution.errors.join("\n"));
+
+  const impossibleRevision = canonicalBundle();
+  impossibleRevision.effectiveSnapshot.basedOnWorkspaceRevision = (
+    impossibleRevision.analysis.derivedFrom.workspaceRevision - 1
+  );
+  const impossibleResult = evaluateInstructionalDesignBundle(impossibleRevision);
+  assert.equal(impossibleResult.valid, false);
+  assert.match(impossibleResult.errors.join(" "), /antecede a revisão usada pela análise/iu);
 
   const mismatchedCatalog = canonicalBundle();
   mismatchedCatalog.resourceSets[0].resolvedCatalogVersion = "2.0.0";

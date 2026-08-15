@@ -6,10 +6,23 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 
 ### Added
 
-- proposta conceitual versionada de análise instrucional, definições e
-  atribuições de parâmetros, valores efetivos, manifesto de materialização e
-  `ResourceSet`, acompanhada de corpus multidomínio e sem integração prematura
-  à persistência, ao MCP ou à interface;
+- persistência relacional normalizada, imutável e versionada para análise
+  instrucional, definições e atribuições de parâmetros, snapshots efetivos,
+  `ResourceSet`, blueprints pedagógicos v2 e manifestos de materialização, com
+  CAS, idempotência, proveniência e referências exatas entre os artefatos;
+- resolvedor determinístico de parâmetros por
+  `workspace → course → module → lesson → microsequence`, com prioridade
+  `research_lock` → override manual → Auto → default, substituição integral pelo
+  ancestral aplicável mais próximo dentro do modo, conflito explícito para
+  duplicidade do mesmo modo no mesmo escopo e lock como barreira separada;
+- binding versionado entre análise, snapshot efetivo e blueprint pedagógico v2,
+  acompanhado de diff factual entre plano e materialização, sem transformar a
+  comparação determinística em parecer pedagógico;
+- réplica fracionada do estado de desenho em `syncState` e fila não canônica
+  somente para override manual ou restauração de Auto, sempre sujeitas a nova
+  validação remota de revisão, capacidade e locks;
+- evidência pública reproduzível do orçamento serializado de análise, snapshot
+  e manifesto em um cenário de 500 microssequências;
 - capítulo de desenho instrucional parametrizado distingue construtos
   científicos, operacionalizações do AraLearn, propriedades técnicas e
   hipóteses empíricas, preservando conjuntos, vetores e relações quando um
@@ -27,13 +40,18 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 
 ### Changed
 
-- o planejamento proposto separa fontes e objetivo, análise instrucional,
+- o planejamento separa fontes e objetivo, análise instrucional,
   parâmetros, disponibilidade e seleção de resources, blueprint contextual e
   materialização; cards, palavras, caracteres e quantidade de resources passam
   a ser descritos apenas como métricas derivadas;
 - `ResourceSet` separa o conjunto exato de `package@version` disponível da
   seleção local e das instâncias realmente materializadas, sem tratar
-  `canonical`, `versatile` e `substitute` como equivalência;
+  `canonical`, `versatile` e `substitute` como equivalência; cada seleção aponta
+  para o mesmo conjunto versionado que autoriza package, ajuste e papel;
+- workspaces anteriores à análise parametrizada permanecem explicitamente
+  `unresolved`; conteúdo já materializado é projetado como
+  `legacy_unrestricted`, sem inventar valores retroativos nem converter o
+  catálogo histórico em um `ResourceSet` fictício;
 - a autoria passa a consultar primeiro o contexto disponível, perguntar somente
   quando a informação ausente muda materialmente o desenho e persistir apenas
   contexto e decisões aprovadas, sem persistir conversa ou raciocínio privado;
@@ -70,6 +88,10 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 
 ### Fixed
 
+- a extensão SQL da continuidade preserva as operações já vigentes e passa a
+  validar `representationSelection` e `pedagogicalDiagnosis` sem substituir o
+  validador anterior nem converter o novo desenho em `authoring_state`
+  monolítico;
 - lacunas em destinos distintos da tabela de transição mantêm valor e opções
   próprios, mesmo quando as respostas estruturais coincidem;
 - diagramas complexos deixam de depender de barras aninhadas no Android; o

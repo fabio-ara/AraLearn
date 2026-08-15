@@ -1,0 +1,58 @@
+{
+  "date": "2026-08-15",
+  "contract": "InstructionalDesignPayloadMeasurement@1",
+  "measurementKind": "representative UTF-8 JSON payload, not PostgreSQL disk usage",
+  "method": "measureInstructionalDesignPayload over the canonical multidomain fixture replicated to 500 distinct microsequences",
+  "implementation": "src/authoring/legacyInstructionalDesign.js",
+  "verification": "tests/runtime/instructional-design-domain-v1.test.js",
+  "referenceScenario": {
+    "microsequences": 500,
+    "recordsPerMicrosequence": [
+      "InstructionalAnalysis",
+      "EffectiveDesignSnapshot",
+      "MaterializationManifest"
+    ],
+    "totalRecords": 1500
+  },
+  "measured": {
+    "encoding": "utf-8-json",
+    "totalBytes": 7042790,
+    "totalMiB": 6.72,
+    "averageRecordBytes": 4696,
+    "maxRecordBytes": 6220,
+    "byKind": {
+      "analyses": {
+        "count": 500,
+        "bytes": 3109670,
+        "maxRecordBytes": 6220
+      },
+      "manifests": {
+        "count": 500,
+        "bytes": 2869060,
+        "maxRecordBytes": 5739
+      },
+      "snapshots": {
+        "count": 500,
+        "bytes": 1064060,
+        "maxRecordBytes": 2129
+      }
+    }
+  },
+  "assertedBudget": {
+    "totalBytesBelow": 15728640,
+    "maxRecordBytesBelow": 65536
+  },
+  "privacyChecks": [
+    "the measured records do not contain source excerpts",
+    "the measurement does not contain conversation messages or private reasoning"
+  ],
+  "excludes": [
+    "DesignParameterDefinition and DesignParameterAssignment records",
+    "ResourceSet members and pedagogical blueprint payloads",
+    "PostgreSQL row, page, index, WAL and catalog overhead",
+    "IndexedDB implementation overhead",
+    "compression, retention and garbage-collection effects",
+    "variation in real course depth and authored content"
+  ],
+  "interpretation": "This is a reproducible engineering budget for the tested fixture. It is not a production capacity forecast, an educational measure or evidence of pedagogical quality."
+}

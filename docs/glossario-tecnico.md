@@ -178,43 +178,66 @@ que permitem a uma pessoa ou a um modelo preencher `data` sem conhecer o
 renderer. É devolvido junto com o manifest e o schema por `contracts`. Não é
 um contrato monolítico de todos os resources.
 
-**Contratos conceituais de desenho instrucional.** Proposta versionada que
+**Contratos de desenho instrucional parametrizado.** Família versionada que
 separa `InstructionalAnalysis`, `DesignParameterDefinition`,
 `DesignParameterAssignment`, `EffectiveDesignSnapshot`,
-`MaterializationManifest` e `ResourceSet`. Nesta etapa, os schemas servem para
-examinar forma, referências e invariantes; ainda não são documentos persistidos,
-operações MCP, schemas de publicação nem estado aceito pelo backend. A proposta
-está em [Desenho instrucional
-parametrizado](desenho-instrucional-parametrizado.md).
+`MaterializationManifest` e `ResourceSet`. Os schemas, validadores e entidades
+relacionais já constituem estado aceito pelo backend; ainda não são schemas de
+publicação nem operações expostas por MCP, Action ou interface. O modelo está em
+[Desenho instrucional parametrizado](desenho-instrucional-parametrizado.md).
 
-**Análise instrucional (`InstructionalAnalysis`).** Documento conceitual que
-relaciona fontes, objetivo, unidades editoriais, pressupostos, relações,
-conjuntos de coordenação e requisitos de explicação, evidência, variação,
-fidelidade e representação. Não contém cards nem diagnostica domínio
-individual.
+**Análise instrucional (`InstructionalAnalysis`).** Documento imutável e
+versionado que relaciona fontes, objetivo, unidades editoriais, pressupostos,
+relações, conjuntos de coordenação e requisitos de explicação, evidência,
+variação, fidelidade e representação. Não contém cards, conversa ou diagnóstico
+de domínio individual.
 
-**Definição de parâmetro (`DesignParameterDefinition`).** Descrição conceitual
-versionada da identidade, tipo, unidade, escopos válidos, resolução, estatuto e
-limites de um parâmetro. Seus tipos admitem inteiro, faixa, categoria, conjunto,
-vetor ou relação; a definição não é o valor efetivo.
+**Definição de parâmetro (`DesignParameterDefinition`).** Descrição versionada
+da identidade, tipo, unidade, escopos válidos, resolução, estatuto e limites de
+um parâmetro. Seus tipos admitem inteiro, faixa, categoria, conjunto, vetor ou
+relação; a definição não é o valor efetivo.
 
-**Atribuição de parâmetro (`DesignParameterAssignment`).** Valor conceitual
-explícito num escopo: proposta automática (`auto`), alteração estruturada
+**Atribuição de parâmetro (`DesignParameterAssignment`).** Valor explícito e
+versionado num escopo: proposta automática (`auto`), alteração estruturada
 (`manual_override`) ou lock de pesquisa (`research_lock`), sempre com autoridade
 e proveniência. “Herdado” não é uma atribuição gravada; é proveniência calculada
-ao resolver o valor efetivo.
+ao resolver o valor efetivo. Remoção é operação append-only, não edição da
+versão anterior.
+
+**Resolvedor de parâmetros.** Componente determinístico que percorre
+`workspace → course → module → lesson → microsequence` e aplica
+`nearest_scope_replaces`: primeiro prioriza `research_lock`, `manual_override`,
+`auto` e default; dentro da classe vencedora, o ancestral aplicável mais próximo
+substitui o valor completo. Duplicidade do mesmo modo no mesmo escopo falha e o
+lock atua como barreira de autoridade separada. Parte não integra essa cadeia.
 
 **Instantâneo efetivo de desenho (`EffectiveDesignSnapshot`).** Documento
-conceitual compacto e imutável com valores já resolvidos, referências às
-definições e atribuições, proveniência e versões exatas. Apesar do nome, não é
-snapshot integral restaurável do workspace e não guarda conversa ou raciocínio
-privado.
+compacto, imutável e persistido com valores já resolvidos, referências às
+definições e atribuições, caminho, proveniência e versões exatas. Apesar do nome,
+não é snapshot integral restaurável do workspace e não guarda conversa ou
+raciocínio privado.
 
-**Conjunto de resources (`ResourceSet`).** Conjunto conceitual versionado de
+**Conjunto de resources (`ResourceSet`).** Conjunto imutável e versionado de
 identidades exatas `package@version` que delimita o que pode ser escolhido num
-escopo. Disponibilidade no conjunto, seleção no planejamento e instância
-materializada são estados diferentes. O conjunto não copia todos os contracts,
-não escolhe um package por card e não torna representações equivalentes.
+escopo. Disponibilidade no conjunto, seleção autorizada no planejamento e
+instância materializada são estados diferentes. O conjunto não copia todos os
+contracts, não escolhe um package por card e não torna representações
+equivalentes.
+
+**Binding do blueprint pedagógico.** Registro versionado que referencia uma
+análise, um snapshot efetivo e um blueprint v2 e liga unidades e requisitos aos
+passos correspondentes. Não duplica o blueprint nem o substitui por outro
+contrato pedagógico.
+
+**Diff factual de materialização.** Comparação determinística entre análise,
+snapshot, binding e manifesto. Aponta incompatibilidades de identidade, passos,
+cobertura declarada, seleção e uso de resources, sem gerar score nem decidir se
+a explicação ou a prática é semanticamente adequada.
+
+**Estado legado não resolvido.** Projeção de workspace anterior ao desenho
+parametrizado. Usa `unresolved` para análise e, quando já há conteúdo sem
+manifesto, `legacy_untracked` para materialização e `legacy_unrestricted` para
+disponibilidade, sem inventar valores ou `ResourceSet` retroativos.
 
 **Envelope.** Estrutura externa que identifica um protocolo e delimita os
 campos admitidos antes de validar o conteúdo interno. O envelope operacional de
@@ -373,17 +396,24 @@ artefato remoto em linhas locais para estudo. Materializar não significa
 publicar, selecionar nem conceder permissão.
 
 **Manifesto de materialização (`MaterializationManifest`).** Documento
-conceitual que liga análise, parâmetros efetivos, blueprint, resources
+imutável e versionado que liga análise, parâmetros efetivos, blueprint, resources
 selecionados e conteúdo realmente produzido. Pode registrar cobertura com
 numerador, denominador e referências, limitações e métricas derivadas com
 algoritmo versionado. Não é artefato de publicação, avaliação de estudante nem
-parecer semântico concluído; ainda não integra a persistência de produção.
+parecer semântico concluído. Cada seleção identifica o `ResourceSet` que a
+autorizou; a instância materializada referencia a seleção.
 
 **Outbox.** Fila durável de intenções locais ainda não confirmadas pelo
 servidor. No banco IndexedDB corrente, a outbox relacional transporta a seleção
 leve de cursos oficiais; outros estados pessoais possuem filas compactas
 próprias. `pending`, `inflight`, `rejected` e `blocked` são estados não
 resolvidos, não versões do curso.
+
+**Fila offline do desenho.** Entrada fracionada de `syncState` que conserva
+somente intenções de override manual ou restauração de Auto. É não canônica,
+fica separada do snapshot remoto e precisa revalidar revisão, capacidade e
+locks ao sincronizar. Não cria `ResourceSet`, não altera lock e não concede
+autoridade de pesquisa.
 
 **Projeção.** Forma derivada, otimizada para uma leitura ou interface. As
 tabelas do IndexedDB são uma projeção normalizada do documento; Trilhas e
@@ -406,7 +436,9 @@ materialização e publicação não são sinônimos.
 **Snapshot.** Cópia integral de um estado em determinado instante. O workspace
 remoto mantém composição corrente e eventos compactos, não snapshots
 restauráveis a cada mutação. O artefato imutável de uma publicação pode fixar
-uma composição integral, mas tem finalidade editorial e distributiva.
+uma composição integral, mas tem finalidade editorial e distributiva. O termo
+`EffectiveDesignSnapshot` é uma exceção nominal explícita: ele congela apenas os
+valores e referências do desenho efetivo, não o workspace inteiro.
 
 **Tombstone.** Registro compacto de retirada que preserva a informação de que
 um objeto deixou de estar vigente. Ele impede que uma réplica antiga

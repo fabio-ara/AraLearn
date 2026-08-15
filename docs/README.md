@@ -144,7 +144,7 @@ abertas, sem tratar teste de software como evidência de aprendizagem.
 | [Princípios editoriais](principios-editoriais.md) | critérios de clareza, profundidade e evidência |
 | [Glossário técnico](glossario-tecnico.md) | termos de computação e contratos |
 | [Glossário de construtos](glossario-construtos.md) | termos pedagógicos e metodológicos |
-| [Desenho instrucional parametrizado](desenho-instrucional-parametrizado.md) | análise científica e proposta conceitual de parâmetros e contratos |
+| [Desenho instrucional parametrizado](desenho-instrucional-parametrizado.md) | análise científica, parâmetros, contratos e persistência interna |
 | [Contrato público](aralearn-contract.md) | formatos canônicos de conteúdo |
 | [Recursos de card](recursos-de-card.md) | catálogo de representações e arquitetura de packages |
 | [Matriz de conformidade técnica](matriz-conformidade-tecnica.md) | afirmação técnica e ponto de verificação |

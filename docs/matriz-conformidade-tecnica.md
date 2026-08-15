@@ -10,7 +10,7 @@ Esta matriz é versionada junto com o repositório. Não fixa contagem de testes
 |---|---|
 | demonstrado | código e teste citado cobrem a propriedade no escopo descrito |
 | demonstrado com limite | a propriedade existe, mas possui teto, janela ou cenário não coberto |
-| proposta conceitual verificada | contrato exploratório e fixtures cobrem a forma proposta, sem integração à produção |
+| proposta conceitual verificada | contrato exploratório e fixtures cobrem a forma proposta, sem integração operacional |
 | não oferecido | a arquitetura deliberadamente não promete a propriedade |
 | avaliação externa | código não basta; requer participantes, operação ou análise especializada |
 
@@ -31,11 +31,14 @@ Esta matriz é versionada junto com o repositório. Não fixa contagem de testes
 | o validador implementa todo JSON Schema 2020-12 | `src/resources/kernel/schemaValidation.js` | `tests/kernel/resource-package-kernel.test.js` | não oferecido; apenas o subconjunto documentado é aceito |
 | auditoria catalográfica reproduz layout real | `src/resources/catalog/resourceCatalog.js` | `tests/kernel/resource-catalog.test.js` | não oferecido; `rendered: false`; layout exige navegador e motores reais |
 | contratos, packages, catálogo, IndexedDB, MCP e app possuem versões próprias | registry, catálogo, store, servidor MCP e `package.json` | testes de cada fronteira | demonstrado; `revision` é CAS e `cursor` é paginação, não versão de contrato |
-| a proposta de desenho separa análise, definição, atribuição, valores efetivos, manifesto e disponibilidade de resources | `src/authoring/instructionalDesignContracts.js` | `tests/kernel/instructional-design-contracts.test.js`; corpus em `tests/fixtures/pedagogy/` | proposta conceitual verificada; não integra `authoring/schemas/`, persistência, MCP, Action, publicação ou UI |
-| parâmetros propostos preservam grandezas não escalares | `DesignParameterDefinition` em `src/authoring/instructionalDesignContracts.js` | casos de inteiro, faixa, categoria, conjunto, vetor e relação no teste focado | proposta conceitual verificada; tipo representável não valida unidade, limite nem decisão pedagógica |
-| valor efetivo proposto conserva escopo, definição, atribuição e proveniência exatos | `EffectiveDesignSnapshot` em `src/authoring/instructionalDesignContracts.js` | referências fechadas no teste focado | proposta conceitual verificada; não é snapshot restaurável do workspace e ainda não há resolução ou CAS em produção |
-| `ResourceSet` proposto separa disponibilidade, seleção e materialização | `ResourceSet` e `MaterializationManifest` em `src/authoring/instructionalDesignContracts.js` | corpus multidomínio e testes de referência | proposta conceitual verificada; conjunto não escolhe package, não copia contracts e não finge equivalência quando falta representação adequada |
-| cards, palavras, caracteres e total de resources são métricas posteriores | `MaterializationManifest` em `src/authoring/instructionalDesignContracts.js` | teste de métricas derivadas e algoritmo versionado | proposta conceitual verificada; métricas descrevem materialização e não comandam decomposição pedagógica |
+| o desenho separa análise, definição, assignment, valores efetivos, manifesto e disponibilidade de resources | `instructionalDesignContracts.js`; schemas em `authoring/schemas/`; `instructionalDesignValidation.js` | `instructional-design-contracts.test.js`; `instructional-design-domain-v1.test.js`; corpus em `tests/fixtures/pedagogy/` | demonstrado; os contratos integram runtime e backend, mas ainda não MCP, Action, publicação ou UI |
+| parâmetros preservam grandezas não escalares | `DesignParameterDefinition` e resolvedor em `src/authoring/` | casos de inteiro, faixa, categoria, conjunto, vetor e relação nos testes focados | demonstrado com limite; tipo representável não valida unidade, teto nem decisão pedagógica |
+| valor efetivo conserva escopo, definição, assignment, modo, herança e proveniência exatos | `designParameterResolution.js`; `EffectiveDesignSnapshot`; migration parametrizada | `instructional-design-domain-v1.test.js`; `parameterized-authoring-design-pglite.test.js` | demonstrado: autoridade lock → manual → Auto → default, `nearest_scope_replaces` dentro do modo, duplicidade do mesmo modo no mesmo escopo e lock separado; o snapshot não restaura o workspace |
+| `ResourceSet` separa disponibilidade, seleção autorizada e materialização | `resourceSetResolution.js`; `ResourceSet`; `MaterializationManifest`; tabelas normalizadas | corpus multidomínio; `instructional-design-domain-v1.test.js`; `parameterized-authoring-design-pglite.test.js` | demonstrado; package, fit e papel precisam ser aceitos pelo mesmo conjunto e ausência adequada não vira equivalência |
+| binding preserva o blueprint pedagógico v2 e diff compara somente fatos | `instructionalDesignBinding.js`; `authoring_pedagogical_blueprints`; `authoring_pedagogical_blueprint_bindings`; `authoring_microsequence_design_bindings` | `instructional-design-domain-v1.test.js`; `parameterized-authoring-design-pglite.test.js` | demonstrado com limite; blueprint e binding completo são imutáveis, o apontador corrente é mutável e o diff não faz julgamento semântico |
+| manifesto identifica exatamente os cards correntes | `authoring_materialization_states`; `authoring_materialized_content_hash_v1`; trigger de entidades; registro de manifesto | `parameterized-authoring-design-pglite.test.js` | demonstrado: hash é derivado no servidor, `artifactRefs` coincide exatamente com cards e qualquer mutação posterior torna o manifesto stale |
+| cards, palavras, caracteres e total de resources são métricas posteriores | `MaterializationManifest`; `instructionalDesignBinding.js` | teste de métricas derivadas, diff e algoritmo versionado | demonstrado; métricas descrevem materialização e não comandam decomposição pedagógica |
+| conteúdo sem manifesto não recebe parâmetros retroativos inventados | `legacyInstructionalDesign.js`; `get_authoring_design_state_v1` | `instructional-design-domain-v1.test.js`; `parameterized-authoring-design-pglite.test.js` | demonstrado: sem conteúdo, `unresolved`; qualquer conteúdo sem manifesto usa `legacy_untracked` e `legacy_unrestricted` até nova análise |
 
 ## 3. Representações e interação
 
@@ -56,6 +59,7 @@ Esta matriz é versionada junto com o repositório. Não fixa contagem de testes
 | cada conta possui namespace IndexedDB próprio | `src/persistence/IndexedDbRelationalStore.js` | `tests/runtime/relational-sync.test.js`; `tests/e2e/workspace-offline-authoring.spec.js` | demonstrado: `aralearn-relational-v4-r3`, versão 4, sufixo da conta |
 | IndexedDB funciona como SGBD SQL completo | store e `relationalSchema.js` | testes de persistência | não oferecido; é projeção normalizada sobre object stores e índices |
 | conteúdo já materializado pode ser estudado sem rede | repositório relacional e store | `tests/e2e/study-card-progression.spec.js`; `workspace-offline-authoring.spec.js` | demonstrado; login inicial, primeiro download e serviços remotos continuam online |
+| desenho sincronizado pode ser lido offline sem virar autoridade | `src/persistence/WorkspaceDesignOfflineStore.js`; `syncState` | `tests/runtime/workspace-design-offline-store.test.js` | demonstrado: fatias por microssequência; fila apenas para override manual/Auto, separada do snapshot e revalidada remotamente |
 | revisão remota só substitui a local depois de contrato e hash válidos | `src/sync/RelationalSyncEngine.js`; `canonicalCourseHash.js` | `tests/runtime/relational-sync.test.js`; `integrated-course-sync.test.js` | demonstrado; falha conserva a projeção anterior |
 | todas as mutações usam uma outbox universal | `DomainMutationService.js`; sync engine; repositórios contextuais | testes de sync e estado pessoal | não oferecido; seleção, trilhas, estado e autoria têm protocolos limitados próprios |
 | mutação repetida não duplica efeito dentro de sua janela | sync engine e RPCs de idempotência | testes de sync integrado e PGlite | demonstrado com limite; retenções variam por família |
@@ -73,6 +77,8 @@ Esta matriz é versionada junto com o repositório. Não fixa contagem de testes
 | PostgreSQL guarda a árvore integral de toda publicação | plano de artefatos e `artifactStore.js` | testes de catálogo e artefato | não oferecido; o banco guarda descritor e relação; bytes ficam no Storage |
 | objeto órfão é removido imediatamente | `artifactGarbageCollector.js`; migration de GC | `artifact-garbage-collector.test.js` | não oferecido; coleta usa tombstone, lotes e idade mínima padrão de sete dias |
 | hash prova autoria e qualidade | canonicalização e SHA-256 | testes de hash | não oferecido; hash prova identidade dos bytes, não autoria ou mérito |
+| estado instrucional persiste objetos imutáveis e versionados sob CAS | migration `20260815193000_parameterized_authoring_design.sql`; módulos de `src/authoring/` | `instructional-design-domain-v1.test.js`; `parameterized-authoring-design-pglite.test.js` | demonstrado com limite; binding é projeção corrente mutável e a exposição MCP/UI pertence às próximas etapas |
+| GC do desenho apaga qualquer artefato antigo | `private.prune_authoring_design_state_v1` | `parameterized-authoring-design-pglite.test.js` | não oferecido; somente versões substituídas, antigas e sem referência são elegíveis; manifestos são preservados |
 
 ## 6. Auth, RLS, MCP e Action
 
@@ -135,6 +141,16 @@ npm.cmd run audit:frontend
 npm.cmd run audit:residues
 npm.cmd run audit:docs
 ```
+
+Durante a sequência de Autoria, a validação intermediária é proporcional ao
+escopo da issue: contratos, domínio, PGlite e IndexedDB são os focos da #103. A
+regressão integral é concentrada no fechamento da #109. Isso não permite fechar
+uma etapa com teste focado falhando nem alegar integração ainda não exercitada.
+Para o banco parametrizado, o ensaio autocontido está em
+`tests/runtime/parameterized-authoring-design-pglite.test.js`; o complemento de
+RLS/PostgREST no stack Supabase está em
+`supabase/tests/040_parameterized_authoring_design_test.sql` e não deve ser dado
+como executado quando CLI ou `psql` não estiverem disponíveis.
 
 Quando banco ou funções mudarem, acrescente `validateLocalSupabase.ps1`; quando o ambiente remoto mudar, execute smoke hospedado; quando site ou APK mudar, examine os artefatos finais.
 

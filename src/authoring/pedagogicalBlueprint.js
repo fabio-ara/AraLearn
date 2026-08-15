@@ -261,6 +261,10 @@ export function evaluatePedagogicalBlueprint(raw, packageRegistry) {
 
   const practiceSteps = list(raw.practiceSteps);
   const practiceStepIds = requireUniqueIds(errors, practiceSteps, "practiceSteps");
+  const crossKindStepIds = practiceStepIds.filter((stepId) => knownTheorySteps.has(stepId));
+  if (crossKindStepIds.length) {
+    errors.push(`theorySteps e practiceSteps repetem ids: ${crossKindStepIds.join(", ")}.`);
+  }
   const knownPracticeSteps = new Set(practiceStepIds);
   const practicedLayers = new Set();
   practiceSteps.forEach((step, index) => {
