@@ -1206,8 +1206,8 @@ async function main() {
       || !removedRuntimeManifestWrappers.source.includes("Wrappers historicos do manifesto ainda existem")) {
     fail("A remoção física dos wrappers históricos do manifesto não é verificada.");
   }
-  if (runtimeManifest.schemaRevision !== "20260812164000" || runtimeManifest.contractVersion !== 1) {
-    fail("O manifesto estático não aponta para a biblioteca por packages corrente.");
+  if (runtimeManifest.schemaRevision !== "20260815230000" || runtimeManifest.contractVersion !== 1) {
+    fail("O manifesto estático não aponta para o runtime autoral corrente.");
   }
   for (const feature of [
     "stable-trail-item-identity-v1",
@@ -1230,7 +1230,9 @@ async function main() {
     "strict-catalog-root-reuse-v1",
     "current-catalog-root-resolution-v1",
     "discard-unpublished-catalog-materialization-v1",
-    "flat-runtime-manifest-v1"
+    "flat-runtime-manifest-v1",
+    "parameterized-authoring-design-v1",
+    "authoring-blueprint-artifact-receipt-v1"
   ]) {
     if (!runtimeManifest.requiredFeatures.includes(feature)) {
       fail(`O manifesto estático não exige ${feature}.`);
@@ -1252,7 +1254,7 @@ async function main() {
     }
   }
   console.log(
-    `Corte validado até ${flatRuntimeManifest.fileName}: biblioteca e catálogo por packages, manifesto remoto achatado, continuidade autoral corrente, alvos de observação package-native, raiz autoral oficial única e reutilizável, limpeza estrita de materializações interrompidas, Trilhas e Coleções alfabéticas, estado pessoal compacto, workspaces educacionais, OAuth/MCP/Action e uma revisão corrente por curso.`
+    `Corte validado até ${runtimeManifest.schemaRevision}: biblioteca e catálogo por packages, manifesto remoto achatado, continuidade e desenho autoral parametrizado, alvos de observação package-native, raiz autoral oficial única e reutilizável, limpeza estrita de materializações interrompidas, Trilhas e Coleções alfabéticas, estado pessoal compacto, workspaces educacionais, OAuth/MCP/Action e uma revisão corrente por curso.`
   );
 }
 

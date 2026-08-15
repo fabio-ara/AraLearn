@@ -184,7 +184,7 @@ Esse protocolo descreve o catálogo de packages, não o conteúdo didático. Ele
 1. `explore`: famílias e facetas instaladas;
 2. `search`: candidatos ranqueados por intenção e restrições;
 3. `inspect`: comparação de até oito perfis;
-4. `contracts`: até quatro contratos exatos;
+4. `contracts`: exatamente um contrato versionado por chamada;
 5. `validate_card`: forma, referências e composição;
 6. `audit_representation`: ajuste semântico, affordance da resposta e legibilidade do feedback;
 7. `preview_card`: capacidade de abrir a composição no renderer.
@@ -201,7 +201,13 @@ Os tokens `canonical`, `versatile` e `substitute` são resultados do algoritmo d
 
 Nesse protocolo, `canonical` não certifica consenso universal da área acadêmica. A evidência para escolher um package continua sendo seu propósito, convenções, contraindicações e exemplo.
 
-Uma cobertura `substitute` não bloqueia a produção. O chat informa brevemente a aproximação; a pessoa pode manter, trocar ou solicitar um package futuro. Bloquear obrigatoriamente tornaria o catálogo incompleto incapaz de produzir qualquer curso novo; ocultar a substituição impediria curadoria consciente.
+Cobertura não é autorização. Sob um snapshot efetivo, package, papel e ajuste
+precisam ser admitidos pelo mesmo `ResourceSet`. A política `block` recusa
+`versatile` e `substitute`; `allow_versatile_with_limitation` admite somente
+`versatile` com limitação; `allow_substitute_with_limitation` pode admitir
+ambos, sempre com a limitação pertinente. O conjunto pode restringir mais.
+Ausência de representação adequada permanece registrada e nunca vira
+equivalência presumida.
 
 ## 7. Fluxo de autoria
 
@@ -210,7 +216,7 @@ O planejamento didático precede o contrato:
 ```text
 objetivo e progressão
 → gesto cognitivo necessário
-→ busca por facetas
+→ `ResourceSet` efetivo e busca por facetas
 → comparação da lista curta
 → carregamento dos contratos escolhidos
 → composição do card

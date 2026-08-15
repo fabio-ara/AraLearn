@@ -119,9 +119,12 @@ mesmo executor. A autenticação é individual por OAuth 2.1, e nenhuma superfí
 recebe acesso administrativo direto ao banco.
 
 O modelo consulta a biblioteca de resources progressivamente, recebe apenas os
-contratos escolhidos, valida o card e pode auditar a adequação da
-representação. Continuidade estruturada conserva brief, planejamento, decisões,
-mandatos e achados entre sessões sem armazenar o transcript inteiro.
+contratos escolhidos, um por chamada, valida o card e pode auditar a adequação
+da representação. A ferramenta agrupada `gerirDesenhoInstrucional` lê o slice
+JIT de uma microssequência e opera análise, assignments, `ResourceSet`,
+snapshot, blueprint e manifesto pelas mesmas regras persistentes do backend.
+Continuidade estruturada conserva brief, planejamento, decisões, mandatos e
+achados entre sessões sem armazenar o transcript inteiro.
 
 ## Núcleo persistente de desenho parametrizado
 
@@ -156,10 +159,13 @@ override manual ou restauração de Auto;
 ela nunca concede autoridade e revalida revisão, capacidade e locks ao voltar à
 rede.
 
-Essas operações ainda **não** estão expostas pelo MCP, pela Action ou pela nova
-interface de Autoria; essa integração pertence às etapas seguintes. Schemas,
-persistência e testes demonstram coerência e comportamento técnico no escopo
-coberto, não validade educacional nem adequação dos valores escolhidos.
+Desde a #104, essas operações estão expostas pelo MCP e pela Action por uma
+única ferramenta coesa. A integração recupera knowledge por intenção, trabalha
+uma microssequência por vez e retoma pelo workspace, sem depender do chat. A
+interface responsiva de Autoria continua pertencendo à #105, e o ciclo completo
+de findings, decisão, reparo e reauditoria pertence à #106. Schemas,
+persistência e testes demonstram coerência técnica no escopo coberto, não
+validade educacional nem adequação dos valores escolhidos.
 
 O fundamento, o fluxo e os limites estão em [Desenho instrucional
 parametrizado](desenho-instrucional-parametrizado.md).
@@ -183,6 +189,9 @@ A suíte automatizada cobre, entre outros aspectos:
   binding do blueprint v2, diff factual e projeção legada explícita;
 - cache fracionado e fila não canônica de desenho no IndexedDB, incluindo
   isolamento por conta, concorrência entre instâncias e revalidação remota.
+- seleção JIT de knowledge, registro público da tool agrupada, contratos de
+  resource unitários e regressão de engenharia A–H para orientação, variação
+  Auto, override manual e lock de pesquisa.
 
 Esses testes sustentam afirmações de conformidade da implementação. Não
 demonstram que uma microssequência produz aprendizagem maior, que um diagrama é
@@ -190,8 +199,9 @@ compreendido por todos os públicos ou que uma assistência reduz efetivamente o
 trabalho de autoria.
 
 Na sequência de Autoria, a regressão intermediária é proporcional ao escopo de
-cada issue; a #103 concentra contratos, domínio, SQL/PG emulado, IndexedDB e
-documentação. Falhas focadas precisam ser resolvidas na própria etapa. A
+cada issue; a #103 concentra contratos, domínio, SQL/PG emulado e IndexedDB, e
+a #104 concentra prompt, knowledge, MCP/Action, catálogo restrito e pacotes
+distribuídos. Falhas focadas precisam ser resolvidas na própria etapa. A
 regressão integral entre código, banco, integrações, UI e distribuições fica
 concentrada no fechamento da #109, conforme o requisito normativo da sequência.
 
@@ -264,8 +274,8 @@ ou custo real de produção.
 - estudar confiança, contestação e reversão das sugestões do modelo;
 - verificar se observações de estudantes apoiam correções sem se tornarem
   vigilância comportamental.
-- expor o núcleo persistente por MCP e Action sem duplicar o motor, e depois pela
-  interface responsiva com linguagem simples e exposição progressiva;
+- expor o núcleo já integrado ao MCP e à Action pela interface responsiva, com
+  linguagem simples e exposição progressiva;
 - avaliar `ResourceSet` com disponibilidade, seleção e uso real auditados
   separadamente, inclusive quando não houver representação adequada.
 

@@ -77,7 +77,7 @@ select hasnt_function(
 
 select is(
   public.get_aralearn_runtime_manifest() ->> 'schemaRevision',
-  '20260812164000',
+  '20260815230000',
   'a revisão corresponde à migration mais recente exigida'
 );
 

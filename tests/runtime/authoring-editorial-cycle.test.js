@@ -51,9 +51,10 @@ test("cenário 1: planejamento grava a estrutura sem cards, apresenta o plano e 
   assert.equal(context.recommendedTools.includes("publicarCursoDoWorkspace"), false);
   assert.equal(context.recommendedTools.includes("salvarCardsNaMicrossequencia"), false);
   assert.equal(context.recommendedTools.includes("revisarMicroteoriasDoWorkspace"), false);
-  assert.match(context.workflow[0], /somente a etapa editorial pedida/iu);
+  assert.match(context.workflow[0], /somente a etapa editorial autorizada/iu);
   assert.match(instructions, /microssequências sem\s+cards/iu);
-  assert.match(instructions, /mostre Partes.*espere a decisão/isu);
+  assert.match(instructions, /aprovação materialmente necessária.*record_approved_plan/isu);
+  assert.match(context.workflow[0], /Espere decisão.*somente quando.*material/isu);
 });
 
 test("cenário 2: construção trata parte e microssequência como unidades distintas", () => {
@@ -66,8 +67,8 @@ test("cenário 2: construção trata parte e microssequência como unidades dist
   assert.equal(context.recommendedTools.includes("publicarCursoDoWorkspace"), false);
   assert.match(editorialCycle, /parte.*recorte conversacional/isu);
   assert.match(editorialCycle, /microssequência.*unidade técnica/isu);
-  assert.match(instructions, /construa somente a Parte pedida/iu);
-  assert.match(instructions, /microteoria.*contagem de práticas.*resources/isu);
+  assert.match(instructions, /Parte autorizada.*uma microssequência por vez/isu);
+  assert.match(editorialCycle, /microteorias.*quantidades de práticas.*resources/isu);
 });
 
 test("cenário 3: auditoria lê, registra achados e não repara conteúdo", () => {
@@ -77,10 +78,10 @@ test("cenário 3: auditoria lê, registra achados e não repara conteúdo", () =
     context: "Auditar de modo independente a parte persistida"
   });
   assert.ok(guidanceIds(context).includes("independent-pedagogical-audit"));
-  assert.ok(guidanceIds(context).includes("formal-practice-anchoring"));
+  assert.ok(guidanceIds(context).includes("design-conformance-audit"));
   assert.ok(context.recommendedTools.length > 0);
   for (const name of context.recommendedTools) {
-    if (name === "gerirContinuidadeDaAutoria") continue;
+    if (["gerirContinuidadeDaAutoria", "gerirDesenhoInstrucional"].includes(name)) continue;
     assert.equal(
       authoringMcpToolDefinition(name).annotations.readOnlyHint,
       true,
@@ -88,8 +89,8 @@ test("cenário 3: auditoria lê, registra achados e não repara conteúdo", () =
     );
   }
   assert.ok(context.recommendedTools.includes("gerirContinuidadeDaAutoria"));
-  assert.match(instructions, /Na auditoria.*não altere conteúdo/isu);
-  assert.match(instructions, /sem reparar na mesma rodada/iu);
+  assert.match(instructions, /Auditoria não autoriza reparo/iu);
+  assert.match(instructions, /reauditoria relê o estado corrente.*independente/iu);
 });
 
 test("cenário 4: reparo parcial recomenda escritas focadas e reauditoria", () => {
@@ -101,16 +102,15 @@ test("cenário 4: reparo parcial recomenda escritas focadas e reauditoria", () =
   assert.ok(guidanceIds(context).includes("authorized-repair"));
   assert.ok(context.recommendedTools.includes("salvarCardNoWorkspace"));
   assert.equal(context.recommendedTools.includes("publicarCursoDoWorkspace"), false);
-  assert.match(instructions, /altere somente achados aprovados.*mandato persistido/isu);
-  assert.match(instructions, /reauditoria.*sem reparar na mesma\s+rodada/isu);
+  assert.match(instructions, /reparo só altera findings aprovados/iu);
+  assert.match(instructions, /reauditoria relê o estado corrente.*independente/iu);
 });
 
 test("cenário 5: pular auditoria não cria gate estrutural", () => {
-  assert.match(instructions, /limitar ou pular etapas/iu);
   assert.match(editorialCycle, /pular auditoria/iu);
   assert.doesNotMatch(workspaceProtocol, /workspace_ready_requires_separate_review/u);
   assert.doesNotMatch(workspaceIncremental, /workspace_ready_requires_separate_review/u);
-  assert.match(AUTHORING_SERVER_INSTRUCTIONS, /não cria bloqueio técnico/iu);
+  assert.match(AUTHORING_SERVER_INSTRUCTIONS, /sem parada automática/iu);
 });
 
 test("cenários 6 a 10: auditoria cobre bastidor, termos, contexto, ancoragem e carga", () => {
@@ -124,12 +124,12 @@ test("cenários 6 a 10: auditoria cobre bastidor, termos, contexto, ancoragem e 
   assert.match(semanticAudit, /carga cognitiva/iu);
   assert.match(semanticAudit, /uma decisão principal/iu);
   assert.match(semanticAudit, /nunca Transmission Control `Protocol \(TCP\)`/u);
-  assert.match(AUTHORING_SERVER_INSTRUCTIONS, /nunca marque apenas o sufixo/iu);
+  assert.match(semanticAudit, /Nunca destaque apenas o sufixo/iu);
 });
 
 test("microteoria progride sem pré-requisitos e não se condensa para reduzir cards", () => {
-  assert.match(instructions, /Teoria não é resumo/iu);
-  assert.match(instructions, /Não\s+condense para reduzir cards, chamadas ou armazenamento/iu);
+  assert.match(instructions, /Teoria desenvolve.*não é resumo/iu);
+  assert.match(instructions, /Quantidade de cards.*consequência.*nunca meta pedagógica/isu);
   assert.match(
     AUTHORING_SERVER_INSTRUCTIONS,
     /Quantidade de cards, chamadas ou armazenamento não autoriza condensar teoria/iu
@@ -147,11 +147,11 @@ test("microteoria progride sem pré-requisitos e não se condensa para reduzir c
     targetEntity: "microsequence",
     context: "Explicar a microteoria sem pré-requisito, com exemplo concreto e progressão"
   });
-  const microtheory = context.guidance.find(({ id }) => id === "microtheory-design");
-  assert.ok(microtheory);
-  assert.match(microtheory.text, /focada.*não significa texto curto ou condensado/iu);
-  assert.match(microtheory.text, /linguagem comum.*exemplo concreto.*termo formal/isu);
-  assert.match(microtheory.text, /empilhe conceitos novos.*distribua a progressão/iu);
+  const elaboration = context.guidance.find(({ id }) => id === "explanatory-elaboration");
+  assert.ok(elaboration);
+  assert.match(elaboration.text, /Teoria não é resumo/iu);
+  assert.match(elaboration.text, /linguagem comum.*formulação técnica/isu);
+  assert.match(elaboration.text, /exemplos, contrastes ou limites/iu);
 });
 
 test("contexto de banca reserva espaço para ancoragem em criação e ampliação", () => {
@@ -167,20 +167,20 @@ test("contexto de banca reserva espaço para ancoragem em criação e ampliaçã
 });
 
 test("cenário 11: práticas são legíveis sob demanda, sem despejo de JSON", () => {
-  assert.match(instructions, /Quando a pessoa pedir práticas, releia os cards/iu);
-  assert.match(instructions, /caso, resposta,\s+feedback/iu);
-  assert.match(instructions, /sem despejar JSON/iu);
-  assert.ok(
-    prepareAuthoringContext({ intent: "audit", context: "mostrar práticas" })
-      .recommendedTools.includes("listarCardsDaMicrossequencia")
-  );
+  const context = prepareAuthoringContext({ intent: "audit", context: "mostrar práticas" });
+  const presentation = context.guidance.find(({ id }) => id === "practice-presentation");
+  assert.ok(presentation);
+  assert.match(presentation.text, /Quando a pessoa pedir práticas.*releia.*cards/isu);
+  assert.match(presentation.text, /resposta, feedback/iu);
+  assert.match(presentation.text, /não despeje JSON/iu);
+  assert.ok(context.recommendedTools.includes("listarCardsDaMicrossequencia"));
 });
 
 test("cenário 12 e contrato MCP: publicação não é prematura e intents são explícitas", () => {
   const create = prepareAuthoringContext({ intent: "create" });
   assert.equal(create.recommendedTools.includes("publicarCursoDoWorkspace"), false);
-  assert.match(instructions, /publicarCursoDoWorkspace` somente quando a pessoa pedir/iu);
-  assert.match(instructions, /cards tornam partes\s+estudáveis/iu);
+  assert.match(instructions, /publicarCursoDoWorkspace` apenas quando a pessoa pedir/iu);
+  assert.match(workflow, /Materializar cards permite.*estud/isu);
 
   const prepare = authoringMcpToolDefinition("prepararAutoriaAraLearn");
   const intent = prepare.inputSchema.properties.intent;
@@ -192,13 +192,17 @@ test("cenário 12 e contrato MCP: publicação não é prematura e intents são 
   const save = authoringMcpToolDefinition("salvarCardsNaMicrossequencia");
   assert.match(save.description, /imediatamente renderizável/iu);
   assert.equal(Object.hasOwn(save.inputSchema.properties, "status"), false);
-  const projection = authoringMcpToolDefinition("revisarMicroteoriasDoWorkspace");
-  assert.match(projection.description, /resources, tópicos e contagem de práticas/iu);
+  assert.equal(
+    AUTHORING_WORKSPACE_MCP_TOOLS.some(({ name }) => name === "revisarMicroteoriasDoWorkspace"),
+    false
+  );
+  const design = authoringMcpToolDefinition("gerirDesenhoInstrucional");
+  assert.match(design.description, /análise.*ResourceSet.*manifesto/isu);
 });
 
 test("continuidade retoma estado persistido sem depender da conversa", () => {
   assert.match(instructions, /lerWorkspaceDeAutoria.*view: "resume"/isu);
-  assert.match(instructions, /chat é descartável/iu);
+  assert.match(instructions, /sem reconstruir estado pela conversa/iu);
   assert.match(
     workflow,
     /lista ordenada dos ids exatos (?:de suas|das)\s+microssequências/iu
@@ -214,15 +218,15 @@ test("continuidade retoma estado persistido sem depender da conversa", () => {
 });
 
 test("auditoria persiste decisão e só vincula reparo confirmado", () => {
-  for (const document of [instructions, editorialCycle, semanticAudit, mcpGuide]) {
+  for (const document of [editorialCycle, semanticAudit, mcpGuide]) {
     assert.match(document, /list_comments/iu);
     assert.match(document, /list_observations/iu);
     assert.match(document, /achados? compact/iu);
   }
-  assert.match(instructions, /pendingCorrectionRequestId/iu);
+  assert.match(mcpGuide, /pendingCorrectionRequestId/iu);
   assert.match(
-    instructions,
-    /link_finding_correction` somente após confirmar o\s+reparo/iu
+    mcpGuide,
+    /link_finding_correction.*escrita confirmada/isu
   );
   assert.match(mcpGuide, /vincul[ea] a\s+correção.*escrita confirmada/isu);
   assert.match(editorialCycle, /reaudite/iu);
@@ -232,7 +236,7 @@ test("auditoria persiste decisão e só vincula reparo confirmado", () => {
 });
 
 test("notas, achados e vínculos de correção permanecem inequívocos", () => {
-  for (const document of [instructions, workflow, semanticAudit, mcpGuide]) {
+  for (const document of [workflow, semanticAudit, mcpGuide]) {
     assert.match(document, /kinds: \["note"\]/u);
     assert.match(document, /kinds: \["audit_finding"\]/u);
     assert.match(document, /achados(?: de auditoria)? ativos.*resume/isu);

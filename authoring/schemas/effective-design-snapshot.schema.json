@@ -1959,7 +1959,35 @@
                 },
                 "uniqueItems": true
               }
-            }
+            },
+            "allOf": [
+              {
+                "if": {
+                  "required": [
+                    "fit"
+                  ],
+                  "properties": {
+                    "fit": {
+                      "const": "canonical"
+                    }
+                  }
+                },
+                "then": {
+                  "properties": {
+                    "limitations": {
+                      "maxItems": 0
+                    }
+                  }
+                },
+                "else": {
+                  "properties": {
+                    "limitations": {
+                      "minItems": 1
+                    }
+                  }
+                }
+              }
+            ]
           }
         },
         "materializedResources": {

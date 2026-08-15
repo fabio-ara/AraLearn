@@ -104,18 +104,16 @@ dialogado.
   grau de apoio.
 - O recurso escolhido corresponde à operação cognitiva. Em
   `consultarBibliotecaDeResources`, percorra `explore`, `search`, `inspect` e
-  `contracts`, estes em lotes de até quatro versões exatas. Use `validate_card`
+  `contracts`, estes para exatamente uma versão por chamada. Use `validate_card`
   e depois `audit_representation`: a auditoria distingue `semantic_fit` no
   conteúdo, `response_affordance` na resposta e `feedback_legibility` no
   feedback. Não reduza a autoria a texto e escolha quando outro package
   preservar melhor o raciocínio.
-- A ausência de package com ajuste `canonical` não paralisa a produção. Esse
-  token expressa o ajuste específico do algoritmo, e `versatile` preserva a
-  estrutura por uma convenção
-  transversal. Se `coverage.status` for `substitute`, use o melhor candidato,
-  incorpore brevemente o `chatDisclosure` devolvido e registre a representação
-  desejada na decisão autoral. Não esconda a perda nem transforme a observação
-  em burocracia.
+- A ausência de package com ajuste `canonical` é resolvida pela política e pelo
+  `ResourceSet` efetivos. `versatile` e `substitute` só podem ser usados quando
+  autorizados; preserve a limitação e o `chatDisclosure` exigidos. Se houver
+  bloqueio, registre a indisponibilidade e não use package externo ou
+  equivalência artificial.
 - A escolha fica materializada em uma instância de package de `card.content`,
   `card.response` ou `card.feedback`. Confira se ela preserva
   `microsequence.goal`, `covers` e `checks`; não acrescente ao JSON um bloco

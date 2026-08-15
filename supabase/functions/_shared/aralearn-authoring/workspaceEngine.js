@@ -1011,6 +1011,37 @@ export class AuthoringWorkspaceEngine {
     };
   }
 
+  async replayMutation({
+    principal,
+    workspaceId,
+    requestId,
+    expectedRevision,
+    operation,
+    arguments: operationArguments,
+    deadlineAt = null
+  }) {
+    const payloadHash = await this.#hash(operation, {
+      workspaceId,
+      expectedRevision,
+      arguments: operationArguments
+    });
+    const replayed = await this.#replay(
+      principal,
+      requestId,
+      payloadHash,
+      operation,
+      deadlineAt
+    );
+    if (replayed && String(replayed.workspaceId || "") !== String(workspaceId)) {
+      throw new AuthoringApiError(
+        409,
+        "idempotency_key_reused",
+        "O requestId já foi usado em outro workspace."
+      );
+    }
+    return replayed || null;
+  }
+
   async mutate({
     principal,
     workspaceId,

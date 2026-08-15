@@ -297,6 +297,38 @@ test("ResourceSet bloqueia package fora da condição e exige limitação de sub
   assert.match(substituteResult.errors.join(" "), /substitute sem registrar limitação/iu);
 });
 
+test("matriz de fallback trata versatile e canonical sem lacunas artificiais", () => {
+  const setFallbackPolicy = (bundle, value) => {
+    const resolved = bundle.effectiveSnapshot.resolvedValues.find(({ definitionRef }) => (
+      definitionRef.id === "representation_fallback_policy"
+    ));
+    resolved.value = { kind: "enum", value };
+    const assignment = bundle.parameterAssignments.find(({ id, version }) => (
+      id === resolved.resolution.assignmentRef.id
+      && version === resolved.resolution.assignmentRef.version
+    ));
+    assignment.value = { kind: "enum", value };
+  };
+  const versatileBlocked = canonicalBundle();
+  setFallbackPolicy(versatileBlocked, "block");
+  const blockedResult = evaluateInstructionalDesignBundle(versatileBlocked);
+  assert.equal(blockedResult.valid, false);
+  assert.match(blockedResult.errors.join(" "), /versatile apesar da política efetiva block/iu);
+
+  const versatileWithoutLimitation = canonicalBundle().materializationManifest;
+  versatileWithoutLimitation.resourceSelections[0].limitations = [];
+  assert.equal(validators().materializationManifest(versatileWithoutLimitation), false);
+
+  const canonicalWithLimitation = canonicalBundle().materializationManifest;
+  canonicalWithLimitation.resourceSelections[0].fit = "canonical";
+  assert.equal(validators().materializationManifest(canonicalWithLimitation), false);
+
+  const versatileAllowed = canonicalBundle();
+  setFallbackPolicy(versatileAllowed, "allow_versatile_with_limitation");
+  const allowedResult = evaluateInstructionalDesignBundle(versatileAllowed);
+  assert.equal(allowedResult.valid, true, allowedResult.errors.join("\n"));
+});
+
 test("autorização não combina package e fit vindos de ResourceSets diferentes", () => {
   const mixedAuthorization = canonicalBundle();
   const setA = mixedAuthorization.resourceSets[0];

@@ -325,6 +325,15 @@ const OPEN_CANONICAL_OBJECT = Object.freeze({
   additionalProperties: true,
   description: "Objeto canônico integral cujo formato depende da entidade ou documento solicitado."
 });
+const VERSIONED_REFERENCE_SCHEMA = schema(["id", "version"], {
+  id: ID,
+  version: {
+    type: "string",
+    minLength: 1,
+    maxLength: 80,
+    pattern: "^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$"
+  }
+});
 const RESOURCE_LIBRARY_OPERATIONS = Object.freeze([
   "explore",
   "search",
@@ -340,6 +349,10 @@ const RESOURCE_LIBRARY_CONTRACT = Object.freeze({
 const RESOURCE_FIT = Object.freeze({
   type: "string",
   enum: ["canonical", "versatile", "substitute"]
+});
+const RESOURCE_COVERAGE_STATUS = Object.freeze({
+  type: "string",
+  enum: ["canonical", "versatile", "substitute", "blocked"]
 });
 const RESOURCE_LIBRARY_CATALOG_HEADER = Object.freeze({
   contract: RESOURCE_LIBRARY_CONTRACT,
@@ -423,7 +436,7 @@ const RESOURCE_LIBRARY_SEARCH_SCHEMA = schema([
 ], {
   ...RESOURCE_LIBRARY_CATALOG_HEADER,
   coverage: schema(["status", "desiredResource", "chatDisclosure"], {
-    status: RESOURCE_FIT,
+    status: RESOURCE_COVERAGE_STATUS,
     desiredResource: NON_EMPTY_STRING,
     chatDisclosure: { type: ["string", "null"] }
   }),
@@ -450,6 +463,12 @@ const RESOURCE_LIBRARY_SEARCH_SCHEMA = schema([
         type: "array",
         maxItems: 16,
         items: PACKAGE_ID
+      },
+      authorizedByResourceSetRef: VERSIONED_REFERENCE_SCHEMA,
+      limitations: {
+        type: "array",
+        maxItems: 16,
+        items: NON_EMPTY_STRING
       }
     })
   }
@@ -484,7 +503,7 @@ const RESOURCE_LIBRARY_CONTRACTS_SCHEMA = schema([
   items: {
     type: "array",
     minItems: 1,
-    maxItems: 4,
+    maxItems: 1,
     items: {
       oneOf: [
         schema(["status", "packageId", "version", "definition"], {
@@ -524,7 +543,8 @@ const RESOURCE_LIBRARY_AUDIT_SCHEMA = schema([
       fit: RESOURCE_FIT,
       reason: NON_EMPTY_STRING,
       matched: { type: "array", maxItems: 64, items: NON_EMPTY_STRING },
-      missing: { type: "array", maxItems: 64, items: NON_EMPTY_STRING }
+      missing: { type: "array", maxItems: 64, items: NON_EMPTY_STRING },
+      authorizedByResourceSetRef: VERSIONED_REFERENCE_SCHEMA
     })
   },
   warnings: { type: "array", maxItems: 64, items: NON_EMPTY_STRING },
@@ -556,10 +576,28 @@ const RESOURCE_LIBRARY_RESULT_SCHEMAS = Object.freeze({
   audit_representation: RESOURCE_LIBRARY_AUDIT_SCHEMA,
   preview_card: RESOURCE_LIBRARY_PREVIEW_SCHEMA
 });
+const RESOURCE_LIBRARY_AVAILABILITY_SCHEMA = schema([
+  "mode", "snapshotRef", "resourceSetRefs"
+], {
+  mode: {
+    type: "string",
+    enum: ["legacy_unrestricted", "resource_set_restricted"]
+  },
+  snapshotRef: {
+    oneOf: [{ type: "null" }, VERSIONED_REFERENCE_SCHEMA]
+  },
+  resourceSetRefs: {
+    type: "array",
+    maxItems: 128,
+    uniqueItems: true,
+    items: VERSIONED_REFERENCE_SCHEMA
+  }
+});
 const RESOURCE_LIBRARY_DATA_SCHEMA = Object.freeze({
-  ...schema(["contract", "operation", "result"], {
+  ...schema(["contract", "operation", "availability", "result"], {
     contract: RESOURCE_LIBRARY_CONTRACT,
     operation: { type: "string", enum: RESOURCE_LIBRARY_OPERATIONS },
+    availability: RESOURCE_LIBRARY_AVAILABILITY_SCHEMA,
     result: { type: "object" }
   }),
   allOf: RESOURCE_LIBRARY_OPERATIONS.map((operation) => ({
@@ -2889,6 +2927,342 @@ const RESOURCE_LIBRARY_PACKAGE_REQUEST_SCHEMA = schema(["packageId"], {
     pattern: "^(?:0|[1-9][0-9]*)\\.(?:0|[1-9][0-9]*)\\.(?:0|[1-9][0-9]*)$"
   }
 });
+const AUTHORING_DESIGN_OPERATIONS = Object.freeze([
+  "read_slice",
+  "contracts",
+  "save_analysis",
+  "set_parameter",
+  "remove_parameter",
+  "save_resource_set",
+  "resolve_effective",
+  "save_blueprint",
+  "register_manifest"
+]);
+const AUTHORING_DESIGN_WRITE_OPERATIONS = Object.freeze(
+  AUTHORING_DESIGN_OPERATIONS.filter(
+    (operation) => !["read_slice", "contracts"].includes(operation)
+  )
+);
+const AUTHORING_DESIGN_READ_VIEWS = Object.freeze([
+  "overview", "analysis", "parameters", "blueprint", "binding",
+  "materialization"
+]);
+const AUTHORING_DESIGN_CONTRACT_NAMES = Object.freeze([
+  "instructional_analysis",
+  "design_parameter_definition",
+  "design_parameter_assignment",
+  "effective_design_snapshot",
+  "materialization_manifest",
+  "resource_set",
+  "action_read_slice",
+  "action_contracts",
+  "action_save_analysis",
+  "action_set_parameter",
+  "action_remove_parameter",
+  "action_save_resource_set",
+  "action_resolve_effective",
+  "action_save_blueprint",
+  "action_register_manifest"
+]);
+const AUTHORING_DESIGN_PAYLOAD_JSON = Object.freeze({
+  type: "string",
+  minLength: 2,
+  maxLength: 72 * 1_024,
+  description: "Contrato canônico da operação, serializado como JSON; nunca inclua conversa ou raciocínio privado."
+});
+function forbidAuthoringDesignFields(fields) {
+  return {
+    not: {
+      anyOf: fields.map((field) => ({ required: [field] }))
+    }
+  };
+}
+const AUTHORING_DESIGN_INPUT_SCHEMA = Object.freeze({
+  ...schema(["operation", "workspaceId"], {
+    operation: { type: "string", enum: AUTHORING_DESIGN_OPERATIONS },
+    workspaceId: UUID,
+    microsequencePath: MICROSEQUENCE_PATH,
+    view: {
+      type: "string",
+      enum: AUTHORING_DESIGN_READ_VIEWS,
+      default: "overview"
+    },
+    contractName: {
+      type: "string",
+      enum: AUTHORING_DESIGN_CONTRACT_NAMES
+    },
+    requestId: REQUEST_ID,
+    expectedRevision: REVISION,
+    payloadJson: AUTHORING_DESIGN_PAYLOAD_JSON
+  }),
+  oneOf: [
+    {
+      required: ["operation", "microsequencePath"],
+      properties: { operation: { const: "read_slice" } },
+      ...forbidAuthoringDesignFields([
+        "contractName", "requestId", "expectedRevision", "payloadJson"
+      ])
+    },
+    {
+      required: ["operation", "contractName"],
+      properties: { operation: { const: "contracts" } },
+      ...forbidAuthoringDesignFields([
+        "microsequencePath", "view", "requestId", "expectedRevision",
+        "payloadJson"
+      ])
+    },
+    {
+      required: [
+        "operation", "requestId", "expectedRevision", "microsequencePath",
+        "payloadJson"
+      ],
+      properties: {
+        operation: {
+          type: "string",
+          enum: AUTHORING_DESIGN_WRITE_OPERATIONS
+        }
+      },
+      ...forbidAuthoringDesignFields(["view", "contractName"])
+    }
+  ]
+});
+const NULLABLE_VERSIONED_REFERENCE_SCHEMA = Object.freeze({
+  oneOf: [{ type: "null" }, VERSIONED_REFERENCE_SCHEMA]
+});
+const AUTHORING_DESIGN_ARTIFACT_REFS_SCHEMA = schema([
+  "analysisRef", "effectiveSnapshotRef", "blueprintRef", "bindingRef",
+  "manifestRef", "effectiveResourceSetRefs", "blueprintHash", "bindingHash",
+  "scopeEntityVersion", "blueprintCreatedRevision"
+], {
+  analysisRef: NULLABLE_VERSIONED_REFERENCE_SCHEMA,
+  effectiveSnapshotRef: NULLABLE_VERSIONED_REFERENCE_SCHEMA,
+  blueprintRef: NULLABLE_VERSIONED_REFERENCE_SCHEMA,
+  bindingRef: NULLABLE_VERSIONED_REFERENCE_SCHEMA,
+  manifestRef: NULLABLE_VERSIONED_REFERENCE_SCHEMA,
+  effectiveResourceSetRefs: {
+    type: "array",
+    maxItems: 128,
+    uniqueItems: true,
+    items: VERSIONED_REFERENCE_SCHEMA
+  },
+  blueprintHash: NULLABLE_SHA256,
+  bindingHash: NULLABLE_SHA256,
+  scopeEntityVersion: { type: ["integer", "null"], minimum: 1 },
+  blueprintCreatedRevision: { type: ["integer", "null"], minimum: 1 }
+});
+const AUTHORING_DESIGN_SLICE_COMMON_PROPERTIES = Object.freeze({
+  contract: { const: "aralearn.authoring-design-slice.v1" },
+  view: { type: "string", enum: AUTHORING_DESIGN_READ_VIEWS },
+  availableViews: {
+    type: "array",
+    minItems: 1,
+    maxItems: AUTHORING_DESIGN_READ_VIEWS.length,
+    uniqueItems: true,
+    items: { type: "string", enum: AUTHORING_DESIGN_READ_VIEWS }
+  },
+  workspace: OPEN_CANONICAL_OBJECT,
+  microsequence: OPEN_CANONICAL_OBJECT,
+  coordination: OPEN_CANONICAL_OBJECT,
+  states: OPEN_CANONICAL_OBJECT,
+  artifacts: AUTHORING_DESIGN_ARTIFACT_REFS_SCHEMA,
+  nextAction: NON_EMPTY_STRING
+});
+const AUTHORING_DESIGN_SLICE_COMMON_REQUIRED = Object.freeze([
+  "contract", "view", "availableViews", "workspace", "microsequence",
+  "coordination", "states", "artifacts", "nextAction"
+]);
+function authoringDesignSliceViewSchema(view, properties = {}) {
+  return schema([
+    ...AUTHORING_DESIGN_SLICE_COMMON_REQUIRED,
+    ...Object.keys(properties)
+  ], {
+    ...AUTHORING_DESIGN_SLICE_COMMON_PROPERTIES,
+    view: { const: view },
+    ...properties
+  });
+}
+const AUTHORING_DESIGN_READ_SLICE_SCHEMA = Object.freeze({
+  oneOf: [
+    authoringDesignSliceViewSchema("overview"),
+    authoringDesignSliceViewSchema("analysis", {
+      analysis: { type: ["object", "null"], additionalProperties: true }
+    }),
+    authoringDesignSliceViewSchema("parameters", {
+      parameterDefinitions: OPEN_CANONICAL_OBJECT,
+      assignments: {
+        type: "array",
+        maxItems: 128,
+        items: OPEN_CANONICAL_OBJECT
+      },
+      locks: {
+        type: "array",
+        maxItems: 128,
+        items: OPEN_CANONICAL_OBJECT
+      },
+      effectiveSnapshot: {
+        type: ["object", "null"],
+        additionalProperties: true
+      },
+      effectiveResourceSets: {
+        type: "array",
+        maxItems: 128,
+        items: OPEN_CANONICAL_OBJECT
+      }
+    }),
+    authoringDesignSliceViewSchema("blueprint", {
+      blueprintContract: OPEN_CANONICAL_OBJECT,
+      blueprint: { type: ["object", "null"], additionalProperties: true }
+    }),
+    authoringDesignSliceViewSchema("binding", {
+      blueprintBinding: {
+        type: ["object", "null"],
+        additionalProperties: true
+      }
+    }),
+    authoringDesignSliceViewSchema("materialization", {
+      materialization: OPEN_CANONICAL_OBJECT
+    })
+  ]
+});
+const AUTHORING_DESIGN_CONTRACT_SCHEMA = schema(["contractName", "schema"], {
+  contractName: { type: "string", enum: AUTHORING_DESIGN_CONTRACT_NAMES },
+  schema: OPEN_CANONICAL_OBJECT
+});
+const AUTHORING_DESIGN_SCOPE_SCHEMA = schema(["kind", "ref"], {
+  kind: {
+    type: "string",
+    enum: ["workspace", "course", "module", "lesson", "microsequence"]
+  },
+  ref: ID
+});
+const AUTHORING_DESIGN_ANALYSIS_RECEIPT_SCHEMA = schema([
+  "analysisRef", "scope", "payloadHash"
+], {
+  analysisRef: VERSIONED_REFERENCE_SCHEMA,
+  scope: AUTHORING_DESIGN_SCOPE_SCHEMA,
+  payloadHash: SHA256
+});
+const AUTHORING_DESIGN_ASSIGNMENT_RECEIPT_SCHEMA = schema([
+  "assignmentRef", "assignmentOperation", "definitionRef", "scope"
+], {
+  assignmentRef: VERSIONED_REFERENCE_SCHEMA,
+  assignmentOperation: { type: "string", enum: ["set", "remove"] },
+  definitionRef: VERSIONED_REFERENCE_SCHEMA,
+  scope: AUTHORING_DESIGN_SCOPE_SCHEMA
+});
+const AUTHORING_DESIGN_RESOURCE_SET_RECEIPT_SCHEMA = schema([
+  "resourceSetRef", "packageCount", "payloadHash"
+], {
+  resourceSetRef: VERSIONED_REFERENCE_SCHEMA,
+  packageCount: NON_NEGATIVE_INTEGER,
+  payloadHash: SHA256
+});
+const AUTHORING_DESIGN_RESOLUTION_RECEIPT_SCHEMA = Object.freeze({
+  oneOf: [
+    schema(["status", "snapshotRef", "payloadHash"], {
+      status: { const: "resolved" },
+      snapshotRef: VERSIONED_REFERENCE_SCHEMA,
+      payloadHash: SHA256
+    }),
+    schema([
+      "status", "conflicts", "conflictCount", "conflictsTruncated"
+    ], {
+      status: { const: "conflict" },
+      conflicts: {
+        type: "array",
+        maxItems: 24,
+        items: OPEN_CANONICAL_OBJECT
+      },
+      conflictCount: NON_NEGATIVE_INTEGER,
+      conflictsTruncated: { type: "boolean" }
+    })
+  ]
+});
+const AUTHORING_DESIGN_BLUEPRINT_RECEIPT_SCHEMA = schema([
+  "blueprintRef", "bindingRef", "analysisRef", "effectiveSnapshotRef",
+  "blueprintHash", "bindingHash"
+], {
+  blueprintRef: VERSIONED_REFERENCE_SCHEMA,
+  bindingRef: VERSIONED_REFERENCE_SCHEMA,
+  analysisRef: VERSIONED_REFERENCE_SCHEMA,
+  effectiveSnapshotRef: VERSIONED_REFERENCE_SCHEMA,
+  blueprintHash: SHA256,
+  bindingHash: SHA256
+});
+const AUTHORING_DESIGN_MANIFEST_RECEIPT_SCHEMA = schema([
+  "manifestRef", "contentHash", "payloadHash", "conformance",
+  "resourceAuthorization"
+], {
+  manifestRef: VERSIONED_REFERENCE_SCHEMA,
+  contentHash: SHA256,
+  payloadHash: SHA256,
+  conformance: { const: "accepted" },
+  resourceAuthorization: { const: "authorized" }
+});
+function authoringDesignDataBranch(
+  operation,
+  result,
+  { mutation = false, withRevision = mutation } = {}
+) {
+  return schema([
+    "operation", "workspaceId", ...(withRevision ? ["revision"] : []),
+    ...(mutation ? ["replayed"] : []),
+    "result"
+  ], {
+    operation: { const: operation },
+    workspaceId: UUID,
+    ...(withRevision ? { revision: REVISION } : {}),
+    ...(mutation ? {
+      replayed: { type: "boolean" }
+    } : {}),
+    result
+  });
+}
+const AUTHORING_DESIGN_DATA_SCHEMA = Object.freeze({
+  oneOf: [
+    authoringDesignDataBranch(
+      "read_slice",
+      AUTHORING_DESIGN_READ_SLICE_SCHEMA,
+      { withRevision: true }
+    ),
+    authoringDesignDataBranch("contracts", AUTHORING_DESIGN_CONTRACT_SCHEMA),
+    authoringDesignDataBranch(
+      "save_analysis",
+      AUTHORING_DESIGN_ANALYSIS_RECEIPT_SCHEMA,
+      { mutation: true }
+    ),
+    authoringDesignDataBranch(
+      "set_parameter",
+      AUTHORING_DESIGN_ASSIGNMENT_RECEIPT_SCHEMA,
+      { mutation: true }
+    ),
+    authoringDesignDataBranch(
+      "remove_parameter",
+      AUTHORING_DESIGN_ASSIGNMENT_RECEIPT_SCHEMA,
+      { mutation: true }
+    ),
+    authoringDesignDataBranch(
+      "save_resource_set",
+      AUTHORING_DESIGN_RESOURCE_SET_RECEIPT_SCHEMA,
+      { mutation: true }
+    ),
+    authoringDesignDataBranch(
+      "resolve_effective",
+      AUTHORING_DESIGN_RESOLUTION_RECEIPT_SCHEMA,
+      { mutation: true }
+    ),
+    authoringDesignDataBranch(
+      "save_blueprint",
+      AUTHORING_DESIGN_BLUEPRINT_RECEIPT_SCHEMA,
+      { mutation: true }
+    ),
+    authoringDesignDataBranch(
+      "register_manifest",
+      AUTHORING_DESIGN_MANIFEST_RECEIPT_SCHEMA,
+      { mutation: true }
+    )
+  ]
+});
 const RESOURCE_LIBRARY_INPUT_SCHEMA = Object.freeze({
   ...readSchema(["operation"], {
     operation: { type: "string", enum: RESOURCE_LIBRARY_OPERATIONS },
@@ -2920,7 +3294,9 @@ const RESOURCE_LIBRARY_INPUT_SCHEMA = Object.freeze({
       type: "string",
       maxLength: 4_000,
       description: "Intenção pedagógica e representacional declarada para auditar o card."
-    }
+    },
+    workspaceId: UUID,
+    snapshotRef: VERSIONED_REFERENCE_SCHEMA
   }),
   allOf: [
     {
@@ -2929,7 +3305,22 @@ const RESOURCE_LIBRARY_INPUT_SCHEMA = Object.freeze({
     },
     {
       if: { properties: { operation: { const: "contracts" } } },
-      then: { properties: { packages: { maxItems: 4 } } }
+      then: {
+        properties: {
+          packages: {
+            type: "array",
+            minItems: 1,
+            maxItems: 1,
+            items: schema(["packageId", "version"], {
+              packageId: PACKAGE_ID,
+              version: {
+                type: "string",
+                pattern: "^(?:0|[1-9][0-9]*)\\.(?:0|[1-9][0-9]*)\\.(?:0|[1-9][0-9]*)$"
+              }
+            })
+          }
+        }
+      }
     },
     {
       if: {
@@ -2940,16 +3331,29 @@ const RESOURCE_LIBRARY_INPUT_SCHEMA = Object.freeze({
         }
       },
       then: { required: ["cardJson"] }
+    },
+    {
+      if: { required: ["workspaceId"] },
+      then: { required: ["snapshotRef"] },
+      else: { not: { required: ["snapshotRef"] } }
     }
   ]
 });
 const RESOURCE_LIBRARY_TOOL = tool(
   "consultarBibliotecaDeResources",
   "Consultar biblioteca de resources",
-  "Explora facetas, busca pela intenção, inspeciona manifests, obtém até quatro contratos, valida cards e audita a adequação representacional. A ausência de um resource exato devolve um substituto explicitado e nunca bloqueia a autoria.",
+  "Explora facetas, busca pela intenção, inspeciona manifests, obtém um contrato exato, valida cards e audita a adequação representacional. Com workspace e snapshot, restringe tudo aos ResourceSets efetivos; sem representação adequada, bloqueia ou registra a limitação conforme a política.",
   RESOURCE_LIBRARY_INPUT_SCHEMA,
   RESOURCE_LIBRARY_DATA_SCHEMA,
   { readOnlyHint: true }
+);
+const AUTHORING_DESIGN_TOOL = tool(
+  "gerirDesenhoInstrucional",
+  "Gerir desenho instrucional",
+  "Lê o recorte de uma microssequência, entrega um contrato exato e persiste análise, Auto/override/lock, ResourceSet, snapshot, blueprint e manifesto com CAS. Descubra caminhos no workspace; não peça ids técnicos ao autor.",
+  AUTHORING_DESIGN_INPUT_SCHEMA,
+  AUTHORING_DESIGN_DATA_SCHEMA,
+  { actionConsequentialHint: true }
 );
 
 const INDIVIDUAL_AUTHORING_WORKSPACE_MCP_TOOLS = Object.freeze([
@@ -2979,6 +3383,7 @@ const INDIVIDUAL_AUTHORING_WORKSPACE_MCP_TOOLS = Object.freeze([
     { readOnlyHint: true }
   ),
   RESOURCE_LIBRARY_TOOL,
+  AUTHORING_DESIGN_TOOL,
   tool(
     "listarCursosDaBibliotecaPessoal",
     "Listar cursos de Trilhas",
@@ -3892,7 +4297,8 @@ const CONSOLIDATED_REMOVALS = new Set([
   "separarMicrossequencia",
   "promoverModuloACurso",
   "rebaixarCursoAModulo",
-  "excluirWorkspaceDeAutoria"
+  "excluirWorkspaceDeAutoria",
+  "revisarMicroteoriasDoWorkspace"
 ]);
 
 export const AUTHORING_WORKSPACE_MCP_TOOLS = Object.freeze(
@@ -3904,9 +4310,14 @@ export const AUTHORING_WORKSPACE_MCP_TOOLS = Object.freeze(
   })
 );
 
-const TOOL_BY_NAME = new Map(
-  AUTHORING_WORKSPACE_MCP_TOOLS.map((definition) => [definition.name, definition])
-);
+const TOOL_BY_NAME = new Map([
+  ...AUTHORING_WORKSPACE_MCP_TOOLS.map(
+    (definition) => [definition.name, definition]
+  ),
+  ...INDIVIDUAL_AUTHORING_WORKSPACE_MCP_TOOLS
+    .filter((definition) => definition.name === "revisarMicroteoriasDoWorkspace")
+    .map((definition) => [definition.name, definition])
+]);
 
 const CATALOG_READ = new Set([
   "consultarCatalogo"
@@ -4299,7 +4710,7 @@ export function validateAuthoringMcpToolOutput(name, value) {
   return value;
 }
 
-export function authoringMcpToolIsAllowed(name, principal) {
+export function authoringMcpToolIsAllowed(name, principal, rawArguments = null) {
   const definition = TOOL_BY_NAME.get(name);
   if (
     !definition ||
@@ -4310,6 +4721,17 @@ export function authoringMcpToolIsAllowed(name, principal) {
   }
   const scopes = new Set(principal.scopes || []);
   if (scopes.has("*")) return true;
+  if (name === "gerirDesenhoInstrucional") {
+    const readAllowed = scopes.has("authoring:read")
+      || scopes.has("authoring:private:read");
+    const writeAllowed = scopes.has("authoring:write")
+      || scopes.has("authoring:private:write");
+    if (rawArguments == null) return readAllowed || writeAllowed;
+    if (["read_slice", "contracts"].includes(rawArguments.operation)) {
+      return readAllowed;
+    }
+    return writeAllowed;
+  }
   if (CATALOG_READ.has(name)) {
     return scopes.has("catalog:read");
   }
@@ -4378,6 +4800,42 @@ export function mapAuthoringMcpToolCall(name, rawArguments) {
       kind: "resource-library",
       body: args,
       requestId: null
+    };
+  }
+  if (name === "gerirDesenhoInstrucional") {
+    const { workspaceId, operation } = args;
+    const body = { operation };
+    if (args.microsequencePath) body.microsequencePath = args.microsequencePath;
+    if (args.view) body.view = args.view;
+    if (args.contractName) body.contractName = args.contractName;
+    if (args.requestId) body.requestId = args.requestId;
+    if (args.expectedRevision != null) {
+      body.expectedRevision = args.expectedRevision;
+    }
+    if (args.payloadJson != null) {
+      try {
+        body.payload = JSON.parse(args.payloadJson);
+      } catch {
+        throw new AuthoringApiError(
+          422,
+          "invalid_tool_arguments",
+          "payloadJson deve conter JSON válido."
+        );
+      }
+      if (!body.payload || typeof body.payload !== "object"
+          || Array.isArray(body.payload)) {
+        throw new AuthoringApiError(
+          422,
+          "invalid_tool_arguments",
+          "payloadJson deve serializar um objeto canônico."
+        );
+      }
+    }
+    return {
+      method: "POST",
+      path: `/v1/workspaces/${encode(workspaceId)}/design/actions`,
+      body,
+      requestId: args.requestId ?? null
     };
   }
   if (name === "listarCursosDaBibliotecaPessoal") {

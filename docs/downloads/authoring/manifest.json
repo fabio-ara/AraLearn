@@ -7,18 +7,18 @@
     {
       "file": "aralearn-authoring-core.zip",
       "platform": null,
-      "bytes": 688786,
-      "sha256": "0ec41ea2601b5d35e52066517ce0aa85e643d84a36f0e198f47bf0fe97a37ce1",
+      "bytes": 800847,
+      "sha256": "e58df8021eadcae8f0c69c584a7d1265d631c986e9cffd3d5057d8ad28f5078a",
       "files": [
         {
           "path": "aralearn-authoring/core/editorial-cycle.md",
-          "bytes": 5622,
-          "sha256": "8d1d654727d8d83e15371337bfca394a9c0167114c57c493297ae642ccf8d526"
+          "bytes": 5703,
+          "sha256": "30e18e47508474400c876b5ba289cbc6dc217e54e272f674407f0bbd3cdd8f38"
         },
         {
           "path": "aralearn-authoring/core/quality.md",
-          "bytes": 23739,
-          "sha256": "edf83a8e5e485241a8c92e3e3224e16a856cf5c2bcc499bb6897479791ebc1c0"
+          "bytes": 23624,
+          "sha256": "fa17bf59337bcf98d3603796d528bfde36b3b1bd734c9ac6fea323b9adcceaba"
         },
         {
           "path": "aralearn-authoring/core/safety.md",
@@ -37,18 +37,33 @@
         },
         {
           "path": "aralearn-authoring/core/workflow.md",
-          "bytes": 19866,
-          "sha256": "3513b19ceafde4fc136f44e31719830f56095324a7e3bfbee906d4234cf2270c"
+          "bytes": 19893,
+          "sha256": "52cde6a5486aabb9e854b912748c3be419697cc905f5e1fb77bf053c9a4e6a99"
         },
         {
           "path": "aralearn-authoring/docs/aralearn-contract.md",
-          "bytes": 12122,
-          "sha256": "82a53d6e07e4e448352f615c3e1349688ad67b40b3b338994c92a73a0a5f0bc4"
+          "bytes": 12334,
+          "sha256": "1e2e0755917f7d2d815396e1dc36c4d064d5877ebc7d4d33306fd9b31745cb25"
         },
         {
           "path": "aralearn-authoring/docs/autoria-mcp.md",
-          "bytes": 21146,
-          "sha256": "ed5907cd38dc9854616bc9941d05f7a0fd387f80bb04ad6370c68657d904afd4"
+          "bytes": 23321,
+          "sha256": "48d196ba819358b039c14f5a6c3fa03d7b098a406abb89eaa6b279b6a794e3a7"
+        },
+        {
+          "path": "aralearn-authoring/docs/criar-cursos-pelo-chat.md",
+          "bytes": 17761,
+          "sha256": "ecfb367fc6c86f1fb76302dd9360c1a168b372fa7374776f3da50b0152750d43"
+        },
+        {
+          "path": "aralearn-authoring/docs/desenho-instrucional-parametrizado.md",
+          "bytes": 25145,
+          "sha256": "72dfaf6e1596aff74c44ccf635efd1db3eb90353199bd63a748bcd4d5f3fb903"
+        },
+        {
+          "path": "aralearn-authoring/docs/fluxos-prompts-e-contratos.md",
+          "bytes": 19155,
+          "sha256": "d14b0c424bd0ce7a3ba1f74f55a634695bc518d48af862f02994741dfceeaf13"
         },
         {
           "path": "aralearn-authoring/docs/fundamentacao-pedagogica-dos-resources.md",
@@ -57,13 +72,18 @@
         },
         {
           "path": "aralearn-authoring/docs/persistencia-relacional.md",
-          "bytes": 27460,
-          "sha256": "d4b3e2e08c60865293daaf9a2cfdee349593604962f50844b43033962aacff30"
+          "bytes": 28242,
+          "sha256": "4bd7ef9a8003f7993c042409d5c533a186cbcb08d27e892e8a33fc2e4bcdb57c"
         },
         {
           "path": "aralearn-authoring/docs/recursos-de-card.md",
-          "bytes": 19879,
-          "sha256": "820aae3aa25cb31802ee5df9db8f42496c617b420d0caf8c52a9c2fa79f1e0e1"
+          "bytes": 20033,
+          "sha256": "bcc19d74137fa0658681c3019239845e1b0e0c3a1caaa31c6365f294fdb3b042"
+        },
+        {
+          "path": "aralearn-authoring/docs/workspaces-educacionais.md",
+          "bytes": 16709,
+          "sha256": "4ba16ca1240a728cfc2f1c21842050f5b6d76d189d8b79ae8275159390f02e39"
         },
         {
           "path": "aralearn-authoring/evals/contextual-planning-runs.v1.json",
@@ -107,8 +127,13 @@
         },
         {
           "path": "aralearn-authoring/knowledge/cards-and-resources.md",
-          "bytes": 8738,
-          "sha256": "c92b284921d757f39ac8a4d4c222a10ebf4c9b322acd4b76f5fc8cfd977d0086"
+          "bytes": 8795,
+          "sha256": "b014a61736564cc18c017781e9d7bfb22ae38b4a1dbeb84ff339c617869c66d9"
+        },
+        {
+          "path": "aralearn-authoring/knowledge/complex-professional-task.md",
+          "bytes": 2714,
+          "sha256": "49135de5ad9d5698ed70b60ba3443bf88e66ac62a5467dedca08d83efca9e115"
         },
         {
           "path": "aralearn-authoring/knowledge/continuity.md",
@@ -116,14 +141,39 @@
           "sha256": "14e5e62ca90c677f717357c511b1f3190ad7545d6f1d4b524fcbd3182c2631bd"
         },
         {
+          "path": "aralearn-authoring/knowledge/design-conformance-audit.md",
+          "bytes": 2318,
+          "sha256": "1c3dd61625c1edc9c18c1cf6486172f24e643bfc0c3662c4c404b5f4c5674d66"
+        },
+        {
           "path": "aralearn-authoring/knowledge/domain-patterns.md",
           "bytes": 12009,
           "sha256": "9bc26a5c59c85e3a29295656c10d34dc88ace8ef09cb559723cc0ce196723fbb"
         },
         {
+          "path": "aralearn-authoring/knowledge/evidence-and-practice.md",
+          "bytes": 2279,
+          "sha256": "8a2baac6fd061d10942b016d2cc96fa7d4882d636ed1e30180432fa474da8046"
+        },
+        {
+          "path": "aralearn-authoring/knowledge/explanatory-elaboration.md",
+          "bytes": 2099,
+          "sha256": "97c851b2df7e23e382314b536a19b51fa07a33ddd851b9e580bb12f1ced3cdf8"
+        },
+        {
+          "path": "aralearn-authoring/knowledge/instructional-analysis.md",
+          "bytes": 2844,
+          "sha256": "e92d12e50d40b596053bbfe3b3f4968d64a72cbab6275f7229275ef7e4a01821"
+        },
+        {
           "path": "aralearn-authoring/knowledge/packages.md",
-          "bytes": 4326,
-          "sha256": "9b61914f260df41a7a8da640fc6109f98c51967f2fc73ea677ba30067cba107e"
+          "bytes": 4238,
+          "sha256": "d15812054db661ec29808425d1ff486f732519c77488f974cca3d10cd8c3f5f1"
+        },
+        {
+          "path": "aralearn-authoring/knowledge/parameter-resolution.md",
+          "bytes": 3173,
+          "sha256": "d22d88c95d489a0e5dfe56cc56fec4f3c5bcf96e34cd134c63f40c2025efb2cc"
         },
         {
           "path": "aralearn-authoring/knowledge/publication.md",
@@ -131,9 +181,19 @@
           "sha256": "19f6d977f4a2038bceac61c7c7853faf12baab88b5c7da0fbd736761ab44a63c"
         },
         {
+          "path": "aralearn-authoring/knowledge/resource-set-discovery.md",
+          "bytes": 3254,
+          "sha256": "69024fd92e1aea483508f9a7742e1fc2fb37f6dae166126f6a9bdac220269da8"
+        },
+        {
           "path": "aralearn-authoring/knowledge/semantic-audit.md",
           "bytes": 13145,
           "sha256": "216749b0383b75017cea5a83ca6dad41f18504e77281b50eb98981ddc975cb60"
+        },
+        {
+          "path": "aralearn-authoring/knowledge/semantic-granularity.md",
+          "bytes": 3113,
+          "sha256": "0cc95bb3f4aa1b6ed9a3564783a5ca03936045af302b11032bfad89d01445bde"
         },
         {
           "path": "aralearn-authoring/knowledge/term-ledger.md",
@@ -152,8 +212,8 @@
         },
         {
           "path": "aralearn-authoring/README.md",
-          "bytes": 8852,
-          "sha256": "9eab708136d96b1c8d1b9e945bb50ba9e815cbfb355db049b128b4d9bb604efa"
+          "bytes": 10498,
+          "sha256": "e4703740cf69a3ac8b8ad5d46379f1a0a80d9eb3bd0eda1aaf1bffeb125c3b92"
         },
         {
           "path": "aralearn-authoring/schemas/catalog-review.schema.json",
@@ -162,33 +222,33 @@
         },
         {
           "path": "aralearn-authoring/schemas/design-parameter-assignment.schema.json",
-          "bytes": 54353,
-          "sha256": "33758c04308ebbef9483bd379b9854ff2d3054a6a375625d4148273a61557de9"
+          "bytes": 55080,
+          "sha256": "f6d0d546db623db3342aa3acd3de22f30614d132284b93ab9c3df0769f19fa50"
         },
         {
           "path": "aralearn-authoring/schemas/design-parameter-definition.schema.json",
-          "bytes": 54353,
-          "sha256": "3db02add3d0548bff2e089981b3c43754dd737dab772dabfabb9b4d218558c6d"
+          "bytes": 55080,
+          "sha256": "57cf4505b8174bbc15ed652e137b5a1ab3d7955410dee8ae1c35f8e40691bba5"
         },
         {
           "path": "aralearn-authoring/schemas/effective-design-snapshot.schema.json",
-          "bytes": 54347,
-          "sha256": "fce264dc1db48672596013c9fbfd2081110b3226fef66aa2ec23fd4fa42528b8"
+          "bytes": 55074,
+          "sha256": "b86cb7787c5002ea55138aa7feb92b09918894201b4bf0e3e9aa5adc6bce5bdc"
         },
         {
           "path": "aralearn-authoring/schemas/instructional-analysis.schema.json",
-          "bytes": 54340,
-          "sha256": "bebdab802967b5301ba19cfbdb5fe15460e4090f6a0183e7ef92635bd3789778"
+          "bytes": 55067,
+          "sha256": "3290250c79778e8ef5c2939b9aff95133a7a0ba68de671f8e5e4920fb6fd8712"
         },
         {
           "path": "aralearn-authoring/schemas/materialization-manifest.schema.json",
-          "bytes": 54346,
-          "sha256": "8ae79d8ac59ec75bd163228887ff9466210c1924ec7dcd7a13d1cc06ca53c6e8"
+          "bytes": 55073,
+          "sha256": "63d108d68e6e580c029911d2cf3756d89860ac9883d4b78bd38e3e6165052e6f"
         },
         {
           "path": "aralearn-authoring/schemas/resource-set.schema.json",
-          "bytes": 54310,
-          "sha256": "e49e8ce695edf27baa08a1d20c96f480697ae03c84a1a42f4a66bb51e05f21c3"
+          "bytes": 55037,
+          "sha256": "dbfc23642e67cf057bd3e5bf7e3c09ee05a295070f65ed8b22f7fe059b6b6ea6"
         },
         {
           "path": "aralearn-authoring/schemas/workspace-envelope.schema.json",
@@ -215,18 +275,18 @@
     {
       "file": "aralearn-authoring-chatgpt.zip",
       "platform": "chatgpt",
-      "bytes": 973014,
-      "sha256": "7994ee3eb9c5fddd668220fb3260a244dd479192c538ceda5e23e218a6138589",
+      "bytes": 1106430,
+      "sha256": "0ff4a580c53adda591c6d4c839cf651d509ee4d2f0cd8e72285b8cef79fce789",
       "files": [
         {
           "path": "aralearn-authoring/core/editorial-cycle.md",
-          "bytes": 5519,
-          "sha256": "afbf6c0920650d6eca7949ba2b72a29fbfa29b79adc4dd040d5516a7f8382b4c"
+          "bytes": 5602,
+          "sha256": "f7fbe15e084e60477a3ffda922151498f18dedcd2a88b5836a6545f19f3c2a06"
         },
         {
           "path": "aralearn-authoring/core/quality.md",
-          "bytes": 23218,
-          "sha256": "4f744fc790d552bf0a45c5e4f004b5ca191ca3db45b1b1c575a2267d084d7b4c"
+          "bytes": 23115,
+          "sha256": "7a6c871ae798d94f6a7083aed90efb2b860800c73e73f31c3a6ec4a7be2d316b"
         },
         {
           "path": "aralearn-authoring/core/safety.md",
@@ -245,18 +305,33 @@
         },
         {
           "path": "aralearn-authoring/core/workflow.md",
-          "bytes": 19469,
-          "sha256": "d0404c120449402ff4f347e028055ed2db2aee9f8f0c52a13c9e604bc7089335"
+          "bytes": 19501,
+          "sha256": "84711ec39da4358be3b54b52bd3a8a40c2f8022f98320e6880d1c794994769bb"
         },
         {
           "path": "aralearn-authoring/docs/aralearn-contract.md",
-          "bytes": 12111,
-          "sha256": "23af79ee622b88f3dbb34587c47c221dbe2e0ccd48eaa8e7374c0de4da3bf9eb"
+          "bytes": 12323,
+          "sha256": "5d5d9a427ecea0abad3f173663e5bbf9ba3aac5ae85ddbb263b578f6f7000986"
         },
         {
           "path": "aralearn-authoring/docs/autoria-mcp.md",
-          "bytes": 20721,
-          "sha256": "41a543aec9afb6214239db3c233485ba142e60da59e122c2ec2194911bc1794f"
+          "bytes": 22914,
+          "sha256": "6d86414aef164312462aa15bdaa073a77121c2ae05a5653e294343b74d35bb7e"
+        },
+        {
+          "path": "aralearn-authoring/docs/criar-cursos-pelo-chat.md",
+          "bytes": 17411,
+          "sha256": "bd403bce511d6084e0f6e7933a7d53851311660cb4503ead64d0e60ec240b057"
+        },
+        {
+          "path": "aralearn-authoring/docs/desenho-instrucional-parametrizado.md",
+          "bytes": 25127,
+          "sha256": "73ba1a7c3b0683a9c9964d14f285aa3770341d7da8f42d05233ff653baca65d9"
+        },
+        {
+          "path": "aralearn-authoring/docs/fluxos-prompts-e-contratos.md",
+          "bytes": 18901,
+          "sha256": "f7092b3316e5d761973e6cc527eb59d02231eb3fb7fd80620b816ffec76ed986"
         },
         {
           "path": "aralearn-authoring/docs/fundamentacao-pedagogica-dos-resources.md",
@@ -265,13 +340,18 @@
         },
         {
           "path": "aralearn-authoring/docs/persistencia-relacional.md",
-          "bytes": 27394,
-          "sha256": "323aa8b44f0a6d36a5b4ec6216e3a47aeec1f307ad7767270bd1fed2f328b3aa"
+          "bytes": 28176,
+          "sha256": "14bd7af21298957009ef3f01834c9d394e5563793ba9deba76a6121ac525b0ed"
         },
         {
           "path": "aralearn-authoring/docs/recursos-de-card.md",
-          "bytes": 19877,
-          "sha256": "eaec11f31ccae2664819684184fc6267a984ed26193351bc08713d3f8b04292b"
+          "bytes": 20031,
+          "sha256": "8a5f8fa7c197d6722e1042e95e80d445a995f5e36c9823657b345d88ec76861e"
+        },
+        {
+          "path": "aralearn-authoring/docs/workspaces-educacionais.md",
+          "bytes": 16686,
+          "sha256": "7cfba6d6be2b2194be53fc115f3be6e569909848dfff7e227c1fdb7847e105c5"
         },
         {
           "path": "aralearn-authoring/evals/contextual-planning-runs.v1.json",
@@ -315,8 +395,13 @@
         },
         {
           "path": "aralearn-authoring/knowledge/cards-and-resources.md",
-          "bytes": 8558,
-          "sha256": "7ce2d02acadc5225861a2b86a5e443c15963edc92899119d8955ba55ba40e99b"
+          "bytes": 8621,
+          "sha256": "118c3872c02299eccfd78c602ac7684b0dadfa2da5febf758869afae32822fed"
+        },
+        {
+          "path": "aralearn-authoring/knowledge/complex-professional-task.md",
+          "bytes": 2714,
+          "sha256": "49135de5ad9d5698ed70b60ba3443bf88e66ac62a5467dedca08d83efca9e115"
         },
         {
           "path": "aralearn-authoring/knowledge/continuity.md",
@@ -324,14 +409,39 @@
           "sha256": "a8eb092d6c2ef280e8b4bb43cb8586c2de23f0c0dc56dac69f80b3a018d4692c"
         },
         {
+          "path": "aralearn-authoring/knowledge/design-conformance-audit.md",
+          "bytes": 2318,
+          "sha256": "1c3dd61625c1edc9c18c1cf6486172f24e643bfc0c3662c4c404b5f4c5674d66"
+        },
+        {
           "path": "aralearn-authoring/knowledge/domain-patterns.md",
           "bytes": 11777,
           "sha256": "f2b9f120093255084d0575acca0cd8b3653d9ac7eed54a28699387e65ed79c26"
         },
         {
+          "path": "aralearn-authoring/knowledge/evidence-and-practice.md",
+          "bytes": 2279,
+          "sha256": "8a2baac6fd061d10942b016d2cc96fa7d4882d636ed1e30180432fa474da8046"
+        },
+        {
+          "path": "aralearn-authoring/knowledge/explanatory-elaboration.md",
+          "bytes": 2099,
+          "sha256": "97c851b2df7e23e382314b536a19b51fa07a33ddd851b9e580bb12f1ced3cdf8"
+        },
+        {
+          "path": "aralearn-authoring/knowledge/instructional-analysis.md",
+          "bytes": 2844,
+          "sha256": "e92d12e50d40b596053bbfe3b3f4968d64a72cbab6275f7229275ef7e4a01821"
+        },
+        {
           "path": "aralearn-authoring/knowledge/packages.md",
-          "bytes": 4241,
-          "sha256": "49271e63b97e1ad160b29ba09efbdffb73962319cb9682aee7d91825b6594222"
+          "bytes": 4161,
+          "sha256": "fd58a0351d7d95d6148945f7b42d83a2768aa56e0cb34abd9909ee9f83897a81"
+        },
+        {
+          "path": "aralearn-authoring/knowledge/parameter-resolution.md",
+          "bytes": 3173,
+          "sha256": "d22d88c95d489a0e5dfe56cc56fec4f3c5bcf96e34cd134c63f40c2025efb2cc"
         },
         {
           "path": "aralearn-authoring/knowledge/publication.md",
@@ -339,9 +449,19 @@
           "sha256": "b481d6edfbad360e68194f026c489caaf8423521c51f94289af90f402a94b5e9"
         },
         {
+          "path": "aralearn-authoring/knowledge/resource-set-discovery.md",
+          "bytes": 3254,
+          "sha256": "69024fd92e1aea483508f9a7742e1fc2fb37f6dae166126f6a9bdac220269da8"
+        },
+        {
           "path": "aralearn-authoring/knowledge/semantic-audit.md",
           "bytes": 12951,
           "sha256": "bb2ed34933c5d542afb24aab2e9d3a012033230353326310cec1db3b6bbccb07"
+        },
+        {
+          "path": "aralearn-authoring/knowledge/semantic-granularity.md",
+          "bytes": 3113,
+          "sha256": "0cc95bb3f4aa1b6ed9a3564783a5ca03936045af302b11032bfad89d01445bde"
         },
         {
           "path": "aralearn-authoring/knowledge/term-ledger.md",
@@ -355,23 +475,23 @@
         },
         {
           "path": "aralearn-authoring/platforms/chatgpt/ACTION_OPENAPI.yaml",
-          "bytes": 84384,
-          "sha256": "9b0993a13eb0f13698d055e6be870b5a2e392f7a5490b692d239b868cdad7c91"
+          "bytes": 83746,
+          "sha256": "202faafbce1342962b33b0160a73425331354c36770bad78b575ce395d6e1cbc"
         },
         {
           "path": "aralearn-authoring/platforms/chatgpt/INSTRUCTIONS.md",
-          "bytes": 7597,
-          "sha256": "86088610aedf14609357d143f141e51c4492ed502f57da3f276a949f0611d335"
+          "bytes": 7145,
+          "sha256": "bf061c5756fd9dee7d90fad379d21f20a462d163ae4502183fa363ef0b6a86ab"
         },
         {
           "path": "aralearn-authoring/platforms/chatgpt/KNOWLEDGE_CORE.md",
-          "bytes": 126486,
-          "sha256": "b8b1b69eba5f29442d38d5f7c125f9c31d5fb52aa28af77c601cf079693a3bfb"
+          "bytes": 145555,
+          "sha256": "047dde569e31395a472be02d9de172459a6157f066b8fd15d14408df7a8b3b2c"
         },
         {
           "path": "aralearn-authoring/platforms/chatgpt/KNOWLEDGE_RESOURCES.md",
-          "bytes": 40576,
-          "sha256": "82d966060ad03099e372f2caf696c0a08e881c4c6bdc0f16f40abc49e59ef7ee"
+          "bytes": 44130,
+          "sha256": "732c76ae55c6a855471ed2c47694fb59af029fad2e85d9e235cb0bf0145c046d"
         },
         {
           "path": "aralearn-authoring/platforms/chatgpt/knowledge-files.json",
@@ -380,13 +500,13 @@
         },
         {
           "path": "aralearn-authoring/platforms/chatgpt/MCP_GUIDE.md",
-          "bytes": 18113,
-          "sha256": "476000d02ae587d364df303e62aaae8aa0bee1b5a23bb8bc4b5ef942eb629866"
+          "bytes": 18527,
+          "sha256": "7abc3f6aca9e2bd27e98ecb93c5fc04ecbfc838f241c1871e4400bf674fa3b21"
         },
         {
           "path": "aralearn-authoring/platforms/chatgpt/SETUP.md",
-          "bytes": 8843,
-          "sha256": "c125c60aa5354309061c6c8c89012cc1385aa6a792b4b968181811a1dd97af2a"
+          "bytes": 8873,
+          "sha256": "0bd1628a786241d8ae47c222975ad20df7bd0c542e363f7b31e1613794492351"
         },
         {
           "path": "aralearn-authoring/platforms/SOURCES.md",
@@ -395,8 +515,8 @@
         },
         {
           "path": "aralearn-authoring/README.md",
-          "bytes": 8828,
-          "sha256": "5df449f51493b09329d1af51039c7fa02a12cd2e7730c1388338dc30494bbbbe"
+          "bytes": 10446,
+          "sha256": "35bdc3373a1c1fa0042496a5bd79a96dd64bce9acf7679f40c92658b49e024d2"
         },
         {
           "path": "aralearn-authoring/schemas/catalog-review.schema.json",
@@ -405,33 +525,33 @@
         },
         {
           "path": "aralearn-authoring/schemas/design-parameter-assignment.schema.json",
-          "bytes": 54353,
-          "sha256": "33758c04308ebbef9483bd379b9854ff2d3054a6a375625d4148273a61557de9"
+          "bytes": 55080,
+          "sha256": "f6d0d546db623db3342aa3acd3de22f30614d132284b93ab9c3df0769f19fa50"
         },
         {
           "path": "aralearn-authoring/schemas/design-parameter-definition.schema.json",
-          "bytes": 54353,
-          "sha256": "3db02add3d0548bff2e089981b3c43754dd737dab772dabfabb9b4d218558c6d"
+          "bytes": 55080,
+          "sha256": "57cf4505b8174bbc15ed652e137b5a1ab3d7955410dee8ae1c35f8e40691bba5"
         },
         {
           "path": "aralearn-authoring/schemas/effective-design-snapshot.schema.json",
-          "bytes": 54347,
-          "sha256": "fce264dc1db48672596013c9fbfd2081110b3226fef66aa2ec23fd4fa42528b8"
+          "bytes": 55074,
+          "sha256": "b86cb7787c5002ea55138aa7feb92b09918894201b4bf0e3e9aa5adc6bce5bdc"
         },
         {
           "path": "aralearn-authoring/schemas/instructional-analysis.schema.json",
-          "bytes": 54340,
-          "sha256": "bebdab802967b5301ba19cfbdb5fe15460e4090f6a0183e7ef92635bd3789778"
+          "bytes": 55067,
+          "sha256": "3290250c79778e8ef5c2939b9aff95133a7a0ba68de671f8e5e4920fb6fd8712"
         },
         {
           "path": "aralearn-authoring/schemas/materialization-manifest.schema.json",
-          "bytes": 54346,
-          "sha256": "8ae79d8ac59ec75bd163228887ff9466210c1924ec7dcd7a13d1cc06ca53c6e8"
+          "bytes": 55073,
+          "sha256": "63d108d68e6e580c029911d2cf3756d89860ac9883d4b78bd38e3e6165052e6f"
         },
         {
           "path": "aralearn-authoring/schemas/resource-set.schema.json",
-          "bytes": 54310,
-          "sha256": "e49e8ce695edf27baa08a1d20c96f480697ae03c84a1a42f4a66bb51e05f21c3"
+          "bytes": 55037,
+          "sha256": "dbfc23642e67cf057bd3e5bf7e3c09ee05a295070f65ed8b22f7fe059b6b6ea6"
         },
         {
           "path": "aralearn-authoring/schemas/workspace-envelope.schema.json",
@@ -458,18 +578,18 @@
     {
       "file": "aralearn-authoring-gemini.zip",
       "platform": "gemini",
-      "bytes": 698745,
-      "sha256": "5f58ff64efb34893c55d07e516e1da1b7ffaa68c4be2234c3f932b9bdffa179a",
+      "bytes": 810894,
+      "sha256": "541591b2456a1016995bd8c71053e81e2bb3a709d3957cce07edcb82817c2de7",
       "files": [
         {
           "path": "aralearn-authoring/core/editorial-cycle.md",
-          "bytes": 5622,
-          "sha256": "8d1d654727d8d83e15371337bfca394a9c0167114c57c493297ae642ccf8d526"
+          "bytes": 5703,
+          "sha256": "30e18e47508474400c876b5ba289cbc6dc217e54e272f674407f0bbd3cdd8f38"
         },
         {
           "path": "aralearn-authoring/core/quality.md",
-          "bytes": 23739,
-          "sha256": "edf83a8e5e485241a8c92e3e3224e16a856cf5c2bcc499bb6897479791ebc1c0"
+          "bytes": 23624,
+          "sha256": "fa17bf59337bcf98d3603796d528bfde36b3b1bd734c9ac6fea323b9adcceaba"
         },
         {
           "path": "aralearn-authoring/core/safety.md",
@@ -488,18 +608,33 @@
         },
         {
           "path": "aralearn-authoring/core/workflow.md",
-          "bytes": 19866,
-          "sha256": "3513b19ceafde4fc136f44e31719830f56095324a7e3bfbee906d4234cf2270c"
+          "bytes": 19893,
+          "sha256": "52cde6a5486aabb9e854b912748c3be419697cc905f5e1fb77bf053c9a4e6a99"
         },
         {
           "path": "aralearn-authoring/docs/aralearn-contract.md",
-          "bytes": 12122,
-          "sha256": "82a53d6e07e4e448352f615c3e1349688ad67b40b3b338994c92a73a0a5f0bc4"
+          "bytes": 12334,
+          "sha256": "1e2e0755917f7d2d815396e1dc36c4d064d5877ebc7d4d33306fd9b31745cb25"
         },
         {
           "path": "aralearn-authoring/docs/autoria-mcp.md",
-          "bytes": 21146,
-          "sha256": "ed5907cd38dc9854616bc9941d05f7a0fd387f80bb04ad6370c68657d904afd4"
+          "bytes": 23321,
+          "sha256": "48d196ba819358b039c14f5a6c3fa03d7b098a406abb89eaa6b279b6a794e3a7"
+        },
+        {
+          "path": "aralearn-authoring/docs/criar-cursos-pelo-chat.md",
+          "bytes": 17761,
+          "sha256": "ecfb367fc6c86f1fb76302dd9360c1a168b372fa7374776f3da50b0152750d43"
+        },
+        {
+          "path": "aralearn-authoring/docs/desenho-instrucional-parametrizado.md",
+          "bytes": 25145,
+          "sha256": "72dfaf6e1596aff74c44ccf635efd1db3eb90353199bd63a748bcd4d5f3fb903"
+        },
+        {
+          "path": "aralearn-authoring/docs/fluxos-prompts-e-contratos.md",
+          "bytes": 19155,
+          "sha256": "d14b0c424bd0ce7a3ba1f74f55a634695bc518d48af862f02994741dfceeaf13"
         },
         {
           "path": "aralearn-authoring/docs/fundamentacao-pedagogica-dos-resources.md",
@@ -508,13 +643,18 @@
         },
         {
           "path": "aralearn-authoring/docs/persistencia-relacional.md",
-          "bytes": 27460,
-          "sha256": "d4b3e2e08c60865293daaf9a2cfdee349593604962f50844b43033962aacff30"
+          "bytes": 28242,
+          "sha256": "4bd7ef9a8003f7993c042409d5c533a186cbcb08d27e892e8a33fc2e4bcdb57c"
         },
         {
           "path": "aralearn-authoring/docs/recursos-de-card.md",
-          "bytes": 19879,
-          "sha256": "820aae3aa25cb31802ee5df9db8f42496c617b420d0caf8c52a9c2fa79f1e0e1"
+          "bytes": 20033,
+          "sha256": "bcc19d74137fa0658681c3019239845e1b0e0c3a1caaa31c6365f294fdb3b042"
+        },
+        {
+          "path": "aralearn-authoring/docs/workspaces-educacionais.md",
+          "bytes": 16709,
+          "sha256": "4ba16ca1240a728cfc2f1c21842050f5b6d76d189d8b79ae8275159390f02e39"
         },
         {
           "path": "aralearn-authoring/evals/contextual-planning-runs.v1.json",
@@ -558,8 +698,13 @@
         },
         {
           "path": "aralearn-authoring/knowledge/cards-and-resources.md",
-          "bytes": 8738,
-          "sha256": "c92b284921d757f39ac8a4d4c222a10ebf4c9b322acd4b76f5fc8cfd977d0086"
+          "bytes": 8795,
+          "sha256": "b014a61736564cc18c017781e9d7bfb22ae38b4a1dbeb84ff339c617869c66d9"
+        },
+        {
+          "path": "aralearn-authoring/knowledge/complex-professional-task.md",
+          "bytes": 2714,
+          "sha256": "49135de5ad9d5698ed70b60ba3443bf88e66ac62a5467dedca08d83efca9e115"
         },
         {
           "path": "aralearn-authoring/knowledge/continuity.md",
@@ -567,14 +712,39 @@
           "sha256": "14e5e62ca90c677f717357c511b1f3190ad7545d6f1d4b524fcbd3182c2631bd"
         },
         {
+          "path": "aralearn-authoring/knowledge/design-conformance-audit.md",
+          "bytes": 2318,
+          "sha256": "1c3dd61625c1edc9c18c1cf6486172f24e643bfc0c3662c4c404b5f4c5674d66"
+        },
+        {
           "path": "aralearn-authoring/knowledge/domain-patterns.md",
           "bytes": 12009,
           "sha256": "9bc26a5c59c85e3a29295656c10d34dc88ace8ef09cb559723cc0ce196723fbb"
         },
         {
+          "path": "aralearn-authoring/knowledge/evidence-and-practice.md",
+          "bytes": 2279,
+          "sha256": "8a2baac6fd061d10942b016d2cc96fa7d4882d636ed1e30180432fa474da8046"
+        },
+        {
+          "path": "aralearn-authoring/knowledge/explanatory-elaboration.md",
+          "bytes": 2099,
+          "sha256": "97c851b2df7e23e382314b536a19b51fa07a33ddd851b9e580bb12f1ced3cdf8"
+        },
+        {
+          "path": "aralearn-authoring/knowledge/instructional-analysis.md",
+          "bytes": 2844,
+          "sha256": "e92d12e50d40b596053bbfe3b3f4968d64a72cbab6275f7229275ef7e4a01821"
+        },
+        {
           "path": "aralearn-authoring/knowledge/packages.md",
-          "bytes": 4326,
-          "sha256": "9b61914f260df41a7a8da640fc6109f98c51967f2fc73ea677ba30067cba107e"
+          "bytes": 4238,
+          "sha256": "d15812054db661ec29808425d1ff486f732519c77488f974cca3d10cd8c3f5f1"
+        },
+        {
+          "path": "aralearn-authoring/knowledge/parameter-resolution.md",
+          "bytes": 3173,
+          "sha256": "d22d88c95d489a0e5dfe56cc56fec4f3c5bcf96e34cd134c63f40c2025efb2cc"
         },
         {
           "path": "aralearn-authoring/knowledge/publication.md",
@@ -582,9 +752,19 @@
           "sha256": "19f6d977f4a2038bceac61c7c7853faf12baab88b5c7da0fbd736761ab44a63c"
         },
         {
+          "path": "aralearn-authoring/knowledge/resource-set-discovery.md",
+          "bytes": 3254,
+          "sha256": "69024fd92e1aea483508f9a7742e1fc2fb37f6dae166126f6a9bdac220269da8"
+        },
+        {
           "path": "aralearn-authoring/knowledge/semantic-audit.md",
           "bytes": 13145,
           "sha256": "216749b0383b75017cea5a83ca6dad41f18504e77281b50eb98981ddc975cb60"
+        },
+        {
+          "path": "aralearn-authoring/knowledge/semantic-granularity.md",
+          "bytes": 3113,
+          "sha256": "0cc95bb3f4aa1b6ed9a3564783a5ca03936045af302b11032bfad89d01445bde"
         },
         {
           "path": "aralearn-authoring/knowledge/term-ledger.md",
@@ -598,8 +778,8 @@
         },
         {
           "path": "aralearn-authoring/platforms/gemini/GEM_INSTRUCTIONS.md",
-          "bytes": 3471,
-          "sha256": "7bb01c8f16f8a06dfb63e2403ae195f013f3538d12d7aea62a50b12e8f53030c"
+          "bytes": 3077,
+          "sha256": "977df5df3d7c0f02c8fd45e456c69f3607e0177c32bbe937b535a448b55514e3"
         },
         {
           "path": "aralearn-authoring/platforms/gemini/SETUP.md",
@@ -608,8 +788,8 @@
         },
         {
           "path": "aralearn-authoring/platforms/gemini/SKILL.md",
-          "bytes": 1639,
-          "sha256": "afd7944f9aedbf86c159a21d9e6d1782a0e2bc2c327fdc656276c74032c15e8d"
+          "bytes": 2121,
+          "sha256": "fb24b7a4e3757343069dda497d125fde82e16c504981c228002ee7c9c3c024b9"
         },
         {
           "path": "aralearn-authoring/platforms/SOURCES.md",
@@ -618,8 +798,8 @@
         },
         {
           "path": "aralearn-authoring/README.md",
-          "bytes": 8852,
-          "sha256": "9eab708136d96b1c8d1b9e945bb50ba9e815cbfb355db049b128b4d9bb604efa"
+          "bytes": 10498,
+          "sha256": "e4703740cf69a3ac8b8ad5d46379f1a0a80d9eb3bd0eda1aaf1bffeb125c3b92"
         },
         {
           "path": "aralearn-authoring/schemas/catalog-review.schema.json",
@@ -628,33 +808,33 @@
         },
         {
           "path": "aralearn-authoring/schemas/design-parameter-assignment.schema.json",
-          "bytes": 54353,
-          "sha256": "33758c04308ebbef9483bd379b9854ff2d3054a6a375625d4148273a61557de9"
+          "bytes": 55080,
+          "sha256": "f6d0d546db623db3342aa3acd3de22f30614d132284b93ab9c3df0769f19fa50"
         },
         {
           "path": "aralearn-authoring/schemas/design-parameter-definition.schema.json",
-          "bytes": 54353,
-          "sha256": "3db02add3d0548bff2e089981b3c43754dd737dab772dabfabb9b4d218558c6d"
+          "bytes": 55080,
+          "sha256": "57cf4505b8174bbc15ed652e137b5a1ab3d7955410dee8ae1c35f8e40691bba5"
         },
         {
           "path": "aralearn-authoring/schemas/effective-design-snapshot.schema.json",
-          "bytes": 54347,
-          "sha256": "fce264dc1db48672596013c9fbfd2081110b3226fef66aa2ec23fd4fa42528b8"
+          "bytes": 55074,
+          "sha256": "b86cb7787c5002ea55138aa7feb92b09918894201b4bf0e3e9aa5adc6bce5bdc"
         },
         {
           "path": "aralearn-authoring/schemas/instructional-analysis.schema.json",
-          "bytes": 54340,
-          "sha256": "bebdab802967b5301ba19cfbdb5fe15460e4090f6a0183e7ef92635bd3789778"
+          "bytes": 55067,
+          "sha256": "3290250c79778e8ef5c2939b9aff95133a7a0ba68de671f8e5e4920fb6fd8712"
         },
         {
           "path": "aralearn-authoring/schemas/materialization-manifest.schema.json",
-          "bytes": 54346,
-          "sha256": "8ae79d8ac59ec75bd163228887ff9466210c1924ec7dcd7a13d1cc06ca53c6e8"
+          "bytes": 55073,
+          "sha256": "63d108d68e6e580c029911d2cf3756d89860ac9883d4b78bd38e3e6165052e6f"
         },
         {
           "path": "aralearn-authoring/schemas/resource-set.schema.json",
-          "bytes": 54310,
-          "sha256": "e49e8ce695edf27baa08a1d20c96f480697ae03c84a1a42f4a66bb51e05f21c3"
+          "bytes": 55037,
+          "sha256": "dbfc23642e67cf057bd3e5bf7e3c09ee05a295070f65ed8b22f7fe059b6b6ea6"
         },
         {
           "path": "aralearn-authoring/schemas/workspace-envelope.schema.json",
@@ -681,18 +861,18 @@
     {
       "file": "aralearn-authoring-microsoft-365.zip",
       "platform": "microsoft-365",
-      "bytes": 700812,
-      "sha256": "b8e172f14be9e739156fe0b1be4b9a787da54cd0cc2e03f741b319037f614ea8",
+      "bytes": 812009,
+      "sha256": "765e474c0ba1bc0c4d2af6436d473946434658291df810af25f124d0e7d846a5",
       "files": [
         {
           "path": "aralearn-authoring/core/editorial-cycle.md",
-          "bytes": 5622,
-          "sha256": "8d1d654727d8d83e15371337bfca394a9c0167114c57c493297ae642ccf8d526"
+          "bytes": 5703,
+          "sha256": "30e18e47508474400c876b5ba289cbc6dc217e54e272f674407f0bbd3cdd8f38"
         },
         {
           "path": "aralearn-authoring/core/quality.md",
-          "bytes": 23739,
-          "sha256": "edf83a8e5e485241a8c92e3e3224e16a856cf5c2bcc499bb6897479791ebc1c0"
+          "bytes": 23624,
+          "sha256": "fa17bf59337bcf98d3603796d528bfde36b3b1bd734c9ac6fea323b9adcceaba"
         },
         {
           "path": "aralearn-authoring/core/safety.md",
@@ -711,18 +891,33 @@
         },
         {
           "path": "aralearn-authoring/core/workflow.md",
-          "bytes": 19866,
-          "sha256": "3513b19ceafde4fc136f44e31719830f56095324a7e3bfbee906d4234cf2270c"
+          "bytes": 19893,
+          "sha256": "52cde6a5486aabb9e854b912748c3be419697cc905f5e1fb77bf053c9a4e6a99"
         },
         {
           "path": "aralearn-authoring/docs/aralearn-contract.md",
-          "bytes": 12122,
-          "sha256": "82a53d6e07e4e448352f615c3e1349688ad67b40b3b338994c92a73a0a5f0bc4"
+          "bytes": 12334,
+          "sha256": "1e2e0755917f7d2d815396e1dc36c4d064d5877ebc7d4d33306fd9b31745cb25"
         },
         {
           "path": "aralearn-authoring/docs/autoria-mcp.md",
-          "bytes": 21146,
-          "sha256": "ed5907cd38dc9854616bc9941d05f7a0fd387f80bb04ad6370c68657d904afd4"
+          "bytes": 23321,
+          "sha256": "48d196ba819358b039c14f5a6c3fa03d7b098a406abb89eaa6b279b6a794e3a7"
+        },
+        {
+          "path": "aralearn-authoring/docs/criar-cursos-pelo-chat.md",
+          "bytes": 17761,
+          "sha256": "ecfb367fc6c86f1fb76302dd9360c1a168b372fa7374776f3da50b0152750d43"
+        },
+        {
+          "path": "aralearn-authoring/docs/desenho-instrucional-parametrizado.md",
+          "bytes": 25145,
+          "sha256": "72dfaf6e1596aff74c44ccf635efd1db3eb90353199bd63a748bcd4d5f3fb903"
+        },
+        {
+          "path": "aralearn-authoring/docs/fluxos-prompts-e-contratos.md",
+          "bytes": 19155,
+          "sha256": "d14b0c424bd0ce7a3ba1f74f55a634695bc518d48af862f02994741dfceeaf13"
         },
         {
           "path": "aralearn-authoring/docs/fundamentacao-pedagogica-dos-resources.md",
@@ -731,13 +926,18 @@
         },
         {
           "path": "aralearn-authoring/docs/persistencia-relacional.md",
-          "bytes": 27460,
-          "sha256": "d4b3e2e08c60865293daaf9a2cfdee349593604962f50844b43033962aacff30"
+          "bytes": 28242,
+          "sha256": "4bd7ef9a8003f7993c042409d5c533a186cbcb08d27e892e8a33fc2e4bcdb57c"
         },
         {
           "path": "aralearn-authoring/docs/recursos-de-card.md",
-          "bytes": 19879,
-          "sha256": "820aae3aa25cb31802ee5df9db8f42496c617b420d0caf8c52a9c2fa79f1e0e1"
+          "bytes": 20033,
+          "sha256": "bcc19d74137fa0658681c3019239845e1b0e0c3a1caaa31c6365f294fdb3b042"
+        },
+        {
+          "path": "aralearn-authoring/docs/workspaces-educacionais.md",
+          "bytes": 16709,
+          "sha256": "4ba16ca1240a728cfc2f1c21842050f5b6d76d189d8b79ae8275159390f02e39"
         },
         {
           "path": "aralearn-authoring/evals/contextual-planning-runs.v1.json",
@@ -781,8 +981,13 @@
         },
         {
           "path": "aralearn-authoring/knowledge/cards-and-resources.md",
-          "bytes": 8738,
-          "sha256": "c92b284921d757f39ac8a4d4c222a10ebf4c9b322acd4b76f5fc8cfd977d0086"
+          "bytes": 8795,
+          "sha256": "b014a61736564cc18c017781e9d7bfb22ae38b4a1dbeb84ff339c617869c66d9"
+        },
+        {
+          "path": "aralearn-authoring/knowledge/complex-professional-task.md",
+          "bytes": 2714,
+          "sha256": "49135de5ad9d5698ed70b60ba3443bf88e66ac62a5467dedca08d83efca9e115"
         },
         {
           "path": "aralearn-authoring/knowledge/continuity.md",
@@ -790,14 +995,39 @@
           "sha256": "14e5e62ca90c677f717357c511b1f3190ad7545d6f1d4b524fcbd3182c2631bd"
         },
         {
+          "path": "aralearn-authoring/knowledge/design-conformance-audit.md",
+          "bytes": 2318,
+          "sha256": "1c3dd61625c1edc9c18c1cf6486172f24e643bfc0c3662c4c404b5f4c5674d66"
+        },
+        {
           "path": "aralearn-authoring/knowledge/domain-patterns.md",
           "bytes": 12009,
           "sha256": "9bc26a5c59c85e3a29295656c10d34dc88ace8ef09cb559723cc0ce196723fbb"
         },
         {
+          "path": "aralearn-authoring/knowledge/evidence-and-practice.md",
+          "bytes": 2279,
+          "sha256": "8a2baac6fd061d10942b016d2cc96fa7d4882d636ed1e30180432fa474da8046"
+        },
+        {
+          "path": "aralearn-authoring/knowledge/explanatory-elaboration.md",
+          "bytes": 2099,
+          "sha256": "97c851b2df7e23e382314b536a19b51fa07a33ddd851b9e580bb12f1ced3cdf8"
+        },
+        {
+          "path": "aralearn-authoring/knowledge/instructional-analysis.md",
+          "bytes": 2844,
+          "sha256": "e92d12e50d40b596053bbfe3b3f4968d64a72cbab6275f7229275ef7e4a01821"
+        },
+        {
           "path": "aralearn-authoring/knowledge/packages.md",
-          "bytes": 4326,
-          "sha256": "9b61914f260df41a7a8da640fc6109f98c51967f2fc73ea677ba30067cba107e"
+          "bytes": 4238,
+          "sha256": "d15812054db661ec29808425d1ff486f732519c77488f974cca3d10cd8c3f5f1"
+        },
+        {
+          "path": "aralearn-authoring/knowledge/parameter-resolution.md",
+          "bytes": 3173,
+          "sha256": "d22d88c95d489a0e5dfe56cc56fec4f3c5bcf96e34cd134c63f40c2025efb2cc"
         },
         {
           "path": "aralearn-authoring/knowledge/publication.md",
@@ -805,9 +1035,19 @@
           "sha256": "19f6d977f4a2038bceac61c7c7853faf12baab88b5c7da0fbd736761ab44a63c"
         },
         {
+          "path": "aralearn-authoring/knowledge/resource-set-discovery.md",
+          "bytes": 3254,
+          "sha256": "69024fd92e1aea483508f9a7742e1fc2fb37f6dae166126f6a9bdac220269da8"
+        },
+        {
           "path": "aralearn-authoring/knowledge/semantic-audit.md",
           "bytes": 13145,
           "sha256": "216749b0383b75017cea5a83ca6dad41f18504e77281b50eb98981ddc975cb60"
+        },
+        {
+          "path": "aralearn-authoring/knowledge/semantic-granularity.md",
+          "bytes": 3113,
+          "sha256": "0cc95bb3f4aa1b6ed9a3564783a5ca03936045af302b11032bfad89d01445bde"
         },
         {
           "path": "aralearn-authoring/knowledge/term-ledger.md",
@@ -821,18 +1061,18 @@
         },
         {
           "path": "aralearn-authoring/platforms/microsoft-365/AGENT_INSTRUCTIONS.md",
-          "bytes": 3280,
-          "sha256": "5a2fbd38d247ada98fd9962d0dc90ba4278cc48cb7bba283e4dc352e05a8d606"
+          "bytes": 2442,
+          "sha256": "8f0fab4057cd4f77b24a666055c21775e5aea4615522188d71dceb50b5e3d6fe"
         },
         {
           "path": "aralearn-authoring/platforms/microsoft-365/declarative-agent/declarativeAgent.json",
-          "bytes": 1882,
-          "sha256": "39dc50f4ab3c6ab686e2488df985332343f3b064e80c2413e61f50721d0580fe"
+          "bytes": 1869,
+          "sha256": "e0172492159705057acb7fc31419e6c0f0b6c077723b25f742ac1a2a387b146f"
         },
         {
           "path": "aralearn-authoring/platforms/microsoft-365/declarative-agent/instructions.txt",
-          "bytes": 1290,
-          "sha256": "f042f0058e58d23e3138587a15928b9feac525978d0ce65681b09f1a8dbb149a"
+          "bytes": 1277,
+          "sha256": "cf32e9a2dfe1c8ee4c4b3a943c4a3c438a8656c3a366428a352623a135aab005"
         },
         {
           "path": "aralearn-authoring/platforms/microsoft-365/SETUP.md",
@@ -846,8 +1086,8 @@
         },
         {
           "path": "aralearn-authoring/README.md",
-          "bytes": 8852,
-          "sha256": "9eab708136d96b1c8d1b9e945bb50ba9e815cbfb355db049b128b4d9bb604efa"
+          "bytes": 10498,
+          "sha256": "e4703740cf69a3ac8b8ad5d46379f1a0a80d9eb3bd0eda1aaf1bffeb125c3b92"
         },
         {
           "path": "aralearn-authoring/schemas/catalog-review.schema.json",
@@ -856,33 +1096,33 @@
         },
         {
           "path": "aralearn-authoring/schemas/design-parameter-assignment.schema.json",
-          "bytes": 54353,
-          "sha256": "33758c04308ebbef9483bd379b9854ff2d3054a6a375625d4148273a61557de9"
+          "bytes": 55080,
+          "sha256": "f6d0d546db623db3342aa3acd3de22f30614d132284b93ab9c3df0769f19fa50"
         },
         {
           "path": "aralearn-authoring/schemas/design-parameter-definition.schema.json",
-          "bytes": 54353,
-          "sha256": "3db02add3d0548bff2e089981b3c43754dd737dab772dabfabb9b4d218558c6d"
+          "bytes": 55080,
+          "sha256": "57cf4505b8174bbc15ed652e137b5a1ab3d7955410dee8ae1c35f8e40691bba5"
         },
         {
           "path": "aralearn-authoring/schemas/effective-design-snapshot.schema.json",
-          "bytes": 54347,
-          "sha256": "fce264dc1db48672596013c9fbfd2081110b3226fef66aa2ec23fd4fa42528b8"
+          "bytes": 55074,
+          "sha256": "b86cb7787c5002ea55138aa7feb92b09918894201b4bf0e3e9aa5adc6bce5bdc"
         },
         {
           "path": "aralearn-authoring/schemas/instructional-analysis.schema.json",
-          "bytes": 54340,
-          "sha256": "bebdab802967b5301ba19cfbdb5fe15460e4090f6a0183e7ef92635bd3789778"
+          "bytes": 55067,
+          "sha256": "3290250c79778e8ef5c2939b9aff95133a7a0ba68de671f8e5e4920fb6fd8712"
         },
         {
           "path": "aralearn-authoring/schemas/materialization-manifest.schema.json",
-          "bytes": 54346,
-          "sha256": "8ae79d8ac59ec75bd163228887ff9466210c1924ec7dcd7a13d1cc06ca53c6e8"
+          "bytes": 55073,
+          "sha256": "63d108d68e6e580c029911d2cf3756d89860ac9883d4b78bd38e3e6165052e6f"
         },
         {
           "path": "aralearn-authoring/schemas/resource-set.schema.json",
-          "bytes": 54310,
-          "sha256": "e49e8ce695edf27baa08a1d20c96f480697ae03c84a1a42f4a66bb51e05f21c3"
+          "bytes": 55037,
+          "sha256": "dbfc23642e67cf057bd3e5bf7e3c09ee05a295070f65ed8b22f7fe059b6b6ea6"
         },
         {
           "path": "aralearn-authoring/schemas/workspace-envelope.schema.json",
@@ -909,18 +1149,18 @@
     {
       "file": "aralearn-authoring-claude.zip",
       "platform": "claude",
-      "bytes": 699998,
-      "sha256": "184b9cbca8977e33c1b0dcfbbfe4bd83164d86e00146674482fc8d8b8fd23dae",
+      "bytes": 812023,
+      "sha256": "3901a02ea32726f4381f13a0842804eacb15ae3daca2dd137da8d036a5939dfd",
       "files": [
         {
           "path": "aralearn-authoring/core/editorial-cycle.md",
-          "bytes": 5622,
-          "sha256": "8d1d654727d8d83e15371337bfca394a9c0167114c57c493297ae642ccf8d526"
+          "bytes": 5703,
+          "sha256": "30e18e47508474400c876b5ba289cbc6dc217e54e272f674407f0bbd3cdd8f38"
         },
         {
           "path": "aralearn-authoring/core/quality.md",
-          "bytes": 23739,
-          "sha256": "edf83a8e5e485241a8c92e3e3224e16a856cf5c2bcc499bb6897479791ebc1c0"
+          "bytes": 23624,
+          "sha256": "fa17bf59337bcf98d3603796d528bfde36b3b1bd734c9ac6fea323b9adcceaba"
         },
         {
           "path": "aralearn-authoring/core/safety.md",
@@ -939,18 +1179,33 @@
         },
         {
           "path": "aralearn-authoring/core/workflow.md",
-          "bytes": 19866,
-          "sha256": "3513b19ceafde4fc136f44e31719830f56095324a7e3bfbee906d4234cf2270c"
+          "bytes": 19893,
+          "sha256": "52cde6a5486aabb9e854b912748c3be419697cc905f5e1fb77bf053c9a4e6a99"
         },
         {
           "path": "aralearn-authoring/docs/aralearn-contract.md",
-          "bytes": 12122,
-          "sha256": "82a53d6e07e4e448352f615c3e1349688ad67b40b3b338994c92a73a0a5f0bc4"
+          "bytes": 12334,
+          "sha256": "1e2e0755917f7d2d815396e1dc36c4d064d5877ebc7d4d33306fd9b31745cb25"
         },
         {
           "path": "aralearn-authoring/docs/autoria-mcp.md",
-          "bytes": 21146,
-          "sha256": "ed5907cd38dc9854616bc9941d05f7a0fd387f80bb04ad6370c68657d904afd4"
+          "bytes": 23321,
+          "sha256": "48d196ba819358b039c14f5a6c3fa03d7b098a406abb89eaa6b279b6a794e3a7"
+        },
+        {
+          "path": "aralearn-authoring/docs/criar-cursos-pelo-chat.md",
+          "bytes": 17761,
+          "sha256": "ecfb367fc6c86f1fb76302dd9360c1a168b372fa7374776f3da50b0152750d43"
+        },
+        {
+          "path": "aralearn-authoring/docs/desenho-instrucional-parametrizado.md",
+          "bytes": 25145,
+          "sha256": "72dfaf6e1596aff74c44ccf635efd1db3eb90353199bd63a748bcd4d5f3fb903"
+        },
+        {
+          "path": "aralearn-authoring/docs/fluxos-prompts-e-contratos.md",
+          "bytes": 19155,
+          "sha256": "d14b0c424bd0ce7a3ba1f74f55a634695bc518d48af862f02994741dfceeaf13"
         },
         {
           "path": "aralearn-authoring/docs/fundamentacao-pedagogica-dos-resources.md",
@@ -959,13 +1214,18 @@
         },
         {
           "path": "aralearn-authoring/docs/persistencia-relacional.md",
-          "bytes": 27460,
-          "sha256": "d4b3e2e08c60865293daaf9a2cfdee349593604962f50844b43033962aacff30"
+          "bytes": 28242,
+          "sha256": "4bd7ef9a8003f7993c042409d5c533a186cbcb08d27e892e8a33fc2e4bcdb57c"
         },
         {
           "path": "aralearn-authoring/docs/recursos-de-card.md",
-          "bytes": 19879,
-          "sha256": "820aae3aa25cb31802ee5df9db8f42496c617b420d0caf8c52a9c2fa79f1e0e1"
+          "bytes": 20033,
+          "sha256": "bcc19d74137fa0658681c3019239845e1b0e0c3a1caaa31c6365f294fdb3b042"
+        },
+        {
+          "path": "aralearn-authoring/docs/workspaces-educacionais.md",
+          "bytes": 16709,
+          "sha256": "4ba16ca1240a728cfc2f1c21842050f5b6d76d189d8b79ae8275159390f02e39"
         },
         {
           "path": "aralearn-authoring/evals/contextual-planning-runs.v1.json",
@@ -1009,8 +1269,13 @@
         },
         {
           "path": "aralearn-authoring/knowledge/cards-and-resources.md",
-          "bytes": 8738,
-          "sha256": "c92b284921d757f39ac8a4d4c222a10ebf4c9b322acd4b76f5fc8cfd977d0086"
+          "bytes": 8795,
+          "sha256": "b014a61736564cc18c017781e9d7bfb22ae38b4a1dbeb84ff339c617869c66d9"
+        },
+        {
+          "path": "aralearn-authoring/knowledge/complex-professional-task.md",
+          "bytes": 2714,
+          "sha256": "49135de5ad9d5698ed70b60ba3443bf88e66ac62a5467dedca08d83efca9e115"
         },
         {
           "path": "aralearn-authoring/knowledge/continuity.md",
@@ -1018,14 +1283,39 @@
           "sha256": "14e5e62ca90c677f717357c511b1f3190ad7545d6f1d4b524fcbd3182c2631bd"
         },
         {
+          "path": "aralearn-authoring/knowledge/design-conformance-audit.md",
+          "bytes": 2318,
+          "sha256": "1c3dd61625c1edc9c18c1cf6486172f24e643bfc0c3662c4c404b5f4c5674d66"
+        },
+        {
           "path": "aralearn-authoring/knowledge/domain-patterns.md",
           "bytes": 12009,
           "sha256": "9bc26a5c59c85e3a29295656c10d34dc88ace8ef09cb559723cc0ce196723fbb"
         },
         {
+          "path": "aralearn-authoring/knowledge/evidence-and-practice.md",
+          "bytes": 2279,
+          "sha256": "8a2baac6fd061d10942b016d2cc96fa7d4882d636ed1e30180432fa474da8046"
+        },
+        {
+          "path": "aralearn-authoring/knowledge/explanatory-elaboration.md",
+          "bytes": 2099,
+          "sha256": "97c851b2df7e23e382314b536a19b51fa07a33ddd851b9e580bb12f1ced3cdf8"
+        },
+        {
+          "path": "aralearn-authoring/knowledge/instructional-analysis.md",
+          "bytes": 2844,
+          "sha256": "e92d12e50d40b596053bbfe3b3f4968d64a72cbab6275f7229275ef7e4a01821"
+        },
+        {
           "path": "aralearn-authoring/knowledge/packages.md",
-          "bytes": 4326,
-          "sha256": "9b61914f260df41a7a8da640fc6109f98c51967f2fc73ea677ba30067cba107e"
+          "bytes": 4238,
+          "sha256": "d15812054db661ec29808425d1ff486f732519c77488f974cca3d10cd8c3f5f1"
+        },
+        {
+          "path": "aralearn-authoring/knowledge/parameter-resolution.md",
+          "bytes": 3173,
+          "sha256": "d22d88c95d489a0e5dfe56cc56fec4f3c5bcf96e34cd134c63f40c2025efb2cc"
         },
         {
           "path": "aralearn-authoring/knowledge/publication.md",
@@ -1033,9 +1323,19 @@
           "sha256": "19f6d977f4a2038bceac61c7c7853faf12baab88b5c7da0fbd736761ab44a63c"
         },
         {
+          "path": "aralearn-authoring/knowledge/resource-set-discovery.md",
+          "bytes": 3254,
+          "sha256": "69024fd92e1aea483508f9a7742e1fc2fb37f6dae166126f6a9bdac220269da8"
+        },
+        {
           "path": "aralearn-authoring/knowledge/semantic-audit.md",
           "bytes": 13145,
           "sha256": "216749b0383b75017cea5a83ca6dad41f18504e77281b50eb98981ddc975cb60"
+        },
+        {
+          "path": "aralearn-authoring/knowledge/semantic-granularity.md",
+          "bytes": 3113,
+          "sha256": "0cc95bb3f4aa1b6ed9a3564783a5ca03936045af302b11032bfad89d01445bde"
         },
         {
           "path": "aralearn-authoring/knowledge/term-ledger.md",
@@ -1049,8 +1349,8 @@
         },
         {
           "path": "aralearn-authoring/platforms/claude/PROJECT_INSTRUCTIONS.md",
-          "bytes": 3400,
-          "sha256": "29afebf282a3b5f247b9fdea163bdac5aeeb09be6ff53de5dfa4f6e637ef608d"
+          "bytes": 3010,
+          "sha256": "079977f37eeea3e0b8f66f4c632399b142c8898b2a5dd9a960c080f173d7e31d"
         },
         {
           "path": "aralearn-authoring/platforms/claude/SETUP.md",
@@ -1059,8 +1359,8 @@
         },
         {
           "path": "aralearn-authoring/platforms/claude/SKILL.md",
-          "bytes": 2209,
-          "sha256": "7a4bbfee31651871646d4a18d4bea375745fc277be07965ce142ee8c9b75aaaf"
+          "bytes": 2563,
+          "sha256": "0fe76841bf11c2dc9543a5dd1c7a8beb003d724138e123108aee66af8035d595"
         },
         {
           "path": "aralearn-authoring/platforms/SOURCES.md",
@@ -1069,8 +1369,8 @@
         },
         {
           "path": "aralearn-authoring/README.md",
-          "bytes": 8852,
-          "sha256": "9eab708136d96b1c8d1b9e945bb50ba9e815cbfb355db049b128b4d9bb604efa"
+          "bytes": 10498,
+          "sha256": "e4703740cf69a3ac8b8ad5d46379f1a0a80d9eb3bd0eda1aaf1bffeb125c3b92"
         },
         {
           "path": "aralearn-authoring/schemas/catalog-review.schema.json",
@@ -1079,33 +1379,33 @@
         },
         {
           "path": "aralearn-authoring/schemas/design-parameter-assignment.schema.json",
-          "bytes": 54353,
-          "sha256": "33758c04308ebbef9483bd379b9854ff2d3054a6a375625d4148273a61557de9"
+          "bytes": 55080,
+          "sha256": "f6d0d546db623db3342aa3acd3de22f30614d132284b93ab9c3df0769f19fa50"
         },
         {
           "path": "aralearn-authoring/schemas/design-parameter-definition.schema.json",
-          "bytes": 54353,
-          "sha256": "3db02add3d0548bff2e089981b3c43754dd737dab772dabfabb9b4d218558c6d"
+          "bytes": 55080,
+          "sha256": "57cf4505b8174bbc15ed652e137b5a1ab3d7955410dee8ae1c35f8e40691bba5"
         },
         {
           "path": "aralearn-authoring/schemas/effective-design-snapshot.schema.json",
-          "bytes": 54347,
-          "sha256": "fce264dc1db48672596013c9fbfd2081110b3226fef66aa2ec23fd4fa42528b8"
+          "bytes": 55074,
+          "sha256": "b86cb7787c5002ea55138aa7feb92b09918894201b4bf0e3e9aa5adc6bce5bdc"
         },
         {
           "path": "aralearn-authoring/schemas/instructional-analysis.schema.json",
-          "bytes": 54340,
-          "sha256": "bebdab802967b5301ba19cfbdb5fe15460e4090f6a0183e7ef92635bd3789778"
+          "bytes": 55067,
+          "sha256": "3290250c79778e8ef5c2939b9aff95133a7a0ba68de671f8e5e4920fb6fd8712"
         },
         {
           "path": "aralearn-authoring/schemas/materialization-manifest.schema.json",
-          "bytes": 54346,
-          "sha256": "8ae79d8ac59ec75bd163228887ff9466210c1924ec7dcd7a13d1cc06ca53c6e8"
+          "bytes": 55073,
+          "sha256": "63d108d68e6e580c029911d2cf3756d89860ac9883d4b78bd38e3e6165052e6f"
         },
         {
           "path": "aralearn-authoring/schemas/resource-set.schema.json",
-          "bytes": 54310,
-          "sha256": "e49e8ce695edf27baa08a1d20c96f480697ae03c84a1a42f4a66bb51e05f21c3"
+          "bytes": 55037,
+          "sha256": "dbfc23642e67cf057bd3e5bf7e3c09ee05a295070f65ed8b22f7fe059b6b6ea6"
         },
         {
           "path": "aralearn-authoring/schemas/workspace-envelope.schema.json",
@@ -1132,18 +1432,18 @@
     {
       "file": "aralearn-authoring-generic.zip",
       "platform": "generic",
-      "bytes": 701901,
-      "sha256": "c50eb7c6c00a7263e1ab76c2cea752330808d85f661f5d2f7ada2fbcfd92d476",
+      "bytes": 813542,
+      "sha256": "6930ca67c64efe29fe9101f3ed7b289e327549211f65675e8337feea1995f372",
       "files": [
         {
           "path": "aralearn-authoring/core/editorial-cycle.md",
-          "bytes": 5622,
-          "sha256": "8d1d654727d8d83e15371337bfca394a9c0167114c57c493297ae642ccf8d526"
+          "bytes": 5703,
+          "sha256": "30e18e47508474400c876b5ba289cbc6dc217e54e272f674407f0bbd3cdd8f38"
         },
         {
           "path": "aralearn-authoring/core/quality.md",
-          "bytes": 23739,
-          "sha256": "edf83a8e5e485241a8c92e3e3224e16a856cf5c2bcc499bb6897479791ebc1c0"
+          "bytes": 23624,
+          "sha256": "fa17bf59337bcf98d3603796d528bfde36b3b1bd734c9ac6fea323b9adcceaba"
         },
         {
           "path": "aralearn-authoring/core/safety.md",
@@ -1162,18 +1462,33 @@
         },
         {
           "path": "aralearn-authoring/core/workflow.md",
-          "bytes": 19866,
-          "sha256": "3513b19ceafde4fc136f44e31719830f56095324a7e3bfbee906d4234cf2270c"
+          "bytes": 19893,
+          "sha256": "52cde6a5486aabb9e854b912748c3be419697cc905f5e1fb77bf053c9a4e6a99"
         },
         {
           "path": "aralearn-authoring/docs/aralearn-contract.md",
-          "bytes": 12122,
-          "sha256": "82a53d6e07e4e448352f615c3e1349688ad67b40b3b338994c92a73a0a5f0bc4"
+          "bytes": 12334,
+          "sha256": "1e2e0755917f7d2d815396e1dc36c4d064d5877ebc7d4d33306fd9b31745cb25"
         },
         {
           "path": "aralearn-authoring/docs/autoria-mcp.md",
-          "bytes": 21146,
-          "sha256": "ed5907cd38dc9854616bc9941d05f7a0fd387f80bb04ad6370c68657d904afd4"
+          "bytes": 23321,
+          "sha256": "48d196ba819358b039c14f5a6c3fa03d7b098a406abb89eaa6b279b6a794e3a7"
+        },
+        {
+          "path": "aralearn-authoring/docs/criar-cursos-pelo-chat.md",
+          "bytes": 17761,
+          "sha256": "ecfb367fc6c86f1fb76302dd9360c1a168b372fa7374776f3da50b0152750d43"
+        },
+        {
+          "path": "aralearn-authoring/docs/desenho-instrucional-parametrizado.md",
+          "bytes": 25145,
+          "sha256": "72dfaf6e1596aff74c44ccf635efd1db3eb90353199bd63a748bcd4d5f3fb903"
+        },
+        {
+          "path": "aralearn-authoring/docs/fluxos-prompts-e-contratos.md",
+          "bytes": 19155,
+          "sha256": "d14b0c424bd0ce7a3ba1f74f55a634695bc518d48af862f02994741dfceeaf13"
         },
         {
           "path": "aralearn-authoring/docs/fundamentacao-pedagogica-dos-resources.md",
@@ -1182,13 +1497,18 @@
         },
         {
           "path": "aralearn-authoring/docs/persistencia-relacional.md",
-          "bytes": 27460,
-          "sha256": "d4b3e2e08c60865293daaf9a2cfdee349593604962f50844b43033962aacff30"
+          "bytes": 28242,
+          "sha256": "4bd7ef9a8003f7993c042409d5c533a186cbcb08d27e892e8a33fc2e4bcdb57c"
         },
         {
           "path": "aralearn-authoring/docs/recursos-de-card.md",
-          "bytes": 19879,
-          "sha256": "820aae3aa25cb31802ee5df9db8f42496c617b420d0caf8c52a9c2fa79f1e0e1"
+          "bytes": 20033,
+          "sha256": "bcc19d74137fa0658681c3019239845e1b0e0c3a1caaa31c6365f294fdb3b042"
+        },
+        {
+          "path": "aralearn-authoring/docs/workspaces-educacionais.md",
+          "bytes": 16709,
+          "sha256": "4ba16ca1240a728cfc2f1c21842050f5b6d76d189d8b79ae8275159390f02e39"
         },
         {
           "path": "aralearn-authoring/evals/contextual-planning-runs.v1.json",
@@ -1232,8 +1552,13 @@
         },
         {
           "path": "aralearn-authoring/knowledge/cards-and-resources.md",
-          "bytes": 8738,
-          "sha256": "c92b284921d757f39ac8a4d4c222a10ebf4c9b322acd4b76f5fc8cfd977d0086"
+          "bytes": 8795,
+          "sha256": "b014a61736564cc18c017781e9d7bfb22ae38b4a1dbeb84ff339c617869c66d9"
+        },
+        {
+          "path": "aralearn-authoring/knowledge/complex-professional-task.md",
+          "bytes": 2714,
+          "sha256": "49135de5ad9d5698ed70b60ba3443bf88e66ac62a5467dedca08d83efca9e115"
         },
         {
           "path": "aralearn-authoring/knowledge/continuity.md",
@@ -1241,14 +1566,39 @@
           "sha256": "14e5e62ca90c677f717357c511b1f3190ad7545d6f1d4b524fcbd3182c2631bd"
         },
         {
+          "path": "aralearn-authoring/knowledge/design-conformance-audit.md",
+          "bytes": 2318,
+          "sha256": "1c3dd61625c1edc9c18c1cf6486172f24e643bfc0c3662c4c404b5f4c5674d66"
+        },
+        {
           "path": "aralearn-authoring/knowledge/domain-patterns.md",
           "bytes": 12009,
           "sha256": "9bc26a5c59c85e3a29295656c10d34dc88ace8ef09cb559723cc0ce196723fbb"
         },
         {
+          "path": "aralearn-authoring/knowledge/evidence-and-practice.md",
+          "bytes": 2279,
+          "sha256": "8a2baac6fd061d10942b016d2cc96fa7d4882d636ed1e30180432fa474da8046"
+        },
+        {
+          "path": "aralearn-authoring/knowledge/explanatory-elaboration.md",
+          "bytes": 2099,
+          "sha256": "97c851b2df7e23e382314b536a19b51fa07a33ddd851b9e580bb12f1ced3cdf8"
+        },
+        {
+          "path": "aralearn-authoring/knowledge/instructional-analysis.md",
+          "bytes": 2844,
+          "sha256": "e92d12e50d40b596053bbfe3b3f4968d64a72cbab6275f7229275ef7e4a01821"
+        },
+        {
           "path": "aralearn-authoring/knowledge/packages.md",
-          "bytes": 4326,
-          "sha256": "9b61914f260df41a7a8da640fc6109f98c51967f2fc73ea677ba30067cba107e"
+          "bytes": 4238,
+          "sha256": "d15812054db661ec29808425d1ff486f732519c77488f974cca3d10cd8c3f5f1"
+        },
+        {
+          "path": "aralearn-authoring/knowledge/parameter-resolution.md",
+          "bytes": 3173,
+          "sha256": "d22d88c95d489a0e5dfe56cc56fec4f3c5bcf96e34cd134c63f40c2025efb2cc"
         },
         {
           "path": "aralearn-authoring/knowledge/publication.md",
@@ -1256,9 +1606,19 @@
           "sha256": "19f6d977f4a2038bceac61c7c7853faf12baab88b5c7da0fbd736761ab44a63c"
         },
         {
+          "path": "aralearn-authoring/knowledge/resource-set-discovery.md",
+          "bytes": 3254,
+          "sha256": "69024fd92e1aea483508f9a7742e1fc2fb37f6dae166126f6a9bdac220269da8"
+        },
+        {
           "path": "aralearn-authoring/knowledge/semantic-audit.md",
           "bytes": 13145,
           "sha256": "216749b0383b75017cea5a83ca6dad41f18504e77281b50eb98981ddc975cb60"
+        },
+        {
+          "path": "aralearn-authoring/knowledge/semantic-granularity.md",
+          "bytes": 3113,
+          "sha256": "0cc95bb3f4aa1b6ed9a3564783a5ca03936045af302b11032bfad89d01445bde"
         },
         {
           "path": "aralearn-authoring/knowledge/term-ledger.md",
@@ -1272,13 +1632,13 @@
         },
         {
           "path": "aralearn-authoring/platforms/generic/INTEGRATION.md",
-          "bytes": 8557,
-          "sha256": "dbf7ffeb2aa16cb0692ca473672086be91c179eae84687bc1273af10fba4dc71"
+          "bytes": 8914,
+          "sha256": "f26695163d2c54acb6097dc058b938e6bb5815d0774995c8ec442160c64cd956"
         },
         {
           "path": "aralearn-authoring/platforms/generic/SYSTEM_PROMPT.md",
-          "bytes": 4198,
-          "sha256": "9661207fee5b6111da83bfe24f139c06b4dd922a0b64b4ab28dff6ca21d985a8"
+          "bytes": 3421,
+          "sha256": "b2ba9e3da7d5ec77b4db58f6258e02a0fa2fa819d314b9eea66fc556c3826b19"
         },
         {
           "path": "aralearn-authoring/platforms/SOURCES.md",
@@ -1287,8 +1647,8 @@
         },
         {
           "path": "aralearn-authoring/README.md",
-          "bytes": 8852,
-          "sha256": "9eab708136d96b1c8d1b9e945bb50ba9e815cbfb355db049b128b4d9bb604efa"
+          "bytes": 10498,
+          "sha256": "e4703740cf69a3ac8b8ad5d46379f1a0a80d9eb3bd0eda1aaf1bffeb125c3b92"
         },
         {
           "path": "aralearn-authoring/schemas/catalog-review.schema.json",
@@ -1297,33 +1657,33 @@
         },
         {
           "path": "aralearn-authoring/schemas/design-parameter-assignment.schema.json",
-          "bytes": 54353,
-          "sha256": "33758c04308ebbef9483bd379b9854ff2d3054a6a375625d4148273a61557de9"
+          "bytes": 55080,
+          "sha256": "f6d0d546db623db3342aa3acd3de22f30614d132284b93ab9c3df0769f19fa50"
         },
         {
           "path": "aralearn-authoring/schemas/design-parameter-definition.schema.json",
-          "bytes": 54353,
-          "sha256": "3db02add3d0548bff2e089981b3c43754dd737dab772dabfabb9b4d218558c6d"
+          "bytes": 55080,
+          "sha256": "57cf4505b8174bbc15ed652e137b5a1ab3d7955410dee8ae1c35f8e40691bba5"
         },
         {
           "path": "aralearn-authoring/schemas/effective-design-snapshot.schema.json",
-          "bytes": 54347,
-          "sha256": "fce264dc1db48672596013c9fbfd2081110b3226fef66aa2ec23fd4fa42528b8"
+          "bytes": 55074,
+          "sha256": "b86cb7787c5002ea55138aa7feb92b09918894201b4bf0e3e9aa5adc6bce5bdc"
         },
         {
           "path": "aralearn-authoring/schemas/instructional-analysis.schema.json",
-          "bytes": 54340,
-          "sha256": "bebdab802967b5301ba19cfbdb5fe15460e4090f6a0183e7ef92635bd3789778"
+          "bytes": 55067,
+          "sha256": "3290250c79778e8ef5c2939b9aff95133a7a0ba68de671f8e5e4920fb6fd8712"
         },
         {
           "path": "aralearn-authoring/schemas/materialization-manifest.schema.json",
-          "bytes": 54346,
-          "sha256": "8ae79d8ac59ec75bd163228887ff9466210c1924ec7dcd7a13d1cc06ca53c6e8"
+          "bytes": 55073,
+          "sha256": "63d108d68e6e580c029911d2cf3756d89860ac9883d4b78bd38e3e6165052e6f"
         },
         {
           "path": "aralearn-authoring/schemas/resource-set.schema.json",
-          "bytes": 54310,
-          "sha256": "e49e8ce695edf27baa08a1d20c96f480697ae03c84a1a42f4a66bb51e05f21c3"
+          "bytes": 55037,
+          "sha256": "dbfc23642e67cf057bd3e5bf7e3c09ee05a295070f65ed8b22f7fe059b6b6ea6"
         },
         {
           "path": "aralearn-authoring/schemas/workspace-envelope.schema.json",
@@ -1351,23 +1711,23 @@
   "files": [
     {
       "file": "aralearn-chatgpt-system-prompt.md",
-      "bytes": 7597,
-      "sha256": "86088610aedf14609357d143f141e51c4492ed502f57da3f276a949f0611d335"
+      "bytes": 7145,
+      "sha256": "bf061c5756fd9dee7d90fad379d21f20a462d163ae4502183fa363ef0b6a86ab"
     },
     {
       "file": "aralearn-chatgpt-knowledge-core.md",
-      "bytes": 126486,
-      "sha256": "b8b1b69eba5f29442d38d5f7c125f9c31d5fb52aa28af77c601cf079693a3bfb"
+      "bytes": 145555,
+      "sha256": "047dde569e31395a472be02d9de172459a6157f066b8fd15d14408df7a8b3b2c"
     },
     {
       "file": "aralearn-chatgpt-knowledge-resources.md",
-      "bytes": 40576,
-      "sha256": "82d966060ad03099e372f2caf696c0a08e881c4c6bdc0f16f40abc49e59ef7ee"
+      "bytes": 44130,
+      "sha256": "732c76ae55c6a855471ed2c47694fb59af029fad2e85d9e235cb0bf0145c046d"
     },
     {
       "file": "aralearn-chatgpt-action-openapi.yaml",
-      "bytes": 84384,
-      "sha256": "9b0993a13eb0f13698d055e6be870b5a2e392f7a5490b692d239b868cdad7c91"
+      "bytes": 83746,
+      "sha256": "202faafbce1342962b33b0160a73425331354c36770bad78b575ce395d6e1cbc"
     }
   ]
 }

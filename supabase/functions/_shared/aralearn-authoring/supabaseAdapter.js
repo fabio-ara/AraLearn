@@ -142,10 +142,18 @@ function apiError(status, body, fallbackCode = "database_error") {
     return new AuthoringApiError(403, "not_authorized", "A operação não foi autorizada.");
   }
   if (databaseCode === "40001") {
+    const conflict = structuredDatabaseDetail(body);
     return new AuthoringApiError(
       409,
       "stale_authoring_state",
-      "O estado da autoria mudou; atualize e tente novamente."
+      "O estado da autoria mudou; atualize e tente novamente.",
+      conflict && (
+        Number.isInteger(conflict.expectedRevision)
+        || Number.isInteger(conflict.currentRevision)
+      ) ? {
+          expectedRevision: conflict.expectedRevision ?? null,
+          currentRevision: conflict.currentRevision ?? null
+        } : undefined
     );
   }
   if (databaseCode === "55P03") {
@@ -917,6 +925,247 @@ export class SupabaseAuthoringAdapter {
     }, { deadlineAt }));
   }
 
+  async listAuthoringDesignParameterDefinitions({
+    principal,
+    workspaceId,
+    scopeKind = null,
+    deadlineAt = null
+  }) {
+    return first(await this.rpc("list_authoring_design_parameter_definitions_v1", {
+      p_actor_id: principal.actorId,
+      p_workspace_id: workspaceId,
+      p_scope_kind: scopeKind
+    }, { deadlineAt }));
+  }
+
+  async getAuthoringInstructionalAnalysis({
+    principal,
+    workspaceId,
+    scopeKind,
+    scopeRef,
+    analysisRef = null,
+    deadlineAt = null
+  }) {
+    return first(await this.rpc("get_authoring_instructional_analysis_v1", {
+      p_actor_id: principal.actorId,
+      p_workspace_id: workspaceId,
+      p_scope_kind: scopeKind,
+      p_scope_ref: scopeRef,
+      p_analysis_id: analysisRef?.id ?? null,
+      p_analysis_version: analysisRef?.version ?? null
+    }, { deadlineAt }));
+  }
+
+  async listAuthoringDesignParameterAssignments({
+    principal,
+    workspaceId,
+    scopeKind,
+    scopeRef,
+    deadlineAt = null
+  }) {
+    return first(await this.rpc("list_authoring_design_parameter_assignments_v1", {
+      p_actor_id: principal.actorId,
+      p_workspace_id: workspaceId,
+      p_scope_kind: scopeKind,
+      p_scope_ref: scopeRef
+    }, { deadlineAt }));
+  }
+
+  async getAuthoringDesignState({
+    principal,
+    workspaceId,
+    scopeKind,
+    scopeRef,
+    deadlineAt = null
+  }) {
+    return first(await this.rpc("get_authoring_design_state_v1", {
+      p_actor_id: principal.actorId,
+      p_workspace_id: workspaceId,
+      p_scope_kind: scopeKind,
+      p_scope_ref: scopeRef
+    }, { deadlineAt }));
+  }
+
+  async replayAuthoringDesignMutation({
+    principal,
+    requestId,
+    payloadHash,
+    operation,
+    deadlineAt = null
+  }) {
+    return first(await this.rpc("replay_authoring_workspace_request_v5", {
+      p_owner_id: principal.actorId,
+      p_request_id: requestId,
+      p_payload_hash: payloadHash,
+      p_operation: operation
+    }, { deadlineAt }));
+  }
+
+  async getAuthoringEffectiveDesignSnapshot({
+    principal,
+    workspaceId,
+    snapshotRef,
+    deadlineAt = null
+  }) {
+    return first(await this.rpc("get_authoring_effective_design_snapshot_v1", {
+      p_actor_id: principal.actorId,
+      p_workspace_id: workspaceId,
+      p_snapshot_id: snapshotRef.id,
+      p_snapshot_version: snapshotRef.version
+    }, { deadlineAt }));
+  }
+
+  async getAuthoringResourceSet({
+    principal,
+    workspaceId,
+    resourceSetRef,
+    deadlineAt = null
+  }) {
+    return first(await this.rpc("get_authoring_resource_set_v1", {
+      p_actor_id: principal.actorId,
+      p_workspace_id: workspaceId,
+      p_resource_set_id: resourceSetRef.id,
+      p_resource_set_version: resourceSetRef.version
+    }, { deadlineAt }));
+  }
+
+  async getAuthoringPedagogicalBlueprintArtifact({
+    principal,
+    workspaceId,
+    blueprintRef,
+    deadlineAt = null
+  }) {
+    return first(await this.rpc("get_authoring_pedagogical_blueprint_artifact_v1", {
+      p_actor_id: principal.actorId,
+      p_workspace_id: workspaceId,
+      p_blueprint_id: blueprintRef.id,
+      p_blueprint_version: blueprintRef.version
+    }, { deadlineAt }));
+  }
+
+  async saveAuthoringInstructionalAnalysis({
+    principal,
+    workspaceId,
+    requestId,
+    payloadHash,
+    expectedRevision,
+    payload,
+    deadlineAt = null
+  }) {
+    return first(await this.rpc("save_authoring_instructional_analysis_v1", {
+      p_actor_id: principal.actorId,
+      p_workspace_id: workspaceId,
+      p_request_id: requestId,
+      p_payload_hash: payloadHash,
+      p_expected_revision: expectedRevision,
+      p_analysis: payload
+    }, { deadlineAt }));
+  }
+
+  async setAuthoringDesignParameter(options) {
+    return this.#manageAuthoringDesignParameter("set", options);
+  }
+
+  async removeAuthoringDesignParameter(options) {
+    return this.#manageAuthoringDesignParameter("remove", options);
+  }
+
+  async #manageAuthoringDesignParameter(operation, {
+    principal,
+    workspaceId,
+    requestId,
+    payloadHash,
+    expectedRevision,
+    payload,
+    deadlineAt = null
+  }) {
+    return first(await this.rpc("manage_authoring_design_parameter_assignment_v1", {
+      p_actor_id: principal.actorId,
+      p_workspace_id: workspaceId,
+      p_request_id: requestId,
+      p_payload_hash: payloadHash,
+      p_expected_revision: expectedRevision,
+      p_operation: operation,
+      p_assignment: payload
+    }, { deadlineAt }));
+  }
+
+  async saveAuthoringResourceSet({
+    principal,
+    workspaceId,
+    requestId,
+    payloadHash,
+    expectedRevision,
+    payload,
+    deadlineAt = null
+  }) {
+    return first(await this.rpc("save_authoring_resource_set_v1", {
+      p_actor_id: principal.actorId,
+      p_workspace_id: workspaceId,
+      p_request_id: requestId,
+      p_payload_hash: payloadHash,
+      p_expected_revision: expectedRevision,
+      p_resource_set: payload
+    }, { deadlineAt }));
+  }
+
+  async resolveAuthoringEffectiveDesign({
+    principal,
+    workspaceId,
+    requestId,
+    payloadHash,
+    expectedRevision,
+    payload,
+    deadlineAt = null
+  }) {
+    return first(await this.rpc("resolve_authoring_effective_design_v1", {
+      p_actor_id: principal.actorId,
+      p_workspace_id: workspaceId,
+      p_request_id: requestId,
+      p_payload_hash: payloadHash,
+      p_expected_revision: expectedRevision,
+      p_snapshot: payload
+    }, { deadlineAt }));
+  }
+
+  async saveAuthoringPedagogicalBlueprint({
+    principal,
+    workspaceId,
+    requestId,
+    payloadHash,
+    expectedRevision,
+    payload,
+    deadlineAt = null
+  }) {
+    return first(await this.rpc("save_authoring_pedagogical_blueprint_v1", {
+      p_actor_id: principal.actorId,
+      p_workspace_id: workspaceId,
+      p_request_id: requestId,
+      p_payload_hash: payloadHash,
+      p_expected_revision: expectedRevision,
+      p_blueprint: payload
+    }, { deadlineAt }));
+  }
+
+  async registerAuthoringMaterializationManifest({
+    principal,
+    workspaceId,
+    requestId,
+    payloadHash,
+    expectedRevision,
+    payload,
+    deadlineAt = null
+  }) {
+    return first(await this.rpc("register_authoring_materialization_manifest_v1", {
+      p_actor_id: principal.actorId,
+      p_workspace_id: workspaceId,
+      p_request_id: requestId,
+      p_payload_hash: payloadHash,
+      p_expected_revision: expectedRevision,
+      p_manifest: payload
+    }, { deadlineAt }));
+  }
+
   async getWorkspace(options) {
     return this.workspaceEngine.get(options);
   }
@@ -950,6 +1199,10 @@ export class SupabaseAuthoringAdapter {
 
   async mutateWorkspace(options) {
     return this.workspaceEngine.mutate(options);
+  }
+
+  async replayWorkspaceMutation(options) {
+    return this.workspaceEngine.replayMutation(options);
   }
 
   async manageWorkspaceContinuity(options) {

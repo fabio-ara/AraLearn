@@ -123,28 +123,38 @@ acesso sem entregar sua senha ao cliente.
 **Passos:**
 
 1. Pela conversa externa, crie ou abra o workspace.
-2. Defina público, finalidade, escopo, profundidade e fontes ainda ausentes do
-   contexto disponível.
+2. Use primeiro o pedido, o brief, as fontes e o planejamento já registrados;
+   complete somente público, finalidade, escopo ou fonte realmente ausentes.
 3. Responda somente às perguntas cuja informação possa mudar materialmente o
    desenho; o assistente deve indicar qual decisão depende da resposta.
-4. Revise a síntese de condições de aprendizagem, exigências do conteúdo,
-   dificuldades previstas e respostas de desenho propostas.
-5. Aprove ou corrija esses vínculos e a progressão antes de produzir os cards.
-6. Divida o trabalho em Partes coerentes, ordenadas e dimensionadas pela
+4. Revise o mapa de curso, lições e microssequências. Aprove ou corrija somente
+   quando o mandato ou uma decisão material exigir.
+5. Divida o trabalho em Partes coerentes, ordenadas e dimensionadas pela
    cobertura e pela revisão humana, sem cota de cards ou microssequências.
-7. Construa toda a Parte autorizada na mesma etapa, salvando cada
-   microssequência de forma atômica e seguindo para a próxima sem nova aprovação.
-8. Depois de cada parte, audite conteúdo, pré-requisitos, recursos, práticas e
+6. Para cada microssequência, leia o slice corrente e analise condições,
+   exigências do conteúdo, dificuldades previstas e respostas de desenho.
+7. Deixe os parâmetros em Auto sempre que não houver motivo para alterar. Se
+   precisar de outro valor, peça a mudança em linguagem natural; override
+   manual e lock de pesquisa usam a mesma estrutura persistida.
+8. Quando Auto precisar de um conjunto de resources novo, deixe o servidor
+   congelar as versões adequadas por facetas. Depois do snapshot, o assistente
+   escolhe localmente somente dentro desse conjunto e carrega um contrato exato
+   por chamada; você não seleciona package card a card nem informa ids.
+9. Construa toda a Parte autorizada, uma microssequência por vez: blueprint e
+   cards em memória, validação, gravação, releitura e manifesto. Avance sem nova
+   aprovação apenas porque uma microssequência terminou.
+10. Depois de cada Parte, audite conteúdo, pré-requisitos, resources, práticas e
    feedback.
-9. Verifique também se cada resposta prometida foi materializada, se alguma
+11. Verifique também se cada resposta prometida foi materializada, se alguma
    prática antecede sua base e se o curso depende de um meio indisponível.
-10. Repare os achados aprovados e reavalie.
-11. Abra o mesmo item em Trilhas para testar a experiência real de estudo.
+12. Repare somente os achados aprovados e reavalie de forma independente.
+13. Abra o mesmo item em Trilhas para testar a experiência real de estudo.
 
 Condições descrevem o cenário; respostas são decisões locais. Não escolha um
 estilo pedagógico global para todo o curso. A síntese é uma hipótese de
 planejamento, não um diagnóstico automático dos estudantes: a responsabilidade
-por confirmá-la e aprovar o desenho continua sendo da pessoa autora.
+por decisões materiais e pela aprovação de findings continua sendo da pessoa
+autora.
 
 **Resultado esperado:** o conteúdo já materializado pode ser estudado sem esperar uma
 categoria burocrática de “pronto”. O planejamento corrente indica o que ainda

@@ -204,9 +204,11 @@ pelo documento no Storage e por toda a mesma árvore em tabelas remotas.
 ### Estado instrucional versionado do workspace
 
 O estado parametrizado não é acrescentado como um JSON monolítico em
-`authoring_state`. A migração
-`20260815193000_parameterized_authoring_design.sql` separa as responsabilidades
-em famílias relacionais privadas:
+`authoring_state`. As migrations
+`20260815193000_parameterized_authoring_design.sql` e
+`20260815230000_authoring_blueprint_artifact_receipt.sql` separam as
+responsabilidades em famílias relacionais privadas e acrescentam a retomada dos
+hashes imutáveis do blueprint e a barreira para representações não canônicas:
 
 A mesma migração corrige a divergência da continuidade sem apagar comportamento
 anterior: o validador vigente continua responsável pelo envelope compacto,
@@ -228,6 +230,7 @@ transacionais. `list_authoring_design_parameter_definitions_v1`,
 `list_authoring_design_parameter_assignments_v1`,
 `preview_authoring_effective_design_v1`,
 `get_authoring_effective_design_snapshot_v1`,
+`get_authoring_pedagogical_blueprint_artifact_v1`,
 `get_authoring_materialization_manifest_v1` e
 `get_authoring_design_state_v1` leem; as operações
 `save_authoring_instructional_analysis_v1`,
@@ -235,8 +238,9 @@ transacionais. `list_authoring_design_parameter_definitions_v1`,
 `save_authoring_resource_set_v1`,
 `resolve_authoring_effective_design_v1`,
 `save_authoring_pedagogical_blueprint_v1` e
-`register_authoring_materialization_manifest_v1` escrevem. A superfície MCP e
-a Action ainda não encaminham essas RPCs na etapa #103.
+`register_authoring_materialization_manifest_v1` escrevem. Desde a #104, MCP e
+Action encaminham essas operações por um serviço único, com slice progressivo
+por microssequência e recibos compactos.
 
 Cada escrita informa ator, workspace, `requestId`, hash do pedido e revisão
 esperada. O servidor bloqueia o workspace, aplica CAS, reavalia a capacidade e
@@ -262,9 +266,10 @@ registra modo da atribuição e proveniência de herança em campos distintos.
 Um `ResourceSet` restringe disponibilidade. Cada seleção do manifesto aponta
 para o `ResourceSet` versionado que, no mesmo registro, precisa conter o package
 e permitir seu `fit` e papel. Instâncias materializadas apontam para a seleção;
-assim, disponibilidade, escolha e uso real permanecem fatos diferentes. Um
-`substitute` exige limitação explícita, e a política do conjunto decide entre
-bloquear ou registrar a ausência de representação adequada.
+assim, disponibilidade, escolha e uso real permanecem fatos diferentes.
+Qualquer `fit` não canônico exige limitação explícita. A interseção entre a
+política efetiva e a política do conjunto decide se `versatile` ou `substitute`
+é admitido ou bloqueado; uma aproximação nunca é tratada como equivalência.
 
 O backend deriva `contentHash` do conjunto corrente de cards da
 microssequência, em ordem canônica, e só registra o manifesto se o hash recebido
@@ -274,6 +279,12 @@ ou duplicidade falha. O trigger sobre entidades incrementa
 `authoring_materialization_states.materialization_revision` em inserção,
 alteração, movimentação ou exclusão pertinente; hash e revisão participam da
 leitura de currentness.
+
+Essa igualdade demonstra quais cards integram a materialização, mas não prova,
+sozinha, que cada declaração de `materializedResources` corresponde às
+instâncias de package dentro do JSON de cada card. O gate de escrita valida os
+cards sob o snapshot corrente; a auditoria determinística da #106 deve ainda
+derivar o uso dos cards e confrontá-lo independentemente com o manifesto.
 
 Não há backfill de análise, parâmetros ou `ResourceSet` inventados. A leitura
 retorna `unresolved` para análise; qualquer conteúdo que exista sem manifesto

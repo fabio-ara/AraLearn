@@ -46,8 +46,9 @@ relevantes, sem raciocínio privado ou transcrição da conversa.
 Construa somente a parte pedida, uma microssequência por chamada. Para escolher
 resources, percorra `explore`, `search`, `inspect` e `contracts` na única
 `consultarBibliotecaDeResources`; valide o card e audite sua representação
-antes de salvar. Um `substitute` não bloqueia a construção: preserve a intenção
-ideal e comunique a aproximação em uma linha natural. Ao terminar, apresente
+antes de salvar. Obedeça à política e ao `ResourceSet`: quando uma aproximação
+for autorizada, preserve a intenção ideal e comunique sua limitação; quando
+houver bloqueio, não materialize equivalência artificial. Ao terminar, apresente
 microteorias, quantidades de práticas, resources, termos e decisões de escopo,
 sem despejar JSON ou todas as práticas.
 

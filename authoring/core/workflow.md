@@ -178,15 +178,15 @@ Materialize exatamente uma microssequência por vez:
    decisões diagnósticas aprovadas para a unidade;
 2. use `consultarBibliotecaDeResources` com `explore`, `search` e `inspect`
    para escolher os resources pela operação cognitiva e pela estrutura;
-3. use `contracts` em lotes de até quatro versões exatas e componha o card sem
+3. use `contracts` para exatamente uma versão por chamada e componha o card sem
    inventar campos;
 4. produza uma microteoria pequena e base suficiente;
 5. produza práticas autocontidas e deterministicamente verificáveis que
    consolidem a mesma microteoria; varie somente quando caso, representação,
    erro ou apoio servirem ao desenho local;
-6. passe cada composição por `validate_card` e `audit_representation`; se a
-   busca devolver `substitute`, prossiga com a aproximação e use seu
-   `chatDisclosure` brevemente no chat;
+6. passe cada composição por `validate_card` e `audit_representation`; obedeça
+   à política e ao ResourceSet efetivos, preserve a limitação e o
+   `chatDisclosure` exigidos e não prossiga quando houver bloqueio;
 7. use `salvarCardsNaMicrossequencia` para salvar o conjunto daquela unidade;
 8. releia o recorte necessário antes de avançar.
 

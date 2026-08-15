@@ -16,6 +16,10 @@ const migrationUrl = new URL(
   "../../supabase/migrations/20260815193000_parameterized_authoring_design.sql",
   import.meta.url
 );
+const blueprintArtifactMigrationUrl = new URL(
+  "../../supabase/migrations/20260815230000_authoring_blueprint_artifact_receipt.sql",
+  import.meta.url
+);
 
 const ACTOR = "10000000-0000-4000-8000-000000000001";
 const AUTHOR_ONLY = "10000000-0000-4000-8000-000000000002";
@@ -338,6 +342,11 @@ async function setupDatabase() {
   `);
   const migration = await fs.readFile(migrationUrl, "utf8");
   await database.exec(migration);
+  const blueprintArtifactMigration = await fs.readFile(
+    blueprintArtifactMigrationUrl,
+    "utf8"
+  );
+  await database.exec(blueprintArtifactMigration);
   return database;
 }
 
@@ -533,10 +542,14 @@ test("migration instala desenho parametrizado aditivo e preserva legado", async 
     const manifest = await scalar(database, `
       select public.get_aralearn_runtime_manifest() value
     `);
-    assert.equal(manifest.schemaRevision, "20260815193000");
+    assert.equal(manifest.schemaRevision, "20260815230000");
     assert.equal(manifest.features.includes("flat-runtime-manifest-v1"), true);
     assert.equal(
       manifest.features.includes("parameterized-authoring-design-v1"),
+      true
+    );
+    assert.equal(
+      manifest.features.includes("authoring-blueprint-artifact-receipt-v1"),
       true
     );
     assert.equal(await scalar(database, `
@@ -1244,6 +1257,20 @@ test("resolução, ResourceSet, snapshot, blueprint e manifesto preservam proven
       resumedDesign.blueprintBinding.mappings.practiceSteps[0].evidenceRequirementRefs,
       ["evidence:a"]
     );
+    const resumedArtifact = await scalar(database, `
+      select public.get_authoring_pedagogical_blueprint_artifact_v1(
+        $1,$2,'blueprint-a','1.0.0'
+      ) value
+    `, [ACTOR, WORKSPACE]);
+    assert.deepEqual(resumedArtifact.blueprintRef, {
+      id: "blueprint-a", version: "1.0.0"
+    });
+    assert.deepEqual(resumedArtifact.bindingRef, {
+      id: "binding-a", version: "1.0.0"
+    });
+    assert.equal(resumedArtifact.blueprintHash, blueprintReceipt.blueprintHash);
+    assert.equal(resumedArtifact.bindingHash, blueprintReceipt.bindingHash);
+    assert.equal(resumedArtifact.scopeEntityVersion, 1);
     await assert.rejects(database.query(`
       update private.authoring_pedagogical_blueprint_bindings
       set payload='{}'::jsonb
@@ -1453,6 +1480,74 @@ test("resolução, ResourceSet, snapshot, blueprint e manifesto preservam proven
       ),
       revision,
       JSON.stringify(responseBypassManifest)
+    ]), (error) => error.code === "23514");
+    const versatileWithoutLimitationManifest = {
+      ...manifest,
+      id: "manifest-versatile-without-limitation",
+      resourceSelections: [{
+        ...manifest.resourceSelections[0],
+        fit: "versatile",
+        limitations: []
+      }]
+    };
+    await assert.rejects(scalar(database, `
+      select public.register_authoring_materialization_manifest_v1(
+        $1,$2,'manifest:versatile:no-limitation',$3,$4,$5::jsonb
+      ) value
+    `, [
+      ACTOR,
+      WORKSPACE,
+      await mutationHash(
+        database,
+        "register_materialization_manifest",
+        versatileWithoutLimitationManifest
+      ),
+      revision,
+      JSON.stringify(versatileWithoutLimitationManifest)
+    ]), (error) => error.code === "23514");
+    const canonicalWithLimitationManifest = {
+      ...manifest,
+      id: "manifest-canonical-with-limitation",
+      resourceSelections: [{
+        ...manifest.resourceSelections[0],
+        fit: "canonical"
+      }]
+    };
+    await assert.rejects(scalar(database, `
+      select public.register_authoring_materialization_manifest_v1(
+        $1,$2,'manifest:canonical:limitation',$3,$4,$5::jsonb
+      ) value
+    `, [
+      ACTOR,
+      WORKSPACE,
+      await mutationHash(
+        database, "register_materialization_manifest", canonicalWithLimitationManifest
+      ),
+      revision,
+      JSON.stringify(canonicalWithLimitationManifest)
+    ]), (error) => error.code === "23514");
+    const blockedVersatileManifest = {
+      ...manifest,
+      id: "manifest-blocked-versatile",
+      resourceSelections: [{
+        ...manifest.resourceSelections[0],
+        authorizedByResourceSetRef: { id: "resource-set-a", version: "1.0.0" },
+        fit: "versatile",
+        limitations: ["Representação não canônica declarada."]
+      }]
+    };
+    await assert.rejects(scalar(database, `
+      select public.register_authoring_materialization_manifest_v1(
+        $1,$2,'manifest:versatile:blocked',$3,$4,$5::jsonb
+      ) value
+    `, [
+      ACTOR,
+      WORKSPACE,
+      await mutationHash(
+        database, "register_materialization_manifest", blockedVersatileManifest
+      ),
+      revision,
+      JSON.stringify(blockedVersatileManifest)
     ]), (error) => error.code === "23514");
     const blockedSubstituteManifest = {
       ...manifest,

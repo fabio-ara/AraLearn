@@ -29,7 +29,6 @@ const MICROSEQUENCE_PATH = Object.freeze([
   "lesson-a",
   "micro-a"
 ]);
-const LESSON_PATH = Object.freeze(MICROSEQUENCE_PATH.slice(0, 3));
 const SUBMISSION_ID = "50000000-0000-4000-8000-000000000001";
 
 const REMOVED_TOOL_NAMES = Object.freeze([
@@ -73,7 +72,8 @@ test("registro externo fica abaixo do teto da Action e não conserva aliases ant
     "reorganizarWorkspace",
     "excluirDoWorkspace",
     "criarEstruturaNoWorkspace",
-    "salvarCardsNaMicrossequencia"
+    "salvarCardsNaMicrossequencia",
+    "gerirDesenhoInstrucional"
   ]) {
     assert.ok(authoringMcpToolDefinition(name), name);
   }
@@ -87,6 +87,7 @@ test("grupos mantêm leitura e consequência separadas", () => {
     ])
   );
   assert.equal(annotations.consultarBibliotecaDeResources.readOnlyHint, true);
+  assert.equal(annotations.gerirDesenhoInstrucional.readOnlyHint, false);
   assert.equal(annotations.consultarCatalogo.readOnlyHint, true);
   assert.equal(annotations.editarCatalogo.destructiveHint, true);
   assert.equal(annotations.retirarDoCatalogo.destructiveHint, true);
@@ -103,6 +104,7 @@ test("grupos mantêm leitura e consequência separadas", () => {
   assert.equal(actionConsequential("salvarCardNoWorkspace"), false);
   assert.equal(actionConsequential("retirarDoCatalogo"), true);
   assert.equal(actionConsequential("excluirDoWorkspace"), true);
+  assert.equal(actionConsequential("gerirDesenhoInstrucional"), true);
 
   const readSuccess = authoringMcpToolDefinition("consultarCatalogo")
     .outputSchema.oneOf[0];
@@ -384,10 +386,179 @@ test("discriminadores são obrigatórios, fechados e autorizados por capacidade"
   );
 });
 
+test("desenho agrupado separa leituras de mutações e não aceita allowlist do GPT", () => {
+  const designContracts = [
+    "instructional_analysis",
+    "design_parameter_definition",
+    "design_parameter_assignment",
+    "effective_design_snapshot",
+    "materialization_manifest",
+    "resource_set",
+    "action_read_slice",
+    "action_contracts",
+    "action_save_analysis",
+    "action_set_parameter",
+    "action_remove_parameter",
+    "action_save_resource_set",
+    "action_resolve_effective",
+    "action_save_blueprint",
+    "action_register_manifest"
+  ];
+  for (const contractName of designContracts) {
+    const contractCall = mapAuthoringMcpToolCall("gerirDesenhoInstrucional", {
+      operation: "contracts",
+      workspaceId: WORKSPACE_ID,
+      contractName
+    });
+    assert.equal(contractCall.body.contractName, contractName);
+  }
+
+  const read = mapAuthoringMcpToolCall("gerirDesenhoInstrucional", {
+    operation: "read_slice",
+    workspaceId: WORKSPACE_ID,
+    microsequencePath: MICROSEQUENCE_PATH
+  });
+  assert.equal(
+    read.path,
+    `/v1/workspaces/${WORKSPACE_ID}/design/actions`
+  );
+  assert.deepEqual(read.body, {
+    operation: "read_slice",
+    microsequencePath: MICROSEQUENCE_PATH
+  });
+  assert.equal(read.requestId, null);
+  const progressiveRead = mapAuthoringMcpToolCall("gerirDesenhoInstrucional", {
+    operation: "read_slice",
+    workspaceId: WORKSPACE_ID,
+    microsequencePath: MICROSEQUENCE_PATH,
+    view: "blueprint"
+  });
+  assert.equal(progressiveRead.body.view, "blueprint");
+  for (const forbidden of ["contractName", "requestId", "expectedRevision", "payloadJson"]) {
+    assert.throws(
+      () => mapAuthoringMcpToolCall("gerirDesenhoInstrucional", {
+        operation: "read_slice",
+        workspaceId: WORKSPACE_ID,
+        microsequencePath: MICROSEQUENCE_PATH,
+        [forbidden]: forbidden === "expectedRevision" ? 1 : "valor-inválido"
+      }),
+      (error) => error?.code === "invalid_tool_arguments"
+    );
+  }
+
+  assert.throws(
+    () => mapAuthoringMcpToolCall("gerirDesenhoInstrucional", {
+      operation: "contracts",
+      workspaceId: WORKSPACE_ID,
+      contractName: "instructional_analysis",
+      requestId: WRITE.requestId
+    }),
+    (error) => error?.code === "invalid_tool_arguments"
+  );
+
+  const write = mapAuthoringMcpToolCall("gerirDesenhoInstrucional", {
+    ...WRITE,
+    operation: "save_analysis",
+    microsequencePath: MICROSEQUENCE_PATH,
+    payloadJson: JSON.stringify({ contract: "InstructionalAnalysis@1" })
+  });
+  assert.deepEqual(write.body, {
+    operation: "save_analysis",
+    requestId: WRITE.requestId,
+    expectedRevision: WRITE.expectedRevision,
+    microsequencePath: MICROSEQUENCE_PATH,
+    payload: { contract: "InstructionalAnalysis@1" }
+  });
+  assert.throws(
+    () => mapAuthoringMcpToolCall("gerirDesenhoInstrucional", {
+      ...WRITE,
+      operation: "save_analysis",
+      contractName: "instructional_analysis",
+      microsequencePath: MICROSEQUENCE_PATH,
+      payloadJson: JSON.stringify({ contract: "InstructionalAnalysis@1" })
+    }),
+    (error) => error?.code === "invalid_tool_arguments"
+  );
+  assert.throws(
+    () => mapAuthoringMcpToolCall("gerirDesenhoInstrucional", {
+      ...WRITE,
+      operation: "save_analysis",
+      microsequencePath: MICROSEQUENCE_PATH,
+      payloadJson: "[]"
+    }),
+    (error) => error?.code === "invalid_tool_arguments"
+  );
+
+  const readPrincipal = {
+    authenticationKind: "oauth",
+    actorId: "40000000-0000-4000-8000-000000000001",
+    scopes: ["authoring:read"]
+  };
+  assert.equal(authoringMcpToolIsAllowed(
+    "gerirDesenhoInstrucional",
+    readPrincipal,
+    { operation: "read_slice" }
+  ), true);
+  assert.equal(authoringMcpToolIsAllowed(
+    "gerirDesenhoInstrucional",
+    readPrincipal,
+    { operation: "save_analysis" }
+  ), false);
+  const writePrincipal = {
+    ...readPrincipal,
+    scopes: ["authoring:write"]
+  };
+  assert.equal(authoringMcpToolIsAllowed(
+    "gerirDesenhoInstrucional",
+    writePrincipal,
+    { operation: "read_slice" }
+  ), false);
+  assert.equal(authoringMcpToolIsAllowed(
+    "gerirDesenhoInstrucional",
+    writePrincipal,
+    { operation: "save_analysis" }
+  ), true);
+
+  assert.throws(
+    () => mapAuthoringMcpToolCall("consultarBibliotecaDeResources", {
+      operation: "search",
+      workspaceId: WORKSPACE_ID,
+      allowedPackages: ["aralearn.resource.paragraph"]
+    }),
+    (error) => error?.code === "invalid_tool_arguments"
+  );
+  assert.throws(
+    () => mapAuthoringMcpToolCall("consultarBibliotecaDeResources", {
+      operation: "search",
+      workspaceId: WORKSPACE_ID
+    }),
+    (error) => error?.code === "invalid_tool_arguments"
+  );
+  assert.doesNotThrow(
+    () => mapAuthoringMcpToolCall("consultarBibliotecaDeResources", {
+      operation: "search",
+      workspaceId: WORKSPACE_ID,
+      snapshotRef: { id: "snapshot-a", version: "1" }
+    })
+  );
+  assert.throws(
+    () => mapAuthoringMcpToolCall("consultarBibliotecaDeResources", {
+      operation: "contracts",
+      packages: [{ packageId: "aralearn.resource.paragraph" }]
+    }),
+    (error) => error?.code === "invalid_tool_arguments"
+  );
+});
+
 test("as 30 assinaturas públicas validam, roteiam e recusam kwargs não anunciados", () => {
   const calls = new Map([
     ["prepararAutoriaAraLearn", { intent: "inspect" }],
     ["consultarBibliotecaDeResources", { operation: "explore" }],
+    ["gerirDesenhoInstrucional", {
+      operation: "read_slice",
+      workspaceId: WORKSPACE_ID,
+      microsequencePath: MICROSEQUENCE_PATH
+    }],
     ["listarCursosDaBibliotecaPessoal", {}],
     ["retirarCursoDasTrilhas", {
       requestId: WRITE.requestId,
@@ -420,10 +591,6 @@ test("as 30 assinaturas públicas validam, roteiam e recusam kwargs não anuncia
       title: "Workspace de teste"
     }],
     ["lerWorkspaceDeAutoria", { workspaceId: WORKSPACE_ID, view: "outline" }],
-    ["revisarMicroteoriasDoWorkspace", {
-      workspaceId: WORKSPACE_ID,
-      entityPath: LESSON_PATH
-    }],
     ["listarCardsDaMicrossequencia", {
       workspaceId: WORKSPACE_ID,
       microsequencePath: MICROSEQUENCE_PATH

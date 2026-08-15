@@ -248,6 +248,12 @@ function authorizeAgainstResolved({
       `Fit ${selection?.fit} não é permitido pelo ResourceSet ${authorizerKey}.`
     ));
   }
+  if (selection?.fit === "canonical" && list(selection?.limitations).length) {
+    errors.push(error(
+      "canonical_with_limitation",
+      "Seleção canonical não pode declarar uma lacuna de representação."
+    ));
+  }
   if (selection?.role === "embedded_practice"
     && authorizer.selectionConstraints.allowEmbeddedPractice !== true) {
     errors.push(error(
@@ -262,28 +268,36 @@ function authorizeAgainstResolved({
       `ResourceSet ${authorizerKey} não permite response packages.`
     ));
   }
-  if (selection?.fit === "substitute") {
+  if (["versatile", "substitute"].includes(selection?.fit)) {
+    const fit = selection.fit;
     const fallbackPolicy = effectiveRepresentationFallbackPolicy(effectiveSnapshot);
+    const allowedByPolicy = fit === "versatile"
+      ? [
+          "allow_versatile_with_limitation",
+          "allow_substitute_with_limitation"
+        ].includes(fallbackPolicy)
+      : fallbackPolicy === "allow_substitute_with_limitation";
     if (!fallbackPolicy) {
       errors.push(error(
         "representation_fallback_policy_missing",
         "O snapshot não resolve a política efetiva para representação indisponível."
       ));
-    } else if (fallbackPolicy !== "allow_substitute_with_limitation") {
+    } else if (!allowedByPolicy) {
       errors.push(error(
-        "substitute_blocked_by_effective_policy",
-        `A política efetiva ${fallbackPolicy} não permite materialização substitute.`
+        `${fit}_blocked_by_effective_policy`,
+        `A política efetiva ${fallbackPolicy} não permite materialização ${fit}.`
       ));
     }
     if (authorizer.selectionConstraints.onNoAdequateRepresentation === "block") {
       errors.push(error(
-        "substitute_blocked_by_resource_set",
+        `${fit}_blocked_by_resource_set`,
         `ResourceSet ${authorizerKey} bloqueia materialização sem representação adequada.`
       ));
-    } else if (!list(selection?.limitations).length) {
+    }
+    if (!list(selection?.limitations).length) {
       errors.push(error(
-        "substitute_without_limitation",
-        "Seleção substitute precisa registrar a limitação de representação."
+        `${fit}_without_limitation`,
+        `Seleção ${fit} precisa registrar a limitação de representação.`
       ));
     }
   }

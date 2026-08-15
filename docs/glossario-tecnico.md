@@ -175,15 +175,17 @@ expressa. Há três identificadores próximos, mas não intercambiáveis:
 
 **Contrato autoral de package.** Descrição de alto nível, exemplo e orientações
 que permitem a uma pessoa ou a um modelo preencher `data` sem conhecer o
-renderer. É devolvido junto com o manifest e o schema por `contracts`. Não é
-um contrato monolítico de todos os resources.
+renderer. É devolvido junto com o manifest e o schema por `contracts`, um
+package e versão por chamada. Não é um contrato monolítico de todos os
+resources.
 
 **Contratos de desenho instrucional parametrizado.** Família versionada que
 separa `InstructionalAnalysis`, `DesignParameterDefinition`,
 `DesignParameterAssignment`, `EffectiveDesignSnapshot`,
 `MaterializationManifest` e `ResourceSet`. Os schemas, validadores e entidades
 relacionais já constituem estado aceito pelo backend; ainda não são schemas de
-publicação nem operações expostas por MCP, Action ou interface. O modelo está em
+publicação ou de interface. A #104 os expõe por uma operação agrupada no MCP e
+na Action; a superfície visual pertence à #105. O modelo está em
 [Desenho instrucional parametrizado](desenho-instrucional-parametrizado.md).
 
 **Análise instrucional (`InstructionalAnalysis`).** Documento imutável e
@@ -223,6 +225,18 @@ escopo. Disponibilidade no conjunto, seleção autorizada no planejamento e
 instância materializada são estados diferentes. O conjunto não copia todos os
 contracts, não escolhe um package por card e não torna representações
 equivalentes.
+
+**Knowledge autoral JIT.** Trechos versionados e recuperáveis que concentram
+ciência, critérios, exemplos e políticas necessários ao passo corrente. O
+seletor usa intenção, alvo e contexto para devolver no máximo oito trechos; não
+transforma o prompt de sistema em catálogo de parâmetros ou revisão de
+literatura e não substitui validação executável.
+
+**Slice de desenho.** Projeção mínima de uma microssequência devolvida por
+`gerirDesenhoInstrucional` com `read_slice`: brief e fontes pertinentes,
+análise, assignments e locks aplicáveis, definições necessárias, snapshot e
+`ResourceSet`s efetivos, blueprint, manifesto e findings relacionados. É
+retomável sem conversa e não concede autoridade além do workspace.
 
 **Binding do blueprint pedagógico.** Registro versionado que referencia uma
 análise, um snapshot efetivo e um blueprint v2 e liga unidades e requisitos aos
@@ -342,7 +356,9 @@ representação é uma convenção canônica da disciplina. `versatile` indica u
 representação transversal sem perda estrutural detectada; `substitute`, uma
 aproximação que não preserva todas as facetas. Fora dos campos de protocolo,
 esta documentação prefere “ajuste específico”, “uso transversal” e
-“substituição”. Implementação: `src/resources/catalog/resourceCatalog.js`.
+“substituição”. Os tokens descrevem cobertura, mas não autorizam seleção: a
+política efetiva e o mesmo `ResourceSet` precisam admitir package, papel e
+ajuste. Implementação: `src/resources/catalog/resourceCatalog.js`.
 
 ## Persistência, concorrência e sincronização
 

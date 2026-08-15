@@ -97,13 +97,17 @@ que o curso possa ser lido. A construção pode ocorrer progressivamente:
 
 1. a autoria registra fontes, finalidade, público e objetivo;
 2. cria o mapa operacional de Partes e microssequências;
-3. analisa uma microssequência e resolve seus parâmetros;
-4. delimita os resources disponíveis, seleciona e compõe os adequados;
-5. vincula análise e parâmetros ao blueprint contextual;
-6. materializa teoria, prática e cards;
-7. registra um manifesto factual do que foi produzido;
-8. estuda, audita e repara o que já existe;
-9. distribui uma revisão somente quando houver uma finalidade editorial.
+3. lê o slice corrente e analisa uma microssequência;
+4. quando Auto precisar de um conjunto novo, propõe facetas, congela as
+   referências exatas em um `ResourceSet` e só então cria o assignment;
+5. resolve os parâmetros e o snapshot efetivo;
+6. descobre progressivamente somente os resources autorizados e vincula
+   análise, snapshot e seleções ao blueprint contextual;
+7. compõe teoria, prática e cards em memória, valida a estrutura e a adequação,
+   persiste os cards e relê o estado;
+8. registra um manifesto factual do que foi realmente produzido;
+9. estuda, audita e repara o que já existe;
+10. distribui uma revisão somente quando houver uma finalidade editorial.
 
 Isso aproxima validação pedagógica e autoria: uma parte pronta pode ser
 experimentada sem fingir que o projeto inteiro terminou. Publicação continua
@@ -157,6 +161,16 @@ objetos não são reconstruídos da conversa nem comprimidos dentro da continuid
 textual. Parte permanece no mapa como coordenação de trabalho, mas não integra a
 cadeia de parâmetros, que segue
 `workspace → course → module → lesson → microsequence`.
+
+Uma nova sessão usa `gerirDesenhoInstrucional` com `read_slice`. Primeiro lê a
+view `overview`, suas referências e `availableViews`; depois abre somente as
+views necessárias entre análise, parâmetros, blueprint, binding e
+materialização. Assim, assignments, locks, definições, snapshot,
+`ResourceSet`s, blueprint e manifesto não formam um payload monolítico. O
+transcript não é necessário para continuar. Concluir uma microssequência também
+não exige nova confirmação humana quando a Parte e o mandato já autorizam a
+continuação; decisões materiais e reparos de findings conservam autoridade
+humana explícita.
 
 Essa escolha resolve dois problemas:
 

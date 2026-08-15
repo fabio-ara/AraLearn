@@ -44,18 +44,22 @@ Um único prompt extenso mistura responsabilidades diferentes:
 Essa mistura torna a manutenção difícil e ocupa contexto mesmo quando uma
 parte não é necessária. O kit separa essas funções:
 
-- `core/` reúne o procedimento estável, a segurança e os critérios de
-  qualidade;
-- `knowledge/` contém conhecimento recuperável sobre cards, representações,
-  publicação e continuidade;
+- `core/` reúne o protocolo e os invariantes estáveis;
+- `knowledge/` contém ciência, critérios, exemplos e políticas recuperáveis
+  somente quando pertinentes; para o desenho parametrizado, há chunks de
+  análise instrucional, granularidade semântica, elaboração explicativa,
+  evidência e prática, tarefa profissional complexa, resolução de parâmetros,
+  descoberta sob `ResourceSet` e auditoria de conformidade;
 - `schemas/` contém os esquemas que definem os formatos executáveis aceitos pelo
   servidor;
 - `platforms/` adapta instalação e instruções às plataformas compatíveis;
 - `examples/` mostra envelopes e operações completas.
 
-O modelo recebe instruções curtas no início e consulta conhecimento adicional
-sob demanda. O servidor, porém, não confia apenas nessas instruções: valida
-esquemas, relações, revisão e autorização antes de gravar. O
+O modelo recebe instruções curtas no início e consulta knowledge JIT adicional
+sob demanda. O prompt não enumera parâmetros nem teorias. MCP e Action operam
+estado tipado, enquanto o workspace persistido permanece canônico; a conversa e
+o cache offline nunca substituem esse estado. O servidor não confia apenas nas
+instruções: valida esquemas, relações, revisão e autorização antes de gravar. O
 [glossário técnico](../docs/glossario-tecnico.md) aprofunda os termos usados
 neste kit.
 
@@ -94,20 +98,36 @@ Uma produção completa segue esta ordem:
 
 1. interpretar finalidade, público, profundidade e fontes;
 2. ler o workspace existente ou criar um vazio;
-3. registrar a estrutura planejada em lotes pequenos;
-4. dividir o trabalho em Partes coerentes;
-5. materializar uma microssequência por vez;
-6. descobrir recursos pela intenção e carregar somente seus contratos;
-7. validar cada composição antes da gravação;
-8. mostrar uma síntese para revisão humana;
-9. auditar conteúdo e representação em rodada separada;
-10. corrigir somente achados autorizados e reauditar;
-11. estudar o que já está pronto em Trilhas;
-12. fixar um artefato apenas quando houver submissão ou publicação.
+3. registrar mapa e Partes em lotes pequenos, sem cards;
+4. para cada microssequência, ler o slice e recuperar somente o knowledge
+   pertinente;
+5. gravar a análise; quando Auto precisar de conjunto novo, propor facetas,
+   persistir referências exatas em um `ResourceSet` e só então criar o
+   assignment;
+6. resolver o snapshot efetivo;
+7. descobrir somente packages autorizados por `workspaceId` e `snapshotRef`,
+   percorrendo facetas, lista curta, inspeção e exatamente um contrato por
+   chamada;
+8. ligar análise, snapshot, requisitos e seleções no blueprint v2;
+9. compor cards em memória, validar e auditar a representação, persistir e
+   reler o estado;
+10. registrar o manifesto factual depois da releitura;
+11. auditar conteúdo e representação em rodada separada, corrigir somente
+   achados autorizados e reauditar;
+12. estudar o que já está pronto em Trilhas e fixar artefato somente quando
+   houver submissão ou publicação.
 
 “Parte” é uma unidade de organização da conversa; “microssequência” é a unidade
 didática e técnica que recebe cards. A diferença permite produzir cursos
-extensos sem enviar toda a árvore a cada turno.
+extensos sem enviar toda a árvore a cada turno. Uma Parte já autorizada avança
+microssequência por microssequência sem pedir confirmação automática; decisão
+humana volta a ser necessária quando o mandato ou uma escolha material exigir.
+
+As operações de desenho são agrupadas em `gerirDesenhoInstrucional`:
+`read_slice`, consulta de contrato promovido, gravação de análise, criação ou
+remoção de assignment, persistência de `ResourceSet`, resolução efetiva,
+binding do blueprint e registro do manifesto. Isso evita ferramenta genérica e
+permite que uma nova sessão retome o trabalho sem memória da conversa.
 
 ## Concorrência e repetição segura
 
@@ -186,15 +206,19 @@ Execute:
 
 ```powershell
 npm run test:authoring-packages
+node --test tests/runtime/authoring-guidance-regression.test.js
 npm run audit:docs
 npm run lint
 ```
 
 O primeiro comando verifica paridade, tamanho e integridade dos pacotes. A
 validação também recusa os seis schemas de desenho quando eles divergem da fonte
-JavaScript canônica. A auditoria documental confere links, estrutura e
-afirmações obsoletas. O lint detecta erros estáticos. Alterações no executor,
-nos schemas ou na persistência também exigem a suíte geral do projeto.
+JavaScript canônica. A regressão JIT cobre cenários determinísticos de
+engenharia; não valida aprendizagem ou adequação pedagógica. A auditoria
+documental confere links, estrutura e afirmações obsoletas. O lint detecta erros
+estáticos. Durante a sequência de Autoria, cada issue executa testes
+proporcionais ao escopo; a regressão integral é concentrada no fechamento da
+#109.
 
 Exemplos em [`examples/`](examples/) servem para aprender o formato, não como
 credenciais nem como dados de produção. Segredos administrativos nunca devem

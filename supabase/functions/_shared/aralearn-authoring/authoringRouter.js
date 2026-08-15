@@ -1,4 +1,8 @@
 import { deterministicRequestUuid } from "./canonical.js";
+import {
+  executeWorkspaceDesignAction,
+  validateWorkspaceCardDesignAccess
+} from "./authoringDesignService.js";
 import { AuthoringApiError } from "./errors.js";
 import {
   STANDARD_BODY_LIMIT,
@@ -23,9 +27,11 @@ import {
   validateSubmitCatalogReviewPayload,
   validateUpdateCatalogCollectionPayload,
   validateWorkspaceContinuityActionPayload,
+  validateWorkspaceDesignActionPayload,
   validateWorkspaceImportPayload,
   validateWorkspaceMutationPayload,
   validateWorkspacePublishPayload,
+  WORKSPACE_DESIGN_ACTION_BODY_LIMIT,
   workspaceEntityType,
   workspaceUuid
 } from "./workspaceProtocol.js";
@@ -674,13 +680,67 @@ export async function executeAuthoringRoute({
       requestId: null
     };
   }
+  if (route.name === "manageWorkspaceDesign") {
+    const value = validateWorkspaceDesignActionPayload(
+      await readJsonBody(request, WORKSPACE_DESIGN_ACTION_BODY_LIMIT)
+    );
+    reconcileRequestId(request, value);
+    if (new Set(["read_slice", "contracts"]).has(value.operation)) {
+      assertAuthoringScope(principal, "read");
+    } else {
+      assertAuthoringScope(principal, "write");
+    }
+    return {
+      data: await executeWorkspaceDesignAction({
+        adapter,
+        principal,
+        workspaceId: route.workspaceId,
+        ...value
+      }),
+      requestId: value.requestId || null
+    };
+  }
   if (route.name === "mutateWorkspace") {
     assertAuthoringScope(principal, "write");
     const value = await payload(request, validateWorkspaceMutationPayload);
+    const mutationOptions = {
+      principal,
+      workspaceId: route.workspaceId,
+      ...value
+    };
+    const replay = typeof adapter.replayWorkspaceMutation === "function"
+      ? () => adapter.replayWorkspaceMutation(mutationOptions)
+      : async () => null;
+    const replayed = await replay();
+    if (replayed) {
+      return { data: replayed, requestId: value.requestId };
+    }
+    try {
+      await validateWorkspaceCardDesignAccess({
+        adapter,
+        principal,
+        workspaceId: route.workspaceId,
+        expectedRevision: value.expectedRevision,
+        operation: value.operation,
+        arguments: value.arguments
+      });
+    } catch (cause) {
+      if (!(cause instanceof AuthoringApiError) || cause.status !== 409) throw cause;
+      const racedReplay = await replay();
+      if (racedReplay) return { data: racedReplay, requestId: value.requestId };
+      throw cause;
+    }
+    let result;
+    try {
+      result = await adapter.mutateWorkspace(mutationOptions);
+    } catch (cause) {
+      if (!(cause instanceof AuthoringApiError) || cause.status !== 409) throw cause;
+      const racedReplay = await replay();
+      if (racedReplay) return { data: racedReplay, requestId: value.requestId };
+      throw cause;
+    }
     return {
-      data: await adapter.mutateWorkspace({
-        principal, workspaceId: route.workspaceId, ...value
-      }),
+      data: result,
       requestId: value.requestId
     };
   }

@@ -8,7 +8,7 @@ import {
   verifyHostedBackend
 } from "../../scripts/verifyHostedBackend.mjs";
 
-const EXPECTED_REVISION = "20260812164000";
+const EXPECTED_REVISION = "20260815230000";
 const EXPECTED_CONTRACT_VERSION = 1;
 const PUBLIC_KEY = "sb_publishable_test-public-value";
 const FEATURES = [
@@ -80,7 +80,9 @@ const FEATURES = [
   "strict-catalog-root-reuse-v1",
   "current-catalog-root-resolution-v1",
   "discard-unpublished-catalog-materialization-v1",
-  "flat-runtime-manifest-v1"
+  "flat-runtime-manifest-v1",
+  "parameterized-authoring-design-v1",
+  "authoring-blueprint-artifact-receipt-v1"
 ];
 
 function response(status, body, headers = {}) {

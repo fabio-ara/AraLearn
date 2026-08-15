@@ -299,10 +299,17 @@ function coverage(candidates, intent) {
     ...intent.operationIds,
     ...intent.knowledgeObjects
   ].join(", ") || "representação solicitada";
+  if (!best) {
+    return {
+      status: "blocked",
+      desiredResource,
+      chatDisclosure: `O conjunto de resources disponível não contém uma representação autorizada para ${desiredResource}. Registre a limitação e aguarde outra decisão antes de materializar.`
+    };
+  }
   return {
-    status: best?.fit || "substitute",
+    status: best.fit,
     desiredResource,
-    chatDisclosure: best?.fit === "substitute"
+    chatDisclosure: best.fit === "substitute"
       ? `Usei ${best.label} como aproximação porque o catálogo instalado não contém uma representação exata para ${desiredResource}.`
       : null
   };
@@ -601,6 +608,286 @@ export function createResourceCatalog(registry) {
     };
   }
 
+  function assessCandidate(request, rawIntent = {}) {
+    const { packageId, version } = requestIdentity(request);
+    const profile = getProfile(packageId, version);
+    if (!profile) {
+      return {
+        contract: CATALOG_CONTRACT,
+        catalogVersion,
+        status: "not_found",
+        packageId,
+        ...(version ? { version } : {})
+      };
+    }
+    const { intent, candidates } = rankedCandidates([profile], {
+      ...rawIntent,
+      limit: 1
+    });
+    const candidate = candidates[0] || null;
+    return {
+      contract: CATALOG_CONTRACT,
+      catalogVersion,
+      status: candidate ? "assessed" : "incompatible_slot",
+      intent,
+      candidate
+    };
+  }
+
+  function restrict({
+    packageRefs,
+    authorizeCandidate = null,
+    authorizeComposition = null
+  } = {}) {
+    if (!Array.isArray(packageRefs)) {
+      throw new TypeError("A visão restrita exige uma lista confiável de package@version.");
+    }
+    if (authorizeCandidate != null && typeof authorizeCandidate !== "function") {
+      throw new TypeError("authorizeCandidate precisa ser uma função interna.");
+    }
+    if (authorizeComposition != null && typeof authorizeComposition !== "function") {
+      throw new TypeError("authorizeComposition precisa ser uma função interna.");
+    }
+    const allowedKeys = new Set();
+    packageRefs.forEach((request, index) => {
+      const { packageId, version } = requestIdentity(request);
+      if (!packageId || !version) {
+        throw new RangeError(`packageRefs[${index}] precisa identificar package e versão exatos.`);
+      }
+      const key = `${packageId}@${version}`;
+      if (!byIdentity.has(key)) {
+        throw new RangeError(`ResourceSet referencia package indisponível: ${key}.`);
+      }
+      allowedKeys.add(key);
+    });
+    const selectedProfiles = profiles.filter((profile) => (
+      allowedKeys.has(`${profile.packageId}@${profile.version}`)
+    ));
+
+    function restrictedProfile(packageId, version = "") {
+      const normalizedId = String(packageId || "").trim();
+      const normalizedVersion = String(version || "").trim();
+      const profile = normalizedVersion
+        ? selectedProfiles.find((candidate) => (
+            candidate.packageId === normalizedId && candidate.version === normalizedVersion
+          )) || null
+        : latestProfile(selectedProfiles, normalizedId);
+      return profile ? clone(profile) : null;
+    }
+
+    function assertAllowedRequests(requests) {
+      return list(requests).map((request) => {
+        const identity = requestIdentity(request);
+        const profile = restrictedProfile(identity.packageId, identity.version);
+        if (!profile) {
+          const suffix = identity.version ? `@${identity.version}` : "";
+          throw new RangeError(
+            `Package ${identity.packageId || "desconhecido"}${suffix} não pertence ao ResourceSet efetivo.`
+          );
+        }
+        return { identity, profile };
+      });
+    }
+
+    function restrictedExplore({ slot = "" } = {}) {
+      if (slot && !new Set(["content", "response", "feedback"]).has(slot)) {
+        throw new RangeError("slot desconhecido.");
+      }
+      const selected = selectedProfiles.filter((profile) => (
+        !slot || profile.slots.includes(slot)
+      ));
+      return {
+        contract: CATALOG_CONTRACT,
+        catalogVersion,
+        policyVersion: POLICY_VERSION,
+        policy: clone(RESOURCE_SELECTION_POLICY),
+        packageCount: selected.length,
+        families: RESOURCE_FAMILIES.map((family) => ({
+          ...family,
+          count: selected.filter(({ familyIds }) => familyIds.includes(family.id)).length
+        })).filter(({ count }) => count > 0),
+        facets: {
+          disciplines: facetRecords(RESOURCE_VOCABULARIES.disciplines, selected, "disciplineIds"),
+          structures: facetRecords(RESOURCE_VOCABULARIES.structures, selected, "structureIds"),
+          operations: facetRecords(RESOURCE_VOCABULARIES.operations, selected, "operationIds"),
+          practiceModes: facetRecords(RESOURCE_VOCABULARIES.practiceModes, selected, "practiceModeIds")
+        }
+      };
+    }
+
+    function restrictedSearch(rawIntent = {}) {
+      const { intent, candidates } = rankedCandidates(selectedProfiles, rawIntent);
+      const authorized = candidates.flatMap((candidate) => {
+        if (!authorizeCandidate) return [candidate];
+        const authorization = authorizeCandidate({
+          candidate: clone(candidate),
+          intent: clone(intent),
+          profile: restrictedProfile(candidate.packageId, candidate.version)
+        });
+        if (!authorization) return [];
+        return [{ ...candidate, ...clone(authorization) }];
+      });
+      const restrictedCoverage = coverage(authorized, intent);
+      if (authorized[0]?.fit === "versatile") {
+        restrictedCoverage.chatDisclosure = `O ResourceSet efetivo autoriza ${authorized[0].label} como representação versátil, não como equivalente canônico. Registre a limitação indicada.`;
+      } else if (authorized[0]?.fit === "substitute") {
+        restrictedCoverage.chatDisclosure = `O ResourceSet efetivo autoriza ${authorized[0].label} somente como aproximação. Registre a limitação indicada e não declare equivalência.`;
+      }
+      return {
+        contract: CATALOG_CONTRACT,
+        catalogVersion,
+        coverage: restrictedCoverage,
+        candidates: authorized.slice(0, intent.limit)
+      };
+    }
+
+    function restrictedAssessCandidate(request, rawIntent = {}) {
+      const [{ identity, profile }] = assertAllowedRequests([request]);
+      const assessment = assessCandidate(identity, rawIntent);
+      if (assessment.status !== "assessed" || !assessment.candidate) {
+        return assessment;
+      }
+      if (!authorizeCandidate) {
+        return { ...assessment, status: "authorized" };
+      }
+      const authorization = authorizeCandidate({
+        candidate: clone(assessment.candidate),
+        intent: clone(assessment.intent),
+        profile: clone(profile)
+      });
+      return authorization
+        ? {
+            ...assessment,
+            status: "authorized",
+            candidate: { ...assessment.candidate, ...clone(authorization) }
+          }
+        : { ...assessment, status: "blocked" };
+    }
+
+    function restrictedInspect(requests) {
+      const values = list(requests);
+      validateLimit(values.length, 1, INSPECT_LIMIT, "A quantidade de packages");
+      const allowed = assertAllowedRequests(values);
+      return {
+        contract: CATALOG_CONTRACT,
+        catalogVersion,
+        items: allowed.map(({ profile }) => ({ status: "ok", profile }))
+      };
+    }
+
+    function restrictedContracts(requests) {
+      const values = list(requests);
+      validateLimit(values.length, 1, CONTRACT_LIMIT, "A quantidade de contratos");
+      const allowed = assertAllowedRequests(values);
+      return {
+        contract: CATALOG_CONTRACT,
+        catalogVersion,
+        items: allowed.map(({ profile }) => ({
+          status: "ok",
+          packageId: profile.packageId,
+          version: profile.version,
+          definition: registry.getAuthoringContract(profile.packageId, profile.version)
+        }))
+      };
+    }
+
+    function availabilityErrors(card) {
+      return allCardInstances(card).flatMap(({ instance, slot, index }) => {
+        const packageId = String(instance?.package || "");
+        const version = String(instance?.version || "");
+        const profile = restrictedProfile(packageId, version);
+        if (!profile) {
+          return [`$.card.${slot}[${index}]: ${packageId}@${version} não pertence ao ResourceSet efetivo.`];
+        }
+        if (!authorizeComposition) return [];
+        const result = authorizeComposition({
+          cardRole: String(card?.role || ""),
+          packageRef: { packageId, version },
+          profile,
+          slot
+        });
+        if (result?.allowed === true) return [];
+        return normalizedList(result?.errors?.length
+          ? result.errors
+          : [`${packageId}@${version} não está autorizado para o papel materializado.`]);
+      });
+    }
+
+    function restrictedValidateCard(card) {
+      const result = validateCard(card);
+      const errors = [...result.errors, ...availabilityErrors(card)];
+      return { ...result, valid: errors.length === 0, errors };
+    }
+
+    function restrictedAuditRepresentation(args = {}) {
+      const result = auditRepresentation(args);
+      const structural = restrictedValidateCard(args.card);
+      const selections = result.selections.map((selection) => {
+        if (!authorizeComposition) return selection;
+        const profile = restrictedProfile(selection.packageId, selection.version);
+        const authorization = profile ? authorizeComposition({
+          cardRole: String(args.card?.role || ""),
+          fit: selection.fit,
+          limitation: selection.reason,
+          packageRef: {
+            packageId: selection.packageId,
+            version: selection.version
+          },
+          profile,
+          slot: selection.slot
+        }) : null;
+        if (authorization?.allowed === true) {
+          return {
+            ...selection,
+            authorizedByResourceSetRef: clone(authorization.authorizedByResourceSetRef)
+          };
+        }
+        return {
+          ...selection,
+          fit: "substitute",
+          reason: authorization?.errors?.join(" ")
+            || "O package não pertence ao ResourceSet efetivo.",
+          missing: [...new Set([
+            ...selection.missing,
+            "availability:resource_set"
+          ])]
+        };
+      });
+      const overallFit = structural.valid
+        ? selections.reduce((current, selection) => (
+            FIT_ORDER[selection.fit] < FIT_ORDER[current] ? selection.fit : current
+          ), "canonical")
+        : "substitute";
+      const warnings = structural.valid
+        ? result.warnings
+        : [...new Set([
+            ...result.warnings,
+            ...structural.errors.filter((entry) => entry.includes("ResourceSet"))
+          ])];
+      return { ...result, structural, overallFit, selections, warnings };
+    }
+
+    function restrictedPreviewDescriptor(card) {
+      const result = previewDescriptor(card);
+      return { ...result, structural: restrictedValidateCard(card) };
+    }
+
+    return Object.freeze({
+      contract: CATALOG_CONTRACT,
+      catalogVersion,
+      policyVersion: POLICY_VERSION,
+      getProfile: restrictedProfile,
+      explore: restrictedExplore,
+      search: restrictedSearch,
+      assessCandidate: restrictedAssessCandidate,
+      inspect: restrictedInspect,
+      contracts: restrictedContracts,
+      validateCard: restrictedValidateCard,
+      auditRepresentation: restrictedAuditRepresentation,
+      previewDescriptor: restrictedPreviewDescriptor
+    });
+  }
+
   return Object.freeze({
     contract: CATALOG_CONTRACT,
     catalogVersion,
@@ -610,11 +897,13 @@ export function createResourceCatalog(registry) {
     getProfile,
     explore,
     search,
+    assessCandidate,
     inspect,
     contracts,
     validateCard,
     auditRepresentation,
-    previewDescriptor
+    previewDescriptor,
+    restrict
   });
 }
 

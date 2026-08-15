@@ -957,7 +957,15 @@ const CONTRACT_DEFINITIONS = {
             fit: { enum: ["canonical", "versatile", "substitute"] },
             rationale: NON_EMPTY_STRING,
             limitations: STRING_LIST
-          }
+          },
+          allOf: [{
+            if: {
+              required: ["fit"],
+              properties: { fit: { const: "canonical" } }
+            },
+            then: { properties: { limitations: { maxItems: 0 } } },
+            else: { properties: { limitations: { minItems: 1 } } }
+          }]
         }
       },
       materializedResources: {
@@ -1669,16 +1677,27 @@ export function evaluateInstructionalDesignBundle(raw) {
     if (selection?.role === "response" && authorizer?.selectionConstraints?.allowResponsePackages !== true) {
       errors.push(`materializationManifest.resourceSelections[${index}] usa response package não permitido pelo ResourceSet autorizador.`);
     }
-    if (selection?.fit === "substitute") {
+    if (selection?.fit === "canonical" && list(selection?.limitations).length) {
+      errors.push(`materializationManifest.resourceSelections[${index}] declara limitação artificial para fit canonical.`);
+    }
+    if (["versatile", "substitute"].includes(selection?.fit)) {
+      const fit = selection.fit;
+      const allowedByPolicy = fit === "versatile"
+        ? [
+            "allow_versatile_with_limitation",
+            "allow_substitute_with_limitation"
+          ].includes(effectiveFallbackPolicy)
+        : effectiveFallbackPolicy === "allow_substitute_with_limitation";
       if (!effectiveFallbackPolicy) {
-        errors.push(`materializationManifest.resourceSelections[${index}] usa substitute sem política efetiva de representação.`);
-      } else if (effectiveFallbackPolicy !== "allow_substitute_with_limitation") {
-        errors.push(`materializationManifest.resourceSelections[${index}] usa substitute apesar da política efetiva ${effectiveFallbackPolicy}.`);
+        errors.push(`materializationManifest.resourceSelections[${index}] usa ${fit} sem política efetiva de representação.`);
+      } else if (!allowedByPolicy) {
+        errors.push(`materializationManifest.resourceSelections[${index}] usa ${fit} apesar da política efetiva ${effectiveFallbackPolicy}.`);
       }
       if (authorizer?.selectionConstraints?.onNoAdequateRepresentation === "block") {
-        errors.push(`materializationManifest.resourceSelections[${index}] usa substitute apesar de bloqueio do ResourceSet autorizador.`);
-      } else if (!list(selection?.limitations).length) {
-        errors.push(`materializationManifest.resourceSelections[${index}] usa substitute sem registrar limitação.`);
+        errors.push(`materializationManifest.resourceSelections[${index}] usa ${fit} apesar de bloqueio do ResourceSet autorizador.`);
+      }
+      if (!list(selection?.limitations).length) {
+        errors.push(`materializationManifest.resourceSelections[${index}] usa ${fit} sem registrar limitação.`);
       }
     }
   });

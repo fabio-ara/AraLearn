@@ -19,6 +19,7 @@ const APPLICATION_AUTHORING_ACTIONS = new Set([
   "listarWorkspacesDeAutoria",
   "criarWorkspaceDeAutoria",
   "lerWorkspaceDeAutoria",
+  "gerirDesenhoInstrucional",
   "gerirContinuidadeDaAutoria",
   "criarEstruturaNoWorkspace",
   "salvarCardsNaMicrossequencia",
@@ -183,7 +184,7 @@ export function createAuthoringActionHandler({
             await sha256Hex(authentication.credential),
             { deadlineAt }
           );
-      if (!authoringMcpToolIsAllowed(actionName, principal)) {
+      if (!authoringMcpToolIsAllowed(actionName, principal, rawArguments)) {
         throw new AuthoringApiError(
           403,
           "insufficient_scope",

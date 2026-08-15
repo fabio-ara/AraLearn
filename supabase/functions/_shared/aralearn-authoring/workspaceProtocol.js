@@ -30,6 +30,48 @@ const STRUCTURE_MICROSEQUENCE_FIELDS = Object.freeze([
 const STRUCTURE_PART_LIMIT = 40;
 const PACKAGE_ID_PATTERN = /^aralearn\.(?:resource|response)\.[a-z0-9_]+$/u;
 const SEMVER_PATTERN = /^(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)$/u;
+const DESIGN_ACTION_OPERATIONS = new Set([
+  "read_slice",
+  "contracts",
+  "save_analysis",
+  "set_parameter",
+  "remove_parameter",
+  "save_resource_set",
+  "resolve_effective",
+  "save_blueprint",
+  "register_manifest"
+]);
+const DESIGN_SLICE_VIEWS = new Set([
+  "overview", "analysis", "parameters", "blueprint", "binding", "materialization"
+]);
+const DESIGN_CONTRACT_NAMES = new Set([
+  "instructional_analysis",
+  "design_parameter_definition",
+  "design_parameter_assignment",
+  "effective_design_snapshot",
+  "materialization_manifest",
+  "resource_set",
+  "action_read_slice",
+  "action_contracts",
+  "action_save_analysis",
+  "action_set_parameter",
+  "action_remove_parameter",
+  "action_save_resource_set",
+  "action_resolve_effective",
+  "action_save_blueprint",
+  "action_register_manifest"
+]);
+const DESIGN_ACTION_PAYLOAD_LIMITS = Object.freeze({
+  save_analysis: 256 * 1024,
+  set_parameter: 64 * 1024,
+  remove_parameter: 64 * 1024,
+  save_resource_set: 512 * 1024,
+  resolve_effective: 64 * 1024,
+  save_blueprint: 768 * 1024,
+  register_manifest: 1024 * 1024
+});
+
+export const WORKSPACE_DESIGN_ACTION_BODY_LIMIT = 1_100_000;
 
 function fail(code, message, details = undefined) {
   throw new AuthoringApiError(422, code, message, details);
@@ -1317,7 +1359,73 @@ export function validateWorkspaceObservationActionPayload(payload) {
   };
 }
 
+function jsonUtf8Size(value) {
+  return new TextEncoder().encode(JSON.stringify(value)).byteLength;
+}
+
+export function validateWorkspaceDesignActionPayload(payload) {
+  object(payload);
+  const operation = requiredText(payload, "operation", 40);
+  if (!DESIGN_ACTION_OPERATIONS.has(operation)) {
+    fail("invalid_design_operation", "operation de desenho é inválida.");
+  }
+  if (operation === "contracts") {
+    only(payload, ["operation", "contractName"]);
+    const contractName = requiredText(payload, "contractName", 80);
+    if (!DESIGN_CONTRACT_NAMES.has(contractName)) {
+      fail("invalid_design_contract", "contractName de desenho é inválido.");
+    }
+    return { operation, contractName };
+  }
+  if (operation === "read_slice") {
+    only(payload, ["operation", "microsequencePath", "view"]);
+    const view = payload.view == null ? "overview" : requiredText(payload, "view", 40);
+    if (!DESIGN_SLICE_VIEWS.has(view)) {
+      fail("invalid_design_slice_view", "view de desenho é inválida.");
+    }
+    return {
+      operation,
+      view,
+      microsequencePath: workspaceEntityPath(
+        payload.microsequencePath,
+        "microsequencePath",
+        4
+      )
+    };
+  }
+  only(payload, [
+    "operation", "requestId", "expectedRevision", "microsequencePath", "payload"
+  ]);
+  const operationPayload = object(payload.payload, "payload.payload");
+  const payloadLimit = DESIGN_ACTION_PAYLOAD_LIMITS[operation];
+  if (jsonUtf8Size(operationPayload) > payloadLimit) {
+    fail(
+      "design_payload_too_large",
+      `payload da operação ${operation} excede o teto técnico de ${payloadLimit} bytes.`,
+      { operation, maximumBytes: payloadLimit }
+    );
+  }
+  return {
+    operation,
+    requestId: workspaceRequestId(payload.requestId),
+    expectedRevision: positiveRevision(payload),
+    microsequencePath: workspaceEntityPath(
+      payload.microsequencePath,
+      "microsequencePath",
+      4
+    ),
+    payload: operationPayload
+  };
+}
+
 export function workspaceRoute(method, path) {
+  let designMatch = path.match(/^\/v1\/workspaces\/([^/]+)\/design\/actions$/u);
+  if (designMatch && method === "POST") {
+    return {
+      name: "manageWorkspaceDesign",
+      workspaceId: workspaceUuid(designMatch[1], "workspaceId")
+    };
+  }
   let observationMatch = path.match(/^\/v1\/workspaces\/([^/]+)\/observations\/actions$/u);
   if (observationMatch && method === "POST") {
     return {

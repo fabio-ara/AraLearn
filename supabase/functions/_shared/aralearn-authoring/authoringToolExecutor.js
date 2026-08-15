@@ -3,6 +3,7 @@ import { executeAuthoringRoute } from "./authoringRouter.js";
 import { prepareAuthoringContext } from "./authoringKnowledge.js";
 import { AuthoringApiError } from "./errors.js";
 import { RESOURCE_CATALOG } from "../aralearn/runtime/resources/catalog/resourceCatalog.js";
+import { resolveResourceCatalogAccess } from "./resourceCatalogAccess.js";
 import {
   authoringMcpToolsForPrincipal,
   mapAuthoringMcpToolCall,
@@ -37,39 +38,49 @@ function parseCardJson(cardJson) {
   }
 }
 
-function resourceLibraryResult(args) {
+async function resourceLibraryResult({ adapter, principal, args, deadlineAt }) {
   const {
     operation,
     packages = [],
     cardJson = null,
     query = "",
     intent = "",
+    workspaceId = "",
+    snapshotRef = null,
     ...facets
   } = args;
+  const access = await resolveResourceCatalogAccess({
+    adapter,
+    principal,
+    workspaceId,
+    snapshotRef,
+    deadlineAt
+  });
+  const catalog = access.catalog;
   let result;
   if (operation === "explore") {
-    result = RESOURCE_CATALOG.explore({ slot: args.slot });
+    result = catalog.explore({ slot: args.slot });
   } else if (operation === "search") {
-    result = RESOURCE_CATALOG.search({
+    result = catalog.search({
       ...facets,
       query,
       limit: facets.limit ?? 8
     });
   } else if (operation === "inspect") {
-    result = RESOURCE_CATALOG.inspect(packages);
+    result = catalog.inspect(packages);
   } else if (operation === "contracts") {
-    if (packages.length > 4) {
+    if (packages.length > 1) {
       throw new AuthoringApiError(
         422,
         "resource_contract_batch_too_large",
-        "contracts aceita no máximo quatro packages por chamada."
+        "contracts aceita um package exato por chamada."
       );
     }
-    result = RESOURCE_CATALOG.contracts(packages);
+    result = catalog.contracts(packages);
   } else if (operation === "validate_card") {
-    result = RESOURCE_CATALOG.validateCard(parseCardJson(cardJson));
+    result = catalog.validateCard(parseCardJson(cardJson));
   } else if (operation === "audit_representation") {
-    result = RESOURCE_CATALOG.auditRepresentation({
+    result = catalog.auditRepresentation({
       card: parseCardJson(cardJson),
       intent: {
         ...facets,
@@ -77,7 +88,7 @@ function resourceLibraryResult(args) {
       }
     });
   } else if (operation === "preview_card") {
-    result = RESOURCE_CATALOG.previewDescriptor(parseCardJson(cardJson));
+    result = catalog.previewDescriptor(parseCardJson(cardJson));
   } else {
     throw new AuthoringApiError(
       422,
@@ -88,6 +99,7 @@ function resourceLibraryResult(args) {
   return {
     contract: "aralearn.resource-library.v1",
     operation,
+    availability: access.availability,
     result
   };
 }
@@ -153,7 +165,12 @@ export async function executeAuthoringTool({
       return validatedSuccess(
         name,
         operation.requestId,
-        resourceLibraryResult(operation.body)
+        await resourceLibraryResult({
+          adapter,
+          principal,
+          args: operation.body,
+          deadlineAt
+        })
       );
     } catch (error) {
       if (error instanceof AuthoringApiError) throw error;

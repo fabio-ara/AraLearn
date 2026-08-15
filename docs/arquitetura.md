@@ -540,6 +540,31 @@ executor. Protocolos de autenticação diferentes não significam motores de
 autoria diferentes. A autoridade efetiva continua sendo calculada pela conta
 conectada e pelo alvo da operação.
 
+O fluxo GPT–AraLearn preserva quatro responsabilidades separadas:
+
+| Camada | Responsabilidade |
+| --- | --- |
+| prompt de sistema | protocolo e invariantes estáveis; não enumera parâmetros nem teoria |
+| knowledge JIT | ciência, critérios, exemplos e políticas recuperáveis para o passo corrente |
+| MCP/Action | operações tipadas de leitura e mutação, com revisão, idempotência e autoridade |
+| workspace | estado persistente canônico; conversa e cache offline não são autoridade |
+
+`gerirDesenhoInstrucional` expõe o mesmo serviço fechado pelos dois
+adaptadores. `read_slice` entrega o menor contexto suficiente de uma
+microssequência; as demais operações consultam um contrato promovido, gravam
+análise e assignments, persistem `ResourceSet`, resolvem o snapshot, vinculam o
+blueprint v2 e registram o manifesto. O ciclo é retomável sem transcript e
+mantém a ordem análise → parâmetros → snapshot → disponibilidade → descoberta
+progressiva → blueprint → cards derivados → manifesto. Quando Auto precisa de
+um conjunto novo, o servidor expande facetas contra o catálogo instalado e
+congela referências exatas antes de o assignment citá-lo.
+
+Na biblioteca, `workspaceId` e `snapshotRef` formam contexto confiável. A busca
+é filtrada pelos conjuntos efetivos, cada chamada `contracts` devolve somente
+uma versão e a seleção identifica o conjunto que autorizou package, papel e
+ajuste. Sem contexto, o modo legado é explicitamente irrestrito e não prova
+conformidade com desenho parametrizado.
+
 ## Mapa do código
 
 | Diretório | Responsabilidade arquitetural |
@@ -563,14 +588,19 @@ conectada e pelo alvo da operação.
 Os testes automatizados demonstram contratos executáveis, isolamento entre
 contas nos cenários cobertos, troca atômica da réplica, validação de hashes,
 recusa de revisões obsoletas, resolução determinística do desenho, fronteiras de
-`ResourceSet`, funcionamento offline em jornadas definidas e ausência de
-segredos nos artefatos examinados.
+`ResourceSet`, integração MCP/Action do slice e das mutações tipadas,
+funcionamento offline em jornadas definidas e ausência de segredos nos
+artefatos examinados.
 
 Eles não demonstram adequação pedagógica universal, qualidade semântica do
 blueprint ou da materialização, usabilidade com todas as populações,
 disponibilidade prolongada, custo real em escala ou equivalência com outro
-backend. A exposição do novo estado por MCP, Action e interface também pertence
-às etapas posteriores. Essas afirmações exigem métodos próprios de avaliação. A
+backend. A #104 demonstra a exposição por MCP e Action, mas a superfície visual
+pertence à #105 e a auditoria semântico-instrucional completa à #106. Os
+cenários A–H são regressões determinísticas de engenharia, não validação
+educacional. A regressão integral fica concentrada no fechamento da #109;
+etapas intermediárias executam testes proporcionais ao risco. Essas afirmações
+exigem métodos próprios de avaliação. A
 [Matriz de conformidade técnica](matriz-conformidade-tecnica.md) relaciona cada
 propriedade com código, migrations e testes; [Persistência relacional e
 sincronização](persistencia-relacional.md) aprofunda a réplica, a outbox e as

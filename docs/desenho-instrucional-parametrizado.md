@@ -10,11 +10,12 @@ unidades operacionais e, somente então, contratos de software.
 
 Os contratos descritos aqui possuem schemas promovidos, validadores de runtime,
 resolução determinística, persistência relacional e réplica local desde a #103.
-Ainda não constituem ferramenta MCP, Action, interface de autoria ou formato de
-publicação; essas superfícies pertencem às etapas seguintes. Testes estruturais
-e de persistência demonstram comportamento técnico nos casos cobertos; não
-demonstram que os parâmetros medem aprendizagem nem que seus valores são
-pedagogicamente ótimos.
+Desde a #104, uma ferramenta agrupada os expõe pelo MCP e pela Action no fluxo
+JIT por microssequência. A interface de Autoria pertence à #105 e o motor
+completo de auditoria, findings e reparo à #106; os contratos continuam fora do
+formato de publicação. Testes estruturais e de integração demonstram
+comportamento técnico nos casos cobertos; não demonstram que os parâmetros
+medem aprendizagem nem que seus valores são pedagogicamente ótimos.
 
 ## Quatro estatutos que não se confundem
 
@@ -147,6 +148,40 @@ resolução dos parâmetros.
 Cards, palavras, caracteres e total de resources só existem como métricas
 derivadas depois da materialização. Não comandam a decomposição do objetivo.
 
+### Integração progressiva no GPT
+
+O system prompt conserva apenas protocolo, invariantes e disciplina de uso das
+ferramentas. Definições, critérios, exemplos e contraexemplos ficam em chunks
+recuperáveis de knowledge; MCP e Action leem e escrevem o estado autorizado; o
+workspace persiste o resultado canônico. Nenhuma dessas camadas usa a conversa
+como banco de dados.
+
+Depois do planejamento estrutural — e da aprovação, quando o mandato ou uma
+decisão material exigir —, `gerirDesenhoInstrucional` opera uma
+microssequência por vez. Dentro da Parte autorizada, a conclusão de uma unidade
+não cria nova parada automática:
+
+```text
+read_slice
+  → knowledge JIT
+  → save_analysis
+  → bootstrap/save_resource_set quando Auto precisar de conjunto novo
+  → set_parameter
+  → resolve_effective
+  → descoberta restrita pelo snapshot
+  → save_blueprint
+  → composição dos cards em memória
+  → validate_card + audit_representation
+  → persistência e releitura
+  → register_manifest
+```
+
+O bootstrap por facetas congela referências exatas antes do assignment que as
+referencia, mas ainda não autoriza seleção. A autoridade do conjunto começa no
+snapshot efetivo. Overrides manuais e locks de pesquisa já persistidos não são
+substituídos por Auto; uma mudança em linguagem natural é traduzida para o
+mesmo assignment estruturado, sem pedir JSON ou ids técnicos.
+
 ## Parâmetros defensáveis como operacionalizações
 
 Os parâmetros abaixo são candidatos de desenho do AraLearn. Nenhum deles é uma
@@ -249,15 +284,19 @@ necessária, a política do conjunto bloqueia ou registra a lacuna e suas
 consequências. O modelo não seleciona fora do conjunto e não apresenta
 substituição como equivalência.
 
-Na operacionalização v1, `versatile` ainda designa representação adequada que
-preserva intenção e estrutura; não é rebaixado automaticamente a substituto.
-Uma seleção `substitute` só é aceita quando o valor efetivo de
-`representation_fallback_policy` permite substituição com limitação **e** o
-`ResourceSet` autorizador manda registrar a lacuna; qualquer bloqueio prevalece.
-A distinção entre `block` e `allow_versatile_with_limitation` diante de uma
-representação desejada mais específica requer que essa intenção seja registrada
-explicitamente pelo blueprint/auditoria. Até esse vínculo existir, o sistema não
-inventa uma falta nem atribui equivalência; ambos bloqueiam `substitute`.
+Na operacionalização v1, `block` rejeita `versatile` e `substitute`;
+`allow_versatile_with_limitation` pode admitir `versatile`, sempre com
+limitação, e rejeita `substitute`; `allow_substitute_with_limitation` pode
+admitir ambos, também com limitação. O `ResourceSet` autorizador ainda pode ser
+mais restritivo. `canonical` não recebe limitação artificial. A intenção
+representacional precisa estar explícita no blueprint/auditoria; o sistema não
+inventa falta nem atribui equivalência.
+
+No catálogo remoto, `explore` e `search` permanecem compactos, `inspect` aceita
+até oito candidatos e `contracts` entrega exatamente uma versão por chamada.
+Com `workspaceId` e `snapshotRef`, a consulta só enxerga os packages permitidos;
+sem esse contexto, o modo legado irrestrito não demonstra conformidade com o
+desenho parametrizado.
 
 Esse desenho permite condições experimentais com bibliotecas diferentes sem
 obrigar o pesquisador a escolher manualmente o resource de cada card. O
@@ -340,7 +379,9 @@ verificar fechamento de referências, tipos não escalares, versionamento,
 distinção entre disponibilidade e uso e derivação reproduzível de métricas.
 
 Na sequência de Autoria, cada issue executa testes proporcionais ao seu escopo:
-a #103 concentra contratos, resolvedor, binding, persistência SQL e offline. A
+a #103 concentra contratos, resolvedor, binding, persistência SQL e offline; a
+#104 cobre seleção JIT de knowledge, prompts, MCP/Action, acesso ao catálogo e
+os cenários A–H como regressão de engenharia. A
 regressão integral de código, banco, integrações, UI e artefatos distribuídos é
 concentrada no fechamento da #109. Falha focada não é adiada; ausência de uma
 suíte transversal numa etapa intermediária não deve ser descrita como suporte

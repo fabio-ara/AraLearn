@@ -146,19 +146,21 @@ questionário fixo de diagnóstico.
 
 ### Planejar antes de produzir
 
-O planejamento pedagógico precede o custo de geração. Para cada
-microssequência, ele explicita condições de aprendizagem pertinentes, exigências
-do conteúdo, dificuldades previstas e respostas de desenho vinculadas às
-dificuldades, aos passos/packages que as concretizam e a critérios observáveis. A
-condição descreve o cenário; a resposta é uma decisão local sobre explicação,
-exemplo, representação, prática, apoio ou sequência. Uma não determina
-automaticamente a outra.
+O planejamento estrutural precede o custo de geração. Ele delimita objetivos,
+cobertura, dependências, microssequências e Partes e conserva apenas as
+hipóteses de contexto necessárias para a decisão humana. A análise instrucional
+detalhada, os parâmetros e o blueprint são resolvidos just-in-time para uma
+microssequência imediatamente antes de materializá-la, salvo locks de pesquisa
+fixados previamente. A condição descreve o cenário; a resposta é uma decisão
+local sobre explicação, exemplo, representação, prática, apoio ou sequência.
+Uma não determina automaticamente a outra.
 
 A quantidade de cards não é escolhida por cota fixa: decorre dos conceitos,
 pré-requisitos, dificuldades, respostas aprovadas, formas de prática e
 necessidade de revisão. A pessoa autora examina essa síntese antes da
-materialização. Depois da aprovação, a produção ocorre por microssequência, em
-lotes que podem ser validados e retomados.
+materialização quando o mandato ou uma decisão material exigir. Dentro da Parte
+já autorizada, a produção ocorre por microssequência, em lotes que podem ser
+validados e retomados, sem nova confirmação automática a cada unidade.
 
 ### Resolver parâmetros antes do blueprint
 
@@ -182,6 +184,19 @@ definições, assignments, caminho e revisões exatos. O blueprint pedagógico v
 não muda de formato: um binding versionado relaciona suas camadas, demandas,
 respostas e passos às unidades e exigências da análise, sem duplicar o plano.
 
+Quando Auto precisa referenciar um `ResourceSet` ainda inexistente, o servidor
+faz antes um bootstrap por famílias e facetas, congela as referências exatas e
+persiste o conjunto. Esse bootstrap não autoriza seleção. Depois o assignment
+referencia a versão salva, o snapshot resolve a disponibilidade efetiva e só
+então começa a descoberta autoritativa.
+
+A ferramenta agrupada `gerirDesenhoInstrucional` mantém poucas operações
+coesas: `read_slice`, `contracts`, `save_analysis`, `save_resource_set`,
+`set_parameter`, `remove_parameter`, `resolve_effective`, `save_blueprint` e
+`register_manifest`. Cada escrita usa CAS e idempotência. O slice inclui apenas
+brief, objetivo, dependências, fontes, análise, assignments/locks, definições
+pertinentes, snapshot, conjuntos, blueprint, manifesto e findings aplicáveis.
+
 ### Separar auditoria e reparo
 
 Auditar e corrigir na mesma chamada cria um conflito: o mesmo agente pode
@@ -203,7 +218,7 @@ consulta usa uma única biblioteca com operações progressivas:
 1. `explore` apresenta famílias e facetas;
 2. `search` procura representações pela intenção;
 3. `inspect` compara perfis sem carregar schemas;
-4. `contracts` devolve somente os contratos exatos escolhidos;
+4. `contracts` devolve exatamente um contrato versionado por chamada;
 5. `validate_card` verifica estrutura;
 6. `audit_representation` verifica ajuste declarado e limitações;
 7. `preview_card` fornece um descritor, sem fingir uma renderização visual.
@@ -242,8 +257,11 @@ recebe conhecimento recuperado de uma coleção externa ao contexto-base
 ([Lewis et al. (2020)](referencias.md#ref-lewis2020rag)).
 
 No AraLearn, a recuperação autoral atual é lexical, versionada e
-determinística. Ela seleciona até oito unidades pequenas; não usa embedding
-remoto nem banco vetorial. Essa escolha reduz infraestrutura, torna a seleção
+determinística. Ela seleciona até oito unidades pequenas por intenção e termos
+do recorte. Os chunks cobrem análise instrucional, granularidade semântica,
+elaboração explicativa, evidência e prática, tarefa profissional complexa,
+resolução, descoberta por `ResourceSet` e conformidade do desenho. Não usa
+embedding remoto nem banco vetorial. Essa escolha reduz infraestrutura, torna a seleção
 auditável e atende ao corpus controlado atual. Busca semântica vetorial seria
 justificada quando a escala, a variedade lexical e a avaliação demonstrarem
 vantagem suficiente para compensar custo, opacidade e manutenção adicionais.
@@ -335,10 +353,12 @@ semântica da explicação ou da prática. Auditoria por modelo pode encontrar e
 problemas, mas não substitui revisão disciplinar e pedagógica. A publicação no
 catálogo permanece uma decisão humana autorizada.
 
-Na etapa #103, contratos, resolvedor, persistência e réplica local são internos.
-As ferramentas MCP, a Action e a interface ainda não expõem as novas operações;
-essa ausência não autoriza usar conversa como fonte canônica ou editar o estado
-por JSON fora das fronteiras estruturadas.
+Na etapa #104, MCP e Action expõem o núcleo persistente pela ferramenta
+agrupada, e os pacotes distribuídos conservam o mesmo protocolo. A interface de
+Autoria ainda pertence à #105; o ciclo completo de auditoria e reparo, à #106.
+Essa fronteira não autoriza usar conversa como fonte canônica, editar JSON fora
+das operações estruturadas ou alegar auditoria semântica completa antes da
+etapa correspondente.
 
 Os envelopes e identificadores públicos são detalhados no [Contrato de
 conteúdo](aralearn-contract.md), e a operação remota aparece em [Autoria por

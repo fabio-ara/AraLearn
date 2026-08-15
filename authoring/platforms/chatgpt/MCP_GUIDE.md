@@ -89,7 +89,7 @@ idêntico e confira a revisão atual antes de iniciar outra tentativa.
 | `lerConteudoDoCurso` | Ler árvore, entidade ou documento de um curso acessível. |
 | `listarWorkspacesDeAutoria` | Localizar projetos em andamento. |
 | `lerWorkspaceDeAutoria` | Ler `resume`, `outline`, `entity` ou documento composto do workspace. |
-| `revisarMicroteoriasDoWorkspace` | Projetar microteorias, cobertura, checks, erros, resources, tópicos e quantidade de práticas. |
+| `gerirDesenhoInstrucional` | Ler o slice JIT, persistir análise/assignments, resolver snapshot e registrar blueprint ou manifesto. |
 | `listarCardsDaMicrossequencia` | Localizar os cards de uma unidade sem carregar o curso inteiro. |
 | `listarAlteracoesRecentesDoWorkspace` | Ler resumos recentes para orientação operacional. |
 
@@ -115,7 +115,7 @@ oferece uma operação para despejar todos os schemas:
 2. `search` relaciona intenção e candidatos, classificando a cobertura como
    `canonical`, `versatile` ou `substitute`;
 3. `inspect` compara até oito perfis;
-4. `contracts` devolve até quatro contratos exatos;
+4. `contracts` devolve exatamente um contrato por chamada;
 5. `validate_card` verifica schema, referências e compatibilidade do envelope;
 6. `audit_representation` distingue `semantic_fit`,
    `response_affordance` e `feedback_legibility`;
@@ -126,10 +126,9 @@ Escolha primeiro a representação pela intenção pedagógica e consulte seu
 contrato depois. Não codifique ids de package nem sintaxe interna do
 renderizador nas instruções do cliente.
 
-Se `search` devolver `coverage.status: "substitute"`, prossiga com o melhor
-candidato disponível e use brevemente o `chatDisclosure`. Esse aviso informa a
-limitação sem bloquear a produção e preserva a representação ideal na decisão
-autoral.
+Obedeça à política e ao ResourceSet efetivos. Quando uma aproximação for
+autorizada, preserve a limitação e o `chatDisclosure`; quando houver bloqueio,
+registre a indisponibilidade e não use package externo nem finja equivalência.
 
 ### Participação e observações
 
@@ -206,15 +205,21 @@ planejar não autoriza automaticamente a materialização.
 2. Procure cursos ou partes reutilizáveis e leia somente os recortes
    necessários.
 3. Crie o workspace vazio, caso ele ainda não exista.
-4. Registre a árvore planejada em lotes de até 40 entidades.
-5. Apresente o planejamento e aguarde aprovação ou ajuste.
-6. Grave a aprovação com `record_approved_plan`.
-7. Faça o blueprint didático antes de escolher os resources.
-8. Percorra `explore`, `search`, `inspect`, `contracts`, `validate_card` e
-   `audit_representation`.
-9. Salve uma microssequência por chamada e apenas dentro da Parte autorizada.
-10. Revise a projeção de microteorias, cobertura, práticas e resources.
-11. Apresente o resultado e proponha uma auditoria independente.
+4. Registre a árvore planejada em lotes de até 40 entidades. Peça aprovação ou
+   ajuste somente quando o mandato ou uma decisão material exigir; quando
+   houver, grave-a com `record_approved_plan`.
+5. Para uma microssequência, use `gerirDesenhoInstrucional` com `read_slice`,
+   knowledge JIT e `save_analysis`.
+6. Se Auto precisar de conjunto novo, faça bootstrap por facetas e
+   `save_resource_set`; depois use `set_parameter` e `resolve_effective`.
+7. Sob `workspaceId` e `snapshotRef`, percorra `explore`, `search`, `inspect` e
+   `contracts` para uma versão por chamada; grave o blueprint.
+8. Componha cards em memória, use `validate_card` e `audit_representation`,
+   salve uma microssequência, releia e só então use `register_manifest`.
+9. Revise a projeção de microteorias, cobertura, práticas e resources. Dentro
+   da Parte autorizada, avance sem nova confirmação apenas porque a unidade
+   terminou.
+10. Apresente o resultado e proponha uma auditoria independente.
 
 ### Resultado esperado
 

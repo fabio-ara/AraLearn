@@ -6,6 +6,17 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 
 ### Added
 
+- ferramenta agrupada `gerirDesenhoInstrucional` no MCP e na Action para ler o
+  slice JIT de uma microssequência, consultar um contrato promovido por vez e
+  persistir análise, assignments, `ResourceSet`, snapshot, blueprint e
+  manifesto pelas mesmas operações versionadas do backend;
+- oito chunks recuperáveis de knowledge para análise instrucional,
+  granularidade, elaboração, evidência e prática, tarefas profissionais,
+  resolução, descoberta sob `ResourceSet` e conformidade, com seleção
+  determinística por intenção e contexto;
+- regressão de engenharia versionada para os cenários multidisciplinares A–H
+  da #104, incluindo variação Auto local, preservação de override manual e
+  bloqueio por `research_lock`, sem alegação de validação educacional;
 - persistência relacional normalizada, imutável e versionada para análise
   instrucional, definições e atribuições de parâmetros, snapshots efetivos,
   `ResourceSet`, blueprints pedagógicos v2 e manifestos de materialização, com
@@ -40,6 +51,17 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 
 ### Changed
 
+- os system prompts distribuídos passam a conter somente protocolo e
+  invariantes estáveis; teoria, exemplos e o catálogo de parâmetros ficam no
+  knowledge JIT, enquanto o workspace persistido continua sendo a fonte
+  canônica entre sessões;
+- a materialização remota passa a seguir análise → bootstrap versionado de
+  `ResourceSet` quando necessário → assignments → snapshot → descoberta
+  restrita → blueprint → cards em memória → validação → persistência →
+  releitura → manifesto, sempre uma microssequência por vez;
+- `contracts` da biblioteca de resources entrega exatamente uma versão por
+  chamada; política e `ResourceSet` podem bloquear aproximações, que nunca são
+  tratadas como equivalência silenciosa;
 - o planejamento separa fontes e objetivo, análise instrucional,
   parâmetros, disponibilidade e seleção de resources, blueprint contextual e
   materialização; cards, palavras, caracteres e quantidade de resources passam

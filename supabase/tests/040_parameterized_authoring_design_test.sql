@@ -1,6 +1,6 @@
 begin;
 
-select plan(64);
+select plan(68);
 
 select has_table('private', 'authoring_design_parameter_definitions');
 select has_table('private', 'authoring_design_request_arguments');
@@ -113,8 +113,21 @@ select has_function(
   array['uuid','uuid','text','text']
 );
 select has_function(
+  'public', 'get_authoring_pedagogical_blueprint_artifact_v1',
+  array['uuid','uuid','text','text']
+);
+select has_function(
   'private', 'resolve_authoring_design_values_v1',
   array['uuid','text','text']
+);
+select has_function(
+  'private', 'enforce_authoring_manifest_selection_fallback_v1',
+  array[]::text[]
+);
+select has_trigger(
+  'private', 'authoring_manifest_resource_selections',
+  'authoring_manifest_selection_fallback_v1',
+  'seleções não canônicas passam pelo gate efetivo de representação'
 );
 select has_function(
   'private', 'prune_authoring_design_state_v1',
@@ -279,16 +292,25 @@ select ok(
 
 select ok(
   public.get_aralearn_runtime_manifest()->>'schemaRevision'
-    = '20260815193000'
+    = '20260815230000'
   and public.get_aralearn_runtime_manifest()->'features'
-    ? 'parameterized-authoring-design-v1',
-  'manifesto flat anuncia a revisão e a feature parametrizada'
+    ?& array[
+      'parameterized-authoring-design-v1',
+      'authoring-blueprint-artifact-receipt-v1'
+    ],
+  'manifesto flat anuncia desenho parametrizado e retomada do blueprint'
 );
 
 select function_privs_are(
   'public', 'get_authoring_design_state_v1',
   array['uuid','uuid','text','text'], 'service_role', array['EXECUTE'],
   'somente o executor interno lê o estado em nome do OAuth'
+);
+
+select function_privs_are(
+  'public', 'get_authoring_pedagogical_blueprint_artifact_v1',
+  array['uuid','uuid','text','text'], 'service_role', array['EXECUTE'],
+  'somente o executor interno recupera os hashes imutáveis do blueprint'
 );
 
 select function_privs_are(

@@ -24,7 +24,7 @@ export const PROTECTED_AUTHORING_CORE_MODULES = Object.freeze([
   Object.freeze({
     id: "stage-persistence-and-human-review",
     title: "Integridade operacional e revisão humana",
-    text: "Respeite fontes, rastreabilidade, escopo, permissões, revisão corrente, validação e etapas editoriais. Persista somente contexto e decisões aprovadas úteis à continuidade, nunca raciocínio privado ou conversa. Mostre cobertura, dificuldades e respostas planejadas e espere decisão humana antes de materializar; só afirme persistência depois da confirmação da ferramenta."
+    text: "Respeite fontes, rastreabilidade, escopo, permissões, revisão corrente, validação e etapas editoriais. Persista somente contexto e decisões aprovadas úteis à continuidade, nunca raciocínio privado ou conversa. Mostre cobertura, dificuldades e respostas planejadas e obtenha decisão humana antes de materializar somente quando o mandato ou uma decisão material exigir; dentro do escopo já autorizado, prossiga sem parada automática. Só afirme persistência depois da confirmação da ferramenta."
   })
 ]);
 

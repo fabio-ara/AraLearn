@@ -724,6 +724,58 @@ test("ResourceSet normaliza conjunto e autoriza seleção somente pela referênc
   assert.ok(blockedByEffectivePolicy.errors.some(({ code }) => (
     code === "substitute_blocked_by_effective_policy"
   )));
+
+  const versatile = structuredClone(selection);
+  const versatileBlockedByEffectivePolicy = authorizeResourceSelection({
+    selection: versatile,
+    effectiveSnapshot: policyBlockedSnapshot,
+    resourceSets: [normalized],
+    packageRegistry: RESOURCE_PACKAGE_REGISTRY
+  });
+  assert.equal(versatileBlockedByEffectivePolicy.ok, false);
+  assert.ok(versatileBlockedByEffectivePolicy.errors.some(({ code }) => (
+    code === "versatile_blocked_by_effective_policy"
+  )));
+  const versatileWithoutLimitation = authorizeResourceSelection({
+    selection: { ...versatile, limitations: [] },
+    effectiveSnapshot: snapshot,
+    resourceSets: [normalized],
+    packageRegistry: RESOURCE_PACKAGE_REGISTRY
+  });
+  assert.equal(versatileWithoutLimitation.ok, false);
+  assert.ok(versatileWithoutLimitation.errors.some(({ code }) => (
+    code === "versatile_without_limitation"
+  )));
+  const versatilePolicySnapshot = structuredClone(snapshot);
+  versatilePolicySnapshot.resolvedValues.find(({ definitionRef }) => (
+    definitionRef.id === "representation_fallback_policy"
+  )).value = { kind: "enum", value: "allow_versatile_with_limitation" };
+  assert.equal(authorizeResourceSelection({
+    selection: versatile,
+    effectiveSnapshot: versatilePolicySnapshot,
+    resourceSets: [normalized],
+    packageRegistry: RESOURCE_PACKAGE_REGISTRY
+  }).ok, true);
+  const canonicalWithLimitation = authorizeResourceSelection({
+    selection: { ...versatile, fit: "canonical" },
+    effectiveSnapshot: snapshot,
+    resourceSets: [normalized],
+    packageRegistry: RESOURCE_PACKAGE_REGISTRY
+  });
+  assert.equal(canonicalWithLimitation.ok, false);
+  assert.ok(canonicalWithLimitation.errors.some(({ code }) => (
+    code === "canonical_with_limitation"
+  )));
+  const substituteBlockedByVersatilePolicy = authorizeResourceSelection({
+    selection: { ...substitute, authorizedByResourceSetRef: selection.authorizedByResourceSetRef },
+    effectiveSnapshot: versatilePolicySnapshot,
+    resourceSets: [normalized],
+    packageRegistry: RESOURCE_PACKAGE_REGISTRY
+  });
+  assert.equal(substituteBlockedByVersatilePolicy.ok, false);
+  assert.ok(substituteBlockedByVersatilePolicy.errors.some(({ code }) => (
+    code === "substitute_blocked_by_effective_policy"
+  )));
 });
 
 test("manifesto usa um snapshot e todas as autorizações de resource permanecem auditáveis", () => {
