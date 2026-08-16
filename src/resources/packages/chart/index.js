@@ -313,11 +313,14 @@ export const chartPackage = Object.freeze({
       `${xAxisPath && data.xAxis.unit ? ` data-package-manual-x-axis-suffix="${escapePackageAttribute(` (${data.xAxis.unit})`)}"` : ""}` +
       `${yAxisPath ? ` data-package-manual-y-axis-path="${escapePackageAttribute(yAxisPath)}"` : ""}` +
       `${yAxisPath && data.yAxis.unit ? ` data-package-manual-y-axis-suffix="${escapePackageAttribute(` (${data.yAxis.unit})`)}"` : ""}`;
-    const legend = data.series.map((series, index) => `<li><span class="package-chart-swatch mark-${data.chartType} tone-${index % 6}" aria-hidden="true"></span>${renderPackageInline(series.name)}</li>`).join("");
+    const legend = [
+      ...data.series.map((series, index) => `<li><span class="package-chart-swatch mark-${data.chartType} tone-${index % 6}" aria-hidden="true"></span>${renderPackageInline(series.name)}</li>`),
+      ...(data.referenceLines || []).map((reference) => `<li><span class="package-chart-swatch mark-reference" aria-hidden="true"></span>${renderPackageInline(reference.label)}</li>`)
+    ].join("");
     return `<div class="runtime-block runtime-chart-block">${data.prompt ? renderPackageProse(data.prompt) : ""}<figure class="package-chart-figure"><ul class="package-chart-legend">${legend}</ul>${data.uncertainty?.label ? `<p class="package-chart-uncertainty">${renderPackageInline(data.uncertainty.label)}</p>` : ""}<div class="package-chart-canvas" role="img" aria-label="${escapePackageAttribute(chartAccessibleText(data))}" aria-busy="true" data-vega-status="pending" data-chart-data="${escapePackageAttribute(encoded)}"${manualAxes}></div>${data.caption ? `<figcaption class="package-chart-caption">${renderPackageInline(data.caption)}</figcaption>` : ""}<p class="package-chart-layout-error" hidden>Não foi possível materializar o gráfico estatístico.</p></figure></div>`;
   },
   async hydrate(instanceRoot) { await Promise.all([...instanceRoot.querySelectorAll(".package-chart-figure")].map(hydrateChart)); },
   accessibleText(data) { return chartAccessibleText(data); },
-  editableTargets(data) { return [...(data.prompt ? [{ path: "prompt", label: "Editar orientação" }] : []), { path: "xAxis.label", label: "Editar eixo x" }, { path: "yAxis.label", label: "Editar eixo y" }, ...data.series.map((_, index) => ({ path: `series[${index}].name`, label: `Editar série ${index + 1}` })), ...(data.caption ? [{ path: "caption", label: "Editar nota metodológica" }] : [])]; },
+  editableTargets(data) { return [...(data.prompt ? [{ path: "prompt", label: "Editar orientação" }] : []), { path: "xAxis.label", label: "Editar eixo x" }, { path: "yAxis.label", label: "Editar eixo y" }, ...data.series.map((_, index) => ({ path: `series[${index}].name`, label: `Editar série ${index + 1}` })), ...(data.uncertainty?.label ? [{ path: "uncertainty.label", label: "Editar incerteza" }] : []), ...(data.referenceLines || []).map((_, index) => ({ path: `referenceLines[${index}].label`, label: `Editar referência ${index + 1}` })), ...(data.caption ? [{ path: "caption", label: "Editar nota metodológica" }] : [])]; },
   practiceTargets(data) { return data.series.map((_, index) => ({ path: `series[${index}].name`, label: `Lacuna na série ${index + 1}`, modes: ["gap", "typing"] })); }
 });

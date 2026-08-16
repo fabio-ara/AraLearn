@@ -376,6 +376,6 @@ export const planePackage = Object.freeze({
   },
   async hydrate(instanceRoot) { await Promise.all([...instanceRoot.querySelectorAll(".package-plane-figure")].map(hydratePlane)); },
   accessibleText(data) { return planeAccessibleText(data); },
-  editableTargets(data) { return [...(data.prompt ? [{ path: "prompt", label: "Editar orientação" }] : []), { path: "xAxis.label", label: "Editar eixo x" }, { path: "yAxis.label", label: "Editar eixo y" }, ...(data.points || []).map((_, index) => ({ path: `points[${index}].label`, label: `Editar ponto ${index + 1}` })), ...(data.vectors || []).map((_, index) => ({ path: `vectors[${index}].label`, label: `Editar vetor ${index + 1}` })), ...(data.paths || []).map((_, index) => ({ path: `paths[${index}].label`, label: `Editar trajetória ${index + 1}` }))]; },
+  editableTargets(data) { return [...(data.prompt ? [{ path: "prompt", label: "Editar orientação" }] : []), { path: "xAxis.label", label: "Editar eixo x" }, { path: "yAxis.label", label: "Editar eixo y" }, ...(data.groups || []).map((_, index) => ({ path: `groups[${index}].label`, label: `Editar grupo ${index + 1}` })), ...(data.points || []).map((_, index) => ({ path: `points[${index}].label`, label: `Editar ponto ${index + 1}` })), ...(data.vectors || []).map((_, index) => ({ path: `vectors[${index}].label`, label: `Editar vetor ${index + 1}` })), ...(data.paths || []).map((_, index) => ({ path: `paths[${index}].label`, label: `Editar trajetória ${index + 1}` }))]; },
   practiceTargets() { return []; }
 });

@@ -51,6 +51,7 @@ export const tablePackage = Object.freeze({
   editableTargets(data) {
     return [
       ...(data.prompt ? [{ path: "prompt", label: "Editar orientação" }] : []),
+      ...(data.caption ? [{ path: "caption", label: "Editar legenda" }] : []),
       ...data.columns.map((_, index) => ({ path: `columns[${index}]`, label: `Editar cabeçalho ${index + 1}` })),
       ...data.rows.flatMap((row, rowIndex) => row.map((_, columnIndex) => ({ path: `rows[${rowIndex}][${columnIndex}]`, label: `Editar célula ${rowIndex + 1}, ${columnIndex + 1}` })))
     ];

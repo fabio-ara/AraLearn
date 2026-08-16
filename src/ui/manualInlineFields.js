@@ -52,12 +52,14 @@ function isTemporarilyHidden(element, { ignoreAriaHidden = false } = {}) {
 function applyManualFieldAttributes(field, target) {
   field.dataset.manualEditPath = target.path;
   field.dataset.manualEditOriginal = target.value;
+  field.dataset.manualEditLabel = target.label || "Editar texto";
   if (target.preserveWhitespace === true) field.dataset.manualEditPreserveWhitespace = "true";
   field.setAttribute("contenteditable", "plaintext-only");
   field.setAttribute("role", "textbox");
   field.setAttribute("spellcheck", target.preserveWhitespace === true ? "false" : "true");
   field.setAttribute("aria-multiline", "true");
   field.setAttribute("aria-label", target.label || "Editar texto");
+  field.setAttribute("title", target.label || "Editar texto");
   return field;
 }
 
@@ -191,28 +193,41 @@ function markRenderedMarkdownCode(field) {
 function decorateContentsField(field) {
   if (globalThis.getComputedStyle?.(field).display !== "contents") return;
   const children = [...field.children];
-  const showOutline = () => children.forEach((child) => {
-    child.style.outline = "2px solid color-mix(in srgb, var(--resource-accent) 72%, transparent)";
-    child.style.outlineOffset = "1px";
-  });
-  const hideOutline = () => children.forEach((child) => {
-    child.style.removeProperty("outline");
-    child.style.removeProperty("outline-offset");
-  });
-  field.addEventListener("focus", showOutline);
-  field.addEventListener("blur", hideOutline);
+  children.forEach((child) => child.classList.add("runtime-manual-edit-fragment"));
+  field.addEventListener("focus", () => children.forEach((child) => {
+    child.classList.add("is-manual-edit-fragment-focused");
+  }));
+  field.addEventListener("blur", () => children.forEach((child) => {
+    child.classList.remove("is-manual-edit-fragment-focused");
+  }));
+}
+
+function selectionBelongsToField(field) {
+  const selection = field.ownerDocument.getSelection?.();
+  return Boolean(selection?.rangeCount && selection.anchorNode && field.contains(selection.anchorNode));
+}
+
+function placeCaretAtEnd(field) {
+  const selection = field.ownerDocument.getSelection?.();
+  if (!selection || selectionBelongsToField(field)) return;
+  const range = field.ownerDocument.createRange();
+  range.selectNodeContents(field);
+  range.collapse(false);
+  selection.removeAllRanges();
+  selection.addRange(range);
 }
 
 function copyManualFieldMetadata(source, target) {
   [
     "manualEditPath",
     "manualEditOriginal",
+    "manualEditLabel",
     "manualEditPreserveWhitespace",
     "manualEditSuffix"
   ].forEach((key) => {
     if (source.dataset[key] !== undefined) target.dataset[key] = source.dataset[key];
   });
-  ["role", "spellcheck", "aria-multiline", "aria-label"].forEach((name) => {
+  ["role", "spellcheck", "aria-multiline", "aria-label", "title"].forEach((name) => {
     const value = source.getAttribute(name);
     if (value !== null) target.setAttribute(name, value);
   });
@@ -390,6 +405,15 @@ export function activateManualInlineFields(container, draftValues = null) {
     };
     ["click", "pointerdown", "keydown"].forEach((type) => {
       field.addEventListener(type, (event) => event.stopPropagation());
+    });
+    field.addEventListener("focus", () => {
+      field.dataset.manualEditActive = "true";
+      queueMicrotask(() => {
+        if (field.ownerDocument.activeElement === field) placeCaretAtEnd(field);
+      });
+    });
+    field.addEventListener("blur", () => {
+      delete field.dataset.manualEditActive;
     });
     field.addEventListener("compositionstart", () => { isComposing = true; });
     field.addEventListener("compositionend", () => {

@@ -7,6 +7,12 @@ const STYLES = ["/styles-tokens.css", "/styles-shell-baseline.css", "/styles.css
 const SYSTEM_PACKAGE_ID = "aralearn.resource.software_system_context";
 const SYSTEM_VERSION = "1.0.0";
 
+function readPath(root, path) {
+  return (String(path || "").match(/[^.[\]]+|\[(\d+)\]/gu) || [])
+    .map((segment) => segment.startsWith("[") ? Number(segment.slice(1, -1)) : segment)
+    .reduce((current, segment) => current?.[segment], root);
+}
+
 function packageCardDocument({ packageId, instanceId, data, editing }) {
   const targetId = `content:${instanceId}`;
   const rendered = renderPackageCardBlocks({
@@ -31,6 +37,53 @@ function packageCardDocument({ packageId, instanceId, data, editing }) {
     '<section class="manual-package-card card-portrait-body" style="height:auto;min-height:0">' +
     `<div class="runtime-card-sheet"><div class="card-sheet-content">${rendered}</div></div>` +
     "</section></main></body></html>";
+}
+
+function editableCatalogDocument() {
+  const cases = RESOURCE_PACKAGE_REGISTRY.listCatalog({ slot: "content" }).map((manifest, index) => {
+    const contract = RESOURCE_PACKAGE_REGISTRY.getAuthoringContract(manifest.id, manifest.version);
+    const instanceId = `catalog-edit-${index + 1}`;
+    const instance = RESOURCE_PACKAGE_REGISTRY.normalizeInstance({
+      id: instanceId,
+      package: manifest.id,
+      version: manifest.version,
+      data: contract.contract.example
+    }, "content");
+    const expected = RESOURCE_PACKAGE_REGISTRY.editableTargets(instance, "content")
+      .filter(({ path }) => typeof readPath(instance.data, path) === "string")
+      .map(({ path, label }) => ({ path, label }));
+    return {
+      packageId: manifest.id,
+      expected,
+      html: renderPackageCardBlocks({
+        id: `${instanceId}-card`,
+        position: index + 1,
+        title: manifest.label,
+        role: "theory",
+        content: [instance],
+        response: null,
+        feedback: [],
+        topics: [],
+        sources: []
+      }, {
+        resourceSelectionEnabled: true,
+        selectedResourceTargetIds: [`content:${instanceId}`],
+        manualEditingTargetId: `content:${instanceId}`
+      })
+    };
+  });
+  const links = STYLES.map((href) => `<link rel="stylesheet" href="${href}">`).join("");
+  const cards = cases.map(({ packageId, html }) => (
+    `<section class="catalog-manual-card card-portrait-body" data-catalog-package="${packageId}">` +
+    `<div class="runtime-card-sheet"><div class="card-sheet-content">${html}</div></div></section>`
+  )).join("");
+  return {
+    cases: cases.map(({ packageId, expected }) => ({ packageId, expected })),
+    html: "<!doctype html><html lang=\"pt-BR\"><head>" +
+      '<meta name="viewport" content="width=device-width, initial-scale=1">' +
+      `${links}</head><body><main style="width:100%;max-width:390px;padding:16px;display:grid;gap:24px">` +
+      `${cards}</main></body></html>`
+  };
 }
 
 function expectSameBox(current, reference, label) {
@@ -247,6 +300,8 @@ test("fronteira Graphviz associa paths repetidos e multilinha sem busca por lite
 
 test("literais repetidos em tabela permanecem campos independentes sem redimensionar", async ({ page }) => {
   const data = {
+    prompt: "Compare os registros.",
+    caption: "Legenda metodológica.",
     columns: ["Etapa", "Valor"],
     rows: [["Primeira", "igual"], ["Segunda", "igual"]]
   };
@@ -271,8 +326,12 @@ test("literais repetidos em tabela permanecem campos independentes sem redimensi
   await hydrate(page, { activate: true });
   const first = page.locator('[data-manual-edit-path="rows[0][1]"]');
   const second = page.locator('[data-manual-edit-path="rows[1][1]"]');
+  const caption = page.locator('[data-manual-edit-path="caption"]');
+  const header = page.locator('[data-manual-edit-path="columns[1]"]');
   await expect(first).toHaveCount(1);
   await expect(second).toHaveCount(1);
+  await expect(caption).toHaveCount(1);
+  await expect(header).toHaveCount(1);
   await expect(first).toHaveText("igual");
   await expect(second).toHaveText("igual");
   expectSameBox(await page.locator(".manual-package-card").boundingBox(), cardBefore, "card");
@@ -290,6 +349,102 @@ test("literais repetidos em tabela permanecem campos independentes sem redimensi
     resourceBefore,
     "resource digitado"
   );
+
+  await header.click();
+  await expect(header).toBeFocused();
+  const focusState = await header.evaluate((field) => {
+    const selection = document.getSelection();
+    const style = getComputedStyle(field);
+    return {
+      selectionInside: Boolean(selection?.anchorNode && field.contains(selection.anchorNode)),
+      collapsed: selection?.isCollapsed === true,
+      outlineStyle: style.outlineStyle,
+      outlineWidth: Number.parseFloat(style.outlineWidth),
+      caretColor: style.caretColor
+    };
+  });
+  expect(focusState.selectionInside).toBe(true);
+  expect(focusState.collapsed).toBe(true);
+  expect(focusState.outlineStyle).toBe("solid");
+  expect(focusState.outlineWidth).toBeGreaterThanOrEqual(2);
+  expect(focusState.caretColor).not.toBe("transparent");
+});
+
+test("todo resource materializa os rótulos textuais declarados como campos editáveis", async ({ page }) => {
+  const catalog = editableCatalogDocument();
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/");
+  await page.setContent(catalog.html);
+  await page.evaluate(async () => {
+    const { RESOURCE_PACKAGE_REGISTRY } = await import("/src/resources/packages/index.js");
+    const { activateManualCardEdit } = await import("/src/ui/manualCardEdit.js");
+    await RESOURCE_PACKAGE_REGISTRY.hydrate(document);
+    globalThis.__catalogManualControllers = [...document.querySelectorAll(
+      ".catalog-manual-card .runtime-resource-edit-target"
+    )].map((container) => activateManualCardEdit(container));
+    await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+  });
+
+  for (const entry of catalog.cases) {
+    const card = page.locator(`[data-catalog-package="${entry.packageId}"]`);
+    const materialized = await card.locator("[data-manual-edit-path]").evaluateAll((fields) => (
+      fields.map((field) => ({
+        path: field.dataset.manualEditPath,
+        label: field.dataset.manualEditLabel,
+        ariaLabel: field.getAttribute("aria-label"),
+        editable: field.getAttribute("contenteditable"),
+        visible: Boolean(field.getClientRects().length) &&
+          getComputedStyle(field).display !== "none" &&
+          getComputedStyle(field).visibility !== "hidden"
+      }))
+    ));
+    for (const target of entry.expected) {
+      const fields = materialized.filter((field) => field.path === target.path && field.visible);
+      expect(fields.length, `${entry.packageId}: ${target.path}`).toBeGreaterThan(0);
+      expect(fields.some((field) => field.editable === "plaintext-only"),
+        `${entry.packageId}: ${target.path} editável`).toBe(true);
+      expect(fields.some((field) => field.ariaLabel === target.label && field.label === target.label),
+        `${entry.packageId}: ${target.path} rotulado`).toBe(true);
+    }
+    const first = card.locator("[data-manual-edit-path]").filter({ visible: true }).first();
+    await first.focus();
+    await expect(first, entry.packageId).toBeFocused();
+    expect(await first.evaluate((field) => {
+      const selection = document.getSelection();
+      return Boolean(selection?.isCollapsed && selection.anchorNode && field.contains(selection.anchorNode));
+    }), entry.packageId).toBe(true);
+  }
+});
+
+test("tabela de transição edita cabeçalhos, legenda e referências visuais sincronizadas", async ({ page }) => {
+  const contract = RESOURCE_PACKAGE_REGISTRY.getAuthoringContract(
+    "aralearn.resource.state_transition_table",
+    "1.0.0"
+  );
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/");
+  await page.setContent(packageCardDocument({
+    packageId: "aralearn.resource.state_transition_table",
+    instanceId: "transition-edit",
+    data: contract.contract.example,
+    editing: true
+  }));
+  await hydrate(page, { activate: true });
+
+  await expect(page.locator('[data-manual-edit-path="stateColumnLabel"]')).toBeEditable();
+  await expect(page.locator('[data-manual-edit-path="events[0].label"]')).toBeEditable();
+  await expect(page.locator('[data-manual-edit-path="legend"]')).toBeEditable();
+  const stateMirrors = page.locator('[data-manual-edit-path="states[0].label"]');
+  expect(await stateMirrors.count()).toBeGreaterThan(1);
+  await stateMirrors.nth(1).click();
+  await expect(stateMirrors.nth(1)).toBeFocused();
+  await stateMirrors.nth(1).fill("repouso");
+  await expect(stateMirrors).toHaveText(["repouso", "repouso", "repouso"]);
+  const values = await page.locator(".runtime-resource-edit-target").evaluate(async (element) => {
+    const { readManualCardEditPathValues } = await import("/src/ui/manualCardEdit.js");
+    return readManualCardEditPathValues(element);
+  });
+  expect(values["states[0].label"]).toBe("repouso");
 });
 
 test("títulos Vega são associados pela orientação e preservam a unidade", async ({ page }) => {

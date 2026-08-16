@@ -1,5 +1,14 @@
 import { academicProfile } from "../../sdk/academic.js";
-import { escapePackageAttribute, escapePackageHtml, renderPackageInline, renderPackageProse } from "../../sdk/html.js";
+import {
+  listPackageManualTextPaths,
+  stripPackageManualTextMarkers
+} from "../../kernel/manualTextMarkers.js";
+import {
+  escapePackageAttribute,
+  escapePackageHtml,
+  renderPackageInline,
+  renderPackageProse
+} from "../../sdk/html.js";
 import { renderStretchDelimiter } from "../../sdk/stretchDelimiter.js";
 
 function renderMatrix(values, name = "", delimiters = "brackets") {
@@ -7,7 +16,11 @@ function renderMatrix(values, name = "", delimiters = "brackets") {
   const accessibleName = name ? `Matriz ${name}, ${dimensions}` : `Matriz ${dimensions}`;
   const body = values.map((row) => `<mtr>${row.map((cell) => `<mtd><mtext>${renderPackageInline(cell)}</mtext></mtd>`).join("")}</mtr>`).join("");
   const symbols = delimiters === "parentheses" ? ["(", ")"] : ["[", "]"];
-  const prefix = name ? `<math class="runtime-matrix-prefix" aria-hidden="true"><mrow><mi class="runtime-matrix-name">${escapePackageHtml(name)}</mi><mo>=</mo></mrow></math>` : "";
+  const namePath = listPackageManualTextPaths(name)[0] || "";
+  const nameAttribute = namePath
+    ? ` data-package-manual-field-path="${escapePackageAttribute(encodeURIComponent(namePath))}"`
+    : "";
+  const prefix = name ? `<math class="runtime-matrix-prefix"${namePath ? "" : ' aria-hidden="true"'}><mrow><mi class="runtime-matrix-name"${nameAttribute}>${escapePackageHtml(stripPackageManualTextMarkers(name))}</mi><mo>=</mo></mrow></math>` : "";
   return `<span class="runtime-matrix-item" role="group" aria-label="${escapePackageAttribute(accessibleName)}">${prefix}<span class="runtime-matrix-fenced">${renderStretchDelimiter(symbols[0], "runtime-matrix-delimiter is-left")}<math class="runtime-matrix-values"><mtable class="runtime-matrix-grid">${body}</mtable></math>${renderStretchDelimiter(symbols[1], "runtime-matrix-delimiter is-right")}</span></span>`;
 }
 

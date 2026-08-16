@@ -142,7 +142,10 @@ function relationNotation(data) {
   const pairs = data.relations
     .map(({ from, to }) => `(${left.get(from)}, ${right.get(to)})`)
     .join(", ");
-  return `<i>${renderPackageInline(data.name)}</i> = {${renderPackageInlineReference(pairs)}}`;
+  const meaning = data.relationMeaning
+    ? `<span class="package-relation-map-meaning">${renderPackageInline(data.relationMeaning)}</span> · `
+    : "";
+  return `${meaning}<i>${renderPackageInline(data.name)}</i> = {${renderPackageInlineReference(pairs)}}`;
 }
 
 export const relationMapPackage = Object.freeze({

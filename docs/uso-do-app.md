@@ -577,6 +577,12 @@ autorizados podem mudar sem redimensionar o card. Identidades, tipos de recurso,
 relações, ordem e respostas estruturais permanecem protegidos; a edição comum
 não apresenta formulário auxiliar, campo técnico nem JSON do card.
 
+Cada texto autorizado recebe uma pista discreta no próprio rótulo. Ao tocar ou
+clicar, somente esse rótulo ganha o foco forte e o cursor de digitação aparece
+no ponto escolhido. Quando o mesmo rótulo é mostrado mais de uma vez — por
+exemplo, o nome de um estado na linha e nos destinos de uma tabela de transição
+— todas as ocorrências são espelhos sincronizados do mesmo texto.
+
 **Sem conexão:** em conteúdo de workspace já carregado e autorizado, uma edição
 textual pode ser guardada na fila local. Mover, excluir ou publicar continua
 dependendo do servidor.
