@@ -2,22 +2,22 @@ begin;
 
 select plan(24);
 
-select has_table('private','authoring_analytics_metric_definitions');
-select has_table('private','authoring_experiment_outcome_observations');
-select has_table('private','authoring_analytics_dataset_versions');
-select has_table('private','authoring_analytics_outcome_receipts');
+select has_table('private','authoring_analytics_metric_definitions','authoring_analytics_metric_definitions');
+select has_table('private','authoring_experiment_outcome_observations','authoring_experiment_outcome_observations');
+select has_table('private','authoring_analytics_dataset_versions','authoring_analytics_dataset_versions');
+select has_table('private','authoring_analytics_outcome_receipts','authoring_analytics_outcome_receipts');
 
-select has_column('private','authoring_experiment_outcome_observations','participant_ref');
-select has_column('private','authoring_experiment_outcome_observations','missing_reason');
-select has_column('private','authoring_experiment_outcome_observations','recorded_by');
-select has_column('private','authoring_analytics_metric_definitions','limitations');
-select has_column('private','authoring_analytics_metric_definitions','missing_treatment');
-select has_column('private','authoring_analytics_metric_definitions','denominator_definition');
+select has_column('private','authoring_experiment_outcome_observations','participant_ref','participant_ref');
+select has_column('private','authoring_experiment_outcome_observations','missing_reason','missing_reason');
+select has_column('private','authoring_experiment_outcome_observations','recorded_by','recorded_by');
+select has_column('private','authoring_analytics_metric_definitions','limitations','limitations');
+select has_column('private','authoring_analytics_metric_definitions','missing_treatment','missing_treatment');
+select has_column('private','authoring_analytics_metric_definitions','denominator_definition','denominator_definition');
 
-select has_view('private','authoring_analytics_design_rows_v1');
-select has_view('private','authoring_analytics_process_rows_v1');
-select has_view('private','authoring_analytics_assignment_rows_v1');
-select has_view('private','authoring_analytics_outcome_rows_v1');
+select has_view('private','authoring_analytics_design_rows_v1','authoring_analytics_design_rows_v1');
+select has_view('private','authoring_analytics_process_rows_v1','authoring_analytics_process_rows_v1');
+select has_view('private','authoring_analytics_assignment_rows_v1','authoring_analytics_assignment_rows_v1');
+select has_view('private','authoring_analytics_outcome_rows_v1','authoring_analytics_outcome_rows_v1');
 
 select has_function(
   'public','list_authoring_analytics_dataset_v1',

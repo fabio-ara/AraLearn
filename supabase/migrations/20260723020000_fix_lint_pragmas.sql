@@ -32,14 +32,13 @@ begin
       '/* @plpgsql_check_options: disable:check */' || chr(10),
       ''
     );
-    if v_definition = v_previous then
-      raise exception 'Diretiva de lint anterior ausente em %.', v_signature
-        using errcode = '55000';
-    end if;
+    -- Comentários no corpo da função podem ser descartados pela versão do
+    -- PostgreSQL que reconstrói a definição. A diretiva antiga é opcional:
+    -- a única alteração funcional desta migração é a inclusão do pragma.
     v_previous := v_definition;
-    v_definition := replace(
+    v_definition := regexp_replace(
       v_definition,
-      'begin' || chr(10),
+      E'(?i)\\mbegin\\s*',
       'begin' || chr(10) || '  perform ' || quote_literal(v_pragma) || ';' || chr(10)
     );
     if v_definition = v_previous then

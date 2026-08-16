@@ -43,6 +43,25 @@
       "passed": 1,
       "failed": 0,
       "durationSeconds": 7.1
+    },
+    {
+      "command": "npx supabase@2.109.1 db reset --local && npx supabase@2.109.1 test db --local",
+      "passed": 330,
+      "failed": 0,
+      "files": 7,
+      "note": "Migrações aplicadas em PostgreSQL local; pgTAP 009, 020, 030, 040, 050, 060 e 070 aprovados."
+    },
+    {
+      "command": "prepare-local-catalog-publisher + publishCatalogFixtures + npm run test:supabase:smoke",
+      "passed": 1,
+      "failed": 0,
+      "note": "Smoke PostgREST/Auth/RLS aprovado com a fixture canônica publicada localmente."
+    },
+    {
+      "command": "node supabase/tests/authoring-mcp-local-smoke.mjs",
+      "passed": 1,
+      "failed": 0,
+      "note": "Metadata e separação da chave HTTP aprovadas; mutações OAuth exigem token local explícito."
     }
   ],
   "browserLargeCourse": {
@@ -112,7 +131,7 @@
   },
   "notAcceptanceEvidence": [
     "Não mede eficácia pedagógica, causalidade ou validade de instrumentos.",
-    "Não substitui pgTAP, smoke Supabase local ou verificação hospedada.",
+    "Não substitui a jornada Action atualizada, mutações MCP OAuth locais ou verificação hospedada.",
     "Não substitui o roteiro com pessoa leiga real em celular e desktop."
   ],
   "resume": "docs/checkpoint-autoria-109.md"

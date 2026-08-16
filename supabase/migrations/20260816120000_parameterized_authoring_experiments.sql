@@ -127,8 +127,8 @@ begin
       where item.course_id = new.id and item.deleted_at is null
     ) then
       insert into public.catalog_collection_courses(
-        collection_id, course_id, position
-      ) values(v_collection_id, new.id, 0);
+        collection_id, course_id
+      ) values(v_collection_id, new.id);
     end if;
   else
     delete from public.catalog_collection_courses item

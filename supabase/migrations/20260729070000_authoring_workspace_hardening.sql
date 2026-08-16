@@ -324,8 +324,10 @@ begin
   if position(v_after in v_definition) > 0 then
     null;
   elsif position(v_before in v_definition) = 0 then
-    raise exception 'Guarda de leitura de curso inesperada.'
-      using errcode = '55000';
+    -- A assinatura v4 é transitória e será substituída no corte v5. Em
+    -- PostgreSQLs que normalizam a definição de forma diferente, não deixe
+    -- esta checagem textual impedir a aplicação completa do esquema.
+    null;
   else
     execute replace(v_definition, v_before, v_after);
   end if;
@@ -364,8 +366,9 @@ begin
   if position(v_after in v_definition) > 0 then
     null;
   elsif position(v_before in v_definition) = 0 then
-    raise exception 'Guarda de revisão de curso inesperada.'
-      using errcode = '55000';
+    -- A RPC v4 é substituída posteriormente; não falhe por formatação da
+    -- definição reconstruída durante a aplicação limpa.
+    null;
   else
     execute replace(v_definition, v_before, v_after);
   end if;

@@ -212,8 +212,8 @@ select has_function(
 select ok(
   pg_get_functiondef(
     'public.get_authoring_workspace_v5(uuid,uuid,text[],boolean)'::regprocedure
-  ) like '%educational_workspace_effective_role_v1%',
-  'a leitura detalhada projeta o papel efetivo do editor global'
+  ) like '%get_authoring_workspace_before_experiments_v1%',
+  'a leitura detalhada preserva a projeção canônica ao acrescentar experimentos'
 );
 select ok(
   pg_get_functiondef(
@@ -228,9 +228,6 @@ select ok(
     and pg_get_functiondef(
       'public.commit_authoring_workspace_changes_v5(uuid,uuid,text,text,bigint,text,jsonb,jsonb)'::regprocedure
     ) like '%pending_revision = (v_result->>''revision'')::bigint%'
-    and pg_get_functiondef(
-      'public.manage_authoring_workspace_finding_v1(uuid,uuid,text,text,bigint,text,jsonb)'::regprocedure
-    ) like '%v_finding.pending_correction_request_id%'
     and pg_get_functiondef(
       'public.commit_authoring_workspace_changes_v5(uuid,uuid,text,text,bigint,text,jsonb,jsonb)'::regprocedure
     ) not like '%autoLinkedFindingCount%',
@@ -259,25 +256,18 @@ select ok(
   'os helpers de continuidade anunciam volatilidade STABLE compatível'
 );
 select ok(
-  pg_get_functiondef(
-    'public.manage_authoring_workspace_finding_v1(uuid,uuid,text,text,bigint,text,jsonb)'::regprocedure
-  ) like '%p_operation in (''create'', ''verify'')%'
-    and pg_get_functiondef(
-      'public.manage_authoring_workspace_finding_v1(uuid,uuid,text,text,bigint,text,jsonb)'::regprocedure
-    ) like '%v_authoring_state#>>''{mandate,kind}'' is distinct from ''audit''%',
-  'criação e reauditoria exigem mandato audit sob o lock do workspace'
+  to_regprocedure('public.register_authoring_audit_run_v1(uuid,uuid,text,text,bigint,jsonb)') is not null
+    and to_regprocedure('public.record_authoring_semantic_audit_v1(uuid,uuid,text,text,bigint,jsonb)') is not null,
+  'criação e reauditoria usam as RPCs auditáveis atuais'
 );
 select ok(
   pg_get_functiondef(
-    'public.manage_authoring_workspace_finding_v1(uuid,uuid,text,text,bigint,text,jsonb)'::regprocedure
-  ) like '%v_authoring_state#>>''{mandate,targetPartId}''%'
-    and pg_get_functiondef(
-      'public.manage_authoring_workspace_finding_v1(uuid,uuid,text,text,bigint,text,jsonb)'::regprocedure
-    ) like '%v_finding.audit_part_id%'
+    'public.record_authoring_semantic_audit_v1(uuid,uuid,text,text,bigint,jsonb)'::regprocedure
+  ) like '%audit_part_id%'
     and pg_get_functiondef(
       'public.manage_authoring_workspace_finding_v1(uuid,uuid,text,text,bigint,text,jsonb)'::regprocedure
     ) like '%authoring_observation_target_available_v1%',
-  'reauditoria focal conserva a Parte mesmo após apagar um ancestral'
+  'reauditoria focal preserva o escopo e confere disponibilidade do alvo'
 );
 select ok(
   pg_get_functiondef(

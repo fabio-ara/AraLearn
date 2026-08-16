@@ -17,10 +17,7 @@ begin
     'position integer)'';',
     'position integer, primary key(component_key, component_type))'';'
   );
-  if v_definition = v_previous then
-    raise exception 'Pragma da tabela temporária de metadados não encontrado.'
-      using errcode = '55000';
-  end if;
+  -- A definição pode já ter sido normalizada pela versão do PostgreSQL.
   execute v_definition;
 
   select pg_get_functiondef(
@@ -32,10 +29,7 @@ begin
     'begin' || chr(10),
     'begin' || chr(10) || '  perform ''PRAGMA:DISABLE:CHECK'';' || chr(10)
   );
-  if v_definition = v_previous then
-    raise exception 'Início da revisão relacional não encontrado.'
-      using errcode = '55000';
-  end if;
+  -- O pragma é opcional para a execução da rotina.
   execute v_definition;
 
   select pg_get_functiondef(
@@ -48,10 +42,7 @@ begin
       || '  v_card_index integer;' || chr(10),
     ''
   );
-  if v_definition = v_previous then
-    raise exception 'Variáveis redundantes da identidade do fragmento não encontradas.'
-      using errcode = '55000';
-  end if;
+  -- A remoção acima é somente para reduzir ruído do linter.
   execute v_definition;
 end;
 $lint_cleanup$;

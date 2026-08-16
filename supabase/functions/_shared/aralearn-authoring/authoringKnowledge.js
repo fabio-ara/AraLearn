@@ -538,6 +538,9 @@ const INTENT_TO_TOOLS = Object.freeze({
 });
 
 const REQUIRED_GUIDANCE_BY_INTENT = Object.freeze({
+  inspect: Object.freeze([
+    "operating-contract"
+  ]),
   create: Object.freeze([
     "authoring-brief",
     "source-discipline",

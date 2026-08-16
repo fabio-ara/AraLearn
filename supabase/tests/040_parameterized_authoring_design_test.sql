@@ -2,24 +2,24 @@ begin;
 
 select plan(68);
 
-select has_table('private', 'authoring_design_parameter_definitions');
-select has_table('private', 'authoring_design_request_arguments');
-select has_table('private', 'authoring_instructional_analyses');
-select has_table('private', 'authoring_design_parameter_assignments');
-select has_table('private', 'authoring_resource_sets');
-select has_table('private', 'authoring_resource_set_members');
-select has_table('private', 'authoring_effective_design_snapshots');
-select has_table('private', 'authoring_effective_design_snapshot_values');
-select has_table('private', 'authoring_effective_design_snapshot_resource_sets');
-select has_table('private', 'authoring_pedagogical_blueprints');
-select has_table('private', 'authoring_pedagogical_blueprint_bindings');
-select has_table('private', 'authoring_microsequence_design_bindings');
-select has_table('private', 'authoring_materialization_states');
-select has_table('private', 'authoring_materialization_manifests');
-select has_table('private', 'authoring_manifest_resource_selections');
-select has_table('private', 'authoring_manifest_materialized_resources');
-select has_table('private', 'authoring_manifest_coverage');
-select has_table('private', 'authoring_manifest_metrics');
+select has_table('private', 'authoring_design_parameter_definitions', 'authoring_design_parameter_definitions');
+select has_table('private', 'authoring_design_request_arguments', 'authoring_design_request_arguments');
+select has_table('private', 'authoring_instructional_analyses', 'authoring_instructional_analyses');
+select has_table('private', 'authoring_design_parameter_assignments', 'authoring_design_parameter_assignments');
+select has_table('private', 'authoring_resource_sets', 'authoring_resource_sets');
+select has_table('private', 'authoring_resource_set_members', 'authoring_resource_set_members');
+select has_table('private', 'authoring_effective_design_snapshots', 'authoring_effective_design_snapshots');
+select has_table('private', 'authoring_effective_design_snapshot_values', 'authoring_effective_design_snapshot_values');
+select has_table('private', 'authoring_effective_design_snapshot_resource_sets', 'authoring_effective_design_snapshot_resource_sets');
+select has_table('private', 'authoring_pedagogical_blueprints', 'authoring_pedagogical_blueprints');
+select has_table('private', 'authoring_pedagogical_blueprint_bindings', 'authoring_pedagogical_blueprint_bindings');
+select has_table('private', 'authoring_microsequence_design_bindings', 'authoring_microsequence_design_bindings');
+select has_table('private', 'authoring_materialization_states', 'authoring_materialization_states');
+select has_table('private', 'authoring_materialization_manifests', 'authoring_materialization_manifests');
+select has_table('private', 'authoring_manifest_resource_selections', 'authoring_manifest_resource_selections');
+select has_table('private', 'authoring_manifest_materialized_resources', 'authoring_manifest_materialized_resources');
+select has_table('private', 'authoring_manifest_coverage', 'authoring_manifest_coverage');
+select has_table('private', 'authoring_manifest_metrics', 'authoring_manifest_metrics');
 
 select has_column(
   'private', 'authoring_design_parameter_assignments', 'model_version',
@@ -292,7 +292,7 @@ select ok(
 
 select ok(
   public.get_aralearn_runtime_manifest()->>'schemaRevision'
-    = '20260815233000'
+    = '20260815235900'
   and public.get_aralearn_runtime_manifest()->'features'
     ?& array[
       'parameterized-authoring-design-v1',

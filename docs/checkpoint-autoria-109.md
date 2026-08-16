@@ -44,6 +44,9 @@ de checkpoint é `checkpoint/autoria-109-20260816`.
   32 MiB por workspace e 512 KiB de outbox;
 - Action OpenAPI: 82.375 bytes, 30 paths; system prompt: 7.563 bytes;
   respostas MCP/Action continuam limitadas a menos de 96 KiB.
+- Supabase local: `db reset` aplicou todas as migrations e `test db --local`
+  aprovou os sete arquivos pgTAP (330 testes); o smoke PostgREST/Auth/RLS
+  também passou após publicar a fixture canônica local.
 
 Esses números pertencem às fixtures e ao ambiente local de 16 de agosto de
 2026. Não são previsão de produção nem evidência de aprendizagem.
@@ -58,16 +61,20 @@ serializador do produto e usam apenas identificadores pseudonimizados.
 
 ## O que ainda não pode ser dado como concluído
 
-1. Executar os pgTAP `050`, `060` e `070` e os smokes locais quando Supabase
-   CLI, `psql` e a stack local estiverem disponíveis. Eles foram preparados,
-   mas não foram executados neste ambiente.
-2. Verificar implantação hospedada apenas em ambiente autorizado. Nenhum
+1. Atualizar a jornada local da Custom GPT Action para percorrer o ciclo
+   obrigatório de análise, parâmetros, snapshot e blueprint antes de salvar
+   cards. A stack está válida; o teste legado foi corretamente recusado pelo
+   gate `materialization_design_required`.
+2. Executar mutações OAuth locais do MCP com um token de teste configurado.
+   O smoke sem token confirmou metadata e a separação da chave HTTP, mas não
+   executa mutações OAuth por desenho.
+3. Verificar implantação hospedada apenas em ambiente autorizado. Nenhum
    deploy foi inferido a partir dos testes locais.
-3. Executar com uma pessoa real o roteiro de aceitação leiga, primeiro no
+4. Executar com uma pessoa real o roteiro de aceitação leiga, primeiro no
    celular e depois no desktop. Playwright e agentes não podem aprovar esse
    critério humano. O [roteiro pronto para aplicação](roteiro-aceitacao-humana-autoria.md)
    não substitui essa execução.
-4. Só depois desses itens atualizar a #101/#109 como encerradas e promover o
+5. Só depois desses itens atualizar a #101/#109 como encerradas e promover o
    checkpoint para `main`.
 
 ## Retomada exata
@@ -85,10 +92,12 @@ node scripts/testAuthoringPackages.mjs
 git diff --check
 ```
 
-Se a stack Supabase estiver disponível, executar depois os testes pgTAP e os
-smokes locais descritos em [Supabase](supabase.md). Se qualquer comando falhar,
-corrigir a regressão antes de produzir o relatório final; não reabrir contratos
-estáveis da #102–#108 por preferência de implementação.
+Para repetir a validação local já executada, inicie a stack, rode `supabase db
+reset --local`, `supabase test db --local`, prepare o publicador local e
+publique a fixture canônica antes do smoke PostgREST/Auth/RLS. Os smokes da
+Action e do MCP permanecem condicionados aos dois itens acima. Se qualquer
+comando falhar, corrija a regressão antes de produzir o relatório final; não
+reabra contratos estáveis da #102–#108 por preferência de implementação.
 
 `npm test` e `npm run test:e2e` já foram repetidos integralmente neste
 checkpoint: respectivamente 1.164 aprovações com um skip de PostgreSQL real, e

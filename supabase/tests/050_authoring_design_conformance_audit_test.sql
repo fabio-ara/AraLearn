@@ -2,23 +2,23 @@ begin;
 
 select plan(38);
 
-select has_table('private', 'authoring_audit_runs');
-select has_table('private', 'authoring_audit_run_microsequences');
-select has_table('private', 'authoring_audit_run_completions');
-select has_table('private', 'authoring_audit_run_components');
+select has_table('private', 'authoring_audit_runs', 'authoring_audit_runs');
+select has_table('private', 'authoring_audit_run_microsequences', 'authoring_audit_run_microsequences');
+select has_table('private', 'authoring_audit_run_completions', 'authoring_audit_run_completions');
+select has_table('private', 'authoring_audit_run_components', 'authoring_audit_run_components');
 
-select has_column('private', 'authoring_workspace_observations', 'audit_run_id');
-select has_column('private', 'authoring_workspace_observations', 'audit_finding_ordinal');
-select has_column('private', 'authoring_workspace_observations', 'finding_code');
-select has_column('private', 'authoring_workspace_observations', 'finding_origin');
-select has_column('private', 'authoring_workspace_observations', 'rule_kind');
-select has_column('private', 'authoring_workspace_observations', 'rule_id');
-select has_column('private', 'authoring_workspace_observations', 'rule_version');
-select has_column('private', 'authoring_workspace_observations', 'public_evidence');
-select has_column('private', 'authoring_workspace_observations', 'finding_fingerprint');
-select has_column('private', 'authoring_workspace_observations', 'verified_by_audit_run_id');
-select has_column('private', 'authoring_workspace_observations', 'superseded_by_finding_id');
-select has_column('private', 'authoring_audit_runs', 'mandate_snapshot');
+select has_column('private', 'authoring_workspace_observations', 'audit_run_id', 'audit_run_id');
+select has_column('private', 'authoring_workspace_observations', 'audit_finding_ordinal', 'audit_finding_ordinal');
+select has_column('private', 'authoring_workspace_observations', 'finding_code', 'finding_code');
+select has_column('private', 'authoring_workspace_observations', 'finding_origin', 'finding_origin');
+select has_column('private', 'authoring_workspace_observations', 'rule_kind', 'rule_kind');
+select has_column('private', 'authoring_workspace_observations', 'rule_id', 'rule_id');
+select has_column('private', 'authoring_workspace_observations', 'rule_version', 'rule_version');
+select has_column('private', 'authoring_workspace_observations', 'public_evidence', 'public_evidence');
+select has_column('private', 'authoring_workspace_observations', 'finding_fingerprint', 'finding_fingerprint');
+select has_column('private', 'authoring_workspace_observations', 'verified_by_audit_run_id', 'verified_by_audit_run_id');
+select has_column('private', 'authoring_workspace_observations', 'superseded_by_finding_id', 'superseded_by_finding_id');
+select has_column('private', 'authoring_audit_runs', 'mandate_snapshot', 'mandate_snapshot');
 
 select has_function(
   'public', 'list_authoring_audit_cards_v1',
@@ -72,7 +72,7 @@ select has_function(
 
 select has_trigger(
   'private', 'authoring_audit_runs',
-  'reject_authoring_audit_run_update_v1',
+  'authoring_audit_runs_immutable_v1',
   'rodadas determinísticas são append-only'
 );
 select has_trigger(

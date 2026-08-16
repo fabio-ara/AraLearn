@@ -430,17 +430,14 @@ with part_rows as (
   from private.authoring_materialization_manifests manifest
 ), learning_stats as (
   select workspace.id workspace_id,
-    count(distinct selection.id)::integer selections,
-    count(distinct (selection.id,card.id))::integer expected,
-    count(distinct progress.id) filter(where progress.completed_at is not null)::integer completed
+    count(distinct state_row.user_id)::integer selections,
+    0::integer expected,
+    coalesce(sum(state_row.completed_card_count),0)::integer completed
   from private.authoring_workspaces workspace
-  left join private.authoring_workspace_publications publication
-    on publication.workspace_id=workspace.id
-  left join public.user_course_selections selection
-    on selection.course_id=publication.course_id
-  left join public.cards card on card.course_id=publication.course_id
-  left join public.card_progress progress
-    on progress.selection_id=selection.id and progress.card_id=card.id
+  left join private.trail_items item
+    on item.workspace_id=workspace.id
+  left join public.trail_personal_states state_row
+    on state_row.trail_item_id=item.id
   group by workspace.id
 ), learning_rows as (
   select stats.workspace_id,'learning:completed' row_key,
@@ -455,7 +452,7 @@ with part_rows as (
     jsonb_build_object(
       'rowKind','learning','state','unknown',
       'label','Sem conclusão explícita disponível',
-      'value',greatest(stats.expected-stats.completed,0),
+      'value',null,
       'unit','card × seleção','missing',true,
       'selectionCount',stats.selections,'denominator',stats.expected
     ) row_value
@@ -570,16 +567,14 @@ begin
   v_dataset_revision:=coalesce(v_dataset_revision,0);
   if p_dataset='authoring_process' then
     select jsonb_build_object(
-      'rows',count(*),
-      'completed',count(*) filter(where progress.completed_at is not null),
-      'updatedAt',max(progress.updated_at)
+      'rows',count(state_row.user_id),
+      'completed',coalesce(sum(state_row.completed_card_count),0),
+      'updatedAt',max(state_row.updated_at)
     ) into v_live_revision
-    from public.card_progress progress
-    where exists(
-      select 1 from private.authoring_workspace_publications publication
-      where publication.workspace_id=p_workspace_id
-        and publication.course_id=progress.course_id
-    );
+    from private.trail_items item
+    left join public.trail_personal_states state_row
+      on state_row.trail_item_id=item.id
+    where item.workspace_id=p_workspace_id;
   end if;
   v_material:=jsonb_build_object(
     'schemaVersion','1.0.0','workspaceId',p_workspace_id,

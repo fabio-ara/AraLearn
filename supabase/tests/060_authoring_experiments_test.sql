@@ -2,33 +2,33 @@ begin;
 
 select plan(46);
 
-select has_table('private', 'authoring_experiments');
-select has_table('private', 'authoring_experiment_protocol_revisions');
-select has_table('private', 'authoring_experiment_factors');
-select has_table('private', 'authoring_experiment_factor_targets');
-select has_table('private', 'authoring_experiment_factor_levels');
-select has_table('private', 'authoring_experiment_conditions');
-select has_table('private', 'authoring_experiment_condition_levels');
-select has_table('private', 'authoring_experiment_condition_resource_sets');
-select has_table('private', 'authoring_experiment_invariants');
-select has_table('private', 'authoring_experiment_instruments');
-select has_table('private', 'authoring_experiment_base_revisions');
-select has_table('private', 'authoring_experiment_base_microsequences');
-select has_table('private', 'authoring_experiment_variants');
-select has_table('private', 'authoring_experiment_variant_revisions');
-select has_table('private', 'authoring_experiment_difference_runs');
-select has_table('private', 'authoring_experiment_difference_hunks');
-select has_table('private', 'authoring_experiment_diff_classifications');
-select has_table('private', 'authoring_experiment_variant_freezes');
-select has_table('private', 'authoring_experiment_enrollments');
-select has_table('private', 'authoring_experiment_assignments');
-select has_table('private', 'authoring_experiment_variant_corrections');
+select has_table('private', 'authoring_experiments', 'authoring_experiments');
+select has_table('private', 'authoring_experiment_protocol_revisions', 'authoring_experiment_protocol_revisions');
+select has_table('private', 'authoring_experiment_factors', 'authoring_experiment_factors');
+select has_table('private', 'authoring_experiment_factor_targets', 'authoring_experiment_factor_targets');
+select has_table('private', 'authoring_experiment_factor_levels', 'authoring_experiment_factor_levels');
+select has_table('private', 'authoring_experiment_conditions', 'authoring_experiment_conditions');
+select has_table('private', 'authoring_experiment_condition_levels', 'authoring_experiment_condition_levels');
+select has_table('private', 'authoring_experiment_condition_resource_sets', 'authoring_experiment_condition_resource_sets');
+select has_table('private', 'authoring_experiment_invariants', 'authoring_experiment_invariants');
+select has_table('private', 'authoring_experiment_instruments', 'authoring_experiment_instruments');
+select has_table('private', 'authoring_experiment_base_revisions', 'authoring_experiment_base_revisions');
+select has_table('private', 'authoring_experiment_base_microsequences', 'authoring_experiment_base_microsequences');
+select has_table('private', 'authoring_experiment_variants', 'authoring_experiment_variants');
+select has_table('private', 'authoring_experiment_variant_revisions', 'authoring_experiment_variant_revisions');
+select has_table('private', 'authoring_experiment_difference_runs', 'authoring_experiment_difference_runs');
+select has_table('private', 'authoring_experiment_difference_hunks', 'authoring_experiment_difference_hunks');
+select has_table('private', 'authoring_experiment_diff_classifications', 'authoring_experiment_diff_classifications');
+select has_table('private', 'authoring_experiment_variant_freezes', 'authoring_experiment_variant_freezes');
+select has_table('private', 'authoring_experiment_enrollments', 'authoring_experiment_enrollments');
+select has_table('private', 'authoring_experiment_assignments', 'authoring_experiment_assignments');
+select has_table('private', 'authoring_experiment_variant_corrections', 'authoring_experiment_variant_corrections');
 
-select has_column('public', 'courses', 'experiment_variant');
-select has_column('public', 'courses', 'experiment_base');
-select has_column('private', 'authoring_experiments', 'revision');
+select has_column('public', 'courses', 'experiment_variant', 'experiment_variant');
+select has_column('public', 'courses', 'experiment_base', 'experiment_base');
+select has_column('private', 'authoring_experiments', 'revision', 'revision');
 select has_column(
-  'private', 'authoring_experiment_assignments', 'assignment_proof'
+  'private', 'authoring_experiment_assignments', 'assignment_proof', 'assignment_proof'
 );
 
 select has_function(
