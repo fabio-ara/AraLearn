@@ -403,7 +403,7 @@ async function renderAuthenticatedApplication(root, config, authClient, session)
   root.innerHTML = `
     <div id="aralearn-editor-root"></div>
     <div id="aralearn-authoring-root" hidden></div>
-    <div id="aralearn-experiment-enrollment-root"></div>
+    <div id="aralearn-experiment-enrollment-root" class="experiment-enrollment-root"></div>
     <div id="aralearn-remote-library-root"></div>
     <nav class="authoring-reader-return" data-authoring-reader-return aria-label="Retorno à Autoria" hidden>
       <button class="icon-pill" type="button" data-return-to-authoring title="Voltar à Autoria" aria-label="Voltar à Autoria">${renderUiIcon("arrow-left", "home-tab-icon")}<span>Autoria</span></button>

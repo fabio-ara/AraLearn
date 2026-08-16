@@ -1055,7 +1055,10 @@ input:-webkit-autofill:focus {
   grid-template-columns: var(--tap) minmax(0, 1fr) var(--tap);
   gap: 10px;
   padding-top: max(var(--safe-top), 8px);
-  padding-inline: 12px;
+  /* A tela já tem o recuo da coluna de cartões. A barra de navegação não
+     ganha um segundo recuo, para que voltar e as ações laterais compartilhem
+     a mesma aresta dos cartões abaixo. */
+  padding-inline: 0;
 }
 
 .navigation-topbar > .icon-ghost,
@@ -6677,7 +6680,8 @@ input:-webkit-autofill:focus {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 3px;
-  margin: 4px 12px 8px;
+  width: 100%;
+  margin: 4px 0 8px;
   padding: 3px;
   border: 1px solid var(--border-subtle);
   border-radius: 13px;
@@ -8639,18 +8643,31 @@ fieldset.authoring-experiment-fieldset {
   text-align: center;
 }
 
-.experiment-enrollment-launcher {
+.experiment-enrollment-root {
   position: fixed;
   z-index: 85;
+  inset: 0;
+  width: min(100%, 430px);
+  margin-inline: auto;
+  pointer-events: none;
+}
+
+.experiment-enrollment-root > * {
+  pointer-events: auto;
+}
+
+.experiment-enrollment-launcher {
+  position: absolute;
   right: max(12px, var(--safe-right));
   bottom: calc(max(12px, var(--safe-bottom-tappable)) + 62px);
+  width: var(--tap);
   min-height: var(--tap);
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 13px;
+  height: var(--tap);
+  display: grid;
+  place-items: center;
+  padding: 0;
   border: 1px solid var(--border-default);
-  border-radius: 999px;
+  border-radius: 12px;
   color: var(--text-primary);
   background: var(--surface-canvas);
   box-shadow: var(--shadow-floating);
@@ -8661,6 +8678,13 @@ fieldset.authoring-experiment-fieldset {
 .experiment-enrollment-launcher svg {
   width: 20px;
   height: 20px;
+}
+
+.experiment-enrollment-backdrop {
+  left: 50%;
+  right: auto;
+  width: min(100%, 430px);
+  transform: translateX(-50%);
 }
 
 .experiment-enrollment-dialog {
@@ -8840,10 +8864,6 @@ label.authoring-experiment-continuity {
 }
 
 @media (max-width: 420px) {
-  .experiment-enrollment-launcher span {
-    max-width: 120px;
-  }
-
   .experiment-enrollment-actions > button {
     flex: 1 1 150px;
   }

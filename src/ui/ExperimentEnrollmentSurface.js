@@ -158,8 +158,9 @@ export function createExperimentEnrollmentSurface({
 
   function render({ focus = "" } = {}) {
     root.innerHTML = '<button type="button" class="experiment-enrollment-launcher"' +
-      ' data-experiment-enrollment-action="open">' + renderUiIcon("experiment", "home-tab-icon") +
-      '<span>Participar de estudo</span></button>' + (state.opened
+      ' data-experiment-enrollment-action="open" title="Participar de estudo"' +
+      ' aria-label="Participar de estudo">' + renderUiIcon("experiment", "home-tab-icon") +
+      '</button>' + (state.opened
       ? '<div class="authoring-dialog-backdrop experiment-enrollment-backdrop">' +
         '<section class="authoring-dialog experiment-enrollment-dialog" role="dialog" aria-modal="true"' +
         ' aria-labelledby="experiment-enrollment-title" tabindex="-1" aria-busy="' +

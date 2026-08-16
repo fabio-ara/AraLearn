@@ -59,6 +59,7 @@ async function renderConstrainedHome(page, viewportWidth) {
     const selectors = [
       ".app-shell",
       ".screen-content",
+      ".home-product-switch",
       ".home-course-selector-card",
       ".home-library-controls",
       ".home-group-select-row",
@@ -72,6 +73,8 @@ async function renderConstrainedHome(page, viewportWidth) {
     ];
     const card = document.querySelector(".home-course-selector-card");
     const cardRect = card.getBoundingClientRect();
+    const productSwitch = document.querySelector(".home-product-switch");
+    const productSwitchRect = productSwitch.getBoundingClientRect();
     const menuGeometry = [
       ["grupo", document.querySelector(".home-group-context-menu")],
       ["curso", document.querySelector(".home-course-selector-actions > .home-course-context-menu")]
@@ -95,6 +98,14 @@ async function renderConstrainedHome(page, viewportWidth) {
     return {
       cardClientWidth: card.clientWidth,
       cardScrollWidth: card.scrollWidth,
+      productSwitch: {
+        left: productSwitchRect.left,
+        width: productSwitchRect.width,
+        buttonWidths: [...productSwitch.querySelectorAll("button")].map((button) =>
+          button.getBoundingClientRect().width
+        )
+      },
+      card: { left: cardRect.left, width: cardRect.width },
       contentClientWidth: document.querySelector(".screen-content").clientWidth,
       contentScrollWidth: document.querySelector(".screen-content").scrollWidth,
       errorOverflowWrap: getComputedStyle(document.querySelector(".home-trails-error")).overflowWrap,
@@ -119,6 +130,12 @@ test("Home contém erros e títulos longos sem distorcer ou recortar controles",
     const result = await renderConstrainedHome(page, viewportWidth);
     expect(result.cardScrollWidth, `card em ${viewportWidth}px`).toBeLessThanOrEqual(result.cardClientWidth);
     expect(result.contentScrollWidth, `conteúdo em ${viewportWidth}px`).toBeLessThanOrEqual(result.contentClientWidth);
+    expect(Math.abs(result.productSwitch.left - result.card.left), `alinhamento em ${viewportWidth}px`)
+      .toBeLessThanOrEqual(1);
+    expect(Math.abs(result.productSwitch.width - result.card.width), `largura em ${viewportWidth}px`)
+      .toBeLessThanOrEqual(1);
+    expect(Math.abs(result.productSwitch.buttonWidths[0] - result.productSwitch.buttonWidths[1]),
+      `opções simétricas em ${viewportWidth}px`).toBeLessThanOrEqual(1);
     expect(result.errorOverflowWrap).toBe("anywhere");
     expect(result.geometry.filter((item) => !item.withinCard), `geometria em ${viewportWidth}px`).toEqual([]);
     expect(result.menuGeometry.filter((item) => !item.withinCard), `menus em ${viewportWidth}px`).toEqual([]);

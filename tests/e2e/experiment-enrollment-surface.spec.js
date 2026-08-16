@@ -12,6 +12,7 @@ async function mountEnrollment(page) {
     study.innerHTML = '<button type="button">Conteúdo de Estudo</button>';
     const root = document.createElement("div");
     root.id = "experiment-enrollment-root";
+    root.className = "experiment-enrollment-root";
     document.body.append(study, root);
     const selection = {
       selectionId: "70000000-0000-4000-8000-000000000107",
@@ -127,4 +128,33 @@ test("fragmento abre consentimento, atribuição privada funciona offline e reti
   expect(withdrawal.operation).toBe("withdraw");
   expect(withdrawal.args.enrollmentRef).toBe(ENROLLMENT_REF);
   expect(withdrawal.args.enrollmentCode).toBeUndefined();
+});
+
+test("acionador de estudo é um ícone dentro do mesmo enquadramento móvel", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 844 });
+  await page.goto("/");
+  await page.evaluate(async () => {
+    document.body.replaceChildren();
+    const root = document.createElement("div");
+    root.id = "experiment-enrollment-root";
+    root.className = "experiment-enrollment-root";
+    document.body.append(root);
+    const { createExperimentEnrollmentSurface } = await import("/src/ui/ExperimentEnrollmentSurface.js");
+    createExperimentEnrollmentSurface({ root, controller: {} });
+  });
+
+  const launcher = page.getByRole("button", { name: "Participar de estudo" });
+  await expect(launcher).toBeVisible();
+  expect(await launcher.locator("span").count()).toBe(0);
+  const geometry = await page.evaluate(() => {
+    const root = document.querySelector(".experiment-enrollment-root").getBoundingClientRect();
+    const button = document.querySelector(".experiment-enrollment-launcher").getBoundingClientRect();
+    return { root: { left: root.left, width: root.width }, button: { left: button.left, right: button.right, width: button.width, height: button.height } };
+  });
+  expect(geometry.root.width).toBe(430);
+  expect(geometry.root.left).toBe(425);
+  expect(geometry.button.left).toBeGreaterThanOrEqual(geometry.root.left);
+  expect(geometry.button.right).toBeLessThanOrEqual(geometry.root.left + geometry.root.width);
+  expect(geometry.button.width).toBe(44);
+  expect(geometry.button.height).toBe(44);
 });
