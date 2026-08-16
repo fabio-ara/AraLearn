@@ -134,6 +134,8 @@ abertas, sem tratar teste de software como evidência de aprendizagem.
 Enquanto a regressão final de Autoria estiver em andamento, o
 [checkpoint recuperável da #109](checkpoint-autoria-109.md) registra evidências,
 pendências e o comando exato de retomada.
+O [roteiro de aceitação humana da Autoria](roteiro-aceitacao-humana-autoria.md)
+prepara a etapa com pessoa leiga que automação alguma pode aprovar.
 
 ## Operar e implantar
 

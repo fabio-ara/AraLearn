@@ -64,7 +64,8 @@ preserva os comandos, limites e medidas observadas.
    deploy foi inferido a partir dos testes locais.
 5. Executar com uma pessoa real o roteiro de aceitação leiga, primeiro no
    celular e depois no desktop. Playwright e agentes não podem aprovar esse
-   critério humano.
+   critério humano. O [roteiro pronto para aplicação](roteiro-aceitacao-humana-autoria.md)
+   não substitui essa execução.
 6. Só depois desses itens atualizar a #101/#109 como encerradas e promover o
    checkpoint para `main`.
 
