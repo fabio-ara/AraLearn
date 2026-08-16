@@ -62,6 +62,12 @@
       "passed": 1,
       "failed": 0,
       "note": "Metadata e separação da chave HTTP aprovadas; mutações OAuth exigem token local explícito."
+    },
+    {
+      "command": "node supabase/tests/authoring-action-local-journey.mjs",
+      "passed": 1,
+      "failed": 0,
+      "note": "Jornada percorre análise, ResourceSet, parâmetros, snapshot, blueprint, cards, publicação, revisão editorial, catálogo e limpeza."
     }
   ],
   "browserLargeCourse": {

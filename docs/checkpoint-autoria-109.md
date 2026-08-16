@@ -47,6 +47,9 @@ de checkpoint é `checkpoint/autoria-109-20260816`.
 - Supabase local: `db reset` aplicou todas as migrations e `test db --local`
   aprovou os sete arquivos pgTAP (330 testes); o smoke PostgREST/Auth/RLS
   também passou após publicar a fixture canônica local.
+- Jornada local da Custom GPT Action aprovada após percorrer análise,
+  ResourceSet, parâmetros, snapshot, blueprint, materialização, publicação,
+  revisão editorial, catálogo e limpeza.
 
 Esses números pertencem às fixtures e ao ambiente local de 16 de agosto de
 2026. Não são previsão de produção nem evidência de aprendizagem.
@@ -61,20 +64,16 @@ serializador do produto e usam apenas identificadores pseudonimizados.
 
 ## O que ainda não pode ser dado como concluído
 
-1. Atualizar a jornada local da Custom GPT Action para percorrer o ciclo
-   obrigatório de análise, parâmetros, snapshot e blueprint antes de salvar
-   cards. A stack está válida; o teste legado foi corretamente recusado pelo
-   gate `materialization_design_required`.
-2. Executar mutações OAuth locais do MCP com um token de teste configurado.
+1. Executar mutações OAuth locais do MCP com um token de teste configurado.
    O smoke sem token confirmou metadata e a separação da chave HTTP, mas não
    executa mutações OAuth por desenho.
-3. Verificar implantação hospedada apenas em ambiente autorizado. Nenhum
+2. Verificar implantação hospedada apenas em ambiente autorizado. Nenhum
    deploy foi inferido a partir dos testes locais.
-4. Executar com uma pessoa real o roteiro de aceitação leiga, primeiro no
+3. Executar com uma pessoa real o roteiro de aceitação leiga, primeiro no
    celular e depois no desktop. Playwright e agentes não podem aprovar esse
    critério humano. O [roteiro pronto para aplicação](roteiro-aceitacao-humana-autoria.md)
    não substitui essa execução.
-5. Só depois desses itens atualizar a #101/#109 como encerradas e promover o
+4. Só depois desses itens atualizar a #101/#109 como encerradas e promover o
    checkpoint para `main`.
 
 ## Retomada exata
@@ -95,7 +94,8 @@ git diff --check
 Para repetir a validação local já executada, inicie a stack, rode `supabase db
 reset --local`, `supabase test db --local`, prepare o publicador local e
 publique a fixture canônica antes do smoke PostgREST/Auth/RLS. Os smokes da
-Action e do MCP permanecem condicionados aos dois itens acima. Se qualquer
+Action também exige a fixture e percorre o ciclo de desenho inteiro; o smoke
+MCP com mutações continua condicionado ao token OAuth local. Se qualquer
 comando falhar, corrija a regressão antes de produzir o relatório final; não
 reabra contratos estáveis da #102–#108 por preferência de implementação.
 

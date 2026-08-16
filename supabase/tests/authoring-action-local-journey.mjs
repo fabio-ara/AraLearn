@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { createHash, randomUUID } from "node:crypto";
+import { readFile } from "node:fs/promises";
 
 import {
   createAuthoringActionHandler
@@ -7,6 +8,9 @@ import {
 import {
   SupabaseAuthoringAdapter
 } from "../functions/_shared/aralearn-authoring/supabaseAdapter.js";
+import {
+  RESOURCE_CATALOG
+} from "../../src/resources/catalog/resourceCatalog.js";
 import {
   ensureLocalTechnicalOwner
 } from "./local-role-fixtures.mjs";
@@ -39,6 +43,10 @@ const ACTION_BASE_URL =
   `${projectUrl}/functions/v1/aralearn-authoring-action`;
 const BOOTSTRAP_OWNER_EMAIL = "action-bootstrap-owner@aralearn.local";
 const runKey = randomUUID().replaceAll("-", "").slice(0, 12);
+const instructionalDesignFixture = JSON.parse(await readFile(new URL(
+  "../../tests/fixtures/pedagogy/instructional-design-scenarios.v1.json",
+  import.meta.url
+), "utf8"));
 const paths = Object.freeze({
   course: [`course-dataprev-action-${runKey}`],
   module: [
@@ -57,6 +65,184 @@ const paths = Object.freeze({
     "micro-iaas-paas-saas"
   ]
 });
+
+function analysisForMicrosequence(microsequenceRef, workspaceRevision) {
+  const analysis = structuredClone(instructionalDesignFixture.scenarios.find(
+    ({ id }) => id === instructionalDesignFixture.canonicalLifecycle.analysisScenarioRef
+  ).analysis);
+  analysis.scope = { kind: "microsequence", ref: microsequenceRef };
+  analysis.derivedFrom.workspaceRevision = workspaceRevision;
+  analysis.derivedFrom.scopeEntityVersion = 1;
+  return analysis;
+}
+
+function parameterAssignmentsForMicrosequence(microsequenceRef, resourceSetRef) {
+  const scope = { kind: "microsequence", ref: microsequenceRef };
+  const values = [
+    ["new_units_per_theory_step_ceiling", { kind: "integer", value: 2 }],
+    ["simultaneous_new_units_per_coordination_set_ceiling", { kind: "integer", value: 2 }],
+    ["applicable_explanation_requirement_refs", {
+      kind: "set",
+      values: ["exp-process-delivery", "exp-transport-choice"]
+    }],
+    ["evidence_alignment_relation", {
+      kind: "relation",
+      nodes: ["process", "ev-process-delivery"],
+      edges: [{ from: "process", to: "ev-process-delivery", kind: "supports" }]
+    }],
+    ["distinct_practice_opportunities_per_evidence_requirement", {
+      kind: "range", minimum: 1, maximum: 2
+    }],
+    ["practice_variation_dimensions", {
+      kind: "vector",
+      components: [{ dimension: "context", value: "varied", unit: "category" }]
+    }],
+    ["accepted_performance_forms", {
+      kind: "set", values: ["explain_choice"]
+    }],
+    ["representation_fallback_policy", {
+      kind: "enum", value: "allow_substitute_with_limitation"
+    }],
+    ["available_resource_set_refs", {
+      kind: "set", values: [`${resourceSetRef.id}@${resourceSetRef.version}`]
+    }]
+  ];
+  return values.map(([parameterId, value]) => ({
+    contract: "DesignParameterAssignment@1",
+    modelVersion: "1.0.0",
+    id: `action-${parameterId}`,
+    version: "1.0.0",
+    definitionRef: { id: parameterId, version: "1.0.0" },
+    scope,
+    mode: "auto",
+    value,
+    authority: { kind: "gpt", actorRef: null, locked: false },
+    rationale: `Valor automático de ${parameterId} para a jornada local.`,
+    provenanceRefs: ["action:design"]
+  }));
+}
+
+function blueprintForMicrosequence() {
+  return {
+    blueprint: {
+      goal: "Distinguir relações causais de associações.",
+      learnerSituation: "Pessoa autodidata iniciante.",
+      learningConditions: [],
+      contentDemands: [{
+        id: "demand:a",
+        description: "Comparar relações e justificar a distinção.",
+        cognitiveOperations: ["explain"]
+      }],
+      anticipatedDifficulties: [],
+      designResponses: [],
+      prerequisiteEvidence: [],
+      conceptualLayers: [{
+        id: "layer:a",
+        plainLanguageReferent: "Relações entre acontecimentos.",
+        formalTerms: ["causalidade"],
+        requiresLayerIds: []
+      }],
+      theorySteps: [{
+        id: "theory:a",
+        layerIds: ["layer:a"],
+        purpose: "Desenvolver a distinção antes da prática.",
+        cognitiveOperation: "explain",
+        packageCandidateIds: ["paragraph"]
+      }],
+      practiceSteps: [{
+        id: "practice:table",
+        targetLayerIds: ["layer:a"],
+        decision: "Comparar as responsabilidades de cada modelo.",
+        cognitiveOperation: "compare-fields",
+        packageCandidateIds: ["table"],
+        feedback: "Retomar a camada que cada modelo deixa sob responsabilidade do cliente."
+      }, {
+        id: "practice:gap",
+        targetLayerIds: ["layer:a"],
+        decision: "Completar o termo técnico estudado.",
+        cognitiveOperation: "recall",
+        packageCandidateIds: ["gap"],
+        feedback: "Retomar o termo técnico apresentado no passo anterior."
+      }],
+      feedbackPlan: "Explicitar a relação usada na decisão.",
+      termLedger: [{
+        term: "causalidade",
+        introducedInLayerId: "layer:a",
+        plainMeaning: "Relação em que uma mudança produz outra."
+      }],
+      packageCandidates: [{
+        id: "paragraph",
+        packageId: "aralearn.resource.paragraph",
+        version: "1.0.0",
+        reason: "Explicação progressiva em prosa."
+      }, {
+        id: "table",
+        packageId: "aralearn.resource.table",
+        version: "1.0.0",
+        reason: "Comparação explícita dos atributos."
+      }, {
+        id: "gap",
+        packageId: "aralearn.response.gap",
+        version: "1.0.0",
+        reason: "Recuperação localizada do termo técnico."
+      }]
+    },
+    mappings: {
+      conceptualLayers: [{ layerId: "layer:a", unitRefs: ["tcp"] }],
+      contentDemands: [{
+        contentDemandId: "demand:a",
+        unitRefs: ["tcp"],
+        evidenceRequirementRefs: []
+      }],
+      designResponses: [],
+      theorySteps: [{
+        stepId: "theory:a",
+        unitRefs: ["tcp"],
+        explanationRequirementRefs: []
+      }],
+      practiceSteps: [{
+        stepId: "practice:table",
+        unitRefs: ["tcp", "udp"],
+        evidenceRequirementRefs: ["ev-transport-choice"]
+      }, {
+        stepId: "practice:gap",
+        unitRefs: ["tcp"],
+        evidenceRequirementRefs: ["ev-transport-choice"]
+      }]
+    }
+  };
+}
+
+function resourceSetForMicrosequence(microsequenceRef) {
+  return {
+    contract: "ResourceSet@1",
+    modelVersion: "1.0.0",
+    id: "action-resource-set",
+    version: "1.0.0",
+    scope: { kind: "microsequence", ref: microsequenceRef },
+    packages: [
+      { packageId: "aralearn.resource.paragraph", version: "1.0.0" },
+      { packageId: "aralearn.resource.table", version: "1.0.0" },
+      { packageId: "aralearn.response.gap", version: "1.0.0" }
+    ],
+    resolvedCatalogVersion: RESOURCE_CATALOG.catalogVersion,
+    facetBasis: {
+      catalogVersion: RESOURCE_CATALOG.catalogVersion,
+      families: ["family.text_language", "family.quantitative_symbolic", "family.response"],
+      disciplines: ["discipline.transversal"],
+      structures: ["structure.prose", "structure.table", "structure.response_gap"],
+      cognitiveOperations: ["operation.explain", "operation.compare", "operation.recall"],
+      practiceModalities: ["practice.exposition", "practice.gap"]
+    },
+    selectionConstraints: {
+      allowedFits: ["canonical", "versatile", "substitute"],
+      allowEmbeddedPractice: true,
+      allowResponsePackages: true,
+      onNoAdequateRepresentation: "record_limitation"
+    },
+    provenanceRefs: ["action:resource-set"]
+  };
+}
 
 const adapter = new SupabaseAuthoringAdapter({
   supabaseUrl: projectUrl,
@@ -599,19 +785,98 @@ async function runJourney() {
     });
   }
 
+  const savedAnalysis = await action(
+    state.authorToken,
+    "gerirDesenhoInstrucional",
+    {
+      operation: "save_analysis",
+      workspaceId: created.workspaceId,
+      microsequencePath: paths.microsequence,
+      requestId: requestId("action-analysis"),
+      expectedRevision: structured.revision,
+      payloadJson: JSON.stringify(analysisForMicrosequence(
+        paths.microsequence[3],
+        structured.revision
+      ))
+    }
+  );
+  assert.equal(savedAnalysis.revision, structured.revision + 1);
+
+  const savedResourceSet = await action(
+    state.authorToken,
+    "gerirDesenhoInstrucional",
+    {
+      operation: "save_resource_set",
+      workspaceId: created.workspaceId,
+      microsequencePath: paths.microsequence,
+      requestId: requestId("action-resource-set"),
+      expectedRevision: savedAnalysis.revision,
+      payloadJson: JSON.stringify(resourceSetForMicrosequence(paths.microsequence[3]))
+    }
+  );
+  assert.equal(savedResourceSet.revision, savedAnalysis.revision + 1);
+
+  let designRevision = savedResourceSet.revision;
+  for (const assignment of parameterAssignmentsForMicrosequence(
+    paths.microsequence[3],
+    savedResourceSet.result.resourceSetRef
+  )) {
+    const savedParameter = await action(
+      state.authorToken,
+      "gerirDesenhoInstrucional",
+      {
+        operation: "set_parameter",
+        workspaceId: created.workspaceId,
+        microsequencePath: paths.microsequence,
+        requestId: requestId(`action-${assignment.definitionRef.id}`),
+        expectedRevision: designRevision,
+        payloadJson: JSON.stringify(assignment)
+      }
+    );
+    designRevision = savedParameter.revision;
+  }
+
+  const resolvedDesign = await action(
+    state.authorToken,
+    "gerirDesenhoInstrucional",
+    {
+      operation: "resolve_effective",
+      workspaceId: created.workspaceId,
+      microsequencePath: paths.microsequence,
+      requestId: requestId("action-resolve-effective"),
+      expectedRevision: designRevision,
+      payloadJson: "{}"
+    }
+  );
+  designRevision = resolvedDesign.revision;
+
+  const savedBlueprint = await action(
+    state.authorToken,
+    "gerirDesenhoInstrucional",
+    {
+      operation: "save_blueprint",
+      workspaceId: created.workspaceId,
+      microsequencePath: paths.microsequence,
+      requestId: requestId("action-blueprint"),
+      expectedRevision: designRevision,
+      payloadJson: JSON.stringify(blueprintForMicrosequence())
+    }
+  );
+  designRevision = savedBlueprint.revision;
+
   const materialized = await action(
     state.authorToken,
     "salvarCardsNaMicrossequencia",
     {
       requestId: requestId("action-cards"),
       workspaceId: created.workspaceId,
-      expectedRevision: structured.revision,
+      expectedRevision: designRevision,
       microsequencePath: paths.microsequence,
       mode: "replace",
       cardsJson: JSON.stringify(cards())
     }
   );
-  assert.equal(materialized.revision, structured.revision + 1);
+  assert.equal(materialized.revision, designRevision + 1);
 
   const cardList = await action(
     state.authorToken,
