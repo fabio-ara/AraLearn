@@ -58,10 +58,10 @@
       "note": "Smoke PostgREST/Auth/RLS aprovado com a fixture canônica publicada localmente."
     },
     {
-      "command": "node supabase/tests/authoring-mcp-local-smoke.mjs",
+      "command": "npm run test:authoring:mcp:local:oauth",
       "passed": 1,
       "failed": 0,
-      "note": "Metadata e separação da chave HTTP aprovadas; mutações OAuth exigem token local explícito."
+      "note": "Discovery, DCR, PKCE, consentimento, mutação MCP e limpeza de concessão, cliente e usuário temporários aprovados na stack local."
     },
     {
       "command": "node supabase/tests/authoring-action-local-journey.mjs",
@@ -137,7 +137,7 @@
   },
   "notAcceptanceEvidence": [
     "Não mede eficácia pedagógica, causalidade ou validade de instrumentos.",
-    "Não substitui a jornada Action atualizada, mutações MCP OAuth locais ou verificação hospedada.",
+    "Não substitui a jornada Action atualizada ou a verificação hospedada.",
     "Não substitui o roteiro com pessoa leiga real em celular e desktop."
   ],
   "resume": "docs/checkpoint-autoria-109.md"

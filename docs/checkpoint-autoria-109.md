@@ -47,6 +47,9 @@ de checkpoint é `checkpoint/autoria-109-20260816`.
 - Supabase local: `db reset` aplicou todas as migrations e `test db --local`
   aprovou os sete arquivos pgTAP (330 testes); o smoke PostgREST/Auth/RLS
   também passou após publicar a fixture canônica local.
+- MCP local: o smoke OAuth criou por DCR um cliente e uma identidade efêmera,
+  aprovou a mutação de criação e remoção de workspace e limpou a concessão,
+  o cliente e o usuário ao final.
 - Jornada local da Custom GPT Action aprovada após percorrer análise,
   ResourceSet, parâmetros, snapshot, blueprint, materialização, publicação,
   revisão editorial, catálogo e limpeza.
@@ -64,16 +67,13 @@ serializador do produto e usam apenas identificadores pseudonimizados.
 
 ## O que ainda não pode ser dado como concluído
 
-1. Executar mutações OAuth locais do MCP com um token de teste configurado.
-   O smoke sem token confirmou metadata e a separação da chave HTTP, mas não
-   executa mutações OAuth por desenho.
-2. Verificar implantação hospedada apenas em ambiente autorizado. Nenhum
+1. Verificar implantação hospedada apenas em ambiente autorizado. Nenhum
    deploy foi inferido a partir dos testes locais.
-3. Executar com uma pessoa real o roteiro de aceitação leiga, primeiro no
+2. Executar com uma pessoa real o roteiro de aceitação leiga, primeiro no
    celular e depois no desktop. Playwright e agentes não podem aprovar esse
    critério humano. O [roteiro pronto para aplicação](roteiro-aceitacao-humana-autoria.md)
    não substitui essa execução.
-4. Só depois desses itens atualizar a #101/#109 como encerradas e promover o
+3. Só depois desses itens atualizar a #101/#109 como encerradas e promover o
    checkpoint para `main`.
 
 ## Retomada exata

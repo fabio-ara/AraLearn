@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
 import { createHash, randomBytes, randomUUID } from "node:crypto";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -11,6 +12,39 @@ import {
 
 const LOCAL_APP_ORIGIN = "http://127.0.0.1:4182";
 const CLIENT_REDIRECT_URI = "https://mcp-smoke.aralearn.invalid/callback";
+
+function localEnvironmentFromStatus(environment = process.env) {
+  if (
+    environment.SUPABASE_URL
+    || environment.ARALEARN_SUPABASE_URL
+  ) return environment;
+
+  let status;
+  try {
+    const useWindowsCommandShell = process.platform === "win32";
+    status = JSON.parse(execFileSync(
+      useWindowsCommandShell ? (process.env.ComSpec || "cmd.exe") : "npx",
+      useWindowsCommandShell
+        ? ["/d", "/s", "/c", "npx --yes supabase@2.109.1 status --output json"]
+        : ["--yes", "supabase@2.109.1", "status", "--output", "json"],
+      { cwd: path.resolve(fileURLToPath(import.meta.url), "..", ".."), encoding: "utf8" }
+    ));
+  } catch (error) {
+    throw new Error(
+      "Não foi possível obter as credenciais da stack Supabase local. "
+      + "Inicie-a com 'npx --yes supabase@2.109.1 start' ou defina SUPABASE_URL, "
+      + "SUPABASE_SERVICE_ROLE_KEY e SUPABASE_ANON_KEY.",
+      { cause: error }
+    );
+  }
+
+  return {
+    ...environment,
+    SUPABASE_URL: status.API_URL,
+    SUPABASE_SERVICE_ROLE_KEY: status.SERVICE_ROLE_KEY,
+    SUPABASE_ANON_KEY: status.ANON_KEY
+  };
+}
 
 function normalizedEnvironment(environment) {
   return {
@@ -499,5 +533,5 @@ const entryPoint = process.argv[1]
   ? path.resolve(process.argv[1])
   : "";
 if (entryPoint === fileURLToPath(import.meta.url)) {
-  await runLocalMcpOAuthSmoke();
+  await runLocalMcpOAuthSmoke({ environment: localEnvironmentFromStatus() });
 }
