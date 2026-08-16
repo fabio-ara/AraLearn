@@ -231,6 +231,39 @@ facetas e seleção paginada; não exige que a pessoa conheça `package@version`
 configure cards individualmente. Quando há vários conjuntos efetivos, a pessoa
 escolhe qual inspecionar: a UI não cria uma união implícita.
 
+**Experimento instrucional (`Experiment`).** Agregado estável que coordena
+revisões de protocolo, base comum, condições, variantes, enrollments e
+atribuições. Não contém outcomes como se fossem propriedades do curso e não
+transforma um teste técnico em resultado empírico.
+
+**Revisão de protocolo (`ProtocolRevision`).** Registro imutável de hipótese,
+base, fatores, condições explícitas, escopo, invariantes, regra de atribuição e
+referências governadas de consentimento/instrumentos. Alterar qualquer desses
+elementos cria outra revisão.
+
+**Condição experimental (`ExperimentCondition`).** Tupla explícita que fornece
+um valor para cada fator de uma revisão de protocolo. Não é inferida do nome da
+variante e não nasce de produto cartesiano automático.
+
+**Revisão de variante (`VariantRevision`).** Workspace/curso privado derivado
+da base comum para uma condição, com mapa de escopo, locks, refs de desenho,
+auditoria, diff e artefato próprios. Uma revisão congelada é imutável; reparo
+gera outra revisão.
+
+**Congelamento experimental (`VariantFreeze`).** Transição que fixa conteúdo,
+hash, protocolo, condição, snapshots, manifesto, auditoria e diferenças
+decididas antes da atribuição. Freeze é propriedade de reprodutibilidade, não
+prova de eficácia ou fidelidade de uso.
+
+**Enrollment experimental.** Vínculo de participação online que registra
+política/revisão de consentimento e cria pseudônimo local ao experimento. O
+vínculo de conta é anulável e não aparece no contexto MCP.
+
+**Atribuição de participante (`ParticipantAssignment`).** Recibo append-only
+que liga um enrollment a uma revisão congelada usando regra manual, aleatória
+com seed versionada ou balanceada simples. A decisão é do servidor e nunca do
+GPT ou do dispositivo offline.
+
 **Knowledge autoral JIT.** Trechos versionados e recuperáveis que concentram
 ciência, critérios, exemplos e políticas necessários ao passo corrente. O
 seletor usa intenção, alvo e contexto para devolver no máximo oito trechos; não

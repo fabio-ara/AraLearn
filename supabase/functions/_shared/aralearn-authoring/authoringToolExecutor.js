@@ -5,6 +5,8 @@ import { AuthoringApiError } from "./errors.js";
 import { RESOURCE_CATALOG } from "../aralearn/runtime/resources/catalog/resourceCatalog.js";
 import { resolveResourceCatalogAccess } from "./resourceCatalogAccess.js";
 import {
+  mapAuthoringApplicationToolCall,
+  validateAuthoringApplicationToolOutput,
   authoringMcpToolsForPrincipal,
   mapAuthoringMcpToolCall,
   validateAuthoringMcpToolOutput
@@ -104,13 +106,17 @@ async function resourceLibraryResult({ adapter, principal, args, deadlineAt }) {
   };
 }
 
-function validatedSuccess(name, requestId, data) {
+function validatedSuccess(name, requestId, data, surface = "mcp") {
   const envelope = {
     ok: true,
     requestId,
     data: hideInternalLifecycle(data)
   };
-  validateAuthoringMcpToolOutput(name, envelope);
+  if (surface === "application") {
+    validateAuthoringApplicationToolOutput(name, envelope);
+  } else {
+    validateAuthoringMcpToolOutput(name, envelope);
+  }
   return {
     requestId,
     data: envelope.data
@@ -122,9 +128,12 @@ export async function executeAuthoringTool({
   principal,
   name,
   rawArguments,
-  deadlineAt
+  deadlineAt,
+  surface = "mcp"
 }) {
-  const operation = mapAuthoringMcpToolCall(name, rawArguments);
+  const operation = surface === "application"
+    ? mapAuthoringApplicationToolCall(name, rawArguments)
+    : mapAuthoringMcpToolCall(name, rawArguments);
   if (operation.kind === "knowledge") {
     const unknownPackageIds = (operation.body.packageIds || []).filter(
       (packageId) => !RESOURCE_CATALOG.getProfile(packageId)
@@ -158,7 +167,7 @@ export async function executeAuthoringTool({
           manageCatalog: available.has("editarCatalogo"),
           availableTools
         }
-    });
+    }, surface);
   }
   if (operation.kind === "resource-library") {
     try {
@@ -170,7 +179,8 @@ export async function executeAuthoringTool({
           principal,
           args: operation.body,
           deadlineAt
-        })
+        }),
+        surface
       );
     } catch (error) {
       if (error instanceof AuthoringApiError) throw error;
@@ -207,5 +217,5 @@ export async function executeAuthoringTool({
     principal: toolPrincipal,
     deadlineAt
   });
-  return validatedSuccess(name, operation.requestId, result.data);
+  return validatedSuccess(name, operation.requestId, result.data, surface);
 }

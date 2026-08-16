@@ -18,10 +18,10 @@ export const EDUCATIONAL_WORKSPACE_ROLE_LABELS = Object.freeze({
 
 const CAPABILITIES_BY_ROLE = Object.freeze({
   owner: Object.freeze([
-    "read", "author", "review", "comment", "publish", "manage", "transfer"
+    "read", "author", "review", "comment", "publish", "research", "manage", "transfer"
   ]),
   admin: Object.freeze([
-    "read", "author", "review", "comment", "publish", "manage"
+    "read", "author", "review", "comment", "publish", "research", "manage"
   ]),
   author: Object.freeze(["read", "author", "review", "comment", "publish"]),
   reviewer: Object.freeze(["read", "review", "comment"]),

@@ -75,6 +75,8 @@ validada.
 | disponibilidade representacional | política técnica e experimental operacionalizada | representações têm funções e demandas de coordenação diferentes ([Ainsworth (2006)](referencias.md#ref-ainsworth2006deft)) | `ResourceSet` versionado como conjunto exato de `package@version`; seleção autorizada e materialização referenciadas separadamente | conjunto reproduzível pode permitir comparação de condições; auditar violações, adequação local e lacunas sem alegar equivalência |
 | manifesto posterior | propriedade técnica operacionalizada | não é construto externo | referências planejado–materializado, diff factual e métricas derivadas com algoritmo versionado | pode tornar divergências reproduzíveis; cobertura estrutural ainda exige auditoria semântica e decisão humana |
 | rodada de conformidade | propriedade técnica e protocolo de revisão | revisão humana e interação humano–automação exigem limites, correção e responsabilidade explícitos ([Amershi et al. (2019)](referencias.md#ref-amershi2019humanai)) | audit run imutável; checks de fatos; finding semântico com evidência pública; decisão humana; reparo aprovado; nova rodada | pode tornar revisão e regressão rastreáveis; não mede aprendizagem, qualidade global nem eficácia do reparo |
+| condição e variante experimental | operacionalização metodológica do AraLearn | comparações interpretáveis exigem intervenção, unidade de atribuição, condições, mensuração e análise coerentes; reprodução técnica é necessária, mas insuficiente para causalidade | base aprovada comum; fatores ordinários; condições explícitas; locks server-authoritative; variante congelada; diff factual e decisão humana | permite verificar que a revisão entregue corresponde à condição declarada; não demonstra equivalência entre grupos, exposição, aderência ou efeito |
+| outcome governado | resultado a ser operacionalizado | uma medida só sustenta interpretações compatíveis com instrumento, população, procedimento e evidência de validade | referências versionadas de instrumento e outcome no protocolo; nenhuma coleta ou inferência automática na #107 | exige definir unidade, momento, cálculo, dados ausentes, incerteza e explicações alternativas antes da coleta da #108 |
 
 A especificação completa está em [Desenho instrucional
 parametrizado](desenho-instrucional-parametrizado.md). Cards, palavras,
@@ -99,6 +101,7 @@ mudar em refatorações; a decisão conceitual permanece identificada pelo ID.
 | P9 | Em colaboração e autoria assistida, capacidades locais e proveniência podem tornar escopo e responsabilidade mais compreensíveis. | serviços de workspace, permissões e autoria via catálogo/contrato | isolamento, revogação, atribuição, validação e concorrência | tarefas com diferentes papéis e modelos; entrevista sobre autorização, autoria e confiança | alterar se houver confusão de papel, privilégio excessivo ou aceitação automática |
 | P10 | Quando a coleta começa por uma pergunta e uma intervenção, indicadores podem ser mais interpretáveis e proporcionais. | política de dados e estado corrente compacto | inventário de dados, ausência de telemetria não autorizada, retenção e acesso verificáveis | co-design de pergunta, indicador e ação; teste de interpretação e dano potencial | não coletar ou descontinuar indicador sem validade, ação ou proporcionalidade |
 | P11 | Separar Estudo e Autoria por tarefa, mantendo o mesmo conteúdo e exposição progressiva, pode tornar planejamento e ajuste local mais compreensíveis sem poluir o estudo. | `AuthoringWorkspaceSurface.js`; Mapa, Desenho, Conteúdo e Auditoria; editor progressivo de Resources | paridade 360/390/412/1280, teclado, temas, reflow, offline, conflito, retorno ao leitor e ausência de jargão técnico na tarefa comum | teste humano com autodidata, instrutor e pesquisador; descoberta sem orientação, erros, tempo, dúvidas e retorno de contexto | simplificar rótulo, ordem ou disclosure se a pessoa precisar aprender contratos, IDs ou arquitetura para concluir a tarefa; não inferir usabilidade apenas do E2E |
+| P12 | Quando variantes partem da mesma base e diferenças planejadas, derivadas e acidentais permanecem separadas, uma comparação instrucional pode tornar-se mais auditável. | `instructionalExperiment.js`; protocolo, condições, variant revisions, locks, difference runs, freeze e assignment privado | identidade/hash dos artefatos, condições explícitas, ResourceSet exato, replay/CAS, diff decidido e entrega da revisão atribuída | protocolo prévio, participantes consentidos, mensuração válida, aderência, perdas, análise de incerteza e explicações alternativas | invalidar ou redesenhar quando a base divergir, houver contaminação, diferença não resolvida, instrumento inadequado ou interpretação exceder o desenho |
 
 ## 6. O que cada fonte de evidência autoriza afirmar
 
@@ -117,6 +120,12 @@ exercitam recuperação JIT, cards como consequência, variação local, overrid
 manual, lock de pesquisa e autoridade de `ResourceSet`; não demonstram
 adequação instrucional, compreensão, usabilidade ou efeito de aprendizagem.
 
+Os cenários da #107 verificam base comum, condições explícitas, locks, freeze,
+assignment e entrega privada da variante. Mesmo quando todos passam, eles não
+demonstram comparabilidade empírica dos grupos, validade do outcome, aderência
+à intervenção nem relação causal. Essas interpretações dependem do protocolo e
+dos dados governados nas etapas seguintes.
+
 Um resultado empírico deve registrar população, tarefa, comparação, medida,
 procedimento, incerteza e casos adversos. Sem esses elementos, a matriz conserva
 o campo como evidência necessária, não como efeito observado.
@@ -125,7 +134,7 @@ o campo como evidência necessária, não como efeito observado.
 
 Uma alteração relevante segue esta sequência:
 
-1. identificar a proposição P1–P10 afetada;
+1. identificar a proposição P1–P12 afetada;
 2. atualizar problema, alternativa ou decisão quando a lógica mudar;
 3. apontar a nova operacionalização sem apagar o histórico versionado;
 4. acrescentar ou modificar testes compatíveis com o requisito;

@@ -230,6 +230,13 @@ lição e microssequência, mas o valor efetivo pertence ao escopo resolvido. At
 manual e lock de pesquisa têm autoridades diferentes: uma condição de pesquisa
 não pode ser alterada pelo modelo porque outra opção pareça melhor.
 
+Na fronteira experimental, essa separação é aplicada pelo servidor. A operação
+genérica de parâmetro aceita Auto e override humano, mas não cria nem remove
+`research_lock`, mesmo quando o ator administra o workspace. Somente uma
+revisão de protocolo validada emite o lock, com referência canônica de
+experimento, protocolo e condição. A capacidade `research` autoriza o control
+plane; ela não autoriza o cliente a escrever um assignment de lock arbitrário.
+
 O resolvedor aplica primeiro a classe de autoridade: `research_lock` como gate,
 depois `manual_override`, `auto` e default. Dentro da mesma classe, usa o
 ancestral aplicável mais próximo e substitui o valor completo; duas atribuições
@@ -303,6 +310,28 @@ Esse desenho permite condições experimentais com bibliotecas diferentes sem
 obrigar o pesquisador a escolher manualmente o resource de cada card. O
 algoritmo local continua selecionando entre os membros permitidos; conjunto,
 seleção e uso real permanecem auditáveis separadamente.
+
+## Uso como fator experimental
+
+Um protocolo experimental aponta para a mesma
+`DesignParameterDefinition@version` usada no desenho comum. Cada fator conserva
+tipo, unidade, domínio e escopos válidos; a condição informa um valor explícito.
+Combinações não declaradas não são inventadas, e múltiplos fatores não geram
+produto cartesiano automático.
+
+Quando o fator é `available_resource_set_refs`, seu valor identifica um ou mais
+`ResourceSet`s versionados. Isso fixa a disponibilidade exata da condição, não
+um resource predeterminado por card. O snapshot, o blueprint, os cards e a
+auditoria continuam registrando seleção e uso real separadamente. O freeze da
+variante falha se materialização, política, versão ou limitação divergirem da
+condição.
+
+As variantes partem de uma publicação aprovada comum e vivem em revisões
+privadas próprias. O protocolo congela base, escopo e invariantes; cada revisão
+de variante conserva locks, artefatos de desenho, auditoria e hash do curso.
+Uma correção posterior cria outra revisão em vez de alterar o tratamento já
+atribuído. Consulte [Experimentos instrucionais
+parametrizados](experimentos-instrucionais-parametrizados.md).
 
 ## Manifesto e métricas derivadas
 

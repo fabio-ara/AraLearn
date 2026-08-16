@@ -145,6 +145,28 @@ A segunda pergunta ainda não mede aprendizagem. Ela investiga retomada. Uma
 tarefa posterior de compreensão ou retenção precisaria ser planejada
 separadamente.
 
+### Quando a avaliação usa variantes parametrizadas
+
+O registro experimental do AraLearn sustenta a cadeia técnica da intervenção,
+mas não substitui o projeto de pesquisa. Antes de gerar variantes, o protocolo
+particular precisa identificar:
+
+- a publicação aprovada que forma a base comum;
+- cada fator como definição e valor interpretáveis;
+- as condições completas que de fato serão usadas;
+- o escopo e os invariantes que não podem mudar;
+- a regra de atribuição e, quando aplicável, algoritmo/seed versionados;
+- política e revisão de consentimento;
+- instrumentos, outcomes, momentos e procedimento de análise;
+- diferenças que exigem correção, aceite explícito ou invalidação.
+
+O freeze conserva a revisão entregue; não garante que a intervenção foi
+recebida, compreendida ou usada conforme planejado. A auditoria de conformidade
+confirma apenas as regras que conseguiu verificar. Por isso, fidelity checks,
+perdas, desvios, efeitos adversos e explicações rivais continuam no protocolo
+de avaliação. Veja [Experimentos instrucionais
+parametrizados](experimentos-instrucionais-parametrizados.md).
+
 ## Progressão de episódios de avaliação
 
 O FEDS distingue finalidade formativa ou somativa e ambiente artificial ou

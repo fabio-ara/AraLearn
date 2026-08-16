@@ -13,6 +13,15 @@ import {
 const USER_ID = "10000000-0000-4000-8000-000000000105";
 const WORKSPACE_ID = "20000000-0000-4000-8000-000000000105";
 const OTHER_WORKSPACE_ID = "20000000-0000-4000-8000-000000000106";
+const EXPERIMENT_ID = "30000000-0000-4000-8000-000000000107";
+const VARIANT_ID = "40000000-0000-4000-8000-000000000107";
+const DIFFERENCE_ID = "50000000-0000-4000-8000-000000000107";
+const DIFFERENCE_REF = Object.freeze({ id: DIFFERENCE_ID, version: "1.0.0" });
+const DIFFERENCE_RUN_REF = Object.freeze({
+  id: "51000000-0000-4000-8000-000000000107",
+  version: "2.0.0"
+});
+const PARTICIPANT_ID = "60000000-0000-4000-8000-000000000107";
 const PATH = Object.freeze([
   "course-fixture-minimal",
   "module-fixture-minimal",
@@ -1224,4 +1233,604 @@ test("falha após atribuição de ResourceSet retorna partial e retry realmente 
   assert.deepEqual(catalog.mutations.map(({ operation }) => operation), [
     "save_resource_set", "set_parameter", "resolve_effective"
   ]);
+});
+
+class ExperimentCatalog {
+  constructor() {
+    this.calls = [];
+    this.experimentRevision = 2;
+    this.workspaceRevision = 11;
+  }
+
+  async executeApplicationAuthoringAction(tool, args) {
+    this.calls.push({ tool, args: structuredClone(args) });
+    assert.equal(tool, "gerirExperimentoInstrucional");
+    if (args.operation === "list") {
+      return {
+        workspaceId: WORKSPACE_ID,
+        workspaceRevision: this.workspaceRevision,
+        experimentSetRef: { id: "experiment-set", version: String(this.experimentRevision) },
+        items: [{ id: EXPERIMENT_ID, title: "Experimento focal", status: "draft" }],
+        options: { scopes: [], bases: [], factorDefinitions: [], resourceSets: [], instruments: [] }
+      };
+    }
+    if (args.operation === "read") {
+      return {
+        workspaceId: WORKSPACE_ID,
+        workspaceRevision: this.workspaceRevision,
+        experiment: {
+          id: EXPERIMENT_ID,
+          experimentRevision: this.experimentRevision,
+          section: args.section,
+          title: "Experimento focal",
+          state: "draft",
+          actions: {}
+        }
+      };
+    }
+    this.experimentRevision += 1;
+    return {
+      workspaceId: WORKSPACE_ID,
+      workspaceRevision: this.workspaceRevision,
+      experimentId: EXPERIMENT_ID,
+      experimentRevision: this.experimentRevision,
+      ...(args.operation === "assign_participant"
+        ? { assignment: { variantRef: { id: VARIANT_ID, version: "1.0.0" } } }
+        : {})
+    };
+  }
+}
+
+test("facade humana de experimento usa action app-only e CAS separado", async () => {
+  const catalog = new ExperimentCatalog();
+  const client = new AuthoringWorkspaceClient({ catalog, authClient: authClient() });
+
+  const listed = await client.listAuthoringExperiments({ workspaceId: WORKSPACE_ID, online: true });
+  assert.equal(listed.items[0].id, EXPERIMENT_ID);
+  await client.loadAuthoringExperiment({
+    workspaceId: WORKSPACE_ID,
+    experimentId: EXPERIMENT_ID,
+    online: true
+  });
+  await client.saveAuthoringExperimentProtocol({
+    workspaceId: WORKSPACE_ID,
+    expectedExperimentRevision: 0,
+    protocol: { title: "Experimento focal", factors: [], conditions: [] },
+    requestId: "experiment-save-a",
+    online: true
+  });
+  await client.validateAuthoringExperiment({
+    workspaceId: WORKSPACE_ID,
+    experimentId: EXPERIMENT_ID,
+    expectedExperimentRevision: 3,
+    expectedWorkspaceRevision: 11,
+    requestId: "experiment-validate-a",
+    online: true
+  });
+  await client.generateAuthoringExperimentVariants({
+    workspaceId: WORKSPACE_ID,
+    experimentId: EXPERIMENT_ID,
+    expectedExperimentRevision: 4,
+    expectedWorkspaceRevision: 11,
+    requestId: "experiment-generate-a",
+    online: true
+  });
+
+  assert.deepEqual(catalog.calls.map(({ tool }) => tool), Array(5).fill("gerirExperimentoInstrucional"));
+  assert.deepEqual(catalog.calls.map(({ args }) => args.operation), [
+    "list", "read", "save_protocol", "validate", "generate_variants"
+  ]);
+  assert.equal(catalog.calls[2].args.expectedExperimentRevision, 0);
+  assert.equal(catalog.calls[2].args.expectedWorkspaceRevision, undefined);
+  assert.equal(catalog.calls[3].args.expectedExperimentRevision, 3);
+  assert.equal(catalog.calls[3].args.expectedWorkspaceRevision, 11);
+  assert.equal(catalog.calls[4].args.expectedExperimentRevision, 4);
+  assert.equal(catalog.calls[4].args.expectedWorkspaceRevision, 11);
+});
+
+test("listas experimentais e catálogos paginados exigem e ecoam o pin exato", async () => {
+  const calls = [];
+  const experimentSetRef = { id: "experiment-set", version: "12" };
+  const optionsSetRef = { id: "experiment-options", version: "7" };
+  const catalog = {
+    async executeApplicationAuthoringAction(_tool, args) {
+      calls.push(structuredClone(args));
+      if (args.operation === "list") {
+        return {
+          workspaceId: WORKSPACE_ID,
+          workspaceRevision: 11,
+          experimentSetRef,
+          items: [{ id: EXPERIMENT_ID, title: "Experimento focal", state: "draft", experimentRevision: 2 }],
+          count: 21,
+          nextCursor: args.cursor ? null : "experiments-page-2",
+          truncated: !args.cursor
+        };
+      }
+      return {
+        workspaceId: WORKSPACE_ID,
+        workspaceRevision: 11,
+        optionsSetRef,
+        kind: args.kind,
+        items: [{
+          scope: { kind: "microsequence", ref: "micro-a" },
+          label: "Microssequência A",
+          entityPath: PATH
+        }],
+        count: 51,
+        nextCursor: args.cursor ? null : "options-page-2",
+        truncated: !args.cursor
+      };
+    }
+  };
+  const client = new AuthoringWorkspaceClient({ catalog, authClient: authClient() });
+  const firstList = await client.listAuthoringExperiments({ workspaceId: WORKSPACE_ID, online: true });
+  await client.listAuthoringExperiments({
+    workspaceId: WORKSPACE_ID,
+    experimentSetRef: firstList.experimentSetRef,
+    cursor: firstList.nextCursor,
+    online: true
+  });
+  const firstOptions = await client.loadAuthoringExperimentOptionPage({
+    workspaceId: WORKSPACE_ID,
+    kind: "scope",
+    online: true
+  });
+  await client.loadAuthoringExperimentOptionPage({
+    workspaceId: WORKSPACE_ID,
+    kind: "scope",
+    optionsSetRef: firstOptions.optionsSetRef,
+    cursor: firstOptions.nextCursor,
+    online: true
+  });
+
+  assert.deepEqual(calls[1].experimentSetRef, experimentSetRef);
+  assert.deepEqual(calls[3].optionsSetRef, optionsSetRef);
+  await assert.rejects(
+    client.listAuthoringExperiments({
+      workspaceId: WORKSPACE_ID,
+      cursor: "unanchored",
+      online: true
+    }),
+    /conjunto ancorado/u
+  );
+  await assert.rejects(
+    client.loadAuthoringExperimentOptionPage({
+      workspaceId: WORKSPACE_ID,
+      kind: "scope",
+      cursor: "unanchored",
+      online: true
+    }),
+    /snapshot ancorado/u
+  );
+
+  const unpinnedClient = new AuthoringWorkspaceClient({
+    authClient: authClient(),
+    catalog: {
+      async executeApplicationAuthoringAction(_tool, args) {
+        if (args.operation === "list") {
+          return {
+            workspaceId: WORKSPACE_ID,
+            workspaceRevision: 11,
+            items: [],
+            count: 0,
+            nextCursor: null,
+            truncated: false
+          };
+        }
+        return {
+          workspaceId: WORKSPACE_ID,
+          workspaceRevision: 11,
+          kind: args.kind,
+          items: [],
+          count: 0,
+          nextCursor: null,
+          truncated: false
+        };
+      }
+    }
+  });
+  await assert.rejects(
+    unpinnedClient.listAuthoringExperiments({ workspaceId: WORKSPACE_ID, online: true }),
+    /Conjunto de experimentos inválida/u
+  );
+  await assert.rejects(
+    unpinnedClient.loadAuthoringExperimentOptionPage({
+      workspaceId: WORKSPACE_ID,
+      kind: "scope",
+      online: true
+    }),
+    /Snapshot das opções experimentais inválida/u
+  );
+});
+
+test("decisão e assignment experimentais não executam RNG nem aceitam gestão offline", async () => {
+  const catalog = new ExperimentCatalog();
+  const client = new AuthoringWorkspaceClient({ catalog, authClient: authClient() });
+
+  await client.decideAuthoringExperimentDifference({
+    workspaceId: WORKSPACE_ID,
+    experimentId: EXPERIMENT_ID,
+    differenceRunRef: DIFFERENCE_RUN_REF,
+    differenceRef: DIFFERENCE_REF,
+    decision: "accept",
+    note: "Diferença prevista e aceita para esta condição.",
+    expectedExperimentRevision: 2,
+    requestId: "experiment-decision-a",
+    online: true
+  });
+  const assigned = await client.assignAuthoringExperimentParticipant({
+    workspaceId: WORKSPACE_ID,
+    experimentId: EXPERIMENT_ID,
+    enrollmentRef: PARTICIPANT_ID,
+    expectedExperimentRevision: 3,
+    requestId: "experiment-assignment-a",
+    online: true
+  });
+
+  assert.deepEqual(assigned.assignment.variantRef, { id: VARIANT_ID, version: "1.0.0" });
+  assert.equal(catalog.calls[1].args.enrollmentRef, PARTICIPANT_ID);
+  assert.equal(catalog.calls[1].args.seed, undefined);
+  assert.equal(catalog.calls[1].args.conditionId, undefined);
+  assert.throws(
+    () => client.validateAuthoringExperiment({
+      workspaceId: WORKSPACE_ID,
+      experimentId: EXPERIMENT_ID,
+      expectedExperimentRevision: 4,
+      online: false
+    }),
+    (error) => error?.code === "authoring_online_required"
+  );
+  assert.equal(catalog.calls.length, 2);
+});
+
+test("correção pós-freeze preserva a revisão entregue e usa CAS do child", async () => {
+  const catalog = new ExperimentCatalog();
+  const client = new AuthoringWorkspaceClient({ catalog, authClient: authClient() });
+
+  await client.requestAuthoringExperimentCorrection({
+    workspaceId: WORKSPACE_ID,
+    experimentId: EXPERIMENT_ID,
+    variantRevisionRef: { id: VARIANT_ID, version: "3" },
+    reason: "A revisão congelada precisa corrigir uma referência factual.",
+    participantContinuity: "retain_existing",
+    expectedExperimentRevision: 8,
+    expectedWorkspaceRevision: 21,
+    requestId: "experiment-correction-a",
+    online: true
+  });
+
+  assert.equal(catalog.calls[0].args.operation, "request_correction");
+  assert.equal(catalog.calls[0].args.expectedExperimentRevision, 8);
+  assert.equal(catalog.calls[0].args.expectedWorkspaceRevision, 21);
+  assert.equal(catalog.calls[0].args.participantContinuity, "retain_existing");
+  assert.throws(() => client.requestAuthoringExperimentCorrection({
+    workspaceId: WORKSPACE_ID,
+    experimentId: EXPERIMENT_ID,
+    variantRevisionRef: { id: VARIANT_ID, version: "3" },
+    reason: "",
+    participantContinuity: "retain_existing",
+    expectedExperimentRevision: 8,
+    expectedWorkspaceRevision: 21,
+    online: true
+  }), /justificativa/u);
+});
+
+test("rotação de código é receipt-only e não usa CAS do workspace", async () => {
+  const catalog = new ExperimentCatalog();
+  const client = new AuthoringWorkspaceClient({ catalog, authClient: authClient() });
+  await client.rotateAuthoringExperimentEnrollmentCode({
+    workspaceId: WORKSPACE_ID,
+    experimentId: EXPERIMENT_ID,
+    expectedExperimentRevision: 7,
+    requestId: "rotate-enrollment-code-a",
+    online: true
+  });
+
+  assert.equal(catalog.calls[0].args.operation, "rotate_enrollment_code");
+  assert.equal(catalog.calls[0].args.expectedExperimentRevision, 7);
+  assert.equal(catalog.calls[0].args.expectedWorkspaceRevision, undefined);
+  assert.equal(catalog.calls[0].args.enrollmentCode, undefined);
+});
+
+test("snapshots experimentais permitem consulta stale e nunca habilitam assignment offline", async (context) => {
+  const indexedDb = new IDBFactory();
+  const store = await openStore(indexedDb);
+  context.after(() => store.close());
+  const catalog = new ExperimentCatalog();
+  const client = new AuthoringWorkspaceClient({
+    catalog,
+    authClient: authClient(),
+    relationalStore: store
+  });
+
+  const onlineList = await client.listAuthoringExperiments({ workspaceId: WORKSPACE_ID, online: true });
+  const onlineDetail = await client.loadAuthoringExperiment({
+    workspaceId: WORKSPACE_ID,
+    experimentId: EXPERIMENT_ID,
+    online: true
+  });
+  assert.equal(onlineList.stale, false);
+  assert.equal(onlineDetail.stale, false);
+
+  const callsBeforeOffline = catalog.calls.length;
+  const offlineList = await client.listAuthoringExperiments({ workspaceId: WORKSPACE_ID, online: false });
+  const offlineDetail = await client.loadAuthoringExperiment({
+    workspaceId: WORKSPACE_ID,
+    experimentId: EXPERIMENT_ID,
+    online: false
+  });
+  assert.equal(offlineList.stale, true);
+  assert.equal(offlineDetail.stale, true);
+  assert.equal(catalog.calls.length, callsBeforeOffline);
+  assert.throws(
+    () => client.assignAuthoringExperimentParticipant({
+      workspaceId: WORKSPACE_ID,
+      experimentId: EXPERIMENT_ID,
+      enrollmentRef: PARTICIPANT_ID,
+      expectedExperimentRevision: 2,
+      online: false
+    }),
+    (error) => error?.code === "authoring_online_required"
+  );
+  assert.equal(catalog.calls.length, callsBeforeOffline);
+});
+
+test("falha best-effort do cache experimental não mascara leitura online válida", async () => {
+  const catalog = new ExperimentCatalog();
+  const failingStore = {
+    async getSyncState() { return null; },
+    async putSyncState() { throw new Error("quota"); }
+  };
+  const client = new AuthoringWorkspaceClient({
+    catalog,
+    authClient: authClient(),
+    relationalStore: failingStore
+  });
+  const result = await client.listAuthoringExperiments({ workspaceId: WORKSPACE_ID, online: true });
+  assert.equal(result.items[0].id, EXPERIMENT_ID);
+  assert.equal(result.cacheWriteFailed, true);
+});
+
+test("lista experimental atrasada não remove criação nem regride revisão de outra instância", async () => {
+  const syncState = new Map();
+  const store = {
+    async getSyncState(key) { return structuredClone(syncState.get(key) || null); },
+    async putSyncState(key, value) { syncState.set(key, structuredClone(value)); }
+  };
+  let releaseOlder;
+  let markStarted;
+  const started = new Promise((resolve) => { markStarted = resolve; });
+  const olderResponse = new Promise((resolve) => { releaseOlder = resolve; });
+  const olderCatalog = {
+    async executeApplicationAuthoringAction(_tool, args) {
+      assert.equal(args.operation, "list");
+      markStarted();
+      return olderResponse;
+    }
+  };
+  const newerCatalog = {
+    async executeApplicationAuthoringAction(_tool, args) {
+      assert.equal(args.operation, "list");
+      return {
+        workspaceId: WORKSPACE_ID,
+        workspaceRevision: 11,
+        experimentSetRef: { id: "experiment-set", version: "5" },
+        items: [
+          { id: EXPERIMENT_ID, title: "E1 atual", state: "validated", experimentRevision: 5 },
+          { id: "experiment-e2", title: "E2", state: "draft", experimentRevision: 1 }
+        ],
+        count: 2,
+        nextCursor: null,
+        truncated: false
+      };
+    }
+  };
+  const olderClient = new AuthoringWorkspaceClient({
+    catalog: olderCatalog,
+    authClient: authClient(),
+    relationalStore: store
+  });
+  const newerClient = new AuthoringWorkspaceClient({
+    catalog: newerCatalog,
+    authClient: authClient(),
+    relationalStore: store
+  });
+
+  const olderRead = olderClient.listAuthoringExperiments({ workspaceId: WORKSPACE_ID, online: true });
+  await started;
+  await new Promise((resolve) => setTimeout(resolve, 5));
+  const newerRead = await newerClient.listAuthoringExperiments({ workspaceId: WORKSPACE_ID, online: true });
+  assert.equal(newerRead.items.length, 2);
+  releaseOlder({
+    workspaceId: WORKSPACE_ID,
+    workspaceRevision: 11,
+    experimentSetRef: { id: "experiment-set", version: "4" },
+    items: [{ id: EXPERIMENT_ID, title: "E1 antigo", state: "draft", experimentRevision: 4 }],
+    count: 1,
+    nextCursor: null,
+    truncated: false
+  });
+  const effectiveOlderRead = await olderRead;
+  const effectiveItems = effectiveOlderRead.items;
+  assert.equal(effectiveItems.length, 2);
+  assert.equal(effectiveItems.find((item) => item.id === EXPERIMENT_ID).experimentRevision, 5);
+  assert.ok(effectiveItems.some((item) => item.id === "experiment-e2"));
+
+  const offline = await olderClient.listAuthoringExperiments({ workspaceId: WORKSPACE_ID, online: false });
+  assert.equal(offline.items.length, 2);
+  assert.equal(offline.items.find((item) => item.id === EXPERIMENT_ID).experimentRevision, 5);
+});
+
+test("ingresso app-only expõe só política pública e seleção privada da conta atual", async (context) => {
+  const indexedDb = new IDBFactory();
+  const store = await openStore(indexedDb);
+  context.after(() => store.close());
+  const enrollmentRef = PARTICIPANT_ID;
+  const selectionId = "70000000-0000-4000-8000-000000000107";
+  const courseId = "80000000-0000-4000-8000-000000000107";
+  const contentHash = "a".repeat(64);
+  const calls = [];
+  let withdrawn = false;
+  const assignmentHistory = [{ selectionId, courseId, contentHash }];
+  const catalog = {
+    async executeApplicationAuthoringAction(tool, args) {
+      calls.push({ tool, args: structuredClone(args) });
+      assert.equal(tool, "ingressarEmExperimentoInstrucional");
+      if (args.operation === "read_policy") {
+        return {
+          title: "Estudo de representações",
+          policy: {
+            ref: { id: "consent-a", version: "1.0.0" },
+            label: "Consentimento do estudo",
+            publicText: "Li as informações públicas e aceito participar."
+          }
+        };
+      }
+      if (args.operation === "enroll") return { enrollmentRef, status: "enrolled", selection: null };
+      if (args.operation === "withdraw") {
+        withdrawn = true;
+        return { enrollmentRef, status: "withdrawn", selection: null, historyRetained: true };
+      }
+      if (withdrawn) return { enrollmentRef, status: "withdrawn", selection: null };
+      return {
+        enrollmentRef,
+        status: "assigned",
+        selection: {
+          selectionId,
+          courseId,
+          contentHash,
+          readerTarget: { courseId, access: "private", contentHash }
+        }
+      };
+    }
+  };
+  const client = new AuthoringWorkspaceClient({ catalog, authClient: authClient(), relationalStore: store });
+  const policy = await client.loadInstructionalExperimentEnrollmentPolicy({
+    enrollmentCode: "ESTUDO-2026-A",
+    online: true
+  });
+  await client.enrollInInstructionalExperiment({
+    enrollmentCode: "ESTUDO-2026-A",
+    consentPolicyRef: policy.policy.ref,
+    consentAcknowledged: true,
+    requestId: "enrollment-request-a",
+    online: true
+  });
+  const status = await client.loadInstructionalExperimentEnrollmentStatus({
+    enrollmentRef,
+    online: true
+  });
+
+  assert.deepEqual(status, {
+    enrollmentRef,
+    status: "assigned",
+    selection: {
+      selectionId,
+      courseId,
+      contentHash,
+      readerTarget: { courseId, access: "private", contentHash }
+    }
+  });
+  assert.deepEqual(calls.map(({ args }) => args.operation), ["read_policy", "enroll", "status"]);
+  assert.equal(calls[1].args.participantRef, undefined);
+  assert.equal(calls[1].args.experimentId, undefined);
+  assert.equal(calls[1].args.consentAcknowledged, true);
+  assert.equal((await client.listInstructionalExperimentEnrollments())[0].enrollmentRef, enrollmentRef);
+  const withdrawal = await client.withdrawAuthoringExperimentEnrollment({
+    enrollmentRef,
+    requestId: "withdraw-request-a",
+    online: true
+  });
+  assert.deepEqual(withdrawal, { enrollmentRef, status: "withdrawn", selection: null });
+  assert.equal(assignmentHistory.length, 1);
+  assert.equal(calls.at(-1).args.operation, "withdraw");
+  await assert.rejects(
+    client.loadInstructionalExperimentEnrollmentStatus({
+      enrollmentRef,
+      online: false
+    }),
+    (error) => error?.code === "authoring_online_required"
+  );
+  assert.equal(calls.length, 4);
+});
+
+test("código de ingresso inválido falha localmente sem chamar a action", async () => {
+  const calls = [];
+  const client = new AuthoringWorkspaceClient({
+    catalog: {
+      async executeApplicationAuthoringAction(tool, args) {
+        calls.push({ tool, args });
+        return {};
+      }
+    },
+    authClient: authClient()
+  });
+
+  for (const enrollmentCode of ["curto", "ESTUDO-á-2026", "ESTUDO.2026-A"]) {
+    await assert.rejects(
+      client.loadInstructionalExperimentEnrollmentPolicy({ enrollmentCode, online: true }),
+      /Código de ingresso inválido/u
+    );
+  }
+  assert.equal(calls.length, 0);
+});
+
+test("retirada grava lápide antes da limpeza e repete purge sem reexpor seleção", async () => {
+  const enrollmentRef = PARTICIPANT_ID;
+  const selectionId = "70000000-0000-4000-8000-000000000107";
+  const courseId = "80000000-0000-4000-8000-000000000107";
+  const contentHash = "c".repeat(64);
+  const syncState = new Map();
+  let purgeFails = true;
+  let purgeCalls = 0;
+  const store = {
+    async getSyncState(key) { return structuredClone(syncState.get(key) || null); },
+    async putSyncState(key, value) { syncState.set(key, structuredClone(value)); },
+    async removeOfficialCourseReplica(receivedCourseId, options) {
+      purgeCalls += 1;
+      assert.equal(receivedCourseId, courseId);
+      assert.deepEqual(options, { removeSelection: true });
+      if (purgeFails) throw new Error("indexeddb temporarily unavailable");
+    }
+  };
+  const catalog = {
+    async executeApplicationAuthoringAction(_tool, args) {
+      if (args.operation === "status") {
+        return {
+          enrollmentRef,
+          status: "assigned",
+          selection: {
+            selectionId,
+            courseId,
+            contentHash,
+            readerTarget: { courseId, access: "private", contentHash }
+          }
+        };
+      }
+      if (args.operation === "withdraw") {
+        return { enrollmentRef, status: "withdrawn", selection: null };
+      }
+      throw new Error("operação inesperada");
+    }
+  };
+  const client = new AuthoringWorkspaceClient({ catalog, authClient: authClient(), relationalStore: store });
+  await client.loadInstructionalExperimentEnrollmentStatus({ enrollmentRef, online: true });
+
+  const receipt = await client.withdrawAuthoringExperimentEnrollment({
+    enrollmentRef,
+    requestId: "withdraw-with-purge-failure",
+    online: true
+  });
+  assert.deepEqual(receipt, { enrollmentRef, status: "withdrawn", selection: null });
+  assert.deepEqual(await client.listInstructionalExperimentEnrollments(), [receipt]);
+  assert.ok([...syncState.values()].some((value) => Object.values(value?.handles || {}).some((handle) => (
+    handle.status === "withdrawn" && handle.selection === null && handle.pendingPurgeCourseId === courseId
+  ))));
+
+  purgeFails = false;
+  assert.deepEqual(await client.listInstructionalExperimentEnrollments(), [receipt]);
+  assert.ok(purgeCalls >= 3);
+  assert.ok([...syncState.values()].every((value) => Object.values(value?.handles || {}).every((handle) => (
+    handle.selection == null && handle.pendingPurgeCourseId == null
+  ))));
 });

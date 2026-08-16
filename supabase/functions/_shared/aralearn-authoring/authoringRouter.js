@@ -3,6 +3,10 @@ import {
   executeWorkspaceDesignAction,
   validateWorkspaceCardDesignAccess
 } from "./authoringDesignService.js";
+import {
+  executeExperimentEnrollmentAction,
+  executeWorkspaceExperimentAction
+} from "./authoringExperimentService.js";
 import { AuthoringApiError } from "./errors.js";
 import {
   STANDARD_BODY_LIMIT,
@@ -19,6 +23,7 @@ import {
   validateDeleteWorkspacePayload,
   validateEducationalWorkspaceActionPayload,
   validateEducationalWorkspaceCommentActionPayload,
+  validateExperimentEnrollmentActionPayload,
   validateWorkspaceObservationActionPayload,
   validateMoveCatalogCoursePayload,
   validateRemovePersonalLibraryCoursePayload,
@@ -28,10 +33,13 @@ import {
   validateUpdateCatalogCollectionPayload,
   validateWorkspaceContinuityActionPayload,
   validateWorkspaceDesignActionPayload,
+  validateWorkspaceExperimentActionPayload,
   validateWorkspaceImportPayload,
   validateWorkspaceMutationPayload,
   validateWorkspacePublishPayload,
   WORKSPACE_DESIGN_ACTION_BODY_LIMIT,
+  WORKSPACE_EXPERIMENT_ACTION_BODY_LIMIT,
+  EXPERIMENT_ENROLLMENT_ACTION_BODY_LIMIT,
   workspaceEntityType,
   workspaceUuid
 } from "./workspaceProtocol.js";
@@ -698,6 +706,47 @@ export async function executeAuthoringRoute({
         adapter,
         principal,
         workspaceId: route.workspaceId,
+        deadlineAt,
+        ...value
+      }),
+      requestId: value.requestId || null
+    };
+  }
+  if (route.name === "manageWorkspaceExperiment") {
+    const value = validateWorkspaceExperimentActionPayload(
+      await readJsonBody(request, WORKSPACE_EXPERIMENT_ACTION_BODY_LIMIT)
+    );
+    reconcileRequestId(request, value);
+    if (new Set(["list", "list_options", "read"]).has(value.operation)) {
+      assertAuthoringScope(principal, "read");
+    } else {
+      assertAuthoringScope(principal, "write");
+    }
+    return {
+      data: await executeWorkspaceExperimentAction({
+        adapter,
+        principal,
+        workspaceId: route.workspaceId,
+        deadlineAt,
+        ...value
+      }),
+      requestId: value.requestId || null
+    };
+  }
+  if (route.name === "manageExperimentEnrollment") {
+    const value = validateExperimentEnrollmentActionPayload(
+      await readJsonBody(request, EXPERIMENT_ENROLLMENT_ACTION_BODY_LIMIT)
+    );
+    reconcileRequestId(request, value);
+    if (new Set(["read_policy", "status"]).has(value.operation)) {
+      assertAuthoringScope(principal, "read");
+    } else {
+      assertAuthoringScope(principal, "write");
+    }
+    return {
+      data: await executeExperimentEnrollmentAction({
+        adapter,
+        principal,
         deadlineAt,
         ...value
       }),

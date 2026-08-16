@@ -71,6 +71,10 @@ function assignment(revision = 2) {
   value.id = "fallback-auto";
   value.version = `1.0.${revision}`;
   value.scope = { kind: "microsequence", ref: PATH[3] };
+  value.mode = "auto";
+  value.authority = { kind: "gpt", actorRef: null, locked: false };
+  value.rationale = "Seleção automática governada pelo catálogo corrente.";
+  value.provenanceRefs = ["analysis:current"];
   return value;
 }
 
@@ -292,6 +296,44 @@ function action(adapter, operation, overrides = {}) {
     ...overrides
   });
 }
+
+test("remove_parameter resolve o estado corrente e rejeita research_lock mesmo com payload legado forjado", async () => {
+  const calls = [];
+  const forged = assignment(3);
+  const adapter = {
+    async replayAuthoringDesignMutation() {
+      calls.push("replay");
+      return null;
+    },
+    async getWorkspace() {
+      calls.push("workspace");
+      return { revision: 3, content: { id: PATH[3] } };
+    },
+    async listAuthoringDesignParameterAssignments() {
+      calls.push("assignments");
+      return {
+        items: [{
+          ...structuredClone(forged),
+          mode: "research_lock"
+        }]
+      };
+    },
+    async removeAuthoringDesignParameter() {
+      calls.push("remove");
+      throw new Error("research_lock não pode chegar à remoção genérica");
+    }
+  };
+  await assert.rejects(
+    action(adapter, "remove_parameter", {
+      requestId: "remove-research-lock-0001",
+      expectedRevision: 3,
+      payload: forged
+    }),
+    (error) => error instanceof AuthoringApiError
+      && error.code === "research_lock_application_only"
+  );
+  assert.deepEqual(calls, ["replay", "workspace", "assignments"]);
+});
 
 test("sessão nova retoma slice, persiste Auto, resolve e repete receipt perdido", async () => {
   const adapter = journeyAdapter();
@@ -943,7 +985,24 @@ test("contracts action_* descrevem o payloadJson, não repetem o envelope MCP", 
     },
     action_resolve_effective: {},
     action_save_blueprint: { blueprint: blueprint(), mappings: mappings() },
-    action_register_manifest: manifest
+    action_register_manifest: manifest,
+    action_register_experiment_variant_evidence: {
+      experimentRef: { id: "experiment-a", version: "7" },
+      variantRevisionRef: { id: "variant-a", version: "3" },
+      mandateRef: { id: "mandate-a", version: "2" }
+    },
+    action_record_experiment_diff_classification: {
+      experimentRef: { id: "experiment-a", version: "7" },
+      variantRevisionRef: { id: "variant-a", version: "3" },
+      differenceRunRef: { id: "run-a", version: "f".repeat(64) },
+      mandateRef: { id: "mandate-a", version: "2" },
+      classifications: [{
+        differenceRef: { id: "h-a", version: "e".repeat(64) },
+        classification: "directly_required",
+        publicRationale: "Exigido diretamente pela condição.",
+        evidenceRefs: ["manifest:a"]
+      }]
+    }
   };
   for (const [contractName, example] of Object.entries(examples)) {
     const contract = readInstructionalDesignContract({ workspaceId: WORKSPACE, contractName });
@@ -960,6 +1019,30 @@ test("contracts action_* descrevem o payloadJson, não repetem o envelope MCP", 
   }).result.schema;
   const validateResourceSetRead = new Ajv2020({ allErrors: true, strict: false })
     .compile(readSliceContract);
+  assert.equal(validateResourceSetRead({
+    view: "experiment_context",
+    experimentRef: { id: "experiment-a", version: "7" },
+    variantRevisionRef: { id: "variant-a", version: "3" },
+    differenceRunRef: { id: "run-a", version: "f".repeat(64) },
+    cursor: "opaque-hunk-page-2",
+    limit: 20
+  }), true);
+  assert.equal(validateResourceSetRead({
+    view: "experiment_context",
+    experimentRef: { id: "experiment-a", version: "7" },
+    variantRevisionRef: { id: "variant-a", version: "3" },
+    collection: "locks",
+    collectionSetRef: { id: "lock-set-a", version: "7" },
+    collectionCursor: "20",
+    collectionLimit: 20
+  }), true);
+  assert.equal(validateResourceSetRead({
+    view: "experiment_context",
+    experimentRef: { id: "experiment-a", version: "7" },
+    variantRevisionRef: { id: "variant-a", version: "3" },
+    differenceRunRef: { id: "run-a", version: "f".repeat(64) },
+    collection: "locks"
+  }), false);
   assert.equal(validateResourceSetRead({
     microsequencePath: [...PATH],
     view: "resource_set",
@@ -1025,6 +1108,60 @@ test("contracts action_* descrevem o payloadJson, não repetem o envelope MCP", 
   assert.ok(assignmentDefinitions.includes("DesignParameterAssignment"));
   assert.equal(assignmentDefinitions.includes("InstructionalAnalysis"), false);
   assert.equal(assignmentDefinitions.includes("MaterializationManifest"), false);
+  const publicAssignmentSchema = readInstructionalDesignContract({
+    workspaceId: WORKSPACE,
+    contractName: "action_set_parameter"
+  }).result.schema;
+  const validatePublicAssignment = new Ajv2020({ allErrors: true, strict: false })
+    .compile(publicAssignmentSchema);
+  const researchLock = {
+    ...assignment(2),
+    mode: "research_lock",
+    authority: {
+      kind: "research_protocol",
+      actorRef: "experiment:condition-a",
+      locked: true
+    }
+  };
+  assert.equal(validatePublicAssignment(researchLock), false);
+  assert.equal(JSON.stringify(publicAssignmentSchema).includes("research_lock"), false);
+  assert.equal(JSON.stringify(publicAssignmentSchema).includes("research_protocol"), false);
+  assert.deepEqual(
+    publicAssignmentSchema.$defs.DesignParameterAssignment.properties.mode.enum,
+    ["auto", "manual_override"]
+  );
+  const evidenceSchema = readInstructionalDesignContract({
+    workspaceId: WORKSPACE,
+    contractName: "action_register_experiment_variant_evidence"
+  }).result.schema;
+  const validateEvidenceRequest = new Ajv2020({ allErrors: true, strict: false })
+    .compile(evidenceSchema);
+  assert.equal(validateEvidenceRequest({
+    experimentRef: { id: "experiment-a", version: "7" },
+    variantRevisionRef: { id: "variant-a", version: "3" },
+    mandateRef: { id: "mandate-a", version: "2" }
+  }), true);
+  assert.equal(validateEvidenceRequest({
+    experimentRef: { id: "experiment-a", version: "7" },
+    variantRevisionRef: { id: "variant-a", version: "3" },
+    mandateRef: { id: "mandate-a", version: "2" },
+    hunks: [{ differenceId: "invented" }]
+  }), false);
+  const classificationSchema = readInstructionalDesignContract({
+    workspaceId: WORKSPACE,
+    contractName: "action_record_experiment_diff_classification"
+  }).result.schema;
+  const validateClassification = new Ajv2020({ allErrors: true, strict: false })
+    .compile(classificationSchema);
+  assert.equal(validateClassification({
+    ...examples.action_record_experiment_diff_classification,
+    classifications: [{
+      differenceId: "legacy-path-based-hunk",
+      classification: "directly_required",
+      publicRationale: "Alias ambíguo não é aceito.",
+      evidenceRefs: ["manifest:a"]
+    }]
+  }), false);
   const analysisDefinitions = Object.keys(readInstructionalDesignContract({
     workspaceId: WORKSPACE,
     contractName: "instructional_analysis"

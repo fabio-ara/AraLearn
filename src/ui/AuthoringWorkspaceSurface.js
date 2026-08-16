@@ -2,6 +2,10 @@ import {
   createAuthoringDestinationRegistry,
   normalizeAuthoringAuditSlice,
   normalizeAuthoringDesign,
+  normalizeAuthoringExperiment,
+  normalizeAuthoringExperimentList,
+  normalizeAuthoringExperimentOptionPage,
+  mergeAuthoringExperimentSections,
   normalizeAuthoringWorkspaceList,
   normalizeAuthoringWorkspaceOverview,
   sameEntityPath
@@ -20,7 +24,7 @@ function conflictError(error) {
   const code = text(error?.code || error?.response?.code).toLowerCase();
   const message = text(error?.message).toLowerCase();
   return code.includes("revision") || code.includes("conflict") || code.includes("stale") ||
-    /revis[aã]o|conflito|estado mudou|stale/u.test(message);
+    /conflito|estado mudou|stale|mudou durante|revis[aã]o (?:mudou|divergiu|desatualizada|incompatível)/u.test(message);
 }
 
 function userMessage(error, fallback) {
@@ -42,6 +46,316 @@ function parsePath(value) {
 function selectorValue(value) {
   if (typeof globalThis.CSS?.escape === "function") return globalThis.CSS.escape(String(value || ""));
   return String(value || "").replace(/["\\]/gu, "\\$&");
+}
+
+function experimentRefKey(value) {
+  return text(value?.id) && text(value?.version) ? `${text(value.id)}@${text(value.version)}` : "";
+}
+
+function experimentScopeKey(value) {
+  return text(value?.kind) && text(value?.ref) ? `${text(value.kind)}:${text(value.ref)}` : "";
+}
+
+function experimentStatusStage(value) {
+  const status = text(value?.status || value);
+  if (status === "ready") {
+    if (value?.actions?.freeze) return "freeze";
+    if (value?.actions?.start) return "collection";
+    return "audit";
+  }
+  return {
+    draft: "protocol",
+    validated: "variants",
+    generating: "variants",
+    correction_required: "audit",
+    collecting: "collection",
+    paused: "collection",
+    closed: "collection",
+    invalidated: "audit"
+  }[status] || "protocol";
+}
+
+const EXPERIMENT_INVARIANT_KINDS = Object.freeze(["sources", "targets", "analysis", "structure"]);
+const EXPERIMENT_OPTION_KIND_PROPERTIES = Object.freeze({
+  scope: "scopes",
+  base: "bases",
+  factor_definition: "factorDefinitions",
+  resource_set: "resourceSets",
+  consent_policy: "consentPolicies",
+  instrument: "instruments",
+  outcome: "outcomes"
+});
+
+function mergeExperimentOptionPage(optionsValue, page) {
+  const property = page.property;
+  const existing = optionsValue[property] || [];
+  const identity = (item) => property === "scopes"
+    ? experimentScopeKey(item)
+    : experimentRefKey(item.ref);
+  const merged = new Map(existing.map((item) => [identity(item), item]));
+  page.items.forEach((item) => merged.set(identity(item), item));
+  const items = Object.freeze([...merged.values()]);
+  return Object.freeze({
+    ...optionsValue,
+    optionsSetRef: page.optionsSetRef || optionsValue.optionsSetRef || null,
+    [property]: items,
+    pages: Object.freeze({
+      ...optionsValue.pages,
+      [property]: Object.freeze({
+        items,
+        count: Math.max(page.count, items.length),
+        nextCursor: page.nextCursor,
+        truncated: page.truncated
+      })
+    })
+  });
+}
+
+function nextExperimentIdentifier(prefix, items, key) {
+  const used = new Set((Array.isArray(items) ? items : []).map((item) => text(item?.[key])));
+  let index = used.size + 1;
+  while (used.has(`${prefix}-${index}`)) index += 1;
+  return `${prefix}-${index}`;
+}
+
+function defaultExperimentFactorValue(definition, options) {
+  if (definition?.kind === "resource_set") {
+    return experimentRefKey(options?.resourceSets?.[0]?.ref);
+  }
+  if (definition?.options?.length) return definition.options[0].key;
+  if (definition?.valueType === "integer") return definition?.range?.min ?? "";
+  if (definition?.valueType === "range") return {
+    kind: "range",
+    minimum: definition?.range?.min ?? 0,
+    maximum: definition?.range?.max ?? definition?.range?.min ?? 0
+  };
+  if (definition?.valueType === "set") return { kind: "set", values: [] };
+  if (definition?.valueType === "vector") {
+    return { kind: "vector", components: [{ dimension: "", value: "", unit: "" }] };
+  }
+  if (definition?.valueType === "relation") return { kind: "relation", nodes: [], edges: [] };
+  return "";
+}
+
+function experimentDraftFromOptions(options, selectedMicrosequence = null) {
+  const scope = options?.scopes?.find((item) => (
+    selectedMicrosequence?.entityPath && Array.isArray(item.entityPath) &&
+    sameEntityPath(item.entityPath, selectedMicrosequence.entityPath)
+  )) || options?.scopes?.[0] || null;
+  const firstDefinition = options?.factorDefinitions?.[0] || null;
+  const scopeKey = experimentScopeKey(scope);
+  const factors = firstDefinition ? [{
+    factorId: "factor-1",
+    definitionKey: experimentRefKey(firstDefinition.ref),
+    targetKeys: new Set(scopeKey ? [scopeKey] : [])
+  }] : [];
+  const makeCondition = (index) => ({
+    conditionId: `condition-${index + 1}`,
+    label: `Condição ${String.fromCharCode(65 + index)}`,
+    values: Object.fromEntries(factors.map((factor) => [
+      factor.factorId,
+      defaultExperimentFactorValue(firstDefinition, options)
+    ]))
+  });
+  return {
+    experimentId: "",
+    experimentRevision: 0,
+    title: "",
+    hypothesis: "",
+    baseKey: experimentRefKey(options?.bases?.[0]?.ref),
+    consentPolicyKey: experimentRefKey(options?.consentPolicies?.[0]?.ref),
+    scopeKey,
+    factors,
+    conditions: [makeCondition(0), makeCondition(1)],
+    invariants: new Set(EXPERIMENT_INVARIANT_KINDS),
+    assignmentRule: "manual",
+    seed: "",
+    seedConfigured: false,
+    instruments: new Set(),
+    outcomes: new Set()
+  };
+}
+
+function experimentDraftFromDetail(experiment, options) {
+  const factors = experiment.factors.map((factor) => ({
+    factorId: factor.factorId,
+    definitionKey: experimentRefKey(factor.ref),
+    targetKeys: new Set((factor.targets.length ? factor.targets : [experiment.scope])
+      .map(experimentScopeKey).filter(Boolean))
+  }));
+  return {
+    experimentId: experiment.experimentId,
+    experimentRevision: experiment.experimentRevision,
+    title: experiment.title,
+    hypothesis: experiment.hypothesis,
+    baseKey: experimentRefKey(experiment.base?.ref),
+    consentPolicyKey: experimentRefKey(experiment.consentPolicy?.ref),
+    scopeKey: experimentScopeKey(experiment.scope),
+    factors,
+    conditions: experiment.conditions.map((condition) => ({
+      conditionId: condition.conditionId,
+      label: condition.label,
+      values: Object.fromEntries(condition.values.map((entry) => [
+        entry.factorId,
+        entry.resourceSetRef
+          ? experimentRefKey(entry.resourceSetRef)
+          : (() => {
+              const factor = experiment.factors.find((item) => item.factorId === entry.factorId);
+              if (factor?.valueType === "integer" && entry.value?.kind === "integer") {
+                return entry.value.value;
+              }
+              const definition = experimentOptionByRefKey(
+                options?.factorDefinitions,
+                experimentRefKey(factor?.ref)
+              );
+              const optionKey = definition?.options?.find((option) => (
+                JSON.stringify(option.value) === JSON.stringify(entry.value)
+              ))?.key;
+              return optionKey || (entry.value && typeof entry.value === "object"
+                ? structuredClone(entry.value)
+                : "");
+            })()
+      ]))
+    })),
+    invariants: new Set(EXPERIMENT_INVARIANT_KINDS),
+    assignmentRule: experiment.assignment.rule,
+    seed: "",
+    seedConfigured: experiment.assignment.seedConfigured,
+    instruments: new Set(experiment.instruments.map(({ ref }) => experimentRefKey(ref))),
+    outcomes: new Set(experiment.outcomes.map(({ ref }) => experimentRefKey(ref)))
+  };
+}
+
+function experimentOptionByRefKey(items, key) {
+  return (Array.isArray(items) ? items : []).find((item) => experimentRefKey(item.ref) === key) || null;
+}
+
+function experimentFactorValue(definition, rawValue) {
+  if (definition?.options?.length) {
+    const option = definition.options.find((item) => item.key === rawValue);
+    if (!option) throw new TypeError(`Escolha um valor governado para ${definition.label}.`);
+    return structuredClone(option.value);
+  }
+  if (text(definition?.valueType).toLowerCase() === "integer") {
+    const numeric = Number(rawValue);
+    if (!Number.isFinite(numeric)) throw new TypeError(`Valor inválido para ${definition.label}.`);
+    return { kind: "integer", value: Math.trunc(numeric) };
+  }
+  if (rawValue && typeof rawValue === "object" && !Array.isArray(rawValue) &&
+      rawValue.kind === definition?.valueType) {
+    const value = structuredClone(rawValue);
+    if (value.kind === "range") {
+      value.minimum = Number(value.minimum);
+      value.maximum = Number(value.maximum);
+      if (!Number.isFinite(value.minimum) || !Number.isFinite(value.maximum) || value.minimum > value.maximum) {
+        throw new TypeError(`Informe um intervalo válido para ${definition.label}.`);
+      }
+    }
+    if (value.kind === "set") {
+      value.values = [...new Set((Array.isArray(value.values) ? value.values : []).map(text).filter(Boolean))];
+    }
+    if (value.kind === "vector") {
+      value.components = (Array.isArray(value.components) ? value.components : []).map((component) => ({
+        dimension: text(component?.dimension),
+        value: Number.isFinite(Number(component?.value)) && text(component?.value) !== ""
+          ? Number(component.value)
+          : text(component?.value),
+        unit: text(component?.unit)
+      })).filter((component) => component.dimension && component.unit && component.value !== "");
+      if (!value.components.length) throw new TypeError(`Complete ao menos um componente de ${definition.label}.`);
+    }
+    if (value.kind === "relation") {
+      value.nodes = [...new Set((Array.isArray(value.nodes) ? value.nodes : []).map(text).filter(Boolean))];
+      value.edges = (Array.isArray(value.edges) ? value.edges : []).map((edge) => ({
+        from: text(edge?.from), to: text(edge?.to), kind: text(edge?.kind)
+      })).filter((edge) => edge.from && edge.to && edge.kind);
+      if (!value.nodes.length || !value.edges.length) {
+        throw new TypeError(`Complete os nós e ao menos uma relação de ${definition.label}.`);
+      }
+    }
+    return value;
+  }
+  throw new TypeError(`${definition.label} exige uma opção governada.`);
+}
+
+function buildExperimentProtocol(draft, options) {
+  const base = experimentOptionByRefKey(options?.bases, draft.baseKey);
+  const consentPolicy = experimentOptionByRefKey(options?.consentPolicies, draft.consentPolicyKey);
+  const scope = options?.scopes?.find((item) => experimentScopeKey(item) === draft.scopeKey) || null;
+  if (!draft.title.trim() || !base?.ref || !consentPolicy?.ref || !scope ||
+      !draft.factors.length || draft.conditions.length < 2) {
+    throw new TypeError("Complete base, consentimento, escopo, fatores e ao menos duas condições.");
+  }
+  const resolvedFactors = draft.factors.map((factor) => {
+    const definition = experimentOptionByRefKey(options?.factorDefinitions, factor.definitionKey);
+    if (!definition?.ref) throw new TypeError("Uma definição de fator deixou de estar disponível.");
+    const targets = [...(factor.targetKeys instanceof Set ? factor.targetKeys : new Set([draft.scopeKey]))].map((key) => (
+      options?.scopes?.find((item) => experimentScopeKey(item) === key)
+    )).filter((target) => (
+      target && (!definition.supportedScopes.length || definition.supportedScopes.includes(target.kind))
+    ));
+    if (!targets.length) throw new TypeError(`${definition.label} precisa afetar ao menos um alvo.`);
+    return { factor, definition, targets };
+  });
+  const conditions = draft.conditions.map((condition) => ({
+    conditionId: text(condition.conditionId),
+    label: text(condition.label),
+    values: resolvedFactors.map(({ factor, definition }) => {
+      const rawValue = condition.values?.[factor.factorId];
+      if (rawValue == null || String(rawValue).trim() === "") {
+        throw new TypeError(`Complete ${definition.label} em todas as condições.`);
+      }
+      if (definition.kind === "resource_set") {
+        const resourceSet = experimentOptionByRefKey(options?.resourceSets, String(rawValue));
+        if (!resourceSet?.ref) throw new TypeError("Escolha um ResourceSet aprovado e versionado.");
+        return { factorId: factor.factorId, resourceSetRef: structuredClone(resourceSet.ref) };
+      }
+      return {
+        factorId: factor.factorId,
+        value: experimentFactorValue(definition, rawValue)
+      };
+    })
+  }));
+  if (conditions.some((condition) => !condition.conditionId || !condition.label)) {
+    throw new TypeError("Todas as condições precisam de nome e identidade.");
+  }
+  const assignment = { rule: draft.assignmentRule };
+  if (draft.assignmentRule === "seeded_random") {
+    if (!text(draft.seed)) {
+      throw new TypeError("Informe uma nova seed para salvar esta revisão do protocolo.");
+    }
+    assignment.seed = text(draft.seed);
+  }
+  const instrumentRefs = [...draft.instruments].map((key) => (
+    experimentOptionByRefKey(options?.instruments, key)?.ref
+  )).filter(Boolean).map((ref) => structuredClone(ref));
+  const outcomeRefs = [...draft.outcomes].map((key) => (
+    experimentOptionByRefKey(options?.outcomes, key)?.ref
+  )).filter(Boolean).map((ref) => structuredClone(ref));
+  const protocol = {
+    title: draft.title.trim(),
+    ...(draft.hypothesis.trim() ? { hypothesis: draft.hypothesis.trim() } : {}),
+    baseRef: structuredClone(base.ref),
+    consentPolicyRef: structuredClone(consentPolicy.ref),
+    scope: { kind: scope.kind, ref: scope.ref },
+    factors: resolvedFactors.map(({ factor, definition, targets }) => ({
+      factorId: factor.factorId,
+      definitionRef: structuredClone(definition.ref),
+      kind: definition.kind,
+      targets: targets.map((target) => ({ kind: target.kind, ref: target.ref }))
+    })),
+    conditions,
+    invariants: [...EXPERIMENT_INVARIANT_KINDS],
+    assignment,
+    instrumentRefs,
+    outcomeRefs
+  };
+  if (new TextEncoder().encode(JSON.stringify(protocol)).byteLength > 60_000) {
+    throw new TypeError(
+      "O protocolo completo excede 60.000 bytes. Use rótulos concisos ou reduza o recorte de alvos."
+    );
+  }
+  return protocol;
 }
 
 const RESOURCE_FACET_DEFINITIONS = Object.freeze([
@@ -264,6 +578,7 @@ export function createAuthoringWorkspaceSurface({
   let resourceEpoch = 0;
   let findingEpoch = 0;
   let auditComponentEpoch = 0;
+  let experimentEpoch = 0;
   let pendingFocusSelector = "";
   let returnFocusTarget = null;
   let searchTimer = null;
@@ -304,6 +619,28 @@ export function createAuthoringWorkspaceSurface({
     reauditBlockedByRepairs: false,
     auditActionsOnline: online(),
     auditActionCapabilities: Object.freeze({ decide: false, prepare: false, reaudit: false }),
+    researchAvailable: false,
+    experimentView: "",
+    experimentStage: "protocol",
+    experimentList: null,
+    experimentDetail: null,
+    experimentDraft: null,
+    experimentLoading: false,
+    experimentListLoadingMore: false,
+    experimentOptionLoadingKind: "",
+    experimentOptionsIncomplete: false,
+    experimentVariantsLoading: false,
+    experimentDifferencesLoading: false,
+    experimentParticipantsLoading: false,
+    experimentDirty: false,
+    experimentDiscardPrompt: false,
+    experimentDifferenceNotes: {},
+    experimentContinuityConfirmations: {},
+    experimentCorrectionReasons: {},
+    experimentCorrectionConfirmations: {},
+    experimentParticipantConditions: {},
+    experimentEnrollmentReceipt: null,
+    experimentActionsOnline: online(),
     statusMessage: "",
     errorMessage: ""
   };
@@ -324,6 +661,39 @@ export function createAuthoringWorkspaceSurface({
       reaudit: capabilities.requestAudit === true &&
         typeof controller.requestAuthoringReaudit === "function"
     });
+  }
+
+  function resetExperimentState({ keepCapability = true } = {}) {
+    ++experimentEpoch;
+    state.experimentView = "";
+    state.experimentStage = "protocol";
+    state.experimentList = null;
+    state.experimentDetail = null;
+    state.experimentDraft = null;
+    state.experimentLoading = false;
+    state.experimentListLoadingMore = false;
+    state.experimentOptionLoadingKind = "";
+    state.experimentOptionsIncomplete = false;
+    state.experimentVariantsLoading = false;
+    state.experimentDifferencesLoading = false;
+    state.experimentParticipantsLoading = false;
+    state.experimentDirty = false;
+    state.experimentDiscardPrompt = false;
+    state.experimentDifferenceNotes = {};
+    state.experimentContinuityConfirmations = {};
+    state.experimentCorrectionReasons = {};
+    state.experimentCorrectionConfirmations = {};
+    state.experimentParticipantConditions = {};
+    if (!keepCapability) state.researchAvailable = false;
+  }
+
+  function syncResearchCapability() {
+    const available = state.overview?.capabilities?.research === true &&
+      typeof controller.listAuthoringExperiments === "function" &&
+      typeof controller.loadAuthoringExperiment === "function" &&
+      typeof controller.saveAuthoringExperimentProtocol === "function";
+    state.researchAvailable = available;
+    if (!available && state.experimentView) resetExperimentState();
   }
 
   function resetFindingsPagination(overview = null) {
@@ -865,6 +1235,7 @@ export function createAuthoringWorkspaceSurface({
   function render({ focus = "" } = {}) {
     if (!state.opened) return;
     state.auditActionsOnline = online();
+    state.experimentActionsOnline = online();
     state.auditOperational = Boolean(
       !state.auditSlice?.stale &&
       state.auditSlice?.latestAuditRun?.status === "complete" &&
@@ -875,7 +1246,9 @@ export function createAuthoringWorkspaceSurface({
     state.reauditBlockedByRepairs = reauditBlockedByPreparedRepairs(state.findingEditor);
     if (focus) pendingFocusSelector = focus;
     root.innerHTML = renderAuthoringWorkspaceSurface(state, availableDestinations());
-    root.setAttribute("aria-busy", String(state.loading || state.designLoading || state.auditLoading));
+    root.setAttribute("aria-busy", String(
+      state.loading || state.designLoading || state.auditLoading || state.experimentLoading
+    ));
     if (pendingFocusSelector) {
       const selector = pendingFocusSelector;
       pendingFocusSelector = "";
@@ -944,6 +1317,922 @@ export function createAuthoringWorkspaceSurface({
     }
   }
 
+  async function loadExperimentList({ preserveStatus = false, focus = true } = {}) {
+    if (!state.workspaceId || !state.researchAvailable) return false;
+    const epoch = ++experimentEpoch;
+    state.experimentLoading = true;
+    if (!preserveStatus) {
+      state.statusMessage = "";
+      state.errorMessage = "";
+    }
+    render();
+    try {
+      const result = await controller.listAuthoringExperiments({
+        workspaceId: state.workspaceId,
+        online: online()
+      });
+      if (epoch !== experimentEpoch || !state.opened || !state.researchAvailable) return false;
+      let experimentList = normalizeAuthoringExperimentList(result);
+      if (!experimentList.stale && !experimentList.experimentSetRef) {
+        throw new Error("A lista experimental não devolveu o conjunto versionado.");
+      }
+      state.experimentOptionsIncomplete = false;
+      if (!experimentList.stale && online() &&
+          typeof controller.loadAuthoringExperimentOptionPage === "function") {
+        const pages = await Promise.allSettled(Object.keys(EXPERIMENT_OPTION_KIND_PROPERTIES).map(async (kind) => (
+          normalizeAuthoringExperimentOptionPage(await controller.loadAuthoringExperimentOptionPage({
+            workspaceId: state.workspaceId,
+            kind,
+            limit: 50,
+            online: true
+          }))
+        )));
+        if (epoch !== experimentEpoch || !state.opened || !state.researchAvailable) return false;
+        let options = experimentList.options;
+        let optionsSetKey = experimentRefKey(options.optionsSetRef);
+        for (const outcome of pages) {
+          if (outcome.status !== "fulfilled" ||
+              outcome.value.workspaceRevision !== experimentList.workspaceRevision ||
+              !outcome.value.optionsSetRef) {
+            state.experimentOptionsIncomplete = true;
+            continue;
+          }
+          const pageSetKey = experimentRefKey(outcome.value.optionsSetRef);
+          if (optionsSetKey && pageSetKey !== optionsSetKey) {
+            state.experimentOptionsIncomplete = true;
+            continue;
+          }
+          optionsSetKey = pageSetKey;
+          options = mergeExperimentOptionPage(options, outcome.value);
+        }
+        experimentList = Object.freeze({ ...experimentList, options });
+        if (state.experimentOptionsIncomplete) {
+          state.errorMessage = "Alguns catálogos governados não puderam ser confirmados; criar ou editar permanece bloqueado.";
+        }
+      }
+      state.experimentList = experimentList;
+      if (state.experimentList.stale) {
+        state.statusMessage = "Snapshot experimental offline para consulta; reconecte para gerenciar.";
+      }
+      return true;
+    } catch (error) {
+      if (epoch !== experimentEpoch || !state.opened) return false;
+      state.errorMessage = userMessage(error, "Não foi possível carregar os experimentos.");
+      return false;
+    } finally {
+      if (epoch === experimentEpoch && state.opened) {
+        state.experimentLoading = false;
+        render({ focus: focus ? ".authoring-experiment-heading" : "" });
+      }
+    }
+  }
+
+  async function loadMoreExperimentList() {
+    const current = state.experimentList;
+    if (!current || current.nextCursor == null || state.experimentListLoadingMore || !online()) return false;
+    state.experimentListLoadingMore = true;
+    state.errorMessage = "";
+    render();
+    try {
+      const incoming = normalizeAuthoringExperimentList(await controller.listAuthoringExperiments({
+        workspaceId: state.workspaceId,
+        experimentSetRef: current.experimentSetRef,
+        cursor: current.nextCursor,
+        limit: 20,
+        online: true
+      }));
+      if (incoming.workspaceRevision !== current.workspaceRevision ||
+          experimentRefKey(incoming.experimentSetRef) !== experimentRefKey(current.experimentSetRef)) {
+        const error = new Error("A lista de experimentos mudou durante a paginação.");
+        error.code = "workspace_revision_conflict";
+        throw error;
+      }
+      const items = new Map(current.items.map((item) => [item.experimentId, item]));
+      incoming.items.forEach((item) => {
+        const existing = items.get(item.experimentId);
+        if (!existing || item.experimentRevision >= existing.experimentRevision) {
+          items.set(item.experimentId, item);
+        }
+      });
+      state.experimentList = Object.freeze({
+        ...current,
+        items: Object.freeze([...items.values()]),
+        count: Math.max(current.count, incoming.count, items.size),
+        nextCursor: incoming.nextCursor,
+        truncated: incoming.truncated
+      });
+      return true;
+    } catch (error) {
+      state.errorMessage = userMessage(error, "Não foi possível carregar mais experimentos.");
+      if (conflictError(error)) await loadExperimentList({ preserveStatus: true, focus: false });
+      return false;
+    } finally {
+      state.experimentListLoadingMore = false;
+      render({ focus: '[data-authoring-action="load-more-experiments"]' });
+    }
+  }
+
+  async function loadMoreExperimentOptions(kind) {
+    if (!state.experimentList || !online() || state.experimentOptionLoadingKind ||
+        typeof controller.loadAuthoringExperimentOptionPage !== "function") return false;
+    const property = EXPERIMENT_OPTION_KIND_PROPERTIES[kind];
+    const currentPage = state.experimentList.options.pages?.[property];
+    if (!property || currentPage?.nextCursor == null) return false;
+    state.experimentOptionLoadingKind = kind;
+    state.errorMessage = "";
+    render();
+    try {
+      const raw = await controller.loadAuthoringExperimentOptionPage({
+        workspaceId: state.workspaceId,
+        kind,
+        optionsSetRef: state.experimentList.options.optionsSetRef,
+        cursor: currentPage.nextCursor,
+        limit: 50,
+        online: true
+      });
+      const page = normalizeAuthoringExperimentOptionPage(raw);
+      if (page.property !== property ||
+          page.workspaceRevision !== state.experimentList.workspaceRevision ||
+          experimentRefKey(page.optionsSetRef) !==
+            experimentRefKey(state.experimentList.options.optionsSetRef)) {
+        const error = new Error("As opções mudaram durante a paginação. Releia o protocolo.");
+        error.code = "workspace_revision_conflict";
+        throw error;
+      }
+      const options = mergeExperimentOptionPage(state.experimentList.options, page);
+      state.experimentList = Object.freeze({ ...state.experimentList, options });
+      return true;
+    } catch (error) {
+      state.errorMessage = userMessage(error, "Não foi possível carregar mais opções.");
+      if (conflictError(error)) await loadExperimentList({ preserveStatus: true, focus: false });
+      return false;
+    } finally {
+      state.experimentOptionLoadingKind = "";
+      render({ focus: `[data-experiment-option-kind="${selectorValue(kind)}"]` });
+    }
+  }
+
+  async function loadAllExperimentOptionsForEditing() {
+    if (state.experimentOptionsIncomplete) {
+      throw new Error("Releia os catálogos governados antes de editar o protocolo.");
+    }
+    for (const [kind, property] of Object.entries(EXPERIMENT_OPTION_KIND_PROPERTIES)) {
+      const seenCursors = new Set();
+      for (let pageIndex = 0; pageIndex < 100; pageIndex += 1) {
+        const page = state.experimentList?.options?.pages?.[property];
+        if (!page?.truncated || page.nextCursor == null) break;
+        const cursorKey = text(page.nextCursor);
+        if (!cursorKey || seenCursors.has(cursorKey)) {
+          throw new Error("A paginação dos catálogos governados não avançou.");
+        }
+        seenCursors.add(cursorKey);
+        if (!await loadMoreExperimentOptions(kind)) {
+          throw new Error("Não foi possível carregar todos os catálogos governados.");
+        }
+      }
+      const remaining = state.experimentList?.options?.pages?.[property];
+      if (remaining?.truncated) {
+        throw new Error("O catálogo governado excedeu o limite seguro de edição.");
+      }
+    }
+  }
+
+  async function openExperiments() {
+    if (!state.researchAvailable || state.experimentLoading) return false;
+    state.experimentView = "list";
+    state.experimentStage = "protocol";
+    state.experimentDetail = null;
+    state.experimentDraft = null;
+    state.experimentDirty = false;
+    state.experimentDiscardPrompt = false;
+    render({ focus: ".authoring-experiment-heading" });
+    return loadExperimentList();
+  }
+
+  function closeExperiments() {
+    resetExperimentState();
+    render({ focus: '[data-authoring-action="open-experiments"]' });
+  }
+
+  function beginNewExperiment() {
+    const options = state.experimentList?.options;
+    if (!online() || state.experimentOptionsIncomplete || !options?.bases?.length || !options?.scopes?.length ||
+        !options?.factorDefinitions?.length) return false;
+    state.experimentDraft = experimentDraftFromOptions(options, state.selectedMicrosequence);
+    state.experimentDetail = null;
+    state.experimentView = "protocol";
+    state.experimentStage = "protocol";
+    state.experimentDirty = false;
+    state.experimentDiscardPrompt = false;
+    state.errorMessage = "";
+    render({ focus: ".authoring-experiment-heading" });
+    return true;
+  }
+
+  async function loadExperimentSection(experimentId, section, epoch, argumentsValue = {}) {
+    const raw = await controller.loadAuthoringExperiment({
+      workspaceId: state.workspaceId,
+      experimentId,
+      section,
+      online: argumentsValue.online ?? online(),
+      ...argumentsValue
+    });
+    if (epoch !== experimentEpoch || !state.opened) return false;
+    const incoming = normalizeAuthoringExperiment(raw);
+    state.experimentDetail = mergeAuthoringExperimentSections(state.experimentDetail, incoming);
+    return true;
+  }
+
+  async function hydrateExperimentSections(experimentId, epoch, { onlineValue = online() } = {}) {
+    await loadExperimentSection(experimentId, "overview", epoch, { online: onlineValue });
+    if (epoch !== experimentEpoch || !state.experimentDetail) return false;
+    const overview = state.experimentDetail;
+    const sections = ["protocol"];
+    if (onlineValue && overview.variantCount > 0) sections.push("variants");
+    if (onlineValue && overview.differenceCount > 0) sections.push("differences");
+    if (onlineValue && overview.actions.assign) sections.push("participants");
+    for (const section of sections) {
+      try {
+        await loadExperimentSection(experimentId, section, epoch, { online: onlineValue });
+      } catch (error) {
+        if (conflictError(error)) throw error;
+        state.errorMessage = userMessage(
+          error,
+          `A seção ${section} não pôde ser carregada; o resumo permanece disponível.`
+        );
+      }
+    }
+    return epoch === experimentEpoch && state.opened;
+  }
+
+  async function loadExperimentDetail(experimentId, { preserveStatus = false, focus = true } = {}) {
+    const normalizedExperimentId = text(experimentId);
+    if (!normalizedExperimentId || !state.researchAvailable) return false;
+    const epoch = ++experimentEpoch;
+    state.experimentLoading = true;
+    if (!preserveStatus) {
+      state.statusMessage = "";
+      state.errorMessage = "";
+    }
+    render();
+    try {
+      state.experimentDetail = null;
+      await hydrateExperimentSections(normalizedExperimentId, epoch, { onlineValue: online() });
+      if (epoch !== experimentEpoch || !state.opened || !state.experimentDetail) return false;
+      if (state.experimentDetail.stale) {
+        state.statusMessage = "Snapshot experimental offline para consulta; decisões permanecem bloqueadas.";
+      }
+      state.experimentStage = experimentStatusStage(state.experimentDetail);
+      state.experimentView = "detail";
+      state.experimentParticipantConditions = {};
+      state.experimentDifferenceNotes = {};
+      return true;
+    } catch (error) {
+      if (epoch !== experimentEpoch || !state.opened) return false;
+      state.errorMessage = userMessage(error, "Não foi possível abrir o experimento.");
+      return false;
+    } finally {
+      if (epoch === experimentEpoch && state.opened) {
+        state.experimentLoading = false;
+        render({ focus: focus ? ".authoring-experiment-heading" : "" });
+      }
+    }
+  }
+
+  async function loadMoreExperimentVariants() {
+    const experiment = state.experimentDetail;
+    const page = experiment?.variants;
+    if (!experiment || state.experimentVariantsLoading || !online() ||
+        page?.nextCursor == null || !page.variantSetRef) return false;
+    state.experimentVariantsLoading = true;
+    state.errorMessage = "";
+    render();
+    try {
+      const incoming = normalizeAuthoringExperiment(await controller.loadAuthoringExperiment({
+        workspaceId: state.workspaceId,
+        experimentId: experiment.experimentId,
+        section: "variants",
+        variantSetRef: page.variantSetRef,
+        variantCursor: page.nextCursor,
+        variantLimit: 10,
+        online: true
+      }));
+      if (incoming.experimentRevision !== experiment.experimentRevision ||
+          experimentRefKey(incoming.variants.variantSetRef) !== experimentRefKey(page.variantSetRef)) {
+        const error = new Error("As variantes mudaram durante a paginação. Releia o experimento.");
+        error.code = "experiment_revision_conflict";
+        throw error;
+      }
+      const merged = new Map(page.items.map((item) => [item.variantId, item]));
+      incoming.variants.items.forEach((item) => merged.set(item.variantId, item));
+      state.experimentDetail = Object.freeze({
+        ...experiment,
+        variants: Object.freeze({
+          ...incoming.variants,
+          items: Object.freeze([...merged.values()]),
+          count: Math.max(page.count, incoming.variants.count, merged.size)
+        })
+      });
+      return true;
+    } catch (error) {
+      state.errorMessage = userMessage(error, "Não foi possível carregar mais variantes.");
+      if (conflictError(error)) {
+        await loadExperimentDetail(experiment.experimentId, { preserveStatus: true, focus: false });
+      }
+      return false;
+    } finally {
+      state.experimentVariantsLoading = false;
+      render({ focus: '[data-authoring-action="load-more-experiment-variants"]' });
+    }
+  }
+
+  async function openExperimentDifferenceRun(differenceRunRef) {
+    const experiment = state.experimentDetail;
+    if (!experiment || !differenceRunRef || state.experimentDifferencesLoading || !online()) return false;
+    state.experimentDifferencesLoading = true;
+    state.errorMessage = "";
+    render();
+    try {
+      const incoming = normalizeAuthoringExperiment(await controller.loadAuthoringExperiment({
+        workspaceId: state.workspaceId,
+        experimentId: experiment.experimentId,
+        section: "differences",
+        differenceRunRef,
+        differenceLimit: 20,
+        online: true
+      }));
+      state.experimentDetail = mergeAuthoringExperimentSections(experiment, incoming);
+      return true;
+    } catch (error) {
+      state.errorMessage = userMessage(error, "Não foi possível abrir esta comparação.");
+      if (conflictError(error)) {
+        await loadExperimentDetail(experiment.experimentId, { preserveStatus: true, focus: false });
+      }
+      return false;
+    } finally {
+      state.experimentDifferencesLoading = false;
+      render({ focus: ".authoring-experiment-differences" });
+    }
+  }
+
+  async function loadMoreExperimentDifferences() {
+    const experiment = state.experimentDetail;
+    const page = experiment?.differences;
+    if (!experiment || state.experimentDifferencesLoading || !online() || page?.nextCursor == null ||
+        (page.mode === "runs" ? !page.differenceSetRef : !page.differenceRunRef)) return false;
+    state.experimentDifferencesLoading = true;
+    state.errorMessage = "";
+    render();
+    try {
+      const raw = await controller.loadAuthoringExperiment({
+        workspaceId: state.workspaceId,
+        experimentId: experiment.experimentId,
+        section: "differences",
+        ...(page.mode === "runs" ? {
+          differenceSetRef: page.differenceSetRef,
+          differenceRunCursor: page.nextCursor,
+          differenceRunLimit: 20
+        } : {
+          differenceRunRef: page.differenceRunRef,
+          differenceCursor: page.nextCursor,
+          differenceLimit: 20
+        }),
+        online: true
+      });
+      const incoming = normalizeAuthoringExperiment(raw);
+      const refMatches = page.mode === "runs"
+        ? experimentRefKey(incoming.differences.differenceSetRef) === experimentRefKey(page.differenceSetRef)
+        : experimentRefKey(incoming.differences.differenceRunRef) === experimentRefKey(page.differenceRunRef);
+      if (incoming.experimentRevision !== experiment.experimentRevision ||
+          incoming.differences.mode !== page.mode || !refMatches) {
+        const error = new Error("As diferenças mudaram durante a paginação. Releia o experimento.");
+        error.code = "experiment_revision_conflict";
+        throw error;
+      }
+      const identity = (item) => page.mode === "runs" ? item.runId : item.differenceId;
+      const merged = new Map(page.items.map((item) => [identity(item), item]));
+      incoming.differences.items.forEach((item) => merged.set(identity(item), item));
+      state.experimentDetail = Object.freeze({
+        ...experiment,
+        differences: Object.freeze({
+          ...incoming.differences,
+          items: Object.freeze([...merged.values()]),
+          count: Math.max(page.count, incoming.differences.count, merged.size)
+        })
+      });
+      return true;
+    } catch (error) {
+      state.errorMessage = userMessage(error, "Não foi possível carregar mais diferenças.");
+      if (conflictError(error)) {
+        await loadExperimentDetail(experiment.experimentId, { preserveStatus: true, focus: false });
+      }
+      return false;
+    } finally {
+      state.experimentDifferencesLoading = false;
+      render({ focus: '[data-authoring-action="load-more-experiment-differences"]' });
+    }
+  }
+
+  async function loadMoreExperimentParticipants() {
+    const experiment = state.experimentDetail;
+    const page = experiment?.participants;
+    if (!experiment || state.experimentParticipantsLoading || !online() ||
+        page?.nextCursor == null || !page.participantSetRef) return false;
+    state.experimentParticipantsLoading = true;
+    state.errorMessage = "";
+    render();
+    try {
+      const incoming = normalizeAuthoringExperiment(await controller.loadAuthoringExperiment({
+        workspaceId: state.workspaceId,
+        experimentId: experiment.experimentId,
+        section: "participants",
+        participantSetRef: page.participantSetRef,
+        participantCursor: page.nextCursor,
+        participantLimit: 20,
+        online: true
+      }));
+      if (incoming.experimentRevision !== experiment.experimentRevision ||
+          experimentRefKey(incoming.participants.participantSetRef) !==
+            experimentRefKey(page.participantSetRef)) {
+        const error = new Error("A fila mudou durante a paginação. Releia o experimento.");
+        error.code = "experiment_revision_conflict";
+        throw error;
+      }
+      const merged = new Map(page.items.map((item) => [item.participantKey, item]));
+      incoming.participants.items.forEach((item) => merged.set(item.participantKey, item));
+      state.experimentDetail = Object.freeze({
+        ...experiment,
+        participants: Object.freeze({
+          ...incoming.participants,
+          items: Object.freeze([...merged.values()]),
+          count: Math.max(page.count, incoming.participants.count, merged.size)
+        })
+      });
+      return true;
+    } catch (error) {
+      state.errorMessage = userMessage(error, "Não foi possível carregar mais participantes.");
+      if (conflictError(error)) {
+        await loadExperimentDetail(experiment.experimentId, { preserveStatus: true, focus: false });
+      }
+      return false;
+    } finally {
+      state.experimentParticipantsLoading = false;
+      render({ focus: '[data-authoring-action="load-more-experiment-participants"]' });
+    }
+  }
+
+  async function openExperiment(experimentId) {
+    state.experimentView = "detail";
+    state.experimentDetail = null;
+    render();
+    return loadExperimentDetail(experimentId);
+  }
+
+  async function returnToExperimentList() {
+    state.experimentView = "list";
+    state.experimentStage = "protocol";
+    state.experimentDetail = null;
+    state.experimentDraft = null;
+    state.experimentDirty = false;
+    state.experimentParticipantConditions = {};
+    render({ focus: ".authoring-experiment-heading" });
+    return loadExperimentList({ preserveStatus: true });
+  }
+
+  async function editExperimentProtocol() {
+    if (!state.experimentDetail?.actions.saveProtocol || !state.experimentList?.options || !online()) return false;
+    state.experimentLoading = true;
+    state.errorMessage = "";
+    render();
+    try {
+      await loadAllExperimentOptionsForEditing();
+      state.experimentDraft = experimentDraftFromDetail(
+        state.experimentDetail,
+        state.experimentList.options
+      );
+      state.experimentView = "protocol";
+      state.experimentStage = "protocol";
+      state.experimentDirty = false;
+      state.experimentDiscardPrompt = false;
+      return true;
+    } catch (error) {
+      state.errorMessage = userMessage(error, "Não foi possível preparar a edição completa do protocolo.");
+      return false;
+    } finally {
+      state.experimentLoading = false;
+      render({ focus: ".authoring-experiment-heading" });
+    }
+  }
+
+  function leaveExperimentEditor({ discard = false } = {}) {
+    if (!discard && state.experimentDirty) {
+      state.experimentDiscardPrompt = true;
+      render({ focus: '[data-authoring-dialog="experiment-discard"] button' });
+      return false;
+    }
+    const existing = Boolean(state.experimentDraft?.experimentId && state.experimentDetail);
+    state.experimentDiscardPrompt = false;
+    state.experimentDirty = false;
+    state.experimentDraft = null;
+    state.experimentView = existing ? "detail" : "list";
+    state.experimentStage = existing
+      ? experimentStatusStage(state.experimentDetail)
+      : "protocol";
+    render({ focus: existing ? ".authoring-experiment-heading" : '[data-authoring-action="new-experiment"]' });
+    return true;
+  }
+
+  function addExperimentFactor(definitionKey) {
+    const draft = state.experimentDraft;
+    const definition = experimentOptionByRefKey(
+      state.experimentList?.options?.factorDefinitions,
+      definitionKey
+    );
+    if (!draft || !definition || draft.factors.some((item) => item.definitionKey === definitionKey)) return;
+    const factorId = nextExperimentIdentifier("factor", draft.factors, "factorId");
+    draft.factors.push({
+      factorId,
+      definitionKey,
+      targetKeys: new Set(draft.scopeKey ? [draft.scopeKey] : [])
+    });
+    draft.conditions.forEach((condition) => {
+      condition.values[factorId] = defaultExperimentFactorValue(definition, state.experimentList?.options);
+    });
+    state.experimentDirty = true;
+    render({ focus: `[data-factor-id="${selectorValue(factorId)}"]` });
+  }
+
+  function removeExperimentFactor(factorId) {
+    const draft = state.experimentDraft;
+    if (!draft || draft.factors.length <= 1) return;
+    const index = draft.factors.findIndex((item) => item.factorId === factorId);
+    if (index < 0) return;
+    draft.factors.splice(index, 1);
+    draft.conditions.forEach((condition) => delete condition.values[factorId]);
+    state.experimentDirty = true;
+    render({ focus: ".authoring-experiment-selected-factors button" });
+  }
+
+  function addExperimentCondition() {
+    const draft = state.experimentDraft;
+    if (!draft) return;
+    const conditionId = nextExperimentIdentifier("condition", draft.conditions, "conditionId");
+    const condition = {
+      conditionId,
+      label: `Condição ${String.fromCharCode(65 + draft.conditions.length)}`,
+      values: {}
+    };
+    draft.factors.forEach((factor) => {
+      const definition = experimentOptionByRefKey(
+        state.experimentList?.options?.factorDefinitions,
+        factor.definitionKey
+      );
+      condition.values[factor.factorId] = defaultExperimentFactorValue(
+        definition,
+        state.experimentList?.options
+      );
+    });
+    draft.conditions.push(condition);
+    state.experimentDirty = true;
+    render({ focus: `[data-experiment-condition-label][data-condition-id="${selectorValue(conditionId)}"]` });
+  }
+
+  function removeExperimentCondition(conditionId) {
+    const draft = state.experimentDraft;
+    if (!draft || draft.conditions.length <= 2) return;
+    const index = draft.conditions.findIndex((item) => item.conditionId === conditionId);
+    if (index < 0) return;
+    draft.conditions.splice(index, 1);
+    state.experimentDirty = true;
+    render({ focus: '[data-authoring-action="add-experiment-condition"]' });
+  }
+
+  async function refreshExperimentAfterMutation(experimentId, epoch) {
+    state.experimentDetail = null;
+    await hydrateExperimentSections(experimentId, epoch, { onlineValue: true });
+    if (epoch !== experimentEpoch || !state.opened || !state.experimentDetail) return false;
+    state.experimentStage = experimentStatusStage(state.experimentDetail);
+    state.experimentView = "detail";
+    state.experimentDraft = null;
+    state.experimentDirty = false;
+    state.experimentParticipantConditions = {};
+    return true;
+  }
+
+  async function performExperimentMutation(
+    mutate,
+    successMessage,
+    fallbackMessage,
+    { onReceipt = null } = {}
+  ) {
+    if (state.experimentLoading || !online() || !state.experimentDetail) return false;
+    const currentExperimentId = state.experimentDetail.experimentId;
+    const epoch = ++experimentEpoch;
+    state.experimentLoading = true;
+    state.statusMessage = "";
+    state.errorMessage = "";
+    render();
+    try {
+      const receipt = await mutate();
+      if (typeof onReceipt === "function") onReceipt(receipt);
+      const experimentId = text(receipt?.experimentId) || currentExperimentId;
+      await refreshExperimentAfterMutation(experimentId, epoch);
+      if (epoch !== experimentEpoch || !state.opened) return false;
+      state.statusMessage = successMessage;
+      state.experimentDifferenceNotes = {};
+      state.experimentContinuityConfirmations = {};
+      state.experimentCorrectionReasons = {};
+      state.experimentCorrectionConfirmations = {};
+      return true;
+    } catch (error) {
+      if (epoch !== experimentEpoch || !state.opened) return false;
+      state.errorMessage = userMessage(error, fallbackMessage);
+      if (conflictError(error)) {
+        try {
+          await refreshExperimentAfterMutation(currentExperimentId, epoch);
+        } catch {
+          // A revisão conflitante continua explícita; nenhuma decisão é reaplicada.
+        }
+      }
+      return false;
+    } finally {
+      if (epoch === experimentEpoch && state.opened) {
+        state.experimentLoading = false;
+        render({ focus: ".authoring-experiment-heading" });
+      }
+    }
+  }
+
+  async function saveExperimentProtocol() {
+    const draft = state.experimentDraft;
+    if (!draft || state.experimentLoading || !online()) return false;
+    let protocol;
+    try {
+      protocol = buildExperimentProtocol(draft, state.experimentList?.options);
+    } catch (error) {
+      state.errorMessage = userMessage(error, "Complete o protocolo antes de salvar.");
+      render();
+      return false;
+    }
+    const epoch = ++experimentEpoch;
+    state.experimentLoading = true;
+    state.statusMessage = "";
+    state.errorMessage = "";
+    render();
+    try {
+      const receipt = await controller.saveAuthoringExperimentProtocol({
+        workspaceId: state.workspaceId,
+        ...(draft.experimentId ? { experimentId: draft.experimentId } : {}),
+        expectedExperimentRevision: draft.experimentId ? draft.experimentRevision : 0,
+        protocol,
+        online: true
+      });
+      const experimentId = text(receipt?.experimentId || draft.experimentId);
+      if (!experimentId) throw new Error("O servidor não devolveu a identidade do experimento.");
+      await refreshExperimentAfterMutation(experimentId, epoch);
+      if (epoch !== experimentEpoch || !state.opened) return false;
+      state.statusMessage = "Protocolo salvo.";
+      return true;
+    } catch (error) {
+      if (epoch !== experimentEpoch || !state.opened) return false;
+      state.errorMessage = userMessage(error, "Não foi possível salvar o protocolo.");
+      if (conflictError(error) && draft.experimentId) {
+        try {
+          await refreshExperimentAfterMutation(draft.experimentId, epoch);
+        } catch {
+          // O servidor continua sendo a fonte da revisão corrente.
+        }
+      }
+      return false;
+    } finally {
+      if (epoch === experimentEpoch && state.opened) {
+        state.experimentLoading = false;
+        render({ focus: ".authoring-experiment-heading" });
+      }
+    }
+  }
+
+  function validateExperiment() {
+    const experiment = state.experimentDetail;
+    if (!experiment?.actions.validate || typeof controller.validateAuthoringExperiment !== "function") return false;
+    return performExperimentMutation(() => controller.validateAuthoringExperiment({
+      workspaceId: state.workspaceId,
+      experimentId: experiment.experimentId,
+      expectedExperimentRevision: experiment.experimentRevision,
+      expectedWorkspaceRevision: experiment.workspaceRevision,
+      online: true
+    }), "Protocolo validado.", "Não foi possível validar o protocolo.");
+  }
+
+  function generateExperimentVariants() {
+    const experiment = state.experimentDetail;
+    if (!experiment?.actions.generate || typeof controller.generateAuthoringExperimentVariants !== "function") return false;
+    return performExperimentMutation(() => controller.generateAuthoringExperimentVariants({
+      workspaceId: state.workspaceId,
+      experimentId: experiment.experimentId,
+      expectedExperimentRevision: experiment.experimentRevision,
+      expectedWorkspaceRevision: experiment.workspaceRevision,
+      online: true
+    }), "Variantes geradas; aguardando materialização e auditoria.", "Não foi possível gerar as variantes.");
+  }
+
+  function decideExperimentDifference(node) {
+    const experiment = state.experimentDetail;
+    const differenceId = text(node?.dataset?.differenceId);
+    const decision = text(node?.dataset?.experimentDecision);
+    const difference = experiment?.differences.items.find((item) => item.differenceId === differenceId);
+    if (!experiment?.actions.decide || !differenceId || !difference?.differenceRef ||
+        !experiment?.differences.differenceRunRef ||
+        !["correct", "accept", "invalidate"].includes(decision) ||
+        !difference || typeof controller.decideAuthoringExperimentDifference !== "function") return false;
+    if (decision === "correct" && difference.requiresParticipantContinuity &&
+        state.experimentContinuityConfirmations[differenceId] !== true) {
+      state.errorMessage = "Confirme como preservar as atribuições existentes antes de corrigir.";
+      render();
+      return false;
+    }
+    if (["accept", "invalidate"].includes(decision) &&
+        !text(state.experimentDifferenceNotes[differenceId])) {
+      state.errorMessage = "Informe a justificativa antes de aceitar ou invalidar a diferença.";
+      render({ focus: `[data-experiment-difference-note="${selectorValue(differenceId)}"]` });
+      return false;
+    }
+    return performExperimentMutation(() => controller.decideAuthoringExperimentDifference({
+      workspaceId: state.workspaceId,
+      experimentId: experiment.experimentId,
+      differenceRunRef: experiment.differences.differenceRunRef,
+      differenceRef: difference.differenceRef,
+      decision,
+      note: text(state.experimentDifferenceNotes[differenceId]),
+      ...(decision === "correct" && difference.requiresParticipantContinuity
+        ? { participantContinuity: "retain_existing" }
+        : {}),
+      expectedExperimentRevision: experiment.experimentRevision,
+      online: true
+    }), "Decisão registrada.", "Não foi possível registrar a decisão.");
+  }
+
+  function requestExperimentCorrection(variantId) {
+    const experiment = state.experimentDetail;
+    const variant = experiment?.variants.items.find((item) => item.variantId === variantId);
+    const reason = text(state.experimentCorrectionReasons[variantId]);
+    if (!experiment?.actions.requestCorrection || !variant?.frozen ||
+        !variant.variantRevisionRef || !variant.workspaceRevision ||
+        typeof controller.requestAuthoringExperimentCorrection !== "function") return false;
+    if (!reason) {
+      state.errorMessage = "Explique por que a revisão congelada precisa de correção.";
+      render({ focus: `[data-experiment-correction-reason="${selectorValue(variantId)}"]` });
+      return false;
+    }
+    if (state.experimentCorrectionConfirmations[variantId] !== true) {
+      state.errorMessage = "Confirme como preservar as atribuições existentes antes de criar outra revisão.";
+      render({ focus: `[data-experiment-correction-continuity="${selectorValue(variantId)}"]` });
+      return false;
+    }
+    return performExperimentMutation(() => controller.requestAuthoringExperimentCorrection({
+      workspaceId: state.workspaceId,
+      experimentId: experiment.experimentId,
+      variantRevisionRef: variant.variantRevisionRef,
+      reason,
+      participantContinuity: "retain_existing",
+      expectedExperimentRevision: experiment.experimentRevision,
+      expectedWorkspaceRevision: variant.workspaceRevision,
+      online: true
+    }), "Correção solicitada; a revisão entregue foi preservada.",
+    "Não foi possível solicitar a nova revisão.");
+  }
+
+  function freezeExperiment(variantId) {
+    const experiment = state.experimentDetail;
+    const variant = experiment?.variants.items.find((item) => item.variantId === variantId);
+    if (!experiment?.actions.freeze || !variant?.variantRevisionRef || !variant.workspaceRevision ||
+        typeof controller.freezeAuthoringExperiment !== "function") return false;
+    return performExperimentMutation(() => controller.freezeAuthoringExperiment({
+      workspaceId: state.workspaceId,
+      experimentId: experiment.experimentId,
+      variantRevisionRef: variant.variantRevisionRef,
+      expectedExperimentRevision: experiment.experimentRevision,
+      expectedWorkspaceRevision: variant.workspaceRevision,
+      online: true
+    }), "Variantes congeladas.", "Não foi possível congelar as variantes.");
+  }
+
+  function keepExperimentEnrollmentReceipt(receipt) {
+    const source = receipt?.enrollment || receipt;
+    const enrollmentCode = text(source?.enrollmentCode);
+    if (!/^[A-Za-z0-9_-]{8,128}$/u.test(enrollmentCode)) {
+      throw new Error("O servidor não devolveu um código de ingresso válido.");
+    }
+    state.experimentEnrollmentReceipt = Object.freeze({
+      enrollmentCode,
+      expiresAt: text(source?.expiresAt) || null
+    });
+  }
+
+  function startExperimentCollection() {
+    const experiment = state.experimentDetail;
+    if (!experiment?.actions.start || typeof controller.startAuthoringExperimentCollection !== "function") return false;
+    return performExperimentMutation(() => controller.startAuthoringExperimentCollection({
+      workspaceId: state.workspaceId,
+      experimentId: experiment.experimentId,
+      expectedExperimentRevision: experiment.experimentRevision,
+      online: true
+    }), "Coleta iniciada.", "Não foi possível iniciar a coleta.", {
+      onReceipt: keepExperimentEnrollmentReceipt
+    });
+  }
+
+  function rotateExperimentEnrollmentCode() {
+    const experiment = state.experimentDetail;
+    if (!experiment?.actions.rotateCode ||
+        typeof controller.rotateAuthoringExperimentEnrollmentCode !== "function") return false;
+    return performExperimentMutation(() => controller.rotateAuthoringExperimentEnrollmentCode({
+      workspaceId: state.workspaceId,
+      experimentId: experiment.experimentId,
+      expectedExperimentRevision: experiment.experimentRevision,
+      online: true
+    }), "Novo código de ingresso gerado.", "Não foi possível gerar um novo código.", {
+      onReceipt: keepExperimentEnrollmentReceipt
+    });
+  }
+
+  async function copyExperimentEnrollmentCode() {
+    const enrollmentCode = state.experimentEnrollmentReceipt?.enrollmentCode;
+    if (!enrollmentCode) return false;
+    try {
+      await globalThis.navigator?.clipboard?.writeText(enrollmentCode);
+      state.statusMessage = "Código copiado.";
+      state.errorMessage = "";
+      render({ focus: '[data-authoring-action="close-experiment-enrollment-receipt"]' });
+      return true;
+    } catch (error) {
+      state.errorMessage = userMessage(error, "Não foi possível copiar; selecione o código exibido.");
+      render();
+      return false;
+    }
+  }
+
+  function transitionExperimentCollection(transition) {
+    const experiment = state.experimentDetail;
+    const normalizedTransition = text(transition);
+    if (!experiment?.actions[normalizedTransition] ||
+        typeof controller.transitionAuthoringExperimentCollection !== "function") return false;
+    const labels = {
+      pause: "Coleta pausada.",
+      resume: "Coleta retomada.",
+      close: "Coleta encerrada.",
+      invalidate: "Experimento invalidado."
+    };
+    return performExperimentMutation(() => controller.transitionAuthoringExperimentCollection({
+      workspaceId: state.workspaceId,
+      experimentId: experiment.experimentId,
+      transition: normalizedTransition,
+      expectedExperimentRevision: experiment.experimentRevision,
+      online: true
+    }), labels[normalizedTransition] || "Estado da coleta atualizado.",
+    "Não foi possível alterar o estado da coleta.");
+  }
+
+  function assignExperimentParticipant(node) {
+    const experiment = state.experimentDetail;
+    const enrollmentRef = text(node?.dataset?.enrollmentRef).toLowerCase();
+    const participant = experiment?.participants.items.find((item) => item.enrollmentRef === enrollmentRef);
+    const manual = experiment?.assignment.rule === "manual";
+    const conditionKey = text(state.experimentParticipantConditions[enrollmentRef]);
+    const condition = manual
+      ? experiment?.conditions.find((item) => experimentRefKey(item.conditionRef) === conditionKey)
+      : null;
+    if (!experiment?.actions.assign || !participant || participant.status !== "enrolled" ||
+        (manual && !condition?.conditionRef) ||
+        typeof controller.assignAuthoringExperimentParticipant !== "function") {
+      if (manual && !condition?.conditionRef) {
+        state.errorMessage = "Escolha a condição para este pseudônimo.";
+        render();
+      }
+      return false;
+    }
+    return performExperimentMutation(() => controller.assignAuthoringExperimentParticipant({
+      workspaceId: state.workspaceId,
+      experimentId: experiment.experimentId,
+      enrollmentRef,
+      ...(manual ? { conditionRef: condition.conditionRef } : {}),
+      expectedExperimentRevision: experiment.experimentRevision,
+      online: true
+    }), "Participante atribuído pelo servidor.", "Não foi possível atribuir o participante.");
+  }
+
+  function openExperimentVariant(variantId) {
+    const experiment = state.experimentDetail;
+    const variant = experiment?.variants.items.find((item) => item.variantId === variantId);
+    if (!variant?.readerTarget) return false;
+    return openReaderTarget(variant.readerTarget, "design", {
+      experimentView: "detail",
+      experimentId: experiment.experimentId,
+      experimentStage: state.experimentStage,
+      variantId
+    }, { useTargetWorkspace: true });
+  }
+
   async function loadWorkspace(workspaceId, { destination = "map" } = {}) {
     const normalizedWorkspaceId = text(workspaceId);
     if (!normalizedWorkspaceId) return false;
@@ -962,6 +2251,8 @@ export function createAuthoringWorkspaceSurface({
     state.auditRunRef = null;
     state.auditPartId = "";
     clearAuditParentContext();
+    resetExperimentState({ keepCapability: false });
+    state.experimentEnrollmentReceipt = null;
     state.findingEditor = null;
     state.findingPartId = "";
     state.expandedPartId = "";
@@ -979,6 +2270,7 @@ export function createAuthoringWorkspaceSurface({
       }
       state.overview = normalizeAuthoringWorkspaceOverview(result);
       syncAuditActionCapabilities();
+      syncResearchCapability();
       resetFindingsPagination(state.overview);
       state.workspaceTitle = state.overview.title;
       state.expandedPartId = state.overview.parts.find((part) =>
@@ -1012,6 +2304,7 @@ export function createAuthoringWorkspaceSurface({
     const result = await controller.loadAuthoringWorkspaceOverview(state.workspaceId, { online: online() });
     state.overview = normalizeAuthoringWorkspaceOverview(result);
     syncAuditActionCapabilities();
+    syncResearchCapability();
     resetFindingsPagination(state.overview);
     state.selectedMicrosequence = activeMicrosequence(state.overview, selectedPath);
     state.auditSlice = null;
@@ -1458,7 +2751,12 @@ export function createAuthoringWorkspaceSurface({
     }
   }
 
-  async function openReaderTarget(target, returnDestination, returnDetails = {}) {
+  async function openReaderTarget(
+    target,
+    returnDestination,
+    returnDetails = {},
+    { useTargetWorkspace = false } = {}
+  ) {
     const entityPath = Array.isArray(target?.entityPath) ? target.entityPath : null;
     if (!entityPath) {
       state.errorMessage = "O conteúdo correspondente ainda não está disponível.";
@@ -1472,7 +2770,9 @@ export function createAuthoringWorkspaceSurface({
       const opened = await onOpenContent({
         ...state.overview?.readerTarget,
         ...target,
-        workspaceId: state.workspaceId,
+        workspaceId: useTargetWorkspace && text(target?.workspaceId)
+          ? text(target.workspaceId)
+          : state.workspaceId,
         entityPath
       }, {
         workspaceId: state.workspaceId,
@@ -1751,6 +3051,8 @@ export function createAuthoringWorkspaceSurface({
     state.auditRunRef = null;
     state.auditPartId = "";
     clearAuditParentContext();
+    resetExperimentState({ keepCapability: false });
+    state.experimentEnrollmentReceipt = null;
     state.statusMessage = "";
     state.errorMessage = "";
     render({ focus: "[data-authoring-current-section]" });
@@ -1763,6 +3065,7 @@ export function createAuthoringWorkspaceSurface({
     ++resourceEpoch;
     ++findingEpoch;
     ++auditComponentEpoch;
+    ++experimentEpoch;
     globalThis.clearTimeout(searchTimer);
     state.opened = false;
     state.parameterEditor = null;
@@ -1775,6 +3078,8 @@ export function createAuthoringWorkspaceSurface({
     clearAuditParentContext();
     state.findingsLoading = false;
     state.auditComponentsLoading = false;
+    state.experimentLoading = false;
+    state.experimentDiscardPrompt = false;
     root.hidden = true;
     onClose();
     const target = returnFocusTarget;
@@ -1798,7 +3103,12 @@ export function createAuthoringWorkspaceSurface({
     destination = state.destination,
     microsequencePath = null,
     findingId = "",
-    findingDetail = false
+    findingDetail = false,
+    experimentView = "",
+    experimentId = "",
+    experimentStage = "",
+    differenceId = "",
+    variantId = ""
   } = {}) {
     state.opened = true;
     root.hidden = false;
@@ -1850,7 +3160,38 @@ export function createAuthoringWorkspaceSurface({
       state.findingEditor = finding || null;
       state.findingPartId = partForFinding(finding)?.coordinationPartId || "";
     }
-    render({ focus: findingAvailable && findingDetail
+    const normalizedExperimentId = text(experimentId);
+    const requestedExperimentView = ["list", "detail", "protocol", "conditions"].includes(
+      text(experimentView)
+    ) ? text(experimentView) : "";
+    if (state.destination === "design" && requestedExperimentView && state.researchAvailable) {
+      if (!state.experimentList) {
+        state.experimentView = "list";
+        await loadExperimentList({ preserveStatus: true, focus: false });
+      }
+      if (normalizedExperimentId &&
+          state.experimentDetail?.experimentId !== normalizedExperimentId) {
+        await loadExperimentDetail(normalizedExperimentId, { preserveStatus: true, focus: false });
+      }
+      if (normalizedExperimentId && state.experimentDetail?.experimentId === normalizedExperimentId) {
+        state.experimentView = "detail";
+        const requestedStage = text(experimentStage);
+        if (["protocol", "conditions", "variants", "audit", "freeze", "collection"].includes(requestedStage)) {
+          state.experimentStage = requestedStage;
+        }
+      } else if (requestedExperimentView === "list" || state.experimentList) {
+        state.experimentView = "list";
+      }
+    }
+    const normalizedDifferenceId = text(differenceId);
+    const normalizedVariantId = text(variantId);
+    render({ focus: state.destination === "design" && state.experimentView === "detail" && normalizedDifferenceId
+      ? `[data-experiment-difference-note="${selectorValue(normalizedDifferenceId)}"]`
+      : state.destination === "design" && state.experimentView === "detail" && normalizedVariantId
+        ? `[data-variant-id="${selectorValue(normalizedVariantId)}"]`
+      : state.destination === "design" && state.experimentView
+        ? ".authoring-experiment-heading"
+      : findingAvailable && findingDetail
       ? '[data-authoring-dialog="finding"] [data-authoring-action="close-finding-detail"]'
       : findingAvailable
         ? `[data-finding-id="${selectorValue(normalizedFindingId)}"]`
@@ -1858,7 +3199,8 @@ export function createAuthoringWorkspaceSurface({
         ? ".authoring-audit-heading"
         : `[data-authoring-destination="${state.destination}"]`
     });
-    if (state.destination === "design" && state.selectedMicrosequence?.entityPath && !state.design) {
+    if (state.destination === "design" && !state.experimentView &&
+        state.selectedMicrosequence?.entityPath && !state.design) {
       await loadDesign({ preserveStatus: true });
     }
     return true;
@@ -1866,6 +3208,12 @@ export function createAuthoringWorkspaceSurface({
 
   function handleBack() {
     if (!state.opened) return false;
+    if (state.experimentEnrollmentReceipt) return true;
+    if (state.experimentDiscardPrompt) {
+      state.experimentDiscardPrompt = false;
+      render({ focus: ".authoring-experiment-heading" });
+      return true;
+    }
     if (state.findingEditor) {
       closeFindingDetail();
       return true;
@@ -1877,6 +3225,20 @@ export function createAuthoringWorkspaceSurface({
     if (state.resourceEditor) {
       state.resourceEditor = null;
       render({ focus: '[data-authoring-action="open-resources"]' });
+      return true;
+    }
+    if (state.destination === "design" && state.experimentView) {
+      if (state.experimentView === "conditions") {
+        state.experimentView = "protocol";
+        state.experimentStage = "protocol";
+        render({ focus: ".authoring-experiment-heading" });
+      } else if (state.experimentView === "protocol") {
+        leaveExperimentEditor();
+      } else if (state.experimentView === "detail") {
+        void returnToExperimentList();
+      } else {
+        closeExperiments();
+      }
       return true;
     }
     if (state.destination === "audit" && state.auditParentPartId) {
@@ -1942,6 +3304,33 @@ export function createAuthoringWorkspaceSurface({
 
   root.addEventListener("input", (event) => {
     if (state.loading || state.resourceEditor?.recovery) return;
+    const experimentField = text(event.target.dataset?.experimentField);
+    if (["title", "hypothesis", "seed"].includes(experimentField)) {
+      if (state.experimentDraft) {
+        state.experimentDraft[experimentField] = event.target.value;
+        state.experimentDirty = true;
+      }
+      return;
+    }
+    const conditionLabelId = text(event.target.dataset?.conditionId);
+    if (event.target.matches?.("[data-experiment-condition-label]") && conditionLabelId) {
+      const condition = state.experimentDraft?.conditions.find((item) => item.conditionId === conditionLabelId);
+      if (condition) {
+        condition.label = event.target.value;
+        state.experimentDirty = true;
+      }
+      return;
+    }
+    const differenceNoteId = text(event.target.dataset?.experimentDifferenceNote);
+    if (differenceNoteId) {
+      state.experimentDifferenceNotes[differenceNoteId] = event.target.value;
+      return;
+    }
+    const correctionVariantId = text(event.target.dataset?.experimentCorrectionReason);
+    if (correctionVariantId) {
+      state.experimentCorrectionReasons[correctionVariantId] = event.target.value;
+      return;
+    }
     if (event.target.matches?.("[data-authoring-resource-target-search]")) {
       if (!state.resourceEditor) return;
       state.resourceEditor.targetQuery = event.target.value;
@@ -1957,6 +3346,133 @@ export function createAuthoringWorkspaceSurface({
 
   root.addEventListener("change", (event) => {
     if (state.loading || state.resourceEditor?.recovery) return;
+    const experimentField = text(event.target.dataset?.experimentField);
+    if (["baseKey", "consentPolicyKey", "scopeKey"].includes(experimentField) &&
+        state.experimentDraft) {
+      const previousScopeKey = state.experimentDraft.scopeKey;
+      state.experimentDraft[experimentField] = event.target.value;
+      if (experimentField === "scopeKey") {
+        state.experimentDraft.factors.forEach((factor) => {
+          if (!(factor.targetKeys instanceof Set) || factor.targetKeys.size === 0 ||
+              (factor.targetKeys.size === 1 && factor.targetKeys.has(previousScopeKey))) {
+            factor.targetKeys = new Set([event.target.value]);
+          }
+        });
+      }
+      state.experimentDirty = true;
+      return;
+    }
+    const factorTarget = text(event.target.dataset?.experimentFactorTarget);
+    const factorId = text(event.target.dataset?.factorId);
+    if (factorTarget && factorId && state.experimentDraft) {
+      const factor = state.experimentDraft.factors.find((item) => item.factorId === factorId);
+      if (!factor) return;
+      if (!(factor.targetKeys instanceof Set)) factor.targetKeys = new Set();
+      if (event.target.checked) factor.targetKeys.add(factorTarget);
+      else if (factor.targetKeys.size > 1) factor.targetKeys.delete(factorTarget);
+      state.experimentDirty = true;
+      render({ focus: `[data-experiment-factor-target="${selectorValue(factorTarget)}"]` });
+      return;
+    }
+    const participantEnrollmentRef = text(event.target.dataset?.experimentParticipantCondition);
+    if (participantEnrollmentRef) {
+      state.experimentParticipantConditions[participantEnrollmentRef] = event.target.value;
+      return;
+    }
+    if (event.target.matches?.("[data-experiment-assignment]") && state.experimentDraft) {
+      state.experimentDraft.assignmentRule = event.target.value;
+      state.experimentDirty = true;
+      render({ focus: `[data-experiment-assignment][value="${selectorValue(event.target.value)}"]` });
+      return;
+    }
+    const invariant = text(event.target.dataset?.experimentInvariant);
+    if (invariant && state.experimentDraft) {
+      if (event.target.checked) state.experimentDraft.invariants.add(invariant);
+      else state.experimentDraft.invariants.delete(invariant);
+      state.experimentDirty = true;
+      return;
+    }
+    const instrument = text(event.target.dataset?.experimentInstrument);
+    if (instrument && state.experimentDraft) {
+      if (event.target.checked) state.experimentDraft.instruments.add(instrument);
+      else state.experimentDraft.instruments.delete(instrument);
+      state.experimentDirty = true;
+      return;
+    }
+    const outcome = text(event.target.dataset?.experimentOutcome);
+    if (outcome && state.experimentDraft) {
+      if (event.target.checked) state.experimentDraft.outcomes.add(outcome);
+      else state.experimentDraft.outcomes.delete(outcome);
+      state.experimentDirty = true;
+      return;
+    }
+    const continuityDifferenceId = text(event.target.dataset?.experimentContinuity);
+    if (continuityDifferenceId) {
+      state.experimentContinuityConfirmations[continuityDifferenceId] = event.target.checked === true;
+      render({ focus: `[data-experiment-continuity="${selectorValue(continuityDifferenceId)}"]` });
+      return;
+    }
+    const correctionVariantId = text(event.target.dataset?.experimentCorrectionContinuity);
+    if (correctionVariantId) {
+      state.experimentCorrectionConfirmations[correctionVariantId] = event.target.checked === true;
+      render({
+        focus: `[data-experiment-correction-continuity="${selectorValue(correctionVariantId)}"]`
+      });
+      return;
+    }
+    const structuredPart = text(event.target.dataset?.experimentStructuredPart);
+    if (structuredPart && state.experimentDraft) {
+      const conditionId = text(event.target.dataset.conditionId);
+      const factorId = text(event.target.dataset.factorId);
+      const condition = state.experimentDraft.conditions.find((item) => item.conditionId === conditionId);
+      const factor = state.experimentDraft.factors.find((item) => item.factorId === factorId);
+      const definition = experimentOptionByRefKey(
+        state.experimentList?.options?.factorDefinitions,
+        factor?.definitionKey
+      );
+      if (!condition || !factor || !definition) return;
+      let value = condition.values[factorId];
+      if (!value || typeof value !== "object") value = defaultExperimentFactorValue(
+        definition,
+        state.experimentList?.options
+      );
+      if (structuredPart === "minimum" || structuredPart === "maximum") {
+        value[structuredPart] = event.target.value === "" ? "" : Number(event.target.value);
+      } else if (structuredPart === "set") {
+        value.values = [...new Set(event.target.value.split(",").map(text).filter(Boolean))];
+      } else if (structuredPart === "vector") {
+        value.components = event.target.value.split(/\r?\n/u).flatMap((line) => {
+          const [dimension, rawValue, unit] = line.split("|").map(text);
+          if (!dimension && !rawValue && !unit) return [];
+          return [{ dimension, value: rawValue, unit }];
+        });
+      } else if (structuredPart === "relation-nodes") {
+        value.nodes = [...new Set(event.target.value.split(",").map(text).filter(Boolean))];
+      } else {
+        if (!Array.isArray(value.edges) || !value.edges.length) value.edges = [{ from: "", to: "", kind: "" }];
+        const property = {
+          "relation-from": "from",
+          "relation-to": "to",
+          "relation-kind": "kind"
+        }[structuredPart];
+        if (property) value.edges[0][property] = text(event.target.value);
+      }
+      condition.values[factorId] = value;
+      state.experimentDirty = true;
+      render({ focus: `[data-condition-id="${selectorValue(conditionId)}"][data-factor-id="${selectorValue(factorId)}"]` +
+        `[data-experiment-structured-part="${selectorValue(structuredPart)}"]` });
+      return;
+    }
+    if (event.target.matches?.("[data-experiment-condition-value]") && state.experimentDraft) {
+      const conditionId = text(event.target.dataset.conditionId);
+      const factorId = text(event.target.dataset.factorId);
+      const condition = state.experimentDraft.conditions.find((item) => item.conditionId === conditionId);
+      if (condition && factorId) {
+        condition.values[factorId] = event.target.value;
+        state.experimentDirty = true;
+      }
+      return;
+    }
     const facetGroupIndex = Number(event.target.dataset?.resourceFacetGroupIndex);
     const facetOptionIndex = Number(event.target.dataset?.resourceFacetOptionIndex);
     if (Number.isSafeInteger(facetGroupIndex) && Number.isSafeInteger(facetOptionIndex)) {
@@ -1986,14 +3502,80 @@ export function createAuthoringWorkspaceSurface({
     if (state.loading && ![
       "close", "open-collections", "open-settings", "back-to-workspaces"
     ].includes(action)) return;
+    if (state.experimentLoading && action?.includes("experiment")) return;
     if (state.resourceEditor?.recovery && action && ![
       "close-resources", "retry-resources"
     ].includes(action)) return;
-    if (action === "close") close();
+    if (action === "close") {
+      if (["protocol", "conditions"].includes(state.experimentView) && state.experimentDirty) {
+        state.experimentDiscardPrompt = true;
+        render({ focus: '[data-authoring-dialog="experiment-discard"] button' });
+      } else close();
+    }
     else if (action === "open-collections") void onOpenCollections();
     else if (action === "open-settings") void onOpenSettings();
     else if (action === "open-workspace") void loadWorkspace(node.dataset.workspaceId);
-    else if (action === "back-to-workspaces") backToWorkspaces();
+    else if (action === "back-to-workspaces") {
+      if (state.destination === "design" && state.experimentView) handleBack();
+      else backToWorkspaces();
+    }
+    else if (action === "open-experiments") void openExperiments();
+    else if (action === "close-experiments") closeExperiments();
+    else if (action === "new-experiment") beginNewExperiment();
+    else if (action === "open-experiment") void openExperiment(node.dataset.experimentId);
+    else if (action === "copy-experiment-enrollment-code") void copyExperimentEnrollmentCode();
+    else if (action === "close-experiment-enrollment-receipt") {
+      state.experimentEnrollmentReceipt = null;
+      render({ focus: ".authoring-experiment-heading" });
+    }
+    else if (action === "load-more-experiment-options") {
+      void loadMoreExperimentOptions(node.dataset.experimentOptionKind);
+    }
+    else if (action === "load-more-experiments") void loadMoreExperimentList();
+    else if (action === "load-more-experiment-differences") void loadMoreExperimentDifferences();
+    else if (action === "load-more-experiment-variants") void loadMoreExperimentVariants();
+    else if (action === "load-more-experiment-participants") void loadMoreExperimentParticipants();
+    else if (action === "open-experiment-difference-run") {
+      const run = state.experimentDetail?.differences.items.find((item) => item.runId === node.dataset.runId);
+      if (run?.differenceRunRef) void openExperimentDifferenceRun(run.differenceRunRef);
+    }
+    else if (action === "back-to-experiment-list") void returnToExperimentList();
+    else if (action === "back-from-experiment-editor") leaveExperimentEditor();
+    else if (action === "experiment-back-protocol") {
+      state.experimentView = "protocol";
+      state.experimentStage = "protocol";
+      render({ focus: ".authoring-experiment-heading" });
+    }
+    else if (action === "experiment-next-conditions") {
+      state.experimentView = "conditions";
+      state.experimentStage = "conditions";
+      render({ focus: ".authoring-experiment-heading" });
+    }
+    else if (action === "add-experiment-factor") addExperimentFactor(node.dataset.definitionKey);
+    else if (action === "remove-experiment-factor") removeExperimentFactor(node.dataset.factorId);
+    else if (action === "add-experiment-condition") addExperimentCondition();
+    else if (action === "remove-experiment-condition") removeExperimentCondition(node.dataset.conditionId);
+    else if (action === "save-experiment-protocol") void saveExperimentProtocol();
+    else if (action === "edit-experiment-protocol") void editExperimentProtocol();
+    else if (action === "validate-experiment") void validateExperiment();
+    else if (action === "generate-experiment-variants") void generateExperimentVariants();
+    else if (action === "decide-experiment-difference") void decideExperimentDifference(node);
+    else if (action === "request-experiment-correction") {
+      void requestExperimentCorrection(node.dataset.variantId);
+    }
+    else if (action === "freeze-experiment") void freezeExperiment(node.dataset.variantId);
+    else if (action === "start-experiment-collection") void startExperimentCollection();
+    else if (action === "rotate-experiment-enrollment-code") void rotateExperimentEnrollmentCode();
+    else if (action === "transition-experiment-collection") {
+      void transitionExperimentCollection(node.dataset.experimentTransition);
+    }
+    else if (action === "assign-experiment-participant") void assignExperimentParticipant(node);
+    else if (action === "open-experiment-variant") void openExperimentVariant(node.dataset.variantId);
+    else if (action === "keep-experiment-draft") {
+      state.experimentDiscardPrompt = false;
+      render({ focus: ".authoring-experiment-heading" });
+    }
+    else if (action === "discard-experiment-draft") leaveExperimentEditor({ discard: true });
     else if (action === "toggle-part") {
       state.expandedPartId = state.expandedPartId === node.dataset.partId ? "" : node.dataset.partId;
       render({ focus: `[data-part-id="${selectorValue(node.dataset.partId)}"]` });
@@ -2095,6 +3677,15 @@ export function createAuthoringWorkspaceSurface({
     resume,
     handleBack,
     refresh() {
+      if (state.workspaceId && state.experimentView === "detail" && state.experimentDetail?.experimentId) {
+        return loadExperimentDetail(state.experimentDetail.experimentId, {
+          preserveStatus: true,
+          focus: false
+        });
+      }
+      if (state.workspaceId && state.experimentView === "list") {
+        return loadExperimentList({ preserveStatus: true, focus: false });
+      }
       return state.workspaceId ? reloadCurrentWorkspace({ reloadDesign: state.destination === "design" }) : loadWorkspaceList();
     },
     get opened() {
@@ -2104,7 +3695,12 @@ export function createAuthoringWorkspaceSurface({
       return Object.freeze({
         workspaceId: state.workspaceId,
         destination: state.destination,
-        microsequencePath: state.selectedMicrosequence?.entityPath || null
+        microsequencePath: state.selectedMicrosequence?.entityPath || null,
+        ...(state.destination === "design" && state.experimentView ? {
+          experimentView: state.experimentView,
+          experimentId: state.experimentDetail?.experimentId || state.experimentDraft?.experimentId || "",
+          experimentStage: state.experimentStage
+        } : {})
       });
     }
   });

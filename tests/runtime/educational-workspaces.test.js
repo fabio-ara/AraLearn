@@ -49,9 +49,13 @@ test("papéis educacionais expõem somente capacidades contextuais previstas", (
     "owner", "admin", "author", "reviewer", "learner", "reader"
   ]);
   assert.equal(educationalWorkspaceCan("owner", "transfer"), true);
+  assert.equal(educationalWorkspaceCan("owner", "research"), true);
   assert.equal(educationalWorkspaceCan("admin", "transfer"), false);
+  assert.equal(educationalWorkspaceCan("admin", "research"), true);
   assert.equal(educationalWorkspaceCan("author", "publish"), true);
+  assert.equal(educationalWorkspaceCan("author", "research"), false);
   assert.equal(educationalWorkspaceCan("reviewer", "author"), false);
+  assert.equal(educationalWorkspaceCan("reviewer", "research"), false);
   assert.equal(educationalWorkspaceCan("learner", "comment"), true);
   assert.equal(educationalWorkspaceCan("reader", "comment"), false);
   assert.equal(educationalWorkspaceRoleLabel("author"), "Professor/Autor");

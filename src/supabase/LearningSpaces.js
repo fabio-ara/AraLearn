@@ -1653,6 +1653,78 @@ export class LearningSpaces {
     return this.authoringClient.loadAuthoringWorkspaceOverview(workspaceId, options);
   }
 
+  loadInstructionalExperimentEnrollmentPolicy(options) {
+    return this.authoringClient.loadInstructionalExperimentEnrollmentPolicy(options);
+  }
+
+  enrollInInstructionalExperiment(options) {
+    return this.authoringClient.enrollInInstructionalExperiment(options);
+  }
+
+  listInstructionalExperimentEnrollments() {
+    return this.authoringClient.listInstructionalExperimentEnrollments();
+  }
+
+  loadInstructionalExperimentEnrollmentStatus(options) {
+    return this.authoringClient.loadInstructionalExperimentEnrollmentStatus(options);
+  }
+
+  withdrawAuthoringExperimentEnrollment(options) {
+    return this.authoringClient.withdrawAuthoringExperimentEnrollment(options);
+  }
+
+  listAuthoringExperiments(options) {
+    return this.authoringClient.listAuthoringExperiments(options);
+  }
+
+  loadAuthoringExperiment(options) {
+    return this.authoringClient.loadAuthoringExperiment(options);
+  }
+
+  loadAuthoringExperimentOptionPage(options) {
+    return this.authoringClient.loadAuthoringExperimentOptionPage(options);
+  }
+
+  saveAuthoringExperimentProtocol(options) {
+    return this.authoringClient.saveAuthoringExperimentProtocol(options);
+  }
+
+  validateAuthoringExperiment(options) {
+    return this.authoringClient.validateAuthoringExperiment(options);
+  }
+
+  generateAuthoringExperimentVariants(options) {
+    return this.authoringClient.generateAuthoringExperimentVariants(options);
+  }
+
+  decideAuthoringExperimentDifference(options) {
+    return this.authoringClient.decideAuthoringExperimentDifference(options);
+  }
+
+  requestAuthoringExperimentCorrection(options) {
+    return this.authoringClient.requestAuthoringExperimentCorrection(options);
+  }
+
+  freezeAuthoringExperiment(options) {
+    return this.authoringClient.freezeAuthoringExperiment(options);
+  }
+
+  startAuthoringExperimentCollection(options) {
+    return this.authoringClient.startAuthoringExperimentCollection(options);
+  }
+
+  rotateAuthoringExperimentEnrollmentCode(options) {
+    return this.authoringClient.rotateAuthoringExperimentEnrollmentCode(options);
+  }
+
+  transitionAuthoringExperimentCollection(options) {
+    return this.authoringClient.transitionAuthoringExperimentCollection(options);
+  }
+
+  assignAuthoringExperimentParticipant(options) {
+    return this.authoringClient.assignAuthoringExperimentParticipant(options);
+  }
+
   listAuthoringFindings(options) {
     return this.authoringClient.listAuthoringFindings(options);
   }

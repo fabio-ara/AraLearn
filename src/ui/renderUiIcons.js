@@ -13,6 +13,17 @@ export function renderUiIcon(iconName, className = "ui-icon") {
     );
   }
 
+  if (iconName === "experiment") {
+    return (
+      '<svg class="' + classes + '" viewBox="0 0 16 16" aria-hidden="true" focusable="false">' +
+      '<path d="M6.1 2.1h3.8M7 2.1v3.4l-3.4 6a1.5 1.5 0 0 0 1.3 2.3h6.2a1.5 1.5 0 0 0 1.3-2.3L9 5.5V2.1" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"></path>' +
+      '<path d="M5.3 9.2h5.4" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"></path>' +
+      '<circle cx="7" cy="11.2" r=".7" fill="currentColor"></circle>' +
+      '<circle cx="9.6" cy="10.5" r=".55" fill="currentColor"></circle>' +
+      "</svg>"
+    );
+  }
+
   if (iconName === "folder") {
     return (
       '<svg class="' +

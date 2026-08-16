@@ -40,6 +40,12 @@ Esta matriz é versionada junto com o repositório. Não fixa contagem de testes
 | auditoria confronta o manifesto com cards e resources realmente persistidos | `instructionalConformanceAudit.js`; `authoring_audit_runs`; registro da rodada | `instructional-conformance-audit.test.js`; corpus `instructional-conformance-audit-scenarios.v1.json`; testes focais de serviço e PGlite | demonstrado nas regras cobertas: multiconjunto real de card/slot/package@version/papel é derivado novamente; autorização estrutural não é apresentada como adequação semântica |
 | finding estruturado não se autoriza a reparar e só é verificado por reauditoria corrente | lifecycle de observations; mandato `repair_findings`; audit run e run de verificação | testes focais de persistência, CAS/replay e jornada auditoria→decisão→reparo→reauditoria | demonstrado nas transições cobertas; falso positivo pode ser rejeitado, `repaired` não significa `resolved` e a rodada posterior também procura regressões |
 | auditoria de Parte agrega cobertura e distribuição sem score | `aggregatePartConformanceAudits`; microssequências congeladas no audit run | corpus #106 e testes de Parte grande/paginação | demonstrado como coordenação operacional; não oferecido como unidade pedagógica, medida de qualidade ou eficácia |
+| protocolo experimental parte de base comum, fatores ordinários e condições explícitas | `instructionalExperiment.js`; `authoring_experiments`, revisões de protocolo, fatores, condições, bases e variantes | `authoring-experiment-domain.test.js`; `authoring-experiments-pglite.test.js` | demonstrado com limite: não há produto cartesiano implícito; no máximo 8 fatores, 32 condições e 60.000 bytes UTF-8 no protocolo completo; forma válida não demonstra adequação do desenho |
+| `research_lock` só é emitido pelo control plane experimental | capability `research`; guard de assignments; locks de revisão de variante | jornada PGlite de geração e testes de tentativa pela API genérica | demonstrado: owner/admin operam o protocolo, enquanto `set_parameter`/`remove_parameter` e o GPT não criam, removem nem contornam o lock |
+| uma variante congela conteúdo e proveniência exatos antes de assignment | revisões de variante, pins por microssequência, audit runs, difference runs e freeze | domínio; serviço; jornada PGlite freeze/invalidar/regenerar | demonstrado com limite: correção cria nova revisão e invalida comparações dependentes; freeze garante identidade técnica, não equivalência pedagógica ou eficácia |
+| diferença factual e classificação semântica têm autoridades separadas | diff canônico; `register_experiment_variant_evidence`; `record_experiment_diff_classification`; decisão app-only | testes de 0/25/5.000 hunks, retomada, replay e mandato | demonstrado com limite: páginas e progresso são bounded; classificação não altera protocolo, condição, assignment nem decisão humana |
+| assignment fixa uma revisão congelada sem expor seed, roster ou outras condições | enrollment consentido, pseudônimo local, assignment append-only, seleção privada | vetores seeded, manual/balanceado, concorrência/replay, UI participante e PGlite | demonstrado no protocolo coberto; assignment reproduzível não prova randomização suficiente, exposição, adesão nem efeito |
+| `ResourceSet` experimental usa o conjunto exato da condição | fatores `available_resource_set_refs`; locks; auditoria da materialização efetiva | domínio, jornada PGlite e cenário de package fora do conjunto | demonstrado: alvos sobrepostos são recusados; permitido, selecionado e efetivamente usado permanecem relações distintas |
 | cards, palavras, caracteres e total de resources são métricas posteriores | `MaterializationManifest`; `instructionalDesignBinding.js` | teste de métricas derivadas, diff e algoritmo versionado | demonstrado; métricas descrevem materialização e não comandam decomposição pedagógica |
 | conteúdo sem manifesto não recebe parâmetros retroativos inventados | `legacyInstructionalDesign.js`; `get_authoring_design_state_v1` | `instructional-design-domain-v1.test.js`; `parameterized-authoring-design-pglite.test.js` | demonstrado: sem conteúdo, `unresolved`; qualquer conteúdo sem manifesto usa `legacy_untracked` e `legacy_unrestricted` até nova análise |
 
@@ -152,8 +158,9 @@ npm.cmd run audit:docs
 ```
 
 Durante a sequência de Autoria, a validação intermediária é proporcional ao
-escopo da issue: na #104, os focos são guidance JIT, MCP/Action agrupados,
-bootstrap de `ResourceSet`, catálogo restrito e pacotes distribuídos. A
+escopo da issue: na #107, os focos incluem contratos experimentais, control
+plane, locks, freeze, diff, assignment, isolamento do participante e entrega
+offline da revisão já atribuída. A
 regressão integral é concentrada no fechamento da #109. Isso não permite fechar
 uma etapa com teste focado falhando nem alegar integração ainda não exercitada.
 Para o banco parametrizado, o ensaio autocontido está em
@@ -161,6 +168,13 @@ Para o banco parametrizado, o ensaio autocontido está em
 RLS/PostgREST no stack Supabase está em
 `supabase/tests/040_parameterized_authoring_design_test.sql` e não deve ser dado
 como executado quando CLI ou `psql` não estiverem disponíveis.
+
+O ensaio experimental autocontido está em
+`tests/runtime/authoring-experiments-pglite.test.js`; o complemento estrutural e
+de RLS está em `supabase/tests/060_authoring_experiments_test.sql`. Testes de
+software demonstram fences, replay, privacidade e identidade do artefato, mas
+não autorizam afirmar validade causal, qualidade do instrumento ou efeito de
+aprendizagem.
 
 Quando banco ou funções mudarem, acrescente `validateLocalSupabase.ps1`; quando o ambiente remoto mudar, execute smoke hospedado; quando site ou APK mudar, examine os artefatos finais.
 

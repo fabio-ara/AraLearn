@@ -207,15 +207,728 @@ function renderParameter(parameter, designConflict = false) {
   );
 }
 
+const EXPERIMENT_STAGES = Object.freeze([
+  { key: "protocol", label: "Protocolo" },
+  { key: "conditions", label: "Condições" },
+  { key: "variants", label: "Variantes" },
+  { key: "audit", label: "Auditoria" },
+  { key: "freeze", label: "Freeze" },
+  { key: "collection", label: "Coleta" }
+]);
+
+const EXPERIMENT_ASSIGNMENT_LABELS = Object.freeze({
+  manual: "Manual pelo pesquisador",
+  seeded_random: "Aleatória reproduzível no servidor",
+  balanced_simple: "Balanceada simples no servidor"
+});
+
+function experimentRefKey(value) {
+  return value?.id && value?.version ? `${value.id}@${value.version}` : "";
+}
+
+function experimentScopeKey(value) {
+  return value?.kind && value?.ref ? `${value.kind}:${value.ref}` : "";
+}
+
+function experimentExpiryLabel(value) {
+  if (!value) return "Sem expiração informada";
+  const date = new Date(value);
+  if (Number.isNaN(date.valueOf())) return "Expiração registrada";
+  return new Intl.DateTimeFormat("pt-BR", {
+    dateStyle: "short",
+    timeStyle: "short"
+  }).format(date);
+}
+
+function renderExperimentOptionPager(state, kind, property, label = "Carregar mais opções") {
+  const page = state.experimentList?.options?.pages?.[property];
+  if (!page?.truncated || page.nextCursor == null) return "";
+  const loading = state.experimentOptionLoadingKind === kind;
+  return '<button type="button" class="authoring-text-button authoring-experiment-option-more"' +
+    ' data-authoring-action="load-more-experiment-options" data-experiment-option-kind="' + kind + '"' +
+    (!state.experimentActionsOnline || state.experimentOptionLoadingKind ? " disabled" : "") + '>' +
+    (loading ? "Carregando…" : label) + "</button>";
+}
+
+function renderExperimentSteps(state) {
+  const activeIndex = Math.max(0, EXPERIMENT_STAGES.findIndex(({ key }) => key === state.experimentStage));
+  return (
+    '<ol class="authoring-experiment-steps" aria-label="Etapas do experimento">' +
+    EXPERIMENT_STAGES.map((stage, index) => (
+      '<li class="' + (index < activeIndex ? "is-complete" : index === activeIndex ? "is-current" : "") + '"' +
+      (index === activeIndex ? ' aria-current="step"' : "") + '><span>' + (index + 1) + "</span>" +
+      '<small>' + escapeHtml(stage.label) + "</small></li>"
+    )).join("") + "</ol>"
+  );
+}
+
+function renderExperimentHeader(state, title, subtitle, backAction) {
+  return (
+    '<header class="authoring-experiment-heading" tabindex="-1">' +
+    '<button class="icon-ghost" type="button" data-authoring-action="' + escapeHtml(backAction) + '"' +
+    ' title="Voltar" aria-label="Voltar">' + icon("arrow-left") + "</button>" +
+    '<div><h3>' + escapeHtml(title) + "</h3>" +
+    (subtitle ? '<p>' + escapeHtml(subtitle) + "</p>" : "") + "</div></header>" +
+    renderExperimentSteps(state)
+  );
+}
+
+function renderExperimentEntry(state) {
+  if (!state.researchAvailable) return "";
+  return (
+    '<div class="authoring-experiment-entry">' +
+    '<button class="authoring-experiment-entry-button" type="button" data-authoring-action="open-experiments"' +
+    ' title="Experimentos" aria-label="Experimentos">' + icon("experiment") +
+    '<span>Experimentos</span></button></div>'
+  );
+}
+
+function renderExperimentList(state) {
+  const listValue = state.experimentList;
+  const content = state.experimentLoading && !listValue
+    ? renderLoading("Carregando experimentos…")
+    : listValue?.items.length
+      ? '<div class="authoring-experiment-list" aria-label="Experimentos">' + listValue.items.map((item) => (
+          '<button type="button" class="authoring-experiment-card" data-authoring-action="open-experiment"' +
+          ' data-experiment-id="' + escapeHtml(item.experimentId) + '">' +
+          '<span><strong>' + escapeHtml(item.title) + '</strong><small>' +
+          escapeHtml(item.scope?.label || "Escopo registrado") + " · " +
+          escapeHtml(`${item.conditionCount} condições`) + "</small></span>" +
+          '<span class="authoring-experiment-state is-' + escapeHtml(item.status) + '">' +
+          escapeHtml(item.statusLabel) + "</span></button>"
+        )).join("") + "</div>"
+      : '<p class="authoring-empty">Nenhum experimento registrado neste workspace.</p>';
+  const pager = listValue?.truncated && listValue.nextCursor != null
+    ? '<button type="button" class="authoring-text-button" data-authoring-action="load-more-experiments"' +
+      (!state.experimentActionsOnline || state.experimentListLoadingMore ? " disabled" : "") + '>' +
+      (state.experimentListLoadingMore ? "Carregando…" : "Carregar mais experimentos") + "</button>"
+    : "";
+  return (
+    '<section class="authoring-experiments" aria-labelledby="authoring-destination-title">' +
+    renderExperimentHeader(state, "Experimentos", "Protocolos e variantes reproduzíveis", "close-experiments") +
+    (!state.experimentActionsOnline
+      ? '<p class="authoring-experiment-note" role="note">Conecte-se para gerenciar experimentos.</p>'
+      : state.experimentOptionsIncomplete
+        ? '<p class="authoring-experiment-note" role="note">Os catálogos governados estão incompletos; releia antes de criar ou editar.</p>'
+        : "") + content + pager +
+    '<button type="button" class="authoring-apply-button" data-authoring-action="new-experiment"' +
+    (!state.experimentActionsOnline || state.experimentLoading || state.experimentOptionsIncomplete ||
+      !listValue?.options?.bases?.length ||
+      !listValue?.options?.consentPolicies?.length || !listValue?.options?.scopes?.length ||
+      !listValue?.options?.factorDefinitions?.length
+      ? ' disabled aria-disabled="true"'
+      : "") + '>Novo experimento</button></section>'
+  );
+}
+
+function renderExperimentFactorChoices(state) {
+  const draft = state.experimentDraft;
+  const definitions = state.experimentList?.options?.factorDefinitions || [];
+  const scopes = state.experimentList?.options?.scopes || [];
+  const overallScope = scopes.find((scope) => experimentScopeKey(scope) === draft.scopeKey) || null;
+  const selected = new Set(draft.factors.map(({ definitionKey }) => definitionKey));
+  return (
+    '<fieldset class="authoring-experiment-fieldset"><legend>Fatores</legend>' +
+    '<div class="authoring-experiment-selected-factors">' + draft.factors.map((factor) => {
+      const definition = definitions.find((item) => experimentRefKey(item.ref) === factor.definitionKey);
+      const eligibleTargets = scopes.filter((target) => {
+        if (definition?.supportedScopes?.length && !definition.supportedScopes.includes(target.kind)) return false;
+        if (!overallScope) return true;
+        if (Array.isArray(overallScope.entityPath) && Array.isArray(target.entityPath)) {
+          return overallScope.entityPath.every((entry, index) => target.entityPath[index] === entry);
+        }
+        return target.kind === overallScope.kind && target.ref === overallScope.ref;
+      });
+      const targetKeys = factor.targetKeys instanceof Set ? factor.targetKeys : new Set();
+      return '<article><header><strong>' + escapeHtml(definition?.label || "Fator") + "</strong>" +
+        (draft.factors.length > 1
+          ? '<button type="button" data-authoring-action="remove-experiment-factor" data-factor-id="' +
+            escapeHtml(factor.factorId) + '" title="Remover ' + escapeHtml(definition?.label || "fator") +
+            '" aria-label="Remover ' + escapeHtml(definition?.label || "fator") + '">' +
+            icon("remove-state") + "</button>"
+          : "") + '</header><details><summary>Alvos afetados · ' + escapeHtml(targetKeys.size) +
+        '</summary><div class="authoring-experiment-targets">' + eligibleTargets.map((target) => {
+          const key = experimentScopeKey(target);
+          return '<label><input type="checkbox" data-experiment-factor-target="' + escapeHtml(key) +
+            '" data-factor-id="' + escapeHtml(factor.factorId) + '"' +
+            (targetKeys.has(key) ? " checked" : "") + '><span>' + escapeHtml(target.label) +
+            "</span></label>";
+        }).join("") + "</div></details></article>";
+    }).join("") + "</div>" +
+    (definitions.some((definition) => !selected.has(experimentRefKey(definition.ref)))
+      ? '<details class="authoring-experiment-add-factor"><summary>Adicionar outro fator</summary><div>' +
+        definitions.filter((definition) => !selected.has(experimentRefKey(definition.ref))).map((definition) => (
+          '<button type="button" data-authoring-action="add-experiment-factor" data-definition-key="' +
+          escapeHtml(experimentRefKey(definition.ref)) + '"><strong>' + escapeHtml(definition.label) +
+          '</strong><small>' + escapeHtml(definition.kind === "resource_set"
+            ? "Conjuntos exatos de Resources por condição"
+            : definition.unitLabel || definition.valueType) + "</small></button>"
+        )).join("") + "</div></details>"
+      : "") + renderExperimentOptionPager(
+        state, "factor_definition", "factorDefinitions", "Carregar mais fatores"
+      ) + renderExperimentOptionPager(state, "scope", "scopes", "Carregar mais alvos") + "</fieldset>"
+  );
+}
+
+function renderExperimentProtocol(state) {
+  const draft = state.experimentDraft;
+  const options = state.experimentList?.options || {};
+  const canAdvance = Boolean(draft.title.trim() && draft.factors.length);
+  return (
+    '<section class="authoring-experiments" aria-labelledby="authoring-destination-title">' +
+    renderExperimentHeader(state, draft.experimentId ? "Editar protocolo" : "Novo experimento",
+      "Defina uma base comum antes das condições", "back-from-experiment-editor") +
+    '<p class="authoring-experiment-note" role="note">O protocolo completo tem limite de 60.000 bytes; use rótulos concisos e selecione apenas os alvos necessários.</p>' +
+    '<div class="authoring-experiment-form">' +
+    '<label><span>Título curto</span><input type="text" maxlength="120" data-experiment-field="title"' +
+    ' value="' + escapeHtml(draft.title) + '" autocomplete="off"></label>' +
+    '<label><span>Hipótese <small>opcional</small></span><textarea maxlength="2000"' +
+    ' data-experiment-field="hypothesis">' + escapeHtml(draft.hypothesis) + "</textarea></label>" +
+    '<label><span>Base aprovada</span><select data-experiment-field="baseKey">' +
+    options.bases.map((base) => '<option value="' + escapeHtml(experimentRefKey(base.ref)) + '"' +
+      (draft.baseKey === experimentRefKey(base.ref) ? " selected" : "") + '>' +
+      escapeHtml(base.label) + "</option>").join("") + "</select></label>" +
+    renderExperimentOptionPager(state, "base", "bases", "Carregar mais bases") +
+    '<label><span>Política de consentimento</span><select data-experiment-field="consentPolicyKey">' +
+    options.consentPolicies.map((policy) => '<option value="' + escapeHtml(experimentRefKey(policy.ref)) + '"' +
+      (draft.consentPolicyKey === experimentRefKey(policy.ref) ? " selected" : "") + '>' +
+      escapeHtml(policy.label) + "</option>").join("") + "</select>" +
+    '<small>A política versionada é fixada no protocolo; o texto privado não é exposto aqui.</small></label>' +
+    renderExperimentOptionPager(
+      state, "consent_policy", "consentPolicies", "Carregar mais políticas"
+    ) +
+    '<label><span>Escopo</span><select data-experiment-field="scopeKey">' +
+    options.scopes.map((scope) => '<option value="' + escapeHtml(`${scope.kind}:${scope.ref}`) + '"' +
+      (draft.scopeKey === `${scope.kind}:${scope.ref}` ? " selected" : "") + '>' +
+      escapeHtml(scope.label) + "</option>").join("") + "</select></label>" +
+    renderExperimentOptionPager(state, "scope", "scopes", "Carregar mais escopos") +
+    renderExperimentFactorChoices(state) +
+    '<section class="authoring-experiment-fieldset" aria-labelledby="authoring-experiment-invariants">' +
+    '<h4 id="authoring-experiment-invariants">Garantias fixas do protocolo V1</h4>' +
+    '<p>O servidor resolve e congela as referências exatas da base.</p>' +
+    '<ul class="authoring-experiment-invariants">' + [
+      ["sources", "Fontes"], ["targets", "Alvos e verificações"],
+      ["analysis", "Análise instrucional"], ["structure", "Ordem estrutural"]
+    ].map(([, label]) => '<li>' + icon("ready-state") + '<span>' + label + "</span></li>").join("") +
+    "</ul></section>" +
+    '<fieldset class="authoring-experiment-fieldset"><legend>Atribuição de participantes</legend>' +
+    '<div class="authoring-experiment-assignment">' + Object.entries(EXPERIMENT_ASSIGNMENT_LABELS).map(
+      ([value, label]) => '<label><input type="radio" name="experiment-assignment" value="' + value + '"' +
+        (draft.assignmentRule === value ? " checked" : "") + ' data-experiment-assignment><span>' +
+        escapeHtml(label) + "</span></label>"
+    ).join("") + "</div>" +
+    (draft.assignmentRule === "seeded_random"
+      ? '<label><span>Seed registrável</span><input type="text" maxlength="240" data-experiment-field="seed"' +
+        ' value="' + escapeHtml(draft.seed) + '" autocomplete="off" placeholder="Informe uma nova seed">' +
+        '<small>' + (draft.seedConfigured
+          ? "A seed anterior não pode ser relida. Informe uma nova seed para salvar esta revisão."
+          : "O servidor usa esta seed; o aplicativo não a relê nem sorteia participantes.") +
+        '</small></label>'
+      : "") + "</fieldset>" +
+    (options.instruments.length || options.outcomes?.length
+      ? '<fieldset class="authoring-experiment-fieldset"><legend>Instrumentos e outcomes</legend>' +
+        '<div class="authoring-experiment-checks">' + options.instruments.map((instrument) => {
+          const key = experimentRefKey(instrument.ref);
+          return '<label><input type="checkbox" data-experiment-instrument="' + escapeHtml(key) + '"' +
+            (draft.instruments.has(key) ? " checked" : "") + '><span>' + escapeHtml(instrument.label) +
+            "</span></label>";
+        }).join("") + (options.outcomes || []).map((outcome) => {
+          const key = experimentRefKey(outcome.ref);
+          return '<label><input type="checkbox" data-experiment-outcome="' + escapeHtml(key) + '"' +
+            (draft.outcomes.has(key) ? " checked" : "") + '><span>' + escapeHtml(outcome.label) +
+            "</span></label>";
+        }).join("") + "</div>" +
+        renderExperimentOptionPager(state, "instrument", "instruments", "Carregar mais instrumentos") +
+        renderExperimentOptionPager(state, "outcome", "outcomes", "Carregar mais outcomes") +
+        "</fieldset>"
+      : "") + "</div>" +
+    '<footer class="authoring-experiment-footer"><button type="button" class="authoring-apply-button"' +
+    ' data-authoring-action="experiment-next-conditions"' + (!canAdvance ? " disabled" : "") +
+    '>Definir condições</button></footer></section>'
+  );
+}
+
+function conditionValue(draft, condition, factorId) {
+  return condition.values?.[factorId] ?? "";
+}
+
+function renderExperimentConditionControl(state, condition, factor) {
+  const definitions = state.experimentList?.options?.factorDefinitions || [];
+  const definition = definitions.find((item) => experimentRefKey(item.ref) === factor.definitionKey);
+  const value = conditionValue(state.experimentDraft, condition, factor.factorId);
+  const common = ' data-condition-id="' + escapeHtml(condition.conditionId) + '" data-factor-id="' +
+    escapeHtml(factor.factorId) + '" data-experiment-condition-value';
+  if (definition?.kind === "resource_set") {
+    return (
+      '<label><span>' + escapeHtml(definition.label) + '</span><select' + common + '>' +
+      '<option value="">Escolha um conjunto</option>' +
+      (state.experimentList?.options?.resourceSets || []).map((setValue) => {
+        const key = experimentRefKey(setValue.ref);
+        return '<option value="' + escapeHtml(key) + '"' + (value === key ? " selected" : "") + '>' +
+          escapeHtml(`${setValue.label} · ${setValue.memberCount ?? 0} permitidos`) + "</option>";
+      }).join("") + "</select><small>Disponível não significa obrigatório ou materializado.</small></label>"
+    );
+  }
+  if (definition?.options?.length) {
+    return (
+      '<label><span>' + escapeHtml(definition.label) + '</span><select' + common + '>' +
+      definition.options.map((option) => '<option value="' + escapeHtml(option.key) + '"' +
+        (value === option.key ? " selected" : "") + '>' + escapeHtml(option.label) +
+        "</option>").join("") + "</select></label>"
+    );
+  }
+  if (definition?.valueType === "range") {
+    const rangeValue = value && typeof value === "object" ? value : {};
+    return '<fieldset class="authoring-experiment-structured"><legend>' + escapeHtml(definition.label) +
+      '</legend><label><span>Mínimo</span><input type="number"' + common +
+      ' data-experiment-structured-part="minimum" value="' + escapeHtml(rangeValue.minimum ?? "") +
+      '"></label><label><span>Máximo</span><input type="number"' + common +
+      ' data-experiment-structured-part="maximum" value="' + escapeHtml(rangeValue.maximum ?? "") +
+      '"></label></fieldset>';
+  }
+  if (definition?.valueType === "set") {
+    const values = value && typeof value === "object" && Array.isArray(value.values) ? value.values : [];
+    return '<label><span>' + escapeHtml(definition.label) +
+      '</span><input type="text"' + common + ' data-experiment-structured-part="set" value="' +
+      escapeHtml(values.join(", ")) +
+      '" placeholder="item-a, item-b"><small>Separe os itens governados por vírgula; não use JSON.</small></label>';
+  }
+  if (definition?.valueType === "vector") {
+    const components = value && typeof value === "object" && Array.isArray(value.components)
+      ? value.components
+      : [];
+    return '<label><span>' + escapeHtml(definition.label) +
+      '</span><textarea' + common + ' data-experiment-structured-part="vector"' +
+      ' placeholder="dimensão | valor | unidade">' + escapeHtml(components.map((component) => (
+        `${component.dimension} | ${component.value} | ${component.unit}`
+      )).join("\n")) +
+      '</textarea><small>Uma dimensão por linha: dimensão | valor | unidade.</small></label>';
+  }
+  if (definition?.valueType === "relation") {
+    const relation = value && typeof value === "object" ? value : {};
+    const edge = Array.isArray(relation.edges) ? relation.edges[0] || {} : {};
+    const kinds = Array.isArray(definition.constraints?.relationKinds)
+      ? definition.constraints.relationKinds
+      : [];
+    return '<fieldset class="authoring-experiment-structured"><legend>' + escapeHtml(definition.label) +
+      '</legend><label><span>Nós</span><input type="text"' + common +
+      ' data-experiment-structured-part="relation-nodes" value="' +
+      escapeHtml((relation.nodes || []).join(", ")) + '" placeholder="origem, destino"></label>' +
+      '<label><span>Origem</span><input type="text"' + common +
+      ' data-experiment-structured-part="relation-from" value="' + escapeHtml(edge.from || "") +
+      '"></label><label><span>Destino</span><input type="text"' + common +
+      ' data-experiment-structured-part="relation-to" value="' + escapeHtml(edge.to || "") +
+      '"></label><label><span>Relação</span><select' + common +
+      ' data-experiment-structured-part="relation-kind"><option value="">Escolha…</option>' +
+      kinds.map((kind) => '<option value="' + escapeHtml(kind) + '"' +
+        (edge.kind === kind ? " selected" : "") + '>' + escapeHtml(kind.replaceAll("_", " ")) +
+        "</option>").join("") + "</select></label></fieldset>";
+  }
+  if (definition?.valueType !== "integer") return '<p class="authoring-experiment-note" role="note">' +
+    escapeHtml(definition?.label || "Fator") + " não possui controle estruturado compatível.</p>";
+  return (
+    '<label><span>' + escapeHtml(definition?.label || "Valor") + '</span><input type="number"' + common +
+    (definition?.range.min == null ? "" : ' min="' + escapeHtml(definition.range.min) + '"') +
+    (definition?.range.max == null ? "" : ' max="' + escapeHtml(definition.range.max) + '"') +
+    ' step="' + escapeHtml(definition?.range.step || 1) + '" value="' + escapeHtml(value) + '">' +
+    (definition?.unitLabel ? '<small>' + escapeHtml(definition.unitLabel) + "</small>" : "") + "</label>"
+  );
+}
+
+function renderExperimentConditions(state) {
+  const draft = state.experimentDraft;
+  const valueComplete = (value) => {
+    if (value && typeof value === "object") {
+      if (value.kind === "range") return Number.isFinite(Number(value.minimum)) &&
+        Number.isFinite(Number(value.maximum)) && Number(value.minimum) <= Number(value.maximum);
+      if (value.kind === "set") return Array.isArray(value.values) && value.values.length > 0;
+      if (value.kind === "vector") return Array.isArray(value.components) && value.components.some((entry) => (
+        String(entry?.dimension || "").trim() && String(entry?.unit || "").trim() &&
+          String(entry?.value ?? "").trim()
+      ));
+      if (value.kind === "relation") return Array.isArray(value.nodes) && value.nodes.length > 0 &&
+        Array.isArray(value.edges) && value.edges.some((edge) => String(edge?.from || "").trim() &&
+          String(edge?.to || "").trim() && String(edge?.kind || "").trim());
+      return true;
+    }
+    return String(value ?? "").trim() !== "";
+  };
+  const complete = draft.conditions.length >= 2 && draft.conditions.every((condition) => (
+    draft.factors.every((factor) => valueComplete(condition.values?.[factor.factorId]))
+  ));
+  return (
+    '<section class="authoring-experiments" aria-labelledby="authoring-destination-title">' +
+    renderExperimentHeader(state, "Condições", "Cada condição declara todos os fatores; nenhuma combinação é criada automaticamente.",
+      "experiment-back-protocol") +
+    '<div class="authoring-experiment-conditions">' + draft.conditions.map((condition) => (
+      '<article class="authoring-experiment-condition"><header><label><span class="sr-only">Nome da condição</span>' +
+      '<input type="text" maxlength="80" value="' + escapeHtml(condition.label) + '" data-condition-id="' +
+      escapeHtml(condition.conditionId) + '" data-experiment-condition-label></label>' +
+      (draft.conditions.length > 2
+        ? '<button class="icon-ghost" type="button" data-authoring-action="remove-experiment-condition"' +
+          ' data-condition-id="' + escapeHtml(condition.conditionId) + '" title="Remover condição"' +
+          ' aria-label="Remover condição">' + icon("remove-state") + "</button>"
+        : "") + "</header><div>" + draft.factors.map((factor) => (
+        renderExperimentConditionControl(state, condition, factor)
+      )).join("") + "</div></article>"
+    )).join("") + "</div>" +
+    '<button class="authoring-text-button" type="button" data-authoring-action="add-experiment-condition">' +
+    icon("add") + " Adicionar condição</button>" +
+    renderExperimentOptionPager(
+      state, "resource_set", "resourceSets", "Carregar mais conjuntos de Resources"
+    ) +
+    '<footer class="authoring-experiment-footer"><button type="button" class="authoring-apply-button"' +
+    ' data-authoring-action="save-experiment-protocol"' +
+    (!complete || state.experimentLoading || !state.experimentActionsOnline ? " disabled" : "") + '>' +
+    (state.experimentLoading ? "Salvando…" : "Salvar protocolo") + "</button></footer></section>"
+  );
+}
+
+function renderResourceDifference(label, summary) {
+  if (!summary?.count) return "";
+  return (
+    '<div class="authoring-experiment-resource-summary"><strong>' + escapeHtml(label) + '</strong><span>' +
+    escapeHtml(`${summary.count} package${summary.count === 1 ? "" : "s"}`) + "</span>" +
+    (summary.items.length
+      ? '<small>' + summary.items.map((item) => escapeHtml(item.label)).join(", ") +
+        (summary.truncated ? "…" : "") + "</small>"
+      : "") + "</div>"
+  );
+}
+
+function renderExperimentVariants(state, experiment) {
+  const page = experiment.variants;
+  if (!page.items.length && !page.truncated) return "";
+  const conditionLabel = (variant) => {
+    const conditionKey = variant.conditionRef
+      ? `${variant.conditionRef.id}@${variant.conditionRef.version || ""}`
+      : "";
+    const condition = experiment.conditions.find((item) => {
+      if (conditionKey && item.conditionRef) {
+        return `${item.conditionRef.id}@${item.conditionRef.version || ""}` === conditionKey;
+      }
+      return item.conditionId === variant.conditionId;
+    });
+    return condition?.label || variant.label;
+  };
+  const provenance = (variant) => {
+    const refLabel = (label, ref) => ref
+      ? '<li><span>' + escapeHtml(label) + '</span><code>' +
+        escapeHtml(`${ref.id}@${ref.version || ""}`) + "</code></li>"
+      : "";
+    const currentnessLabels = {
+      base: "base",
+      protocol: "protocolo",
+      condition: "condição",
+      materialization: "materialização",
+      audit: "auditoria"
+    };
+    const outdated = Object.entries(variant.currentness || {}).filter(([, value]) => (
+      value === false || ["stale", "outdated", "superseded"].includes(String(value || "").toLowerCase())
+    )).map(([key]) => currentnessLabels[key] || key);
+    return '<details class="authoring-experiment-provenance"><summary>Proveniência da revisão</summary><ul>' +
+      refLabel("Base", variant.baseRef) + refLabel("Protocolo", variant.protocolRef) +
+      refLabel("Condição", variant.conditionRef) + refLabel("Materialização", variant.materializationRef) +
+      refLabel("Auditoria", variant.auditRunRef) + "</ul>" +
+      (variant.provenancePinCount
+        ? '<p>' + escapeHtml(`${variant.provenancePinCount} pinos verificados.`) + "</p>"
+        : "") +
+      (outdated.length
+        ? '<p class="authoring-experiment-note">Revisar: ' + escapeHtml(outdated.join(", ")) + ".</p>"
+        : Object.keys(variant.currentness || {}).length
+          ? '<p>Cadeia verificada para esta revisão.</p>'
+          : '<p>Cadeia versionada registrada para esta revisão.</p>') + "</details>";
+  };
+  return (
+    '<section class="authoring-experiment-variants" aria-labelledby="authoring-experiment-variants-title">' +
+    '<h4 id="authoring-experiment-variants-title">Variantes</h4><div>' + page.items.map((variant) => (
+      '<article><header><strong>' + escapeHtml(conditionLabel(variant)) + '</strong><span>' +
+      escapeHtml(variant.frozen ? "Congelada" : variant.status) + "</span></header>" +
+      provenance(variant) +
+      renderResourceDifference("Permitidos na condição", variant.allowedResources) +
+      renderResourceDifference("Materializados na variante", variant.materializedResources) +
+      (variant.readerTarget
+        ? '<button class="authoring-text-button" type="button" data-authoring-action="open-experiment-variant"' +
+          ' data-variant-id="' + escapeHtml(variant.variantId) + '">Abrir variante</button>'
+        : "") +
+      (experiment.actions.freeze && !variant.frozen
+        ? '<button class="authoring-apply-button" type="button" data-authoring-action="freeze-experiment"' +
+          ' data-variant-id="' + escapeHtml(variant.variantId) + '"' +
+          (!state.experimentActionsOnline || state.experimentLoading ? " disabled" : "") +
+          ">Congelar esta variante</button>"
+        : "") +
+      (experiment.actions.requestCorrection && variant.frozen
+        ? '<section class="authoring-experiment-correction" aria-label="Criar revisão corrigida"><label><span>' +
+          'Motivo da correção</span><textarea maxlength="2000" data-experiment-correction-reason="' +
+          escapeHtml(variant.variantId) + '">' +
+          escapeHtml(state.experimentCorrectionReasons[variant.variantId] || "") + '</textarea></label>' +
+          '<label class="authoring-experiment-continuity"><input type="checkbox"' +
+          ' data-experiment-correction-continuity="' + escapeHtml(variant.variantId) + '"' +
+          (state.experimentCorrectionConfirmations[variant.variantId] === true ? " checked" : "") +
+          '><span>Manter participantes já atribuídos nesta revisão; novos ingressos aguardam a revisão corrigida.</span></label>' +
+          '<button class="authoring-text-button" type="button"' +
+          ' data-authoring-action="request-experiment-correction" data-variant-id="' +
+          escapeHtml(variant.variantId) + '"' +
+          (!state.experimentActionsOnline || state.experimentLoading ||
+            !String(state.experimentCorrectionReasons[variant.variantId] || "").trim() ||
+            state.experimentCorrectionConfirmations[variant.variantId] !== true ? " disabled" : "") +
+          '>Criar revisão corrigida</button></section>'
+        : "") + "</article>"
+    )).join("") + "</div>" +
+    (page.truncated && page.nextCursor != null
+      ? '<button type="button" class="authoring-text-button" data-authoring-action="load-more-experiment-variants"' +
+        (!state.experimentActionsOnline || state.experimentVariantsLoading ? " disabled" : "") + '>' +
+        (state.experimentVariantsLoading ? "Carregando…" : "Carregar mais variantes") + "</button>"
+      : "") + "</section>"
+  );
+}
+
+function renderExperimentDifferences(state, experiment) {
+  if (!experiment.differences.items.length && !experiment.differences.truncated) return "";
+  if (experiment.differences.mode === "runs") {
+    return '<section class="authoring-experiment-differences" aria-labelledby="authoring-experiment-differences-title">' +
+      '<h4 id="authoring-experiment-differences-title">Comparações auditáveis</h4><div>' +
+      experiment.differences.items.map((run) => (
+        '<article><header><strong>' + escapeHtml(run.label) + '</strong><span>' +
+        escapeHtml(`${run.pendingCount} pendente${run.pendingCount === 1 ? "" : "s"}`) +
+        '</span></header><p>' + escapeHtml(run.baselineLabel) + " → " + escapeHtml(run.candidateLabel) +
+        '</p><button type="button" class="authoring-text-button"' +
+        ' data-authoring-action="open-experiment-difference-run" data-run-id="' +
+        escapeHtml(run.runId) + '"' +
+        (!state.experimentActionsOnline || state.experimentDifferencesLoading ? " disabled" : "") +
+        '>Revisar diferenças</button></article>'
+      )).join("") + "</div>" +
+      (experiment.differences.truncated && experiment.differences.nextCursor != null
+        ? '<button type="button" class="authoring-text-button"' +
+          ' data-authoring-action="load-more-experiment-differences"' +
+          (!state.experimentActionsOnline || state.experimentDifferencesLoading ? " disabled" : "") + '>' +
+          (state.experimentDifferencesLoading ? "Carregando…" : "Carregar mais comparações") + "</button>"
+        : "") + "</section>";
+  }
+  const labels = {
+    directly_required: "Requeridas diretamente pelo fator",
+    inevitable_derived: "Derivadas inevitáveis",
+    accidental_unplanned: "Acidentais e não previstas"
+  };
+  return (
+    '<section class="authoring-experiment-differences" aria-labelledby="authoring-experiment-differences-title">' +
+    '<h4 id="authoring-experiment-differences-title">Diferenças entre variantes</h4>' +
+    ["directly_required", "inevitable_derived", "accidental_unplanned"].map((category) => {
+      const differences = experiment.differences.items.filter((item) => item.category === category);
+      if (!differences.length) return "";
+      return '<section><h5>' + labels[category] + '</h5><div>' + differences.map((difference) => (
+        '<article class="is-' + category + '"><header><strong>' + escapeHtml(difference.label) + '</strong>' +
+        '<span>' + escapeHtml(difference.decision === "pending" ? "Pendente" : difference.decision) +
+        "</span></header>" + (difference.description ? '<p>' + escapeHtml(difference.description) + "</p>" : "") +
+        renderResourceDifference("Permitidos", difference.allowedResources) +
+        renderResourceDifference("Materializados", difference.materializedResources) +
+        (difference.decision === "pending" && experiment.actions.decide
+          ? '<label><span>Justificativa <small>obrigatória ao aceitar ou invalidar</small></span><textarea maxlength="2000"' +
+            ' data-experiment-difference-note="' + escapeHtml(difference.differenceId) + '">' +
+            escapeHtml(state.experimentDifferenceNotes[difference.differenceId] || "") + "</textarea></label>" +
+            (difference.requiresParticipantContinuity
+              ? '<label class="authoring-experiment-continuity"><input type="checkbox"' +
+                ' data-experiment-continuity="' + escapeHtml(difference.differenceId) + '"><span>' +
+                "Manter participantes já atribuídos na revisão congelada anterior; novos aguardam a correção." +
+                "</span></label>"
+              : "") +
+            '<div class="authoring-experiment-difference-actions" role="group" aria-label="Decidir ' +
+            escapeHtml(difference.label) + '">' + [
+              ["correct", "Corrigir"],
+              ["accept", category === "directly_required" ? "Confirmar como requerida" :
+                category === "inevitable_derived" ? "Confirmar como inevitável" : "Aceitar na condição"],
+              ["invalidate", "Invalidar variante"]
+            ].map(([decision, label]) => '<button type="button" class="authoring-text-button"' +
+              ' data-authoring-action="decide-experiment-difference" data-difference-id="' +
+              escapeHtml(difference.differenceId) + '" data-experiment-decision="' + decision + '"' +
+              (!state.experimentActionsOnline || state.experimentLoading ||
+                (decision === "correct" && difference.requiresParticipantContinuity &&
+                  state.experimentContinuityConfirmations[difference.differenceId] !== true)
+                ? " disabled" : "") + '>' + label +
+              "</button>").join("") + "</div>"
+          : "") + "</article>"
+      )).join("") + "</div></section>";
+    }).join("") +
+    (experiment.differences.truncated && experiment.differences.nextCursor != null
+      ? '<button type="button" class="authoring-text-button"' +
+        ' data-authoring-action="load-more-experiment-differences"' +
+        (!state.experimentActionsOnline || state.experimentDifferencesLoading ? " disabled" : "") + '>' +
+        (state.experimentDifferencesLoading ? "Carregando…" : "Carregar mais diferenças") + "</button>"
+      : "") + "</section>"
+  );
+}
+
+function renderExperimentParticipants(state, experiment, canMutate) {
+  if (!experiment.actions.assign || !experiment.loadedSections.participants) return "";
+  const page = experiment.participants;
+  const manual = experiment.assignment.rule === "manual";
+  return '<section class="authoring-experiment-assignment-panel" aria-labelledby="authoring-experiment-participants-title">' +
+    '<h4 id="authoring-experiment-participants-title">Fila de ingresso</h4>' +
+    '<p>' + (manual
+      ? "Escolha uma condição para cada pseudônimo aguardando atribuição."
+      : "O servidor escolhe a condição; o aplicativo não recebe a seed nem sorteia localmente.") +
+    '</p><div class="authoring-experiment-participants">' + page.items.map((participant) => {
+      const assigned = participant.status === "assigned";
+      const assignedCondition = experiment.conditions.find((condition) => (
+        experimentRefKey(condition.conditionRef) === experimentRefKey(participant.assignedConditionRef)
+      ));
+      return '<article><header><strong>' + escapeHtml(participant.pseudonymLabel) + '</strong><span>' +
+        escapeHtml(assigned ? "Atribuído" : "Aguardando") + "</span></header>" +
+        (assigned
+          ? '<p>Condição: ' + escapeHtml(assignedCondition?.label || "registrada") + "</p>"
+          : (manual
+              ? '<label><span>Condição</span><select data-experiment-participant-condition="' +
+                escapeHtml(participant.enrollmentRef) + '"><option value="">Escolha…</option>' +
+                experiment.conditions.filter((condition) => condition.conditionRef).map((condition) => {
+                  const key = experimentRefKey(condition.conditionRef);
+                  return '<option value="' + escapeHtml(key) + '"' +
+                    (state.experimentParticipantConditions[participant.enrollmentRef] === key ? " selected" : "") +
+                    '>' + escapeHtml(condition.label) + "</option>";
+                }).join("") + "</select></label>"
+              : "") +
+            '<button type="button" class="authoring-apply-button"' +
+            ' data-authoring-action="assign-experiment-participant" data-enrollment-ref="' +
+            escapeHtml(participant.enrollmentRef) + '"' + (!canMutate || (manual &&
+              !state.experimentParticipantConditions[participant.enrollmentRef]) ? " disabled" : "") +
+            '>Atribuir no servidor</button>') + "</article>";
+    }).join("") + "</div>" +
+    (page.truncated && page.nextCursor != null
+      ? '<button type="button" class="authoring-text-button"' +
+        ' data-authoring-action="load-more-experiment-participants"' +
+        (!state.experimentActionsOnline || state.experimentParticipantsLoading ? " disabled" : "") + '>' +
+        (state.experimentParticipantsLoading ? "Carregando…" : "Carregar mais pseudônimos") + "</button>"
+      : "") + "</section>";
+}
+
+function renderExperimentDetail(state) {
+  const experiment = state.experimentDetail;
+  if (state.experimentLoading && !experiment) return renderLoading("Carregando experimento…");
+  if (!experiment) return '<p class="authoring-empty">O experimento não está disponível.</p>';
+  const canMutate = state.experimentActionsOnline && !state.experimentLoading && !experiment.stale;
+  const collectionTransitions = [
+    ["pause", "Pausar coleta"],
+    ["resume", "Retomar coleta"],
+    ["close", "Encerrar coleta"],
+    ["invalidate", "Invalidar experimento"]
+  ].filter(([transition]) => experiment.actions[transition]);
+  return (
+    '<section class="authoring-experiments" aria-labelledby="authoring-destination-title">' +
+    renderExperimentHeader(state, experiment.title, experiment.statusLabel, "back-to-experiment-list") +
+    (!state.experimentActionsOnline
+      ? '<p class="authoring-experiment-note" role="note">Consulta somente. Reconecte para validar, decidir ou iniciar coleta.</p>'
+      : "") +
+    '<dl class="authoring-experiment-summary"><div><dt>Base</dt><dd>' +
+    escapeHtml(experiment.base?.label || "Não informada") + '</dd></div><div><dt>Escopo</dt><dd>' +
+    escapeHtml(experiment.scope?.label || "Não informado") + '</dd></div><div><dt>Condições</dt><dd>' +
+    escapeHtml(experiment.conditionCount || experiment.conditions.length) + '</dd></div><div><dt>Atribuição</dt><dd>' +
+    escapeHtml(EXPERIMENT_ASSIGNMENT_LABELS[experiment.assignment.rule] || "Manual") + "</dd></div></dl>" +
+    (experiment.enrollment.codeConfigured
+      ? '<p class="authoring-experiment-note" role="note">Código de ingresso configurado' +
+        (experiment.enrollment.expiresAt
+          ? " · expira em " + escapeHtml(experimentExpiryLabel(experiment.enrollment.expiresAt))
+          : "") + ".</p>"
+      : "") +
+    (experiment.actions.rotateCode
+      ? '<div class="authoring-experiment-actions"><p>Gerar um novo código invalida imediatamente o anterior. O texto será mostrado uma única vez.</p>' +
+        '<button type="button" class="authoring-text-button" data-authoring-action="rotate-experiment-enrollment-code"' +
+        (!canMutate ? " disabled" : "") + '>Gerar novo código</button></div>'
+      : "") +
+    (experiment.status === "draft"
+      ? '<div class="authoring-experiment-actions"><button type="button" class="authoring-text-button"' +
+        ' data-authoring-action="edit-experiment-protocol"' +
+        (!canMutate || !experiment.actions.saveProtocol ? " disabled" : "") +
+        '>Editar protocolo</button>' +
+        (experiment.actions.validate
+          ? '<button type="button" class="authoring-apply-button" data-authoring-action="validate-experiment"' +
+            (!canMutate ? " disabled" : "") + '>Validar protocolo</button>'
+          : "") + "</div>"
+      : "") +
+    (experiment.actions.generate
+      ? '<div class="authoring-experiment-actions"><button type="button" class="authoring-apply-button"' +
+        ' data-authoring-action="generate-experiment-variants"' + (!canMutate ? " disabled" : "") +
+        '>Gerar variantes</button></div>'
+      : "") +
+    (experiment.status === "generating"
+      ? '<p class="authoring-experiment-note" role="status">Aguardando materialização e auditoria das variantes. A geração não aprova diferenças automaticamente.</p>'
+      : "") +
+    renderExperimentVariants(state, experiment) + renderExperimentDifferences(state, experiment) +
+    (experiment.actions.start
+      ? '<div class="authoring-experiment-actions"><p>Iniciar coleta fixa a regra de atribuição e os instrumentos registrados.</p>' +
+        '<button type="button" class="authoring-apply-button" data-authoring-action="start-experiment-collection"' +
+        (!canMutate ? " disabled" : "") + '>Iniciar coleta</button></div>'
+      : "") +
+    renderExperimentParticipants(state, experiment, canMutate) +
+    (collectionTransitions.length
+      ? '<div class="authoring-experiment-actions" role="group" aria-label="Controlar coleta">' +
+        collectionTransitions.map(([transition, label]) => (
+          '<button type="button" class="authoring-text-button"' +
+          ' data-authoring-action="transition-experiment-collection" data-experiment-transition="' +
+          transition + '"' + (!canMutate ? " disabled" : "") + '>' + label + "</button>"
+        )).join("") + "</div>"
+      : "") + "</section>"
+  );
+}
+
+function renderExperimentDiscardDialog(state) {
+  if (!state.experimentDiscardPrompt) return "";
+  return (
+    '<div class="authoring-dialog-backdrop" data-authoring-action="keep-experiment-draft">' +
+    '<section class="authoring-dialog authoring-experiment-confirm" role="dialog" aria-modal="true"' +
+    ' aria-labelledby="authoring-experiment-discard-title" data-authoring-dialog="experiment-discard">' +
+    '<header><div><h2 id="authoring-experiment-discard-title">Descartar alterações?</h2>' +
+    '<p>O protocolo ainda não foi salvo.</p></div></header><div class="authoring-finding-actions">' +
+    '<button type="button" class="authoring-text-button" data-authoring-action="keep-experiment-draft">Continuar editando</button>' +
+    '<button type="button" class="authoring-secondary-button" data-authoring-action="discard-experiment-draft">Descartar</button>' +
+    "</div></section></div>"
+  );
+}
+
+function renderExperimentEnrollmentDialog(state) {
+  const receipt = state.experimentEnrollmentReceipt;
+  if (!receipt) return "";
+  return (
+    '<div class="authoring-dialog-backdrop">' +
+    '<section class="authoring-dialog authoring-experiment-confirm" role="dialog" aria-modal="true"' +
+    ' aria-labelledby="authoring-experiment-enrollment-title" data-authoring-dialog="experiment-enrollment">' +
+    '<header><div><h2 id="authoring-experiment-enrollment-title">Código de ingresso</h2>' +
+    '<p>Distribua este código pelos canais aprovados do estudo. Ele é mostrado integralmente somente agora.</p>' +
+    '</div></header><div class="authoring-dialog-content authoring-experiment-enrollment-receipt">' +
+    '<output aria-label="Código de ingresso" tabindex="0">' + escapeHtml(receipt.enrollmentCode) + "</output>" +
+    '<p>Expiração: ' + escapeHtml(experimentExpiryLabel(receipt.expiresAt)) + "</p>" +
+    '<div class="authoring-finding-actions"><button type="button" class="authoring-text-button"' +
+    ' data-authoring-action="copy-experiment-enrollment-code">Copiar código</button>' +
+    '<button type="button" class="authoring-apply-button"' +
+    ' data-authoring-action="close-experiment-enrollment-receipt">Entendi</button></div>' +
+    "</div></section></div>"
+  );
+}
+
+function renderExperimentSurface(state) {
+  if (state.experimentView === "list") return renderExperimentList(state);
+  if (state.experimentView === "protocol") return renderExperimentProtocol(state);
+  if (state.experimentView === "conditions") return renderExperimentConditions(state);
+  return renderExperimentDetail(state);
+}
+
 function renderDesign(state) {
-  if (!state.selectedMicrosequence) return renderScopeChooser(state);
-  if (state.designLoading && !state.design) return renderLoading("Carregando desenho…");
+  if (state.experimentView) return renderExperimentSurface(state);
+  const experimentEntry = renderExperimentEntry(state);
+  if (!state.selectedMicrosequence) {
+    return '<section class="authoring-design" aria-labelledby="authoring-destination-title">' +
+      experimentEntry + renderScopeChooser(state) + "</section>";
+  }
+  if (state.designLoading && !state.design) {
+    return '<section class="authoring-design" aria-labelledby="authoring-destination-title">' +
+      experimentEntry + renderLoading("Carregando desenho…") + "</section>";
+  }
   if (!state.design) {
-    return '<div class="authoring-empty"><p>O desenho ainda não está disponível.</p></div>';
+    return '<section class="authoring-design" aria-labelledby="authoring-destination-title">' +
+      experimentEntry + '<div class="authoring-empty"><p>O desenho ainda não está disponível.</p></div></section>';
   }
   const design = state.design;
   return (
     '<section class="authoring-design" aria-labelledby="authoring-destination-title">' +
+    experimentEntry +
     '<header class="authoring-scope-heading"><span>' + icon("microsequence") + "</span><div><h3>" +
     escapeHtml(design.scopeTitle || state.selectedMicrosequence.title) +
     '</h3><p>Valores efetivos</p></div></header>' +
@@ -943,7 +1656,8 @@ function renderWorkspace(state, destinations) {
     (state.loading && !overview ? renderLoading("Carregando workspace…") : renderDestination(state)) +
     "</main></div>" +
     renderStatus(state) + renderParameterDialog(state) + renderResourcesDialog(state) +
-    renderFindingDialog(state) +
+    renderFindingDialog(state) + renderExperimentDiscardDialog(state) +
+    renderExperimentEnrollmentDialog(state) +
     "</section>"
   );
 }

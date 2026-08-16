@@ -304,6 +304,41 @@ um único snapshot, o blueprint e as revisões materializadas. Uma projeção de
 diff compara apenas identidades, passos, cobertura declarada e resources; a
 auditoria semântico-instrucional continua responsabilidade separada.
 
+### Estado experimental e variantes congeladas
+
+O contador corrente do workspace não preserva uma versão histórica. Para um
+experimento, a base precisa apontar para a publicação imutável aprovada e seu
+hash. O servidor deriva cada condição num workspace filho privado, preserva o
+mapeamento da subárvore e grava locks ligados à revisão do protocolo. A base
+autoral continua separada e nenhum participante se torna membro desses espaços.
+
+```text
+base publication artifact
+  -> protocol revision + explicit condition
+  -> child workspace/course + research locks
+  -> design artifacts + audit + diff
+  -> frozen variant artifact
+  -> pseudonymous enrollment assignment
+```
+
+O freeze revalida conteúdo, snapshots, manifesto, auditoria e diff no mesmo
+fence e então impede novas escritas de conteúdo, desenho e publicação daquela
+revisão. Um reparo cria outro workspace/revisão filha. Essa escolha evita que a
+linha corrente do curso adultere retroativamente uma intervenção já atribuída.
+
+O control plane humano usa uma Action exclusiva do aplicativo e uma capacidade
+`research`. Ela não entra no registry MCP/OpenAPI. O GPT recebe apenas o
+contexto bounded de uma variante já criada e continua usando as operações
+comuns de materialização sob locks. Uma operação semântica pode classificar
+hunks factuais, mas decisão, seed, consentimento, atribuição e freeze permanecem
+fora dessa superfície.
+
+Enrollment e assignment são tabelas separadas do membership. O primeiro liga
+consentimento versionado a um pseudônimo local; o segundo é append-only e fixa
+curso, hash e revisão. A distribuição usa a seleção privada já compreendida por
+Trilhas, por isso a variante sincronizada abre offline sem revelar outras
+condições. Novo enrollment ou assignment exige rede e serialização do servidor.
+
 ### Consequências
 
 - o custo cresce com a estrutura atual, não com o número histórico de
@@ -598,7 +633,7 @@ conformidade com desenho parametrizado.
 | Diretório | Responsabilidade arquitetural |
 | --- | --- |
 | `src/domain/` | contrato da árvore didática e invariantes de domínio |
-| `src/authoring/` | contratos, validação, resolução, `ResourceSet`, binding e diff do desenho instrucional |
+| `src/authoring/` | contratos, validação, resolução, `ResourceSet`, binding, diff e protocolo experimental |
 | `src/resources/kernel/` | envelope de card, registro de packages e validação comum |
 | `src/resources/catalog/` | vocabulário controlado, busca e política de seleção |
 | `src/resources/packages/` | contratos, validação e renderização de cada package |

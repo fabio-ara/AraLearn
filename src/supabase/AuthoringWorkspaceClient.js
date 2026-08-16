@@ -16,11 +16,20 @@ const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3
 const WORKSPACE_LIST_CACHE_CONTRACT = "aralearn.authoring-workspace-list-cache.v1";
 const WORKSPACE_OVERVIEW_CACHE_CONTRACT = "aralearn.authoring-workspace-overview-cache.v1";
 const AUTHORING_AUDIT_CACHE_CONTRACT = "aralearn.authoring-audit-cache.v1";
+const AUTHORING_EXPERIMENT_LIST_CACHE_CONTRACT = "aralearn.authoring-experiment-list-cache.v1";
+const AUTHORING_EXPERIMENT_SECTION_CACHE_CONTRACT = "aralearn.authoring-experiment-section-cache.v1";
+const EXPERIMENT_ENROLLMENT_HANDLE_CACHE_CONTRACT = "aralearn.experiment-enrollment-handles.v1";
 const CACHE_PREFIX = "learning.authoring.v1";
 const PAGE_LIMIT = 100;
 const MAX_PAGES = 100;
 const FINDING_PAGE_LIMIT = 50;
 const ACTIVE_FINDING_STATUSES = Object.freeze(["open", "approved", "repaired"]);
+const EXPERIMENT_OPTION_KINDS = Object.freeze(new Set([
+  "scope", "base", "factor_definition", "resource_set", "consent_policy", "instrument", "outcome"
+]));
+const EXPERIMENT_READ_SECTIONS = Object.freeze(new Set([
+  "overview", "protocol", "variants", "differences", "participants"
+]));
 const cacheFallbackLocks = new Map();
 
 function text(value) {
@@ -37,6 +46,64 @@ function revision(value) {
     throw new TypeError("Revisão de workspace inválida.");
   }
   return normalized;
+}
+
+function nonNegativeRevision(value, label = "Revisão do experimento") {
+  const normalized = Number(value);
+  if (!Number.isSafeInteger(normalized) || normalized < 0) {
+    throw new TypeError(`${label} inválida.`);
+  }
+  return normalized;
+}
+
+function boundedIdentifier(value, label) {
+  const normalized = text(value);
+  if (!normalized || normalized.length > 240) throw new TypeError(`${label} inválido.`);
+  return normalized;
+}
+
+function enrollmentCode(value) {
+  const normalized = text(value);
+  if (!/^[A-Za-z0-9_-]{8,128}$/u.test(normalized)) {
+    throw new TypeError("Código de ingresso inválido.");
+  }
+  return normalized;
+}
+
+function projectedExperimentEnrollment(value) {
+  const status = text(value?.status);
+  if (!["enrolled", "assigned", "withdrawn"].includes(status)) {
+    throw new Error("O ingresso experimental devolveu um estado inválido.");
+  }
+  if (["enrolled", "withdrawn"].includes(status) && value?.selection != null) {
+    throw new Error("O ingresso ainda não atribuído devolveu uma seleção indevida.");
+  }
+  const enrollmentRef = text(value?.enrollmentRef).toLowerCase();
+  if (!UUID_PATTERN.test(enrollmentRef)) {
+    throw new Error("O ingresso experimental não devolveu um vínculo opaco válido.");
+  }
+  if (["enrolled", "withdrawn"].includes(status)) {
+    return Object.freeze({ enrollmentRef, status, selection: null });
+  }
+  const selectionId = text(value?.selection?.selectionId).toLowerCase();
+  const courseId = text(value?.selection?.courseId).toLowerCase();
+  const contentHash = text(value?.selection?.contentHash).toLowerCase();
+  const target = value?.selection?.readerTarget;
+  if (!UUID_PATTERN.test(selectionId) || !UUID_PATTERN.test(courseId) ||
+      !/^[0-9a-f]{64}$/u.test(contentHash) || text(target?.courseId).toLowerCase() !== courseId ||
+      target?.access !== "private" || text(target?.contentHash).toLowerCase() !== contentHash) {
+    throw new Error("A seleção privada do experimento está incompleta.");
+  }
+  return Object.freeze({
+    enrollmentRef,
+    status,
+    selection: Object.freeze({
+      selectionId,
+      courseId,
+      contentHash,
+      readerTarget: Object.freeze({ courseId, access: "private", contentHash })
+    })
+  });
 }
 
 function workspaceId(value) {
@@ -160,6 +227,18 @@ function auditCacheKey(userId, workspace, kind, refValue) {
   return `${CACHE_PREFIX}:audit:${userId}:${workspace}:${kind}:${encodeURIComponent(refValue)}`;
 }
 
+function experimentListCacheKey(userId, workspace) {
+  return `${CACHE_PREFIX}:experiments:${userId}:${workspace}`;
+}
+
+function experimentSectionCacheKey(userId, workspace, experiment, section) {
+  return `${CACHE_PREFIX}:experiment:${userId}:${workspace}:${encodeURIComponent(experiment)}:${section}`;
+}
+
+function experimentEnrollmentHandlesCacheKey(userId) {
+  return `${CACHE_PREFIX}:experiment-enrollments:${userId}`;
+}
+
 function normalizeAuditScope(value) {
   if (value == null) return null;
   if (!value || typeof value !== "object" || Array.isArray(value)) {
@@ -189,6 +268,15 @@ function normalizeResourceSetRef(value) {
   if (!value || typeof value !== "object" || Array.isArray(value)
       || !text(value.id) || !text(value.version)) {
     throw new TypeError("Escolha um conjunto disponível.");
+  }
+  return { id: text(value.id), version: text(value.version) };
+}
+
+function normalizeVersionedRef(value, label = "Referência") {
+  if (!value || typeof value !== "object" || Array.isArray(value) ||
+      !text(value.id) || !text(value.version) || text(value.id).length > 240 ||
+      text(value.version).length > 120) {
+    throw new TypeError(`${label} inválida.`);
   }
   return { id: text(value.id), version: text(value.version) };
 }
@@ -309,6 +397,7 @@ export class AuthoringWorkspaceClient {
   #offlineStore = null;
   #offlineUserId = "";
   #resourceSetCache = new Map();
+  #withdrawnEnrollmentRefs = new Set();
 
   constructor({ catalog, authClient, relationalStore = null } = {}) {
     if (!catalog || !authClient) throw new TypeError("Dependências da Autoria ausentes.");
@@ -450,6 +539,159 @@ export class AuthoringWorkspaceClient {
     });
   }
 
+  async #writeExperimentSnapshot({
+    key,
+    contract,
+    workspace,
+    experimentId = "",
+    workspaceRevision,
+    experimentRevision = 0,
+    snapshot,
+    readStartedAt
+  }) {
+    const userId = this.#userId();
+    const incomingWorkspaceRevision = revision(workspaceRevision);
+    const incomingExperimentRevision = nonNegativeRevision(experimentRevision);
+    return this.#atomicCache(key, (current) => {
+      const currentWorkspaceRevision = Number(current?.workspaceRevision || 0);
+      const currentExperimentRevision = Number(current?.experimentRevision || 0);
+      const currentIsNewer = contract === AUTHORING_EXPERIMENT_SECTION_CACHE_CONTRACT
+        ? currentExperimentRevision > incomingExperimentRevision ||
+          (currentExperimentRevision === incomingExperimentRevision &&
+            currentWorkspaceRevision > incomingWorkspaceRevision)
+        : currentWorkspaceRevision > incomingWorkspaceRevision;
+      const sameRevisionIsLater = currentWorkspaceRevision === incomingWorkspaceRevision &&
+        currentExperimentRevision === incomingExperimentRevision &&
+        Date.parse(current?.cachedAt || "") > readStartedAt;
+      if (current?.contract === contract && current.userId === userId &&
+          current.workspaceId === workspace && (currentIsNewer || sameRevisionIsLater)) {
+        return undefined;
+      }
+      let nextSnapshot = structuredClone(snapshot);
+      if (contract === AUTHORING_EXPERIMENT_LIST_CACHE_CONTRACT &&
+          current?.contract === contract && current.userId === userId &&
+          current.workspaceId === workspace && currentWorkspaceRevision === incomingWorkspaceRevision) {
+        const currentSource = current.snapshot?.experiments || current.snapshot?.result?.experiments ||
+          current.snapshot || {};
+        const nextSource = nextSnapshot?.experiments || nextSnapshot?.result?.experiments || nextSnapshot || {};
+        if (refKey(currentSource.experimentSetRef || current.snapshot?.experimentSetRef) !==
+            refKey(nextSource.experimentSetRef || nextSnapshot?.experimentSetRef)) {
+          return {
+            contract,
+            userId,
+            workspaceId: workspace,
+            workspaceRevision: incomingWorkspaceRevision,
+            experimentRevision: incomingExperimentRevision,
+            snapshot: nextSnapshot,
+            cachedAt: new Date().toISOString()
+          };
+        }
+        const currentById = new Map(list(currentSource.items || currentSource.experiments).map((item) => [
+          text(item?.experimentId || item?.id), item
+        ]));
+        const incomingItems = list(nextSource.items || nextSource.experiments).map((item) => {
+          const id = text(item?.experimentId || item?.id);
+          const existing = currentById.get(id);
+          return Number(existing?.experimentRevision || 0) > Number(item?.experimentRevision || 0)
+            ? structuredClone(existing)
+            : item;
+        });
+        const incomingIds = new Set(incomingItems.map((item) => text(item?.experimentId || item?.id)));
+        for (const existing of currentById.values()) {
+          const id = text(existing?.experimentId || existing?.id);
+          if (id && !incomingIds.has(id)) incomingItems.push(structuredClone(existing));
+        }
+        if (Array.isArray(nextSource.items)) nextSource.items = incomingItems;
+        else if (Array.isArray(nextSource.experiments)) nextSource.experiments = incomingItems;
+      }
+      return {
+        contract,
+        userId,
+        workspaceId: workspace,
+        ...(experimentId ? { experimentId } : {}),
+        workspaceRevision: incomingWorkspaceRevision,
+        experimentRevision: incomingExperimentRevision,
+        snapshot: nextSnapshot,
+        cachedAt: new Date().toISOString()
+      };
+    });
+  }
+
+  async #readExperimentSnapshot(key, contract, workspace, experimentId = "") {
+    const cached = await this.#readCache(key, contract);
+    if (!cached) return null;
+    if (cached.workspaceId !== workspace || (experimentId && cached.experimentId !== experimentId) ||
+        !cached.snapshot || typeof cached.snapshot !== "object") {
+      throw new Error("O cache offline de experimentos está corrompido.");
+    }
+    return { ...structuredClone(cached.snapshot), stale: true, cacheWriteFailed: false };
+  }
+
+  async #writeExperimentEnrollmentHandle(projected, { pendingPurgeCourseId = "" } = {}) {
+    const userId = this.#userId();
+    const key = experimentEnrollmentHandlesCacheKey(userId);
+    await this.#atomicCache(key, (current) => {
+      const handles = current?.contract === EXPERIMENT_ENROLLMENT_HANDLE_CACHE_CONTRACT &&
+        current.userId === userId && current.handles && typeof current.handles === "object"
+        ? structuredClone(current.handles)
+        : {};
+      handles[projected.enrollmentRef] = {
+        enrollmentRef: projected.enrollmentRef,
+        status: projected.status,
+        selection: projected.selection == null ? null : structuredClone(projected.selection),
+        ...(pendingPurgeCourseId ? { pendingPurgeCourseId } : {}),
+        updatedAt: new Date().toISOString()
+      };
+      return {
+        contract: EXPERIMENT_ENROLLMENT_HANDLE_CACHE_CONTRACT,
+        userId,
+        handles,
+        cachedAt: new Date().toISOString()
+      };
+    });
+  }
+
+  async #readExperimentEnrollmentHandles() {
+    let cached = await this.#readCache(
+      experimentEnrollmentHandlesCacheKey(this.#userId()),
+      EXPERIMENT_ENROLLMENT_HANDLE_CACHE_CONTRACT
+    );
+    const pendingPurges = Object.values(cached?.handles || {}).filter((entry) => (
+      entry?.status === "withdrawn" && text(entry?.pendingPurgeCourseId)
+    ));
+    for (const entry of pendingPurges) {
+      try {
+        if (typeof this.#store?.removeOfficialCourseReplica === "function") {
+          await this.#store.removeOfficialCourseReplica(entry.pendingPurgeCourseId, { removeSelection: true });
+        }
+        await this.#writeExperimentEnrollmentHandle(projectedExperimentEnrollment(entry));
+      } catch {
+        // A lápide withdrawn continua fail-closed e a limpeza será tentada na próxima abertura.
+      }
+    }
+    if (pendingPurges.length) {
+      cached = await this.#readCache(
+        experimentEnrollmentHandlesCacheKey(this.#userId()),
+        EXPERIMENT_ENROLLMENT_HANDLE_CACHE_CONTRACT
+      );
+    }
+    const handles = cached?.handles && typeof cached.handles === "object" ? cached.handles : {};
+    return Object.freeze(Object.values(handles).flatMap((entry) => {
+      try {
+        if (this.#withdrawnEnrollmentRefs.has(text(entry?.enrollmentRef).toLowerCase())) {
+          return [Object.freeze({
+            enrollmentRef: text(entry.enrollmentRef).toLowerCase(),
+            status: "withdrawn",
+            selection: null
+          })];
+        }
+        return [projectedExperimentEnrollment(entry)];
+      } catch {
+        return [];
+      }
+    }));
+  }
+
   async #readCachedAudit(key) {
     const cached = await this.#readCache(key, AUTHORING_AUDIT_CACHE_CONTRACT);
     return cached?.audit ? {
@@ -479,6 +721,123 @@ export class AuthoringWorkspaceClient {
     }
   }
 
+  #requireOnlineExperiment(online) {
+    if (!online || globalThis.navigator?.onLine === false) {
+      const error = new Error("Conecte-se para gerenciar experimentos instrucionais.");
+      error.code = "authoring_online_required";
+      throw error;
+    }
+  }
+
+  async loadInstructionalExperimentEnrollmentPolicy({
+    enrollmentCode: codeValue,
+    online = globalThis.navigator?.onLine !== false
+  } = {}) {
+    this.#requireOnlineExperiment(online);
+    const response = await this.#executeRemote("ingressarEmExperimentoInstrucional", {
+      operation: "read_policy",
+      enrollmentCode: enrollmentCode(codeValue)
+    });
+    const policy = response?.policy;
+    const ref = normalizeVersionedRef(policy?.ref, "Política de consentimento");
+    const title = text(response?.title);
+    const label = text(policy?.label);
+    const publicText = text(policy?.publicText);
+    if (!title || !label || !publicText || publicText.length > 20000) {
+      throw new Error("A política de ingresso devolveu uma resposta incompleta.");
+    }
+    return Object.freeze({
+      title,
+      policy: Object.freeze({ ref: Object.freeze(ref), label, publicText })
+    });
+  }
+
+  async enrollInInstructionalExperiment({
+    enrollmentCode: codeValue,
+    consentPolicyRef,
+    consentAcknowledged,
+    requestId: suppliedRequestId = null,
+    online = globalThis.navigator?.onLine !== false
+  } = {}) {
+    this.#requireOnlineExperiment(online);
+    if (consentAcknowledged !== true) {
+      throw new TypeError("O consentimento precisa ser confirmado explicitamente.");
+    }
+    const response = await this.#executeWithReplay("ingressarEmExperimentoInstrucional", {
+      operation: "enroll",
+      enrollmentCode: enrollmentCode(codeValue),
+      requestId: suppliedRequestId || requestId(),
+      consentPolicyRef: normalizeVersionedRef(consentPolicyRef, "Política de consentimento"),
+      consentAcknowledged: true
+    });
+    const projected = projectedExperimentEnrollment(response);
+    await this.#bestEffortCache(() => this.#writeExperimentEnrollmentHandle(projected));
+    return projected;
+  }
+
+  listInstructionalExperimentEnrollments() {
+    return this.#readExperimentEnrollmentHandles();
+  }
+
+  async loadInstructionalExperimentEnrollmentStatus({
+    enrollmentRef: enrollmentValue,
+    online = globalThis.navigator?.onLine !== false
+  } = {}) {
+    this.#requireOnlineExperiment(online);
+    const enrollmentRef = text(enrollmentValue).toLowerCase();
+    if (!UUID_PATTERN.test(enrollmentRef)) throw new TypeError("Vínculo experimental inválido.");
+    const response = await this.#executeRemote("ingressarEmExperimentoInstrucional", {
+      operation: "status",
+      enrollmentRef
+    });
+    const projected = projectedExperimentEnrollment(response);
+    if (projected.enrollmentRef !== enrollmentRef) {
+      throw new Error("O status experimental devolveu outro vínculo.");
+    }
+    await this.#bestEffortCache(() => this.#writeExperimentEnrollmentHandle(projected));
+    return projected;
+  }
+
+  async withdrawAuthoringExperimentEnrollment({
+    enrollmentRef: enrollmentValue,
+    requestId: suppliedRequestId = null,
+    online = globalThis.navigator?.onLine !== false
+  } = {}) {
+    this.#requireOnlineExperiment(online);
+    const enrollmentRef = text(enrollmentValue).toLowerCase();
+    if (!UUID_PATTERN.test(enrollmentRef)) throw new TypeError("Vínculo experimental inválido.");
+    const previous = (await this.#readExperimentEnrollmentHandles())
+      .find((entry) => entry.enrollmentRef === enrollmentRef) || null;
+    const response = await this.#executeWithReplay("ingressarEmExperimentoInstrucional", {
+      operation: "withdraw",
+      enrollmentRef,
+      requestId: suppliedRequestId || requestId()
+    });
+    const projected = projectedExperimentEnrollment(response);
+    if (projected.enrollmentRef !== enrollmentRef || projected.status !== "withdrawn" ||
+        projected.selection !== null) {
+      throw new Error("A retirada experimental não confirmou a revogação da seleção.");
+    }
+    const courseId = previous?.selection?.courseId;
+    this.#withdrawnEnrollmentRefs.add(enrollmentRef);
+    let tombstoneStored = false;
+    try {
+      await this.#writeExperimentEnrollmentHandle(projected, { pendingPurgeCourseId: courseId });
+      tombstoneStored = true;
+    } catch {
+      // A resposta corrente permanece retirada em memória e a seleção é purgada abaixo.
+    }
+    if (courseId && typeof this.#store?.removeOfficialCourseReplica === "function") {
+      try {
+        await this.#store.removeOfficialCourseReplica(courseId, { removeSelection: true });
+        if (tombstoneStored) await this.#writeExperimentEnrollmentHandle(projected);
+      } catch {
+        // O marcador persistido impede reexposição e agenda nova tentativa ao reler os vínculos.
+      }
+    }
+    return projected;
+  }
+
   async #continuityMutation({
     workspace,
     expectedRevision,
@@ -492,6 +851,620 @@ export class AuthoringWorkspaceClient {
       expectedRevision: revision(expectedRevision),
       operation,
       ...argumentsValue
+    });
+  }
+
+  async #experimentMutation({
+    workspace,
+    operation,
+    expectedExperimentRevision,
+    expectedWorkspaceRevision = null,
+    mutationRequestId = requestId(),
+    ...argumentsValue
+  }) {
+    const response = await this.#executeWithReplay("gerirExperimentoInstrucional", {
+      operation,
+      requestId: mutationRequestId,
+      workspaceId: workspace,
+      expectedExperimentRevision: nonNegativeRevision(expectedExperimentRevision),
+      ...(expectedWorkspaceRevision == null
+        ? {}
+        : { expectedWorkspaceRevision: revision(expectedWorkspaceRevision) }),
+      ...argumentsValue
+    });
+    if (response?.workspaceId != null && text(response.workspaceId).toLowerCase() !== workspace) {
+      throw new Error("O experimento devolveu um recibo de outro workspace.");
+    }
+    return response;
+  }
+
+  async listAuthoringExperiments({
+    workspaceId: workspaceValue,
+    experimentSetRef = null,
+    cursor = null,
+    limit = 20,
+    online = globalThis.navigator?.onLine !== false
+  } = {}) {
+    const workspace = workspaceId(workspaceValue);
+    const normalizedLimit = Number(limit);
+    if (!Number.isSafeInteger(normalizedLimit) || normalizedLimit < 1 || normalizedLimit > 50) {
+      throw new TypeError("Limite da lista experimental inválido.");
+    }
+    const normalizedExperimentSetRef = experimentSetRef == null
+      ? null
+      : normalizeVersionedRef(experimentSetRef, "Conjunto de experimentos");
+    const paged = cursor != null;
+    if (paged && (!text(cursor) || !normalizedExperimentSetRef)) {
+      throw new TypeError("Cursor da lista experimental exige o conjunto ancorado.");
+    }
+    const userId = this.#userId();
+    const key = experimentListCacheKey(userId, workspace);
+    const readStartedAt = Date.now();
+    const canReadRemote = online && globalThis.navigator?.onLine !== false;
+    if (!canReadRemote) {
+      if (paged) throw new Error("Conecte-se para carregar mais experimentos.");
+      const cached = await this.#readExperimentSnapshot(
+        key,
+        AUTHORING_EXPERIMENT_LIST_CACHE_CONTRACT,
+        workspace
+      );
+      if (!cached) throw new Error("Conecte-se uma vez para consultar os experimentos offline.");
+      return cached;
+    }
+    let response;
+    try {
+      response = await this.#executeRemote("gerirExperimentoInstrucional", {
+        operation: "list",
+        workspaceId: workspace,
+        limit: normalizedLimit,
+        ...(normalizedExperimentSetRef ? { experimentSetRef: normalizedExperimentSetRef } : {}),
+        ...(paged ? { cursor: text(cursor) } : {})
+      });
+    } catch (error) {
+      if (!transportFailure(error) || paged) throw error;
+      const cached = await this.#readExperimentSnapshot(
+        key,
+        AUTHORING_EXPERIMENT_LIST_CACHE_CONTRACT,
+        workspace
+      );
+      if (!cached) throw error;
+      return cached;
+    }
+    const source = response?.experiments || response?.result?.experiments || response;
+    if (response?.workspaceId != null && text(response.workspaceId).toLowerCase() !== workspace) {
+      throw new Error("A lista experimental pertence a outro workspace.");
+    }
+    if (!Array.isArray(source?.items || source?.experiments)) {
+      throw new Error("A lista de experimentos devolveu uma resposta incompleta.");
+    }
+    const echoedExperimentSetRef = normalizeVersionedRef(
+      response?.experimentSetRef ?? source?.experimentSetRef,
+      "Conjunto de experimentos"
+    );
+    if (normalizedExperimentSetRef && !isSameRef(echoedExperimentSetRef, normalizedExperimentSetRef)) {
+      throw new Error("O conjunto de experimentos mudou durante a paginação.");
+    }
+    const workspaceRevision = revision(
+      response?.workspaceRevision ?? source?.workspaceRevision ?? response?.revision ?? source?.revision
+    );
+    if (paged) return { ...response, stale: false, cacheWriteFailed: false };
+    let cacheWriteFailed = false;
+    let effectiveResponse = response;
+    try {
+      const written = await this.#writeExperimentSnapshot({
+        key,
+        contract: AUTHORING_EXPERIMENT_LIST_CACHE_CONTRACT,
+        workspace,
+        workspaceRevision,
+        snapshot: response,
+        readStartedAt
+      });
+      if (written?.snapshot) effectiveResponse = written.snapshot;
+      else if (written === undefined) {
+        effectiveResponse = await this.#readExperimentSnapshot(
+          key,
+          AUTHORING_EXPERIMENT_LIST_CACHE_CONTRACT,
+          workspace
+        ) || response;
+      }
+    } catch {
+      cacheWriteFailed = true;
+    }
+    return { ...effectiveResponse, stale: false, cacheWriteFailed };
+  }
+
+  async loadAuthoringExperiment({
+    workspaceId: workspaceValue,
+    experimentId: experimentValue,
+    section: sectionValue = "overview",
+    protocolRevision = null,
+    variantSetRef = null,
+    variantCursor = null,
+    variantLimit = 10,
+    differenceSetRef = null,
+    differenceRunCursor = null,
+    differenceRunLimit = 20,
+    differenceRunRef = null,
+    differenceCursor = null,
+    differenceLimit = 20,
+    participantSetRef = null,
+    participantCursor = null,
+    participantLimit = 20,
+    online = globalThis.navigator?.onLine !== false
+  } = {}) {
+    const workspace = workspaceId(workspaceValue);
+    const experiment = boundedIdentifier(experimentValue, "Experimento");
+    const section = text(sectionValue) || "overview";
+    if (!EXPERIMENT_READ_SECTIONS.has(section)) {
+      throw new TypeError("Seção experimental inválida.");
+    }
+    const boundedPageLimit = (value, label, maximum = 20) => {
+      const normalized = Number(value);
+      if (!Number.isSafeInteger(normalized) || normalized < 1 || normalized > maximum) {
+        throw new TypeError(`${label} inválido.`);
+      }
+      return normalized;
+    };
+    const normalizedProtocolRevision = protocolRevision == null
+      ? null
+      : revision(protocolRevision);
+    const normalizedVariantSetRef = variantSetRef == null
+      ? null
+      : normalizeVersionedRef(variantSetRef, "Conjunto de variantes");
+    const normalizedDifferenceRunRef = differenceRunRef == null
+      ? null
+      : normalizeVersionedRef(differenceRunRef, "Rodada de diferenças");
+    const normalizedDifferenceSetRef = differenceSetRef == null
+      ? null
+      : normalizeVersionedRef(differenceSetRef, "Conjunto de comparações");
+    const normalizedParticipantSetRef = participantSetRef == null
+      ? null
+      : normalizeVersionedRef(participantSetRef, "Fila de participantes");
+    const normalizedVariantLimit = boundedPageLimit(variantLimit, "Limite de variantes", 10);
+    const normalizedDifferenceLimit = boundedPageLimit(differenceLimit, "Limite de diferenças");
+    const normalizedDifferenceRunLimit = boundedPageLimit(differenceRunLimit, "Limite de comparações");
+    const normalizedParticipantLimit = boundedPageLimit(participantLimit, "Limite de participantes");
+    if (variantCursor != null && (!text(variantCursor) || !normalizedVariantSetRef)) {
+      throw new TypeError("Cursor de variantes exige o conjunto ancorado.");
+    }
+    if (differenceCursor != null && (!text(differenceCursor) || !normalizedDifferenceRunRef)) {
+      throw new TypeError("Cursor de diferenças exige a rodada ancorada.");
+    }
+    if (differenceRunCursor != null && (!text(differenceRunCursor) || !normalizedDifferenceSetRef)) {
+      throw new TypeError("Cursor de comparações exige o conjunto ancorado.");
+    }
+    if (normalizedDifferenceSetRef && normalizedDifferenceRunRef) {
+      throw new TypeError("Escolha a página de comparações ou os hunks de uma rodada.");
+    }
+    if (participantCursor != null && (!text(participantCursor) || !normalizedParticipantSetRef)) {
+      throw new TypeError("Cursor de participantes exige a fila ancorada.");
+    }
+    if (section !== "protocol" && normalizedProtocolRevision != null) {
+      throw new TypeError("A revisão de protocolo exige a seção de protocolo.");
+    }
+    if (section !== "variants" && (variantSetRef != null || variantCursor != null)) {
+      throw new TypeError("A paginação de variantes exige a seção de variantes.");
+    }
+    if (section !== "differences" && (differenceSetRef != null || differenceRunCursor != null ||
+        differenceRunRef != null || differenceCursor != null)) {
+      throw new TypeError("A paginação de diferenças exige a seção de diferenças.");
+    }
+    if (section !== "participants" && (participantSetRef != null || participantCursor != null)) {
+      throw new TypeError("A paginação de participantes exige a seção de participantes.");
+    }
+    const userId = this.#userId();
+    const cacheable = section === "overview" || (section === "protocol" && normalizedProtocolRevision == null);
+    const key = experimentSectionCacheKey(userId, workspace, experiment, section);
+    const readStartedAt = Date.now();
+    const canReadRemote = online && globalThis.navigator?.onLine !== false;
+    if (!canReadRemote) {
+      if (!cacheable) {
+        throw new Error("Conecte-se para carregar esta seção progressiva do experimento.");
+      }
+      const cached = await this.#readExperimentSnapshot(
+        key,
+        AUTHORING_EXPERIMENT_SECTION_CACHE_CONTRACT,
+        workspace,
+        experiment
+      );
+      if (!cached) throw new Error("Conecte-se uma vez para consultar este experimento offline.");
+      if (section === "protocol") {
+        const overview = await this.#readExperimentSnapshot(
+          experimentSectionCacheKey(userId, workspace, experiment, "overview"),
+          AUTHORING_EXPERIMENT_SECTION_CACHE_CONTRACT,
+          workspace,
+          experiment
+        );
+        const cachedRevision = Number((cached.experiment || cached.result?.experiment)?.experimentRevision);
+        const overviewRevision = Number((overview?.experiment || overview?.result?.experiment)?.experimentRevision);
+        if (overview && cachedRevision !== overviewRevision) {
+          throw new Error("O protocolo offline pertence a outra revisão do experimento.");
+        }
+      }
+      return cached;
+    }
+    let response;
+    try {
+      response = await this.#executeRemote("gerirExperimentoInstrucional", {
+        operation: "read",
+        workspaceId: workspace,
+        experimentId: experiment,
+        section,
+        ...(section === "protocol" && normalizedProtocolRevision != null
+          ? { protocolRevision: normalizedProtocolRevision }
+          : {}),
+        ...(section === "variants" ? {
+          variantLimit: normalizedVariantLimit,
+          ...(normalizedVariantSetRef ? { variantSetRef: normalizedVariantSetRef } : {}),
+          ...(variantCursor == null ? {} : { variantCursor: text(variantCursor) })
+        } : {}),
+        ...(section === "differences" ? {
+          ...(normalizedDifferenceRunRef ? { differenceLimit: normalizedDifferenceLimit } : {
+            differenceRunLimit: normalizedDifferenceRunLimit
+          }),
+          ...(normalizedDifferenceSetRef ? { differenceSetRef: normalizedDifferenceSetRef } : {}),
+          ...(differenceRunCursor == null ? {} : { differenceRunCursor: text(differenceRunCursor) }),
+          ...(normalizedDifferenceRunRef ? { differenceRunRef: normalizedDifferenceRunRef } : {}),
+          ...(differenceCursor == null ? {} : { differenceCursor: text(differenceCursor) })
+        } : {}),
+        ...(section === "participants" ? {
+          participantLimit: normalizedParticipantLimit,
+          ...(normalizedParticipantSetRef ? { participantSetRef: normalizedParticipantSetRef } : {}),
+          ...(participantCursor == null ? {} : { participantCursor: text(participantCursor) })
+        } : {})
+      });
+    } catch (error) {
+      if (!transportFailure(error)) throw error;
+      if (!cacheable) throw error;
+      const cached = await this.#readExperimentSnapshot(
+        key,
+        AUTHORING_EXPERIMENT_SECTION_CACHE_CONTRACT,
+        workspace,
+        experiment
+      );
+      if (!cached) throw error;
+      return cached;
+    }
+    const result = response?.experiment || response?.result?.experiment;
+    if (response?.workspaceId != null && text(response.workspaceId).toLowerCase() !== workspace) {
+      throw new Error("O experimento lido pertence a outro workspace.");
+    }
+    if (!result || boundedIdentifier(result.experimentId || result.id, "Experimento") !== experiment) {
+      throw new Error("A leitura experimental devolveu uma identidade incompatível.");
+    }
+    if (text(result.section) !== section) {
+      throw new Error("A leitura experimental devolveu outra seção.");
+    }
+    const workspaceRevision = revision(
+      response?.workspaceRevision ?? result?.workspaceRevision ?? response?.revision
+    );
+    const experimentRevision = revision(result.experimentRevision ?? result.revision);
+    const assertPage = (refValue, requestedRef, label) => {
+      const echoedRef = normalizeVersionedRef(refValue, label);
+      if (requestedRef && (echoedRef.id !== requestedRef.id || echoedRef.version !== requestedRef.version)) {
+        throw new Error(`A página de ${label.toLowerCase()} mudou durante a leitura.`);
+      }
+      if (!Array.isArray(result.items)) {
+        throw new Error(`A página de ${label.toLowerCase()} está incompleta.`);
+      }
+    };
+    if (section === "variants") assertPage(result.variantSetRef, normalizedVariantSetRef, "Variantes");
+    if (section === "differences") {
+      if (!new Set(["runs", "hunks"]).has(text(result.mode))) {
+        throw new Error("A página de diferenças não declarou o modo de leitura.");
+      }
+      if (text(result.mode) === "hunks") {
+        assertPage(result.differenceRunRef, normalizedDifferenceRunRef, "Diferenças");
+      } else if (normalizedDifferenceRunRef) {
+        throw new Error("A rodada de diferenças não foi ancorada.");
+      } else {
+        assertPage(result.differenceSetRef, normalizedDifferenceSetRef, "Comparações");
+      }
+    }
+    if (section === "participants") {
+      assertPage(result.participantSetRef, normalizedParticipantSetRef, "Participantes");
+    }
+    if (!cacheable) return { ...response, stale: false, cacheWriteFailed: false };
+    const cacheWriteFailed = await this.#bestEffortCache(() => this.#writeExperimentSnapshot({
+      key,
+      contract: AUTHORING_EXPERIMENT_SECTION_CACHE_CONTRACT,
+      workspace,
+      experimentId: experiment,
+      workspaceRevision,
+      experimentRevision,
+      snapshot: response,
+      readStartedAt
+    }));
+    return { ...response, stale: false, cacheWriteFailed };
+  }
+
+  async loadAuthoringExperimentOptionPage({
+    workspaceId: workspaceValue,
+    kind,
+    optionsSetRef = null,
+    cursor = null,
+    limit = 50,
+    query = "",
+    online = globalThis.navigator?.onLine !== false
+  } = {}) {
+    this.#requireOnlineExperiment(online);
+    const workspace = workspaceId(workspaceValue);
+    const normalizedKind = text(kind);
+    const normalizedOptionsSetRef = optionsSetRef == null
+      ? null
+      : normalizeVersionedRef(optionsSetRef, "Snapshot das opções experimentais");
+    const normalizedLimit = Number(limit);
+    const normalizedQuery = text(query);
+    if (!EXPERIMENT_OPTION_KINDS.has(normalizedKind)) {
+      throw new TypeError("Categoria de opções experimentais inválida.");
+    }
+    if (!Number.isSafeInteger(normalizedLimit) || normalizedLimit < 1 || normalizedLimit > 50) {
+      throw new TypeError("Limite de opções experimentais inválido.");
+    }
+    if (cursor != null && (!text(cursor) || !normalizedOptionsSetRef)) {
+      throw new TypeError("Cursor de opções exige o snapshot ancorado.");
+    }
+    if (normalizedQuery.length > 240) throw new TypeError("Busca de opções muito longa.");
+    const response = await this.#executeRemote("gerirExperimentoInstrucional", {
+      operation: "list_options",
+      workspaceId: workspace,
+      kind: normalizedKind,
+      limit: normalizedLimit,
+      ...(normalizedOptionsSetRef ? { optionsSetRef: normalizedOptionsSetRef } : {}),
+      ...(cursor == null ? {} : { cursor: text(cursor) }),
+      ...(normalizedQuery ? { query: normalizedQuery } : {})
+    });
+    if (text(response?.workspaceId).toLowerCase() !== workspace ||
+        text(response?.kind) !== normalizedKind || !Array.isArray(response?.items)) {
+      throw new Error("A página de opções experimentais devolveu uma resposta incompatível.");
+    }
+    const echoedOptionsSetRef = normalizeVersionedRef(
+      response?.optionsSetRef,
+      "Snapshot das opções experimentais"
+    );
+    if (normalizedOptionsSetRef && !isSameRef(echoedOptionsSetRef, normalizedOptionsSetRef)) {
+      throw new Error("O snapshot das opções experimentais mudou durante a paginação.");
+    }
+    revision(response.workspaceRevision);
+    return response;
+  }
+
+  async saveAuthoringExperimentProtocol({
+    workspaceId: workspaceValue,
+    experimentId: experimentValue = null,
+    expectedExperimentRevision,
+    protocol,
+    requestId: suppliedRequestId = null,
+    online = globalThis.navigator?.onLine !== false
+  } = {}) {
+    this.#requireOnlineExperiment(online);
+    if (!protocol || typeof protocol !== "object" || Array.isArray(protocol)) {
+      throw new TypeError("Protocolo experimental inválido.");
+    }
+    const workspace = workspaceId(workspaceValue);
+    return this.#experimentMutation({
+      workspace,
+      operation: "save_protocol",
+      expectedExperimentRevision,
+      mutationRequestId: suppliedRequestId || requestId(),
+      ...(experimentValue == null
+        ? {}
+        : { experimentId: boundedIdentifier(experimentValue, "Experimento") }),
+      protocol: structuredClone(protocol)
+    });
+  }
+
+  validateAuthoringExperiment({
+    workspaceId: workspaceValue,
+    experimentId: experimentValue,
+    expectedExperimentRevision,
+    expectedWorkspaceRevision,
+    requestId: suppliedRequestId = null,
+    online = globalThis.navigator?.onLine !== false
+  } = {}) {
+    this.#requireOnlineExperiment(online);
+    return this.#experimentMutation({
+      workspace: workspaceId(workspaceValue),
+      operation: "validate",
+      experimentId: boundedIdentifier(experimentValue, "Experimento"),
+      expectedExperimentRevision,
+      expectedWorkspaceRevision,
+      mutationRequestId: suppliedRequestId || requestId()
+    });
+  }
+
+  generateAuthoringExperimentVariants({
+    workspaceId: workspaceValue,
+    experimentId: experimentValue,
+    expectedExperimentRevision,
+    expectedWorkspaceRevision,
+    requestId: suppliedRequestId = null,
+    online = globalThis.navigator?.onLine !== false
+  } = {}) {
+    this.#requireOnlineExperiment(online);
+    return this.#experimentMutation({
+      workspace: workspaceId(workspaceValue),
+      operation: "generate_variants",
+      experimentId: boundedIdentifier(experimentValue, "Experimento"),
+      expectedExperimentRevision,
+      expectedWorkspaceRevision,
+      mutationRequestId: suppliedRequestId || requestId()
+    });
+  }
+
+  decideAuthoringExperimentDifference({
+    workspaceId: workspaceValue,
+    experimentId: experimentValue,
+    differenceRunRef,
+    differenceRef,
+    decision,
+    note = "",
+    participantContinuity = null,
+    expectedExperimentRevision,
+    requestId: suppliedRequestId = null,
+    online = globalThis.navigator?.onLine !== false
+  } = {}) {
+    this.#requireOnlineExperiment(online);
+    const normalizedDecision = text(decision).toLowerCase();
+    if (!["correct", "accept", "invalidate"].includes(normalizedDecision)) {
+      throw new TypeError("Decisão sobre diferença experimental inválida.");
+    }
+    const normalizedContinuity = participantContinuity == null ? "" : text(participantContinuity);
+    if (normalizedContinuity &&
+        (normalizedDecision !== "correct" || normalizedContinuity !== "retain_existing")) {
+      throw new TypeError("Continuidade de participantes inválida para esta decisão.");
+    }
+    const normalizedNote = text(note);
+    if (normalizedNote.length > 2000) throw new TypeError("Nota experimental excede o limite.");
+    if (["accept", "invalidate"].includes(normalizedDecision) && !normalizedNote) {
+      throw new TypeError("Aceitar ou invalidar uma diferença exige justificativa.");
+    }
+    return this.#experimentMutation({
+      workspace: workspaceId(workspaceValue),
+      operation: "decide_difference",
+      experimentId: boundedIdentifier(experimentValue, "Experimento"),
+      differenceRunRef: normalizeVersionedRef(differenceRunRef, "Rodada de diferenças"),
+      differenceRef: normalizeVersionedRef(differenceRef, "Diferença"),
+      decision: normalizedDecision,
+      ...(normalizedContinuity ? { participantContinuity: normalizedContinuity } : {}),
+      ...(normalizedNote ? { note: normalizedNote } : {}),
+      expectedExperimentRevision,
+      mutationRequestId: suppliedRequestId || requestId()
+    });
+  }
+
+  requestAuthoringExperimentCorrection({
+    workspaceId: workspaceValue,
+    experimentId: experimentValue,
+    variantRevisionRef,
+    reason,
+    participantContinuity,
+    expectedExperimentRevision,
+    expectedWorkspaceRevision,
+    requestId: suppliedRequestId = null,
+    online = globalThis.navigator?.onLine !== false
+  } = {}) {
+    this.#requireOnlineExperiment(online);
+    const normalizedReason = text(reason);
+    if (!normalizedReason || normalizedReason.length > 2000) {
+      throw new TypeError("A correção exige uma justificativa de até 2.000 caracteres.");
+    }
+    if (participantContinuity !== "retain_existing") {
+      throw new TypeError("Confirme a continuidade das atribuições existentes.");
+    }
+    return this.#experimentMutation({
+      workspace: workspaceId(workspaceValue),
+      operation: "request_correction",
+      experimentId: boundedIdentifier(experimentValue, "Experimento"),
+      variantRevisionRef: normalizeVersionedRef(variantRevisionRef, "Revisão da variante"),
+      reason: normalizedReason,
+      participantContinuity,
+      expectedExperimentRevision,
+      expectedWorkspaceRevision,
+      mutationRequestId: suppliedRequestId || requestId()
+    });
+  }
+
+  freezeAuthoringExperiment({
+    workspaceId: workspaceValue,
+    experimentId: experimentValue,
+    variantRevisionRef,
+    expectedExperimentRevision,
+    expectedWorkspaceRevision,
+    requestId: suppliedRequestId = null,
+    online = globalThis.navigator?.onLine !== false
+  } = {}) {
+    this.#requireOnlineExperiment(online);
+    return this.#experimentMutation({
+      workspace: workspaceId(workspaceValue),
+      operation: "freeze",
+      experimentId: boundedIdentifier(experimentValue, "Experimento"),
+      variantRevisionRef: normalizeVersionedRef(variantRevisionRef, "Revisão da variante"),
+      expectedExperimentRevision,
+      expectedWorkspaceRevision,
+      mutationRequestId: suppliedRequestId || requestId()
+    });
+  }
+
+  startAuthoringExperimentCollection({
+    workspaceId: workspaceValue,
+    experimentId: experimentValue,
+    expectedExperimentRevision,
+    requestId: suppliedRequestId = null,
+    online = globalThis.navigator?.onLine !== false
+  } = {}) {
+    this.#requireOnlineExperiment(online);
+    return this.#experimentMutation({
+      workspace: workspaceId(workspaceValue),
+      operation: "start_collection",
+      experimentId: boundedIdentifier(experimentValue, "Experimento"),
+      expectedExperimentRevision,
+      mutationRequestId: suppliedRequestId || requestId()
+    });
+  }
+
+  rotateAuthoringExperimentEnrollmentCode({
+    workspaceId: workspaceValue,
+    experimentId: experimentValue,
+    expectedExperimentRevision,
+    requestId: suppliedRequestId = null,
+    online = globalThis.navigator?.onLine !== false
+  } = {}) {
+    this.#requireOnlineExperiment(online);
+    return this.#experimentMutation({
+      workspace: workspaceId(workspaceValue),
+      operation: "rotate_enrollment_code",
+      experimentId: boundedIdentifier(experimentValue, "Experimento"),
+      expectedExperimentRevision,
+      mutationRequestId: suppliedRequestId || requestId()
+    });
+  }
+
+  transitionAuthoringExperimentCollection({
+    workspaceId: workspaceValue,
+    experimentId: experimentValue,
+    transition,
+    expectedExperimentRevision,
+    requestId: suppliedRequestId = null,
+    online = globalThis.navigator?.onLine !== false
+  } = {}) {
+    this.#requireOnlineExperiment(online);
+    const normalizedTransition = text(transition).toLowerCase();
+    if (!["pause", "resume", "close", "invalidate"].includes(normalizedTransition)) {
+      throw new TypeError("Transição da coleta experimental inválida.");
+    }
+    return this.#experimentMutation({
+      workspace: workspaceId(workspaceValue),
+      operation: "transition_collection",
+      experimentId: boundedIdentifier(experimentValue, "Experimento"),
+      transition: normalizedTransition,
+      expectedExperimentRevision,
+      mutationRequestId: suppliedRequestId || requestId()
+    });
+  }
+
+  assignAuthoringExperimentParticipant({
+    workspaceId: workspaceValue,
+    experimentId: experimentValue,
+    enrollmentRef: enrollmentValue,
+    conditionRef = null,
+    expectedExperimentRevision,
+    requestId: suppliedRequestId = null,
+    online = globalThis.navigator?.onLine !== false
+  } = {}) {
+    this.#requireOnlineExperiment(online);
+    const enrollmentRef = text(enrollmentValue).toLowerCase();
+    if (!UUID_PATTERN.test(enrollmentRef)) throw new TypeError("Ingresso pseudônimo inválido.");
+    return this.#experimentMutation({
+      workspace: workspaceId(workspaceValue),
+      operation: "assign_participant",
+      experimentId: boundedIdentifier(experimentValue, "Experimento"),
+      enrollmentRef,
+      ...(conditionRef == null
+        ? {}
+        : { conditionRef: normalizeVersionedRef(conditionRef, "Condição experimental") }),
+      expectedExperimentRevision,
+      mutationRequestId: suppliedRequestId || requestId()
     });
   }
 

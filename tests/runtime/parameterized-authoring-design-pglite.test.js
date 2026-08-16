@@ -1,7 +1,9 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import fs from "node:fs/promises";
-import test from "node:test";
+import path from "node:path";
+import testRunner from "node:test";
+import { fileURLToPath } from "node:url";
 
 import { PGlite } from "@electric-sql/pglite";
 
@@ -27,27 +29,35 @@ const auditMigrationUrl = new URL(
   "../../supabase/migrations/20260815235900_authoring_design_conformance_audit.sql",
   import.meta.url
 );
+const experimentMigrationUrl = new URL(
+  "../../supabase/migrations/20260816120000_parameterized_authoring_experiments.sql",
+  import.meta.url
+);
 
 const ACTOR = "10000000-0000-4000-8000-000000000001";
 const AUTHOR_ONLY = "10000000-0000-4000-8000-000000000002";
 const WORKSPACE = "20000000-0000-4000-8000-000000000001";
+const test = process.argv[1]
+  && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)
+  ? testRunner
+  : () => {};
 
 function hash(character) {
   return character.repeat(64);
 }
 
-async function scalar(database, sql, parameters = []) {
+export async function scalar(database, sql, parameters = []) {
   const result = await database.query(sql, parameters);
   return result.rows[0]?.value;
 }
 
-async function mutationHash(_database, operation, payload) {
+export async function mutationHash(_database, operation, payload) {
   return createHash("sha256")
     .update(canonicalJsonStringify({ operation, payload }))
     .digest("hex");
 }
 
-function analysisPayload(revision = 1, overrides = {}) {
+export function analysisPayload(revision = 1, overrides = {}) {
   return {
     contract: "InstructionalAnalysis@1",
     modelVersion: "1.0.0",
@@ -111,7 +121,7 @@ function analysisPayload(revision = 1, overrides = {}) {
   };
 }
 
-function pedagogicalBlueprintV2() {
+export function pedagogicalBlueprintV2() {
   return {
     goal: "Distinguir relações causais de associações.",
     learnerSituation: "Pessoa autodidata iniciante.",
@@ -160,7 +170,7 @@ function pedagogicalBlueprintV2() {
   };
 }
 
-function pedagogicalBlueprintBinding() {
+export function pedagogicalBlueprintBinding() {
   return {
     contract: "PedagogicalBlueprintBinding@1",
     id: "binding-a",
@@ -192,7 +202,7 @@ function pedagogicalBlueprintBinding() {
   };
 }
 
-async function setupDatabase() {
+export async function setupDatabase() {
   const database = new PGlite();
   await database.exec(`
     create schema private;
@@ -224,7 +234,7 @@ async function setupDatabase() {
 
     create table private.authoring_workspaces(
       id uuid primary key,
-      owner_id uuid not null references auth.users(id),
+      owner_id uuid not null references auth.users(id) on delete cascade,
       title text not null,
       revision bigint not null default 1,
       brief text not null default '',
@@ -251,7 +261,7 @@ async function setupDatabase() {
       primary key(workspace_id, entity_type, entity_id)
     );
     create table private.authoring_workspace_requests(
-      owner_id uuid not null references auth.users(id),
+      owner_id uuid not null references auth.users(id) on delete cascade,
       request_id text not null,
       operation text not null,
       payload_hash text not null,
@@ -279,7 +289,7 @@ async function setupDatabase() {
       revision bigint not null,
       operation text not null,
       summary jsonb not null,
-      actor_id uuid references auth.users(id),
+      actor_id uuid references auth.users(id) on delete set null,
       created_at timestamptz not null default now(),
       unique(workspace_id,revision),
       constraint authoring_workspace_events_operation_v5 check(operation in (
@@ -552,7 +562,7 @@ async function setupDatabase() {
   return database;
 }
 
-async function saveAnalysis(database, revision = 1, overrides = {}) {
+export async function saveAnalysis(database, revision = 1, overrides = {}) {
   const analysis = analysisPayload(revision, overrides);
   const payloadHash = await mutationHash(
     database, "save_instructional_analysis", analysis
@@ -571,7 +581,7 @@ async function saveAnalysis(database, revision = 1, overrides = {}) {
   ]);
 }
 
-async function saveResourceSet(database, revision, {
+export async function saveResourceSet(database, revision, {
   id = "resource-set-a",
   version = "1.0.0",
   scope = { kind: "workspace", ref: WORKSPACE },
@@ -621,7 +631,7 @@ async function saveResourceSet(database, revision, {
   ]);
 }
 
-async function setAssignment(database, revision, {
+export async function setAssignment(database, revision, {
   id,
   version = "1.0.0",
   parameterId,
@@ -698,8 +708,8 @@ async function removeAssignment(database, revision, {
   ]);
 }
 
-const MICRO_SCOPE = Object.freeze({ kind: "microsequence", ref: "micro-a" });
-const PARAMETER_VALUES = Object.freeze([
+export const MICRO_SCOPE = Object.freeze({ kind: "microsequence", ref: "micro-a" });
+export const PARAMETER_VALUES = Object.freeze([
   ["new_units_per_theory_step_ceiling", { kind: "integer", value: 2 }],
   ["simultaneous_new_units_per_coordination_set_ceiling", { kind: "integer", value: 2 }],
   ["applicable_explanation_requirement_refs", {
@@ -3111,6 +3121,147 @@ test("GC é limitado, preserva referências e o resolver atende curso grande", a
     `, [ACTOR, WORKSPACE]);
     assert.equal(largeState.analysisState, "unresolved");
     assert.equal(largeState.resourceAvailabilityState, "unresolved");
+  } finally {
+    await database.close();
+  }
+});
+
+test("migration #107 instala o control plane experimental sobre #106", async () => {
+  const database = await setupDatabase();
+  try {
+    await database.exec(`
+      alter table private.authoring_workspaces
+        add column if not exists purpose text not null default 'authoring',
+        add column if not exists workspace_kind text not null default 'course_authoring',
+        add column if not exists visibility text not null default 'private',
+        add column if not exists source_course_id uuid;
+
+      create table if not exists private.educational_workspace_members(
+        workspace_id uuid not null references private.authoring_workspaces(id),
+        user_id uuid not null references auth.users(id),
+        role text not null,
+        granted_by uuid references auth.users(id),
+        joined_at timestamptz not null default now(),
+        updated_at timestamptz not null default now(),
+        primary key(workspace_id,user_id)
+      );
+      insert into private.educational_workspace_members(
+        workspace_id,user_id,role,granted_by
+      ) values('${WORKSPACE}','${ACTOR}','owner','${ACTOR}')
+      on conflict do nothing;
+
+      create table if not exists private.artifact_refs(
+        hash text primary key,
+        created_at timestamptz not null default now()
+      );
+      create or replace function auth.uid()
+      returns uuid language sql stable as $$ select null::uuid $$;
+      create or replace function extensions.gen_random_uuid()
+      returns uuid language sql volatile as $$ select gen_random_uuid() $$;
+      create table public.courses(
+        id uuid primary key,
+        owner_id uuid references auth.users(id),
+        status text not null,
+        contract_key text not null,
+        title text not null,
+        goal text not null default '',
+        contract_scope text,
+        project_id uuid,
+        position integer not null default 0,
+        content_hash text,
+        current_revision_hash text,
+        revision_artifact_hash text,
+        module_count integer not null default 0,
+        lesson_count integer not null default 0,
+        microsequence_count integer not null default 0,
+        card_count integer not null default 0,
+        document_storage_enabled boolean not null default true,
+        completion_state text not null default 'complete',
+        deleted_at timestamptz,
+        updated_at timestamptz not null default now()
+      );
+      create table private.course_revisions(
+        course_id uuid not null references public.courses(id),
+        revision_hash text not null,
+        artifact_hash text not null references private.artifact_refs(hash),
+        base_revision_hash text,
+        validation_status text not null,
+        validated_at timestamptz,
+        published_at timestamptz,
+        created_by uuid references auth.users(id),
+        primary key(course_id,revision_hash)
+      );
+      create table private.authoring_workspace_publications(
+        workspace_id uuid not null references private.authoring_workspaces(id),
+        workspace_course_id text not null,
+        target text not null,
+        course_id uuid not null references public.courses(id),
+        content_hash text not null references private.artifact_refs(hash),
+        updated_at timestamptz not null default now(),
+        primary key(workspace_id,workspace_course_id,target)
+      );
+      create table public.user_course_selections(
+        id uuid primary key default gen_random_uuid(),
+        user_id uuid not null references auth.users(id),
+        course_id uuid not null references public.courses(id),
+        position integer not null default 0,
+        updated_at timestamptz not null default now(),
+        unique(user_id,course_id)
+      );
+      create table public.catalog_collection_courses(
+        collection_id uuid not null,
+        course_id uuid not null references public.courses(id),
+        position integer not null default 0,
+        deleted_at timestamptz,
+        unique(collection_id,course_id)
+      );
+      create table private.catalog_review_submissions(
+        id uuid primary key default gen_random_uuid(),
+        artifact_hash text,
+        source_course_id uuid,
+        official_course_id uuid
+      );
+      create table private.course_revision_sync_changes(
+        id bigint generated always as identity primary key,
+        user_id uuid,
+        scope text not null,
+        entity_id uuid not null,
+        operation text not null,
+        revision_hash text
+      );
+      create or replace function private.can_publish_catalog_v5(uuid)
+      returns boolean language sql stable as $$ select false $$;
+      create or replace function private.educational_workspace_effective_role_v1(
+        p_workspace_id uuid,p_actor_id uuid
+      ) returns text language sql stable as $$
+        select member.role from private.educational_workspace_members member
+        where member.workspace_id=p_workspace_id and member.user_id=p_actor_id
+      $$;
+      create function public.get_authoring_workspace_v5(
+        p_actor_id uuid,p_workspace_id uuid,p_course_ids text[] default null,
+        p_include_card_content boolean default true
+      ) returns jsonb language sql stable as $$
+        select jsonb_build_object(
+          'workspaceId',p_workspace_id,'capabilities',jsonb_build_object()
+        )
+      $$;
+      create function private.educational_workspace_details_v1(
+        p_actor_id uuid,p_workspace_id uuid
+      ) returns jsonb language sql stable as $$
+        select jsonb_build_object(
+          'workspaceId',p_workspace_id,'capabilities',jsonb_build_object()
+        )
+      $$;
+    `);
+    await database.exec(await fs.readFile(experimentMigrationUrl, "utf8"));
+    assert.equal(await scalar(database, `
+      select count(*)::integer value
+      from private.authoring_research_consent_policy_availability
+      where active
+    `), 1);
+    assert.equal(await scalar(database, `
+      select private.educational_workspace_can_v1($1,$2,'research') value
+    `, [WORKSPACE, ACTOR]), true);
   } finally {
     await database.close();
   }

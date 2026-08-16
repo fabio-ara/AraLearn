@@ -8,6 +8,9 @@ import {
 } from "../../src/authoring/authoringWorkspaceProjection.js";
 import {
   createAuthoringDestinationRegistry,
+  mergeAuthoringExperimentSections,
+  normalizeAuthoringExperiment,
+  normalizeAuthoringExperimentList,
   normalizeAuthoringDesign,
   normalizeAuthoringAuditSlice,
   normalizeAuthoringWorkspaceOverview
@@ -120,6 +123,324 @@ test("registry mantém quatro destinos atuais e aceita Resultados sem alterar o 
   assert.deepEqual(extended.map(({ key }) => key), ["map", "design", "content", "audit", "results"]);
   assert.equal(extended.at(-1).available({ hasData: false }), false);
   assert.equal(extended.at(-1).available({ hasData: true }), true);
+});
+
+test("lista experimental preserva opções bounded e somente bases aprovadas", () => {
+  const result = normalizeAuthoringExperimentList({
+    workspaceId: WORKSPACE_ID,
+    revision: 12,
+    experimentSetRef: { id: "experiment-set", version: "12" },
+    items: [{
+      id: "experiment-a",
+      title: "Novidade por passo",
+      status: "correction_required",
+      protocolRevision: 3,
+      scope: { kind: "lesson", ref: "lesson-a", label: "Lição A" },
+      factorCount: 2,
+      conditionCount: 3,
+      variantCount: 3
+    }],
+    options: {
+      scopes: [{
+        scope: { kind: "course", ref: "course-a" },
+        label: "Curso A",
+        entityPath: ["course-a"]
+      }],
+      bases: [{
+        ref: { id: "base-a", version: "2.0.0" },
+        label: "Base aprovada",
+        approved: true
+      }, {
+        ref: { id: "base-draft", version: "1.0.0" },
+        label: "Base em edição",
+        approved: false
+      }],
+      factorDefinitions: [{
+        ref: { id: "new_units", version: "1.0.0" },
+        label: "Novidade",
+        valueType: "integer",
+        unit: "unidades por passo",
+        constraints: { minimum: 1, maximum: 5 }
+      }, {
+        ref: { id: "available_resources", version: "1.0.0" },
+        label: "Resources disponíveis",
+        kind: "resource_set",
+        targets: [{ kind: "microsequence", ref: "micro-a", label: "Sinais" }]
+      }],
+      resourceSets: [{
+        ref: { id: "resources-a", version: "4.0.0" },
+        label: "Texto e tabela",
+        memberCount: 2
+      }],
+      consentPolicies: [{
+        ref: { id: "consent-a", version: "1.0.0" },
+        label: "Consentimento A"
+      }],
+      instruments: [{ ref: { id: "instrument-a", version: "1.0.0" }, label: "Instrumento A" }],
+      outcomes: [{ ref: { id: "retention-a", version: "1.0.0" }, label: "Retenção" }]
+    }
+  });
+
+  assert.equal(result.workspaceRevision, 12);
+  assert.deepEqual(result.experimentSetRef, { id: "experiment-set", version: "12" });
+  assert.equal(result.items[0].statusLabel, "Correções necessárias");
+  assert.equal(result.items[0].conditionCount, 3);
+  assert.deepEqual(result.options.scopes[0], {
+    kind: "course", ref: "course-a", label: "Curso A", entityPath: ["course-a"]
+  });
+  assert.equal(result.options.bases.length, 1);
+  assert.deepEqual(result.options.bases[0].ref, { id: "base-a", version: "2.0.0" });
+  assert.equal(result.options.factorDefinitions[0].range.min, 1);
+  assert.equal(result.options.factorDefinitions[1].kind, "resource_set");
+  assert.equal(result.options.resourceSets[0].memberCount, 2);
+  assert.equal(result.options.consentPolicies[0].label, "Consentimento A");
+  assert.equal(result.options.outcomes[0].label, "Retenção");
+});
+
+test("detalhe experimental separa Resources permitidos, materializados e diferenças acidentais", () => {
+  const experiment = normalizeAuthoringExperiment({
+    workspaceId: WORKSPACE_ID,
+    revision: 19,
+    experiment: {
+      id: "experiment-a",
+      title: "Disponibilidade de representações",
+      status: "ready",
+      protocolRevision: 4,
+      base: {
+        ref: { id: "base-a", version: "2.0.0" },
+        label: "Base B17",
+        approved: true
+      },
+      scope: { kind: "microsequence", ref: "micro-a", label: "Sinais" },
+      factors: [{
+        factorId: "factor-resources",
+        ref: { id: "available_resources", version: "1.0.0" },
+        label: "Resources disponíveis",
+        kind: "resource_set",
+        targets: [{ kind: "microsequence", ref: "micro-a", label: "Sinais" }]
+      }],
+      conditions: [{
+        id: "condition-a",
+        label: "Condição A",
+        values: [{
+          factorId: "factor-resources",
+          resourceSetRef: { id: "resources-a", version: "4.0.0" },
+          resourceSetLabel: "Texto e tabela",
+          allowedCount: 2
+        }]
+      }],
+      assignment: {
+        rule: "seeded_random",
+        seedConfigured: true,
+        algorithm: "sha256-counter-v1",
+        commitment: "commitment-a"
+      },
+      variants: [{
+        variantRevisionRef: { id: "variant-a", version: "1.0.0" },
+        conditionId: "condition-a",
+        label: "Variante A",
+        status: "audited",
+        allowedResources: {
+          items: [{ ref: { id: "paragraph", version: "1.0.0" }, label: "Parágrafo" }],
+          count: 2,
+          truncated: true
+        },
+        materializedResources: {
+          items: [{ ref: { id: "paragraph", version: "1.0.0" }, label: "Parágrafo" }],
+          count: 1
+        }
+      }],
+      differences: [{
+        differenceRef: { id: "difference-a", version: "1.0.0" },
+        category: "accidental_unplanned",
+        title: "Prática removida",
+        description: "A variante retirou uma prática não manipulada.",
+        decision: "pending"
+      }],
+      actions: { decide: true, requestCorrection: true, freeze: true }
+    }
+  });
+
+  assert.equal(experiment.statusLabel, "Variantes auditadas");
+  assert.equal(experiment.assignment.rule, "seeded_random");
+  assert.equal(experiment.assignment.seedConfigured, true);
+  assert.equal(Object.hasOwn(experiment.assignment, "seed"), false);
+  assert.equal(experiment.conditions[0].values[0].allowedCount, 2);
+  assert.deepEqual(experiment.factors[0].targets.map(({ kind, ref }) => ({ kind, ref })), [
+    { kind: "microsequence", ref: "micro-a" }
+  ]);
+  assert.equal(experiment.variants.items[0].allowedResources.count, 2);
+  assert.equal(experiment.variants.items[0].allowedResources.truncated, true);
+  assert.equal(experiment.variants.items[0].materializedResources.count, 1);
+  assert.equal(experiment.differences.items[0].category, "accidental_unplanned");
+  assert.deepEqual(experiment.differences.items[0].differenceRef, {
+    id: "difference-a", version: "1.0.0"
+  });
+  assert.equal(experiment.actions.freeze, true);
+  assert.equal(experiment.actions.requestCorrection, true);
+});
+
+test("seções reais de variante e diff preservam refs, freeze, proveniência e decisão humana", () => {
+  const overview = normalizeAuthoringExperiment({
+    workspaceId: WORKSPACE_ID,
+    workspaceRevision: 31,
+    experiment: {
+      id: "experiment-service",
+      experimentRevision: 9,
+      section: "overview",
+      title: "Estudo focal",
+      state: "ready",
+      actions: {
+        saveProtocol: true,
+        generateVariants: true,
+        decideDifference: true,
+        requestCorrection: true,
+        startCollection: true,
+        rotateEnrollmentCode: true,
+        transitionCollection: ["pause", "close"],
+        assignParticipant: true
+      }
+    }
+  });
+  const protocol = normalizeAuthoringExperiment({
+    workspaceId: WORKSPACE_ID,
+    workspaceRevision: 31,
+    experiment: {
+      id: "experiment-service",
+      experimentRevision: 9,
+      section: "protocol",
+      protocolRef: { id: "protocol-a", version: "4" },
+      protocolRevision: 4,
+      protocol: {
+        title: "Estudo focal",
+        scope: { kind: "lesson", ref: "lesson-a", label: "Lição A" },
+        conditions: [{
+          conditionId: "condition-a",
+          conditionRef: { id: "condition-a", version: "2" },
+          label: "Condição A",
+          values: []
+        }]
+      }
+    }
+  });
+  const variants = normalizeAuthoringExperiment({
+    workspaceId: WORKSPACE_ID,
+    workspaceRevision: 31,
+    experiment: {
+      id: "experiment-service",
+      experimentRevision: 9,
+      section: "variants",
+      variantSetRef: { id: "variant-set", version: "9" },
+      items: [{
+        variantRevisionRef: { id: "variant-a", version: "3" },
+        baseRef: { id: "base-a", version: "7" },
+        protocolRef: { id: "protocol-a", version: "4" },
+        conditionRef: { id: "condition-a", version: "2" },
+        state: "frozen",
+        frozenAt: "2026-08-16T12:00:00.000Z",
+        workspaceRevision: 44,
+        provenanceHash: "a".repeat(64),
+        provenancePinCount: 8,
+        currentness: { base: true, protocol: true, condition: true },
+        limitationRefs: [{ id: "limitation-a", version: "1" }],
+        readerTarget: {
+          workspaceId: "child-workspace",
+          entityPath: ["course-a", "module-a", "lesson-a", "micro-a"],
+          courseId: "course-a",
+          access: "private",
+          contentHash: "b".repeat(64)
+        }
+      }],
+      count: 1,
+      nextCursor: null,
+      truncated: false
+    }
+  });
+  const runs = normalizeAuthoringExperiment({
+    workspaceId: WORKSPACE_ID,
+    workspaceRevision: 31,
+    experiment: {
+      id: "experiment-service",
+      experimentRevision: 9,
+      section: "differences",
+      mode: "runs",
+      differenceSetRef: { id: "difference-set", version: "9" },
+      differenceRunRef: null,
+      items: [{
+        differenceRef: { id: "difference-run-a", version: "5" },
+        baselineRef: { kind: "base", ref: { id: "base-a", version: "7" } },
+        candidateVariantRevisionRef: { id: "variant-a", version: "3" },
+        state: "classified",
+        hunkCount: 6,
+        classifiedCount: 4
+      }],
+      count: 1,
+      nextCursor: null,
+      truncated: false
+    }
+  });
+  const hunks = normalizeAuthoringExperiment({
+    workspaceId: WORKSPACE_ID,
+    workspaceRevision: 31,
+    experiment: {
+      id: "experiment-service",
+      experimentRevision: 9,
+      section: "differences",
+      mode: "hunks",
+      differenceSetRef: null,
+      differenceRunRef: { id: "difference-run-a", version: "5" },
+      items: [{
+        differenceRef: { id: "hunk-a", version: "2" },
+        path: "M01 / explicação",
+        kind: "content",
+        beforeSummary: "Exemplo textual.",
+        afterSummary: "Exemplo visual.",
+        classification: "directly_required",
+        publicRationale: "Mudança prevista pelo fator.",
+        humanDecision: "accept"
+      }],
+      count: 1,
+      nextCursor: null,
+      truncated: false
+    }
+  });
+
+  const variant = variants.variants.items[0];
+  assert.equal(variant.conditionId, "condition-a");
+  assert.equal(variant.status, "frozen");
+  assert.equal(variant.frozen, true);
+  assert.equal(variant.workspaceRevision, 44);
+  assert.deepEqual(variant.baseRef, { id: "base-a", version: "7" });
+  assert.equal(variant.provenancePinCount, 8);
+  assert.equal(overview.actions.generate, true);
+  assert.equal(overview.actions.decide, true);
+  assert.equal(overview.actions.requestCorrection, true);
+  assert.equal(overview.actions.start, true);
+  assert.equal(overview.actions.rotateCode, true);
+  assert.equal(overview.actions.assign, true);
+  assert.equal(overview.actions.pause, true);
+  assert.deepEqual(protocol.conditions[0].conditionRef, {
+    id: "condition-a", version: "2"
+  });
+
+  const run = runs.differences.items[0];
+  assert.deepEqual(run.differenceRunRef, { id: "difference-run-a", version: "5" });
+  assert.deepEqual(run.baseline.ref, { id: "base-a", version: "7" });
+  assert.equal(run.count, 6);
+  assert.equal(run.pendingCount, 2);
+  assert.deepEqual(runs.differences.differenceSetRef, { id: "difference-set", version: "9" });
+
+  const composed = mergeAuthoringExperimentSections(
+    mergeAuthoringExperimentSections(overview, protocol),
+    hunks
+  );
+  const hunk = composed.differences.items[0];
+  assert.deepEqual(composed.differences.differenceRunRef, { id: "difference-run-a", version: "5" });
+  assert.deepEqual(hunk.differenceRef, { id: "hunk-a", version: "2" });
+  assert.equal(hunk.decision, "accept");
+  assert.equal(hunk.rationale, "Mudança prevista pelo fator.");
+  assert.match(hunk.description, /Antes: Exemplo textual/u);
+  assert.match(hunk.description, /Depois: Exemplo visual/u);
 });
 
 test("mapa usa máscara canônica f/a, activeCount truncado e mantém micros sem Parte", () => {

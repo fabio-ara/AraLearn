@@ -95,13 +95,15 @@ Comece pela tarefa em linguagem comum e só depois avance para os protocolos:
    — análise, parâmetros e manifesto propostos antes da implementação;
 3. [Auditoria de conformidade instrucional](auditoria-de-conformidade-instrucional.md)
    — fatos estruturais, revisão semântica, decisão humana, reparo e reauditoria;
-4. [Autoria e publicação do catálogo](autoria-do-catalogo.md) — workspace,
+4. [Experimentos instrucionais parametrizados](experimentos-instrucionais-parametrizados.md)
+   — base comum, condições, variantes, freeze e atribuição governada;
+5. [Autoria e publicação do catálogo](autoria-do-catalogo.md) — workspace,
    revisão humana, submissão e publicação;
-5. [Assistência por modelo de linguagem](assistencia-por-ia.md) — seleção,
+6. [Assistência por modelo de linguagem](assistencia-por-ia.md) — seleção,
    conversa, versões locais, autoridade e limites;
-6. [Fluxos, instruções e contratos](fluxos-prompts-e-contratos.md) — como texto
+7. [Fluxos, instruções e contratos](fluxos-prompts-e-contratos.md) — como texto
    livre é separado de operações estruturadas;
-7. [Autoria por Model Context Protocol](autoria-mcp.md) — descoberta de
+8. [Autoria por Model Context Protocol](autoria-mcp.md) — descoberta de
    ferramentas, autenticação, chamadas e robustez.
 
 O [plano de controle e artefatos](plano-de-controle-e-artefatos.md) aprofunda a
@@ -121,9 +123,10 @@ resultado empírico:
 
 1. [Fundamentos de pesquisa e governança](fundamentos-pesquisa-e-governanca.md);
 2. [Contribuição e originalidade](contribuicao-originalidade.md);
-3. [Protocolo de avaliação](protocolo-avaliacao-artefato.md);
-4. [Auditoria acadêmica dos recursos](auditoria-academica-dos-resources.md);
-5. [Auditoria do front-end](auditoria-front-end.md).
+3. [Experimentos instrucionais parametrizados](experimentos-instrucionais-parametrizados.md);
+4. [Protocolo de avaliação](protocolo-avaliacao-artefato.md);
+5. [Auditoria acadêmica dos recursos](auditoria-academica-dos-resources.md);
+6. [Auditoria do front-end](auditoria-front-end.md).
 
 O [estado do produto](estado-atual-e-roadmap.md) informa o que está
 implementado, o que ainda requer estabilização e quais questões permanecem
@@ -148,6 +151,7 @@ abertas, sem tratar teste de software como evidência de aprendizagem.
 | [Glossário de construtos](glossario-construtos.md) | termos pedagógicos e metodológicos |
 | [Desenho instrucional parametrizado](desenho-instrucional-parametrizado.md) | análise científica, parâmetros, contratos e persistência interna |
 | [Auditoria de conformidade instrucional](auditoria-de-conformidade-instrucional.md) | checks determinísticos, juízo semântico, findings e reauditoria |
+| [Experimentos instrucionais parametrizados](experimentos-instrucionais-parametrizados.md) | protocolo, condições, variantes, freeze, atribuição e limites de inferência |
 | [Contrato público](aralearn-contract.md) | formatos canônicos de conteúdo |
 | [Recursos de card](recursos-de-card.md) | catálogo de representações e arquitetura de packages |
 | [Matriz de conformidade técnica](matriz-conformidade-tecnica.md) | afirmação técnica e ponto de verificação |

@@ -1,4 +1,10 @@
 import { AuthoringApiError } from "./errors.js";
+import {
+  EXPERIMENT_DIFFERENCE_CLASSIFICATIONS
+} from "../aralearn/runtime/authoring/instructionalExperiment.js";
+import {
+  INSTRUCTIONAL_DESIGN_CONTRACTS
+} from "../aralearn/runtime/authoring/instructionalDesignContracts.js";
 const UUID = Object.freeze({ type: "string", format: "uuid" });
 const ID = Object.freeze({ type: "string", minLength: 1, maxLength: 240, pattern: "\\S" });
 const PACKAGE_ID = Object.freeze({
@@ -23,9 +29,9 @@ const EDUCATIONAL_WORKSPACE_ROLE = Object.freeze({
   enum: ["owner", "admin", "author", "reviewer", "learner", "reader"]
 });
 const WORKSPACE_CONTEXT_CAPABILITIES_SCHEMA = schema([
-  "author", "review", "comment", "publish", "manage"
+  "author", "review", "comment", "publish", "research", "manage"
 ], Object.fromEntries([
-  "author", "review", "comment", "publish", "manage"
+  "author", "review", "comment", "publish", "research", "manage"
 ].map((capability) => [capability, { type: "boolean" }])));
 const AUTHORING_INTENT = Object.freeze({
   type: "string",
@@ -2218,9 +2224,13 @@ const EDUCATIONAL_WORKSPACE_DETAILS_DATA_SCHEMA = Object.freeze({
     capabilities: {
       type: "object",
       additionalProperties: false,
-      required: ["read", "author", "review", "comment", "publish", "manage", "transfer"],
+      required: [
+        "read", "author", "review", "comment", "publish", "research", "manage",
+        "transfer"
+      ],
       properties: Object.fromEntries([
-        "read", "author", "review", "comment", "publish", "manage", "transfer"
+        "read", "author", "review", "comment", "publish", "research", "manage",
+        "transfer"
       ].map((name) => [name, { type: "boolean" }]))
     },
     members: {
@@ -3054,7 +3064,9 @@ const AUTHORING_DESIGN_OPERATIONS = Object.freeze([
   "save_blueprint",
   "register_manifest",
   "run_audit",
-  "record_semantic_audit"
+  "record_semantic_audit",
+  "register_experiment_variant_evidence",
+  "record_experiment_diff_classification"
 ]);
 const AUTHORING_DESIGN_WRITE_OPERATIONS = Object.freeze(
   AUTHORING_DESIGN_OPERATIONS.filter(
@@ -3063,7 +3075,7 @@ const AUTHORING_DESIGN_WRITE_OPERATIONS = Object.freeze(
 );
 const AUTHORING_DESIGN_READ_VIEWS = Object.freeze([
   "overview", "analysis", "parameters", "resource_set", "blueprint", "binding",
-  "materialization", "audit"
+  "materialization", "audit", "experiment_context"
 ]);
 const AUTHORING_DESIGN_CONTRACT_NAMES = Object.freeze([
   "instructional_analysis",
@@ -3082,7 +3094,9 @@ const AUTHORING_DESIGN_CONTRACT_NAMES = Object.freeze([
   "action_save_blueprint",
   "action_register_manifest",
   "action_run_audit",
-  "action_record_semantic_audit"
+  "action_record_semantic_audit",
+  "action_register_experiment_variant_evidence",
+  "action_record_experiment_diff_classification"
 ]);
 const AUTHORING_DESIGN_PAYLOAD_JSON = Object.freeze({
   type: "string",
@@ -3118,6 +3132,20 @@ const AUTHORING_DESIGN_INPUT_SCHEMA = Object.freeze({
     resourceSetRef: VERSIONED_REFERENCE_SCHEMA,
     auditRunRef: VERSIONED_REFERENCE_SCHEMA,
     auditScope: AUTHORING_AUDIT_SCOPE_SCHEMA,
+    experimentRef: VERSIONED_REFERENCE_SCHEMA,
+    variantRevisionRef: VERSIONED_REFERENCE_SCHEMA,
+    variantSetRef: VERSIONED_REFERENCE_SCHEMA,
+    differenceRunRef: VERSIONED_REFERENCE_SCHEMA,
+    collection: {
+      type: "string",
+      enum: [
+        "factor_targets", "locks", "resource_sets", "target_paths",
+        "difference_runs"
+      ]
+    },
+    collectionSetRef: VERSIONED_REFERENCE_SCHEMA,
+    collectionCursor: { type: "string", minLength: 1, maxLength: 240 },
+    collectionLimit: { type: "integer", minimum: 1, maximum: 20, default: 20 },
     cursor: { type: "string", minLength: 1, maxLength: 240 },
     limit: { type: "integer", minimum: 1, maximum: 100, default: 50 },
     componentCursor: { type: "string", pattern: "^[1-9][0-9]{0,8}$" },
@@ -3129,9 +3157,20 @@ const AUTHORING_DESIGN_INPUT_SCHEMA = Object.freeze({
   oneOf: [
     {
       required: ["operation", "microsequencePath"],
-      properties: { operation: { const: "read_slice" } },
+      properties: {
+        operation: { const: "read_slice" },
+        view: {
+          type: "string",
+          enum: AUTHORING_DESIGN_READ_VIEWS.filter(
+            (candidate) => candidate !== "experiment_context"
+          ),
+          default: "overview"
+        }
+      },
       ...forbidAuthoringDesignFields([
-        "contractName", "requestId", "expectedRevision", "payloadJson"
+        "contractName", "requestId", "expectedRevision", "payloadJson",
+        "experimentRef", "variantRevisionRef", "variantSetRef", "differenceRunRef",
+        "collection", "collectionSetRef", "collectionCursor", "collectionLimit"
       ]),
       allOf: [
         {
@@ -3190,12 +3229,81 @@ const AUTHORING_DESIGN_INPUT_SCHEMA = Object.freeze({
       ]
     },
     {
+      required: ["operation", "view"],
+      properties: {
+        operation: { const: "read_slice" },
+        view: { const: "experiment_context" },
+        cursor: { type: "string", minLength: 1, maxLength: 240 },
+        limit: { type: "integer", minimum: 1, maximum: 20, default: 20 }
+      },
+      ...forbidAuthoringDesignFields([
+        "microsequencePath", "contractName", "requestId", "expectedRevision",
+        "payloadJson", "resourceSetRef", "auditRunRef", "auditScope",
+        "componentCursor", "componentLimit"
+      ]),
+      allOf: [
+        {
+          if: { required: ["experimentRef"] },
+          then: { required: ["variantRevisionRef"] }
+        },
+        {
+          if: { required: ["variantRevisionRef"] },
+          then: { required: ["experimentRef"] }
+        },
+        {
+          if: {
+            required: ["cursor"],
+            not: { required: ["experimentRef"] }
+          },
+          then: { required: ["variantSetRef"] }
+        },
+        {
+          if: { required: ["experimentRef"] },
+          then: { not: { required: ["variantSetRef"] } }
+        },
+        {
+          if: { required: ["differenceRunRef"] },
+          then: {
+            required: ["experimentRef", "variantRevisionRef"],
+            ...forbidAuthoringDesignFields([
+              "collection", "collectionSetRef", "collectionCursor", "collectionLimit"
+            ])
+          }
+        },
+        {
+          if: { required: ["collectionSetRef"] },
+          then: { required: ["collection"] }
+        },
+        {
+          if: { required: ["collectionCursor"] },
+          then: { required: ["collection", "collectionSetRef"] }
+        },
+        {
+          if: { required: ["collectionLimit"] },
+          then: { required: ["collection"] }
+        },
+        {
+          if: { required: ["collection"] },
+          then: {
+            ...forbidAuthoringDesignFields([
+              "variantSetRef", "differenceRunRef", "cursor", "limit"
+            ])
+          },
+          else: forbidAuthoringDesignFields([
+            "collectionSetRef", "collectionCursor", "collectionLimit"
+          ])
+        }
+      ]
+    },
+    {
       required: ["operation", "contractName"],
       properties: { operation: { const: "contracts" } },
       ...forbidAuthoringDesignFields([
         "microsequencePath", "view", "requestId", "expectedRevision",
         "payloadJson", "resourceSetRef", "auditRunRef", "auditScope", "cursor", "limit",
-        "componentCursor", "componentLimit"
+        "componentCursor", "componentLimit", "experimentRef", "variantRevisionRef",
+        "variantSetRef", "differenceRunRef", "collection", "collectionSetRef",
+        "collectionCursor", "collectionLimit"
       ])
     },
     {
@@ -3211,10 +3319,260 @@ const AUTHORING_DESIGN_INPUT_SCHEMA = Object.freeze({
       },
       ...forbidAuthoringDesignFields([
         "view", "contractName", "resourceSetRef", "auditRunRef", "auditScope",
-        "cursor", "limit", "componentCursor", "componentLimit"
+        "cursor", "limit", "componentCursor", "componentLimit", "experimentRef",
+        "variantRevisionRef", "variantSetRef", "differenceRunRef", "collection",
+        "collectionSetRef", "collectionCursor", "collectionLimit"
       ])
     }
   ]
+});
+const EXPERIMENT_PARAMETER_VALUE_SCHEMA = Object.freeze(
+  INSTRUCTIONAL_DESIGN_CONTRACTS.designParameterAssignment.$defs.ParameterValue
+);
+const EXPERIMENT_SCOPE_SCHEMA = schema(["kind", "ref"], {
+  kind: {
+    type: "string",
+    enum: ["course", "lesson", "microsequence"]
+  },
+  ref: ID
+});
+const EXPERIMENT_LOCK_SCOPE_SCHEMA = schema(["kind", "ref"], {
+  kind: {
+    type: "string",
+    enum: ["workspace", "course", "module", "lesson", "microsequence"]
+  },
+  ref: ID
+});
+const EXPERIMENT_STATE_SCHEMA = Object.freeze({
+  type: "string",
+  enum: [
+    "draft", "validated", "generating", "ready", "correction_required",
+    "collecting", "paused", "closed", "invalidated"
+  ]
+});
+const EXPERIMENT_CONTEXT_FACTOR_SCHEMA = schema([
+  "factorId", "definitionRef", "kind", "targetCount", "value", "resourceSetRef"
+], {
+  factorId: ID,
+  definitionRef: VERSIONED_REFERENCE_SCHEMA,
+  kind: { type: "string", enum: ["parameter", "resource_set"] },
+  targetCount: NON_NEGATIVE_INTEGER,
+  value: { anyOf: [EXPERIMENT_PARAMETER_VALUE_SCHEMA, { type: "null" }] },
+  resourceSetRef: NULLABLE_VERSIONED_REFERENCE_SCHEMA
+});
+const EXPERIMENT_CONTEXT_LOCK_SCHEMA = schema([
+  "assignmentRef", "definitionRef", "factorId", "targetOrdinal", "scope"
+], {
+  assignmentRef: VERSIONED_REFERENCE_SCHEMA,
+  definitionRef: VERSIONED_REFERENCE_SCHEMA,
+  factorId: ID,
+  targetOrdinal: { type: "integer", minimum: 1, maximum: 500 },
+  scope: EXPERIMENT_LOCK_SCOPE_SCHEMA
+});
+const EXPERIMENT_CONTEXT_FACTOR_TARGET_SCHEMA = schema([
+  "factorId", "targetOrdinal", "kind", "ref"
+], {
+  factorId: ID,
+  targetOrdinal: { type: "integer", minimum: 1, maximum: 500 },
+  kind: { type: "string", enum: ["course", "lesson", "microsequence"] },
+  ref: ID
+});
+function experimentContextCollectionSchema(itemSchema) {
+  return schema(["setRef", "items", "count", "nextCursor", "truncated"], {
+    setRef: VERSIONED_REFERENCE_SCHEMA,
+    items: { type: "array", maxItems: 20, items: itemSchema },
+    count: NON_NEGATIVE_INTEGER,
+    nextCursor: { type: ["string", "null"], maxLength: 240 },
+    truncated: { type: "boolean" }
+  });
+}
+const EXPERIMENT_CONTEXT_DIFFERENCE_SCHEMA = schema([
+  "differenceRef", "ordinal", "path", "kind", "summary", "beforeHash",
+  "afterHash", "evidenceRefs", "classification"
+], {
+  differenceRef: VERSIONED_REFERENCE_SCHEMA,
+  ordinal: { type: "integer", minimum: 1, maximum: 5_000 },
+  path: { type: "string", minLength: 1, maxLength: 4_000 },
+  kind: { type: "string", enum: ["added", "removed", "changed", "moved"] },
+  summary: { type: "string", maxLength: 1_000 },
+  beforeHash: SHA256,
+  afterHash: SHA256,
+  evidenceRefs: {
+    type: "array",
+    maxItems: 8,
+    uniqueItems: true,
+    items: { type: "string", minLength: 1, maxLength: 500 }
+  },
+  classification: {
+    type: ["string", "null"],
+    enum: [...EXPERIMENT_DIFFERENCE_CLASSIFICATIONS, null]
+  }
+});
+const EXPERIMENT_CONTEXT_DIFFERENCES_SCHEMA = schema([
+  "differenceRunRef", "items", "count", "nextCursor", "truncated"
+], {
+  differenceRunRef: VERSIONED_REFERENCE_SCHEMA,
+  items: {
+    type: "array",
+    maxItems: 20,
+    items: EXPERIMENT_CONTEXT_DIFFERENCE_SCHEMA
+  },
+  count: NON_NEGATIVE_INTEGER,
+  nextCursor: { type: ["string", "null"], maxLength: 240 },
+  truncated: { type: "boolean" }
+});
+const EXPERIMENT_CONTEXT_DIFFERENCE_RUN_SCHEMA = schema([
+  "differenceRunRef", "baselineRef", "hunkCount", "recordedCount",
+  "classifiedCount", "status"
+], {
+  differenceRunRef: VERSIONED_REFERENCE_SCHEMA,
+  baselineRef: schema(["kind", "ref"], {
+    kind: { type: "string", enum: ["base", "variant_revision"] },
+    ref: VERSIONED_REFERENCE_SCHEMA
+  }),
+  hunkCount: { type: "integer", minimum: 0, maximum: 5_000 },
+  recordedCount: { type: "integer", minimum: 0, maximum: 5_000 },
+  classifiedCount: { type: "integer", minimum: 0, maximum: 5_000 },
+  status: {
+    type: "string",
+    enum: ["partial", "classification_pending", "classified"]
+  }
+});
+const EXPERIMENT_TARGET_CONTEXT_SCHEMA = schema([
+  "experimentRef", "experimentRevision", "status", "baseRef", "protocolRef",
+  "conditionRef", "variantRevisionRef", "scope", "factors", "factorTargets",
+  "invariants", "locks", "resourceSetRefs", "currentness", "mandate",
+  "targetWorkspaceId", "targetPaths", "differenceRuns", "collection",
+  "collectionSetRef"
+], {
+  experimentRef: VERSIONED_REFERENCE_SCHEMA,
+  experimentRevision: REVISION,
+  status: EXPERIMENT_STATE_SCHEMA,
+  baseRef: VERSIONED_REFERENCE_SCHEMA,
+  protocolRef: VERSIONED_REFERENCE_SCHEMA,
+  conditionRef: VERSIONED_REFERENCE_SCHEMA,
+  variantRevisionRef: VERSIONED_REFERENCE_SCHEMA,
+  scope: EXPERIMENT_SCOPE_SCHEMA,
+  factors: {
+    type: "array",
+    maxItems: 8,
+    items: EXPERIMENT_CONTEXT_FACTOR_SCHEMA
+  },
+  factorTargets: experimentContextCollectionSchema(
+    EXPERIMENT_CONTEXT_FACTOR_TARGET_SCHEMA
+  ),
+  invariants: {
+    type: "array",
+    minItems: 4,
+    maxItems: 4,
+    uniqueItems: true,
+    items: {
+      type: "string",
+      enum: ["sources", "targets", "analysis", "structure"]
+    }
+  },
+  locks: experimentContextCollectionSchema(EXPERIMENT_CONTEXT_LOCK_SCHEMA),
+  resourceSetRefs: experimentContextCollectionSchema(VERSIONED_REFERENCE_SCHEMA),
+  currentness: schema(["base", "protocol", "condition", "variant", "design"], {
+    base: { type: "boolean" },
+    protocol: { type: "boolean" },
+    condition: { type: "boolean" },
+    variant: { type: "boolean" },
+    design: { type: "boolean" }
+  }),
+  mandate: {
+    anyOf: [
+      { type: "null" },
+      schema(["mandateRef", "status", "conditionRef", "variantRevisionRef"], {
+        mandateRef: VERSIONED_REFERENCE_SCHEMA,
+        status: ID,
+        conditionRef: VERSIONED_REFERENCE_SCHEMA,
+        variantRevisionRef: VERSIONED_REFERENCE_SCHEMA
+      })
+    ]
+  },
+  targetWorkspaceId: UUID,
+  targetPaths: experimentContextCollectionSchema(schema([
+    "entityType", "entityPath", "label"
+  ], {
+    entityType: { type: "string", enum: ["course", "lesson", "microsequence"] },
+    entityPath: { type: "array", minItems: 1, maxItems: 4, items: ID },
+    label: { type: "string", minLength: 1, maxLength: 300 }
+  })),
+  differenceRuns: experimentContextCollectionSchema(
+    EXPERIMENT_CONTEXT_DIFFERENCE_RUN_SCHEMA
+  ),
+  collection: {
+    type: ["string", "null"],
+    enum: [
+      "factor_targets", "locks", "resource_sets", "target_paths",
+      "difference_runs", null
+    ]
+  },
+  collectionSetRef: NULLABLE_VERSIONED_REFERENCE_SCHEMA,
+  differences: EXPERIMENT_CONTEXT_DIFFERENCES_SCHEMA
+});
+const EXPERIMENT_DISCOVERY_VARIANT_SCHEMA = schema([
+  "experimentRef", "variantRevisionRef", "experimentLabel", "conditionLabel",
+  "status", "scope", "targetLabel"
+], {
+  experimentRef: VERSIONED_REFERENCE_SCHEMA,
+  variantRevisionRef: VERSIONED_REFERENCE_SCHEMA,
+  experimentLabel: { type: "string", minLength: 1, maxLength: 300 },
+  conditionLabel: { type: "string", minLength: 1, maxLength: 300 },
+  status: { type: "string", enum: ["generating", "ready", "frozen", "invalidated"] },
+  scope: EXPERIMENT_SCOPE_SCHEMA,
+  targetLabel: { type: "string", minLength: 1, maxLength: 300 }
+});
+const EXPERIMENT_CONTEXT_WORKSPACE_SCHEMA = schema(["id", "title", "revision"], {
+  id: UUID,
+  title: { type: "string", minLength: 1, maxLength: 300 },
+  revision: REVISION
+});
+const EXPERIMENT_CONTEXT_DISCOVERY_SLICE_SCHEMA = schema([
+  "contract", "view", "availableViews", "workspace", "mode", "variantSetRef",
+  "variants", "nextAction"
+], {
+  contract: { const: "aralearn.authoring-design-slice.v1" },
+  view: { const: "experiment_context" },
+  availableViews: {
+    type: "array",
+    minItems: 1,
+    maxItems: 1,
+    uniqueItems: true,
+    items: { const: "experiment_context" }
+  },
+  workspace: EXPERIMENT_CONTEXT_WORKSPACE_SCHEMA,
+  mode: { const: "discovery" },
+  variantSetRef: VERSIONED_REFERENCE_SCHEMA,
+  variants: schema(["items", "count", "nextCursor", "truncated"], {
+    items: { type: "array", maxItems: 20, items: EXPERIMENT_DISCOVERY_VARIANT_SCHEMA },
+    count: NON_NEGATIVE_INTEGER,
+    nextCursor: { type: ["string", "null"], maxLength: 240 },
+    truncated: { type: "boolean" }
+  }),
+  nextAction: { const: "select_experiment_variant" }
+});
+const EXPERIMENT_CONTEXT_TARGET_SLICE_SCHEMA = schema([
+  "contract", "view", "availableViews", "workspace", "mode",
+  "experimentContext", "nextAction"
+], {
+  contract: { const: "aralearn.authoring-design-slice.v1" },
+  view: { const: "experiment_context" },
+  availableViews: {
+    type: "array",
+    minItems: 1,
+    maxItems: 1,
+    uniqueItems: true,
+    items: { const: "experiment_context" }
+  },
+  workspace: EXPERIMENT_CONTEXT_WORKSPACE_SCHEMA,
+  mode: { const: "target" },
+  experimentContext: EXPERIMENT_TARGET_CONTEXT_SCHEMA,
+  nextAction: {
+    type: "string",
+    enum: ["continue_in_target_workspace", "classify_experiment_diff"]
+  }
 });
 const AUTHORING_DESIGN_ARTIFACT_REFS_SCHEMA = schema([
   "analysisRef", "effectiveSnapshotRef", "blueprintRef", "bindingRef",
@@ -3563,7 +3921,9 @@ const AUTHORING_DESIGN_READ_SLICE_SCHEMA = Object.freeze({
     }),
     authoringDesignSliceViewSchema("audit", {
       audit: { anyOf: [{ type: "null" }, AUTHORING_AUDIT_PAGE_SCHEMA] }
-    })
+    }),
+    EXPERIMENT_CONTEXT_DISCOVERY_SLICE_SCHEMA,
+    EXPERIMENT_CONTEXT_TARGET_SLICE_SCHEMA
   ]
 });
 const AUTHORING_DESIGN_CONTRACT_SCHEMA = schema(["contractName", "schema"], {
@@ -3666,6 +4026,37 @@ const AUTHORING_SEMANTIC_AUDIT_RECEIPT_SCHEMA = schema([
     type: "array", maxItems: 100, uniqueItems: true, items: UUID
   }
 });
+const AUTHORING_EXPERIMENT_DIFF_CLASSIFICATION_RECEIPT_SCHEMA = schema([
+  "variantRevisionRef", "differenceRunRef", "classificationRef", "status",
+  "recordedCount", "pendingCount"
+], {
+  variantRevisionRef: VERSIONED_REFERENCE_SCHEMA,
+  differenceRunRef: VERSIONED_REFERENCE_SCHEMA,
+  classificationRef: VERSIONED_REFERENCE_SCHEMA,
+  status: { type: "string", enum: ["partial", "classified"] },
+  recordedCount: NON_NEGATIVE_INTEGER,
+  pendingCount: NON_NEGATIVE_INTEGER
+});
+const AUTHORING_EXPERIMENT_EVIDENCE_RECEIPT_SCHEMA = schema([
+  "experimentRef", "variantRevisionRef", "differenceRunRefs", "recorded",
+  "expected", "complete", "nextAction"
+], {
+  experimentRef: VERSIONED_REFERENCE_SCHEMA,
+  variantRevisionRef: VERSIONED_REFERENCE_SCHEMA,
+  differenceRunRefs: {
+    type: "array",
+    maxItems: 32,
+    uniqueItems: true,
+    items: VERSIONED_REFERENCE_SCHEMA
+  },
+  recorded: NON_NEGATIVE_INTEGER,
+  expected: NON_NEGATIVE_INTEGER,
+  complete: { type: "boolean" },
+  nextAction: {
+    type: ["string", "null"],
+    enum: ["reread_context_and_repeat_registration", null]
+  }
+});
 function authoringDesignDataBranch(
   operation,
   result,
@@ -3736,6 +4127,16 @@ const AUTHORING_DESIGN_DATA_SCHEMA = Object.freeze({
     authoringDesignDataBranch(
       "record_semantic_audit",
       AUTHORING_SEMANTIC_AUDIT_RECEIPT_SCHEMA,
+      { mutation: true }
+    ),
+    authoringDesignDataBranch(
+      "register_experiment_variant_evidence",
+      AUTHORING_EXPERIMENT_EVIDENCE_RECEIPT_SCHEMA,
+      { mutation: true }
+    ),
+    authoringDesignDataBranch(
+      "record_experiment_diff_classification",
+      AUTHORING_EXPERIMENT_DIFF_CLASSIFICATION_RECEIPT_SCHEMA,
       { mutation: true }
     )
   ]
@@ -4796,6 +5197,884 @@ const TOOL_BY_NAME = new Map([
     .map((definition) => [definition.name, definition])
 ]);
 
+const EXPERIMENT_PROTOCOL_FACTOR_SCHEMA = schema([
+  "factorId", "definitionRef", "kind", "targets"
+], {
+  factorId: ID,
+  definitionRef: VERSIONED_REFERENCE_SCHEMA,
+  kind: { type: "string", enum: ["parameter", "resource_set"] },
+  targets: {
+    type: "array",
+    minItems: 1,
+    maxItems: 500,
+    uniqueItems: true,
+    items: EXPERIMENT_SCOPE_SCHEMA
+  }
+});
+const EXPERIMENT_PROTOCOL_CONDITION_VALUE_SCHEMA = Object.freeze({
+  oneOf: [
+    schema(["factorId", "value"], {
+      factorId: ID,
+      value: EXPERIMENT_PARAMETER_VALUE_SCHEMA
+    }),
+    schema(["factorId", "resourceSetRef"], {
+      factorId: ID,
+      resourceSetRef: VERSIONED_REFERENCE_SCHEMA
+    })
+  ]
+});
+const EXPERIMENT_PROTOCOL_CONDITION_SCHEMA = schema([
+  "conditionId", "label", "values"
+], {
+  conditionId: ID,
+  label: { type: "string", minLength: 1, maxLength: 300, pattern: "\\S" },
+  values: {
+    type: "array",
+    minItems: 1,
+    maxItems: 8,
+    items: EXPERIMENT_PROTOCOL_CONDITION_VALUE_SCHEMA
+  }
+});
+const EXPERIMENT_PROTOCOL_CONDITION_READ_SCHEMA = schema([
+  "conditionId", "conditionRef", "label", "values"
+], {
+  conditionId: ID,
+  conditionRef: NULLABLE_VERSIONED_REFERENCE_SCHEMA,
+  label: { type: "string", minLength: 1, maxLength: 300, pattern: "\\S" },
+  values: {
+    type: "array",
+    minItems: 1,
+    maxItems: 8,
+    items: EXPERIMENT_PROTOCOL_CONDITION_VALUE_SCHEMA
+  }
+});
+const EXPERIMENT_ASSIGNMENT_INPUT_SCHEMA = Object.freeze({
+  oneOf: [
+    schema(["rule"], { rule: { const: "manual" } }),
+    schema(["rule", "seed"], {
+      rule: { const: "seeded_random" },
+      seed: { type: "string", minLength: 1, maxLength: 512, pattern: "\\S" }
+    }),
+    schema(["rule"], { rule: { const: "balanced_simple" } })
+  ]
+});
+const EXPERIMENT_PROTOCOL_INPUT_SCHEMA = schema([
+  "title", "baseRef", "scope", "factors", "conditions", "invariants",
+  "assignment", "consentPolicyRef", "instrumentRefs", "outcomeRefs"
+], {
+  title: { type: "string", minLength: 1, maxLength: 300, pattern: "\\S" },
+  hypothesis: { type: "string", minLength: 1, maxLength: 2_000, pattern: "\\S" },
+  baseRef: VERSIONED_REFERENCE_SCHEMA,
+  scope: EXPERIMENT_SCOPE_SCHEMA,
+  factors: {
+    type: "array",
+    minItems: 1,
+    maxItems: 8,
+    items: EXPERIMENT_PROTOCOL_FACTOR_SCHEMA
+  },
+  conditions: {
+    type: "array",
+    minItems: 2,
+    maxItems: 32,
+    items: EXPERIMENT_PROTOCOL_CONDITION_SCHEMA
+  },
+  invariants: {
+    type: "array",
+    minItems: 4,
+    maxItems: 4,
+    uniqueItems: true,
+    items: {
+      type: "string",
+      enum: ["sources", "targets", "analysis", "structure"]
+    }
+  },
+  assignment: EXPERIMENT_ASSIGNMENT_INPUT_SCHEMA,
+  consentPolicyRef: VERSIONED_REFERENCE_SCHEMA,
+  instrumentRefs: {
+    type: "array",
+    maxItems: 32,
+    uniqueItems: true,
+    items: VERSIONED_REFERENCE_SCHEMA
+  },
+  outcomeRefs: {
+    type: "array",
+    maxItems: 32,
+    uniqueItems: true,
+    items: VERSIONED_REFERENCE_SCHEMA
+  }
+});
+const EXPECTED_EXPERIMENT_REVISION_SCHEMA = Object.freeze({
+  type: "integer",
+  minimum: 0
+});
+const EXPERIMENT_ENROLLMENT_CODE_SCHEMA = Object.freeze({
+  type: "string",
+  minLength: 8,
+  maxLength: 128,
+  pattern: "^[A-Za-z0-9_-]{8,128}$"
+});
+
+function experimentMutationInput(
+  operation,
+  required,
+  properties,
+  { workspaceFence = false } = {}
+) {
+  return schemaWithOperation(writeSchema([
+    "workspaceId", "expectedExperimentRevision",
+    ...(workspaceFence ? ["expectedWorkspaceRevision"] : []),
+    ...required
+  ], {
+    workspaceId: UUID,
+    expectedExperimentRevision: EXPECTED_EXPERIMENT_REVISION_SCHEMA,
+    ...(workspaceFence ? { expectedWorkspaceRevision: REVISION } : {}),
+    ...properties
+  }), operation);
+}
+
+const EXPERIMENT_APPLICATION_INPUT_SCHEMA = discriminatedInputSchema([
+  schemaWithOperation(Object.freeze({
+    ...readSchema(["workspaceId"], {
+      workspaceId: UUID,
+      experimentSetRef: VERSIONED_REFERENCE_SCHEMA,
+      cursor: { type: "string", minLength: 1, maxLength: 240 },
+      limit: { type: "integer", minimum: 1, maximum: 50, default: 20 }
+    }),
+    allOf: [{
+      if: { required: ["cursor"] },
+      then: { required: ["experimentSetRef"] }
+    }]
+  }), "list"),
+  schemaWithOperation(Object.freeze({
+    ...readSchema(["workspaceId", "kind"], {
+      workspaceId: UUID,
+      kind: {
+        type: "string",
+        enum: [
+          "scope", "base", "factor_definition", "resource_set", "consent_policy",
+          "instrument", "outcome"
+        ]
+      },
+      query: { type: "string", minLength: 1, maxLength: 200, pattern: "\\S" },
+      optionsSetRef: VERSIONED_REFERENCE_SCHEMA,
+      cursor: { type: "string", minLength: 1, maxLength: 240 },
+      limit: { type: "integer", minimum: 1, maximum: 50, default: 20 }
+    }),
+    allOf: [{
+      if: { required: ["cursor"] },
+      then: { required: ["optionsSetRef"] }
+    }]
+  }), "list_options"),
+  schemaWithOperation(readSchema(["workspaceId", "experimentId"], {
+    workspaceId: UUID,
+    experimentId: UUID,
+    section: { const: "overview" }
+  }), "read"),
+  schemaWithOperation(readSchema(["workspaceId", "experimentId", "section"], {
+    workspaceId: UUID,
+    experimentId: UUID,
+    section: { const: "protocol" },
+    protocolRevision: REVISION
+  }), "read"),
+  schemaWithOperation(Object.freeze({
+    ...readSchema(["workspaceId", "experimentId", "section"], {
+      workspaceId: UUID,
+      experimentId: UUID,
+      section: { const: "variants" },
+      variantSetRef: VERSIONED_REFERENCE_SCHEMA,
+      variantCursor: { type: "string", minLength: 1, maxLength: 240 },
+      variantLimit: { type: "integer", minimum: 1, maximum: 20, default: 20 }
+    }),
+    allOf: [{
+      if: { required: ["variantCursor"] },
+      then: { required: ["variantSetRef"] }
+    }]
+  }), "read"),
+  schemaWithOperation(Object.freeze({
+    ...readSchema(["workspaceId", "experimentId", "section"], {
+      workspaceId: UUID,
+      experimentId: UUID,
+      section: { const: "participants" },
+      participantSetRef: VERSIONED_REFERENCE_SCHEMA,
+      participantCursor: { type: "string", minLength: 1, maxLength: 240 },
+      participantLimit: { type: "integer", minimum: 1, maximum: 20, default: 20 }
+    }),
+    allOf: [{
+      if: { required: ["participantCursor"] },
+      then: { required: ["participantSetRef"] }
+    }]
+  }), "read"),
+  schemaWithOperation(Object.freeze({
+    ...readSchema(["workspaceId", "experimentId", "section"], {
+      workspaceId: UUID,
+      experimentId: UUID,
+      section: { const: "differences" },
+      differenceSetRef: VERSIONED_REFERENCE_SCHEMA,
+      differenceRunCursor: { type: "string", minLength: 1, maxLength: 240 },
+      differenceRunLimit: { type: "integer", minimum: 1, maximum: 20, default: 20 },
+      differenceRunRef: VERSIONED_REFERENCE_SCHEMA,
+      differenceCursor: { type: "string", minLength: 1, maxLength: 240 },
+      differenceLimit: { type: "integer", minimum: 1, maximum: 20, default: 20 }
+    }),
+    allOf: [{
+      if: { required: ["differenceRunCursor"] },
+      then: { required: ["differenceSetRef"] }
+    }, {
+      if: { required: ["differenceCursor"] },
+      then: { required: ["differenceRunRef"] }
+    }, {
+      not: {
+        anyOf: [{
+          required: ["differenceRunRef", "differenceSetRef"]
+        }, {
+          required: ["differenceRunRef", "differenceRunCursor"]
+        }, {
+          required: ["differenceRunRef", "differenceRunLimit"]
+        }]
+      }
+    }]
+  }), "read"),
+  experimentMutationInput("save_protocol", ["protocol"], {
+    experimentId: UUID,
+    protocol: EXPERIMENT_PROTOCOL_INPUT_SCHEMA
+  }),
+  experimentMutationInput("validate", ["experimentId"], {
+    experimentId: UUID
+  }, { workspaceFence: true }),
+  experimentMutationInput("generate_variants", ["experimentId"], {
+    experimentId: UUID
+  }, { workspaceFence: true }),
+  Object.freeze({
+    ...experimentMutationInput("decide_difference", [
+      "experimentId", "differenceRunRef", "differenceRef", "decision"
+    ], {
+      experimentId: UUID,
+      differenceRunRef: VERSIONED_REFERENCE_SCHEMA,
+      differenceRef: VERSIONED_REFERENCE_SCHEMA,
+      decision: { type: "string", enum: ["correct", "accept", "invalidate"] },
+      note: { type: "string", minLength: 1, maxLength: 2_000, pattern: "\\S" },
+      participantContinuity: { const: "retain_existing" }
+    }),
+    allOf: [{
+      if: { required: ["participantContinuity"] },
+      then: { properties: { decision: { const: "correct" } } }
+    }, {
+      if: {
+        properties: { decision: { enum: ["accept", "invalidate"] } },
+        required: ["decision"]
+      },
+      then: { required: ["note"] }
+    }]
+  }),
+  experimentMutationInput("request_correction", [
+    "experimentId", "variantRevisionRef", "reason", "participantContinuity"
+  ], {
+    experimentId: UUID,
+    variantRevisionRef: VERSIONED_REFERENCE_SCHEMA,
+    reason: { type: "string", minLength: 1, maxLength: 2_000, pattern: "\\S" },
+    participantContinuity: { const: "retain_existing" }
+  }, { workspaceFence: true }),
+  experimentMutationInput("freeze", ["experimentId", "variantRevisionRef"], {
+    experimentId: UUID,
+    variantRevisionRef: VERSIONED_REFERENCE_SCHEMA
+  }, { workspaceFence: true }),
+  experimentMutationInput("start_collection", ["experimentId"], {
+    experimentId: UUID
+  }),
+  experimentMutationInput("rotate_enrollment_code", ["experimentId"], {
+    experimentId: UUID
+  }),
+  experimentMutationInput("transition_collection", ["experimentId", "transition"], {
+    experimentId: UUID,
+    transition: { type: "string", enum: ["pause", "resume", "close", "invalidate"] }
+  }),
+  experimentMutationInput("assign_participant", ["experimentId", "enrollmentRef"], {
+    experimentId: UUID,
+    enrollmentRef: UUID,
+    conditionRef: VERSIONED_REFERENCE_SCHEMA
+  })
+]);
+
+const EXPERIMENT_LABELED_REF_SCHEMA = schema(["ref", "label"], {
+  ref: VERSIONED_REFERENCE_SCHEMA,
+  label: { type: "string", minLength: 1, maxLength: 300 }
+});
+const EXPERIMENT_FACTOR_OPTION_SCHEMA = schema(["label", "value"], {
+  label: { type: "string", minLength: 1, maxLength: 300 },
+  value: EXPERIMENT_PARAMETER_VALUE_SCHEMA
+});
+const EXPERIMENT_FACTOR_CONSTRAINTS_SCHEMA = schema([], {
+  minimum: { type: "number" },
+  maximum: { type: "number" },
+  allowedEnumValues: {
+    type: "array",
+    maxItems: 32,
+    uniqueItems: true,
+    items: { type: "string", minLength: 1, maxLength: 240 }
+  },
+  setItemPattern: { type: "string", minLength: 1, maxLength: 240 },
+  refNamespace: ID,
+  vectorDimensions: {
+    type: "array",
+    maxItems: 32,
+    uniqueItems: true,
+    items: ID
+  },
+  allowedUnits: {
+    type: "array",
+    maxItems: 16,
+    uniqueItems: true,
+    items: ID
+  },
+  relationKinds: {
+    type: "array",
+    maxItems: 16,
+    uniqueItems: true,
+    items: ID
+  }
+});
+const EXPERIMENT_FACTOR_DEFINITION_OPTION_SCHEMA = schema([
+  "definitionRef", "label", "kind", "valueType", "unit", "supportedScopes",
+  "constraints", "options"
+], {
+  definitionRef: VERSIONED_REFERENCE_SCHEMA,
+  label: { type: "string", minLength: 1, maxLength: 300 },
+  kind: { type: "string", enum: ["parameter", "resource_set"] },
+  valueType: {
+    type: "string",
+    enum: ["integer", "range", "enum", "set", "vector", "relation", "resource_set"]
+  },
+  unit: {
+    anyOf: [
+      { type: "null" },
+      schema(["numerator", "denominator"], {
+        numerator: ID,
+        denominator: ID
+      })
+    ]
+  },
+  supportedScopes: {
+    type: "array",
+    minItems: 1,
+    maxItems: 3,
+    uniqueItems: true,
+    items: { type: "string", enum: ["course", "lesson", "microsequence"] }
+  },
+  constraints: EXPERIMENT_FACTOR_CONSTRAINTS_SCHEMA,
+  options: {
+    type: "array",
+    maxItems: 8,
+    items: EXPERIMENT_FACTOR_OPTION_SCHEMA
+  }
+});
+const EXPERIMENT_ACTIONS_SCHEMA = schema([
+  "saveProtocol", "validate", "generateVariants", "decideDifference", "freeze",
+  "requestCorrection", "startCollection", "rotateEnrollmentCode", "transitionCollection",
+  "assignParticipant"
+], {
+  saveProtocol: { type: "boolean" },
+  validate: { type: "boolean" },
+  generateVariants: { type: "boolean" },
+  decideDifference: { type: "boolean" },
+  requestCorrection: { type: "boolean" },
+  freeze: { type: "boolean" },
+  startCollection: { type: "boolean" },
+  rotateEnrollmentCode: { type: "boolean" },
+  transitionCollection: {
+    type: "array",
+    maxItems: 4,
+    uniqueItems: true,
+    items: {
+      type: "string",
+      enum: ["pause", "resume", "close", "invalidate"]
+    }
+  },
+  assignParticipant: { type: "boolean" }
+});
+const EXPERIMENT_SUMMARY_SCHEMA = schema([
+  "id", "experimentRevision", "title", "state", "conditionCount",
+  "variantCount", "updatedAt"
+], {
+  id: UUID,
+  experimentRevision: REVISION,
+  title: { type: "string", minLength: 1, maxLength: 300 },
+  state: EXPERIMENT_STATE_SCHEMA,
+  conditionCount: NON_NEGATIVE_INTEGER,
+  variantCount: NON_NEGATIVE_INTEGER,
+  updatedAt: DATE_TIME
+});
+const EXPERIMENT_ASSIGNMENT_READ_SCHEMA = schema([
+  "rule", "seedConfigured", "algorithm", "commitment"
+], {
+  rule: { type: "string", enum: ["manual", "seeded_random", "balanced_simple"] },
+  seedConfigured: { type: "boolean" },
+  algorithm: { type: ["string", "null"], maxLength: 120 },
+  commitment: NULLABLE_SHA256
+});
+const EXPERIMENT_AUTHORING_READER_TARGET_SCHEMA = schema([
+  "workspaceId", "entityPath", "courseId", "access", "contentHash"
+], {
+  workspaceId: UUID,
+  entityPath: { type: "array", minItems: 1, maxItems: 4, items: ID },
+  courseId: UUID,
+  access: { const: "private" },
+  contentHash: NULLABLE_SHA256
+});
+const EXPERIMENT_PARTICIPANT_READER_TARGET_SCHEMA = schema([
+  "courseId", "access", "contentHash"
+], {
+  courseId: UUID,
+  access: { const: "private" },
+  contentHash: NULLABLE_SHA256
+});
+const EXPERIMENT_VARIANT_RESOURCE_SUMMARY_SCHEMA = schema([
+  "items", "count", "nextCursor", "truncated"
+], {
+  items: {
+    type: "array",
+    maxItems: 2,
+    items: schema(["ref", "label", "role"], {
+      ref: VERSIONED_REFERENCE_SCHEMA,
+      label: { type: "string", maxLength: 300 },
+      role: { type: "string", maxLength: 80 }
+    })
+  },
+  count: NON_NEGATIVE_INTEGER,
+  nextCursor: { type: ["string", "null"], maxLength: 240 },
+  truncated: { type: "boolean" }
+});
+const EXPERIMENT_VARIANT_READ_SCHEMA = schema([
+  "variantRevisionRef", "conditionRef", "baseRef", "protocolRef", "state",
+  "workspaceRevision", "readerTarget", "frozenAt", "limitationRefs",
+  "snapshotRef", "materializationRef", "auditRunRef", "provenanceHash",
+  "provenancePinCount", "currentness", "allowedResources",
+  "materializedResources"
+], {
+  variantRevisionRef: VERSIONED_REFERENCE_SCHEMA,
+  conditionRef: VERSIONED_REFERENCE_SCHEMA,
+  baseRef: VERSIONED_REFERENCE_SCHEMA,
+  protocolRef: VERSIONED_REFERENCE_SCHEMA,
+  state: ID,
+  workspaceRevision: REVISION,
+  readerTarget: {
+    anyOf: [{ type: "null" }, EXPERIMENT_AUTHORING_READER_TARGET_SCHEMA]
+  },
+  frozenAt: NULLABLE_DATE_TIME,
+  limitationRefs: {
+    type: "array",
+    maxItems: 16,
+    uniqueItems: true,
+    items: VERSIONED_REFERENCE_SCHEMA
+  },
+  snapshotRef: NULLABLE_VERSIONED_REFERENCE_SCHEMA,
+  materializationRef: NULLABLE_VERSIONED_REFERENCE_SCHEMA,
+  auditRunRef: NULLABLE_VERSIONED_REFERENCE_SCHEMA,
+  provenanceHash: NULLABLE_SHA256,
+  provenancePinCount: NON_NEGATIVE_INTEGER,
+  currentness: schema([
+    "base", "protocol", "condition", "materialization", "audit"
+  ], {
+    base: { type: "boolean" },
+    protocol: { type: "boolean" },
+    condition: { type: "boolean" },
+    materialization: { type: "boolean" },
+    audit: { type: "boolean" }
+  }),
+  allowedResources: EXPERIMENT_VARIANT_RESOURCE_SUMMARY_SCHEMA,
+  materializedResources: EXPERIMENT_VARIANT_RESOURCE_SUMMARY_SCHEMA
+});
+const EXPERIMENT_DIFFERENCE_READ_SCHEMA = schema([
+  "differenceRef", "baselineRef", "candidateVariantRevisionRef", "state",
+  "hunkCount", "classifiedCount", "decision", "requiresParticipantContinuity"
+], {
+  differenceRef: VERSIONED_REFERENCE_SCHEMA,
+  baselineRef: schema(["kind", "ref"], {
+    kind: { type: "string", enum: ["base", "variant_revision"] },
+    ref: VERSIONED_REFERENCE_SCHEMA
+  }),
+  candidateVariantRevisionRef: VERSIONED_REFERENCE_SCHEMA,
+  state: ID,
+  hunkCount: NON_NEGATIVE_INTEGER,
+  classifiedCount: NON_NEGATIVE_INTEGER,
+  decision: { type: ["string", "null"], enum: ["correct", "accept", "invalidate", null] },
+  requiresParticipantContinuity: { type: "boolean" }
+});
+const EXPERIMENT_PROTOCOL_READ_SCHEMA = schema([
+  "title", "hypothesis", "baseRef", "scope", "factors", "conditions",
+  "invariants", "assignment", "consentPolicyRef", "instrumentRefs", "outcomeRefs"
+], {
+  title: { type: "string", minLength: 1, maxLength: 300 },
+  hypothesis: { type: ["string", "null"], minLength: 1, maxLength: 2_000 },
+  baseRef: VERSIONED_REFERENCE_SCHEMA,
+  scope: EXPERIMENT_SCOPE_SCHEMA,
+  factors: {
+    type: "array",
+    maxItems: 8,
+    items: EXPERIMENT_PROTOCOL_FACTOR_SCHEMA
+  },
+  conditions: {
+    type: "array",
+    maxItems: 32,
+    items: EXPERIMENT_PROTOCOL_CONDITION_READ_SCHEMA
+  },
+  invariants: {
+    type: "array",
+    minItems: 4,
+    maxItems: 4,
+    uniqueItems: true,
+    items: { type: "string", enum: ["sources", "targets", "analysis", "structure"] }
+  },
+  assignment: EXPERIMENT_ASSIGNMENT_READ_SCHEMA,
+  consentPolicyRef: VERSIONED_REFERENCE_SCHEMA,
+  instrumentRefs: {
+    type: "array", maxItems: 32, uniqueItems: true, items: VERSIONED_REFERENCE_SCHEMA
+  },
+  outcomeRefs: {
+    type: "array", maxItems: 32, uniqueItems: true, items: VERSIONED_REFERENCE_SCHEMA
+  }
+});
+const EXPERIMENT_ENROLLMENT_READ_SCHEMA = schema(["configured", "expiresAt"], {
+  configured: { type: "boolean" },
+  expiresAt: NULLABLE_DATE_TIME
+});
+const EXPERIMENT_READ_BASE_PROPERTIES = Object.freeze({
+  id: UUID,
+  experimentRevision: REVISION,
+  state: EXPERIMENT_STATE_SCHEMA
+});
+function experimentReadSectionSchema(section, required, properties) {
+  return schema(
+    ["id", "experimentRevision", "state", "section", ...required],
+    {
+      ...EXPERIMENT_READ_BASE_PROPERTIES,
+      section: { const: section },
+      ...properties
+    }
+  );
+}
+const EXPERIMENT_OVERVIEW_READ_SCHEMA = experimentReadSectionSchema(
+  "overview",
+  [
+    "title", "hypothesis", "actions", "assignment", "enrollment",
+    "conditionCount", "variantCount", "differenceCount"
+  ],
+  {
+    title: { type: "string", minLength: 1, maxLength: 300 },
+    hypothesis: { type: ["string", "null"], minLength: 1, maxLength: 2_000 },
+    actions: EXPERIMENT_ACTIONS_SCHEMA,
+    assignment: EXPERIMENT_ASSIGNMENT_READ_SCHEMA,
+    enrollment: EXPERIMENT_ENROLLMENT_READ_SCHEMA,
+    conditionCount: NON_NEGATIVE_INTEGER,
+    variantCount: NON_NEGATIVE_INTEGER,
+    differenceCount: NON_NEGATIVE_INTEGER
+  }
+);
+const EXPERIMENT_PROTOCOL_SECTION_READ_SCHEMA = experimentReadSectionSchema(
+  "protocol",
+  ["protocolRef", "protocolRevision", "protocol"],
+  {
+    protocolRef: VERSIONED_REFERENCE_SCHEMA,
+    protocolRevision: REVISION,
+    protocol: EXPERIMENT_PROTOCOL_READ_SCHEMA
+  }
+);
+const EXPERIMENT_VARIANTS_SECTION_READ_SCHEMA = experimentReadSectionSchema(
+  "variants",
+  ["variantSetRef", "items", "count", "nextCursor", "truncated"],
+  {
+    variantSetRef: VERSIONED_REFERENCE_SCHEMA,
+    items: { type: "array", maxItems: 10, items: EXPERIMENT_VARIANT_READ_SCHEMA },
+    count: NON_NEGATIVE_INTEGER,
+    nextCursor: { type: ["string", "null"], maxLength: 240 },
+    truncated: { type: "boolean" }
+  }
+);
+const EXPERIMENT_DIFFERENCE_HUNK_READ_SCHEMA = schema([
+  "differenceRef", "differenceId", "path", "kind", "beforeSummary", "afterSummary",
+  "classification", "publicRationale", "evidenceRefs", "humanDecision",
+  "requiresParticipantContinuity"
+], {
+  differenceRef: VERSIONED_REFERENCE_SCHEMA,
+  differenceId: ID,
+  path: { type: "string", minLength: 1, maxLength: 500 },
+  kind: { type: "string", enum: ["added", "removed", "changed", "moved"] },
+  beforeSummary: { type: ["string", "null"], maxLength: 500 },
+  afterSummary: { type: ["string", "null"], maxLength: 500 },
+  classification: {
+    type: ["string", "null"],
+    enum: [...EXPERIMENT_DIFFERENCE_CLASSIFICATIONS, null]
+  },
+  publicRationale: { type: ["string", "null"], maxLength: 500 },
+  evidenceRefs: { type: "array", maxItems: 4, uniqueItems: true, items: ID },
+  humanDecision: {
+    type: ["string", "null"],
+    enum: ["correct", "accept", "invalidate", null]
+  },
+  requiresParticipantContinuity: { type: "boolean" }
+});
+const EXPERIMENT_DIFFERENCES_SECTION_READ_SCHEMA = experimentReadSectionSchema(
+  "differences",
+  [
+    "mode", "differenceSetRef", "differenceRunRef", "items", "count",
+    "nextCursor", "truncated"
+  ],
+  {
+    mode: { type: "string", enum: ["runs", "hunks"] },
+    differenceSetRef: NULLABLE_VERSIONED_REFERENCE_SCHEMA,
+    differenceRunRef: NULLABLE_VERSIONED_REFERENCE_SCHEMA,
+    items: {
+      type: "array",
+      maxItems: 20,
+      items: {
+        anyOf: [
+          EXPERIMENT_DIFFERENCE_READ_SCHEMA,
+          EXPERIMENT_DIFFERENCE_HUNK_READ_SCHEMA
+        ]
+      }
+    },
+    count: NON_NEGATIVE_INTEGER,
+    nextCursor: { type: ["string", "null"], maxLength: 240 },
+    truncated: { type: "boolean" }
+  }
+);
+const EXPERIMENT_PARTICIPANT_QUEUE_ITEM_SCHEMA = schema([
+  "enrollmentRef", "pseudonymLabel", "status", "assignedConditionRef"
+], {
+  enrollmentRef: UUID,
+  pseudonymLabel: { type: "string", minLength: 1, maxLength: 120 },
+  status: { type: "string", enum: ["enrolled", "assigned"] },
+  assignedConditionRef: NULLABLE_VERSIONED_REFERENCE_SCHEMA
+});
+const EXPERIMENT_PARTICIPANTS_SECTION_READ_SCHEMA = experimentReadSectionSchema(
+  "participants",
+  ["participantSetRef", "items", "count", "nextCursor", "truncated"],
+  {
+    participantSetRef: VERSIONED_REFERENCE_SCHEMA,
+    items: {
+      type: "array",
+      maxItems: 20,
+      items: EXPERIMENT_PARTICIPANT_QUEUE_ITEM_SCHEMA
+    },
+    count: NON_NEGATIVE_INTEGER,
+    nextCursor: { type: ["string", "null"], maxLength: 240 },
+    truncated: { type: "boolean" }
+  }
+);
+const EXPERIMENT_READ_SCHEMA = Object.freeze({
+  oneOf: [
+    EXPERIMENT_OVERVIEW_READ_SCHEMA,
+    EXPERIMENT_PROTOCOL_SECTION_READ_SCHEMA,
+    EXPERIMENT_VARIANTS_SECTION_READ_SCHEMA,
+    EXPERIMENT_DIFFERENCES_SECTION_READ_SCHEMA,
+    EXPERIMENT_PARTICIPANTS_SECTION_READ_SCHEMA
+  ]
+});
+const EXPERIMENT_APPLICATION_LIST_DATA_SCHEMA = schema([
+  "contract", "operation", "workspaceId", "workspaceRevision", "experimentSetRef",
+  "items", "count", "nextCursor", "truncated"
+], {
+  contract: { const: "aralearn.instructional-experiment-action.v1" },
+  operation: { const: "list" },
+  workspaceId: UUID,
+  workspaceRevision: REVISION,
+  experimentSetRef: VERSIONED_REFERENCE_SCHEMA,
+  items: { type: "array", maxItems: 50, items: EXPERIMENT_SUMMARY_SCHEMA },
+  count: NON_NEGATIVE_INTEGER,
+  nextCursor: { type: ["string", "null"], maxLength: 240 },
+  truncated: { type: "boolean" }
+});
+const EXPERIMENT_SCOPE_OPTION_SCHEMA = schema(["scope", "label", "entityPath"], {
+  scope: EXPERIMENT_SCOPE_SCHEMA,
+  label: { type: "string", minLength: 1, maxLength: 300 },
+  entityPath: { type: "array", minItems: 1, maxItems: 4, items: ID }
+});
+const EXPERIMENT_BASE_OPTION_SCHEMA = schema([
+  "ref", "label", "approved", "scope"
+], {
+  ref: VERSIONED_REFERENCE_SCHEMA,
+  label: { type: "string", minLength: 1, maxLength: 300 },
+  approved: { type: "boolean" },
+  scope: EXPERIMENT_SCOPE_SCHEMA
+});
+const EXPERIMENT_RESOURCE_SET_OPTION_SCHEMA = schema([
+  "ref", "label", "memberCount", "scope"
+], {
+  ref: VERSIONED_REFERENCE_SCHEMA,
+  label: { type: "string", minLength: 1, maxLength: 300 },
+  memberCount: NON_NEGATIVE_INTEGER,
+  scope: EXPERIMENT_SCOPE_SCHEMA
+});
+const EXPERIMENT_APPLICATION_OPTION_ITEM_SCHEMA = Object.freeze({
+  anyOf: [
+    EXPERIMENT_SCOPE_OPTION_SCHEMA,
+    EXPERIMENT_BASE_OPTION_SCHEMA,
+    EXPERIMENT_RESOURCE_SET_OPTION_SCHEMA,
+    EXPERIMENT_LABELED_REF_SCHEMA,
+    EXPERIMENT_FACTOR_DEFINITION_OPTION_SCHEMA
+  ]
+});
+const EXPERIMENT_APPLICATION_OPTIONS_DATA_SCHEMA = schema([
+  "contract", "operation", "workspaceId", "workspaceRevision", "optionsSetRef",
+  "kind", "items", "count", "nextCursor", "truncated"
+], {
+  contract: { const: "aralearn.instructional-experiment-action.v1" },
+  operation: { const: "list_options" },
+  workspaceId: UUID,
+  workspaceRevision: REVISION,
+  optionsSetRef: VERSIONED_REFERENCE_SCHEMA,
+  kind: {
+    type: "string",
+    enum: [
+      "scope", "base", "factor_definition", "resource_set", "consent_policy",
+      "instrument", "outcome"
+    ]
+  },
+  items: { type: "array", maxItems: 50, items: EXPERIMENT_APPLICATION_OPTION_ITEM_SCHEMA },
+  count: NON_NEGATIVE_INTEGER,
+  nextCursor: { type: ["string", "null"], maxLength: 240 },
+  truncated: { type: "boolean" }
+});
+const EXPERIMENT_APPLICATION_READ_DATA_SCHEMA = schema([
+  "contract", "operation", "workspaceId", "workspaceRevision", "experiment"
+], {
+  contract: { const: "aralearn.instructional-experiment-action.v1" },
+  operation: { const: "read" },
+  workspaceId: UUID,
+  workspaceRevision: REVISION,
+  experiment: EXPERIMENT_READ_SCHEMA
+});
+const EXPERIMENT_APPLICATION_MUTATION_DATA_SCHEMA = Object.freeze({
+  ...schema([
+    "contract", "operation", "workspaceId", "workspaceRevision", "experimentId",
+    "experimentRevision", "state", "idempotent", "resultRef"
+  ], {
+    contract: { const: "aralearn.instructional-experiment-action.v1" },
+    operation: {
+      type: "string",
+      enum: [
+        "save_protocol", "validate", "generate_variants", "decide_difference",
+        "request_correction", "freeze", "start_collection", "rotate_enrollment_code",
+        "transition_collection", "assign_participant"
+      ]
+    },
+    workspaceId: UUID,
+    workspaceRevision: REVISION,
+    experimentId: UUID,
+    experimentRevision: REVISION,
+    state: EXPERIMENT_STATE_SCHEMA,
+    idempotent: { type: "boolean" },
+    resultRef: NULLABLE_VERSIONED_REFERENCE_SCHEMA,
+    enrollmentCode: EXPERIMENT_ENROLLMENT_CODE_SCHEMA,
+    expiresAt: DATE_TIME
+  }),
+  allOf: [{
+    if: {
+      properties: {
+        operation: { enum: ["start_collection", "rotate_enrollment_code"] }
+      }
+    },
+    then: { required: ["enrollmentCode", "expiresAt"] },
+    else: {
+      not: {
+        anyOf: [{ required: ["enrollmentCode"] }, { required: ["expiresAt"] }]
+      }
+    }
+  }]
+});
+const EXPERIMENT_APPLICATION_DATA_SCHEMA = Object.freeze({
+  oneOf: [
+    EXPERIMENT_APPLICATION_LIST_DATA_SCHEMA,
+    EXPERIMENT_APPLICATION_OPTIONS_DATA_SCHEMA,
+    EXPERIMENT_APPLICATION_READ_DATA_SCHEMA,
+    EXPERIMENT_APPLICATION_MUTATION_DATA_SCHEMA
+  ]
+});
+const EXPERIMENT_APPLICATION_TOOL = tool(
+  "gerirExperimentoInstrucional",
+  "Gerir experimento instrucional",
+  "Action interna do aplicativo para protocolos, variantes, decisões, freeze, coleta e atribuição sob capacidade research.",
+  EXPERIMENT_APPLICATION_INPUT_SCHEMA,
+  EXPERIMENT_APPLICATION_DATA_SCHEMA,
+  { actionConsequentialHint: true }
+);
+const EXPERIMENT_ENROLLMENT_INPUT_SCHEMA = discriminatedInputSchema([
+  schemaWithOperation(readSchema(["enrollmentCode"], {
+    enrollmentCode: EXPERIMENT_ENROLLMENT_CODE_SCHEMA
+  }), "read_policy"),
+  schemaWithOperation(writeSchema([
+    "enrollmentCode", "consentPolicyRef", "consentAcknowledged"
+  ], {
+    enrollmentCode: EXPERIMENT_ENROLLMENT_CODE_SCHEMA,
+    consentPolicyRef: VERSIONED_REFERENCE_SCHEMA,
+    consentAcknowledged: { const: true }
+  }), "enroll"),
+  schemaWithOperation(writeSchema(["enrollmentRef"], {
+    enrollmentRef: UUID
+  }), "withdraw"),
+  schemaWithOperation(readSchema(["enrollmentRef"], {
+    enrollmentRef: UUID
+  }), "status")
+]);
+const EXPERIMENT_ENROLLMENT_SELECTION_SCHEMA = schema([
+  "selectionId", "courseId", "contentHash", "readerTarget"
+], {
+  selectionId: UUID,
+  courseId: UUID,
+  contentHash: SHA256,
+  readerTarget: EXPERIMENT_PARTICIPANT_READER_TARGET_SCHEMA
+});
+const EXPERIMENT_ENROLLMENT_POLICY_DATA_SCHEMA = schema([
+  "contract", "operation", "title", "policy"
+], {
+  contract: { const: "aralearn.instructional-experiment-enrollment.v1" },
+  operation: { const: "read_policy" },
+  title: { type: "string", minLength: 1, maxLength: 300 },
+  policy: schema(["ref", "label", "publicText"], {
+    ref: VERSIONED_REFERENCE_SCHEMA,
+    label: { type: "string", minLength: 1, maxLength: 300 },
+    publicText: { type: "string", minLength: 1, maxLength: 16_000 }
+  })
+});
+const EXPERIMENT_ENROLLMENT_STATUS_DATA_SCHEMA = Object.freeze({
+  ...schema([
+    "contract", "operation", "enrollmentRef", "status", "selection"
+  ], {
+    contract: { const: "aralearn.instructional-experiment-enrollment.v1" },
+    operation: { type: "string", enum: ["enroll", "withdraw", "status"] },
+    enrollmentRef: UUID,
+    status: { type: "string", enum: ["enrolled", "assigned", "withdrawn"] },
+    selection: {
+      anyOf: [{ type: "null" }, EXPERIMENT_ENROLLMENT_SELECTION_SCHEMA]
+    }
+  }),
+  allOf: [{
+    if: { properties: { status: { const: "withdrawn" } }, required: ["status"] },
+    then: { properties: { selection: { const: null } } }
+  }, {
+    if: { properties: { operation: { const: "withdraw" } }, required: ["operation"] },
+    then: {
+      properties: { status: { const: "withdrawn" }, selection: { const: null } }
+    }
+  }]
+});
+const EXPERIMENT_ENROLLMENT_TOOL = tool(
+  "ingressarEmExperimentoInstrucional",
+  "Ingressar em experimento instrucional",
+  "Action interna do aplicativo para ler a política pública, consentir e abrir somente a seleção privada já atribuída à conta atual.",
+  EXPERIMENT_ENROLLMENT_INPUT_SCHEMA,
+  {
+    oneOf: [
+      EXPERIMENT_ENROLLMENT_POLICY_DATA_SCHEMA,
+      EXPERIMENT_ENROLLMENT_STATUS_DATA_SCHEMA
+    ]
+  },
+  { actionConsequentialHint: true }
+);
+const APPLICATION_ONLY_TOOL_BY_NAME = new Map([
+  [EXPERIMENT_APPLICATION_TOOL.name, EXPERIMENT_APPLICATION_TOOL],
+  [EXPERIMENT_ENROLLMENT_TOOL.name, EXPERIMENT_ENROLLMENT_TOOL]
+]);
+
 const CATALOG_READ = new Set([
   "consultarCatalogo"
 ]);
@@ -5178,10 +6457,23 @@ export function authoringMcpToolDefinition(name) {
   return TOOL_BY_NAME.get(name) || null;
 }
 
+export function authoringApplicationToolDefinition(name) {
+  return APPLICATION_ONLY_TOOL_BY_NAME.get(name) || TOOL_BY_NAME.get(name) || null;
+}
+
 export function validateAuthoringMcpToolOutput(name, value) {
   const definition = TOOL_BY_NAME.get(name);
   if (!definition) {
     throw new AuthoringApiError(404, "unknown_tool", "Ferramenta inexistente.");
+  }
+  validateValue(value, definition.outputSchema, "result");
+  return value;
+}
+
+export function validateAuthoringApplicationToolOutput(name, value) {
+  const definition = authoringApplicationToolDefinition(name);
+  if (!definition) {
+    throw new AuthoringApiError(404, "unknown_tool", "Action interna inexistente.");
   }
   validateValue(value, definition.outputSchema, "result");
   return value;
@@ -5228,6 +6520,23 @@ export function authoringMcpToolIsAllowed(name, principal, rawArguments = null) 
   return scopes.has("authoring:write") || scopes.has("authoring:private:write");
 }
 
+export function authoringApplicationToolIsAllowed(
+  name,
+  principal,
+  rawArguments = null
+) {
+  if (!APPLICATION_ONLY_TOOL_BY_NAME.has(name)) {
+    return authoringMcpToolIsAllowed(name, principal, rawArguments);
+  }
+  if (principal?.authenticationKind !== "application" || !principal?.actorId) {
+    return false;
+  }
+  const scopes = new Set(principal.scopes || []);
+  return scopes.has("*")
+    || scopes.has("authoring:write")
+    || scopes.has("authoring:private:write");
+}
+
 export function authoringMcpToolsForPrincipal(principal) {
   return AUTHORING_WORKSPACE_MCP_TOOLS.filter(
     (definition) => authoringMcpToolIsAllowed(definition.name, principal)
@@ -5253,6 +6562,106 @@ const GROUPED_OPERATION_TARGETS = Object.freeze({
     WORKSPACE_DELETE_BRANCHES.map(({ operation, toolName }) => [operation, toolName])
   ))
 });
+
+function mapExperimentApplicationCall(rawArguments) {
+  const definition = APPLICATION_ONLY_TOOL_BY_NAME.get(
+    "gerirExperimentoInstrucional"
+  );
+  const args = validateArguments(definition, rawArguments);
+  const { workspaceId, operation } = args;
+  const body = { operation };
+  if (operation === "list" || operation === "list_options") {
+    if (args.kind) body.kind = args.kind;
+    if (args.query) body.query = args.query;
+    if (args.experimentSetRef) body.experimentSetRef = args.experimentSetRef;
+    if (args.optionsSetRef) body.optionsSetRef = args.optionsSetRef;
+    if (args.cursor) body.cursor = args.cursor;
+    if (args.limit != null) body.limit = args.limit;
+  } else if (operation === "read") {
+    body.experimentId = args.experimentId;
+    body.section = args.section || "overview";
+    if (args.protocolRevision != null) body.protocolRevision = args.protocolRevision;
+    if (args.variantSetRef) body.variantSetRef = args.variantSetRef;
+    if (args.variantCursor) body.variantCursor = args.variantCursor;
+    if (args.variantLimit != null) body.variantLimit = args.variantLimit;
+    if (args.differenceRunRef) body.differenceRunRef = args.differenceRunRef;
+    if (args.differenceSetRef) body.differenceSetRef = args.differenceSetRef;
+    if (args.differenceRunCursor) body.differenceRunCursor = args.differenceRunCursor;
+    if (args.differenceRunLimit != null) body.differenceRunLimit = args.differenceRunLimit;
+    if (args.differenceCursor) body.differenceCursor = args.differenceCursor;
+    if (args.differenceLimit != null) body.differenceLimit = args.differenceLimit;
+    if (args.participantSetRef) body.participantSetRef = args.participantSetRef;
+    if (args.participantCursor) body.participantCursor = args.participantCursor;
+    if (args.participantLimit != null) body.participantLimit = args.participantLimit;
+  } else {
+    body.requestId = args.requestId;
+    body.expectedExperimentRevision = args.expectedExperimentRevision;
+    if (args.expectedWorkspaceRevision != null) {
+      body.expectedWorkspaceRevision = args.expectedWorkspaceRevision;
+    }
+    const payloadFields = {
+      save_protocol: ["experimentId", "protocol"],
+      validate: ["experimentId"],
+      generate_variants: ["experimentId"],
+      decide_difference: [
+        "experimentId", "differenceRunRef", "differenceRef", "decision", "note",
+        "participantContinuity"
+      ],
+      request_correction: [
+        "experimentId", "variantRevisionRef", "reason", "participantContinuity"
+      ],
+      freeze: ["experimentId", "variantRevisionRef"],
+      start_collection: ["experimentId"],
+      rotate_enrollment_code: ["experimentId"],
+      transition_collection: ["experimentId", "transition"],
+      assign_participant: ["experimentId", "enrollmentRef", "conditionRef"]
+    };
+    body.payload = Object.fromEntries(
+      payloadFields[operation]
+        .filter((field) => args[field] != null)
+        .map((field) => [field, args[field]])
+    );
+  }
+  return {
+    method: "POST",
+    path: `/v1/workspaces/${encode(workspaceId)}/experiments/actions`,
+    body,
+    requestId: args.requestId ?? null
+  };
+}
+
+function mapExperimentEnrollmentApplicationCall(rawArguments) {
+  const definition = APPLICATION_ONLY_TOOL_BY_NAME.get(
+    "ingressarEmExperimentoInstrucional"
+  );
+  const args = validateArguments(definition, rawArguments);
+  const body = {
+    operation: args.operation
+  };
+  if (args.enrollmentCode) body.enrollmentCode = args.enrollmentCode;
+  if (args.enrollmentRef) body.enrollmentRef = args.enrollmentRef;
+  if (args.requestId) body.requestId = args.requestId;
+  if (args.consentPolicyRef) body.consentPolicyRef = args.consentPolicyRef;
+  if (args.consentAcknowledged != null) {
+    body.consentAcknowledged = args.consentAcknowledged;
+  }
+  return {
+    method: "POST",
+    path: "/v1/experiments/enrollment/actions",
+    body,
+    requestId: args.requestId ?? null
+  };
+}
+
+export function mapAuthoringApplicationToolCall(name, rawArguments) {
+  if (name === "gerirExperimentoInstrucional") {
+    return mapExperimentApplicationCall(rawArguments);
+  }
+  if (name === "ingressarEmExperimentoInstrucional") {
+    return mapExperimentEnrollmentApplicationCall(rawArguments);
+  }
+  return mapAuthoringMcpToolCall(name, rawArguments);
+}
 
 export function mapAuthoringMcpToolCall(name, rawArguments) {
   const definition = TOOL_BY_NAME.get(name);
@@ -5287,6 +6696,14 @@ export function mapAuthoringMcpToolCall(name, rawArguments) {
     if (args.resourceSetRef) body.resourceSetRef = args.resourceSetRef;
     if (args.auditRunRef) body.auditRunRef = args.auditRunRef;
     if (args.auditScope) body.auditScope = args.auditScope;
+    if (args.experimentRef) body.experimentRef = args.experimentRef;
+    if (args.variantRevisionRef) body.variantRevisionRef = args.variantRevisionRef;
+    if (args.variantSetRef) body.variantSetRef = args.variantSetRef;
+    if (args.differenceRunRef) body.differenceRunRef = args.differenceRunRef;
+    if (args.collection) body.collection = args.collection;
+    if (args.collectionSetRef) body.collectionSetRef = args.collectionSetRef;
+    if (args.collectionCursor) body.collectionCursor = args.collectionCursor;
+    if (args.collectionLimit != null) body.collectionLimit = args.collectionLimit;
     if (args.cursor) body.cursor = args.cursor;
     if (args.limit != null) body.limit = args.limit;
     if (args.componentCursor) body.componentCursor = args.componentCursor;

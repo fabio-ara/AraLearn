@@ -497,6 +497,85 @@ acessibilidade, rigor ou qualidade pedagógica.
 Orientação segundo a qual pergunta, participação, interpretação, intervenção e
 limite precedem a coleta de dados ([Pardo e Siemens (2014)](referencias.md#ref-pardo2014ethical); [Tsai e Martinez-Maldonado (2022)](referencias.md#ref-tsai2022humancentered)). Não equivale a dashboard, predição ou vigilância.
 
+## Termos operacionais de experimentação
+
+### Experimento instrucional parametrizado
+
+- **Tipo:** termo operacional e protocolo de governança.
+- **Definição:** comparação planejada que parte de uma base comum aprovada,
+  declara fatores e condições explícitas, materializa variantes rastreáveis e
+  congela a revisão exata entregue a cada participante.
+- **Não equivale a:** ensaio causal válido, teste A/B improvisado, publicação de
+  duas versões ou comparação posterior de uso.
+- **Evidência necessária:** além da proveniência técnica, exige pergunta,
+  população, unidade de atribuição, instrumentos, procedimento, análise e
+  explicações alternativas compatíveis com a inferência pretendida.
+
+### Fator experimental
+
+- **Tipo:** termo metodológico operacionalizado.
+- **Definição:** dimensão deliberadamente variada entre condições e vinculada a
+  uma definição ordinária de parâmetro ou a um `ResourceSet` versionado.
+- **Não equivale a:** toda diferença entre artefatos, configuração escondida ou
+  rótulo livre como “baixo” e “alto”.
+- **Evidência necessária:** valores governados, alvos, versão, relação com a
+  hipótese e verificação de que diferenças não planejadas foram separadas.
+
+### Condição experimental
+
+- **Tipo:** termo metodológico operacionalizado.
+- **Definição:** tupla explícita de valores para todos os fatores de um
+  protocolo, aplicada ao escopo congelado e sob os mesmos invariantes
+  declarados.
+- **Não equivale a:** grupo de pessoas, variante visual, assignment, estado do
+  workspace ou combinação fatorial gerada implicitamente.
+- **Evidência necessária:** condição versionada, locks emitidos pelo servidor,
+  materialização auditada e vínculo inequívoco com a variante entregue.
+
+### Variante instrucional
+
+- **Tipo:** termo operacional.
+- **Definição:** revisão imutável de um artefato derivado da base comum para uma
+  condição, acompanhada por hashes, snapshots, manifesto, auditoria e diff.
+- **Não equivale a:** workspace editável, branch sem freeze, condição em si ou
+  garantia de que somente o fator pretendido mudou.
+- **Evidência necessária:** diff factual, classificação das diferenças, decisão
+  humana e freeze da revisão exata antes da atribuição.
+
+### Atribuição de participante
+
+- **Tipo:** termo metodológico operacionalizado.
+- **Definição:** vínculo append-only entre enrollment consentido e uma revisão
+  congelada de variante, produzido por regra manual, pseudoaleatória
+  reproduzível ou balanceamento simples declarado.
+- **Não equivale a:** consentimento, membership do workspace, exposição efetiva,
+  adesão à atividade ou randomização estatisticamente suficiente.
+- **Evidência necessária:** unidade de atribuição, algoritmo e versão, ocultação
+  adequada, perdas, desvios e análise coerente com o procedimento real.
+
+### Outcome
+
+- **Tipo:** resultado observado ou derivado segundo instrumento declarado.
+- **Definição:** variável de resultado definida antes da interpretação, com
+  unidade, instrumento, momento, versão e regra de cálculo identificáveis.
+- **Não equivale a:** clique, conclusão, evento de telemetria, score técnico,
+  finding de auditoria ou qualquer dado disponível.
+- **Evidência necessária:** validade e confiabilidade proporcionais ao uso,
+  população e condição de coleta, além de tratamento de dados ausentes e casos
+  adversos. A #107 conserva apenas referências governadas; coleta e análise
+  pertencem à #108.
+
+### Inferência causal
+
+- **Tipo:** interpretação metodológica.
+- **Definição:** conclusão de que uma diferença de condição contribuiu para uma
+  diferença de outcome sob desenho, pressupostos e análise explicitados.
+- **Não equivale a:** correlação, diferença descritiva, assignment determinístico,
+  freeze reproduzível ou execução bem-sucedida de testes de software.
+- **Evidência necessária:** comparabilidade, aderência, mensuração adequada,
+  análise da incerteza e exame de vieses, contaminação, perdas e explicações
+  alternativas. O AraLearn não concede essa interpretação automaticamente.
+
 ## Distinções metodológicas
 
 ### Design-Based Research — DBR

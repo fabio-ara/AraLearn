@@ -6702,13 +6702,14 @@ input:-webkit-autofill:focus {
   overflow: hidden;
 }
 
-.authoring-screen :is(button, input, select) {
+.authoring-screen :is(button, input, select, textarea) {
   font: inherit;
 }
 
 .authoring-screen button:focus-visible,
 .authoring-screen input:focus-visible,
-.authoring-screen select:focus-visible {
+.authoring-screen select:focus-visible,
+.authoring-screen textarea:focus-visible {
   outline: 3px solid var(--focus-ring);
   outline-offset: 2px;
 }
@@ -8047,6 +8048,661 @@ input:-webkit-autofill:focus {
   font-size: var(--type-xs);
 }
 
+.authoring-experiment-entry {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.authoring-experiment-entry-button {
+  min-height: var(--tap);
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 12px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-control);
+  color: var(--action-primary-hover);
+  background: var(--surface-raised);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.authoring-experiment-entry-button svg,
+.authoring-experiment-invariants svg {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+}
+
+.authoring-experiments {
+  width: 100%;
+  min-width: 0;
+  max-width: 760px;
+  display: grid;
+  gap: 12px;
+}
+
+.authoring-experiment-heading {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: var(--tap) minmax(0, 1fr);
+  align-items: center;
+  gap: 9px;
+}
+
+.authoring-experiment-heading h3,
+.authoring-experiment-heading p,
+.authoring-experiment-fieldset h4,
+.authoring-experiment-fieldset p,
+.authoring-experiment-variants h4,
+.authoring-experiment-differences h4,
+.authoring-experiment-differences h5,
+.authoring-experiment-assignment-panel :is(h4, p) {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.authoring-experiment-heading h3 {
+  font-family: var(--font-display);
+  font-size: var(--type-base);
+}
+
+.authoring-experiment-heading p,
+.authoring-experiment-fieldset p,
+.authoring-experiment-assignment-panel p {
+  margin-top: 3px;
+  color: var(--text-secondary);
+  font-size: var(--type-xs);
+}
+
+.authoring-experiment-steps {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 5px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.authoring-experiment-steps li {
+  min-width: 0;
+  min-height: var(--tap);
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr);
+  align-items: center;
+  gap: 5px;
+  padding: 5px 6px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-control);
+  color: var(--text-tertiary);
+  background: var(--surface-subtle);
+}
+
+.authoring-experiment-steps li > span {
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--surface-raised);
+  font-size: var(--type-xs);
+  font-weight: 800;
+}
+
+.authoring-experiment-steps small {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 0.68rem;
+  font-weight: 700;
+}
+
+.authoring-experiment-steps li.is-complete,
+.authoring-experiment-steps li.is-current {
+  color: var(--action-primary-hover);
+  border-color: var(--action-primary);
+}
+
+.authoring-experiment-steps li.is-current {
+  background: var(--action-primary-subtle);
+}
+
+.authoring-experiment-note {
+  min-width: 0;
+  margin: 0;
+  padding: 9px 10px;
+  border-radius: var(--radius-control);
+  color: var(--text-secondary);
+  background: var(--surface-subtle);
+  overflow-wrap: anywhere;
+}
+
+.authoring-experiment-list,
+.authoring-experiment-form,
+.authoring-experiment-conditions,
+.authoring-experiment-variants > div,
+.authoring-experiment-differences,
+.authoring-experiment-differences > section > div {
+  min-width: 0;
+  display: grid;
+  gap: 9px;
+}
+
+.authoring-experiment-card {
+  width: 100%;
+  min-width: 0;
+  min-height: 60px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 9px;
+  padding: 10px 12px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius);
+  color: var(--text-primary);
+  background: var(--surface-raised);
+  box-shadow: var(--shadow-card);
+  text-align: left;
+  cursor: pointer;
+}
+
+.authoring-experiment-card > span:first-child {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.authoring-experiment-card :is(strong, small),
+.authoring-experiment-state {
+  overflow-wrap: anywhere;
+}
+
+.authoring-experiment-card small,
+.authoring-experiment-state {
+  color: var(--text-secondary);
+  font-size: var(--type-xs);
+}
+
+.authoring-experiment-state {
+  max-width: 132px;
+  font-weight: 700;
+  text-align: right;
+}
+
+.authoring-experiment-state:is(.is-audit_pending, .is-paused) {
+  color: var(--status-warning);
+}
+
+.authoring-experiment-state:is(.is-frozen, .is-collecting, .is-closed) {
+  color: var(--status-success);
+}
+
+.authoring-experiment-state.is-invalidated {
+  color: var(--status-danger);
+}
+
+.authoring-experiment-form > label,
+.authoring-experiment-condition label,
+.authoring-experiment-differences article > label,
+.authoring-experiment-assignment-panel label {
+  min-width: 0;
+  display: grid;
+  gap: 5px;
+  color: var(--text-primary);
+  font-weight: 700;
+}
+
+.authoring-experiment-form label small,
+.authoring-experiment-condition label small,
+.authoring-experiment-differences label small {
+  color: var(--text-secondary);
+  font-size: var(--type-xs);
+  font-weight: 500;
+}
+
+.authoring-experiments :is(input[type="text"], input[type="number"], select, textarea) {
+  width: 100%;
+  min-width: 0;
+  min-height: var(--tap);
+  padding: 9px 10px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-control);
+  color: var(--text-primary);
+  background: var(--surface-raised);
+}
+
+.authoring-experiments textarea {
+  min-height: 96px;
+  resize: vertical;
+}
+
+.authoring-experiment-fieldset,
+.authoring-experiment-condition,
+.authoring-experiment-variants article,
+.authoring-experiment-differences article,
+.authoring-experiment-assignment-panel,
+.authoring-experiment-actions {
+  min-width: 0;
+  margin: 0;
+  padding: 11px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius);
+  background: var(--surface-raised);
+}
+
+fieldset.authoring-experiment-fieldset {
+  display: grid;
+  gap: 8px;
+}
+
+.authoring-experiment-fieldset legend {
+  padding-inline: 4px;
+  font-weight: 800;
+}
+
+.authoring-experiment-selected-factors,
+.authoring-experiment-actions,
+.authoring-experiment-difference-actions {
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 7px;
+}
+
+.authoring-experiment-selected-factors > span {
+  min-height: var(--tap);
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding-left: 10px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 999px;
+  background: var(--surface-subtle);
+  overflow-wrap: anywhere;
+}
+
+.authoring-experiment-selected-factors > span:only-child {
+  padding-right: 10px;
+}
+
+.authoring-experiment-selected-factors button {
+  width: var(--tap);
+  height: var(--tap);
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  color: var(--text-secondary);
+  background: transparent;
+  cursor: pointer;
+}
+
+.authoring-experiment-selected-factors svg {
+  width: 17px;
+  height: 17px;
+}
+
+.authoring-experiment-add-factor summary {
+  min-height: var(--tap);
+  display: flex;
+  align-items: center;
+  color: var(--action-primary-hover);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.authoring-experiment-add-factor > div {
+  display: grid;
+  gap: 6px;
+}
+
+.authoring-experiment-add-factor button {
+  min-height: var(--tap);
+  display: grid;
+  gap: 2px;
+  padding: 8px 10px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-control);
+  color: var(--text-primary);
+  background: var(--surface-subtle);
+  text-align: left;
+  cursor: pointer;
+}
+
+.authoring-experiment-add-factor small {
+  color: var(--text-secondary);
+}
+
+.authoring-experiment-checks,
+.authoring-experiment-assignment,
+.authoring-experiment-invariants {
+  min-width: 0;
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.authoring-experiment-checks label,
+.authoring-experiment-assignment label,
+.authoring-experiment-invariants li {
+  min-width: 0;
+  min-height: var(--tap);
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  padding: 7px 9px;
+  border-radius: var(--radius-control);
+  background: var(--surface-subtle);
+  cursor: pointer;
+}
+
+.authoring-experiment-invariants li {
+  color: var(--text-secondary);
+  cursor: default;
+}
+
+.authoring-experiment-checks input,
+.authoring-experiment-assignment input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--action-primary);
+}
+
+.authoring-experiment-footer {
+  position: sticky;
+  z-index: 2;
+  bottom: -12px;
+  display: flex;
+  justify-content: flex-end;
+  padding: 9px 0 12px;
+  border-top: 1px solid var(--border-subtle);
+  background: var(--surface-canvas);
+}
+
+.authoring-experiment-condition {
+  display: grid;
+  gap: 9px;
+}
+
+.authoring-experiment-condition > header {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 6px;
+}
+
+.authoring-experiment-condition > div,
+.authoring-experiment-assignment-panel {
+  min-width: 0;
+  display: grid;
+  gap: 9px;
+}
+
+.authoring-experiment-summary {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  margin: 0;
+}
+
+.authoring-experiment-summary > div {
+  min-width: 0;
+  padding: 9px 10px;
+  border-radius: var(--radius-control);
+  background: var(--surface-subtle);
+}
+
+.authoring-experiment-summary :is(dt, dd) {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.authoring-experiment-summary dt {
+  color: var(--text-secondary);
+  font-size: var(--type-xs);
+}
+
+.authoring-experiment-summary dd {
+  margin-top: 3px;
+  font-weight: 700;
+}
+
+.authoring-experiment-variants,
+.authoring-experiment-differences > section {
+  min-width: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.authoring-experiment-variants article,
+.authoring-experiment-differences article {
+  display: grid;
+  gap: 8px;
+}
+
+.authoring-experiment-variants article > header,
+.authoring-experiment-differences article > header {
+  min-width: 0;
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.authoring-experiment-variants header span,
+.authoring-experiment-differences header span {
+  color: var(--text-secondary);
+  font-size: var(--type-xs);
+}
+
+.authoring-experiment-differences article.is-accidental_unplanned {
+  border-color: var(--status-warning);
+}
+
+.authoring-experiment-correction {
+  display: grid;
+  gap: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.authoring-experiment-correction textarea {
+  min-height: 88px;
+  resize: vertical;
+}
+
+.authoring-experiment-resource-summary {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 3px 8px;
+  padding: 8px 9px;
+  border-radius: var(--radius-control);
+  background: var(--surface-subtle);
+}
+
+.authoring-experiment-resource-summary small {
+  grid-column: 1 / -1;
+  color: var(--text-secondary);
+  overflow-wrap: anywhere;
+}
+
+.authoring-experiment-actions {
+  justify-content: flex-end;
+}
+
+.authoring-experiment-actions > p {
+  flex: 1 1 240px;
+  margin: 0;
+  color: var(--text-secondary);
+  overflow-wrap: anywhere;
+}
+
+.authoring-experiment-confirm {
+  width: min(100%, 460px);
+}
+
+.authoring-experiment-enrollment-receipt {
+  display: grid;
+  gap: 10px;
+}
+
+.authoring-experiment-enrollment-receipt output {
+  min-width: 0;
+  padding: 14px;
+  border: 1px dashed var(--action-primary);
+  border-radius: var(--radius-control);
+  color: var(--text-primary);
+  background: var(--action-primary-subtle);
+  font-family: var(--font-mono);
+  font-size: var(--type-lg);
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  overflow-wrap: anywhere;
+  text-align: center;
+  user-select: all;
+}
+
+.authoring-experiment-enrollment-receipt > p {
+  margin: 0;
+  color: var(--text-secondary);
+  text-align: center;
+}
+
+.experiment-enrollment-launcher {
+  position: fixed;
+  z-index: 85;
+  right: max(12px, var(--safe-right));
+  bottom: calc(max(12px, var(--safe-bottom-tappable)) + 62px);
+  min-height: var(--tap);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 13px;
+  border: 1px solid var(--border-default);
+  border-radius: 999px;
+  color: var(--text-primary);
+  background: var(--surface-canvas);
+  box-shadow: var(--shadow-floating);
+  font: inherit;
+  font-weight: 700;
+}
+
+.experiment-enrollment-launcher svg {
+  width: 20px;
+  height: 20px;
+}
+
+.experiment-enrollment-dialog {
+  grid-template-rows: none;
+  align-content: start;
+  gap: 14px;
+  overflow-y: auto;
+  padding: 16px;
+}
+
+.experiment-enrollment-dialog > header {
+  display: block;
+  padding: 0 0 12px;
+}
+
+.experiment-enrollment-dialog label,
+.experiment-enrollment-policy,
+.experiment-enrollment-handles {
+  min-width: 0;
+  display: grid;
+  gap: 7px;
+}
+
+.experiment-enrollment-dialog input[type="text"] {
+  min-height: var(--tap);
+  width: 100%;
+}
+
+.experiment-enrollment-policy {
+  padding: 12px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-control);
+  background: var(--surface-subtle);
+}
+
+.experiment-enrollment-policy h3,
+.experiment-enrollment-policy p,
+.experiment-enrollment-dialog > p {
+  margin: 0;
+}
+
+.experiment-enrollment-policy p {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.experiment-enrollment-consent {
+  min-height: var(--tap);
+  grid-template-columns: 22px minmax(0, 1fr) !important;
+  align-items: start;
+  padding: 9px;
+  border-radius: var(--radius-control);
+  background: var(--action-primary-subtle);
+}
+
+.experiment-enrollment-consent input {
+  width: 18px;
+  height: 18px;
+  margin-top: 2px;
+  accent-color: var(--action-primary);
+}
+
+.experiment-enrollment-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.experiment-enrollment-actions > button,
+.experiment-enrollment-handles > button {
+  min-height: var(--tap);
+}
+
+.experiment-enrollment-handles {
+  padding-top: 10px;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.experiment-enrollment-handles h3 {
+  margin: 0;
+  font-size: var(--type-sm);
+}
+
+.authoring-experiment-continuity {
+  min-height: var(--tap);
+  grid-template-columns: 22px minmax(0, 1fr) !important;
+  align-items: start;
+  padding: 8px 9px;
+  border-radius: var(--radius-control);
+  background: var(--status-warning-subtle);
+}
+
+.authoring-experiment-continuity input {
+  width: 18px;
+  height: 18px;
+  margin-top: 2px;
+  accent-color: var(--action-primary);
+}
+
+.authoring-experiments button:disabled,
+.authoring-experiment-entry-button:disabled {
+  cursor: default;
+  opacity: 0.58;
+}
+
 @media (min-width: 800px) {
   .authoring-workspace-screen {
     gap: 14px;
@@ -8089,6 +8745,10 @@ input:-webkit-autofill:focus {
     align-items: center;
   }
 
+  .experiment-enrollment-launcher {
+    bottom: max(20px, var(--safe-bottom-tappable));
+  }
+
   .authoring-audit-summary {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -8096,9 +8756,34 @@ input:-webkit-autofill:focus {
   .authoring-finding-dialog {
     width: min(100%, 620px);
   }
+
+  .authoring-experiment-steps {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+
+  .authoring-experiment-steps li {
+    grid-template-columns: 22px minmax(0, 1fr);
+  }
+
+  .authoring-experiment-conditions,
+  .authoring-experiment-variants > div {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .authoring-experiment-summary {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 420px) {
+  .experiment-enrollment-launcher span {
+    max-width: 120px;
+  }
+
+  .experiment-enrollment-actions > button {
+    flex: 1 1 150px;
+  }
+
   .authoring-product-switch > button,
   .authoring-entry-switch > button {
     padding-inline: 7px;
@@ -8117,6 +8802,15 @@ input:-webkit-autofill:focus {
   .authoring-parameter {
     grid-template-columns: minmax(0, 1fr) minmax(58px, auto) 17px;
     padding-inline: 10px;
+  }
+
+  .authoring-experiment-card {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .authoring-experiment-state {
+    max-width: none;
+    text-align: left;
   }
 }
 

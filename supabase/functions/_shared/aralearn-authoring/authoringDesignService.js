@@ -34,6 +34,11 @@ import {
   resolveResourceCatalogAccess
 } from "./resourceCatalogAccess.js";
 import { sha256Hex } from "./security.js";
+import {
+  readAuthoringExperimentContext,
+  registerAuthoringExperimentVariantEvidence,
+  recordAuthoringExperimentDiffClassification
+} from "./authoringExperimentService.js";
 
 const DESIGN_SLICE_CONTRACT = "aralearn.authoring-design-slice.v1";
 const DESIGN_RESPONSE_LIMIT_BYTES = 96 * 1024;
@@ -57,7 +62,8 @@ const DESIGN_SLICE_VIEWS = new Set([
   "blueprint",
   "binding",
   "materialization",
-  "audit"
+  "audit",
+  "experiment_context"
 ]);
 const CONTRACTS = Object.freeze({
   instructional_analysis: "instructionalAnalysis",
@@ -89,7 +95,9 @@ const ACTION_CONTRACT_NAMES = Object.freeze([
   "action_save_blueprint",
   "action_register_manifest",
   "action_run_audit",
-  "action_record_semantic_audit"
+  "action_record_semantic_audit",
+  "action_register_experiment_variant_evidence",
+  "action_record_experiment_diff_classification"
 ]);
 const ALL_CONTRACT_NAMES = Object.freeze([
   ...Object.keys(CONTRACTS),
@@ -260,6 +268,25 @@ function embeddedSchema(schema) {
   return body;
 }
 
+function publicDesignParameterAssignmentSchema() {
+  const schema = structuredClone(
+    INSTRUCTIONAL_DESIGN_CONTRACTS.designParameterAssignment
+  );
+  const assignment = schema?.$defs?.DesignParameterAssignment;
+  assignment.properties.mode = { enum: ["auto", "manual_override"] };
+  assignment.properties.authority.properties.kind = {
+    enum: ["gpt", "author"]
+  };
+  assignment.allOf = assignment.allOf.filter((rule) => (
+    rule?.if?.properties?.mode?.const !== "research_lock"
+  ));
+  return schema;
+}
+
+const PUBLIC_DESIGN_PARAMETER_ASSIGNMENT_SCHEMA = Object.freeze(
+  publicDesignParameterAssignmentSchema()
+);
+
 const BLUEPRINT_MAPPINGS_SCHEMA = Object.freeze({
   type: "object",
   additionalProperties: false,
@@ -385,7 +412,7 @@ const ACTION_CONTRACTS = Object.freeze({
           microsequencePath: MICROSEQUENCE_PATH_SCHEMA,
           view: {
             enum: [...DESIGN_SLICE_VIEWS].filter((view) => (
-              !new Set(["resource_set", "audit"]).has(view)
+              !new Set(["resource_set", "audit", "experiment_context"]).has(view)
             ))
           }
         }
@@ -432,6 +459,88 @@ const ACTION_CONTRACTS = Object.freeze({
           }
         },
         not: { required: ["auditRunRef", "auditScope"] }
+      },
+      {
+        type: "object",
+        additionalProperties: false,
+        required: ["view"],
+        properties: {
+          view: { const: "experiment_context" },
+          experimentRef: VERSIONED_REF_SCHEMA,
+          variantRevisionRef: VERSIONED_REF_SCHEMA,
+          variantSetRef: VERSIONED_REF_SCHEMA,
+          differenceRunRef: VERSIONED_REF_SCHEMA,
+          collection: {
+            enum: [
+              "factor_targets", "locks", "resource_sets", "target_paths",
+              "difference_runs"
+            ]
+          },
+          collectionSetRef: VERSIONED_REF_SCHEMA,
+          collectionCursor: { type: "string", minLength: 1, maxLength: 240 },
+          collectionLimit: { type: "integer", minimum: 1, maximum: 20, default: 20 },
+          cursor: { type: "string", minLength: 1, maxLength: 240 },
+          limit: { type: "integer", minimum: 1, maximum: 20, default: 20 }
+        },
+        allOf: [{
+          if: { required: ["experimentRef"] },
+          then: { required: ["variantRevisionRef"] }
+        }, {
+          if: { required: ["variantRevisionRef"] },
+          then: { required: ["experimentRef"] }
+        }, {
+          if: {
+            required: ["cursor"],
+            not: { required: ["experimentRef"] }
+          },
+          then: { required: ["variantSetRef"] }
+        }, {
+          if: { required: ["differenceRunRef"] },
+          then: {
+            required: ["experimentRef", "variantRevisionRef"],
+            not: {
+              anyOf: [
+                { required: ["collection"] },
+                { required: ["collectionSetRef"] },
+                { required: ["collectionCursor"] },
+                { required: ["collectionLimit"] }
+              ]
+            }
+          }
+        }, {
+          if: { required: ["experimentRef"] },
+          then: { not: { required: ["variantSetRef"] } }
+        }, {
+          if: { required: ["collectionSetRef"] },
+          then: { required: ["collection"] }
+        }, {
+          if: { required: ["collectionCursor"] },
+          then: { required: ["collection", "collectionSetRef"] }
+        }, {
+          if: { required: ["collectionLimit"] },
+          then: { required: ["collection"] }
+        }, {
+          if: { required: ["collection"] },
+          then: {
+            not: {
+              anyOf: [
+                { required: ["variantSetRef"] },
+                { required: ["differenceRunRef"] },
+                { required: ["cursor"] },
+                { required: ["limit"] }
+              ]
+            }
+          },
+          else: {
+            not: {
+              anyOf: [
+                { required: ["collectionSetRef"] },
+                { required: ["collectionCursor"] },
+                { required: ["collectionLimit"] }
+              ]
+            }
+          }
+        }]
       }
     ]
   },
@@ -450,7 +559,7 @@ const ACTION_CONTRACTS = Object.freeze({
   ),
   action_set_parameter: actionMutationSchema(
     "set_parameter",
-    INSTRUCTIONAL_DESIGN_CONTRACTS.designParameterAssignment
+    PUBLIC_DESIGN_PARAMETER_ASSIGNMENT_SCHEMA
   ),
   action_remove_parameter: actionMutationSchema("remove_parameter", {
     type: "object",
@@ -543,7 +652,64 @@ const ACTION_CONTRACTS = Object.freeze({
         }
       }
     }
-  })
+  }),
+  action_register_experiment_variant_evidence: actionMutationSchema(
+    "register_experiment_variant_evidence",
+    {
+      type: "object",
+      additionalProperties: false,
+      required: ["experimentRef", "variantRevisionRef", "mandateRef"],
+      properties: {
+        experimentRef: VERSIONED_REF_SCHEMA,
+        variantRevisionRef: VERSIONED_REF_SCHEMA,
+        mandateRef: VERSIONED_REF_SCHEMA
+      }
+    }
+  ),
+  action_record_experiment_diff_classification: actionMutationSchema(
+    "record_experiment_diff_classification",
+    {
+      type: "object",
+      additionalProperties: false,
+      required: [
+        "experimentRef", "variantRevisionRef", "differenceRunRef", "mandateRef",
+        "classifications"
+      ],
+      properties: {
+        experimentRef: VERSIONED_REF_SCHEMA,
+        variantRevisionRef: VERSIONED_REF_SCHEMA,
+        differenceRunRef: VERSIONED_REF_SCHEMA,
+        mandateRef: VERSIONED_REF_SCHEMA,
+        classifications: {
+          type: "array",
+          minItems: 1,
+          maxItems: 20,
+          items: {
+            type: "object",
+            additionalProperties: false,
+            required: [
+              "differenceRef", "classification", "publicRationale", "evidenceRefs"
+            ],
+            properties: {
+              differenceRef: VERSIONED_REF_SCHEMA,
+              classification: {
+                enum: [
+                  "directly_required", "inevitable_derived", "accidental_unplanned"
+                ]
+              },
+              publicRationale: { type: "string", minLength: 1, maxLength: 1000 },
+              evidenceRefs: {
+                type: "array",
+                maxItems: 8,
+                uniqueItems: true,
+                items: NON_EMPTY_SCHEMA
+              }
+            }
+          }
+        }
+      }
+    }
+  )
 });
 
 function text(value) {
@@ -1360,6 +1526,14 @@ export async function readAuthoringDesignSlice({
   resourceSetRef = null,
   auditRunRef = null,
   auditScope = null,
+  experimentRef = null,
+  variantRevisionRef = null,
+  variantSetRef = null,
+  differenceRunRef = null,
+  collection = null,
+  collectionSetRef = null,
+  collectionCursor = null,
+  collectionLimit = null,
   cursor = null,
   limit = null,
   componentCursor = null,
@@ -1368,6 +1542,24 @@ export async function readAuthoringDesignSlice({
 }) {
   if (!DESIGN_SLICE_VIEWS.has(view)) {
     throw new AuthoringApiError(422, "invalid_design_slice_view", "A view de desenho é inválida.");
+  }
+  if (view === "experiment_context") {
+    return readAuthoringExperimentContext({
+      adapter,
+      principal,
+      workspaceId,
+      experimentRef,
+      variantRevisionRef,
+      variantSetRef,
+      differenceRunRef,
+      collection,
+      collectionSetRef,
+      collectionCursor,
+      collectionLimit: collectionLimit || 20,
+      cursor,
+      limit: limit || 20,
+      deadlineAt
+    });
   }
   if (!new Set(["resource_set", "audit"]).has(view)
       && (resourceSetRef != null || auditRunRef != null || auditScope != null
@@ -2362,14 +2554,25 @@ async function expandRemoveParameter({
   expectedRevision,
   payload
 }) {
-  if (Object.hasOwn(payload, "id")) return validateRemoveAssignment(payload);
-  requireClosedObject(
-    payload,
-    ["assignmentRef", "definitionRef", "rationale", "provenanceRefs"],
-    "payload"
-  );
-  requireVersionedRef(payload.assignmentRef, "payload.assignmentRef");
-  requireVersionedRef(payload.definitionRef, "payload.definitionRef");
+  const legacy = Object.hasOwn(payload, "id")
+    ? validateRemoveAssignment({
+        id: payload.id,
+        version: payload.version,
+        definitionRef: payload.definitionRef,
+        scope: payload.scope,
+        rationale: payload.rationale,
+        provenanceRefs: payload.provenanceRefs
+      })
+    : null;
+  if (!legacy) {
+    requireClosedObject(
+      payload,
+      ["assignmentRef", "definitionRef", "rationale", "provenanceRefs"],
+      "payload"
+    );
+    requireVersionedRef(payload.assignmentRef, "payload.assignmentRef");
+    requireVersionedRef(payload.definitionRef, "payload.definitionRef");
+  }
   const assignments = list((await adapter.listAuthoringDesignParameterAssignments({
     principal,
     workspaceId,
@@ -2377,7 +2580,11 @@ async function expandRemoveParameter({
     scopeRef: microsequencePath[3]
   }))?.items);
   const current = assignments.find((assignment) => (
-    refKey(assignment) === refKey(payload.assignmentRef)
+    legacy
+      ? refKey(assignment.definitionRef) === refKey(legacy.definitionRef)
+        && text(assignment.scope?.kind) === text(legacy.scope?.kind)
+        && text(assignment.scope?.ref) === text(legacy.scope?.ref)
+      : refKey(assignment) === refKey(payload.assignmentRef)
   ));
   if (!current || refKey(current.definitionRef) !== refKey(payload.definitionRef)) {
     throw new AuthoringApiError(
@@ -2386,6 +2593,14 @@ async function expandRemoveParameter({
       "A atribuição indicada não é a atribuição corrente desse parâmetro."
     );
   }
+  if (current.mode === "research_lock") {
+    throw new AuthoringApiError(
+      403,
+      "research_lock_application_only",
+      "research_lock é autoridade canônica do backend experimental."
+    );
+  }
+  if (legacy) return legacy;
   return validateRemoveAssignment({
     id: current.id,
     version: `1.0.${expectedRevision}`,
@@ -3208,6 +3423,13 @@ async function executeDesignMutation({
       }
     } else if (operation === "set_parameter") {
       normalizedPayload = normalizeDesignParameterAssignment(payload);
+      if (normalizedPayload.mode === "research_lock") {
+        throw new AuthoringApiError(
+          403,
+          "research_lock_application_only",
+          "research_lock é autoridade canônica do backend experimental."
+        );
+      }
     } else if (operation === "remove_parameter") {
       normalizedPayload = await expandRemoveParameter({
         adapter,
@@ -3299,6 +3521,12 @@ async function executeDesignMutation({
 export async function executeWorkspaceDesignAction(options) {
   if (options.operation === "read_slice") return readAuthoringDesignSlice(options);
   if (options.operation === "contracts") return readInstructionalDesignContract(options);
+  if (options.operation === "record_experiment_diff_classification") {
+    return recordAuthoringExperimentDiffClassification(options);
+  }
+  if (options.operation === "register_experiment_variant_evidence") {
+    return registerAuthoringExperimentVariantEvidence(options);
+  }
   if (new Set(["run_audit", "record_semantic_audit"]).has(options.operation)) {
     return executeAuditMutation(options);
   }

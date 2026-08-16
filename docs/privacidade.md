@@ -42,6 +42,32 @@ Esses dados existem para que uma alteração não seja aplicada duas vezes, para
 
 O estado corrente de autoria não é um arquivo de conversa. A implementação conserva a estrutura atual necessária para continuar o trabalho e referências compactas de operações em curso. Mensagens completas de uma conversa externa, respostas brutas e cópias sucessivas do curso não são anexadas ao conteúdo como histórico textual.
 
+### Experimentos e participação
+
+Um experimento conserva protocolo, condições, revisões congeladas, referências
+de instrumentos, consentimento e recibos de atribuição. A conta participante
+não se torna membro do workspace autoral: o servidor cria um pseudônimo local
+ao experimento e entrega somente o curso privado da revisão atribuída.
+
+O vínculo entre pseudônimo e conta existe para autorização e sincronização,
+fica fora do contexto do modelo de linguagem e pode ser anonimizado quando a
+conta é excluída. Pesquisadores operam a referência pseudônima, não o
+identificador da conta. Roster, seed, aceite individual e outcomes não entram
+no MCP nem no contexto usado para materializar conteúdo.
+
+Quando a conta autora é excluída, bases já pinadas e variantes congeladas
+continuam privadas e têm a autoria anonimizada para preservar a evidência e a
+continuidade por outro administrador do experimento. Elas não se tornam cursos
+de catálogo. Cursos privados comuns que não foram pinados por um experimento
+mantêm a regra normal de exclusão em cascata.
+
+Consentir não equivale a ser atribuído, e atribuição não autoriza coleta
+indiscriminada. O registro fixa política e revisão do consentimento; protocolo
+e instrumento delimitam finalidade. A revisão do curso já atribuída pode ser
+replicada para estudo offline, mas novo enrollment ou assignment exige conexão.
+O fluxo técnico está em [Experimentos instrucionais
+parametrizados](experimentos-instrucionais-parametrizados.md).
+
 ### Estado pessoal de estudo
 
 A réplica funcional associa à conta e ao curso:

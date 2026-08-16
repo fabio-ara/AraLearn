@@ -597,7 +597,8 @@ export function projectAuthoringWorkspaceOverview({
       editContent: canAuthor,
       decideFindings: canAuthor,
       prepareRepairs: canAuthor,
-      requestAudit: canAuthor
+      requestAudit: canAuthor,
+      research: capabilities.research === true
     }
   };
 }

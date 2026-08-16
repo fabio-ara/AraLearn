@@ -26,6 +26,7 @@ import {
 } from "../src/ui/OAuthAuthorizationConsent.js";
 import { createLearningSpacesPanel } from "../src/ui/LearningSpacesPanel.js";
 import { createAuthoringWorkspaceSurface } from "../src/ui/AuthoringWorkspaceSurface.js";
+import { createExperimentEnrollmentSurface } from "../src/ui/ExperimentEnrollmentSurface.js";
 import { dispatchApplicationBack } from "../src/ui/applicationBackNavigation.js";
 import { renderUiIcon } from "../src/ui/renderUiIcons.js";
 
@@ -260,6 +261,7 @@ async function renderAuthenticatedApplication(root, config, authClient, session)
   let editorApp = null;
   let learningPanel = null;
   let authoringSurface = null;
+  let experimentEnrollmentSurface = null;
   let authoringReturnContext = null;
   let automaticSyncTimer = null;
   let automaticSyncRetryCount = 0;
@@ -401,6 +403,7 @@ async function renderAuthenticatedApplication(root, config, authClient, session)
   root.innerHTML = `
     <div id="aralearn-editor-root"></div>
     <div id="aralearn-authoring-root" hidden></div>
+    <div id="aralearn-experiment-enrollment-root"></div>
     <div id="aralearn-remote-library-root"></div>
     <nav class="authoring-reader-return" data-authoring-reader-return aria-label="Retorno à Autoria" hidden>
       <button class="icon-pill" type="button" data-return-to-authoring title="Voltar à Autoria" aria-label="Voltar à Autoria">${renderUiIcon("arrow-left", "home-tab-icon")}<span>Autoria</span></button>
@@ -414,6 +417,7 @@ async function renderAuthenticatedApplication(root, config, authClient, session)
   `;
   const editorRoot = root.querySelector("#aralearn-editor-root");
   const authoringRoot = root.querySelector("#aralearn-authoring-root");
+  const experimentEnrollmentRoot = root.querySelector("#aralearn-experiment-enrollment-root");
   const libraryRoot = root.querySelector("#aralearn-remote-library-root");
   const authoringReaderReturn = root.querySelector("[data-authoring-reader-return]");
   const durabilityRoot = root.querySelector("[data-local-durability]");
@@ -502,7 +506,8 @@ async function renderAuthenticatedApplication(root, config, authClient, session)
     flush: bestEffortFlush,
     handleBackPress() {
       const destination = dispatchApplicationBack({
-        closeOverlay: () => learningPanel?.handleBack?.() === true,
+        closeOverlay: () => experimentEnrollmentSurface?.handleBack?.() === true ||
+          learningPanel?.handleBack?.() === true,
         returnToAuthoring: () => {
           if (!authoringReturnContext) return false;
           const context = authoringReturnContext;
@@ -722,6 +727,39 @@ async function renderAuthenticatedApplication(root, config, authClient, session)
       }
     }
   });
+  experimentEnrollmentSurface = createExperimentEnrollmentSurface({
+    root: experimentEnrollmentRoot,
+    controller: homeLearningSpaces,
+    async onEnrollmentChanged(enrollment) {
+      if (globalThis.navigator?.onLine === false) return;
+      const expectedCourseIds = enrollment?.selection?.courseId
+        ? [enrollment.selection.courseId]
+        : [];
+      try {
+        await synchronizeReplica({ guaranteeFresh: true, expectedCourseIds });
+      } catch (error) {
+        console.warn("A participação foi registrada, mas a réplica ainda não foi atualizada.", error);
+      }
+    },
+    async onOpenSelection(target, selection) {
+      const courseId = selection?.courseId || target?.courseId;
+      if (!courseId) return false;
+      if (globalThis.navigator?.onLine !== false) {
+        try {
+          await synchronizeReplica({ guaranteeFresh: true, expectedCourseIds: [courseId] });
+        } catch (error) {
+          console.warn("A variante atribuída ainda não pôde ser sincronizada.", error);
+          return false;
+        }
+      }
+      return editorApp?.openCourse?.(courseId) === true;
+    }
+  });
+  void experimentEnrollmentSurface.consumeFragment();
+  globalThis.addEventListener("hashchange", () => {
+    experimentEnrollmentRoot.hidden = false;
+    void experimentEnrollmentSurface?.consumeFragment?.();
+  }, { signal: lifecycleAbortController.signal });
   const returnToAuthoring = async () => {
     if (!authoringReturnContext || !authoringSurface) return false;
     const context = authoringReturnContext;
@@ -752,6 +790,12 @@ async function renderAuthenticatedApplication(root, config, authClient, session)
         workspaceId: returnContext.workspaceId,
         destination: returnContext.destination,
         findingId: String(returnContext.findingId || ""),
+        findingDetail: returnContext.findingDetail === true,
+        experimentView: String(returnContext.experimentView || ""),
+        experimentId: String(returnContext.experimentId || ""),
+        experimentStage: String(returnContext.experimentStage || ""),
+        differenceId: String(returnContext.differenceId || ""),
+        variantId: String(returnContext.variantId || ""),
         microsequencePath: Array.isArray(returnContext.microsequencePath)
           ? [...returnContext.microsequencePath]
           : null
@@ -765,6 +809,7 @@ async function renderAuthenticatedApplication(root, config, authClient, session)
       editorApp?.closeAuthoringPreview?.();
       authoringReaderReturn.hidden = true;
       editorRoot.hidden = false;
+      experimentEnrollmentRoot.hidden = false;
     }
   });
   authoringReaderReturn.querySelector("[data-return-to-authoring]")?.addEventListener("click", () => {
@@ -780,6 +825,8 @@ async function renderAuthenticatedApplication(root, config, authClient, session)
     authoringReturnContext = null;
     editorApp?.closeAuthoringPreview?.();
     authoringReaderReturn.hidden = true;
+    experimentEnrollmentSurface?.close?.();
+    experimentEnrollmentRoot.hidden = true;
     editorRoot.hidden = true;
     void authoringSurface.open();
   });

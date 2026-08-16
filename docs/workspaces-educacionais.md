@@ -50,6 +50,12 @@ projeto, estudante em outro e leitora em um terceiro.
 | Estudante | ler e registrar comentários próprios |
 | Leitor | ler |
 
+Proprietário e administrador também recebem a capacidade explícita
+`research`, usada apenas pelo control plane de experimentos. Ela autoriza criar
+e governar protocolo, condição, freeze e atribuição; não permite escrever
+`research_lock` pela operação comum de parâmetros. A separação torna possível
+restringir essa responsabilidade no futuro sem reinterpretar o papel `manage`.
+
 O servidor verifica essas capacidades em cada leitura ou escrita compartilhada.
 Ocultar um botão na interface melhora a compreensão, mas não constitui
 controle de acesso suficiente; a decisão final precisa ocorrer onde os dados
@@ -149,6 +155,13 @@ próprios nem outras concessões válidas.
 
 As instruções completas estão no [guia de administração de
 workspace](guia-administracao-workspace.md).
+
+Participação num experimento não usa esse convite. O participante aceita uma
+política de consentimento própria, recebe um pseudônimo local e é ligado somente
+ao curso congelado que lhe foi atribuído. Ele não se torna membro do workspace
+da base ou da variante e, portanto, não recebe as demais condições ou controles
+autorais em Trilhas. Consulte [Experimentos instrucionais
+parametrizados](experimentos-instrucionais-parametrizados.md).
 
 ## Observações situadas e revisão
 

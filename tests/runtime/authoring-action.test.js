@@ -84,6 +84,7 @@ function workspaceRead(project, view, entityPath) {
       review: true,
       comment: true,
       publish: true,
+      research: false,
       manage: true
     },
     revision: 1,
@@ -512,6 +513,56 @@ test("Action limita payload e não aceita operação fora do registro canônico"
   }));
   assert.equal(oversized.status, 413);
   assert.equal((await oversized.json()).error.code, "action_payload_too_large");
+});
+
+test("actions experimentais só aceitam a rota /app com principal application", async () => {
+  const publicResponse = await handler()(request("gerirExperimentoInstrucional", {
+    operation: "list",
+    workspaceId: WORKSPACE_ID
+  }));
+  assert.equal(publicResponse.status, 404);
+  assert.equal((await publicResponse.json()).error.code, "unknown_action");
+
+  const applicationAdapter = adapter({
+    async resolveApplicationPrincipal() {
+      return {
+        actorId: principal().actorId,
+        authenticationKind: "application",
+        scopes: ["*"]
+      };
+    },
+    async listAuthoringExperiments({ workspaceId }) {
+      assert.equal(workspaceId, WORKSPACE_ID);
+      return {
+        workspaceRevision: 2,
+        experimentSetRef: { id: "experiment-set-a", version: "2" },
+        items: [],
+        count: 0,
+        nextCursor: null,
+        truncated: false
+      };
+    }
+  });
+  const applicationRequest = new Request(
+    `${ACTION_URL}/app/gerirExperimentoInstrucional`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Origin: ORIGIN,
+        Authorization: "Bearer application-token"
+      },
+      body: JSON.stringify({ operation: "list", workspaceId: WORKSPACE_ID })
+    }
+  );
+  const appResponse = await handler(applicationAdapter)(applicationRequest);
+  const payload = await appResponse.json();
+  assert.equal(appResponse.status, 200);
+  assert.equal(payload.ok, true);
+  assert.deepEqual(payload.data.experimentSetRef, {
+    id: "experiment-set-a",
+    version: "2"
+  });
 });
 
 test("Action mantém outlines e revisões por lição das fixtures reais abaixo de 96 KiB", async () => {

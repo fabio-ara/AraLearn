@@ -7,8 +7,8 @@
     {
       "file": "aralearn-authoring-core.zip",
       "platform": null,
-      "bytes": 832336,
-      "sha256": "dc883be37df4b4ac75785057fd5e6802f1bbc13226801bcca59fc306194644bc",
+      "bytes": 839041,
+      "sha256": "3a0a71cb7d5d178863ef3b15f03a75ae0d82b7b2cec83ffeea2017a13ac53214",
       "files": [
         {
           "path": "aralearn-authoring/core/editorial-cycle.md",
@@ -57,8 +57,8 @@
         },
         {
           "path": "aralearn-authoring/docs/desenho-instrucional-parametrizado.md",
-          "bytes": 27292,
-          "sha256": "f37daf787bfa4cc295e7e3fef84ede2f344cb9f9b9ac6ed9f96860be988e4141"
+          "bytes": 29022,
+          "sha256": "d47eaa39f1d09601921194d1bcd6477960d9c415e651176211d3198fec40e6a6"
         },
         {
           "path": "aralearn-authoring/docs/fluxos-prompts-e-contratos.md",
@@ -82,8 +82,8 @@
         },
         {
           "path": "aralearn-authoring/docs/workspaces-educacionais.md",
-          "bytes": 18225,
-          "sha256": "d78047eaa9363e676369087d52c6cc652dc0a106c0198bfd70ab23cf29f2ad9a"
+          "bytes": 19122,
+          "sha256": "5f4489f2a33f311e11eacd9eb97e332e8906fd5db1076d54d7f761207e9ebc93"
         },
         {
           "path": "aralearn-authoring/evals/contextual-planning-runs.v1.json",
@@ -159,6 +159,11 @@
           "path": "aralearn-authoring/knowledge/evidence-and-practice.md",
           "bytes": 2279,
           "sha256": "8a2baac6fd061d10942b016d2cc96fa7d4882d636ed1e30180432fa474da8046"
+        },
+        {
+          "path": "aralearn-authoring/knowledge/experimental-variants.md",
+          "bytes": 3896,
+          "sha256": "d0be3582fb9261f4d8b04a7de9701c69576df9d456e8a470590afa51ab7dcead"
         },
         {
           "path": "aralearn-authoring/knowledge/explanatory-elaboration.md",
@@ -280,8 +285,8 @@
     {
       "file": "aralearn-authoring-chatgpt.zip",
       "platform": "chatgpt",
-      "bytes": 1143514,
-      "sha256": "02372557faad4c319ed484b59fc11e48a8558e81e3b2d584284ee12543e04ff1",
+      "bytes": 1149743,
+      "sha256": "043b6e1850d8caf518bc910fce11e5825d27b9ac7ee90a0044d9c3d3a3537539",
       "files": [
         {
           "path": "aralearn-authoring/core/editorial-cycle.md",
@@ -330,8 +335,8 @@
         },
         {
           "path": "aralearn-authoring/docs/desenho-instrucional-parametrizado.md",
-          "bytes": 27274,
-          "sha256": "ade436d4ff06c5de939c1c13728227c1aa92cd6fd3e7bbc77f3bdddc4dc15b83"
+          "bytes": 29004,
+          "sha256": "e9fadded714e817f8523012b8af70b2799d8c7a95565d93bb144e10291d9f581"
         },
         {
           "path": "aralearn-authoring/docs/fluxos-prompts-e-contratos.md",
@@ -355,8 +360,8 @@
         },
         {
           "path": "aralearn-authoring/docs/workspaces-educacionais.md",
-          "bytes": 18198,
-          "sha256": "f833ddf50fe3ef19c6278b13ca4ecfb1641eb141e627650138726ce18c72d75a"
+          "bytes": 19095,
+          "sha256": "5a8d7b086273447791094e3a15761aa0982a47dd2caed6395cbf624c5898105e"
         },
         {
           "path": "aralearn-authoring/evals/contextual-planning-runs.v1.json",
@@ -434,6 +439,11 @@
           "sha256": "8a2baac6fd061d10942b016d2cc96fa7d4882d636ed1e30180432fa474da8046"
         },
         {
+          "path": "aralearn-authoring/knowledge/experimental-variants.md",
+          "bytes": 3896,
+          "sha256": "d0be3582fb9261f4d8b04a7de9701c69576df9d456e8a470590afa51ab7dcead"
+        },
+        {
           "path": "aralearn-authoring/knowledge/explanatory-elaboration.md",
           "bytes": 2099,
           "sha256": "97c851b2df7e23e382314b536a19b51fa07a33ddd851b9e580bb12f1ced3cdf8"
@@ -485,8 +495,8 @@
         },
         {
           "path": "aralearn-authoring/platforms/chatgpt/ACTION_OPENAPI.yaml",
-          "bytes": 82851,
-          "sha256": "e8cca9f2f26271523bd668d3cce6f9c750664f33dc48f9d59987684f35948d37"
+          "bytes": 82375,
+          "sha256": "57d1daa04e4e90592c09697924cbedf6861f6f5030b756f63955f42cfc0f468e"
         },
         {
           "path": "aralearn-authoring/platforms/chatgpt/INSTRUCTIONS.md",
@@ -588,8 +598,8 @@
     {
       "file": "aralearn-authoring-gemini.zip",
       "platform": "gemini",
-      "bytes": 842567,
-      "sha256": "aaa9f9f53149af73f0ba52eac4ff39ffb064f8463571626202922447569f9134",
+      "bytes": 849272,
+      "sha256": "acd53b42559009c893c0f046d90fd386e22a691c8253f52461a4bffb2dd648c3",
       "files": [
         {
           "path": "aralearn-authoring/core/editorial-cycle.md",
@@ -638,8 +648,8 @@
         },
         {
           "path": "aralearn-authoring/docs/desenho-instrucional-parametrizado.md",
-          "bytes": 27292,
-          "sha256": "f37daf787bfa4cc295e7e3fef84ede2f344cb9f9b9ac6ed9f96860be988e4141"
+          "bytes": 29022,
+          "sha256": "d47eaa39f1d09601921194d1bcd6477960d9c415e651176211d3198fec40e6a6"
         },
         {
           "path": "aralearn-authoring/docs/fluxos-prompts-e-contratos.md",
@@ -663,8 +673,8 @@
         },
         {
           "path": "aralearn-authoring/docs/workspaces-educacionais.md",
-          "bytes": 18225,
-          "sha256": "d78047eaa9363e676369087d52c6cc652dc0a106c0198bfd70ab23cf29f2ad9a"
+          "bytes": 19122,
+          "sha256": "5f4489f2a33f311e11eacd9eb97e332e8906fd5db1076d54d7f761207e9ebc93"
         },
         {
           "path": "aralearn-authoring/evals/contextual-planning-runs.v1.json",
@@ -740,6 +750,11 @@
           "path": "aralearn-authoring/knowledge/evidence-and-practice.md",
           "bytes": 2279,
           "sha256": "8a2baac6fd061d10942b016d2cc96fa7d4882d636ed1e30180432fa474da8046"
+        },
+        {
+          "path": "aralearn-authoring/knowledge/experimental-variants.md",
+          "bytes": 3896,
+          "sha256": "d0be3582fb9261f4d8b04a7de9701c69576df9d456e8a470590afa51ab7dcead"
         },
         {
           "path": "aralearn-authoring/knowledge/explanatory-elaboration.md",
@@ -876,8 +891,8 @@
     {
       "file": "aralearn-authoring-microsoft-365.zip",
       "platform": "microsoft-365",
-      "bytes": 844062,
-      "sha256": "50a783f0d357459589a3941fab8db82a25396c361c62f2372a6aa87c8a169147",
+      "bytes": 850767,
+      "sha256": "ba25f2924dd10029f7ae86ffba4f9d1936c97aeae1f8e59ba45aa098fd7523b0",
       "files": [
         {
           "path": "aralearn-authoring/core/editorial-cycle.md",
@@ -926,8 +941,8 @@
         },
         {
           "path": "aralearn-authoring/docs/desenho-instrucional-parametrizado.md",
-          "bytes": 27292,
-          "sha256": "f37daf787bfa4cc295e7e3fef84ede2f344cb9f9b9ac6ed9f96860be988e4141"
+          "bytes": 29022,
+          "sha256": "d47eaa39f1d09601921194d1bcd6477960d9c415e651176211d3198fec40e6a6"
         },
         {
           "path": "aralearn-authoring/docs/fluxos-prompts-e-contratos.md",
@@ -951,8 +966,8 @@
         },
         {
           "path": "aralearn-authoring/docs/workspaces-educacionais.md",
-          "bytes": 18225,
-          "sha256": "d78047eaa9363e676369087d52c6cc652dc0a106c0198bfd70ab23cf29f2ad9a"
+          "bytes": 19122,
+          "sha256": "5f4489f2a33f311e11eacd9eb97e332e8906fd5db1076d54d7f761207e9ebc93"
         },
         {
           "path": "aralearn-authoring/evals/contextual-planning-runs.v1.json",
@@ -1028,6 +1043,11 @@
           "path": "aralearn-authoring/knowledge/evidence-and-practice.md",
           "bytes": 2279,
           "sha256": "8a2baac6fd061d10942b016d2cc96fa7d4882d636ed1e30180432fa474da8046"
+        },
+        {
+          "path": "aralearn-authoring/knowledge/experimental-variants.md",
+          "bytes": 3896,
+          "sha256": "d0be3582fb9261f4d8b04a7de9701c69576df9d456e8a470590afa51ab7dcead"
         },
         {
           "path": "aralearn-authoring/knowledge/explanatory-elaboration.md",
@@ -1169,8 +1189,8 @@
     {
       "file": "aralearn-authoring-claude.zip",
       "platform": "claude",
-      "bytes": 843696,
-      "sha256": "9d368ccdfac0ae93a279b8cd6fee07a46e8bc3ff2b5c3ff60d18c419968a4ca9",
+      "bytes": 850401,
+      "sha256": "1cc1d85d1896530cff04c6c411e7d8816e66563359a436c9125fa6e0d061339f",
       "files": [
         {
           "path": "aralearn-authoring/core/editorial-cycle.md",
@@ -1219,8 +1239,8 @@
         },
         {
           "path": "aralearn-authoring/docs/desenho-instrucional-parametrizado.md",
-          "bytes": 27292,
-          "sha256": "f37daf787bfa4cc295e7e3fef84ede2f344cb9f9b9ac6ed9f96860be988e4141"
+          "bytes": 29022,
+          "sha256": "d47eaa39f1d09601921194d1bcd6477960d9c415e651176211d3198fec40e6a6"
         },
         {
           "path": "aralearn-authoring/docs/fluxos-prompts-e-contratos.md",
@@ -1244,8 +1264,8 @@
         },
         {
           "path": "aralearn-authoring/docs/workspaces-educacionais.md",
-          "bytes": 18225,
-          "sha256": "d78047eaa9363e676369087d52c6cc652dc0a106c0198bfd70ab23cf29f2ad9a"
+          "bytes": 19122,
+          "sha256": "5f4489f2a33f311e11eacd9eb97e332e8906fd5db1076d54d7f761207e9ebc93"
         },
         {
           "path": "aralearn-authoring/evals/contextual-planning-runs.v1.json",
@@ -1321,6 +1341,11 @@
           "path": "aralearn-authoring/knowledge/evidence-and-practice.md",
           "bytes": 2279,
           "sha256": "8a2baac6fd061d10942b016d2cc96fa7d4882d636ed1e30180432fa474da8046"
+        },
+        {
+          "path": "aralearn-authoring/knowledge/experimental-variants.md",
+          "bytes": 3896,
+          "sha256": "d0be3582fb9261f4d8b04a7de9701c69576df9d456e8a470590afa51ab7dcead"
         },
         {
           "path": "aralearn-authoring/knowledge/explanatory-elaboration.md",
@@ -1457,8 +1482,8 @@
     {
       "file": "aralearn-authoring-generic.zip",
       "platform": "generic",
-      "bytes": 845220,
-      "sha256": "8bdbfc41bf5476a236012244ce9f7e706d7df942002e6fa3e8e729ef89a14175",
+      "bytes": 851925,
+      "sha256": "ad034484036f0a4b0ddd4f8d1a6e870d4de34553cafc03b68b3f35771bd78c7b",
       "files": [
         {
           "path": "aralearn-authoring/core/editorial-cycle.md",
@@ -1507,8 +1532,8 @@
         },
         {
           "path": "aralearn-authoring/docs/desenho-instrucional-parametrizado.md",
-          "bytes": 27292,
-          "sha256": "f37daf787bfa4cc295e7e3fef84ede2f344cb9f9b9ac6ed9f96860be988e4141"
+          "bytes": 29022,
+          "sha256": "d47eaa39f1d09601921194d1bcd6477960d9c415e651176211d3198fec40e6a6"
         },
         {
           "path": "aralearn-authoring/docs/fluxos-prompts-e-contratos.md",
@@ -1532,8 +1557,8 @@
         },
         {
           "path": "aralearn-authoring/docs/workspaces-educacionais.md",
-          "bytes": 18225,
-          "sha256": "d78047eaa9363e676369087d52c6cc652dc0a106c0198bfd70ab23cf29f2ad9a"
+          "bytes": 19122,
+          "sha256": "5f4489f2a33f311e11eacd9eb97e332e8906fd5db1076d54d7f761207e9ebc93"
         },
         {
           "path": "aralearn-authoring/evals/contextual-planning-runs.v1.json",
@@ -1609,6 +1634,11 @@
           "path": "aralearn-authoring/knowledge/evidence-and-practice.md",
           "bytes": 2279,
           "sha256": "8a2baac6fd061d10942b016d2cc96fa7d4882d636ed1e30180432fa474da8046"
+        },
+        {
+          "path": "aralearn-authoring/knowledge/experimental-variants.md",
+          "bytes": 3896,
+          "sha256": "d0be3582fb9261f4d8b04a7de9701c69576df9d456e8a470590afa51ab7dcead"
         },
         {
           "path": "aralearn-authoring/knowledge/explanatory-elaboration.md",
@@ -1756,8 +1786,8 @@
     },
     {
       "file": "aralearn-chatgpt-action-openapi.yaml",
-      "bytes": 82851,
-      "sha256": "e8cca9f2f26271523bd668d3cce6f9c750664f33dc48f9d59987684f35948d37"
+      "bytes": 82375,
+      "sha256": "57d1daa04e4e90592c09697924cbedf6861f6f5030b756f63955f42cfc0f468e"
     }
   ]
 }

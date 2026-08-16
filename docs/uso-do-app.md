@@ -216,6 +216,43 @@ gravar. A interface falha fechada quando não consegue preservar o conjunto.
 **Recuperação:** em aplicação parcial, revise os alvos indicados e tente somente
 os pendentes. Um conflito não é apresentado como sucesso global.
 
+## Preparar um experimento instrucional
+
+**Pré-condição:** abra **Desenho** num workspace em que sua conta tenha a
+capacidade de pesquisa. A ação **Experimentos** aparece mesmo antes de escolher
+uma microssequência, pois o escopo pode ser curso, lição ou micro.
+
+**Passos:**
+
+1. Escolha uma publicação aprovada como base e delimite o escopo.
+2. Selecione um fator; use **Adicionar outro fator** somente quando o protocolo
+   realmente exigir mais de um.
+3. Defina ao menos duas condições e informe todos os valores em cada uma. O
+   aplicativo não cria combinações automáticas.
+4. Marque invariantes e escolha a regra de atribuição. Para `ResourceSet`,
+   confira o conjunto permitido e sua contagem; permitido não significa usado.
+5. Revise instrumentos/outcomes por referência e valide o protocolo.
+6. Gere as variantes, materialize e audite cada workspace filho.
+7. No diff, examine mudanças requeridas, derivadas e não previstas. Corrija,
+   aceite explicitamente ou invalide as inesperadas.
+8. Congele cada revisão e, em outra ação, inicie a coleta.
+
+**Resultado esperado:** protocolo, condição, locks, materialização, auditoria e
+artefato congelado formam uma linhagem reconstituível. Atribuição é executada
+no servidor e fixa uma revisão; a UI não sorteia nem troca condição.
+
+**Sem conexão:** o último estado já sincronizado pode servir de referência,
+mas protocolo, condição, freeze, início e assignment ficam indisponíveis. Um
+participante já atribuído continua estudando offline o curso sincronizado; novo
+enrollment ou assignment requer rede.
+
+**Recuperação:** conflito ou revogação exige releitura; não há merge silencioso
+nem outbox experimental. Uma variante congelada não é editada: informe o
+motivo, confirme a preservação das atribuições existentes e escolha **Criar
+revisão corrigida**. Novos ingressos aguardam o novo ciclo de geração,
+auditoria, decisão e freeze. Consulte [Experimentos instrucionais
+parametrizados](experimentos-instrucionais-parametrizados.md).
+
 ## Consultar e decidir achados da Auditoria
 
 **Pré-condição:** abra um workspace com uma rodada de auditoria registrada.

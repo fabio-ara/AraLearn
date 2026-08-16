@@ -496,6 +496,21 @@ function buildChatGptActionOpenApi() {
         ? "Leitura concluída."
         : "Operação concluída.";
   };
+  const successResponses = new Map();
+  const successResponse = (definition) => {
+    const description = successDescription(definition);
+    if (!successResponses.has(description)) {
+      successResponses.set(description, {
+        description,
+        content: {
+          "application/json": {
+            schema: { $ref: "#/components/schemas/AraLearnActionSuccess" }
+          }
+        }
+      });
+    }
+    return successResponses.get(description);
+  };
   const inputSchemas = Object.fromEntries(
     AUTHORING_WORKSPACE_MCP_TOOLS.map((definition) => [
       inputComponentName(definition.name),
@@ -537,14 +552,7 @@ function buildChatGptActionOpenApi() {
             }
           },
           responses: {
-            "200": {
-              description: successDescription(definition),
-              content: {
-                "application/json": {
-                  schema: { $ref: "#/components/schemas/AraLearnActionSuccess" }
-                }
-              }
-            },
+            "200": successResponse(definition),
             "400": responseRef("BadRequest"),
             "401": responseRef("AuthenticationRequired"),
             "403": responseRef("Forbidden"),

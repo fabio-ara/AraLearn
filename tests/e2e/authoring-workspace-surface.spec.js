@@ -12,7 +12,8 @@ async function mountAuthoring(page, {
   deepFindingPages = 0,
   partDualPagination = false,
   unassignedRepaired = false,
-  incompleteAuditResume = false
+  incompleteAuditResume = false,
+  research = false
 } = {}) {
   await page.goto("/");
   await page.evaluate(async ({
@@ -24,7 +25,8 @@ async function mountAuthoring(page, {
     requestedDeepFindingPages,
     withPartDualPagination,
     withUnassignedRepaired,
-    withIncompleteAuditResume
+    withIncompleteAuditResume,
+    withResearch
   }) => {
     document.body.replaceChildren();
     const root = document.createElement("main");
@@ -61,6 +63,7 @@ async function mountAuthoring(page, {
       returnContexts: [],
       settingsOpens: 0
     };
+    probe.experimentCalls = [];
     probe.completePreparedRepairs = () => {
       for (const findingId of currentMandate?.findingIds || []) findingStatuses[findingId] = "repaired";
     };
@@ -264,7 +267,8 @@ async function mountAuthoring(page, {
         editContent: true,
         decideFindings: true,
         prepareRepairs: true,
-        requestAudit: true
+        requestAudit: true,
+        research: withResearch
       }
     });
     const design = () => ({
@@ -412,12 +416,415 @@ async function mountAuthoring(page, {
         limitation: "Representações animadas não estão disponíveis nesta condição."
       };
     };
+    const experimentId = "30000000-0000-4000-8000-000000000107";
+    const childWorkspaceId = "40000000-0000-4000-8000-000000000107";
+    let experimentRevision = 0;
+    let experimentStatus = "draft";
+    let savedProtocol = null;
+    let differenceDecision = "pending";
+    let participantAssigned = false;
+    const enrollmentRef = "50000000-0000-4000-8000-000000000107";
+    const frozenVariants = new Set();
+    probe.completeExperimentAudit = () => {
+      if (experimentStatus === "generating") experimentStatus = "correction_required";
+    };
+    const factorDefinitions = [{
+      ref: { id: "novelty_units", version: "1.0.0" },
+      label: "Novidade por passo",
+      kind: "parameter",
+      valueType: "integer",
+      constraints: { minimum: 1, maximum: 5, step: 1 },
+      options: []
+    }, {
+      ref: { id: "explanation_mode", version: "1.0.0" },
+      label: "Modo de explicação",
+      kind: "parameter",
+      valueType: "enum",
+      options: [{
+        key: "concise",
+        label: "Concisa",
+        value: { kind: "enum", value: "concise" }
+      }, {
+        key: "elaborated",
+        label: "Elaborada",
+        value: { kind: "enum", value: "elaborated" }
+      }]
+    }, {
+      ref: { id: "practice_set", version: "1.0.0" },
+      label: "Elaboração e prática",
+      kind: "parameter",
+      valueType: "set",
+      options: [{
+        key: "worked-guided",
+        label: "Exemplo elaborado + prática guiada",
+        value: { kind: "set", values: ["elaborated_example", "guided_practice"] }
+      }, {
+        key: "contrast-retrieval",
+        label: "Contraste + recuperação",
+        value: { kind: "set", values: ["contrast", "retrieval_practice"] }
+      }]
+    }, {
+      ref: { id: "applicable_explanation_scaffolds", version: "1.0.0" },
+      label: "Andaimes de elaboração",
+      kind: "parameter",
+      valueType: "set",
+      constraints: { setItemPattern: "^[a-z_:-]+$", refNamespace: "pedagogy" },
+      options: []
+    }, {
+      ref: { id: "distinct_practice_opportunities", version: "1.0.0" },
+      label: "Oportunidades de prática",
+      kind: "parameter",
+      valueType: "range",
+      constraints: { minimum: 1, maximum: 6 },
+      options: []
+    }, {
+      ref: { id: "practice_variation_dimensions", version: "1.0.0" },
+      label: "Dimensões de variação da prática",
+      kind: "parameter",
+      valueType: "vector",
+      constraints: {
+        vectorDimensions: ["surface", "context"],
+        allowedUnits: ["level", "count"]
+      },
+      options: []
+    }, {
+      ref: { id: "evidence_alignment_relation", version: "1.0.0" },
+      label: "Relação evidência-alvo",
+      kind: "parameter",
+      valueType: "relation",
+      constraints: { relationKinds: ["supports", "contrasts"] },
+      options: []
+    }, {
+      ref: { id: "available_resources", version: "1.0.0" },
+      label: "Resources permitidos",
+      kind: "resource_set",
+      valueType: "resource_set",
+      options: []
+    }];
+    const experimentOptions = {
+      scopes: [{
+        scope: { kind: "microsequence", ref: "micro-a" },
+        label: "Sinais no cotidiano",
+        entityPath: firstPath
+      }],
+      bases: [{
+        ref: { id: "base-signals", version: "7.0.0" },
+        label: "Base aprovada · revisão 7",
+        approved: true
+      }],
+      factorDefinitions,
+      resourceSets: [{
+        ref: { id: "resource-set-text", version: "2.0.0" },
+        label: "Texto e tabela",
+        memberCount: 2
+      }, {
+        ref: { id: "resource-set-diagram", version: "2.0.0" },
+        label: "Texto, tabela e diagrama",
+        memberCount: 3
+      }],
+      consentPolicies: [{
+        ref: { id: "consent-research", version: "1.0.0" },
+        label: "Consentimento do estudo"
+      }],
+      instruments: [{ ref: { id: "instrument-retention", version: "1.0.0" }, label: "Teste de retenção" }],
+      outcomes: [{ ref: { id: "outcome-transfer", version: "1.0.0" }, label: "Transferência" }]
+    };
+    const experimentDetail = ({ section = "overview", differenceRunRef = null } = {}) => {
+      const definitionsByKey = new Map(factorDefinitions.map((definition) => [
+        `${definition.ref.id}@${definition.ref.version}`,
+        definition
+      ]));
+      const factors = (savedProtocol?.factors || []).map((factor) => ({
+        ...structuredClone(definitionsByKey.get(
+          `${factor.definitionRef.id}@${factor.definitionRef.version}`
+        )),
+        factorId: factor.factorId,
+        targets: structuredClone(factor.targets || [])
+      }));
+      const variants = ["draft", "validated", "generating"].includes(experimentStatus) ? [] :
+        (savedProtocol?.conditions || []).map((condition, index) => {
+          const variantRevisionRef = { id: `variant-${index + 1}`, version: "1.0.0" };
+          const key = `${variantRevisionRef.id}@${variantRevisionRef.version}`;
+          return {
+            variantRevisionRef,
+            baseRef: { id: "base-signals", version: "7.0.0" },
+            protocolRef: { id: "protocol-signals", version: String(Math.max(1, experimentRevision)) },
+            conditionRef: { id: condition.conditionId, version: "1.0.0" },
+            state: frozenVariants.has(key) ? "frozen" : "audited",
+            frozenAt: frozenVariants.has(key) ? "2026-08-16T12:00:00.000Z" : null,
+            workspaceRevision: 31 + index,
+            provenanceHash: String(index + 1).repeat(64),
+            provenancePinCount: 8,
+            currentness: { base: true, protocol: true, condition: true, materialization: true, audit: true },
+            limitationRefs: [],
+            allowedResources: {
+              items: [{ ref: { id: "paragraph", version: "1.0.0" }, label: "Texto curto" }],
+              count: index + 2,
+              truncated: index === 1
+            },
+            materializedResources: {
+              items: [{ ref: { id: "paragraph", version: "1.0.0" }, label: "Texto curto" }],
+              count: 1
+            },
+            readerTarget: {
+              workspaceId: childWorkspaceId,
+              workspaceRevision: 31 + index,
+              entityPath: [`variant-course-${index + 1}`, "module-a", "lesson-a", "micro-a"],
+              courseId: `variant-course-${index + 1}`,
+              access: "private",
+              contentHash: String(index + 1).repeat(64)
+            }
+          };
+        });
+      const allFrozen = variants.length > 0 && variants.every((variant) => Boolean(variant.frozenAt));
+      const conditions = (savedProtocol?.conditions || []).map((condition) => ({
+        ...structuredClone(condition),
+        conditionRef: { id: condition.conditionId, version: "1.0.0" }
+      }));
+      const common = {
+        experimentId,
+        experimentRevision,
+        section
+      };
+      const response = {
+        workspaceId,
+        workspaceRevision: revision,
+        experiment: section === "overview" ? {
+          ...common,
+          title: savedProtocol?.title || "Experimento de sinais",
+          hypothesis: savedProtocol?.hypothesis || "",
+          state: experimentStatus,
+          assignment: {
+            rule: savedProtocol?.assignment?.rule || "manual",
+            seedConfigured: savedProtocol?.assignment?.rule === "seeded_random"
+          },
+          conditionCount: conditions.length,
+          variantCount: variants.length,
+          differenceCount: variants.length ? 1 : 0,
+          participantCount: experimentStatus === "collecting" ? 1 : 0,
+          enrollment: experimentStatus === "collecting"
+            ? { configured: true, expiresAt: "2026-09-01T12:00:00.000Z" }
+            : { configured: false },
+          actions: {
+            saveProtocol: experimentStatus === "draft",
+            validate: experimentStatus === "draft",
+            generateVariants: experimentStatus === "validated",
+            decideDifference: experimentStatus === "correction_required" && differenceDecision === "pending",
+            requestCorrection: ["ready", "collecting", "paused"].includes(experimentStatus) && allFrozen,
+            freeze: experimentStatus === "ready" && !allFrozen,
+            startCollection: experimentStatus === "ready" && allFrozen,
+            rotateEnrollmentCode: ["collecting", "paused"].includes(experimentStatus),
+            assignParticipant: experimentStatus === "collecting",
+            transitionCollection: experimentStatus === "collecting" ? ["pause"] : []
+          }
+        } : section === "protocol" ? {
+          ...common,
+          protocolRef: { id: "protocol-signals", version: String(Math.max(1, experimentRevision)) },
+          protocolRevision: Math.max(1, experimentRevision),
+          protocol: {
+            title: savedProtocol?.title || "Experimento de sinais",
+            hypothesis: savedProtocol?.hypothesis || "",
+            baseRef: savedProtocol?.baseRef || { id: "base-signals", version: "7.0.0" },
+            consentPolicyRef: savedProtocol?.consentPolicyRef || { id: "consent-research", version: "1.0.0" },
+            scope: savedProtocol?.scope || { kind: "microsequence", ref: "micro-a" },
+            factors,
+            conditions,
+            invariants: structuredClone(savedProtocol?.invariants || ["sources", "targets", "analysis", "structure"]),
+            assignment: {
+              rule: savedProtocol?.assignment?.rule || "manual",
+              seedConfigured: savedProtocol?.assignment?.rule === "seeded_random"
+            },
+            instrumentRefs: structuredClone(savedProtocol?.instrumentRefs || []),
+            outcomeRefs: structuredClone(savedProtocol?.outcomeRefs || [])
+          }
+        } : section === "variants" ? {
+          ...common,
+          variantSetRef: { id: experimentId, version: String(experimentRevision) },
+          items: variants,
+          count: variants.length,
+          nextCursor: null,
+          truncated: false
+        } : section === "differences" && differenceRunRef ? {
+          ...common,
+          mode: "hunks",
+          differenceRunRef: { id: "difference-run-a", version: "1.0.0" },
+          items: variants.length ? [{
+            differenceRef: { id: "difference-a", version: "1.0.0" },
+            classification: "directly_required",
+            path: "M01 / novidade",
+            kind: "parameter",
+            beforeSummary: "Novidade 1.",
+            afterSummary: "Novidade 3.",
+            publicRationale: "A variante materializou o valor declarado no protocolo.",
+            humanDecision: differenceDecision === "pending" ? null : differenceDecision,
+            allowedResources: { items: [], count: 2, truncated: true },
+            materializedResources: { items: [], count: 1 }
+          }] : [],
+          count: variants.length ? 1 : 0,
+          nextCursor: null,
+          truncated: false
+        } : section === "differences" ? {
+          ...common,
+          mode: "runs",
+          differenceSetRef: { id: experimentId, version: String(experimentRevision) },
+          differenceRunRef: null,
+          items: variants.length ? [{
+            differenceRef: { id: "difference-run-a", version: "1.0.0" },
+            baselineRef: { kind: "base", ref: { id: "base-signals", version: "7.0.0" } },
+            candidateVariantRevisionRef: variants[0].variantRevisionRef,
+            state: "classified",
+            hunkCount: 1,
+            classifiedCount: differenceDecision === "pending" ? 0 : 1
+          }] : [],
+          count: variants.length ? 1 : 0,
+          nextCursor: null,
+          truncated: false
+        } : {
+          ...common,
+          participantSetRef: { id: experimentId, version: String(experimentRevision) },
+          items: [{
+            enrollmentRef,
+            pseudonymLabel: "Participante Ipê",
+            status: participantAssigned ? "assigned" : "enrolled",
+            assignedConditionRef: participantAssigned ? conditions[0]?.conditionRef || null : null
+          }],
+          count: 1,
+          nextCursor: null,
+          truncated: false
+        }
+      };
+      return response;
+    };
     const controller = {
       async listAuthoringWorkspaces() {
         return { items: [{ workspaceId, title: "Curso de sinais", state: "building", stateLabel: "Em construção" }] };
       },
       async loadAuthoringWorkspaceOverview() {
         return overview();
+      },
+      async listAuthoringExperiments(argumentsValue) {
+        probe.experimentCalls.push({ operation: "list", args: structuredClone(argumentsValue) });
+        return {
+          workspaceId,
+          workspaceRevision: revision,
+          experimentSetRef: { id: "experiment-set", version: String(experimentRevision) },
+          items: savedProtocol ? [{
+            experimentId,
+            title: savedProtocol.title,
+            status: experimentStatus,
+            scope: { ...savedProtocol.scope, label: "Sinais no cotidiano" },
+            factorCount: savedProtocol.factors.length,
+            conditionCount: savedProtocol.conditions.length,
+            variantCount: ["draft", "validated"].includes(experimentStatus)
+              ? 0
+              : (savedProtocol?.conditions || []).length
+          }] : [],
+          count: savedProtocol ? 1 : 0,
+          nextCursor: null,
+          truncated: false
+        };
+      },
+      async loadAuthoringExperiment(argumentsValue) {
+        probe.experimentCalls.push({ operation: "read", args: structuredClone(argumentsValue) });
+        return experimentDetail(argumentsValue);
+      },
+      async loadAuthoringExperimentOptionPage(argumentsValue) {
+        probe.experimentCalls.push({ operation: "list_options", args: structuredClone(argumentsValue) });
+        const properties = {
+          scope: "scopes",
+          base: "bases",
+          factor_definition: "factorDefinitions",
+          resource_set: "resourceSets",
+          consent_policy: "consentPolicies",
+          instrument: "instruments",
+          outcome: "outcomes"
+        };
+        const items = structuredClone(experimentOptions[properties[argumentsValue.kind]] || []);
+        return {
+          workspaceId,
+          workspaceRevision: revision,
+          optionsSetRef: { id: "experiment-options", version: String(revision) },
+          kind: argumentsValue.kind,
+          items,
+          count: items.length,
+          nextCursor: null,
+          truncated: false
+        };
+      },
+      async saveAuthoringExperimentProtocol(argumentsValue) {
+        probe.experimentCalls.push({ operation: "save_protocol", args: structuredClone(argumentsValue) });
+        savedProtocol = structuredClone(argumentsValue.protocol);
+        experimentRevision += 1;
+        experimentStatus = "draft";
+        return { workspaceId, workspaceRevision: revision, experimentId, experimentRevision };
+      },
+      async validateAuthoringExperiment(argumentsValue) {
+        probe.experimentCalls.push({ operation: "validate", args: structuredClone(argumentsValue) });
+        experimentRevision += 1;
+        experimentStatus = "validated";
+        return { workspaceId, workspaceRevision: revision, experimentId, experimentRevision };
+      },
+      async generateAuthoringExperimentVariants(argumentsValue) {
+        probe.experimentCalls.push({ operation: "generate_variants", args: structuredClone(argumentsValue) });
+        experimentRevision += 1;
+        experimentStatus = "generating";
+        return { workspaceId, workspaceRevision: revision, experimentId, experimentRevision };
+      },
+      async decideAuthoringExperimentDifference(argumentsValue) {
+        probe.experimentCalls.push({ operation: "decide_difference", args: structuredClone(argumentsValue) });
+        experimentRevision += 1;
+        differenceDecision = argumentsValue.decision;
+        experimentStatus = "ready";
+        return { workspaceId, workspaceRevision: revision, experimentId, experimentRevision };
+      },
+      async requestAuthoringExperimentCorrection(argumentsValue) {
+        probe.experimentCalls.push({ operation: "request_correction", args: structuredClone(argumentsValue) });
+        experimentRevision += 1;
+        experimentStatus = "correction_required";
+        return { workspaceId, workspaceRevision: revision, experimentId, experimentRevision };
+      },
+      async freezeAuthoringExperiment(argumentsValue) {
+        probe.experimentCalls.push({ operation: "freeze", args: structuredClone(argumentsValue) });
+        experimentRevision += 1;
+        frozenVariants.add(`${argumentsValue.variantRevisionRef.id}@${argumentsValue.variantRevisionRef.version}`);
+        return { workspaceId, workspaceRevision: revision, experimentId, experimentRevision };
+      },
+      async startAuthoringExperimentCollection(argumentsValue) {
+        probe.experimentCalls.push({ operation: "start_collection", args: structuredClone(argumentsValue) });
+        experimentRevision += 1;
+        experimentStatus = "collecting";
+        return {
+          workspaceId,
+          workspaceRevision: revision,
+          experimentId,
+          experimentRevision,
+          enrollmentCode: "SINAIS-2026-A",
+          expiresAt: "2026-09-01T12:00:00.000Z"
+        };
+      },
+      async rotateAuthoringExperimentEnrollmentCode(argumentsValue) {
+        probe.experimentCalls.push({ operation: "rotate_enrollment_code", args: structuredClone(argumentsValue) });
+        experimentRevision += 1;
+        return {
+          workspaceId,
+          workspaceRevision: revision,
+          experimentId,
+          experimentRevision,
+          enrollmentCode: "SINAIS-2026-B",
+          expiresAt: "2026-09-08T12:00:00.000Z"
+        };
+      },
+      async assignAuthoringExperimentParticipant(argumentsValue) {
+        probe.experimentCalls.push({ operation: "assign_participant", args: structuredClone(argumentsValue) });
+        participantAssigned = true;
+        experimentRevision += 1;
+        return { workspaceId, workspaceRevision: revision, experimentId, experimentRevision };
+      },
+      async transitionAuthoringExperimentCollection(argumentsValue) {
+        probe.experimentCalls.push({ operation: "transition_collection", args: structuredClone(argumentsValue) });
+        experimentRevision += 1;
+        experimentStatus = argumentsValue.transition === "pause" ? "paused" : experimentStatus;
+        return { workspaceId, workspaceRevision: revision, experimentId, experimentRevision };
       },
       async loadAuthoringAudit(argumentsValue) {
         probe.auditReads.push(structuredClone(argumentsValue));
@@ -752,7 +1159,8 @@ async function mountAuthoring(page, {
     requestedDeepFindingPages: deepFindingPages,
     withPartDualPagination: partDualPagination,
     withUnassignedRepaired: unassignedRepaired,
-    withIncompleteAuditResume: incompleteAuditResume
+    withIncompleteAuditResume: incompleteAuditResume,
+    withResearch: research
   });
 }
 
@@ -897,6 +1305,249 @@ test("instrutor ajusta valor efetivo, restaura Auto e aplica ResourceSet sem per
   expect(retried.selectedKeys).toEqual(saved.selectedKeys);
   expect(retried.resourceSetRef).toEqual(saved.resourceSetRef);
   expect(retried.expectedRevision).toBeUndefined();
+});
+
+test("pesquisador conduz protocolo, audita variantes e inicia coleta sem RNG local", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await mountAuthoring(page, { research: true });
+  await page.getByRole("button", { name: /Curso de sinais/u }).click();
+  await page.getByRole("tab", { name: "Desenho" }).click();
+
+  await expect(page.getByRole("tab")).toHaveCount(4);
+  await page.getByRole("button", { name: "Experimentos" }).click();
+  await page.getByRole("button", { name: "Novo experimento" }).click();
+  await page.getByLabel("Título curto").fill("Representações em sinais");
+  await page.getByLabel("Hipótese opcional").fill("Representações combinadas favorecem transferência.");
+
+  for (const factor of ["Modo de explicação", "Elaboração e prática", "Resources permitidos"]) {
+    await page.getByText("Adicionar outro fator", { exact: true }).click();
+    await page.getByRole("button", { name: new RegExp(factor, "u") }).click();
+  }
+  await page.getByRole("radio", { name: /Aleatória reproduzível/u }).check();
+  await page.getByLabel("Seed registrável").fill("signals-study-2026");
+  await page.getByRole("checkbox", { name: "Teste de retenção" }).check();
+  await page.getByRole("checkbox", { name: "Transferência" }).check();
+  await page.getByRole("button", { name: "Definir condições" }).click();
+
+  await page.locator('[data-condition-id="condition-2"][data-factor-id="factor-1"]').fill("3");
+  await page.locator('[data-condition-id="condition-2"][data-factor-id="factor-2"]').selectOption("elaborated");
+  await page.locator('[data-condition-id="condition-2"][data-factor-id="factor-3"]').selectOption("contrast-retrieval");
+  await page.locator('[data-condition-id="condition-2"][data-factor-id="factor-4"]').selectOption(
+    "resource-set-diagram@2.0.0"
+  );
+  await page.getByRole("button", { name: "Salvar protocolo" }).click();
+
+  await expect.poll(() => page.evaluate(() => (
+    window.authoringProbe.experimentCalls.filter(({ operation }) => operation === "save_protocol").length
+  ))).toBe(1);
+  const saved = await page.evaluate(() => window.authoringProbe.experimentCalls.find(
+    ({ operation }) => operation === "save_protocol"
+  ).args);
+  expect(saved.expectedExperimentRevision).toBe(0);
+  expect(saved.protocol.invariants).toEqual(["sources", "targets", "analysis", "structure"]);
+  expect(saved.protocol.factors.every(({ targets }) => (
+    JSON.stringify(targets) === JSON.stringify([{ kind: "microsequence", ref: "micro-a" }])
+  ))).toBe(true);
+  expect(saved.protocol.consentPolicyRef).toEqual({ id: "consent-research", version: "1.0.0" });
+  expect(saved.protocol.conditions[0].values.map(({ value, resourceSetRef }) => value || resourceSetRef)).toEqual([
+    { kind: "integer", value: 1 },
+    { kind: "enum", value: "concise" },
+    { kind: "set", values: ["elaborated_example", "guided_practice"] },
+    { id: "resource-set-text", version: "2.0.0" }
+  ]);
+  expect(saved.protocol.assignment).toEqual({ rule: "seeded_random", seed: "signals-study-2026" });
+  expect(saved.protocol.instrumentRefs).toEqual([{ id: "instrument-retention", version: "1.0.0" }]);
+  expect(saved.protocol.outcomeRefs).toEqual([{ id: "outcome-transfer", version: "1.0.0" }]);
+
+  await page.getByRole("button", { name: "Validar protocolo" }).click();
+  await page.getByRole("button", { name: "Gerar variantes" }).click();
+  await expect(page.getByText(/Aguardando materialização e auditoria/u)).toBeVisible();
+  await expect(page.getByRole("button", { name: "Congelar esta variante" })).toHaveCount(0);
+  await page.evaluate(async () => {
+    window.authoringProbe.completeExperimentAudit();
+    await window.authoringSurface.refresh();
+  });
+  await expect(page.getByText("Permitidos na condição").first()).toBeVisible();
+  await expect(page.getByText("Materializados na variante").first()).toBeVisible();
+  await page.getByRole("button", { name: "Revisar diferenças" }).click();
+  await expect(page.getByRole("button", { name: "Confirmar como requerida" })).toBeVisible();
+  await page.getByLabel(/Justificativa.*obrigatória/u).fill("Manipulação prevista pelo protocolo aprovado.");
+  await page.getByRole("button", { name: "Confirmar como requerida" }).click();
+
+  while (await page.getByRole("button", { name: "Congelar esta variante" }).count()) {
+    await page.getByRole("button", { name: "Congelar esta variante" }).first().click();
+  }
+  const start = page.getByRole("button", { name: "Iniciar coleta" });
+  await start.evaluate((button) => {
+    button.click();
+    button.click();
+  });
+  const enrollmentDialog = page.getByRole("dialog", { name: "Código de ingresso" });
+  await expect(enrollmentDialog.getByText("SINAIS-2026-A", { exact: true })).toBeVisible();
+  await page.evaluate(() => window.authoringSurface.refresh());
+  await expect(enrollmentDialog.getByText("SINAIS-2026-A", { exact: true })).toBeVisible();
+  await enrollmentDialog.getByRole("button", { name: "Entendi" }).click();
+  expect(await page.evaluate(() => window.authoringProbe.experimentCalls.filter(
+    ({ operation }) => operation === "start_collection"
+  ).length)).toBe(1);
+
+  const rotateCode = page.getByRole("button", { name: "Gerar novo código" });
+  await rotateCode.evaluate((button) => {
+    button.click();
+    button.click();
+  });
+  const rotatedDialog = page.getByRole("dialog", { name: "Código de ingresso" });
+  await expect(rotatedDialog.getByText("SINAIS-2026-B", { exact: true })).toBeVisible();
+  const rotation = await page.evaluate(() => window.authoringProbe.experimentCalls.filter(
+    ({ operation }) => operation === "rotate_enrollment_code"
+  ));
+  expect(rotation).toHaveLength(1);
+  expect(rotation[0].args.expectedWorkspaceRevision).toBeUndefined();
+  await rotatedDialog.getByRole("button", { name: "Entendi" }).click();
+
+  await expect(page.getByText("Participante Ipê", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Atribuir no servidor" }).click();
+  const assignment = await page.evaluate(() => window.authoringProbe.experimentCalls.find(
+    ({ operation }) => operation === "assign_participant"
+  ).args);
+  expect(assignment.enrollmentRef).toBe("50000000-0000-4000-8000-000000000107");
+  expect(assignment.seed).toBeUndefined();
+  expect(assignment.conditionRef).toBeUndefined();
+
+  await page.getByRole("button", { name: "Abrir variante" }).first().click();
+  const opened = await page.evaluate(() => ({
+    target: window.authoringProbe.openTargets.at(-1),
+    context: window.authoringProbe.returnContexts.at(-1)
+  }));
+  expect(opened.target.workspaceId).toBe("40000000-0000-4000-8000-000000000107");
+  expect(opened.context).toMatchObject({
+    destination: "design",
+    experimentView: "detail",
+    experimentId: "30000000-0000-4000-8000-000000000107"
+  });
+  await page.evaluate((context) => window.authoringSurface.resume(context), opened.context);
+  await expect(page.getByRole("button", { name: "Pausar coleta" })).toBeVisible();
+  await page.getByLabel("Motivo da correção").first().fill(
+    "A referência usada na variante congelada precisa ser atualizada."
+  );
+  await page.getByText(/Manter participantes já atribuídos nesta revisão/u).first().click();
+  await page.getByRole("button", { name: "Criar revisão corrigida" }).first().click();
+  const correction = await page.evaluate(() => window.authoringProbe.experimentCalls.find(
+    ({ operation }) => operation === "request_correction"
+  ).args);
+  expect(correction.participantContinuity).toBe("retain_existing");
+  expect(correction.variantRevisionRef).toEqual({ id: "variant-1", version: "1.0.0" });
+  expect(correction.expectedWorkspaceRevision).toBe(31);
+});
+
+test("rascunho experimental confirma descarte e volta ao contexto de Desenho", async ({ page }) => {
+  await page.setViewportSize({ width: 360, height: 780 });
+  await mountAuthoring(page, { research: true });
+  await page.getByRole("button", { name: /Curso de sinais/u }).click();
+  await page.getByRole("tab", { name: "Desenho" }).click();
+  await page.getByRole("button", { name: "Experimentos" }).click();
+  await page.getByRole("button", { name: "Novo experimento" }).click();
+  await page.getByLabel("Título curto").fill("Rascunho local");
+  await page.keyboard.press("Escape");
+  const discard = page.getByRole("dialog", { name: "Descartar alterações?" });
+  await expect(discard).toBeVisible();
+  await discard.getByRole("button", { name: "Continuar editando" }).click();
+  await page.keyboard.press("Escape");
+  await page.getByRole("dialog", { name: "Descartar alterações?" })
+    .getByRole("button", { name: "Descartar" }).click();
+  await expect(page.getByRole("button", { name: "Novo experimento" })).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("button", { name: "Experimentos" })).toBeVisible();
+});
+
+test("editar protocolo seeded exige nova seed sem tentar reler o segredo anterior", async ({ page }) => {
+  await page.setViewportSize({ width: 412, height: 915 });
+  await mountAuthoring(page, { research: true });
+  await page.getByRole("button", { name: /Curso de sinais/u }).click();
+  await page.getByRole("tab", { name: "Desenho" }).click();
+  await page.getByRole("button", { name: "Experimentos" }).click();
+  await page.getByRole("button", { name: "Novo experimento" }).click();
+  await page.getByLabel("Título curto").fill("Protocolo com seed protegida");
+  await page.getByRole("radio", { name: /Aleatória reproduzível/u }).check();
+  await page.getByLabel("Seed registrável").fill("seed-primeira-revisao");
+  await page.getByRole("button", { name: "Definir condições" }).click();
+  await page.getByRole("button", { name: "Salvar protocolo" }).click();
+  await expect(page.getByRole("button", { name: "Editar protocolo" })).toBeVisible();
+
+  await page.getByRole("button", { name: "Editar protocolo" }).click();
+  const seed = page.getByLabel("Seed registrável");
+  await expect(seed).toHaveValue("");
+  await expect(page.getByText(/seed anterior não pode ser relida/u)).toBeVisible();
+  await page.getByLabel("Título curto").fill("Protocolo editado sem vazar seed");
+  await page.getByRole("button", { name: "Definir condições" }).click();
+  await page.getByRole("button", { name: "Salvar protocolo" }).click();
+  await expect(page.getByRole("alert")).toContainText("Informe uma nova seed");
+  expect(await page.evaluate(() => window.authoringProbe.experimentCalls.filter(
+    ({ operation }) => operation === "save_protocol"
+  ).length)).toBe(1);
+});
+
+test("fatores ordinários usam controles estruturados sem JSON livre", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await mountAuthoring(page, { research: true });
+  await page.getByRole("button", { name: /Curso de sinais/u }).click();
+  await page.getByRole("tab", { name: "Desenho" }).click();
+  await page.getByRole("button", { name: "Experimentos" }).click();
+  await page.getByRole("button", { name: "Novo experimento" }).click();
+  await page.getByLabel("Título curto").fill("Elaboração e prática estruturadas");
+  for (const factor of [
+    "Andaimes de elaboração",
+    "Oportunidades de prática",
+    "Dimensões de variação da prática",
+    "Relação evidência-alvo"
+  ]) {
+    await page.getByText("Adicionar outro fator", { exact: true }).click();
+    await page.getByRole("button", { name: new RegExp(factor, "u") }).click();
+  }
+  await page.getByRole("button", { name: "Definir condições" }).click();
+
+  for (const conditionId of ["condition-1", "condition-2"]) {
+    const scoped = (part) => page.locator(
+      `[data-condition-id="${conditionId}"][data-experiment-structured-part="${part}"]`
+    );
+    await scoped("set").fill("pedagogy:worked_example, pedagogy:guided_practice");
+    await scoped("set").press("Tab");
+    await scoped("minimum").fill(conditionId === "condition-1" ? "1" : "2");
+    await scoped("minimum").press("Tab");
+    await scoped("maximum").fill(conditionId === "condition-1" ? "3" : "5");
+    await scoped("maximum").press("Tab");
+    await scoped("vector").fill("surface | 2 | level\ncontext | 1 | count");
+    await scoped("vector").press("Tab");
+    await scoped("relation-nodes").fill("evidence:a, target:b");
+    await scoped("relation-nodes").press("Tab");
+    await scoped("relation-from").fill("evidence:a");
+    await scoped("relation-from").press("Tab");
+    await scoped("relation-to").fill("target:b");
+    await scoped("relation-to").press("Tab");
+    await scoped("relation-kind").selectOption("supports");
+  }
+  await page.getByRole("button", { name: "Salvar protocolo" }).click();
+  const saved = await page.evaluate(() => window.authoringProbe.experimentCalls.find(
+    ({ operation }) => operation === "save_protocol"
+  ).args.protocol);
+  const values = saved.conditions[1].values.map((entry) => entry.value).filter(Boolean);
+  expect(values).toContainEqual({
+    kind: "set",
+    values: ["pedagogy:worked_example", "pedagogy:guided_practice"]
+  });
+  expect(values).toContainEqual({ kind: "range", minimum: 2, maximum: 5 });
+  expect(values).toContainEqual({
+    kind: "vector",
+    components: [
+      { dimension: "surface", value: 2, unit: "level" },
+      { dimension: "context", value: 1, unit: "count" }
+    ]
+  });
+  expect(values).toContainEqual({
+    kind: "relation",
+    nodes: ["evidence:a", "target:b"],
+    edges: [{ from: "evidence:a", to: "target:b", kind: "supports" }]
+  });
 });
 
 test("pesquisador vê lock e resolve conflito sem novo override silencioso", async ({ page }) => {

@@ -104,6 +104,13 @@ Protocol (MCP)** — o protocolo usado por clientes externos para descobrir e
 chamar as ferramentas de autoria — aparece somente no [capítulo de autoria por
 MCP](docs/autoria-mcp.md).
 
+Workspaces administrados por pessoas com capacidade de pesquisa também podem
+derivar variantes de uma base aprovada, fixar condições parametrizadas e
+congelar a revisão exata atribuída a cada participante. Protocolo, condição e
+atribuição permanecem sob controle do servidor; não são escolhidos pelo modelo
+de linguagem. O fluxo e seus limites estão em [Experimentos instrucionais
+parametrizados](docs/experimentos-instrucionais-parametrizados.md).
+
 ## Representações acadêmicas
 
 O catálogo de recursos inclui texto, código, tabelas, fórmulas, matrizes,
