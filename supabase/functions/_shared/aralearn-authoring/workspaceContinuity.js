@@ -889,7 +889,11 @@ function observationSummary(value) {
   };
 }
 
-export function buildWorkspaceResumeProjection(reference, rawContinuity) {
+export function buildWorkspaceResumeProjection(
+  reference,
+  rawContinuity,
+  rawProductState = null
+) {
   const continuity = plainObject(rawContinuity) ? rawContinuity : {};
   if (!plainObject(continuity.authoringState)) {
     throw new AuthoringApiError(
@@ -908,6 +912,30 @@ export function buildWorkspaceResumeProjection(reference, rawContinuity) {
       (cardsByMicrosequence.get(card.parentId) || 0) + 1
     );
   });
+  const productStateMap = plainObject(rawProductState?.microsequenceStateMap)
+    ? rawProductState.microsequenceStateMap
+    : {};
+  const microsequenceStateMap = Object.fromEntries(rows
+    .filter(({ entityType }) => entityType === "microsequence")
+    .map((microsequence) => {
+      const canonicalMarker = productStateMap[microsequence.entityId];
+      const cardCount = cardsByMicrosequence.get(microsequence.entityId) || 0;
+      const fallbackMarker = cardCount === 0
+        ? "p"
+        : microsequence.content?.status === "ready" ? "r" : "m";
+      return [
+        microsequence.entityId,
+        new Set(["p", "a", "m", "f", "r"]).has(canonicalMarker)
+          ? canonicalMarker
+          : fallbackMarker
+      ];
+    }));
+  const assignedMicrosequenceIds = new Set(state.parts.flatMap((part) =>
+    part.microsequenceIds));
+  const unassignedMicrosequenceStateMap = Object.fromEntries(
+    Object.entries(microsequenceStateMap).filter(([microsequenceId]) =>
+      !assignedMicrosequenceIds.has(microsequenceId))
+  );
   const parts = state.parts.map((part) => {
     const resolved = part.microsequenceIds.map((microsequenceId) => {
       const row = index.get(rowIdentity("microsequence", microsequenceId));
@@ -929,9 +957,7 @@ export function buildWorkspaceResumeProjection(reference, rawContinuity) {
       microsequenceStateMask: resolved.map((item) =>
         item == null
           ? "x"
-          : item.cardCount === 0
-            ? "p"
-            : item.status === "ready" ? "r" : "m").join(""),
+          : microsequenceStateMap[item.id] || "p").join(""),
       microsequenceCount: part.microsequenceIds.length,
       materializedCount: available.filter(({ cardCount }) => cardCount > 0).length,
       readyCount: available.filter(({ cardCount, status }) =>
@@ -1000,6 +1026,7 @@ export function buildWorkspaceResumeProjection(reference, rawContinuity) {
     view: "resume",
     content: {
       outline: outlineCounts(rows, state.parts),
+      unassignedMicrosequenceStateMap,
       parts,
       decisions,
       mandate: state.mandate,

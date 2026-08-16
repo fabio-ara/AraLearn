@@ -25,6 +25,8 @@ import {
   renderOAuthAuthorizationConsent
 } from "../src/ui/OAuthAuthorizationConsent.js";
 import { createLearningSpacesPanel } from "../src/ui/LearningSpacesPanel.js";
+import { createAuthoringWorkspaceSurface } from "../src/ui/AuthoringWorkspaceSurface.js";
+import { dispatchApplicationBack } from "../src/ui/applicationBackNavigation.js";
 import { renderUiIcon } from "../src/ui/renderUiIcons.js";
 
 let authStore = null;
@@ -243,7 +245,11 @@ async function renderAuthenticatedApplication(root, config, authClient, session)
     publishableKey: config.publishableKey,
     authClient
   });
-  const homeLearningSpaces = new LearningSpaces({ catalog: remoteCatalog, authClient });
+  const homeLearningSpaces = new LearningSpaces({
+    catalog: remoteCatalog,
+    authClient,
+    authoringRelationalStore: relationalStore
+  });
   const syncEngine = new RelationalSyncEngine({
     store: relationalStore,
     transport: new SupabaseSyncTransport(remoteCatalog),
@@ -252,6 +258,9 @@ async function renderAuthenticatedApplication(root, config, authClient, session)
     }
   });
   let editorApp = null;
+  let learningPanel = null;
+  let authoringSurface = null;
+  let authoringReturnContext = null;
   let automaticSyncTimer = null;
   let automaticSyncRetryCount = 0;
   const synchronizationNeedsRetry = (result) => Boolean(
@@ -310,6 +319,14 @@ async function renderAuthenticatedApplication(root, config, authClient, session)
     try {
       const result = await synchronizeReplica();
       if (result?.authRequired) return;
+      try {
+        await homeLearningSpaces.synchronizePendingAuthoringChanges?.({
+          online: true,
+          limit: 50
+        });
+      } catch (authoringError) {
+        console.warn("Sincronização do desenho instrucional adiada.", authoringError);
+      }
       if (synchronizationNeedsRetry(result)) {
         automaticSyncRetryCount += 1;
         const delay = Math.min(30_000, 1_000 * (2 ** Math.min(automaticSyncRetryCount, 5)));
@@ -383,7 +400,11 @@ async function renderAuthenticatedApplication(root, config, authClient, session)
   const editor = createEditorSession(repository);
   root.innerHTML = `
     <div id="aralearn-editor-root"></div>
+    <div id="aralearn-authoring-root" hidden></div>
     <div id="aralearn-remote-library-root"></div>
+    <nav class="authoring-reader-return" data-authoring-reader-return aria-label="Retorno à Autoria" hidden>
+      <button class="icon-pill" type="button" data-return-to-authoring title="Voltar à Autoria" aria-label="Voltar à Autoria">${renderUiIcon("arrow-left", "home-tab-icon")}<span>Autoria</span></button>
+    </nav>
     <aside class="local-durability" data-local-durability data-state="saved" role="status" aria-live="polite" hidden>
       <span class="local-durability-progress" data-local-durability-progress hidden>${renderUiIcon("progress", "local-durability-icon")}</span>
       <span data-local-durability-message>Salvo neste dispositivo.</span>
@@ -392,7 +413,9 @@ async function renderAuthenticatedApplication(root, config, authClient, session)
     </aside>
   `;
   const editorRoot = root.querySelector("#aralearn-editor-root");
+  const authoringRoot = root.querySelector("#aralearn-authoring-root");
   const libraryRoot = root.querySelector("#aralearn-remote-library-root");
+  const authoringReaderReturn = root.querySelector("[data-authoring-reader-return]");
   const durabilityRoot = root.querySelector("[data-local-durability]");
   const durabilityMessage = root.querySelector("[data-local-durability-message]");
   const durabilityProgress = root.querySelector("[data-local-durability-progress]");
@@ -447,7 +470,10 @@ async function renderAuthenticatedApplication(root, config, authClient, session)
     if (!repository) return Promise.resolve();
     return Promise.all([
       repository.flush(),
-      editorApp?.flushPersonalState?.() || Promise.resolve()
+      editorApp?.flushPersonalState?.() || Promise.resolve(),
+      homeLearningSpaces.synchronizePendingAuthoringChanges?.({
+        online: globalThis.navigator?.onLine !== false
+      }) || Promise.resolve()
     ]).catch(() => undefined);
   };
   lifecycleAbortController = new AbortController();
@@ -475,6 +501,22 @@ async function renderAuthenticatedApplication(root, config, authClient, session)
   globalThis.AraLearnAndroid = {
     flush: bestEffortFlush,
     handleBackPress() {
+      const destination = dispatchApplicationBack({
+        closeOverlay: () => learningPanel?.handleBack?.() === true,
+        returnToAuthoring: () => {
+          if (!authoringReturnContext) return false;
+          const context = authoringReturnContext;
+          authoringReturnContext = null;
+          editorApp?.closeAuthoringPreview?.();
+          editorRoot.hidden = true;
+          authoringReaderReturn.hidden = true;
+          void authoringSurface?.resume(context);
+          return true;
+        },
+        handleAuthoringBack: () => authoringSurface?.handleBack?.() === true,
+        handleStudyBack: () => editorApp?.handleBack?.() === true
+      });
+      if (destination !== "exit") return true;
       void bestEffortFlush()
         .then(() => globalThis.AndroidHost?.finishApp?.())
         .catch(() => undefined);
@@ -563,6 +605,12 @@ async function renderAuthenticatedApplication(root, config, authClient, session)
         });
       }
     },
+    authoringWorkspaceReader({ workspaceId, entityPath }) {
+      if (typeof homeLearningSpaces.loadAuthoringWorkspaceCourse === "function") {
+        return homeLearningSpaces.loadAuthoringWorkspaceCourse({ workspaceId, entityPath });
+      }
+      return homeLearningSpaces.loadWorkspace(workspaceId, "document");
+    },
     trailPersonalStateFactory({ trailItemId, course }) {
       return new TrailPersonalStateRepository({
         trailItemId,
@@ -582,7 +630,7 @@ async function renderAuthenticatedApplication(root, config, authClient, session)
       console.warn("Sincronização dos rascunhos de workspace adiada.", error);
     });
   }
-  const learningPanel = createLearningSpacesPanel({
+  learningPanel = createLearningSpacesPanel({
     root: libraryRoot,
     catalog: remoteCatalog,
     authClient,
@@ -613,12 +661,24 @@ async function renderAuthenticatedApplication(root, config, authClient, session)
         workspacePending = 1;
         console.warn("Não foi possível enviar toda a fila antes da saída.", error);
       }
+      let designPending;
+      try {
+        await homeLearningSpaces.synchronizePendingAuthoringChanges({
+          online: globalThis.navigator?.onLine !== false
+        });
+        const designSummary = await homeLearningSpaces.getPendingAuthoringChangeSummary();
+        designPending = (Number(designSummary?.pendingCount) || 0) +
+          (Number(designSummary?.conflictCount) || 0);
+      } catch (error) {
+        designPending = 1;
+        console.warn("Não foi possível concluir a fila do desenho instrucional antes da saída.", error);
+      }
       const [pending, rejected, contextualPending] = await Promise.all([
         relationalStore.listPendingOutbox(),
         relationalStore.listRejectedOutbox(),
         repository.listPendingLocalAuthoring()
       ]);
-      return pending.length + rejected.length + workspacePending +
+      return pending.length + rejected.length + workspacePending + designPending +
         Math.max(contextualPending.length, contextualPendingFallback);
     },
     async onChanged() {
@@ -662,22 +722,78 @@ async function renderAuthenticatedApplication(root, config, authClient, session)
       }
     }
   });
+  const returnToAuthoring = async () => {
+    if (!authoringReturnContext || !authoringSurface) return false;
+    const context = authoringReturnContext;
+    authoringReturnContext = null;
+    editorApp?.closeAuthoringPreview?.();
+    editorRoot.hidden = true;
+    authoringReaderReturn.hidden = true;
+    await authoringSurface.resume(context);
+    return true;
+  };
+  authoringSurface = createAuthoringWorkspaceSurface({
+    root: authoringRoot,
+    controller: homeLearningSpaces,
+    onOpenCollections() {
+      return learningPanel.open("collections");
+    },
+    onOpenSettings() {
+      return learningPanel.open("settings");
+    },
+    async onOpenContent(target, returnContext) {
+      const opened = await editorApp?.openWorkspaceEntityPath?.(
+        target.workspaceId,
+        target.entityPath,
+        { edit: false, resourceTargetId: target.resourceTargetId || "" }
+      );
+      if (!opened) return false;
+      authoringReturnContext = Object.freeze({
+        workspaceId: returnContext.workspaceId,
+        destination: returnContext.destination,
+        findingId: String(returnContext.findingId || ""),
+        microsequencePath: Array.isArray(returnContext.microsequencePath)
+          ? [...returnContext.microsequencePath]
+          : null
+      });
+      editorRoot.hidden = false;
+      authoringReaderReturn.hidden = false;
+      return true;
+    },
+    onClose() {
+      authoringReturnContext = null;
+      editorApp?.closeAuthoringPreview?.();
+      authoringReaderReturn.hidden = true;
+      editorRoot.hidden = false;
+    }
+  });
+  authoringReaderReturn.querySelector("[data-return-to-authoring]")?.addEventListener("click", () => {
+    void returnToAuthoring();
+  });
   editorRoot.addEventListener("aralearn:open-library", () => {
     void learningPanel.open();
+  });
+  editorRoot.addEventListener("aralearn:open-settings", () => {
+    void learningPanel.open("settings");
+  });
+  editorRoot.addEventListener("aralearn:open-authoring", () => {
+    authoringReturnContext = null;
+    editorApp?.closeAuthoringPreview?.();
+    authoringReaderReturn.hidden = true;
+    editorRoot.hidden = true;
+    void authoringSurface.open();
   });
   editorRoot.addEventListener("aralearn:open-observation", (event) => {
     void learningPanel.openObservationTarget(event.detail).catch((error) => {
       console.warn("Não foi possível abrir a observação situada.", error);
     });
   });
-  editorRoot.addEventListener("aralearn:open-workspace", (event) => {
-    void learningPanel.openWorkspaceTarget(event.detail?.workspaceId).catch((error) => {
-      console.warn("Não foi possível abrir o planejamento.", error);
-    });
-  });
   globalThis.addEventListener("online", () => {
     scheduleAutomaticSync(100);
     void editorApp?.refreshPersonalState?.();
+    void homeLearningSpaces.synchronizePendingAuthoringChanges?.({ online: true }).catch((error) => {
+      console.warn("Sincronização do desenho instrucional adiada.", error);
+    });
     void syncWorkspaceAuthoringDrafts().catch((error) => {
       console.warn("Sincronização dos rascunhos de workspace adiada.", error);
     });
@@ -686,7 +802,9 @@ async function renderAuthenticatedApplication(root, config, authClient, session)
     globalThis.clearTimeout(automaticSyncTimer);
     automaticSyncTimer = null;
   }, { signal: lifecycleAbortController.signal });
-  scheduleAutomaticSync(AUTOMATIC_SYNC_INTERVAL_MS);
+  // Reabra a fila de Autoria logo no início; a própria rodada bem-sucedida
+  // agenda as próximas sincronizações no intervalo periódico.
+  scheduleAutomaticSync(100);
 }
 
 async function start(root) {

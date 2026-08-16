@@ -119,10 +119,9 @@ test("observações contextuais dependem de comentário, não de autoria", () =>
       level
     );
     assert.match(commenterHtml, /entity-summary-wrap has-context-action/u, level);
-    assert.match(authorOnlyHtml, /data-action="open-central"/u, level);
-    assert.match(commenterHtml, /data-action="open-central"/u, level);
-    assert.match(readerHtml, /data-action="open-central"/u, level);
-    assert.match(readerHtml, /aria-label="Abrir painel AraLearn"/u, level);
+    assert.doesNotMatch(authorOnlyHtml, /data-action="open-central"|Chatbot/u, level);
+    assert.doesNotMatch(commenterHtml, /data-action="open-central"|Chatbot/u, level);
+    assert.doesNotMatch(readerHtml, /data-action="open-central"|Chatbot/u, level);
   }
 });
 

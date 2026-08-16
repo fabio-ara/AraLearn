@@ -275,6 +275,109 @@ test("confirmação só remove a fila depois de armazenar o estado remoto novo",
   assert.equal(offline.confirmFromRemote, undefined, "confirmação forte não é API pública");
 });
 
+test("resposta perdida é recuperada pelo mesmo request mesmo após a revisão avançar", async (context) => {
+  const { relational, offline } = await open(new IDBFactory());
+  context.after(() => relational.close());
+  const original = override();
+  await offline.queueManualOverride(original);
+  const assignment = confirmedAssignment(original);
+  let submitted = 0;
+
+  const result = await offline.synchronize({
+    workspaceId: WORKSPACE,
+    microsequenceRef: MICROSEQUENCE,
+    loadRemoteContext: async () => ({
+      revision: 9,
+      canOverride: true,
+      lockedDefinitionIds: [],
+      slice: remoteSlice(9, {
+        assignments: [assignment],
+        effectiveSnapshot: {
+          id: "snapshot-after-lost-response",
+          version: "1.0.9",
+          resolvedValues: [{
+            definitionRef: structuredClone(original.definitionRef),
+            value: structuredClone(original.value)
+          }]
+        }
+      })
+    }),
+    submit: async (operation) => {
+      submitted += 1;
+      assert.equal(operation.expectedRevision, 7);
+      return {
+        accepted: true,
+        revision: 9,
+        assignmentRef: { id: assignment.id, version: assignment.version }
+      };
+    }
+  });
+
+  assert.equal(submitted, 1, "a recuperação precisa alcançar o ledger remoto");
+  assert.deepEqual(result, [{ requestId: REQUEST_A, status: "confirmed" }]);
+  assert.deepEqual((await offline.readQueue({ workspaceId: WORKSPACE })).operations, []);
+});
+
+test("Auto confirmado remove conflito anterior incerto do mesmo parâmetro", async (context) => {
+  const { relational, offline } = await open(new IDBFactory());
+  context.after(() => relational.close());
+  const manual = override();
+  await offline.cacheRemoteSlice({
+    workspaceId: WORKSPACE,
+    microsequenceRef: MICROSEQUENCE,
+    slice: remoteSlice()
+  });
+  await offline.queueManualOverride(manual);
+  await offline.synchronize({
+    workspaceId: WORKSPACE,
+    microsequenceRef: MICROSEQUENCE,
+    loadRemoteContext: async () => ({
+      revision: 7,
+      canOverride: true,
+      lockedDefinitionIds: [],
+      slice: remoteSlice(7, { assignments: [] })
+    }),
+    submit: async () => {
+      throw Object.assign(new Error("Resposta remota incerta."), { status: 503 });
+    }
+  });
+  assert.ok((await offline.readQueue({ workspaceId: WORKSPACE })).operations[0].remoteAttemptedAt);
+  await offline.queueManualOverride(override({
+    requestId: REQUEST_B,
+    action: "restore_auto",
+    value: undefined
+  }));
+
+  const result = await offline.synchronize({
+    workspaceId: WORKSPACE,
+    microsequenceRef: MICROSEQUENCE,
+    loadRemoteContext: async () => ({
+      revision: 8,
+      canOverride: true,
+      lockedDefinitionIds: [],
+      slice: remoteSlice(8, { assignments: [] })
+    }),
+    submit: async (operation) => {
+      if (operation.action === "set_manual_override") {
+        const error = new Error("A revisão avançou enquanto a resposta era incerta.");
+        error.code = "workspace_revision_conflict";
+        error.conflict = true;
+        throw error;
+      }
+      return { accepted: true, revision: 8 };
+    }
+  });
+
+  assert.deepEqual(result.map(({ status }) => status), ["conflict", "confirmed"]);
+  assert.deepEqual((await offline.readQueue({ workspaceId: WORKSPACE })).operations, []);
+  const projection = await offline.readProjection({
+    workspaceId: WORKSPACE,
+    microsequenceRef: MICROSEQUENCE
+  });
+  assert.deepEqual(projection.pending, []);
+  assert.deepEqual(projection.remote.state.assignments, []);
+});
+
 test("duas operações da mesma base avançam em sequência sem conflito artificial", async (context) => {
   const { relational, offline } = await open(new IDBFactory());
   context.after(() => relational.close());
@@ -628,4 +731,40 @@ test("fallback sem transação também protege o índice compartilhado", async (
     firstRef,
     secondRef
   ]);
+});
+
+test("índice de filas evita varrer todas as fatias após a migração", async () => {
+  const values = new Map();
+  let scans = 0;
+  const store = {
+    userId: USER_A,
+    async getSyncState(key) { return values.get(key) ?? null; },
+    async putSyncState(key, value) {
+      if (value == null) values.delete(key);
+      else values.set(key, structuredClone(value));
+    },
+    async getAll() { scans += 1; return []; }
+  };
+  const offline = new WorkspaceDesignOfflineStore(store, {
+    userId: USER_A,
+    clock: () => Date.parse("2026-08-15T19:30:00.000Z"),
+    browserLocks: null
+  });
+
+  await offline.queueManualOverride(override());
+  assert.deepEqual(await offline.listQueuedWorkspaces(), [{
+    workspaceId: WORKSPACE,
+    pendingCount: 1,
+    conflictCount: 0
+  }]);
+  assert.equal(scans, 0);
+
+  await offline.cancelPendingOverrideForSlot({
+    workspaceId: WORKSPACE,
+    microsequenceRef: MICROSEQUENCE,
+    definitionRef: { id: "representation_fallback_policy", version: "1.0.0" },
+    scope: { kind: "microsequence", ref: MICROSEQUENCE }
+  });
+  assert.deepEqual(await offline.listQueuedWorkspaces(), []);
+  assert.equal(scans, 0);
 });

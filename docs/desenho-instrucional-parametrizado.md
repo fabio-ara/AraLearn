@@ -11,9 +11,9 @@ unidades operacionais e, somente então, contratos de software.
 Os contratos descritos aqui possuem schemas promovidos, validadores de runtime,
 resolução determinística, persistência relacional e réplica local desde a #103.
 Desde a #104, uma ferramenta agrupada os expõe pelo MCP e pela Action no fluxo
-JIT por microssequência. A interface de Autoria pertence à #105 e o motor
-completo de auditoria, findings e reparo à #106; os contratos continuam fora do
-formato de publicação. Testes estruturais e de integração demonstram
+JIT por microssequência. A #105 projeta o mesmo estado numa interface responsiva
+de Autoria; o motor completo de auditoria, findings e reparo pertence à #106.
+Os contratos continuam fora do formato de publicação. Testes estruturais e de integração demonstram
 comportamento técnico nos casos cobertos; não demonstram que os parâmetros
 medem aprendizagem nem que seus valores são pedagogicamente ótimos.
 
@@ -330,6 +330,29 @@ selecionado e o usado. Ele conserva denominadores e listas de referências, não
 produz score e não decide se uma explicação foi de fato suficiente ou se a
 prática mede a operação pretendida.
 
+## Projeção no aplicativo
+
+A interface não apresenta os nomes dos contratos deste capítulo como
+pré-requisito de operação. Em **Desenho**, cada linha mostra rótulo humano,
+valor efetivo, unidade ou categoria pertinente e origem compacta: Auto,
+herdado, definido pelo autor ou bloqueado por pesquisa. O controle aceita apenas
+valores estruturados já declarados; não há textarea pedagógica nem edição de
+JSON.
+
+**Resources** é a projeção de disponibilidade. A primeira camada mostra o
+resumo. Ao abrir, páginas e filtros por famílias/facetas permitem inspecionar
+centenas de packages sem enviá-los de uma vez nem exigir IDs. Quando existem
+múltiplos `ResourceSet`s efetivos, a pessoa escolhe um conjunto exato; a UI não
+une permissões. Seleções invisíveis são conservadas entre pesquisa e paginação,
+e a aplicação pode ter escopo de curso, lição, microssequência ou conjunto de
+microssequências. O GPT continua escolhendo o package de cada card dentro da
+disponibilidade permitida.
+
+Mapa e lista de Workspaces consomem projeções compactas revisionadas. O estado
+de análise/materialização/finding não depende de ter aberto antes uma fatia no
+dispositivo. Esses rótulos descrevem o processo autoral; não constituem score
+pedagógico nem medida de aprendizagem.
+
 ## Persistência, concorrência e retomada
 
 PostgreSQL é a autoridade compartilhada. Definições, análises, assignments,
@@ -350,6 +373,12 @@ lida sem rede. Uma intenção de override manual ou restauração de Auto fica e
 fila separada e nunca modifica o snapshot canônico. Ao reconectar, revisão,
 capacidade e locks são relidos antes do envio; `ResourceSet`, condição e lock de
 pesquisa não podem ser criados ou alterados offline.
+
+A fila é indexada para sincronização limitada na reconexão e na saída, sem
+depender de reabrir a microssequência. Set seguido de Auto antes da primeira
+tentativa é coalescido no mesmo slot. Cache de lista e overview só avança por
+revisão; falha ao escrever o cache não converte uma resposta remota válida em
+falha da operação.
 
 Workspaces anteriores permanecem explicitamente `unresolved` para análise. Se
 já houver conteúdo sem manifesto, materialização fica `legacy_untracked` e

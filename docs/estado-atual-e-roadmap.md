@@ -162,8 +162,17 @@ rede.
 Desde a #104, essas operações estão expostas pelo MCP e pela Action por uma
 única ferramenta coesa. A integração recupera knowledge por intenção, trabalha
 uma microssequência por vez e retoma pelo workspace, sem depender do chat. A
-interface responsiva de Autoria continua pertencendo à #105, e o ciclo completo
-de findings, decisão, reparo e reauditoria pertence à #106. Schemas,
+interface responsiva da #105 projeta o mesmo estado no celular, desktop e APK:
+Estudo conserva Trilhas; Autoria reúne Workspaces e Coleções; Mapa, Desenho,
+Conteúdo e Auditoria usam exposição progressiva. Valores estruturados admitem
+Auto/override, research lock fica não editável e Resources preserva seleção
+versionada entre páginas e escopos sem configuração card a card.
+
+A listagem e o Mapa recebem estado canônico revisionado, sem inferir processo
+por publicação, quantidade de cards ou cache visitado. A réplica local é
+vinculada à conta, avança monotonicamente e sincroniza intenções pendentes na
+reconexão; conflito continua explícito. O ciclo completo de findings, decisão,
+reparo e reauditoria pertence à #106. Schemas,
 persistência e testes demonstram coerência técnica no escopo coberto, não
 validade educacional nem adequação dos valores escolhidos.
 
@@ -274,8 +283,8 @@ ou custo real de produção.
 - estudar confiança, contestação e reversão das sugestões do modelo;
 - verificar se observações de estudantes apoiam correções sem se tornarem
   vigilância comportamental.
-- expor o núcleo já integrado ao MCP e à Action pela interface responsiva, com
-  linguagem simples e exposição progressiva;
+- testar com pessoas a interface responsiva já implementada, sua linguagem
+  simples, descoberta e exposição progressiva, prioritariamente no celular;
 - avaliar `ResourceSet` com disponibilidade, seleção e uso real auditados
   separadamente, inclusive quando não houver representação adequada.
 

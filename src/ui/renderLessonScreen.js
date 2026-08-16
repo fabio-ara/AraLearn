@@ -40,8 +40,15 @@ function renderTopbar({
   hideTitle = false,
   actions = []
 }) {
-  const actionMarkup = actions.length
+  const topbarActions = actions.some((action) => action.action === "open-settings")
     ? actions
+    : [...actions, {
+        action: "open-settings",
+        title: "Conta e aparência",
+        icon: renderUiIcon("more", "home-tab-icon")
+      }];
+  const actionMarkup = topbarActions.length
+    ? topbarActions
       .map((action) => {
         return (
           '<button class="icon-ghost" type="button" data-action="' +
@@ -806,10 +813,7 @@ function renderCourseScreen({ course, progress, editorSupport }) {
       canGoBack: true,
       backAction: "go-back",
       backTitle: "Menu principal",
-      centerHtml: modeSwitcher,
-      actions: [
-        { action: "open-central", title: "Abrir painel AraLearn", icon: renderUiIcon("panel", "home-tab-icon") }
-      ]
+      centerHtml: modeSwitcher
     }) +
     '<main class="screen-content course-screen" data-structure-collection="module" data-course-key="' +
     escapeHtml(entityId(course)) +
@@ -902,10 +906,7 @@ function renderModuleScreen({ course, moduleValue, progress, editorSupport }) {
       canGoBack: true,
       backAction: "go-back",
       backTitle: "Voltar",
-      centerHtml: modeSwitcher,
-      actions: [
-        { action: "open-central", title: "Abrir painel AraLearn", icon: renderUiIcon("panel", "home-tab-icon") }
-      ]
+      centerHtml: modeSwitcher
     }) +
     '<main class="screen-content course-screen" data-structure-collection="lesson" data-course-key="' +
     escapeHtml(entityId(course)) +
@@ -1024,10 +1025,7 @@ function renderLessonScreenView({ course, lesson, moduleValue, progress, editorS
       canGoBack: true,
       backAction: "go-back",
       backTitle: "Voltar",
-      centerHtml: modeSwitcher,
-      actions: [
-        { action: "open-central", title: "Abrir painel AraLearn", icon: renderUiIcon("panel", "home-tab-icon") }
-      ]
+      centerHtml: modeSwitcher
     }) +
     '<main class="screen-content lesson-structure-screen navigation-screen">' +
     (modeSwitcher ? renderEntityContextTitle("Lições") : "") +
@@ -1154,10 +1152,7 @@ function renderMicrosequenceOverview({
       title: "Microssequência",
       canGoBack: true,
       backTitle: "Voltar para a lição",
-      centerHtml: modeSwitcher,
-      actions: [
-        { action: "open-central", title: "Abrir painel AraLearn", icon: renderUiIcon("panel", "home-tab-icon") }
-      ]
+      centerHtml: modeSwitcher
     }) +
     '<main class="screen-content microsequence-overview-content navigation-screen">' +
     (modeSwitcher ? renderEntityContextTitle("Microssequência") : "") +
@@ -1542,14 +1537,7 @@ function renderMicrosequenceScreen({ course, lesson, microsequence, cards, selec
       canGoBack: true,
       backTitle: "Voltar para a lição",
       centerHtml: modeSwitcher,
-      hideTitle: true,
-      actions: [
-        {
-          action: "open-central",
-          title: "Abrir painel AraLearn",
-          icon: renderUiIcon("panel", "home-tab-icon")
-        }
-      ]
+      hideTitle: true
     }) +
     '<main class="screen-content microsequence-generator-screen">' +
     renderEntityContextTitle(course?.title || course?.id || "Curso", {

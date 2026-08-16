@@ -15,7 +15,9 @@ completo estão em [Workspaces educacionais](workspaces-educacionais.md).
 Convém distinguir três elementos que aparecem próximos na interface:
 
 - **workspace**: delimita pessoas, permissões e um projeto de autoria;
-- **Trilhas**: reúne os cursos e planejamentos aos quais a conta tem acesso;
+- **Autoria → Workspaces**: reúne projetos sobre os quais a conta possui uma
+  capacidade local;
+- **Trilhas**: reúne cursos selecionados para Estudo;
 - **grupo de Trilhas**: pasta pessoal usada apenas para organizar itens na
   tela inicial.
 
@@ -67,18 +69,19 @@ de autoria autorizada para a conta.
 3. Indique se o espaço é pessoal, de turma ou de equipe.
 4. Peça a criação da primeira estrutura do curso. Não é necessário criar um
    contêiner vazio antes do planejamento.
-5. Sincronize **Trilhas** no aplicativo.
+5. Abra **Autoria → Workspaces** e sincronize.
 
-**Resultado esperado:** o projeto aparece em **Trilhas**. A pessoa que o criou
-é o proprietário principal e pode abrir a composição corrente. Assim que cards
-forem materializados, eles podem ser estudados no mesmo item; não é preciso
-marcar o curso como “publicado” para testá-lo.
+**Resultado esperado:** o projeto aparece em **Workspaces**. A pessoa que o
+criou é o proprietário principal e pode abrir Mapa, Desenho, Conteúdo e
+Auditoria conforme suas capacidades. Assim que cards forem materializados,
+eles podem ser abertos no leitor; isso não adiciona silenciosamente o curso a
+Trilhas nem exige publicá-lo.
 
 **Sem conexão:** a criação não é concluída, porque identidade, unicidade e
 permissões precisam ser verificadas no servidor.
 
 **Recuperação:** se a assistência confirmar a criação, mas o item não aparecer,
-use a sincronização de **Trilhas**. Antes de repetir o pedido, peça à assistência
+use a sincronização de **Workspaces**. Antes de repetir o pedido, peça à assistência
 que consulte os workspaces acessíveis; isso evita criar dois projetos com a
 mesma finalidade.
 
@@ -98,7 +101,8 @@ convidada e estar conectado.
 
 **Resultado esperado:** o convite permanece válido por até sete dias. Após a
 aceitação, a pessoa aparece como participante e o workspace entra em suas
-**Trilhas**.
+lista de **Workspaces**. O curso só entra em Trilhas por seleção de Estudo
+explícita.
 
 **Sem conexão:** não é possível criar nem aceitar convites.
 

@@ -92,7 +92,8 @@ async function renderLevel(page, {
     const header = document.querySelector(".navigation-topbar");
     const headerRect = header.getBoundingClientRect();
     const back = header.querySelector('[data-action="go-back"]');
-    const panel = header.querySelector('[data-action="open-central"]');
+    const endSpace = header.querySelector(".lesson-top-actions") ||
+      header.querySelector(":scope > .topbar-space:last-child");
     const modeSlot = header.querySelector(".topbar-mode-slot");
     const observation = document.querySelector('[data-action="open-context-observation"]');
     const modeButtons = [...header.querySelectorAll('[data-action="select-entity-mode"]')];
@@ -119,7 +120,7 @@ async function renderLevel(page, {
       headerScrollWidth: header.scrollWidth,
       inlineGaps: [
         back.getBoundingClientRect().left - headerRect.left,
-        headerRect.right - panel.getBoundingClientRect().right
+        headerRect.right - endSpace.getBoundingClientRect().right
       ],
       modeCenterDelta: modeRect
         ? Math.abs((modeRect.left + modeRect.width / 2) - (headerRect.left + headerRect.width / 2))
@@ -127,8 +128,8 @@ async function renderLevel(page, {
       modeCount: modeButtons.length,
       modeLabels: modeButtons.map((button) => button.getAttribute("aria-label")),
       modeFocused: modeButtons.at(-1) === document.activeElement,
-      panelLabel: panel.getAttribute("aria-label"),
       panelCount: header.querySelectorAll('[data-action="open-central"]').length,
+      settingsCount: header.querySelectorAll('[data-action="open-settings"]').length,
       headerObservationCount: header.querySelectorAll('[data-action="open-context-observation"]').length,
       observationInSummary: Boolean(observation?.closest(".entity-summary-wrap")),
       contextTitle: document.querySelector(".entity-context-title")?.textContent.trim() || "",
@@ -189,8 +190,8 @@ test("cabeçalho de autoria permanece simétrico de 320 a 430 px", async ({ page
     expect(result.modeCount).toBe(3);
     expect(result.modeLabels).toEqual(["Visualizar", "Editar", "Assistência por IA"]);
     expect(result.modeFocused).toBe(true);
-    expect(result.panelLabel).toBe("Abrir painel AraLearn");
-    expect(result.panelCount).toBe(1);
+    expect(result.panelCount).toBe(0);
+    expect(result.settingsCount).toBe(1);
     expect(result.headerObservationCount).toBe(0);
     expect(result.observationInSummary).toBe(true);
     expect(result.contextTitle).toBe("Lições");
@@ -215,7 +216,8 @@ test("dois modos usam a app bar e somente leitura conserva o título nela", asyn
   expect(readonly.modeCount).toBe(0);
   expect(readonly.contextTitle).toBe("");
   expect(readonly.topbarTitle).toBe("Lições");
-  expect(readonly.panelCount).toBe(1);
+  expect(readonly.panelCount).toBe(0);
+  expect(readonly.settingsCount).toBe(1);
   expect(readonly.headerObservationCount).toBe(0);
   expect(readonly.observationInSummary).toBe(true);
 });

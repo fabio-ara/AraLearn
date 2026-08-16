@@ -72,7 +72,24 @@ O modo escuro usa superfícies cinza-escuras e níveis de texto distintos. Preto
 
 ## 5. Organização e navegação
 
-`Trilhas` é a superfície de organização e estudo. `Coleções` é a superfície de descoberta e, para contas autorizadas, de administração editorial. Semelhança entre cartões reduz reaprendizagem, mas nunca comunica permissão: capacidade é derivada do servidor e controles editoriais aparecem em modo explícito.
+O shell distingue **Estudo** e **Autoria** como atividades do mesmo produto.
+`Trilhas` pertence a Estudo. `Workspaces` e `Coleções` pertencem a Autoria;
+Coleções continua sendo a superfície de descoberta e, para contas autorizadas,
+de administração editorial. Semelhança entre cartões reduz reaprendizagem, mas
+nunca comunica permissão: capacidade é derivada do servidor e controles
+editoriais aparecem em modo explícito.
+
+Dentro do workspace, Mapa, Desenho, Conteúdo e Auditoria usam ícone e nome
+acessível. A registry de destinos aceita Resultados quando houver dados. No
+celular, a navegação fica numa faixa compacta e apenas um destino ocupa a área
+principal. A partir da composição larga, os mesmos destinos formam um rail
+vertical; não surgem operações exclusivas de desktop. Textos ampliados a 200%
+refluem sem transformar o rail ou os diálogos em colunas implícitas estreitas.
+
+Estados autorais combinam ícone, rótulo e texto curto. Cor pode reforçar
+planejamento, construção, finding ou ausência de pendência, mas nunca é o único
+sinal e não representa nota de qualidade. Um conflito aparece antes do estado
+pendente e oferece releitura, nova tentativa ou descarte explícito.
 
 No leitor, **Visualizar**, **Editar** e **IA** são estados contextuais da mesma superfície. Seus controles ocupam o centro da barra superior. O nome do curso não reaparece visualmente entre a barra e o card: permanece apenas como contexto acessível, pois o próprio card e a ação de retorno já situam o estudante. Em Visualizar, não permanecem controles de autoria. Em Editar, somente textos declarados pelos packages recebem affordance de edição. Em IA, a seleção delimita o escopo enviado à conversa.
 
@@ -118,6 +135,12 @@ Fórmulas e símbolos podem ter métricas próprias da notação matemática. Is
 - o símbolo de marca é um ativo separado do conjunto funcional.
 
 Rótulos usam a linguagem da tarefa. Textos autorreferentes como “deslize para ver este resource” são evitados quando o gesto já é evidente pela própria superfície. Uma instrução de leitura só existe quando ensina uma convenção disciplinar necessária.
+
+Na Autoria, a primeira camada usa **Auto**, **Resources**, **Mapa**, **Desenho**,
+**Conteúdo**, **Auditoria** e **Resultados**. Termos de engenharia como MCP,
+schema, CAS, revisão, `ResourceSet`, `packageId` e snapshot não são necessários
+para operar a interface comum. Detalhes de proveniência aparecem apenas sob
+disclosure técnico apropriado.
 
 ## 8. Resources e dados visuais
 
@@ -203,6 +226,19 @@ leitor de tela, WebView, teclado e aparelho real continuam necessários.
 ## 13. Evidência visual e automatizada
 
 `npm run resources:gallery:visual` recompõe a galeria a partir do registry, abre Chromium em 360, 390, 412 e 1280 px, aplica claro e escuro, rejeita erro de browser e overflow horizontal do card e grava capturas em [`docs/screenshots/resources-packages`](screenshots/resources-packages/).
+
+As capturas canônicas da Autoria ficam em
+[`docs/screenshots/authoring`](screenshots/authoring/): Mapa, Desenho e Auditoria
+em 390 px claro e 1280 px escuro, além da superfície móvel de Conta e
+aparência. Elas são reproduzidas pelo cenário opt-in do Playwright:
+
+```powershell
+node scripts/stageWebRuntime.mjs --target pages --output .pages
+$env:ARALEARN_CAPTURE_AUTHORING = "1"
+$env:ARALEARN_E2E_PORT = "4291"
+npx playwright test tests/e2e/authoring-workspace-surface.spec.js -g "gera capturas canônicas"
+npx playwright test tests/e2e/learning-spaces-panel.spec.js -g "Conta e aparência abre"
+```
 
 Outros testes exercitam:
 

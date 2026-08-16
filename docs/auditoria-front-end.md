@@ -43,18 +43,20 @@ Uma alegação só é chamada de confirmada no escopo que a evidência realmente
 ## 2. Modelo de navegação
 
 ```text
-Trilhas
-├── curso ou planejamento
-│   └── módulo
-│       └── lição
-│           └── microssequência
-│               └── card
-└── painel
-    ├── Coleções
-    └── Chatbot
+Shell
+├── Estudo
+│   └── Trilhas → curso → módulo → lição → microssequência → card
+└── Autoria
+    ├── Workspaces
+    │   └── Mapa | Desenho | Conteúdo | Auditoria
+    └── Coleções
 ```
 
-`Trilhas` reúne organização pessoal e entrada no estudo. `Coleções` apresenta o catálogo e, para contas autorizadas, controles editoriais. Não existe uma segunda tela que replique a mesma biblioteca pessoal.
+`Trilhas` reúne organização pessoal e entrada no estudo. `Workspaces` apresenta
+o estado autoral persistido; `Coleções` apresenta o catálogo e, para contas
+autorizadas, controles editoriais. Não há Coleções duplicada em Estudo nem chat
+interno de Autoria. O registro de destinos admite **Resultados** quando a
+capability e os dados da etapa correspondente existirem.
 
 ### Decisão de vocabulário
 
@@ -62,7 +64,7 @@ O front-end expõe conceitos que ajudam a agir: grupo, curso, módulo, lição, 
 
 Essa abstração reduz carga, mas não pode esconder consequências. Retirar um curso de Trilhas, excluir uma composição privada e retirar uma publicação de Coleções são comandos diferentes e recebem rótulos e confirmações próprios.
 
-## 3. Trilhas e Coleções
+## 3. Estudo, Workspaces e Coleções
 
 ### Trilhas
 
@@ -75,6 +77,34 @@ Grupos e cursos usam ordem alfabética em português. A posição pedagógica de
 Coleções é carregada quando sua aba é aberta. Pesquisa, seleção e abertura são o estado comum. Controles de administrar coleção ou publicação dependem de capacidade resolvida no servidor.
 
 Adicionar um curso oficial cria um vínculo leve em Trilhas. Abrir ou tocar Play não adiciona, move, copia nem publica. Essa separação é verificada em `tests/e2e/learning-spaces-panel.spec.js` e `tests/e2e/unified-home-trails.spec.js`.
+
+### Autoria
+
+A entrada de Autoria apresenta somente Workspaces e Coleções. Um card de
+workspace usa o estado canônico `planning`, `building`, `audit_pending` ou
+`ready`; não infere construção pela quantidade de cards, por publicação nem por
+uma fatia que o dispositivo visitou anteriormente.
+
+Dentro do workspace, uma única superfície fica ativa:
+
+- **Mapa** projeta Partes e microssequências com estados compactos de plano,
+  análise, materialização e finding;
+- **Desenho** mostra parâmetros aplicáveis, valor efetivo, Auto, override e
+  lock, além de Resources sob disclosure;
+- **Conteúdo** abre o leitor corrente e preserva um contexto explícito de
+  retorno;
+- **Auditoria** lista findings progressivamente e abre o alvo disponível.
+
+No celular, os destinos formam navegação compacta; no desktop, tornam-se rail
+vertical. A composição muda, mas as operações disponíveis não. Um workspace
+compartilhado pode abrir uma prévia transitória no leitor sem ser selecionado em
+Trilhas; ao sair da prévia, projeto e seleção de Estudo são restaurados.
+
+Resources não expõe identificadores de packages. A UI começa pelo resumo,
+permite escolher explicitamente entre conjuntos efetivos, filtra o catálogo por
+famílias/facetas e preserva seleções invisíveis entre páginas. Aplicar a
+microssequência, lição, curso ou grupo de microssequências gera resultados por
+alvo; conflito parcial nunca vira sucesso total.
 
 ## 4. Hierarquia e estudo
 
@@ -155,6 +185,17 @@ Uma ausência de conexão não bloqueia leitura, tema, resposta, feedback ou ava
 
 A fila local não é mostrada como jargão de “outbox”; a interface comunica “alteração pendente” ou “sincronização necessária”. Detalhes ficam disponíveis para diagnóstico, não como requisito para estudar.
 
+Overrides estruturados de parâmetros usam uma fila separada do snapshot
+canônico. Escolher Auto antes de enviar um override cancela a intenção local do
+mesmo slot. A reconexão e a saída da conta percorrem o índice das filas, mesmo
+que o workspace não esteja na página de lista em cache. Resposta perdida pode
+ser retomada por idempotência; conflito de revisão permanece conflito e exige
+releitura.
+
+Listas e overviews entram no cache apenas de forma monotônica: resposta antiga
+não substitui revisão mais nova em outra aba. Falha de quota na escrita
+suplementar não invalida uma leitura remota já recebida.
+
 ## 8. Sistema visual e acessibilidade
 
 Componentes usam os tokens de `public/styles-tokens.css`. SVGs funcionais usam `currentColor`. O auditor de resíduos procura cores literais fora da fundação, seletores e ramos órfãos e glifos usados como ícones.
@@ -179,6 +220,7 @@ Automação de contraste e árvore acessível não substitui leitor de tela nem 
 |---|---|
 | carga e organização de Trilhas | `tests/e2e/unified-home-trails.spec.js`, `tests/e2e/home-course-group-move.spec.js` |
 | Coleções e permissões | `tests/e2e/learning-spaces-panel.spec.js` |
+| Estudo/Autoria, Mapa, Desenho, Resources e Auditoria | `tests/e2e/authoring-workspace-surface.spec.js`; `tests/runtime/authoring-workspace-view-model.test.js` |
 | estudo, Play, feedback, offline e retomada | `tests/e2e/study-card-progression.spec.js` |
 | edição e assistência situada | `tests/e2e/card-assistance.spec.js`, `tests/e2e/authoring-assistant.spec.js` |
 | persistência autoral offline | `tests/e2e/workspace-offline-authoring.spec.js` |

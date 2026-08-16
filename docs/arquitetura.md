@@ -380,6 +380,13 @@ apenas a intenção de definir override manual ou restaurar Auto; ela não alter
 snapshot em cache, não cria `ResourceSet`, não concede autoridade de pesquisa e
 não modifica locks.
 
+`AuthoringWorkspaceClient` coordena lista, Mapa, fatias, findings e editor de
+Resources sobre a réplica explicitamente vinculada ao usuário. O índice global
+das filas permite sincronização limitada na inicialização, reconexão e saída,
+inclusive para um workspace aberto por link direto. Caches de lista e overview
+são best-effort e monotônicos: falhar ao gravá-los não invalida a resposta
+remota, e uma leitura antiga não substitui revisão mais nova de outra aba.
+
 Ao recuperar conexão, o cliente envia pendências, recebe mudanças remotas em
 páginas e instala novas revisões somente depois de validar contrato e hash. Um
 cache offline nunca concede edição, exclusão ou capacidade editorial: essas
@@ -516,10 +523,31 @@ workspace privado estudável
 → publicação em Coleções
 ```
 
-Trilhas projetam, para uma conta, workspaces acessíveis, cursos privados e
-seleções oficiais. Coleções organizam o catálogo global. A semelhança visual
-entre grupos não transfere autoridade: grupos de Trilhas pertencem à conta;
-coleções pertencem ao plano editorial.
+Estudo projeta em Trilhas os cursos selecionados. Autoria projeta Workspaces
+acessíveis e Coleções organiza o catálogo global. A semelhança visual entre
+cartões não transfere autoridade: grupos de Trilhas pertencem à conta;
+workspaces dependem da relação local e coleções pertencem ao plano editorial.
+
+## Superfície responsiva de Autoria
+
+`AuthoringWorkspaceSurface` é uma fachada visual sobre o mesmo estado operado
+por MCP/Action. Mapa, Desenho, Conteúdo e Auditoria são destinos registrados,
+não um dashboard simultâneo. O registro admite Resultados como extensão
+contextual. `authoringWorkspaceProjection` converte outline, resume e desenho
+em estados de produto; `authoringWorkspaceViewModel` normaliza essa projeção
+para renderização sem perder referências estruturadas.
+
+O PostgreSQL calcula uma projeção compacta de estado por workspace e, quando
+solicitado, por microssequência. O engine cerca essa leitura com a revisão do
+outline; a UI não depende de uma fatia já visitada nem de contagem de cards como
+meta. Conteúdo usa `lessonEditorApp`, a composição paginada vinculada ao curso
+do workspace e um snapshot transitório de navegação para abrir workspaces que
+não estão visíveis em Trilhas e restaurar Estudo ao sair.
+
+No celular, apenas um destino ocupa a área principal; no desktop, os mesmos
+destinos usam rail vertical. O código e o APK são os mesmos. Resources combina
+paginação remota do conjunto efetivo com busca/facetas do catálogo local da
+mesma versão, preserva membros invisíveis e aplica mudanças por escopo sob CAS.
 
 ## Autoria situada e integrações externas
 
@@ -579,7 +607,7 @@ conformidade com desenho parametrizado.
 | `src/sync/` | identidade do dispositivo e canais de sincronização |
 | `src/supabase/` | Auth, HTTP, catálogo e configuração pública |
 | `src/assist/` e `src/generation/` | escopos, providers e assistência contextual |
-| `src/ui/` | navegação, estudo, edição e painéis |
+| `src/ui/` | navegação, estudo, edição, superfície responsiva de Autoria e retorno contextual |
 | `supabase/migrations/` | evolução versionada do esquema e das funções SQL |
 | `supabase/functions/` | interfaces HTTP protegidas e entrega de artefatos |
 
@@ -595,8 +623,8 @@ artefatos examinados.
 Eles não demonstram adequação pedagógica universal, qualidade semântica do
 blueprint ou da materialização, usabilidade com todas as populações,
 disponibilidade prolongada, custo real em escala ou equivalência com outro
-backend. A #104 demonstra a exposição por MCP e Action, mas a superfície visual
-pertence à #105 e a auditoria semântico-instrucional completa à #106. Os
+backend. A #104 demonstra a exposição por MCP e Action e a #105, sua projeção
+visual responsiva; a auditoria semântico-instrucional completa pertence à #106. Os
 cenários A–H são regressões determinísticas de engenharia, não validação
 educacional. A regressão integral fica concentrada no fechamento da #109;
 etapas intermediárias executam testes proporcionais ao risco. Essas afirmações

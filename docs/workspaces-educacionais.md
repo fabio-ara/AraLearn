@@ -90,6 +90,27 @@ usabilidade a ser avaliado com pessoas e tarefas reais; ela não prova, por si
 só, menor carga cognitiva ou melhor aprendizagem
 ([International Organization for Standardization (2018)](referencias.md#ref-iso2018usability); [Sweller (1988)](referencias.md#ref-sweller1988cognitiveload)).
 
+## Projeção visual do workspace
+
+No aplicativo web e no APK, **Autoria** começa por Workspaces e Coleções. A
+lista recebe do servidor um estado compacto e revisionado — planejamento,
+construção, auditoria pendente ou pronto — em vez de inferir o processo por
+publicação, contagem de cards ou cache visitado.
+
+Ao abrir um workspace:
+
+- **Mapa** organiza Partes e microssequências e distingue plano, análise,
+  materialização e finding;
+- **Desenho** projeta apenas os parâmetros aplicáveis e o valor efetivo, com
+  Auto, override estruturado e lock;
+- **Conteúdo** reutiliza o leitor e as identidades correntes;
+- **Auditoria** lê findings paginados e mantém alvo indisponível como tal.
+
+Essa projeção não vira uma segunda fonte canônica. O GPT externo interpreta e
+propõe; as operações persistem no workspace; a interface consulta, acompanha e
+aplica somente ajustes estruturados. Uma Parte continua sendo coordenação
+humano–GPT, não escopo de herança de parâmetro nem unidade pedagógica.
+
 ## Criação e materialização progressiva
 
 O AraLearn não exige um estado binário de “rascunho” versus “publicado” para
@@ -230,6 +251,12 @@ valor efetivo e manifesto podem ser consultados offline. O cache em `syncState`
 Auto podem entrar numa fila separada quando a capacidade havia sido observada;
 o valor pendente não altera o snapshot remoto exibido como canônico.
 
+A fila possui índice por conta e workspace, de modo que a reconexão e a saída
+possam localizar alterações mesmo sem reabrir a microssequência. Escolher Auto
+antes do envio coalesce a intenção do mesmo parâmetro. Caches de lista, Mapa e
+Desenho só avançam de revisão; resposta atrasada de outra aba não regride a
+projeção corrente.
+
 Nem toda tarefa admite execução offline:
 
 | Tarefa | Sem conexão |
@@ -239,7 +266,8 @@ Nem toda tarefa admite execução offline:
 | editar texto de card ou metadado em workspace já carregado | pode entrar na fila local |
 | consultar desenho já sincronizado | disponível como réplica, com proveniência remota |
 | ajustar parâmetro manual ou restaurar Auto | pode entrar na fila; exige revalidação remota |
-| criar `ResourceSet`, definir condição ou alterar lock de pesquisa | indisponível |
+| consultar uma seleção de Resources já carregada | disponível como réplica; filtros não concedem autoridade |
+| criar/aplicar um novo conjunto de Resources, definir condição ou alterar lock de pesquisa | indisponível |
 | resolver conflito de escrita | depende de comparação com o estado remoto |
 | convidar, aceitar convite ou mudar papel | indisponível |
 | publicar ou consultar triagem compartilhada | indisponível |

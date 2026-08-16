@@ -353,9 +353,10 @@ semântica da explicação ou da prática. Auditoria por modelo pode encontrar e
 problemas, mas não substitui revisão disciplinar e pedagógica. A publicação no
 catálogo permanece uma decisão humana autorizada.
 
-Na etapa #104, MCP e Action expõem o núcleo persistente pela ferramenta
-agrupada, e os pacotes distribuídos conservam o mesmo protocolo. A interface de
-Autoria ainda pertence à #105; o ciclo completo de auditoria e reparo, à #106.
+Desde a #104, MCP e Action expõem o núcleo persistente pela ferramenta
+agrupada, e os pacotes distribuídos conservam o mesmo protocolo. A #105 projeta
+o estado na interface responsiva de Autoria; o ciclo completo de auditoria e
+reparo pertence à #106.
 Essa fronteira não autoriza usar conversa como fonte canônica, editar JSON fora
 das operações estruturadas ou alegar auditoria semântica completa antes da
 etapa correspondente.

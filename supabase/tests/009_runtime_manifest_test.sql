@@ -1,6 +1,6 @@
 begin;
 
-select plan(50);
+select plan(53);
 
 select has_function(
   'public',
@@ -14,6 +14,31 @@ select hasnt_function(
   'get_current_state_central_v1',
   array[]::text[],
   'a projeção categórica antiga da Central foi retirada'
+);
+
+select has_function(
+  'public',
+  'get_authoring_workspace_product_states_v1',
+  array['uuid', 'uuid[]', 'boolean'],
+  'a Autoria expõe andamento compacto e canônico por workspace'
+);
+
+select function_privs_are(
+  'public',
+  'get_authoring_workspace_product_states_v1',
+  array['uuid', 'uuid[]', 'boolean'],
+  'authenticated',
+  array[]::text[],
+  'o cliente não contorna a fronteira de serviço da projeção autoral'
+);
+
+select function_privs_are(
+  'public',
+  'get_authoring_workspace_product_states_v1',
+  array['uuid', 'uuid[]', 'boolean'],
+  'service_role',
+  array['EXECUTE'],
+  'somente o executor interno lê a projeção autoral canônica'
 );
 
 select hasnt_function(
@@ -77,7 +102,7 @@ select hasnt_function(
 
 select is(
   public.get_aralearn_runtime_manifest() ->> 'schemaRevision',
-  '20260815230000',
+  '20260815233000',
   'a revisão corresponde à migration mais recente exigida'
 );
 

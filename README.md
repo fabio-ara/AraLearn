@@ -43,10 +43,16 @@ avaliação são distinguidos na [documentação pedagógica](docs/modelo-didati
 
 ## Como se estuda
 
-Depois de entrar no aplicativo, a pessoa encontra duas organizações diferentes:
+Depois de entrar, a pessoa escolhe entre duas atividades do mesmo produto:
 
-- **Coleções** apresenta o catálogo de cursos disponibilizados pela instância;
-- **Trilhas** organiza os cursos escolhidos pela própria pessoa.
+- **Estudo** organiza em **Trilhas** os cursos escolhidos pela própria pessoa e
+  abre o leitor;
+- **Autoria** reúne **Workspaces**, onde o curso é planejado e construído, e
+  **Coleções**, o catálogo editorial compartilhado.
+
+Essa divisão não cria duas versões do curso. O mesmo conteúdo e as mesmas
+identidades são usados no celular, no desktop e no APK. Estudo permanece livre
+de controles editoriais; Coleções não é duplicada nos dois lados.
 
 Adicionar um curso a Trilhas não duplica todo o curso no banco remoto. A ação
 cria um vínculo pessoal, e o dispositivo mantém a réplica necessária para o
@@ -70,6 +76,15 @@ A autoria ocorre sobre o mesmo conteúdo que será estudado. Textos visíveis
 podem ser editados diretamente; objetos selecionados podem receber assistência
 de um modelo de linguagem; mudanças estruturais mais amplas podem ser feitas
 por uma integração de autoria.
+
+No aplicativo, **Autoria** começa por Workspaces e Coleções. Dentro de um
+workspace, quatro destinos compactos apresentam uma superfície por vez:
+**Mapa** acompanha Partes e microssequências, **Desenho** mostra os valores
+efetivos e permite controles estruturados ou Auto, **Conteúdo** reutiliza o
+leitor e **Auditoria** localiza achados e seus alvos. A navegação admite uma
+quinta superfície contextual de Resultados quando houver dados e autorização.
+Não há chat, formulário pedagógico extenso, edição de JSON nem exigência de
+identificadores técnicos nessa camada.
 
 Essa integração trabalha por etapas. Primeiro planeja a progressão; depois
 materializa partes do curso; em seguida audita o conteúdo e as representações;
@@ -132,9 +147,10 @@ A mesma aplicação é entregue em dois formatos:
 - [APK Android da versão mais recente](https://github.com/fabio-ara/AraLearn/releases/latest).
 
 O conteúdo operacional não é incorporado ao APK: ele é obtido conforme a
-conta e mantido localmente para uso posterior. A interface conserva largura de
-leitura móvel também no desktop, de modo que o conteúdo seja produzido e
-validado para a situação de uso prioritária.
+conta e mantido localmente para uso posterior. O leitor conserva uma largura
+confortável também no desktop; a Autoria usa composição responsiva própria,
+com uma superfície por vez no celular e um rail no desktop, sem retirar função
+da versão móvel.
 
 ## Estado e limites
 

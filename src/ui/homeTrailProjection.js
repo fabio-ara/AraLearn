@@ -172,8 +172,8 @@ export function trailItemCourseKey(item) {
   return text(item?.courseKey || item?.courseId);
 }
 
-export function groupTrailItems(snapshot, { includePlans = false } = {}) {
-  const items = array(snapshot?.items).filter((item) => includePlans || isStudyableTrailItem(item));
+export function groupTrailItems(snapshot) {
+  const items = array(snapshot?.items).filter(isStudyableTrailItem);
   const byId = new Map(items.map((item) => [item.itemId, item]));
   const assigned = new Set();
   const groups = array(snapshot?.groups).map((group) => {
@@ -221,12 +221,10 @@ export function shouldOfferTrailRemoval(item) {
 }
 
 export function preserveSelectedTrailItem(snapshot, requestedItemId = "") {
-  const items = array(snapshot?.items).filter((item) =>
-    isStudyableTrailItem(item) || (item?.kind === "plan" && Boolean(item?.workspaceId))
-  );
+  const items = array(snapshot?.items).filter(isStudyableTrailItem);
   const requested = text(requestedItemId);
   return items.find((item) => item.itemId === requested)?.itemId ||
-    items.find(isStudyableTrailItem)?.itemId || items[0]?.itemId || "";
+    items[0]?.itemId || "";
 }
 
 export function courseFromWorkspaceParts(result, item) {

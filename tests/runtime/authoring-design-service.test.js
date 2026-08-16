@@ -31,6 +31,9 @@ import {
   workspaceRoute
 } from "../../supabase/functions/_shared/aralearn-authoring/workspaceProtocol.js";
 import {
+  validateAuthoringMcpToolOutput
+} from "../../supabase/functions/_shared/aralearn-authoring/workspaceMcpTools.js";
+import {
   DESIGN_PARAMETER_CATALOG
 } from "../../src/authoring/instructionalDesignContracts.js";
 import {
@@ -455,6 +458,120 @@ test("defaults sem assignment explícito continuam pedindo Auto somente nos par�
     result.result.parameterDefinitions.index.length);
 });
 
+test("ResourceSet efetivo é lido em páginas estáveis sem carregar contracts", async () => {
+  const adapter = journeyAdapter();
+  const resourceSet = {
+    contract: "ResourceSet@1",
+    modelVersion: "1.0.0",
+    id: "condition-a",
+    version: "1.0.0",
+    scope: { kind: "microsequence", ref: PATH[3] },
+    packages: [
+      { packageId: "aralearn.response.choice", version: "1.0.0" },
+      { packageId: "aralearn.resource.relation_map", version: "1.0.0" },
+      { packageId: "aralearn.resource.paragraph", version: "1.0.0" }
+    ],
+    resolvedCatalogVersion: "1.0.0",
+    facetBasis: {
+      catalogVersion: "1.0.0",
+      families: ["exposition", "response"],
+      disciplines: ["computing"],
+      structures: ["prose", "relation"],
+      cognitiveOperations: ["explain"],
+      practiceModalities: ["selected_response"]
+    },
+    selectionConstraints: {
+      allowedFits: ["canonical", "versatile"],
+      allowEmbeddedPractice: false,
+      allowResponsePackages: true,
+      onNoAdequateRepresentation: "record_limitation"
+    },
+    provenanceRefs: ["research-condition:a"]
+  };
+  const effectiveRef = { id: resourceSet.id, version: resourceSet.version };
+  adapter.state.effectiveSnapshot = {
+    id: "snapshot-a",
+    version: "1.0.0",
+    resourceSetRefs: [effectiveRef]
+  };
+  adapter.state.effectiveDesignState = "resolved";
+  let resourceSetReads = 0;
+  adapter.getAuthoringResourceSet = async ({ resourceSetRef }) => {
+    resourceSetReads += 1;
+    assert.deepEqual(resourceSetRef, effectiveRef);
+    return structuredClone(resourceSet);
+  };
+
+  const first = await action(adapter, "read_slice", {
+    view: "resource_set",
+    resourceSetRef: effectiveRef,
+    limit: 2
+  });
+  assert.equal(first.result.resourceSet.total, 3);
+  assert.deepEqual(first.result.resourceSet.packages, [
+    { packageId: "aralearn.resource.paragraph", version: "1.0.0" },
+    { packageId: "aralearn.resource.relation_map", version: "1.0.0" }
+  ]);
+  assert.equal(
+    first.result.resourceSet.nextCursor,
+    "aralearn.resource.relation_map@1.0.0"
+  );
+  assert.deepEqual(first.result.resourceSet.metadata.ref, effectiveRef);
+  assert.equal(Object.hasOwn(first.result.resourceSet, "contracts"), false);
+  assert.ok(JSON.stringify(first).length < 96 * 1024);
+  assert.doesNotThrow(() => validateAuthoringMcpToolOutput(
+    "gerirDesenhoInstrucional",
+    { ok: true, requestId: null, data: first }
+  ));
+
+  const second = await action(adapter, "read_slice", {
+    view: "resource_set",
+    resourceSetRef: effectiveRef,
+    cursor: first.result.resourceSet.nextCursor,
+    limit: 2
+  });
+  assert.deepEqual(second.result.resourceSet.packages, [
+    { packageId: "aralearn.response.choice", version: "1.0.0" }
+  ]);
+  assert.equal(second.result.resourceSet.nextCursor, null);
+
+  const readsBeforeRejectedRef = resourceSetReads;
+  await assert.rejects(action(adapter, "read_slice", {
+    view: "resource_set",
+    resourceSetRef: { id: "condition-a", version: "2.0.0" }
+  }), (error) => error instanceof AuthoringApiError
+    && error.code === "resource_set_not_effective");
+  assert.equal(resourceSetReads, readsBeforeRejectedRef);
+
+  await assert.rejects(action(adapter, "read_slice", {
+    view: "resource_set",
+    resourceSetRef: effectiveRef,
+    cursor: "aralearn.resource.missing@1.0.0"
+  }), (error) => error instanceof AuthoringApiError
+    && error.code === "invalid_resource_set_cursor");
+
+  const largeResourceSet = {
+    ...resourceSet,
+    id: "condition-large",
+    packages: Array.from({ length: 4_096 }, (_, index) => ({
+      packageId: `aralearn.resource.test_${String(index).padStart(4, "0")}`,
+      version: "1.0.0"
+    }))
+  };
+  const largeRef = { id: largeResourceSet.id, version: largeResourceSet.version };
+  adapter.state.effectiveSnapshot.resourceSetRefs = [largeRef];
+  adapter.getAuthoringResourceSet = async () => structuredClone(largeResourceSet);
+  const bounded = await action(adapter, "read_slice", {
+    view: "resource_set",
+    resourceSetRef: largeRef,
+    limit: 100
+  });
+  assert.equal(bounded.result.resourceSet.packages.length, 100);
+  assert.equal(bounded.result.resourceSet.total, 4_096);
+  assert.equal(bounded.result.resourceSet.nextCursor, "aralearn.resource.test_0099@1.0.0");
+  assert.ok(JSON.stringify(bounded).length < 96 * 1024);
+});
+
 test("views não somam artefatos grandes e materialização sem manifesto permanece acessível", async () => {
   const adapter = journeyAdapter();
   adapter.state.analysis = { id: "analysis-big", version: "1.0.0", body: "a".repeat(70_000) };
@@ -623,6 +740,28 @@ test("protocolo fecha branches, aceita view progressiva e aplica budget antes do
     payload: { body: "x".repeat(1_050_000) }
   }), (error) => error instanceof AuthoringApiError
     && error.code === "design_payload_too_large");
+  assert.deepEqual(validateWorkspaceDesignActionPayload({
+    operation: "read_slice",
+    microsequencePath: PATH,
+    view: "resource_set",
+    resourceSetRef: { id: "condition-a", version: "1.0.0" },
+    cursor: "aralearn.resource.paragraph@1.0.0",
+    limit: 25
+  }), {
+    operation: "read_slice",
+    view: "resource_set",
+    microsequencePath: [...PATH],
+    resourceSetRef: { id: "condition-a", version: "1.0.0" },
+    cursor: "aralearn.resource.paragraph@1.0.0",
+    limit: 25
+  });
+  assert.throws(() => validateWorkspaceDesignActionPayload({
+    operation: "read_slice",
+    microsequencePath: PATH,
+    view: "overview",
+    resourceSetRef: { id: "condition-a", version: "1.0.0" }
+  }), (error) => error instanceof AuthoringApiError
+    && error.code === "unknown_workspace_field");
 });
 
 test("contracts action_* descrevem o payloadJson, não repetem o envelope MCP", () => {
@@ -662,6 +801,23 @@ test("contracts action_* descrevem o payloadJson, não repetem o envelope MCP", 
       assert.equal(Object.hasOwn(contract.result.schema.properties || {}, "operation"), false);
     }
   }
+  const readSliceContract = readInstructionalDesignContract({
+    workspaceId: WORKSPACE,
+    contractName: "action_read_slice"
+  }).result.schema;
+  const validateResourceSetRead = new Ajv2020({ allErrors: true, strict: false })
+    .compile(readSliceContract);
+  assert.equal(validateResourceSetRead({
+    microsequencePath: [...PATH],
+    view: "resource_set",
+    resourceSetRef: { id: "condition-a", version: "1.0.0" },
+    limit: 50
+  }), true);
+  assert.equal(validateResourceSetRead({
+    microsequencePath: [...PATH],
+    view: "overview",
+    resourceSetRef: { id: "condition-a", version: "1.0.0" }
+  }), false);
   const assignmentDefinitions = Object.keys(readInstructionalDesignContract({
     workspaceId: WORKSPACE,
     contractName: "action_set_parameter"

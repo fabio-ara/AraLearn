@@ -185,7 +185,7 @@ separa `InstructionalAnalysis`, `DesignParameterDefinition`,
 `MaterializationManifest` e `ResourceSet`. Os schemas, validadores e entidades
 relacionais já constituem estado aceito pelo backend; ainda não são schemas de
 publicação ou de interface. A #104 os expõe por uma operação agrupada no MCP e
-na Action; a superfície visual pertence à #105. O modelo está em
+na Action; a #105 os projeta em linguagem comum na superfície visual. O modelo está em
 [Desenho instrucional parametrizado](desenho-instrucional-parametrizado.md).
 
 **Análise instrucional (`InstructionalAnalysis`).** Documento imutável e
@@ -225,6 +225,11 @@ escopo. Disponibilidade no conjunto, seleção autorizada no planejamento e
 instância materializada são estados diferentes. O conjunto não copia todos os
 contracts, não escolhe um package por card e não torna representações
 equivalentes.
+
+Na interface comum, o rótulo é **Resources**. O editor mostra resumo, famílias,
+facetas e seleção paginada; não exige que a pessoa conheça `package@version` ou
+configure cards individualmente. Quando há vários conjuntos efetivos, a pessoa
+escolhe qual inspecionar: a UI não cria uma união implícita.
 
 **Knowledge autoral JIT.** Trechos versionados e recuperáveis que concentram
 ciência, critérios, exemplos e políticas necessários ao passo corrente. O
@@ -433,8 +438,19 @@ autoridade de pesquisa.
 
 **Projeção.** Forma derivada, otimizada para uma leitura ou interface. As
 tabelas do IndexedDB são uma projeção normalizada do documento; Trilhas e
-Coleções são projeções de navegação. Uma projeção não cria uma segunda fonte
-de autoridade.
+Coleções, o Mapa de Autoria e o estado compacto de Workspaces são projeções de
+navegação. Uma projeção não cria uma segunda fonte de autoridade.
+
+**Estado de produto do workspace.** Projeção revisionada usada na lista de
+Autoria: `planning`, `building`, `audit_pending` ou `ready`. O estado deriva da
+composição corrente, análises vigentes e findings ativos; não é score, não usa
+contagem de cards como meta e não depende de a pessoa ter visitado o workspace
+naquele dispositivo.
+
+**Fatia offline de desenho.** Última projeção sincronizada de uma
+microssequência, mantida por conta no IndexedDB. Pode sustentar leitura e uma
+fila limitada de override/Auto, mas não concede autoridade, não cria condição
+de pesquisa e não substitui o snapshot efetivo remoto.
 
 **Réplica local.** Conjunto de dados remotos materializado no dispositivo para
 consulta e uso offline. Pode incluir uma projeção de um curso oficial, seleção
@@ -493,9 +509,10 @@ O fluxo correto é papel e relações → capacidades efetivas → autorização
 operação. Um papel, por si só, não autoriza uma escrita fora de seu contexto.
 
 **GPT personalizado.** GPT configurado no ChatGPT com instruções, conhecimento
-e uma Action. “Chatbot” é o rótulo atual da respectiva tela de configuração;
-“Plugin” é o rótulo atual da integração MCP independente. Esses rótulos de
-interface não alteram as denominações técnicas das duas superfícies.
+e uma Action. Ele é uma interface externa de linguagem natural para a Autoria;
+o aplicativo não contém chat autoral interno. Clientes MCP independentes usam o
+mesmo executor e os mesmos contratos, ainda que seu procedimento de instalação
+seja diferente.
 
 **MCP.** Model Context Protocol. O AraLearn expõe um servidor/gateway MCP de
 autoria por Streamable HTTP sem sessão de servidor, com versão de protocolo

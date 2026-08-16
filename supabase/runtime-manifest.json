@@ -1,5 +1,5 @@
 {
-  "schemaRevision": "20260815230000",
+  "schemaRevision": "20260815233000",
   "contractVersion": 1,
   "requiredFeatures": [
     "lean-shared-catalog",
@@ -72,6 +72,7 @@
     "discard-unpublished-catalog-materialization-v1",
     "flat-runtime-manifest-v1",
     "parameterized-authoring-design-v1",
-    "authoring-blueprint-artifact-receipt-v1"
+    "authoring-blueprint-artifact-receipt-v1",
+    "authoring-product-state-projection-v1"
   ]
 }

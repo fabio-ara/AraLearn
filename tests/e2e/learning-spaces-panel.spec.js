@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import fs from "node:fs";
 
 const USER_ID = "10000000-0000-4000-8000-000000000001";
 const WORKSPACE_ID = "20000000-0000-4000-8000-000000000002";
@@ -712,10 +713,9 @@ async function clickPanelAction(scope, action, index = 0) {
   await target.click();
 }
 
-test("painel administra foco entre Coleções e Chatbot sem reintroduzir Organizar", async ({ page }) => {
+test("painel mantém Coleções acessível sem reintroduzir chat interno ou Organizar", async ({ page }) => {
   await mountPanel(page);
   const collections = page.getByRole("tab", { name: "Coleções" });
-  const chatbot = page.getByRole("tab", { name: "Chatbot", exact: true });
 
   await expect(page.getByRole("dialog", { name: "Painel AraLearn" })).toBeVisible();
   const headerGeometry = await page.evaluate(() => {
@@ -735,18 +735,16 @@ test("painel administra foco entre Coleções e Chatbot sem reintroduzir Organiz
   }
   await expect(collections).toBeFocused();
   await collections.press("ArrowRight");
-  await expect(chatbot).toHaveAttribute("aria-selected", "true");
-  await expect(chatbot).toBeFocused();
-  await chatbot.press("ArrowRight");
   await expect(collections).toHaveAttribute("aria-selected", "true");
   await expect(collections).toBeFocused();
   await collections.press("End");
-  await expect(chatbot).toBeFocused();
-  await chatbot.press("Home");
   await expect(collections).toBeFocused();
+  await collections.press("Home");
+  await expect(collections).toBeFocused();
+  await expect(page.getByRole("tab", { name: "Chatbot", exact: true })).toHaveCount(0);
   await expect(page.getByRole("tab", { name: "Organizar" })).toHaveCount(0);
 
-  const lastControl = page.getByRole("button", { name: "Conta" });
+  const lastControl = page.getByRole("button", { name: "Conta", exact: true });
   await lastControl.focus();
   await lastControl.press("Tab");
   await expect(collections).toBeFocused();
@@ -766,6 +764,33 @@ test("painel administra foco entre Coleções e Chatbot sem reintroduzir Organiz
   });
   expect(invalidViewMessage).toBe("Área do painel inválida.");
   await expect(page.locator("[data-learning-panel]")).toBeHidden();
+});
+
+test("Conta e aparência abre sem Coleções e mantém tema, sincronização e saída acessíveis", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await mountPanel(page);
+  await page.evaluate(() => window.learningSpacesPanel.open("settings"));
+
+  const settings = page.getByRole("dialog", { name: "Conta e aparência" });
+  await expect(settings).toBeVisible();
+  await expect(settings.getByRole("heading", { name: "Aparência", exact: true })).toBeVisible();
+  await expect(settings.getByRole("heading", { name: "Sincronização" })).toBeVisible();
+  await expect(settings.getByRole("heading", { name: "Conta", exact: true })).toBeVisible();
+  await expect(settings.getByRole("tab", { name: "Coleções" })).toHaveCount(0);
+  await expect(settings.getByRole("button", { name: "Sincronizar" })).toBeVisible();
+  if (process.env.ARALEARN_CAPTURE_AUTHORING === "1") {
+    fs.mkdirSync("docs/screenshots/authoring", { recursive: true });
+    await page.screenshot({
+      path: "docs/screenshots/authoring/authoring-settings-390-light.png",
+      animations: "disabled"
+    });
+  }
+
+  await settings.getByRole("button", { name: "Tema escuro" }).click();
+  await expect(settings.getByRole("button", { name: "Tema escuro" })).toHaveAttribute("aria-pressed", "true");
+  await settings.getByRole("button", { name: "Conta", exact: true }).click();
+  await settings.getByRole("menuitem", { name: "Sair" }).click();
+  await expect.poll(() => page.evaluate(() => window.learningSpacesProbe.signOutCalls)).toBe(1);
 });
 
 test("detalhes do workspace mostram andamento humano sem criar novos controles", async ({ page }) => {
@@ -1081,14 +1106,12 @@ test("formulários de Coleções transferem e restauram o foco pelo teclado", as
 
 test("falha ao sair não mantém overlay nem navegação ocupados", async ({ page }) => {
   await mountPanel(page, { failSignOut: true });
-  await page.getByRole("button", { name: "Conta" }).click();
+  await page.getByRole("button", { name: "Conta", exact: true }).click();
   await page.getByRole("menuitem", { name: "Sair" }).click();
   await expect(page.getByText("Não foi possível encerrar a sessão.")).toBeVisible();
   await expect.poll(() => page.evaluate(() => window.learningSpacesProbe.signOutCalls)).toBe(1);
   await expect(page.getByRole("tab", { name: "Coleções" })).toBeEnabled();
-  await expect(page.getByRole("tab", { name: "Chatbot", exact: true })).toBeEnabled();
-  await page.getByRole("tab", { name: "Chatbot", exact: true }).click();
-  await expect(page.getByRole("tab", { name: "Chatbot", exact: true })).toHaveAttribute("aria-selected", "true");
+  await expect(page.getByRole("tab", { name: "Chatbot", exact: true })).toHaveCount(0);
 });
 
 test("alvo contextual abre a observação da entidade e preserva o resource exato", async ({ page }) => {
@@ -1204,11 +1227,10 @@ test("curso selecionado é retirado de Trilhas pelo contrato contextual corrente
   await expect(page.getByRole("heading", { name: "Curso oficial", exact: true })).toBeVisible();
 });
 
-test("troca de aba invalida renderização assíncrona anterior do Chatbot", async ({ page }) => {
+test("painel não inicia o assistente interno sem rota visível", async ({ page }) => {
   await mountPanel(page, { assistantDelayMs: 120 });
-  await page.getByRole("tab", { name: "Chatbot", exact: true }).click();
-  await page.getByRole("tab", { name: "Coleções" }).click();
   await expect(page.getByRole("tab", { name: "Coleções" })).toHaveAttribute("aria-selected", "true");
+  await expect(page.getByRole("tab", { name: "Chatbot", exact: true })).toHaveCount(0);
   await expect(page.getByRole("heading", { name: "Curso oficial", exact: true })).toBeVisible();
   await page.waitForTimeout(180);
   await expect(page.getByText("Assistente carregado")).toHaveCount(0);
@@ -1378,7 +1400,5 @@ test("conta administrativa distingue retirada pessoal de exclusão global do cur
   await expect(page.getByRole("heading", { name: "Curso vindo de Coleções" })).toHaveCount(0);
   await expect(page.getByRole("heading", { name: "Curso oficial na home" })).toHaveCount(0);
   await expect(page.getByRole("tab", { name: "Coleções" })).toBeEnabled();
-  await expect(page.getByRole("tab", { name: "Chatbot", exact: true })).toBeEnabled();
-  await page.getByRole("tab", { name: "Chatbot", exact: true }).click();
-  await expect(page.getByRole("tab", { name: "Chatbot", exact: true })).toHaveAttribute("aria-selected", "true");
+  await expect(page.getByRole("tab", { name: "Chatbot", exact: true })).toHaveCount(0);
 });

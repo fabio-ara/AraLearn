@@ -1385,7 +1385,7 @@ const CONTINUITY_PART_PROJECTION_SCHEMA = schema([
     type: "array", minItems: 1, maxItems: 500, uniqueItems: true, items: ID
   },
   microsequenceStateMask: {
-    type: "string", minLength: 1, maxLength: 500, pattern: "^[rmpx]+$"
+    type: "string", minLength: 1, maxLength: 500, pattern: "^[ramfpx]+$"
   },
   microsequenceCount: NON_NEGATIVE_INTEGER,
   materializedCount: NON_NEGATIVE_INTEGER,
@@ -1449,8 +1449,8 @@ const CONTINUITY_OBSERVATION_SUMMARY_SCHEMA = schema([
   focus: { type: "array", maxItems: 20, items: OPEN_CANONICAL_OBJECT }
 });
 const WORKSPACE_RESUME_CONTENT_SCHEMA = schema([
-  "outline", "parts", "decisions", "mandate", "findings", "observations",
-  "publications"
+  "outline", "unassignedMicrosequenceStateMap", "parts", "decisions", "mandate",
+  "findings", "observations", "publications"
 ], {
   outline: schema([
     "courseCount", "moduleCount", "lessonCount", "microsequenceCount", "cardCount",
@@ -1461,8 +1461,14 @@ const WORKSPACE_RESUME_CONTENT_SCHEMA = schema([
     lessonCount: NON_NEGATIVE_INTEGER,
     microsequenceCount: NON_NEGATIVE_INTEGER,
     cardCount: NON_NEGATIVE_INTEGER,
-    unassignedMicrosequenceCount: NON_NEGATIVE_INTEGER
+      unassignedMicrosequenceCount: NON_NEGATIVE_INTEGER
   }),
+  unassignedMicrosequenceStateMap: {
+    type: "object",
+    maxProperties: 2_000,
+    propertyNames: ID,
+    additionalProperties: { type: "string", enum: ["p", "a", "m", "f", "r"] }
+  },
   parts: { type: "array", maxItems: 64, items: CONTINUITY_PART_PROJECTION_SCHEMA },
   decisions: {
     type: "array", maxItems: 128, items: CONTINUITY_DECISION_PROJECTION_SCHEMA
@@ -1590,6 +1596,7 @@ const WORKSPACE_LIST_ITEM_SCHEMA = schema([
   "revision",
   "sourceCourseId",
   "publicationCount",
+  "authoringState",
   "updatedAt",
   "createdAt"
 ], {
@@ -1604,6 +1611,9 @@ const WORKSPACE_LIST_ITEM_SCHEMA = schema([
   sourceRevisionHash: NULLABLE_SHA256,
   sourceSubmissionId: NULLABLE_UUID,
   publicationCount: NON_NEGATIVE_INTEGER,
+  authoringState: {
+    type: "string", enum: ["planning", "building", "audit_pending", "ready"]
+  },
   updatedAt: DATE_TIME,
   createdAt: DATE_TIME
 });
@@ -2944,7 +2954,7 @@ const AUTHORING_DESIGN_WRITE_OPERATIONS = Object.freeze(
   )
 );
 const AUTHORING_DESIGN_READ_VIEWS = Object.freeze([
-  "overview", "analysis", "parameters", "blueprint", "binding",
+  "overview", "analysis", "parameters", "resource_set", "blueprint", "binding",
   "materialization"
 ]);
 const AUTHORING_DESIGN_CONTRACT_NAMES = Object.freeze([
@@ -2991,6 +3001,9 @@ const AUTHORING_DESIGN_INPUT_SCHEMA = Object.freeze({
       type: "string",
       enum: AUTHORING_DESIGN_CONTRACT_NAMES
     },
+    resourceSetRef: VERSIONED_REFERENCE_SCHEMA,
+    cursor: { type: "string", minLength: 1, maxLength: 240 },
+    limit: { type: "integer", minimum: 1, maximum: 100, default: 50 },
     requestId: REQUEST_ID,
     expectedRevision: REVISION,
     payloadJson: AUTHORING_DESIGN_PAYLOAD_JSON
@@ -3001,14 +3014,22 @@ const AUTHORING_DESIGN_INPUT_SCHEMA = Object.freeze({
       properties: { operation: { const: "read_slice" } },
       ...forbidAuthoringDesignFields([
         "contractName", "requestId", "expectedRevision", "payloadJson"
-      ])
+      ]),
+      allOf: [{
+        if: {
+          required: ["view"],
+          properties: { view: { const: "resource_set" } }
+        },
+        then: { required: ["resourceSetRef"] },
+        else: forbidAuthoringDesignFields(["resourceSetRef", "cursor", "limit"])
+      }]
     },
     {
       required: ["operation", "contractName"],
       properties: { operation: { const: "contracts" } },
       ...forbidAuthoringDesignFields([
         "microsequencePath", "view", "requestId", "expectedRevision",
-        "payloadJson"
+        "payloadJson", "resourceSetRef", "cursor", "limit"
       ])
     },
     {
@@ -3022,7 +3043,9 @@ const AUTHORING_DESIGN_INPUT_SCHEMA = Object.freeze({
           enum: AUTHORING_DESIGN_WRITE_OPERATIONS
         }
       },
-      ...forbidAuthoringDesignFields(["view", "contractName"])
+      ...forbidAuthoringDesignFields([
+        "view", "contractName", "resourceSetRef", "cursor", "limit"
+      ])
     }
   ]
 });
@@ -3071,6 +3094,67 @@ const AUTHORING_DESIGN_SLICE_COMMON_REQUIRED = Object.freeze([
   "contract", "view", "availableViews", "workspace", "microsequence",
   "coordination", "states", "artifacts", "nextAction"
 ]);
+const AUTHORING_DESIGN_RESOURCE_SET_PAGE_SCHEMA = schema([
+  "metadata", "facets", "constraints", "packages", "total", "nextCursor"
+], {
+  metadata: schema([
+    "ref", "scope", "resolvedCatalogVersion", "provenanceRefs"
+  ], {
+    ref: VERSIONED_REFERENCE_SCHEMA,
+    scope: schema(["kind", "ref"], {
+      kind: {
+        type: "string",
+        enum: ["workspace", "course", "module", "lesson", "microsequence"]
+      },
+      ref: ID
+    }),
+    resolvedCatalogVersion: NON_EMPTY_STRING,
+    provenanceRefs: STRING_LIST
+  }),
+  facets: schema([
+    "catalogVersion", "families", "disciplines", "structures",
+    "cognitiveOperations", "practiceModalities"
+  ], {
+    catalogVersion: NON_EMPTY_STRING,
+    families: STRING_LIST,
+    disciplines: STRING_LIST,
+    structures: STRING_LIST,
+    cognitiveOperations: STRING_LIST,
+    practiceModalities: STRING_LIST
+  }),
+  constraints: schema([
+    "allowedFits", "allowEmbeddedPractice", "allowResponsePackages",
+    "onNoAdequateRepresentation"
+  ], {
+    allowedFits: {
+      type: "array",
+      minItems: 1,
+      maxItems: 3,
+      uniqueItems: true,
+      items: { type: "string", enum: ["canonical", "versatile", "substitute"] }
+    },
+    allowEmbeddedPractice: { type: "boolean" },
+    allowResponsePackages: { type: "boolean" },
+    onNoAdequateRepresentation: {
+      type: "string",
+      enum: ["block", "record_limitation"]
+    }
+  }),
+  packages: {
+    type: "array",
+    maxItems: 100,
+    uniqueItems: true,
+    items: schema(["packageId", "version"], {
+      packageId: PACKAGE_ID,
+      version: {
+        type: "string",
+        pattern: "^(?:0|[1-9][0-9]*)\\.(?:0|[1-9][0-9]*)\\.(?:0|[1-9][0-9]*)$"
+      }
+    })
+  },
+  total: NON_NEGATIVE_INTEGER,
+  nextCursor: { type: ["string", "null"], minLength: 1, maxLength: 240 }
+});
 function authoringDesignSliceViewSchema(view, properties = {}) {
   return schema([
     ...AUTHORING_DESIGN_SLICE_COMMON_REQUIRED,
@@ -3108,6 +3192,9 @@ const AUTHORING_DESIGN_READ_SLICE_SCHEMA = Object.freeze({
         maxItems: 128,
         items: OPEN_CANONICAL_OBJECT
       }
+    }),
+    authoringDesignSliceViewSchema("resource_set", {
+      resourceSet: AUTHORING_DESIGN_RESOURCE_SET_PAGE_SCHEMA
     }),
     authoringDesignSliceViewSchema("blueprint", {
       blueprintContract: OPEN_CANONICAL_OBJECT,
@@ -4807,6 +4894,9 @@ export function mapAuthoringMcpToolCall(name, rawArguments) {
     const body = { operation };
     if (args.microsequencePath) body.microsequencePath = args.microsequencePath;
     if (args.view) body.view = args.view;
+    if (args.resourceSetRef) body.resourceSetRef = args.resourceSetRef;
+    if (args.cursor) body.cursor = args.cursor;
+    if (args.limit != null) body.limit = args.limit;
     if (args.contractName) body.contractName = args.contractName;
     if (args.requestId) body.requestId = args.requestId;
     if (args.expectedRevision != null) {

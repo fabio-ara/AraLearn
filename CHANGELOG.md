@@ -6,6 +6,17 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 
 ### Added
 
+- shell responsivo com entrada explícita **Estudo/Autoria** na mesma aplicação
+  web e APK, landing de Workspaces/Coleções e destinos registrados Mapa,
+  Desenho, Conteúdo e Auditoria, preparado para Resultados contextual;
+- projeção canônica revisionada de estado dos workspaces e microssequências,
+  distinguindo planejamento, análise, materialização, finding e pronto sem usar
+  contagem de cards como meta nem depender de cache visitado;
+- editor progressivo de Resources com escolha explícita entre conjuntos,
+  famílias/facetas, paginação e aplicação a curso, lição, microssequência ou
+  grupo de microssequências, preservando membros fora da página;
+- cliente de Autoria vinculado à réplica da conta para lista, Mapa, Desenho,
+  findings paginados, conteúdo transitório e sincronização limitada das filas;
 - ferramenta agrupada `gerirDesenhoInstrucional` no MCP e na Action para ler o
   slice JIT de uma microssequência, consultar um contrato promovido por vez e
   persistir análise, assignments, `ResourceSet`, snapshot, blueprint e
@@ -51,6 +62,13 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 
 ### Changed
 
+- Coleções passa a integrar Autoria; Estudo permanece centrado em Trilhas e no
+  leitor, sem chat ou controles administrativos instrucionais;
+- parâmetros aplicáveis são apresentados por valor efetivo, origem, Auto,
+  controle estruturado e lock não editável, sem formulário extenso, IDs ou JSON;
+- o leitor corrente abre alvos de Mapa/Auditoria e restaura o contexto de
+  Autoria ou a seleção anterior de Estudo, inclusive para workspace
+  compartilhado que não foi adicionado a Trilhas;
 - os system prompts distribuídos passam a conter somente protocolo e
   invariantes estáveis; teoria, exemplos e o catálogo de parâmetros ficam no
   knowledge JIT, enquanto o workspace persistido continua sendo a fonte
@@ -110,6 +128,14 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 
 ### Fixed
 
+- caches de Autoria passam a avançar monotonicamente por revisão e a falhar de
+  forma best-effort; fila de Desenho é encontrada na inicialização, reconexão e
+  saída, sem exigir reabrir a microssequência;
+- conflito de parâmetro prevalece visualmente sobre pendência, e escolher Auto
+  coalesce override local ainda não enviado em vez de aplicá-lo depois;
+- paginação, pesquisa e filtros de Resources conservam desmarcações e membros
+  invisíveis; aplicação parcial mantém resultado por alvo e caminho explícito
+  de recuperação;
 - a extensão SQL da continuidade preserva as operações já vigentes e passa a
   validar `representationSelection` e `pedagogicalDiagnosis` sem substituir o
   validador anterior nem converter o novo desenho em `authoring_state`
@@ -126,6 +152,9 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 
 ### Removed
 
+- a entrada visual de Chatbot/assistência autoral interna e a duplicação de
+  Coleções em Estudo; linguagem natural de planejamento permanece no GPT
+  externo conectado ao workspace;
 - a calibração pedagógica global, seu perfil local, a terceira superfície do
   painel e as exportações de instruções calibradas deixam de integrar o produto;
   as decisões pedagógicas passam a ser locais e justificadas por

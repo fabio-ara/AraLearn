@@ -85,16 +85,15 @@ function plan(pathId = GROUP_ID) {
   };
 }
 
-test("materialização aparece na Home única e muda de grupo pelo trailItemId", async ({ page }) => {
+test("planejamento permanece fora de Estudo sem apagar o snapshot do workspace", async ({ page }) => {
   await page.goto("/");
-  const result = await page.evaluate(async ({ emptySnapshot, populatedSnapshot, itemId, secondGroupId }) => {
+  const result = await page.evaluate(async ({ emptySnapshot, populatedSnapshot, itemId }) => {
     const [{ HomeTrailsController }, { renderHomeScreen }, { createEmptyProgressDocument }] = await Promise.all([
       import("/src/ui/HomeTrailsController.js"),
       import("/src/ui/renderHomeScreen.js"),
       import("/src/storage/progressStore.js")
     ]);
     let snapshot = emptySnapshot;
-    let moved = null;
     const adapter = {
       async loadTrailSnapshot() {
         return structuredClone(snapshot);
@@ -153,19 +152,6 @@ test("materialização aparece na Home única e muda de grupo pelo trailItemId",
             }
           ]
         };
-      },
-      async placeItem(argumentsValue) {
-        moved = structuredClone(argumentsValue);
-        snapshot = {
-          ...snapshot,
-          items: snapshot.items.map((item) => item.trailItemId === itemId
-            ? {
-                ...item,
-                pathId: argumentsValue.groupId,
-                pathTitle: "Estudos"
-              }
-            : item)
-        };
       }
     };
     const controller = new HomeTrailsController({ adapter });
@@ -199,16 +185,20 @@ test("materialização aparece na Home única e muda de grupo pelo trailItemId",
     const emptyOthersVisible = Boolean(document.querySelector('#home-group-select option[value="others"]'));
     const groupLabels = [...document.querySelectorAll("#home-group-select option")]
       .map((node) => node.textContent.trim());
-    const course = await controller.loadCourse(itemId);
-    await controller.mutate("placeItem", {
-      trailItemId: itemId,
-      groupId: secondGroupId
-    });
+    const selectedItemId = controller.selectedItemId;
+    const selectedPlan = controller.select(itemId);
+    let loadError = "";
+    try {
+      await controller.loadCourse(itemId);
+    } catch (error) {
+      loadError = error.message;
+    }
     return {
       option,
-      courseId: course.id,
-      moved,
-      pathId: controller.item(itemId)?.pathId,
+      selectedItemId,
+      selectedPlan,
+      rawPlanPresent: controller.item(itemId)?.kind === "plan",
+      loadError,
       organizerVisible,
       integratedMove,
       emptyOthersVisible,
@@ -219,19 +209,19 @@ test("materialização aparece na Home única e muda de grupo pelo trailItemId",
   }, {
     emptySnapshot: trailSnapshot(),
     populatedSnapshot: trailSnapshot([plan()]),
-    itemId: ITEM_ID,
-    secondGroupId: SECOND_GROUP_ID
+    itemId: ITEM_ID
   });
 
-  expect(result.option).toBe("Dataprev: Teste");
-  expect(result.courseId).toBe("course-fixture-minimal");
-  expect(result.moved).toEqual({ trailItemId: ITEM_ID, groupId: SECOND_GROUP_ID });
-  expect(result.pathId).toBe(SECOND_GROUP_ID);
+  expect(result.option).toBeUndefined();
+  expect(result.selectedItemId).toBe("");
+  expect(result.selectedPlan).toBe(false);
+  expect(result.rawPlanPresent).toBe(true);
+  expect(result.loadError).toMatch(/não possui uma composição navegável/u);
   expect(result.organizerVisible).toBe(false);
-  expect(result.integratedMove).toBe(true);
+  expect(result.integratedMove).toBe(false);
   expect(result.emptyOthersVisible).toBe(true);
   expect(result.groupLabels).toEqual(["Dataprev", "Estudos", "Outros"]);
-  expect(result.workspaceAction).toBe(WORKSPACE_ID);
+  expect(result.workspaceAction).toBeUndefined();
   expect(result.hasReset).toBe(false);
 });
 
@@ -936,7 +926,7 @@ test("zerar curso de workspace carrega a composição antes de remover o progres
   });
 });
 
-test("painel expõe apenas Coleções e Chatbot e rejeita a rota Organizar", async ({ page }) => {
+test("painel expõe apenas Coleções e rejeita rotas administrativas antigas", async ({ page }) => {
   await page.goto("/");
   const result = await page.evaluate(async ({ emptySnapshot }) => {
     const { createLearningSpacesPanel } = await import("/src/ui/LearningSpacesPanel.js");
@@ -972,8 +962,6 @@ test("painel expõe apenas Coleções e Chatbot e rejeita a rota Organizar", asy
     });
     await panel.open("collections");
     const collectionSelected = root.querySelector('[data-panel-view="collections"]')?.getAttribute("aria-selected");
-    await panel.open("chatbot");
-    const chatbotSelected = root.querySelector('[data-panel-view="chatbot"]')?.getAttribute("aria-selected");
     let rejected = false;
     try {
       await panel.open("organize");
@@ -983,13 +971,11 @@ test("painel expõe apenas Coleções e Chatbot e rejeita a rota Organizar", asy
     return {
       tabs: [...root.querySelectorAll("[data-panel-view]")].map((node) => node.dataset.panelView),
       collectionSelected,
-      chatbotSelected,
       rejected
     };
   }, { emptySnapshot: trailSnapshot() });
 
-  expect(result.tabs).toEqual(["collections", "chatbot"]);
+  expect(result.tabs).toEqual(["collections"]);
   expect(result.collectionSelected).toBe("true");
-  expect(result.chatbotSelected).toBe("true");
   expect(result.rejected).toBe(true);
 });

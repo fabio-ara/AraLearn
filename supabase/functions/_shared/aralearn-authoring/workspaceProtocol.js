@@ -42,8 +42,11 @@ const DESIGN_ACTION_OPERATIONS = new Set([
   "register_manifest"
 ]);
 const DESIGN_SLICE_VIEWS = new Set([
-  "overview", "analysis", "parameters", "blueprint", "binding", "materialization"
+  "overview", "analysis", "parameters", "resource_set", "blueprint", "binding",
+  "materialization"
 ]);
+const RESOURCE_SET_PAGE_DEFAULT_LIMIT = 50;
+const RESOURCE_SET_PAGE_MAX_LIMIT = 100;
 const DESIGN_CONTRACT_NAMES = new Set([
   "instructional_analysis",
   "design_parameter_definition",
@@ -1378,12 +1381,11 @@ export function validateWorkspaceDesignActionPayload(payload) {
     return { operation, contractName };
   }
   if (operation === "read_slice") {
-    only(payload, ["operation", "microsequencePath", "view"]);
     const view = payload.view == null ? "overview" : requiredText(payload, "view", 40);
     if (!DESIGN_SLICE_VIEWS.has(view)) {
       fail("invalid_design_slice_view", "view de desenho é inválida.");
     }
-    return {
+    const result = {
       operation,
       view,
       microsequencePath: workspaceEntityPath(
@@ -1392,6 +1394,30 @@ export function validateWorkspaceDesignActionPayload(payload) {
         4
       )
     };
+    if (view !== "resource_set") {
+      only(payload, ["operation", "microsequencePath", "view"]);
+      return result;
+    }
+    only(payload, [
+      "operation", "microsequencePath", "view", "resourceSetRef", "cursor", "limit"
+    ]);
+    const resourceSetRef = object(payload.resourceSetRef, "resourceSetRef");
+    only(resourceSetRef, ["id", "version"], "resourceSetRef");
+    result.resourceSetRef = {
+      id: requiredText(resourceSetRef, "id", 240),
+      version: requiredText(resourceSetRef, "version", 80)
+    };
+    if (payload.cursor != null) result.cursor = requiredText(payload, "cursor", 240);
+    const limit = payload.limit == null ? RESOURCE_SET_PAGE_DEFAULT_LIMIT : payload.limit;
+    if (!Number.isInteger(limit) || limit < 1 || limit > RESOURCE_SET_PAGE_MAX_LIMIT) {
+      fail(
+        "invalid_resource_set_limit",
+        `limit deve ser um inteiro entre 1 e ${RESOURCE_SET_PAGE_MAX_LIMIT}.`,
+        { field: "limit" }
+      );
+    }
+    result.limit = limit;
+    return result;
   }
   only(payload, [
     "operation", "requestId", "expectedRevision", "microsequencePath", "payload"

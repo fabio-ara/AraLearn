@@ -152,9 +152,7 @@ export class HomeTrailsController {
 
   select(itemId) {
     const item = this.snapshot?.items?.find((candidate) => candidate.itemId === itemId);
-    if (!item || (!isStudyableTrailItem(item) && !(item.kind === "plan" && item.workspaceId))) {
-      return false;
-    }
+    if (!isStudyableTrailItem(item)) return false;
     this.selectedItemId = item.itemId;
     return true;
   }
@@ -165,7 +163,7 @@ export class HomeTrailsController {
 
   async loadCourse(itemId = this.selectedItemId) {
     const item = this.item(itemId);
-    if (!item || (!isStudyableTrailItem(item) && !(item.kind === "plan" && item.workspaceId))) {
+    if (!isStudyableTrailItem(item)) {
       throw new Error("O item selecionado não possui uma composição navegável.");
     }
     if (this.loadedCourses.has(item.itemId)) return this.loadedCourses.get(item.itemId);

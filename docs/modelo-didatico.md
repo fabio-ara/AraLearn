@@ -217,8 +217,10 @@ inclusive cobertura e divergências, e só então deriva contagens de cards,
 palavras, caracteres e resources.
 
 Os contratos correspondentes possuem validação, resolução e persistência
-internas; sua exposição no MCP e na interface pertence às etapas seguintes. Sua
-fundamentação, seu estatuto e seus limites estão em
+internas. MCP/Action operam o estado por linguagem natural externa; a interface
+de Autoria mostra valores efetivos, Auto, locks e Resources em linguagem comum,
+sem transformar esse modelo numa ficha pedagógica extensa. Sua fundamentação,
+seu estatuto e seus limites estão em
 [Desenho instrucional parametrizado](desenho-instrucional-parametrizado.md).
 
 ## Profundidade sem condensação

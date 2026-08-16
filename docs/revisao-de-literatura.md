@@ -116,19 +116,27 @@ demonstram efeito educacional de armazenamento local.
   disponível, estado corrente inteligível e sincronização fora do caminho
   crítico da interação.
 - **Decisão:** manter localmente o conteúdo sincronizado e o estado mínimo
-  necessário à continuidade; não tratar abertura ou tempo como atenção.
+  necessário à continuidade; não tratar abertura ou tempo como atenção. Estudo
+  e Autoria usam o mesmo front-end no celular e desktop, com exposição
+  progressiva e restauração explícita de contexto, em vez de relegar a Autoria a
+  uma interface desktop separada.
 - **Fundamentação:** interrupções podem impor custo de retomada, enquanto a
   diversidade de situações móveis desaconselha solução universal
   ([Monk et al. (2008)](referencias.md#ref-monk2008resumption); [Foroughi et al. (2016)](referencias.md#ref-foroughi2016resumption); [Ahmad Faudzi et al. (2023)](referencias.md#ref-faudzi2023mobileui)).
 - **Operacionalização:** o estudo lê conteúdo e estado corrente localmente; a
-  sincronização ocorre fora do caminho crítico.
+  sincronização ocorre fora do caminho crítico. A Autoria lê o último
+  Mapa/Desenho sincronizado, distingue conflito de pendência e volta ao mesmo
+  alvo do leitor sem usar a conversa como memória.
 - **Consequências e hipótese:** uma réplica local e um cursor compreensível
   podem reduzir erros operacionais de retomada.
 - **Limites e evidência necessária:** funcionamento offline é propriedade
   técnica; continuidade de estudo e aprendizagem são resultados empíricos
   distintos. A avaliação requer tarefa interrompida com intervalo e condições de
   rede definidos, medindo localização correta, continuação, erros, ajuda e
-  explicação da pessoa.
+  explicação da pessoa. A paridade de funções e a ausência de overflow em
+  viewports automatizados não demonstram que uma pessoa leiga descubra a
+  alternância Estudo/Autoria, Auto, Resources ou retorno sem orientação; isso
+  exige teste humano prioritariamente móvel.
 
 ## 2. Autorregulação, autodireção e agência
 

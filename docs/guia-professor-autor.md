@@ -114,11 +114,10 @@ módulos, lições, microssequências e cards como partes identificáveis. O
 workspace permite materializar por etapas, examinar o que já existe e continuar
 em outra sessão sem depender do histórico completo da conversa.
 
-**Pré-condição:** configure uma integração externa de autoria no painel e
-autorize sua conta. A superfície **Plugin** atende clientes compatíveis com o
-Model Context Protocol (MCP), protocolo que permite a uma ferramenta solicitar
-operações estruturadas; a autorização usa OAuth, fluxo em que a pessoa concede
-acesso sem entregar sua senha ao cliente.
+**Pré-condição:** configure uma integração externa de autoria com o pacote
+versionado da distribuição e autorize sua conta. Clientes compatíveis com o
+Model Context Protocol (MCP) solicitam operações estruturadas; a autorização usa
+OAuth, fluxo em que a pessoa concede acesso sem entregar sua senha ao cliente.
 
 **Passos:**
 
@@ -148,7 +147,14 @@ acesso sem entregar sua senha ao cliente.
 11. Verifique também se cada resposta prometida foi materializada, se alguma
    prática antecede sua base e se o curso depende de um meio indisponível.
 12. Repare somente os achados aprovados e reavalie de forma independente.
-13. Abra o mesmo item em Trilhas para testar a experiência real de estudo.
+13. No aplicativo, abra **Autoria → Workspaces** para acompanhar Mapa, Desenho,
+    Conteúdo e Auditoria. Ajuste valores somente por controles estruturados;
+    use Auto quando não quiser conservar override.
+14. Em **Desenho → Resources**, consulte ou restrinja o conjunto por facetas e
+    escopo. Não selecione a representação de cada card; o GPT escolhe localmente
+    entre as versões permitidas.
+15. Volte a **Estudo** e abra o mesmo conteúdo em Trilhas para testar a
+    experiência real.
 
 Condições descrevem o cenário; respostas são decisões locais. Não escolha um
 estilo pedagógico global para todo o curso. A síntese é uma hipótese de
@@ -161,8 +167,10 @@ categoria burocrática de “pronto”. O planejamento corrente indica o que ain
 falta; a ausência de partes futuras não torna ilegíveis as partes existentes.
 
 **Sem conexão:** a composição já replicada pode ser lida e receber correções
-textuais locais permitidas. Planejamento conversacional, reorganização e
-publicação dependem do servidor.
+textuais locais permitidas. O último Mapa/Desenho pode ser consultado e um
+override previamente autorizado pode ficar pendente; planejamento
+conversacional, novo conjunto de Resources, reorganização e publicação dependem
+do servidor.
 
 **Recuperação:** retome pelo estado compacto do workspace, releia a parte atual
 e confirme a revisão antes de continuar. Não use a lembrança da conversa como
@@ -202,7 +210,7 @@ fazer triagem.
 
 **Passos:**
 
-1. Abra o detalhe do workspace em Trilhas.
+1. Abra **Autoria**, escolha o workspace e entre em **Auditoria**.
 2. Consulte as observações e filtre quando necessário.
 3. Leia o card exato antes de interpretar o texto.
 4. Responda ou marque a observação como considerada quando ainda houver trabalho.

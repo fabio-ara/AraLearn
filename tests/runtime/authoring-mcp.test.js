@@ -1147,6 +1147,7 @@ test("tools/call devolve structuredContent no contrato anunciado", async () => {
           revision: 2,
           sourceCourseId: null,
           publicationCount: 0,
+          authoringState: "planning",
           updatedAt: "2026-08-01T12:01:00.000Z",
           createdAt: "2026-08-01T12:00:00.000Z"
         }],

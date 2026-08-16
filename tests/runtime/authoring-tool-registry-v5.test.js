@@ -434,6 +434,33 @@ test("desenho agrupado separa leituras de mutações e não aceita allowlist do 
     view: "blueprint"
   });
   assert.equal(progressiveRead.body.view, "blueprint");
+  const resourceSetRead = mapAuthoringMcpToolCall("gerirDesenhoInstrucional", {
+    operation: "read_slice",
+    workspaceId: WORKSPACE_ID,
+    microsequencePath: MICROSEQUENCE_PATH,
+    view: "resource_set",
+    resourceSetRef: { id: "condition-a", version: "1.0.0" },
+    cursor: "aralearn.resource.paragraph@1.0.0",
+    limit: 25
+  });
+  assert.deepEqual(resourceSetRead.body, {
+    operation: "read_slice",
+    microsequencePath: MICROSEQUENCE_PATH,
+    view: "resource_set",
+    resourceSetRef: { id: "condition-a", version: "1.0.0" },
+    cursor: "aralearn.resource.paragraph@1.0.0",
+    limit: 25
+  });
+  assert.throws(
+    () => mapAuthoringMcpToolCall("gerirDesenhoInstrucional", {
+      operation: "read_slice",
+      workspaceId: WORKSPACE_ID,
+      microsequencePath: MICROSEQUENCE_PATH,
+      view: "overview",
+      resourceSetRef: { id: "condition-a", version: "1.0.0" }
+    }),
+    (error) => error?.code === "invalid_tool_arguments"
+  );
   for (const forbidden of ["contractName", "requestId", "expectedRevision", "payloadJson"]) {
     assert.throws(
       () => mapAuthoringMcpToolCall("gerirDesenhoInstrucional", {

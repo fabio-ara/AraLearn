@@ -292,11 +292,12 @@ select ok(
 
 select ok(
   public.get_aralearn_runtime_manifest()->>'schemaRevision'
-    = '20260815230000'
+    = '20260815233000'
   and public.get_aralearn_runtime_manifest()->'features'
     ?& array[
       'parameterized-authoring-design-v1',
-      'authoring-blueprint-artifact-receipt-v1'
+      'authoring-blueprint-artifact-receipt-v1',
+      'authoring-product-state-projection-v1'
     ],
   'manifesto flat anuncia desenho parametrizado e retomada do blueprint'
 );

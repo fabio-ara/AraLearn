@@ -29,7 +29,7 @@ function authClient(sessionStore) {
   };
 }
 
-function trailItem(trailItemId, titleIndex) {
+function trailItem(trailItemId, titleIndex, overrides = {}) {
   return {
     trailItemId,
     workspaceId: WORKSPACE_ID,
@@ -53,7 +53,8 @@ function trailItem(trailItemId, titleIndex) {
     canRemove: false,
     pathId: GROUP_ID,
     pathTitle: "Grupo",
-    updatedAt: "2026-08-07T12:00:00Z"
+    updatedAt: "2026-08-07T12:00:00Z",
+    ...overrides
   };
 }
 
@@ -64,14 +65,19 @@ function fixture() {
   )).courses[0];
 }
 
-function fixtureParts() {
-  const course = fixture();
+function fixtureParts(course = fixture()) {
   const parts = [];
   const add = (entityType, entity, parentType = null, parentId = null, position = 0) => {
     const content = structuredClone(entity);
-    for (const key of ["id", "position", "modules", "lessons", "topics", "microsequences", "cards"]) {
-      delete content[key];
-    }
+    delete content.id;
+    delete content.position;
+    const childCollections = {
+      course: ["modules"],
+      module: ["lessons"],
+      lesson: ["topics", "microsequences"],
+      microsequence: ["cards"]
+    };
+    for (const key of childCollections[entityType] || []) delete content[key];
     parts.push({ entityType, id: entity.id, parentType, parentId, position, content });
   };
   add("course", course);
@@ -89,6 +95,29 @@ function fixtureParts() {
     }
   }
   return parts;
+}
+
+function largeFixture(cardCount = 2_800) {
+  const course = fixture();
+  const microsequence = course.modules[0].lessons[0].microsequences[0];
+  const template = microsequence.cards[0];
+  microsequence.cards = Array.from({ length: cardCount }, (_, index) => {
+    const card = structuredClone(template);
+    const suffix = String(index + 1).padStart(4, "0");
+    card.id = `card-large-${suffix}`;
+    card.position = index + 1;
+    card.title = `Conteúdo ${suffix}`;
+    card.content = card.content.map((resource, resourceIndex) => ({
+      ...resource,
+      id: `${card.id}-content-${resourceIndex + 1}`
+    }));
+    card.feedback = card.feedback.map((resource, resourceIndex) => ({
+      ...resource,
+      id: `${card.id}-feedback-${resourceIndex + 1}`
+    }));
+    return card;
+  });
+  return course;
 }
 
 test("snapshot de Trilhas percorre cursor por identidade e ordena somente a página completa", async () => {
@@ -189,6 +218,121 @@ test("composição fixa a revisão entre páginas e usa uma única réplica offl
   assert.equal(
     [...sessionStore.values.keys()].filter((key) => key.includes(ITEM_A)).length,
     1
+  );
+});
+
+test("Conteúdo da Autoria reutiliza composição paginada grande e caches independentes", async () => {
+  const sessionStore = store();
+  const largeCourse = largeFixture();
+  assert.ok(
+    new TextEncoder().encode(JSON.stringify(largeCourse)).byteLength > 1_400_000,
+    "o cenário precisa exceder amplamente o envelope de uma única Action"
+  );
+  const secondCourse = JSON.parse(JSON.stringify(fixture()).replaceAll(
+    "fixture-minimal",
+    "fixture-second"
+  ));
+  const partsByItem = new Map([
+    [ITEM_A, fixtureParts(largeCourse)],
+    [ITEM_B, fixtureParts(secondCourse)]
+  ]);
+  const descriptors = [
+    trailItem(ITEM_A, 0, {
+      kind: "plan",
+      courseKey: largeCourse.id,
+      cardCount: largeCourse.modules[0].lessons[0].microsequences[0].cards.length
+    }),
+    trailItem(ITEM_B, 1, { kind: "plan", courseKey: secondCourse.id })
+  ];
+  const courseCalls = [];
+  let trailReads = 0;
+  const catalog = {
+    async listTrailItems() {
+      trailReads += 1;
+      return {
+        space: "trails",
+        groups: [{ id: GROUP_ID, title: "Grupo" }],
+        items: descriptors,
+        hasMore: false,
+        nextCursor: null,
+        capabilities: { catalogManage: false, catalogReview: false, organize: true }
+      };
+    },
+    async getTrailWorkspaceCourse(options) {
+      courseCalls.push(structuredClone(options));
+      const parts = partsByItem.get(options.trailItemId);
+      assert.ok(parts, "a composição deve usar o trail item privado do curso");
+      const offset = options.afterCursor == null ? 0 : Number(options.afterCursor);
+      assert.equal(options.expectedRevision, offset === 0 ? null : 5);
+      const pageParts = parts.slice(offset, offset + 100);
+      const nextOffset = offset + pageParts.length;
+      const response = {
+        trailItemId: options.trailItemId,
+        workspaceId: WORKSPACE_ID,
+        courseKey: descriptors.find((item) => item.trailItemId === options.trailItemId).courseKey,
+        revision: 5,
+        parts: pageParts,
+        hasMore: nextOffset < parts.length,
+        nextCursor: nextOffset < parts.length ? String(nextOffset) : null
+      };
+      assert.ok(
+        new TextEncoder().encode(JSON.stringify(response)).byteLength < 96 * 1024,
+        "cada página precisa permanecer abaixo do envelope normal da Action"
+      );
+      return response;
+    },
+    async executeApplicationAuthoringAction() {
+      throw new Error("Conteúdo da Autoria não deve baixar document pela Action.");
+    }
+  };
+  const spaces = new LearningSpaces({ catalog, authClient: authClient(sessionStore) });
+  const microsequence = largeCourse.modules[0].lessons[0].microsequences[0];
+  const fullPath = [
+    largeCourse.id,
+    largeCourse.modules[0].id,
+    largeCourse.modules[0].lessons[0].id,
+    microsequence.id,
+    microsequence.cards.at(-1).id
+  ];
+
+  const loaded = await spaces.loadAuthoringWorkspaceCourse({
+    workspaceId: WORKSPACE_ID,
+    entityPath: fullPath,
+    online: true
+  });
+  assert.equal(loaded.course.id, largeCourse.id);
+  assert.equal(loaded.course.modules[0].lessons[0].microsequences[0].cards.length, 2_800);
+  assert.deepEqual(loaded.entityPath, fullPath);
+  assert.equal(loaded.transient, true);
+  assert.ok(courseCalls.filter(({ trailItemId }) => trailItemId === ITEM_A).length > 20);
+
+  const second = await spaces.loadAuthoringWorkspaceCourse({
+    workspaceId: WORKSPACE_ID,
+    entityPath: [secondCourse.id],
+    online: true
+  });
+  assert.equal(second.course.id, secondCourse.id);
+  const pathDepths = [1, 2, 3, 4, 5];
+  for (const depth of pathDepths) {
+    const offline = await spaces.loadAuthoringWorkspaceCourse({
+      workspaceId: WORKSPACE_ID,
+      entityPath: fullPath.slice(0, depth),
+      online: false
+    });
+    assert.equal(offline.course.id, largeCourse.id);
+    assert.deepEqual(offline.entityPath, fullPath.slice(0, depth));
+    assert.equal(offline.stale, true);
+  }
+  assert.equal((await spaces.loadAuthoringWorkspaceCourse({
+    workspaceId: WORKSPACE_ID,
+    entityPath: [secondCourse.id],
+    online: false
+  })).course.id, secondCourse.id);
+  assert.equal(trailReads, 2, "leituras offline devem usar a projeção de Trilhas em cache");
+  assert.equal(
+    [...sessionStore.values.keys()].filter((key) => key.includes("learning.trail.course.v1")).length,
+    2,
+    "cada curso deve manter sua réplica paginada independente"
   );
 });
 

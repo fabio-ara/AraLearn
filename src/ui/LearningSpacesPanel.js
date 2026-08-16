@@ -217,10 +217,10 @@ export function createLearningSpacesPanel({
       <div class="remote-library-panel courses-home-screen" role="dialog" aria-modal="true" aria-label="Painel AraLearn">
         <header class="remote-library-header">
           <div class="remote-library-tab-row">
-            <nav class="remote-library-tabs" role="tablist" aria-label="Painel">
+            <nav class="remote-library-tabs" role="tablist" aria-label="Painel" data-panel-tabs>
               <button class="remote-library-tab is-active" type="button" role="tab" data-panel-view="collections" aria-selected="true">${icon("folder")}<span>Coleções</span></button>
-              <button class="remote-library-tab" type="button" role="tab" data-panel-view="chatbot" aria-selected="false" tabindex="-1">${icon("sparkles")}<span>Chatbot</span></button>
             </nav>
+            <h1 class="remote-library-settings-title" data-panel-settings-title hidden>Conta e aparência</h1>
             <button class="icon-ghost remote-library-close" type="button" data-panel-close title="Fechar painel" aria-label="Fechar painel">${icon("remove-state")}</button>
           </div>
           <label class="remote-catalog-search" data-panel-search hidden>
@@ -259,6 +259,8 @@ export function createLearningSpacesPanel({
   const status = root.querySelector("[data-panel-status]");
   const search = root.querySelector("[data-panel-search]");
   const searchInput = root.querySelector("[data-panel-search-input]");
+  const tabs = root.querySelector("[data-panel-tabs]");
+  const settingsTitle = root.querySelector("[data-panel-settings-title]");
   const assistant = assistantPanel || createAuthoringAssistantPanel({
     projectUrl,
     getAccessToken: () => authClient.getAccessToken(),
@@ -392,7 +394,11 @@ export function createLearningSpacesPanel({
       node.setAttribute("aria-selected", String(selected));
       node.tabIndex = selected ? 0 : -1;
     });
+    const settings = activeView === "settings";
+    tabs.hidden = settings;
+    settingsTitle.hidden = !settings;
     search.hidden = activeView !== "collections";
+    panel.setAttribute("aria-label", settings ? "Conta e aparência" : "Painel AraLearn");
   }
 
   function panelFocusableElements() {
@@ -412,7 +418,23 @@ export function createLearningSpacesPanel({
   }
 
   function focusActiveTab() {
+    if (activeView === "settings") {
+      root.querySelector('[data-panel-action="sync"]')?.focus();
+      return;
+    }
     root.querySelector(`[data-panel-view="${activeView}"]`)?.focus();
+  }
+
+  function renderSettings() {
+    const section = documentValue.createElement("section");
+    section.className = "remote-library-view learning-spaces-settings";
+    section.setAttribute("aria-label", "Conta e aparência");
+    section.innerHTML = `
+      <div>${icon("theme-system")}<h2>Aparência</h2><p>Escolha o tema nos controles abaixo.</p></div>
+      <div>${icon("rotate")}<h2>Sincronização</h2><p>Atualize os dados deste dispositivo quando precisar.</p></div>
+      <div>${icon("more")}<h2>Conta</h2><p>Use o menu de conta para sair ou excluir sua conta.</p></div>
+    `;
+    return section;
   }
 
   function restoreOpeningFocus() {
@@ -1211,7 +1233,10 @@ export function createLearningSpacesPanel({
     content.replaceChildren();
     syncTabs();
     try {
-      if (view === "chatbot") {
+      if (view === "settings") {
+        assistant.close();
+        content.append(renderSettings());
+      } else if (view === "chatbot") {
         await assistant.open({ catalogAccess: authenticatedCapabilities.catalogManage });
         if (epoch !== renderEpoch || view !== activeView || !opened) return false;
         content.append(assistant.element);
@@ -1857,14 +1882,15 @@ export function createLearningSpacesPanel({
 
   async function open(view) {
     const requestedView = view === undefined ? "collections" : view;
-    if (!["collections", "chatbot"].includes(requestedView)) {
+    if (!["collections", "chatbot", "settings"].includes(requestedView)) {
       throw new TypeError("Área do painel inválida.");
     }
     if (!opened) returnFocusTarget = documentValue.activeElement;
     activeView = requestedView;
     opened = true;
     overlay.hidden = false;
-    await load();
+    if (activeView === "settings") await renderActive();
+    else await load();
     if (opened) focusActiveTab();
   }
 
@@ -2178,6 +2204,12 @@ export function createLearningSpacesPanel({
 
   return {
     open,
+    close,
+    handleBack() {
+      if (!opened) return false;
+      void close();
+      return true;
+    },
     openWorkspaceTarget,
     openObservationTarget,
     openAuthoringAssistant() {

@@ -297,6 +297,7 @@ export function createLessonEditorApp({
   contextualAuthoring = null,
   homeTrails = null,
   workspaceCourseAdapter = null,
+  authoringWorkspaceReader = null,
   trailPersonalStateFactory = null
 }) {
   if (!root) fail("Raiz inválida.");
@@ -387,7 +388,9 @@ export function createLessonEditorApp({
     },
     lastCoursesView: "courses",
     pendingExerciseFocus: null,
-    pendingAuthoringFocus: ""
+    pendingAuthoringFocus: "",
+    authoringPreviewCourseKeys: new Set(),
+    authoringPreviewSnapshot: null
   };
 
   state.selection = resolveFirstSelection(state.project);
@@ -496,6 +499,20 @@ export function createLessonEditorApp({
   }
 
   function resolveCourseAuthoringCapabilities(courseKey = state.selection?.courseKey) {
+    if (state.authoringPreviewCourseKeys.has(courseKey)) {
+      return Object.freeze({
+        source: "preview",
+        workspaceRef: null,
+        canEditMetadata: false,
+        canEditCards: false,
+        canUseCardAi: false,
+        canUseBottomUpAi: false,
+        canMove: false,
+        canDeleteEntity: false,
+        canDeleteCourse: false,
+        canComment: false
+      });
+    }
     const online = globalThis.navigator?.onLine !== false;
     const localAiAvailable = isLocalProviderSelection({
       selectedModel: state.assistConfig.model,
@@ -556,7 +573,7 @@ export function createLessonEditorApp({
       capabilities.canEditCards ||
       capabilities.canUseBottomUpAi;
     return {
-      ...(capabilities.source === "workspace"
+      ...(capabilities.source !== "local"
         ? {
             role: canAuthorContent ? "author" : "learner",
             writeTarget: null,
@@ -825,7 +842,7 @@ export function createLessonEditorApp({
         if (localCourseKey) homeTrailsController.bindCourseKey(item.itemId, localCourseKey);
       }
       const selectedItem = homeTrailsController.item(state.homeSelectedTrailItemId);
-      const groups = groupTrailItems(snapshot, { includePlans: true });
+      const groups = groupTrailItems(snapshot);
       if (!groups.some((group) => group.id === state.homeOrganization.selectedGroupId)) {
         state.homeOrganization.selectedGroupId = groups.find((group) =>
           group.items.some((item) => item.itemId === state.homeSelectedTrailItemId)
@@ -908,9 +925,7 @@ export function createLessonEditorApp({
 
   async function prepareHomeTrailItem(itemId) {
     const item = homeTrailsController?.item(itemId);
-    if (!item || (!isStudyableTrailItem(item) && !(item.kind === "plan" && item.workspaceId))) {
-      return null;
-    }
+    if (!isStudyableTrailItem(item)) return null;
     const course = await ensureHomeTrailCourse(item.itemId);
     if (!course) throw new Error("O curso ainda não está disponível neste dispositivo.");
     await ensureTrailPersonalStorage(item, course);
@@ -1137,7 +1152,7 @@ export function createLessonEditorApp({
   }
 
   function groupWithTrailItem(trailItemId) {
-    return groupTrailItems(state.homeTrailSnapshot, { includePlans: true })
+    return groupTrailItems(state.homeTrailSnapshot)
       .find((group) => group.items.some((item) => item.itemId === trailItemId)) || null;
   }
 
@@ -1286,6 +1301,132 @@ export function createLessonEditorApp({
     if (mode === "edit") return setEntityMode("course", "edit", { preserveState: false });
     render({ preserveState: false });
     return true;
+  }
+
+  function focusAuthoringResourceTarget(resourceTargetId) {
+    const normalized = String(resourceTargetId || "").trim();
+    if (!normalized) return;
+    const instanceId = normalized.includes(":") ? normalized.slice(normalized.indexOf(":") + 1) : normalized;
+    globalThis.queueMicrotask?.(() => {
+      const exact = [...root.querySelectorAll("[data-resource-edit-target]")].find((node) =>
+        node.getAttribute("data-resource-edit-target") === normalized
+      );
+      const target = exact || [...root.querySelectorAll("[data-package-instance-id]")].find((node) =>
+        node.getAttribute("data-package-instance-id") === instanceId
+      );
+      if (!target) return;
+      target.setAttribute("tabindex", "-1");
+      target.setAttribute("aria-label", "Conteúdo relacionado ao achado");
+      target.dataset.authoringReaderTarget = "true";
+      target.scrollIntoView?.({ block: "center", behavior: "auto" });
+      target.focus?.({ preventScroll: true });
+    });
+  }
+
+  function closeAuthoringPreview({ renderView = true } = {}) {
+    const snapshot = state.authoringPreviewSnapshot;
+    if (!snapshot) return false;
+    state.authoringPreviewSnapshot = null;
+    state.authoringPreviewCourseKeys.clear();
+    setProject(structuredClone(snapshot.project));
+    applySelectionByKeys(state.project, snapshot.selection) || selectFirstPath(state.project);
+    state.view = snapshot.view;
+    state.microsequenceMode = snapshot.microsequenceMode;
+    state.entityModes = structuredClone(snapshot.entityModes);
+    state.homeSelectedCourseKey = snapshot.homeSelectedCourseKey;
+    state.homeSelectedTrailItemId = snapshot.homeSelectedTrailItemId;
+    state.inlineStructureEditor = null;
+    state.entityMutationError = "";
+    if (renderView) render({ preserveState: false });
+    return true;
+  }
+
+  function openEntityPath(entityPath, { edit = false, resourceTargetId = "" } = {}) {
+    const path = Array.isArray(entityPath)
+      ? entityPath.map((value) => String(value || "").trim())
+      : [];
+    if (path.length < 1 || path.length > 5 || path.some((value) => !value)) return false;
+    const [courseKey, moduleKey, lessonKey, microsequenceKey] = path;
+    if (!findCourse(state.project, courseKey) || !openCourse(courseKey, { mode: path.length === 1 && edit ? "edit" : "view" })) {
+      return false;
+    }
+    if (path.length === 1) return true;
+    if (!findModule(state.project, courseKey, moduleKey) ||
+        !openModule(moduleKey, { mode: path.length === 2 && edit ? "edit" : "view" })) return false;
+    if (path.length === 2) return true;
+    if (!findLesson(state.project, courseKey, moduleKey, lessonKey) ||
+        !openLesson(moduleKey, lessonKey, { mode: path.length === 3 && edit ? "edit" : "view" })) return false;
+    if (path.length === 3) return true;
+    if (!findMicrosequence(state.project, courseKey, moduleKey, lessonKey, microsequenceKey)) return false;
+    if (path.length === 4) {
+      return edit
+        ? openMicrosequenceOverview(microsequenceKey, { mode: "edit" }) === true
+        : openMicrosequenceScreen(microsequenceKey, 0, "play") === true;
+    }
+    const selection = resolveExactCardSelection(state.project, path);
+    if (!selection) return false;
+    applySelection(selection);
+    const opened = edit
+      ? openCardAssistanceMode(selection.microsequenceKey, selection.cardIndex) === true
+      : openMicrosequenceScreen(selection.microsequenceKey, selection.cardIndex, "play") === true;
+    if (opened && resourceTargetId) focusAuthoringResourceTarget(resourceTargetId);
+    return opened;
+  }
+
+  async function openWorkspaceEntityPath(workspaceId, entityPath, {
+    edit = false,
+    resourceTargetId = ""
+  } = {}) {
+    if (!homeTrailsController) return false;
+    const normalizedWorkspaceId = String(workspaceId || "").trim();
+    if (!normalizedWorkspaceId) return false;
+    if (!homeTrailsController.snapshot) await refreshHomeTrails({ preserveSelection: true });
+    const item = homeTrailsController.snapshot?.items?.find((candidate) =>
+      candidate.workspaceId === normalizedWorkspaceId
+    );
+    const path = Array.isArray(entityPath) ? [...entityPath] : [];
+    if (item) {
+      closeAuthoringPreview({ renderView: false });
+      if (!await openHomeTrailCourse(item.itemId, { mode: "view" })) return false;
+      const loadedCourse = homeTrailsController.loadedCourses.get(item.itemId);
+      if (loadedCourse?.id && path.length && !findCourse(state.project, path[0])) path[0] = loadedCourse.id;
+      state.authoringPreviewCourseKeys.delete(path[0]);
+      return openEntityPath(path, { edit, resourceTargetId });
+    }
+    if (typeof authoringWorkspaceReader !== "function") return false;
+    const response = await authoringWorkspaceReader({
+      workspaceId: normalizedWorkspaceId,
+      entityPath: path
+    });
+    const courses = Array.isArray(response?.content?.courses)
+      ? response.content.courses
+      : Array.isArray(response?.document?.courses)
+        ? response.document.courses
+        : response?.course ? [response.course] : [];
+    const course = courses.find((candidate) => candidate?.id === path[0]) || courses[0];
+    if (!course?.id || !Array.isArray(course.modules)) return false;
+    if (!state.authoringPreviewSnapshot) {
+      state.authoringPreviewSnapshot = Object.freeze({
+        project: structuredClone(state.project),
+        selection: structuredClone(state.selection),
+        view: state.view,
+        microsequenceMode: state.microsequenceMode,
+        entityModes: structuredClone(state.entityModes),
+        homeSelectedCourseKey: state.homeSelectedCourseKey,
+        homeSelectedTrailItemId: state.homeSelectedTrailItemId
+      });
+    }
+    const nextProject = structuredClone(state.authoringPreviewSnapshot.project);
+    nextProject.courses = [
+      ...(nextProject.courses || []).filter((candidate) => candidate.id !== course.id),
+      structuredClone(course)
+    ];
+    state.homeSelectedTrailItemId = "";
+    state.homeSelectedCourseKey = course.id;
+    state.authoringPreviewCourseKeys.add(course.id);
+    setProject(nextProject);
+    if (path.length && !findCourse(state.project, path[0])) path[0] = course.id;
+    return openEntityPath(path, { edit: false, resourceTargetId });
   }
 
   function openModule(moduleKey, { mode = "view" } = {}) {
@@ -5215,14 +5356,14 @@ export function createLessonEditorApp({
         root.dispatchEvent(new CustomEvent("aralearn:open-library", { bubbles: true }));
       });
     });
-    root.querySelectorAll("[data-action='open-home-workspace']").forEach((node) => {
+    root.querySelectorAll("[data-action='open-authoring']").forEach((node) => {
       node.addEventListener("click", () => {
-        const workspaceId = node.getAttribute("data-workspace-id") || "";
-        if (!workspaceId) return;
-        root.dispatchEvent(new CustomEvent("aralearn:open-workspace", {
-          bubbles: true,
-          detail: { workspaceId }
-        }));
+        root.dispatchEvent(new CustomEvent("aralearn:open-authoring", { bubbles: true }));
+      });
+    });
+    root.querySelectorAll("[data-action='open-settings']").forEach((node) => {
+      node.addEventListener("click", () => {
+        root.dispatchEvent(new CustomEvent("aralearn:open-settings", { bubbles: true }));
       });
     });
     root.querySelectorAll("[data-action='open-context-observation']").forEach((node) => {
@@ -5395,13 +5536,11 @@ export function createLessonEditorApp({
     });
     root.querySelector("[data-field='home-group-select']")?.addEventListener("change", (event) => {
       const groupId = String(event.currentTarget.value || "");
-      const group = groupTrailItems(state.homeTrailSnapshot, { includePlans: true })
+      const group = groupTrailItems(state.homeTrailSnapshot)
         .find((candidate) => candidate.id === groupId);
       if (!group) return;
       state.homeOrganization.selectedGroupId = group.id;
-      const firstItem = group.items.find((item) =>
-        isStudyableTrailItem(item) || (item.kind === "plan" && item.workspaceId)
-      );
+      const firstItem = group.items.find(isStudyableTrailItem);
       if (firstItem) selectHomeTrailItem(firstItem.itemId);
       else {
         state.inlineStructureEditor = null;
@@ -5466,7 +5605,7 @@ export function createLessonEditorApp({
         if (typeof globalThis.confirm === "function" && !globalThis.confirm("Excluir este grupo? Os itens irão para Outros.")) return;
         void mutateHomeTrails("deleteGroup", { groupId }).then((snapshot) => {
           if (!snapshot) return;
-          state.homeOrganization.selectedGroupId = groupTrailItems(snapshot, { includePlans: true })
+          state.homeOrganization.selectedGroupId = groupTrailItems(snapshot)
             .find((group) => group.id === "others")?.id || "";
           render({ preserveState: true });
         });
@@ -6241,6 +6380,16 @@ export function createLessonEditorApp({
       applySelection(buildNodeSelection({ courseKey: course.id }));
       state.view = "course";
       render({ preserveState: false });
+      return true;
+    },
+    openEntityPath,
+    openWorkspaceEntityPath,
+    closeAuthoringPreview,
+    handleBack() {
+      const overlayOpen = state.cardCommentOpen || state.providerConfigOpen ||
+        Boolean(state.inlineStructureEditor) || Boolean(state.continuePopup);
+      if (!overlayOpen && state.view === "courses") return false;
+      goBack();
       return true;
     },
     refreshTrails() {

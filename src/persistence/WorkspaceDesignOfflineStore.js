@@ -5,9 +5,11 @@ import {
 const CACHE_CONTRACT = "aralearn.workspace-design-cache.v1";
 const CACHE_INDEX_CONTRACT = "aralearn.workspace-design-cache-index.v1";
 const QUEUE_CONTRACT = "aralearn.workspace-design-queue.v1";
+const QUEUE_INDEX_CONTRACT = "aralearn.workspace-design-queue-index.v1";
 const CACHE_PREFIX = "learning.workspace.design.v1";
 const CACHE_INDEX_PREFIX = "learning.workspace.design.index.v1";
 const QUEUE_PREFIX = "learning.workspace.design.queue.v1";
+const QUEUE_INDEX_PREFIX = "learning.workspace.design.queue.index.v1";
 const MAX_CACHE_BYTES = 2 * 1024 * 1024;
 const MAX_WORKSPACE_CACHE_BYTES = 32 * 1024 * 1024;
 const MAX_QUEUE_BYTES = 512 * 1024;
@@ -146,6 +148,10 @@ function queueKey(userId, workspaceId) {
   return `${QUEUE_PREFIX}:${userId}:${workspaceId}`;
 }
 
+function queueIndexKey(userId) {
+  return `${QUEUE_INDEX_PREFIX}:${userId}`;
+}
+
 function lockKey(userId, workspaceId) {
   return `${LOCK_CONTRACT}:${userId}:${workspaceId}`;
 }
@@ -201,6 +207,29 @@ function normalizeQueue(value, { userId, workspaceId }) {
   }
   assertSafePayload(value);
   return structuredClone(value);
+}
+
+function normalizeQueueIndex(value, { userId }) {
+  if (value === null || value === undefined) {
+    return { contract: QUEUE_INDEX_CONTRACT, userId, workspaceIds: [], updatedAt: "" };
+  }
+  if (value?.contract !== QUEUE_INDEX_CONTRACT || value.userId !== userId
+      || !Array.isArray(value.workspaceIds)
+      || value.workspaceIds.some((workspaceId) => !UUID_PATTERN.test(workspaceId))) {
+    throw offlineError("O índice de filas de desenho está corrompido.", "invalid_design_queue_index");
+  }
+  return structuredClone(value);
+}
+
+function queueIndexWith(index, workspaceId, present, updatedAt) {
+  const values = new Set(index.workspaceIds);
+  if (present) values.add(workspaceId);
+  else values.delete(workspaceId);
+  return {
+    ...index,
+    workspaceIds: [...values].sort(),
+    updatedAt
+  };
 }
 
 function normalizeIndex(value, { userId, workspaceId }) {
@@ -284,6 +313,9 @@ function normalizeOperation(value, { userId, workspaceId, microsequenceRef, cloc
   const requestId = assertIdentifier(value.requestId, "Request id", { uuid: true });
   const definitionRef = normalizeVersionedRef(value.definitionRef, "Referência do parâmetro");
   const scope = normalizeScope(value.scope, { microsequenceRef });
+  const assignmentRef = action === "restore_auto" && value.assignmentRef != null
+    ? normalizeVersionedRef(value.assignmentRef, "Referência da atribuição")
+    : null;
   const assignment = action === "set_manual_override"
     ? normalizeDesignParameterAssignment({
         contract: "DesignParameterAssignment@1",
@@ -312,6 +344,7 @@ function normalizeOperation(value, { userId, workspaceId, microsequenceRef, cloc
     definitionRef,
     scope,
     expectedRevision: assertRevision(value.expectedRevision),
+    assignmentRef,
     assignment: assignment ? {
       mode: assignment.mode,
       value: structuredClone(assignment.value)
@@ -320,6 +353,7 @@ function normalizeOperation(value, { userId, workspaceId, microsequenceRef, cloc
       action,
       definitionRef,
       scope,
+      assignmentRef,
       assignment: assignment ? { mode: assignment.mode, value: assignment.value } : null
     }),
     status: "pending",
@@ -327,6 +361,7 @@ function normalizeOperation(value, { userId, workspaceId, microsequenceRef, cloc
     authoritative: false,
     createdAt: isoNow(clock),
     attemptedAt: "",
+    remoteAttemptedAt: "",
     errorCode: "",
     errorMessage: ""
   };
@@ -563,7 +598,8 @@ export class WorkspaceDesignOfflineStore {
       clock: this.#clock
     });
     const key = queueKey(this.#userId, workspace);
-    return this.#atomicSyncState([key], async (values, writes) => {
+    const indexKey = queueIndexKey(this.#userId);
+    return this.#atomicSyncState([key, indexKey], async (values, writes) => {
       const queue = normalizeQueue(values.get(key), {
         userId: this.#userId,
         workspaceId: workspace
@@ -578,7 +614,16 @@ export class WorkspaceDesignOfflineStore {
         }
         return structuredClone(existing);
       }
-      const operations = [...queue.operations, operation];
+      const operations = [
+        ...queue.operations.filter((entry) => !(
+          entry.status === "pending"
+          && !text(entry.remoteAttemptedAt)
+          && entry.microsequenceRef === operation.microsequenceRef
+          && sameReference(entry.definitionRef, operation.definitionRef)
+          && sameScope(entry.scope, operation.scope)
+        )),
+        operation
+      ];
       if (operations.length > MAX_QUEUE_OPERATIONS) {
         throw offlineError("A fila offline de desenho atingiu o limite seguro.", "design_queue_full");
       }
@@ -591,6 +636,10 @@ export class WorkspaceDesignOfflineStore {
         throw offlineError("A fila offline de desenho atingiu o limite seguro.", "design_queue_full");
       }
       writes.set(key, next);
+      const updatedAt = isoNow(this.#clock);
+      writes.set(indexKey, queueIndexWith(normalizeQueueIndex(values.get(indexKey), {
+        userId: this.#userId
+      }), workspace, true, updatedAt));
       return structuredClone(operation);
     });
   }
@@ -601,6 +650,93 @@ export class WorkspaceDesignOfflineStore {
       await this.#store.getSyncState(queueKey(this.#userId, workspace)),
       { userId: this.#userId, workspaceId: workspace }
     );
+  }
+
+  async listQueuedWorkspaces() {
+    const rawIndex = await this.#store.getSyncState(queueIndexKey(this.#userId));
+    const indexed = normalizeQueueIndex(
+      rawIndex,
+      { userId: this.#userId }
+    );
+    const workspaceIds = new Set(indexed.workspaceIds);
+    if (rawIndex == null && typeof this.#store.getAll === "function") {
+      const prefix = `${QUEUE_PREFIX}:${this.#userId}:`;
+      const rows = await this.#store.getAll("syncState");
+      for (const row of rows) {
+        const key = text(row?.key || row?.id);
+        if (!key.startsWith(prefix)) continue;
+        const candidate = key.slice(prefix.length);
+        if (UUID_PATTERN.test(candidate)) workspaceIds.add(candidate);
+      }
+      const indexKey = queueIndexKey(this.#userId);
+      await this.#atomicSyncState([indexKey], async (values, writes) => {
+        const current = normalizeQueueIndex(values.get(indexKey), { userId: this.#userId });
+        const merged = new Set([...current.workspaceIds, ...workspaceIds]);
+        writes.set(indexKey, {
+          ...current,
+          workspaceIds: [...merged].sort(),
+          updatedAt: isoNow(this.#clock)
+        });
+      });
+    }
+    const items = [];
+    for (const workspaceId of [...workspaceIds].sort()) {
+      const queue = await this.readQueue({ workspaceId });
+      if (queue.operations.length) items.push({
+        workspaceId,
+        pendingCount: queue.operations.filter(({ status }) => status === "pending").length,
+        conflictCount: queue.operations.filter(({ status }) => status === "conflict").length
+      });
+    }
+    return items;
+  }
+
+  async cancelPendingOverrideForSlot({
+    workspaceId,
+    microsequenceRef,
+    definitionRef,
+    scope
+  } = {}) {
+    const workspace = assertIdentifier(workspaceId, "Workspace", { uuid: true });
+    const microsequence = assertIdentifier(microsequenceRef, "Microssequência");
+    const normalizedDefinitionRef = normalizeVersionedRef(
+      definitionRef,
+      "Referência do parâmetro"
+    );
+    const normalizedScope = normalizeScope(scope, { microsequenceRef: microsequence });
+    const key = queueKey(this.#userId, workspace);
+    const indexKey = queueIndexKey(this.#userId);
+    return this.#atomicSyncState([key, indexKey], async (values, writes) => {
+      const queue = normalizeQueue(values.get(key), {
+        userId: this.#userId,
+        workspaceId: workspace
+      });
+      const cancellable = queue.operations.filter((entry) => (
+        entry.status === "pending"
+        && !text(entry.remoteAttemptedAt)
+        && entry.microsequenceRef === microsequence
+        && sameReference(entry.definitionRef, normalizedDefinitionRef)
+        && sameScope(entry.scope, normalizedScope)
+      ));
+      if (!cancellable.length) {
+        return { cancelled: 0, retained: queue.operations.length };
+      }
+      const cancelledIds = new Set(cancellable.map(({ requestId }) => requestId));
+      const operations = queue.operations.filter(({ requestId }) => !cancelledIds.has(requestId));
+      writes.set(key, operations.length ? {
+        ...queue,
+        operations,
+        updatedAt: isoNow(this.#clock)
+      } : null);
+      writes.set(indexKey, queueIndexWith(normalizeQueueIndex(values.get(indexKey), {
+        userId: this.#userId
+      }), workspace, operations.length > 0, isoNow(this.#clock)));
+      return {
+        cancelled: cancellable.length,
+        cancelledRequestIds: [...cancelledIds],
+        retained: operations.length
+      };
+    });
   }
 
   async readProjection({ workspaceId, microsequenceRef }) {
@@ -621,7 +757,8 @@ export class WorkspaceDesignOfflineStore {
     const workspace = assertIdentifier(workspaceId, "Workspace", { uuid: true });
     const requestId = assertIdentifier(requestIdValue, "Request id", { uuid: true });
     const key = queueKey(this.#userId, workspace);
-    return this.#atomicSyncState([key], async (values, writes) => {
+    const indexKey = queueIndexKey(this.#userId);
+    return this.#atomicSyncState([key, indexKey], async (values, writes) => {
       const queue = normalizeQueue(values.get(key), {
         userId: this.#userId,
         workspaceId: workspace
@@ -638,6 +775,9 @@ export class WorkspaceDesignOfflineStore {
         operations,
         updatedAt: isoNow(this.#clock)
       } : null);
+      writes.set(indexKey, queueIndexWith(normalizeQueueIndex(values.get(indexKey), {
+        userId: this.#userId
+      }), workspace, operations.length > 0, isoNow(this.#clock)));
       return nextOperation === null ? null : structuredClone(nextOperation);
     });
   }
@@ -713,13 +853,17 @@ export class WorkspaceDesignOfflineStore {
     const workspace = assertIdentifier(workspaceId, "Workspace", { uuid: true });
     const normalizedRequestId = assertIdentifier(requestId, "Request id", { uuid: true });
     const key = queueKey(this.#userId, workspace);
-    await this.#atomicSyncState([key], async (values, writes) => {
+    const indexKey = queueIndexKey(this.#userId);
+    await this.#atomicSyncState([key, indexKey], async (values, writes) => {
       const queue = normalizeQueue(values.get(key), {
         userId: this.#userId,
         workspaceId: workspace
       });
       const confirmed = queue.operations.find((entry) => entry.requestId === normalizedRequestId);
       if (!confirmed) return false;
+      const confirmedIndex = queue.operations.findIndex(
+        (entry) => entry.requestId === normalizedRequestId
+      );
       if (confirmed.status !== "pending"
           || confirmed.requestFingerprint !== operation.requestFingerprint
           || confirmed.expectedRevision !== operation.expectedRevision) {
@@ -729,7 +873,16 @@ export class WorkspaceDesignOfflineStore {
         );
       }
       const operations = queue.operations
-        .filter((entry) => entry.requestId !== normalizedRequestId)
+        .filter((entry, index) => {
+          if (entry.requestId === normalizedRequestId) return false;
+          // A confirmação canônica da intenção mais nova torna obsoletas as
+          // intenções anteriores do mesmo slot, inclusive um envio incerto
+          // que tenha sido classificado como conflito antes de restaurar Auto.
+          return index > confirmedIndex
+            || entry.microsequenceRef !== confirmed.microsequenceRef
+            || !sameReference(entry.definitionRef, confirmed.definitionRef)
+            || !sameScope(entry.scope, confirmed.scope);
+        })
         .map((entry) => entry.status === "pending"
           && entry.expectedRevision === confirmed.expectedRevision
           ? { ...entry, expectedRevision: revision }
@@ -739,6 +892,9 @@ export class WorkspaceDesignOfflineStore {
         operations,
         updatedAt: isoNow(this.#clock)
       } : null);
+      writes.set(indexKey, queueIndexWith(normalizeQueueIndex(values.get(indexKey), {
+        userId: this.#userId
+      }), workspace, operations.length > 0, isoNow(this.#clock)));
       return true;
     });
     return this.readProjection({ workspaceId, microsequenceRef });
@@ -885,17 +1041,22 @@ export class WorkspaceDesignOfflineStore {
             }));
             continue;
           }
-          if (Number(context?.revision) !== operation.expectedRevision) {
-            results.push(await this.markConflict({
-              workspaceId: workspace,
-              requestId: operation.requestId,
-              code: "workspace_revision_conflict",
-              message: "O workspace mudou desde a edição offline."
-            }));
-            continue;
-          }
+          // O backend consulta o ledger idempotente antes do CAS. Mesmo que a
+          // revisão já tenha avançado, reenviar o mesmo requestId é necessário
+          // para recuperar com segurança uma resposta perdida. Uma operação
+          // ainda não aplicada continuará sendo recusada pelo CAS remoto.
+          const attemptedOperation = await this.#updateOperation(
+            workspace,
+            operation.requestId,
+            (current) => ({
+              ...current,
+              remoteAttemptedAt: text(current.remoteAttemptedAt) || isoNow(this.#clock)
+            })
+          );
+          assertLeaseActive(lease);
+          if (!attemptedOperation || attemptedOperation.status !== "pending") continue;
           const submitResult = await submit(
-            structuredClone(operation),
+            structuredClone(attemptedOperation),
             structuredClone(context),
             {
               signal: lease?.signal || null,
@@ -913,30 +1074,30 @@ export class WorkspaceDesignOfflineStore {
           }
           const submittedRevision = Number(submitResult?.revision);
           if (!Number.isSafeInteger(submittedRevision)
-              || submittedRevision <= operation.expectedRevision) {
+              || submittedRevision <= attemptedOperation.expectedRevision) {
             throw offlineError(
               "O servidor não confirmou a revisão da alteração.",
               "design_confirmation_missing"
             );
           }
-          const confirmed = await loadRemoteContext(structuredClone(operation), {
+          const confirmed = await loadRemoteContext(structuredClone(attemptedOperation), {
             signal: lease?.signal || null,
             fencingToken: lease?.fencingToken || ""
           });
           assertLeaseActive(lease);
           if (!confirmed?.slice || Number(confirmed.slice.revision) < submittedRevision
-              || !confirmsOperation(operation, confirmed, submitResult)) {
+              || !confirmsOperation(attemptedOperation, confirmed, submitResult)) {
             throw offlineError(
               "O servidor não confirmou a alteração no estado canônico.",
               "design_confirmation_missing"
             );
           }
           await this.#confirmFromRemote({
-            operation,
+            operation: attemptedOperation,
             slice: confirmed.slice,
             submitResult
           });
-          results.push({ requestId: operation.requestId, status: "confirmed" });
+          results.push({ requestId: attemptedOperation.requestId, status: "confirmed" });
         } catch (error) {
           const conflict = error?.conflict === true ||
             ["research_lock_conflict", "design_override_forbidden", "workspace_revision_conflict"]

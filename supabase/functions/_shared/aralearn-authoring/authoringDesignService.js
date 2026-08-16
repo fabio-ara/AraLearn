@@ -33,10 +33,13 @@ import { sha256Hex } from "./security.js";
 
 const DESIGN_SLICE_CONTRACT = "aralearn.authoring-design-slice.v1";
 const DESIGN_RESPONSE_LIMIT_BYTES = 96 * 1024;
+const RESOURCE_SET_PAGE_DEFAULT_LIMIT = 50;
+const RESOURCE_SET_PAGE_MAX_LIMIT = 100;
 const DESIGN_SLICE_VIEWS = new Set([
   "overview",
   "analysis",
   "parameters",
+  "resource_set",
   "blueprint",
   "binding",
   "materialization"
@@ -292,14 +295,37 @@ const RESOURCE_SET_CONSTRAINTS_SCHEMA = Object.freeze({
 
 const ACTION_CONTRACTS = Object.freeze({
   action_read_slice: {
-    type: "object",
-    additionalProperties: false,
-    required: ["microsequencePath"],
     description: "Argumentos específicos de read_slice; operation pertence ao envelope MCP.",
-    properties: {
-      microsequencePath: MICROSEQUENCE_PATH_SCHEMA,
-      view: { enum: [...DESIGN_SLICE_VIEWS] }
-    }
+    oneOf: [
+      {
+        type: "object",
+        additionalProperties: false,
+        required: ["microsequencePath"],
+        properties: {
+          microsequencePath: MICROSEQUENCE_PATH_SCHEMA,
+          view: {
+            enum: [...DESIGN_SLICE_VIEWS].filter((view) => view !== "resource_set")
+          }
+        }
+      },
+      {
+        type: "object",
+        additionalProperties: false,
+        required: ["microsequencePath", "view", "resourceSetRef"],
+        properties: {
+          microsequencePath: MICROSEQUENCE_PATH_SCHEMA,
+          view: { const: "resource_set" },
+          resourceSetRef: VERSIONED_REF_SCHEMA,
+          cursor: { type: "string", minLength: 1, maxLength: 240 },
+          limit: {
+            type: "integer",
+            minimum: 1,
+            maximum: RESOURCE_SET_PAGE_MAX_LIMIT,
+            default: RESOURCE_SET_PAGE_DEFAULT_LIMIT
+          }
+        }
+      }
+    ]
   },
   action_contracts: {
     type: "object",
@@ -893,15 +919,139 @@ async function effectiveResourceSets({ adapter, principal, workspaceId, snapshot
   )));
 }
 
+function resourceSetPackageCursor(packageRef) {
+  return `${text(packageRef?.packageId)}@${text(packageRef?.version)}`;
+}
+
+function stableResourceSetPackages(resourceSet) {
+  return list(resourceSet?.packages)
+    .map((packageRef) => ({
+      packageId: text(packageRef?.packageId),
+      version: text(packageRef?.version)
+    }))
+    .sort((left, right) => {
+      const leftKey = resourceSetPackageCursor(left);
+      const rightKey = resourceSetPackageCursor(right);
+      return leftKey < rightKey ? -1 : (leftKey > rightKey ? 1 : 0);
+    });
+}
+
+async function effectiveResourceSetPage({
+  adapter,
+  principal,
+  workspaceId,
+  snapshot,
+  resourceSetRef,
+  cursor,
+  limit
+}) {
+  try {
+    requireVersionedRef(resourceSetRef, "resourceSetRef");
+  } catch (cause) {
+    throw domainError(cause, "invalid_resource_set_reference");
+  }
+  const requestedRef = ref(resourceSetRef);
+  if (!list(snapshot?.resourceSetRefs).some(
+    (effectiveRef) => refKey(effectiveRef) === refKey(requestedRef)
+  )) {
+    throw new AuthoringApiError(
+      409,
+      "resource_set_not_effective",
+      "O ResourceSet solicitado não pertence ao snapshot efetivo corrente."
+    );
+  }
+  if (cursor != null && (!text(cursor) || text(cursor) !== cursor || cursor.length > 240)) {
+    throw new AuthoringApiError(
+      422,
+      "invalid_resource_set_cursor",
+      "O cursor da página de ResourceSet é inválido."
+    );
+  }
+  const pageLimit = limit == null ? RESOURCE_SET_PAGE_DEFAULT_LIMIT : limit;
+  if (!Number.isInteger(pageLimit)
+      || pageLimit < 1
+      || pageLimit > RESOURCE_SET_PAGE_MAX_LIMIT) {
+    throw new AuthoringApiError(
+      422,
+      "invalid_resource_set_limit",
+      `limit deve ser um inteiro entre 1 e ${RESOURCE_SET_PAGE_MAX_LIMIT}.`
+    );
+  }
+  let resourceSet;
+  try {
+    resourceSet = normalizeResourceSet(await adapter.getAuthoringResourceSet({
+      principal,
+      workspaceId,
+      resourceSetRef: requestedRef
+    }));
+  } catch (cause) {
+    throw domainError(cause, "invalid_effective_resource_set");
+  }
+  if (refKey(resourceSet) !== refKey(requestedRef)) {
+    throw new AuthoringApiError(
+      409,
+      "resource_set_identity_mismatch",
+      "O ResourceSet persistido não corresponde à referência efetiva solicitada."
+    );
+  }
+  const packages = stableResourceSetPackages(resourceSet);
+  const cursorIndex = cursor == null
+    ? -1
+    : packages.findIndex((packageRef) => resourceSetPackageCursor(packageRef) === cursor);
+  if (cursor != null && cursorIndex < 0) {
+    throw new AuthoringApiError(
+      422,
+      "invalid_resource_set_cursor",
+      "O cursor não pertence ao ResourceSet efetivo solicitado."
+    );
+  }
+  const start = cursorIndex + 1;
+  const page = packages.slice(start, start + pageLimit);
+  const hasMore = start + page.length < packages.length;
+  return {
+    metadata: {
+      ref: requestedRef,
+      scope: clone(resourceSet.scope),
+      resolvedCatalogVersion: resourceSet.resolvedCatalogVersion,
+      provenanceRefs: clone(resourceSet.provenanceRefs)
+    },
+    facets: clone(resourceSet.facetBasis),
+    constraints: clone(resourceSet.selectionConstraints),
+    packages: page,
+    total: packages.length,
+    nextCursor: hasMore && page.length
+      ? resourceSetPackageCursor(page.at(-1))
+      : null
+  };
+}
+
 export async function readAuthoringDesignSlice({
   adapter,
   principal,
   workspaceId,
   microsequencePath,
-  view = "overview"
+  view = "overview",
+  resourceSetRef = null,
+  cursor = null,
+  limit = null
 }) {
   if (!DESIGN_SLICE_VIEWS.has(view)) {
     throw new AuthoringApiError(422, "invalid_design_slice_view", "A view de desenho é inválida.");
+  }
+  if (view !== "resource_set"
+      && (resourceSetRef != null || cursor != null || limit != null)) {
+    throw new AuthoringApiError(
+      422,
+      "invalid_resource_set_slice_arguments",
+      "resourceSetRef, cursor e limit pertencem somente à view resource_set."
+    );
+  }
+  if (view === "resource_set" && resourceSetRef == null) {
+    throw new AuthoringApiError(
+      422,
+      "invalid_resource_set_reference",
+      "resourceSetRef é obrigatório para a view resource_set."
+    );
   }
   const inputs = await stableSliceInputs({
     adapter,
@@ -938,6 +1088,7 @@ export async function readAuthoringDesignSlice({
     "overview",
     ...(state.analysis ? ["analysis"] : []),
     "parameters",
+    ...(list(state.effectiveSnapshot?.resourceSetRefs).length ? ["resource_set"] : []),
     ...(state.blueprint ? ["blueprint"] : []),
     ...(state.blueprintBinding ? ["binding"] : []),
     ...(state.materializationManifest || state.materializationContentHash
@@ -985,6 +1136,16 @@ export async function readAuthoringDesignSlice({
     result.locks = clone(assignments.filter(({ mode }) => mode === "research_lock"));
     result.effectiveSnapshot = clone(state.effectiveSnapshot);
     result.effectiveResourceSets = resourceSets.map(resourceSetSummary);
+  } else if (view === "resource_set") {
+    result.resourceSet = await effectiveResourceSetPage({
+      adapter,
+      principal,
+      workspaceId,
+      snapshot: state.effectiveSnapshot,
+      resourceSetRef,
+      cursor,
+      limit
+    });
   } else if (view === "blueprint") {
     result.blueprintContract = pedagogicalBlueprintContract();
     result.blueprint = clone(state.blueprint);

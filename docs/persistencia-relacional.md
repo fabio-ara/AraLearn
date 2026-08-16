@@ -372,10 +372,25 @@ remove a intenção depois de armazenar o novo estado remoto. Repetir o mesmo
 `requestId` só é idempotente quando a impressão do payload coincide; conflito
 pode ser reenviado com a revisão relida ou descartado explicitamente.
 
+Uma intenção ainda não tentada é coalescida por slot: escolher Auto depois de
+um override local cancela o `set_manual_override`, em vez de enviá-lo mais
+tarde. O índice das filas é isolado por conta e permite que inicialização,
+reconexão e saída localizem pendências sem reabrir a microssequência. Resposta
+perdida consulta o recibo idempotente antes de repetir a mutação.
+
 Transações do `syncState` preservam índice e fila quando duas instâncias operam
 ao mesmo tempo. A sincronização usa Web Locks quando disponíveis; no fallback
 IndexedDB, uma lease renovável por workspace impede dois envios concorrentes e
 expira se a instância desaparecer.
+
+Lista de Workspaces e overview usam chaves por conta e escrita monotônica por
+revisão. A composição transitória do leitor reutiliza a paginação de Trilhas,
+com fence de revisão e cache por `trailItemId`; nenhum documento monolítico
+atravessa a Action. O cache é suplementar: quota ou falha do IndexedDB não
+transforma uma resposta online válida em erro. A projeção SQL
+`authoring-product-state-projection-v1` fornece os estados de lista e os
+marcadores de microssequência no mesmo fence da revisão; o cache não os infere
+por visitas anteriores.
 
 Os limites atuais são 2 MiB por fatia, 32 MiB de cache de desenho por workspace,
 512 KiB por fila, 100 operações por workspace, 10 mil entradas no índice local
