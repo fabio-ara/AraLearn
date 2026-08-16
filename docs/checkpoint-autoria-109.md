@@ -52,6 +52,9 @@ preserva os comandos, limites e medidas observadas.
 O [exemplo de atribuição pseudonimizada](evidence/authoring-experiment-assignments-example.json)
 mostra as referências necessárias para reconstruir materialização e condição,
 sem expor usuário, seed ou consentimento.
+Os exemplos de [outcome em JSON](evidence/authoring-experiment-outcomes-example.json)
+e [CSV](evidence/authoring-experiment-outcomes-example.csv) são gerados pelo
+serializador do produto e usam apenas identificadores pseudonimizados.
 
 ## O que ainda não pode ser dado como concluído
 
