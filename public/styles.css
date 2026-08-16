@@ -521,22 +521,18 @@ textarea {
 }
 
 .remote-library-panel.is-settings .remote-library-footer {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  grid-template-areas:
-    "sync theme"
-    "account account";
+  display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 10px;
 }
 
 .remote-library-panel.is-settings .remote-library-primary-actions {
-  grid-area: sync;
+  flex: 0 0 auto;
 }
 
 .remote-library-panel.is-settings .theme-choice {
-  grid-area: theme;
-  justify-self: end;
+  margin-inline: auto;
 }
 
 .learning-spaces-settings-account-actions {
@@ -548,36 +544,9 @@ textarea {
 }
 
 .remote-library-panel.is-settings .learning-spaces-settings-account-actions {
-  grid-area: account;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 8px;
-}
-
-.learning-spaces-settings-account-action {
-  min-width: 0;
-  min-height: 38px;
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 7px;
-  padding: 8px 10px;
-  border: 1px solid var(--border-default);
-  border-radius: 10px;
-  background: var(--surface-raised);
-  color: var(--text-primary);
-  font: 700 var(--type-xs) var(--font-ui);
-  cursor: pointer;
-}
-
-.learning-spaces-settings-account-action svg {
-  width: 15px;
-  height: 15px;
-}
-
-.learning-spaces-settings-account-action.is-danger {
-  border-color: var(--status-danger);
-  color: var(--status-danger);
+  gap: 8px;
 }
 
 .remote-library-header {

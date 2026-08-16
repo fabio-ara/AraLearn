@@ -745,6 +745,11 @@ test("painel mantém Coleções acessível sem reintroduzir chat interno ou Orga
   await expect(page.getByRole("tab", { name: "Organizar" })).toHaveCount(0);
 
   const lastControl = page.getByRole("button", { name: "Conta", exact: true });
+  await lastControl.click();
+  await expect(page.getByRole("menuitem", { name: "Sair" })).toBeVisible();
+  await collections.click();
+  await expect(page.getByRole("menuitem", { name: "Sair" })).toHaveCount(0);
+
   await lastControl.focus();
   await lastControl.press("Tab");
   await expect(collections).toBeFocused();

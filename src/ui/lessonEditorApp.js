@@ -307,6 +307,31 @@ export function createLessonEditorApp({
   if (homeTrails && typeof trailPersonalStateFactory !== "function") {
     fail("Adaptador de estado pessoal de Trilhas inválido.");
   }
+  const closeContextMenus = (except = null) => {
+    root.querySelectorAll("details.learning-spaces-context-menu[open]").forEach((menu) => {
+      if (menu !== except) menu.open = false;
+    });
+  };
+  root.addEventListener("pointerdown", (event) => {
+    const target = event.target instanceof Element ? event.target : null;
+    const menu = target?.closest("details.learning-spaces-context-menu") || null;
+    if (!menu) closeContextMenus();
+  });
+  root.addEventListener("toggle", (event) => {
+    const menu = event.target instanceof HTMLDetailsElement
+      && event.target.matches("details.learning-spaces-context-menu")
+      ? event.target
+      : null;
+    if (menu?.open) closeContextMenus(menu);
+  }, true);
+  root.addEventListener("keydown", (event) => {
+    if (event.key !== "Escape") return;
+    const menu = root.querySelector("details.learning-spaces-context-menu[open]");
+    if (!menu) return;
+    event.preventDefault();
+    menu.open = false;
+    menu.querySelector(":scope > summary")?.focus();
+  });
   const initialAssistConfig = normalizeAssistConfig({});
   const homeTrailsController = homeTrails
     ? new HomeTrailsController({ adapter: homeTrails })

@@ -241,8 +241,8 @@ export function createLearningSpacesPanel({
           </div>
           <div class="remote-library-account-actions">
             <div class="learning-spaces-settings-account-actions" aria-label="Conta">
-              <button class="learning-spaces-settings-account-action" type="button" data-panel-action="signout">${icon("sign-out")}<span>Sair</span></button>
-              <button class="learning-spaces-settings-account-action is-danger" type="button" data-panel-action="delete-account">${icon("trash")}<span>Excluir conta</span></button>
+              <button class="icon-ghost" type="button" data-panel-action="signout" title="Sair" aria-label="Sair">${icon("sign-out")}</button>
+              <button class="icon-ghost is-danger" type="button" data-panel-action="delete-account" title="Excluir conta" aria-label="Excluir conta">${icon("trash")}</button>
             </div>
             <details class="learning-spaces-context-menu learning-spaces-account-menu">
               <summary class="learning-spaces-context-menu-summary" role="button" aria-haspopup="menu" title="Conta" aria-label="Conta">${icon("more")}</summary>
@@ -310,7 +310,15 @@ export function createLearningSpacesPanel({
     content.querySelectorAll("details.learning-spaces-context-menu[open]").forEach((menu) => {
       if (menu !== currentMenu) menu.open = false;
     });
+    root.querySelectorAll(".remote-library-footer details.learning-spaces-context-menu[open]").forEach((menu) => {
+      if (menu !== currentMenu) menu.open = false;
+    });
   }
+
+  root.addEventListener("pointerdown", (event) => {
+    const target = event.target instanceof Element ? event.target : null;
+    if (!target?.closest("details.learning-spaces-context-menu")) closeOtherContextMenus();
+  });
 
   function applyPendingFocus() {
     if (busy || !pendingFocusResolver) return;
@@ -401,7 +409,7 @@ export function createLearningSpacesPanel({
     const settings = activeView === "settings";
     panel.classList.toggle("is-settings", settings);
     tabs.hidden = settings;
-    settingsTitle.hidden = !settings;
+    settingsTitle.hidden = true;
     search.hidden = activeView !== "collections";
     panel.setAttribute("aria-label", settings ? "Conta e aparência" : "Painel AraLearn");
   }
@@ -1939,6 +1947,12 @@ export function createLearningSpacesPanel({
     if (!opened) return;
     if (event.key === "Escape") {
       event.preventDefault();
+      const menu = panel.querySelector("details.learning-spaces-context-menu[open]");
+      if (menu) {
+        menu.open = false;
+        menu.querySelector(":scope > summary")?.focus();
+        return;
+      }
       void close();
       return;
     }
