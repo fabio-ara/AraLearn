@@ -257,6 +257,10 @@ export function courseFromWorkspaceParts(result, item) {
         `A composição corrente repete a posição dentro do conteúdo de ${type}:${id}.`
       );
     }
+    // `status` é estado operacional da linha de autoria, não conteúdo do
+    // documento por packages. O endpoint de composição pode devolvê-lo para
+    // orientar a tela de autoria; ele não pode vazar para a biblioteca lida.
+    if (type === "microsequence") delete content.status;
     const position = workspacePartPosition(part?.position, type, id);
     const entity = { ...content, id };
     if (type === "card") entity.position = position;

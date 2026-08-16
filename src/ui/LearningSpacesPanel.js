@@ -395,6 +395,7 @@ export function createLearningSpacesPanel({
       node.tabIndex = selected ? 0 : -1;
     });
     const settings = activeView === "settings";
+    panel.classList.toggle("is-settings", settings);
     tabs.hidden = settings;
     settingsTitle.hidden = !settings;
     search.hidden = activeView !== "collections";
@@ -423,18 +424,6 @@ export function createLearningSpacesPanel({
       return;
     }
     root.querySelector(`[data-panel-view="${activeView}"]`)?.focus();
-  }
-
-  function renderSettings() {
-    const section = documentValue.createElement("section");
-    section.className = "remote-library-view learning-spaces-settings";
-    section.setAttribute("aria-label", "Conta e aparência");
-    section.innerHTML = `
-      <div>${icon("theme-system")}<h2>Aparência</h2><p>Escolha o tema nos controles abaixo.</p></div>
-      <div>${icon("rotate")}<h2>Sincronização</h2><p>Atualize os dados deste dispositivo quando precisar.</p></div>
-      <div>${icon("more")}<h2>Conta</h2><p>Use o menu de conta para sair ou excluir sua conta.</p></div>
-    `;
-    return section;
   }
 
   function restoreOpeningFocus() {
@@ -1235,7 +1224,6 @@ export function createLearningSpacesPanel({
     try {
       if (view === "settings") {
         assistant.close();
-        content.append(renderSettings());
       } else if (view === "chatbot") {
         await assistant.open({ catalogAccess: authenticatedCapabilities.catalogManage });
         if (epoch !== renderEpoch || view !== activeView || !opened) return false;

@@ -766,17 +766,17 @@ test("painel mantém Coleções acessível sem reintroduzir chat interno ou Orga
   await expect(page.locator("[data-learning-panel]")).toBeHidden();
 });
 
-test("Conta e aparência abre sem Coleções e mantém tema, sincronização e saída acessíveis", async ({ page }) => {
+test("Conta e aparência abre diretamente como folha inferior e mantém controles acessíveis", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await mountPanel(page);
   await page.evaluate(() => window.learningSpacesPanel.open("settings"));
 
   const settings = page.getByRole("dialog", { name: "Conta e aparência" });
   await expect(settings).toBeVisible();
-  await expect(settings.getByRole("heading", { name: "Aparência", exact: true })).toBeVisible();
-  await expect(settings.getByRole("heading", { name: "Sincronização" })).toBeVisible();
-  await expect(settings.getByRole("heading", { name: "Conta", exact: true })).toBeVisible();
+  await expect(page.locator(".remote-library-panel")).toHaveClass(/\bis-settings\b/u);
+  await expect(settings.locator(".learning-spaces-settings")).toHaveCount(0);
   await expect(settings.getByRole("tab", { name: "Coleções" })).toHaveCount(0);
+  await expect(settings.getByRole("button", { name: "Fechar painel" })).toBeVisible();
   await expect(settings.getByRole("button", { name: "Sincronizar" })).toBeVisible();
   if (process.env.ARALEARN_CAPTURE_AUTHORING === "1") {
     fs.mkdirSync("docs/screenshots/authoring", { recursive: true });
@@ -791,6 +791,26 @@ test("Conta e aparência abre sem Coleções e mantém tema, sincronização e s
   await settings.getByRole("button", { name: "Conta", exact: true }).click();
   await settings.getByRole("menuitem", { name: "Sair" }).click();
   await expect.poll(() => page.evaluate(() => window.learningSpacesProbe.signOutCalls)).toBe(1);
+});
+
+test("Conta e aparência preserva o enquadramento móvel no desktop", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await mountPanel(page);
+  await page.evaluate(() => window.learningSpacesPanel.open("settings"));
+
+  const geometry = await page.locator("[data-learning-panel]").evaluate((overlay) => {
+    const panel = overlay.querySelector(".remote-library-panel");
+    const overlayBox = overlay.getBoundingClientRect();
+    const panelBox = panel.getBoundingClientRect();
+    return {
+      overlay: { left: overlayBox.left, width: overlayBox.width },
+      panel: { bottom: panelBox.bottom, height: panelBox.height }
+    };
+  });
+  expect(geometry.overlay.width).toBeLessThanOrEqual(430);
+  expect(Math.abs(geometry.overlay.left - ((1280 - geometry.overlay.width) / 2))).toBeLessThanOrEqual(1);
+  expect(geometry.panel.bottom).toBe(900);
+  expect(geometry.panel.height).toBeLessThan(300);
 });
 
 test("detalhes do workspace mostram andamento humano sem criar novos controles", async ({ page }) => {

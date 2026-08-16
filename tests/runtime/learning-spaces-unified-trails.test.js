@@ -3,6 +3,7 @@ import fs from "node:fs";
 import test from "node:test";
 
 import { LearningSpaces } from "../../src/supabase/LearningSpaces.js";
+import { courseFromWorkspaceParts } from "../../src/ui/homeTrailProjection.js";
 
 const USER_ID = "10000000-0000-4000-8000-000000000001";
 const GROUP_ID = "20000000-0000-4000-8000-000000000002";
@@ -219,6 +220,32 @@ test("composição fixa a revisão entre páginas e usa uma única réplica offl
     [...sessionStore.values.keys()].filter((key) => key.includes(ITEM_A)).length,
     1
   );
+});
+
+test("composição de Trilhas não confunde status operacional da microssequência com conteúdo", async () => {
+  const sessionStore = store();
+  const parts = fixtureParts();
+  const microsequence = parts.find((part) => part.entityType === "microsequence");
+  microsequence.content.status = "ready";
+  const catalog = {
+    async getTrailWorkspaceCourse() {
+      return {
+        trailItemId: ITEM_A,
+        workspaceId: WORKSPACE_ID,
+        courseKey: "course-fixture-minimal",
+        revision: 5,
+        parts,
+        hasMore: false,
+        nextCursor: null
+      };
+    }
+  };
+  const spaces = new LearningSpaces({ catalog, authClient: authClient(sessionStore) });
+
+  const response = await spaces.loadWorkspaceCourse(trailItem(ITEM_A, 0));
+  assert.equal(response.parts.length, parts.length);
+  const course = courseFromWorkspaceParts(response, trailItem(ITEM_A, 0));
+  assert.equal(Object.hasOwn(course.modules[0].lessons[0].microsequences[0], "status"), false);
 });
 
 test("Conteúdo da Autoria reutiliza composição paginada grande e caches independentes", async () => {

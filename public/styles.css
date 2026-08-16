@@ -454,6 +454,8 @@ textarea {
   position: fixed;
   z-index: 120;
   inset: 0;
+  width: min(100%, 430px);
+  margin-inline: auto;
 }
 
 .remote-library-overlay[hidden] {
@@ -483,6 +485,37 @@ textarea {
   border-left: 1px solid var(--border-default);
   background: var(--surface-canvas);
   box-shadow: var(--shadow-floating);
+}
+
+/* A conta é uma folha inferior do mesmo enquadramento móvel. Coleções ainda
+   usa o painel integral; não há uma segunda navegação lateral para chegar aos
+   controles de aparência, sincronização e conta. */
+.remote-library-panel.is-settings {
+  top: auto;
+  bottom: 0;
+  width: 100%;
+  height: auto;
+  min-height: 0;
+  grid-template-rows: auto auto auto;
+  padding:
+    10px
+    max(10px, var(--safe-right))
+    max(10px, var(--safe-bottom-tappable))
+    max(10px, var(--safe-left));
+  border-top: 1px solid var(--border-default);
+  border-left: 0;
+  border-radius: 20px 20px 0 0;
+}
+
+.remote-library-panel.is-settings .remote-library-content {
+  display: none;
+}
+
+.remote-library-panel.is-settings .remote-library-settings-title {
+  padding: 6px 4px;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
 }
 
 .remote-library-header {
