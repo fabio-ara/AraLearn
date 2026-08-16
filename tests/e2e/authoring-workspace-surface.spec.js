@@ -9,7 +9,10 @@ const CAPTURE_AUTHORING_SCREENSHOTS = process.env.ARALEARN_CAPTURE_AUTHORING ===
 async function mountAuthoring(page, {
   extraDestination = false,
   conflict = false,
-  deepFindingPages = 0
+  deepFindingPages = 0,
+  partDualPagination = false,
+  unassignedRepaired = false,
+  incompleteAuditResume = false
 } = {}) {
   await page.goto("/");
   await page.evaluate(async ({
@@ -18,7 +21,10 @@ async function mountAuthoring(page, {
     secondPath,
     withExtraDestination,
     withConflict,
-    requestedDeepFindingPages
+    requestedDeepFindingPages,
+    withPartDualPagination,
+    withUnassignedRepaired,
+    withIncompleteAuditResume
   }) => {
     document.body.replaceChildren();
     const root = document.createElement("main");
@@ -27,17 +33,45 @@ async function mountAuthoring(page, {
     let value = 2;
     let source = "manual";
     let conflict = withConflict;
+    let currentMandate = null;
+    let auditRunStatus = "complete";
+    let auditRunCurrent = true;
+    let componentBAvailable = true;
+    const unassignedPath = ["course-a", "module-a", "lesson-a", "micro-unassigned"];
+    const findingStatuses = {
+      "finding-course": "open",
+      "finding-a": "open",
+      "finding-b": "repaired",
+      "finding-missing": "open",
+      "finding-unassigned": "repaired"
+    };
     const probe = {
       setCalls: [],
       restoreCalls: [],
       retryCalls: [],
       discardCalls: [],
       findingReads: [],
+      auditReads: [],
+      decisionCalls: [],
+      repairMandates: [],
+      reauditMandates: [],
       resourceReads: [],
       resourceSaves: [],
       openTargets: [],
       returnContexts: [],
       settingsOpens: 0
+    };
+    probe.completePreparedRepairs = () => {
+      for (const findingId of currentMandate?.findingIds || []) findingStatuses[findingId] = "repaired";
+    };
+    probe.setAuditRunStatus = (status) => {
+      auditRunStatus = status;
+    };
+    probe.setAuditRunCurrent = (current) => {
+      auditRunCurrent = current === true;
+    };
+    probe.setComponentBAvailable = (available) => {
+      componentBAvailable = available === true;
     };
     const overview = () => ({
       workspaceId,
@@ -47,11 +81,25 @@ async function mountAuthoring(page, {
       stateLabel: "Em construção",
       pending: conflict,
       conflict,
+      mandate: currentMandate == null ? null : structuredClone(currentMandate),
       parts: [{
         partId: "part-a",
         title: "Fundamentos",
         state: "materialized",
         stateLabel: "Com conteúdo",
+        auditSummary: {
+          dimensions: {
+            structure: { status: "conformant", findingCount: 0 },
+            design: { status: "finding", findingCount: 2 },
+            practice: { status: "finding", findingCount: 1 },
+            resources: { status: "conformant", findingCount: 0 },
+            coverage: { status: "conformant", findingCount: 0 },
+            coherence: { status: "not_checked", findingCount: 0 },
+            dependencies: { status: "not_checked", findingCount: 0 },
+            redundancy: { status: "not_checked", findingCount: 0 },
+            integration: { status: "not_checked", findingCount: 0 }
+          }
+        },
         microsequences: [{
           key: "micro-a",
           title: "Sinais no cotidiano",
@@ -60,6 +108,12 @@ async function mountAuthoring(page, {
           stateLabel: conflict ? "Com conflito" : "Com conteúdo",
           pending: conflict,
           conflict,
+          auditSummary: { dimensions: {
+            structure: { status: "conformant", findingCount: 0 },
+            design: { status: "finding", findingCount: 1 },
+            practice: { status: "conformant", findingCount: 0 },
+            resources: { status: "conformant", findingCount: 0 }
+          } },
           readerTarget: { entityPath: firstPath }
         }, {
           key: "micro-b",
@@ -67,38 +121,151 @@ async function mountAuthoring(page, {
           entityPath: secondPath,
           state: "planned",
           stateLabel: "Planejada",
+          auditSummary: { dimensions: {
+            structure: { status: "conformant", findingCount: 0 },
+            design: { status: "not_checked", findingCount: 0 },
+            practice: { status: "finding", findingCount: 1 },
+            resources: { status: "not_checked", findingCount: 0 }
+          } },
           readerTarget: { entityPath: secondPath }
         }]
-      }],
+      }, ...(withUnassignedRepaired ? [{
+        partId: null,
+        title: "Ainda sem Parte",
+        state: "audit_pending",
+        stateLabel: "Com achado pendente",
+        auditSummary: { dimensions: {
+          structure: { status: "not_checked", findingCount: 0 },
+          design: { status: "finding", findingCount: 1 },
+          practice: { status: "not_checked", findingCount: 0 },
+          resources: { status: "not_checked", findingCount: 0 }
+        } },
+        microsequences: [{
+          key: "micro-unassigned",
+          title: "Unidade ainda não coordenada",
+          entityPath: unassignedPath,
+          state: "audit_pending",
+          stateLabel: "Com achado pendente",
+          auditSummary: { dimensions: {
+            structure: { status: "not_checked", findingCount: 0 },
+            design: { status: "finding", findingCount: 1 },
+            practice: { status: "not_checked", findingCount: 0 },
+            resources: { status: "not_checked", findingCount: 0 }
+          } },
+          readerTarget: { entityPath: unassignedPath }
+        }]
+      }] : [])],
+      audit: { summary: { dimensions: {
+        structure: { status: "conformant", findingCount: 0 },
+        design: { status: "finding", findingCount: 2 },
+        practice: { status: "finding", findingCount: 1 },
+        resources: { status: "conformant", findingCount: 0 }
+      } } },
       findings: [{
         findingId: "finding-course",
         summary: "Objetivo do curso precisa de desenvolvimento",
+        code: "course_objective_underdeveloped",
+        origin: "deterministic",
+        publicEvidence: "O objetivo registrado não possui desenvolvimento correspondente no conteúdo.",
+        ruleRef: { kind: "requirement", id: "objective_coverage", version: "1.0.0" },
         severity: "medium",
+        status: findingStatuses["finding-course"],
+        proposedRepair: "Desenvolver o objetivo na Parte correspondente.",
+        auditRunRef: { id: "audit-part-a", version: "1.0.0" },
+        auditRevision: 6,
+        auditPartId: "part-a",
         targetAvailable: true,
         readerTarget: { entityPath: ["course-a"] }
       }, {
         findingId: "finding-a",
         summary: "Exemplo comprimido demais",
+        code: "semantic_excessive_compression",
+        origin: withIncompleteAuditResume ? null : "semantic_audit",
+        publicEvidence: "O passo apresenta quatro elementos novos; o valor efetivo permite no máximo dois.",
+        ruleRef: { kind: "parameter", id: "new_units_per_theory_step_ceiling", version: "1.0.0" },
         severity: "high",
+        status: findingStatuses["finding-a"],
+        proposedRepair: "Distribuir a explicação em passos progressivos.",
+        auditRunRef: withIncompleteAuditResume ? null : { id: "audit-micro-a", version: "1.0.0" },
+        auditRevision: 6,
+        auditPartId: "part-a",
+        artifactRefs: {
+          analysisRef: { id: "analysis-a", version: "1.0.0" },
+          manifestRef: { id: "manifest-a", version: "1.0.0" },
+          resourceSetRefs: {
+            items: [
+              { id: "resource-set-a", version: "1.0.0" },
+              { id: "resource-set-b", version: "1.0.0" }
+            ],
+            count: 23,
+            truncated: true
+          },
+          microsequenceRefs: {
+            items: ["micro-a", "micro-b"],
+            count: 2,
+            truncated: false
+          }
+        },
         targetAvailable: true,
-        readerTarget: { entityPath: [...firstPath, "card-a"], resourceTargetId: "content:diagram-a" }
+        readerTarget: { entityPath: [...firstPath, "card-current"], resourceTargetId: "content:diagram-a" }
       }, {
         findingId: "finding-b",
         summary: "Prática ainda não materializada",
+        code: "practice_missing",
+        origin: "deterministic",
+        publicEvidence: "O manifesto promete prática, mas não existe card correspondente.",
+        ruleRef: { kind: "requirement", id: "practice_coverage", version: "1.0.0" },
         severity: "low",
+        status: findingStatuses["finding-b"],
+        proposedRepair: null,
+        auditRunRef: { id: "audit-micro-b", version: "1.0.0" },
+        auditRevision: 5,
+        auditPartId: "part-a",
+        resultingRevision: 7,
         targetAvailable: true,
         readerTarget: { entityPath: secondPath }
       }, {
         findingId: "finding-missing",
         summary: "Conteúdo original retirado",
+        code: "target_removed",
+        origin: "deterministic",
+        publicEvidence: "O alvo registrado não existe mais na revisão corrente.",
+        ruleRef: { kind: "traceability", id: "target_available", version: "1.0.0" },
         severity: "medium",
+        status: findingStatuses["finding-missing"],
+        proposedRepair: null,
+        auditRunRef: { id: "audit-part-a", version: "1.0.0" },
+        auditRevision: 6,
+        auditPartId: "part-a",
         targetAvailable: false,
         readerTarget: null
-      }],
+      }, ...(withUnassignedRepaired ? [{
+        findingId: "finding-unassigned",
+        summary: "Explicação sem coordenação de Parte",
+        code: "semantic_explanation_only_mentioned",
+        origin: "semantic_audit",
+        publicEvidence: "A unidade ainda não foi associada a uma Parte operacional.",
+        ruleRef: { kind: "coordination", id: "part_assignment", version: "1.0.0" },
+        severity: "medium",
+        status: findingStatuses["finding-unassigned"],
+        proposedRepair: null,
+        auditRunRef: { id: "audit-micro-unassigned", version: "1.0.0" },
+        auditRevision: 6,
+        resultingRevision: 7,
+        targetAvailable: true,
+        readerTarget: { entityPath: unassignedPath }
+      }] : [])].filter((finding) => !["rejected", "resolved"].includes(finding.status)),
       findingsTotal: requestedDeepFindingPages > 0 ? 4 + requestedDeepFindingPages : 54,
       findingsTruncated: true,
       findingsNextCursor: requestedDeepFindingPages > 0 ? "deep-1" : "50",
-      capabilities: { design: true, audit: true, editContent: true }
+      capabilities: {
+        design: true,
+        audit: true,
+        editContent: true,
+        decideFindings: true,
+        prepareRepairs: true,
+        requestAudit: true
+      }
     });
     const design = () => ({
       workspaceId,
@@ -252,6 +419,183 @@ async function mountAuthoring(page, {
       async loadAuthoringWorkspaceOverview() {
         return overview();
       },
+      async loadAuthoringAudit(argumentsValue) {
+        probe.auditReads.push(structuredClone(argumentsValue));
+        if (requestedDeepFindingPages > 0) {
+          const pageNumber = argumentsValue.cursor
+            ? Number(String(argumentsValue.cursor).replace("audit-deep-", ""))
+            : 0;
+          const nextPage = pageNumber < requestedDeepFindingPages ? pageNumber + 1 : null;
+          const deepFinding = (findingId, summary) => ({
+                findingId,
+                summary,
+                code: "semantic_explanation_only_mentioned",
+                origin: "semantic_audit",
+                publicEvidence: `Evidência pública da página ${pageNumber}.`,
+                ruleRef: { kind: "requirement", id: "applicable_explanation_coverage", version: "1.0.0" },
+                severity: "medium",
+                status: "open",
+                proposedRepair: null,
+                auditRunRef: { id: "audit-micro-a", version: "1.0.0" },
+                auditRevision: 6,
+                targetAvailable: true,
+                readerTarget: { entityPath: firstPath }
+              });
+          const items = pageNumber === 0
+            ? [
+                ...overview().findings.filter(({ findingId }) => findingId === "finding-a"),
+                ...Array.from({ length: 49 }, (_, index) => deepFinding(
+                  `finding-deep-initial-${index + 1}`,
+                  `Achado inicial ${index + 1}`
+                ))
+              ]
+            : pageNumber === requestedDeepFindingPages
+              ? [deepFinding(`finding-deep-${pageNumber}`, `Achado profundo ${pageNumber}`)]
+              : Array.from({ length: 50 }, (_, index) => deepFinding(
+                  `finding-deep-${pageNumber}-${index + 1}`,
+                  `Achado intermediário ${pageNumber}.${index + 1}`
+                ));
+          return {
+            workspaceId,
+            revision,
+            latestAuditRun: {
+              ref: { id: "audit-micro-a", version: "1.0.0" },
+              kind: "semantic",
+              status: auditRunStatus,
+              current: auditRunCurrent,
+              scope: { kind: "microsequence", ref: firstPath[3] },
+              startedRevision: 6,
+              completedRevision: 7
+            },
+            summary: overview().parts[0].microsequences[0].auditSummary,
+            findings: items,
+            total: 50 + (requestedDeepFindingPages - 1) * 50 + 1,
+            nextCursor: nextPage == null ? null : `audit-deep-${nextPage}`,
+            truncated: nextPage != null,
+            coordination: { mandate: {} }
+          };
+        }
+        const isPart = (argumentsValue.auditScope?.kind === "part" &&
+          argumentsValue.auditScope.ref === "part-a") ||
+          argumentsValue.auditRunRef?.id === "audit-part-a";
+        const unpinnedPartPage = withPartDualPagination && isPart &&
+          (argumentsValue.cursor || argumentsValue.componentCursor) && !argumentsValue.auditRunRef;
+        const resolvedRunRef = argumentsValue.auditRunRef || (isPart
+          ? { id: unpinnedPartPage ? "audit-part-new" : "audit-part-a", version: "1.0.0" }
+          : { id: `audit-${argumentsValue.microsequencePath[3]}`, version: "1.0.0" });
+        let items = overview().findings.filter((finding) => {
+          if (isPart) return ["finding-course", "finding-missing"].includes(finding.findingId);
+          const path = finding.readerTarget?.entityPath;
+          return Array.isArray(path) && argumentsValue.microsequencePath.every(
+            (entry, index) => path[index] === entry
+          );
+        }).map((finding) => {
+          const projected = {
+            ...finding,
+            ...(isPart ? { auditRunRef: structuredClone(resolvedRunRef) } : {}),
+            ...(withIncompleteAuditResume && finding.findingId === "finding-a"
+              ? {
+                  origin: "semantic_audit",
+                  auditRunRef: isPart
+                    ? { id: "audit-part-a", version: "1.0.0" }
+                    : { id: "audit-micro-a", version: "1.0.0" }
+                }
+              : {})
+          };
+          if (finding.findingId === "finding-a") {
+            return {
+              ...projected,
+              readerTarget: {
+                entityPath: [...firstPath, "card-before-move"],
+                resourceTargetId: "content:diagram-a"
+              }
+            };
+          }
+          if (finding.findingId === "finding-missing") {
+            return {
+              ...projected,
+              targetAvailable: undefined,
+              readerTarget: { entityPath: [...secondPath, "card-removed"] }
+            };
+          }
+          return projected;
+        });
+        if (isPart && withPartDualPagination) {
+          if (argumentsValue.cursor) {
+            items = items.filter(({ findingId }) => findingId === "finding-missing");
+          } else {
+            items = [
+              ...items.filter(({ findingId }) => findingId === "finding-course"),
+              ...Array.from({ length: 49 }, (_, index) => ({
+                findingId: `finding-part-page-${index + 2}`,
+                summary: `Achado da Parte ${index + 2}`,
+                code: "part_cross_microsequence_gap",
+                origin: "semantic_audit",
+                publicEvidence: `Evidência pública da Parte ${index + 2}.`,
+                ruleRef: { kind: "requirement", id: "part_coherence", version: "1.0.0" },
+                severity: "medium",
+                status: "open",
+                proposedRepair: null,
+                auditRunRef: structuredClone(resolvedRunRef),
+                auditRevision: 6,
+                auditPartId: "part-a",
+                targetAvailable: true,
+                readerTarget: { entityPath: ["course-a"] }
+              }))
+            ];
+          }
+        }
+        const micro = overview().parts.flatMap((part) => part.microsequences).find((item) => (
+          item.entityPath.every((entry, index) => argumentsValue.microsequencePath[index] === entry)
+        ));
+        return {
+          workspaceId,
+          revision,
+          latestAuditRun: {
+            ref: resolvedRunRef,
+            kind: isPart ? "part" : "semantic",
+            status: auditRunStatus,
+            current: auditRunCurrent,
+            scope: isPart
+              ? { kind: "part", ref: "part-a" }
+              : { kind: "microsequence", ref: argumentsValue.microsequencePath[3] },
+            startedRevision: 6,
+            completedRevision: 7
+          },
+          summary: isPart ? overview().parts[0].auditSummary : micro.auditSummary,
+          components: isPart ? {
+            items: argumentsValue.componentCursor ? [{
+              ordinal: 2,
+              microsequenceRef: "micro-b",
+              microsequencePath: secondPath,
+              childAuditRunRef: { id: "audit-micro-b", version: "1.0.0" },
+              auditedRevision: 6,
+              contentHash: "sha256:micro-b",
+              status: "complete",
+              targetAvailable: componentBAvailable
+            }] : [{
+              ordinal: 1,
+              microsequenceRef: "micro-a",
+              microsequencePath: firstPath,
+              childAuditRunRef: { id: "audit-micro-a", version: "1.0.0" },
+              auditedRevision: 6,
+              contentHash: "sha256:micro-a",
+              status: "complete",
+              targetAvailable: true
+            }],
+            count: 2,
+            nextCursor: argumentsValue.componentCursor ? null : "1",
+            truncated: !argumentsValue.componentCursor
+          } : { items: [], count: 0, nextCursor: null, truncated: false },
+          findings: items,
+          total: isPart && withPartDualPagination ? 51 : items.length,
+          nextCursor: isPart && withPartDualPagination && !argumentsValue.cursor
+            ? "part-findings-50"
+            : null,
+          truncated: isPart && withPartDualPagination && !argumentsValue.cursor,
+          coordination: { mandate: {} }
+        };
+      },
       async loadAuthoringDesign() {
         return design();
       },
@@ -292,6 +636,46 @@ async function mountAuthoring(page, {
           };
         }
         return { items: overview().findings, total: 54, nextCursor: "50", truncated: true, stale: false };
+      },
+      async decideAuthoringFinding(argumentsValue) {
+        probe.decisionCalls.push(structuredClone(argumentsValue));
+        await new Promise((resolve) => setTimeout(resolve, 80));
+        findingStatuses[argumentsValue.findingId] = argumentsValue.decision;
+        revision += 1;
+        return { workspaceId, revision, status: argumentsValue.decision };
+      },
+      async prepareAuthoringFindingRepairs(argumentsValue) {
+        probe.repairMandates.push(structuredClone(argumentsValue));
+        await new Promise((resolve) => setTimeout(resolve, 80));
+        if (argumentsValue.findingIds.some((id) => findingStatuses[id] !== "approved")) {
+          throw new Error("Somente achados aprovados podem entrar no reparo.");
+        }
+        currentMandate = {
+          id: "repair-mandate-a",
+          kind: "repair_findings",
+          findingIds: structuredClone(argumentsValue.findingIds),
+          decidedAtRevision: revision
+        };
+        revision += 1;
+        return { workspaceId, revision, status: "repair_findings" };
+      },
+      async requestAuthoringReaudit(argumentsValue) {
+        probe.reauditMandates.push(structuredClone(argumentsValue));
+        await new Promise((resolve) => setTimeout(resolve, 80));
+        const pendingPrepared = (currentMandate?.findingIds || []).some((findingId) => (
+          !["repaired", "resolved", "rejected"].includes(findingStatuses[findingId])
+        ));
+        if (currentMandate?.kind === "repair_findings" && pendingPrepared) {
+          throw new Error("Ainda há reparos preparados em andamento.");
+        }
+        currentMandate = {
+          id: "audit-mandate-a",
+          kind: "audit",
+          ...(argumentsValue.partId ? { targetPartId: argumentsValue.partId } : {}),
+          decidedAtRevision: revision
+        };
+        revision += 1;
+        return { workspaceId, revision, status: "audit" };
       },
       async setAuthoringParameter(argumentsValue) {
         probe.setCalls.push(structuredClone(argumentsValue));
@@ -365,7 +749,10 @@ async function mountAuthoring(page, {
     secondPath: SECOND_PATH,
     withExtraDestination: extraDestination,
     withConflict: conflict,
-    requestedDeepFindingPages: deepFindingPages
+    requestedDeepFindingPages: deepFindingPages,
+    withPartDualPagination: partDualPagination,
+    withUnassignedRepaired: unassignedRepaired,
+    withIncompleteAuditResume: incompleteAuditResume
   });
 }
 
@@ -396,22 +783,35 @@ test("autodidata encontra Estudo, Autoria, mapa, conteúdo e auditoria sem jarg�
   await expect(page.getByText("Conteúdo original retirado")).toBeVisible();
   await expect(page.getByText(/54\+ achados/u)).toBeVisible();
   await expect(page.getByText(/outros achados podem existir/u)).toBeVisible();
-  await expect(page.getByRole("button", { name: /Conteúdo original retirado/u })).toBeDisabled();
+  await page.getByRole("button", { name: /Conteúdo original retirado/u }).click();
+  const unavailableFinding = page.getByRole("dialog", { name: "Conteúdo original retirado" });
+  await expect(unavailableFinding.getByText(/conteúdo original não está mais disponível/u)).toBeVisible();
+  await expect(unavailableFinding.getByRole("button", { name: "Abrir conteúdo" })).toHaveCount(0);
+  await unavailableFinding.getByRole("button", { name: "Abrir rodada da Parte" }).click();
+  await expect(page.getByRole("dialog", { name: "Conteúdo original retirado" })
+    .getByRole("button", { name: "Aprovar para reparo" })).toHaveCount(0);
+  await expect(page.getByRole("dialog", { name: "Conteúdo original retirado" })
+    .getByText(/conteúdo original não está mais disponível/u)).toBeVisible();
+  await expect(page.getByRole("dialog", { name: "Conteúdo original retirado" })
+    .getByRole("button", { name: "Abrir conteúdo" })).toHaveCount(0);
+  await page.getByRole("dialog", { name: "Conteúdo original retirado" })
+    .getByRole("button", { name: "Fechar" }).click();
+  await page.getByRole("button", { name: "Ver o workspace" }).click();
   await page.getByRole("button", { name: "Carregar mais achados" }).click();
   await expect.poll(() => page.evaluate(() => window.authoringProbe.findingReads.length)).toBe(1);
   expect(await page.evaluate(() => window.authoringProbe.findingReads[0].cursor)).toBe("50");
   await expect(page.getByText("Achado final 54")).toBeVisible();
-  await expect(page.getByText(/^54 achados$/u)).toBeVisible();
+  await expect(page.getByText(/^54 achados pendentes$/u)).toBeVisible();
   await expect(page.getByRole("button", { name: /Carregar.*achados/u })).toHaveCount(0);
 
   await page.getByRole("tab", { name: "Mapa" }).click();
   await page.getByRole("button", { name: /Sinais no cotidiano/u }).click();
   await page.getByRole("tab", { name: "Auditoria" }).click();
   await expect(page.getByText("Exemplo comprimido demais")).toBeVisible();
-  await expect(page.getByText("Objetivo do curso precisa de desenvolvimento")).toBeVisible();
+  await expect(page.getByText("Objetivo do curso precisa de desenvolvimento")).toHaveCount(0);
   await expect(page.getByText("Prática ainda não materializada")).toHaveCount(0);
   await expect(page.locator(".authoring-audit-heading").getByText("Auditoria pendente")).toBeVisible();
-  await page.getByRole("button", { name: "Ver todos os achados" }).click();
+  await page.getByRole("button", { name: "Ver o workspace" }).click();
   await expect(page.getByText("Prática ainda não materializada")).toBeVisible();
 });
 
@@ -514,15 +914,228 @@ test("pesquisador vê lock e resolve conflito sem novo override silencioso", asy
   await expect(page.getByRole("button", { name: /Novidade/u })).toBeEnabled();
 });
 
+test("autor decide achados, prepara somente aprovados e solicita reauditoria da Parte", async ({ page, context }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await mountAuthoring(page);
+  await openFirstMicrosequence(page);
+  await page.evaluate(() => window.authoringProbe.setAuditRunStatus("semantic_pending"));
+  await page.getByRole("tab", { name: "Auditoria" }).click();
+
+  await page.getByRole("button", { name: /Exemplo comprimido demais/u }).click();
+  const pendingDetail = page.getByRole("dialog", { name: "Exemplo comprimido demais" });
+  await expect(pendingDetail.getByText(/revisão instrucional.*ainda não terminou/u)).toBeVisible();
+  await expect(pendingDetail.getByRole("button", { name: "Aprovar para reparo" })).toHaveCount(0);
+  await pendingDetail.getByRole("button", { name: "Fechar" }).click();
+  await page.evaluate(async () => {
+    window.authoringProbe.setAuditRunStatus("complete");
+    await window.authoringSurface.refresh();
+  });
+
+  await expect(page.getByText("Conforme", { exact: true })).toHaveCount(3);
+  await expect(page.getByText("Com achado · 1", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: /Exemplo comprimido demais/u }).click();
+  const detail = page.getByRole("dialog", { name: "Exemplo comprimido demais" });
+  await expect(detail.getByText("Revisão instrucional", { exact: true })).toBeVisible();
+  await expect(detail.getByText(/quatro elementos novos.*máximo dois/u)).toBeVisible();
+  await expect(detail.getByText("Limite de novidades por passo de teoria", { exact: true })).toBeVisible();
+  await detail.getByText("Proveniência", { exact: true }).click();
+  await expect(detail.getByText("Análise instrucional", { exact: true })).toBeVisible();
+  await expect(detail.getByText("2 de 23 registrados", { exact: true })).toBeVisible();
+  await expect(detail.getByText("2 registrados", { exact: true })).toBeVisible();
+  const approve = detail.getByRole("button", { name: "Aprovar para reparo" });
+  await approve.evaluate((button) => {
+    button.click();
+    button.click();
+  });
+  await expect.poll(() => page.evaluate(() => window.authoringProbe.decisionCalls.length)).toBe(1);
+  await expect(page.getByRole("dialog", { name: "Exemplo comprimido demais" })
+    .locator(".authoring-finding-badges")
+    .getByText("Aprovado para reparo", { exact: true })).toBeVisible();
+  await page.getByRole("dialog", { name: "Exemplo comprimido demais" })
+    .getByRole("button", { name: "Fechar" }).click();
+
+  const prepare = page.getByRole("button", { name: "Preparar reparos (1)" });
+  await prepare.evaluate((button) => {
+    button.click();
+    button.click();
+  });
+  await expect.poll(() => page.evaluate(() => window.authoringProbe.repairMandates.length)).toBe(1);
+  expect(await page.evaluate(() => window.authoringProbe.repairMandates[0].findingIds)).toEqual(["finding-a"]);
+
+  await page.getByRole("button", { name: "Ver o workspace" }).click();
+  await page.getByRole("button", { name: /Fundamentos.*achados/u }).click();
+  expect(await page.evaluate(() => window.authoringProbe.auditReads.at(-1))).toMatchObject({
+    auditScope: { kind: "part", ref: "part-a" },
+    microsequencePath: FIRST_PATH
+  });
+  expect(await page.evaluate(() => window.authoringProbe.auditReads.at(-1).auditRunRef)).toBeUndefined();
+  await expect(page.getByText("Coerência")).toBeVisible();
+  await expect(page.getByText("Não verificada", { exact: true })).toHaveCount(4);
+  await expect(page.getByText("1 de 2", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Carregar mais microssequências" }).click();
+  expect(await page.evaluate(() => window.authoringProbe.auditReads.at(-1))).toMatchObject({
+    auditRunRef: { id: "audit-part-a", version: "1.0.0" },
+    componentCursor: "1"
+  });
+  await page.getByRole("button", { name: /Sinais em sistemas.*Auditoria disponível/u }).click();
+  expect(await page.evaluate(() => window.authoringProbe.auditReads.at(-1))).toMatchObject({
+    auditRunRef: { id: "audit-micro-b", version: "1.0.0" },
+    microsequencePath: SECOND_PATH
+  });
+  await page.getByRole("button", { name: /Prática ainda não materializada/u }).click();
+  let repaired = page.getByRole("dialog", { name: "Prática ainda não materializada" });
+  await expect(repaired.getByText(/outros reparos preparados/u)).toBeVisible();
+  await expect(repaired.getByRole("button", { name: "Solicitar reauditoria da Parte" })).toHaveCount(0);
+  await repaired.getByRole("button", { name: "Fechar" }).click();
+  await page.evaluate(async () => {
+    window.authoringProbe.completePreparedRepairs();
+    window.authoringProbe.setAuditRunCurrent(false);
+    await window.authoringSurface.refresh();
+  });
+  await page.getByRole("button", { name: /Prática ainda não materializada/u }).click();
+  repaired = page.getByRole("dialog", { name: "Prática ainda não materializada" });
+  await expect(repaired.getByText("Reparado · falta reauditar", { exact: true })).toBeVisible();
+  await expect(repaired.getByText(/estado anterior.*nova auditoria/u)).toBeVisible();
+  const reaudit = repaired.getByRole("button", { name: "Solicitar reauditoria da Parte" });
+  await reaudit.evaluate((button) => {
+    button.click();
+    button.click();
+  });
+  await expect.poll(() => page.evaluate(() => window.authoringProbe.reauditMandates.length)).toBe(1);
+  expect(await page.evaluate(() => window.authoringProbe.reauditMandates[0].partId)).toBe("part-a");
+  await page.evaluate(() => window.authoringProbe.setAuditRunCurrent(true));
+
+  await page.getByRole("button", { name: "Voltar à Parte" }).click();
+  expect(await page.evaluate(() => window.authoringProbe.auditReads.at(-1))).toMatchObject({
+    auditRunRef: { id: "audit-part-a", version: "1.0.0" },
+    microsequencePath: FIRST_PATH
+  });
+  await page.getByRole("button", { name: /Objetivo do curso precisa de desenvolvimento/u }).click();
+  const reject = page.getByRole("dialog", { name: "Objetivo do curso precisa de desenvolvimento" })
+    .getByRole("button", { name: "Rejeitar" });
+  await reject.evaluate((button) => {
+    button.click();
+    button.click();
+  });
+  await expect.poll(() => page.evaluate(() => window.authoringProbe.decisionCalls.length)).toBe(2);
+  await expect(page.getByRole("button", { name: /Objetivo do curso precisa de desenvolvimento/u })).toHaveCount(0);
+
+  await context.setOffline(true);
+  await page.getByRole("button", { name: /Conteúdo original retirado/u }).click();
+  const offlineDetail = page.getByRole("dialog", { name: "Conteúdo original retirado" });
+  await expect(offlineDetail.getByRole("button", { name: "Aprovar para reparo" })).toHaveCount(0);
+  await expect(offlineDetail.getByRole("button", { name: "Abrir conteúdo" })).toHaveCount(0);
+  await expect(offlineDetail.getByText(/conteúdo original não está mais disponível/u)).toBeVisible();
+  await context.setOffline(false);
+});
+
+test("paginação da Parte fixa a rodada e preserva achados e microssequências", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await mountAuthoring(page, { partDualPagination: true });
+  await page.getByRole("button", { name: /Curso de sinais/u }).click();
+  await page.getByRole("tab", { name: "Auditoria" }).click();
+  await page.getByRole("button", { name: /Fundamentos.*achados/u }).click();
+
+  await expect(page.getByText("1 de 2", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Carregar mais microssequências" }).click();
+  await expect(page.getByRole("button", { name: /Sinais em sistemas.*Auditoria disponível/u })).toBeVisible();
+  expect(await page.evaluate(() => window.authoringProbe.auditReads.at(-1))).toMatchObject({
+    auditRunRef: { id: "audit-part-a", version: "1.0.0" },
+    componentCursor: "1"
+  });
+
+  await page.getByRole("button", { name: "Carregar mais achados" }).click();
+  await expect(page.getByText("51 achados pendentes", { exact: true })).toBeVisible();
+  await expect(page.getByText("Conteúdo original retirado", { exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: /Sinais no cotidiano.*Auditoria disponível/u })).toBeVisible();
+  await expect(page.getByRole("button", { name: /Sinais em sistemas.*Auditoria disponível/u })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Carregar mais microssequências" })).toHaveCount(0);
+  expect(await page.evaluate(() => window.authoringProbe.auditReads.at(-1))).toMatchObject({
+    auditRunRef: { id: "audit-part-a", version: "1.0.0" },
+    cursor: "part-findings-50"
+  });
+  expect(await page.evaluate(() => window.authoringProbe.auditReads.some(({ auditRunRef }) => (
+    auditRunRef?.id === "audit-part-new"
+  )))).toBe(false);
+});
+
+test("achado reparado fora de Parte solicita reauditoria do workspace", async ({ page }) => {
+  await mountAuthoring(page, { unassignedRepaired: true });
+  await page.getByRole("button", { name: /Curso de sinais/u }).click();
+  await page.getByRole("button", { name: /Ainda sem Parte/u }).click();
+  await page.getByRole("button", { name: /Unidade ainda não coordenada/u }).click();
+  await page.getByRole("tab", { name: "Auditoria" }).click();
+  await page.getByRole("button", { name: /Explicação sem coordenação de Parte/u }).click();
+  const dialog = page.getByRole("dialog", { name: "Explicação sem coordenação de Parte" });
+  const request = dialog.getByRole("button", { name: "Solicitar reauditoria do workspace" });
+  await request.evaluate((button) => {
+    button.click();
+    button.click();
+  });
+  await expect.poll(() => page.evaluate(() => window.authoringProbe.reauditMandates.length)).toBe(1);
+  expect(await page.evaluate(() => window.authoringProbe.reauditMandates[0].partId)).toBeUndefined();
+});
+
+test("resume incompleto nunca libera decisão antes de confirmar a rodada exata", async ({ page }) => {
+  await mountAuthoring(page, { incompleteAuditResume: true });
+  await page.getByRole("button", { name: /Curso de sinais/u }).click();
+  await page.getByRole("tab", { name: "Auditoria" }).click();
+  await page.getByRole("button", { name: /Exemplo comprimido demais/u }).click();
+
+  let detail = page.getByRole("dialog", { name: "Exemplo comprimido demais" });
+  await expect(detail.getByRole("button", { name: "Aprovar para reparo" })).toHaveCount(0);
+  await expect(detail.getByText(/rodada.*confirmar.*conclusão/u)).toBeVisible();
+  await detail.getByRole("button", { name: "Abrir rodada da microssequência" }).click();
+
+  detail = page.getByRole("dialog", { name: "Exemplo comprimido demais" });
+  await expect(detail.getByRole("button", { name: "Aprovar para reparo" })).toBeVisible();
+  expect(await page.evaluate(() => window.authoringProbe.auditReads.at(-1))).toMatchObject({
+    microsequencePath: FIRST_PATH
+  });
+});
+
+test("rodada completa mas não corrente permanece histórico somente para consulta", async ({ page }) => {
+  await mountAuthoring(page);
+  await openFirstMicrosequence(page);
+  await page.evaluate(() => window.authoringProbe.setAuditRunCurrent(false));
+  await page.getByRole("tab", { name: "Auditoria" }).click();
+
+  await expect(page.locator(".authoring-audit-heading").getByText("Rodada histórica", { exact: true }))
+    .toBeVisible();
+  await page.getByRole("button", { name: /Exemplo comprimido demais/u }).click();
+  const detail = page.getByRole("dialog", { name: "Exemplo comprimido demais" });
+  await expect(detail.getByText(/estado anterior.*histórico/u)).toBeVisible();
+  await expect(detail.getByRole("button", { name: "Aprovar para reparo" })).toHaveCount(0);
+  await expect(detail.getByRole("button", { name: "Abrir conteúdo" })).toBeVisible();
+});
+
+test("componente removido da Parte fica indisponível sem abrir referência técnica", async ({ page }) => {
+  await mountAuthoring(page);
+  await page.getByRole("button", { name: /Curso de sinais/u }).click();
+  await page.evaluate(() => window.authoringProbe.setComponentBAvailable(false));
+  await page.getByRole("tab", { name: "Auditoria" }).click();
+  await page.getByRole("button", { name: /Fundamentos.*achados/u }).click();
+  await page.getByRole("button", { name: "Carregar mais microssequências" }).click();
+
+  const readsBefore = await page.evaluate(() => window.authoringProbe.auditReads.length);
+  const component = page.getByRole("button", { name: /Sinais em sistemas.*Conteúdo indisponível/u });
+  await expect(component).toBeDisabled();
+  await expect(page.locator(".authoring-audit-components")).not.toContainText("audit-micro-b");
+  expect(await page.evaluate(() => window.authoringProbe.auditReads.length)).toBe(readsBefore);
+});
+
 test("finding abre alvo exato e retorna à Auditoria e à mesma microssequência", async ({ page }) => {
   await mountAuthoring(page);
   await openFirstMicrosequence(page);
   await page.getByRole("tab", { name: "Auditoria" }).click();
   await page.getByRole("button", { name: /Exemplo comprimido demais/u }).click();
+  const findingDialog = page.getByRole("dialog", { name: "Exemplo comprimido demais" });
+  await expect(findingDialog.getByText(/quatro elementos novos/u)).toBeVisible();
+  await findingDialog.getByRole("button", { name: "Abrir conteúdo" }).click();
   await expect.poll(() => page.evaluate(() => window.authoringProbe.openTargets.length)).toBe(1);
   expect(await page.evaluate(() => window.authoringProbe.openTargets[0])).toMatchObject({
     workspaceId: WORKSPACE_ID,
-    entityPath: [...FIRST_PATH, "card-a"],
+    entityPath: [...FIRST_PATH, "card-current"],
     resourceTargetId: "content:diagram-a"
   });
   expect(await page.evaluate(() => window.authoringProbe.returnContexts[0])).toMatchObject({
@@ -533,20 +1146,27 @@ test("finding abre alvo exato e retorna à Auditoria e à mesma microssequência
   });
   await page.evaluate(() => window.authoringSurface.resume(window.authoringProbe.returnContexts[0]));
   await expect(page.getByRole("tab", { name: "Auditoria" })).toHaveAttribute("aria-selected", "true");
-  await expect(page.getByText("Exemplo comprimido demais")).toBeVisible();
-  await expect(page.getByRole("button", { name: /Exemplo comprimido demais/u })).toBeFocused();
-  await expect(page.getByRole("button", { name: "Ver todos os achados" })).toBeVisible();
+  await expect(page.getByRole("dialog", { name: "Exemplo comprimido demais" })).toBeVisible();
+  await expect(page.getByRole("dialog", { name: "Exemplo comprimido demais" })
+    .getByRole("button", { name: "Fechar" })).toBeFocused();
+  await page.getByRole("dialog", { name: "Exemplo comprimido demais" })
+    .getByRole("button", { name: "Fechar" }).click();
+  await expect(page.getByRole("button", { name: "Ver o workspace" })).toBeVisible();
 
+  await page.getByRole("button", { name: "Ver o workspace" }).click();
   await page.getByRole("button", { name: "Carregar mais achados" }).click();
   await page.getByRole("button", { name: /Achado final 54/u }).click();
+  await page.getByRole("dialog", { name: "Achado final 54" })
+    .getByRole("button", { name: "Abrir conteúdo" }).click();
   await expect.poll(() => page.evaluate(() => window.authoringProbe.openTargets.length)).toBe(2);
   expect(await page.evaluate(() => window.authoringProbe.returnContexts[1])).toMatchObject({
     destination: "audit",
-    microsequencePath: FIRST_PATH,
+    microsequencePath: null,
     findingId: "finding-page-54"
   });
   await page.evaluate(() => window.authoringSurface.resume(window.authoringProbe.returnContexts[1]));
-  await expect(page.getByRole("button", { name: /Achado final 54/u })).toBeFocused();
+  await expect(page.getByRole("dialog", { name: "Achado final 54" })
+    .getByRole("button", { name: "Fechar" })).toBeFocused();
 });
 
 test("retorno encontra o achado por cursor mesmo depois de mais de oito páginas", async ({ page }) => {
@@ -561,7 +1181,96 @@ test("retorno encontra o achado por cursor mesmo depois de mais de oito páginas
   }), { workspaceId: WORKSPACE_ID, firstPath: FIRST_PATH });
 
   await expect(page.getByRole("button", { name: "Achado profundo 9" })).toBeFocused();
-  await expect.poll(() => page.evaluate(() => window.authoringProbe.findingReads.length)).toBe(9);
+  await expect.poll(() => page.evaluate(() => (
+    window.authoringProbe.auditReads.filter(({ cursor }) => cursor).length
+  ))).toBe(9);
+  expect(await page.evaluate(() => (
+    window.authoringProbe.auditReads.filter(({ cursor }) => cursor)
+      .every(({ auditRunRef }) => auditRunRef?.id === "audit-micro-a" && auditRunRef?.version === "1.0.0")
+  ))).toBe(true);
+  expect(await page.evaluate(() => window.authoringProbe.findingReads.length)).toBe(0);
+});
+
+test("rodada concluída com histórico terminal não permanece pendente", async ({ page }) => {
+  await page.goto("/");
+  await page.evaluate(async ({ workspaceId, firstPath }) => {
+    document.body.replaceChildren();
+    const root = document.createElement("main");
+    document.body.append(root);
+    const { renderAuthoringWorkspaceSurface } = await import("/src/ui/renderAuthoringWorkspace.js");
+    const dimensions = [
+      { key: "structure", label: "Estrutura", status: "conformant", findingCount: 0 },
+      { key: "design", label: "Desenho", status: "finding", findingCount: 1 },
+      { key: "practice", label: "Prática", status: "not_checked", findingCount: 0 },
+      { key: "resources", label: "Resources", status: "conformant", findingCount: 0 }
+    ];
+    const finding = {
+      findingId: "finding-terminal",
+      summary: "Achado já resolvido",
+      origin: "semantic_audit",
+      severity: "medium",
+      status: "resolved",
+      targetAvailable: true,
+      readerTarget: { entityPath: firstPath },
+      auditRunRef: { id: "audit-terminal", version: "1.0.0" }
+    };
+    const selectedMicrosequence = {
+      key: "micro-a",
+      title: "Sinais no cotidiano",
+      entityPath: firstPath,
+      auditSummary: { dimensions, explicit: true }
+    };
+    root.innerHTML = renderAuthoringWorkspaceSurface({
+      workspaceId,
+      workspaceTitle: "Curso de sinais",
+      destination: "audit",
+      loading: false,
+      auditLoading: false,
+      findingsAvailable: true,
+      findingsLoading: false,
+      findingsPageLoaded: true,
+      findingsNextCursor: null,
+      findingsOfflineLimited: false,
+      auditActionsOnline: true,
+      auditOperational: true,
+      auditActionCapabilities: { decide: true, prepare: true, reaudit: true },
+      selectedMicrosequence,
+      auditPartId: "",
+      auditSlice: {
+        latestAuditRun: {
+          ref: { id: "audit-terminal", version: "1.0.0" },
+          status: "complete",
+          current: true
+        },
+        summary: { dimensions, explicit: true },
+        findings: [finding],
+        total: 1,
+        truncated: false,
+        nextCursor: null
+      },
+      overview: {
+        workspaceId,
+        title: "Curso de sinais",
+        state: { key: "ready", label: "Sem pendência corrente", icon: "ready-state" },
+        parts: [],
+        findings: [finding],
+        findingsTotal: 1,
+        findingsTruncated: false,
+        audit: { summary: { dimensions, explicit: true } },
+        capabilities: {}
+      }
+    }, [
+      { key: "map", label: "Mapa", icon: "graph" },
+      { key: "design", label: "Desenho", icon: "intent" },
+      { key: "content", label: "Conteúdo", icon: "card" },
+      { key: "audit", label: "Auditoria", icon: "review" }
+    ]);
+  }, { workspaceId: WORKSPACE_ID, firstPath: FIRST_PATH });
+
+  await expect(page.locator(".authoring-audit-heading").getByText("Sem achado ativo neste recorte")).toBeVisible();
+  await expect(page.locator(".authoring-audit-heading").getByText("Auditoria concluída")).toBeVisible();
+  await expect(page.locator(".authoring-audit-heading").getByText("Auditoria pendente")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: /Achado já resolvido/u })).toBeVisible();
 });
 
 test("shell mantém uma superfície e navegação acessível em 360, 390, 412 e 1280", async ({ page }) => {
@@ -642,6 +1351,21 @@ test("gera capturas canônicas de Mapa, Desenho e Auditoria", async ({ page }) =
     await page.getByRole("tab", { name: "Auditoria" }).click();
     await page.screenshot({
       path: `docs/screenshots/authoring/authoring-audit-${suffix}.png`,
+      animations: "disabled"
+    });
+    await page.getByRole("button", { name: /Exemplo comprimido demais/u }).click();
+    await page.getByText("Proveniência", { exact: true }).click();
+    await page.screenshot({
+      path: `docs/screenshots/authoring/authoring-audit-detail-${suffix}.png`,
+      animations: "disabled"
+    });
+    await page.getByRole("dialog", { name: "Exemplo comprimido demais" })
+      .getByRole("button", { name: "Fechar" }).click();
+    await page.getByRole("button", { name: "Ver o workspace" }).click();
+    await page.getByRole("button", { name: /Fundamentos.*achados/u }).click();
+    await page.getByRole("heading", { name: "Microssequências da Parte" }).scrollIntoViewIfNeeded();
+    await page.screenshot({
+      path: `docs/screenshots/authoring/authoring-audit-part-${suffix}.png`,
       animations: "disabled"
     });
   }

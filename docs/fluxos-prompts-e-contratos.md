@@ -193,7 +193,8 @@ então começa a descoberta autoritativa.
 A ferramenta agrupada `gerirDesenhoInstrucional` mantém poucas operações
 coesas: `read_slice`, `contracts`, `save_analysis`, `save_resource_set`,
 `set_parameter`, `remove_parameter`, `resolve_effective`, `save_blueprint` e
-`register_manifest`. Cada escrita usa CAS e idempotência. O slice inclui apenas
+`register_manifest`; na rodada separada, `run_audit` e
+`record_semantic_audit`. Cada escrita usa CAS e idempotência. O slice inclui apenas
 brief, objetivo, dependências, fontes, análise, assignments/locks, definições
 pertinentes, snapshot, conjuntos, blueprint, manifesto e findings aplicáveis.
 
@@ -355,11 +356,11 @@ catálogo permanece uma decisão humana autorizada.
 
 Desde a #104, MCP e Action expõem o núcleo persistente pela ferramenta
 agrupada, e os pacotes distribuídos conservam o mesmo protocolo. A #105 projeta
-o estado na interface responsiva de Autoria; o ciclo completo de auditoria e
-reparo pertence à #106.
-Essa fronteira não autoriza usar conversa como fonte canônica, editar JSON fora
-das operações estruturadas ou alegar auditoria semântica completa antes da
-etapa correspondente.
+o estado na interface responsiva de Autoria; a #106 acrescenta audit run
+imutável, checks sobre cards/resources reais, decisão humana, reparo restrito e
+reauditoria corrente. Essa fronteira não autoriza usar conversa como fonte
+canônica, editar JSON fora das operações estruturadas, tratar aceitação do
+manifesto como conformidade ou inferir eficácia educacional.
 
 Os envelopes e identificadores públicos são detalhados no [Contrato de
 conteúdo](aralearn-contract.md), e a operação remota aparece em [Autoria por

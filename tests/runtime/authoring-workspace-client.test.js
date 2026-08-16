@@ -590,6 +590,169 @@ test("Auditoria pagina mais de 50 achados e preserva alvo indisponível", async 
   assert.equal(second.truncated, false);
 });
 
+test("client descobre e guarda rodada da Parte e registra decisões somente online", async (context) => {
+  const calls = [];
+  const findingId = "30000000-0000-4000-8000-000000000106";
+  const indexedDb = new IDBFactory();
+  const store = await openStore(indexedDb);
+  context.after(() => store.close());
+  const client = new AuthoringWorkspaceClient({
+    authClient: authClient(),
+    relationalStore: store,
+    catalog: {
+      async executeApplicationAuthoringAction(tool, args) {
+        calls.push({ tool, args: structuredClone(args) });
+        if (tool === "gerirDesenhoInstrucional") {
+          const componentSecondPage = args.componentCursor === "1";
+          return {
+            operation: "read_slice",
+            workspaceId: WORKSPACE_ID,
+            revision: 9,
+            result: {
+              view: "audit",
+              audit: {
+                latestAuditRun: {
+                  ref: { id: "run-a", version: "1.0.0" },
+                  kind: "deterministic",
+                  status: "complete",
+                  current: true,
+                  scope: { kind: "part", ref: "part-a" },
+                  startedRevision: 8,
+                  completedRevision: 9
+                },
+                summary: {
+                  dimensions: {
+                    structure: { status: "conformant", findingCount: 0 },
+                    design: { status: "finding", findingCount: 1 }
+                  }
+                },
+                components: {
+                  items: [{
+                    ordinal: componentSecondPage ? 2 : 1,
+                    microsequenceRef: componentSecondPage ? "micro-b" : "micro-a",
+                    microsequencePath: componentSecondPage
+                      ? ["course-a", "module-a", "lesson-a", "micro-b"]
+                      : PATH,
+                    childAuditRunRef: {
+                      id: componentSecondPage ? "child-b" : "child-a",
+                      version: "1.0.0"
+                    },
+                    auditedRevision: 8,
+                    contentHash: componentSecondPage ? "sha256:b" : "sha256:a",
+                    status: "complete",
+                    targetAvailable: true
+                  }],
+                  count: 2,
+                  nextCursor: componentSecondPage ? null : "1",
+                  truncated: !componentSecondPage
+                },
+                findings: [{
+                  findingId,
+                  code: "semantic_excessive_compression",
+                  origin: "semantic_audit",
+                  summary: "Compressão instrucional",
+                  publicEvidence: "Quatro elementos aparecem no mesmo passo.",
+                  ruleRef: { kind: "parameter", id: "new_units_ceiling", version: "1.0.0" },
+                  target: { entityType: "microsequence", entityPath: PATH },
+                  severity: "high",
+                  status: "open",
+                  proposedRepair: null,
+                  auditRunRef: { id: "run-a", version: "1.0.0" }
+                }],
+                total: 51,
+                nextCursor: "1",
+                truncated: true
+              }
+            }
+          };
+        }
+        return {
+          workspaceId: WORKSPACE_ID,
+          revision: Number(args.expectedRevision) + 1,
+          status: args.decision || args.kind,
+          idempotent: false
+        };
+      }
+    }
+  });
+
+  const audit = await client.loadAuthoringAudit({
+    workspaceId: WORKSPACE_ID,
+    microsequencePath: PATH,
+    auditScope: { kind: "part", ref: "part-a" },
+    online: true
+  });
+  assert.equal(audit.summary.dimensions.design.status, "finding");
+  assert.equal(audit.summary.dimensions.practice.status, "not_checked");
+  assert.equal(audit.findings[0].publicEvidence, "Quatro elementos aparecem no mesmo passo.");
+  assert.equal(audit.latestAuditRun.current, true);
+  assert.equal(audit.components.items[0].microsequenceRef, "micro-a");
+  assert.equal(audit.components.nextCursor, "1");
+  assert.deepEqual(calls[0].args.auditScope, { kind: "part", ref: "part-a" });
+  assert.equal(calls[0].args.componentLimit, 10);
+
+  const nextComponents = await client.loadAuthoringAudit({
+    workspaceId: WORKSPACE_ID,
+    microsequencePath: PATH,
+    auditRunRef: audit.latestAuditRun.ref,
+    componentCursor: audit.components.nextCursor,
+    online: true
+  });
+  assert.equal(nextComponents.components.items[0].microsequenceRef, "micro-b");
+  assert.equal(nextComponents.components.truncated, false);
+  assert.equal(calls[1].args.componentCursor, "1");
+  assert.deepEqual(calls[1].args.auditRunRef, { id: "run-a", version: "1.0.0" });
+
+  const cachedAudit = await client.loadAuthoringAudit({
+    workspaceId: WORKSPACE_ID,
+    microsequencePath: PATH,
+    auditScope: { kind: "part", ref: "part-a" },
+    online: false
+  });
+  assert.equal(cachedAudit.stale, true);
+  assert.equal(cachedAudit.latestAuditRun.status, "complete");
+  assert.equal(cachedAudit.findings[0].findingId, findingId);
+  assert.equal(cachedAudit.truncated, true);
+  assert.equal(cachedAudit.nextCursor, null);
+
+  await client.decideAuthoringFinding({
+    workspaceId: WORKSPACE_ID,
+    findingId,
+    decision: "approved",
+    expectedRevision: 9,
+    online: true
+  });
+  await client.prepareAuthoringFindingRepairs({
+    workspaceId: WORKSPACE_ID,
+    findingIds: [findingId],
+    expectedRevision: 10,
+    online: true
+  });
+  await client.requestAuthoringReaudit({
+    workspaceId: WORKSPACE_ID,
+    partId: "part-a",
+    expectedRevision: 11,
+    online: true
+  });
+
+  assert.deepEqual(calls.slice(2).map(({ args }) => args.operation), [
+    "decide_finding", "set_mandate", "set_mandate"
+  ]);
+  assert.equal(calls[2].args.decision, "approved");
+  assert.deepEqual(calls[3].args.findingIds, [findingId]);
+  assert.equal(calls[3].args.kind, "repair_findings");
+  assert.equal(calls[4].args.kind, "audit");
+  assert.equal(calls[4].args.targetPartId, "part-a");
+  await assert.rejects(client.decideAuthoringFinding({
+    workspaceId: WORKSPACE_ID,
+    findingId,
+    decision: "rejected",
+    expectedRevision: 12,
+    online: false
+  }), ({ code }) => code === "authoring_online_required");
+  assert.equal(calls.length, 5);
+});
+
 class ResourceCatalog {
   constructor({
     initialSets = [],

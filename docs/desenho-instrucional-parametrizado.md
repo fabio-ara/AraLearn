@@ -12,7 +12,8 @@ Os contratos descritos aqui possuem schemas promovidos, validadores de runtime,
 resolução determinística, persistência relacional e réplica local desde a #103.
 Desde a #104, uma ferramenta agrupada os expõe pelo MCP e pela Action no fluxo
 JIT por microssequência. A #105 projeta o mesmo estado numa interface responsiva
-de Autoria; o motor completo de auditoria, findings e reparo pertence à #106.
+de Autoria. A #106 acrescenta audit runs imutáveis, checks sobre os cards reais,
+findings estruturados, decisão humana, reparo autorizado e reauditoria independente.
 Os contratos continuam fora do formato de publicação. Testes estruturais e de integração demonstram
 comportamento técnico nos casos cobertos; não demonstram que os parâmetros
 medem aprendizagem nem que seus valores são pedagogicamente ótimos.
@@ -329,6 +330,12 @@ sem instância, instâncias sem seleção e diferenças de package ou papel entr
 selecionado e o usado. Ele conserva denominadores e listas de referências, não
 produz score e não decide se uma explicação foi de fato suficiente ou se a
 prática mede a operação pretendida.
+
+A [auditoria de conformidade instrucional](auditoria-de-conformidade-instrucional.md)
+parte desse diff, mas relê também os cards e as instâncias reais. Ela separa
+fatos determinísticos, julgamento semântico, decisão humana e efeito
+educacional; registrar o manifesto não é apresentado como conclusão de
+conformidade.
 
 ## Projeção no aplicativo
 

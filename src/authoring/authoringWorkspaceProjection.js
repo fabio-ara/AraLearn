@@ -68,6 +68,59 @@ function unitLabel(unit) {
   return UNIT_LABELS[`${numerator}/${denominator}`] || "";
 }
 
+function optionalRef(value) {
+  const id = text(value?.id);
+  const version = text(value?.version);
+  return id ? { id, ...(version ? { version } : {}) } : null;
+}
+
+function optionalRuleRef(value) {
+  const id = text(value?.id);
+  const kind = text(value?.kind);
+  if (!id || !kind) return null;
+  return {
+    kind,
+    id,
+    version: value?.version == null ? null : text(value.version) || null
+  };
+}
+
+function optionalArtifactRefs(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const result = {};
+  for (const [key, reference] of Object.entries(value)) {
+    if (reference && typeof reference === "object" && !Array.isArray(reference) &&
+        Array.isArray(reference.items)) {
+      const items = reference.items.flatMap((item) => {
+        const normalized = optionalRef(item);
+        if (normalized) return [normalized];
+        const identifier = text(item);
+        return identifier ? [identifier] : [];
+      });
+      const rawCount = Number(reference.count);
+      const count = Number.isSafeInteger(rawCount) && rawCount >= 0
+        ? Math.max(rawCount, items.length)
+        : items.length;
+      if (items.length || count) {
+        result[key] = {
+          items,
+          count,
+          truncated: reference.truncated === true || count > items.length
+        };
+      }
+      continue;
+    }
+    if (Array.isArray(reference)) {
+      const refs = reference.map(optionalRef).filter(Boolean);
+      if (refs.length) result[key] = refs;
+      continue;
+    }
+    const normalized = optionalRef(reference);
+    if (normalized) result[key] = normalized;
+  }
+  return Object.keys(result).length ? result : null;
+}
+
 function parameterValueLabel(value, definition = {}) {
   if (!value || typeof value !== "object" || Array.isArray(value)) return "Ainda não resolvido";
   if (value.kind === "integer" || value.kind === "number") return String(value.value);
@@ -155,8 +208,10 @@ function aggregateMicrosequenceState(states) {
 
 function projectedFinding(workspaceId, finding) {
   const findingId = text(finding?.observationId || finding?.findingId || finding?.id);
-  const currentPath = list(finding?.currentEntityPath);
-  const originalPath = list(finding?.entityPath);
+  const code = text(finding?.code || finding?.findingCode || finding?.category);
+  const target = finding?.target && typeof finding.target === "object" ? finding.target : {};
+  const currentPath = list(finding?.currentEntityPath || target?.currentEntityPath);
+  const originalPath = list(finding?.entityPath || target?.entityPath);
   const targetAvailable = finding?.targetAvailable !== false;
   const entityPath = targetAvailable
     ? (currentPath.length ? currentPath : originalPath)
@@ -165,16 +220,46 @@ function projectedFinding(workspaceId, finding) {
     ? {
         workspaceId,
         entityPath: structuredClone(entityPath),
-        ...(text(finding?.resourceTargetId)
-          ? { resourceTargetId: text(finding.resourceTargetId) }
+        ...(text(finding?.resourceTargetId || target?.resourceTargetId)
+          ? { resourceTargetId: text(finding?.resourceTargetId || target?.resourceTargetId) }
           : {})
       }
     : null;
+  const origin = text(finding?.origin || finding?.findingOrigin);
+  const auditRunRef = optionalRef(finding?.auditRunRef);
+  const verificationAuditRunRef = optionalRef(finding?.verificationAuditRunRef);
+  const ruleRef = optionalRuleRef(finding?.ruleRef);
+  const artifactRefs = optionalArtifactRefs(finding?.artifactRefs);
+  const structuredAudit = Boolean(
+    auditRunRef || verificationAuditRunRef || ruleRef || artifactRefs ||
+    ["deterministic", "semantic_audit"].includes(origin) ||
+    text(finding?.code || finding?.findingCode) || text(finding?.publicEvidence) ||
+    text(finding?.auditPartId)
+  );
   return {
     findingId,
-    summary: text(finding?.summary || finding?.body) || "Achado de revisão",
+    summary: text(finding?.summary || finding?.body) || titleFromIdentifier(code) || "Achado de revisão",
+    code,
+    category: text(finding?.category),
+    origin: ["deterministic", "semantic_audit"].includes(origin) ? origin : "legacy",
+    ruleRef,
+    publicEvidence: text(finding?.publicEvidence || finding?.evidence || finding?.body),
     severity: text(finding?.severity) || "medium",
     status: text(finding?.status) || "open",
+    proposedRepair: text(finding?.proposedRepair) || null,
+    auditRunRef,
+    verificationAuditRunRef,
+    artifactRefs,
+    legacyCompatible: !structuredAudit,
+    auditRevision: Number.isSafeInteger(Number(finding?.auditRevision ?? finding?.detectedRevision))
+      ? Number(finding.auditRevision ?? finding.detectedRevision)
+      : null,
+    resultingRevision: Number.isSafeInteger(Number(finding?.resultingRevision))
+      ? Number(finding.resultingRevision)
+      : null,
+    verification: text(finding?.verification) || null,
+    auditPartId: text(finding?.auditPartId) || null,
+    entityType: text(finding?.entityType || target?.entityType),
     entityPath: structuredClone(entityPath),
     ...(originalPath.length ? { originalEntityPath: structuredClone(originalPath) } : {}),
     targetAvailable,
@@ -189,6 +274,114 @@ function projectedFinding(workspaceId, finding) {
 
 export function projectAuthoringFinding(workspaceId, finding) {
   return projectedFinding(text(workspaceId).toLowerCase(), finding);
+}
+
+const AUDIT_DIMENSIONS = Object.freeze([
+  "structure", "design", "practice", "resources",
+  "coverage", "coherence", "dependencies", "redundancy", "integration"
+]);
+
+function projectedAuditSummary(value) {
+  const source = value?.dimensions && typeof value.dimensions === "object"
+    ? value.dimensions
+    : value && typeof value === "object" ? value : {};
+  const dimensions = {};
+  for (const key of AUDIT_DIMENSIONS) {
+    const entry = source[key];
+    const explicit = typeof entry === "string" ? entry : text(entry?.status);
+    const status = ["conformant", "finding", "not_checked"].includes(explicit)
+      ? explicit
+      : "not_checked";
+    dimensions[key] = {
+      status,
+      findingCount: Math.max(0, Number(entry?.findingCount) || 0)
+    };
+  }
+  return {
+    dimensions,
+    findingCount: Math.max(
+      0,
+      Number(value?.findingCount ?? value?.deterministicFindingCount) || 0
+    )
+  };
+}
+
+function projectedAuditComponents(value) {
+  const source = value && typeof value === "object" && !Array.isArray(value) ? value : {};
+  const items = list(source.items).flatMap((item) => {
+    const microsequenceRef = text(item?.microsequenceRef);
+    const microsequencePath = list(item?.microsequencePath).map(text);
+    if (!microsequenceRef) return [];
+    return [{
+      ordinal: Number.isSafeInteger(Number(item?.ordinal)) ? Number(item.ordinal) : null,
+      microsequenceRef,
+      microsequencePath: microsequencePath.length === 4 && microsequencePath.every(Boolean)
+        ? microsequencePath
+        : null,
+      childAuditRunRef: optionalRef(item?.childAuditRunRef),
+      auditedRevision: Number.isSafeInteger(Number(item?.auditedRevision))
+        ? Number(item.auditedRevision)
+        : null,
+      contentHash: text(item?.contentHash) || null,
+      status: item?.status === "complete" ? "complete" : "not_audited",
+      targetAvailable: item?.targetAvailable === true
+    }];
+  });
+  return {
+    items,
+    count: Math.max(items.length, Math.max(0, Number(source.count) || 0)),
+    nextCursor: source.nextCursor == null ? null : text(source.nextCursor) || null,
+    truncated: source.truncated === true
+  };
+}
+
+export function projectAuthoringAuditSlice({ workspaceId, response, stale = false } = {}) {
+  const workspace = text(workspaceId || response?.workspaceId).toLowerCase();
+  const result = response?.result || response || {};
+  const audit = result?.audit || result;
+  const latest = audit?.latestAuditRun || null;
+  const scope = latest?.scope && typeof latest.scope === "object"
+    ? { kind: text(latest.scope.kind), ref: text(latest.scope.ref) }
+    : null;
+  return {
+    workspaceId: workspace,
+    revision: Number.isSafeInteger(Number(response?.revision ?? result?.revision))
+      ? Number(response?.revision ?? result?.revision)
+      : 0,
+    stale: stale === true,
+    latestAuditRun: latest ? {
+      ref: optionalRef(latest.ref),
+      kind: text(latest.kind),
+      status: text(latest.status) || "pending",
+      current: latest.current === true,
+      scope,
+      startedRevision: Number.isSafeInteger(Number(latest.startedRevision))
+        ? Number(latest.startedRevision)
+        : null,
+      completedRevision: Number.isSafeInteger(Number(latest.completedRevision))
+        ? Number(latest.completedRevision)
+        : null,
+      createdAt: text(latest.createdAt) || null,
+      completedAt: text(latest.completedAt) || null
+    } : null,
+    summary: projectedAuditSummary(audit?.summary),
+    components: projectedAuditComponents(audit?.components),
+    findings: list(audit?.findings).map((finding) => projectedFinding(workspace, {
+      ...finding,
+      ...(scope?.kind === "part" && !text(finding?.auditPartId)
+        ? { auditPartId: scope.ref }
+        : {})
+    })),
+    total: Math.max(0, Number(audit?.total) || 0),
+    nextCursor: audit?.nextCursor == null ? null : structuredClone(audit.nextCursor),
+    truncated: audit?.truncated === true,
+    coordination: result?.coordination && typeof result.coordination === "object"
+      ? structuredClone(result.coordination)
+      : null,
+    capabilities: result?.capabilities && typeof result.capabilities === "object"
+      ? structuredClone(result.capabilities)
+      : null
+  };
 }
 
 export function authoringStateLabel(state) {
@@ -370,6 +563,7 @@ export function projectAuthoringWorkspaceOverview({
     });
   }
   const capabilities = access?.capabilities || outline?.capabilities || {};
+  const canAuthor = capabilities.author === true || capabilities.manage === true;
   const conflictOperations = pendingOperations.filter((operation) => operation?.status === "conflict");
   const queuedOperations = pendingOperations.filter((operation) => operation?.status === "pending");
   const state = findingsTotal > 0
@@ -394,10 +588,16 @@ export function projectAuthoringWorkspaceOverview({
     findingsNextCursor: resume?.content?.findings?.nextCursor == null
       ? null
       : structuredClone(resume.content.findings.nextCursor),
+    mandate: resume?.content?.mandate && typeof resume.content.mandate === "object"
+      ? structuredClone(resume.content.mandate)
+      : null,
     capabilities: {
-      design: capabilities.author === true || capabilities.manage === true,
+      design: canAuthor,
       audit: capabilities.review === true || capabilities.manage === true,
-      editContent: capabilities.author === true || capabilities.manage === true
+      editContent: canAuthor,
+      decideFindings: canAuthor,
+      prepareRepairs: canAuthor,
+      requestAudit: canAuthor
     }
   };
 }

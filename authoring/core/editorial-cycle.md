@@ -60,17 +60,28 @@ avaliação por LLM ou correspondência aproximada para resolver ambiguidade.
 ## Auditoria
 
 Grave um mandato `audit` novo — com `targetPartId` quando a autorização estiver
-limitada a uma Parte —, retome o workspace, consulte `list_comments` e
-`list_observations` com `kinds: ["note"]`, releia o conteúdo persistido e não
-o altere. Verifique cobertura,
+limitada a uma Parte —, retome o workspace, consulte comentários e notas
+pertinentes com `list_comments` e `list_observations` e releia o conteúdo
+persistido. Use
+`gerirDesenhoInstrucional`/`run_audit` com `kind: audit` para fixar a revisão e executar primeiro
+os checks determinísticos. Em seguida, faça a leitura semântico-instrucional e
+registre findings estruturados com `record_semantic_audit` no mesmo audit run.
+Não altere o conteúdo. Verifique cobertura,
 autossuficiência, carga cognitiva, fontes, continuidade e adequação de teoria,
 práticas e resources. Confronte também diagnóstico, plano e cards: procure
 dificuldade sem resposta, resposta prometida ausente, condensação incompatível
 com o risco, prática sem base, representação inadequada, perda de cobertura ou
 dependência de meio declarado indisponível. Separe aspectos adequados de
-problemas localizados com impacto, gravidade e reparo recomendado. Registre
-somente achados compactos na continuidade da autoria e não alegue eficácia ou
-aprendizagem.
+problemas localizados com código, alvo, regra, evidência pública, gravidade e
+reparo opcional. Persista somente achados compactos; não registre raciocínio
+privado e não alegue eficácia ou aprendizagem.
+
+Quando o escopo for uma Parte, agregue cobertura, coerência, dependências,
+revisitação, redundância, integração e distribuição de findings sem transformar
+Parte em unidade pedagógica ou atribuir score global. Percorra os cursores de
+findings e componentes separadamente e, ao abrir um recorte local, use a
+`childAuditRunRef` exata congelada pelo pai; componente ausente mantém resultado
+parcial.
 
 Achados ativos já estão em `resume`. Consulte o histórico com
 `kinds: ["audit_finding"]`, estados e paginação somente quando a etapa exigir.
@@ -81,8 +92,9 @@ Ao concluir o relatório, limpe o mandato de auditoria.
 Persista o mandato humano e repare apenas os achados nele aprovados, preservando
 ids e posições. Informe exatamente o que mudou e vincule uma observação somente
 depois da correção confirmada. Reaudite em outra rodada a partir da retomada e
-do estado persistido, registre o resultado e procure regressões; não repare
-durante a reauditoria.
+do estado persistido. Abra outro `run_audit` com `kind: reaudit`, registre o resultado e procure
+regressões ou problemas novos; não reaproveite o relatório anterior como
+conclusão e não repare durante a reauditoria.
 
 O commit mantém no achado aprovado o identificador e a revisão da correção
 pendente mais recente. Uma sessão posterior os retoma, relê o alvo e continua

@@ -10,4 +10,4 @@ Em `consultarBibliotecaDeResources`, use `workspaceId` + `snapshotRef` e percorr
 
 Se a política ou o ResourceSet impuser bloqueio, não materialize substituto externo nem finja equivalência.
 
-Teoria não é resumo. Cards, palavras, caracteres, práticas e resources são derivados da materialização. Audite plano, análise, snapshot, ResourceSet, blueprint, cards e manifesto em etapa separada; repare apenas findings aprovados. Use `expectedRevision` e `requestId`, releia conflitos, não exponha credenciais e adapte publicação às capacidades da conta.
+Teoria não é resumo. Cards, palavras, caracteres, práticas e resources são derivados da materialização. Audite em etapa separada: use `run_audit` com `kind: audit` no estado corrente e `record_semantic_audit` no mesmo run, sem raciocínio privado; percorra a paginação. A pessoa decide e o reparo usa apenas findings aprovados. Reauditoria abre outro run com `kind: reaudit` e procura regressões, sem alegar aprendizagem. Use `expectedRevision` e `requestId`, releia conflitos, não exponha credenciais e adapte publicação às capacidades da conta.

@@ -1,0 +1,333 @@
+{
+  "contract": "aralearn.instructional-conformance-audit-scenarios.v1",
+  "version": 1,
+  "evaluationKind": "engineering-regression",
+  "recordedAt": "2026-08-15",
+  "claimBoundary": "Corpus de engenharia para conformidade estrutural e estabilidade de findings semântico-instrucionais. Não é execução de provedor, não mede aprendizagem ou eficácia educacional e não valida uma medida científica.",
+  "protocol": {
+    "runKinds": ["audit", "reaudit"],
+    "order": [
+      "run_audit",
+      "read_all_pages",
+      "record_semantic_audit",
+      "human_decision",
+      "repair_approved_only",
+      "new_run_for_reaudit"
+    ],
+    "findingCore": ["code", "severity", "target", "ruleRef", "publicEvidence"],
+    "forbiddenPersistence": [
+      "chainOfThought",
+      "privateReasoning",
+      "hiddenDeliberation",
+      "transcript",
+      "effectivenessScore"
+    ],
+    "repairAuthority": "Somente findings aprovados pela pessoa entram no mandato de reparo.",
+    "reauditIndependence": "A reauditoria abre outro audit run e relê o estado corrente."
+  },
+  "ruleCatalog": [
+    { "kind": "parameter", "id": "new_units_per_theory_step_ceiling", "version": "1.0.0" },
+    { "kind": "requirement", "id": "explanationRequirements", "version": "1.0.0" },
+    { "kind": "requirement", "id": "evidenceRequirements", "version": "1.0.0" },
+    { "kind": "requirement", "id": "theoryBeforePractice", "version": "1.0.0" },
+    { "kind": "requirement", "id": "representationRequirements", "version": "1.0.0" },
+    { "kind": "resource_set", "id": "experimental-condition-a", "version": "1.0.0" }
+  ],
+  "scenarios": [
+    {
+      "id": "1",
+      "title": "Parágrafo curto com excesso de unidades novas",
+      "auditClass": "semantic_instructional",
+      "runKind": "audit",
+      "sourceIssue": 89,
+      "scope": { "kind": "microsequence", "ref": "micro-dns-hierarchy" },
+      "objective": "Explicar como o DNS organiza nomes e resolve registros, contrastando resolução com concessão de endereços por DHCP.",
+      "analysis": {
+        "newUnits": ["DNS", "hierarquia", "árvore", "base distribuída", "registro de recurso", "resolução", "DHCP"],
+        "effectiveCeiling": 2
+      },
+      "materialization": {
+        "targetPaths": [["course-network", "module-services", "lesson-dns", "micro-dns-hierarchy", "card-dns-dense"]],
+        "cards": [
+          {
+            "id": "card-dns-dense",
+            "role": "theory",
+            "text": "O Domain Name System (DNS), ou Sistema de Nomes de Domínio, organiza nomes em um espaço hierárquico em árvore. Uma base distribuída de registros de recursos associa esses nomes a informações, e a resolução consulta essa estrutura; ela não aloca endereços por concessão.\nA hierarquia divide o espaço de nomes, enquanto registros distribuídos fornecem as informações consultadas durante a resolução."
+          }
+        ]
+      },
+      "expected": {
+        "deterministicFindings": [],
+        "semanticFindings": [
+          {
+            "code": "semantic_excessive_compression",
+            "severity": "high",
+            "target": { "entityType": "card", "entityPath": ["course-network", "module-services", "lesson-dns", "micro-dns-hierarchy", "card-dns-dense"], "resourceTargetId": null },
+            "ruleRef": { "kind": "parameter", "id": "new_units_per_theory_step_ceiling", "version": "1.0.0" },
+            "publicEvidence": "O único card coordena sete unidades novas sem desenvolver o percurso DNS, resolução e contraste com DHCP.",
+            "proposedRepair": "Desenvolver progressivamente hierarquia, registros e resolução, com exemplo e contraste explícito com DHCP.",
+            "humanJustifiable": true
+          }
+        ],
+        "humanDecision": { "outcome": "approved", "repairAuthorized": true }
+      },
+      "repeatedSemanticRuns": [
+        { "run": 1, "findingKeys": ["semantic_excessive_compression|card-dns-dense|new_units_per_theory_step_ceiling"] },
+        { "run": 2, "findingKeys": ["semantic_excessive_compression|card-dns-dense|new_units_per_theory_step_ceiling"] },
+        { "run": 3, "findingKeys": ["semantic_excessive_compression|card-dns-dense|new_units_per_theory_step_ceiling"] }
+      ]
+    },
+    {
+      "id": "2",
+      "title": "Obrigação explicativa apenas mencionada",
+      "auditClass": "semantic_instructional",
+      "runKind": "audit",
+      "scope": { "kind": "microsequence", "ref": "micro-dhcp-lease" },
+      "objective": "Explicar o ciclo de concessão DHCP e por que cada etapa existe.",
+      "analysis": { "explanationRequirement": "Desenvolver descoberta, oferta, solicitação e confirmação, incluindo seus papéis." },
+      "materialization": {
+        "targetPaths": [["course-network", "module-services", "lesson-dhcp", "micro-dhcp-lease", "card-dhcp-mention"]],
+        "cards": [{ "id": "card-dhcp-mention", "role": "theory", "text": "O DHCP usa descoberta, oferta, solicitação e confirmação para conceder um endereço." }]
+      },
+      "expected": {
+        "deterministicFindings": [],
+        "semanticFindings": [
+          {
+            "code": "semantic_explanation_only_mentioned",
+            "severity": "high",
+            "target": { "entityType": "card", "entityPath": ["course-network", "module-services", "lesson-dhcp", "micro-dhcp-lease", "card-dhcp-mention"], "resourceTargetId": null },
+            "ruleRef": { "kind": "requirement", "id": "explanationRequirements", "version": "1.0.0" },
+            "publicEvidence": "O card enumera as quatro etapas, mas não explica seus papéis nem a passagem entre elas.",
+            "proposedRepair": "Desenvolver a função e a relação causal de cada etapa com um caso concreto.",
+            "humanJustifiable": true
+          }
+        ],
+        "humanDecision": { "outcome": "approved", "repairAuthorized": true }
+      },
+      "repeatedSemanticRuns": [
+        { "run": 1, "findingKeys": ["semantic_explanation_only_mentioned|card-dhcp-mention|explanationRequirements"] },
+        { "run": 2, "findingKeys": ["semantic_explanation_only_mentioned|card-dhcp-mention|explanationRequirements"] },
+        { "run": 3, "findingKeys": ["semantic_explanation_only_mentioned|card-dhcp-mention|explanationRequirements"] }
+      ]
+    },
+    {
+      "id": "3",
+      "title": "Contagem de prática completa com operação errada",
+      "auditClass": "semantic_instructional",
+      "runKind": "audit",
+      "scope": { "kind": "microsequence", "ref": "micro-subnet-apply" },
+      "objective": "Aplicar máscara e prefixo para determinar a sub-rede de um endereço.",
+      "analysis": { "intendedOperation": "application", "declaredPracticeCoverage": "2/2" },
+      "materialization": {
+        "targetPaths": [["course-network", "module-addressing", "lesson-subnet", "micro-subnet-apply", "card-prefix-choice"]],
+        "cards": [{ "id": "card-prefix-choice", "role": "practice", "text": "Qual alternativa define corretamente o significado do prefixo /24?", "responseMode": "single_choice_recognition" }]
+      },
+      "expected": {
+        "deterministicFindings": [],
+        "semanticFindings": [
+          {
+            "code": "semantic_practice_operation_mismatch",
+            "severity": "high",
+            "target": { "entityType": "card", "entityPath": ["course-network", "module-addressing", "lesson-subnet", "micro-subnet-apply", "card-prefix-choice"], "resourceTargetId": null },
+            "ruleRef": { "kind": "requirement", "id": "evidenceRequirements", "version": "1.0.0" },
+            "publicEvidence": "A prática pede reconhecimento de uma definição; não exige calcular ou determinar uma sub-rede.",
+            "proposedRepair": "Usar um endereço e prefixo concretos e pedir a sub-rede resultante com resposta verificável.",
+            "humanJustifiable": true
+          }
+        ],
+        "humanDecision": { "outcome": "approved", "repairAuthorized": true }
+      },
+      "repeatedSemanticRuns": [
+        { "run": 1, "findingKeys": ["semantic_practice_operation_mismatch|card-prefix-choice|evidenceRequirements"] },
+        { "run": 2, "findingKeys": ["semantic_practice_operation_mismatch|card-prefix-choice|evidenceRequirements"] },
+        { "run": 3, "findingKeys": ["semantic_practice_operation_mismatch|card-prefix-choice|evidenceRequirements"] }
+      ]
+    },
+    {
+      "id": "4",
+      "title": "Prática antes da fundamentação",
+      "auditClass": "deterministic_structural",
+      "runKind": "audit",
+      "scope": { "kind": "microsequence", "ref": "micro-routing-table" },
+      "objective": "Ler uma tabela de rotas e selecionar a rota aplicável.",
+      "analysis": { "requiredTheoryStep": "step-route-principle", "dependentPracticeStep": "step-route-case" },
+      "materialization": {
+        "targetPaths": [["course-network", "module-routing", "lesson-table", "micro-routing-table", "card-route-practice"]],
+        "cardOrder": [
+          { "id": "card-route-practice", "role": "practice", "stepRef": "step-route-case" },
+          { "id": "card-route-theory", "role": "theory", "stepRef": "step-route-principle" }
+        ]
+      },
+      "expected": {
+        "deterministicFindings": [
+          {
+            "code": "practice_after_required_theory",
+            "severity": "high",
+            "target": { "entityType": "card", "entityPath": ["course-network", "module-routing", "lesson-table", "micro-routing-table", "card-route-practice"], "resourceTargetId": null },
+            "ruleRef": { "kind": "requirement", "id": "theoryBeforePractice", "version": "1.0.0" },
+            "publicEvidence": "O card de prática ocupa a posição 1 e a fundamentação exigida ocupa a posição 2.",
+            "proposedRepair": "Reposicionar a prática depois da fundamentação necessária.",
+            "humanJustifiable": true
+          }
+        ],
+        "semanticFindings": [],
+        "humanDecision": { "outcome": "approved", "repairAuthorized": true }
+      }
+    },
+    {
+      "id": "5",
+      "title": "Resource inadequado à estrutura",
+      "auditClass": "semantic_instructional",
+      "runKind": "audit",
+      "scope": { "kind": "microsequence", "ref": "micro-dns-tree" },
+      "objective": "Interpretar relações pai-filho na hierarquia de nomes DNS.",
+      "analysis": { "requiredStructure": "tree", "intendedOperation": "follow_hierarchy" },
+      "materialization": {
+        "targetPaths": [["course-network", "module-services", "lesson-dns", "micro-dns-tree", "card-flat-list"]],
+        "cards": [{ "id": "card-flat-list", "role": "theory", "package": "aralearn.resource.paragraph", "text": "raiz, domínio de topo, domínio e host" }]
+      },
+      "expected": {
+        "deterministicFindings": [],
+        "semanticFindings": [
+          {
+            "code": "semantic_representation_mismatch",
+            "severity": "high",
+            "target": { "entityType": "resource", "entityPath": ["course-network", "module-services", "lesson-dns", "micro-dns-tree", "card-flat-list"], "resourceTargetId": "content:flat-dns-list" },
+            "ruleRef": { "kind": "requirement", "id": "representationRequirements", "version": "1.0.0" },
+            "publicEvidence": "A lista linear não preserva ligações pai-filho necessárias à operação de seguir a hierarquia.",
+            "proposedRepair": "Usar uma árvore autorizada ou registrar explicitamente a limitação se ela estiver indisponível.",
+            "humanJustifiable": true
+          }
+        ],
+        "humanDecision": { "outcome": "approved", "repairAuthorized": true }
+      },
+      "repeatedSemanticRuns": [
+        { "run": 1, "findingKeys": ["semantic_representation_mismatch|content:flat-dns-list|representationRequirements"] },
+        { "run": 2, "findingKeys": ["semantic_representation_mismatch|content:flat-dns-list|representationRequirements"] },
+        { "run": 3, "findingKeys": ["semantic_representation_mismatch|content:flat-dns-list|representationRequirements"] }
+      ]
+    },
+    {
+      "id": "6",
+      "title": "Condição experimental preservada no snapshot e violada na materialização",
+      "auditClass": "deterministic_structural",
+      "runKind": "audit",
+      "scope": { "kind": "microsequence", "ref": "micro-experiment-a" },
+      "objective": "Materializar a variante A somente com packages permitidos pelo ResourceSet bloqueado.",
+      "analysis": { "researchLock": true, "resourceSetRef": { "id": "experimental-condition-a", "version": "1.0.0" } },
+      "materialization": {
+        "targetPaths": [["course-study", "module-condition-a", "lesson-network", "micro-experiment-a", "card-unallowed-graph"]],
+        "allowedPackages": ["aralearn.resource.paragraph@1.0.0", "aralearn.resource.table@1.0.0"],
+        "actualPackages": ["aralearn.resource.graph@1.0.0"]
+      },
+      "expected": {
+        "deterministicFindings": [
+          {
+            "code": "actual_resources_preserve_resource_set_condition",
+            "severity": "critical",
+            "target": { "entityType": "resource", "entityPath": ["course-study", "module-condition-a", "lesson-network", "micro-experiment-a", "card-unallowed-graph"], "resourceTargetId": "content:condition-a-graph" },
+            "ruleRef": { "kind": "resource_set", "id": "experimental-condition-a", "version": "1.0.0" },
+            "publicEvidence": "A materialização usa graph@1.0.0, ausente do ResourceSet bloqueado da condição A.",
+            "proposedRepair": "Rematerializar com representação adequada permitida ou registrar a indisponibilidade, sem alterar o lock.",
+            "humanJustifiable": true
+          }
+        ],
+        "semanticFindings": [],
+        "humanDecision": { "outcome": "approved", "repairAuthorized": true, "lockMayChange": false }
+      }
+    },
+    {
+      "id": "7",
+      "title": "Falso positivo semântico rejeitado",
+      "auditClass": "semantic_instructional",
+      "runKind": "audit",
+      "scope": { "kind": "microsequence", "ref": "micro-acronym-prerequisite" },
+      "objective": "Aplicar uma convenção DNS já aprovada como pré-requisito explícito.",
+      "analysis": { "approvedPrerequisite": "DNS e FQDN já ensinados e verificados na microssequência anterior." },
+      "materialization": {
+        "targetPaths": [["course-network", "module-services", "lesson-dns", "micro-acronym-prerequisite", "card-fqdn-apply"]],
+        "cards": [{ "id": "card-fqdn-apply", "role": "practice", "text": "Classifique o FQDN apresentado segundo a convenção já ensinada." }]
+      },
+      "candidateFinding": {
+        "code": "semantic_explanation_only_mentioned",
+        "severity": "medium",
+        "target": { "entityType": "card", "entityPath": ["course-network", "module-services", "lesson-dns", "micro-acronym-prerequisite", "card-fqdn-apply"], "resourceTargetId": null },
+        "ruleRef": { "kind": "requirement", "id": "explanationRequirements", "version": "1.0.0" },
+        "publicEvidence": "O card não reexpande FQDN.",
+        "proposedRepair": "Repetir a expansão no card.",
+        "humanJustifiable": false
+      },
+      "expected": {
+        "deterministicFindings": [],
+        "semanticFindings": [],
+        "humanDecision": {
+          "outcome": "rejected",
+          "reason": "O pré-requisito aprovado torna a repetição desnecessária neste alvo.",
+          "repairAuthorized": false
+        }
+      },
+      "repeatedSemanticRuns": [
+        { "run": 1, "findingKeys": ["semantic_explanation_only_mentioned|card-fqdn-apply|explanationRequirements"] },
+        { "run": 2, "findingKeys": ["semantic_explanation_only_mentioned|card-fqdn-apply|explanationRequirements"] },
+        { "run": 3, "findingKeys": ["semantic_explanation_only_mentioned|card-fqdn-apply|explanationRequirements"] }
+      ]
+    },
+    {
+      "id": "8",
+      "title": "Reparo resolve um finding e introduz outro",
+      "auditClass": "reaudit_independent",
+      "scope": { "kind": "microsequence", "ref": "micro-route-repair" },
+      "objective": "Explicar longest-prefix match antes de aplicá-lo.",
+      "materialization": {
+        "targetPaths": [
+          ["course-network", "module-routing", "lesson-table", "micro-route-repair", "card-lpm-theory"],
+          ["course-network", "module-routing", "lesson-table", "micro-route-repair", "card-lpm-practice"]
+        ],
+        "beforeRepair": [
+          { "id": "card-lpm-theory", "position": 1, "role": "theory", "text": "O roteador usa longest-prefix match." },
+          { "id": "card-lpm-practice", "position": 2, "role": "practice", "text": "Escolha a rota para 10.1.2.3." }
+        ],
+        "afterRepair": [
+          { "id": "card-lpm-practice", "position": 1, "role": "practice", "text": "Escolha a rota para 10.1.2.3." },
+          { "id": "card-lpm-theory", "position": 2, "role": "theory", "text": "Longest-prefix match escolhe, entre rotas compatíveis, a de prefixo mais específico; por exemplo, /24 precede /16 para um endereço coberto por ambas." }
+        ]
+      },
+      "initialAudit": {
+        "kind": "audit",
+        "auditRunRef": { "id": "audit-route-before", "version": "1.0.0" },
+        "finding": {
+          "code": "semantic_explanation_only_mentioned",
+          "severity": "high",
+          "target": { "entityType": "card", "entityPath": ["course-network", "module-routing", "lesson-table", "micro-route-repair", "card-lpm-theory"], "resourceTargetId": null },
+          "ruleRef": { "kind": "requirement", "id": "explanationRequirements", "version": "1.0.0" },
+          "publicEvidence": "A regra é apenas nomeada, sem explicar o critério de maior especificidade.",
+          "proposedRepair": "Desenvolver a regra com contraste entre prefixos.",
+          "humanJustifiable": true
+        },
+        "humanDecision": { "outcome": "approved", "repairAuthorized": true }
+      },
+      "reaudit": {
+        "kind": "reaudit",
+        "auditRunRef": { "id": "audit-route-after", "version": "1.0.0" },
+        "verifications": [{ "findingCode": "semantic_explanation_only_mentioned", "outcome": "resolved" }],
+        "newFindings": [
+          {
+            "code": "practice_after_required_theory",
+            "severity": "high",
+            "target": { "entityType": "card", "entityPath": ["course-network", "module-routing", "lesson-table", "micro-route-repair", "card-lpm-practice"], "resourceTargetId": null },
+            "ruleRef": { "kind": "requirement", "id": "theoryBeforePractice", "version": "1.0.0" },
+            "publicEvidence": "Após o reparo, a prática está na posição 1 e a fundamentação necessária na posição 2.",
+            "proposedRepair": "Restaurar a ordem causal sem remover a explicação adicionada.",
+            "humanJustifiable": true
+          }
+        ],
+        "readCurrentState": true
+      },
+      "expected": {
+        "deterministicFindings": [],
+        "semanticFindings": [],
+        "humanDecision": { "outcome": "pending", "repairAuthorized": false }
+      }
+    }
+  ]
+}

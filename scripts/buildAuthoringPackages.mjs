@@ -312,7 +312,7 @@ function compactYamlFlowCollectionSpacing(source) {
   return documents.map((document) => YamlCst.stringify(document)).join("");
 }
 
-function compactActionDescription(value, maximum = 64) {
+function compactActionDescription(value, maximum = 28) {
   const description = String(value || "").trim();
   const firstClause = description.split(/(?<=[.!?;])\s|,\s/u, 1)[0].trim();
   if (firstClause.length <= maximum) return firstClause;
@@ -334,7 +334,7 @@ function buildChatGptActionOpenApi() {
       data: {
         type: "object",
         additionalProperties: true,
-        description: "Resultado confirmado. Reutilize os identificadores, a revisão e os hashes devolvidos nas chamadas seguintes.",
+        description: "Resultado confirmado; reutilize ids, revisão e hashes.",
         properties: {
           workspaceId: { type: "string", format: "uuid" },
           revision: { type: "integer", minimum: 1 },
@@ -490,16 +490,11 @@ function buildChatGptActionOpenApi() {
     "salvarCardNoWorkspace"
   ]);
   const successDescription = (definition) => {
-    const fields = definition.outputSchema?.oneOf?.[0]
-      ?.properties?.data?.required || [];
-    const outcome = structuralContentWrites.has(definition.name)
+    return structuralContentWrites.has(definition.name)
       ? "Conteúdo validado; não implica aprovação pedagógica."
       : definition.annotations?.readOnlyHint
         ? "Leitura concluída."
         : "Operação concluída.";
-    return fields.length
-      ? `${outcome} Campos: ${fields.join(", ")}.`
-      : `${outcome} Resultado em data.`;
   };
   const inputSchemas = Object.fromEntries(
     AUTHORING_WORKSPACE_MCP_TOOLS.map((definition) => [

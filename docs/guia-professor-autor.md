@@ -180,6 +180,46 @@ e confirme a revisão antes de continuar. Não use a lembrança da conversa como
 O procedimento completo está em [Criar cursos pelo
 chat](criar-cursos-pelo-chat.md).
 
+## Decidir achados da Auditoria
+
+**Pré-condição:** a rodada de auditoria terminou e sua conta pode tomar decisões
+no workspace. Auditoria de conformidade não é revisão factual nem evidência de
+aprendizagem.
+
+**Passos:**
+
+1. Abra **Autoria → Workspace → Auditoria**.
+2. Escolha uma Parte ou microssequência. Leia `Conforme`, `Com achado` e `Não
+   verificada` como estados distintos; não trate ausência de verificação como
+   aprovação.
+3. Abra o achado e examine a evidência pública, o critério, a origem e o alvo
+   real. A gravidade organiza o trabalho; não é nota do curso ou do professor.
+   Em uma Parte, abra a microssequência desejada pela lista progressiva; o app
+   mantém a rodada filha que realmente compôs aquele histórico.
+4. Use **Aprovar para reparo** somente quando o problema e o escopo estiverem
+   corretos. Use **Rejeitar** para falso positivo ou interpretação inadequada.
+5. Depois das decisões, use **Preparar reparos**. Isso grava um mandato limitado
+   aos achados aprovados; não executa reparo dentro do aplicativo.
+6. Peça ao GPT externo conectado por MCP que retome o workspace e cumpra esse
+   mandato. Confira o conteúdo alterado.
+7. Quando o achado estiver reparado, use **Solicitar reauditoria da Parte**. Se
+   o conteúdo ainda não pertencer a uma Parte, solicite a reauditoria do
+   workspace. A nova rodada deve reler o estado corrente de forma independente
+   e pode encontrar outro problema.
+
+**Resultado esperado:** achado rejeitado nunca autoriza reparo; achado aprovado
+continua rastreável até correção e reauditoria; a Parte apresenta cobertura e
+distribuição sem score de qualidade.
+
+**Sem conexão:** resumo, evidência e alvo já sincronizados permanecem
+consultáveis. Decidir, preparar reparos e solicitar reauditoria exige rede,
+autoridade corrente e revisão atual do workspace.
+
+**Recuperação:** em conflito, releia o workspace. Não repita a decisão em cima
+de estado antigo nem substitua um mandato corrente sem concluir ou revisar seu
+escopo. Antes de pedir outra auditoria, conclua os demais achados ainda presentes
+no mandato de reparo preparado.
+
 ## Escolher e revisar recursos de representação
 
 Um recurso especializado deve corresponder à operação intelectual exigida. Não

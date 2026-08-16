@@ -171,13 +171,16 @@ versionada entre páginas e escopos sem configuração card a card.
 A listagem e o Mapa recebem estado canônico revisionado, sem inferir processo
 por publicação, quantidade de cards ou cache visitado. A réplica local é
 vinculada à conta, avança monotonicamente e sincroniza intenções pendentes na
-reconexão; conflito continua explícito. O ciclo completo de findings, decisão,
-reparo e reauditoria pertence à #106. Schemas,
+reconexão; conflito continua explícito. A #106 completa o ciclo de auditoria:
+uma rodada imutável confronta o desenho e os cards/resources reais, separa
+checks determinísticos de revisão semântica, conserva a decisão humana e só
+permite verificar um reparo em outra rodada corrente. Schemas,
 persistência e testes demonstram coerência técnica no escopo coberto, não
 validade educacional nem adequação dos valores escolhidos.
 
 O fundamento, o fluxo e os limites estão em [Desenho instrucional
-parametrizado](desenho-instrucional-parametrizado.md).
+parametrizado](desenho-instrucional-parametrizado.md) e [Auditoria de
+conformidade instrucional](auditoria-de-conformidade-instrucional.md).
 
 ## O que foi verificado tecnicamente
 

@@ -253,6 +253,22 @@ snapshot, binding e manifesto. Aponta incompatibilidades de identidade, passos,
 cobertura declarada, seleção e uso de resources, sem gerar score nem decidir se
 a explicação ou a prática é semanticamente adequada.
 
+**Rodada de auditoria (`audit run`).** Registro imutável de uma auditoria sobre
+uma revisão e materialização exatas. Conserva escopo, hash, algoritmo,
+referências, checks e métricas; para Parte, congela também as microssequências
+incluídas. Uma rodada sem finding distingue “checado nas regras cobertas” de
+“não auditado”. Não é nota, publicação nem snapshot restaurável.
+
+**Finding de conformidade.** Achado localizado que contém código, origem,
+gravidade operacional, alvo, regra e evidência pública. Pode ter proposta de
+reparo, mas não concede autorização para executá-la. Finding determinístico
+decorre de regra calculável; finding `semantic_audit` decorre de julgamento
+contextual explícito. Nenhum dos dois é medida de aprendizagem.
+
+**Reauditoria.** Nova rodada posterior a uma correção confirmada. Relê o estado
+corrente, verifica o finding reparado e procura regressões. Não é a reexibição do
+relatório anterior nem uma nota livre anexada à correção.
+
 **Estado legado não resolvido.** Projeção de workspace anterior ao desenho
 parametrizado. Usa `unresolved` para análise e, quando já há conteúdo sem
 manifesto, `legacy_untracked` para materialização e `legacy_unrestricted` para

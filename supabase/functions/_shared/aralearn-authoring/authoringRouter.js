@@ -197,7 +197,10 @@ function workspaceObservationPagination(request) {
     );
   }
   return {
-    limit: positiveLimit(request, 20, 50),
+    // Achados estruturados carregam evidência pública e lifecycle. A página
+    // física fica menor que o limite solicitado para manter a Action abaixo
+    // de 96 KiB; o cursor autoritativo continua permitindo percorrer tudo.
+    limit: Math.min(positiveLimit(request, 20, 50), 5),
     beforeUpdatedAt,
     beforeId: beforeId == null ? null : validateUuid(beforeId),
     entityTypes: boundedStringList(url, "entityTypes", new Set([
@@ -695,6 +698,7 @@ export async function executeAuthoringRoute({
         adapter,
         principal,
         workspaceId: route.workspaceId,
+        deadlineAt,
         ...value
       }),
       requestId: value.requestId || null

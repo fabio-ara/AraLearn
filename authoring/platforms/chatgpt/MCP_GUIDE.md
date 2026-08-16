@@ -250,14 +250,21 @@ abranger somente uma Parte, inclua `targetPartId`.
 2. Consulte `list_comments` para comentários feitos no estudo.
 3. Consulte `list_observations` com `kinds: ["note"]` para notas situadas no
    workspace.
-4. Registre achados compactos: localização, categoria, gravidade, síntese e
-   reparo proposto.
-5. Apresente os achados e registre a decisão humana.
-6. Defina `repair_findings` somente para os achados aprovados.
-7. Releia cada alvo, execute a menor mutação e confirme a nova revisão.
-8. Vincule a correção somente depois da escrita confirmada.
-9. Encerre o mandato de reparo e faça outra auditoria em leitura.
-10. Verifique ou reabra cada achado conforme a evidência.
+4. Use `gerirDesenhoInstrucional`/`run_audit` com `kind: audit` para fixar a revisão e executar
+   checks determinísticos. Em Parte, mantenha um caminho de microssequência do
+   próprio recorte como cursor operacional.
+5. Percorra a view `audit` até `nextCursor: null`. Leia análise, snapshot,
+   ResourceSets, blueprint, manifesto, cards/resources reais e fontes.
+6. Registre com `record_semantic_audit` no mesmo audit run somente achados compactos,
+   públicos e estruturados: código, alvo, regra, gravidade, evidência curta e
+   reparo opcional. Não envie raciocínio privado.
+7. Apresente os achados e registre a decisão humana.
+8. Defina `repair_findings` somente para os achados aprovados.
+9. Releia cada alvo, execute a menor mutação e confirme a nova revisão.
+10. Vincule a correção somente depois da escrita confirmada.
+11. Encerre o mandato de reparo e abra outro `run_audit` com `kind: reaudit` sobre o estado
+    corrente.
+12. Verifique ou reabra cada achado e procure regressões ou problemas novos.
 
 ### Resultado esperado
 

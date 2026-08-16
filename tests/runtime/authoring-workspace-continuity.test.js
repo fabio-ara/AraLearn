@@ -7,6 +7,9 @@ import {
   executeAuthoringTool
 } from "../../supabase/functions/_shared/aralearn-authoring/authoringToolExecutor.js";
 import {
+  executeAuthoringRoute
+} from "../../supabase/functions/_shared/aralearn-authoring/authoringRouter.js";
+import {
   applyContinuityStateOperation,
   buildWorkspaceResumeProjection,
   normalizeContinuityState,
@@ -241,6 +244,30 @@ function continuity(overrides = {}) {
       severity: "medium",
       status: "approved",
       proposedRepair: "Ampliar o exemplo.",
+      findingCode: "actual_cards_match_artifact_refs",
+      findingOrigin: "deterministic",
+      ruleRef: { kind: "design_contract", id: "manifest", version: "1" },
+      publicEvidence: "O artifactRef declarado não coincide com o card atual.",
+      auditPartId: null,
+      auditRunRef: { id: ACTOR_ID, version: "1" },
+      artifactRefs: {
+        analysisRef: { id: "analysis-a", version: "1.0.0" },
+        effectiveSnapshotRef: { id: "snapshot-a", version: "1.0.0" },
+        blueprintRef: { id: "blueprint-a", version: "2.0.0" },
+        bindingRef: { id: "binding-a", version: "1.0.0" },
+        manifestRef: { id: "manifest-a", version: "1.0.0" },
+        resourceSetRefs: {
+          items: [{ id: "resource-set-a", version: "1.0.0" }],
+          count: 1,
+          truncated: false
+        },
+        microsequenceRefs: {
+          items: ["micro-a"],
+          count: 1,
+          truncated: false
+        }
+      },
+      verificationAuditRunRef: null,
       auditRevision: 6,
       pendingCorrectionRequestId: "repair:pending:0001",
       pendingRevision: 7,
@@ -714,7 +741,8 @@ test("resume recompõe nova sessão sem cards, chat ou achados encerrados", () =
     findingId: finding.observationId,
     summary: finding.summary,
     proposedRepair: finding.proposedRepair
-  })), expectedHandoff);
+  })), expectedHandoff.slice(0, 5));
+  assert.equal(handoffProjection.content.findings.truncated, true);
 });
 
 test("MCP preserva trinta tools, substitui o nome antigo e mapeia resume e mutação tipada", async () => {
@@ -812,6 +840,30 @@ test("MCP preserva trinta tools, substitui o nome antigo e mapeia resume e muta�
         severity: "medium",
         status: "approved",
         proposedRepair: "Ampliar.",
+        findingCode: "actual_cards_match_artifact_refs",
+        findingOrigin: "deterministic",
+        ruleRef: { kind: "design_contract", id: "manifest", version: "1" },
+        publicEvidence: "O artifactRef declarado não coincide com o card atual.",
+        auditPartId: null,
+        auditRunRef: { id: ACTOR_ID, version: "1" },
+        artifactRefs: {
+          analysisRef: { id: "analysis-a", version: "1.0.0" },
+          effectiveSnapshotRef: { id: "snapshot-a", version: "1.0.0" },
+          blueprintRef: { id: "blueprint-a", version: "2.0.0" },
+          bindingRef: { id: "binding-a", version: "1.0.0" },
+          manifestRef: { id: "manifest-a", version: "1.0.0" },
+          resourceSetRefs: {
+            items: [{ id: "resource-set-a", version: "1.0.0" }],
+            count: 1,
+            truncated: false
+          },
+          microsequenceRefs: {
+            items: ["micro-a"],
+            count: 1,
+            truncated: false
+          }
+        },
+        verificationAuditRunRef: null,
         auditRevision: 7,
         pendingCorrectionRequestId: "repair:pending:0001",
         pendingRevision: 8,
@@ -820,7 +872,7 @@ test("MCP preserva trinta tools, substitui o nome antigo e mapeia resume e muta�
         verification: null,
         verifiedRevision: null,
         authorId: ACTOR_ID,
-        canDelete: true,
+        canDelete: false,
         createdAt: "2026-08-09T10:00:00.000Z",
         updatedAt: "2026-08-09T10:00:00.000Z"
       }],
@@ -832,6 +884,18 @@ test("MCP preserva trinta tools, substitui o nome antigo e mapeia resume e muta�
   assert.doesNotThrow(() => validateAuthoringMcpToolOutput(
     "gerirWorkspaceEducacional",
     observationEnvelope
+  ));
+  const anonymizedStructuredFinding = structuredClone(observationEnvelope);
+  anonymizedStructuredFinding.data.items[0].authorId = null;
+  assert.doesNotThrow(() => validateAuthoringMcpToolOutput(
+    "gerirWorkspaceEducacional",
+    anonymizedStructuredFinding
+  ));
+  const deletableStructuredFinding = structuredClone(observationEnvelope);
+  deletableStructuredFinding.data.items[0].canDelete = true;
+  assert.throws(() => validateAuthoringMcpToolOutput(
+    "gerirWorkspaceEducacional",
+    deletableStructuredFinding
   ));
   const missingWorkspaceId = structuredClone(observationEnvelope);
   delete missingWorkspaceId.data.workspaceId;
@@ -1105,6 +1169,34 @@ test("engine usa o RPC compacto, traduz findings e conserva CAS/replay", async (
       .payload.p_include_card_content,
     true
   );
+});
+
+test("pagina física de observations preserva o cursor sem ultrapassar o budget", async () => {
+  const path = `/v1/workspaces/${WORKSPACE_ID}/observations`;
+  const route = workspaceRoute("GET", path);
+  let received = null;
+  const result = await executeAuthoringRoute({
+    request: new Request(`https://edge.example${path}?limit=50`),
+    route,
+    principal: { ...PRINCIPAL, scopes: ["authoring:read"] },
+    adapter: {
+      async listWorkspaceObservations(options) {
+        received = options;
+        return {
+          workspaceId: WORKSPACE_ID,
+          items: [],
+          hasMore: true,
+          nextCursor: {
+            beforeUpdatedAt: "2026-08-15T12:00:00.000Z",
+            beforeId: FINDING_ID
+          },
+          summary: {}
+        };
+      }
+    }
+  });
+  assert.equal(received.limit, 5);
+  assert.equal(result.data.hasMore, true);
 });
 
 test("listagem cerca o estado canônico e não depende de cache já visitado", async () => {

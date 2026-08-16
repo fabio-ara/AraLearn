@@ -7285,6 +7285,174 @@ input:-webkit-autofill:focus {
   justify-self: start;
 }
 
+.authoring-audit-summary {
+  min-width: 0;
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.authoring-audit-summary > li {
+  min-width: 0;
+  min-height: 48px;
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-control);
+  color: var(--text-secondary);
+  background: var(--surface-subtle);
+}
+
+.authoring-audit-summary > li.is-conformant {
+  color: var(--status-success);
+}
+
+.authoring-audit-summary > li.is-finding {
+  color: var(--status-warning);
+}
+
+.authoring-audit-summary svg {
+  width: 18px;
+  height: 18px;
+}
+
+.authoring-audit-summary span {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.authoring-audit-summary strong {
+  color: var(--text-primary);
+}
+
+.authoring-audit-summary small {
+  color: currentColor;
+}
+
+.authoring-audit-parts {
+  min-width: 0;
+  display: grid;
+  gap: 7px;
+  padding-block: 3px;
+}
+
+.authoring-audit-parts h3 {
+  margin: 0;
+  font-size: var(--type-sm);
+}
+
+.authoring-audit-parts > div {
+  display: grid;
+  gap: 6px;
+}
+
+.authoring-audit-parts button {
+  width: 100%;
+  min-width: 0;
+  min-height: var(--tap);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 11px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-control);
+  color: var(--text-primary);
+  background: var(--surface-raised);
+  text-align: left;
+  cursor: pointer;
+}
+
+.authoring-audit-parts button > span {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.authoring-audit-parts small {
+  color: var(--text-secondary);
+}
+
+.authoring-audit-components {
+  min-width: 0;
+  display: grid;
+  gap: 7px;
+  padding-block: 3px;
+}
+
+.authoring-audit-components > header {
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.authoring-audit-components h3 {
+  margin: 0;
+  font-size: var(--type-sm);
+}
+
+.authoring-audit-components > header > span {
+  color: var(--text-secondary);
+  font-size: var(--type-xs);
+}
+
+.authoring-audit-component-list {
+  display: grid;
+  gap: 6px;
+}
+
+.authoring-audit-component {
+  width: 100%;
+  min-width: 0;
+  min-height: var(--tap);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 11px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-control);
+  color: var(--text-primary);
+  background: var(--surface-raised);
+  text-align: left;
+  cursor: pointer;
+}
+
+.authoring-audit-component:disabled {
+  cursor: default;
+}
+
+.authoring-audit-component > span {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.authoring-audit-component .authoring-state {
+  justify-self: start;
+}
+
+.authoring-audit-actions {
+  display: grid;
+  justify-items: start;
+  gap: 5px;
+  padding-top: 3px;
+}
+
+.authoring-audit-actions p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: var(--type-xs);
+}
+
 .authoring-status {
   min-width: 0;
   margin: 0;
@@ -7368,6 +7536,136 @@ input:-webkit-autofill:focus {
   align-content: start;
   gap: 9px;
   padding: 12px;
+}
+
+.authoring-finding-dialog {
+  grid-template-rows: auto minmax(0, 1fr) auto;
+}
+
+.authoring-finding-detail section,
+.authoring-finding-detail details,
+.authoring-finding-type {
+  min-width: 0;
+  margin: 0;
+  padding: 10px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-control);
+  background: var(--surface-subtle);
+  overflow-wrap: anywhere;
+}
+
+.authoring-finding-detail h3,
+.authoring-finding-detail p {
+  margin: 0;
+}
+
+.authoring-finding-detail h3 {
+  margin-bottom: 5px;
+  font-size: var(--type-sm);
+}
+
+.authoring-finding-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.authoring-finding-badges > span {
+  padding: 5px 8px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 999px;
+  color: var(--text-secondary);
+  background: var(--surface-raised);
+  font-size: var(--type-xs);
+  font-weight: 650;
+}
+
+.authoring-finding-repair summary,
+.authoring-finding-provenance summary {
+  min-height: 30px;
+  color: var(--action-primary-hover);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.authoring-finding-repair[open] summary,
+.authoring-finding-provenance[open] summary {
+  margin-bottom: 7px;
+}
+
+.authoring-finding-provenance dl {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+}
+
+.authoring-finding-provenance dl > div {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+}
+
+.authoring-finding-provenance dt,
+.authoring-finding-provenance dd {
+  margin: 0;
+}
+
+.authoring-finding-provenance dd {
+  color: var(--text-secondary);
+  text-align: right;
+}
+
+.authoring-open-finding-target {
+  justify-self: start;
+}
+
+.authoring-finding-offline,
+.authoring-finding-run-note {
+  color: var(--status-warning);
+  font-size: var(--type-xs);
+}
+
+.authoring-finding-run-note {
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: var(--radius-control);
+  background: var(--status-warning-subtle);
+}
+
+.authoring-finding-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 10px 12px max(10px, var(--safe-bottom-tappable));
+  border-top: 1px solid var(--border-subtle);
+  background: var(--surface-canvas);
+}
+
+.authoring-secondary-button {
+  min-height: var(--tap);
+  padding: 8px 14px;
+  border: 1px solid var(--status-danger);
+  border-radius: var(--radius-control);
+  color: var(--status-danger);
+  background: var(--surface-raised);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.authoring-finding-actions button:disabled,
+.authoring-audit-actions button:disabled {
+  cursor: default;
+  opacity: 0.58;
+}
+
+.authoring-finding-state {
+  min-height: var(--tap);
+  display: inline-flex;
+  align-items: center;
+  color: var(--text-secondary);
+  font-size: var(--type-sm);
+  font-weight: 700;
 }
 
 .authoring-auto-option {
@@ -7789,6 +8087,14 @@ input:-webkit-autofill:focus {
 
   .authoring-dialog-backdrop {
     align-items: center;
+  }
+
+  .authoring-audit-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .authoring-finding-dialog {
+    width: min(100%, 620px);
   }
 }
 

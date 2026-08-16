@@ -596,6 +596,133 @@ test("views não somam artefatos grandes e materialização sem manifesto perman
   assert.equal(materialization.result.materialization.manifest, null);
 });
 
+test("sessão nova retoma a rodada mais recente da Parte por escopo explícito", async () => {
+  const adapter = journeyAdapter();
+  const originalGetWorkspace = adapter.getWorkspace.bind(adapter);
+  const calls = [];
+  let includePart = true;
+  let includeEntity = true;
+  adapter.getWorkspace = async (options) => {
+    if (options.view === "entity" && !includeEntity) {
+      throw new Error("A microssequência histórica não existe mais.");
+    }
+    if (options.view !== "resume") return originalGetWorkspace(options);
+    return {
+      workspaceId: WORKSPACE,
+      title: "Transporte",
+      brief: "",
+      revision: adapter.state.workspaceRevision,
+      content: {
+        parts: includePart ? [{
+          id: "part-network",
+          title: "Rede e transporte",
+          status: "audited",
+          microsequenceIds: [PATH[3]]
+        }] : [],
+        decisions: [],
+        findings: { items: [], truncated: false }
+      }
+    };
+  };
+  adapter.getAuthoringAuditRun = async (options) => {
+    calls.push(structuredClone(options));
+    return {
+      workspaceId: WORKSPACE,
+      revision: adapter.state.workspaceRevision,
+      audit: {
+        microsequenceRefs: { items: [PATH[3]], count: 1, truncated: false },
+        containsAnchor: true,
+        latestAuditRun: {
+          ref: {
+            id: "30000000-0000-4000-8000-000000000001",
+            version: "1.0.0"
+          },
+          kind: "audit",
+          status: "complete",
+          current: true,
+          scope: { kind: "part", ref: "part-network" },
+          startedRevision: 7,
+          completedRevision: 8,
+          createdAt: "2026-08-15T20:00:00.000Z",
+          completedAt: "2026-08-15T20:01:00.000Z"
+        },
+        summary: {
+          dimensions: {},
+          checks: { passed: 1, failed: 0, notApplicable: 0 },
+          findings: { deterministic: 0, semantic: 0, total: 0 },
+          metrics: []
+        },
+        findings: [],
+        components: { items: [], count: 0, nextCursor: null, truncated: false },
+        total: 0,
+        nextCursor: null,
+        truncated: false
+      }
+    };
+  };
+
+  const resumed = await action(adapter, "read_slice", {
+    view: "audit",
+    auditScope: { kind: "part", ref: "part-network" }
+  });
+  assert.equal(resumed.result.audit.latestAuditRun.status, "complete");
+  assert.deepEqual(calls[0].scope, { kind: "part", ref: "part-network" });
+  assert.equal(calls[0].auditRunRef, null);
+
+  await assert.rejects(action(adapter, "read_slice", {
+    view: "audit",
+    auditScope: { kind: "part", ref: "part-outside-anchor" }
+  }), (error) => error instanceof AuthoringApiError
+    && error.code === "audit_run_scope_mismatch");
+  assert.equal(calls.length, 1);
+
+  includePart = false;
+  includeEntity = false;
+  const historical = await action(adapter, "read_slice", {
+    view: "audit",
+    auditRunRef: {
+      id: "30000000-0000-4000-8000-000000000001",
+      version: "1.0.0"
+    }
+  });
+  assert.equal(historical.result.audit.latestAuditRun.scope.ref, "part-network");
+  assert.deepEqual(calls.at(-1).auditRunRef, {
+    id: "30000000-0000-4000-8000-000000000001",
+    version: "1.0.0"
+  });
+  assert.equal(calls.at(-1).limit, 2);
+  assert.equal(historical.result.microsequence.targetAvailable, false);
+});
+
+test("leitura de auditoria cerca a página contra revisão híbrida", async () => {
+  const adapter = journeyAdapter();
+  const originalGetWorkspace = adapter.getWorkspace.bind(adapter);
+  adapter.getWorkspace = async (options) => {
+    if (options.view !== "resume") return originalGetWorkspace(options);
+    return {
+      workspaceId: WORKSPACE,
+      title: "Transporte",
+      brief: "",
+      revision: adapter.state.workspaceRevision,
+      content: { parts: [], decisions: [], findings: { items: [], truncated: false } }
+    };
+  };
+  adapter.getAuthoringAuditRun = async () => {
+    const readRevision = adapter.state.workspaceRevision;
+    adapter.state.workspaceRevision += 1;
+    return {
+      workspaceId: WORKSPACE,
+      revision: readRevision,
+      audit: null
+    };
+  };
+
+  await assert.rejects(action(adapter, "read_slice", {
+    view: "audit"
+  }), (error) => error instanceof AuthoringApiError
+    && error.code === "stale_authoring_state");
+});
+
 function cardWith(packageId) {
   const manifest = RESOURCE_PACKAGE_REGISTRY.listCatalog().find(({ id }) => id === packageId);
   const contract = RESOURCE_PACKAGE_REGISTRY.getAuthoringContract(packageId, manifest.version);
@@ -762,6 +889,32 @@ test("protocolo fecha branches, aceita view progressiva e aplica budget antes do
     resourceSetRef: { id: "condition-a", version: "1.0.0" }
   }), (error) => error instanceof AuthoringApiError
     && error.code === "unknown_workspace_field");
+  assert.deepEqual(validateWorkspaceDesignActionPayload({
+    operation: "read_slice",
+    microsequencePath: PATH,
+    view: "audit",
+    auditScope: { kind: "part", ref: "part-network" },
+    limit: 50,
+    componentLimit: 10
+  }), {
+    operation: "read_slice",
+    microsequencePath: [...PATH],
+    view: "audit",
+    auditScope: { kind: "part", ref: "part-network" },
+    limit: 50,
+    componentLimit: 10
+  });
+  assert.throws(() => validateWorkspaceDesignActionPayload({
+    operation: "read_slice",
+    microsequencePath: PATH,
+    view: "audit",
+    auditRunRef: {
+      id: "30000000-0000-4000-8000-000000000001",
+      version: "1.0.0"
+    },
+    auditScope: { kind: "part", ref: "part-network" }
+  }), (error) => error instanceof AuthoringApiError
+    && error.code === "invalid_audit_slice_arguments");
 });
 
 test("contracts action_* descrevem o payloadJson, não repetem o envelope MCP", () => {
@@ -817,6 +970,53 @@ test("contracts action_* descrevem o payloadJson, não repetem o envelope MCP", 
     microsequencePath: [...PATH],
     view: "overview",
     resourceSetRef: { id: "condition-a", version: "1.0.0" }
+  }), false);
+  const semanticContract = readInstructionalDesignContract({
+    workspaceId: WORKSPACE,
+    contractName: "action_record_semantic_audit"
+  }).result.schema;
+  const validateSemanticBatch = new Ajv2020({ allErrors: true, strict: false })
+    .compile(semanticContract);
+  const semanticFinding = {
+    code: "semantic_explanation_underdeveloped",
+    category: "design",
+    severity: "high",
+    target: { entityType: "microsequence", entityPath: [...PATH] },
+    ruleRef: { kind: "semantic_rubric", id: "explanation", version: "1.0.0" },
+    publicEvidence: "A explicação apenas menciona a distinção.",
+    proposedRepair: null
+  };
+  const semanticBatch = {
+    auditRunRef: {
+      id: "30000000-0000-4000-8000-000000000001",
+      version: "1.0.0"
+    },
+    findings: Array.from({ length: 100 }, () => semanticFinding),
+    verifications: []
+  };
+  assert.equal(validateSemanticBatch(semanticBatch), true);
+  assert.equal(validateSemanticBatch({
+    ...semanticBatch,
+    findings: [...semanticBatch.findings, semanticFinding]
+  }), false);
+  assert.equal(validateSemanticBatch({
+    ...semanticBatch,
+    findings: [{ ...semanticFinding, category: "unscored_quality" }]
+  }), false);
+  assert.equal(validateResourceSetRead({
+    microsequencePath: [...PATH],
+    view: "audit",
+    auditScope: { kind: "part", ref: "part-network" },
+    limit: 50
+  }), true);
+  assert.equal(validateResourceSetRead({
+    microsequencePath: [...PATH],
+    view: "audit",
+    auditRunRef: {
+      id: "30000000-0000-4000-8000-000000000001",
+      version: "1.0.0"
+    },
+    auditScope: { kind: "part", ref: "part-network" }
   }), false);
   const assignmentDefinitions = Object.keys(readInstructionalDesignContract({
     workspaceId: WORKSPACE,
@@ -1285,7 +1485,7 @@ test("register_manifest valida diff e autorizações ricas, mas devolve receipt 
     payload: manifest
   });
   assert.deepEqual(persisted, manifest);
-  assert.equal(first.result.conformance, "accepted");
+  assert.equal(first.result.registration, "accepted");
   assert.equal(first.result.resourceAuthorization, "authorized");
   assert.ok(new TextEncoder().encode(JSON.stringify(first)).byteLength < 96 * 1024);
   const replay = await action(adapter, "register_manifest", {
@@ -2024,7 +2224,7 @@ test("jornada MCP retoma análise, ResourceSet, catálogo, cards e manifesto sem
   );
   assert.equal(manifestReceipt.ok, true);
   assert.equal(manifestReceipt.data.revision, 13);
-  assert.equal(manifestReceipt.data.result.conformance, "accepted");
+  assert.equal(manifestReceipt.data.result.registration, "accepted");
   const replayedManifest = await invokeJourneyTool(
     secondSession,
     "gerirDesenhoInstrucional",

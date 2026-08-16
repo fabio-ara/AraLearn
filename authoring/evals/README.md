@@ -1,9 +1,34 @@
-# Cenários de planejamento contextual
+# Cenários de engenharia da autoria
 
 Este diretório contém um corpus pequeno para regressão de engenharia das
 instruções de autoria. Ele verifica se o assistente recebe contexto e rubricas
 suficientes para produzir um plano revisável. Não avalia estudantes, não mede
 resultados de aprendizagem e não sustenta alegações de eficácia.
+
+## Auditoria instrucional #106
+
+`instructional-conformance-audit-scenarios.v1.json` versiona oito contrastes:
+compressão do exemplo DNS/DHCP da #89, explicação apenas mencionada, operação
+de prática divergente, prática antes da teoria, resource inadequado, violação
+de ResourceSet bloqueado, falso positivo rejeitado e reauditoria que encontra
+uma regressão criada pelo reparo.
+
+O corpus separa checks determinísticos de julgamento semântico, fixa regra e
+alvo observáveis, repete três vezes o núcleo dos casos semânticos e mantém a
+decisão humana fora do audit run. As repetições são fixtures determinísticos de
+replay, não chamadas a um modelo. Estabilidade textual ou estrutural não
+autoriza reparo; o cenário 7 demonstra isso ao rejeitar um candidato estável.
+O cenário 8 exige outro run sobre o estado corrente.
+
+Execute:
+
+```sh
+node --test tests/runtime/authoring-instructional-conformance-audit-guidance.test.js
+```
+
+Esses checks avaliam somente protocolo, contratos JIT, rastreabilidade,
+consistência regra–alvo e estabilidade de engenharia. Não validam aprendizagem,
+qualidade docente, causalidade ou medida científica.
 
 ## Procedimento
 

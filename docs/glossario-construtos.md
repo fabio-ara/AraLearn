@@ -368,6 +368,18 @@ computacionais que propõem, transformam ou analisam conteúdo durante a autoria
 - **Evidência necessária:** rubrica, revisão independente, casos adversos e
   registro de retrabalho.
 
+### Conformidade instrucional do artefato
+
+- **Tipo:** resultado operacional delimitado, não construto psicológico.
+- **Definição:** correspondência entre regras de desenho explicitadas e o
+  conteúdo materializado numa revisão identificada.
+- **Manifestação possível:** referências, ordem, resources, requisitos e
+  evidência pública permanecem coerentes segundo checks e revisão semântica.
+- **Não equivale a:** qualidade pedagógica global, aprendizagem, compreensão,
+  eficácia do reparo ou validade de um parâmetro.
+- **Evidência necessária:** audit run reproduzível, cards reais, regras
+  declaradas, julgamento humano nos itens semânticos e reauditoria após reparo.
+
 ## Termos operacionais do modelo didático
 
 ### Coerência do percurso

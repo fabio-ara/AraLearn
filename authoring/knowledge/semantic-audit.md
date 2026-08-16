@@ -1,17 +1,24 @@
 # Auditoria semântica independente
 
 Esta auditoria ocorre somente após autorização. Grave um mandato `audit` com
-identificador novo e, quando o recorte for uma Parte, seu `targetPartId`; retome o workspace, consulte
-`list_comments` e `list_observations` com `kinds: ["note"]` e releia a parte
-persistida. Achados ativos, sua síntese e o reparo proposto já vêm em
-`resume`; quando truncados ou para histórico, consulte
-`kinds: ["audit_finding"]`, estados e paginação. Ao concluir o relatório, limpe
-o mandato de auditoria. Ela não
+identificador novo e, quando o recorte for uma Parte, seu `targetPartId`;
+retome o workspace, consulte comentários e notas pertinentes e releia o
+conteúdo persistido. Use `list_comments` e `list_observations` com
+`kinds: ["note"]` para esse contexto; achados usam
+`kinds: ["audit_finding"]`. Abra `run_audit` com `kind: audit` antes do
+julgamento semântico: ele fixa a
+revisão auditada, executa os checks determinísticos e devolve findings
+paginados. Use `record_semantic_audit` no mesmo audit run somente depois de
+ler análise, snapshot, ResourceSets, blueprint, manifesto, cards, resources e
+fontes pertinentes. Achados ativos já vêm em `resume`; quando
+truncados, percorra a paginação. Ao concluir o relatório, limpe o mandato de
+auditoria. Ela não
 substitui o contrato, a validação de fontes ou a continuidade causal: verifica
 se o conteúdo é ensinável, compreensível e tecnicamente sustentado para a
 pessoa que o verá no celular.
 
-Não aprove pela aparência de JSON válido e não repare durante a auditoria.
+Não aprove pela aparência de JSON válido ou pela aceitação do manifesto e não
+repare durante a auditoria.
 Percorra os critérios abaixo, registre achados legíveis e preserve o conteúdo
 e a estrutura do workspace. Mandato e achados compactos são as únicas escritas
 desta rodada. As observações não viram propriedades adicionais no card ou na
@@ -112,10 +119,13 @@ Essas regras valem para qualquer package estruturado e para composições com ma
 ## Relatório e transição
 
 Separe **Aspectos adequados** de **Problemas encontrados**. Para cada problema,
-informe localização legível, tipo, descrição, impacto pedagógico, gravidade
-(`crítica`, `alta`, `média` ou `baixa`), reparo recomendado e escopo. Não altere
-conteúdo. Registre com `gerirContinuidadeDaAutoria` somente o achado compacto e
-seu alvo; não copie card, relatório, conversa ou fonte para esse registro.
+informe localização legível, código, gravidade operacional, regra ou requisito,
+evidência pública curta e reparo opcional. Não altere conteúdo. Registre com
+`gerirDesenhoInstrucional`/`record_semantic_audit` somente o achado compacto e
+estruturado
+e seu alvo exato; a origem, a revisão e o audit run são fixados pelo servidor.
+Não copie card, relatório, conversa, fonte integral nem raciocínio privado para
+esse registro.
 
 Quando não houver problema relevante, escreva: “Não foram encontrados problemas
 semânticos relevantes segundo os critérios aplicados.” Isso não comprova a
@@ -130,8 +140,16 @@ No reparo posterior, retome o workspace, releia o mandato persistido e os alvos,
 preserve IDs e posições e mude somente os achados aprovados. Depois informe o
 que mudou, vincule a correção à observação correspondente apenas após sucesso e
 declare o que permaneceu pendente, sem certificar o próprio reparo. A
-reauditoria volta a aplicar estes critérios ao estado persistido, registra seu
-resultado e procura regressões e problemas novos.
+reauditoria abre outro `run_audit` com `kind: reaudit`, volta a aplicar estes critérios ao estado
+persistido corrente, registra seu resultado e procura regressões e problemas
+novos. O relatório anterior é contexto, nunca conclusão reaproveitada.
+
+Verifique todos os findings reparados elegíveis no recorte. Se o problema ainda
+existir, envie `outcome: still_open` e registre a ocorrência correspondente em
+`findings` na rodada corrente; se ela vier de uma Parte, pode estar no child run
+exato congelado pelo pai. `outcome: resolved` exige que a mesma identidade não
+reapareça. Não conclua uma reauditoria vazia enquanto houver reparo elegível sem
+verificação.
 
 Se houver interrupção entre alterações, a retomada informa o identificador e a
 revisão da correção pendente mais recente. Releia o alvo antes de continuar ou

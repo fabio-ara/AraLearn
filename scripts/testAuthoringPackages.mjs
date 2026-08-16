@@ -753,19 +753,15 @@ for (const definition of AUTHORING_WORKSPACE_MCP_TOOLS) {
     definition.inputSchema,
     `${definition.name} divergiu do input contract canônico.`
   );
-  const successFields = definition.outputSchema.oneOf[0]
-    .properties.data.required || [];
   assert.equal(
     operation.responses["200"].content["application/json"].schema.$ref,
     "#/components/schemas/AraLearnActionSuccess"
   );
-  for (const field of successFields) {
-    assert.match(
-      operation.responses["200"].description,
-      new RegExp(`(?:^|, |: )${field}(?:,|\\.)`, "u"),
-      `${definition.name} não descreve o campo de sucesso ${field}.`
-    );
-  }
+  assert.match(
+    operation.responses["200"].description,
+    /^(?:Leitura concluída|Operação concluída|Conteúdo validado; não implica aprovação pedagógica)\.$/u,
+    `${definition.name} precisa de descrição curta; o output MCP fechado é normativo.`
+  );
   assert.equal(
     operation["x-openai-isConsequential"],
     Boolean(definition._meta?.["aralearn/actionConsequentialHint"]),

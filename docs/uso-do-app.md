@@ -216,26 +216,54 @@ gravar. A interface falha fechada quando não consegue preservar o conjunto.
 **Recuperação:** em aplicação parcial, revise os alvos indicados e tente somente
 os pendentes. Um conflito não é apresentado como sucesso global.
 
-## Abrir conteúdo e achados
+## Consultar e decidir achados da Auditoria
 
-**Pré-condição:** abra uma microssequência no workspace.
+**Pré-condição:** abra um workspace com uma rodada de auditoria registrada.
 
-**Passos:** use **Conteúdo** para abrir o leitor atual, ou abra **Auditoria**,
-selecione um achado e use seu alvo.
+**Passos:** use **Conteúdo** para abrir o leitor atual. Em **Auditoria**, escolha
+o workspace, uma Parte ou a microssequência corrente; leia o resumo em camadas,
+abra um achado e consulte evidência, critério e origem. Use **Abrir conteúdo**
+para conferir o alvo. Se o achado veio do resumo geral, use **Abrir rodada da
+Parte** ou da microssequência para confirmar que ela terminou. Quando tiver
+autoridade, escolha **Aprovar para reparo**
+ou **Rejeitar**. Depois de decidir os achados, **Preparar reparos** autoriza o
+GPT externo a operar somente os aprovados. Um achado reparado oferece
+**Solicitar reauditoria da Parte**; se a microssequência ainda não pertencer a
+uma Parte, a ação solicita a reauditoria do workspace.
+Em **Proveniência**, listas extensas aparecem como quantidade exibida de um
+total registrado; a interface não apresenta a amostra truncada como lista completa.
+Em uma rodada de Parte, a lista progressiva de microssequências abre exatamente
+a rodada filha usada naquela composição. Uma rodada completa que já não
+corresponde ao estado corrente permanece consultável como histórico, sem ações.
 
-**Resultado esperado:** o leitor preserva curso, módulo, lição,
-microssequência, card e, quando possível, o resource exato. O retorno leva ao
-Mapa ou à Auditoria e à mesma microssequência. Um workspace compartilhado pode
-ser lido sem ser adicionado silenciosamente a Trilhas. Alvo removido é mostrado
-como indisponível, não redirecionado por semelhança.
+**Resultado esperado:** o primeiro nível distingue `Conforme`, `Com achado` e
+`Não verificada`; ausência de rodada nunca aparece como aprovação. Não há nota
+de qualidade. Uma rodada ainda em revisão aparece como pendente e só recebe o
+estado concluído depois do registro explícito de conclusão. O detalhe mostra
+somente evidência pública, não raciocínio
+privado. O leitor preserva curso, módulo, lição, microssequência, card e, quando
+possível, o resource exato. O retorno reabre o mesmo achado, filtro e posição.
+Um workspace compartilhado pode ser lido sem ser adicionado silenciosamente a
+Trilhas. Alvo removido é mostrado como indisponível, não redirecionado por
+semelhança. Reparo continua separado da auditoria e a reauditoria relê o estado
+corrente de forma independente.
 
-**Sem conexão:** conteúdo já materializado e baixado continua legível; listas
-truncadas de achados informam que o resumo é parcial em vez de afirmar que não
-há pendências.
+Achados rejeitados ou já resolvidos permanecem no histórico da rodada, mas não
+mantêm o recorte com o rótulo de pendência. Uma nova auditoria não substitui um
+mandato de reparo que ainda contenha outro achado em andamento.
 
-**Recuperação:** se o alvo deixou de existir, volte à Auditoria e releia o
-finding. Ao voltar a Estudo, uma prévia transitória do workspace é removida e a
-seleção anterior de Trilhas é restaurada.
+**Sem conexão:** conteúdo, resumo e evidências já sincronizados continuam
+legíveis; decisões, preparação de reparos e pedido de reauditoria ficam
+desabilitados até reconectar. Listas truncadas informam que o resumo é parcial
+em vez de afirmar que não há pendências; páginas já lidas da rodada permanecem
+somente para consulta.
+
+**Recuperação:** se o workspace mudar em outra aba, releia antes de decidir; o
+aplicativo não combina decisões concorrentes silenciosamente. Se o alvo deixou
+de existir, volte ao detalhe do achado; se ele foi movido, **Abrir conteúdo** usa
+o caminho corrente, não o endereço antigo da rodada. Ao voltar a Estudo, uma prévia
+transitória do workspace é removida e a seleção anterior de Trilhas é
+restaurada.
 
 ## Encontrar um curso no catálogo
 

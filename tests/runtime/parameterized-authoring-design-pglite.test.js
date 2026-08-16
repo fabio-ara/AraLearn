@@ -11,6 +11,9 @@ import {
 import {
   DESIGN_PARAMETER_CATALOG
 } from "../../src/authoring/instructionalDesignContracts.js";
+import {
+  aggregatePartConformanceAudits
+} from "../../src/authoring/instructionalConformanceAudit.js";
 
 const migrationUrl = new URL(
   "../../supabase/migrations/20260815193000_parameterized_authoring_design.sql",
@@ -18,6 +21,10 @@ const migrationUrl = new URL(
 );
 const blueprintArtifactMigrationUrl = new URL(
   "../../supabase/migrations/20260815230000_authoring_blueprint_artifact_receipt.sql",
+  import.meta.url
+);
+const auditMigrationUrl = new URL(
+  "../../supabase/migrations/20260815235900_authoring_design_conformance_audit.sql",
   import.meta.url
 );
 
@@ -347,6 +354,201 @@ async function setupDatabase() {
     "utf8"
   );
   await database.exec(blueprintArtifactMigration);
+  await database.exec(`
+    create table private.authoring_workspace_observations(
+      id uuid primary key default gen_random_uuid(),
+      workspace_id uuid not null
+        references private.authoring_workspaces(id) on delete cascade,
+      author_id uuid references auth.users(id) on delete set null,
+      entity_type text not null,
+      entity_path text[] not null default '{}',
+      resource_target_id text,
+      body text not null,
+      created_at timestamptz not null default now(),
+      updated_at timestamptz not null default now(),
+      kind text not null default 'note',
+      category text,
+      severity text,
+      status text,
+      proposed_repair text,
+      audit_revision bigint,
+      audit_part_id text,
+      pending_correction_request_id text,
+      pending_revision bigint,
+      correction_request_id text,
+      resulting_revision bigint,
+      verification text,
+      verified_revision bigint,
+      constraint authoring_workspace_observations_lifecycle_v1 check(true)
+    );
+    create function private.prune_authoring_workspace_terminal_findings_v1(uuid)
+    returns void language sql as $$ select $$;
+    create function private.authoring_audit_target_in_part_v1(
+      uuid,jsonb,text,text[]
+    ) returns boolean language sql stable as $$ select true $$;
+    create function private.authoring_observation_target_exists_v1(
+      p_workspace_id uuid,p_entity_type text,p_entity_path text[],
+      p_resource_target_id text
+    ) returns boolean language sql stable as $$
+      select case when p_entity_type='workspace' then cardinality(p_entity_path)=0
+        else exists (
+          select 1 from private.authoring_workspace_entities entity
+          where entity.workspace_id=p_workspace_id
+            and entity.entity_type=case when p_entity_type='resource'
+              then 'card' else p_entity_type end
+            and entity.entity_id=p_entity_path[cardinality(p_entity_path)]
+        ) end
+    $$;
+    create function private.current_authoring_observation_path_v1(
+      uuid,text,text[]
+    ) returns text[] language sql stable as $$ select $3 $$;
+    create function private.authoring_observation_target_available_v1(
+      p_workspace_id uuid,p_entity_type text,p_entity_path text[],
+      p_resource_target_id text
+    ) returns boolean language sql stable as $$
+      select case when p_entity_type='workspace' then exists (
+          select 1 from private.authoring_workspaces workspace
+          where workspace.id=p_workspace_id and workspace.deleted_at is null
+        ) else exists (
+          select 1 from private.authoring_workspace_entities entity
+          where entity.workspace_id=p_workspace_id
+            and entity.entity_type=case when p_entity_type='resource'
+              then 'card' else p_entity_type end
+            and entity.entity_id=p_entity_path[cardinality(p_entity_path)]
+        ) end
+    $$;
+    create function private.educational_workspace_can_v1(
+      uuid,uuid,text
+    ) returns boolean language sql stable as $$ select true $$;
+    create function private.discard_authoring_workspace_v1(
+      p_workspace_id uuid
+    ) returns void language plpgsql security definer as $$
+      begin
+        delete from private.authoring_workspace_observations
+        where workspace_id=p_workspace_id;
+        update private.authoring_workspaces
+        set deleted_at=now(),authoring_state='{"decisions":[]}'::jsonb
+        where id=p_workspace_id;
+      end
+    $$;
+    create function public.update_authoring_workspace_continuity_v1(
+      p_actor_id uuid,p_workspace_id uuid,p_request_id text,p_payload_hash text,
+      p_expected_revision bigint,p_operation text,p_state jsonb
+    ) returns jsonb language plpgsql security definer as $$
+      begin
+        update private.authoring_workspaces
+        set authoring_state=p_state,revision=p_expected_revision+1
+        where id=p_workspace_id and revision=p_expected_revision;
+        if not found then
+          raise exception 'Revisão base desatualizada.' using errcode='40001';
+        end if;
+        insert into private.authoring_workspace_requests(
+          owner_id,request_id,operation,payload_hash,workspace_id,result
+        ) values(
+          p_actor_id,p_request_id,'update_continuity',p_payload_hash,
+          p_workspace_id,jsonb_build_object(
+            'workspaceId',p_workspace_id,'revision',p_expected_revision+1,
+            'continuityOperation',p_operation,'idempotent',false
+          )
+        );
+        return jsonb_build_object(
+          'workspaceId',p_workspace_id,'revision',p_expected_revision+1,
+          'continuityOperation',p_operation,'idempotent',false
+        );
+      end
+    $$;
+    create function public.manage_authoring_workspace_finding_v1(
+      p_actor_id uuid,p_workspace_id uuid,p_request_id text,p_payload_hash text,
+      p_expected_revision bigint,p_operation text,p_payload jsonb
+    ) returns jsonb language plpgsql security definer as $$
+      declare v_result jsonb;
+      begin
+        if p_operation='delete' then
+          delete from private.authoring_workspace_observations
+          where workspace_id=p_workspace_id
+            and id=(p_payload->>'findingId')::uuid;
+        elsif p_operation='decide' then
+          update private.authoring_workspace_observations
+          set status=case when p_payload->>'decision'='approve'
+                then 'approved' else 'rejected' end,
+              verification=null,verified_revision=null,updated_at=now()
+          where workspace_id=p_workspace_id
+            and id=(p_payload->>'findingId')::uuid;
+        end if;
+        update private.authoring_workspaces
+        set revision=p_expected_revision+1
+        where id=p_workspace_id;
+        v_result := jsonb_build_object(
+          'workspaceId',p_workspace_id,'revision',p_expected_revision + 1,
+          'findingOperation',p_operation
+        );
+        insert into private.authoring_workspace_requests(
+          owner_id,request_id,operation,payload_hash,workspace_id,result
+        ) values(
+          p_actor_id,p_request_id,case p_operation
+            when 'create' then 'create_finding'
+            when 'decide' then 'decide_finding'
+            when 'link_correction' then 'link_finding_correction'
+            when 'verify' then 'verify_finding'
+            when 'delete' then 'delete_finding'
+          end,p_payload_hash,p_workspace_id,v_result
+        );
+        return v_result;
+      end
+    $$;
+    create function private.list_authoring_workspace_observations_v1(
+      p_actor_id uuid,p_workspace_id uuid,p_limit integer default 20,
+      p_before_updated_at timestamptz default null,p_before_id uuid default null,
+      p_entity_types text[] default null,p_kinds text[] default null,
+      p_statuses text[] default null
+    ) returns jsonb language sql security definer as $$
+      select jsonb_build_object('items',coalesce(jsonb_agg(jsonb_build_object(
+        'observationId', page.id,
+        'proposedRepair', page.proposed_repair,
+        'canDelete', page.author_id = p_actor_id
+          or private.educational_workspace_can_v1(
+            p_workspace_id, p_actor_id, 'review'
+          ),
+        'updatedAt', page.updated_at
+      )), '[]'::jsonb))
+      from (
+        select * from private.authoring_workspace_observations observation
+        where observation.workspace_id=p_workspace_id
+        order by observation.updated_at desc,observation.id desc
+        limit p_limit
+      ) page
+    $$;
+    create function public.get_authoring_workspace_continuity_v1(
+      p_actor_id uuid,p_workspace_id uuid
+    ) returns jsonb language sql security definer as $$
+      select jsonb_build_object(
+        'workspaceId',p_workspace_id,
+        'activeFindings',coalesce(jsonb_agg(jsonb_build_object(
+          'findingId',page.id,
+          'proposedRepair',page.proposed_repair,
+          'updatedAt',page.updated_at
+        )), '[]'::jsonb)
+      )
+      from (
+        select * from private.authoring_workspace_observations observation
+        where observation.workspace_id=p_workspace_id
+          and observation.kind='audit_finding'
+          and observation.status in ('open','approved','repaired')
+        order by observation.updated_at desc,observation.id desc
+        limit 10
+      ) page
+    $$;
+    create or replace function public.get_aralearn_runtime_manifest()
+    returns jsonb language sql stable security definer
+    set search_path=pg_catalog as $$
+      select jsonb_build_object(
+        'schemaRevision','20260815233000',
+        'contractVersion',1,
+        'features','["flat-runtime-manifest-v1","parameterized-authoring-design-v1","authoring-blueprint-artifact-receipt-v1","authoring-product-state-projection-v1"]'::jsonb
+      )
+    $$;
+  `);
+  await database.exec(await fs.readFile(auditMigrationUrl, "utf8"));
   return database;
 }
 
@@ -542,7 +744,7 @@ test("migration instala desenho parametrizado aditivo e preserva legado", async 
     const manifest = await scalar(database, `
       select public.get_aralearn_runtime_manifest() value
     `);
-    assert.equal(manifest.schemaRevision, "20260815230000");
+    assert.equal(manifest.schemaRevision, "20260815235900");
     assert.equal(manifest.features.includes("flat-runtime-manifest-v1"), true);
     assert.equal(
       manifest.features.includes("parameterized-authoring-design-v1"),
@@ -550,6 +752,10 @@ test("migration instala desenho parametrizado aditivo e preserva legado", async 
     );
     assert.equal(
       manifest.features.includes("authoring-blueprint-artifact-receipt-v1"),
+      true
+    );
+    assert.equal(
+      manifest.features.includes("authoring-design-conformance-audit-v1"),
       true
     );
     assert.equal(await scalar(database, `
@@ -615,11 +821,27 @@ test("migration instala desenho parametrizado aditivo e preserva legado", async 
         "replace_catalog_document",
         "update_continuity",
         "save_instructional_analysis",
-        "register_materialization_manifest"
+        "register_materialization_manifest",
+        "run_authoring_audit",
+        "record_authoring_semantic_audit"
       ]) {
         assert.match(definition, new RegExp(operation));
       }
     }
+    assert.equal(await scalar(database, `
+      select has_function_privilege(
+        'service_role',
+        'public.manage_authoring_workspace_finding_before_audit_runs_v1(uuid,uuid,text,text,bigint,text,jsonb)',
+        'EXECUTE'
+      ) value
+    `), false);
+    assert.equal(await scalar(database, `
+      select has_function_privilege(
+        'service_role',
+        'public.register_authoring_audit_run_v1(uuid,uuid,text,text,bigint,jsonb)',
+        'EXECUTE'
+      ) value
+    `), true);
   } finally {
     await database.close();
   }
@@ -934,7 +1156,7 @@ test("override manual restaura Auto e locks redundantes preservam o bloqueador a
   }
 });
 
-test("resolução, ResourceSet, snapshot, blueprint e manifesto preservam proveniência", async () => {
+test("marco #106 integra ResourceSet, materialização, auditoria, reparo e reauditoria", async () => {
   const database = await setupDatabase();
   try {
     await saveAnalysis(database, 1);
@@ -1595,6 +1817,937 @@ test("resolução, ResourceSet, snapshot, blueprint e manifesto preservam proven
     assert.equal(currentState.blueprintState, "current");
     assert.equal(currentState.materializationState, "tracked");
     assert.equal(currentState.resourceAvailabilityState, "resolved");
+
+    await database.query(`
+      update private.authoring_workspaces
+      set authoring_state=authoring_state || $2::jsonb
+      where id=$1
+    `, [WORKSPACE, JSON.stringify({
+      mandate: {
+        id: "mandate-audit-micro",
+        kind: "audit",
+        decidedAtRevision: revision
+      }
+    })]);
+    const auditMaterializationRevision = await scalar(database, `
+      select materialization_revision::integer value
+      from private.authoring_materialization_states
+      where workspace_id=$1 and microsequence_ref='micro-a'
+    `, [WORKSPACE]);
+    const auditPath = ["course-a", "module-a", "lesson-a", "micro-a"];
+    const auditScope = { kind: "microsequence", ref: "micro-a" };
+    const auditAlgorithm = {
+      id: "aralearn.instructional-conformance",
+      version: "1.0.0"
+    };
+    const auditReport = {
+      contract: "AuthoringConformanceAudit@1",
+      algorithm: auditAlgorithm,
+      scope: auditScope,
+      auditedRevision: revision,
+      refs: {
+        analysisRef: { id: "analysis-a", version: "1.0.0" },
+        effectiveSnapshotRef: { id: "snapshot-a", version: "1.0.0" },
+        blueprintRef: { id: "blueprint-a", version: "1.0.0" },
+        bindingRef: { id: "binding-a", version: "1.0.0" },
+        manifestRef: { id: "manifest-a", version: "1.0.0" },
+        resourceSetRefs: snapshot.resourceSetRefs
+      },
+      checks: [{
+        code: "manifest_tracks_current_materialization",
+        category: "structure",
+        status: "failed"
+      }],
+      metrics: [],
+      summary: {
+        structure: "conformant",
+        design: "conformant",
+        practice: "not_checked",
+        resources: "conformant",
+        deterministicFindingCount: 1,
+        checkCounts: { passed: 0, failed: 1, notApplicable: 0 }
+      }
+    };
+    const auditCommand = {
+      contract: "AuthoringConformanceAudit@1",
+      kind: "audit",
+      scope: auditScope,
+      algorithm: auditAlgorithm,
+      microsequences: [{
+        path: auditPath,
+        scopeEntityVersion: 1,
+        materializationStateRevision: auditMaterializationRevision,
+        contentHash: manifest.contentHash,
+        refs: auditReport.refs
+      }],
+      report: auditReport,
+      findings: [{
+        code: "manifest_tracks_current_materialization",
+        origin: "deterministic",
+        category: "structure",
+        severity: "high",
+        target: {
+          entityType: "card",
+          entityPath: [...auditPath, "card:a"]
+        },
+        ruleRef: {
+          kind: "materialization",
+          id: "current-content-fingerprint",
+          version: "1.0.0"
+        },
+        publicEvidence: "O manifesto precisa acompanhar a materialização corrente.",
+        proposedRepair: null
+      }]
+    };
+    const auditPayloadHash = await mutationHash(
+      database, "run_authoring_audit", auditCommand
+    );
+    const auditReceipt = await scalar(database, `
+      select public.register_authoring_audit_run_v1(
+        $1,$2,'audit:run:micro:0001',$3,$4,$5::jsonb
+      ) value
+    `, [
+      ACTOR, WORKSPACE, auditPayloadHash, revision, JSON.stringify(auditCommand)
+    ]);
+    revision += 1;
+    assert.equal(auditReceipt.status, "semantic_pending");
+    assert.equal(auditReceipt.findingCount, 1);
+    assert.match(auditReceipt.auditRunRef.id, /^[0-9a-f-]{36}$/u);
+    const deterministicFindingId = await scalar(database, `
+      select id value
+      from private.authoring_workspace_observations
+      where audit_run_id=$1 and finding_origin='deterministic'
+    `, [auditReceipt.auditRunRef.id]);
+    await assert.rejects(scalar(database, `
+      select public.manage_authoring_workspace_finding_v1(
+        $1,$2,'audit:decision:pending',$3,$4,'decide',$5::jsonb
+      ) value
+    `, [
+      ACTOR, WORKSPACE, hash("a"), revision,
+      JSON.stringify({ findingId: deterministicFindingId, decision: "approve" })
+    ]), (error) => error.code === "23514");
+    await assert.rejects(scalar(database, `
+      select public.manage_authoring_workspace_finding_v1(
+        $1,$2,'audit:delete:structured',$3,$4,'delete',$5::jsonb
+      ) value
+    `, [
+      ACTOR, WORKSPACE, hash("b"), revision,
+      JSON.stringify({ findingId: deterministicFindingId })
+    ]), (error) => error.code === "23514");
+    await database.query(`
+      delete from private.authoring_workspace_observations where id=$1
+    `, [deterministicFindingId]);
+    assert.equal(await scalar(database, `
+      select count(*)::integer value
+      from private.authoring_workspace_observations where id=$1
+    `, [deterministicFindingId]), 1);
+    await assert.rejects(database.query(`
+      update private.authoring_audit_runs set kind='reaudit'
+      where id=$1
+    `, [auditReceipt.auditRunRef.id]), (error) => error.code === "55000");
+
+    const cardPage = await scalar(database, `
+      select public.list_authoring_audit_cards_v1(
+        $1,$2,$3::text[],$4,1,null,null
+      ) value
+    `, [ACTOR, WORKSPACE, auditPath, revision]);
+    assert.equal(cardPage.items.length, 1);
+    assert.equal(cardPage.items[0].id, "card:a");
+    assert.equal(cardPage.contentHash, manifest.contentHash);
+    await assert.rejects(scalar(database, `
+      select public.list_authoring_audit_cards_v1(
+        $1,$2,$3::text[],$4,1,null,null
+      ) value
+    `, [ACTOR, WORKSPACE, auditPath, revision - 1]), (error) => error.code === "40001");
+
+    const semanticPayload = {
+      auditRunRef: auditReceipt.auditRunRef,
+      findings: [{
+        code: "semantic_explanation_underdeveloped",
+        category: "design",
+        severity: "high",
+        target: {
+          entityType: "microsequence",
+          entityPath: auditPath
+        },
+        ruleRef: {
+          kind: "semantic_rubric",
+          id: "explanation-development",
+          version: "1.0.0"
+        },
+        publicEvidence: "A teoria menciona a distinção sem desenvolver o contraste.",
+        proposedRepair: null
+      }],
+      verifications: []
+    };
+    await assert.rejects(scalar(database, `
+      select public.record_authoring_semantic_audit_v1(
+        $1,$2,'audit:semantic:oversized',$3,$4,$5::jsonb
+      ) value
+    `, [
+      ACTOR,
+      WORKSPACE,
+      hash("d"),
+      revision,
+      JSON.stringify({
+        ...semanticPayload,
+        findings: Array.from({ length: 101 }, () => semanticPayload.findings[0])
+      })
+    ]), (error) => error.code === "22023");
+    await assert.rejects(scalar(database, `
+      select public.record_authoring_semantic_audit_v1(
+        $1,$2,'audit:semantic:invalid-category',$3,$4,$5::jsonb
+      ) value
+    `, [
+      ACTOR,
+      WORKSPACE,
+      hash("2"),
+      revision,
+      JSON.stringify({
+        ...semanticPayload,
+        findings: [{ ...semanticPayload.findings[0], category: "quality_score" }]
+      })
+    ]), (error) => error.code === "22023");
+    const semanticPayloadHash = await mutationHash(
+      database, "record_authoring_semantic_audit", semanticPayload
+    );
+    const semanticReceipt = await scalar(database, `
+      select public.record_authoring_semantic_audit_v1(
+        $1,$2,'audit:semantic:0001',$3,$4,$5::jsonb
+      ) value
+    `, [
+      ACTOR, WORKSPACE, semanticPayloadHash, revision,
+      JSON.stringify(semanticPayload)
+    ]);
+    revision += 1;
+    assert.equal(semanticReceipt.status, "complete");
+    assert.equal(semanticReceipt.recordedCount, 1);
+    const semanticReplay = await scalar(database, `
+      select public.record_authoring_semantic_audit_v1(
+        $1,$2,'audit:semantic:0001',$3,$4,$5::jsonb
+      ) value
+    `, [
+      ACTOR, WORKSPACE, semanticPayloadHash, revision - 1,
+      JSON.stringify(semanticPayload)
+    ]);
+    assert.equal(semanticReplay.idempotent, true);
+    const completedAudit = await scalar(database, `
+      select public.get_authoring_audit_run_v1(
+        $1,$2,$3::uuid,$4,null,null,20,null
+      ) value
+    `, [
+      ACTOR, WORKSPACE, auditReceipt.auditRunRef.id,
+      auditReceipt.auditRunRef.version
+    ]);
+    assert.equal(completedAudit.audit.latestAuditRun.status, "complete");
+    assert.equal(completedAudit.audit.summary.findings.semantic, 1);
+    assert.deepEqual(completedAudit.audit.summary.dimensions.design, {
+      status: "finding",
+      findingCount: 1
+    });
+    assert.equal(completedAudit.audit.findings[0].proposedRepair, null);
+    assert.equal(completedAudit.audit.findings.some(({ origin }) => (
+      origin === "semantic_audit"
+    )), true);
+    const deterministicAuditFinding = completedAudit.audit.findings.find(({ origin }) => (
+      origin === "deterministic"
+    ));
+    assert.deepEqual(deterministicAuditFinding.artifactRefs.resourceSetRefs, {
+      items: snapshot.resourceSetRefs,
+      count: snapshot.resourceSetRefs.length,
+      truncated: false
+    });
+    assert.deepEqual(deterministicAuditFinding.artifactRefs.microsequenceRefs, {
+      items: ["micro-a"],
+      count: 1,
+      truncated: false
+    });
+    const listedFindings = await scalar(database, `
+      select private.list_authoring_workspace_observations_v1(
+        $1,$2,20,null,null,null,array['audit_finding'],null
+      ) value
+    `, [ACTOR, WORKSPACE]);
+    assert.equal(listedFindings.items.every(({ canDelete }) => canDelete === false), true);
+    assert.equal(listedFindings.items.some(({ findingCode }) => (
+      findingCode === deterministicAuditFinding.code
+    )), true);
+    assert.equal(listedFindings.items.some(({ artifactRefs }) => (
+      artifactRefs != null
+    )), false);
+    const freshContinuity = await scalar(database, `
+      select public.get_authoring_workspace_continuity_v1($1,$2) value
+    `, [ACTOR, WORKSPACE]);
+    const resumedFinding = freshContinuity.activeFindings.find(({ findingId }) => (
+      findingId === deterministicFindingId
+    ));
+    assert.equal(resumedFinding.findingCode, deterministicAuditFinding.code);
+    assert.equal(resumedFinding.findingOrigin, "deterministic");
+    assert.deepEqual(resumedFinding.auditRunRef, auditReceipt.auditRunRef);
+    assert.equal(resumedFinding.publicEvidence.length > 0, true);
+    assert.equal(Object.hasOwn(resumedFinding, "artifactRefs"), false);
+    const semanticFindingId = completedAudit.audit.findings.find(({ origin }) => (
+      origin === "semantic_audit"
+    )).findingId;
+
+    await scalar(database, `
+      select public.manage_authoring_workspace_finding_v1(
+        $1,$2,'audit:decision:approved',$3,$4,'decide',$5::jsonb
+      ) value
+    `, [
+      ACTOR, WORKSPACE, hash("c"), revision,
+      JSON.stringify({ findingId: deterministicFindingId, decision: "approve" })
+    ]);
+    revision += 1;
+    await scalar(database, `
+      select public.manage_authoring_workspace_finding_v1(
+        $1,$2,'audit:decision:semantic-approved',$3,$4,'decide',$5::jsonb
+      ) value
+    `, [
+      ACTOR, WORKSPACE, hash("2"), revision,
+      JSON.stringify({ findingId: semanticFindingId, decision: "approve" })
+    ]);
+    revision += 1;
+    const repairedRevision = revision + 1;
+    await database.query(`
+      update private.authoring_workspace_observations
+      set status='repaired',correction_request_id='repair:deterministic:0001',
+          resulting_revision=$2,updated_at=now()
+      where id = any($1::uuid[])
+    `, [[deterministicFindingId, semanticFindingId], repairedRevision]);
+    await database.query(`
+      update private.authoring_workspaces set revision=$1 where id=$2
+    `, [repairedRevision, WORKSPACE]);
+    revision = repairedRevision;
+    const reauditReport = {
+      ...auditReport,
+      auditedRevision: revision
+    };
+    const reauditCommand = {
+      ...auditCommand,
+      kind: "reaudit",
+      report: reauditReport,
+      findings: auditCommand.findings.map((finding) => ({
+        ...finding,
+        target: { ...finding.target, resourceTargetId: null },
+        ruleRef: {
+          ...finding.ruleRef,
+          kind: ` ${finding.ruleRef.kind} `,
+          id: ` ${finding.ruleRef.id} `
+        }
+      }))
+    };
+    const reauditHash = await mutationHash(
+      database, "run_authoring_audit", reauditCommand
+    );
+    const reauditReceipt = await scalar(database, `
+      select public.register_authoring_audit_run_v1(
+        $1,$2,'audit:run:micro:reaudit',$3,$4,$5::jsonb
+      ) value
+    `, [
+      ACTOR, WORKSPACE, reauditHash, revision, JSON.stringify(reauditCommand)
+    ]);
+    revision += 1;
+    const resolvedRecurrence = {
+      auditRunRef: reauditReceipt.auditRunRef,
+      findings: [],
+      verifications: [{
+        findingId: deterministicFindingId,
+        outcome: "resolved",
+        publicEvidence: "A reauditoria releu o conteúdo corrente."
+      }]
+    };
+    const emptyReaudit = {
+      auditRunRef: reauditReceipt.auditRunRef,
+      findings: [],
+      verifications: []
+    };
+    await assert.rejects(scalar(database, `
+      select public.record_authoring_semantic_audit_v1(
+        $1,$2,'audit:semantic:empty-reaudit',$3,$4,$5::jsonb
+      ) value
+    `, [
+      ACTOR,
+      WORKSPACE,
+      await mutationHash(
+        database, "record_authoring_semantic_audit", emptyReaudit
+      ),
+      revision,
+      JSON.stringify(emptyReaudit)
+    ]), (error) => error.code === "23514");
+    await assert.rejects(scalar(database, `
+      select public.record_authoring_semantic_audit_v1(
+        $1,$2,'audit:semantic:recurrence-resolved',$3,$4,$5::jsonb
+      ) value
+    `, [
+      ACTOR, WORKSPACE, hash("e"), revision,
+      JSON.stringify(resolvedRecurrence)
+    ]), (error) => error.code === "23514");
+    const stillOpenRecurrence = {
+      ...resolvedRecurrence,
+      findings: [structuredClone(semanticPayload.findings[0])],
+      verifications: [
+        {
+          ...resolvedRecurrence.verifications[0],
+          outcome: "still_open",
+          publicEvidence: "O mesmo problema reapareceu no snapshot reauditado."
+        },
+        {
+          findingId: semanticFindingId,
+          outcome: "still_open",
+          publicEvidence: "A explicação continuou insuficiente após o reparo."
+        }
+      ]
+    };
+    await assert.rejects(scalar(database, `
+      select public.record_authoring_semantic_audit_v1(
+        $1,$2,'audit:semantic:duplicate-verification',$3,$4,$5::jsonb
+      ) value
+    `, [
+      ACTOR, WORKSPACE, hash("3"), revision,
+      JSON.stringify({
+        ...stillOpenRecurrence,
+        verifications: [
+          stillOpenRecurrence.verifications[0],
+          stillOpenRecurrence.verifications[0]
+        ]
+      })
+    ]), (error) => error.code === "22023");
+    await scalar(database, `
+      select public.record_authoring_semantic_audit_v1(
+        $1,$2,'audit:semantic:recurrence-open',$3,$4,$5::jsonb
+      ) value
+    `, [
+      ACTOR, WORKSPACE, hash("f"), revision,
+      JSON.stringify(stillOpenRecurrence)
+    ]);
+    revision += 1;
+    const recurrentAudit = await scalar(database, `
+      select public.get_authoring_audit_run_v1(
+        $1,$2,$3::uuid,$4,null,null,20,null
+      ) value
+    `, [
+      ACTOR, WORKSPACE, reauditReceipt.auditRunRef.id,
+      reauditReceipt.auditRunRef.version
+    ]);
+    assert.equal(recurrentAudit.audit.total, 2);
+    assert.equal(recurrentAudit.audit.findings.length, 2);
+    assert.equal(recurrentAudit.audit.summary.findings.total, 2);
+    assert.equal(recurrentAudit.audit.summary.dimensions.structure.status, "finding");
+    assert.equal(recurrentAudit.audit.findings.some(({ findingId }) => (
+      findingId === deterministicFindingId
+    )), false);
+    assert.equal(recurrentAudit.audit.findings.some(({ findingId }) => (
+      findingId === semanticFindingId
+    )), false);
+    const recurrentSemanticFinding = recurrentAudit.audit.findings.find(({ code }) => (
+      code === semanticPayload.findings[0].code
+    ));
+    assert.equal(recurrentSemanticFinding.status, "open");
+    assert.notEqual(recurrentSemanticFinding.findingId, semanticFindingId);
+    const recurrentSemanticFindingId = recurrentSemanticFinding.findingId;
+    const recurrentSemanticSnapshot = structuredClone(
+      recurrentSemanticFinding
+    );
+    const recurrenceContinuity = await scalar(database, `
+      select public.get_authoring_workspace_continuity_v1($1,$2) value
+    `, [ACTOR, WORKSPACE]);
+    assert.equal(recurrenceContinuity.activeFindings.some(({ findingId }) => (
+      findingId === deterministicFindingId
+    )), false);
+    const supersededOccurrence = await database.query(`
+      select status,verification,verified_by_audit_run_id
+      from private.authoring_workspace_observations where id=$1
+    `, [deterministicFindingId]);
+    assert.equal(supersededOccurrence.rows[0].status, "repaired");
+    assert.equal(
+      supersededOccurrence.rows[0].verified_by_audit_run_id,
+      reauditReceipt.auditRunRef.id
+    );
+    await scalar(database, `
+      select public.manage_authoring_workspace_finding_v1(
+        $1,$2,'audit:decision:reapproved',$3,$4,'decide',$5::jsonb
+      ) value
+    `, [
+      ACTOR, WORKSPACE, hash("1"), revision,
+      JSON.stringify({ findingId: recurrentSemanticFindingId, decision: "approve" })
+    ]);
+    revision += 1;
+    const reapproved = await database.query(`
+      select status,verification,verified_revision,verified_by_audit_run_id
+      from private.authoring_workspace_observations where id=$1
+    `, [recurrentSemanticFindingId]);
+    assert.deepEqual(reapproved.rows[0], {
+      status: "approved",
+      verification: null,
+      verified_revision: null,
+      verified_by_audit_run_id: null
+    });
+    const semanticRepairedRevision = revision + 1;
+    await database.query(`
+      update private.authoring_workspace_observations
+      set status='repaired',correction_request_id='repair:semantic:0002',
+          resulting_revision=$2,updated_at=now()
+      where id=$1
+    `, [recurrentSemanticFindingId, semanticRepairedRevision]);
+    await database.query(`
+      update private.authoring_workspaces set revision=$1 where id=$2
+    `, [semanticRepairedRevision, WORKSPACE]);
+    revision = semanticRepairedRevision;
+    const thirdReauditCommand = {
+      ...auditCommand,
+      kind: "reaudit",
+      report: { ...auditReport, auditedRevision: revision }
+    };
+    const thirdReauditReceipt = await scalar(database, `
+      select public.register_authoring_audit_run_v1(
+        $1,$2,'audit:run:micro:reaudit:third',$3,$4,$5::jsonb
+      ) value
+    `, [
+      ACTOR,
+      WORKSPACE,
+      await mutationHash(database, "run_authoring_audit", thirdReauditCommand),
+      revision,
+      JSON.stringify(thirdReauditCommand)
+    ]);
+    revision += 1;
+    const thirdSemanticPayload = {
+      auditRunRef: thirdReauditReceipt.auditRunRef,
+      findings: [structuredClone(semanticPayload.findings[0])],
+      verifications: [{
+        findingId: recurrentSemanticFindingId,
+        outcome: "still_open",
+        publicEvidence: "A terceira rodada confirmou a permanência do achado."
+      }]
+    };
+    await scalar(database, `
+      select public.record_authoring_semantic_audit_v1(
+        $1,$2,'audit:semantic:third',$3,$4,$5::jsonb
+      ) value
+    `, [
+      ACTOR,
+      WORKSPACE,
+      await mutationHash(
+        database, "record_authoring_semantic_audit", thirdSemanticPayload
+      ),
+      revision,
+      JSON.stringify(thirdSemanticPayload)
+    ]);
+    revision += 1;
+    const immutablePriorReaudit = await scalar(database, `
+      select public.get_authoring_audit_run_v1(
+        $1,$2,$3::uuid,$4,null,null,20,null
+      ) value
+    `, [
+      ACTOR, WORKSPACE, reauditReceipt.auditRunRef.id,
+      reauditReceipt.auditRunRef.version
+    ]);
+    assert.equal(immutablePriorReaudit.audit.total, 2);
+    assert.equal(immutablePriorReaudit.audit.findings.some(({ findingId }) => (
+      findingId === recurrentSemanticFindingId
+    )), true);
+    assert.deepEqual(
+      immutablePriorReaudit.audit.findings.find(({ findingId }) => (
+        findingId === recurrentSemanticFindingId
+      )).verificationAuditRunRef,
+      thirdReauditReceipt.auditRunRef
+    );
+    const immutableSemanticSnapshot = immutablePriorReaudit.audit.findings.find(
+      ({ findingId }) => findingId === recurrentSemanticFindingId
+    );
+    assert.equal(immutableSemanticSnapshot.status, "repaired");
+    assert.equal(
+      immutableSemanticSnapshot.publicEvidence,
+      recurrentSemanticSnapshot.publicEvidence
+    );
+    assert.deepEqual(immutableSemanticSnapshot.auditRunRef, reauditReceipt.auditRunRef);
+
+    await database.query(`
+      update private.authoring_workspaces
+      set authoring_state=authoring_state || $2::jsonb
+      where id=$1
+    `, [WORKSPACE, JSON.stringify({
+      parts: [{
+        id: "part-a",
+        title: "Parte A",
+        status: "active",
+        microsequenceIds: ["micro-a"]
+      }],
+      mandate: {
+        id: "mandate-audit-part",
+        kind: "audit",
+        targetPartId: "part-a",
+        decidedAtRevision: revision
+      }
+    })]);
+    const partScope = { kind: "part", ref: "part-a" };
+    const pendingPartComponents = await scalar(database, `
+      select public.list_authoring_part_audit_components_v1(
+        $1,$2,'part-a',10,null
+      ) value
+    `, [ACTOR, WORKSPACE]);
+    assert.equal(pendingPartComponents.total, 1);
+    assert.equal(pendingPartComponents.pageReadyCount, 0);
+    assert.equal(pendingPartComponents.items[0].ready, false);
+    const componentAuditedRevision = revision;
+    const componentReport = {
+      ...auditReport,
+      auditedRevision: componentAuditedRevision,
+      materializationStateRevision: auditMaterializationRevision,
+      contentHash: manifest.contentHash
+    };
+    const componentCommand = {
+      ...auditCommand,
+      kind: "reaudit",
+      report: componentReport
+    };
+    const componentReceipt = await scalar(database, `
+      select public.register_authoring_audit_run_v1(
+        $1,$2,'audit:run:part:component',$3,$4,$5::jsonb
+      ) value
+    `, [
+      ACTOR,
+      WORKSPACE,
+      await mutationHash(database, "run_authoring_audit", componentCommand),
+      revision,
+      JSON.stringify(componentCommand)
+    ]);
+    revision += 1;
+    const componentSemanticPayload = {
+      auditRunRef: componentReceipt.auditRunRef,
+      findings: [],
+      verifications: []
+    };
+    await scalar(database, `
+      select public.record_authoring_semantic_audit_v1(
+        $1,$2,'audit:semantic:part:component',$3,$4,$5::jsonb
+      ) value
+    `, [
+      ACTOR,
+      WORKSPACE,
+      await mutationHash(
+        database, "record_authoring_semantic_audit", componentSemanticPayload
+      ),
+      revision,
+      JSON.stringify(componentSemanticPayload)
+    ]);
+    revision += 1;
+    const readyPartComponents = await scalar(database, `
+      select public.list_authoring_part_audit_components_v1(
+        $1,$2,'part-a',10,null
+      ) value
+    `, [ACTOR, WORKSPACE]);
+    assert.equal(readyPartComponents.pageReadyCount, 1);
+    assert.deepEqual(
+      readyPartComponents.items[0].auditRunRef,
+      componentReceipt.auditRunRef
+    );
+    const partReportWithFindings = aggregatePartConformanceAudits({
+      part: { id: "part-a", microsequenceIds: ["micro-a"] },
+      audits: [{
+        contract: componentReport.contract,
+        algorithm: componentReport.algorithm,
+        scope: componentReport.scope,
+        auditedRevision: componentAuditedRevision,
+        materializationStateRevision: componentReport.materializationStateRevision,
+        contentHash: componentReport.contentHash,
+        summary: componentReport.summary,
+        auditRunRef: componentReceipt.auditRunRef,
+        findingSummary: {
+          total: readyPartComponents.items[0].findingCount,
+          byCategory: readyPartComponents.items[0].findingsByCategory,
+          byOrigin: readyPartComponents.items[0].findingsByOrigin
+        }
+      }],
+      auditedRevision: revision
+    });
+    const partReport = structuredClone(partReportWithFindings);
+    delete partReport.findings;
+    const partCommand = {
+      contract: partReport.contract,
+      kind: "audit",
+      scope: partScope,
+      algorithm: partReport.algorithm,
+      microsequences: [],
+      components: readyPartComponents.items.map((component) => ({
+        ordinal: component.ordinal,
+        microsequenceRef: component.microsequenceRef,
+        targetAvailable: component.targetAvailable,
+        auditRunRef: component.auditRunRef
+      })),
+      report: partReport,
+      findings: structuredClone(partReportWithFindings.findings)
+    };
+    const partPayloadHash = await mutationHash(
+      database, "run_authoring_audit", partCommand
+    );
+    const partReceipt = await scalar(database, `
+      select public.register_authoring_audit_run_v1(
+        $1,$2,'audit:run:part:0001',$3,$4,$5::jsonb
+      ) value
+    `, [
+      ACTOR, WORKSPACE, partPayloadHash, revision, JSON.stringify(partCommand)
+    ]);
+    revision += 1;
+    const partSemanticPayload = {
+      auditRunRef: partReceipt.auditRunRef,
+      findings: [{
+        code: "semantic_part_coherence_gap",
+        category: "coherence",
+        severity: "medium",
+        target: { entityType: "workspace", entityPath: [] },
+        ruleRef: {
+          kind: "semantic_rubric",
+          id: "part-coherence",
+          version: "1.0.0"
+        },
+        publicEvidence: "A transição entre as microssequências requer explicitação.",
+        proposedRepair: "Explicitar a transição no fechamento da Parte."
+      }],
+      verifications: []
+    };
+    const partSemanticHash = await mutationHash(
+      database, "record_authoring_semantic_audit", partSemanticPayload
+    );
+    await database.query(`
+      update private.authoring_workspaces
+      set authoring_state=jsonb_set(
+        authoring_state,'{parts,0,microsequenceIds}',
+        '["micro-a","micro-missing"]'::jsonb
+      ) where id=$1
+    `, [WORKSPACE]);
+    await assert.rejects(scalar(database, `
+      select public.record_authoring_semantic_audit_v1(
+        $1,$2,'audit:semantic:part:reordered',$3,$4,$5::jsonb
+      ) value
+    `, [
+      ACTOR, WORKSPACE, partSemanticHash, revision,
+      JSON.stringify(partSemanticPayload)
+    ]), (error) => error.code === "40001");
+    await database.query(`
+      update private.authoring_workspaces
+      set authoring_state=jsonb_set(
+        authoring_state,'{parts,0,microsequenceIds}',
+        '["micro-a"]'::jsonb
+      ) where id=$1
+    `, [WORKSPACE]);
+    await database.query(`
+      update private.authoring_workspaces
+      set authoring_state=jsonb_set(
+        authoring_state,'{mandate,id}','"mandate-replaced"'::jsonb
+      ) where id=$1
+    `, [WORKSPACE]);
+    await assert.rejects(scalar(database, `
+      select public.record_authoring_semantic_audit_v1(
+        $1,$2,'audit:semantic:part:mandate-changed',$3,$4,$5::jsonb
+      ) value
+    `, [
+      ACTOR, WORKSPACE, partSemanticHash, revision,
+      JSON.stringify(partSemanticPayload)
+    ]), (error) => error.code === "40001");
+    await database.query(`
+      update private.authoring_workspaces
+      set authoring_state=jsonb_set(
+        authoring_state,'{mandate,id}','"mandate-audit-part"'::jsonb
+      ) where id=$1
+    `, [WORKSPACE]);
+    await scalar(database, `
+      select public.record_authoring_semantic_audit_v1(
+        $1,$2,'audit:semantic:part:0001',$3,$4,$5::jsonb
+      ) value
+    `, [
+      ACTOR, WORKSPACE, partSemanticHash, revision,
+      JSON.stringify(partSemanticPayload)
+    ]);
+    revision += 1;
+    const completedPartAudit = await scalar(database, `
+      select public.get_authoring_audit_run_v1(
+        $1,$2,null,null,'part','part-a',20,null
+      ) value
+    `, [ACTOR, WORKSPACE]);
+    assert.equal(completedPartAudit.audit.latestAuditRun.status, "complete");
+    assert.equal(completedPartAudit.audit.latestAuditRun.current, true);
+    assert.equal(completedPartAudit.audit.components.count, 1);
+    assert.deepEqual(
+      completedPartAudit.audit.components.items[0].childAuditRunRef,
+      componentReceipt.auditRunRef
+    );
+    assert.equal(completedPartAudit.audit.components.items[0].targetAvailable, true);
+    assert.equal(completedPartAudit.audit.summary.findings.total, 2);
+    assert.deepEqual(completedPartAudit.audit.summary.dimensions.coverage, {
+      status: "conformant",
+      findingCount: 0
+    });
+    assert.deepEqual(completedPartAudit.audit.summary.dimensions.coherence, {
+      status: "finding",
+      findingCount: 1
+    });
+    for (const dimension of ["dependencies", "redundancy", "integration"]) {
+      assert.deepEqual(completedPartAudit.audit.summary.dimensions[dimension], {
+        status: "not_checked",
+        findingCount: 0
+      });
+    }
+    const historicalPartFindingId = completedPartAudit.audit.findings.find(({ code }) => (
+      code === "semantic_part_coherence_gap"
+    )).findingId;
+    const newerPartCommand = {
+      ...partCommand,
+      kind: "reaudit",
+      report: { ...partCommand.report, auditedRevision: revision }
+    };
+    const newerPartReceipt = await scalar(database, `
+      select public.register_authoring_audit_run_v1(
+        $1,$2,'audit:run:part:0002',$3,$4,$5::jsonb
+      ) value
+    `, [
+      ACTOR,
+      WORKSPACE,
+      await mutationHash(database, "run_authoring_audit", newerPartCommand),
+      revision,
+      JSON.stringify(newerPartCommand)
+    ]);
+    revision += 1;
+    const newerPartSemanticPayload = {
+      ...partSemanticPayload,
+      auditRunRef: newerPartReceipt.auditRunRef,
+      findings: partSemanticPayload.findings.map((finding) => ({
+        ...finding,
+        code: "semantic_part_coherence_gap_current"
+      }))
+    };
+    await scalar(database, `
+      select public.record_authoring_semantic_audit_v1(
+        $1,$2,'audit:semantic:part:0002',$3,$4,$5::jsonb
+      ) value
+    `, [
+      ACTOR,
+      WORKSPACE,
+      await mutationHash(
+        database, "record_authoring_semantic_audit", newerPartSemanticPayload
+      ),
+      revision,
+      JSON.stringify(newerPartSemanticPayload)
+    ]);
+    revision += 1;
+    const completedAuditState = await scalar(database, `
+      select authoring_state value
+      from private.authoring_workspaces where id=$1
+    `, [WORKSPACE]);
+    completedAuditState.mandate = null;
+    await scalar(database, `
+      select public.update_authoring_workspace_continuity_v1(
+        $1,$2,'continuity:audit:clear-complete',$3,$4,'clear_mandate',$5::jsonb
+      ) value
+    `, [
+      ACTOR, WORKSPACE, hash("e"), revision,
+      JSON.stringify(completedAuditState)
+    ]);
+    revision += 1;
+    const supersededPartAudit = await scalar(database, `
+      select public.get_authoring_audit_run_v1(
+        $1,$2,$3::uuid,$4,null,null,20,null
+      ) value
+    `, [
+      ACTOR, WORKSPACE, partReceipt.auditRunRef.id, partReceipt.auditRunRef.version
+    ]);
+    assert.equal(supersededPartAudit.audit.latestAuditRun.current, false);
+    await assert.rejects(scalar(database, `
+      select public.manage_authoring_workspace_finding_v1(
+        $1,$2,'audit:decision:part-superseded',$3,$4,'decide',$5::jsonb
+      ) value
+    `, [
+      ACTOR, WORKSPACE, hash("7"), revision,
+      JSON.stringify({ findingId: historicalPartFindingId, decision: "approve" })
+    ]), (error) => error.code === "40001");
+    const currentPartAudit = await scalar(database, `
+      select public.get_authoring_audit_run_v1(
+        $1,$2,null,null,'part','part-a',20,null
+      ) value
+    `, [ACTOR, WORKSPACE]);
+    assert.deepEqual(
+      currentPartAudit.audit.latestAuditRun.ref,
+      newerPartReceipt.auditRunRef
+    );
+    assert.equal(currentPartAudit.audit.latestAuditRun.current, true);
+    const partFindingId = currentPartAudit.audit.findings.find(({ code }) => (
+      code === "semantic_part_coherence_gap_current"
+    )).findingId;
+    const partDecisionPayload = {
+      findingId: partFindingId,
+      decision: "approve"
+    };
+    const partDecisionExpectedRevision = revision;
+    const partDecisionPayloadHash = hash("4");
+    const partDecisionReceipt = await scalar(database, `
+      select public.manage_authoring_workspace_finding_v1(
+        $1,$2,'audit:decision:part-approved',$3,$4,'decide',$5::jsonb
+      ) value
+    `, [
+      ACTOR, WORKSPACE, partDecisionPayloadHash, partDecisionExpectedRevision,
+      JSON.stringify(partDecisionPayload)
+    ]);
+    assert.equal(partDecisionReceipt.findingOperation, "decide");
+    revision += 1;
+
+    const activeRepairState = await scalar(database, `
+      select authoring_state value
+      from private.authoring_workspaces where id=$1
+    `, [WORKSPACE]);
+    activeRepairState.mandate = {
+      id: "mandate-repair-active-part",
+      kind: "repair_findings",
+      findingIds: [partFindingId],
+      decidedAtRevision: revision
+    };
+    await scalar(database, `
+      select public.update_authoring_workspace_continuity_v1(
+        $1,$2,'continuity:repair:active',$3,$4,'set_mandate',$5::jsonb
+      ) value
+    `, [
+      ACTOR, WORKSPACE, hash("b"), revision, JSON.stringify(activeRepairState)
+    ]);
+    revision += 1;
+    const prematureAuditState = structuredClone(activeRepairState);
+    prematureAuditState.mandate = {
+      id: "mandate-audit-premature",
+      kind: "audit",
+      targetPartId: "part-a",
+      decidedAtRevision: revision
+    };
+    await assert.rejects(scalar(database, `
+      select public.update_authoring_workspace_continuity_v1(
+        $1,$2,'continuity:audit:premature',$3,$4,'set_mandate',$5::jsonb
+      ) value
+    `, [
+      ACTOR, WORKSPACE, hash("c"), revision,
+      JSON.stringify(prematureAuditState)
+    ]), (error) => error.code === "23514");
+    await database.query(`
+      update private.authoring_workspace_observations
+      set status='repaired',correction_request_id='repair:part:complete',
+          resulting_revision=$2,updated_at=now()
+      where id=$1
+    `, [partFindingId, revision + 1]);
+    await scalar(database, `
+      select public.update_authoring_workspace_continuity_v1(
+        $1,$2,'continuity:audit:after-repair',$3,$4,'set_mandate',$5::jsonb
+      ) value
+    `, [
+      ACTOR, WORKSPACE, hash("d"), revision,
+      JSON.stringify(prematureAuditState)
+    ]);
+    revision += 1;
+    const replacedMandatePartAudit = await scalar(database, `
+      select public.get_authoring_audit_run_v1(
+        $1,$2,$3::uuid,$4,null,null,2,null
+      ) value
+    `, [
+      ACTOR, WORKSPACE,
+      newerPartReceipt.auditRunRef.id,
+      newerPartReceipt.auditRunRef.version
+    ]);
+    assert.equal(replacedMandatePartAudit.audit.latestAuditRun.current, false);
+
     await database.query(`
       update private.authoring_workspace_entities
       set content=$2::jsonb,version=version+1
@@ -1611,6 +2764,52 @@ test("resolução, ResourceSet, snapshot, blueprint e manifesto preservam proven
       changedContentState.materializationContentHash,
       manifest.contentHash
     );
+    const staleHistoricalPartAudit = await scalar(database, `
+      select public.get_authoring_audit_run_v1(
+        $1,$2,$3::uuid,$4,null,null,2,null,10,null,'micro-a'
+      ) value
+    `, [
+      ACTOR, WORKSPACE,
+      newerPartReceipt.auditRunRef.id,
+      newerPartReceipt.auditRunRef.version
+    ]);
+    assert.equal(staleHistoricalPartAudit.audit.latestAuditRun.current, false);
+    const staleDecisionReplay = await scalar(database, `
+      select public.manage_authoring_workspace_finding_v1(
+        $1,$2,'audit:decision:part-approved',$3,$4,'decide',$5::jsonb
+      ) value
+    `, [
+      ACTOR, WORKSPACE, partDecisionPayloadHash, partDecisionExpectedRevision,
+      JSON.stringify(partDecisionPayload)
+    ]);
+    assert.equal(staleDecisionReplay.idempotent, true);
+    assert.equal(staleDecisionReplay.findingOperation, "decide");
+    assert.equal(staleDecisionReplay.status, partDecisionReceipt.status);
+    await assert.rejects(scalar(database, `
+      select public.manage_authoring_workspace_finding_v1(
+        $1,$2,'audit:decision:part-approved',$3,$4,'decide',$5::jsonb
+      ) value
+    `, [
+      ACTOR, WORKSPACE, hash("6"), partDecisionExpectedRevision,
+      JSON.stringify(partDecisionPayload)
+    ]), (error) => error.code === "23505");
+    const repairState = await scalar(database, `
+      select authoring_state value
+      from private.authoring_workspaces where id=$1
+    `, [WORKSPACE]);
+    repairState.mandate = {
+      id: "mandate-repair-stale-part",
+      kind: "repair_findings",
+      findingIds: [partFindingId],
+      decidedAtRevision: revision
+    };
+    await assert.rejects(scalar(database, `
+      select public.update_authoring_workspace_continuity_v1(
+        $1,$2,'continuity:repair:stale',$3,$4,'set_mandate',$5::jsonb
+      ) value
+    `, [
+      ACTOR, WORKSPACE, hash("5"), revision, JSON.stringify(repairState)
+    ]), (error) => error.code === "40001");
 
     const wrongSnapshotManifest = {
       ...manifest,
@@ -1703,6 +2902,141 @@ test("resolução, ResourceSet, snapshot, blueprint e manifesto preservam proven
       from private.authoring_pedagogical_blueprint_bindings
       where workspace_id=$1 and binding_id='binding-a'
     `, [WORKSPACE]), 1);
+    await database.query(`
+      delete from private.authoring_workspace_entities
+      where workspace_id=$1 and entity_type='card' and entity_id='card:a'
+    `, [WORKSPACE]);
+    assert.equal(await scalar(database, `
+      select count(*)::integer value
+      from private.authoring_workspace_observations
+      where workspace_id=$1 and audit_run_id is not null
+    `, [WORKSPACE]) > 0, true);
+    const detachedTargetAudit = await scalar(database, `
+      select public.get_authoring_audit_run_v1(
+        $1,$2,$3::uuid,$4,null,null,2,null
+      ) value
+    `, [
+      ACTOR, WORKSPACE, auditReceipt.auditRunRef.id,
+      auditReceipt.auditRunRef.version
+    ]);
+    assert.equal(detachedTargetAudit.audit.findings.some((finding) => (
+      finding.findingId === deterministicFindingId
+        && finding.targetAvailable === false
+    )), true);
+
+    await database.query(`select private.discard_authoring_workspace_v1($1)`, [
+      WORKSPACE
+    ]);
+    for (const tableName of [
+      "authoring_workspace_observations",
+      "authoring_audit_runs",
+      "authoring_microsequence_design_bindings",
+      "authoring_materialization_manifests",
+      "authoring_pedagogical_blueprint_bindings",
+      "authoring_pedagogical_blueprints",
+      "authoring_effective_design_snapshots",
+      "authoring_design_parameter_assignments",
+      "authoring_resource_sets",
+      "authoring_instructional_analyses",
+      "authoring_materialization_states"
+    ]) {
+      assert.equal(await scalar(database, `
+        select count(*)::integer value
+        from private.${tableName} where workspace_id=$1
+      `, [WORKSPACE]), 0, `descarte: ${tableName}`);
+    }
+    assert.equal(await scalar(database, `
+      select deleted_at is not null value
+      from private.authoring_workspaces where id=$1
+    `, [WORKSPACE]), true);
+  } finally {
+    await database.close();
+  }
+});
+
+test("excluir colaborador anonimiza proveniência sem apagar histórico", async () => {
+  const database = await setupDatabase();
+  try {
+    await database.query(`
+      insert into private.authoring_design_parameter_assignments(
+        workspace_id,assignment_id,assignment_version,model_version,action,
+        parameter_id,parameter_version,scope_kind,scope_ref,scope_path,
+        mode,value,authority_kind,authority_actor_id,authority_ref,locked,
+        rationale,provenance_refs,based_on_workspace_revision,created_revision,
+        created_by
+      ) values(
+        $1,'actor-removal-assignment','1.0.0','1.0.0','set',
+        'representation_fallback_policy','1.0.0','microsequence','micro-a',
+        array['course-a','module-a','lesson-a','micro-a'],
+        'manual_override','{"kind":"enum","value":"block"}'::jsonb,
+        'author',$2,$3,false,'Decisão humana registrada.','{}',1,2,$2
+      )
+    `, [WORKSPACE, AUTHOR_ONLY, AUTHOR_ONLY]);
+    const auditRunId = await scalar(database, `
+      insert into private.authoring_audit_runs(
+        workspace_id,kind,scope_kind,scope_ref,audited_workspace_revision,
+        algorithm_id,algorithm_version,deterministic_result,mandate_snapshot,
+        result_hash,deterministic_finding_count,created_by
+      ) values(
+        $1,'audit','microsequence','micro-a',1,
+        'actor-removal-test','1.0.0','{}'::jsonb,
+        '{"id":"mandate-actor-removal","kind":"audit"}'::jsonb,
+        $2,0,$3
+      ) returning id value
+    `, [WORKSPACE, hash("8"), AUTHOR_ONLY]);
+    await database.query(`
+      insert into private.authoring_audit_run_completions(
+        audit_run_id,workspace_id,completed_revision,semantic_result,
+        result_hash,semantic_finding_count,verification_count,completed_by
+      ) values(
+        $1,$2,2,'{"findings":[],"verifications":[]}'::jsonb,
+        $3,0,0,$4
+      )
+    `, [auditRunId, WORKSPACE, hash("9"), AUTHOR_ONLY]);
+    const findingId = await scalar(database, `
+      insert into private.authoring_workspace_observations(
+        workspace_id,author_id,kind,entity_type,entity_path,body,
+        category,severity,status,proposed_repair,audit_revision,audit_part_id,
+        audit_run_id,audit_finding_ordinal,finding_code,finding_origin,
+        rule_kind,rule_id,rule_version,public_evidence,finding_fingerprint
+      ) values(
+        $1,$2,'audit_finding','workspace','{}','Evidência pública preservada.',
+        'design','medium','open',null,1,null,$3,1,
+        'actor_removal_history','semantic_audit','semantic_rubric',
+        'actor-removal',null,'Evidência pública preservada.',$4
+      ) returning id value
+    `, [WORKSPACE, AUTHOR_ONLY, auditRunId, hash("a")]);
+
+    await database.query(`delete from auth.users where id=$1`, [AUTHOR_ONLY]);
+
+    assert.equal(await scalar(database, `
+      select count(*)::integer value from auth.users where id=$1
+    `, [AUTHOR_ONLY]), 0);
+    const assignment = await database.query(`
+      select created_by,authority_actor_id,authority_ref
+      from private.authoring_design_parameter_assignments
+      where workspace_id=$1 and assignment_id='actor-removal-assignment'
+    `, [WORKSPACE]);
+    assert.deepEqual(assignment.rows[0], {
+      created_by: null,
+      authority_actor_id: null,
+      authority_ref: null
+    });
+    const auditAuthors = await database.query(`
+      select run.created_by,completion.completed_by
+      from private.authoring_audit_runs run
+      join private.authoring_audit_run_completions completion
+        on completion.audit_run_id=run.id
+      where run.id=$1
+    `, [auditRunId]);
+    assert.deepEqual(auditAuthors.rows[0], {
+      created_by: null,
+      completed_by: null
+    });
+    assert.equal(await scalar(database, `
+      select author_id is null value
+      from private.authoring_workspace_observations where id=$1
+    `, [findingId]), true);
   } finally {
     await database.close();
   }

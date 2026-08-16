@@ -1,5 +1,6 @@
 import { WorkspaceDesignOfflineStore } from "../persistence/WorkspaceDesignOfflineStore.js";
 import {
+  projectAuthoringAuditSlice,
   projectAuthoringDesignSlice,
   projectAuthoringFinding,
   projectAuthoringWorkspaceListItem,
@@ -14,6 +15,7 @@ import {
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
 const WORKSPACE_LIST_CACHE_CONTRACT = "aralearn.authoring-workspace-list-cache.v1";
 const WORKSPACE_OVERVIEW_CACHE_CONTRACT = "aralearn.authoring-workspace-overview-cache.v1";
+const AUTHORING_AUDIT_CACHE_CONTRACT = "aralearn.authoring-audit-cache.v1";
 const CACHE_PREFIX = "learning.authoring.v1";
 const PAGE_LIMIT = 100;
 const MAX_PAGES = 100;
@@ -152,6 +154,23 @@ function listCacheKey(userId) {
 
 function overviewCacheKey(userId, workspace) {
   return `${CACHE_PREFIX}:overview:${userId}:${workspace}`;
+}
+
+function auditCacheKey(userId, workspace, kind, refValue) {
+  return `${CACHE_PREFIX}:audit:${userId}:${workspace}:${kind}:${encodeURIComponent(refValue)}`;
+}
+
+function normalizeAuditScope(value) {
+  if (value == null) return null;
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    throw new TypeError("Escopo de auditoria inválido.");
+  }
+  const kind = text(value.kind);
+  const refValue = text(value.ref);
+  if (!["microsequence", "part"].includes(kind) || !refValue || refValue.length > 240) {
+    throw new TypeError("Escopo de auditoria inválido.");
+  }
+  return { kind, ref: refValue };
 }
 
 function isSameRef(left, right) {
@@ -412,6 +431,34 @@ export class AuthoringWorkspaceClient {
     });
   }
 
+  async #writeAuditSnapshot(key, workspace, audit, readStartedAt) {
+    const userId = this.#userId();
+    return this.#atomicCache(key, (current) => {
+      if (current?.contract === AUTHORING_AUDIT_CACHE_CONTRACT
+          && current.userId === userId
+          && current.workspaceId === workspace
+          && Date.parse(current.cachedAt || "") >= readStartedAt) {
+        return undefined;
+      }
+      return {
+        contract: AUTHORING_AUDIT_CACHE_CONTRACT,
+        userId,
+        workspaceId: workspace,
+        audit: structuredClone(audit),
+        cachedAt: new Date().toISOString()
+      };
+    });
+  }
+
+  async #readCachedAudit(key) {
+    const cached = await this.#readCache(key, AUTHORING_AUDIT_CACHE_CONTRACT);
+    return cached?.audit ? {
+      ...structuredClone(cached.audit),
+      stale: true,
+      nextCursor: null
+    } : null;
+  }
+
   async #executeRemote(tool, args) {
     try {
       return await this.#catalog.executeApplicationAuthoringAction(tool, args);
@@ -422,6 +469,30 @@ export class AuthoringWorkspaceClient {
       if (error?.name === "TypeError") error.remoteTransportFailure = true;
       throw error;
     }
+  }
+
+  #requireOnlineMutation(online) {
+    if (!online || globalThis.navigator?.onLine === false) {
+      const error = new Error("Conecte-se para registrar esta decisão no workspace.");
+      error.code = "authoring_online_required";
+      throw error;
+    }
+  }
+
+  async #continuityMutation({
+    workspace,
+    expectedRevision,
+    operation,
+    mutationRequestId = requestId(),
+    ...argumentsValue
+  }) {
+    return this.#executeRemote("gerirContinuidadeDaAutoria", {
+      requestId: mutationRequestId,
+      workspaceId: workspace,
+      expectedRevision: revision(expectedRevision),
+      operation,
+      ...argumentsValue
+    });
   }
 
   async #loadWorkspace(workspace, view = "outline") {
@@ -684,6 +755,201 @@ export class AuthoringWorkspaceClient {
       stale: false,
       scopeTotalKnown: requestedPath == null && page.hasMore !== true
     };
+  }
+
+  async loadAuthoringAudit({
+    workspaceId: workspaceValue,
+    microsequencePath,
+    auditRunRef = null,
+    auditScope = null,
+    cursor = null,
+    limit = FINDING_PAGE_LIMIT,
+    componentCursor = null,
+    componentLimit = 10,
+    online = globalThis.navigator?.onLine !== false
+  } = {}) {
+    const workspace = workspaceId(workspaceValue);
+    const path = normalizeMicrosequencePath(microsequencePath);
+    const reference = auditRunRef == null ? null : normalizeResourceSetRef(auditRunRef);
+    const requestedScope = normalizeAuditScope(auditScope) || {
+      kind: "microsequence",
+      ref: path[3]
+    };
+    if (reference && auditScope != null) {
+      throw new TypeError("Escolha a rodada ou o escopo de auditoria, não ambos.");
+    }
+    const userId = this.#userId();
+    const requestedCacheKey = reference
+      ? auditCacheKey(userId, workspace, "run", `${reference.id}@${reference.version}`)
+      : auditCacheKey(userId, workspace, requestedScope.kind, requestedScope.ref);
+    if (!online) {
+      const cached = await this.#readCachedAudit(requestedCacheKey);
+      if (cached) return cached;
+      const overview = await this.loadAuthoringWorkspaceOverview(workspace, { online: false });
+      const part = requestedScope.kind === "part"
+        ? overview.parts.find((item) => item.partId === requestedScope.ref)
+        : null;
+      const item = overview.parts.flatMap((entry) => entry.microsequences).find((microsequence) => (
+        path.every((pathEntry, index) => microsequence.entityPath?.[index] === pathEntry)
+      ));
+      const findings = overview.findings.filter((finding) => {
+        const targetPath = finding.entityPath || finding.readerTarget?.entityPath;
+        if (part) return part.microsequences.some((microsequence) => (
+          Array.isArray(microsequence.entityPath) && microsequence.entityPath.every(
+            (entry, index) => targetPath?.[index] === entry
+          )
+        ));
+        return path.every((entry, index) => targetPath?.[index] === entry);
+      });
+      return projectAuthoringAuditSlice({
+        workspaceId: workspace,
+        stale: true,
+        response: {
+          revision: overview.revision,
+          result: {
+            audit: {
+              latestAuditRun: null,
+              summary: part?.auditSummary || item?.auditSummary || null,
+              findings,
+              total: findings.length,
+              nextCursor: null,
+              truncated: overview.findingsTruncated === true
+            }
+          }
+        }
+      });
+    }
+    if (!Number.isSafeInteger(limit) || limit < 1 || limit > FINDING_PAGE_LIMIT) {
+      throw new TypeError("Limite de auditoria inválido.");
+    }
+    if (!Number.isSafeInteger(componentLimit) || componentLimit < 1 || componentLimit > 10) {
+      throw new TypeError("Limite de componentes da auditoria inválido.");
+    }
+    const readStartedAt = Date.now();
+    let response;
+    try {
+      response = await this.#executeRemote("gerirDesenhoInstrucional", {
+        operation: "read_slice",
+        workspaceId: workspace,
+        microsequencePath: path,
+        view: "audit",
+        limit,
+        componentLimit,
+        ...(reference ? { auditRunRef: reference } : auditScope != null ? { auditScope: requestedScope } : {}),
+        ...(text(cursor) ? { cursor: text(cursor) } : {}),
+        ...(text(componentCursor) ? { componentCursor: text(componentCursor) } : {})
+      });
+    } catch (error) {
+      if (!transportFailure(error)) throw error;
+      const cached = await this.#readCachedAudit(requestedCacheKey);
+      if (!cached) throw error;
+      return cached;
+    }
+    if (text(response?.workspaceId).toLowerCase() !== workspace || response?.result?.view !== "audit") {
+      throw new Error("A Auditoria devolveu uma resposta incompatível com o escopo solicitado.");
+    }
+    const audit = projectAuthoringAuditSlice({ workspaceId: workspace, response });
+    const keys = new Set([requestedCacheKey]);
+    if (audit.latestAuditRun?.ref) {
+      keys.add(auditCacheKey(
+        userId,
+        workspace,
+        "run",
+        `${audit.latestAuditRun.ref.id}@${audit.latestAuditRun.ref.version}`
+      ));
+    }
+    if (!reference && audit.latestAuditRun?.scope?.kind && audit.latestAuditRun.scope.ref) {
+      keys.add(auditCacheKey(
+        userId,
+        workspace,
+        audit.latestAuditRun.scope.kind,
+        audit.latestAuditRun.scope.ref
+      ));
+    }
+    const cacheWriteFailed = text(cursor) || text(componentCursor)
+      ? false
+      : (await Promise.all(
+          [...keys].map((key) => this.#bestEffortCache(
+            () => this.#writeAuditSnapshot(key, workspace, audit, readStartedAt)
+          ))
+        )).some(Boolean);
+    return { ...audit, cacheWriteFailed };
+  }
+
+  async decideAuthoringFinding({
+    workspaceId: workspaceValue,
+    findingId,
+    decision,
+    expectedRevision,
+    requestId: suppliedRequestId = null,
+    online = globalThis.navigator?.onLine !== false
+  } = {}) {
+    this.#requireOnlineMutation(online);
+    const workspace = workspaceId(workspaceValue);
+    const observationId = text(findingId).toLowerCase();
+    if (!UUID_PATTERN.test(observationId)) throw new TypeError("Achado inválido.");
+    const normalizedDecision = ({ approve: "approved", approved: "approved", reject: "rejected", rejected: "rejected" })[
+      text(decision).toLowerCase()
+    ];
+    if (!normalizedDecision) throw new TypeError("Decisão de achado inválida.");
+    return this.#continuityMutation({
+      workspace,
+      expectedRevision,
+      operation: "decide_finding",
+      ...(suppliedRequestId ? { mutationRequestId: suppliedRequestId } : {}),
+      observationId,
+      decision: normalizedDecision
+    });
+  }
+
+  async prepareAuthoringFindingRepairs({
+    workspaceId: workspaceValue,
+    findingIds,
+    expectedRevision,
+    requestId: suppliedRequestId = null,
+    online = globalThis.navigator?.onLine !== false
+  } = {}) {
+    this.#requireOnlineMutation(online);
+    const workspace = workspaceId(workspaceValue);
+    const normalizedIds = [...new Set(list(findingIds).map((value) => text(value).toLowerCase()))];
+    if (!normalizedIds.length || normalizedIds.length > 50 || normalizedIds.some((id) => !UUID_PATTERN.test(id))) {
+      throw new TypeError("Escolha de achados aprovados inválida.");
+    }
+    const mutationRequestId = suppliedRequestId || requestId();
+    return this.#continuityMutation({
+      workspace,
+      expectedRevision,
+      operation: "set_mandate",
+      mutationRequestId,
+      mandateId: `repair:${mutationRequestId}`,
+      kind: "repair_findings",
+      findingIds: normalizedIds
+    });
+  }
+
+  async requestAuthoringReaudit({
+    workspaceId: workspaceValue,
+    partId = null,
+    expectedRevision,
+    requestId: suppliedRequestId = null,
+    online = globalThis.navigator?.onLine !== false
+  } = {}) {
+    this.#requireOnlineMutation(online);
+    const workspace = workspaceId(workspaceValue);
+    const targetPartId = text(partId);
+    if (partId != null && (!targetPartId || targetPartId.length > 240)) {
+      throw new TypeError("Parte inválida para reauditoria.");
+    }
+    const mutationRequestId = suppliedRequestId || requestId();
+    return this.#continuityMutation({
+      workspace,
+      expectedRevision,
+      operation: "set_mandate",
+      mutationRequestId,
+      mandateId: `audit:${mutationRequestId}`,
+      kind: "audit",
+      ...(targetPartId ? { targetPartId } : {})
+    });
   }
 
   async #loadDesignRemoteContext(workspace, path, { cache = true } = {}) {

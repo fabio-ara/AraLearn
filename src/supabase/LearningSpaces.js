@@ -1661,6 +1661,22 @@ export class LearningSpaces {
     return this.authoringClient.listAuthoringFindings(options);
   }
 
+  loadAuthoringAudit(options) {
+    return this.authoringClient.loadAuthoringAudit(options);
+  }
+
+  decideAuthoringFinding(options) {
+    return this.authoringClient.decideAuthoringFinding(options);
+  }
+
+  prepareAuthoringFindingRepairs(options) {
+    return this.authoringClient.prepareAuthoringFindingRepairs(options);
+  }
+
+  requestAuthoringReaudit(options) {
+    return this.authoringClient.requestAuthoringReaudit(options);
+  }
+
   loadAuthoringDesign(options) {
     return this.authoringClient.loadAuthoringDesign(options);
   }

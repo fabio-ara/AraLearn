@@ -93,13 +93,15 @@ Comece pela tarefa em linguagem comum e só depois avance para os protocolos:
    auditar, reparar e continuar;
 2. [Desenho instrucional parametrizado](desenho-instrucional-parametrizado.md)
    — análise, parâmetros e manifesto propostos antes da implementação;
-3. [Autoria e publicação do catálogo](autoria-do-catalogo.md) — workspace,
+3. [Auditoria de conformidade instrucional](auditoria-de-conformidade-instrucional.md)
+   — fatos estruturais, revisão semântica, decisão humana, reparo e reauditoria;
+4. [Autoria e publicação do catálogo](autoria-do-catalogo.md) — workspace,
    revisão humana, submissão e publicação;
-4. [Assistência por modelo de linguagem](assistencia-por-ia.md) — seleção,
+5. [Assistência por modelo de linguagem](assistencia-por-ia.md) — seleção,
    conversa, versões locais, autoridade e limites;
-5. [Fluxos, instruções e contratos](fluxos-prompts-e-contratos.md) — como texto
+6. [Fluxos, instruções e contratos](fluxos-prompts-e-contratos.md) — como texto
    livre é separado de operações estruturadas;
-6. [Autoria por Model Context Protocol](autoria-mcp.md) — descoberta de
+7. [Autoria por Model Context Protocol](autoria-mcp.md) — descoberta de
    ferramentas, autenticação, chamadas e robustez.
 
 O [plano de controle e artefatos](plano-de-controle-e-artefatos.md) aprofunda a
@@ -145,6 +147,7 @@ abertas, sem tratar teste de software como evidência de aprendizagem.
 | [Glossário técnico](glossario-tecnico.md) | termos de computação e contratos |
 | [Glossário de construtos](glossario-construtos.md) | termos pedagógicos e metodológicos |
 | [Desenho instrucional parametrizado](desenho-instrucional-parametrizado.md) | análise científica, parâmetros, contratos e persistência interna |
+| [Auditoria de conformidade instrucional](auditoria-de-conformidade-instrucional.md) | checks determinísticos, juízo semântico, findings e reauditoria |
 | [Contrato público](aralearn-contract.md) | formatos canônicos de conteúdo |
 | [Recursos de card](recursos-de-card.md) | catálogo de representações e arquitetura de packages |
 | [Matriz de conformidade técnica](matriz-conformidade-tecnica.md) | afirmação técnica e ponto de verificação |

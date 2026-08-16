@@ -1,5 +1,6 @@
 import {
   createAuthoringDestinationRegistry,
+  normalizeAuthoringAuditSlice,
   normalizeAuthoringDesign,
   normalizeAuthoringWorkspaceList,
   normalizeAuthoringWorkspaceOverview,
@@ -23,7 +24,7 @@ function conflictError(error) {
 }
 
 function userMessage(error, fallback) {
-  if (conflictError(error)) return "O desenho mudou. O estado foi relido antes de continuar.";
+  if (conflictError(error)) return "O workspace mudou. O estado foi relido antes de continuar.";
   return text(error?.message) || fallback;
 }
 
@@ -262,6 +263,7 @@ export function createAuthoringWorkspaceSurface({
   let designEpoch = 0;
   let resourceEpoch = 0;
   let findingEpoch = 0;
+  let auditComponentEpoch = 0;
   let pendingFocusSelector = "";
   let returnFocusTarget = null;
   let searchTimer = null;
@@ -287,6 +289,21 @@ export function createAuthoringWorkspaceSurface({
     findingsPageLoaded: false,
     findingsNextCursor: null,
     findingsOfflineLimited: false,
+    auditSlice: null,
+    auditRunRef: null,
+    auditLoading: false,
+    auditComponentsLoading: false,
+    auditPartId: "",
+    auditParentPartId: "",
+    auditParentRunRef: null,
+    findingEditor: null,
+    findingPartId: "",
+    findingAuditStatus: "",
+    auditOperational: false,
+    findingScopeAction: null,
+    reauditBlockedByRepairs: false,
+    auditActionsOnline: online(),
+    auditActionCapabilities: Object.freeze({ decide: false, prepare: false, reaudit: false }),
     statusMessage: "",
     errorMessage: ""
   };
@@ -297,6 +314,18 @@ export function createAuthoringWorkspaceSurface({
       ? controller.listAuthoringFindings.bind(controller)
       : null;
 
+  function syncAuditActionCapabilities() {
+    const capabilities = state.overview?.capabilities || {};
+    state.auditActionCapabilities = Object.freeze({
+      decide: capabilities.decideFindings === true &&
+        typeof controller.decideAuthoringFinding === "function",
+      prepare: capabilities.prepareRepairs === true &&
+        typeof controller.prepareAuthoringFindingRepairs === "function",
+      reaudit: capabilities.requestAudit === true &&
+        typeof controller.requestAuthoringReaudit === "function"
+    });
+  }
+
   function resetFindingsPagination(overview = null) {
     ++findingEpoch;
     state.findingsLoading = false;
@@ -305,6 +334,401 @@ export function createAuthoringWorkspaceSurface({
       ? null
       : structuredClone(overview.findingsNextCursor);
     state.findingsOfflineLimited = false;
+  }
+
+  function partForFinding(finding) {
+    const path = finding?.readerTarget?.entityPath || finding?.entityPath;
+    return state.overview?.parts.find((part) => (
+      finding?.auditPartId === part.coordinationPartId ||
+      finding?.auditPartId === part.partId || (Array.isArray(path) && part.microsequences.some(
+        (microsequence) => Array.isArray(microsequence.entityPath) && microsequence.entityPath.every(
+          (entry, index) => path[index] === entry
+        )
+      ))
+    )) || null;
+  }
+
+  function sameVersionedRef(left, right) {
+    return Boolean(text(left?.id) && text(left?.id) === text(right?.id) &&
+      text(left?.version) && text(left?.version) === text(right?.version));
+  }
+
+  function samePath(left, right) {
+    return Array.isArray(left) && Array.isArray(right) && left.length === right.length &&
+      left.every((entry, index) => entry === right[index]);
+  }
+
+  function mergeFinding(existing, incoming) {
+    if (!existing) return incoming;
+    const targetAvailable = existing.targetAvailable !== false && incoming.targetAvailable !== false;
+    if (!targetAvailable) {
+      return Object.freeze({
+        ...existing,
+        ...incoming,
+        targetAvailable: false,
+        entityPath: null,
+        readerTarget: null
+      });
+    }
+    const existingPath = existing.readerTarget?.entityPath || existing.entityPath;
+    const incomingPath = incoming.readerTarget?.entityPath || incoming.entityPath;
+    const readerTarget = Array.isArray(existingPath) && Array.isArray(incomingPath) &&
+      !samePath(existingPath, incomingPath)
+      ? existing.readerTarget
+      : incoming.readerTarget || existing.readerTarget || null;
+    return Object.freeze({
+      ...existing,
+      ...incoming,
+      targetAvailable: true,
+      entityPath: readerTarget?.entityPath || incoming.entityPath || existing.entityPath || null,
+      readerTarget
+    });
+  }
+
+  function reconcileAuditFindings(findings) {
+    const known = new Map((state.overview?.findings || []).map((finding) => [finding.findingId, finding]));
+    return Object.freeze(findings.map((finding) => mergeFinding(known.get(finding.findingId), finding)));
+  }
+
+  function auditComponentKey(component) {
+    return text(component?.microsequenceRef) || `ordinal:${component?.ordinal}`;
+  }
+
+  function mergeAuditComponents(existing, incoming) {
+    if (!existing) return incoming;
+    return Object.freeze({
+      ...existing,
+      ...incoming,
+      targetAvailable: existing.targetAvailable !== false && incoming.targetAvailable !== false,
+      microsequencePath: incoming.microsequencePath || existing.microsequencePath || null,
+      childAuditRunRef: incoming.childAuditRunRef || existing.childAuditRunRef || null
+    });
+  }
+
+  function microsequenceForAuditComponent(component, partId = state.auditPartId) {
+    const part = state.overview?.parts.find((item) => item.partId === partId);
+    return part?.microsequences.find((microsequence) => (
+      microsequence.key === component?.microsequenceRef ||
+      microsequence.entityPath?.[3] === component?.microsequenceRef ||
+      sameEntityPath(microsequence.entityPath, component?.microsequencePath)
+    )) || null;
+  }
+
+  function findingAuditStatus(finding) {
+    if (!finding) return "";
+    if (!finding.auditRunRef) return finding.legacyCompatible ? "legacy" : "unconfirmed";
+    const run = state.auditSlice?.latestAuditRun;
+    if (!sameVersionedRef(finding.auditRunRef, run?.ref)) return "";
+    if (state.auditSlice?.stale) return "stale";
+    if (run?.current !== true) return run?.status === "complete" ? "historical" : "unconfirmed";
+    return text(run?.status);
+  }
+
+  function scopeActionForFinding(finding) {
+    if (!finding || finding.legacyCompatible) return null;
+    const path = finding.readerTarget?.entityPath || finding.entityPath;
+    const microsequence = Array.isArray(path)
+      ? activeMicrosequence(state.overview, path.slice(0, 4))
+      : null;
+    if (microsequence) {
+      return Object.freeze({
+        kind: "microsequence",
+        microsequencePath: microsequence.entityPath,
+        label: "Abrir rodada da microssequência"
+      });
+    }
+    const part = partForFinding(finding);
+    return part?.coordinationPartId
+      ? Object.freeze({ kind: "part", partId: part.partId, label: "Abrir rodada da Parte" })
+      : null;
+  }
+
+  function reauditBlockedByPreparedRepairs(finding) {
+    const mandate = state.overview?.mandate;
+    if (!finding || mandate?.kind !== "repair_findings") return false;
+    return (mandate.findingIds || []).some((findingId) => {
+      if (findingId === finding.findingId) return false;
+      const current = state.overview.findings.find((item) => item.findingId === findingId);
+      return !current || !["repaired", "resolved", "rejected"].includes(current.status);
+    });
+  }
+
+  function findingHasCompletedAudit(finding) {
+    return finding?.auditRunRef
+      ? state.findingAuditStatus === "complete" && state.auditOperational
+      : finding?.legacyCompatible === true;
+  }
+
+  function findingHasCompletedOriginAudit(finding) {
+    if (state.overview?.stale === true) return false;
+    return finding?.auditRunRef
+      ? ["complete", "historical"].includes(state.findingAuditStatus) && !state.auditSlice?.stale
+      : finding?.legacyCompatible === true;
+  }
+
+  function currentAuditRevision() {
+    return Math.max(Number(state.overview?.revision) || 0, Number(state.auditSlice?.revision) || 0);
+  }
+
+  function findingsInCurrentAuditScope() {
+    if ((state.auditPartId || state.selectedMicrosequence) && state.auditSlice) {
+      return state.auditSlice.findings;
+    }
+    const findings = state.overview?.findings || [];
+    if (state.auditPartId) {
+      const part = state.overview?.parts.find((item) => item.partId === state.auditPartId);
+      return part ? findings.filter((finding) => partForFinding(finding)?.partId === part.partId) : [];
+    }
+    const path = state.selectedMicrosequence?.entityPath;
+    return Array.isArray(path) ? findings.filter((finding) => {
+      const target = finding.readerTarget?.entityPath || finding.entityPath;
+      return Array.isArray(target) && path.every((entry, index) => target[index] === entry);
+    }) : findings;
+  }
+
+  function currentAuditRequest() {
+    const part = state.auditPartId
+      ? state.overview?.parts.find((item) => item.partId === state.auditPartId)
+      : null;
+    const microsequence = state.selectedMicrosequence || part?.microsequences.find((item) => (
+      Array.isArray(item.entityPath)
+    ));
+    if (!microsequence?.entityPath) return null;
+    return {
+      workspaceId: state.workspaceId,
+      microsequencePath: microsequence.entityPath,
+      ...(state.auditRunRef
+        ? { auditRunRef: state.auditRunRef }
+        : part?.auditRunRef
+          ? { auditRunRef: part.auditRunRef }
+          : part?.coordinationPartId
+            ? { auditScope: { kind: "part", ref: part.coordinationPartId } }
+            : {})
+    };
+  }
+
+  function clearAuditParentContext() {
+    ++auditComponentEpoch;
+    state.auditComponentsLoading = false;
+    state.auditParentPartId = "";
+    state.auditParentRunRef = null;
+  }
+
+  async function loadAuditForCurrentScope({ preserveStatus = true } = {}) {
+    if (typeof controller.loadAuthoringAudit !== "function" || !state.workspaceId) return false;
+    const request = currentAuditRequest();
+    if (!request) {
+      state.auditSlice = null;
+      render();
+      return false;
+    }
+    const epoch = ++findingEpoch;
+    state.auditLoading = true;
+    if (!preserveStatus) {
+      state.statusMessage = "";
+      state.errorMessage = "";
+    }
+    render();
+    try {
+      const expectedRunRef = request.auditRunRef ? structuredClone(request.auditRunRef) : null;
+      const result = await controller.loadAuthoringAudit({
+        ...request,
+        limit: 50,
+        online: online()
+      });
+      if (epoch !== findingEpoch || !state.opened || !state.overview) return false;
+      const normalizedAudit = normalizeAuthoringAuditSlice(result);
+      if (expectedRunRef && !sameVersionedRef(expectedRunRef, normalizedAudit.latestAuditRun?.ref)) {
+        throw new Error("A Auditoria devolveu uma rodada diferente da solicitada.");
+      }
+      const audit = Object.freeze({
+        ...normalizedAudit,
+        findings: reconcileAuditFindings(normalizedAudit.findings)
+      });
+      state.auditSlice = audit;
+      state.auditRunRef = audit.latestAuditRun?.ref
+        ? structuredClone(audit.latestAuditRun.ref)
+        : null;
+      if (audit.findings.length) {
+        const merged = new Map(state.overview.findings.map((finding) => [finding.findingId, finding]));
+        audit.findings.forEach((finding) => merged.set(
+          finding.findingId,
+          mergeFinding(merged.get(finding.findingId), finding)
+        ));
+        state.overview = Object.freeze({
+          ...state.overview,
+          findings: Object.freeze([...merged.values()]),
+          mandate: Object.freeze({
+            ...(state.overview.mandate || {}),
+            ...(audit.coordination?.mandate || {})
+          })
+        });
+      }
+      if (audit.stale) state.statusMessage = "Exibindo a última auditoria disponível neste dispositivo.";
+      return true;
+    } catch (error) {
+      if (epoch !== findingEpoch || !state.opened) return false;
+      state.errorMessage = userMessage(error, "Não foi possível carregar as evidências da auditoria.");
+      return false;
+    } finally {
+      if (epoch === findingEpoch && state.opened) {
+        state.auditLoading = false;
+        render();
+      }
+    }
+  }
+
+  async function loadMoreAuditFindings({ restoreFocus = true } = {}) {
+    if (state.findingsLoading || !state.auditSlice?.truncated || state.auditSlice.nextCursor == null ||
+        typeof controller.loadAuthoringAudit !== "function") return false;
+    const pinnedRunRef = state.auditSlice.latestAuditRun?.ref;
+    const request = currentAuditRequest();
+    if (!request || !pinnedRunRef || !sameVersionedRef(request.auditRunRef, pinnedRunRef)) {
+      state.errorMessage = "Reabra esta auditoria antes de carregar outros achados.";
+      render();
+      return false;
+    }
+    const epoch = ++findingEpoch;
+    const previousCursor = structuredClone(state.auditSlice.nextCursor);
+    let focusAfterLoad = '[data-authoring-action="load-more-findings"]';
+    state.findingsLoading = true;
+    state.errorMessage = "";
+    render();
+    try {
+      const result = await controller.loadAuthoringAudit({
+        ...request,
+        cursor: previousCursor,
+        limit: 50,
+        online: online()
+      });
+      if (epoch !== findingEpoch || !state.opened || !state.overview) return false;
+      const normalizedPage = normalizeAuthoringAuditSlice(result);
+      if (!sameVersionedRef(pinnedRunRef, normalizedPage.latestAuditRun?.ref)) {
+        throw new Error("A paginação devolveu achados de outra rodada de auditoria.");
+      }
+      const page = Object.freeze({
+        ...normalizedPage,
+        findings: reconcileAuditFindings(normalizedPage.findings)
+      });
+      if (page.nextCursor != null && JSON.stringify(page.nextCursor) === JSON.stringify(previousCursor)) {
+        throw new Error("A paginação da auditoria repetiu o mesmo cursor.");
+      }
+      const existingIds = new Set(state.auditSlice.findings.map((finding) => finding.findingId));
+      const firstNewFinding = page.findings.find((finding) => !existingIds.has(finding.findingId));
+      const scoped = new Map(state.auditSlice.findings.map((finding) => [finding.findingId, finding]));
+      page.findings.forEach((finding) => scoped.set(
+        finding.findingId,
+        mergeFinding(scoped.get(finding.findingId), finding)
+      ));
+      const scopedFindings = Object.freeze([...scoped.values()]);
+      state.auditSlice = Object.freeze({
+        ...page,
+        components: state.auditSlice.components,
+        findings: scopedFindings,
+        total: Math.max(page.total, state.auditSlice.total, scopedFindings.length)
+      });
+      const all = new Map(state.overview.findings.map((finding) => [finding.findingId, finding]));
+      page.findings.forEach((finding) => all.set(
+        finding.findingId,
+        mergeFinding(all.get(finding.findingId), finding)
+      ));
+      state.overview = Object.freeze({
+        ...state.overview,
+        findings: Object.freeze([...all.values()])
+      });
+      if (page.nextCursor == null) {
+        focusAfterLoad = firstNewFinding
+          ? `[data-finding-id="${selectorValue(firstNewFinding.findingId)}"]`
+          : ".authoring-audit-heading";
+      }
+      return true;
+    } catch (error) {
+      if (epoch !== findingEpoch || !state.opened) return false;
+      state.errorMessage = userMessage(error, "Não foi possível carregar os demais achados desta rodada.");
+      return false;
+    } finally {
+      if (epoch === findingEpoch && state.opened) {
+        state.findingsLoading = false;
+        render({ focus: restoreFocus ? focusAfterLoad : "" });
+      }
+    }
+  }
+
+  async function loadMoreAuditComponents({ restoreFocus = true } = {}) {
+    const components = state.auditSlice?.components;
+    if (state.auditComponentsLoading || !state.auditPartId || !components?.truncated ||
+        components.nextCursor == null || typeof controller.loadAuthoringAudit !== "function") return false;
+    const pinnedRunRef = state.auditSlice.latestAuditRun?.ref;
+    const request = currentAuditRequest();
+    if (!request || !pinnedRunRef || !sameVersionedRef(request.auditRunRef, pinnedRunRef)) {
+      state.errorMessage = "Reabra a auditoria da Parte antes de carregar outras microssequências.";
+      render();
+      return false;
+    }
+    const epoch = ++auditComponentEpoch;
+    const previousCursor = components.nextCursor;
+    let focusAfterLoad = '[data-authoring-action="load-more-audit-components"]';
+    state.auditComponentsLoading = true;
+    state.errorMessage = "";
+    render();
+    try {
+      const result = await controller.loadAuthoringAudit({
+        ...request,
+        componentCursor: previousCursor,
+        componentLimit: 10,
+        limit: 50,
+        online: online()
+      });
+      if (epoch !== auditComponentEpoch || !state.opened || !state.auditSlice) return false;
+      const page = normalizeAuthoringAuditSlice(result);
+      if (!sameVersionedRef(pinnedRunRef, page.latestAuditRun?.ref)) {
+        throw new Error("A paginação devolveu microssequências de outra rodada de auditoria.");
+      }
+      if (page.components.nextCursor != null && page.components.nextCursor === previousCursor) {
+        throw new Error("A paginação das microssequências repetiu o mesmo cursor.");
+      }
+      const previousAudit = state.auditSlice;
+      const existing = new Map(previousAudit.components.items.map((component) => [
+        auditComponentKey(component), component
+      ]));
+      const firstNew = page.components.items.find((component) => !existing.has(auditComponentKey(component)));
+      page.components.items.forEach((component) => existing.set(
+        auditComponentKey(component),
+        mergeAuditComponents(existing.get(auditComponentKey(component)), component)
+      ));
+      const items = Object.freeze([...existing.values()]);
+      state.auditSlice = Object.freeze({
+        ...page,
+        findings: previousAudit.findings,
+        total: previousAudit.total,
+        nextCursor: previousAudit.nextCursor,
+        truncated: previousAudit.truncated,
+        components: Object.freeze({
+          ...page.components,
+          items,
+          count: Math.max(items.length, previousAudit.components.count, page.components.count)
+        })
+      });
+      if (page.components.nextCursor == null) {
+        const index = firstNew ? items.findIndex((item) => auditComponentKey(item) === auditComponentKey(firstNew)) : -1;
+        const focusable = index >= 0 && firstNew.status === "complete" &&
+          firstNew.targetAvailable !== false && firstNew.childAuditRunRef &&
+          microsequenceForAuditComponent(firstNew);
+        focusAfterLoad = focusable
+          ? `[data-authoring-action="open-audit-component"][data-component-index="${index}"]`
+          : ".authoring-audit-components-heading";
+      }
+      return true;
+    } catch (error) {
+      if (epoch !== auditComponentEpoch || !state.opened) return false;
+      state.errorMessage = userMessage(error, "Não foi possível carregar as demais microssequências da Parte.");
+      return false;
+    } finally {
+      if (epoch === auditComponentEpoch && state.opened) {
+        state.auditComponentsLoading = false;
+        render({ focus: restoreFocus ? focusAfterLoad : "" });
+      }
+    }
   }
 
   function normalizeFindingItems(value) {
@@ -341,7 +765,10 @@ export function createAuthoringWorkspaceSurface({
       const existingIds = new Set(state.overview.findings.map((finding) => finding.findingId));
       const firstNewFinding = pageItems.find((finding) => !existingIds.has(finding.findingId));
       const merged = new Map(state.overview.findings.map((finding) => [finding.findingId, finding]));
-      pageItems.forEach((finding) => merged.set(finding.findingId, finding));
+      pageItems.forEach((finding) => merged.set(
+        finding.findingId,
+        mergeFinding(merged.get(finding.findingId), finding)
+      ));
       const findings = Object.freeze([...merged.values()]);
       const findingsTotal = Math.max(
         findings.length,
@@ -380,6 +807,11 @@ export function createAuthoringWorkspaceSurface({
 
   root.hidden = true;
   root.classList.add("authoring-app-root");
+  const renderConnectivity = () => {
+    if (state.opened) render();
+  };
+  globalThis.addEventListener?.("online", renderConnectivity);
+  globalThis.addEventListener?.("offline", renderConnectivity);
 
   function availableDestinations() {
     return registry.filter((definition) => definition.available({
@@ -432,9 +864,18 @@ export function createAuthoringWorkspaceSurface({
 
   function render({ focus = "" } = {}) {
     if (!state.opened) return;
+    state.auditActionsOnline = online();
+    state.auditOperational = Boolean(
+      !state.auditSlice?.stale &&
+      state.auditSlice?.latestAuditRun?.status === "complete" &&
+      state.auditSlice?.latestAuditRun?.current === true
+    );
+    state.findingAuditStatus = findingAuditStatus(state.findingEditor);
+    state.findingScopeAction = scopeActionForFinding(state.findingEditor);
+    state.reauditBlockedByRepairs = reauditBlockedByPreparedRepairs(state.findingEditor);
     if (focus) pendingFocusSelector = focus;
     root.innerHTML = renderAuthoringWorkspaceSurface(state, availableDestinations());
-    root.setAttribute("aria-busy", String(state.loading || state.designLoading));
+    root.setAttribute("aria-busy", String(state.loading || state.designLoading || state.auditLoading));
     if (pendingFocusSelector) {
       const selector = pendingFocusSelector;
       pendingFocusSelector = "";
@@ -517,6 +958,12 @@ export function createAuthoringWorkspaceSurface({
     state.overview = null;
     state.design = null;
     state.selectedMicrosequence = null;
+    state.auditSlice = null;
+    state.auditRunRef = null;
+    state.auditPartId = "";
+    clearAuditParentContext();
+    state.findingEditor = null;
+    state.findingPartId = "";
     state.expandedPartId = "";
     resetFindingsPagination();
     state.loading = true;
@@ -531,6 +978,7 @@ export function createAuthoringWorkspaceSurface({
         return false;
       }
       state.overview = normalizeAuthoringWorkspaceOverview(result);
+      syncAuditActionCapabilities();
       resetFindingsPagination(state.overview);
       state.workspaceTitle = state.overview.title;
       state.expandedPartId = state.overview.parts.find((part) =>
@@ -539,6 +987,7 @@ export function createAuthoringWorkspaceSurface({
       syncSelectedMicrosequence();
       applyOverviewSyncMessage();
       if (state.destination === "design") await loadDesign({ preserveStatus: true });
+      else if (state.destination === "audit") await loadAuditForCurrentScope();
       return true;
     } catch (error) {
       if (epoch !== workspaceEpoch || !state.opened) return false;
@@ -562,8 +1011,10 @@ export function createAuthoringWorkspaceSurface({
     const destination = state.destination;
     const result = await controller.loadAuthoringWorkspaceOverview(state.workspaceId, { online: online() });
     state.overview = normalizeAuthoringWorkspaceOverview(result);
+    syncAuditActionCapabilities();
     resetFindingsPagination(state.overview);
     state.selectedMicrosequence = activeMicrosequence(state.overview, selectedPath);
+    state.auditSlice = null;
     if (reloadDesign && state.selectedMicrosequence?.entityPath) {
       const design = await controller.loadAuthoringDesign({
         workspaceId: state.workspaceId,
@@ -578,6 +1029,7 @@ export function createAuthoringWorkspaceSurface({
     }
     state.destination = destination;
     render();
+    if (destination === "audit") await loadAuditForCurrentScope();
     return true;
   }
 
@@ -586,10 +1038,18 @@ export function createAuthoringWorkspaceSurface({
     state.destination = destination;
     state.parameterEditor = null;
     state.resourceEditor = null;
+    state.findingEditor = null;
+    state.findingPartId = "";
+    state.auditSlice = null;
+    state.auditRunRef = null;
+    state.auditPartId = "";
+    clearAuditParentContext();
     state.errorMessage = "";
     render({ focus: `[data-authoring-destination="${destination}"]` });
     if (destination === "design" && state.selectedMicrosequence && !state.design) {
       await loadDesign();
+    } else if (destination === "audit") {
+      await loadAuditForCurrentScope();
     }
   }
 
@@ -598,6 +1058,10 @@ export function createAuthoringWorkspaceSurface({
     const microsequence = activeMicrosequence(state.overview, path, node.dataset.microsequenceKey);
     if (!microsequence) return;
     state.selectedMicrosequence = microsequence;
+    state.auditPartId = "";
+    state.auditSlice = null;
+    state.auditRunRef = null;
+    clearAuditParentContext();
     state.design = null;
     state.statusMessage = "";
     state.errorMessage = "";
@@ -1032,8 +1496,27 @@ export function createAuthoringWorkspaceSurface({
     }
   }
 
-  async function openFinding(findingId) {
+  function openFindingDetail(findingId) {
     const finding = state.overview?.findings.find((item) => item.findingId === findingId);
+    if (!finding) return false;
+    state.findingEditor = finding;
+    state.findingPartId = partForFinding(finding)?.coordinationPartId || "";
+    render({ focus: '[data-authoring-dialog="finding"] [data-authoring-action="close-finding-detail"]' });
+    return true;
+  }
+
+  function closeFindingDetail({ focus = true } = {}) {
+    const findingId = state.findingEditor?.findingId;
+    state.findingEditor = null;
+    state.findingPartId = "";
+    render({ focus: focus && findingId
+      ? `[data-finding-id="${selectorValue(findingId)}"]`
+      : ""
+    });
+  }
+
+  async function openFindingTarget() {
+    const finding = state.findingEditor;
     if (!finding) return;
     if (finding.targetAvailable === false) {
       state.errorMessage = "O conteúdo original deste achado não está mais disponível.";
@@ -1044,14 +1527,211 @@ export function createAuthoringWorkspaceSurface({
     if (!Array.isArray(target?.entityPath) && typeof controller.resolveAuthoringFindingTarget === "function") {
       const resolved = await controller.resolveAuthoringFindingTarget({
         workspaceId: state.workspaceId,
-        findingId,
+        findingId: finding.findingId,
         overview: state.overview
       });
       target = resolved?.readerTarget || resolved;
     }
     await openReaderTarget(target, "audit", {
-      findingId: text(finding.returnContext?.findingId) || finding.findingId
+      findingId: text(finding.returnContext?.findingId) || finding.findingId,
+      findingDetail: true
     });
+  }
+
+  async function openFindingAuditScope() {
+    const finding = state.findingEditor;
+    const findingId = finding?.findingId;
+    const action = state.findingScopeAction;
+    if (!findingId || !action || state.auditLoading) return false;
+    clearAuditParentContext();
+    if (action.kind === "part") {
+      const part = state.overview?.parts.find((item) => item.partId === action.partId);
+      if (!part?.coordinationPartId) return false;
+      state.selectedMicrosequence = null;
+      state.auditPartId = part.partId;
+    } else {
+      const microsequence = activeMicrosequence(state.overview, action.microsequencePath);
+      if (!microsequence) return false;
+      state.selectedMicrosequence = microsequence;
+      state.auditPartId = "";
+    }
+    state.auditSlice = null;
+    state.auditRunRef = finding.auditRunRef ? structuredClone(finding.auditRunRef) : null;
+    const loaded = await loadAuditForCurrentScope();
+    const current = state.overview?.findings.find((finding) => finding.findingId === findingId);
+    state.findingEditor = current || null;
+    state.findingPartId = partForFinding(current)?.coordinationPartId || "";
+    render({ focus: current
+      ? '[data-authoring-dialog="finding"] [data-authoring-action="close-finding-detail"]'
+      : ".authoring-audit-heading"
+    });
+    return loaded;
+  }
+
+  async function openAuditComponent(index) {
+    const component = state.auditSlice?.components?.items?.[index];
+    const part = state.overview?.parts.find((item) => item.partId === state.auditPartId);
+    const microsequence = microsequenceForAuditComponent(component, part?.partId);
+    if (!part || !microsequence || component?.status !== "complete" ||
+        component.targetAvailable === false || !component.childAuditRunRef ||
+        !Array.isArray(microsequence.entityPath)) return false;
+    ++auditComponentEpoch;
+    state.auditComponentsLoading = false;
+    state.auditParentPartId = part.partId;
+    state.auditParentRunRef = state.auditSlice?.latestAuditRun?.ref
+      ? structuredClone(state.auditSlice.latestAuditRun.ref)
+      : state.auditRunRef ? structuredClone(state.auditRunRef) : null;
+    state.selectedMicrosequence = microsequence;
+    state.auditPartId = "";
+    state.auditRunRef = structuredClone(component.childAuditRunRef);
+    state.auditSlice = null;
+    render({ focus: ".authoring-audit-heading" });
+    return loadAuditForCurrentScope();
+  }
+
+  async function returnToAuditParent() {
+    const part = state.overview?.parts.find((item) => item.partId === state.auditParentPartId);
+    if (!part?.coordinationPartId) return false;
+    ++auditComponentEpoch;
+    state.auditComponentsLoading = false;
+    const parentRunRef = state.auditParentRunRef ? structuredClone(state.auditParentRunRef) : null;
+    state.selectedMicrosequence = null;
+    state.auditPartId = part.partId;
+    state.auditRunRef = parentRunRef;
+    state.auditParentPartId = "";
+    state.auditParentRunRef = null;
+    state.auditSlice = null;
+    render({ focus: ".authoring-audit-heading" });
+    return loadAuditForCurrentScope();
+  }
+
+  async function decideFinding(decision) {
+    const finding = state.findingEditor;
+    if (!finding || finding.targetAvailable === false || finding.status !== "open" ||
+        !findingHasCompletedAudit(finding) ||
+        !state.auditActionCapabilities.decide || state.loading || !online() ||
+        typeof controller.decideAuthoringFinding !== "function") return;
+    state.loading = true;
+    state.errorMessage = "";
+    render();
+    try {
+      await controller.decideAuthoringFinding({
+        workspaceId: state.workspaceId,
+        findingId: finding.findingId,
+        decision,
+        expectedRevision: currentAuditRevision(),
+        online: true
+      });
+      state.statusMessage = decision === "approved"
+        ? "Achado aprovado para reparo."
+        : "Achado rejeitado; ele não será usado em reparos.";
+      const findingId = finding.findingId;
+      state.findingEditor = null;
+      state.findingPartId = "";
+      await reloadCurrentWorkspace({ preserveStatus: true });
+      const current = state.overview.findings.find((item) => item.findingId === findingId);
+      if (current) {
+        state.findingEditor = current;
+        state.findingPartId = partForFinding(current)?.coordinationPartId || "";
+        render({ focus: '[data-authoring-dialog="finding"] [data-authoring-action="close-finding-detail"]' });
+      } else {
+        render({ focus: ".authoring-audit-heading" });
+      }
+    } catch (error) {
+      state.errorMessage = userMessage(error, "Não foi possível registrar a decisão.");
+      if (conflictError(error)) {
+        state.findingEditor = null;
+        state.findingPartId = "";
+        try {
+          await reloadCurrentWorkspace({ preserveStatus: true });
+        } catch {
+          // A decisão não é mesclada silenciosamente.
+        }
+      }
+    } finally {
+      state.loading = false;
+      render();
+    }
+  }
+
+  async function prepareFindingRepairs() {
+    if (state.loading || !state.auditOperational || !state.auditActionCapabilities.prepare || !online() ||
+        typeof controller.prepareAuthoringFindingRepairs !== "function") return;
+    const approvedIds = findingsInCurrentAuditScope()
+      .filter(({ status, targetAvailable }) => status === "approved" && targetAvailable !== false)
+      .map(({ findingId }) => findingId);
+    if (!approvedIds.length) return;
+    if (approvedIds.length > 50) {
+      state.errorMessage = "Há mais de 50 achados aprovados neste recorte. Escolha uma Parte menor antes de preparar reparos.";
+      render();
+      return;
+    }
+    state.loading = true;
+    state.errorMessage = "";
+    render();
+    try {
+      await controller.prepareAuthoringFindingRepairs({
+        workspaceId: state.workspaceId,
+        findingIds: approvedIds,
+        expectedRevision: currentAuditRevision(),
+        online: true
+      });
+      state.statusMessage = "Reparos preparados. O GPT pode retomar somente estes achados aprovados.";
+      await reloadCurrentWorkspace({ preserveStatus: true });
+    } catch (error) {
+      state.errorMessage = userMessage(error, "Não foi possível preparar os reparos.");
+      if (conflictError(error)) {
+        try {
+          await reloadCurrentWorkspace({ preserveStatus: true });
+        } catch {
+          // O mandato corrente permanece explícito.
+        }
+      }
+    } finally {
+      state.loading = false;
+      render();
+    }
+  }
+
+  async function requestReaudit() {
+    const partId = state.findingPartId;
+    if (state.loading || state.findingEditor?.targetAvailable === false ||
+        !findingHasCompletedOriginAudit(state.findingEditor) ||
+        reauditBlockedByPreparedRepairs(state.findingEditor) ||
+        !state.auditActionCapabilities.reaudit || !online() ||
+        typeof controller.requestAuthoringReaudit !== "function") return;
+    state.loading = true;
+    state.errorMessage = "";
+    render();
+    try {
+      await controller.requestAuthoringReaudit({
+        workspaceId: state.workspaceId,
+        ...(partId ? { partId } : {}),
+        expectedRevision: currentAuditRevision(),
+        online: true
+      });
+      state.findingEditor = null;
+      state.findingPartId = "";
+      state.statusMessage = partId
+        ? "Reauditoria da Parte solicitada. A próxima rodada relerá o estado corrente."
+        : "Reauditoria do workspace solicitada. A próxima rodada relerá o estado corrente.";
+      await reloadCurrentWorkspace({ preserveStatus: true });
+      render({ focus: ".authoring-audit-heading" });
+    } catch (error) {
+      state.errorMessage = userMessage(error, "Não foi possível solicitar a reauditoria.");
+      if (conflictError(error)) {
+        state.findingEditor = null;
+        state.findingPartId = "";
+        try {
+          await reloadCurrentWorkspace({ preserveStatus: true });
+        } catch {
+          // Não há substituição silenciosa de mandato.
+        }
+      }
+    } finally {
+      state.loading = false;
+      render();
+    }
   }
 
   function backToWorkspaces() {
@@ -1065,6 +1745,12 @@ export function createAuthoringWorkspaceSurface({
     state.destination = "map";
     state.parameterEditor = null;
     state.resourceEditor = null;
+    state.findingEditor = null;
+    state.findingPartId = "";
+    state.auditSlice = null;
+    state.auditRunRef = null;
+    state.auditPartId = "";
+    clearAuditParentContext();
     state.statusMessage = "";
     state.errorMessage = "";
     render({ focus: "[data-authoring-current-section]" });
@@ -1076,11 +1762,19 @@ export function createAuthoringWorkspaceSurface({
     ++designEpoch;
     ++resourceEpoch;
     ++findingEpoch;
+    ++auditComponentEpoch;
     globalThis.clearTimeout(searchTimer);
     state.opened = false;
     state.parameterEditor = null;
     state.resourceEditor = null;
+    state.findingEditor = null;
+    state.findingPartId = "";
+    state.auditSlice = null;
+    state.auditRunRef = null;
+    state.auditPartId = "";
+    clearAuditParentContext();
     state.findingsLoading = false;
+    state.auditComponentsLoading = false;
     root.hidden = true;
     onClose();
     const target = returnFocusTarget;
@@ -1103,7 +1797,8 @@ export function createAuthoringWorkspaceSurface({
     workspaceId = state.workspaceId,
     destination = state.destination,
     microsequencePath = null,
-    findingId = ""
+    findingId = "",
+    findingDetail = false
   } = {}) {
     state.opened = true;
     root.hidden = false;
@@ -1111,21 +1806,38 @@ export function createAuthoringWorkspaceSurface({
       if (!await loadWorkspace(workspaceId, { destination })) return false;
     }
     if (microsequencePath) {
-      state.selectedMicrosequence = activeMicrosequence(state.overview, microsequencePath) ||
-        state.selectedMicrosequence;
+      const selected = activeMicrosequence(state.overview, microsequencePath) || state.selectedMicrosequence;
+      if (selected && !sameEntityPath(selected.entityPath, state.selectedMicrosequence?.entityPath)) {
+        state.auditSlice = null;
+        state.auditRunRef = null;
+        state.auditPartId = "";
+        clearAuditParentContext();
+      }
+      state.selectedMicrosequence = selected;
     }
     state.destination = availableDestinations().some((item) => item.key === destination)
       ? destination
       : "map";
     const normalizedFindingId = text(findingId);
     if (state.destination === "audit" && normalizedFindingId) {
+      if (!state.auditSlice && state.selectedMicrosequence?.entityPath) {
+        await loadAuditForCurrentScope();
+      }
       const visitedCursors = new Set();
-      while (!state.overview?.findings.some((finding) => finding.findingId === normalizedFindingId) &&
-        state.overview?.findingsTruncated) {
-        const cursorKey = JSON.stringify(state.findingsPageLoaded ? state.findingsNextCursor : null);
+      while (!state.overview?.findings.some((finding) => finding.findingId === normalizedFindingId)) {
+        const hasAuditPage = state.auditSlice?.truncated && state.auditSlice.nextCursor != null;
+        const hasWorkspacePage = state.overview?.findingsTruncated &&
+          (!state.findingsPageLoaded || state.findingsNextCursor != null);
+        if (!hasAuditPage && !hasWorkspacePage) break;
+        const cursorKey = hasAuditPage
+          ? `audit:${JSON.stringify(state.auditSlice.nextCursor)}`
+          : `workspace:${JSON.stringify(state.findingsPageLoaded ? state.findingsNextCursor : null)}`;
         if (visitedCursors.has(cursorKey)) break;
         visitedCursors.add(cursorKey);
-        if (!await loadMoreFindings({ restoreFocus: false })) break;
+        const loaded = hasAuditPage
+          ? await loadMoreAuditFindings({ restoreFocus: false })
+          : await loadMoreFindings({ restoreFocus: false });
+        if (!loaded) break;
       }
     }
     const findingAvailable = state.destination === "audit" && normalizedFindingId &&
@@ -1133,8 +1845,15 @@ export function createAuthoringWorkspaceSurface({
     if (state.destination === "audit" && normalizedFindingId && !findingAvailable) {
       state.statusMessage = "Este achado mudou ou já não está disponível no estado corrente.";
     }
-    render({ focus: findingAvailable
-      ? `[data-finding-id="${selectorValue(normalizedFindingId)}"]`
+    if (findingAvailable && findingDetail) {
+      const finding = state.overview.findings.find((item) => item.findingId === normalizedFindingId);
+      state.findingEditor = finding || null;
+      state.findingPartId = partForFinding(finding)?.coordinationPartId || "";
+    }
+    render({ focus: findingAvailable && findingDetail
+      ? '[data-authoring-dialog="finding"] [data-authoring-action="close-finding-detail"]'
+      : findingAvailable
+        ? `[data-finding-id="${selectorValue(normalizedFindingId)}"]`
       : state.destination === "audit" && normalizedFindingId
         ? ".authoring-audit-heading"
         : `[data-authoring-destination="${state.destination}"]`
@@ -1147,6 +1866,10 @@ export function createAuthoringWorkspaceSurface({
 
   function handleBack() {
     if (!state.opened) return false;
+    if (state.findingEditor) {
+      closeFindingDetail();
+      return true;
+    }
     if (state.parameterEditor) {
       closeParameterEditor();
       return true;
@@ -1154,6 +1877,10 @@ export function createAuthoringWorkspaceSurface({
     if (state.resourceEditor) {
       state.resourceEditor = null;
       render({ focus: '[data-authoring-action="open-resources"]' });
+      return true;
+    }
+    if (state.destination === "audit" && state.auditParentPartId) {
+      void returnToAuditParent();
       return true;
     }
     if (state.workspaceId && state.destination !== "map") {
@@ -1297,11 +2024,46 @@ export function createAuthoringWorkspaceSurface({
     }
     else if (action === "open-content") {
       void openReaderTarget(state.selectedMicrosequence?.readerTarget, "content");
-    } else if (action === "open-finding") void openFinding(node.dataset.findingId);
-    else if (action === "load-more-findings") void loadMoreFindings();
-    else if (action === "clear-audit-scope") {
+    } else if (action === "open-finding-detail") openFindingDetail(node.dataset.findingId);
+    else if (action === "close-finding-detail") closeFindingDetail();
+    else if (action === "open-finding-target") void openFindingTarget();
+    else if (action === "open-finding-audit-scope") void openFindingAuditScope();
+    else if (action === "decide-finding") void decideFinding(node.dataset.findingDecision);
+    else if (action === "prepare-finding-repairs") void prepareFindingRepairs();
+    else if (action === "request-reaudit") void requestReaudit();
+    else if (action === "open-audit-component") {
+      void openAuditComponent(Number(node.dataset.componentIndex));
+    }
+    else if (action === "load-more-audit-components") void loadMoreAuditComponents();
+    else if (action === "open-audit-part") {
+      const part = state.overview?.parts.find((item) => item.partId === node.dataset.partId);
+      if (!part) return;
       state.selectedMicrosequence = null;
-      render({ focus: '[data-authoring-action="clear-audit-scope"]' });
+      state.auditPartId = part.partId;
+      state.auditSlice = null;
+      state.auditRunRef = null;
+      clearAuditParentContext();
+      render({ focus: ".authoring-audit-heading" });
+      void loadAuditForCurrentScope();
+    }
+    else if (action === "load-more-findings") {
+      if ((state.selectedMicrosequence || state.auditPartId) && state.auditSlice) {
+        void loadMoreAuditFindings();
+      } else {
+        void loadMoreFindings();
+      }
+    }
+    else if (action === "clear-audit-scope") {
+      if (state.auditParentPartId) {
+        void returnToAuditParent();
+        return;
+      }
+      state.selectedMicrosequence = null;
+      state.auditPartId = "";
+      state.auditSlice = null;
+      state.auditRunRef = null;
+      clearAuditParentContext();
+      render({ focus: ".authoring-audit-heading" });
     }
     else if (action === "open-resources") void openResources();
     else if (action === "close-resources") {

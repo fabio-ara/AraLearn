@@ -86,6 +86,28 @@ principal. A partir da composição larga, os mesmos destinos formam um rail
 vertical; não surgem operações exclusivas de desktop. Textos ampliados a 200%
 refluem sem transformar o rail ou os diálogos em colunas implícitas estreitas.
 
+Auditoria usa camadas. A primeira mostra poucas dimensões com os estados
+**Conforme**, **Com achado** e **Não verificada**; a última nunca é desenhada como
+aprovação. A lista compacta leva a um detalhe com evidência pública, critério,
+origem, alvo e decisão. No celular esse detalhe ocupa um diálogo vertical com
+ações persistentes no rodapé; no desktop a mesma composição fica centralizada,
+sem adicionar um dashboard. Proveniência e possível reparo ficam sob disclosure.
+Quando a proveniência é limitada, o disclosure mostra `N de total` em vez de
+expor identificadores técnicos ou sugerir que a lista parcial é completa.
+Gravidade usa texto e cor, mas é prioridade operacional, não score de qualidade.
+A rodada em revisão usa estado pendente; somente o status explícito de conclusão
+autoriza o rótulo **Auditoria concluída**. A paginação permanece no recorte
+corrente — workspace, Parte ou microssequência — e nunca troca silenciosamente
+uma rodada específica pela lista geral de achados.
+Uma Parte composta mostra suas microssequências em lista compacta e paginada.
+O drill-down preserva a rodada filha versionada da composição; não substitui o
+histórico pela rodada mais nova da microssequência. Rodadas não correntes usam o
+rótulo **Rodada histórica** e não exibem ações operacionais.
+Achados rejeitados ou resolvidos podem continuar no histórico, sem manter o
+estado operacional como pendente. Em alvos alterados, indisponibilidade vence
+qualquer endereço anterior; quando houver um caminho corrente confirmado, ele
+vence o caminho histórico da rodada.
+
 Estados autorais combinam ícone, rótulo e texto curto. Cor pode reforçar
 planejamento, construção, finding ou ausência de pendência, mas nunca é o único
 sinal e não representa nota de qualidade. Um conflito aparece antes do estado
@@ -228,9 +250,11 @@ leitor de tela, WebView, teclado e aparelho real continuam necessários.
 `npm run resources:gallery:visual` recompõe a galeria a partir do registry, abre Chromium em 360, 390, 412 e 1280 px, aplica claro e escuro, rejeita erro de browser e overflow horizontal do card e grava capturas em [`docs/screenshots/resources-packages`](screenshots/resources-packages/).
 
 As capturas canônicas da Autoria ficam em
-[`docs/screenshots/authoring`](screenshots/authoring/): Mapa, Desenho e Auditoria
-em 390 px claro e 1280 px escuro, além da superfície móvel de Conta e
-aparência. Elas são reproduzidas pelo cenário opt-in do Playwright:
+[`docs/screenshots/authoring`](screenshots/authoring/): Mapa, Desenho, resumo da
+Auditoria, detalhe de um achado e auditoria coordenada da Parte com acesso às
+microssequências exatas em 390 px claro e 1280 px escuro, além da superfície
+móvel de Conta e aparência. Elas são reproduzidas pelo cenário opt-in do
+Playwright:
 
 ```powershell
 node scripts/stageWebRuntime.mjs --target pages --output .pages

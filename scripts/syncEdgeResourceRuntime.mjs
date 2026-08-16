@@ -27,6 +27,7 @@ const fixedFiles = [
   ["src/authoring/designParameterResolution.js", "authoring/designParameterResolution.js"],
   ["src/authoring/resourceSetResolution.js", "authoring/resourceSetResolution.js"],
   ["src/authoring/instructionalDesignBinding.js", "authoring/instructionalDesignBinding.js"],
+  ["src/authoring/instructionalConformanceAudit.js", "authoring/instructionalConformanceAudit.js"],
   ["src/authoring/legacyInstructionalDesign.js", "authoring/legacyInstructionalDesign.js"],
   ["src/authoring/pedagogicalBlueprint.js", "authoring/pedagogicalBlueprint.js"],
   ["src/authoring/protectedCore.js", "authoring/protectedCore.js"]

@@ -839,11 +839,22 @@ function normalizedFinding(value) {
     severity: value.severity || "medium",
     status,
     summary: String(value.summary || value.body || ""),
-    proposedRepair: String(value.proposedRepair || ""),
+    proposedRepair: value.proposedRepair == null ? null : String(value.proposedRepair),
+    code: value.findingCode ?? null,
+    origin: value.findingOrigin ?? null,
+    ruleRef: value.ruleRef ?? null,
+    publicEvidence: value.publicEvidence ?? null,
+    auditPartId: value.auditPartId ?? null,
+    auditRunRef: value.auditRunRef ?? null,
+    artifactRefs: value.artifactRefs ?? null,
+    verificationAuditRunRef: value.verificationAuditRunRef ?? null,
     auditRevision: value.auditRevision || 1,
     pendingCorrectionRequestId: value.pendingCorrectionRequestId ?? null,
     pendingRevision: value.pendingRevision ?? null,
+    correctionRequestId: value.correctionRequestId ?? null,
     resultingRevision: value.resultingRevision ?? null,
+    verification: value.verification ?? null,
+    verifiedRevision: value.verifiedRevision ?? null,
     createdAt: value.createdAt || value.updatedAt || null,
     updatedAt: value.updatedAt || null
   };
@@ -986,7 +997,7 @@ export function buildWorkspaceResumeProjection(
   const activeFindingStatuses = new Set(["open", "approved", "repaired"]);
   const allFindings = normalizedActiveFindings.filter(({ status }) =>
     activeFindingStatuses.has(status));
-  const findings = allFindings.slice(0, 10);
+  const findings = allFindings.slice(0, 5);
   const rawFindingSummary = plainObject(continuity.findingSummary)
     ? continuity.findingSummary
     : {};
@@ -1034,7 +1045,7 @@ export function buildWorkspaceResumeProjection(
         items: findings,
         summary: findingSummary,
         truncated: Boolean(continuity.activeFindingsTruncated)
-          || allFindings.length > 10
+          || allFindings.length > 5
       },
       observations: { structural, situated },
       publications: {

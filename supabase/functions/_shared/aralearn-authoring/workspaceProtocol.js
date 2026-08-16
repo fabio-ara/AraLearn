@@ -39,14 +39,19 @@ const DESIGN_ACTION_OPERATIONS = new Set([
   "save_resource_set",
   "resolve_effective",
   "save_blueprint",
-  "register_manifest"
+  "register_manifest",
+  "run_audit",
+  "record_semantic_audit"
 ]);
 const DESIGN_SLICE_VIEWS = new Set([
   "overview", "analysis", "parameters", "resource_set", "blueprint", "binding",
-  "materialization"
+  "materialization", "audit"
 ]);
 const RESOURCE_SET_PAGE_DEFAULT_LIMIT = 50;
 const RESOURCE_SET_PAGE_MAX_LIMIT = 100;
+const AUDIT_PAGE_DEFAULT_LIMIT = 20;
+const AUDIT_PAGE_MAX_LIMIT = 50;
+const AUDIT_COMPONENT_PAGE_MAX_LIMIT = 10;
 const DESIGN_CONTRACT_NAMES = new Set([
   "instructional_analysis",
   "design_parameter_definition",
@@ -62,7 +67,9 @@ const DESIGN_CONTRACT_NAMES = new Set([
   "action_save_resource_set",
   "action_resolve_effective",
   "action_save_blueprint",
-  "action_register_manifest"
+  "action_register_manifest",
+  "action_run_audit",
+  "action_record_semantic_audit"
 ]);
 const DESIGN_ACTION_PAYLOAD_LIMITS = Object.freeze({
   save_analysis: 256 * 1024,
@@ -71,7 +78,9 @@ const DESIGN_ACTION_PAYLOAD_LIMITS = Object.freeze({
   save_resource_set: 512 * 1024,
   resolve_effective: 64 * 1024,
   save_blueprint: 768 * 1024,
-  register_manifest: 1024 * 1024
+  register_manifest: 1024 * 1024,
+  run_audit: 64 * 1024,
+  record_semantic_audit: 512 * 1024
 });
 
 export const WORKSPACE_DESIGN_ACTION_BODY_LIMIT = 1_100_000;
@@ -1394,8 +1403,80 @@ export function validateWorkspaceDesignActionPayload(payload) {
         4
       )
     };
-    if (view !== "resource_set") {
+    if (!new Set(["resource_set", "audit"]).has(view)) {
       only(payload, ["operation", "microsequencePath", "view"]);
+      return result;
+    }
+    if (view === "audit") {
+      only(payload, [
+        "operation", "microsequencePath", "view", "auditRunRef", "auditScope",
+        "cursor", "limit", "componentCursor", "componentLimit"
+      ]);
+      if (payload.auditRunRef != null && payload.auditScope != null) {
+        fail(
+          "invalid_audit_slice_arguments",
+          "Use auditRunRef ou auditScope, nunca ambos."
+        );
+      }
+      if (payload.auditRunRef != null) {
+        const auditRunRef = object(payload.auditRunRef, "auditRunRef");
+        only(auditRunRef, ["id", "version"], "auditRunRef");
+        result.auditRunRef = {
+          id: workspaceUuid(auditRunRef.id, "auditRunRef.id"),
+          version: requiredText(auditRunRef, "version", 80)
+        };
+      }
+      if (payload.auditScope != null) {
+        const auditScope = object(payload.auditScope, "auditScope");
+        only(auditScope, ["kind", "ref"], "auditScope");
+        const kind = requiredText(auditScope, "kind", 40);
+        if (!new Set(["microsequence", "part"]).has(kind)) {
+          fail("invalid_audit_scope", "auditScope.kind é inválido.");
+        }
+        result.auditScope = {
+          kind,
+          ref: requiredText(auditScope, "ref", 240)
+        };
+      }
+      if (payload.cursor != null) {
+        const cursor = requiredText(payload, "cursor", 20);
+        if (!/^[1-9][0-9]{0,8}$/u.test(cursor)) {
+          fail("invalid_audit_cursor", "O cursor de auditoria é inválido.");
+        }
+        result.cursor = cursor;
+      }
+      const limit = payload.limit == null ? AUDIT_PAGE_DEFAULT_LIMIT : payload.limit;
+      if (!Number.isInteger(limit) || limit < 1 || limit > AUDIT_PAGE_MAX_LIMIT) {
+        fail(
+          "invalid_audit_limit",
+          `limit deve ser um inteiro entre 1 e ${AUDIT_PAGE_MAX_LIMIT}.`,
+          { field: "limit" }
+        );
+      }
+      result.limit = limit;
+      if (payload.componentCursor != null) {
+        const componentCursor = requiredText(payload, "componentCursor", 20);
+        if (!/^[1-9][0-9]{0,8}$/u.test(componentCursor)) {
+          fail(
+            "invalid_audit_component_cursor",
+            "O cursor de microssequências da Parte é inválido."
+          );
+        }
+        result.componentCursor = componentCursor;
+      }
+      const componentLimit = payload.componentLimit == null
+        ? AUDIT_COMPONENT_PAGE_MAX_LIMIT
+        : payload.componentLimit;
+      if (!Number.isInteger(componentLimit)
+        || componentLimit < 1
+        || componentLimit > AUDIT_COMPONENT_PAGE_MAX_LIMIT) {
+        fail(
+          "invalid_audit_component_limit",
+          `componentLimit deve ser um inteiro entre 1 e ${AUDIT_COMPONENT_PAGE_MAX_LIMIT}.`,
+          { field: "componentLimit" }
+        );
+      }
+      result.componentLimit = componentLimit;
       return result;
     }
     only(payload, [

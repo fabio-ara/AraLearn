@@ -2,12 +2,14 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  projectAuthoringAuditSlice,
   projectAuthoringDesignSlice,
   projectAuthoringWorkspaceOverview
 } from "../../src/authoring/authoringWorkspaceProjection.js";
 import {
   createAuthoringDestinationRegistry,
   normalizeAuthoringDesign,
+  normalizeAuthoringAuditSlice,
   normalizeAuthoringWorkspaceOverview
 } from "../../src/ui/authoringWorkspaceViewModel.js";
 
@@ -95,6 +97,7 @@ test("overview mantém lacunas e alvos indisponíveis sem fabricar navegação",
   assert.equal(overview.parts[0].microsequences[0].entityPath, null);
   assert.equal(overview.findings[0].targetAvailable, false);
   assert.equal(overview.findings[0].readerTarget, null);
+  assert.equal(overview.findings[0].legacyCompatible, true);
   assert.deepEqual(overview.findings[0].returnContext, { findingId: "finding-a" });
   assert.equal(overview.findingsTotal, 25);
   assert.equal(overview.findingsTruncated, true);
@@ -150,6 +153,12 @@ test("mapa usa máscara canônica f/a, activeCount truncado e mantém micros sem
           microsequenceStateMask: "fax"
         }],
         unassignedMicrosequenceStateMap: { "micro-c": "f" },
+        mandate: {
+          id: "repair-a",
+          kind: "repair_findings",
+          findingIds: ["finding-a", "finding-b"],
+          decidedAtRevision: 9
+        },
         findings: { items: [], summary: { activeCount: 25 }, truncated: true }
       }
     }
@@ -161,6 +170,10 @@ test("mapa usa máscara canônica f/a, activeCount truncado e mantém micros sem
   assert.equal(overview.parts[0].microsequences[1].state, "analyzed");
   assert.equal(overview.parts[0].microsequences[2].state, "missing");
   assert.equal(overview.parts[1].microsequences[0].state, "audit_pending");
+  assert.deepEqual(
+    normalizeAuthoringWorkspaceOverview(overview).mandate.findingIds,
+    ["finding-a", "finding-b"]
+  );
 });
 
 test("conflito tem precedência e expõe request para retry sem aparecer como pendente", () => {
@@ -197,4 +210,132 @@ test("conflito tem precedência e expõe request para retry sem aparecer como pe
   assert.equal(projected.parameters[0].pending, false);
   assert.equal(projected.parameters[0].conflict, true);
   assert.equal(projected.parameters[0].pendingRequestId, "40000000-0000-4000-8000-000000000004");
+});
+
+test("auditoria preserva evidência pública, refs e ausência explícita sem fabricar conformidade", () => {
+  const projected = projectAuthoringAuditSlice({
+    workspaceId: WORKSPACE_ID,
+    response: {
+      workspaceId: WORKSPACE_ID,
+      revision: 12,
+      result: {
+        audit: {
+          latestAuditRun: {
+            ref: { id: "audit-run-a", version: "1.0.0" },
+            kind: "deterministic",
+            status: "complete",
+            current: true,
+            scope: { kind: "microsequence", ref: "micro-a" },
+            startedRevision: 11,
+            completedRevision: 12
+          },
+          summary: {
+            dimensions: {
+              structure: { status: "conformant", findingCount: 0 },
+              design: { status: "finding", findingCount: 1 },
+              practice: { status: "not_checked", findingCount: 0 }
+            }
+          },
+          components: {
+            items: [{
+              ordinal: 1,
+              microsequenceRef: "micro-a",
+              microsequencePath: PATH,
+              childAuditRunRef: { id: "audit-child-a", version: "1.0.0" },
+              auditedRevision: 10,
+              contentHash: "sha256:current",
+              status: "complete",
+              targetAvailable: true
+            }],
+            count: 2,
+            nextCursor: "1",
+            truncated: true
+          },
+          findings: [{
+            findingId: "finding-a",
+            code: "semantic_excessive_compression",
+            origin: "semantic_audit",
+            summary: "Explicação comprimida",
+            publicEvidence: "O passo apresenta quatro relações sem desenvolvimento.",
+            ruleRef: { kind: "parameter", id: "new_units_per_theory_step_ceiling", version: "1.0.0" },
+            currentEntityPath: [...PATH, "card-current"],
+            target: { entityType: "card", entityPath: [...PATH, "card-before-move"] },
+            severity: "high",
+            status: "open",
+            proposedRepair: null,
+            auditRunRef: { id: "audit-run-a", version: "1.0.0" },
+            auditRevision: 11,
+            artifactRefs: {
+              analysisRef: { id: "analysis-a", version: "1.0.0" },
+              resourceSetRefs: {
+                items: [
+                  { id: "resource-set-a", version: "1.0.0" },
+                  { id: "resource-set-b", version: "1.0.0" }
+                ],
+                count: 23,
+                truncated: true
+              },
+              microsequenceRefs: {
+                items: ["micro-a", "micro-b"],
+                count: 2,
+                truncated: false
+              }
+            }
+          }, {
+            findingId: "finding-removed",
+            code: "actual_cards_match_artifact_refs",
+            origin: "deterministic",
+            publicEvidence: "O card original foi removido.",
+            ruleRef: { kind: "requirement", id: "materialized_card_contracts", version: "1.0.0" },
+            target: { entityType: "card", entityPath: [...PATH, "card-removed"] },
+            targetAvailable: false,
+            severity: "medium",
+            status: "open",
+            auditRunRef: { id: "audit-run-a", version: "1.0.0" },
+            auditRevision: 11
+          }],
+          total: 2,
+          truncated: false
+        }
+      }
+    }
+  });
+  const audit = normalizeAuthoringAuditSlice(projected);
+
+  assert.equal(audit.summary.dimensions.find(({ key }) => key === "structure").status, "conformant");
+  assert.equal(audit.summary.dimensions.find(({ key }) => key === "design").status, "finding");
+  assert.equal(audit.summary.dimensions.find(({ key }) => key === "practice").status, "not_checked");
+  assert.equal(audit.summary.dimensions.find(({ key }) => key === "resources").status, "not_checked");
+  assert.equal(audit.latestAuditRun.current, true);
+  assert.equal(audit.components.count, 2);
+  assert.equal(audit.components.truncated, true);
+  assert.equal(audit.components.nextCursor, "1");
+  assert.deepEqual(audit.components.items[0].childAuditRunRef, {
+    id: "audit-child-a", version: "1.0.0"
+  });
+  assert.deepEqual(audit.components.items[0].microsequencePath, PATH);
+  assert.equal(audit.findings[0].origin, "semantic_audit");
+  assert.equal(audit.findings[0].publicEvidence, "O passo apresenta quatro relações sem desenvolvimento.");
+  assert.deepEqual(audit.findings[0].ruleRef, {
+    kind: "parameter", id: "new_units_per_theory_step_ceiling", version: "1.0.0"
+  });
+  assert.equal(audit.findings[0].proposedRepair, null);
+  assert.deepEqual(audit.findings[0].artifactRefs.analysisRef, { id: "analysis-a", version: "1.0.0" });
+  assert.deepEqual(audit.findings[0].artifactRefs.resourceSetRefs, {
+    items: [
+      { id: "resource-set-a", version: "1.0.0" },
+      { id: "resource-set-b", version: "1.0.0" }
+    ],
+    count: 23,
+    truncated: true
+  });
+  assert.deepEqual(audit.findings[0].artifactRefs.microsequenceRefs, {
+    items: ["micro-a", "micro-b"],
+    count: 2,
+    truncated: false
+  });
+  assert.equal(audit.findings[0].legacyCompatible, false);
+  assert.deepEqual(audit.findings[0].readerTarget.entityPath, [...PATH, "card-current"]);
+  assert.equal(audit.findings[1].targetAvailable, false);
+  assert.equal(audit.findings[1].readerTarget, null);
 });

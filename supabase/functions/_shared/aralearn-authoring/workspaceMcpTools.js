@@ -29,7 +29,7 @@ const WORKSPACE_CONTEXT_CAPABILITIES_SCHEMA = schema([
 ].map((capability) => [capability, { type: "boolean" }])));
 const AUTHORING_INTENT = Object.freeze({
   type: "string",
-  description: "inspect lê; create planeja/cria; extend amplia/constrói; audit audita ou reaudita sem alterar conteúdo ou estrutura; repair aplica reparos autorizados; revise revisa; restructure reorganiza; publish prepara submissão ou distribui em Coleções; study estuda.",
+  description: "audit audita ou reaudita sem alterar conteúdo ou estrutura; as demais intents nomeiam sua etapa.",
   enum: [
     "inspect", "create", "extend", "audit", "repair", "revise",
     "restructure", "publish", "study"
@@ -333,6 +333,75 @@ const VERSIONED_REFERENCE_SCHEMA = schema(["id", "version"], {
     maxLength: 80,
     pattern: "^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$"
   }
+});
+const NULLABLE_VERSIONED_REFERENCE_SCHEMA = Object.freeze({
+  oneOf: [{ type: "null" }, VERSIONED_REFERENCE_SCHEMA]
+});
+const AUTHORING_AUDIT_CODE_SCHEMA = Object.freeze({
+  type: "string",
+  minLength: 2,
+  maxLength: 120,
+  pattern: "^[a-z][a-z0-9_.-]{1,119}$"
+});
+const AUTHORING_AUDIT_CATEGORY_SCHEMA = Object.freeze({
+  type: "string",
+  enum: [
+    "structure", "design", "explanation", "practice", "resources",
+    "coverage", "coherence", "dependencies", "redundancy", "integration"
+  ]
+});
+const AUTHORING_AUDIT_RULE_REF_SCHEMA = schema(["kind", "id", "version"], {
+  kind: NON_EMPTY_STRING,
+  id: ID,
+  version: { type: ["string", "null"], maxLength: 80 }
+});
+const AUTHORING_AUDIT_BOUNDED_REFS_SCHEMA = schema([
+  "items", "count", "truncated"
+], {
+  items: {
+    type: "array",
+    maxItems: 20,
+    uniqueItems: true,
+    items: VERSIONED_REFERENCE_SCHEMA
+  },
+  count: NON_NEGATIVE_INTEGER,
+  truncated: { type: "boolean" }
+});
+const AUTHORING_AUDIT_BOUNDED_IDS_SCHEMA = schema([
+  "items", "count", "truncated"
+], {
+  items: {
+    type: "array",
+    maxItems: 20,
+    uniqueItems: true,
+    items: ID
+  },
+  count: NON_NEGATIVE_INTEGER,
+  truncated: { type: "boolean" }
+});
+const AUTHORING_AUDIT_METRIC_REFS_SCHEMA = schema([
+  "items", "count", "truncated"
+], {
+  items: {
+    type: "array",
+    maxItems: 5,
+    uniqueItems: true,
+    items: ID
+  },
+  count: NON_NEGATIVE_INTEGER,
+  truncated: { type: "boolean" }
+});
+const AUTHORING_AUDIT_ARTIFACT_REFS_SCHEMA = schema([
+  "analysisRef", "effectiveSnapshotRef", "blueprintRef", "bindingRef",
+  "manifestRef", "resourceSetRefs", "microsequenceRefs"
+], {
+  analysisRef: NULLABLE_VERSIONED_REFERENCE_SCHEMA,
+  effectiveSnapshotRef: NULLABLE_VERSIONED_REFERENCE_SCHEMA,
+  blueprintRef: NULLABLE_VERSIONED_REFERENCE_SCHEMA,
+  bindingRef: NULLABLE_VERSIONED_REFERENCE_SCHEMA,
+  manifestRef: NULLABLE_VERSIONED_REFERENCE_SCHEMA,
+  resourceSetRefs: AUTHORING_AUDIT_BOUNDED_REFS_SCHEMA,
+  microsequenceRefs: AUTHORING_AUDIT_BOUNDED_IDS_SCHEMA
 });
 const RESOURCE_LIBRARY_OPERATIONS = Object.freeze([
   "explore",
@@ -1396,8 +1465,11 @@ const CONTINUITY_PART_PROJECTION_SCHEMA = schema([
 const CONTINUITY_FINDING_SCHEMA = schema([
   "observationId", "entityType", "entityPath", "currentEntityPath",
   "targetAvailable", "resourceTargetId", "category", "severity", "status",
-  "summary", "proposedRepair", "auditRevision", "pendingCorrectionRequestId",
-  "pendingRevision", "resultingRevision", "createdAt", "updatedAt"
+  "summary", "proposedRepair", "code", "origin", "ruleRef", "publicEvidence",
+  "auditPartId", "auditRunRef", "artifactRefs", "verificationAuditRunRef",
+  "auditRevision", "pendingCorrectionRequestId", "pendingRevision",
+  "correctionRequestId", "resultingRevision", "verification", "verifiedRevision",
+  "createdAt", "updatedAt"
 ], {
   observationId: UUID,
   entityType: {
@@ -1420,11 +1492,25 @@ const CONTINUITY_FINDING_SCHEMA = schema([
     enum: ["open", "approved", "rejected", "repaired", "resolved"]
   },
   summary: { type: "string", minLength: 1, maxLength: 1_000 },
-  proposedRepair: { type: "string", minLength: 1, maxLength: 1_000 },
+  proposedRepair: { type: ["string", "null"], minLength: 1, maxLength: 1_000 },
+  code: { anyOf: [{ type: "null" }, AUTHORING_AUDIT_CODE_SCHEMA] },
+  origin: {
+    type: ["string", "null"],
+    enum: ["deterministic", "semantic_audit", null]
+  },
+  ruleRef: { anyOf: [{ type: "null" }, AUTHORING_AUDIT_RULE_REF_SCHEMA] },
+  publicEvidence: { type: ["string", "null"], minLength: 1, maxLength: 2_000 },
+  auditPartId: { anyOf: [{ type: "null" }, ID] },
+  auditRunRef: NULLABLE_VERSIONED_REFERENCE_SCHEMA,
+  artifactRefs: { anyOf: [{ type: "null" }, AUTHORING_AUDIT_ARTIFACT_REFS_SCHEMA] },
+  verificationAuditRunRef: NULLABLE_VERSIONED_REFERENCE_SCHEMA,
   auditRevision: REVISION,
   pendingCorrectionRequestId: { anyOf: [REQUEST_ID, { type: "null" }] },
   pendingRevision: { anyOf: [REVISION, { type: "null" }] },
+  correctionRequestId: { anyOf: [REQUEST_ID, { type: "null" }] },
   resultingRevision: { anyOf: [REVISION, { type: "null" }] },
+  verification: { type: ["string", "null"], minLength: 1, maxLength: 1_000 },
+  verifiedRevision: { anyOf: [REVISION, { type: "null" }] },
   createdAt: DATE_TIME,
   updatedAt: NULLABLE_DATE_TIME
 });
@@ -1475,7 +1561,7 @@ const WORKSPACE_RESUME_CONTENT_SCHEMA = schema([
   },
   mandate: { anyOf: [{ type: "null" }, CONTINUITY_MANDATE_SCHEMA] },
   findings: schema(["items", "summary", "truncated"], {
-    items: { type: "array", maxItems: 10, items: CONTINUITY_FINDING_SCHEMA },
+    items: { type: "array", maxItems: 5, items: CONTINUITY_FINDING_SCHEMA },
     summary: CONTINUITY_FINDING_SUMMARY_SCHEMA,
     truncated: { type: "boolean" }
   }),
@@ -2449,7 +2535,8 @@ const EDUCATIONAL_WORKSPACE_INPUT_SCHEMA = Object.freeze({
   ]
 });
 
-const WORKSPACE_OBSERVATION_ITEM_SCHEMA = schema([
+const WORKSPACE_OBSERVATION_ITEM_SCHEMA = Object.freeze({
+  ...schema([
   "observationId", "workspaceId", "kind", "entityType", "entityPath",
   "currentEntityPath", "targetAvailable", "body", "authorId", "canDelete",
   "createdAt", "updatedAt"
@@ -2488,10 +2575,29 @@ const WORKSPACE_OBSERVATION_ITEM_SCHEMA = schema([
   resultingRevision: { anyOf: [REVISION, { type: "null" }] },
   verification: { type: ["string", "null"], maxLength: 1_000 },
   verifiedRevision: { anyOf: [REVISION, { type: "null" }] },
-  authorId: UUID,
+  findingCode: { anyOf: [{ type: "null" }, AUTHORING_AUDIT_CODE_SCHEMA] },
+  findingOrigin: {
+    type: ["string", "null"],
+    enum: ["deterministic", "semantic_audit", null]
+  },
+  ruleRef: { anyOf: [{ type: "null" }, AUTHORING_AUDIT_RULE_REF_SCHEMA] },
+  publicEvidence: { type: ["string", "null"], minLength: 1, maxLength: 2_000 },
+  auditPartId: { anyOf: [{ type: "null" }, ID] },
+  auditRunRef: NULLABLE_VERSIONED_REFERENCE_SCHEMA,
+  artifactRefs: { anyOf: [{ type: "null" }, AUTHORING_AUDIT_ARTIFACT_REFS_SCHEMA] },
+  verificationAuditRunRef: NULLABLE_VERSIONED_REFERENCE_SCHEMA,
+  authorId: NULLABLE_UUID,
   canDelete: { type: "boolean" },
   createdAt: DATE_TIME,
   updatedAt: DATE_TIME
+  }),
+  allOf: [{
+    if: {
+      required: ["auditRunRef"],
+      properties: { auditRunRef: { not: { type: "null" } } }
+    },
+    then: { properties: { canDelete: { const: false } } }
+  }]
 });
 const WORKSPACE_OBSERVATION_INPUT_SCHEMA = Object.freeze({
   oneOf: [
@@ -2557,7 +2663,7 @@ const WORKSPACE_OBSERVATION_DATA_SCHEMA = Object.freeze({
   anyOf: [
     schema(["workspaceId", "items", "hasMore", "nextCursor", "summary"], {
       workspaceId: UUID,
-      items: { type: "array", items: WORKSPACE_OBSERVATION_ITEM_SCHEMA },
+      items: { type: "array", maxItems: 5, items: WORKSPACE_OBSERVATION_ITEM_SCHEMA },
       hasMore: { type: "boolean" },
       nextCursor: {
         anyOf: [{ type: "null" }, schema(["beforeUpdatedAt", "beforeId"], {
@@ -2946,7 +3052,9 @@ const AUTHORING_DESIGN_OPERATIONS = Object.freeze([
   "save_resource_set",
   "resolve_effective",
   "save_blueprint",
-  "register_manifest"
+  "register_manifest",
+  "run_audit",
+  "record_semantic_audit"
 ]);
 const AUTHORING_DESIGN_WRITE_OPERATIONS = Object.freeze(
   AUTHORING_DESIGN_OPERATIONS.filter(
@@ -2955,7 +3063,7 @@ const AUTHORING_DESIGN_WRITE_OPERATIONS = Object.freeze(
 );
 const AUTHORING_DESIGN_READ_VIEWS = Object.freeze([
   "overview", "analysis", "parameters", "resource_set", "blueprint", "binding",
-  "materialization"
+  "materialization", "audit"
 ]);
 const AUTHORING_DESIGN_CONTRACT_NAMES = Object.freeze([
   "instructional_analysis",
@@ -2972,13 +3080,19 @@ const AUTHORING_DESIGN_CONTRACT_NAMES = Object.freeze([
   "action_save_resource_set",
   "action_resolve_effective",
   "action_save_blueprint",
-  "action_register_manifest"
+  "action_register_manifest",
+  "action_run_audit",
+  "action_record_semantic_audit"
 ]);
 const AUTHORING_DESIGN_PAYLOAD_JSON = Object.freeze({
   type: "string",
   minLength: 2,
   maxLength: 72 * 1_024,
-  description: "Contrato canônico da operação, serializado como JSON; nunca inclua conversa ou raciocínio privado."
+  description: "Contrato JIT em JSON; nunca inclua conversa ou raciocínio privado."
+});
+const AUTHORING_AUDIT_SCOPE_SCHEMA = schema(["kind", "ref"], {
+  kind: { type: "string", enum: ["microsequence", "part"] },
+  ref: ID
 });
 function forbidAuthoringDesignFields(fields) {
   return {
@@ -3002,8 +3116,12 @@ const AUTHORING_DESIGN_INPUT_SCHEMA = Object.freeze({
       enum: AUTHORING_DESIGN_CONTRACT_NAMES
     },
     resourceSetRef: VERSIONED_REFERENCE_SCHEMA,
+    auditRunRef: VERSIONED_REFERENCE_SCHEMA,
+    auditScope: AUTHORING_AUDIT_SCOPE_SCHEMA,
     cursor: { type: "string", minLength: 1, maxLength: 240 },
     limit: { type: "integer", minimum: 1, maximum: 100, default: 50 },
+    componentCursor: { type: "string", pattern: "^[1-9][0-9]{0,8}$" },
+    componentLimit: { type: "integer", minimum: 1, maximum: 10, default: 10 },
     requestId: REQUEST_ID,
     expectedRevision: REVISION,
     payloadJson: AUTHORING_DESIGN_PAYLOAD_JSON
@@ -3015,21 +3133,69 @@ const AUTHORING_DESIGN_INPUT_SCHEMA = Object.freeze({
       ...forbidAuthoringDesignFields([
         "contractName", "requestId", "expectedRevision", "payloadJson"
       ]),
-      allOf: [{
-        if: {
-          required: ["view"],
-          properties: { view: { const: "resource_set" } }
+      allOf: [
+        {
+          if: {
+            required: ["view"],
+            properties: { view: { const: "resource_set" } }
+          },
+          then: {
+            required: ["resourceSetRef"],
+            ...forbidAuthoringDesignFields([
+              "auditRunRef", "auditScope", "componentCursor", "componentLimit"
+            ])
+          }
         },
-        then: { required: ["resourceSetRef"] },
-        else: forbidAuthoringDesignFields(["resourceSetRef", "cursor", "limit"])
-      }]
+        {
+          if: {
+            required: ["view"],
+            properties: { view: { const: "audit" } }
+          },
+          then: {
+            properties: {
+              cursor: { type: "string", pattern: "^[1-9][0-9]{0,8}$" },
+              limit: { type: "integer", minimum: 1, maximum: 50, default: 20 },
+              componentCursor: {
+                type: "string",
+                pattern: "^[1-9][0-9]{0,8}$"
+              },
+              componentLimit: {
+                type: "integer",
+                minimum: 1,
+                maximum: 10,
+                default: 10
+              }
+            },
+            not: {
+              anyOf: [
+                { required: ["resourceSetRef"] },
+                { required: ["auditRunRef", "auditScope"] }
+              ]
+            }
+          }
+        },
+        {
+          if: {
+            anyOf: [
+              { required: ["view"], properties: { view: { const: "resource_set" } } },
+              { required: ["view"], properties: { view: { const: "audit" } } }
+            ]
+          },
+          then: {},
+          else: forbidAuthoringDesignFields([
+            "resourceSetRef", "auditRunRef", "auditScope", "cursor", "limit",
+            "componentCursor", "componentLimit"
+          ])
+        }
+      ]
     },
     {
       required: ["operation", "contractName"],
       properties: { operation: { const: "contracts" } },
       ...forbidAuthoringDesignFields([
         "microsequencePath", "view", "requestId", "expectedRevision",
-        "payloadJson", "resourceSetRef", "cursor", "limit"
+        "payloadJson", "resourceSetRef", "auditRunRef", "auditScope", "cursor", "limit",
+        "componentCursor", "componentLimit"
       ])
     },
     {
@@ -3044,13 +3210,11 @@ const AUTHORING_DESIGN_INPUT_SCHEMA = Object.freeze({
         }
       },
       ...forbidAuthoringDesignFields([
-        "view", "contractName", "resourceSetRef", "cursor", "limit"
+        "view", "contractName", "resourceSetRef", "auditRunRef", "auditScope",
+        "cursor", "limit", "componentCursor", "componentLimit"
       ])
     }
   ]
-});
-const NULLABLE_VERSIONED_REFERENCE_SCHEMA = Object.freeze({
-  oneOf: [{ type: "null" }, VERSIONED_REFERENCE_SCHEMA]
 });
 const AUTHORING_DESIGN_ARTIFACT_REFS_SCHEMA = schema([
   "analysisRef", "effectiveSnapshotRef", "blueprintRef", "bindingRef",
@@ -3155,6 +3319,194 @@ const AUTHORING_DESIGN_RESOURCE_SET_PAGE_SCHEMA = schema([
   total: NON_NEGATIVE_INTEGER,
   nextCursor: { type: ["string", "null"], minLength: 1, maxLength: 240 }
 });
+const AUTHORING_AUDIT_TARGET_SCHEMA = schema([
+  "entityType", "entityPath", "resourceTargetId"
+], {
+  entityType: {
+    type: "string",
+    enum: [
+      "workspace", "course", "module", "lesson", "microsequence", "card",
+      "resource"
+    ]
+  },
+  entityPath: { type: "array", minItems: 0, maxItems: 5, items: ID },
+  resourceTargetId: { type: ["string", "null"], maxLength: 240 }
+});
+const AUTHORING_AUDIT_FINDING_SCHEMA = schema([
+  "findingId", "code", "category", "origin", "severity", "status", "target",
+  "currentEntityPath", "targetAvailable", "auditPartId", "ruleRef",
+  "publicEvidence", "proposedRepair", "detectedRevision", "auditRunRef",
+  "artifactRefs", "verificationAuditRunRef", "pendingCorrectionRequestId",
+  "pendingRevision", "correctionRequestId", "resultingRevision", "verification",
+  "verifiedRevision"
+], {
+  findingId: UUID,
+  code: AUTHORING_AUDIT_CODE_SCHEMA,
+  category: AUTHORING_AUDIT_CATEGORY_SCHEMA,
+  origin: { type: "string", enum: ["deterministic", "semantic_audit"] },
+  severity: { type: "string", enum: ["low", "medium", "high", "critical"] },
+  status: {
+    type: "string",
+    enum: ["open", "approved", "rejected", "repaired", "resolved"]
+  },
+  target: AUTHORING_AUDIT_TARGET_SCHEMA,
+  currentEntityPath: { type: "array", minItems: 0, maxItems: 5, items: ID },
+  targetAvailable: { type: "boolean" },
+  auditPartId: { anyOf: [{ type: "null" }, ID] },
+  ruleRef: AUTHORING_AUDIT_RULE_REF_SCHEMA,
+  publicEvidence: { type: "string", minLength: 1, maxLength: 2_000, pattern: "\\S" },
+  proposedRepair: { type: ["string", "null"], minLength: 1, maxLength: 1_000 },
+  detectedRevision: REVISION,
+  auditRunRef: VERSIONED_REFERENCE_SCHEMA,
+  artifactRefs: AUTHORING_AUDIT_ARTIFACT_REFS_SCHEMA,
+  verificationAuditRunRef: {
+    anyOf: [{ type: "null" }, VERSIONED_REFERENCE_SCHEMA]
+  },
+  pendingCorrectionRequestId: { anyOf: [REQUEST_ID, { type: "null" }] },
+  pendingRevision: { anyOf: [REVISION, { type: "null" }] },
+  correctionRequestId: { anyOf: [REQUEST_ID, { type: "null" }] },
+  resultingRevision: { anyOf: [REVISION, { type: "null" }] },
+  verification: { type: ["string", "null"], minLength: 1, maxLength: 1_000 },
+  verifiedRevision: { anyOf: [REVISION, { type: "null" }] }
+});
+const AUTHORING_AUDIT_DIMENSION_SCHEMA = schema(["status", "findingCount"], {
+  status: {
+    type: "string",
+    enum: ["conformant", "finding", "not_checked"]
+  },
+  findingCount: NON_NEGATIVE_INTEGER
+});
+const AUTHORING_AUDIT_METRIC_SCHEMA = schema([
+  "id", "kind", "value", "unit", "denominator", "algorithm"
+], {
+  id: ID,
+  kind: { const: "derived" },
+  value: { type: "number" },
+  unit: NON_EMPTY_STRING,
+  denominator: schema(["count", "unit", "refs"], {
+    count: NON_NEGATIVE_INTEGER,
+    unit: NON_EMPTY_STRING,
+    refs: AUTHORING_AUDIT_METRIC_REFS_SCHEMA
+  }),
+  algorithm: schema(["id", "version", "inputRefs"], {
+    id: ID,
+    version: NON_EMPTY_STRING,
+    inputRefs: AUTHORING_AUDIT_METRIC_REFS_SCHEMA
+  })
+});
+const AUTHORING_AUDIT_SUMMARY_SCHEMA = schema([
+  "dimensions", "checks", "findings", "metrics"
+], {
+  dimensions: schema([
+    "structure", "design", "practice", "resources", "coverage", "coherence",
+    "dependencies", "redundancy", "integration"
+  ], {
+    structure: AUTHORING_AUDIT_DIMENSION_SCHEMA,
+    design: AUTHORING_AUDIT_DIMENSION_SCHEMA,
+    practice: AUTHORING_AUDIT_DIMENSION_SCHEMA,
+    resources: AUTHORING_AUDIT_DIMENSION_SCHEMA,
+    coverage: AUTHORING_AUDIT_DIMENSION_SCHEMA,
+    coherence: AUTHORING_AUDIT_DIMENSION_SCHEMA,
+    dependencies: AUTHORING_AUDIT_DIMENSION_SCHEMA,
+    redundancy: AUTHORING_AUDIT_DIMENSION_SCHEMA,
+    integration: AUTHORING_AUDIT_DIMENSION_SCHEMA
+  }),
+  checks: schema(["passed", "failed", "notApplicable"], {
+    passed: NON_NEGATIVE_INTEGER,
+    failed: NON_NEGATIVE_INTEGER,
+    notApplicable: NON_NEGATIVE_INTEGER
+  }),
+  findings: schema(["deterministic", "semantic", "total"], {
+    deterministic: NON_NEGATIVE_INTEGER,
+    semantic: NON_NEGATIVE_INTEGER,
+    total: NON_NEGATIVE_INTEGER
+  }),
+  metrics: {
+    type: "array",
+    maxItems: 64,
+    items: AUTHORING_AUDIT_METRIC_SCHEMA
+  }
+});
+const AUTHORING_LATEST_AUDIT_RUN_SCHEMA = schema([
+  "ref", "kind", "status", "current", "scope", "startedRevision",
+  "completedRevision", "createdAt", "completedAt"
+], {
+  ref: VERSIONED_REFERENCE_SCHEMA,
+  kind: { type: "string", enum: ["audit", "reaudit"] },
+  status: { type: "string", enum: ["semantic_pending", "complete"] },
+  current: { type: "boolean" },
+  scope: AUTHORING_AUDIT_SCOPE_SCHEMA,
+  startedRevision: REVISION,
+  completedRevision: { anyOf: [REVISION, { type: "null" }] },
+  createdAt: DATE_TIME,
+  completedAt: NULLABLE_DATE_TIME
+});
+const AUTHORING_AUDIT_COMPONENT_SCHEMA = Object.freeze({
+  ...schema([
+    "ordinal", "microsequenceRef", "microsequencePath", "childAuditRunRef",
+    "auditedRevision", "contentHash", "status", "targetAvailable"
+  ], {
+    ordinal: { type: "integer", minimum: 1, maximum: 500 },
+    microsequenceRef: ID,
+    microsequencePath: {
+      anyOf: [MICROSEQUENCE_PATH, { type: "null" }]
+    },
+    childAuditRunRef: NULLABLE_VERSIONED_REFERENCE_SCHEMA,
+    auditedRevision: { anyOf: [REVISION, { type: "null" }] },
+    contentHash: { anyOf: [SHA256, { type: "null" }] },
+    status: { type: "string", enum: ["complete", "not_audited"] },
+    targetAvailable: { type: "boolean" }
+  }),
+  allOf: [{
+    if: { required: ["status"], properties: { status: { const: "complete" } } },
+    then: {
+      properties: {
+        microsequencePath: { not: { type: "null" } },
+        childAuditRunRef: { not: { type: "null" } },
+        auditedRevision: { not: { type: "null" } },
+        contentHash: { not: { type: "null" } }
+      }
+    },
+    else: {
+      properties: {
+        microsequencePath: { type: "null" },
+        childAuditRunRef: { type: "null" },
+        auditedRevision: { type: "null" },
+        contentHash: { type: "null" }
+      }
+    }
+  }]
+});
+const AUTHORING_AUDIT_COMPONENT_PAGE_SCHEMA = schema([
+  "items", "count", "nextCursor", "truncated"
+], {
+  items: {
+    type: "array",
+    maxItems: 10,
+    items: AUTHORING_AUDIT_COMPONENT_SCHEMA
+  },
+  count: { type: "integer", minimum: 0, maximum: 500 },
+  nextCursor: { type: ["string", "null"], pattern: "^[1-9][0-9]{0,8}$" },
+  truncated: { type: "boolean" }
+});
+const AUTHORING_AUDIT_PAGE_SCHEMA = schema([
+  "latestAuditRun", "summary", "components", "findings", "total",
+  "nextCursor", "truncated"
+], {
+  latestAuditRun: {
+    anyOf: [{ type: "null" }, AUTHORING_LATEST_AUDIT_RUN_SCHEMA]
+  },
+  summary: AUTHORING_AUDIT_SUMMARY_SCHEMA,
+  components: AUTHORING_AUDIT_COMPONENT_PAGE_SCHEMA,
+  findings: {
+    type: "array",
+    maxItems: 2,
+    items: AUTHORING_AUDIT_FINDING_SCHEMA
+  },
+  total: NON_NEGATIVE_INTEGER,
+  nextCursor: { type: ["string", "null"], minLength: 1, maxLength: 240 },
+  truncated: { type: "boolean" }
+});
 function authoringDesignSliceViewSchema(view, properties = {}) {
   return schema([
     ...AUTHORING_DESIGN_SLICE_COMMON_REQUIRED,
@@ -3208,6 +3560,9 @@ const AUTHORING_DESIGN_READ_SLICE_SCHEMA = Object.freeze({
     }),
     authoringDesignSliceViewSchema("materialization", {
       materialization: OPEN_CANONICAL_OBJECT
+    }),
+    authoringDesignSliceViewSchema("audit", {
+      audit: { anyOf: [{ type: "null" }, AUTHORING_AUDIT_PAGE_SCHEMA] }
     })
   ]
 });
@@ -3277,14 +3632,39 @@ const AUTHORING_DESIGN_BLUEPRINT_RECEIPT_SCHEMA = schema([
   bindingHash: SHA256
 });
 const AUTHORING_DESIGN_MANIFEST_RECEIPT_SCHEMA = schema([
-  "manifestRef", "contentHash", "payloadHash", "conformance",
+  "manifestRef", "contentHash", "payloadHash", "registration",
   "resourceAuthorization"
 ], {
   manifestRef: VERSIONED_REFERENCE_SCHEMA,
   contentHash: SHA256,
   payloadHash: SHA256,
-  conformance: { const: "accepted" },
+  registration: { const: "accepted" },
   resourceAuthorization: { const: "authorized" }
+});
+const AUTHORING_AUDIT_RUN_RECEIPT_SCHEMA = schema([
+  "auditRunRef", "kind", "status", "scope", "startedRevision", "findingCount"
+], {
+  auditRunRef: VERSIONED_REFERENCE_SCHEMA,
+  kind: { type: "string", enum: ["audit", "reaudit"] },
+  status: { const: "semantic_pending" },
+  scope: AUTHORING_AUDIT_SCOPE_SCHEMA,
+  startedRevision: REVISION,
+  findingCount: NON_NEGATIVE_INTEGER
+});
+const AUTHORING_SEMANTIC_AUDIT_RECEIPT_SCHEMA = schema([
+  "auditRunRef", "status", "recordedCount", "verifiedCount", "findingIds",
+  "verificationFindingIds"
+], {
+  auditRunRef: VERSIONED_REFERENCE_SCHEMA,
+  status: { const: "complete" },
+  recordedCount: NON_NEGATIVE_INTEGER,
+  verifiedCount: NON_NEGATIVE_INTEGER,
+  findingIds: {
+    type: "array", maxItems: 100, uniqueItems: true, items: UUID
+  },
+  verificationFindingIds: {
+    type: "array", maxItems: 100, uniqueItems: true, items: UUID
+  }
 });
 function authoringDesignDataBranch(
   operation,
@@ -3347,6 +3727,16 @@ const AUTHORING_DESIGN_DATA_SCHEMA = Object.freeze({
       "register_manifest",
       AUTHORING_DESIGN_MANIFEST_RECEIPT_SCHEMA,
       { mutation: true }
+    ),
+    authoringDesignDataBranch(
+      "run_audit",
+      AUTHORING_AUDIT_RUN_RECEIPT_SCHEMA,
+      { mutation: true }
+    ),
+    authoringDesignDataBranch(
+      "record_semantic_audit",
+      AUTHORING_SEMANTIC_AUDIT_RECEIPT_SCHEMA,
+      { mutation: true }
     )
   ]
 });
@@ -3375,12 +3765,12 @@ const RESOURCE_LIBRARY_INPUT_SCHEMA = Object.freeze({
       type: "string",
       minLength: 2,
       maxLength: 40_000,
-      description: "Envelope canônico de um card, serializado como JSON."
+      description: "Card canônico em JSON."
     },
     intent: {
       type: "string",
       maxLength: 4_000,
-      description: "Intenção pedagógica e representacional declarada para auditar o card."
+      description: "Intenção pedagógica e representacional."
     },
     workspaceId: UUID,
     snapshotRef: VERSIONED_REFERENCE_SCHEMA
@@ -3437,7 +3827,7 @@ const RESOURCE_LIBRARY_TOOL = tool(
 const AUTHORING_DESIGN_TOOL = tool(
   "gerirDesenhoInstrucional",
   "Gerir desenho instrucional",
-  "Lê o recorte de uma microssequência, entrega um contrato exato e persiste análise, Auto/override/lock, ResourceSet, snapshot, blueprint e manifesto com CAS. Descubra caminhos no workspace; não peça ids técnicos ao autor.",
+  "Lê desenho e auditoria paginados, entrega um contrato JIT e persiste análise, parâmetros, ResourceSet, snapshot, blueprint, manifesto e audit run com CAS. Descubra caminhos no workspace; não peça ids técnicos ao autor.",
   AUTHORING_DESIGN_INPUT_SCHEMA,
   AUTHORING_DESIGN_DATA_SCHEMA,
   { actionConsequentialHint: true }
@@ -3457,7 +3847,7 @@ const INDIVIDUAL_AUTHORING_WORKSPACE_MCP_TOOLS = Object.freeze([
       context: {
         type: "string",
         maxLength: 8_000,
-        description: "Resumo fiel do pedido e do contexto útil da conversa, sem credenciais."
+        description: "Contexto útil do pedido, sem credenciais."
       },
       packageIds: {
         type: "array",
@@ -3664,7 +4054,7 @@ const INDIVIDUAL_AUTHORING_WORKSPACE_MCP_TOOLS = Object.freeze([
         minLength: 1,
         maxLength: 16_000,
         pattern: "\\S",
-        description: "Resumo do público, objetivo, escopo, fontes e restrições; máximo de 16 KiB em UTF-8. Declare cada fonte aprovada como [source:id] seguida de sua identificação."
+        description: "Brief estável (até 16 KiB); identifique cada fonte aprovada como [source:id]."
       },
       sourceCourseId: UUID,
       sourceSubmissionId: UUID
@@ -3777,7 +4167,7 @@ const INDIVIDUAL_AUTHORING_WORKSPACE_MCP_TOOLS = Object.freeze([
         type: "string",
         minLength: 2,
         maxLength: 80_000,
-        description: "Array JSON de cards completos; use uma microssequência por chamada."
+        description: "Cards JSON de uma microssequência."
       }
     }),
     WORKSPACE_REVISION_DATA_SCHEMA
@@ -3846,7 +4236,7 @@ const INDIVIDUAL_AUTHORING_WORKSPACE_MCP_TOOLS = Object.freeze([
         type: "string",
         minLength: 2,
         maxLength: 40_000,
-        description: "Envelope JSON completo de um único card com packages."
+        description: "Card completo em JSON."
       }
     }),
     WORKSPACE_REVISION_DATA_SCHEMA
@@ -4895,8 +5285,12 @@ export function mapAuthoringMcpToolCall(name, rawArguments) {
     if (args.microsequencePath) body.microsequencePath = args.microsequencePath;
     if (args.view) body.view = args.view;
     if (args.resourceSetRef) body.resourceSetRef = args.resourceSetRef;
+    if (args.auditRunRef) body.auditRunRef = args.auditRunRef;
+    if (args.auditScope) body.auditScope = args.auditScope;
     if (args.cursor) body.cursor = args.cursor;
     if (args.limit != null) body.limit = args.limit;
+    if (args.componentCursor) body.componentCursor = args.componentCursor;
+    if (args.componentLimit != null) body.componentLimit = args.componentLimit;
     if (args.contractName) body.contractName = args.contractName;
     if (args.requestId) body.requestId = args.requestId;
     if (args.expectedRevision != null) {

@@ -187,7 +187,7 @@ estão:
 | Grupo | Finalidade |
 | --- | --- |
 | `consultarBibliotecaDeResources` | descobrir, inspecionar, validar e auditar representações de cards |
-| `gerirDesenhoInstrucional` | ler o slice JIT e operar análise, assignments, `ResourceSet`, snapshot, blueprint e manifesto |
+| `gerirDesenhoInstrucional` | ler o slice JIT; operar análise, assignments, `ResourceSet`, snapshot, blueprint e manifesto; abrir e concluir audit runs |
 | `consultarCatalogo` | listar coleções e localizar cursos publicados |
 | `editarCatalogo` | criar ou atualizar coleções e mover cursos |
 | `retirarDoCatalogo` | retirar coleções ou cursos de circulação |
@@ -292,7 +292,7 @@ persistência de `ResourceSet`, resolução efetiva, binding do blueprint v2 e
 registro do manifesto. `read_slice` começa em `overview`, com identidade,
 coordenação, estados, referências de artefatos e `availableViews`. O modelo abre
 somente as views anunciadas que precisar: `analysis`, `parameters`, `blueprint`,
-`binding` ou `materialization`. Assignments, locks, definições, snapshot,
+`binding`, `materialization`, `resource_set` ou `audit`. Assignments, locks, definições, snapshot,
 conjuntos, blueprint e manifesto não são despejados num payload monolítico;
 transcript e raciocínio privado não integram nenhuma view.
 
@@ -305,6 +305,17 @@ materialização segue então blueprint e cards em memória, `validate_card` e
 releitura do estado e, por último, `register_manifest`. Escritas usam
 `expectedRevision` e `requestId`; conflito exige releitura, e replay idempotente
 não duplica estado.
+
+Auditoria usa as operações adicionais `run_audit` e
+`record_semantic_audit`, ainda na mesma ferramenta pública. A primeira relê
+cards e resources reais, calcula checks e abre uma rodada imutável; a segunda
+registra somente findings semânticos públicos e verificações no run corrente.
+A view `audit` pagina resumo e findings. O modelo não envia origem
+`deterministic`, não transforma a aceitação do manifesto em conformidade e não
+repara durante a rodada. A pessoa decide; o mandato de reparo inclui apenas
+aprovados; a reauditoria abre outro run e verifica todos os reparos elegíveis.
+Um resultado `still_open` acompanha a nova ocorrência da mesma identidade na
+rodada/child run corrente; `resolved` só é válido quando ela não reaparece.
 
 ## Continuidade entre sessões
 

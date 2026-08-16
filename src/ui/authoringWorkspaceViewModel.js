@@ -16,6 +16,18 @@ const MICROSEQUENCE_STATES = Object.freeze({
   ready: Object.freeze({ label: "Pronta", icon: "ready-state" })
 });
 
+export const AUTHORING_AUDIT_DIMENSIONS = Object.freeze([
+  Object.freeze({ key: "structure", label: "Estrutura" }),
+  Object.freeze({ key: "design", label: "Desenho" }),
+  Object.freeze({ key: "practice", label: "Prática" }),
+  Object.freeze({ key: "resources", label: "Resources" }),
+  Object.freeze({ key: "coverage", label: "Cobertura", partOnly: true }),
+  Object.freeze({ key: "coherence", label: "Coerência", partOnly: true }),
+  Object.freeze({ key: "dependencies", label: "Dependências", partOnly: true }),
+  Object.freeze({ key: "redundancy", label: "Redundância", partOnly: true }),
+  Object.freeze({ key: "integration", label: "Integração", partOnly: true })
+]);
+
 export const AUTHORING_DESTINATION_DEFINITIONS = Object.freeze([
   Object.freeze({ key: "map", label: "Mapa", icon: "graph" }),
   Object.freeze({ key: "design", label: "Desenho", icon: "intent" }),
@@ -27,6 +39,13 @@ function text(value) {
   return typeof value === "string" ? value.trim() : "";
 }
 
+function titleFromIdentifier(value) {
+  return text(value)
+    .replaceAll(/[_-]+/gu, " ")
+    .replaceAll(/\s+/gu, " ")
+    .replace(/^./u, (character) => character.toLocaleUpperCase("pt-BR"));
+}
+
 function list(value) {
   return Array.isArray(value) ? value : [];
 }
@@ -34,6 +53,137 @@ function list(value) {
 function integer(value) {
   const parsed = Number(value);
   return Number.isSafeInteger(parsed) && parsed >= 0 ? parsed : 0;
+}
+
+function nullableInteger(value) {
+  const parsed = Number(value);
+  return Number.isSafeInteger(parsed) && parsed >= 0 ? parsed : null;
+}
+
+function normalizedRef(value, { nullableVersion = false } = {}) {
+  const id = text(value?.id);
+  if (!id) return null;
+  const version = text(value?.version);
+  return Object.freeze({
+    id,
+    ...(nullableVersion ? { version: value?.version == null ? null : version || null } :
+      version ? { version } : {})
+  });
+}
+
+function normalizedRuleRef(value) {
+  const reference = normalizedRef(value, { nullableVersion: true });
+  const kind = text(value?.kind);
+  return reference && kind ? Object.freeze({ kind, id: reference.id, version: reference.version }) : null;
+}
+
+function normalizedArtifactRefs(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return Object.freeze({});
+  const entries = Object.entries(value).flatMap(([key, raw]) => {
+    if (raw && typeof raw === "object" && !Array.isArray(raw) && Array.isArray(raw.items)) {
+      const items = raw.items.flatMap((item) => {
+        const reference = normalizedRef(item);
+        if (reference) return [reference];
+        const identifier = text(item);
+        return identifier ? [identifier] : [];
+      });
+      const count = Math.max(integer(raw.count), items.length);
+      return items.length || count
+        ? [[key, Object.freeze({
+            items: Object.freeze(items),
+            count,
+            truncated: raw.truncated === true || count > items.length
+          })]]
+        : [];
+    }
+    if (Array.isArray(raw)) {
+      const references = raw.map((item) => normalizedRef(item)).filter(Boolean);
+      return references.length ? [[key, Object.freeze(references)]] : [];
+    }
+    const reference = normalizedRef(raw);
+    return reference ? [[key, reference]] : [];
+  });
+  return Object.freeze(Object.fromEntries(entries));
+}
+
+function normalizedAuditSummary(value, { part = false } = {}) {
+  const source = value?.dimensions && typeof value.dimensions === "object"
+    ? value.dimensions
+    : value && typeof value === "object" ? value : {};
+  const dimensions = AUTHORING_AUDIT_DIMENSIONS
+    .filter((definition) => part || definition.partOnly !== true)
+    .map((definition) => {
+      const raw = source[definition.key];
+      const candidate = text(typeof raw === "string" ? raw : raw?.status);
+      const status = ["conformant", "finding", "not_checked"].includes(candidate)
+        ? candidate
+        : "not_checked";
+      return Object.freeze({
+        ...definition,
+        status,
+        findingCount: integer(raw?.findingCount)
+      });
+    });
+  return Object.freeze({
+    dimensions: Object.freeze(dimensions),
+    findingCount: integer(value?.findingCount ?? value?.deterministicFindingCount),
+    explicit: dimensions.some(({ status }) => status !== "not_checked") || value?.explicit === true
+  });
+}
+
+function normalizedAuditRun(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const scope = value.scope && typeof value.scope === "object"
+    ? Object.freeze({ kind: text(value.scope.kind), ref: text(value.scope.ref) })
+    : null;
+  return Object.freeze({
+    ref: normalizedRef(value.ref),
+    kind: text(value.kind),
+    status: text(value.status) || "pending",
+    current: value.current === true,
+    scope,
+    startedRevision: nullableInteger(value.startedRevision),
+    completedRevision: nullableInteger(value.completedRevision),
+    createdAt: text(value.createdAt) || null,
+    completedAt: text(value.completedAt) || null
+  });
+}
+
+function normalizedAuditComponents(value) {
+  const source = value && typeof value === "object" && !Array.isArray(value) ? value : {};
+  const items = list(source.items).flatMap((item) => {
+    const microsequenceRef = text(item?.microsequenceRef);
+    if (!microsequenceRef) return [];
+    const microsequencePath = normalizedPath(item?.microsequencePath, { exactLength: 4 });
+    return [Object.freeze({
+      ordinal: nullableInteger(item?.ordinal),
+      microsequenceRef,
+      microsequencePath,
+      childAuditRunRef: normalizedRef(item?.childAuditRunRef),
+      auditedRevision: nullableInteger(item?.auditedRevision),
+      contentHash: text(item?.contentHash) || null,
+      status: item?.status === "complete" ? "complete" : "not_audited",
+      targetAvailable: item?.targetAvailable === true
+    })];
+  });
+  return Object.freeze({
+    items: Object.freeze(items),
+    count: Math.max(items.length, integer(source.count)),
+    nextCursor: text(source.nextCursor) || null,
+    truncated: source.truncated === true
+  });
+}
+
+function normalizedMandate(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  return Object.freeze({
+    id: text(value.id),
+    kind: text(value.kind),
+    targetPartId: text(value.targetPartId) || null,
+    findingIds: Object.freeze(list(value.findingIds).map(text).filter(Boolean)),
+    note: text(value.note),
+    decidedAtRevision: nullableInteger(value.decidedAtRevision)
+  });
 }
 
 function normalizedPath(value, { exactLength = null } = {}) {
@@ -155,6 +305,8 @@ function normalizeMicrosequence(item, { mask = "", fallbackTitle = "Microssequê
     findingCount: integer(item?.findingCount),
     pending: item?.pending === true,
     conflict: item?.conflict === true || text(item?.pendingStatus) === "conflict",
+    auditSummary: normalizedAuditSummary(item?.auditSummary || item?.audit?.summary),
+    auditRunRef: normalizedRef(item?.auditRunRef || item?.audit?.latestAuditRun?.ref),
     readerTarget: Object.freeze({
       ...(item?.readerTarget || {}),
       ...(entityPath ? { entityPath } : {})
@@ -163,6 +315,7 @@ function normalizeMicrosequence(item, { mask = "", fallbackTitle = "Microssequê
 }
 
 function normalizePart(part, index) {
+  const coordinationPartId = text(part?.partId || part?.id || part?.key);
   const explicitMicrosequences = list(part?.microsequences || part?.items);
   const ids = list(part?.microsequenceIds);
   const mask = text(part?.microsequenceStateMask);
@@ -174,7 +327,8 @@ function normalizePart(part, index) {
     fallbackTitle: `Microssequência ${microsequenceIndex + 1}`
   }));
   return Object.freeze({
-    partId: text(part?.partId || part?.id || part?.key) || `part-${index + 1}`,
+    partId: coordinationPartId || `part-${index + 1}`,
+    coordinationPartId: coordinationPartId || null,
     title: text(part?.title || part?.name) || `Parte ${index + 1}`,
     state: stateProjection(
       part?.status || part?.state,
@@ -188,27 +342,84 @@ function normalizePart(part, index) {
             : "planned",
       part?.statusLabel || part?.stateLabel
     ),
+    auditSummary: normalizedAuditSummary(part?.auditSummary || part?.audit?.summary, { part: true }),
+    auditRunRef: normalizedRef(part?.auditRunRef || part?.audit?.latestAuditRun?.ref),
     microsequences: Object.freeze(microsequences)
   });
 }
 
 function normalizeFinding(finding, index) {
   const findingId = text(finding?.findingId || finding?.observationId || finding?.id) || `finding-${index + 1}`;
+  const code = text(finding?.code || finding?.findingCode || finding?.category);
   const targetAvailable = finding?.targetAvailable !== false;
-  const readerTarget = targetAvailable ? finding?.readerTarget || finding?.target || null : null;
+  const target = finding?.target && typeof finding.target === "object" ? finding.target : null;
+  const readerTarget = targetAvailable ? finding?.readerTarget || target || null : null;
   const entityPath = targetAvailable
     ? normalizedPath(readerTarget?.entityPath || finding?.entityPath)
     : null;
+  const originValue = text(finding?.origin || finding?.findingOrigin);
+  const auditRunRef = normalizedRef(finding?.auditRunRef);
+  const verificationAuditRunRef = normalizedRef(finding?.verificationAuditRunRef);
+  const ruleRef = normalizedRuleRef(finding?.ruleRef);
+  const artifactRefs = normalizedArtifactRefs(finding?.artifactRefs);
+  const structuredMarker = Boolean(
+    auditRunRef || verificationAuditRunRef || ruleRef || Object.keys(artifactRefs).length ||
+    ["deterministic", "semantic_audit"].includes(originValue) ||
+    text(finding?.code || finding?.findingCode) || text(finding?.publicEvidence) ||
+    text(finding?.auditPartId)
+  );
+  const legacyCompatible = finding?.legacyCompatible === true
+    ? true
+    : finding?.legacyCompatible === false ? false : !structuredMarker;
   return Object.freeze({
     findingId,
-    summary: text(finding?.summary || finding?.title) || "Achado sem síntese.",
+    summary: text(finding?.summary || finding?.title || finding?.body) ||
+      titleFromIdentifier(code) || "Achado sem síntese.",
+    code,
+    category: text(finding?.category),
+    origin: ["deterministic", "semantic_audit"].includes(originValue)
+      ? originValue
+      : "legacy",
+    publicEvidence: text(finding?.publicEvidence || finding?.evidence || finding?.body),
+    ruleRef,
     severity: text(finding?.severity) || "medium",
     status: text(finding?.status) || "open",
+    proposedRepair: text(finding?.proposedRepair) || null,
+    auditRunRef,
+    verificationAuditRunRef,
+    artifactRefs,
+    legacyCompatible,
+    auditRevision: nullableInteger(finding?.auditRevision ?? finding?.detectedRevision),
+    resultingRevision: nullableInteger(finding?.resultingRevision),
+    verification: text(finding?.verification) || null,
+    auditPartId: text(finding?.auditPartId) || null,
+    entityType: text(target?.entityType || finding?.entityType),
     targetAvailable,
     returnContext: Object.freeze({ ...(finding?.returnContext || {}) }),
     readerTarget: readerTarget
       ? Object.freeze({ ...readerTarget, ...(entityPath ? { entityPath } : {}) })
       : null
+  });
+}
+
+export function normalizeAuthoringAuditSlice(value) {
+  const source = value?.audit || value?.result?.audit || value || {};
+  const findings = list(source.findings).map(normalizeFinding);
+  return Object.freeze({
+    workspaceId: text(value?.workspaceId || value?.result?.workspaceId),
+    revision: integer(value?.revision || value?.result?.revision),
+    stale: value?.stale === true,
+    latestAuditRun: normalizedAuditRun(source.latestAuditRun),
+    summary: normalizedAuditSummary(source.summary, {
+      part: text(source.latestAuditRun?.scope?.kind) === "part"
+    }),
+    components: normalizedAuditComponents(source.components),
+    findings: Object.freeze(findings),
+    total: Math.max(integer(source.total), findings.length),
+    nextCursor: source.nextCursor == null ? null : structuredClone(source.nextCursor),
+    truncated: source.truncated === true,
+    coordination: Object.freeze({ ...(value?.coordination || value?.result?.coordination || {}) }),
+    capabilities: Object.freeze({ ...(value?.capabilities || value?.result?.capabilities || {}) })
   });
 }
 
@@ -254,6 +465,8 @@ export function normalizeAuthoringWorkspaceOverview(value) {
     findingsNextCursor: source.findingsNextCursor == null && findingsValue.nextCursor == null
       ? null
       : structuredClone(source.findingsNextCursor ?? findingsValue.nextCursor),
+    audit: normalizeAuthoringAuditSlice(content.audit || source.audit || {}),
+    mandate: normalizedMandate(source.mandate || content.mandate || content.coordination?.mandate),
     capabilities: Object.freeze({ ...(source.capabilities || content.capabilities || {}) }),
     readerTarget: Object.freeze({ ...(source.readerTarget || content.readerTarget || {}) }),
     returnContext: Object.freeze({ ...(source.returnContext || {}) })

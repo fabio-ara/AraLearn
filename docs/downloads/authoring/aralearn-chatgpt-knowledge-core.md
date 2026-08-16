@@ -200,13 +200,15 @@ Siga as respostas aprovadas sem convertê-las em regra global: exemplo, contrast
 
 ## Auditoria
 
-Grave um mandato `audit` novo — com `targetPartId` quando a autorização estiver limitada a uma Parte —, retome o workspace, consulte `list_comments` e `list_observations` com `kinds: ["note"]`, releia o conteúdo persistido e não o altere. Verifique cobertura, autossuficiência, carga cognitiva, fontes, continuidade e adequação de teoria, práticas e resources. Confronte também diagnóstico, plano e cards: procure dificuldade sem resposta, resposta prometida ausente, condensação incompatível com o risco, prática sem base, representação inadequada, perda de cobertura ou dependência de meio declarado indisponível. Separe aspectos adequados de problemas localizados com impacto, gravidade e reparo recomendado. Registre somente achados compactos na continuidade da autoria e não alegue eficácia ou aprendizagem.
+Grave um mandato `audit` novo — com `targetPartId` quando a autorização estiver limitada a uma Parte —, retome o workspace, consulte comentários e notas pertinentes com `list_comments` e `list_observations` e releia o conteúdo persistido. Use `gerirDesenhoInstrucional`/`run_audit` com `kind: audit` para fixar a revisão e executar primeiro os checks determinísticos. Em seguida, faça a leitura semântico-instrucional e registre findings estruturados com `record_semantic_audit` no mesmo audit run. Não altere o conteúdo. Verifique cobertura, autossuficiência, carga cognitiva, fontes, continuidade e adequação de teoria, práticas e resources. Confronte também diagnóstico, plano e cards: procure dificuldade sem resposta, resposta prometida ausente, condensação incompatível com o risco, prática sem base, representação inadequada, perda de cobertura ou dependência de meio declarado indisponível. Separe aspectos adequados de problemas localizados com código, alvo, regra, evidência pública, gravidade e reparo opcional. Persista somente achados compactos; não registre raciocínio privado e não alegue eficácia ou aprendizagem.
+
+Quando o escopo for uma Parte, agregue cobertura, coerência, dependências, revisitação, redundância, integração e distribuição de findings sem transformar Parte em unidade pedagógica ou atribuir score global. Percorra os cursores de findings e componentes separadamente e, ao abrir um recorte local, use a `childAuditRunRef` exata congelada pelo pai; componente ausente mantém resultado parcial.
 
 Achados ativos já estão em `resume`. Consulte o histórico com `kinds: ["audit_finding"]`, estados e paginação somente quando a etapa exigir. Ao concluir o relatório, limpe o mandato de auditoria.
 
 ## Reparo e reauditoria
 
-Persista o mandato humano e repare apenas os achados nele aprovados, preservando ids e posições. Informe exatamente o que mudou e vincule uma observação somente depois da correção confirmada. Reaudite em outra rodada a partir da retomada e do estado persistido, registre o resultado e procure regressões; não repare durante a reauditoria.
+Persista o mandato humano e repare apenas os achados nele aprovados, preservando ids e posições. Informe exatamente o que mudou e vincule uma observação somente depois da correção confirmada. Reaudite em outra rodada a partir da retomada e do estado persistido. Abra outro `run_audit` com `kind: reaudit`, registre o resultado e procure regressões ou problemas novos; não reaproveite o relatório anterior como conclusão e não repare durante a reauditoria.
 
 O commit mantém no achado aprovado o identificador e a revisão da correção pendente mais recente. Uma sessão posterior os retoma, relê o alvo e continua ou confirma o vínculo sem depender da conversa nem do prazo dos recibos. Cada `link_finding_correction` confirmado retira esse achado do mandato de reparo; o último o encerra. A reauditoria começa com outro mandato `audit` e termina limpando-o explicitamente.
 
@@ -708,29 +710,66 @@ Fator, condição, locks e invariantes reutilizam os mesmos parâmetros da autor
 
 ## Guia de recuperação
 
-- `INTENT`: recupere para `audit` e `repair`; em `create`, `extend` ou `revise`, use apenas para conferência prospectiva antes do manifesto.
-- Combine com `semantic-audit.md` para julgamento semântico e com o estado persistido corrente para fatos.
-- Não trate a conferência da #104 como o motor completo de findings, decisão humana, reparo e reauditoria previsto para a #106.
+- `INTENT`: recupere para `audit`, `repair` e reauditoria; em `create`, `extend` ou `revise`, use apenas para conferência prospectiva.
+- Combine com `semantic-audit.md`, os contracts JIT das operações de auditoria e o estado persistido corrente.
+- Execute checks determinísticos antes do julgamento semântico. Não use a conversa como evidência nem como estado.
 
 ## Cadeia comparável
 
-Compare, por referências versionadas, fontes e objetivo, análise instrucional, valores efetivos do snapshot, ResourceSets aplicáveis, blueprint, cards e manifesto de materialização. O manifesto descreve o que foi produzido; não substitui cards, blueprint ou snapshot e não prova qualidade ou aprendizagem.
+Compare, por referências versionadas:
 
-## Checks factuais
+```text
+fontes e objetivo -> análise instrucional -> snapshot efetivo
+-> ResourceSets -> blueprint -> cards/resources reais -> manifesto
+```
 
-Checks determinísticos podem verificar referências ausentes ou obsoletas, violação de ResourceSet, package, versão, papel ou ajuste não autorizado, seleção sem autorizador, diferença entre package selecionado e usado, cobertura declarada sem alvo, métricas sem unidade ou denominador, hash divergente e estado materializado depois do snapshot sem novo manifesto. Esses resultados descrevem conformidade estrutural.
+O manifesto descreve a materialização; não substitui cards, blueprint, snapshot ou fontes. Contagens de cards, palavras, práticas e resources são métricas derivadas, não objetivos pedagógicos.
+
+Para uma microssequência, leia no mínimo objetivo, `covers`, `checks`, `errors` e dependências; análise instrucional; snapshot efetivo; ResourceSets; blueprint e binding; manifesto; cards e resources persistidos; fontes pertinentes; e findings ativos anteriores. Para uma Parte, percorra as microssequências declaradas e conserve seus limites e dependências.
+
+## Quatro classes de conclusão
+
+1. **Conformidade estrutural determinística**: referências, versões, hashes, locks, autorização, ordem, contagens e rastreabilidade verificáveis pelo backend.
+2. **Conformidade semântico-instrucional**: adequação entre requisito, explicação, evidência, prática e representação, julgada sobre o conteúdo real.
+3. **Qualidade factual**: afirmações confrontadas com as fontes autorizadas e sua data, versão, jurisdição ou condição de validade.
+4. **Eficácia educacional**: efeito sobre aprendizagem ou transferência. A auditoria de autoria não o infere; isso exige evidência empírica apropriada.
+
+Não converta essas classes em score único e não apresente uma operacionalização AraLearn como medida científica validada.
+
+## Checks determinísticos
+
+Use `gerirDesenhoInstrucional` com `run_audit`, `kind: audit`, no estado corrente. Em uma reauditoria, use `kind: reaudit`. O backend verifica, entre outros pontos, IDs e caminhos, camadas e ordem teoria/prática, evidências e contagens declaradas versus artefatos reais, locks, revisão do snapshot, cards derivados ausentes, contratos de resource e resposta, ResourceSet e condição experimental, hashes e rastreabilidade. O resultado abre um audit run versionado e pagina findings sem ultrapassar o limite do protocolo.
+
+Um manifesto registrado com contrato válido ainda pode conter divergência de desenvolvimento, operação cognitiva ou cobertura. Nunca trate a aceitação do manifesto como aprovação pedagógica.
 
 ## Auditoria semântico-instrucional
 
-O assistente compara requisitos e conteúdo para localizar compressão excessiva, desenvolvimento explicativo insuficiente, teoria que apenas menciona, prática que mede outra operação, prática antes da fundamentação, resource inadequado, substituição tratada como equivalência e lacuna de cobertura. Cite o alvo e a evidência observável; não revele raciocínio privado nem atribua score artificial.
+Depois dos checks, releia os artefatos reais e procure compressão excessiva, explicação prometida apenas mencionada, evidência ausente, prática que mede outra operação, prática antes da fundamentação, resource inadequado à estrutura, substituição tratada como equivalência e lacuna de cobertura.
 
-## Autoridade humana
+Registre somente conclusão pública e localizada. Não registre cadeia de raciocínio, deliberação interna, transcript ou score. Use `record_semantic_audit` no mesmo audit run; o backend fixa a origem semântica. Cada finding contém:
 
-Um finding não autoriza reparo. A pessoa decide quais achados serão corrigidos. O reparo posterior altera somente o escopo aprovado e a reauditoria relê independentemente o estado corrente. Nunca certifique eficácia educacional a partir da conformidade do contrato.
+- código e gravidade operacional;
+- alvo exato, com alvo de resource quando pertinente;
+- regra, parâmetro ou requisito violado e sua versão;
+- evidência pública curta, observável no conteúdo ou nos artefatos;
+- reparo proposto opcional;
+- revisão, snapshot e ciclo de vida persistidos pelo servidor.
 
-## Na materialização corrente
+## Decisão, reparo e reauditoria
 
-Antes de registrar o manifesto, valide cards e representação, confira se todo uso corresponde a uma seleção autorizada e registre limitações. Depois releia o estado persistido. Se houver divergência factual, não esconda a falha nem registre o manifesto como se o desenho tivesse sido cumprido.
+Finding não autoriza reparo. A pessoa aprova ou rejeita cada achado; o reparo posterior altera somente findings aprovados e respeita locks e escopo. Um finding rejeitado permanece registrado e nunca vira autorização implícita. Não limpe nem substitua um mandato `repair_findings` enquanto ele ainda contiver achado não concluído; cada vínculo confirmado consome seu finding e o último encerra o mandato antes de outra auditoria.
+
+Reauditoria abre outro `run_audit` com `kind: reaudit`, relê o estado persistido corrente e não reaproveita como conclusão o relatório anterior. Ela verifica o reparo, procura regressões e pode encontrar um problema novo. Não permita que quem repara certifique a própria alteração sem essa nova leitura.
+
+A conclusão da reauditoria deve cobrir todos os findings reparados elegíveis do escopo. Para `outcome: still_open`, registre também a nova ocorrência de mesma identidade em `findings`; ela pertence à rodada corrente — ou a um child run congelado da Parte — e sucede a ocorrência antiga. Use `outcome: resolved` somente quando essa identidade não reaparecer na rodada. Uma lista vazia não encerra silenciosamente reparos que ainda aguardam verificação.
+
+## Auditoria de Parte
+
+A Parte é lote operacional, não unidade pedagógica. Sua auditoria agrega sem apagar os recortes locais: cobertura do plano, coerência e dependências entre microssequências, revisitação útil, redundância, integração e distribuição de findings. Mostre quantidades e denominadores, nunca um score global. Percorra separadamente as páginas de findings e componentes. Para inspecionar uma microssequência do pai, use a `childAuditRunRef` exata do componente; não a troque pela rodada mais recente do mesmo escopo. Componente ausente ou alvo indisponível mantém cobertura parcial e nunca vira conformidade.
+
+## Métricas e limites
+
+São defensáveis como fatos do workspace quando têm unidade e denominador: checks passados, falhos ou não aplicáveis; findings por origem, gravidade, status e microssequência; cobertura declarada versus materializada; resources permitidos versus usados; e reparos por estado. Esses dados não são telemetria comportamental do estudante e não demonstram aprendizagem ou causalidade.
 
 ---
 
@@ -789,9 +828,9 @@ Na assistência local, alvos são `content:<id>`, `response:<id>` e `feedback:<i
 
 # Auditoria semântica independente
 
-Esta auditoria ocorre somente após autorização. Grave um mandato `audit` com identificador novo e, quando o recorte for uma Parte, seu `targetPartId`; retome o workspace, consulte `list_comments` e `list_observations` com `kinds: ["note"]` e releia a parte persistida. Achados ativos, sua síntese e o reparo proposto já vêm em `resume`; quando truncados ou para histórico, consulte `kinds: ["audit_finding"]`, estados e paginação. Ao concluir o relatório, limpe o mandato de auditoria. Ela não substitui o contrato, a validação de fontes ou a continuidade causal: verifica se o conteúdo é ensinável, compreensível e tecnicamente sustentado para a pessoa que o verá no celular.
+Esta auditoria ocorre somente após autorização. Grave um mandato `audit` com identificador novo e, quando o recorte for uma Parte, seu `targetPartId`; retome o workspace, consulte comentários e notas pertinentes e releia o conteúdo persistido. Use `list_comments` e `list_observations` com `kinds: ["note"]` para esse contexto; achados usam `kinds: ["audit_finding"]`. Abra `run_audit` com `kind: audit` antes do julgamento semântico: ele fixa a revisão auditada, executa os checks determinísticos e devolve findings paginados. Use `record_semantic_audit` no mesmo audit run somente depois de ler análise, snapshot, ResourceSets, blueprint, manifesto, cards, resources e fontes pertinentes. Achados ativos já vêm em `resume`; quando truncados, percorra a paginação. Ao concluir o relatório, limpe o mandato de auditoria. Ela não substitui o contrato, a validação de fontes ou a continuidade causal: verifica se o conteúdo é ensinável, compreensível e tecnicamente sustentado para a pessoa que o verá no celular.
 
-Não aprove pela aparência de JSON válido e não repare durante a auditoria. Percorra os critérios abaixo, registre achados legíveis e preserve o conteúdo e a estrutura do workspace. Mandato e achados compactos são as únicas escritas desta rodada. As observações não viram propriedades adicionais no card ou na microssequência. Reparos autorizados e reauditoria pertencem a rodadas posteriores, conforme `core/editorial-cycle.md`.
+Não aprove pela aparência de JSON válido ou pela aceitação do manifesto e não repare durante a auditoria. Percorra os critérios abaixo, registre achados legíveis e preserve o conteúdo e a estrutura do workspace. Mandato e achados compactos são as únicas escritas desta rodada. As observações não viram propriedades adicionais no card ou na microssequência. Reparos autorizados e reauditoria pertencem a rodadas posteriores, conforme `core/editorial-cycle.md`.
 
 ## 1. Leitura pelo estudante
 
@@ -858,13 +897,15 @@ Essas regras valem para qualquer package estruturado e para composições com ma
 
 ## Relatório e transição
 
-Separe **Aspectos adequados** de **Problemas encontrados**. Para cada problema, informe localização legível, tipo, descrição, impacto pedagógico, gravidade (`crítica`, `alta`, `média` ou `baixa`), reparo recomendado e escopo. Não altere conteúdo. Registre com `gerirContinuidadeDaAutoria` somente o achado compacto e seu alvo; não copie card, relatório, conversa ou fonte para esse registro.
+Separe **Aspectos adequados** de **Problemas encontrados**. Para cada problema, informe localização legível, código, gravidade operacional, regra ou requisito, evidência pública curta e reparo opcional. Não altere conteúdo. Registre com `gerirDesenhoInstrucional`/`record_semantic_audit` somente o achado compacto e estruturado e seu alvo exato; a origem, a revisão e o audit run são fixados pelo servidor. Não copie card, relatório, conversa, fonte integral nem raciocínio privado para esse registro.
 
 Quando não houver problema relevante, escreva: “Não foram encontrados problemas semânticos relevantes segundo os critérios aplicados.” Isso não comprova a eficácia do curso. Sugira exatamente uma próxima etapa: reparo, próxima parte ou reavaliação humana, conforme o resultado, e espere a decisão.
 
 `link_comment_correction` liga reparo a comentário de estudo; `link_finding_correction` liga reparo ao achado formal desta auditoria. Não intercambie essas operações.
 
-No reparo posterior, retome o workspace, releia o mandato persistido e os alvos, preserve IDs e posições e mude somente os achados aprovados. Depois informe o que mudou, vincule a correção à observação correspondente apenas após sucesso e declare o que permaneceu pendente, sem certificar o próprio reparo. A reauditoria volta a aplicar estes critérios ao estado persistido, registra seu resultado e procura regressões e problemas novos.
+No reparo posterior, retome o workspace, releia o mandato persistido e os alvos, preserve IDs e posições e mude somente os achados aprovados. Depois informe o que mudou, vincule a correção à observação correspondente apenas após sucesso e declare o que permaneceu pendente, sem certificar o próprio reparo. A reauditoria abre outro `run_audit` com `kind: reaudit`, volta a aplicar estes critérios ao estado persistido corrente, registra seu resultado e procura regressões e problemas novos. O relatório anterior é contexto, nunca conclusão reaproveitada.
+
+Verifique todos os findings reparados elegíveis no recorte. Se o problema ainda existir, envie `outcome: still_open` e registre a ocorrência correspondente em `findings` na rodada corrente; se ela vier de uma Parte, pode estar no child run exato congelado pelo pai. `outcome: resolved` exige que a mesma identidade não reapareça. Não conclua uma reauditoria vazia enquanto houver reparo elegível sem verificação.
 
 Se houver interrupção entre alterações, a retomada informa o identificador e a revisão da correção pendente mais recente. Releia o alvo antes de continuar ou vincular; o estado pendente não significa que o achado já foi resolvido.
 

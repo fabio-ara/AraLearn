@@ -19,6 +19,10 @@ import {
   validateManifestResourceAuthorizations
 } from "../aralearn/runtime/authoring/resourceSetResolution.js";
 import {
+  aggregatePartConformanceAudits,
+  auditInstructionalConformance
+} from "../aralearn/runtime/authoring/instructionalConformanceAudit.js";
+import {
   RESOURCE_CATALOG,
   RESOURCE_PACKAGE_REGISTRY
 } from "../aralearn/runtime/resources/catalog/resourceCatalog.js";
@@ -35,6 +39,16 @@ const DESIGN_SLICE_CONTRACT = "aralearn.authoring-design-slice.v1";
 const DESIGN_RESPONSE_LIMIT_BYTES = 96 * 1024;
 const RESOURCE_SET_PAGE_DEFAULT_LIMIT = 50;
 const RESOURCE_SET_PAGE_MAX_LIMIT = 100;
+const AUDIT_PAGE_DEFAULT_LIMIT = 20;
+const AUDIT_PAGE_MAX_LIMIT = 50;
+const AUDIT_SAFE_PAGE_LIMIT = 2;
+const AUDIT_COMPONENT_PAGE_MAX_LIMIT = 10;
+const SEMANTIC_AUDIT_BATCH_MAX = 100;
+const AUDIT_PART_COMPONENT_PAGE_LIMIT = 10;
+const AUDIT_FINDING_CATEGORIES = Object.freeze([
+  "structure", "design", "explanation", "practice", "resources",
+  "coverage", "coherence", "dependencies", "redundancy", "integration"
+]);
 const DESIGN_SLICE_VIEWS = new Set([
   "overview",
   "analysis",
@@ -42,7 +56,8 @@ const DESIGN_SLICE_VIEWS = new Set([
   "resource_set",
   "blueprint",
   "binding",
-  "materialization"
+  "materialization",
+  "audit"
 ]);
 const CONTRACTS = Object.freeze({
   instructional_analysis: "instructionalAnalysis",
@@ -59,7 +74,9 @@ const DATABASE_OPERATIONS = Object.freeze({
   save_resource_set: "save_resource_set",
   resolve_effective: "resolve_effective_design",
   save_blueprint: "save_pedagogical_blueprint",
-  register_manifest: "register_materialization_manifest"
+  register_manifest: "register_materialization_manifest",
+  run_audit: "run_authoring_audit",
+  record_semantic_audit: "record_authoring_semantic_audit"
 });
 const ACTION_CONTRACT_NAMES = Object.freeze([
   "action_read_slice",
@@ -70,7 +87,9 @@ const ACTION_CONTRACT_NAMES = Object.freeze([
   "action_save_resource_set",
   "action_resolve_effective",
   "action_save_blueprint",
-  "action_register_manifest"
+  "action_register_manifest",
+  "action_run_audit",
+  "action_record_semantic_audit"
 ]);
 const ALL_CONTRACT_NAMES = Object.freeze([
   ...Object.keys(CONTRACTS),
@@ -293,6 +312,67 @@ const RESOURCE_SET_CONSTRAINTS_SCHEMA = Object.freeze({
   }
 });
 
+const AUDIT_SCOPE_SCHEMA = Object.freeze({
+  type: "object",
+  additionalProperties: false,
+  required: ["kind", "ref"],
+  properties: {
+    kind: { enum: ["microsequence", "part"] },
+    ref: NON_EMPTY_SCHEMA
+  }
+});
+const AUDIT_TARGET_SCHEMA = Object.freeze({
+  type: "object",
+  additionalProperties: false,
+  required: ["entityType", "entityPath"],
+  properties: {
+    entityType: {
+      enum: ["workspace", "course", "module", "lesson", "microsequence", "card", "resource"]
+    },
+    entityPath: {
+      type: "array",
+      minItems: 0,
+      maxItems: 5,
+      items: NON_EMPTY_SCHEMA
+    },
+    resourceTargetId: {
+      oneOf: [NON_EMPTY_SCHEMA, { type: "null" }]
+    }
+  }
+});
+const AUDIT_RULE_REF_SCHEMA = Object.freeze({
+  type: "object",
+  additionalProperties: false,
+  required: ["kind", "id", "version"],
+  properties: {
+    kind: NON_EMPTY_SCHEMA,
+    id: NON_EMPTY_SCHEMA,
+    version: { oneOf: [NON_EMPTY_SCHEMA, { type: "null" }] }
+  }
+});
+const SEMANTIC_AUDIT_FINDING_SCHEMA = Object.freeze({
+  type: "object",
+  additionalProperties: false,
+  required: [
+    "code", "category", "severity", "target", "ruleRef", "publicEvidence",
+    "proposedRepair"
+  ],
+  properties: {
+    code: { type: "string", pattern: "^[a-z][a-z0-9_.-]{1,119}$" },
+    category: { enum: AUDIT_FINDING_CATEGORIES },
+    severity: { enum: ["low", "medium", "high", "critical"] },
+    target: AUDIT_TARGET_SCHEMA,
+    ruleRef: AUDIT_RULE_REF_SCHEMA,
+    publicEvidence: { type: "string", minLength: 1, maxLength: 2000 },
+    proposedRepair: {
+      oneOf: [
+        { type: "string", minLength: 1, maxLength: 1000 },
+        { type: "null" }
+      ]
+    }
+  }
+});
+
 const ACTION_CONTRACTS = Object.freeze({
   action_read_slice: {
     description: "Argumentos específicos de read_slice; operation pertence ao envelope MCP.",
@@ -304,7 +384,9 @@ const ACTION_CONTRACTS = Object.freeze({
         properties: {
           microsequencePath: MICROSEQUENCE_PATH_SCHEMA,
           view: {
-            enum: [...DESIGN_SLICE_VIEWS].filter((view) => view !== "resource_set")
+            enum: [...DESIGN_SLICE_VIEWS].filter((view) => (
+              !new Set(["resource_set", "audit"]).has(view)
+            ))
           }
         }
       },
@@ -324,6 +406,32 @@ const ACTION_CONTRACTS = Object.freeze({
             default: RESOURCE_SET_PAGE_DEFAULT_LIMIT
           }
         }
+      },
+      {
+        type: "object",
+        additionalProperties: false,
+        required: ["microsequencePath", "view"],
+        properties: {
+          microsequencePath: MICROSEQUENCE_PATH_SCHEMA,
+          view: { const: "audit" },
+          auditRunRef: VERSIONED_REF_SCHEMA,
+          auditScope: AUDIT_SCOPE_SCHEMA,
+          cursor: { type: "string", pattern: "^[1-9][0-9]{0,8}$" },
+          componentCursor: { type: "string", pattern: "^[1-9][0-9]{0,8}$" },
+          componentLimit: {
+            type: "integer",
+            minimum: 1,
+            maximum: AUDIT_COMPONENT_PAGE_MAX_LIMIT,
+            default: AUDIT_COMPONENT_PAGE_MAX_LIMIT
+          },
+          limit: {
+            type: "integer",
+            minimum: 1,
+            maximum: AUDIT_PAGE_MAX_LIMIT,
+            default: AUDIT_PAGE_DEFAULT_LIMIT
+          }
+        },
+        not: { required: ["auditRunRef", "auditScope"] }
       }
     ]
   },
@@ -394,7 +502,48 @@ const ACTION_CONTRACTS = Object.freeze({
   action_register_manifest: actionMutationSchema(
     "register_manifest",
     INSTRUCTIONAL_DESIGN_CONTRACTS.materializationManifest
-  )
+  ),
+  action_run_audit: actionMutationSchema("run_audit", {
+    type: "object",
+    additionalProperties: false,
+    required: ["kind", "scope"],
+    properties: {
+      kind: { enum: ["audit", "reaudit"] },
+      scope: AUDIT_SCOPE_SCHEMA
+    }
+  }),
+  action_record_semantic_audit: actionMutationSchema("record_semantic_audit", {
+    type: "object",
+    additionalProperties: false,
+    required: ["auditRunRef", "findings", "verifications"],
+    properties: {
+      auditRunRef: VERSIONED_REF_SCHEMA,
+      findings: {
+        type: "array",
+        maxItems: SEMANTIC_AUDIT_BATCH_MAX,
+        items: SEMANTIC_AUDIT_FINDING_SCHEMA
+      },
+      verifications: {
+        type: "array",
+        maxItems: SEMANTIC_AUDIT_BATCH_MAX,
+        description: [
+          "Na reauditoria, cobre todos os reparos elegíveis;",
+          "still_open exige ocorrência correspondente em findings na",
+          "rodada/child run corrente."
+        ].join(" "),
+        items: {
+          type: "object",
+          additionalProperties: false,
+          required: ["findingId", "outcome", "publicEvidence"],
+          properties: {
+            findingId: NON_EMPTY_SCHEMA,
+            outcome: { enum: ["resolved", "still_open"] },
+            publicEvidence: { type: "string", minLength: 1, maxLength: 1000 }
+          }
+        }
+      }
+    }
+  })
 });
 
 function text(value) {
@@ -411,6 +560,16 @@ function plainObject(value) {
 
 function clone(value) {
   return value == null ? value : structuredClone(value);
+}
+
+function assertAuditDeadline(deadlineAt) {
+  if (Number.isFinite(deadlineAt) && Date.now() + 250 >= deadlineAt) {
+    throw new AuthoringApiError(
+      503,
+      "audit_deadline_reached",
+      "O prazo desta etapa terminou; as rodadas já registradas permanecem disponíveis para retomar."
+    );
+  }
 }
 
 function decodeJsonPointerSegment(value) {
@@ -625,7 +784,7 @@ function compactMutationReceipt(operation, value) {
       manifestRef: clone(value.manifestRef),
       contentHash: text(value.contentHash),
       payloadHash: text(value.payloadHash),
-      conformance: "accepted",
+      registration: "accepted",
       resourceAuthorization: "authorized"
     };
   }
@@ -850,42 +1009,54 @@ function stateSlice(state) {
   };
 }
 
-async function stableSliceInputs({ adapter, principal, workspaceId, microsequencePath }) {
+async function stableSliceInputs({
+  adapter,
+  principal,
+  workspaceId,
+  microsequencePath,
+  deadlineAt = null
+}) {
   for (let attempt = 0; attempt < 2; attempt += 1) {
+    assertAuditDeadline(deadlineAt);
     const scopeRef = microsequencePath[3];
     const firstState = await adapter.getAuthoringDesignState({
       principal,
       workspaceId,
       scopeKind: "microsequence",
-      scopeRef
+      scopeRef,
+      deadlineAt
     });
     const [resume, entityResult, definitionsResult, assignmentsResult] = await Promise.all([
-      adapter.getWorkspace({ principal, workspaceId, view: "resume" }),
+      adapter.getWorkspace({ principal, workspaceId, view: "resume", deadlineAt }),
       adapter.getWorkspace({
         principal,
         workspaceId,
         view: "entity",
         entityType: "microsequence",
         entityPath: microsequencePath,
-        includeDescendants: false
+        includeDescendants: false,
+        deadlineAt
       }),
       adapter.listAuthoringDesignParameterDefinitions({
         principal,
         workspaceId,
-        scopeKind: null
+        scopeKind: null,
+        deadlineAt
       }),
       adapter.listAuthoringDesignParameterAssignments({
         principal,
         workspaceId,
         scopeKind: "microsequence",
-        scopeRef
+        scopeRef,
+        deadlineAt
       })
     ]);
     const fencedState = await adapter.getAuthoringDesignState({
       principal,
       workspaceId,
       scopeKind: "microsequence",
-      scopeRef
+      scopeRef,
+      deadlineAt
     });
     const revision = fencedState?.workspaceRevision;
     if (Number.isInteger(revision)
@@ -917,6 +1088,161 @@ async function effectiveResourceSets({ adapter, principal, workspaceId, snapshot
       resourceSetRef
     })
   )));
+}
+
+function auditPageArguments({ cursor, limit }) {
+  if (cursor != null && (!text(cursor) || !/^[1-9][0-9]{0,8}$/.test(cursor))) {
+    throw new AuthoringApiError(
+      422,
+      "invalid_audit_cursor",
+      "O cursor da página de auditoria é inválido."
+    );
+  }
+  const pageLimit = limit == null ? AUDIT_PAGE_DEFAULT_LIMIT : limit;
+  if (!Number.isInteger(pageLimit) || pageLimit < 1 || pageLimit > AUDIT_PAGE_MAX_LIMIT) {
+    throw new AuthoringApiError(
+      422,
+      "invalid_audit_limit",
+      `limit deve ser um inteiro entre 1 e ${AUDIT_PAGE_MAX_LIMIT}.`
+    );
+  }
+  return {
+    limit: Math.min(pageLimit, AUDIT_SAFE_PAGE_LIMIT),
+    afterOrdinal: cursor == null ? null : Number(cursor)
+  };
+}
+
+function auditComponentPageArguments({ componentCursor, componentLimit }) {
+  const parsedCursor = componentCursor == null ? null : Number(componentCursor);
+  const pageLimit = componentLimit == null
+    ? AUDIT_COMPONENT_PAGE_MAX_LIMIT
+    : Number(componentLimit);
+  if ((parsedCursor != null && (!Number.isInteger(parsedCursor) || parsedCursor < 1))
+    || !Number.isInteger(pageLimit)
+    || pageLimit < 1
+    || pageLimit > AUDIT_COMPONENT_PAGE_MAX_LIMIT) {
+    throw new AuthoringApiError(
+      422,
+      "invalid_audit_component_page",
+      "A página de microssequências da Parte é inválida."
+    );
+  }
+  return {
+    componentLimit: pageLimit,
+    afterComponentOrdinal: parsedCursor
+  };
+}
+
+function emptyHistoricalArtifactSlice() {
+  return {
+    analysisRef: null,
+    effectiveSnapshotRef: null,
+    blueprintRef: null,
+    bindingRef: null,
+    manifestRef: null,
+    effectiveResourceSetRefs: [],
+    blueprintHash: null,
+    bindingHash: null,
+    scopeEntityVersion: null,
+    blueprintCreatedRevision: null
+  };
+}
+
+async function readExactHistoricalAuditSlice({
+  adapter,
+  principal,
+  workspaceId,
+  microsequencePath,
+  auditRunRef,
+  cursor,
+  limit,
+  componentCursor,
+  componentLimit,
+  deadlineAt = null
+}) {
+  if (typeof adapter?.getAuthoringAuditRun !== "function") {
+    throw new AuthoringApiError(
+      500,
+      "design_backend_unavailable",
+      "O backend não oferece a leitura das rodadas de auditoria."
+    );
+  }
+  requireVersionedRef(auditRunRef, "auditRunRef");
+  const page = auditPageArguments({ cursor, limit });
+  const componentPage = auditComponentPageArguments({
+    componentCursor,
+    componentLimit
+  });
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    const firstResume = await adapter.getWorkspace({
+      principal,
+      workspaceId,
+      view: "resume",
+      deadlineAt
+    });
+    const auditPage = await adapter.getAuthoringAuditRun({
+      principal,
+      workspaceId,
+      auditRunRef: ref(auditRunRef),
+      scope: null,
+      ...page,
+      ...componentPage,
+      anchorMicrosequenceRef: microsequencePath[3],
+      deadlineAt
+    });
+    const fencedResume = await adapter.getWorkspace({
+      principal,
+      workspaceId,
+      view: "resume",
+      deadlineAt
+    });
+    if (!Number.isInteger(fencedResume?.revision)
+      || firstResume?.revision !== fencedResume.revision
+      || auditPage?.revision !== fencedResume.revision) {
+      continue;
+    }
+    const runScope = auditPage?.audit?.latestAuditRun?.scope;
+    if (runScope?.kind === "microsequence" && runScope.ref !== microsequencePath[3]) {
+      throw new AuthoringApiError(
+        409,
+        "audit_run_scope_mismatch",
+        "A rodada não pertence à microssequência informada."
+      );
+    }
+    if (runScope?.kind === "part" && auditPage?.audit?.containsAnchor !== true) {
+      throw new AuthoringApiError(
+        409,
+        "audit_run_scope_mismatch",
+        "A rodada não contém a microssequência informada."
+      );
+    }
+    const result = {
+      contract: DESIGN_SLICE_CONTRACT,
+      view: "audit",
+      availableViews: ["audit"],
+      workspace: workspaceSlice(fencedResume, fencedResume.revision),
+      microsequence: {
+        ...microsequenceSlice({ id: microsequencePath[3] }, microsequencePath),
+        targetAvailable: false
+      },
+      coordination: coordinationSlice(fencedResume, microsequencePath),
+      states: {},
+      artifacts: emptyHistoricalArtifactSlice(),
+      nextAction: "review_audit",
+      audit: compactAuditPage(auditPage?.audit)
+    };
+    return assertDesignResponseBudget({
+      operation: "read_slice",
+      workspaceId,
+      revision: fencedResume.revision,
+      result
+    });
+  }
+  throw new AuthoringApiError(
+    409,
+    "stale_authoring_state",
+    "O workspace mudou durante a leitura da auditoria. Releia o histórico."
+  );
 }
 
 function resourceSetPackageCursor(packageRef) {
@@ -1032,18 +1358,25 @@ export async function readAuthoringDesignSlice({
   microsequencePath,
   view = "overview",
   resourceSetRef = null,
+  auditRunRef = null,
+  auditScope = null,
   cursor = null,
-  limit = null
+  limit = null,
+  componentCursor = null,
+  componentLimit = null,
+  deadlineAt = null
 }) {
   if (!DESIGN_SLICE_VIEWS.has(view)) {
     throw new AuthoringApiError(422, "invalid_design_slice_view", "A view de desenho é inválida.");
   }
-  if (view !== "resource_set"
-      && (resourceSetRef != null || cursor != null || limit != null)) {
+  if (!new Set(["resource_set", "audit"]).has(view)
+      && (resourceSetRef != null || auditRunRef != null || auditScope != null
+        || cursor != null || limit != null || componentCursor != null
+        || componentLimit != null)) {
     throw new AuthoringApiError(
       422,
       "invalid_resource_set_slice_arguments",
-      "resourceSetRef, cursor e limit pertencem somente à view resource_set."
+      "Referências, escopo e paginação pertencem somente às views paginadas."
     );
   }
   if (view === "resource_set" && resourceSetRef == null) {
@@ -1053,11 +1386,48 @@ export async function readAuthoringDesignSlice({
       "resourceSetRef é obrigatório para a view resource_set."
     );
   }
+  if (view !== "resource_set" && resourceSetRef != null) {
+    throw new AuthoringApiError(
+      422,
+      "invalid_resource_set_slice_arguments",
+      "resourceSetRef pertence somente à view resource_set."
+    );
+  }
+  if (view !== "audit" && (auditRunRef != null || auditScope != null
+    || componentCursor != null || componentLimit != null)) {
+    throw new AuthoringApiError(
+      422,
+      "invalid_audit_slice_arguments",
+      "auditRunRef e auditScope pertencem somente à view audit."
+    );
+  }
+  if (view === "audit" && auditRunRef != null) {
+    if (auditScope != null) {
+      throw new AuthoringApiError(
+        422,
+        "invalid_audit_slice_arguments",
+        "Use auditRunRef ou auditScope, nunca ambos."
+      );
+    }
+    return readExactHistoricalAuditSlice({
+      adapter,
+      principal,
+      workspaceId,
+      microsequencePath,
+      auditRunRef,
+      cursor,
+      limit,
+      componentCursor,
+      componentLimit,
+      deadlineAt
+    });
+  }
   const inputs = await stableSliceInputs({
     adapter,
     principal,
     workspaceId,
-    microsequencePath
+    microsequencePath,
+    deadlineAt
   });
   const { state, definitions, assignments } = inputs;
   const blueprintArtifact = state.blueprintRef
@@ -1093,7 +1463,8 @@ export async function readAuthoringDesignSlice({
     ...(state.blueprintBinding ? ["binding"] : []),
     ...(state.materializationManifest || state.materializationContentHash
       ? ["materialization"]
-      : [])
+      : []),
+    "audit"
   ].flat();
   const result = {
     contract: DESIGN_SLICE_CONTRACT,
@@ -1156,6 +1527,82 @@ export async function readAuthoringDesignSlice({
       contentHash: state.materializationContentHash ?? null,
       manifest: manifestSummary(state.materializationManifest)
     };
+  } else if (view === "audit") {
+    if (typeof adapter?.getAuthoringAuditRun !== "function") {
+      throw new AuthoringApiError(
+        500,
+        "design_backend_unavailable",
+        "O backend não oferece a leitura das rodadas de auditoria."
+      );
+    }
+    if (auditScope != null && (
+      !plainObject(auditScope)
+      || Object.keys(auditScope).some((key) => !new Set(["kind", "ref"]).has(key))
+      || !new Set(["microsequence", "part"]).has(auditScope.kind)
+      || !text(auditScope.ref)
+      || text(auditScope.ref).length > 240
+    )) {
+      throw new AuthoringApiError(
+        422,
+        "invalid_audit_scope",
+        "auditScope precisa identificar uma microssequência ou Parte."
+      );
+    }
+    const coordination = coordinationSlice(inputs.resume, microsequencePath);
+    const requestedScope = auditScope == null
+      ? { kind: "microsequence", ref: microsequencePath[3] }
+      : { kind: auditScope.kind, ref: text(auditScope.ref) };
+    if (
+      (requestedScope.kind === "microsequence" && requestedScope.ref !== microsequencePath[3])
+      || (requestedScope.kind === "part" && coordination.part?.id !== requestedScope.ref)
+    ) {
+      throw new AuthoringApiError(
+        409,
+        "audit_run_scope_mismatch",
+        "O escopo pedido não contém a microssequência aberta."
+      );
+    }
+    const auditPage = await adapter.getAuthoringAuditRun({
+      principal,
+      workspaceId,
+      auditRunRef: null,
+      scope: requestedScope,
+      ...auditPageArguments({ cursor, limit }),
+      ...auditComponentPageArguments({ componentCursor, componentLimit }),
+      anchorMicrosequenceRef: microsequencePath[3],
+      deadlineAt
+    });
+    const fencedResume = await adapter.getWorkspace({
+      principal,
+      workspaceId,
+      view: "resume",
+      deadlineAt
+    });
+    if (auditPage?.revision !== state.workspaceRevision
+      || fencedResume?.revision !== state.workspaceRevision) {
+      throw new AuthoringApiError(
+        409,
+        "stale_authoring_state",
+        "A auditoria mudou durante a leitura; releia o workspace."
+      );
+    }
+    const runScope = auditPage?.audit?.latestAuditRun?.scope;
+    const partId = coordination.part?.id ?? null;
+    if (runScope?.kind === "microsequence" && runScope.ref !== microsequencePath[3]) {
+      throw new AuthoringApiError(
+        409,
+        "audit_run_scope_mismatch",
+        "A rodada não pertence à microssequência aberta."
+      );
+    }
+    if (runScope?.kind === "part" && runScope.ref !== partId) {
+      throw new AuthoringApiError(
+        409,
+        "audit_run_scope_mismatch",
+        "A rodada não pertence à Parte da microssequência aberta."
+      );
+    }
+    result.audit = compactAuditPage(auditPage?.audit);
   }
   const response = {
     operation: "read_slice",
@@ -1954,7 +2401,8 @@ async function assertCanonicalMicrosequencePath({
   principal,
   workspaceId,
   microsequencePath,
-  expectedRevision
+  expectedRevision,
+  deadlineAt = null
 }) {
   if (typeof adapter?.getWorkspace !== "function") {
     throw new AuthoringApiError(
@@ -1969,7 +2417,8 @@ async function assertCanonicalMicrosequencePath({
     view: "entity",
     entityType: "microsequence",
     entityPath: microsequencePath,
-    includeDescendants: false
+    includeDescendants: false,
+    deadlineAt
   });
   if (entityResult?.revision !== expectedRevision) {
     throw new AuthoringApiError(
@@ -1985,6 +2434,695 @@ async function assertCanonicalMicrosequencePath({
       "A microssequência não pertence ao caminho informado."
     );
   }
+}
+
+async function loadFencedAuditCards({
+  adapter,
+  principal,
+  workspaceId,
+  microsequencePath,
+  expectedRevision,
+  deadlineAt = null
+}) {
+  if (typeof adapter?.listAuthoringAuditCards !== "function") {
+    throw new AuthoringApiError(
+      500,
+      "design_backend_unavailable",
+      "O backend não oferece a leitura paginada dos cards para auditoria."
+    );
+  }
+  const cards = [];
+  let cursor = null;
+  let fence = null;
+  for (let pageIndex = 0; pageIndex < 20; pageIndex += 1) {
+    assertAuditDeadline(deadlineAt);
+    const page = await adapter.listAuthoringAuditCards({
+      principal,
+      workspaceId,
+      microsequencePath,
+      expectedRevision,
+      limit: 25,
+      afterPosition: cursor?.afterPosition ?? null,
+      afterId: cursor?.afterId ?? null,
+      deadlineAt
+    });
+    const pageFence = {
+      revision: page?.revision,
+      scopeEntityVersion: page?.scopeEntityVersion,
+      materializationStateRevision: page?.materializationStateRevision,
+      contentHash: text(page?.contentHash)
+    };
+    if (!Number.isInteger(pageFence.revision)
+      || pageFence.revision !== expectedRevision
+      || !Number.isInteger(pageFence.scopeEntityVersion)
+      || pageFence.scopeEntityVersion < 1
+      || !Number.isInteger(pageFence.materializationStateRevision)
+      || pageFence.materializationStateRevision < 0
+      || !/^[a-f0-9]{64}$/u.test(pageFence.contentHash)
+      || !Array.isArray(page?.items)
+      || page.items.length > 25) {
+      throw new AuthoringApiError(
+        409,
+        "invalid_canonical_audit_state",
+        "A página canônica de cards não contém um fence de auditoria válido."
+      );
+    }
+    if (fence && canonicalJsonStringify(fence) !== canonicalJsonStringify(pageFence)) {
+      throw new AuthoringApiError(
+        409,
+        "stale_authoring_state",
+        "A materialização mudou durante a leitura paginada da auditoria."
+      );
+    }
+    fence = pageFence;
+    for (const rawCard of page.items) {
+      if (!plainObject(rawCard) || !plainObject(rawCard.content)
+        || !text(rawCard.id) || !Number.isInteger(rawCard.position)) {
+        throw new AuthoringApiError(
+          409,
+          "invalid_canonical_audit_state",
+          "O backend retornou um card incompleto para a auditoria."
+        );
+      }
+      cards.push({
+        ...clone(rawCard.content),
+        id: text(rawCard.id),
+        position: rawCard.position
+      });
+    }
+    if (cards.length > 500) {
+      throw new AuthoringApiError(
+        413,
+        "audit_card_collection_too_large",
+        "A microssequência excede o limite paginado de 500 cards por rodada."
+      );
+    }
+    if (!page.hasMore) return { cards, fence };
+    const nextCursor = page.nextCursor;
+    if (!Number.isInteger(nextCursor?.afterPosition)
+      || !text(nextCursor?.afterId)
+      || canonicalJsonStringify(nextCursor) === canonicalJsonStringify(cursor)) {
+      throw new AuthoringApiError(
+        409,
+        "invalid_canonical_audit_cursor",
+        "A paginação canônica de cards não avançou."
+      );
+    }
+    cursor = clone(nextCursor);
+  }
+  throw new AuthoringApiError(
+    413,
+    "audit_card_collection_too_large",
+    "A leitura dos cards excedeu o número máximo de páginas da rodada."
+  );
+}
+
+async function auditMicrosequenceAtRevision({
+  adapter,
+  principal,
+  workspaceId,
+  microsequencePath,
+  expectedRevision,
+  deadlineAt = null
+}) {
+  assertAuditDeadline(deadlineAt);
+  const inputs = await stableSliceInputs({
+    adapter,
+    principal,
+    workspaceId,
+    microsequencePath,
+    deadlineAt
+  });
+  assertExpectedRevision(inputs.state, expectedRevision);
+  if (inputs.state.analysisState !== "current"
+    || inputs.state.effectiveDesignState !== "resolved"
+    || inputs.state.blueprintState !== "current"
+    || inputs.state.materializationState !== "tracked"
+    || !plainObject(inputs.state.analysis)
+    || !plainObject(inputs.state.effectiveSnapshot)
+    || !plainObject(inputs.state.blueprint)
+    || !plainObject(inputs.state.blueprintBinding)
+    || !plainObject(inputs.state.materializationManifest)) {
+    throw new AuthoringApiError(
+      409,
+      "audit_prerequisite_unavailable",
+      "A auditoria exige análise, snapshot, blueprint e materialização correntes.",
+      { states: stateSlice(inputs.state), microsequencePath: clone(microsequencePath) }
+    );
+  }
+  const [resourceSets, cardPage] = await Promise.all([
+    effectiveResourceSets({
+      adapter,
+      principal,
+      workspaceId,
+      snapshot: inputs.state.effectiveSnapshot
+    }),
+    loadFencedAuditCards({
+      adapter,
+      principal,
+      workspaceId,
+      microsequencePath,
+      expectedRevision,
+      deadlineAt
+    })
+  ]);
+  let report;
+  try {
+    report = auditInstructionalConformance({
+      analysis: inputs.state.analysis,
+      parameterDefinitions: inputs.definitions,
+      parameterAssignments: inputs.assignments,
+      effectiveSnapshot: inputs.state.effectiveSnapshot,
+      resourceSets,
+      blueprint: inputs.state.blueprint,
+      binding: inputs.state.blueprintBinding,
+      materializationManifest: inputs.state.materializationManifest,
+      cards: cardPage.cards,
+      packageRegistry: RESOURCE_PACKAGE_REGISTRY,
+      context: {
+        workspaceId,
+        microsequencePath,
+        auditedRevision: expectedRevision,
+        materializationStateRevision: cardPage.fence.materializationStateRevision,
+        currentContentHash: cardPage.fence.contentHash,
+        materializationState: inputs.state.materializationState
+      }
+    });
+  } catch (cause) {
+    throw domainError(cause, "invalid_canonical_audit_state");
+  }
+  return {
+    path: clone(microsequencePath),
+    report: clone(report),
+    persisted: {
+      path: clone(microsequencePath),
+      scopeEntityVersion: cardPage.fence.scopeEntityVersion,
+      materializationStateRevision: cardPage.fence.materializationStateRevision,
+      contentHash: cardPage.fence.contentHash,
+      refs: {
+        analysisRef: clone(report.refs?.analysisRef),
+        effectiveSnapshotRef: clone(report.refs?.effectiveSnapshotRef),
+        blueprintRef: clone(report.refs?.blueprintRef),
+        bindingRef: clone(report.refs?.bindingRef),
+        manifestRef: clone(report.refs?.manifestRef),
+        resourceSetRefs: clone(list(report.refs?.resourceSetRefs))
+      }
+    }
+  };
+}
+
+function auditReportWithoutFindings(report) {
+  const value = clone(report);
+  delete value.findings;
+  return value;
+}
+
+function compactAuditFinding(value) {
+  return {
+    findingId: text(value?.findingId),
+    code: text(value?.code),
+    category: text(value?.category),
+    origin: text(value?.origin),
+    severity: text(value?.severity),
+    status: text(value?.status),
+    target: clone(value?.target),
+    currentEntityPath: clone(list(value?.currentEntityPath)),
+    targetAvailable: value?.targetAvailable === true,
+    auditPartId: value?.auditPartId == null ? null : text(value.auditPartId),
+    ruleRef: clone(value?.ruleRef),
+    publicEvidence: text(value?.publicEvidence),
+    proposedRepair: value?.proposedRepair == null
+      ? null
+      : text(value.proposedRepair),
+    detectedRevision: Number(value?.detectedRevision),
+    auditRunRef: clone(value?.auditRunRef),
+    artifactRefs: clone(value?.artifactRefs),
+    verificationAuditRunRef: value?.verificationAuditRunRef == null
+      ? null
+      : clone(value.verificationAuditRunRef),
+    pendingCorrectionRequestId: value?.pendingCorrectionRequestId == null
+      ? null
+      : text(value.pendingCorrectionRequestId),
+    pendingRevision: Number.isInteger(value?.pendingRevision)
+      ? value.pendingRevision
+      : null,
+    correctionRequestId: value?.correctionRequestId == null
+      ? null
+      : text(value.correctionRequestId),
+    resultingRevision: Number.isInteger(value?.resultingRevision)
+      ? value.resultingRevision
+      : null,
+    verification: value?.verification == null ? null : text(value.verification),
+    verifiedRevision: Number.isInteger(value?.verifiedRevision)
+      ? value.verifiedRevision
+      : null
+  };
+}
+
+function compactAuditPage(value) {
+  if (!plainObject(value)) return null;
+  return {
+    latestAuditRun: clone(value.latestAuditRun),
+    summary: clone(value.summary),
+    findings: list(value.findings).map(compactAuditFinding),
+    components: {
+      items: list(value.components?.items).map((item) => clone(item)),
+      count: Number(value.components?.count) || 0,
+      nextCursor: value.components?.nextCursor == null
+        ? null
+        : text(value.components.nextCursor),
+      truncated: value.components?.truncated === true
+    },
+    total: Number(value.total) || 0,
+    nextCursor: value.nextCursor == null ? null : text(value.nextCursor),
+    truncated: value.truncated === true
+  };
+}
+
+async function loadPartAuditComponentsAtRevision({
+  adapter,
+  principal,
+  workspaceId,
+  partRef,
+  expectedRevision,
+  deadlineAt = null
+}) {
+  if (typeof adapter?.listAuthoringPartAuditComponents !== "function") {
+    throw new AuthoringApiError(
+      500,
+      "design_backend_unavailable",
+      "O backend não oferece a paginação das rodadas componentes da Parte."
+    );
+  }
+  const items = [];
+  let afterOrdinal = null;
+  let expectedTotal = null;
+  let readyCount = 0;
+  for (let pageIndex = 0; pageIndex < 50; pageIndex += 1) {
+    assertAuditDeadline(deadlineAt);
+    const page = await adapter.listAuthoringPartAuditComponents({
+      principal,
+      workspaceId,
+      partRef,
+      limit: AUDIT_PART_COMPONENT_PAGE_LIMIT,
+      afterOrdinal,
+      deadlineAt
+    });
+    if (page?.revision !== expectedRevision
+      || text(page?.partRef) !== partRef
+      || !Array.isArray(page?.items)
+      || page.items.length > AUDIT_PART_COMPONENT_PAGE_LIMIT
+      || !Number.isInteger(page?.total)
+      || page.total < 1
+      || page.total > 500
+      || !Number.isInteger(page?.pageReadyCount)
+      || page.pageReadyCount < 0
+      || page.pageReadyCount > page.items.length) {
+      throw new AuthoringApiError(
+        409,
+        "invalid_canonical_audit_state",
+        "A página de rodadas componentes não corresponde à Parte corrente."
+      );
+    }
+    expectedTotal ??= page.total;
+    if (page.total !== expectedTotal) {
+      throw new AuthoringApiError(
+        409,
+        "stale_authoring_state",
+        "As rodadas componentes mudaram durante a paginação da Parte."
+      );
+    }
+    readyCount += page.pageReadyCount;
+    for (const item of page.items) {
+      const expectedOrdinal = items.length + 1;
+      if (!plainObject(item)
+        || item.ordinal !== expectedOrdinal
+        || !text(item.microsequenceRef)
+        || typeof item.targetAvailable !== "boolean"
+        || typeof item.ready !== "boolean"
+        || (item.targetAvailable === false && item.ready === true)
+        || (item.ready === true && (
+          !plainObject(item.auditRunRef)
+          || !plainObject(item.deterministicReport)
+          || !plainObject(item.microsequence)
+          || !Number.isInteger(item.findingCount)
+          || item.findingCount < 0
+          || !plainObject(item.findingsByCategory)
+          || !plainObject(item.findingsByOrigin)
+        ))) {
+        throw new AuthoringApiError(
+          409,
+          "invalid_canonical_audit_state",
+          "A sequência de componentes da Parte é inválida."
+        );
+      }
+      items.push(clone(item));
+    }
+    if (!page.truncated) {
+      if (page.nextCursor != null || items.length !== page.total) {
+        throw new AuthoringApiError(
+          409,
+          "invalid_canonical_audit_cursor",
+          "A paginação de componentes terminou de forma inconsistente."
+        );
+      }
+      return {
+        items,
+        total: page.total,
+        readyCount,
+        missingCount: page.total - readyCount
+      };
+    }
+    const nextOrdinal = Number(page.nextCursor);
+    if (!Number.isInteger(nextOrdinal)
+      || nextOrdinal <= (afterOrdinal ?? 0)
+      || nextOrdinal !== items.length) {
+      throw new AuthoringApiError(
+        409,
+        "invalid_canonical_audit_cursor",
+        "A paginação de componentes não avançou."
+      );
+    }
+    afterOrdinal = nextOrdinal;
+  }
+  throw new AuthoringApiError(
+    409,
+    "invalid_canonical_audit_cursor",
+    "A paginação da Parte excedeu o limite canônico de 500 microssequências."
+  );
+}
+
+async function auditScopeAtRevision({
+  adapter,
+  principal,
+  workspaceId,
+  microsequencePath,
+  expectedRevision,
+  payload,
+  deadlineAt = null
+}) {
+  requireClosedObject(payload, ["kind", "scope"], "payload");
+  requireClosedObject(payload.scope, ["kind", "ref"], "payload.scope");
+  if (!new Set(["audit", "reaudit"]).has(payload.kind)
+    || !new Set(["microsequence", "part"]).has(payload.scope.kind)
+    || !text(payload.scope.ref)) {
+    throw new AuthoringApiError(
+      422,
+      "invalid_audit_scope",
+      "A rodada precisa declarar kind e escopo válidos."
+    );
+  }
+  if (payload.scope.kind === "microsequence") {
+    if (payload.scope.ref !== microsequencePath[3]) {
+      throw new AuthoringApiError(
+        422,
+        "audit_scope_mismatch",
+        "A microssequência auditada diverge do caminho informado."
+      );
+    }
+    const audited = await auditMicrosequenceAtRevision({
+      adapter,
+      principal,
+      workspaceId,
+      microsequencePath,
+      expectedRevision,
+      deadlineAt
+    });
+    return {
+      contract: audited.report.contract,
+      kind: payload.kind,
+      scope: clone(payload.scope),
+      algorithm: clone(audited.report.algorithm),
+      microsequences: [audited.persisted],
+      report: auditReportWithoutFindings(audited.report),
+      findings: clone(audited.report.findings)
+    };
+  }
+  const resume = await adapter.getWorkspace({
+    principal,
+    workspaceId,
+    view: "resume",
+    deadlineAt
+  });
+  if (resume?.revision !== expectedRevision) {
+    throw new AuthoringApiError(
+      409,
+      "stale_authoring_state",
+      "O mapa da Parte mudou antes da auditoria."
+    );
+  }
+  const part = list(resume?.content?.parts).find(({ id }) => (
+    text(id) === payload.scope.ref
+  ));
+  if (!part || !list(part.microsequenceIds).includes(microsequencePath[3])) {
+    throw new AuthoringApiError(
+      422,
+      "audit_scope_mismatch",
+      "A Parte não contém a microssequência usada para abrir a rodada."
+    );
+  }
+  const components = await loadPartAuditComponentsAtRevision({
+    adapter,
+    principal,
+    workspaceId,
+    partRef: text(part.id),
+    expectedRevision,
+    deadlineAt
+  });
+  const pending = components.items.filter(({ ready, targetAvailable }) => (
+    targetAvailable !== false && ready !== true
+  ));
+  if (pending.length) {
+    throw new AuthoringApiError(
+      409,
+      "audit_part_components_pending",
+      "A Parte será agregada quando cada microssequência tiver uma rodada corrente e concluída.",
+      {
+        partRef: text(part.id),
+        total: components.total,
+        readyCount: components.readyCount,
+        pendingCount: pending.length,
+        nextMicrosequenceRefs: pending.slice(0, 20).map(({ microsequenceRef }) => (
+          text(microsequenceRef)
+        )),
+        truncated: pending.length > 20
+      }
+    );
+  }
+  const readyComponents = components.items.filter(({ ready }) => ready === true);
+  const compactAudits = readyComponents.map((component) => ({
+    contract: component.deterministicReport?.contract,
+    algorithm: clone(component.deterministicReport?.algorithm),
+    scope: clone(component.deterministicReport?.scope),
+    auditedRevision: component.auditedRevision,
+    materializationStateRevision:
+      component.deterministicReport?.materializationStateRevision,
+    contentHash: component.deterministicReport?.contentHash,
+    summary: clone(component.deterministicReport?.summary),
+    auditRunRef: clone(component.auditRunRef),
+    findingSummary: {
+      total: Number(component.findingCount) || 0,
+      byCategory: clone(component.findingsByCategory ?? {}),
+      byOrigin: clone(component.findingsByOrigin ?? {})
+    }
+  }));
+  const aggregate = aggregatePartConformanceAudits({
+    part: {
+      id: text(part.id),
+      microsequenceIds: clone(list(part.microsequenceIds))
+    },
+    audits: compactAudits,
+    auditedRevision: expectedRevision
+  });
+  assertAuditDeadline(deadlineAt);
+  const fencedResume = await adapter.getWorkspace({
+    principal,
+    workspaceId,
+    view: "resume",
+    deadlineAt
+  });
+  if (fencedResume?.revision !== expectedRevision) {
+    throw new AuthoringApiError(
+      409,
+      "stale_authoring_state",
+      "A Parte mudou durante a agregação das rodadas componentes."
+    );
+  }
+  return {
+    contract: aggregate.contract,
+    kind: payload.kind,
+    scope: clone(payload.scope),
+    algorithm: clone(aggregate.algorithm),
+    microsequences: [],
+    components: components.items.map((component) => ({
+      ordinal: component.ordinal,
+      microsequenceRef: text(component.microsequenceRef),
+      targetAvailable: component.targetAvailable !== false,
+      auditRunRef: component.ready === true ? clone(component.auditRunRef) : null
+    })),
+    report: auditReportWithoutFindings(aggregate),
+    findings: clone(aggregate.findings)
+  };
+}
+
+async function auditMutationResponse({
+  workspaceId,
+  operation,
+  rawResult,
+  fallbackRevision
+}) {
+  const value = plainObject(rawResult) ? clone(rawResult) : {};
+  const auditRunRef = value.auditRunRef;
+  requireVersionedRef(auditRunRef, "auditRunRef");
+  const revision = Number.isInteger(value.revision)
+    ? value.revision
+    : fallbackRevision;
+  if (operation === "run_audit") {
+    return assertDesignResponseBudget({
+      operation,
+      workspaceId,
+      revision,
+      replayed: value.idempotent === true,
+      result: {
+        auditRunRef: clone(auditRunRef),
+        kind: text(value.kind),
+        status: text(value.status) || "semantic_pending",
+        scope: clone(value.scope),
+        startedRevision: Number(value.startedRevision) || fallbackRevision,
+        findingCount: Number(value.findingCount) || 0
+      }
+    });
+  }
+  if (operation === "record_semantic_audit") {
+    return assertDesignResponseBudget({
+      operation,
+      workspaceId,
+      revision,
+      replayed: value.idempotent === true,
+      result: {
+        auditRunRef: clone(auditRunRef),
+        status: "complete",
+        recordedCount: Number(value.recordedCount) || 0,
+        verifiedCount: Number(value.verifiedCount) || 0,
+        findingIds: clone(list(value.findingIds)),
+        verificationFindingIds: clone(list(value.verificationFindingIds))
+      }
+    });
+  }
+  throw new AuthoringApiError(500, "invalid_audit_operation", "Operação de auditoria inválida.");
+}
+
+async function executeAuditMutation(options) {
+  const {
+    adapter,
+    principal,
+    workspaceId,
+    operation,
+    requestId,
+    expectedRevision,
+    microsequencePath,
+    payload,
+    deadlineAt = null
+  } = options;
+  const databaseOperation = DATABASE_OPERATIONS[operation];
+  const method = operation === "run_audit"
+    ? "registerAuthoringAuditRun"
+    : "recordAuthoringSemanticAudit";
+  if (!databaseOperation
+    || typeof adapter?.[method] !== "function"
+    || typeof adapter?.replayAuthoringDesignMutation !== "function") {
+    throw new AuthoringApiError(
+      500,
+      "design_backend_unavailable",
+      "O backend não oferece a operação de auditoria solicitada."
+    );
+  }
+  const payloadHash = await mutationPayloadHash(
+    databaseOperation,
+    microsequencePath,
+    payload
+  );
+  const replay = await adapter.replayAuthoringDesignMutation({
+    principal,
+    requestId,
+    payloadHash,
+    operation: databaseOperation
+  });
+  if (replay != null) {
+    if (text(replay.workspaceId) !== text(workspaceId)) {
+      throw new AuthoringApiError(
+        409,
+        "idempotency_key_reused",
+        "O requestId já foi usado em outro workspace."
+      );
+    }
+    return auditMutationResponse({
+      adapter,
+      principal,
+      workspaceId,
+      operation,
+      rawResult: replay,
+      fallbackRevision: expectedRevision
+    });
+  }
+  await assertCanonicalMicrosequencePath({
+    adapter,
+    principal,
+    workspaceId,
+    microsequencePath,
+    expectedRevision,
+    deadlineAt
+  });
+  let persistedPayload = payload;
+  if (operation === "run_audit") {
+    persistedPayload = await auditScopeAtRevision({
+      adapter,
+      principal,
+      workspaceId,
+      microsequencePath,
+      expectedRevision,
+      payload,
+      deadlineAt
+    });
+  } else {
+    requireClosedObject(
+      payload,
+      ["auditRunRef", "findings", "verifications"],
+      "payload"
+    );
+    requireVersionedRef(payload.auditRunRef, "payload.auditRunRef");
+    if (!Array.isArray(payload.findings)
+      || payload.findings.length > SEMANTIC_AUDIT_BATCH_MAX
+      || !Array.isArray(payload.verifications)
+      || payload.verifications.length > SEMANTIC_AUDIT_BATCH_MAX
+      || payload.findings.some((finding) => (
+        !plainObject(finding)
+        || !AUDIT_FINDING_CATEGORIES.includes(text(finding.category))
+      ))) {
+      throw new AuthoringApiError(
+        422,
+        "invalid_semantic_audit_payload",
+        "findings e verifications devem ser listas limitadas."
+      );
+    }
+  }
+  const rawResult = await adapter[method]({
+    principal,
+    workspaceId,
+    requestId,
+    payloadHash,
+    expectedRevision,
+    payload: persistedPayload,
+    deadlineAt
+  });
+  return auditMutationResponse({
+    adapter,
+    principal,
+    workspaceId,
+    operation,
+    rawResult,
+    fallbackRevision: expectedRevision
+  });
 }
 
 async function executeDesignMutation({
@@ -2161,6 +3299,9 @@ async function executeDesignMutation({
 export async function executeWorkspaceDesignAction(options) {
   if (options.operation === "read_slice") return readAuthoringDesignSlice(options);
   if (options.operation === "contracts") return readInstructionalDesignContract(options);
+  if (new Set(["run_audit", "record_semantic_audit"]).has(options.operation)) {
+    return executeAuditMutation(options);
+  }
   return executeDesignMutation(options);
 }
 

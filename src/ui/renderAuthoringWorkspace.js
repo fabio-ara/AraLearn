@@ -258,73 +258,412 @@ const SEVERITY_LABELS = Object.freeze({
   critical: "Crítica"
 });
 
+const FINDING_STATUS_LABELS = Object.freeze({
+  open: "Aguardando decisão",
+  approved: "Aprovado para reparo",
+  rejected: "Rejeitado",
+  repaired: "Reparado · falta reauditar",
+  resolved: "Resolvido após reauditoria"
+});
+
+const FINDING_ORIGIN_LABELS = Object.freeze({
+  deterministic: "Verificação do sistema",
+  semantic_audit: "Revisão instrucional",
+  legacy: "Revisão anterior"
+});
+
+const FINDING_CODE_LABELS = Object.freeze({
+  actual_cards_match_artifact_refs: "Cards coerentes com os artefatos registrados",
+  actual_resources_match_manifest: "Resources coerentes com a materialização registrada",
+  actual_resources_preserve_resource_set_condition: "Resources coerentes com a condição disponível",
+  applicable_explanation_coverage: "Cobertura das explicações necessárias",
+  blueprint_contract: "Integridade do plano de construção",
+  card_role_matches_materialized_step: "Papel do card coerente com o passo construído",
+  declared_distinct_practice_range: "Variedade de prática planejada",
+  evidence_requirement_coverage: "Cobertura das evidências necessárias",
+  instructional_contract_bundle: "Integridade dos contratos instrucionais",
+  manifest_tracks_current_materialization: "Registro coerente com o conteúdo corrente",
+  materialized_card_contracts: "Integridade dos cards construídos",
+  new_units_per_theory_step_ceiling: "Limite de novidades por passo de teoria",
+  part_microsequence_audit_coverage: "Cobertura da auditoria na Parte",
+  planned_materialized_alignment: "Alinhamento entre planejamento e conteúdo",
+  practice_after_required_theory: "Prática depois da fundamentação necessária",
+  research_lock_preserved: "Condição de pesquisa preservada",
+  semantic_excessive_compression: "Conteúdo comprimido em excesso",
+  semantic_explanation_only_mentioned: "Explicação apenas mencionada",
+  semantic_practice_operation_mismatch: "Prática desalinhada à operação pretendida",
+  semantic_representation_mismatch: "Representação inadequada ao conteúdo",
+  simultaneous_new_units_per_coordination_set_ceiling: "Limite de novidades simultâneas"
+});
+
+const AUDIT_STATUS = Object.freeze({
+  conformant: Object.freeze({ label: "Conforme", icon: "ready-state" }),
+  finding: Object.freeze({ label: "Com achado", icon: "review" }),
+  not_checked: Object.freeze({ label: "Não verificada", icon: "draft-state" })
+});
+
+function readableIdentifier(value) {
+  const normalized = String(value || "").trim().replaceAll(/[_-]+/gu, " ").replaceAll(/\s+/gu, " ");
+  return normalized ? normalized.replace(/^./u, (character) => character.toLocaleUpperCase("pt-BR")) : "Critério registrado";
+}
+
+function findingCodeLabel(value) {
+  return FINDING_CODE_LABELS[String(value || "").trim()] || readableIdentifier(value);
+}
+
+function renderAuditSummary(summary, { part = false } = {}) {
+  const dimensions = (summary?.dimensions || []).filter((item) => part || item.partOnly !== true);
+  if (!dimensions.length) return "";
+  return (
+    '<ul class="authoring-audit-summary" aria-label="Resumo da auditoria">' +
+    dimensions.map((dimension) => {
+      const status = AUDIT_STATUS[dimension.status] || AUDIT_STATUS.not_checked;
+      const count = dimension.status === "finding" && dimension.findingCount > 0
+        ? ` · ${dimension.findingCount}`
+        : "";
+      return '<li class="is-' + escapeHtml(dimension.status) + '">' + icon(status.icon) +
+        '<span><strong>' + escapeHtml(dimension.label) + '</strong><small>' +
+        escapeHtml(status.label + count) + "</small></span></li>";
+    }).join("") + "</ul>"
+  );
+}
+
+function findingWithinPart(finding, part) {
+  const target = finding.readerTarget?.entityPath || finding.entityPath;
+  return finding.auditPartId === part.coordinationPartId ||
+    finding.auditPartId === part.partId || (Array.isArray(target) && part.microsequences.some(
+    (microsequence) => Array.isArray(microsequence.entityPath) && microsequence.entityPath.every(
+      (entry, index) => target[index] === entry
+    )
+  ));
+}
+
+function renderAuditPartList(state) {
+  if (state.selectedMicrosequence || state.auditPartId || !state.overview?.parts.length) return "";
+  const parts = state.overview.parts.filter((part) => part.coordinationPartId);
+  if (!parts.length) return "";
+  return (
+    '<section class="authoring-audit-parts" aria-labelledby="authoring-audit-parts-title">' +
+    '<h3 id="authoring-audit-parts-title">Por Parte</h3><div>' + parts.map((part) => {
+      const findings = state.overview.findings.filter((finding) => findingWithinPart(finding, part));
+      const summary = part.auditSummary;
+      const checked = summary?.dimensions?.filter(({ partOnly }) => partOnly !== true) || [];
+      const conformant = checked.filter(({ status }) => status === "conformant").length;
+      const notChecked = checked.every(({ status }) => status === "not_checked");
+      const label = findings.length
+        ? `${findings.length}${state.overview.findingsTruncated ? "+" : ""} ${findings.length === 1 ? "achado" : "achados"}`
+        : state.overview.findingsTruncated
+          ? "Resumo parcial"
+          : !part.auditRunRef || notChecked ? "Ainda não verificada" : `${conformant} verificações conformes`;
+      return '<button type="button" data-authoring-action="open-audit-part" data-part-id="' +
+        escapeHtml(part.partId) + '"' + (state.loading ? " disabled" : "") + '><span><strong>' +
+        escapeHtml(part.title) + '</strong><small>' +
+        escapeHtml(label) + '</small></span>' + icon("arrow-right", "authoring-card-arrow") + "</button>";
+    }).join("") + "</div></section>"
+  );
+}
+
+function renderAuditComponents(state, part) {
+  const components = state.auditSlice?.components;
+  if (!part || !components || (!components.items.length && !components.count)) return "";
+  const rows = components.items.map((component, index) => {
+    const microsequence = part.microsequences.find((item) => (
+      item.key === component.microsequenceRef ||
+      item.entityPath?.[3] === component.microsequenceRef ||
+      (Array.isArray(component.microsequencePath) && Array.isArray(item.entityPath) &&
+        component.microsequencePath.every((entry, pathIndex) => item.entityPath[pathIndex] === entry))
+    ));
+    const available = Boolean(
+      microsequence && component.status === "complete" && component.targetAvailable !== false &&
+      component.childAuditRunRef && Array.isArray(microsequence.entityPath)
+    );
+    const status = component.targetAvailable === false
+      ? { key: "missing", label: "Conteúdo indisponível", icon: "remove-state" }
+      : available
+        ? { key: "ready", label: "Auditoria disponível", icon: "ready-state" }
+        : component.status === "complete"
+          ? { key: "missing", label: "Rodada indisponível", icon: "remove-state" }
+        : { key: "planned", label: "Ainda não auditada", icon: "draft-state" };
+    return '<button type="button" class="authoring-audit-component" data-component-index="' + index + '"' +
+      (available ? ' data-authoring-action="open-audit-component"' : ' disabled aria-disabled="true"') + '>' +
+      '<span><strong>' + escapeHtml(microsequence?.title || "Microssequência indisponível") + "</strong>" +
+      renderState(status) + "</span>" + (available ? icon("arrow-right", "authoring-card-arrow") : "") +
+      "</button>";
+  });
+  const shown = components.items.length;
+  const total = Math.max(shown, components.count);
+  return (
+    '<section class="authoring-audit-components" aria-labelledby="authoring-audit-components-title">' +
+    '<header><h3 id="authoring-audit-components-title" class="authoring-audit-components-heading" tabindex="-1">' +
+    'Microssequências da Parte</h3><span>' + escapeHtml(components.truncated
+      ? `${shown} de ${total}`
+      : `${total}`) + "</span></header>" +
+    '<div class="authoring-audit-component-list">' + rows.join("") + "</div>" +
+    (components.truncated && components.nextCursor != null
+      ? '<button class="authoring-text-button" type="button" data-authoring-action="load-more-audit-components"' +
+        (state.auditComponentsLoading || state.loading ? " disabled" : "") + '>' +
+        (state.auditComponentsLoading ? "Carregando…" : "Carregar mais microssequências") + "</button>"
+      : "") +
+    "</section>"
+  );
+}
+
 function renderAudit(state) {
   const overview = state.overview;
   if (!overview) return renderLoading("Carregando auditoria…");
   const selectedPath = state.selectedMicrosequence?.entityPath;
-  const findings = selectedPath
-    ? overview.findings.filter((finding) => {
-        const target = finding.readerTarget?.entityPath;
-        if (!Array.isArray(target)) return false;
-        const comparable = target.slice(0, Math.min(target.length, selectedPath.length));
-        return comparable.every((value, index) => selectedPath[index] === value);
-      })
-    : overview.findings;
-  const knownCount = selectedPath ? findings.length : Math.max(findings.length, overview.findingsTotal);
-  const hasMore = overview.findingsTruncated;
-  const canLoadMore = state.findingsAvailable && hasMore &&
-    (!state.findingsPageLoaded || state.findingsNextCursor != null);
-  const hasPending = knownCount > 0 || hasMore;
-  const countLabel = hasMore && knownCount === 0
+  const selectedPart = state.auditPartId
+    ? overview.parts.find((part) => part.partId === state.auditPartId)
+    : null;
+  const scoped = Boolean(selectedPart || selectedPath);
+  const findings = scoped && state.auditSlice
+    ? state.auditSlice.findings
+    : selectedPart
+      ? overview.findings.filter((finding) => findingWithinPart(finding, selectedPart))
+      : selectedPath
+        ? overview.findings.filter((finding) => {
+            const target = finding.readerTarget?.entityPath;
+            return Array.isArray(target) && selectedPath.every((value, index) => target[index] === value);
+          })
+        : overview.findings;
+  const scopedTotal = scoped && state.auditSlice
+    ? Math.max(findings.length, state.auditSlice.total)
+    : findings.length;
+  const knownCount = scoped ? scopedTotal : Math.max(findings.length, overview.findingsTotal);
+  const hasMore = scoped && state.auditSlice
+    ? state.auditSlice.truncated
+    : overview.findingsTruncated;
+  const canLoadMore = hasMore && (scoped && state.auditSlice
+    ? state.auditSlice.nextCursor != null
+    : state.findingsAvailable && (!state.findingsPageLoaded || state.findingsNextCursor != null));
+  const offlineLimited = scoped && state.auditSlice
+    ? state.auditSlice.stale && hasMore && state.auditSlice.nextCursor == null
+    : state.findingsOfflineLimited;
+  const activeCount = scoped
+    ? findings.filter(({ status }) => ["open", "approved", "repaired"].includes(status)).length
+    : knownCount;
+  const hasPending = activeCount > 0 || hasMore;
+  const summary = state.auditSlice?.summary || selectedPart?.auditSummary ||
+    state.selectedMicrosequence?.auditSummary || overview.audit?.summary;
+  const run = state.auditSlice?.latestAuditRun || null;
+  const runCompleted = run?.status === "complete";
+  const runHistorical = runCompleted && run?.current !== true;
+  const runPending = Boolean(run && !runCompleted);
+  const countLabel = hasMore && activeCount === 0
     ? "Resumo incompleto"
-    : `${knownCount}${hasMore ? "+" : ""} ${knownCount === 1 && !hasMore ? "achado" : "achados"}`;
+    : `${activeCount}${hasMore ? "+" : ""} ${activeCount === 1 && !hasMore
+      ? "achado pendente"
+      : "achados pendentes"}`;
   return (
     '<section class="authoring-audit" aria-labelledby="authoring-destination-title">' +
     '<header class="authoring-audit-heading" tabindex="-1"><div><strong>' +
-    (state.selectedMicrosequence ? escapeHtml(state.selectedMicrosequence.title) : "Workspace") +
+    (state.selectedMicrosequence
+      ? escapeHtml(state.selectedMicrosequence.title)
+      : selectedPart ? escapeHtml(selectedPart.title) : "Workspace") +
     '</strong><span>' + escapeHtml(
-      hasPending
+      runHistorical
+        ? `${knownCount}${hasMore ? "+" : ""} ${knownCount === 1 && !hasMore
+          ? "achado registrado"
+          : "achados registrados"} · histórico`
+      : hasPending
         ? countLabel
-        : "Sem pendência estrutural"
-    ) + "</span></div>" + renderState(hasPending
-      ? { key: "audit_pending", label: hasMore ? "Resumo incompleto" : "Auditoria pendente", icon: "review" }
-      : { key: "ready", label: "Sem pendência corrente", icon: "ready-state" }) + "</header>" +
-    (selectedPath
+        : runCompleted
+          ? "Sem achado ativo neste recorte"
+          : runPending ? "Revisão instrucional pendente" : "Ainda não verificada"
+    ) + "</span></div>" + renderState(runHistorical
+      ? { key: "planned", label: "Rodada histórica", icon: "review" }
+      : hasPending
+        ? { key: "audit_pending", label: hasMore ? "Resumo incompleto" : "Auditoria pendente", icon: "review" }
+        : runCompleted
+        ? { key: "ready", label: "Auditoria concluída", icon: "ready-state" }
+        : runPending
+          ? { key: "building", label: "Auditoria em andamento", icon: "progress" }
+        : { key: "planned", label: "Não verificada", icon: "draft-state" }) + "</header>" +
+    (scoped
       ? '<button class="authoring-text-button authoring-clear-audit-scope" type="button"' +
-        ' data-authoring-action="clear-audit-scope">Ver todos os achados</button>'
+        ' data-authoring-action="clear-audit-scope"' + (state.loading ? " disabled" : "") +
+        '>' + escapeHtml(state.auditParentPartId ? "Voltar à Parte" : "Ver o workspace") + "</button>"
       : "") +
+    (state.auditLoading ? renderLoading("Carregando evidências…") : renderAuditSummary(summary, { part: Boolean(selectedPart) })) +
+    renderAuditPartList(state) +
+    renderAuditComponents(state, selectedPart) +
     (findings.length
       ? '<div class="authoring-finding-list" aria-label="Achados">' +
         findings.map((finding) => (
-          '<button class="authoring-finding" type="button"' +
-          (finding.targetAvailable === false
-            ? ' disabled aria-disabled="true"'
-            : ' data-authoring-action="open-finding"') +
-          ' data-finding-id="' + escapeHtml(finding.findingId) + '">' +
+          '<button class="authoring-finding" type="button" data-authoring-action="open-finding-detail"' +
+          ' data-finding-id="' + escapeHtml(finding.findingId) + '"' + (state.loading ? " disabled" : "") + '>' +
           '<span class="authoring-finding-copy"><strong>' + escapeHtml(finding.summary) + "</strong>" +
-          '<span>Gravidade ' + escapeHtml((SEVERITY_LABELS[finding.severity] || "Não classificada").toLocaleLowerCase("pt-BR")) +
+          '<span>' + escapeHtml(FINDING_ORIGIN_LABELS[finding.origin] || FINDING_ORIGIN_LABELS.legacy) +
+          ' · Gravidade ' + escapeHtml((SEVERITY_LABELS[finding.severity] || "Não classificada").toLocaleLowerCase("pt-BR")) +
           "</span>" + (finding.targetAvailable === false
             ? '<span class="authoring-finding-unavailable">Conteúdo indisponível</span>'
             : "") + "</span>" +
-          icon(finding.targetAvailable === false ? "remove-state" : "arrow-right", "authoring-card-arrow") +
+          icon("arrow-right", "authoring-card-arrow") +
           "</button>"
         )).join("") + "</div>"
       : hasMore
         ? '<div class="authoring-empty"><p>O resumo foi truncado; outros achados podem existir.</p></div>'
-        : '<div class="authoring-empty"><p>Nenhum achado ativo.</p></div>') +
+        : '<div class="authoring-empty"><p>' + (runCompleted
+          ? "Nenhum achado ativo nesta rodada."
+          : runPending
+            ? "A rodada ainda não concluiu a revisão instrucional."
+            : "Este recorte ainda não possui auditoria concluída.") + "</p></div>") +
     (hasMore && findings.length
       ? '<p class="authoring-audit-more">Lista resumida; outros achados podem existir fora deste recorte.</p>'
       : "") +
     (canLoadMore
       ? '<button class="authoring-text-button authoring-load-more-findings" type="button"' +
-        ' data-authoring-action="load-more-findings"' + (state.findingsLoading ? " disabled" : "") + '>' +
+        ' data-authoring-action="load-more-findings"' +
+        (state.findingsLoading || state.loading ? " disabled" : "") + '>' +
         (state.findingsLoading
           ? "Carregando…"
           : state.findingsPageLoaded ? "Carregar mais achados" : "Carregar achados") + "</button>"
-      : state.findingsOfflineLimited
+      : offlineLimited
         ? '<p class="authoring-audit-more">Conecte-se para carregar os achados que não estão neste dispositivo.</p>'
         : "") +
+    (state.auditOperational && state.auditActionCapabilities?.prepare &&
+      findings.some(({ status, targetAvailable }) => status === "approved" && targetAvailable !== false)
+      ? '<div class="authoring-audit-actions"><button class="authoring-apply-button" type="button"' +
+        ' data-authoring-action="prepare-finding-repairs"' +
+        (!state.auditActionsOnline || state.loading || !state.auditActionCapabilities?.prepare ? " disabled" : "") +
+        '>Preparar reparos (' + escapeHtml(findings.filter(({ status, targetAvailable }) => (
+          status === "approved" && targetAvailable !== false
+        )).length) +
+        ")</button>" + (!state.auditActionsOnline
+          ? '<p role="note">Conecte-se para registrar decisões.</p>'
+          : "") + "</div>"
+      : "") +
     "</section>"
+  );
+}
+
+function renderFindingProvenance(finding) {
+  const artifacts = Object.entries(finding.artifactRefs || {});
+  const artifactLabels = Object.freeze({
+    analysisRef: "Análise instrucional",
+    effectiveSnapshotRef: "Parâmetros efetivos",
+    blueprintRef: "Blueprint",
+    bindingRef: "Vínculo pedagógico",
+    manifestRef: "Manifesto de materialização",
+    effectiveResourceSetRefs: "Conjuntos de Resources",
+    resourceSetRefs: "Conjuntos de Resources",
+    microsequenceRefs: "Microssequências auditadas"
+  });
+  if (!finding.auditRunRef && finding.auditRevision == null && !artifacts.length) return "";
+  return (
+    '<details class="authoring-finding-provenance"><summary>Proveniência</summary><dl>' +
+    (finding.auditRevision == null ? "" : '<div><dt>Revisão auditada</dt><dd>' +
+      escapeHtml(finding.auditRevision) + "</dd></div>") +
+    (finding.auditRunRef?.version ? '<div><dt>Protocolo da rodada</dt><dd>Versão ' +
+      escapeHtml(finding.auditRunRef.version) + "</dd></div>" : "") +
+    artifacts.map(([key, reference]) => {
+      if (reference && !Array.isArray(reference) && Array.isArray(reference.items)) {
+        const shown = reference.items.length;
+        const total = Math.max(Number(reference.count) || 0, shown);
+        const bounded = reference.truncated === true || total > shown;
+        return '<div><dt>' + escapeHtml(artifactLabels[key] || readableIdentifier(key)) + '</dt><dd>' +
+          escapeHtml(bounded ? `${shown} de ${total} registrados` : `${total} registrados`) + "</dd></div>";
+      }
+      const values = Array.isArray(reference) ? reference : [reference];
+      const versions = values.map((item) => item?.version).filter(Boolean);
+      return '<div><dt>' + escapeHtml(artifactLabels[key] || readableIdentifier(key)) + '</dt><dd>' +
+        escapeHtml(versions.length ? `Versão ${versions.join(", ")}` : "Registrado") + "</dd></div>";
+    }).join("") + "</dl></details>"
+  );
+}
+
+function renderFindingDialog(state) {
+  const finding = state.findingEditor;
+  if (!finding) return "";
+  const statusLabel = FINDING_STATUS_LABELS[finding.status] || "Estado registrado";
+  const structuredRun = finding.legacyCompatible !== true;
+  const runCurrentAndComplete = structuredRun
+    ? state.findingAuditStatus === "complete" && state.auditOperational
+    : true;
+  const originRunComplete = state.overview?.stale !== true && (structuredRun
+    ? ["complete", "historical"].includes(state.findingAuditStatus)
+    : true);
+  const canDecide = finding.targetAvailable !== false && finding.status === "open" && runCurrentAndComplete &&
+    state.auditActionCapabilities?.decide;
+  const part = state.overview?.parts.find((item) => item.partId === state.findingPartId);
+  const canReaudit = finding.targetAvailable !== false && finding.status === "repaired" && originRunComplete &&
+    !state.reauditBlockedByRepairs && state.auditActionCapabilities?.reaudit;
+  const actionDisabled = state.loading || !state.auditActionsOnline;
+  return (
+    '<div class="authoring-dialog-backdrop authoring-finding-backdrop" data-authoring-action="close-finding-detail">' +
+    '<section class="authoring-dialog authoring-finding-dialog" role="dialog" aria-modal="true"' +
+    ' aria-labelledby="authoring-finding-title" data-authoring-dialog="finding">' +
+    '<header><div><p>' + escapeHtml(FINDING_ORIGIN_LABELS[finding.origin] || FINDING_ORIGIN_LABELS.legacy) +
+    '</p><h2 id="authoring-finding-title">' + escapeHtml(finding.summary) +
+    '</h2></div><button class="icon-ghost" type="button" data-authoring-action="close-finding-detail"' +
+    ' title="Fechar" aria-label="Fechar">' + icon("remove-state") + "</button></header>" +
+    '<div class="authoring-dialog-content authoring-finding-detail">' +
+    '<div class="authoring-finding-badges"><span>' + escapeHtml(statusLabel) + '</span><span>Gravidade ' +
+    escapeHtml((SEVERITY_LABELS[finding.severity] || "Não classificada").toLocaleLowerCase("pt-BR")) +
+    "</span></div>" +
+    (finding.publicEvidence
+      ? '<section><h3>Evidência</h3><p>' + escapeHtml(finding.publicEvidence) + "</p></section>"
+      : '<p class="authoring-audit-more">A rodada anterior não registrou evidência pública separada.</p>') +
+    (finding.ruleRef
+      ? '<section><h3>Critério</h3><p>' + escapeHtml(findingCodeLabel(finding.ruleRef.id)) + "</p></section>"
+      : "") +
+    (finding.code
+      ? '<p class="authoring-finding-type"><strong>Tipo</strong> ' + escapeHtml(findingCodeLabel(finding.code)) + "</p>"
+      : "") +
+    (finding.proposedRepair
+      ? '<details class="authoring-finding-repair"><summary>Possível reparo</summary><p>' +
+        escapeHtml(finding.proposedRepair) + "</p></details>"
+      : "") +
+    renderFindingProvenance(finding) +
+    (finding.targetAvailable === false
+      ? '<p class="authoring-finding-unavailable" role="note">O conteúdo original não está mais disponível.</p>'
+      : '<button class="authoring-text-button authoring-open-finding-target" type="button"' +
+        ' data-authoring-action="open-finding-target">Abrir conteúdo</button>') +
+    (structuredRun && !runCurrentAndComplete
+      ? '<p class="authoring-finding-run-note" role="note">' +
+        (state.findingAuditStatus === "semantic_pending"
+          ? "A revisão instrucional desta rodada ainda não terminou. Decida depois da conclusão."
+          : state.findingAuditStatus === "stale"
+            ? "Esta rodada está disponível somente para consulta offline. Reconecte e releia antes de decidir."
+          : state.findingAuditStatus === "historical"
+            ? "Esta rodada pertence a um estado anterior. Consulte-a como histórico e solicite uma nova auditoria antes de decidir."
+          : "Abra a Parte ou microssequência desta rodada para confirmar sua conclusão antes de decidir.") +
+        "</p>"
+      : "") +
+    (structuredRun && !runCurrentAndComplete && state.findingAuditStatus !== "historical" && state.findingScopeAction
+      ? '<button class="authoring-text-button authoring-open-finding-run" type="button"' +
+        ' data-authoring-action="open-finding-audit-scope"' +
+        (state.auditLoading ? " disabled" : "") + '>' +
+        escapeHtml(["semantic_pending", "stale"].includes(state.findingAuditStatus)
+          ? "Atualizar rodada"
+          : state.findingScopeAction.label) + "</button>"
+      : "") +
+    (finding.status === "repaired" && state.reauditBlockedByRepairs
+      ? '<p class="authoring-finding-run-note" role="note">Conclua os outros reparos preparados antes de iniciar uma nova auditoria.</p>'
+      : "") +
+    (!state.auditActionsOnline && (canDecide || canReaudit)
+      ? '<p class="authoring-finding-offline" role="note">Conecte-se para registrar esta decisão.</p>'
+      : "") +
+    '</div><footer class="authoring-finding-actions">' +
+    (canDecide
+      ? '<button type="button" class="authoring-secondary-button" data-authoring-action="decide-finding"' +
+        ' data-finding-decision="rejected"' + (actionDisabled ? " disabled" : "") + '>Rejeitar</button>' +
+        '<button type="button" class="authoring-apply-button" data-authoring-action="decide-finding"' +
+        ' data-finding-decision="approved"' + (actionDisabled ? " disabled" : "") +
+        '>Aprovar para reparo</button>'
+      : canReaudit
+        ? '<button type="button" class="authoring-apply-button" data-authoring-action="request-reaudit"' +
+          (actionDisabled ? " disabled" : "") + '>Solicitar reauditoria ' +
+          (part ? "da Parte" : "do workspace") + "</button>"
+        : structuredRun && !runCurrentAndComplete
+          ? '<span class="authoring-finding-state">' +
+            escapeHtml(state.findingAuditStatus === "historical"
+              ? "Rodada histórica"
+              : "Auditoria ainda não confirmada") + "</span>"
+          : finding.status === "repaired" && state.reauditBlockedByRepairs
+            ? '<span class="authoring-finding-state">Outros reparos em andamento</span>'
+        : '<span class="authoring-finding-state">' + escapeHtml(statusLabel) + "</span>") +
+    "</footer></section></div>"
   );
 }
 
@@ -604,6 +943,7 @@ function renderWorkspace(state, destinations) {
     (state.loading && !overview ? renderLoading("Carregando workspace…") : renderDestination(state)) +
     "</main></div>" +
     renderStatus(state) + renderParameterDialog(state) + renderResourcesDialog(state) +
+    renderFindingDialog(state) +
     "</section>"
   );
 }
