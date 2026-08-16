@@ -262,6 +262,7 @@ async function renderAuthenticatedApplication(root, config, authClient, session)
   let learningPanel = null;
   let authoringSurface = null;
   let experimentEnrollmentSurface = null;
+  let activeStudyView = "courses";
   let authoringReturnContext = null;
   let automaticSyncTimer = null;
   let automaticSyncRetryCount = 0;
@@ -537,6 +538,12 @@ async function renderAuthenticatedApplication(root, config, authClient, session)
       remoteCatalog,
       synchronizeReplica
     },
+    onViewChange(view) {
+      activeStudyView = view;
+      const showEnrollmentEntry = view === "courses";
+      if (!showEnrollmentEntry) experimentEnrollmentSurface?.close?.();
+      experimentEnrollmentRoot.hidden = !showEnrollmentEntry;
+    },
     homeTrails: homeLearningSpaces,
     workspaceCourseAdapter: {
       load({ item, courseRef }) {
@@ -730,6 +737,9 @@ async function renderAuthenticatedApplication(root, config, authClient, session)
   experimentEnrollmentSurface = createExperimentEnrollmentSurface({
     root: experimentEnrollmentRoot,
     controller: homeLearningSpaces,
+    onClose() {
+      experimentEnrollmentRoot.hidden = activeStudyView !== "courses";
+    },
     async onEnrollmentChanged(enrollment) {
       if (globalThis.navigator?.onLine === false) return;
       const expectedCourseIds = enrollment?.selection?.courseId
@@ -809,7 +819,7 @@ async function renderAuthenticatedApplication(root, config, authClient, session)
       editorApp?.closeAuthoringPreview?.();
       authoringReaderReturn.hidden = true;
       editorRoot.hidden = false;
-      experimentEnrollmentRoot.hidden = false;
+      experimentEnrollmentRoot.hidden = activeStudyView !== "courses";
     }
   });
   authoringReaderReturn.querySelector("[data-return-to-authoring]")?.addEventListener("click", () => {

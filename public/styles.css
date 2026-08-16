@@ -1059,6 +1059,7 @@ input:-webkit-autofill:focus {
      ganha um segundo recuo, para que voltar e as ações laterais compartilhem
      a mesma aresta dos cartões abaixo. */
   padding-inline: 0;
+  margin-inline-end: var(--screen-content-scrollbar-gutter, 0px);
 }
 
 .navigation-topbar > .icon-ghost,

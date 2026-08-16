@@ -44,6 +44,7 @@ export function createExperimentEnrollmentSurface({
   controller,
   onOpenSelection = async () => false,
   onEnrollmentChanged = async () => {},
+  onClose = () => {},
   documentValue = globalThis.document,
   locationValue = globalThis.location,
   historyValue = globalThis.history
@@ -212,6 +213,7 @@ export function createExperimentEnrollmentSurface({
     state.errorMessage = "";
     setBackgroundInert(false);
     render({ focus: "[data-experiment-enrollment-action=\"open\"]" });
+    onClose();
   }
 
   async function readPolicy() {

@@ -648,13 +648,13 @@ export function renderHomeScreen({ project, progress, editorSupport = {} }) {
   return (
     '<section class="screen">' +
     renderCoursesTopbar() +
+    '<main class="screen-content courses-home-screen navigation-screen">' +
     '<nav class="home-product-switch" aria-label="Área principal">' +
     '<button class="is-active" type="button" aria-current="page" title="Estudo">' +
     renderUiIcon("trail", "home-tab-icon") + '<span>Estudo</span></button>' +
     '<button type="button" data-action="open-authoring"' +
     ' title="Abrir Autoria">' + renderUiIcon("edit", "home-tab-icon") +
     '<span>Autoria</span></button></nav>' +
-    '<main class="screen-content courses-home-screen navigation-screen">' +
     '<section class="courses-home-list">' +
     renderCoursesPane({ project, progress, editorSupport }) +
     "</section>" +

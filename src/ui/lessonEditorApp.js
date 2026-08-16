@@ -298,7 +298,8 @@ export function createLessonEditorApp({
   homeTrails = null,
   workspaceCourseAdapter = null,
   authoringWorkspaceReader = null,
-  trailPersonalStateFactory = null
+  trailPersonalStateFactory = null,
+  onViewChange = () => {}
 }) {
   if (!root) fail("Raiz inválida.");
   if (!storage || typeof storage.loadProject !== "function") fail("Storage inválido.");
@@ -5341,6 +5342,14 @@ export function createLessonEditorApp({
           })
         : "") +
       "</div>";
+
+    const screen = root.querySelector(".screen");
+    const screenContent = root.querySelector(".screen-content");
+    const scrollbarGutter = screenContent
+      ? Math.max(0, screenContent.offsetWidth - screenContent.clientWidth)
+      : 0;
+    screen?.style.setProperty("--screen-content-scrollbar-gutter", `${scrollbarGutter}px`);
+    onViewChange(state.view);
 
     const manualResourceEditor = root.querySelector(
       ".runtime-resource-edit-target[data-manual-target-id]"
