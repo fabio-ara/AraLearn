@@ -11,6 +11,7 @@ import {
   mergeAuthoringExperimentSections,
   normalizeAuthoringExperiment,
   normalizeAuthoringExperimentList,
+  normalizeAuthoringAnalyticsOverview,
   normalizeAuthoringDesign,
   normalizeAuthoringAuditSlice,
   normalizeAuthoringWorkspaceOverview
@@ -18,6 +19,44 @@ import {
 
 const WORKSPACE_ID = "20000000-0000-4000-8000-000000000105";
 const PATH = Object.freeze(["course-a", "module-a", "lesson-a", "micro-a"]);
+
+test("analytics preserva pin, ausência e a mesma base numérica da visualização", () => {
+  const overview = normalizeAuthoringAnalyticsOverview({
+    operation: "overview",
+    workspaceId: WORKSPACE_ID,
+    workspaceRevision: 9,
+    scope: { kind: "workspace" },
+    overviewSetRef: { id: "analytics:workspace", version: "a".repeat(64) },
+    permissions: { export: true },
+    sections: [{
+      key: "learning",
+      label: "Conclusão estrutural",
+      question: "O que foi explicitamente concluído?",
+      notice: "Ausência não é aprendizagem.",
+      indicators: [{ label: "Sem estado", value: 2, unit: "card" }],
+      visualizations: [{
+        key: "completion",
+        kind: "distribution",
+        title: "Estado explícito",
+        unit: "card",
+        metricRef: { id: "learning.structural_progress", version: "1.0.0" },
+        items: [
+          { key: "complete", label: "Concluído", value: 3, missing: false },
+          { key: "missing", label: "Sem estado", value: 2, missing: true }
+        ]
+      }]
+    }]
+  });
+
+  assert.equal(overview.overviewSetRef.version, "a".repeat(64));
+  assert.deepEqual(
+    overview.sections[0].visualizations[0].items.map(({ value }) => value),
+    [3, 2]
+  );
+  assert.equal(overview.sections[0].visualizations[0].items[1].missing, true);
+  assert.equal(Object.isFrozen(overview.sections[0].visualizations[0].items), true);
+  assert.throws(() => normalizeAuthoringAnalyticsOverview({ operation: "overview", sections: [] }));
+});
 
 function projectedDesign() {
   return projectAuthoringDesignSlice({
@@ -110,17 +149,17 @@ test("overview mantém lacunas e alvos indisponíveis sem fabricar navegação",
   });
 });
 
-test("registry mantém quatro destinos atuais e aceita Resultados sem alterar o shell", () => {
+test("registry inclui Resultados e ainda aceita destinos adicionais sem alterar o shell", () => {
   const current = createAuthoringDestinationRegistry();
   const extended = createAuthoringDestinationRegistry([{
-    key: "results",
-    label: "Resultados",
-    icon: "chart",
+    key: "notes",
+    label: "Notas",
+    icon: "comment",
     available: ({ hasData }) => hasData === true
   }]);
 
-  assert.deepEqual(current.map(({ key }) => key), ["map", "design", "content", "audit"]);
-  assert.deepEqual(extended.map(({ key }) => key), ["map", "design", "content", "audit", "results"]);
+  assert.deepEqual(current.map(({ key }) => key), ["map", "design", "content", "audit", "results"]);
+  assert.deepEqual(extended.map(({ key }) => key), ["map", "design", "content", "audit", "results", "notes"]);
   assert.equal(extended.at(-1).available({ hasData: false }), false);
   assert.equal(extended.at(-1).available({ hasData: true }), true);
 });

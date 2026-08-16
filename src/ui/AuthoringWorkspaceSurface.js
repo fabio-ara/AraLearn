@@ -1,6 +1,7 @@
 import {
   createAuthoringDestinationRegistry,
   normalizeAuthoringAuditSlice,
+  normalizeAuthoringAnalyticsOverview,
   normalizeAuthoringDesign,
   normalizeAuthoringExperiment,
   normalizeAuthoringExperimentList,
@@ -579,6 +580,7 @@ export function createAuthoringWorkspaceSurface({
   let findingEpoch = 0;
   let auditComponentEpoch = 0;
   let experimentEpoch = 0;
+  let analyticsEpoch = 0;
   let pendingFocusSelector = "";
   let returnFocusTarget = null;
   let searchTimer = null;
@@ -641,6 +643,9 @@ export function createAuthoringWorkspaceSurface({
     experimentParticipantConditions: {},
     experimentEnrollmentReceipt: null,
     experimentActionsOnline: online(),
+    analyticsOverview: null,
+    analyticsDataset: null,
+    analyticsLoading: false,
     statusMessage: "",
     errorMessage: ""
   };
@@ -2233,6 +2238,106 @@ export function createAuthoringWorkspaceSurface({
     }, { useTargetWorkspace: true });
   }
 
+  async function loadAnalytics(scope = { kind: "workspace" }, { preserveStatus = false } = {}) {
+    if (typeof controller.loadAuthoringAnalyticsOverview !== "function") return false;
+    const epoch = ++analyticsEpoch;
+    state.analyticsLoading = true;
+    state.analyticsDataset = null;
+    if (!preserveStatus) {
+      state.statusMessage = "";
+      state.errorMessage = "";
+    }
+    render();
+    try {
+      if (state.researchAvailable && !state.experimentList
+          && typeof controller.listAuthoringExperiments === "function") {
+        const rawList = await controller.listAuthoringExperiments({
+          workspaceId: state.workspaceId,
+          online: true,
+          limit: 20
+        });
+        if (epoch !== analyticsEpoch) return false;
+        state.experimentList = normalizeAuthoringExperimentList(rawList);
+      }
+      const raw = await controller.loadAuthoringAnalyticsOverview({
+        workspace: state.workspaceId,
+        scope,
+        online: online()
+      });
+      if (epoch !== analyticsEpoch || state.destination !== "results") return false;
+      state.analyticsOverview = normalizeAuthoringAnalyticsOverview(raw);
+      return true;
+    } catch (error) {
+      if (epoch !== analyticsEpoch) return false;
+      state.errorMessage = userMessage(error, "Não foi possível carregar os resultados.");
+      return false;
+    } finally {
+      if (epoch === analyticsEpoch) {
+        state.analyticsLoading = false;
+        render();
+      }
+    }
+  }
+
+  async function loadAnalyticsDataset(dataset) {
+    if (!state.analyticsOverview || typeof controller.loadAuthoringAnalyticsDataset !== "function") {
+      return false;
+    }
+    state.analyticsLoading = true;
+    state.errorMessage = "";
+    render();
+    try {
+      state.analyticsDataset = await controller.loadAuthoringAnalyticsDataset({
+        workspace: state.workspaceId,
+        scope: state.analyticsOverview.scope,
+        dataset,
+        online: true,
+        limit: 20
+      });
+      return true;
+    } catch (error) {
+      state.errorMessage = userMessage(error, "Não foi possível abrir o dataset.");
+      return false;
+    } finally {
+      state.analyticsLoading = false;
+      render({ focus: ".authoring-analytics-dataset" });
+    }
+  }
+
+  async function exportAnalytics(dataset, format) {
+    if (!state.analyticsOverview || typeof controller.exportAuthoringAnalyticsDataset !== "function") {
+      return false;
+    }
+    state.analyticsLoading = true;
+    state.errorMessage = "";
+    render();
+    try {
+      const result = await controller.exportAuthoringAnalyticsDataset({
+        workspace: state.workspaceId,
+        scope: state.analyticsOverview.scope,
+        dataset,
+        format,
+        online: true
+      });
+      if (typeof globalThis.Blob === "function" && globalThis.URL?.createObjectURL) {
+        const url = globalThis.URL.createObjectURL(new Blob([result.content], { type: result.mimeType }));
+        const link = documentValue.createElement("a");
+        link.href = url;
+        link.download = result.filename;
+        link.click();
+        globalThis.URL.revokeObjectURL(url);
+      }
+      state.statusMessage = `Exportação ${format.toUpperCase()} preparada com o pin ${result.datasetSetRef.version.slice(0, 12)}.`;
+      return true;
+    } catch (error) {
+      state.errorMessage = userMessage(error, "Não foi possível exportar o dataset.");
+      return false;
+    } finally {
+      state.analyticsLoading = false;
+      render();
+    }
+  }
+
   async function loadWorkspace(workspaceId, { destination = "map" } = {}) {
     const normalizedWorkspaceId = text(workspaceId);
     if (!normalizedWorkspaceId) return false;
@@ -2253,6 +2358,10 @@ export function createAuthoringWorkspaceSurface({
     clearAuditParentContext();
     resetExperimentState({ keepCapability: false });
     state.experimentEnrollmentReceipt = null;
+    ++analyticsEpoch;
+    state.analyticsOverview = null;
+    state.analyticsDataset = null;
+    state.analyticsLoading = false;
     state.findingEditor = null;
     state.findingPartId = "";
     state.expandedPartId = "";
@@ -2280,6 +2389,9 @@ export function createAuthoringWorkspaceSurface({
       applyOverviewSyncMessage();
       if (state.destination === "design") await loadDesign({ preserveStatus: true });
       else if (state.destination === "audit") await loadAuditForCurrentScope();
+      else if (state.destination === "results") await loadAnalytics({ kind: "workspace" }, {
+        preserveStatus: true
+      });
       return true;
     } catch (error) {
       if (epoch !== workspaceEpoch || !state.opened) return false;
@@ -2323,6 +2435,12 @@ export function createAuthoringWorkspaceSurface({
     state.destination = destination;
     render();
     if (destination === "audit") await loadAuditForCurrentScope();
+    else if (destination === "results") {
+      const scope = state.analyticsOverview?.scope || { kind: "workspace" };
+      state.analyticsOverview = null;
+      state.analyticsDataset = null;
+      await loadAnalytics(scope, { preserveStatus: true });
+    }
     return true;
   }
 
@@ -2343,6 +2461,8 @@ export function createAuthoringWorkspaceSurface({
       await loadDesign();
     } else if (destination === "audit") {
       await loadAuditForCurrentScope();
+    } else if (destination === "results") {
+      await loadAnalytics(state.analyticsOverview?.scope || { kind: "workspace" });
     }
   }
 
@@ -3346,6 +3466,13 @@ export function createAuthoringWorkspaceSurface({
 
   root.addEventListener("change", (event) => {
     if (state.loading || state.resourceEditor?.recovery) return;
+    if (event.target.matches?.('[data-authoring-action="change-analytics-scope"]')) {
+      const experimentId = text(event.target.value);
+      void loadAnalytics(experimentId === "workspace"
+        ? { kind: "workspace" }
+        : { kind: "experiment", ref: experimentId });
+      return;
+    }
     const experimentField = text(event.target.dataset?.experimentField);
     if (["baseKey", "consentPolicyKey", "scopeKey"].includes(experimentField) &&
         state.experimentDraft) {
@@ -3520,6 +3647,16 @@ export function createAuthoringWorkspaceSurface({
       else backToWorkspaces();
     }
     else if (action === "open-experiments") void openExperiments();
+    else if (action === "load-analytics-dataset") {
+      void loadAnalyticsDataset(node.dataset.analyticsDataset);
+    }
+    else if (action === "close-analytics-dataset") {
+      state.analyticsDataset = null;
+      render({ focus: '.authoring-analytics [data-authoring-action="load-analytics-dataset"]' });
+    }
+    else if (action === "export-analytics") {
+      void exportAnalytics(node.dataset.analyticsDataset, node.dataset.analyticsFormat);
+    }
     else if (action === "close-experiments") closeExperiments();
     else if (action === "new-experiment") beginNewExperiment();
     else if (action === "open-experiment") void openExperiment(node.dataset.experimentId);
@@ -3685,6 +3822,9 @@ export function createAuthoringWorkspaceSurface({
       }
       if (state.workspaceId && state.experimentView === "list") {
         return loadExperimentList({ preserveStatus: true, focus: false });
+      }
+      if (state.workspaceId && state.destination === "results") {
+        return loadAnalytics(state.analyticsOverview?.scope || { kind: "workspace" });
       }
       return state.workspaceId ? reloadCurrentWorkspace({ reloadDesign: state.destination === "design" }) : loadWorkspaceList();
     },

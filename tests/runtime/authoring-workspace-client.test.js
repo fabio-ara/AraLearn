@@ -1834,3 +1834,158 @@ test("retirada grava lápide antes da limpeza e repete purge sem reexpor seleç�
     handle.selection == null && handle.pendingPurgeCourseId == null
   ))));
 });
+
+test("facade de analytics pagina e exporta sob o mesmo pin sem expor identidade real", async () => {
+  const analyticsSetRef = { id: "analytics-set", version: "a".repeat(64) };
+  const calls = [];
+  const catalog = {
+    async executeApplicationAuthoringAction(tool, args) {
+      calls.push({ tool, args: structuredClone(args) });
+      if (tool === "ingressarEmExperimentoInstrucional") {
+        return {
+          operation: "record_outcome",
+          observationRef: "70000000-0000-4000-8000-000000000107",
+          enrollmentRef: PARTICIPANT_ID,
+          experimentId: EXPERIMENT_ID,
+          datasetRevision: 1,
+          idempotent: false
+        };
+      }
+      assert.equal(tool, "consultarAnalyticsInstrucional");
+      if (args.operation === "overview") {
+        return {
+          operation: "overview",
+          workspaceId: WORKSPACE_ID,
+          workspaceRevision: 11,
+          scope: args.scope,
+          overviewSetRef: analyticsSetRef,
+          permissions: { export: true },
+          sections: [{ key: "learning", label: "Aprendizagem", visualizations: [] }]
+        };
+      }
+      if (args.operation === "dataset") {
+        return {
+          operation: "dataset",
+          dataset: args.dataset,
+          datasetSetRef: analyticsSetRef,
+          dictionary: [],
+          page: { items: [], count: 0, nextCursor: null, truncated: false }
+        };
+      }
+      const first = !args.cursor;
+      const jsonChunk = JSON.stringify({
+        schemaVersion: "1.0.0",
+        dataset: args.dataset,
+        datasetSetRef: analyticsSetRef,
+        scope: args.scope,
+        dictionary: first ? [{ metricRef: { id: "experiment.outcome_numeric", version: "1.0.0" } }] : [],
+        items: [{ rowKind: "outcome", participantRef: first ? "participant:a" : "participant:b" }]
+      }) + "\n";
+      return {
+        operation: "export",
+        dataset: args.dataset,
+        datasetSetRef: analyticsSetRef,
+        filename: `${args.dataset}.${args.format}`,
+        mimeType: "text/plain",
+        chunk: args.format === "json" ? jsonChunk : first ? "primeira\n" : "segunda\n",
+        nextCursor: first ? "20" : null,
+        complete: !first
+      };
+    }
+  };
+  const client = new AuthoringWorkspaceClient({ catalog, authClient: authClient() });
+  const scope = { kind: "experiment", ref: EXPERIMENT_ID };
+  const overview = await client.loadAuthoringAnalyticsOverview({
+    workspace: WORKSPACE_ID, scope, online: true
+  });
+  assert.equal(overview.sections[0].key, "learning");
+  const dataset = await client.loadAuthoringAnalyticsDataset({
+    workspace: WORKSPACE_ID,
+    scope,
+    dataset: "experiment_outcomes",
+    online: true
+  });
+  assert.equal(dataset.page.count, 0);
+  const exported = await client.exportAuthoringAnalyticsDataset({
+    workspace: WORKSPACE_ID,
+    scope,
+    dataset: "experiment_outcomes",
+    format: "csv",
+    online: true
+  });
+  assert.equal(exported.content, "primeira\nsegunda\n");
+  assert.deepEqual(calls.filter(({ tool }) => tool === "consultarAnalyticsInstrucional")
+    .slice(-2).map(({ args }) => args.datasetSetRef || null), [null, analyticsSetRef]);
+  const exportedJson = await client.exportAuthoringAnalyticsDataset({
+    workspace: WORKSPACE_ID,
+    scope,
+    dataset: "experiment_outcomes",
+    format: "json",
+    online: true
+  });
+  const parsedJson = JSON.parse(exportedJson.content);
+  assert.equal(parsedJson.items.length, 2);
+  assert.deepEqual(parsedJson.items.map(({ participantRef }) => participantRef), [
+    "participant:a", "participant:b"
+  ]);
+  assert.equal(parsedJson.dictionary.length, 1);
+  const outcome = await client.recordInstructionalExperimentOutcome({
+    workspace: WORKSPACE_ID,
+    enrollmentRef: PARTICIPANT_ID,
+    instrumentRef: { id: "instrument-a", version: "1.0.0" },
+    outcomeRef: { id: "outcome-a", version: "1.0.0" },
+    wave: "post",
+    valueKind: "missing",
+    missingReason: "não coletado",
+    observedAt: "2026-08-16T16:00:00.000Z",
+    requestId: "outcome-client-0001",
+    online: true
+  });
+  assert.equal(outcome.datasetRevision, 1);
+  assert.equal(calls.at(-1).args.userId, undefined);
+  assert.equal(calls.at(-1).args.seed, undefined);
+});
+
+test("cache de analytics é user-bound, monotônico e somente leitura offline", async () => {
+  const indexedDb = new IDBFactory();
+  const store = await openStore(indexedDb);
+  let workspaceRevision = 11;
+  let pin = "a".repeat(64);
+  const catalog = {
+    async executeApplicationAuthoringAction() {
+      return {
+        operation: "overview",
+        workspaceId: WORKSPACE_ID,
+        workspaceRevision,
+        scope: { kind: "workspace" },
+        overviewSetRef: { id: "analytics-overview", version: pin },
+        permissions: { export: true },
+        sections: [{ key: "process", label: `Revisão ${workspaceRevision}`, visualizations: [] }]
+      };
+    }
+  };
+  const client = new AuthoringWorkspaceClient({
+    catalog, authClient: authClient(), relationalStore: store
+  });
+  await client.loadAuthoringAnalyticsOverview({
+    workspace: WORKSPACE_ID, scope: { kind: "workspace" }, online: true
+  });
+  workspaceRevision = 12;
+  pin = "b".repeat(64);
+  const fresh = await client.loadAuthoringAnalyticsOverview({
+    workspace: WORKSPACE_ID, scope: { kind: "workspace" }, online: true
+  });
+  assert.equal(fresh.overviewSetRef.version, pin);
+  const offline = await client.loadAuthoringAnalyticsOverview({
+    workspace: WORKSPACE_ID, scope: { kind: "workspace" }, online: false
+  });
+  assert.equal(offline.stale, true);
+  assert.equal(offline.workspaceRevision, 12);
+  assert.equal(offline.overviewSetRef.version, pin);
+  await assert.rejects(client.loadAuthoringAnalyticsDataset({
+    workspace: WORKSPACE_ID,
+    scope: { kind: "workspace" },
+    dataset: "authoring_design",
+    online: false
+  }), (error) => error.code === "authoring_online_required");
+});

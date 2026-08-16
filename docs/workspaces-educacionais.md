@@ -340,3 +340,11 @@ não amplie permissões nem limpe dados para ocultar a falha.
 
 Falhas nessas verificações são problemas funcionais; não devem ser explicadas
 como escolha pedagógica.
+## Resultados no workspace
+
+Pessoas com leitura do workspace veem analytics de desenho, processo e estado
+estrutural agregado. O recorte experimental exige `research`. Participantes não
+ganham acesso à Autoria nem ao painel: recebem apenas a revisão privada
+atribuída. O overview pode permanecer em cache user-bound como leitura stale;
+dataset, exportação e outcome exigem servidor. Alterar membership ou retirar o
+consentimento revoga a autoridade, não apenas esconde um botão.

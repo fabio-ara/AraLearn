@@ -614,3 +614,15 @@ de nomenclatura para a credencial hospedada.
 identificador de contrato, revisão de entidade, `catalogVersion`, versão do
 banco IndexedDB, versão do protocolo MCP ou versão do aplicativo. Esses valores
 possuem ciclos e garantias distintos.
+## Analytics versionados
+
+- **DatasetSetRef**: referência opaca que fixa dataset, escopo e revisões
+  relevantes durante paginação ou exportação.
+- **OverviewSetRef**: pin do resumo visual; mudança de progresso ou outcome
+  produz outra versão mesmo sem alterar o conteúdo autoral.
+- **Outcome explícito**: observação append-only ligada a instrumento, onda,
+  condição, variante e pseudônimo, ou motivo de ausência.
+- **Dicionário de métrica**: definição imutável/versionada de pergunta, unidade,
+  derivação, denominador, ausências, interpretação e limites.
+- **Pseudônimo local**: identificador de participante válido somente dentro do
+  experimento e não equivalente a `user_id`.

@@ -32,6 +32,10 @@ const experimentMigrationUrl = new URL(
   "../../supabase/migrations/20260816120000_parameterized_authoring_experiments.sql",
   import.meta.url
 );
+const analyticsMigrationUrl = new URL(
+  "../../supabase/migrations/20260817120000_authoring_analytics.sql",
+  import.meta.url
+);
 
 function fixedHash(character) {
   return character.repeat(64);
@@ -41,7 +45,7 @@ function sha256(value) {
   return createHash("sha256").update(String(value)).digest("hex");
 }
 
-async function installExperimentDatabase() {
+export async function installExperimentDatabase() {
   const database = await setupDatabase();
   await database.exec(`
     create or replace function extensions.digest(p_value bytea,p_algorithm text)
@@ -1222,6 +1226,36 @@ async function assignParticipant(database, {
 test("#107 percorre base auditada, valida protocolo e gera children com locks canônicos", async () => {
   const database = await installExperimentDatabase();
   try {
+    await database.exec(`
+      create table if not exists public.cards(
+        id uuid not null,
+        course_id uuid not null,
+        primary key(course_id,id)
+      );
+      create table if not exists public.card_progress(
+        id uuid primary key default gen_random_uuid(),
+        selection_id uuid not null,
+        user_id uuid not null,
+        course_id uuid not null,
+        card_id uuid not null,
+        completed_at timestamptz,
+        updated_at timestamptz not null default now()
+      );
+    `);
+    await database.exec(await fs.readFile(analyticsMigrationUrl, "utf8"));
+    assert.equal(await scalar(database, `
+      select count(*)::integer value
+      from private.authoring_analytics_metric_definitions
+    `), 12);
+    const workspaceAnalytics = await scalar(database, `
+      select public.get_authoring_analytics_overview_v1(
+        $1,$2,jsonb_build_object('kind','workspace')
+      ) value
+    `, [ACTOR, WORKSPACE]);
+    assert.deepEqual(
+      workspaceAnalytics.sections.map((section) => section.key),
+      ["design", "process", "learning"]
+    );
     const base = await prepareAuditedBase(database);
     await publishBase(database, base.revision, BASE_ARTIFACT);
     const protocolPayload = protocol({ artifactHash: BASE_ARTIFACT });
@@ -1684,6 +1718,84 @@ test("#107 percorre base auditada, valida protocolo e gera children com locks ca
     `, [PARTICIPANT, enrollment.enrollmentRef]);
     assert.equal(participantStatus.status, "assigned");
     assert.equal(participantStatus.selection.courseId, firstVariant.publication_course_id);
+    await database.query(`
+      insert into private.authoring_research_instrument_definitions(
+        instrument_id,instrument_version,label,instrument_kind,purpose,
+        descriptor,descriptor_hash
+      ) values
+        ('instrument.explicit','1.0.0','Resposta explícita','assessment','Coleta explícita',
+          '{}'::jsonb,$1),
+        ('outcome.explicit','1.0.0','Outcome explícito','outcome_measure','Medida declarada',
+          '{}'::jsonb,$2)
+    `, [fixedHash("4"), fixedHash("5")]);
+    await database.query(`
+      insert into private.authoring_experiment_instruments(
+        experiment_id,protocol_revision,instrument_id,instrument_version,
+        ordinal,reference_role,purpose
+      ) values
+        ($1,1,'instrument.explicit','1.0.0',1,'instrument','Coleta explícita'),
+        ($1,1,'outcome.explicit','1.0.0',1,'outcome','Medida declarada')
+    `, [created.experimentId]);
+    const outcomePayload = {
+      instrumentRef: { id: "instrument.explicit", version: "1.0.0" },
+      outcomeRef: { id: "outcome.explicit", version: "1.0.0" },
+      wave: "post",
+      valueKind: "numeric",
+      value: 7,
+      missingReason: null,
+      observedAt: "2026-08-16T16:00:00.000Z"
+    };
+    const outcomeHash = await scalar(database, `
+      select private.authoring_experiment_hash_v1(jsonb_build_object(
+        'workspaceId',$1::uuid,'enrollmentRef',$2::uuid,'payload',$3::jsonb
+      )) value
+    `, [WORKSPACE, enrollment.enrollmentRef, JSON.stringify(outcomePayload)]);
+    const recordedOutcome = await scalar(database, `
+      select public.record_authoring_experiment_outcome_v1(
+        $1,$2,$3,'experiment:outcome:record:0001',$4,$5::jsonb
+      ) value
+    `, [PARTICIPANT, WORKSPACE, enrollment.enrollmentRef, outcomeHash,
+      JSON.stringify(outcomePayload)]);
+    assert.equal(recordedOutcome.datasetRevision, 1);
+    const outcomeReplay = await scalar(database, `
+      select public.record_authoring_experiment_outcome_v1(
+        $1,$2,$3,'experiment:outcome:record:0001',$4,$5::jsonb
+      ) value
+    `, [PARTICIPANT, WORKSPACE, enrollment.enrollmentRef, outcomeHash,
+      JSON.stringify(outcomePayload)]);
+    assert.equal(outcomeReplay.idempotent, true);
+    const analyticsOverview = await scalar(database, `
+      select public.get_authoring_analytics_overview_v1(
+        $1,$2,jsonb_build_object('kind','experiment','ref',$3::text)
+      ) value
+    `, [ACTOR, WORKSPACE, created.experimentId]);
+    assert.equal(analyticsOverview.sections.at(-1).key, "experiment");
+    assert.equal(analyticsOverview.sections.at(-1).indicators[1].value, 1);
+    const outcomeDataset = await scalar(database, `
+      select public.list_authoring_analytics_dataset_v1(
+        $1,$2,'experiment_outcomes',
+        jsonb_build_object('kind','experiment','ref',$3::text),null,null,20
+      ) value
+    `, [ACTOR, WORKSPACE, created.experimentId]);
+    assert.equal(outcomeDataset.page.count, 1);
+    assert.match(outcomeDataset.page.items[0].participantRef, /^participant:/u);
+    assert.equal(outcomeDataset.page.items[0].userId, undefined);
+    await assert.rejects(scalar(database, `
+      select public.list_authoring_analytics_dataset_v1(
+        $1,$2,'experiment_outcomes',
+        jsonb_build_object('kind','experiment','ref',$3::text),$4::jsonb,null,20
+      ) value
+    `, [ACTOR, WORKSPACE, created.experimentId, JSON.stringify({
+      ...outcomeDataset.datasetSetRef,
+      version: "c".repeat(64)
+    })]), (error) => error.code === "40001");
+    await assert.rejects(scalar(database, `
+      select public.list_authoring_analytics_dataset_v1(
+        $1,$2,'experiment_outcomes',
+        jsonb_build_object('kind','experiment','ref',$3::text),null,null,20
+      ) value
+    `, [OUTSIDER, WORKSPACE, created.experimentId]),
+    (error) => error.code === "P0002");
     const participantSelectionId = participantStatus.selection.selectionId;
     await database.query(`select set_config('aralearn.test_actor',$1,false)`, [PARTICIPANT]);
     assert.equal(await scalar(database, `
@@ -2054,6 +2166,90 @@ test("#107 percorre base auditada, valida protocolo e gera children com locks ca
       select count(*)::integer value
       from private.authoring_experiment_selection_write_tokens
     `), 0);
+  } finally {
+    await database.close();
+  }
+});
+
+test("#108 recusa outcome quando a coleta não está ativa", async () => {
+  const database = await installExperimentDatabase();
+  try {
+    await database.exec(`
+      create table if not exists public.cards(
+        id uuid not null,
+        course_id uuid not null,
+        primary key(course_id,id)
+      );
+      create table if not exists public.card_progress(
+        id uuid primary key,
+        selection_id uuid not null references public.user_course_selections(id),
+        user_id uuid not null,
+        course_id uuid not null,
+        card_id uuid not null,
+        completed_at timestamptz,
+        updated_at timestamptz not null default now()
+      );
+    `);
+    await database.exec(await fs.readFile(analyticsMigrationUrl, "utf8"));
+    const oversizedParts = Array.from({ length: 13 }, (_, index) => ({
+      id: `part-${String(index + 1).padStart(2, "0")}`,
+      title: `Parte ${index + 1}`,
+      microsequenceIds: []
+    }));
+    await database.query(`
+      update private.authoring_workspaces
+      set authoring_state=jsonb_set(authoring_state,'{parts}',$2::jsonb,true)
+      where id=$1
+    `, [WORKSPACE, JSON.stringify(oversizedParts)]);
+    const boundedOverview = await scalar(database, `
+      select public.get_authoring_analytics_overview_v1(
+        $1,$2,jsonb_build_object('kind','workspace')
+      ) value
+    `, [ACTOR, WORKSPACE]);
+    const partVisualization = boundedOverview.sections
+      .find(({ key }) => key === "process").visualizations
+      .find(({ key }) => key === "microsequences-by-part");
+    assert.equal(partVisualization.items.length, 12);
+    assert.equal(partVisualization.truncated, true);
+    const experimentId = randomUUID();
+    const fixture = await installCollectingAssignmentFixture(database, {
+      experimentId,
+      protocolRevision: 1,
+      assignmentRule: "manual",
+      conditionIds: ["condition-a", "condition-b"],
+      experimentRevision: 10
+    });
+    const participantId = randomUUID();
+    const enrollmentRef = await insertAssignmentEnrollment(database, {
+      experimentId,
+      protocolRevision: fixture.protocolRevision,
+      userId: participantId,
+      participantRef: `participant:${randomUUID()}`
+    });
+    const paused = await manage(database, {
+      experimentId,
+      requestId: "experiment:collection:pause:analytics:0001",
+      expectedExperimentRevision: 10,
+      operation: "transition_collection",
+      payload: { transition: "pause" }
+    });
+    assert.equal(paused.state, "paused");
+    const pausedOutcome = {
+      instrumentRef: { id: "instrument.explicit", version: "1.0.0" },
+      outcomeRef: { id: "outcome.explicit", version: "1.0.0" },
+      wave: "post",
+      valueKind: "missing",
+      value: null,
+      missingReason: "coleta pausada",
+      observedAt: "2026-08-16T17:00:00.000Z"
+    };
+    await assert.rejects(scalar(database, `
+      select public.record_authoring_experiment_outcome_v1(
+        $1,$2,$3,'experiment:outcome:paused:0001',$4,$5::jsonb
+      ) value
+    `, [participantId, WORKSPACE, enrollmentRef, fixedHash("1"),
+      JSON.stringify(pausedOutcome)]),
+    (error) => error.code === "23514");
   } finally {
     await database.close();
   }

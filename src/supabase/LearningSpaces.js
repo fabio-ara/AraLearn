@@ -1673,6 +1673,22 @@ export class LearningSpaces {
     return this.authoringClient.withdrawAuthoringExperimentEnrollment(options);
   }
 
+  recordInstructionalExperimentOutcome(options) {
+    return this.authoringClient.recordInstructionalExperimentOutcome(options);
+  }
+
+  loadAuthoringAnalyticsOverview(options) {
+    return this.authoringClient.loadAuthoringAnalyticsOverview(options);
+  }
+
+  loadAuthoringAnalyticsDataset(options) {
+    return this.authoringClient.loadAuthoringAnalyticsDataset(options);
+  }
+
+  exportAuthoringAnalyticsDataset(options) {
+    return this.authoringClient.exportAuthoringAnalyticsDataset(options);
+  }
+
   listAuthoringExperiments(options) {
     return this.authoringClient.listAuthoringExperiments(options);
   }

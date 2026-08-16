@@ -78,11 +78,11 @@ de um modelo de linguagem; mudanças estruturais mais amplas podem ser feitas
 por uma integração de autoria.
 
 No aplicativo, **Autoria** começa por Workspaces e Coleções. Dentro de um
-workspace, quatro destinos compactos apresentam uma superfície por vez:
+workspace, cinco destinos compactos apresentam uma superfície por vez:
 **Mapa** acompanha Partes e microssequências, **Desenho** mostra os valores
 efetivos e permite controles estruturados ou Auto, **Conteúdo** reutiliza o
-leitor e **Auditoria** localiza achados e seus alvos. A navegação admite uma
-quinta superfície contextual de Resultados quando houver dados e autorização.
+leitor, **Auditoria** localiza achados e seus alvos e **Resultados** apresenta
+os recortes autorizados sem colapsá-los num score.
 Não há chat, formulário pedagógico extenso, edição de JSON nem exigência de
 identificadores técnicos nessa camada.
 
@@ -110,6 +110,9 @@ congelar a revisão exata atribuída a cada participante. Protocolo, condição 
 atribuição permanecem sob controle do servidor; não são escolhidos pelo modelo
 de linguagem. O fluxo e seus limites estão em [Experimentos instrucionais
 parametrizados](docs/experimentos-instrucionais-parametrizados.md).
+O destino **Resultados** separa desenho, processo, conclusão estrutural e
+experimento em datasets versionados, com denominadores, ausências e limites
+explícitos; veja [Analytics instrucionais](docs/analytics-instrucionais.md).
 
 ## Representações acadêmicas
 

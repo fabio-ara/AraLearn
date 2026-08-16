@@ -1250,6 +1250,115 @@ function renderAudit(state) {
   );
 }
 
+function analyticsDatasetForSection(key) {
+  if (key === "design") return "authoring_design";
+  if (key === "process" || key === "learning") return "authoring_process";
+  return "experiment_outcomes";
+}
+
+function renderAnalyticsExportButtons(sectionKey) {
+  const datasets = sectionKey === "experiment"
+    ? [
+        { dataset: "experiment_assignments", label: "Atribuições" },
+        { dataset: "experiment_outcomes", label: "Outcomes" }
+      ]
+    : [{ dataset: analyticsDatasetForSection(sectionKey), label: "" }];
+  return datasets.map(({ dataset, label }) => ["csv", "json"].map((format) => (
+    '<button type="button" class="authoring-text-button" data-authoring-action="export-analytics"' +
+    ' data-analytics-dataset="' + escapeHtml(dataset) + '" data-analytics-format="' + format + '">' +
+    escapeHtml(label ? `${label} ${format.toUpperCase()}` : format.toUpperCase()) + '</button>'
+  )).join("")).join("");
+}
+
+function renderAnalyticsVisualization(visualization, sectionKey) {
+  const items = Array.isArray(visualization.items) ? visualization.items : [];
+  const numericItems = items.filter((item) => Number.isFinite(item.value));
+  const maximum = Math.max(1, ...numericItems.map((item) => Math.max(0, item.value)));
+  const summary = visualization.kind === "summary";
+  const chart = summary ? "" : (
+    '<div class="authoring-analytics-bars" role="img" aria-label="' +
+    escapeHtml(visualization.title) + '">' + items.map((item) => (
+      '<div class="authoring-analytics-bar"><span>' + escapeHtml(item.label) + '</span>' +
+      '<progress max="' + escapeHtml(maximum) + '" value="' +
+      escapeHtml(Number.isFinite(item.value) ? Math.max(0, item.value) : 0) + '"></progress>' +
+      '<strong>' + escapeHtml(item.value == null ? "Sem medida" : item.value) + '</strong></div>'
+    )).join("") + '</div>'
+  );
+  const table = summary
+    ? '<table><thead><tr><th>Condição</th><th>N</th><th>Ausentes</th><th>Média</th><th>Mín.</th><th>Máx.</th></tr></thead><tbody>' +
+      items.map((item) => '<tr><th>' + escapeHtml(item.label) + '</th><td>' +
+        escapeHtml(item.n ?? 0) + '</td><td>' + escapeHtml(item.missing ?? 0) + '</td><td>' +
+        escapeHtml(item.mean ?? "—") + '</td><td>' + escapeHtml(item.minimum ?? "—") + '</td><td>' +
+        escapeHtml(item.maximum ?? "—") + '</td></tr>').join("") + '</tbody></table>'
+    : '<table><thead><tr><th>Categoria</th><th>Valor</th><th>Unidade</th></tr></thead><tbody>' +
+      items.map((item) => '<tr><th>' + escapeHtml(item.label) + '</th><td>' +
+        escapeHtml(item.value == null ? "Sem medida" : item.value) + '</td><td>' +
+        escapeHtml(visualization.unit) + '</td></tr>').join("") + '</tbody></table>';
+  return '<article class="authoring-analytics-visualization"><header><h4>' +
+    escapeHtml(visualization.title) + '</h4></header>' + chart +
+    '<div class="authoring-table-scroll">' + table + '</div>' +
+    '<details><summary>Definição e proveniência</summary><p>Métrica <code>' +
+    escapeHtml(visualization.metricRef?.id || "não informada") + '@' +
+    escapeHtml(visualization.metricRef?.version || "—") + '</code>.</p>' +
+    '<button type="button" class="authoring-text-button" data-authoring-action="load-analytics-dataset"' +
+    ' data-analytics-dataset="' + escapeHtml(analyticsDatasetForSection(sectionKey)) +
+    '">Ver linhas e dicionário versionados</button></details></article>';
+}
+
+function renderAnalytics(state) {
+  if (state.analyticsLoading && !state.analyticsOverview) return renderLoading("Carregando resultados…");
+  if (!state.analyticsOverview) {
+    return '<section class="authoring-analytics" aria-labelledby="authoring-destination-title">' +
+      '<div class="authoring-empty"><h3>Resultados ainda não carregados</h3>' +
+      '<p>Abra este espaço on-line para consultar datasets versionados.</p></div></section>';
+  }
+  const overview = state.analyticsOverview;
+  const experiments = state.experimentList?.items || [];
+  const scope = overview.scope || { kind: "workspace" };
+  const dataset = state.analyticsDataset;
+  return '<section class="authoring-analytics" aria-labelledby="authoring-destination-title">' +
+    '<header class="authoring-analytics-header"><div><p class="authoring-eyebrow">Leitura descritiva e rastreável</p>' +
+    '<h3>' + escapeHtml(scope.kind === "experiment" ? "Recorte experimental" : "Workspace corrente") + '</h3>' +
+    '<p>Gráficos e tabelas compartilham os mesmos valores. Não há nota única nem inferência causal automática.</p></div>' +
+    (state.researchAvailable && experiments.length
+      ? '<label>Recorte<select data-authoring-action="change-analytics-scope"><option value="workspace"' +
+        (scope.kind === "workspace" ? ' selected' : '') + '>Workspace</option>' +
+        experiments.map((experiment) => {
+          const experimentId = experiment.experimentId || experiment.id;
+          return '<option value="' + escapeHtml(experimentId) + '"' +
+          (scope.ref === experimentId ? ' selected' : '') + '>' + escapeHtml(experiment.title) +
+          '</option>';
+        }).join("") + '</select></label>' : '') + '</header>' +
+    '<div class="authoring-analytics-sections">' + overview.sections.map((section) => (
+      '<section class="authoring-analytics-section" aria-labelledby="analytics-' + escapeHtml(section.key) + '">' +
+      '<header><div><h3 id="analytics-' + escapeHtml(section.key) + '">' + escapeHtml(section.label) +
+      '</h3><p>' + escapeHtml(section.question) + '</p></div><div class="authoring-analytics-export">' +
+      renderAnalyticsExportButtons(section.key) +
+      '</div></header>' +
+      (section.indicators?.length ? '<dl class="authoring-analytics-indicators">' +
+        section.indicators.map((indicator) => '<div><dt>' + escapeHtml(indicator.label) + '</dt><dd>' +
+          escapeHtml(indicator.value ?? "—") + ' <small>' + escapeHtml(indicator.unit) +
+          '</small></dd></div>').join("") + '</dl>' : '') +
+      (section.visualizations?.length
+        ? section.visualizations.map((visualization) => renderAnalyticsVisualization(
+          visualization, section.key
+        )).join("")
+        : '<p class="authoring-analytics-empty">Nenhuma medida explícita disponível neste recorte.</p>') +
+      (section.notice ? '<p class="authoring-analytics-notice">' + escapeHtml(section.notice) + '</p>' : '') +
+      '</section>'
+    )).join("") + '</div>' +
+    (dataset ? '<aside class="authoring-analytics-dataset"><header><h3>Dataset ' +
+      escapeHtml(dataset.dataset) + '</h3><button type="button" class="icon-ghost"' +
+      ' data-authoring-action="close-analytics-dataset" aria-label="Fechar dataset">' +
+      icon("remove-state") + '</button></header><p>' + escapeHtml(dataset.page.items.length) +
+      ' de ' + escapeHtml(dataset.page.count) + ' linhas nesta página.</p><details open><summary>Dicionário</summary>' +
+      dataset.dictionary.map((entry) => '<article><h4>' + escapeHtml(entry.label) + '</h4><p>' +
+        escapeHtml(entry.definition) + '</p><p><strong>Limite:</strong> ' +
+        escapeHtml(entry.limitations) + '</p></article>').join("") + '</details><pre>' +
+      escapeHtml(JSON.stringify(dataset.page.items, null, 2)) + '</pre></aside>' : '') +
+    '</section>';
+}
+
 function renderFindingProvenance(finding) {
   const artifacts = Object.entries(finding.artifactRefs || {});
   const artifactLabels = Object.freeze({
@@ -1384,6 +1493,7 @@ function renderDestination(state) {
   if (state.destination === "design") return renderDesign(state);
   if (state.destination === "content") return renderContent(state);
   if (state.destination === "audit") return renderAudit(state);
+  if (state.destination === "results") return renderAnalytics(state);
   return renderMap(state);
 }
 

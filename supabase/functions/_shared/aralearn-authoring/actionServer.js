@@ -24,6 +24,7 @@ const APPLICATION_AUTHORING_ACTIONS = new Set([
   "gerirDesenhoInstrucional",
   "gerirExperimentoInstrucional",
   "ingressarEmExperimentoInstrucional",
+  "consultarAnalyticsInstrucional",
   "gerirContinuidadeDaAutoria",
   "criarEstruturaNoWorkspace",
   "salvarCardsNaMicrossequencia",

@@ -7,6 +7,10 @@ import {
   executeExperimentEnrollmentAction,
   executeWorkspaceExperimentAction
 } from "./authoringExperimentService.js";
+import {
+  executeAuthoringAnalyticsAction,
+  executeExperimentOutcomeAction
+} from "./authoringAnalyticsService.js";
 import { AuthoringApiError } from "./errors.js";
 import {
   STANDARD_BODY_LIMIT,
@@ -24,6 +28,7 @@ import {
   validateEducationalWorkspaceActionPayload,
   validateEducationalWorkspaceCommentActionPayload,
   validateExperimentEnrollmentActionPayload,
+  validateWorkspaceAnalyticsActionPayload,
   validateWorkspaceObservationActionPayload,
   validateMoveCatalogCoursePayload,
   validateRemovePersonalLibraryCoursePayload,
@@ -40,6 +45,7 @@ import {
   WORKSPACE_DESIGN_ACTION_BODY_LIMIT,
   WORKSPACE_EXPERIMENT_ACTION_BODY_LIMIT,
   EXPERIMENT_ENROLLMENT_ACTION_BODY_LIMIT,
+  WORKSPACE_ANALYTICS_ACTION_BODY_LIMIT,
   workspaceEntityType,
   workspaceUuid
 } from "./workspaceProtocol.js";
@@ -733,6 +739,22 @@ export async function executeAuthoringRoute({
       requestId: value.requestId || null
     };
   }
+  if (route.name === "manageWorkspaceAnalytics") {
+    const value = validateWorkspaceAnalyticsActionPayload(
+      await readJsonBody(request, WORKSPACE_ANALYTICS_ACTION_BODY_LIMIT)
+    );
+    assertAuthoringScope(principal, "read");
+    return {
+      data: await executeAuthoringAnalyticsAction({
+        adapter,
+        principal,
+        workspaceId: route.workspaceId,
+        deadlineAt,
+        ...value
+      }),
+      requestId: null
+    };
+  }
   if (route.name === "manageExperimentEnrollment") {
     const value = validateExperimentEnrollmentActionPayload(
       await readJsonBody(request, EXPERIMENT_ENROLLMENT_ACTION_BODY_LIMIT)
@@ -742,6 +764,17 @@ export async function executeAuthoringRoute({
       assertAuthoringScope(principal, "read");
     } else {
       assertAuthoringScope(principal, "write");
+    }
+    if (value.operation === "record_outcome") {
+      return {
+        data: await executeExperimentOutcomeAction({
+          adapter,
+          principal,
+          deadlineAt,
+          ...value
+        }),
+        requestId: value.requestId
+      };
     }
     return {
       data: await executeExperimentEnrollmentAction({

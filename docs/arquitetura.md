@@ -622,6 +622,16 @@ progressiva → blueprint → cards derivados → manifesto. Quando Auto precisa
 um conjunto novo, o servidor expande facetas contra o catálogo instalado e
 congela referências exatas antes de o assignment citá-lo.
 
+Analytics usa uma Action app-only separada,
+`consultarAnalyticsInstrucional`, fora do MCP e do OpenAPI público. O Edge
+normaliza `overview|dataset|export`, limita páginas a 20, exige `datasetSetRef`
+nas continuações e rejeita respostas acima do orçamento comum. Views SQL
+projetam quatro datasets sem identidade real de participante; definições e
+outcomes são append-only. `record_outcome` reutiliza a Action app-only de
+enrollment e só aceita vínculo consentido, ativo e atribuído. A UI desenha
+gráfico e tabela a partir do mesmo array e mantém cache user-bound apenas do
+overview.
+
 Na biblioteca, `workspaceId` e `snapshotRef` formam contexto confiável. A busca
 é filtrada pelos conjuntos efetivos, cada chamada `contracts` devolve somente
 uma versão e a seleção identifica o conjunto que autorizou package, papel e

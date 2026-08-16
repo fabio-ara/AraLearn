@@ -152,6 +152,8 @@ abertas, sem tratar teste de software como evidência de aprendizagem.
 | [Desenho instrucional parametrizado](desenho-instrucional-parametrizado.md) | análise científica, parâmetros, contratos e persistência interna |
 | [Auditoria de conformidade instrucional](auditoria-de-conformidade-instrucional.md) | checks determinísticos, juízo semântico, findings e reauditoria |
 | [Experimentos instrucionais parametrizados](experimentos-instrucionais-parametrizados.md) | protocolo, condições, variantes, freeze, atribuição e limites de inferência |
+| [Analytics instrucionais](analytics-instrucionais.md) | leitura ética, versionada e não punitiva de desenho, processo, estudo e experimento |
+| [Dicionário de métricas e datasets](dicionario-metricas-datasets.md) | definições, unidades, denominadores, ausências, proveniência e limites das métricas |
 | [Contrato público](aralearn-contract.md) | formatos canônicos de conteúdo |
 | [Recursos de card](recursos-de-card.md) | catálogo de representações e arquitetura de packages |
 | [Matriz de conformidade técnica](matriz-conformidade-tecnica.md) | afirmação técnica e ponto de verificação |

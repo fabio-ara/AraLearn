@@ -32,7 +32,8 @@ export const AUTHORING_DESTINATION_DEFINITIONS = Object.freeze([
   Object.freeze({ key: "map", label: "Mapa", icon: "graph" }),
   Object.freeze({ key: "design", label: "Desenho", icon: "intent" }),
   Object.freeze({ key: "content", label: "Conteúdo", icon: "card" }),
-  Object.freeze({ key: "audit", label: "Auditoria", icon: "review" })
+  Object.freeze({ key: "audit", label: "Auditoria", icon: "review" }),
+  Object.freeze({ key: "results", label: "Resultados", icon: "graph" })
 ]);
 
 function text(value) {
@@ -1181,6 +1182,53 @@ export function mergeAuthoringExperimentSections(current, incoming) {
     ...(section === "variants" ? { variants: incoming.variants } : {}),
     ...(section === "differences" ? { differences: incoming.differences } : {}),
     ...(section === "participants" ? { participants: incoming.participants } : {})
+  });
+}
+
+export function normalizeAuthoringAnalyticsOverview(value) {
+  if (!value || value.operation !== "overview" || !Array.isArray(value.sections)) {
+    throw new TypeError("Overview de analytics inválido.");
+  }
+  const normalizedRefValue = normalizedRef(value.overviewSetRef);
+  if (!normalizedRefValue) throw new TypeError("Overview de analytics sem pin versionado.");
+  const sections = value.sections.map((section) => Object.freeze({
+    key: text(section?.key),
+    label: text(section?.label),
+    question: text(section?.question),
+    notice: text(section?.notice),
+    empty: section?.empty === true,
+    indicators: Object.freeze(list(section?.indicators).map((indicator) => Object.freeze({
+      label: text(indicator?.label),
+      value: indicator?.value == null ? null : Number(indicator.value),
+      unit: text(indicator?.unit)
+    }))),
+    visualizations: Object.freeze(list(section?.visualizations).map((visualization) => {
+      const metricRef = normalizedRef(visualization?.metricRef);
+      return Object.freeze({
+        key: text(visualization?.key),
+        kind: text(visualization?.kind),
+        title: text(visualization?.title),
+        unit: text(visualization?.unit),
+        metricRef,
+        truncated: visualization?.truncated === true,
+        items: Object.freeze(list(visualization?.items).map((item) => Object.freeze({
+          ...structuredClone(item),
+          key: text(item?.key),
+          label: text(item?.label) || titleFromIdentifier(item?.key),
+          value: item?.value == null ? null : Number(item.value),
+          missing: item?.missing === true
+        })))
+      });
+    }))
+  })).filter((section) => section.key && section.label);
+  return Object.freeze({
+    operation: "overview",
+    workspaceId: text(value.workspaceId),
+    workspaceRevision: integer(value.workspaceRevision),
+    scope: Object.freeze(structuredClone(value.scope || { kind: "workspace" })),
+    overviewSetRef: Object.freeze(normalizedRefValue),
+    permissions: Object.freeze(structuredClone(value.permissions || {})),
+    sections: Object.freeze(sections)
   });
 }
 

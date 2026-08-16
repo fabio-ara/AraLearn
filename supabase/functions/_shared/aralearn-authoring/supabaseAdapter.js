@@ -1683,6 +1683,56 @@ export class SupabaseAuthoringAdapter {
     ));
   }
 
+  async getAuthoringAnalyticsOverview({
+    actorId, workspaceId, scope, deadlineAt = null
+  }) {
+    return first(await this.rpc("get_authoring_analytics_overview_v1", {
+      p_actor_id: actorId,
+      p_workspace_id: workspaceId,
+      p_scope: scope
+    }, { deadlineAt }));
+  }
+
+  async listAuthoringAnalyticsDataset({
+    actorId,
+    workspaceId,
+    dataset,
+    scope,
+    datasetSetRef = null,
+    cursor = null,
+    limit = 20,
+    deadlineAt = null
+  }) {
+    return first(await this.rpc("list_authoring_analytics_dataset_v1", {
+      p_actor_id: actorId,
+      p_workspace_id: workspaceId,
+      p_dataset: dataset,
+      p_scope: scope,
+      p_dataset_set_ref: datasetSetRef,
+      p_cursor: cursor,
+      p_limit: limit
+    }, { deadlineAt }));
+  }
+
+  async recordAuthoringExperimentOutcome({
+    actorId,
+    workspaceId,
+    enrollmentRef,
+    requestId,
+    payloadHash,
+    payload,
+    deadlineAt = null
+  }) {
+    return first(await this.rpc("record_authoring_experiment_outcome_v1", {
+      p_actor_id: actorId,
+      p_workspace_id: workspaceId,
+      p_enrollment_ref: enrollmentRef,
+      p_request_id: requestId,
+      p_payload_hash: payloadHash,
+      p_payload: payload
+    }, { deadlineAt }));
+  }
+
   async getWorkspaceEvents(options) {
     return this.workspaceEngine.events(options);
   }

@@ -306,6 +306,16 @@ nota a partir desses estados. A distinção entre dado funcional e construto
 educacional está em [Estado de estudo não
 punitivo](estado-de-estudo-nao-punitivo.md).
 
+## Ler Resultados sem criar uma nota única
+
+Abra **Resultados** para confrontar valores efetivos, Resources materializados,
+Partes, findings e conclusão estrutural explícita. O gráfico e a tabela repetem
+a mesma base; use **Definição e proveniência** antes de interpretar. Auto não é
+superior a override, mais variedade de Resources não é melhor por si só e
+ausência de conclusão pode ser apenas dado ainda não sincronizado. Exporte CSV
+ou JSON somente quando precisar conferir o recorte versionado fora do app.
+Veja [Analytics instrucionais](analytics-instrucionais.md).
+
 ## Leituras relacionadas
 
 - [Workspaces educacionais](workspaces-educacionais.md)

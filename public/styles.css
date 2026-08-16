@@ -9183,3 +9183,121 @@ fieldset.authoring-experiment-fieldset {
   width: 18px;
   height: 18px;
 }
+
+.authoring-analytics,
+.authoring-analytics-sections {
+  min-width: 0;
+  display: grid;
+  gap: 12px;
+}
+
+.authoring-analytics-header,
+.authoring-analytics-section > header,
+.authoring-analytics-dataset > header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.authoring-analytics-header,
+.authoring-analytics-section,
+.authoring-analytics-dataset {
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius);
+  background: var(--surface-raised);
+  box-shadow: var(--shadow-card);
+}
+
+.authoring-analytics :is(h3, h4, p, dl) {
+  margin-block-start: 0;
+}
+
+.authoring-analytics-header label {
+  display: grid;
+  gap: 5px;
+  min-width: min(260px, 100%);
+  font-size: var(--type-sm);
+}
+
+.authoring-analytics-header select {
+  min-height: 44px;
+  max-width: 100%;
+}
+
+.authoring-analytics-export {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.authoring-analytics-visualization {
+  min-width: 0;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.authoring-analytics-bars {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.authoring-analytics-bar {
+  display: grid;
+  grid-template-columns: minmax(100px, 1fr) minmax(100px, 3fr) minmax(44px, auto);
+  align-items: center;
+  gap: 8px;
+  font-size: var(--type-sm);
+}
+
+.authoring-analytics-bar progress {
+  width: 100%;
+  accent-color: var(--accent);
+}
+
+.authoring-analytics-indicators {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 8px;
+}
+
+.authoring-analytics-indicators > div {
+  padding: 10px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-muted);
+}
+
+.authoring-analytics-indicators dd {
+  margin: 4px 0 0;
+  font-size: var(--type-lg);
+  font-weight: 700;
+}
+
+.authoring-analytics-notice,
+.authoring-analytics-empty {
+  margin-top: 12px;
+  color: var(--text-secondary);
+  font-size: var(--type-sm);
+}
+
+.authoring-analytics-dataset pre {
+  max-height: 320px;
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 640px) {
+  .authoring-analytics-header,
+  .authoring-analytics-section > header {
+    display: grid;
+  }
+
+  .authoring-analytics-bar {
+    grid-template-columns: minmax(80px, 1fr) minmax(90px, 2fr) auto;
+  }
+}

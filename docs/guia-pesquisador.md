@@ -160,6 +160,15 @@ O fluxo completo, suas garantias técnicas e suas alegações proibidas estão e
 
 ## Executar e relatar
 
+Durante a coleta, abra **Resultados**, selecione o experimento e confira N por
+condição, revisões congeladas, completude e ausências antes de qualquer resumo.
+As tabelas e exportações usam o mesmo `datasetSetRef`; um conflito de revisão
+interrompe a paginação. Outcome é uma observação explícita ligada ao
+instrumento, à onda e ao pseudônimo local — não um evento implícito de uso.
+Médias, mínimos, máximos e frequências são descritivos e não autorizam
+causalidade, significância ou ranking. Consulte o
+[dicionário de métricas e datasets](dicionario-metricas-datasets.md).
+
 Antes da coleta:
 
 - defina participantes, critérios de inclusão e contexto;

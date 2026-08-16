@@ -25,6 +25,7 @@ const fixedFiles = [
   ["src/authoring/instructionalDesignContracts.js", "authoring/instructionalDesignContracts.js"],
   ["src/authoring/instructionalDesignValidation.js", "authoring/instructionalDesignValidation.js"],
   ["src/authoring/instructionalExperiment.js", "authoring/instructionalExperiment.js"],
+  ["src/authoring/authoringAnalytics.js", "authoring/authoringAnalytics.js"],
   ["src/authoring/designParameterResolution.js", "authoring/designParameterResolution.js"],
   ["src/authoring/resourceSetResolution.js", "authoring/resourceSetResolution.js"],
   ["src/authoring/instructionalDesignBinding.js", "authoring/instructionalDesignBinding.js"],

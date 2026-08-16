@@ -621,3 +621,15 @@ Se essa cadeia não puder ser preenchida, o dado não deve entrar apenas por
 estar tecnicamente disponível. Um termo operacional pode tornar-se objeto de
 investigação, mas não deve ser apresentado como construto estabelecido sem
 desenvolvimento e validação próprios.
+## Construtos e dados em Resultados
+
+- **Conclusão estrutural explícita** descreve um estado funcional persistido;
+  não equivale a atenção, esforço, domínio ou aprendizagem.
+- **Completude de instrumento** descreve observações presentes e ausentes no
+  recorte esperado; não mede adesão sem uma definição prévia do protocolo.
+- **Diferença entre condições** é descrição de desenho ou outcome; não é efeito
+  causal sem identificação, instrumento válido e análise apropriada.
+- **Ausência** é dado não disponível ou explicitamente ausente. Não deve ser
+  convertida automaticamente em zero, fracasso ou abandono.
+- **Fit de resource** (`canonical`, `versatile`, `substitute`) descreve a relação
+  declarada com a necessidade instrucional; não ordena qualidade.

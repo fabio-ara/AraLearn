@@ -552,3 +552,13 @@ blueprints nem custo real de uma implantação. Os testes tampouco demonstram
 disponibilidade prolongada, perda física do dispositivo ou comportamento de
 todos os navegadores sob pressão de armazenamento. A [Matriz de conformidade
 técnica](matriz-conformidade-tecnica.md) explicita esses limites.
+## Analytics versionados
+
+A migration `20260817120000_authoring_analytics.sql` acrescenta dicionário
+imutável, observações explícitas de outcome, versões de dataset, receipts e
+quatro views relacionais. `datasetSetRef` combina workspace/experimento,
+revisões append-only e estado explícito de progresso. Outcomes fixam protocolo,
+condição, `VariantRevision`, instrumento, onda e pseudônimo; mudança semântica é
+nova linha/versão, não UPDATE. Exclusão da conta pode apenas anonimizar
+`recorded_by`. Tabelas privadas não recebem grants de cliente; RPCs são
+`service_role` e revalidam `read` ou `research`.

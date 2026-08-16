@@ -19,6 +19,7 @@ const AUTHORING_AUDIT_CACHE_CONTRACT = "aralearn.authoring-audit-cache.v1";
 const AUTHORING_EXPERIMENT_LIST_CACHE_CONTRACT = "aralearn.authoring-experiment-list-cache.v1";
 const AUTHORING_EXPERIMENT_SECTION_CACHE_CONTRACT = "aralearn.authoring-experiment-section-cache.v1";
 const EXPERIMENT_ENROLLMENT_HANDLE_CACHE_CONTRACT = "aralearn.experiment-enrollment-handles.v1";
+const AUTHORING_ANALYTICS_OVERVIEW_CACHE_CONTRACT = "aralearn.authoring-analytics-overview-cache.v1";
 const CACHE_PREFIX = "learning.authoring.v1";
 const PAGE_LIMIT = 100;
 const MAX_PAGES = 100;
@@ -29,6 +30,9 @@ const EXPERIMENT_OPTION_KINDS = Object.freeze(new Set([
 ]));
 const EXPERIMENT_READ_SECTIONS = Object.freeze(new Set([
   "overview", "protocol", "variants", "differences", "participants"
+]));
+const ANALYTICS_DATASETS = Object.freeze(new Set([
+  "authoring_design", "authoring_process", "experiment_assignments", "experiment_outcomes"
 ]));
 const cacheFallbackLocks = new Map();
 
@@ -139,6 +143,32 @@ function normalizeEntityPath(value) {
   return path;
 }
 
+function normalizeAnalyticsScope(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    throw new TypeError("Escopo de analytics inválido.");
+  }
+  const kind = text(value.kind);
+  if (!["workspace", "course", "module", "lesson", "microsequence", "experiment"].includes(kind)) {
+    throw new TypeError("Escopo de analytics inválido.");
+  }
+  if (kind === "workspace") return Object.freeze({ kind });
+  const ref = boundedIdentifier(value.ref, "Referência de analytics");
+  return Object.freeze({
+    kind,
+    ref,
+    ...(value.entityPath == null ? {} : { entityPath: Object.freeze(normalizeEntityPath(value.entityPath)) })
+  });
+}
+
+function normalizeAnalyticsDataset(value, scope) {
+  const dataset = text(value);
+  if (!ANALYTICS_DATASETS.has(dataset)) throw new TypeError("Dataset de analytics inválido.");
+  if (dataset.startsWith("experiment_") !== (scope.kind === "experiment")) {
+    throw new TypeError("Dataset e escopo de analytics são incompatíveis.");
+  }
+  return dataset;
+}
+
 function requestId() {
   return globalThis.crypto.randomUUID();
 }
@@ -237,6 +267,10 @@ function experimentSectionCacheKey(userId, workspace, experiment, section) {
 
 function experimentEnrollmentHandlesCacheKey(userId) {
   return `${CACHE_PREFIX}:experiment-enrollments:${userId}`;
+}
+
+function analyticsOverviewCacheKey(userId, workspace, scope) {
+  return `${CACHE_PREFIX}:analytics:${userId}:${workspace}:${scope.kind}:${encodeURIComponent(scope.ref || "workspace")}`;
 }
 
 function normalizeAuditScope(value) {
@@ -836,6 +870,189 @@ export class AuthoringWorkspaceClient {
       }
     }
     return projected;
+  }
+
+  async loadAuthoringAnalyticsOverview({
+    workspace: workspaceValue,
+    scope = { kind: "workspace" },
+    online = globalThis.navigator?.onLine !== false
+  } = {}) {
+    const normalizedWorkspace = workspaceId(workspaceValue);
+    const normalizedScope = normalizeAnalyticsScope(scope);
+    const key = analyticsOverviewCacheKey(this.#userId(), normalizedWorkspace, normalizedScope);
+    if (!online || globalThis.navigator?.onLine === false) {
+      const cached = await this.#readExperimentSnapshot(
+        key, AUTHORING_ANALYTICS_OVERVIEW_CACHE_CONTRACT, normalizedWorkspace
+      );
+      if (!cached) {
+        const error = new Error("Conecte-se para carregar este recorte de resultados pela primeira vez.");
+        error.code = "authoring_analytics_offline_cache_miss";
+        throw error;
+      }
+      return Object.freeze(cached);
+    }
+    const readStartedAt = Date.now();
+    let response;
+    try {
+      response = await this.#executeRemote("consultarAnalyticsInstrucional", {
+        operation: "overview",
+        workspaceId: normalizedWorkspace,
+        scope: normalizedScope
+      });
+    } catch (error) {
+      if (error?.remoteTransportFailure !== true) throw error;
+      const cached = await this.#readExperimentSnapshot(
+        key, AUTHORING_ANALYTICS_OVERVIEW_CACHE_CONTRACT, normalizedWorkspace
+      );
+      if (!cached) throw error;
+      return Object.freeze(cached);
+    }
+    if (response?.operation !== "overview" || response?.workspaceId !== normalizedWorkspace
+        || !Array.isArray(response?.sections) || !response?.overviewSetRef) {
+      throw new Error("O overview de analytics devolveu uma resposta incompleta.");
+    }
+    const cacheWriteFailed = await this.#bestEffortCache(() => this.#writeExperimentSnapshot({
+      key,
+      contract: AUTHORING_ANALYTICS_OVERVIEW_CACHE_CONTRACT,
+      workspace: normalizedWorkspace,
+      workspaceRevision: response.workspaceRevision,
+      snapshot: response,
+      readStartedAt
+    }));
+    const cached = await this.#readExperimentSnapshot(
+      key, AUTHORING_ANALYTICS_OVERVIEW_CACHE_CONTRACT, normalizedWorkspace
+    );
+    const effective = cached
+      ? { ...cached, stale: false, cacheWriteFailed }
+      : { ...structuredClone(response), stale: false, cacheWriteFailed };
+    return Object.freeze(effective);
+  }
+
+  async loadAuthoringAnalyticsDataset({
+    workspace: workspaceValue,
+    scope = { kind: "workspace" },
+    dataset: datasetValue,
+    datasetSetRef = null,
+    cursor = null,
+    limit = 20,
+    online = globalThis.navigator?.onLine !== false
+  } = {}) {
+    this.#requireOnlineExperiment(online);
+    const normalizedWorkspace = workspaceId(workspaceValue);
+    const normalizedScope = normalizeAnalyticsScope(scope);
+    const dataset = normalizeAnalyticsDataset(datasetValue, normalizedScope);
+    const response = await this.#executeRemote("consultarAnalyticsInstrucional", {
+      operation: "dataset",
+      workspaceId: normalizedWorkspace,
+      scope: normalizedScope,
+      dataset,
+      ...(datasetSetRef ? { datasetSetRef: normalizeVersionedRef(datasetSetRef, "Dataset") } : {}),
+      ...(cursor ? { cursor: boundedIdentifier(cursor, "Cursor de analytics") } : {}),
+      limit: Math.min(Math.max(Number(limit) || 20, 1), 20)
+    });
+    if (response?.operation !== "dataset" || response?.dataset !== dataset
+        || !response?.datasetSetRef || !Array.isArray(response?.page?.items)) {
+      throw new Error("O dataset de analytics devolveu uma página incompleta.");
+    }
+    return Object.freeze(structuredClone(response));
+  }
+
+  async exportAuthoringAnalyticsDataset({
+    workspace: workspaceValue,
+    scope = { kind: "workspace" },
+    dataset: datasetValue,
+    format = "csv",
+    online = globalThis.navigator?.onLine !== false
+  } = {}) {
+    this.#requireOnlineExperiment(online);
+    const normalizedWorkspace = workspaceId(workspaceValue);
+    const normalizedScope = normalizeAnalyticsScope(scope);
+    const dataset = normalizeAnalyticsDataset(datasetValue, normalizedScope);
+    if (!["csv", "json"].includes(format)) throw new TypeError("Formato de exportação inválido.");
+    let cursor = null;
+    let datasetSetRef = null;
+    let filename = "";
+    let mimeType = "";
+    let content = "";
+    const jsonPages = [];
+    const seen = new Set();
+    do {
+      const response = await this.#executeRemote("consultarAnalyticsInstrucional", {
+        operation: "export",
+        workspaceId: normalizedWorkspace,
+        scope: normalizedScope,
+        dataset,
+        format,
+        ...(datasetSetRef ? { datasetSetRef } : {}),
+        ...(cursor ? { cursor } : {}),
+        limit: 20
+      });
+      const incomingRef = normalizeVersionedRef(response?.datasetSetRef, "Dataset exportado");
+      if (datasetSetRef && `${datasetSetRef.id}@${datasetSetRef.version}`
+          !== `${incomingRef.id}@${incomingRef.version}`) {
+        throw new Error("O dataset mudou durante a exportação.");
+      }
+      datasetSetRef ||= incomingRef;
+      filename ||= text(response?.filename);
+      mimeType ||= text(response?.mimeType);
+      const chunk = typeof response?.chunk === "string" ? response.chunk : "";
+      if (format === "json") {
+        try {
+          jsonPages.push(JSON.parse(chunk));
+        } catch {
+          throw new Error("A exportação JSON devolveu um chunk inválido.");
+        }
+      } else {
+        content += chunk;
+      }
+      const next = text(response?.nextCursor) || null;
+      if (next && seen.has(next)) throw new Error("A exportação repetiu um cursor.");
+      if (next) seen.add(next);
+      cursor = response?.complete === true ? null : next;
+      if (response?.complete !== true && !cursor) {
+        throw new Error("A exportação terminou sem cursor de continuação.");
+      }
+    } while (cursor);
+    if (format === "json") {
+      content = `${JSON.stringify({
+        schemaVersion: "1.0.0",
+        dataset,
+        datasetSetRef,
+        scope: normalizedScope,
+        dictionary: jsonPages[0]?.dictionary || [],
+        items: jsonPages.flatMap((page) => Array.isArray(page?.items) ? page.items : [])
+      })}\n`;
+    }
+    return Object.freeze({ dataset, datasetSetRef, format, filename, mimeType, content });
+  }
+
+  async recordInstructionalExperimentOutcome({
+    workspace: workspaceValue,
+    enrollmentRef,
+    instrumentRef,
+    outcomeRef,
+    wave,
+    valueKind,
+    value = null,
+    missingReason = null,
+    observedAt = new Date().toISOString(),
+    requestId: suppliedRequestId = null,
+    online = globalThis.navigator?.onLine !== false
+  } = {}) {
+    this.#requireOnlineExperiment(online);
+    return this.#executeWithReplay("ingressarEmExperimentoInstrucional", {
+      operation: "record_outcome",
+      workspaceId: workspaceId(workspaceValue),
+      enrollmentRef: text(enrollmentRef).toLowerCase(),
+      requestId: suppliedRequestId || requestId(),
+      instrumentRef: normalizeVersionedRef(instrumentRef, "Instrumento"),
+      outcomeRef: normalizeVersionedRef(outcomeRef, "Outcome"),
+      wave: boundedIdentifier(wave, "Onda"),
+      valueKind: text(valueKind),
+      value,
+      missingReason,
+      observedAt: new Date(observedAt).toISOString()
+    });
   }
 
   async #continuityMutation({

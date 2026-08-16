@@ -182,6 +182,17 @@ Sair da conta encerra a sessão e fecha as conexões locais, mas não deve ser c
 
 ## Responsabilidades em workspaces educacionais
 
+### Analytics e exportações
+
+Resultados experimentais exigem capacidade `research` e usam pseudônimo local
+ao experimento. Seed, `user_id`, consentimento individual e roster não entram
+nos datasets de analytics. O cache de overview é vinculado à conta e serve
+somente para leitura stale; linhas e exportações exigem rede. CSV e JSON podem
+ser dados pessoais ou educacionais mesmo pseudonimizados: exporte apenas para a
+finalidade informada, aplique retenção institucional e não tente reidentificar.
+Cliques, tempo, tentativas, velocidade e revelação não são coletados para criar
+indicadores de atenção, esforço ou aprendizagem.
+
 Permissão técnica não significa autorização pedagógica ou jurídica para qualquer uso. Quem administra um workspace deve:
 
 - convidar somente pessoas que precisam participar;

@@ -297,3 +297,12 @@ Uma mudança visual está pronta quando:
 - [Wikimedia Codex: estrutura de tokens](https://doc.wikimedia.org/codex/latest/design-tokens/definition-and-structure.html)
 - [Wikimedia Codex: modos alternativos](https://doc.wikimedia.org/codex/latest/using-codex/adrs/08-adr-color-modes.html)
 - [Web Content Accessibility Guidelines 2.2](https://www.w3.org/TR/WCAG22/)
+## Resultados e visualização de dados
+
+**Resultados** é o quinto destino canônico da Autoria. A superfície mantém uma
+coluna de leitura, seções progressivas e cartões discretos; não imita um
+dashboard corporativo nem resume o curso em score. Barras usam `<progress>` e
+cada visualização traz tabela HTML com os mesmos valores. Rótulo e número nunca
+dependem apenas de cor. Em 360, 390 e 412 px, cabeçalho, seletor de recorte e
+exportação empilham sem overflow; em 1280 px preservam largura legível. O painel
+de proveniência usa `details/summary`, e foco/teclado seguem o shell.

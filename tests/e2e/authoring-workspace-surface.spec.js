@@ -13,7 +13,8 @@ async function mountAuthoring(page, {
   partDualPagination = false,
   unassignedRepaired = false,
   incompleteAuditResume = false,
-  research = false
+  research = false,
+  analyticsExperiment = false
 } = {}) {
   await page.goto("/");
   await page.evaluate(async ({
@@ -26,7 +27,8 @@ async function mountAuthoring(page, {
     withPartDualPagination,
     withUnassignedRepaired,
     withIncompleteAuditResume,
-    withResearch
+    withResearch,
+    withAnalyticsExperiment
   }) => {
     document.body.replaceChildren();
     const root = document.createElement("main");
@@ -64,6 +66,7 @@ async function mountAuthoring(page, {
       settingsOpens: 0
     };
     probe.experimentCalls = [];
+    probe.analyticsCalls = [];
     probe.completePreparedRepairs = () => {
       for (const findingId of currentMandate?.findingIds || []) findingStatuses[findingId] = "repaired";
     };
@@ -418,9 +421,14 @@ async function mountAuthoring(page, {
     };
     const experimentId = "30000000-0000-4000-8000-000000000107";
     const childWorkspaceId = "40000000-0000-4000-8000-000000000107";
-    let experimentRevision = 0;
-    let experimentStatus = "draft";
-    let savedProtocol = null;
+    let experimentRevision = withAnalyticsExperiment ? 8 : 0;
+    let experimentStatus = withAnalyticsExperiment ? "collecting" : "draft";
+    let savedProtocol = withAnalyticsExperiment ? {
+      title: "Experimento de sinais",
+      scope: { kind: "microsequence", ref: "micro-a" },
+      factors: [{ factorId: "units-ceiling" }],
+      conditions: [{ conditionId: "condition-a", label: "Condição A" }]
+    } : null;
     let differenceDecision = "pending";
     let participantAssigned = false;
     const enrollmentRef = "50000000-0000-4000-8000-000000000107";
@@ -826,6 +834,80 @@ async function mountAuthoring(page, {
         experimentStatus = argumentsValue.transition === "pause" ? "paused" : experimentStatus;
         return { workspaceId, workspaceRevision: revision, experimentId, experimentRevision };
       },
+      async loadAuthoringAnalyticsOverview(argumentsValue) {
+        probe.analyticsCalls.push({ operation: "overview", args: structuredClone(argumentsValue) });
+        const experimental = argumentsValue.scope?.kind === "experiment";
+        return {
+          operation: "overview",
+          workspaceId,
+          workspaceRevision: revision,
+          scope: structuredClone(argumentsValue.scope),
+          overviewSetRef: { id: "analytics-overview", version: "a".repeat(64) },
+          permissions: { design: true, process: true, learning: true, experiment: withResearch, export: true },
+          sections: [{
+            key: "design",
+            label: "Desenho instrucional",
+            question: "Como os valores efetivos foram resolvidos?",
+            visualizations: [{
+              key: "origins",
+              kind: "bar",
+              title: "Origem dos valores efetivos",
+              unit: "valor efetivo",
+              metricRef: { id: "design.assignment_origin", version: "1.0.0" },
+              items: [
+                { key: "auto", label: "Auto", value: 3, missing: false },
+                { key: "manual_override", label: "Override humano", value: 1, missing: false }
+              ]
+            }]
+          }, {
+            key: "learning",
+            label: "Aprendizagem",
+            question: "Quais medidas explícitas estão disponíveis?",
+            visualizations: [],
+            empty: true,
+            notice: "Cliques, tempo e tentativas não são tratados como aprendizagem."
+          }, ...(experimental ? [{
+            key: "experiment",
+            label: "Experimento",
+            question: "Como os outcomes explícitos se distribuem?",
+            indicators: [{ label: "N atribuído", value: 2, unit: "participantes" }],
+            visualizations: [{
+              key: "conditions",
+              kind: "bar",
+              title: "N por condição",
+              unit: "participante atribuído",
+              metricRef: { id: "experiment.assignment_count", version: "1.0.0" },
+              items: [{ key: "condition-a", label: "Condição A", value: 2, missing: false }]
+            }],
+            notice: "Comparação descritiva, sem conclusão causal automática."
+          }] : [])]
+        };
+      },
+      async loadAuthoringAnalyticsDataset(argumentsValue) {
+        probe.analyticsCalls.push({ operation: "dataset", args: structuredClone(argumentsValue) });
+        return {
+          operation: "dataset",
+          dataset: argumentsValue.dataset,
+          datasetSetRef: { id: "analytics-dataset", version: "b".repeat(64) },
+          dictionary: [{
+            label: "Origem dos valores",
+            definition: "Conta valores efetivos por origem.",
+            limitations: "Não mede qualidade ou esforço."
+          }],
+          page: { items: [{ rowKind: "parameter", origin: "auto" }], count: 1, nextCursor: null, truncated: false }
+        };
+      },
+      async exportAuthoringAnalyticsDataset(argumentsValue) {
+        probe.analyticsCalls.push({ operation: "export", args: structuredClone(argumentsValue) });
+        return {
+          dataset: argumentsValue.dataset,
+          datasetSetRef: { id: "analytics-dataset", version: "b".repeat(64) },
+          format: argumentsValue.format,
+          filename: `analytics.${argumentsValue.format}`,
+          mimeType: "text/plain",
+          content: "dataset"
+        };
+      },
       async loadAuthoringAudit(argumentsValue) {
         probe.auditReads.push(structuredClone(argumentsValue));
         if (requestedDeepFindingPages > 0) {
@@ -1136,7 +1218,7 @@ async function mountAuthoring(page, {
       root,
       controller,
       additionalDestinations: withExtraDestination
-        ? [{ key: "results", label: "Resultados", icon: "review", available: true }]
+        ? [{ key: "notes", label: "Notas", icon: "review", available: true }]
         : [],
       onOpenSettings() {
         probe.settingsOpens += 1;
@@ -1160,7 +1242,8 @@ async function mountAuthoring(page, {
     withPartDualPagination: partDualPagination,
     withUnassignedRepaired: unassignedRepaired,
     withIncompleteAuditResume: incompleteAuditResume,
-    withResearch: research
+    withResearch: research,
+    withAnalyticsExperiment: analyticsExperiment
   });
 }
 
@@ -1313,7 +1396,7 @@ test("pesquisador conduz protocolo, audita variantes e inicia coleta sem RNG loc
   await page.getByRole("button", { name: /Curso de sinais/u }).click();
   await page.getByRole("tab", { name: "Desenho" }).click();
 
-  await expect(page.getByRole("tab")).toHaveCount(4);
+  await expect(page.getByRole("tab")).toHaveCount(5);
   await page.getByRole("button", { name: "Experimentos" }).click();
   await page.getByRole("button", { name: "Novo experimento" }).click();
   await page.getByLabel("Título curto").fill("Representações em sinais");
@@ -1922,6 +2005,32 @@ test("rodada concluída com histórico terminal não permanece pendente", async 
   await expect(page.locator(".authoring-audit-heading").getByText("Auditoria concluída")).toBeVisible();
   await expect(page.locator(".authoring-audit-heading").getByText("Auditoria pendente")).toHaveCount(0);
   await expect(page.getByRole("button", { name: /Achado já resolvido/u })).toBeVisible();
+});
+
+test("Resultados mantém paridade gráfico-tabela e leitura acessível em 360, 390, 412 e 1280", async ({ page }) => {
+  for (const width of [360, 390, 412, 1280]) {
+    await page.setViewportSize({ width, height: width === 1280 ? 800 : 780 });
+    await mountAuthoring(page, { research: true, analyticsExperiment: true });
+    await page.getByRole("button", { name: /Curso de sinais/u }).click();
+    await page.getByRole("tab", { name: "Resultados" }).click();
+    await expect(page.getByRole("heading", { name: "Desenho instrucional" })).toBeVisible();
+    await expect(page.getByRole("progressbar")).toHaveCount(2);
+    const table = page.getByRole("table").first();
+    await expect(table.getByRole("row", { name: /Auto 3 valor efetivo/u })).toBeVisible();
+    await expect(table.getByRole("row", { name: /Override humano 1 valor efetivo/u })).toBeVisible();
+    await expect(page.getByText(/Cliques, tempo e tentativas não são tratados como aprendizagem/u)).toBeVisible();
+    await page.getByLabel("Recorte").selectOption("30000000-0000-4000-8000-000000000107");
+    await expect(page.getByRole("button", { name: "Atribuições CSV" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Outcomes JSON" })).toBeVisible();
+    await page.getByText("Definição e proveniência").first().click();
+    await page.getByRole("button", { name: "Ver linhas e dicionário versionados" }).first().click();
+    await expect(page.getByRole("heading", { name: "Dataset authoring_design" })).toBeVisible();
+    const geometry = await page.evaluate(() => {
+      const root = document.querySelector(".authoring-app-root");
+      return { width: root.clientWidth, scrollWidth: root.scrollWidth };
+    });
+    expect(geometry.scrollWidth).toBeLessThanOrEqual(geometry.width);
+  }
 });
 
 test("shell mantém uma superfície e navegação acessível em 360, 390, 412 e 1280", async ({ page }) => {

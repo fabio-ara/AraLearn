@@ -6013,7 +6013,24 @@ const EXPERIMENT_ENROLLMENT_INPUT_SCHEMA = discriminatedInputSchema([
   }), "withdraw"),
   schemaWithOperation(readSchema(["enrollmentRef"], {
     enrollmentRef: UUID
-  }), "status")
+  }), "status"),
+  schemaWithOperation(writeSchema([
+    "workspaceId", "enrollmentRef", "instrumentRef", "outcomeRef", "wave",
+    "valueKind", "observedAt"
+  ], {
+    workspaceId: UUID,
+    enrollmentRef: UUID,
+    instrumentRef: VERSIONED_REFERENCE_SCHEMA,
+    outcomeRef: VERSIONED_REFERENCE_SCHEMA,
+    wave: ID,
+    valueKind: {
+      type: "string",
+      enum: ["numeric", "category", "boolean", "text", "missing"]
+    },
+    value: {},
+    missingReason: { type: "string", minLength: 1, maxLength: 500 },
+    observedAt: DATE_TIME
+  }), "record_outcome")
 ]);
 const EXPERIMENT_ENROLLMENT_SELECTION_SCHEMA = schema([
   "selectionId", "courseId", "contentHash", "readerTarget"
@@ -6065,14 +6082,135 @@ const EXPERIMENT_ENROLLMENT_TOOL = tool(
   {
     oneOf: [
       EXPERIMENT_ENROLLMENT_POLICY_DATA_SCHEMA,
-      EXPERIMENT_ENROLLMENT_STATUS_DATA_SCHEMA
+      EXPERIMENT_ENROLLMENT_STATUS_DATA_SCHEMA,
+      schema([
+        "contract", "operation", "observationRef", "enrollmentRef",
+        "experimentId", "datasetRevision", "idempotent"
+      ], {
+        contract: { const: "aralearn.authoring-analytics-outcome.v1" },
+        operation: { const: "record_outcome" },
+        observationRef: UUID,
+        enrollmentRef: UUID,
+        experimentId: UUID,
+        datasetRevision: { type: "integer", minimum: 1 },
+        idempotent: { type: "boolean" }
+      })
     ]
   },
   { actionConsequentialHint: true }
 );
+const ANALYTICS_SCOPE_SCHEMA = schema(["kind"], {
+  kind: {
+    type: "string",
+    enum: ["workspace", "course", "module", "lesson", "microsequence", "experiment"]
+  },
+  ref: ID,
+  entityPath: ENTITY_PATH
+});
+const ANALYTICS_DATASET_SCHEMA = Object.freeze({
+  type: "string",
+  enum: [
+    "authoring_design", "authoring_process",
+    "experiment_assignments", "experiment_outcomes"
+  ]
+});
+const ANALYTICS_APPLICATION_INPUT_SCHEMA = discriminatedInputSchema([
+  schemaWithOperation(readSchema(["workspaceId", "scope"], {
+    workspaceId: UUID,
+    scope: ANALYTICS_SCOPE_SCHEMA
+  }), "overview"),
+  schemaWithOperation(Object.freeze({
+    ...readSchema(["workspaceId", "scope", "dataset"], {
+      workspaceId: UUID,
+      scope: ANALYTICS_SCOPE_SCHEMA,
+      dataset: ANALYTICS_DATASET_SCHEMA,
+      datasetSetRef: VERSIONED_REFERENCE_SCHEMA,
+      cursor: { type: "string", minLength: 1, maxLength: 240 },
+      limit: { type: "integer", minimum: 1, maximum: 20, default: 20 }
+    }),
+    allOf: [{ if: { required: ["cursor"] }, then: { required: ["datasetSetRef"] } }]
+  }), "dataset"),
+  schemaWithOperation(Object.freeze({
+    ...readSchema(["workspaceId", "scope", "dataset", "format"], {
+      workspaceId: UUID,
+      scope: ANALYTICS_SCOPE_SCHEMA,
+      dataset: ANALYTICS_DATASET_SCHEMA,
+      format: { type: "string", enum: ["csv", "json"] },
+      datasetSetRef: VERSIONED_REFERENCE_SCHEMA,
+      cursor: { type: "string", minLength: 1, maxLength: 240 },
+      limit: { type: "integer", minimum: 1, maximum: 20, default: 20 }
+    }),
+    allOf: [{ if: { required: ["cursor"] }, then: { required: ["datasetSetRef"] } }]
+  }), "export")
+]);
+const ANALYTICS_APPLICATION_DATA_SCHEMA = Object.freeze({
+  oneOf: [
+    schema([
+      "contract", "schemaVersion", "operation", "workspaceId", "workspaceRevision",
+      "scope", "overviewSetRef", "permissions", "sections"
+    ], {
+      contract: { const: "aralearn.authoring-analytics.v1" },
+      schemaVersion: { const: "1.0.0" },
+      operation: { const: "overview" },
+      workspaceId: UUID,
+      workspaceRevision: REVISION,
+      scope: ANALYTICS_SCOPE_SCHEMA,
+      overviewSetRef: VERSIONED_REFERENCE_SCHEMA,
+      permissions: { type: "object" },
+      sections: { type: "array", maxItems: 4, items: { type: "object" } }
+    }),
+    schema([
+      "contract", "schemaVersion", "operation", "workspaceId", "dataset", "scope",
+      "datasetSetRef", "dictionary", "page"
+    ], {
+      contract: { const: "aralearn.authoring-analytics.v1" },
+      schemaVersion: { const: "1.0.0" },
+      operation: { const: "dataset" },
+      workspaceId: UUID,
+      dataset: ANALYTICS_DATASET_SCHEMA,
+      scope: ANALYTICS_SCOPE_SCHEMA,
+      datasetSetRef: VERSIONED_REFERENCE_SCHEMA,
+      dictionary: { type: "array", maxItems: 16, items: { type: "object" } },
+      page: schema(["items", "count", "nextCursor", "truncated"], {
+        items: { type: "array", maxItems: 20, items: { type: "object" } },
+        count: { type: "integer", minimum: 0 },
+        nextCursor: { type: ["string", "null"] },
+        truncated: { type: "boolean" }
+      })
+    }),
+    schema([
+      "contract", "schemaVersion", "operation", "workspaceId", "dataset", "scope",
+      "datasetSetRef", "format", "filename", "mimeType", "chunk", "checksum",
+      "nextCursor", "complete"
+    ], {
+      contract: { const: "aralearn.authoring-analytics.v1" },
+      schemaVersion: { const: "1.0.0" },
+      operation: { const: "export" },
+      workspaceId: UUID,
+      dataset: ANALYTICS_DATASET_SCHEMA,
+      scope: ANALYTICS_SCOPE_SCHEMA,
+      datasetSetRef: VERSIONED_REFERENCE_SCHEMA,
+      format: { type: "string", enum: ["csv", "json"] },
+      filename: { type: "string", minLength: 1, maxLength: 300 },
+      mimeType: { type: "string", minLength: 1, maxLength: 100 },
+      chunk: { type: "string", maxLength: 90_000 },
+      checksum: SHA256,
+      nextCursor: { type: ["string", "null"] },
+      complete: { type: "boolean" }
+    })
+  ]
+});
+const ANALYTICS_APPLICATION_TOOL = tool(
+  "consultarAnalyticsInstrucional",
+  "Consultar analytics instrucionais",
+  "Action interna do aplicativo para visualizações e exportações versionadas, rastreáveis e não punitivas.",
+  ANALYTICS_APPLICATION_INPUT_SCHEMA,
+  ANALYTICS_APPLICATION_DATA_SCHEMA
+);
 const APPLICATION_ONLY_TOOL_BY_NAME = new Map([
   [EXPERIMENT_APPLICATION_TOOL.name, EXPERIMENT_APPLICATION_TOOL],
-  [EXPERIMENT_ENROLLMENT_TOOL.name, EXPERIMENT_ENROLLMENT_TOOL]
+  [EXPERIMENT_ENROLLMENT_TOOL.name, EXPERIMENT_ENROLLMENT_TOOL],
+  [ANALYTICS_APPLICATION_TOOL.name, ANALYTICS_APPLICATION_TOOL]
 ]);
 
 const CATALOG_READ = new Set([
@@ -6645,11 +6783,31 @@ function mapExperimentEnrollmentApplicationCall(rawArguments) {
   if (args.consentAcknowledged != null) {
     body.consentAcknowledged = args.consentAcknowledged;
   }
+  for (const field of [
+    "workspaceId", "instrumentRef", "outcomeRef", "wave", "valueKind", "value",
+    "missingReason", "observedAt"
+  ]) {
+    if (args[field] != null) body[field] = args[field];
+  }
   return {
     method: "POST",
     path: "/v1/experiments/enrollment/actions",
     body,
     requestId: args.requestId ?? null
+  };
+}
+
+function mapAnalyticsApplicationCall(rawArguments) {
+  const definition = APPLICATION_ONLY_TOOL_BY_NAME.get(
+    "consultarAnalyticsInstrucional"
+  );
+  const args = validateArguments(definition, rawArguments);
+  const { workspaceId, ...body } = args;
+  return {
+    method: "POST",
+    path: `/v1/workspaces/${encode(workspaceId)}/analytics/actions`,
+    body,
+    requestId: null
   };
 }
 
@@ -6659,6 +6817,9 @@ export function mapAuthoringApplicationToolCall(name, rawArguments) {
   }
   if (name === "ingressarEmExperimentoInstrucional") {
     return mapExperimentEnrollmentApplicationCall(rawArguments);
+  }
+  if (name === "consultarAnalyticsInstrucional") {
+    return mapAnalyticsApplicationCall(rawArguments);
   }
   return mapAuthoringMcpToolCall(name, rawArguments);
 }

@@ -120,6 +120,7 @@ const EXPERIMENT_ACTION_PAYLOAD_LIMITS = Object.freeze({
 export const WORKSPACE_DESIGN_ACTION_BODY_LIMIT = 1_100_000;
 export const WORKSPACE_EXPERIMENT_ACTION_BODY_LIMIT = 96 * 1024;
 export const EXPERIMENT_ENROLLMENT_ACTION_BODY_LIMIT = 64_000;
+export const WORKSPACE_ANALYTICS_ACTION_BODY_LIMIT = 96 * 1024;
 
 function fail(code, message, details = undefined) {
   throw new AuthoringApiError(422, code, message, details);
@@ -1971,8 +1972,63 @@ export function validateWorkspaceExperimentActionPayload(payload) {
 export function validateExperimentEnrollmentActionPayload(payload) {
   object(payload);
   const operation = requiredText(payload, "operation", 40);
-  if (!new Set(["read_policy", "enroll", "withdraw", "status"]).has(operation)) {
+  if (!new Set(["read_policy", "enroll", "withdraw", "status", "record_outcome"]).has(operation)) {
     fail("invalid_experiment_enrollment_operation", "Operação de ingresso inválida.");
+  }
+  if (operation === "record_outcome") {
+    only(payload, [
+      "operation", "workspaceId", "enrollmentRef", "requestId", "instrumentRef",
+      "outcomeRef", "wave", "valueKind", "value", "missingReason", "observedAt"
+    ]);
+    const valueKind = requiredText(payload, "valueKind", 20);
+    if (!new Set(["numeric", "category", "boolean", "text", "missing"]).has(valueKind)) {
+      fail("invalid_experiment_outcome_kind", "valueKind do outcome é inválido.");
+    }
+    const versionedRef = (field) => {
+      const source = object(payload[field], field);
+      only(source, ["id", "version"], field);
+      return {
+        id: requiredText(source, "id", 240),
+        version: requiredText(source, "version", 80)
+      };
+    };
+    const observedAt = requiredText(payload, "observedAt", 40);
+    if (!Number.isFinite(Date.parse(observedAt))) {
+      fail("invalid_experiment_outcome_time", "observedAt do outcome é inválido.");
+    }
+    if (valueKind === "missing") {
+      if (payload.value != null || !requiredText(payload, "missingReason", 500)) {
+        fail("invalid_experiment_missing_outcome", "Outcome ausente exige somente missingReason.");
+      }
+    } else if (payload.value == null || payload.missingReason != null) {
+      fail("invalid_experiment_outcome_value", "Outcome observado exige value e não aceita missingReason.");
+    }
+    if (valueKind === "numeric" && (typeof payload.value !== "number" || !Number.isFinite(payload.value))) {
+      fail("invalid_experiment_outcome_value", "Outcome numérico exige número finito.");
+    }
+    if (valueKind === "boolean" && typeof payload.value !== "boolean") {
+      fail("invalid_experiment_outcome_value", "Outcome booleano exige boolean.");
+    }
+    if (new Set(["category", "text"]).has(valueKind)
+        && (typeof payload.value !== "string" || !payload.value.trim()
+          || payload.value.length > 1000)) {
+      fail("invalid_experiment_outcome_value", "Outcome textual é inválido.");
+    }
+    return {
+      operation,
+      workspaceId: workspaceUuid(payload.workspaceId, "workspaceId"),
+      enrollmentRef: workspaceUuid(payload.enrollmentRef, "enrollmentRef"),
+      requestId: workspaceRequestId(payload.requestId),
+      payload: {
+        instrumentRef: versionedRef("instrumentRef"),
+        outcomeRef: versionedRef("outcomeRef"),
+        wave: requiredText(payload, "wave", 80),
+        valueKind,
+        value: valueKind === "missing" ? null : payload.value,
+        missingReason: valueKind === "missing" ? requiredText(payload, "missingReason", 500) : null,
+        observedAt
+      }
+    };
   }
   if (operation === "status" || operation === "withdraw") {
     const enrollmentRef = workspaceUuid(payload.enrollmentRef, "enrollmentRef");
@@ -2019,6 +2075,77 @@ export function validateExperimentEnrollmentActionPayload(payload) {
   };
 }
 
+export function validateWorkspaceAnalyticsActionPayload(payload) {
+  object(payload);
+  const operation = requiredText(payload, "operation", 20);
+  if (!new Set(["overview", "dataset", "export"]).has(operation)) {
+    fail("invalid_analytics_operation", "Operação de analytics inválida.");
+  }
+  const fields = operation === "overview"
+    ? ["operation", "scope"]
+    : ["operation", "scope", "dataset", "datasetSetRef", "cursor", "limit", "format"];
+  only(payload, fields);
+  const scope = object(payload.scope, "scope");
+  only(scope, ["kind", "ref", "entityPath"], "scope");
+  const kind = requiredText(scope, "kind", 40);
+  if (!new Set(["workspace", "course", "module", "lesson", "microsequence", "experiment"]).has(kind)) {
+    fail("invalid_analytics_scope", "kind do escopo de analytics é inválido.");
+  }
+  const normalizedScope = { kind };
+  if (kind !== "workspace") normalizedScope.ref = requiredText(scope, "ref", 240);
+  if (scope.entityPath != null) {
+    normalizedScope.entityPath = workspaceEntityPath(scope.entityPath, "scope.entityPath");
+  }
+  if (operation === "overview") {
+    if (!new Set(["workspace", "experiment"]).has(kind)) {
+      fail(
+        "invalid_analytics_overview_scope",
+        "O overview aceita somente o workspace ou um experimento."
+      );
+    }
+    return { operation, scope: normalizedScope };
+  }
+  const dataset = requiredText(payload, "dataset", 40);
+  if (!new Set([
+    "authoring_design", "authoring_process", "experiment_assignments", "experiment_outcomes"
+  ]).has(dataset)) fail("invalid_analytics_dataset", "Dataset de analytics inválido.");
+  if (dataset.startsWith("experiment_") !== (kind === "experiment")) {
+    fail("invalid_analytics_dataset_scope", "Dataset e escopo de analytics são incompatíveis.");
+  }
+  const limit = payload.limit == null ? 20 : payload.limit;
+  if (!Number.isInteger(limit) || limit < 1 || limit > 20) {
+    fail("invalid_analytics_limit", "limit de analytics deve ficar entre 1 e 20.");
+  }
+  let normalizedRef = null;
+  if (payload.datasetSetRef != null) {
+    const source = object(payload.datasetSetRef, "datasetSetRef");
+    only(source, ["id", "version"], "datasetSetRef");
+    normalizedRef = {
+      id: requiredText(source, "id", 240),
+      version: requiredText(source, "version", 80)
+    };
+  }
+  if (payload.cursor != null && normalizedRef == null) {
+    fail("missing_analytics_set_ref", "cursor exige datasetSetRef exata.");
+  }
+  if (operation === "dataset" && payload.format != null) {
+    fail("unexpected_analytics_format", "format pertence à exportação.");
+  }
+  const format = operation === "export" ? requiredText(payload, "format", 10) : null;
+  if (format && !new Set(["csv", "json"]).has(format)) {
+    fail("invalid_analytics_export_format", "Formato de exportação inválido.");
+  }
+  return {
+    operation,
+    scope: normalizedScope,
+    dataset,
+    ...(normalizedRef ? { datasetSetRef: normalizedRef } : {}),
+    ...(payload.cursor == null ? {} : { cursor: requiredText(payload, "cursor", 240) }),
+    limit,
+    ...(format ? { format } : {})
+  };
+}
+
 export function workspaceRoute(method, path) {
   if (path === "/v1/experiments/enrollment/actions" && method === "POST") {
     return { name: "manageExperimentEnrollment" };
@@ -2028,6 +2155,13 @@ export function workspaceRoute(method, path) {
     return {
       name: "manageWorkspaceExperiment",
       workspaceId: workspaceUuid(experimentMatch[1], "workspaceId")
+    };
+  }
+  const analyticsMatch = path.match(/^\/v1\/workspaces\/([^/]+)\/analytics\/actions$/u);
+  if (analyticsMatch && method === "POST") {
+    return {
+      name: "manageWorkspaceAnalytics",
+      workspaceId: workspaceUuid(analyticsMatch[1], "workspaceId")
     };
   }
   let designMatch = path.match(/^\/v1\/workspaces\/([^/]+)\/design\/actions$/u);

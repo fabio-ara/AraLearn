@@ -253,6 +253,31 @@ revisão corrigida**. Novos ingressos aguardam o novo ciclo de geração,
 auditoria, decisão e freeze. Consulte [Experimentos instrucionais
 parametrizados](experimentos-instrucionais-parametrizados.md).
 
+## Consultar Resultados
+
+**Pré-condição:** abra um workspace sincronizado. O recorte experimental exige
+capacidade de pesquisa; o resumo do workspace respeita a capacidade de leitura.
+
+**Passos:** abra **Resultados**, escolha **Workspace** ou um experimento e leia
+uma pergunta por seção. Gráfico e tabela mostram a mesma base numérica. Abra
+**Definição e proveniência** para consultar linhas e dicionário versionados. Use
+os botões de exportação para baixar desenho, processo, atribuições ou outcomes;
+uma exportação experimental conserva pseudônimos locais, não contas.
+
+**Resultado esperado:** desenho, processo autoral, conclusão estrutural
+explícita e experimento permanecem separados. Ausência aparece como ausência;
+não existe score único, ranking ou inferência automática de atenção, esforço,
+domínio, aprendizagem ou causalidade.
+
+**Sem conexão:** o último overview sincronizado pode ser lido como desatualizado.
+Paginar linhas ou exportar exige rede e um pin corrente, para não misturar
+revisões.
+
+**Recuperação:** se o dataset mudar durante a paginação, releia desde a primeira
+página. Não combine arquivos de pins diferentes. Consulte [Analytics
+instrucionais](analytics-instrucionais.md) e o [Dicionário de métricas e
+datasets](dicionario-metricas-datasets.md).
+
 ## Consultar e decidir achados da Auditoria
 
 **Pré-condição:** abra um workspace com uma rodada de auditoria registrada.

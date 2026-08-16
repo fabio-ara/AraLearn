@@ -210,3 +210,10 @@ O protocolo conserva referências de instrumentos e outcomes governados, mas a
 instrumentação e a análise permanecem separadas. Um card concluído, tempo de
 uso, quantidade de tentativas ou finding de autoria não se tornam outcome sem
 definição, consentimento, procedimento e interpretação autorizados.
+
+Depois do início da coleta, outcomes explícitos entram no dataset experimental
+somente enquanto o experimento está em `collecting`. Resultados mostra N por
+condição, completude e ausência sem expor a conta da pessoa participante, o
+seed ou o roster. A leitura continua descritiva: consulte [Analytics
+instrucionais](analytics-instrucionais.md) e o [Dicionário de métricas e
+datasets](dicionario-metricas-datasets.md).

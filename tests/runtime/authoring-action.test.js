@@ -563,6 +563,48 @@ test("actions experimentais só aceitam a rota /app com principal application", 
     id: "experiment-set-a",
     version: "2"
   });
+
+  const analyticsAdapter = adapter({
+    async resolveApplicationPrincipal() {
+      return {
+        actorId: principal().actorId,
+        authenticationKind: "application",
+        scopes: ["*"]
+      };
+    },
+    async getAuthoringAnalyticsOverview({ workspaceId, scope }) {
+      assert.equal(workspaceId, WORKSPACE_ID);
+      assert.deepEqual(scope, { kind: "workspace" });
+      return {
+        schemaVersion: "1.0.0",
+        workspaceRevision: 2,
+        scope,
+        overviewSetRef: { id: "analytics-overview", version: "a".repeat(64) },
+        permissions: { design: true, process: true, learning: true, experiment: false, export: true },
+        sections: []
+      };
+    }
+  });
+  const analyticsRequest = new Request(
+    `${ACTION_URL}/app/consultarAnalyticsInstrucional`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Origin: ORIGIN,
+        Authorization: "Bearer application-token"
+      },
+      body: JSON.stringify({
+        operation: "overview",
+        workspaceId: WORKSPACE_ID,
+        scope: { kind: "workspace" }
+      })
+    }
+  );
+  const analyticsResponse = await handler(analyticsAdapter)(analyticsRequest);
+  const analyticsPayload = await analyticsResponse.json();
+  assert.equal(analyticsResponse.status, 200);
+  assert.equal(analyticsPayload.data.overviewSetRef.version, "a".repeat(64));
 });
 
 test("Action mantém outlines e revisões por lição das fixtures reais abaixo de 96 KiB", async () => {

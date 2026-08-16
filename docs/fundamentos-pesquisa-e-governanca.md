@@ -404,3 +404,12 @@ instrucionais parametrizados](experimentos-instrucionais-parametrizados.md).
 | justificativa dos recursos | [Fundamentação pedagógica dos recursos](fundamentacao-pedagogica-dos-resources.md) | representação correta ainda exige avaliação de compreensão |
 | contribuição possível | [Contribuição e originalidade](contribuicao-originalidade.md) | originalidade e superioridade não são presumidas |
 | bibliografia canônica | [`referencias.bib`](referencias.bib) | presença na lista não determina força da evidência |
+## Governança de analytics e outcomes
+
+Uma métrica só entra no produto com pergunta, definição, unidade, derivação,
+denominador, tratamento de ausências, interpretação permitida e limite. A
+definição é versionada e imutável. Outcome experimental exige consentimento,
+instrumento e onda declarados, atribuição congelada e finalidade institucional.
+Exportação pseudonimizada reduz exposição, mas não torna o dado anônimo nem
+dispensa retenção, controle de acesso e direito de retirada. O produto não
+escolhe teste estatístico nem emite causalidade automaticamente.
