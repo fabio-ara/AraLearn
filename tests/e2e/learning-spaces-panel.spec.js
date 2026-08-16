@@ -778,6 +778,9 @@ test("Conta e aparência abre diretamente como folha inferior e mantém controle
   await expect(settings.getByRole("tab", { name: "Coleções" })).toHaveCount(0);
   await expect(settings.getByRole("button", { name: "Fechar painel" })).toBeVisible();
   await expect(settings.getByRole("button", { name: "Sincronizar" })).toBeVisible();
+  await expect(settings.locator(".learning-spaces-account-menu")).toBeHidden();
+  await expect(settings.getByRole("button", { name: "Sair", exact: true })).toBeVisible();
+  await expect(settings.getByRole("button", { name: "Excluir conta", exact: true })).toBeVisible();
   if (process.env.ARALEARN_CAPTURE_AUTHORING === "1") {
     fs.mkdirSync("docs/screenshots/authoring", { recursive: true });
     await page.screenshot({
@@ -788,8 +791,7 @@ test("Conta e aparência abre diretamente como folha inferior e mantém controle
 
   await settings.getByRole("button", { name: "Tema escuro" }).click();
   await expect(settings.getByRole("button", { name: "Tema escuro" })).toHaveAttribute("aria-pressed", "true");
-  await settings.getByRole("button", { name: "Conta", exact: true }).click();
-  await settings.getByRole("menuitem", { name: "Sair" }).click();
+  await settings.getByRole("button", { name: "Sair", exact: true }).click();
   await expect.poll(() => page.evaluate(() => window.learningSpacesProbe.signOutCalls)).toBe(1);
 });
 

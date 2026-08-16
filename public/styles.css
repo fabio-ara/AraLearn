@@ -516,6 +516,68 @@ textarea {
   border: 0;
   background: transparent;
   box-shadow: none;
+  font-size: var(--type-md);
+  font-weight: 700;
+}
+
+.remote-library-panel.is-settings .remote-library-footer {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-areas:
+    "sync theme"
+    "account account";
+  align-items: center;
+  gap: 10px;
+}
+
+.remote-library-panel.is-settings .remote-library-primary-actions {
+  grid-area: sync;
+}
+
+.remote-library-panel.is-settings .theme-choice {
+  grid-area: theme;
+  justify-self: end;
+}
+
+.learning-spaces-settings-account-actions {
+  display: none;
+}
+
+.remote-library-panel.is-settings .learning-spaces-account-menu {
+  display: none;
+}
+
+.remote-library-panel.is-settings .learning-spaces-settings-account-actions {
+  grid-area: account;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 8px;
+}
+
+.learning-spaces-settings-account-action {
+  min-width: 0;
+  min-height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 8px 10px;
+  border: 1px solid var(--border-default);
+  border-radius: 10px;
+  background: var(--surface-raised);
+  color: var(--text-primary);
+  font: 700 var(--type-xs) var(--font-ui);
+  cursor: pointer;
+}
+
+.learning-spaces-settings-account-action svg {
+  width: 15px;
+  height: 15px;
+}
+
+.learning-spaces-settings-account-action.is-danger {
+  border-color: var(--status-danger);
+  color: var(--status-danger);
 }
 
 .remote-library-header {

@@ -38,8 +38,7 @@ test("painel público omite Chatbot e mantém Coleções separadas", async ({ pa
 
   await page.evaluate(() => window.authoringAssistantTest.open("settings"));
   await expect(page.getByRole("dialog", { name: "Conta e aparência" })).toBeVisible();
-  await page.getByRole("button", { name: "Conta", exact: true }).click();
-  await page.getByRole("menuitem", { name: "Sair" }).click();
+  await page.getByRole("button", { name: "Sair", exact: true }).click();
   await expect.poll(() => page.evaluate(() => window.assistantSignedOut)).toBe(true);
 });
 

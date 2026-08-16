@@ -240,6 +240,10 @@ export function createLearningSpacesPanel({
             <button class="theme-choice-button" type="button" data-theme-choice="dark" title="Tema escuro" aria-label="Tema escuro">${icon("theme-dark", "theme-choice-icon")}</button>
           </div>
           <div class="remote-library-account-actions">
+            <div class="learning-spaces-settings-account-actions" aria-label="Conta">
+              <button class="learning-spaces-settings-account-action" type="button" data-panel-action="signout">${icon("sign-out")}<span>Sair</span></button>
+              <button class="learning-spaces-settings-account-action is-danger" type="button" data-panel-action="delete-account">${icon("trash")}<span>Excluir conta</span></button>
+            </div>
             <details class="learning-spaces-context-menu learning-spaces-account-menu">
               <summary class="learning-spaces-context-menu-summary" role="button" aria-haspopup="menu" title="Conta" aria-label="Conta">${icon("more")}</summary>
               <div class="learning-spaces-context-menu-list" role="menu">
@@ -2136,31 +2140,35 @@ export function createLearningSpacesPanel({
     if (busy) return;
     await load();
   });
-  root.querySelector("[data-panel-action='signout']")?.addEventListener("click", async () => {
-    if (busy) return;
-    const operation = beginBusy("Saindo…");
-    try {
-      const pending = await beforeSignOut();
-      if (pending && !globalThis.confirm?.("Há alterações aguardando envio. Sair mesmo assim?")) return;
-      await authClient.signOut();
-      await onSignedOut();
-    } catch (error) {
-      reportStatus(error instanceof Error ? error.message : "Não foi possível sair.");
-    } finally {
-      endBusy(operation);
-    }
+  root.querySelectorAll("[data-panel-action='signout']").forEach((node) => {
+    node.addEventListener("click", async () => {
+      if (busy) return;
+      const operation = beginBusy("Saindo…");
+      try {
+        const pending = await beforeSignOut();
+        if (pending && !globalThis.confirm?.("Há alterações aguardando envio. Sair mesmo assim?")) return;
+        await authClient.signOut();
+        await onSignedOut();
+      } catch (error) {
+        reportStatus(error instanceof Error ? error.message : "Não foi possível sair.");
+      } finally {
+        endBusy(operation);
+      }
+    });
   });
-  root.querySelector("[data-panel-action='delete-account']")?.addEventListener("click", async () => {
-    if (busy || !globalThis.confirm?.("Excluir a conta e todos os dados pessoais?")) return;
-    const operation = beginBusy("Excluindo…");
-    try {
-      await catalog.deleteOwnAccount();
-      await onAccountDeleted();
-    } catch (error) {
-      reportStatus(error instanceof Error ? error.message : "Não foi possível excluir a conta.");
-    } finally {
-      endBusy(operation);
-    }
+  root.querySelectorAll("[data-panel-action='delete-account']").forEach((node) => {
+    node.addEventListener("click", async () => {
+      if (busy || !globalThis.confirm?.("Excluir a conta e todos os dados pessoais?")) return;
+      const operation = beginBusy("Excluindo…");
+      try {
+        await catalog.deleteOwnAccount();
+        await onAccountDeleted();
+      } catch (error) {
+        reportStatus(error instanceof Error ? error.message : "Não foi possível excluir a conta.");
+      } finally {
+        endBusy(operation);
+      }
+    });
   });
   root.querySelectorAll("[data-theme-choice]").forEach((node) => {
     node.addEventListener("click", () => {
