@@ -64,6 +64,12 @@
       "note": "Discovery, DCR, PKCE, consentimento, mutação MCP e limpeza de concessão, cliente e usuário temporários aprovados na stack local."
     },
     {
+      "command": "Invoke-RestMethod hosted MCP protected-resource + OAuth discovery",
+      "passed": 1,
+      "failed": 0,
+      "note": "O projeto hospedado vinculado respondeu com recurso MCP canônico, escopo openid e PKCE S256; não inclui autenticação nem mutações hospedadas."
+    },
+    {
       "command": "node supabase/tests/authoring-action-local-journey.mjs",
       "passed": 1,
       "failed": 0,
