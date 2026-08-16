@@ -22,8 +22,6 @@ strict
 set search_path = pg_catalog
 as $$
 declare
-  v_microsequence_index integer;
-  v_card_index integer;
   v_authoring_microsequence jsonb;
   v_compiled_microsequence jsonb;
   v_authoring_cards jsonb;

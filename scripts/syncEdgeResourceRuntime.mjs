@@ -22,6 +22,15 @@ const fixedFiles = [
   ["src/persistence/relationalSchema.js", "persistence/relationalSchema.js"],
   ["src/persistence/relationalRowsToContract.js", "persistence/relationalRowsToContract.js"],
   ["src/persistence/validateRelationalCourse.js", "persistence/validateRelationalCourse.js"],
+  ["src/authoring/instructionalDesignContracts.js", "authoring/instructionalDesignContracts.js"],
+  ["src/authoring/instructionalDesignValidation.js", "authoring/instructionalDesignValidation.js"],
+  ["src/authoring/instructionalExperiment.js", "authoring/instructionalExperiment.js"],
+  ["src/authoring/authoringAnalytics.js", "authoring/authoringAnalytics.js"],
+  ["src/authoring/designParameterResolution.js", "authoring/designParameterResolution.js"],
+  ["src/authoring/resourceSetResolution.js", "authoring/resourceSetResolution.js"],
+  ["src/authoring/instructionalDesignBinding.js", "authoring/instructionalDesignBinding.js"],
+  ["src/authoring/instructionalConformanceAudit.js", "authoring/instructionalConformanceAudit.js"],
+  ["src/authoring/legacyInstructionalDesign.js", "authoring/legacyInstructionalDesign.js"],
   ["src/authoring/pedagogicalBlueprint.js", "authoring/pedagogicalBlueprint.js"],
   ["src/authoring/protectedCore.js", "authoring/protectedCore.js"]
 ];
@@ -48,7 +57,9 @@ const files = [
 
 const checkOnly = process.argv.includes("--check");
 const divergent = [];
-const expectedTargets = new Set(files.map(([, targetRelativePath]) => targetRelativePath));
+const expectedTargets = new Set(
+  files.map(([, targetRelativePath]) => path.normalize(targetRelativePath))
+);
 
 for (const [sourceRelativePath, targetRelativePath] of files) {
   const sourcePath = path.join(sourceRoot, sourceRelativePath);
@@ -63,15 +74,28 @@ for (const [sourceRelativePath, targetRelativePath] of files) {
   }
 }
 
-const edgeResourcesRoot = path.join(edgeRuntimeRoot, "resources");
-const mirroredResourceEntries = await readdir(edgeResourcesRoot, { recursive: true, withFileTypes: true });
-for (const entry of mirroredResourceEntries) {
-  if (!entry.isFile() || !entry.name.endsWith(".js")) continue;
-  const targetPath = path.join(entry.parentPath, entry.name);
-  const targetRelativePath = path.relative(edgeRuntimeRoot, targetPath);
-  if (expectedTargets.has(targetRelativePath)) continue;
-  divergent.push(targetRelativePath);
-  if (!checkOnly) await rm(targetPath);
+for (const managedDirectory of ["resources", "authoring"]) {
+  const managedRoot = path.resolve(edgeRuntimeRoot, managedDirectory);
+  const mirroredEntries = await readdir(managedRoot, {
+    recursive: true,
+    withFileTypes: true
+  });
+  for (const entry of mirroredEntries) {
+    if (!entry.isFile() || !entry.name.endsWith(".js")) continue;
+    const targetPath = path.resolve(entry.parentPath, entry.name);
+    const managedRelativePath = path.relative(managedRoot, targetPath);
+    if (
+      managedRelativePath === ".."
+      || managedRelativePath.startsWith(`..${path.sep}`)
+      || path.isAbsolute(managedRelativePath)
+    ) {
+      throw new Error(`Arquivo fora da árvore Edge gerenciada: ${targetPath}.`);
+    }
+    const targetRelativePath = path.relative(edgeRuntimeRoot, targetPath);
+    if (expectedTargets.has(targetRelativePath)) continue;
+    divergent.push(targetRelativePath);
+    if (!checkOnly) await rm(targetPath);
+  }
 }
 
 if (checkOnly && divergent.length) {

@@ -96,7 +96,10 @@ test("a home mantém somente a entrada para o painel integrado", () => {
     editorSupport: {}
   });
 
-  assert.match(markup, /data-action="open-central"/u);
+  assert.match(markup, /data-action="open-authoring"/u);
+  assert.equal((markup.match(/data-action="open-authoring"/gu) || []).length, 1);
+  assert.equal((markup.match(/data-action="open-settings"/gu) || []).length, 1);
+  assert.doesNotMatch(markup, /data-action="open-central"|Chatbot/u);
   assert.doesNotMatch(markup, /open-authoring-assistant|quick-create-course|open-home-actions/u);
 });
 
@@ -206,7 +209,7 @@ test("a home conserva estudo e omite autoria sem permissão", () => {
   assert.doesNotMatch(markup, /data-action="structure-drag-handle"/u);
 });
 
-test("curso com workspace oferece acesso contextual ao detalhe de autoria", () => {
+test("curso com workspace não mistura controles de Autoria em Estudo", () => {
   const project = {
     contract: "aralearn.contract",
     version: 4,
@@ -227,19 +230,17 @@ test("curso com workspace oferece acesso contextual ao detalhe de autoria", () =
     }
   });
 
-  assert.match(markup, /data-action="open-home-workspace"/u);
-  assert.match(markup, /data-workspace-id="70000000-0000-4000-8000-000000000007"/u);
+  assert.match(markup, /data-action="open-course"/u);
+  assert.doesNotMatch(markup, /data-action="open-home-workspace"/u);
+  assert.doesNotMatch(markup, /Abrir detalhes da autoria/u);
 });
 
-test("ação contextual da Home encaminha o workspace ao painel existente", () => {
+test("shell de Estudo não conserva listener interno para planejamento", () => {
   const source = fs.readFileSync(
     new URL("../../src/ui/lessonEditorApp.js", import.meta.url),
     "utf8"
   );
-  assert.match(
-    source,
-    /open-home-workspace[\s\S]*aralearn:open-workspace[\s\S]*detail: \{ workspaceId \}/u
-  );
+  assert.doesNotMatch(source, /open-home-workspace|aralearn:open-workspace/u);
 });
 
 test("snapshot local indica o estado offline e não oferece organização", () => {

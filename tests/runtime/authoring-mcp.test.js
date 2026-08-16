@@ -149,7 +149,8 @@ test("MCP negocia o protocolo stateless e anuncia instruções do workspace", as
   });
   assert.match(payload.result.instructions, /prepararAutoriaAraLearn/u);
   assert.match(payload.result.instructions, /expectedRevision/u);
-  assert.match(payload.result.instructions, /microteorias/u);
+  assert.match(payload.result.instructions, /gerirDesenhoInstrucional/u);
+  assert.match(payload.result.instructions, /uma microssequência por vez/u);
 });
 
 test("ferramentas são focadas, têm outputSchema e não expõem o fluxo v3", async () => {
@@ -158,7 +159,8 @@ test("ferramentas são focadas, têm outputSchema e não expõem o fluxo v3", as
   const names = tools.map((entry) => entry.name);
   assert.equal(tools.length, authoringMcpToolsForPrincipal(principal()).length);
   assert.ok(names.includes("prepararAutoriaAraLearn"));
-  assert.ok(names.includes("revisarMicroteoriasDoWorkspace"));
+  assert.ok(names.includes("gerirDesenhoInstrucional"));
+  assert.equal(names.includes("revisarMicroteoriasDoWorkspace"), false);
   assert.ok(names.includes("reorganizarWorkspace"));
   assert.ok(names.includes("publicarCursoDoWorkspace"));
   for (const obsolete of [
@@ -244,7 +246,8 @@ test("nenhuma ferramenta publica data genérico no ramo de sucesso", () => {
       {},
       `${definition.name} não pode anunciar data: {}.`
     );
-    const dataSchemas = success.properties.data.anyOf
+    const dataSchemas = success.properties.data.oneOf
+      || success.properties.data.anyOf
       || [success.properties.data];
     assert.ok(
       dataSchemas.every((dataSchema) => dataSchema.type === "object"),
@@ -314,7 +317,7 @@ test("budgets progressivos mantêm o maior lote de contratos abaixo da Action", 
   const largest = packageRequests.map((requestValue) => ({
     requestValue,
     bytes: Buffer.byteLength(JSON.stringify(RESOURCE_CATALOG.contracts([requestValue])))
-  })).sort((left, right) => right.bytes - left.bytes).slice(0, 4)
+  })).sort((left, right) => right.bytes - left.bytes).slice(0, 1)
     .map(({ requestValue }) => requestValue);
   const largestBatch = {
     ok: true,
@@ -322,6 +325,11 @@ test("budgets progressivos mantêm o maior lote de contratos abaixo da Action", 
     data: {
       contract: "aralearn.resource-library.v1",
       operation: "contracts",
+      availability: {
+        mode: "legacy_unrestricted",
+        snapshotRef: null,
+        resourceSetRefs: []
+      },
       result: RESOURCE_CATALOG.contracts(largest)
     }
   };
@@ -333,7 +341,7 @@ test("budgets progressivos mantêm o maior lote de contratos abaixo da Action", 
   assert.throws(
     () => mapAuthoringMcpToolCall("consultarBibliotecaDeResources", {
       operation: "contracts",
-      packages: packageRequests.slice(0, 5)
+      packages: packageRequests.slice(0, 2)
     }),
     (error) => error instanceof AuthoringApiError
       && error.code === "invalid_tool_arguments"
@@ -526,7 +534,7 @@ test("matriz de escopos separa leitura, escrita e publicação", () => {
     .map((entry) => entry.name);
   const read = names(["authoring:read"]);
   assert.ok(read.includes("lerConteudoDoCurso"));
-  assert.ok(read.includes("revisarMicroteoriasDoWorkspace"));
+  assert.ok(read.includes("gerirDesenhoInstrucional"));
   assert.equal(read.includes("consultarCatalogo"), false);
   assert.equal(read.includes("reorganizarWorkspace"), false);
 
@@ -697,8 +705,8 @@ test("estrutura incremental aceita defaults canônicos e limita o lote", () => {
 });
 
 test("revisão de microteorias anuncia e cumpre uma saída especializada", async () => {
-  const definition = AUTHORING_WORKSPACE_MCP_TOOLS.find(
-    (entry) => entry.name === "revisarMicroteoriasDoWorkspace"
+  const definition = authoringMcpToolDefinition(
+    "revisarMicroteoriasDoWorkspace"
   );
   const genericDefinition = AUTHORING_WORKSPACE_MCP_TOOLS.find(
     (entry) => entry.name === "listarWorkspacesDeAutoria"
@@ -1139,6 +1147,7 @@ test("tools/call devolve structuredContent no contrato anunciado", async () => {
           revision: 2,
           sourceCourseId: null,
           publicationCount: 0,
+          authoringState: "planning",
           updatedAt: "2026-08-01T12:01:00.000Z",
           createdAt: "2026-08-01T12:00:00.000Z"
         }],

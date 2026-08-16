@@ -92,12 +92,17 @@ async function renderLevel(page, {
     const header = document.querySelector(".navigation-topbar");
     const headerRect = header.getBoundingClientRect();
     const back = header.querySelector('[data-action="go-back"]');
-    const panel = header.querySelector('[data-action="open-central"]');
+    const endSpace = header.querySelector(".lesson-top-actions") ||
+      header.querySelector(":scope > .topbar-space:last-child");
     const modeSlot = header.querySelector(".topbar-mode-slot");
     const observation = document.querySelector('[data-action="open-context-observation"]');
     const modeButtons = [...header.querySelectorAll('[data-action="select-entity-mode"]')];
     const cardSheet = document.querySelector(".runtime-card-sheet");
     const cardContent = document.querySelector(".card-sheet-content");
+    const cardTitle = document.querySelector(".runtime-card-title");
+    const firstParagraph = cardContent?.querySelector(".runtime-markdown-paragraph");
+    const screenContent = document.querySelector(".microsequence-generator-screen");
+    const workbench = document.querySelector(".workbench-surface");
     const cardRectBefore = cardSheet?.getBoundingClientRect();
     if (cardContent) {
       const overflowProbe = document.createElement("div");
@@ -115,7 +120,7 @@ async function renderLevel(page, {
       headerScrollWidth: header.scrollWidth,
       inlineGaps: [
         back.getBoundingClientRect().left - headerRect.left,
-        headerRect.right - panel.getBoundingClientRect().right
+        headerRect.right - endSpace.getBoundingClientRect().right
       ],
       modeCenterDelta: modeRect
         ? Math.abs((modeRect.left + modeRect.width / 2) - (headerRect.left + headerRect.width / 2))
@@ -123,16 +128,38 @@ async function renderLevel(page, {
       modeCount: modeButtons.length,
       modeLabels: modeButtons.map((button) => button.getAttribute("aria-label")),
       modeFocused: modeButtons.at(-1) === document.activeElement,
-      panelLabel: panel.getAttribute("aria-label"),
       panelCount: header.querySelectorAll('[data-action="open-central"]').length,
+      settingsCount: header.querySelectorAll('[data-action="open-settings"]').length,
       headerObservationCount: header.querySelectorAll('[data-action="open-context-observation"]').length,
       observationInSummary: Boolean(observation?.closest(".entity-summary-wrap")),
       contextTitle: document.querySelector(".entity-context-title")?.textContent.trim() || "",
+      accessibleContextTitle: screenContent?.querySelector("h1.visually-hidden")?.textContent.trim() || "",
+      visibleContextTitleCount: screenContent?.querySelectorAll(".entity-context-title").length || 0,
+      workbenchTopDelta: screenContent && workbench
+        ? workbench.getBoundingClientRect().top - screenContent.getBoundingClientRect().top
+        : null,
       topbarTitle: header.querySelector(".topbar-title")?.textContent.trim() || "",
       workbenchGutter: document.querySelector(".microsequence-workbench-screen > .screen-content")
         ? getComputedStyle(document.querySelector(".microsequence-workbench-screen > .screen-content")).scrollbarGutter
         : "",
       cardGutter: cardContent ? getComputedStyle(cardContent).scrollbarGutter : "",
+      cardTitleGutter: cardTitle ? getComputedStyle(cardTitle).scrollbarGutter : "",
+      cardTitleTextLeft: cardTitle?.firstChild
+        ? (() => {
+          const range = document.createRange();
+          range.setStart(cardTitle.firstChild, 0);
+          range.setEnd(cardTitle.firstChild, 1);
+          return range.getBoundingClientRect().left;
+        })()
+        : null,
+      cardBodyTextLeft: firstParagraph?.firstChild
+        ? (() => {
+          const range = document.createRange();
+          range.setStart(firstParagraph.firstChild, 0);
+          range.setEnd(firstParagraph.firstChild, 1);
+          return range.getBoundingClientRect().left;
+        })()
+        : null,
       workbenchFooterPaddingRight: document.querySelector(".microsequence-workbench-screen .study-reader-footer")
         ? getComputedStyle(document.querySelector(".microsequence-workbench-screen .study-reader-footer")).paddingRight
         : "",
@@ -163,8 +190,8 @@ test("cabeçalho de autoria permanece simétrico de 320 a 430 px", async ({ page
     expect(result.modeCount).toBe(3);
     expect(result.modeLabels).toEqual(["Visualizar", "Editar", "Assistência por IA"]);
     expect(result.modeFocused).toBe(true);
-    expect(result.panelLabel).toBe("Abrir painel AraLearn");
-    expect(result.panelCount).toBe(1);
+    expect(result.panelCount).toBe(0);
+    expect(result.settingsCount).toBe(1);
     expect(result.headerObservationCount).toBe(0);
     expect(result.observationInSummary).toBe(true);
     expect(result.contextTitle).toBe("Lições");
@@ -189,12 +216,13 @@ test("dois modos usam a app bar e somente leitura conserva o título nela", asyn
   expect(readonly.modeCount).toBe(0);
   expect(readonly.contextTitle).toBe("");
   expect(readonly.topbarTitle).toBe("Lições");
-  expect(readonly.panelCount).toBe(1);
+  expect(readonly.panelCount).toBe(0);
+  expect(readonly.settingsCount).toBe(1);
   expect(readonly.headerObservationCount).toBe(0);
   expect(readonly.observationInSummary).toBe(true);
 });
 
-test("o card delega a rolagem sem reservar uma coluna externa", async ({ page }) => {
+test("o card delega a rolagem e remove o título visual redundante", async ({ page }) => {
   await page.goto("/");
   await page.setViewportSize({ width: 320, height: 760 });
   const result = await renderLevel(page, { level: "card", canComment: false });
@@ -203,5 +231,33 @@ test("o card delega a rolagem sem reservar uma coluna externa", async ({ page })
   expect(result.workbenchFooterPaddingRight).toBe("0px");
   expect(result.cardRectStable).toBe(true);
   expect(result.modeCount).toBe(3);
-  expect(result.contextTitle).toBe("AraLearn: Catálogo de lógica proposicional e matemática discreta");
+  expect(result.contextTitle).toBe("");
+  expect(result.visibleContextTitleCount).toBe(0);
+  expect(result.accessibleContextTitle).toBe("AraLearn: Catálogo de lógica proposicional e matemática discreta");
+  expect(Math.abs(result.workbenchTopDelta)).toBeLessThanOrEqual(1);
+  await expect(page.getByRole("heading", {
+    name: "AraLearn: Catálogo de lógica proposicional e matemática discreta"
+  })).toHaveCount(1);
+
+  const readonly = await renderLevel(page, {
+    level: "card",
+    canEdit: false,
+    canAi: false,
+    canComment: false
+  });
+  expect(readonly.topbarTitle).toBe("");
+  expect(readonly.visibleContextTitleCount).toBe(0);
+  expect(readonly.accessibleContextTitle).toBe("AraLearn: Catálogo de lógica proposicional e matemática discreta");
+});
+
+test("título e prosa do card compartilham o mesmo eixo com scrollbar estável", async ({ page }) => {
+  await page.goto("/");
+  for (const width of [320, 360, 390, 430, 1280]) {
+    await page.setViewportSize({ width, height: 760 });
+    const result = await renderLevel(page, { level: "card", canComment: false });
+    expect(result.cardGutter).toBe("stable both-edges");
+    expect(result.cardTitleGutter).toBe("stable both-edges");
+    expect(Math.abs(result.cardTitleTextLeft - result.cardBodyTextLeft), `alinhamento do título em ${width}px`)
+      .toBeLessThanOrEqual(1);
+  }
 });

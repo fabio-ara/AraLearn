@@ -768,40 +768,33 @@ begin
   end if;
 
   v_previous:=v_definition;
-  v_definition:=replace(
+  -- pg_get_functiondef preserva a semântica, mas pode normalizar a
+  -- indentação entre versões do PostgreSQL. Não condicione esta migração
+  -- a uma quantidade específica de espaços no predicado editorial.
+  v_definition:=regexp_replace(
     v_definition,
-    'where card.course_id = p_course_id'
-      || E'\n      and card.resource <> ''composite''',
-    'where card.course_id = p_course_id'
-      || E'\n      and card.deleted_at is null'
-      || E'\n      and card.resource <> ''composite'''
+    E'where card\\.course_id = p_course_id\\s+and card\\.resource <> ''composite''',
+    E'where card.course_id = p_course_id\n      and card.deleted_at is null\n      and card.resource <> ''composite'''
   );
   if v_definition=v_previous then
     raise exception 'Validador esperado não contém a correspondência de recurso.';
   end if;
 
   v_previous:=v_definition;
-  v_definition:=replace(
+  v_definition:=regexp_replace(
     v_definition,
-    'where card.course_id = p_course_id'
-      || E'\n      and (card.card_kind is distinct from card.kind',
-    'where card.course_id = p_course_id'
-      || E'\n      and card.deleted_at is null'
-      || E'\n      and (card.card_kind is distinct from card.kind'
+    E'where card\\.course_id = p_course_id\\s+and \\(card\\.card_kind is distinct from card\\.kind',
+    E'where card.course_id = p_course_id\n      and card.deleted_at is null\n      and (card.card_kind is distinct from card.kind'
   );
   if v_definition=v_previous then
     raise exception 'Validador esperado não contém a projeção pública do card.';
   end if;
 
   v_previous:=v_definition;
-  v_definition:=replace(
+  v_definition:=regexp_replace(
     v_definition,
-    'select 1 from public.cards'
-      || E'\n    where course_id = p_course_id'
-      || E'\n    group by microsequence_id, position',
-    'select 1 from public.cards'
-      || E'\n    where course_id = p_course_id and deleted_at is null'
-      || E'\n    group by microsequence_id, position'
+    E'select 1 from public\\.cards\\s+where course_id = p_course_id\\s+group by microsequence_id, position',
+    E'select 1 from public.cards\n    where course_id = p_course_id and deleted_at is null\n    group by microsequence_id, position'
   );
   if v_definition=v_previous then
     raise exception 'Validador esperado não contém a regra de posições dos cards.';

@@ -120,16 +120,17 @@ linguagem](assistencia-por-ia.md#autoridade-por-nível).
 ## Fluxo da autoria estrutural
 
 ```text
-contexto disponível e fontes
-→ diálogo somente sobre lacunas materiais
-→ diagnóstico contextual e planejamento local
-→ aprovação humana
-→ materialização incremental
-→ revisão conceitual
+fontes e objetivo
+→ análise instrucional
+→ parâmetros efetivos
+→ disponibilidade, seleção e composição de resources
+→ blueprint contextual
+→ teoria e prática
+→ cards
+→ manifesto de materialização
 → auditoria somente para leitura
-→ reparo autorizado
-→ reauditoria
-→ submissão ou publicação
+→ reparo autorizado e reauditoria
+→ resultados, submissão ou publicação
 ```
 
 O **brief** registra contexto estável: público, objetivo, fontes, inclusões,
@@ -145,19 +146,57 @@ questionário fixo de diagnóstico.
 
 ### Planejar antes de produzir
 
-O planejamento pedagógico precede o custo de geração. Para cada
-microssequência, ele explicita condições de aprendizagem pertinentes, exigências
-do conteúdo, dificuldades previstas e respostas de desenho vinculadas às
-dificuldades, aos passos/packages que as concretizam e a critérios observáveis. A
-condição descreve o cenário; a resposta é uma decisão local sobre explicação,
-exemplo, representação, prática, apoio ou sequência. Uma não determina
-automaticamente a outra.
+O planejamento estrutural precede o custo de geração. Ele delimita objetivos,
+cobertura, dependências, microssequências e Partes e conserva apenas as
+hipóteses de contexto necessárias para a decisão humana. A análise instrucional
+detalhada, os parâmetros e o blueprint são resolvidos just-in-time para uma
+microssequência imediatamente antes de materializá-la, salvo locks de pesquisa
+fixados previamente. A condição descreve o cenário; a resposta é uma decisão
+local sobre explicação, exemplo, representação, prática, apoio ou sequência.
+Uma não determina automaticamente a outra.
 
 A quantidade de cards não é escolhida por cota fixa: decorre dos conceitos,
 pré-requisitos, dificuldades, respostas aprovadas, formas de prática e
 necessidade de revisão. A pessoa autora examina essa síntese antes da
-materialização. Depois da aprovação, a produção ocorre por microssequência, em
-lotes que podem ser validados e retomados.
+materialização quando o mandato ou uma decisão material exigir. Dentro da Parte
+já autorizada, a produção ocorre por microssequência, em lotes que podem ser
+validados e retomados, sem nova confirmação automática a cada unidade.
+
+### Resolver parâmetros antes do blueprint
+
+Análise, definição, assignment e valor efetivo possuem contratos distintos. O
+servidor deriva a cadeia
+`workspace → course → module → lesson → microsequence`; Parte fica fora dela
+porque coordena lotes de trabalho, não decisões pedagógicas. Para cada definição
+aplicável, a autoridade é resolvida na ordem `research_lock`, `manual_override`,
+`auto`, default; `nearest_scope_replaces` escolhe a origem mais próxima dentro
+da classe vencedora e substitui o valor completo. Ordem de campos JSON não
+participa da precedência.
+
+`auto`, `manual_override` e `research_lock` sempre carregam valor explícito.
+Herança é proveniência calculada, não um quarto modo. Duplicidade do mesmo modo
+no mesmo escopo e parâmetros requeridos sem valor interrompem a resolução. Locks de pesquisa
+são verificados numa barreira de autoridade separada: o modelo não os altera
+nem os contorna por considerar outro desenho preferível.
+
+O resultado aceito é congelado num `EffectiveDesignSnapshot` com análise,
+definições, assignments, caminho e revisões exatos. O blueprint pedagógico v2
+não muda de formato: um binding versionado relaciona suas camadas, demandas,
+respostas e passos às unidades e exigências da análise, sem duplicar o plano.
+
+Quando Auto precisa referenciar um `ResourceSet` ainda inexistente, o servidor
+faz antes um bootstrap por famílias e facetas, congela as referências exatas e
+persiste o conjunto. Esse bootstrap não autoriza seleção. Depois o assignment
+referencia a versão salva, o snapshot resolve a disponibilidade efetiva e só
+então começa a descoberta autoritativa.
+
+A ferramenta agrupada `gerirDesenhoInstrucional` mantém poucas operações
+coesas: `read_slice`, `contracts`, `save_analysis`, `save_resource_set`,
+`set_parameter`, `remove_parameter`, `resolve_effective`, `save_blueprint` e
+`register_manifest`; na rodada separada, `run_audit` e
+`record_semantic_audit`. Cada escrita usa CAS e idempotência. O slice inclui apenas
+brief, objetivo, dependências, fontes, análise, assignments/locks, definições
+pertinentes, snapshot, conjuntos, blueprint, manifesto e findings aplicáveis.
 
 ### Separar auditoria e reparo
 
@@ -180,7 +219,7 @@ consulta usa uma única biblioteca com operações progressivas:
 1. `explore` apresenta famílias e facetas;
 2. `search` procura representações pela intenção;
 3. `inspect` compara perfis sem carregar schemas;
-4. `contracts` devolve somente os contratos exatos escolhidos;
+4. `contracts` devolve exatamente um contrato versionado por chamada;
 5. `validate_card` verifica estrutura;
 6. `audit_representation` verifica ajuste declarado e limitações;
 7. `preview_card` fornece um descritor, sem fingir uma renderização visual.
@@ -193,9 +232,22 @@ O resultado de busca usa três classificações técnicas:
   limitações que precisam ser informadas.
 
 Esses tokens expressam o ajuste dentro do catálogo; `canonical` não certifica
-consenso acadêmico externo. Um substituto não bloqueia a produção. A integração
-o utiliza, informa brevemente a limitação e registra qual representação seria
-preferível, permitindo evolução posterior do catálogo.
+consenso acadêmico externo. Quando a política permite registrar a limitação, a
+integração pode usar um substituto, informar brevemente a aproximação e registrar
+qual representação seria preferível. Uma condição com política `block` deve
+parar em vez de contornar a indisponibilidade.
+
+Quando um `ResourceSet` está ativo, a busca continua progressiva, mas somente
+`package@version` disponível no conjunto pode ser selecionado. O conjunto pode
+vir de facetas, desde que sua expansão exata e a versão do catálogo sejam
+congeladas. Cada seleção registra qual `ResourceSet` a autorizou; package,
+`canonical`/`versatile`/`substitute` e papel precisam ser permitidos pelo mesmo
+conjunto. A instância materializada referencia essa seleção.
+
+Disponibilidade, seleção e uso são, portanto, três fatos auditáveis. Um conjunto
+não exige escolha manual card a card e não copia contracts de packages. Se não
+contiver representação adequada, a política bloqueia ou registra a limitação;
+nunca declara equivalência fictícia.
 
 ## Recuperação de conhecimento
 
@@ -206,8 +258,11 @@ recebe conhecimento recuperado de uma coleção externa ao contexto-base
 ([Lewis et al. (2020)](referencias.md#ref-lewis2020rag)).
 
 No AraLearn, a recuperação autoral atual é lexical, versionada e
-determinística. Ela seleciona até oito unidades pequenas; não usa embedding
-remoto nem banco vetorial. Essa escolha reduz infraestrutura, torna a seleção
+determinística. Ela seleciona até oito unidades pequenas por intenção e termos
+do recorte. Os chunks cobrem análise instrucional, granularidade semântica,
+elaboração explicativa, evidência e prática, tarefa profissional complexa,
+resolução, descoberta por `ResourceSet` e conformidade do desenho. Não usa
+embedding remoto nem banco vetorial. Essa escolha reduz infraestrutura, torna a seleção
 auditável e atende ao corpus controlado atual. Busca semântica vetorial seria
 justificada quando a escala, a variedade lexical e a avaliação demonstrarem
 vantagem suficiente para compensar custo, opacidade e manutenção adicionais.
@@ -257,16 +312,19 @@ implementações preservam atomicidade, mas em escalas diferentes.
 
 O curso registra resultados e decisões estruturadas que precisam sobreviver à
 sessão. A conversa curta da assistência contextual não é proveniência. Na
-autoria estrutural, decisões sobre representações substitutivas podem registrar
-intenção, package escolhido, ajuste, limitação e versão do catálogo sem inserir
-esses metadados no card público.
+autoria estrutural, análise, assignments, snapshot efetivo, `ResourceSet`,
+blueprint v2, binding e manifesto usam identidades e versões próprias. Decisões
+sobre representações registram intenção, package escolhido, ajuste, limitação e
+versão do catálogo sem inserir esses metadados no card público.
 
-O mesmo vale para diagnóstico e planejamento: condições estáveis ficam no
+O estado compacto de continuidade continua menor: condições estáveis ficam no
 brief; a decisão resume condição e demanda; somente pares relevantes de
 dificuldade e resposta seguem em `pedagogicalDiagnosis.difficultyResponses`.
-Não se persistem ids locais do blueprint, raciocínio privado do modelo nem o
-transcript integral do diálogo. Essa separação economiza armazenamento e permite
-analisar a evolução autoral sem transformar toda conversa em dado permanente.
+Ele não duplica blueprint nem ids dos passos. O subsistema de desenho, por sua
+vez, persiste o blueprint v2 e seu binding fechado justamente para comparar
+intenção e materialização. Nenhuma das duas camadas persiste raciocínio privado
+do modelo ou transcript integral do diálogo. Essa separação economiza
+armazenamento e permite retomar a autoria a partir do workspace canônico.
 Quando uma investigação exigir preservar conversas, isso deve ser outro
 protocolo de coleta, com finalidade, consentimento e retenção próprios.
 
@@ -277,6 +335,8 @@ protocolo de coleta, com finalidade, consentimento e retenção próprios.
 | JSON inválido | uma tentativa orientada de correção; nenhuma gravação parcial |
 | contrato incompatível | consultar o contrato exato e corrigir o menor lote |
 | revisão desatualizada | reler o alvo e reaplicar somente a intenção ainda válida |
+| valor exigido ou ancestria não resolvidos | retornar conflito estruturado; não inventar default nem caminho |
+| `ResourceSet` não autoriza a representação | bloquear ou registrar a limitação conforme a política; nunca fingir equivalência |
 | resposta perdida | repetir a mesma tentativa idempotente |
 | pedido fora da seleção | retornar como não suportado, sem adaptar o escopo |
 | conta sem capacidade | conservar o conteúdo no estado autorizado e explicar a dependência |
@@ -287,9 +347,20 @@ modelo, representação ou autoridade.
 ## Limites
 
 Saída estruturada reduz ambiguidade e corrupção de estado; não garante verdade
-factual, suficiência da progressão ou qualidade da prática. Auditoria por
-modelo pode encontrar problemas, mas não substitui revisão disciplinar e
-pedagógica. A publicação no catálogo permanece uma decisão humana autorizada.
+factual, suficiência da progressão ou qualidade da prática. O diff determinístico
+entre binding e manifesto encontra identidades divergentes, passos faltantes,
+cobertura declarada incompleta e diferença entre seleção e uso; ele não julga a
+semântica da explicação ou da prática. Auditoria por modelo pode encontrar esses
+problemas, mas não substitui revisão disciplinar e pedagógica. A publicação no
+catálogo permanece uma decisão humana autorizada.
+
+Desde a #104, MCP e Action expõem o núcleo persistente pela ferramenta
+agrupada, e os pacotes distribuídos conservam o mesmo protocolo. A #105 projeta
+o estado na interface responsiva de Autoria; a #106 acrescenta audit run
+imutável, checks sobre cards/resources reais, decisão humana, reparo restrito e
+reauditoria corrente. Essa fronteira não autoriza usar conversa como fonte
+canônica, editar JSON fora das operações estruturadas, tratar aceitação do
+manifesto como conformidade ou inferir eficácia educacional.
 
 Os envelopes e identificadores públicos são detalhados no [Contrato de
 conteúdo](aralearn-contract.md), e a operação remota aparece em [Autoria por

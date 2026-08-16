@@ -72,9 +72,48 @@ O modo escuro usa superfícies cinza-escuras e níveis de texto distintos. Preto
 
 ## 5. Organização e navegação
 
-`Trilhas` é a superfície de organização e estudo. `Coleções` é a superfície de descoberta e, para contas autorizadas, de administração editorial. Semelhança entre cartões reduz reaprendizagem, mas nunca comunica permissão: capacidade é derivada do servidor e controles editoriais aparecem em modo explícito.
+O shell distingue **Estudo** e **Autoria** como atividades do mesmo produto.
+`Trilhas` pertence a Estudo. `Workspaces` e `Coleções` pertencem a Autoria;
+Coleções continua sendo a superfície de descoberta e, para contas autorizadas,
+de administração editorial. Semelhança entre cartões reduz reaprendizagem, mas
+nunca comunica permissão: capacidade é derivada do servidor e controles
+editoriais aparecem em modo explícito.
 
-No leitor, **Visualizar**, **Editar** e **IA** são estados contextuais da mesma superfície. Seus controles ocupam o centro da barra superior; o título contextual aparece no início do conteúdo, sem consumir uma segunda faixa exclusiva. Em Visualizar, não permanecem controles de autoria. Em Editar, somente textos declarados pelos packages recebem affordance de edição. Em IA, a seleção delimita o escopo enviado à conversa.
+Dentro do workspace, Mapa, Desenho, Conteúdo e Auditoria usam ícone e nome
+acessível. A registry de destinos aceita Resultados quando houver dados. No
+celular, a navegação fica numa faixa compacta e apenas um destino ocupa a área
+principal. A partir da composição larga, os mesmos destinos formam um rail
+vertical; não surgem operações exclusivas de desktop. Textos ampliados a 200%
+refluem sem transformar o rail ou os diálogos em colunas implícitas estreitas.
+
+Auditoria usa camadas. A primeira mostra poucas dimensões com os estados
+**Conforme**, **Com achado** e **Não verificada**; a última nunca é desenhada como
+aprovação. A lista compacta leva a um detalhe com evidência pública, critério,
+origem, alvo e decisão. No celular esse detalhe ocupa um diálogo vertical com
+ações persistentes no rodapé; no desktop a mesma composição fica centralizada,
+sem adicionar um dashboard. Proveniência e possível reparo ficam sob disclosure.
+Quando a proveniência é limitada, o disclosure mostra `N de total` em vez de
+expor identificadores técnicos ou sugerir que a lista parcial é completa.
+Gravidade usa texto e cor, mas é prioridade operacional, não score de qualidade.
+A rodada em revisão usa estado pendente; somente o status explícito de conclusão
+autoriza o rótulo **Auditoria concluída**. A paginação permanece no recorte
+corrente — workspace, Parte ou microssequência — e nunca troca silenciosamente
+uma rodada específica pela lista geral de achados.
+Uma Parte composta mostra suas microssequências em lista compacta e paginada.
+O drill-down preserva a rodada filha versionada da composição; não substitui o
+histórico pela rodada mais nova da microssequência. Rodadas não correntes usam o
+rótulo **Rodada histórica** e não exibem ações operacionais.
+Achados rejeitados ou resolvidos podem continuar no histórico, sem manter o
+estado operacional como pendente. Em alvos alterados, indisponibilidade vence
+qualquer endereço anterior; quando houver um caminho corrente confirmado, ele
+vence o caminho histórico da rodada.
+
+Estados autorais combinam ícone, rótulo e texto curto. Cor pode reforçar
+planejamento, construção, finding ou ausência de pendência, mas nunca é o único
+sinal e não representa nota de qualidade. Um conflito aparece antes do estado
+pendente e oferece releitura, nova tentativa ou descarte explícito.
+
+No leitor, **Visualizar**, **Editar** e **IA** são estados contextuais da mesma superfície. Seus controles ocupam o centro da barra superior. O nome do curso não reaparece visualmente entre a barra e o card: permanece apenas como contexto acessível, pois o próprio card e a ação de retorno já situam o estudante. Em Visualizar, não permanecem controles de autoria. Em Editar, somente textos declarados pelos packages recebem affordance de edição. Em IA, a seleção delimita o escopo enviado à conversa.
 
 Uma **affordance** é uma pista perceptível de como um elemento pode ser usado. Contorno de seleção, cursor, foco e rótulo precisam corresponder à operação disponível; aparência de botão não pode ser aplicada a texto sem ação.
 
@@ -82,9 +121,12 @@ Uma **affordance** é uma pista perceptível de como um elemento pode ser usado.
 
 - família de sistema, sem download obrigatório, para conservar sobriedade,
   disponibilidade offline e métricas adequadas a cada plataforma;
-- prosa principal em 15,5 px com entrelinha de 1,5 e espaçamento vertical
-  proporcional; campos interativos, lacunas, alternativas, matemática e texto
-  interno de diagramas conservam o piso necessário à leitura e à operação;
+- prosa principal em 15,5 px, com entrelinha de 1,5; alternativas repetidas de
+  lacuna recuperam a escala compacta de 0,69 rem, cerca de 11 px no tamanho
+  padrão, peso regular, padding reduzido e altura mínima de 28 px. A unidade
+  relativa acompanha a ampliação de texto, enquanto os demais campos
+  interativos, a matemática e o texto interno de diagramas conservam o piso
+  necessário à leitura e à operação;
 - corpo e rótulos textuais de resources seguem a escala básica do `paragraph`,
   salvo notação cuja geometria dependa de métricas próprias;
 - largura de leitura confortável e alinhamento não justificado;
@@ -93,7 +135,9 @@ Uma **affordance** é uma pista perceptível de como um elemento pode ser usado.
 - cantos discretos e consistentes;
 - sombras apenas em sobreposição ou elevação funcional;
 - metadados menores que o conteúdo, mas ainda legíveis;
-- nenhum alvo de toque é reduzido para produzir aparência compacta.
+- controles principais conservam alvo de 44 px; alternativas repetidas de
+  lacuna equilibram leitura e área útil com alvo mínimo de 28 px, ainda acima
+  do mínimo AA.
 
 Em diagramas cujo motor calcula previamente as caixas, rótulos HTML e lacunas
 internas permanecem em 16 px para não divergir da geometria medida. O zoom do
@@ -113,6 +157,12 @@ Fórmulas e símbolos podem ter métricas próprias da notação matemática. Is
 - o símbolo de marca é um ativo separado do conjunto funcional.
 
 Rótulos usam a linguagem da tarefa. Textos autorreferentes como “deslize para ver este resource” são evitados quando o gesto já é evidente pela própria superfície. Uma instrução de leitura só existe quando ensina uma convenção disciplinar necessária.
+
+Na Autoria, a primeira camada usa **Auto**, **Resources**, **Mapa**, **Desenho**,
+**Conteúdo**, **Auditoria** e **Resultados**. Termos de engenharia como MCP,
+schema, CAS, revisão, `ResourceSet`, `packageId` e snapshot não são necessários
+para operar a interface comum. Detalhes de proveniência aparecem apenas sob
+disclosure técnico apropriado.
 
 ## 8. Resources e dados visuais
 
@@ -189,11 +239,30 @@ Os critérios adotam [WCAG 2.2](https://www.w3.org/TR/WCAG22/) como referência 
 - alternativa a gestos de arrastar quando exigida;
 - respeito a preferência de movimento reduzido.
 
-O alvo interno de 44 px é uma decisão conservadora de produto, superior ao mínimo AA de Target Size (Minimum). Conformidade automatizada não demonstra usabilidade com tecnologia assistiva; leitor de tela, WebView, teclado e aparelho real continuam necessários.
+O alvo de 44 px permanece a decisão conservadora para controles principais.
+Alternativas repetidas de lacuna podem usar 28 px para preservar a densidade do
+card; esse tamanho continua superior ao mínimo AA de Target Size (Minimum).
+Conformidade automatizada não demonstra usabilidade com tecnologia assistiva;
+leitor de tela, WebView, teclado e aparelho real continuam necessários.
 
 ## 13. Evidência visual e automatizada
 
 `npm run resources:gallery:visual` recompõe a galeria a partir do registry, abre Chromium em 360, 390, 412 e 1280 px, aplica claro e escuro, rejeita erro de browser e overflow horizontal do card e grava capturas em [`docs/screenshots/resources-packages`](screenshots/resources-packages/).
+
+As capturas canônicas da Autoria ficam em
+[`docs/screenshots/authoring`](screenshots/authoring/): Mapa, Desenho, resumo da
+Auditoria, detalhe de um achado e auditoria coordenada da Parte com acesso às
+microssequências exatas em 390 px claro e 1280 px escuro, além da superfície
+móvel de Conta e aparência. Elas são reproduzidas pelo cenário opt-in do
+Playwright:
+
+```powershell
+node scripts/stageWebRuntime.mjs --target pages --output .pages
+$env:ARALEARN_CAPTURE_AUTHORING = "1"
+$env:ARALEARN_E2E_PORT = "4291"
+npx playwright test tests/e2e/authoring-workspace-surface.spec.js -g "gera capturas canônicas"
+npx playwright test tests/e2e/learning-spaces-panel.spec.js -g "Conta e aparência abre"
+```
 
 Outros testes exercitam:
 
@@ -228,3 +297,12 @@ Uma mudança visual está pronta quando:
 - [Wikimedia Codex: estrutura de tokens](https://doc.wikimedia.org/codex/latest/design-tokens/definition-and-structure.html)
 - [Wikimedia Codex: modos alternativos](https://doc.wikimedia.org/codex/latest/using-codex/adrs/08-adr-color-modes.html)
 - [Web Content Accessibility Guidelines 2.2](https://www.w3.org/TR/WCAG22/)
+## Resultados e visualização de dados
+
+**Resultados** é o quinto destino canônico da Autoria. A superfície mantém uma
+coluna de leitura, seções progressivas e cartões discretos; não imita um
+dashboard corporativo nem resume o curso em score. Barras usam `<progress>` e
+cada visualização traz tabela HTML com os mesmos valores. Rótulo e número nunca
+dependem apenas de cor. Em 360, 390 e 412 px, cabeçalho, seletor de recorte e
+exportação empilham sem overflow; em 1280 px preservam largura legível. O painel
+de proveniência usa `details/summary`, e foco/teclado seguem o shell.

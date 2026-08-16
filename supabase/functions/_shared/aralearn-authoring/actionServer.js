@@ -8,6 +8,8 @@ import {
   sha256Hex
 } from "./security.js";
 import {
+  authoringApplicationToolDefinition,
+  authoringApplicationToolIsAllowed,
   authoringMcpToolDefinition,
   authoringMcpToolIsAllowed
 } from "./workspaceMcpTools.js";
@@ -19,6 +21,10 @@ const APPLICATION_AUTHORING_ACTIONS = new Set([
   "listarWorkspacesDeAutoria",
   "criarWorkspaceDeAutoria",
   "lerWorkspaceDeAutoria",
+  "gerirDesenhoInstrucional",
+  "gerirExperimentoInstrucional",
+  "ingressarEmExperimentoInstrucional",
+  "consultarAnalyticsInstrucional",
   "gerirContinuidadeDaAutoria",
   "criarEstruturaNoWorkspace",
   "salvarCardsNaMicrossequencia",
@@ -163,7 +169,10 @@ export function createAuthoringActionHandler({
         : route.length === 1
           ? route[0]
           : "";
-      if (!authoringMcpToolDefinition(actionName)) {
+      const definition = applicationRequest
+        ? authoringApplicationToolDefinition(actionName)
+        : authoringMcpToolDefinition(actionName);
+      if (!definition) {
         throw new AuthoringApiError(404, "unknown_action", "Operação de autoria inexistente.");
       }
       if (applicationRequest && !APPLICATION_AUTHORING_ACTIONS.has(actionName)) {
@@ -183,7 +192,10 @@ export function createAuthoringActionHandler({
             await sha256Hex(authentication.credential),
             { deadlineAt }
           );
-      if (!authoringMcpToolIsAllowed(actionName, principal)) {
+      const allowed = applicationRequest
+        ? authoringApplicationToolIsAllowed(actionName, principal, rawArguments)
+        : authoringMcpToolIsAllowed(actionName, principal, rawArguments);
+      if (!allowed) {
         throw new AuthoringApiError(
           403,
           "insufficient_scope",
@@ -195,7 +207,8 @@ export function createAuthoringActionHandler({
         principal,
         name: actionName,
         rawArguments,
-        deadlineAt
+        deadlineAt,
+        surface: applicationRequest ? "application" : "mcp"
       });
       const payload = {
         ok: true,

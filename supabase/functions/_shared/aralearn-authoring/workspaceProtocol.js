@@ -30,6 +30,97 @@ const STRUCTURE_MICROSEQUENCE_FIELDS = Object.freeze([
 const STRUCTURE_PART_LIMIT = 40;
 const PACKAGE_ID_PATTERN = /^aralearn\.(?:resource|response)\.[a-z0-9_]+$/u;
 const SEMVER_PATTERN = /^(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)$/u;
+const DESIGN_ACTION_OPERATIONS = new Set([
+  "read_slice",
+  "contracts",
+  "save_analysis",
+  "set_parameter",
+  "remove_parameter",
+  "save_resource_set",
+  "resolve_effective",
+  "save_blueprint",
+  "register_manifest",
+  "run_audit",
+  "record_semantic_audit",
+  "register_experiment_variant_evidence",
+  "record_experiment_diff_classification"
+]);
+const DESIGN_SLICE_VIEWS = new Set([
+  "overview", "analysis", "parameters", "resource_set", "blueprint", "binding",
+  "materialization", "audit", "experiment_context"
+]);
+const RESOURCE_SET_PAGE_DEFAULT_LIMIT = 50;
+const RESOURCE_SET_PAGE_MAX_LIMIT = 100;
+const AUDIT_PAGE_DEFAULT_LIMIT = 20;
+const AUDIT_PAGE_MAX_LIMIT = 50;
+const AUDIT_COMPONENT_PAGE_MAX_LIMIT = 10;
+const DESIGN_CONTRACT_NAMES = new Set([
+  "instructional_analysis",
+  "design_parameter_definition",
+  "design_parameter_assignment",
+  "effective_design_snapshot",
+  "materialization_manifest",
+  "resource_set",
+  "action_read_slice",
+  "action_contracts",
+  "action_save_analysis",
+  "action_set_parameter",
+  "action_remove_parameter",
+  "action_save_resource_set",
+  "action_resolve_effective",
+  "action_save_blueprint",
+  "action_register_manifest",
+  "action_run_audit",
+  "action_record_semantic_audit",
+  "action_register_experiment_variant_evidence",
+  "action_record_experiment_diff_classification"
+]);
+const DESIGN_ACTION_PAYLOAD_LIMITS = Object.freeze({
+  save_analysis: 256 * 1024,
+  set_parameter: 64 * 1024,
+  remove_parameter: 64 * 1024,
+  save_resource_set: 512 * 1024,
+  resolve_effective: 64 * 1024,
+  save_blueprint: 768 * 1024,
+  register_manifest: 1024 * 1024,
+  run_audit: 64 * 1024,
+  record_semantic_audit: 512 * 1024,
+  register_experiment_variant_evidence: 16 * 1024,
+  record_experiment_diff_classification: 64 * 1024
+});
+
+const EXPERIMENT_ACTION_OPERATIONS = new Set([
+  "list",
+  "list_options",
+  "read",
+  "save_protocol",
+  "validate",
+  "generate_variants",
+  "decide_difference",
+  "request_correction",
+  "freeze",
+  "start_collection",
+  "rotate_enrollment_code",
+  "transition_collection",
+  "assign_participant"
+]);
+const EXPERIMENT_ACTION_PAYLOAD_LIMITS = Object.freeze({
+  save_protocol: 60_000,
+  validate: 64 * 1024,
+  generate_variants: 64 * 1024,
+  decide_difference: 64 * 1024,
+  request_correction: 64 * 1024,
+  freeze: 64 * 1024,
+  start_collection: 64 * 1024,
+  rotate_enrollment_code: 64 * 1024,
+  transition_collection: 64 * 1024,
+  assign_participant: 64 * 1024
+});
+
+export const WORKSPACE_DESIGN_ACTION_BODY_LIMIT = 1_100_000;
+export const WORKSPACE_EXPERIMENT_ACTION_BODY_LIMIT = 96 * 1024;
+export const EXPERIMENT_ENROLLMENT_ACTION_BODY_LIMIT = 64_000;
+export const WORKSPACE_ANALYTICS_ACTION_BODY_LIMIT = 96 * 1024;
 
 function fail(code, message, details = undefined) {
   throw new AuthoringApiError(422, code, message, details);
@@ -1317,7 +1408,769 @@ export function validateWorkspaceObservationActionPayload(payload) {
   };
 }
 
+function jsonUtf8Size(value) {
+  return new TextEncoder().encode(JSON.stringify(value)).byteLength;
+}
+
+export function validateWorkspaceDesignActionPayload(payload) {
+  object(payload);
+  const operation = requiredText(payload, "operation", 40);
+  if (!DESIGN_ACTION_OPERATIONS.has(operation)) {
+    fail("invalid_design_operation", "operation de desenho é inválida.");
+  }
+  if (operation === "contracts") {
+    only(payload, ["operation", "contractName"]);
+    const contractName = requiredText(payload, "contractName", 80);
+    if (!DESIGN_CONTRACT_NAMES.has(contractName)) {
+      fail("invalid_design_contract", "contractName de desenho é inválido.");
+    }
+    return { operation, contractName };
+  }
+  if (operation === "read_slice") {
+    const view = payload.view == null ? "overview" : requiredText(payload, "view", 40);
+    if (!DESIGN_SLICE_VIEWS.has(view)) {
+      fail("invalid_design_slice_view", "view de desenho é inválida.");
+    }
+    if (view === "experiment_context") {
+      only(payload, [
+        "operation", "view", "experimentRef", "variantRevisionRef", "variantSetRef",
+        "differenceRunRef", "cursor", "limit", "collection", "collectionSetRef",
+        "collectionCursor", "collectionLimit"
+      ]);
+      const paired = (payload.experimentRef == null) === (payload.variantRevisionRef == null);
+      if (!paired) {
+        fail(
+          "invalid_experiment_context_reference",
+          "experimentRef e variantRevisionRef devem ser enviados juntos."
+        );
+      }
+      const result = { operation, view };
+      for (const field of ["experimentRef", "variantRevisionRef"]) {
+        if (payload[field] == null) continue;
+        const value = object(payload[field], field);
+        only(value, ["id", "version"], field);
+        result[field] = {
+          id: requiredText(value, "id", 240),
+          version: requiredText(value, "version", 80)
+        };
+      }
+      if (payload.differenceRunRef != null) {
+        if (payload.collection != null || payload.collectionSetRef != null
+            || payload.collectionCursor != null || payload.collectionLimit != null) {
+          fail(
+            "mixed_experiment_context_pages",
+            "Hunks e coleções do contexto usam paginações separadas."
+          );
+        }
+        if (result.experimentRef == null) {
+          fail(
+            "invalid_experiment_difference_context",
+            "differenceRunRef exige experimentRef e variantRevisionRef exatos."
+          );
+        }
+        const differenceRunRef = object(payload.differenceRunRef, "differenceRunRef");
+        only(differenceRunRef, ["id", "version"], "differenceRunRef");
+        result.differenceRunRef = {
+          id: requiredText(differenceRunRef, "id", 240),
+          version: requiredText(differenceRunRef, "version", 80)
+        };
+      }
+      if (payload.variantSetRef != null) {
+        if (result.experimentRef != null || result.differenceRunRef != null
+            || payload.collection != null) {
+          fail(
+            "unexpected_experiment_context_set_ref",
+            "variantSetRef pertence somente à descoberta de contextos."
+          );
+        }
+        const variantSetRef = object(payload.variantSetRef, "variantSetRef");
+        only(variantSetRef, ["id", "version"], "variantSetRef");
+        result.variantSetRef = {
+          id: requiredText(variantSetRef, "id", 240),
+          version: requiredText(variantSetRef, "version", 80)
+        };
+      }
+      if (payload.cursor != null && result.experimentRef == null
+          && result.variantSetRef == null && result.differenceRunRef == null) {
+        fail(
+          "missing_experiment_context_set_ref",
+          "cursor de descoberta exige variantSetRef."
+        );
+      }
+      if (payload.cursor != null) result.cursor = requiredText(payload, "cursor", 240);
+      const limit = payload.limit == null ? 20 : payload.limit;
+      if (!Number.isInteger(limit) || limit < 1 || limit > 20) {
+        fail("invalid_experiment_context_limit", "limit de contextos deve ficar entre 1 e 20.");
+      }
+      result.limit = limit;
+      if (payload.collection != null) {
+        const collection = requiredText(payload, "collection", 40);
+        if (!new Set([
+          "factor_targets", "locks", "resource_sets", "target_paths",
+          "difference_runs"
+        ]).has(collection)) {
+          fail(
+            "invalid_experiment_context_collection",
+            "collection de contexto experimental é inválida."
+          );
+        }
+        if (payload.cursor != null || payload.variantSetRef != null
+            || payload.differenceRunRef != null) {
+          fail(
+            "mixed_experiment_context_pages",
+            "A subpágina de coleção não pode misturar discovery ou hunks."
+          );
+        }
+        result.collection = collection;
+        if (payload.collectionSetRef != null) {
+          const collectionSetRef = object(payload.collectionSetRef, "collectionSetRef");
+          only(collectionSetRef, ["id", "version"], "collectionSetRef");
+          result.collectionSetRef = {
+            id: requiredText(collectionSetRef, "id", 240),
+            version: requiredText(collectionSetRef, "version", 80)
+          };
+        }
+        if (payload.collectionCursor != null) {
+          if (result.collectionSetRef == null) {
+            fail(
+              "missing_experiment_context_collection_set_ref",
+              "collectionCursor exige collectionSetRef para manter a página ancorada."
+            );
+          }
+          result.collectionCursor = requiredText(payload, "collectionCursor", 240);
+        }
+        const collectionLimit = payload.collectionLimit == null
+          ? 20
+          : payload.collectionLimit;
+        if (!Number.isInteger(collectionLimit)
+            || collectionLimit < 1 || collectionLimit > 20) {
+          fail(
+            "invalid_experiment_context_collection_limit",
+            "collectionLimit deve ficar entre 1 e 20."
+          );
+        }
+        result.collectionLimit = collectionLimit;
+      } else if (payload.collectionSetRef != null
+          || payload.collectionCursor != null || payload.collectionLimit != null) {
+        fail(
+          "unexpected_experiment_context_collection_page",
+          "collectionSetRef/cursor/limit exigem collection."
+        );
+      }
+      return result;
+    }
+    const result = {
+      operation,
+      view,
+      microsequencePath: workspaceEntityPath(
+        payload.microsequencePath,
+        "microsequencePath",
+        4
+      )
+    };
+    if (!new Set(["resource_set", "audit"]).has(view)) {
+      only(payload, ["operation", "microsequencePath", "view"]);
+      return result;
+    }
+    if (view === "audit") {
+      only(payload, [
+        "operation", "microsequencePath", "view", "auditRunRef", "auditScope",
+        "cursor", "limit", "componentCursor", "componentLimit"
+      ]);
+      if (payload.auditRunRef != null && payload.auditScope != null) {
+        fail(
+          "invalid_audit_slice_arguments",
+          "Use auditRunRef ou auditScope, nunca ambos."
+        );
+      }
+      if (payload.auditRunRef != null) {
+        const auditRunRef = object(payload.auditRunRef, "auditRunRef");
+        only(auditRunRef, ["id", "version"], "auditRunRef");
+        result.auditRunRef = {
+          id: workspaceUuid(auditRunRef.id, "auditRunRef.id"),
+          version: requiredText(auditRunRef, "version", 80)
+        };
+      }
+      if (payload.auditScope != null) {
+        const auditScope = object(payload.auditScope, "auditScope");
+        only(auditScope, ["kind", "ref"], "auditScope");
+        const kind = requiredText(auditScope, "kind", 40);
+        if (!new Set(["microsequence", "part"]).has(kind)) {
+          fail("invalid_audit_scope", "auditScope.kind é inválido.");
+        }
+        result.auditScope = {
+          kind,
+          ref: requiredText(auditScope, "ref", 240)
+        };
+      }
+      if (payload.cursor != null) {
+        const cursor = requiredText(payload, "cursor", 20);
+        if (!/^[1-9][0-9]{0,8}$/u.test(cursor)) {
+          fail("invalid_audit_cursor", "O cursor de auditoria é inválido.");
+        }
+        result.cursor = cursor;
+      }
+      const limit = payload.limit == null ? AUDIT_PAGE_DEFAULT_LIMIT : payload.limit;
+      if (!Number.isInteger(limit) || limit < 1 || limit > AUDIT_PAGE_MAX_LIMIT) {
+        fail(
+          "invalid_audit_limit",
+          `limit deve ser um inteiro entre 1 e ${AUDIT_PAGE_MAX_LIMIT}.`,
+          { field: "limit" }
+        );
+      }
+      result.limit = limit;
+      if (payload.componentCursor != null) {
+        const componentCursor = requiredText(payload, "componentCursor", 20);
+        if (!/^[1-9][0-9]{0,8}$/u.test(componentCursor)) {
+          fail(
+            "invalid_audit_component_cursor",
+            "O cursor de microssequências da Parte é inválido."
+          );
+        }
+        result.componentCursor = componentCursor;
+      }
+      const componentLimit = payload.componentLimit == null
+        ? AUDIT_COMPONENT_PAGE_MAX_LIMIT
+        : payload.componentLimit;
+      if (!Number.isInteger(componentLimit)
+        || componentLimit < 1
+        || componentLimit > AUDIT_COMPONENT_PAGE_MAX_LIMIT) {
+        fail(
+          "invalid_audit_component_limit",
+          `componentLimit deve ser um inteiro entre 1 e ${AUDIT_COMPONENT_PAGE_MAX_LIMIT}.`,
+          { field: "componentLimit" }
+        );
+      }
+      result.componentLimit = componentLimit;
+      return result;
+    }
+    only(payload, [
+      "operation", "microsequencePath", "view", "resourceSetRef", "cursor", "limit"
+    ]);
+    const resourceSetRef = object(payload.resourceSetRef, "resourceSetRef");
+    only(resourceSetRef, ["id", "version"], "resourceSetRef");
+    result.resourceSetRef = {
+      id: requiredText(resourceSetRef, "id", 240),
+      version: requiredText(resourceSetRef, "version", 80)
+    };
+    if (payload.cursor != null) result.cursor = requiredText(payload, "cursor", 240);
+    const limit = payload.limit == null ? RESOURCE_SET_PAGE_DEFAULT_LIMIT : payload.limit;
+    if (!Number.isInteger(limit) || limit < 1 || limit > RESOURCE_SET_PAGE_MAX_LIMIT) {
+      fail(
+        "invalid_resource_set_limit",
+        `limit deve ser um inteiro entre 1 e ${RESOURCE_SET_PAGE_MAX_LIMIT}.`,
+        { field: "limit" }
+      );
+    }
+    result.limit = limit;
+    return result;
+  }
+  only(payload, [
+    "operation", "requestId", "expectedRevision", "microsequencePath", "payload"
+  ]);
+  const operationPayload = object(payload.payload, "payload.payload");
+  const payloadLimit = DESIGN_ACTION_PAYLOAD_LIMITS[operation];
+  if (jsonUtf8Size(operationPayload) > payloadLimit) {
+    fail(
+      "design_payload_too_large",
+      `payload da operação ${operation} excede o teto técnico de ${payloadLimit} bytes.`,
+      { operation, maximumBytes: payloadLimit }
+    );
+  }
+  return {
+    operation,
+    requestId: workspaceRequestId(payload.requestId),
+    expectedRevision: positiveRevision(payload),
+    microsequencePath: workspaceEntityPath(
+      payload.microsequencePath,
+      "microsequencePath",
+      4
+    ),
+    payload: operationPayload
+  };
+}
+
+export function validateWorkspaceExperimentActionPayload(payload) {
+  object(payload);
+  const operation = requiredText(payload, "operation", 40);
+  if (!EXPERIMENT_ACTION_OPERATIONS.has(operation)) {
+    fail("invalid_experiment_operation", "operation experimental é inválida.");
+  }
+  if (operation === "list" || operation === "list_options") {
+    only(payload, [
+      "operation", "kind", "query", "experimentSetRef", "optionsSetRef",
+      "cursor", "limit"
+    ]);
+    const optionKinds = new Set([
+      "scope", "base", "factor_definition", "resource_set", "consent_policy",
+      "instrument", "outcome"
+    ]);
+    if (operation === "list_options") {
+      const kind = requiredText(payload, "kind", 40);
+      if (!optionKinds.has(kind)) {
+        fail("invalid_experiment_option_kind", "kind de opção experimental é inválido.");
+      }
+    } else if (payload.kind != null || payload.query != null
+        || payload.optionsSetRef != null) {
+      fail("unexpected_experiment_option_filter", "kind/query pertencem a list_options.");
+    }
+    if (operation === "list_options" && payload.experimentSetRef != null) {
+      fail(
+        "unexpected_experiment_set_ref",
+        "experimentSetRef pertence à lista de experimentos."
+      );
+    }
+    const limit = payload.limit == null ? 20 : payload.limit;
+    if (!Number.isInteger(limit) || limit < 1 || limit > 50) {
+      fail("invalid_experiment_limit", "limit experimental deve ficar entre 1 e 50.");
+    }
+    const setRefField = operation === "list" ? "experimentSetRef" : "optionsSetRef";
+    let setRef = null;
+    if (payload[setRefField] != null) {
+      const source = object(payload[setRefField], setRefField);
+      only(source, ["id", "version"], setRefField);
+      setRef = {
+        id: requiredText(source, "id", 240),
+        version: requiredText(source, "version", 80)
+      };
+    }
+    if (payload.cursor != null && setRef == null) {
+      fail(
+        "missing_experiment_list_set_ref",
+        `cursor exige ${setRefField} para manter a página ancorada.`
+      );
+    }
+    return {
+      operation,
+      ...(operation === "list_options" ? {
+        kind: requiredText(payload, "kind", 40),
+        ...(payload.query == null ? {} : { query: requiredText(payload, "query", 200) })
+      } : {}),
+      ...(setRef == null ? {} : { [setRefField]: setRef }),
+      ...(payload.cursor == null ? {} : {
+        cursor: requiredText(payload, "cursor", 240)
+      }),
+      limit
+    };
+  }
+  if (operation === "read") {
+    only(payload, [
+      "operation", "experimentId", "section", "protocolRevision", "variantSetRef",
+      "variantCursor", "variantLimit",
+      "differenceSetRef", "differenceRunCursor", "differenceRunLimit",
+      "differenceRunRef", "differenceCursor", "differenceLimit",
+      "participantSetRef", "participantCursor", "participantLimit"
+    ]);
+    const section = payload.section == null
+      ? "overview"
+      : requiredText(payload, "section", 40);
+    if (!new Set([
+      "overview", "protocol", "variants", "differences", "participants"
+    ]).has(section)) {
+      fail("invalid_experiment_read_section", "section experimental é inválida.");
+    }
+    const result = {
+      operation,
+      experimentId: workspaceUuid(payload.experimentId, "experimentId"),
+      section
+    };
+    if (section === "protocol" && payload.protocolRevision != null) {
+      result.protocolRevision = positiveRevision(payload, "protocolRevision");
+    } else if (section !== "protocol" && payload.protocolRevision != null) {
+      fail("unexpected_experiment_protocol_revision", "protocolRevision exige section protocol.");
+    }
+    if (section === "variants") {
+      const variantLimit = payload.variantLimit == null ? 20 : payload.variantLimit;
+      if (!Number.isInteger(variantLimit) || variantLimit < 1 || variantLimit > 20) {
+        fail("invalid_experiment_variant_limit", "variantLimit deve ficar entre 1 e 20.");
+      }
+      result.variantLimit = variantLimit;
+      if (payload.variantSetRef != null) {
+        const variantSetRef = object(payload.variantSetRef, "variantSetRef");
+        only(variantSetRef, ["id", "version"], "variantSetRef");
+        result.variantSetRef = {
+          id: requiredText(variantSetRef, "id", 240),
+          version: requiredText(variantSetRef, "version", 80)
+        };
+      }
+      if (payload.variantCursor != null) {
+        if (result.variantSetRef == null) {
+          fail(
+            "missing_experiment_variant_set_ref",
+            "variantCursor exige variantSetRef para manter a página ancorada."
+          );
+        }
+        result.variantCursor = requiredText(payload, "variantCursor", 240);
+      }
+    } else if (payload.variantSetRef != null
+        || payload.variantCursor != null
+        || payload.variantLimit != null) {
+      fail("unexpected_experiment_variant_page", "A página de variantes exige section variants.");
+    }
+    if (section === "differences" && payload.differenceRunRef != null) {
+      if (payload.differenceSetRef != null
+          || payload.differenceRunCursor != null
+          || payload.differenceRunLimit != null) {
+        fail(
+          "mixed_experiment_difference_pages",
+          "A página de hunks não pode misturar o pin da lista de rodadas."
+        );
+      }
+      const differenceRunRef = object(payload.differenceRunRef, "differenceRunRef");
+      only(differenceRunRef, ["id", "version"], "differenceRunRef");
+      result.differenceRunRef = {
+        id: requiredText(differenceRunRef, "id", 240),
+        version: requiredText(differenceRunRef, "version", 80)
+      };
+      const differenceLimit = payload.differenceLimit == null
+        ? 20
+        : payload.differenceLimit;
+      if (!Number.isInteger(differenceLimit)
+          || differenceLimit < 1
+          || differenceLimit > 20) {
+        fail("invalid_experiment_difference_limit", "differenceLimit deve ficar entre 1 e 20.");
+      }
+      result.differenceLimit = differenceLimit;
+      if (payload.differenceCursor != null) {
+        result.differenceCursor = requiredText(payload, "differenceCursor", 240);
+      }
+    } else if (section === "differences") {
+      if (payload.differenceCursor != null || payload.differenceLimit != null) {
+        fail(
+          "invalid_experiment_difference_hunk_page",
+          "differenceCursor/differenceLimit exigem differenceRunRef."
+        );
+      }
+      if (payload.differenceSetRef != null) {
+        const differenceSetRef = object(payload.differenceSetRef, "differenceSetRef");
+        only(differenceSetRef, ["id", "version"], "differenceSetRef");
+        result.differenceSetRef = {
+          id: requiredText(differenceSetRef, "id", 240),
+          version: requiredText(differenceSetRef, "version", 80)
+        };
+      }
+      const differenceRunLimit = payload.differenceRunLimit == null
+        ? 20
+        : payload.differenceRunLimit;
+      if (!Number.isInteger(differenceRunLimit)
+          || differenceRunLimit < 1
+          || differenceRunLimit > 20) {
+        fail(
+          "invalid_experiment_difference_run_limit",
+          "differenceRunLimit deve ficar entre 1 e 20."
+        );
+      }
+      result.differenceRunLimit = differenceRunLimit;
+      if (payload.differenceRunCursor != null) {
+        if (result.differenceSetRef == null) {
+          fail(
+            "missing_experiment_difference_set_ref",
+            "differenceRunCursor exige differenceSetRef para manter a página ancorada."
+          );
+        }
+        result.differenceRunCursor = requiredText(payload, "differenceRunCursor", 240);
+      }
+    }
+    if (section !== "differences" && (
+      payload.differenceSetRef != null
+      || payload.differenceRunCursor != null
+      || payload.differenceRunLimit != null
+      || payload.differenceRunRef != null
+      || payload.differenceCursor != null
+      || payload.differenceLimit != null
+    )) {
+      fail(
+        "unexpected_experiment_difference_page",
+        "A página de diferenças exige section differences."
+      );
+    }
+    if (section === "participants") {
+      const participantLimit = payload.participantLimit == null
+        ? 20
+        : payload.participantLimit;
+      if (!Number.isInteger(participantLimit)
+          || participantLimit < 1
+          || participantLimit > 20) {
+        fail("invalid_experiment_participant_limit", "participantLimit deve ficar entre 1 e 20.");
+      }
+      result.participantLimit = participantLimit;
+      if (payload.participantSetRef != null) {
+        const participantSetRef = object(payload.participantSetRef, "participantSetRef");
+        only(participantSetRef, ["id", "version"], "participantSetRef");
+        result.participantSetRef = {
+          id: requiredText(participantSetRef, "id", 240),
+          version: requiredText(participantSetRef, "version", 80)
+        };
+      }
+      if (payload.participantCursor != null) {
+        if (result.participantSetRef == null) {
+          fail(
+            "missing_experiment_participant_set_ref",
+            "participantCursor exige participantSetRef para manter a página ancorada."
+          );
+        }
+        result.participantCursor = requiredText(payload, "participantCursor", 240);
+      }
+    } else if (payload.participantSetRef != null
+        || payload.participantCursor != null
+        || payload.participantLimit != null) {
+      fail(
+        "unexpected_experiment_participant_page",
+        "A fila pseudônima exige section participants."
+      );
+    }
+    return result;
+  }
+  only(payload, [
+    "operation", "requestId", "expectedExperimentRevision",
+    "expectedWorkspaceRevision", "payload"
+  ]);
+  const expectedExperimentRevision = payload.expectedExperimentRevision;
+  if (!Number.isInteger(expectedExperimentRevision) || expectedExperimentRevision < 0) {
+    fail(
+      "invalid_experiment_revision",
+      "expectedExperimentRevision deve ser zero na criação ou um inteiro positivo."
+    );
+  }
+  const operationPayload = object(payload.payload, "payload.payload");
+  const payloadLimit = EXPERIMENT_ACTION_PAYLOAD_LIMITS[operation];
+  if (jsonUtf8Size(operationPayload) > payloadLimit) {
+    fail(
+      "experiment_payload_too_large",
+      `payload da operação ${operation} excede ${payloadLimit} bytes.`,
+      { operation, maximumBytes: payloadLimit }
+    );
+  }
+  const workspaceFencedOperations = new Set([
+    "validate", "generate_variants", "request_correction", "freeze"
+  ]);
+  if (workspaceFencedOperations.has(operation)
+      && payload.expectedWorkspaceRevision == null) {
+    fail(
+      "missing_workspace_revision",
+      `expectedWorkspaceRevision é obrigatório em ${operation}.`
+    );
+  }
+  if (!workspaceFencedOperations.has(operation)
+      && payload.expectedWorkspaceRevision != null) {
+    fail(
+      "unexpected_workspace_revision",
+      `expectedWorkspaceRevision não pertence a ${operation}.`
+    );
+  }
+  return {
+    operation,
+    requestId: workspaceRequestId(payload.requestId),
+    expectedExperimentRevision,
+    ...(payload.expectedWorkspaceRevision == null ? {} : {
+      expectedWorkspaceRevision: positiveRevision(payload, "expectedWorkspaceRevision")
+    }),
+    payload: operationPayload
+  };
+}
+
+export function validateExperimentEnrollmentActionPayload(payload) {
+  object(payload);
+  const operation = requiredText(payload, "operation", 40);
+  if (!new Set(["read_policy", "enroll", "withdraw", "status", "record_outcome"]).has(operation)) {
+    fail("invalid_experiment_enrollment_operation", "Operação de ingresso inválida.");
+  }
+  if (operation === "record_outcome") {
+    only(payload, [
+      "operation", "workspaceId", "enrollmentRef", "requestId", "instrumentRef",
+      "outcomeRef", "wave", "valueKind", "value", "missingReason", "observedAt"
+    ]);
+    const valueKind = requiredText(payload, "valueKind", 20);
+    if (!new Set(["numeric", "category", "boolean", "text", "missing"]).has(valueKind)) {
+      fail("invalid_experiment_outcome_kind", "valueKind do outcome é inválido.");
+    }
+    const versionedRef = (field) => {
+      const source = object(payload[field], field);
+      only(source, ["id", "version"], field);
+      return {
+        id: requiredText(source, "id", 240),
+        version: requiredText(source, "version", 80)
+      };
+    };
+    const observedAt = requiredText(payload, "observedAt", 40);
+    if (!Number.isFinite(Date.parse(observedAt))) {
+      fail("invalid_experiment_outcome_time", "observedAt do outcome é inválido.");
+    }
+    if (valueKind === "missing") {
+      if (payload.value != null || !requiredText(payload, "missingReason", 500)) {
+        fail("invalid_experiment_missing_outcome", "Outcome ausente exige somente missingReason.");
+      }
+    } else if (payload.value == null || payload.missingReason != null) {
+      fail("invalid_experiment_outcome_value", "Outcome observado exige value e não aceita missingReason.");
+    }
+    if (valueKind === "numeric" && (typeof payload.value !== "number" || !Number.isFinite(payload.value))) {
+      fail("invalid_experiment_outcome_value", "Outcome numérico exige número finito.");
+    }
+    if (valueKind === "boolean" && typeof payload.value !== "boolean") {
+      fail("invalid_experiment_outcome_value", "Outcome booleano exige boolean.");
+    }
+    if (new Set(["category", "text"]).has(valueKind)
+        && (typeof payload.value !== "string" || !payload.value.trim()
+          || payload.value.length > 1000)) {
+      fail("invalid_experiment_outcome_value", "Outcome textual é inválido.");
+    }
+    return {
+      operation,
+      workspaceId: workspaceUuid(payload.workspaceId, "workspaceId"),
+      enrollmentRef: workspaceUuid(payload.enrollmentRef, "enrollmentRef"),
+      requestId: workspaceRequestId(payload.requestId),
+      payload: {
+        instrumentRef: versionedRef("instrumentRef"),
+        outcomeRef: versionedRef("outcomeRef"),
+        wave: requiredText(payload, "wave", 80),
+        valueKind,
+        value: valueKind === "missing" ? null : payload.value,
+        missingReason: valueKind === "missing" ? requiredText(payload, "missingReason", 500) : null,
+        observedAt
+      }
+    };
+  }
+  if (operation === "status" || operation === "withdraw") {
+    const enrollmentRef = workspaceUuid(payload.enrollmentRef, "enrollmentRef");
+    if (operation === "status") {
+      only(payload, ["operation", "enrollmentRef"]);
+      return { operation, enrollmentRef };
+    }
+    only(payload, ["operation", "enrollmentRef", "requestId"]);
+    return {
+      operation,
+      enrollmentRef,
+      requestId: workspaceRequestId(payload.requestId)
+    };
+  }
+  const enrollmentCode = requiredText(payload, "enrollmentCode", 128);
+  if (!/^[A-Za-z0-9_-]{8,128}$/u.test(enrollmentCode)) {
+    fail("invalid_experiment_enrollment_code", "Código de ingresso inválido.");
+  }
+  if (operation === "read_policy") {
+    only(payload, ["operation", "enrollmentCode"]);
+    return { operation, enrollmentCode };
+  }
+  only(payload, [
+    "operation", "enrollmentCode", "requestId", "consentPolicyRef",
+    "consentAcknowledged"
+  ]);
+  if (payload.consentAcknowledged !== true) {
+    fail(
+      "experiment_consent_not_acknowledged",
+      "O ingresso exige confirmação explícita da política lida."
+    );
+  }
+  const consentPolicyRef = object(payload.consentPolicyRef, "consentPolicyRef");
+  only(consentPolicyRef, ["id", "version"], "consentPolicyRef");
+  return {
+    operation,
+    enrollmentCode,
+    requestId: workspaceRequestId(payload.requestId),
+    consentPolicyRef: {
+      id: requiredText(consentPolicyRef, "id", 240),
+      version: requiredText(consentPolicyRef, "version", 80)
+    },
+    consentAcknowledged: true
+  };
+}
+
+export function validateWorkspaceAnalyticsActionPayload(payload) {
+  object(payload);
+  const operation = requiredText(payload, "operation", 20);
+  if (!new Set(["overview", "dataset", "export"]).has(operation)) {
+    fail("invalid_analytics_operation", "Operação de analytics inválida.");
+  }
+  const fields = operation === "overview"
+    ? ["operation", "scope"]
+    : ["operation", "scope", "dataset", "datasetSetRef", "cursor", "limit", "format"];
+  only(payload, fields);
+  const scope = object(payload.scope, "scope");
+  only(scope, ["kind", "ref", "entityPath"], "scope");
+  const kind = requiredText(scope, "kind", 40);
+  if (!new Set(["workspace", "course", "module", "lesson", "microsequence", "experiment"]).has(kind)) {
+    fail("invalid_analytics_scope", "kind do escopo de analytics é inválido.");
+  }
+  const normalizedScope = { kind };
+  if (kind !== "workspace") normalizedScope.ref = requiredText(scope, "ref", 240);
+  if (scope.entityPath != null) {
+    normalizedScope.entityPath = workspaceEntityPath(scope.entityPath, "scope.entityPath");
+  }
+  if (operation === "overview") {
+    if (!new Set(["workspace", "experiment"]).has(kind)) {
+      fail(
+        "invalid_analytics_overview_scope",
+        "O overview aceita somente o workspace ou um experimento."
+      );
+    }
+    return { operation, scope: normalizedScope };
+  }
+  const dataset = requiredText(payload, "dataset", 40);
+  if (!new Set([
+    "authoring_design", "authoring_process", "experiment_assignments", "experiment_outcomes"
+  ]).has(dataset)) fail("invalid_analytics_dataset", "Dataset de analytics inválido.");
+  if (dataset.startsWith("experiment_") !== (kind === "experiment")) {
+    fail("invalid_analytics_dataset_scope", "Dataset e escopo de analytics são incompatíveis.");
+  }
+  const limit = payload.limit == null ? 20 : payload.limit;
+  if (!Number.isInteger(limit) || limit < 1 || limit > 20) {
+    fail("invalid_analytics_limit", "limit de analytics deve ficar entre 1 e 20.");
+  }
+  let normalizedRef = null;
+  if (payload.datasetSetRef != null) {
+    const source = object(payload.datasetSetRef, "datasetSetRef");
+    only(source, ["id", "version"], "datasetSetRef");
+    normalizedRef = {
+      id: requiredText(source, "id", 240),
+      version: requiredText(source, "version", 80)
+    };
+  }
+  if (payload.cursor != null && normalizedRef == null) {
+    fail("missing_analytics_set_ref", "cursor exige datasetSetRef exata.");
+  }
+  if (operation === "dataset" && payload.format != null) {
+    fail("unexpected_analytics_format", "format pertence à exportação.");
+  }
+  const format = operation === "export" ? requiredText(payload, "format", 10) : null;
+  if (format && !new Set(["csv", "json"]).has(format)) {
+    fail("invalid_analytics_export_format", "Formato de exportação inválido.");
+  }
+  return {
+    operation,
+    scope: normalizedScope,
+    dataset,
+    ...(normalizedRef ? { datasetSetRef: normalizedRef } : {}),
+    ...(payload.cursor == null ? {} : { cursor: requiredText(payload, "cursor", 240) }),
+    limit,
+    ...(format ? { format } : {})
+  };
+}
+
 export function workspaceRoute(method, path) {
+  if (path === "/v1/experiments/enrollment/actions" && method === "POST") {
+    return { name: "manageExperimentEnrollment" };
+  }
+  let experimentMatch = path.match(/^\/v1\/workspaces\/([^/]+)\/experiments\/actions$/u);
+  if (experimentMatch && method === "POST") {
+    return {
+      name: "manageWorkspaceExperiment",
+      workspaceId: workspaceUuid(experimentMatch[1], "workspaceId")
+    };
+  }
+  const analyticsMatch = path.match(/^\/v1\/workspaces\/([^/]+)\/analytics\/actions$/u);
+  if (analyticsMatch && method === "POST") {
+    return {
+      name: "manageWorkspaceAnalytics",
+      workspaceId: workspaceUuid(analyticsMatch[1], "workspaceId")
+    };
+  }
+  let designMatch = path.match(/^\/v1\/workspaces\/([^/]+)\/design\/actions$/u);
+  if (designMatch && method === "POST") {
+    return {
+      name: "manageWorkspaceDesign",
+      workspaceId: workspaceUuid(designMatch[1], "workspaceId")
+    };
+  }
   let observationMatch = path.match(/^\/v1\/workspaces\/([^/]+)\/observations\/actions$/u);
   if (observationMatch && method === "POST") {
     return {

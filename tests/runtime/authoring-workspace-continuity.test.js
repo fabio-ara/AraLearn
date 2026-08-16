@@ -7,6 +7,9 @@ import {
   executeAuthoringTool
 } from "../../supabase/functions/_shared/aralearn-authoring/authoringToolExecutor.js";
 import {
+  executeAuthoringRoute
+} from "../../supabase/functions/_shared/aralearn-authoring/authoringRouter.js";
+import {
   applyContinuityStateOperation,
   buildWorkspaceResumeProjection,
   normalizeContinuityState,
@@ -121,6 +124,7 @@ function mutationReference(document, revision = 7) {
       review: true,
       comment: true,
       publish: true,
+      research: true,
       manage: true
     },
     entities
@@ -157,6 +161,7 @@ function reference({ revision = 7, includeCardContent = true } = {}) {
       review: true,
       comment: true,
       publish: true,
+      research: true,
       manage: true
     },
     entities: [
@@ -241,6 +246,30 @@ function continuity(overrides = {}) {
       severity: "medium",
       status: "approved",
       proposedRepair: "Ampliar o exemplo.",
+      findingCode: "actual_cards_match_artifact_refs",
+      findingOrigin: "deterministic",
+      ruleRef: { kind: "design_contract", id: "manifest", version: "1" },
+      publicEvidence: "O artifactRef declarado não coincide com o card atual.",
+      auditPartId: null,
+      auditRunRef: { id: ACTOR_ID, version: "1" },
+      artifactRefs: {
+        analysisRef: { id: "analysis-a", version: "1.0.0" },
+        effectiveSnapshotRef: { id: "snapshot-a", version: "1.0.0" },
+        blueprintRef: { id: "blueprint-a", version: "2.0.0" },
+        bindingRef: { id: "binding-a", version: "1.0.0" },
+        manifestRef: { id: "manifest-a", version: "1.0.0" },
+        resourceSetRefs: {
+          items: [{ id: "resource-set-a", version: "1.0.0" }],
+          count: 1,
+          truncated: false
+        },
+        microsequenceRefs: {
+          items: ["micro-a"],
+          count: 1,
+          truncated: false
+        }
+      },
+      verificationAuditRunRef: null,
       auditRevision: 6,
       pendingCorrectionRequestId: "repair:pending:0001",
       pendingRevision: 7,
@@ -256,6 +285,30 @@ function continuity(overrides = {}) {
       byStatus: { open: 0, approved: 1, rejected: 0, repaired: 0, resolved: 1 }
     },
     ...overrides
+  };
+}
+
+function productState({
+  revision = 7,
+  authoringState = "audit_pending",
+  microsequenceStateMap = {
+    "micro-a": "f",
+    "micro-b": "p",
+    "micro-c": "p",
+    "micro-d": "p"
+  }
+} = {}) {
+  return {
+    workspaceId: WORKSPACE_ID,
+    revision,
+    authoringState,
+    microsequenceCount: Object.keys(microsequenceStateMap).length,
+    analyzedCount: Object.values(microsequenceStateMap).filter((value) => value === "a").length,
+    materializedCount: Object.values(microsequenceStateMap)
+      .filter((value) => new Set(["m", "r", "f"]).has(value)).length,
+    readyCount: Object.values(microsequenceStateMap).filter((value) => value === "r").length,
+    activeFindingCount: Object.values(microsequenceStateMap).filter((value) => value === "f").length,
+    microsequenceStateMap
   };
 }
 
@@ -650,6 +703,21 @@ test("resume recompõe nova sessão sem cards, chat ou achados encerrados", () =
     { ok: true, requestId: null, data: projection }
   ));
 
+  const partialPlan = structuredClone(continuity());
+  partialPlan.authoringState.parts = partialPlan.authoringState.parts.slice(0, 1);
+  const partialProjection = buildWorkspaceResumeProjection(
+    reference({ includeCardContent: false }),
+    partialPlan,
+    productState({
+      microsequenceStateMap: {
+        "micro-a": "f", "micro-b": "a", "micro-c": "p", "micro-d": "p"
+      }
+    })
+  );
+  assert.deepEqual(partialProjection.content.unassignedMicrosequenceStateMap, {
+    "micro-b": "a", "micro-c": "p", "micro-d": "p"
+  });
+
   const expectedHandoff = Array.from({ length: 7 }, (_, index) => ({
     findingId: `${String(index + 20).padStart(8, "0")}-0000-4000-8000-000000000000`,
     summary: `Achado ${index + 1}`,
@@ -675,7 +743,8 @@ test("resume recompõe nova sessão sem cards, chat ou achados encerrados", () =
     findingId: finding.observationId,
     summary: finding.summary,
     proposedRepair: finding.proposedRepair
-  })), expectedHandoff);
+  })), expectedHandoff.slice(0, 5));
+  assert.equal(handoffProjection.content.findings.truncated, true);
 });
 
 test("MCP preserva trinta tools, substitui o nome antigo e mapeia resume e mutação tipada", async () => {
@@ -773,6 +842,30 @@ test("MCP preserva trinta tools, substitui o nome antigo e mapeia resume e muta�
         severity: "medium",
         status: "approved",
         proposedRepair: "Ampliar.",
+        findingCode: "actual_cards_match_artifact_refs",
+        findingOrigin: "deterministic",
+        ruleRef: { kind: "design_contract", id: "manifest", version: "1" },
+        publicEvidence: "O artifactRef declarado não coincide com o card atual.",
+        auditPartId: null,
+        auditRunRef: { id: ACTOR_ID, version: "1" },
+        artifactRefs: {
+          analysisRef: { id: "analysis-a", version: "1.0.0" },
+          effectiveSnapshotRef: { id: "snapshot-a", version: "1.0.0" },
+          blueprintRef: { id: "blueprint-a", version: "2.0.0" },
+          bindingRef: { id: "binding-a", version: "1.0.0" },
+          manifestRef: { id: "manifest-a", version: "1.0.0" },
+          resourceSetRefs: {
+            items: [{ id: "resource-set-a", version: "1.0.0" }],
+            count: 1,
+            truncated: false
+          },
+          microsequenceRefs: {
+            items: ["micro-a"],
+            count: 1,
+            truncated: false
+          }
+        },
+        verificationAuditRunRef: null,
         auditRevision: 7,
         pendingCorrectionRequestId: "repair:pending:0001",
         pendingRevision: 8,
@@ -781,7 +874,7 @@ test("MCP preserva trinta tools, substitui o nome antigo e mapeia resume e muta�
         verification: null,
         verifiedRevision: null,
         authorId: ACTOR_ID,
-        canDelete: true,
+        canDelete: false,
         createdAt: "2026-08-09T10:00:00.000Z",
         updatedAt: "2026-08-09T10:00:00.000Z"
       }],
@@ -793,6 +886,18 @@ test("MCP preserva trinta tools, substitui o nome antigo e mapeia resume e muta�
   assert.doesNotThrow(() => validateAuthoringMcpToolOutput(
     "gerirWorkspaceEducacional",
     observationEnvelope
+  ));
+  const anonymizedStructuredFinding = structuredClone(observationEnvelope);
+  anonymizedStructuredFinding.data.items[0].authorId = null;
+  assert.doesNotThrow(() => validateAuthoringMcpToolOutput(
+    "gerirWorkspaceEducacional",
+    anonymizedStructuredFinding
+  ));
+  const deletableStructuredFinding = structuredClone(observationEnvelope);
+  deletableStructuredFinding.data.items[0].canDelete = true;
+  assert.throws(() => validateAuthoringMcpToolOutput(
+    "gerirWorkspaceEducacional",
+    deletableStructuredFinding
   ));
   const missingWorkspaceId = structuredClone(observationEnvelope);
   delete missingWorkspaceId.data.workspaceId;
@@ -887,6 +992,7 @@ test("MCP preserva trinta tools, substitui o nome antigo e mapeia resume e muta�
             sourceRevisionHash: null,
             sourceSubmissionId: null,
             publicationCount: 0,
+            authoringState: "building",
             createdAt: "2026-08-09T10:00:00.000Z",
             updatedAt: "2026-08-09T10:00:00.000Z"
           }],
@@ -1010,6 +1116,9 @@ test("engine usa o RPC compacto, traduz findings e conserva CAS/replay", async (
         return reference({ includeCardContent: payload.p_include_card_content });
       }
       if (name === "get_authoring_workspace_continuity_v1") return continuity();
+      if (name === "get_authoring_workspace_product_states_v1") {
+        return { items: [productState()] };
+      }
       if (name === "replay_authoring_workspace_request_v5") return null;
       if (name === "manage_authoring_workspace_finding_v1") {
         return {
@@ -1030,6 +1139,8 @@ test("engine usa o RPC compacto, traduz findings e conserva CAS/replay", async (
     principal: PRINCIPAL, workspaceId: WORKSPACE_ID, view: "resume"
   });
   assert.equal(resumed.content.parts[0].id, "part-a");
+  assert.equal(resumed.content.parts[0].microsequenceStateMask, "f");
+  assert.deepEqual(resumed.content.unassignedMicrosequenceStateMap, {});
   assert.equal(calls[0].payload.p_include_card_content, false);
 
   const result = await engine.manageContinuity({
@@ -1060,6 +1171,69 @@ test("engine usa o RPC compacto, traduz findings e conserva CAS/replay", async (
       .payload.p_include_card_content,
     true
   );
+});
+
+test("pagina física de observations preserva o cursor sem ultrapassar o budget", async () => {
+  const path = `/v1/workspaces/${WORKSPACE_ID}/observations`;
+  const route = workspaceRoute("GET", path);
+  let received = null;
+  const result = await executeAuthoringRoute({
+    request: new Request(`https://edge.example${path}?limit=50`),
+    route,
+    principal: { ...PRINCIPAL, scopes: ["authoring:read"] },
+    adapter: {
+      async listWorkspaceObservations(options) {
+        received = options;
+        return {
+          workspaceId: WORKSPACE_ID,
+          items: [],
+          hasMore: true,
+          nextCursor: {
+            beforeUpdatedAt: "2026-08-15T12:00:00.000Z",
+            beforeId: FINDING_ID
+          },
+          summary: {}
+        };
+      }
+    }
+  });
+  assert.equal(received.limit, 5);
+  assert.equal(result.data.hasMore, true);
+});
+
+test("listagem cerca o estado canônico e não depende de cache já visitado", async () => {
+  let listReads = 0;
+  let stateReads = 0;
+  const engine = new AuthoringWorkspaceEngine({
+    supabaseUrl: "https://project.invalid",
+    serverApiKey: "secret",
+    rpc: async (name) => {
+      if (name === "list_authoring_workspaces_v5") {
+        const revision = listReads++ === 0 ? 7 : 8;
+        return {
+          items: [{
+            workspaceId: WORKSPACE_ID,
+            title: "Curso em construção",
+            revision
+          }],
+          hasMore: false,
+          nextCursor: null
+        };
+      }
+      if (name === "get_authoring_workspace_product_states_v1") {
+        stateReads += 1;
+        return {
+          items: [productState({ revision: 8, authoringState: "building" })]
+        };
+      }
+      throw new Error(`RPC inesperada: ${name}`);
+    }
+  });
+  const result = await engine.list({ principal: PRINCIPAL });
+  assert.equal(result.items[0].revision, 8);
+  assert.equal(result.items[0].authoringState, "building");
+  assert.equal(listReads, 2);
+  assert.equal(stateReads, 2);
 });
 
 test("engine traduz integralmente os cinco passos públicos do lifecycle de achado", async () => {
@@ -1209,6 +1383,9 @@ test("resume relê uma vez nas duas ordens de corrida e recusa snapshot incoeren
         if (name === "get_authoring_workspace_continuity_v1") {
           return continuity({ revision: continuityRevisions[continuityCall++] });
         }
+        if (name === "get_authoring_workspace_product_states_v1") {
+          return { items: [productState({ revision: 8 })] };
+        }
         throw new Error(`RPC inesperada: ${name}`);
       }
     });
@@ -1223,9 +1400,16 @@ test("resume relê uma vez nas duas ordens de corrida e recusa snapshot incoeren
   const inconsistent = new AuthoringWorkspaceEngine({
     supabaseUrl: "https://project.invalid",
     serverApiKey: "secret",
-    rpc: async (name) => name === "get_authoring_workspace_v5"
-      ? reference({ revision: 7 })
-      : continuity({ revision: 8 })
+    rpc: async (name) => {
+      if (name === "get_authoring_workspace_v5") return reference({ revision: 7 });
+      if (name === "get_authoring_workspace_continuity_v1") {
+        return continuity({ revision: 8 });
+      }
+      if (name === "get_authoring_workspace_product_states_v1") {
+        return { items: [productState({ revision: 8 })] };
+      }
+      throw new Error(`RPC inesperada: ${name}`);
+    }
   });
   await assert.rejects(inconsistent.get({
     principal: PRINCIPAL, workspaceId: WORKSPACE_ID, view: "resume"
@@ -1308,6 +1492,21 @@ test("record_approved_plan conserva P1–P4 após troca de brief e nova sessão"
         },
         structuralObservations: { totalCount: 0, openCount: 0, focus: [] },
         situatedObservations: { totalCount: 0, openCount: 0, focus: [] }
+      };
+    }
+    if (name === "get_authoring_workspace_product_states_v1") {
+      return {
+        items: [productState({
+          revision,
+          authoringState: "building",
+          microsequenceStateMap: Object.fromEntries(
+            Array.from({ length: 37 }, (_, index) => {
+              const number = index + 1;
+              const id = `m${String(number).padStart(2, "0")}`;
+              return [id, new Set([13, 15]).has(number) ? "m" : "p"];
+            })
+          )
+        })]
       };
     }
     if (name === "update_authoring_workspace_continuity_v1") {

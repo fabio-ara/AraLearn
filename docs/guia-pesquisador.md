@@ -116,7 +116,58 @@ não por disponibilidade técnica ([Pardo e Siemens (2014)](referencias.md#ref-p
 [estado de estudo não punitivo](estado-de-estudo-nao-punitivo.md) documenta os
 dados funcionais atuais e as inferências que não são autorizadas.
 
+## Preparar variantes no AraLearn
+
+Quando a pergunta exige comparação entre versões instrucionais, use a ação
+avançada **Experimentos** dentro de Desenho. Ela não cria uma medida nem coleta
+todo rastro disponível; apenas governa a intervenção que poderá ser avaliada.
+
+Antes de validar o protocolo:
+
+1. escolha uma publicação privada aprovada como base comum;
+2. delimite curso, lição ou microssequências pertencentes à base;
+3. use definições de parâmetro existentes como fatores;
+4. declare cada condição completa, sem pedir produto cartesiano automático;
+5. informe o que deve permanecer invariante;
+6. selecione uma regra de atribuição e registre referências de consentimento,
+   instrumentos e outcomes;
+7. explique o que levará a corrigir, aceitar ou invalidar uma divergência.
+
+Um `ResourceSet` como fator fixa disponibilidade por `package@version`. Essa
+lista não informa quais resources foram usados: seleção e materialização são
+auditadas separadamente. Ausência de uma representação ideal precisa aparecer
+como limitação da condição.
+
+Depois da validação, o servidor deriva workspaces privados de variante da mesma
+base, aplica locks, conserva o mapeamento de escopo e impede que o assistente
+troque condição. A pessoa pesquisadora acompanha a materialização e a auditoria,
+decide diferenças não previstas e só então congela cada revisão. Iniciar coleta
+é uma ação separada do freeze.
+
+Se um problema surgir depois do freeze, registre o motivo em **Criar revisão
+corrigida** e confirme `retain_existing`: participantes já atribuídos permanecem
+na revisão imutável recebida, novos ingressos aguardam a sucessora, e as
+comparações dependentes são refeitas. Nunca edite a revisão congelada.
+
+Participantes aderem sob consentimento versionado e recebem pseudônimo local ao
+experimento. A atribuição é executada pelo servidor — manual, aleatória com seed
+reprodutível ou balanceada simples — e fixa uma revisão congelada. A variante
+já sincronizada abre offline; nova atribuição requer conexão. Participante não
+entra no workspace autoral nem vê base, protocolo, seed ou outras condições.
+
+O fluxo completo, suas garantias técnicas e suas alegações proibidas estão em
+[Experimentos instrucionais parametrizados](experimentos-instrucionais-parametrizados.md).
+
 ## Executar e relatar
+
+Durante a coleta, abra **Resultados**, selecione o experimento e confira N por
+condição, revisões congeladas, completude e ausências antes de qualquer resumo.
+As tabelas e exportações usam o mesmo `datasetSetRef`; um conflito de revisão
+interrompe a paginação. Outcome é uma observação explícita ligada ao
+instrumento, à onda e ao pseudônimo local — não um evento implícito de uso.
+Médias, mínimos, máximos e frequências são descritivos e não autorizam
+causalidade, significância ou ranking. Consulte o
+[dicionário de métricas e datasets](dicionario-metricas-datasets.md).
 
 Antes da coleta:
 

@@ -1,6 +1,43 @@
 # Conhecimento didático dos resources do AraLearn
 
-Critérios pedagógicos para escolher e combinar resources. Na única consultarBibliotecaDeResources, percorra explore, search, inspect e contracts; valide e audite cada card antes de salvá-lo.
+Critérios para resolver ResourceSet, descobrir e combinar resources. Na única consultarBibliotecaDeResources, use o snapshot confiável, percorra explore, search, inspect e contracts e valide cada composição antes de salvá-la.
+
+---
+
+## knowledge/resource-set-discovery.md
+
+# ResourceSet e descoberta progressiva
+
+## Guia de recuperação
+
+- `INTENT`: recupere para `create`, `extend`, `revise`, `audit` e `repair` depois de resolver o snapshot e antes de escolher qualquer package.
+- Recupere junto dos contratos exatos dos candidatos selecionados; não carregue todos os manifests ou contracts.
+- Não aceite allowlist fornecida pelo modelo como autoridade. A disponibilidade vem do estado persistido resolvido pelo servidor.
+
+## Três relações distintas
+
+`ResourceSet` define disponibilidade: quais `package@version` podem participar no escopo e sob quais papéis, ajustes e políticas. Seleção é a decisão do blueprint por um package autorizado. Uso é o que aparece nos cards materializados. Registre as três relações separadamente para que o manifesto e a auditoria possam comparar permitido, escolhido e usado.
+
+O contexto confiável da consulta contém `workspaceId` e a referência do snapshot. Com esse contexto, `explore` e `search` só apresentam versões permitidas; `inspect` e `contracts` recusam candidatos fora do conjunto. Sem contexto, a ferramenta declara o modo legado irrestrito; esse modo não demonstra conformidade com um desenho parametrizado.
+
+## Descoberta
+
+Quando Auto precisar de um conjunto ainda inexistente, faça um bootstrap separado: explore e busque por famílias/facetas para propor disponibilidade, congele referências exatas de `package@version` e persista o ResourceSet antes do assignment que o referencia. Essa busca inicial não autoriza seleção nem demonstra conformidade. A autoridade começa depois que a referência entra no snapshot efetivo.
+
+1. Leia os requisitos de estrutura, operação cognitiva, fidelidade e representação da análise e do blueprint em formação.
+2. Use `explore` para famílias e facetas permitidas.
+3. Use `search` para candidatos e preserve a referência exata do ResourceSet autorizador.
+4. Use `inspect` apenas nos candidatos plausíveis.
+5. Carregue com `contracts` exatamente uma versão escolhida por chamada.
+6. Valide composição e representação antes de salvar; registre seleção e autorizador no manifesto.
+
+Adequação, papel e política precisam ser autorizados pelo mesmo ResourceSet que contém o package; não monte uma autorização artificial unindo permissões independentes de conjuntos diferentes. O catálogo pode crescer sem aumentar o prompt, a lista de tools ou o volume de contracts carregados.
+
+## Ausência de representação adequada
+
+`canonical` só é aceito quando o mesmo conjunto o autoriza para requisito, papel e ajuste; não acrescente limitação artificial. A política `block` rejeita `versatile` e `substitute`. `allow_versatile_with_limitation` admite `versatile` com limitação explícita e rejeita `substitute`. `allow_substitute_with_limitation` admite ambos com limitação explícita. O ResourceSet pode restringir ainda mais essas possibilidades. Quando a política bloquear, interrompa aquela materialização e registre a indisponibilidade. Nunca finja equivalência entre representações.
+
+Em experimento, o conjunto permitido é uma condição persistida. O assistente escolhe localmente entre os packages autorizados, mas não amplia o conjunto, altera locks ou troca a condição.
 
 ---
 
@@ -12,11 +49,11 @@ O package representa a estrutura sobre a qual o estudante raciocina. Escolha-o p
 
 Uma representação visual não recebe um card auxiliar para ensinar uma gramática inventada pela interface. O contexto disciplinar apresenta os conceitos e convenções necessários em progressão; o package materializa essas relações de forma canônica e mais direta que prosa, tabela ou outra alternativa mais simples. Se isso não ocorrer, a seleção ou o package está errado.
 
-O catálogo MCP é a fonte de verdade sobre os packages instalados. Use somente `consultarBibliotecaDeResources`: `explore` apresenta famílias e facetas; `search` procura pela intenção e classifica a cobertura; `inspect` compara até oito perfis; `contracts` carrega no máximo quatro versões exatas por chamada. Compare finalidade, operações, área, objeto, convenções, contraindicações, modalidades, slots e compatibilidades com o gesto cognitivo planejado; não escolha apenas pelo nome. O catálogo pode crescer sem alterar estas instruções.
+O catálogo MCP é a fonte de verdade sobre os packages instalados. Use somente `consultarBibliotecaDeResources`: `explore` apresenta famílias e facetas; `search` procura pela intenção e classifica a cobertura; `inspect` compara até oito perfis; `contracts` carrega exatamente uma versão por chamada. Compare finalidade, operações, área, objeto, convenções, contraindicações, modalidades, slots e compatibilidades com o gesto cognitivo planejado; não escolha apenas pelo nome. O catálogo pode crescer sem alterar estas instruções.
 
 Depois de compor o envelope, chame `validate_card` e então `audit_representation`. A primeira operação confere estrutura, referências e compatibilidade; a segunda separa a adequação semântica do conteúdo, a possibilidade de resposta e a legibilidade do feedback. `preview_card` apenas descreve a composição e sempre informa `rendered: false`; Graphviz, Vega, viewport e screenshot pertencem ao renderer real do aplicativo.
 
-`canonical` é o ajuste específico e `versatile` é uma convenção transversal adequada. `substitute` é a melhor aproximação disponível e nunca bloqueia a autoria: prossiga e inclua o `chatDisclosure` devolvido em uma linha natural no chat, sem inseri-lo no conteúdo estudado.
+`canonical` é o ajuste específico, `versatile` é uma convenção transversal e `substitute` é uma aproximação. A política efetiva e o ResourceSet determinam se cada ajuste pode ser usado. Quando houver admissão não canônica, preserve a limitação e o `chatDisclosure`; quando houver bloqueio, não use alternativa externa nem finja equivalência.
 
 ## Composição do card
 
@@ -275,7 +312,7 @@ Essa organização combina três necessidades. O modelo precisa recuperar candid
 1. `explore` mostra famílias e facetas;
 2. `search` ranqueia candidatos;
 3. `inspect` compara até oito perfis;
-4. `contracts` entrega até quatro contratos exatos;
+4. `contracts` entrega exatamente um contrato versionado por chamada;
 5. `validate_card` verifica estrutura e composição;
 6. `audit_representation` examina adequação e legibilidade;
 7. `preview_card` informa se o runtime pode abrir a composição.
@@ -292,7 +329,7 @@ O catálogo devolve um estado de cobertura:
 
 Esses termos descrevem o ajuste calculado, não proclamam que uma representação seja universal na academia. O agente deve confrontar convenções, exemplo e contraindicações depois da busca.
 
-Um resultado `substitute` não interrompe a construção. O chat informa brevemente a aproximação usada e sua perda. Essa política permite produzir em áreas ainda não completamente cobertas e transforma a observação do usuário em insumo para expansão futura do catálogo.
+O ajuste calculado não autoriza o uso sozinho. Com `workspaceId` e `snapshotRef`, a descoberta é limitada aos `ResourceSet`s efetivos, e o mesmo conjunto precisa admitir package, papel e ajuste. A política pode bloquear `versatile` ou `substitute` ou admiti-los com limitação explícita; o conjunto pode restringir ainda mais. Sem representação adequada, a autoria registra a lacuna e não finge equivalência.
 
 ## 5. Composição do card
 

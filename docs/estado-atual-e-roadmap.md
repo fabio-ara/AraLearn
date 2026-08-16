@@ -86,6 +86,8 @@ acadêmica da escolha continua sujeita a revisão humana e avaliação no domín
 - IndexedDB conserva no dispositivo cursos, progresso e operações pendentes;
 - PostgreSQL conserva identidades, relações, revisões e estado colaborativo;
 - Supabase Storage conserva artefatos integrais e imutáveis de publicação;
+- análises, parâmetros, conjuntos disponíveis, snapshots efetivos, blueprints
+  v2 e manifestos possuem persistência relacional versionada própria;
 - compare-and-swap impede sobrescrita silenciosa entre revisões concorrentes;
 - chaves de idempotência tornam a repetição de uma requisição segura;
 - hashes identificam o conteúdo exato submetido ou publicado;
@@ -117,9 +119,68 @@ mesmo executor. A autenticação é individual por OAuth 2.1, e nenhuma superfí
 recebe acesso administrativo direto ao banco.
 
 O modelo consulta a biblioteca de resources progressivamente, recebe apenas os
-contratos escolhidos, valida o card e pode auditar a adequação da
-representação. Continuidade estruturada conserva brief, planejamento, decisões,
-mandatos e achados entre sessões sem armazenar o transcript inteiro.
+contratos escolhidos, um por chamada, valida o card e pode auditar a adequação
+da representação. A ferramenta agrupada `gerirDesenhoInstrucional` lê o slice
+JIT de uma microssequência e opera análise, assignments, `ResourceSet`,
+snapshot, blueprint e manifesto pelas mesmas regras persistentes do backend.
+Continuidade estruturada conserva brief, planejamento, decisões, mandatos e
+achados entre sessões sem armazenar o transcript inteiro.
+
+## Núcleo persistente de desenho parametrizado
+
+Uma análise bibliográfica focal fundamenta contratos versionados para
+análise instrucional, parâmetros por escopo, valores efetivos, manifesto de
+materialização e `ResourceSet`. A proposta preserva unidades e relações não
+escalares, admite números somente com unidade e denominador explícitos e separa
+disponibilidade, seleção e materialização de resources.
+
+O núcleo da #103 promove esses contratos para validação de runtime, entidades
+normalizadas no PostgreSQL e uma réplica fracionada no IndexedDB. Os artefatos
+instrucionais são imutáveis e versionados; a revisão corrente do workspace,
+CAS e idempotência coordenam cada gravação. O resolvedor segue
+`workspace → course → module → lesson → microsequence`: o ancestral aplicável
+mais próximo dentro da classe de autoridade vencedora substitui o valor
+completo. A prioridade é lock, override manual, Auto e default; duplicidades do
+mesmo modo no mesmo escopo falham e locks são verificados como gate separado.
+
+`ResourceSet` conserva a disponibilidade exata de `package@version`; o
+manifesto distingue a seleção autorizada e a instância efetivamente usada. O
+blueprint pedagógico v2 permanece contextual por microssequência e recebe um
+binding versionado com análise e snapshot, sem ser substituído por calibração
+global. Um diff determinístico aponta divergências factuais entre referências,
+passos, cobertura declarada e resources; ele não realiza a auditoria semântica.
+
+Workspaces anteriores permanecem `unresolved` até uma análise explícita;
+conteúdo já materializado é marcado `legacy_unrestricted`: o sistema não
+inventa parâmetros nem disponibilidade retroativos. Parte continua unidade
+operacional de coordenação e não integra a cadeia de herança dos parâmetros. A
+réplica local permite consultar a última fatia sincronizada e enfileirar somente
+override manual ou restauração de Auto;
+ela nunca concede autoridade e revalida revisão, capacidade e locks ao voltar à
+rede.
+
+Desde a #104, essas operações estão expostas pelo MCP e pela Action por uma
+única ferramenta coesa. A integração recupera knowledge por intenção, trabalha
+uma microssequência por vez e retoma pelo workspace, sem depender do chat. A
+interface responsiva da #105 projeta o mesmo estado no celular, desktop e APK:
+Estudo conserva Trilhas; Autoria reúne Workspaces e Coleções; Mapa, Desenho,
+Conteúdo e Auditoria usam exposição progressiva. Valores estruturados admitem
+Auto/override, research lock fica não editável e Resources preserva seleção
+versionada entre páginas e escopos sem configuração card a card.
+
+A listagem e o Mapa recebem estado canônico revisionado, sem inferir processo
+por publicação, quantidade de cards ou cache visitado. A réplica local é
+vinculada à conta, avança monotonicamente e sincroniza intenções pendentes na
+reconexão; conflito continua explícito. A #106 completa o ciclo de auditoria:
+uma rodada imutável confronta o desenho e os cards/resources reais, separa
+checks determinísticos de revisão semântica, conserva a decisão humana e só
+permite verificar um reparo em outra rodada corrente. Schemas,
+persistência e testes demonstram coerência técnica no escopo coberto, não
+validade educacional nem adequação dos valores escolhidos.
+
+O fundamento, o fluxo e os limites estão em [Desenho instrucional
+parametrizado](desenho-instrucional-parametrizado.md) e [Auditoria de
+conformidade instrucional](auditoria-de-conformidade-instrucional.md).
 
 ## O que foi verificado tecnicamente
 
@@ -133,12 +194,28 @@ A suíte automatizada cobre, entre outros aspectos:
 - retomada, avanço e troca de tema sem dependência da rede;
 - concorrência, idempotência e autorização relacional;
 - geração dos pacotes de integração e do aplicativo Android;
-- integridade das fixtures do catálogo.
+- integridade das fixtures do catálogo;
+- contratos promovidos e referências internas do desenho instrucional em corpus
+  multidomínio;
+- resolução por escopo, precedência de locks, autorização por `ResourceSet`,
+  binding do blueprint v2, diff factual e projeção legada explícita;
+- cache fracionado e fila não canônica de desenho no IndexedDB, incluindo
+  isolamento por conta, concorrência entre instâncias e revalidação remota.
+- seleção JIT de knowledge, registro público da tool agrupada, contratos de
+  resource unitários e regressão de engenharia A–H para orientação, variação
+  Auto, override manual e lock de pesquisa.
 
 Esses testes sustentam afirmações de conformidade da implementação. Não
 demonstram que uma microssequência produz aprendizagem maior, que um diagrama é
 compreendido por todos os públicos ou que uma assistência reduz efetivamente o
 trabalho de autoria.
+
+Na sequência de Autoria, a regressão intermediária é proporcional ao escopo de
+cada issue; a #103 concentra contratos, domínio, SQL/PG emulado e IndexedDB, e
+a #104 concentra prompt, knowledge, MCP/Action, catálogo restrito e pacotes
+distribuídos. Falhas focadas precisam ser resolvidas na própria etapa. A
+regressão integral entre código, banco, integrações, UI e distribuições fica
+concentrada no fechamento da #109, conforme o requisito normativo da sequência.
 
 ## Limitações conhecidas
 
@@ -147,6 +224,9 @@ trabalho de autoria.
 Ainda não há evidência empírica suficiente para atribuir ganhos de aprendizagem
 ao AraLearn. A relação entre microteoria, prática, retomada e compreensão é uma
 hipótese de design apoiada por literatura, não um resultado causal já medido.
+As unidades, limites e parâmetros propostos para a autoria também são
+operacionalizações do AraLearn e hipóteses a avaliar; suas contagens não medem
+carga cognitiva, domínio, fidelidade ou qualidade.
 
 ### Cobertura disciplinar
 
@@ -174,6 +254,9 @@ sem bloquear operações que são estritamente locais.
 O projeto opera com orçamento restrito de banco e Storage. Artefatos imutáveis,
 projeções compactas, retenções específicas e coleta de lixo reduzem o consumo,
 mas o crescimento do catálogo e de workspaces precisa ser medido continuamente.
+A [medição reproduzível do payload parametrizado](evidence/parameterized-authoring-storage-budget-2026-08-15.json)
+cobre um cenário sintético de 500 microssequências; não estima páginas, índices
+ou custo real de produção.
 
 ## Agenda de avaliação e desenvolvimento
 
@@ -192,6 +275,8 @@ mas o crescimento do catálogo e de workspaces precisa ser medido continuamente.
 - medir cobertura e diversidade das práticas;
 - comparar a representação escolhida com convenções da área;
 - observar transferência entre o que foi explicado e o que foi praticado.
+- testar se unidades, relações e requisitos explícitos revelam compressão e
+  desalinhamento sem induzir fragmentação ou falsa precisão.
 
 ### Prioridade 3 — autoria e revisão
 
@@ -201,6 +286,10 @@ mas o crescimento do catálogo e de workspaces precisa ser medido continuamente.
 - estudar confiança, contestação e reversão das sugestões do modelo;
 - verificar se observações de estudantes apoiam correções sem se tornarem
   vigilância comportamental.
+- testar com pessoas a interface responsiva já implementada, sua linguagem
+  simples, descoberta e exposição progressiva, prioritariamente no celular;
+- avaliar `ResourceSet` com disponibilidade, seleção e uso real auditados
+  separadamente, inclusive quando não houver representação adequada.
 
 ### Prioridade 4 — infraestrutura
 
@@ -215,6 +304,12 @@ mas o crescimento do catálogo e de workspaces precisa ser medido continuamente.
 
 - A organização em microssequências melhora a retomada depois de interrupções?
 - A combinação entre microteoria e práticas variadas reduz premissas ocultas?
+- Limites locais de novidade e coordenação ajudam a encontrar compressão sem
+  se transformar em scores artificiais?
+- Requisitos de explicação e evidência são compreendidos e corrigidos por
+  autores de diferentes áreas?
+- `ResourceSet` permite condições reproduzíveis sem produzir equivalência
+  falsa entre representações?
 - Resources especializados melhoram a interpretação de estruturas complexas?
 - A autoria assistida reduz trabalho mecânico sem reduzir a responsabilidade
   editorial humana?

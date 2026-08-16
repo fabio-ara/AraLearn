@@ -362,7 +362,11 @@ async function dispatchMcpRequest(envelope, context) {
       return jsonRpcError(id, -32602, "tools/call exige arguments como objeto.");
     }
     const requestId = rawArguments.requestId ?? null;
-    if (!authoringMcpToolIsAllowed(params.name, context.principal)) {
+    if (!authoringMcpToolIsAllowed(
+      params.name,
+      context.principal,
+      rawArguments
+    )) {
       const denied = new AuthoringApiError(
         403,
         "insufficient_scope",

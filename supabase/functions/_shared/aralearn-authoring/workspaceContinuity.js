@@ -839,11 +839,22 @@ function normalizedFinding(value) {
     severity: value.severity || "medium",
     status,
     summary: String(value.summary || value.body || ""),
-    proposedRepair: String(value.proposedRepair || ""),
+    proposedRepair: value.proposedRepair == null ? null : String(value.proposedRepair),
+    code: value.findingCode ?? null,
+    origin: value.findingOrigin ?? null,
+    ruleRef: value.ruleRef ?? null,
+    publicEvidence: value.publicEvidence ?? null,
+    auditPartId: value.auditPartId ?? null,
+    auditRunRef: value.auditRunRef ?? null,
+    artifactRefs: value.artifactRefs ?? null,
+    verificationAuditRunRef: value.verificationAuditRunRef ?? null,
     auditRevision: value.auditRevision || 1,
     pendingCorrectionRequestId: value.pendingCorrectionRequestId ?? null,
     pendingRevision: value.pendingRevision ?? null,
+    correctionRequestId: value.correctionRequestId ?? null,
     resultingRevision: value.resultingRevision ?? null,
+    verification: value.verification ?? null,
+    verifiedRevision: value.verifiedRevision ?? null,
     createdAt: value.createdAt || value.updatedAt || null,
     updatedAt: value.updatedAt || null
   };
@@ -889,7 +900,11 @@ function observationSummary(value) {
   };
 }
 
-export function buildWorkspaceResumeProjection(reference, rawContinuity) {
+export function buildWorkspaceResumeProjection(
+  reference,
+  rawContinuity,
+  rawProductState = null
+) {
   const continuity = plainObject(rawContinuity) ? rawContinuity : {};
   if (!plainObject(continuity.authoringState)) {
     throw new AuthoringApiError(
@@ -908,6 +923,30 @@ export function buildWorkspaceResumeProjection(reference, rawContinuity) {
       (cardsByMicrosequence.get(card.parentId) || 0) + 1
     );
   });
+  const productStateMap = plainObject(rawProductState?.microsequenceStateMap)
+    ? rawProductState.microsequenceStateMap
+    : {};
+  const microsequenceStateMap = Object.fromEntries(rows
+    .filter(({ entityType }) => entityType === "microsequence")
+    .map((microsequence) => {
+      const canonicalMarker = productStateMap[microsequence.entityId];
+      const cardCount = cardsByMicrosequence.get(microsequence.entityId) || 0;
+      const fallbackMarker = cardCount === 0
+        ? "p"
+        : microsequence.content?.status === "ready" ? "r" : "m";
+      return [
+        microsequence.entityId,
+        new Set(["p", "a", "m", "f", "r"]).has(canonicalMarker)
+          ? canonicalMarker
+          : fallbackMarker
+      ];
+    }));
+  const assignedMicrosequenceIds = new Set(state.parts.flatMap((part) =>
+    part.microsequenceIds));
+  const unassignedMicrosequenceStateMap = Object.fromEntries(
+    Object.entries(microsequenceStateMap).filter(([microsequenceId]) =>
+      !assignedMicrosequenceIds.has(microsequenceId))
+  );
   const parts = state.parts.map((part) => {
     const resolved = part.microsequenceIds.map((microsequenceId) => {
       const row = index.get(rowIdentity("microsequence", microsequenceId));
@@ -929,9 +968,7 @@ export function buildWorkspaceResumeProjection(reference, rawContinuity) {
       microsequenceStateMask: resolved.map((item) =>
         item == null
           ? "x"
-          : item.cardCount === 0
-            ? "p"
-            : item.status === "ready" ? "r" : "m").join(""),
+          : microsequenceStateMap[item.id] || "p").join(""),
       microsequenceCount: part.microsequenceIds.length,
       materializedCount: available.filter(({ cardCount }) => cardCount > 0).length,
       readyCount: available.filter(({ cardCount, status }) =>
@@ -960,7 +997,7 @@ export function buildWorkspaceResumeProjection(reference, rawContinuity) {
   const activeFindingStatuses = new Set(["open", "approved", "repaired"]);
   const allFindings = normalizedActiveFindings.filter(({ status }) =>
     activeFindingStatuses.has(status));
-  const findings = allFindings.slice(0, 10);
+  const findings = allFindings.slice(0, 5);
   const rawFindingSummary = plainObject(continuity.findingSummary)
     ? continuity.findingSummary
     : {};
@@ -1000,6 +1037,7 @@ export function buildWorkspaceResumeProjection(reference, rawContinuity) {
     view: "resume",
     content: {
       outline: outlineCounts(rows, state.parts),
+      unassignedMicrosequenceStateMap,
       parts,
       decisions,
       mandate: state.mandate,
@@ -1007,7 +1045,7 @@ export function buildWorkspaceResumeProjection(reference, rawContinuity) {
         items: findings,
         summary: findingSummary,
         truncated: Boolean(continuity.activeFindingsTruncated)
-          || allFindings.length > 10
+          || allFindings.length > 5
       },
       observations: { structural, situated },
       publications: {

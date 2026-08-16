@@ -19,6 +19,17 @@ function largeCourseRows() {
   ), "utf8")));
 }
 
+function resourceCatalogDocument() {
+  return JSON.parse(readFileSync(new URL(
+    "../../supabase/fixtures/catalog/aralearn-catalogo-recursos-course.json",
+    import.meta.url
+  ), "utf8"));
+}
+
+function resourceCatalogRows() {
+  return contractToRelationalRows(resourceCatalogDocument());
+}
+
 async function expectSvgControlsCentered(page, selector = "button[title][aria-label]") {
   const measurements = await page.locator(selector).evaluateAll((buttons) => buttons.flatMap((button) => {
     const graphic = button.querySelector("svg, .comment-glyph");
@@ -52,9 +63,10 @@ async function mockSupabase(page, {
   includeSelectedCourse = true,
   holdPush = false,
   replicaRows = EXAMPLE_ROWS,
+  replicaDocument = null,
   initialTrailPersonalState = null
 } = {}) {
-  const revisionDocument = createExampleProjectDocument();
+  const revisionDocument = replicaDocument || createExampleProjectDocument();
   const revisionHash = await canonicalRevisionHash(revisionDocument);
   const graph = structuredClone(replicaRows);
   for (const retiredStore of [
@@ -488,6 +500,14 @@ async function signIn(page, options = {}) {
   await expect(page.locator('[data-action="open-course"]')).toHaveCount(1, { timeout: 20_000 });
 }
 
+async function openCollectionsFromAuthoring(page) {
+  await page.locator('[data-action="open-authoring"]').click();
+  const collections = page.locator('[data-authoring-action="open-collections"]');
+  await expect(collections).toBeVisible();
+  await collections.click();
+  await expect(page.locator("[data-learning-panel]")).toBeVisible();
+}
+
 async function openMicrosequenceOverview(page, microsequenceKey = null) {
   const keySelector = microsequenceKey
     ? `[data-microsequence-key="${microsequenceKey}"]`
@@ -693,7 +713,7 @@ test("porta de autenticação ocupa a tela, permanece iconográfica e alinhada",
 
 test("aparência muda no próprio dispositivo sem recarregar o curso", async ({ page }) => {
   await signIn(page);
-  await page.locator('[data-action="open-central"]').first().click();
+  await openCollectionsFromAuthoring(page);
   const lightChoice = page.locator('[data-theme-choice="light"]');
   const darkChoice = page.locator('[data-theme-choice="dark"]');
   await expect(darkChoice).toBeVisible();
@@ -715,7 +735,7 @@ test("aparência muda no próprio dispositivo sem recarregar o curso", async ({ 
   await expect(page.locator("html")).toHaveAttribute("data-color-mode", "dark");
   await expect(page.locator('[data-action="open-course"]')).toHaveCount(1);
 
-  await page.locator('[data-action="open-central"]').first().click();
+  await openCollectionsFromAuthoring(page);
   await page.locator('[data-theme-choice="system"]').click();
   expect(await page.evaluate(() => localStorage.getItem("aralearn.ui.theme"))).toBeNull();
 });
@@ -737,7 +757,7 @@ test("tema e play respondem imediatamente enquanto a rede não responde", async 
   await page.route(`${PROJECT_URL}/**`, stallNetwork);
 
   try {
-    await page.locator('[data-action="open-central"]').first().click();
+    await openCollectionsFromAuthoring(page);
     const darkChoice = page.locator('[data-theme-choice="dark"]');
     await expect(page.locator("[data-learning-panel]")).toHaveAttribute("aria-busy", "true");
     await expect(darkChoice).toBeEnabled();
@@ -748,6 +768,7 @@ test("tema e play respondem imediatamente enquanto a rede não responde", async 
     });
     await expect(page.locator("html")).toHaveAttribute("data-color-mode", "dark");
     await page.locator("[data-panel-close]").last().click();
+    await page.getByRole("button", { name: "Estudo", exact: true }).click();
 
     const resumeDuration = await page.evaluate(() => new Promise((resolve) => {
       const startedAt = performance.now();
@@ -793,15 +814,15 @@ test("tema e play respondem imediatamente enquanto a rede não responde", async 
     expect(advanceDuration).toBeLessThan(150);
   } finally {
     releaseNetwork();
-    await expect(page.locator("[data-learning-panel]")).toHaveAttribute("aria-busy", "false");
+    await expect(page.locator("[data-learning-panel]")).toBeHidden();
     await page.unroute(`${PROJECT_URL}/**`, stallNetwork);
   }
 });
 
 test("exclusão da conta exige confirmação e retorna à porta de acesso", async ({ page }) => {
   await signIn(page);
-  await page.getByRole("button", { name: "Abrir painel" }).click();
-  const accountButton = page.getByRole("button", { name: "Conta" });
+  await page.getByRole("button", { name: "Conta e aparência" }).click();
+  const accountButton = page.getByRole("button", { name: "Conta", exact: true });
   await accountButton.click();
   const signOutButton = page.getByRole("menuitem", { name: "Sair" });
   const deleteAccountButton = page.getByRole("menuitem", { name: "Excluir conta" });
@@ -969,9 +990,10 @@ test("play abre a microssequência escolhida no primeiro card sem avanço implí
   page.on("pageerror", (error) => pageErrors.push(error.message));
   await signIn(page);
 
-  for (const action of ["open-central", "open-course"]) {
+  for (const action of ["open-authoring", "open-settings", "open-course"]) {
     await expect(page.locator(`[data-action="${action}"]`)).toBeVisible();
   }
+  await expect(page.locator('[data-action="open-central"]')).toHaveCount(0);
   for (const removedAction of [
     "open-authoring-assistant",
     "quick-create-course",
@@ -1009,7 +1031,219 @@ test("play abre a microssequência escolhida no primeiro card sem avanço implí
   expect(pageErrors).toEqual([]);
 });
 
-test("navegação de estudo permanece imediata em um curso extenso", async ({ page }) => {
+test("duplo clique no Play abre somente o primeiro card", async ({ page }) => {
+  await signIn(page);
+  await page.locator('[data-action="open-course"]').click();
+  await page.locator(
+    '[data-action="open-module"][data-module-key="module-teoria-dos-grafos"]'
+  ).click();
+  const lesson = page.locator(
+    '[data-action="open-lesson"][data-lesson-key="lesson-vocabulario-contagem"]'
+  );
+  if (await lesson.isVisible()) await lesson.click();
+  await openMicrosequenceOverview(page, "micro-adjacencia-incidencia");
+
+  const play = page.locator(
+    '[data-action="open-microsequence-card"]' +
+      '[data-microsequence-key="micro-adjacencia-incidencia"]' +
+      '[data-card-index="0"]'
+  );
+  const nextFound = await play.evaluate((button) => {
+    button.dispatchEvent(new MouseEvent("click", {
+      bubbles: true,
+      cancelable: true,
+      detail: 1
+    }));
+    const next = document.querySelector('[data-action="next-card"]');
+    next?.dispatchEvent(new MouseEvent("click", {
+      bubbles: true,
+      cancelable: true,
+      detail: 2
+    }));
+    return Boolean(next);
+  });
+
+  expect(nextFound).toBe(true);
+  await expect(page.locator(".runtime-card-title")).toHaveText("Adjacência e incidência");
+  await expect(page.locator(".study-continue-popup")).toHaveCount(0);
+});
+
+test("Processo BPMN abre a prática sem validar a lacuna durante o avanço", async ({ page }) => {
+  await signIn(page, {
+    replicaRows: resourceCatalogRows(),
+    replicaDocument: resourceCatalogDocument()
+  });
+  await page.locator('[data-action="open-course"]').tap();
+  await openStudyCardFromCourse(page, {
+    moduleKey: "catalog-family-family-process-state",
+    lessonKey: "catalog-family-family-process-state-lesson",
+    microsequenceKey: "catalog-aralearn-resource-bpmn-process-microsequence"
+  });
+
+  await expect(page.locator(".runtime-card-title")).toHaveText("Como ler: Processo BPMN");
+  await page.locator('[data-action="next-card"]').tap();
+
+  await expect(page.locator(".runtime-card-title")).toHaveText("Pratique: Processo BPMN");
+  await expect(page.locator("[data-text-gap-prompt='true']")).toHaveCount(0);
+  await expect(page.locator("[data-complete-feedback-block-key]")).toHaveCount(0);
+
+  await page.locator('[data-action="next-card"]').press("Enter");
+  await expect(page.locator("[data-text-gap-prompt='true']")).toBeVisible();
+  await expect(page.locator("[data-complete-feedback-block-key]")).toContainText(
+    "Complete todas as lacunas."
+  );
+});
+
+test("Processo BPMN reentra neutro após uma tentativa incompleta", async ({ page }) => {
+  await signIn(page, {
+    replicaRows: resourceCatalogRows(),
+    replicaDocument: resourceCatalogDocument()
+  });
+  await page.locator('[data-action="open-course"]').tap();
+  await openStudyCardFromCourse(page, {
+    moduleKey: "catalog-family-family-process-state",
+    lessonKey: "catalog-family-family-process-state-lesson",
+    microsequenceKey: "catalog-aralearn-resource-bpmn-process-microsequence"
+  });
+
+  await page.locator('[data-action="next-card"]').tap();
+  await expect(page.locator(".runtime-card-title")).toHaveText("Pratique: Processo BPMN");
+  await page.locator('[data-action="next-card"]').press("Enter");
+  await expect(page.locator("[data-text-gap-prompt='true']")).toBeVisible();
+  await expect(page.locator("[data-complete-feedback-block-key]")).toContainText(
+    "Complete todas as lacunas."
+  );
+
+  await page.locator('[data-action="prev-card"]').tap();
+  await expect(page.locator(".runtime-card-title")).toHaveText("Como ler: Processo BPMN");
+  await page.locator('[data-action="next-card"]').tap();
+
+  await expect(page.locator(".runtime-card-title")).toHaveText("Pratique: Processo BPMN");
+  await expect(page.locator("[data-text-gap-prompt='true']")).toHaveCount(0);
+  await expect(page.locator("[data-complete-feedback-block-key]")).toHaveCount(0);
+
+  await page.locator('[data-action="next-card"]').press("Enter");
+  await expect(page.locator("[data-text-gap-prompt='true']")).toBeVisible();
+  await expect(page.locator("[data-complete-feedback-block-key]")).toContainText(
+    "Complete todas as lacunas."
+  );
+});
+
+test("Processo BPMN preserva a resposta sem reapresentar o erro na reentrada", async ({ page }) => {
+  await signIn(page, {
+    replicaRows: resourceCatalogRows(),
+    replicaDocument: resourceCatalogDocument()
+  });
+  await page.locator('[data-action="open-course"]').tap();
+  await openStudyCardFromCourse(page, {
+    moduleKey: "catalog-family-family-process-state",
+    lessonKey: "catalog-family-family-process-state-lesson",
+    microsequenceKey: "catalog-aralearn-resource-bpmn-process-microsequence"
+  });
+
+  await page.locator('[data-action="next-card"]').tap();
+  const gap = page.locator(
+    '.package-bpmn-process [data-action="text-gap-open-choice"]'
+  );
+  await gap.click();
+  await page.locator(
+    '[data-action="text-gap-set-choice"][data-text-gap-value="Analisar requisitos"]'
+  ).click();
+  await expect(gap).toContainText("Analisar requisitos");
+  await page.locator('[data-action="next-card"]').press("Enter");
+  await expect(page.locator("[data-complete-feedback-block-key]")).toContainText(
+    "Incorreto. Tente novamente."
+  );
+
+  await page.locator('[data-action="prev-card"]').tap();
+  await page.locator('[data-action="next-card"]').tap();
+
+  await expect(page.locator(".runtime-card-title")).toHaveText("Pratique: Processo BPMN");
+  await expect(gap).toContainText("Analisar requisitos");
+  await expect(page.locator("[data-text-gap-prompt='true']")).toHaveCount(0);
+  await expect(page.locator("[data-complete-feedback-block-key]")).toHaveCount(0);
+
+  await page.locator('[data-action="next-card"]').press("Enter");
+  await expect(page.locator("[data-complete-feedback-block-key]")).toContainText(
+    "Incorreto. Tente novamente."
+  );
+});
+
+test("Processo BPMN não reaplica no novo card a ativação repetida do avanço", async ({ page }) => {
+  await signIn(page, {
+    replicaRows: resourceCatalogRows(),
+    replicaDocument: resourceCatalogDocument()
+  });
+  await page.locator('[data-action="open-course"]').click();
+  await openStudyCardFromCourse(page, {
+    moduleKey: "catalog-family-family-process-state",
+    lessonKey: "catalog-family-family-process-state-lesson",
+    microsequenceKey: "catalog-aralearn-resource-bpmn-process-microsequence",
+    interaction: "click"
+  });
+
+  await expect(page.locator(".runtime-card-title")).toHaveText("Como ler: Processo BPMN");
+  await page.locator('[data-action="next-card"]').dblclick({ delay: 40 });
+
+  await expect(page.locator(".runtime-card-title")).toHaveText("Pratique: Processo BPMN");
+  await expect(page.locator("[data-text-gap-prompt='true']")).toHaveCount(0);
+  await expect(page.locator("[data-complete-feedback-block-key]")).toHaveCount(0);
+
+  await page.locator('[data-action="next-card"]').click();
+  await expect(page.locator("[data-text-gap-prompt='true']")).toBeVisible();
+  await expect(page.locator("[data-complete-feedback-block-key]")).toContainText(
+    "Complete todas as lacunas."
+  );
+});
+
+test("Processo BPMN não reaplica dois toques rápidos ao botão do novo card", async ({ page }) => {
+  await signIn(page, {
+    replicaRows: resourceCatalogRows(),
+    replicaDocument: resourceCatalogDocument()
+  });
+  await page.locator('[data-action="open-course"]').tap();
+  await openStudyCardFromCourse(page, {
+    moduleKey: "catalog-family-family-process-state",
+    lessonKey: "catalog-family-family-process-state-lesson",
+    microsequenceKey: "catalog-aralearn-resource-bpmn-process-microsequence"
+  });
+
+  await page.locator('[data-action="next-card"]').tap();
+  await page.locator('[data-action="next-card"]').tap();
+
+  await expect(page.locator(".runtime-card-title")).toHaveText("Pratique: Processo BPMN");
+  await expect(page.locator("[data-text-gap-prompt='true']")).toHaveCount(0);
+  await expect(page.locator("[data-complete-feedback-block-key]")).toHaveCount(0);
+});
+
+test("ativação repetida mantém aberto o popup antes do avanço", async ({ page }) => {
+  await signIn(page);
+  await page.locator('[data-action="open-course"]').click();
+  await openStudyCardFromCourse(page, {
+    moduleKey: "module-teoria-dos-grafos",
+    lessonKey: "lesson-vocabulario-contagem",
+    microsequenceKey: "micro-grafo-como-conjuntos",
+    interaction: "click"
+  });
+
+  await expect(page.locator(".runtime-card-title")).toHaveText("Grafo como dois conjuntos");
+  await page.locator('[data-action="next-card"]').dblclick({ delay: 40 });
+  await expect(page.locator(".runtime-card-title")).toHaveText("Grafo como dois conjuntos");
+  await expect(page.locator(".study-continue-popup")).toBeVisible();
+
+  await page.locator('[data-action="continue-popup-next"]').click();
+  await expect(page.locator(".runtime-card-title")).toHaveText("Um grafo pequeno");
+});
+
+test("navegação de estudo permanece imediata em um curso extenso", async ({ page }, testInfo) => {
+  const performanceSession = await page.context().newCDPSession(page);
+  await performanceSession.send("Performance.enable");
+  const browserMetrics = async () => Object.fromEntries((
+    await performanceSession.send("Performance.getMetrics")
+  ).metrics.filter(({ name }) => [
+    "Documents", "JSHeapTotalSize", "JSHeapUsedSize", "Nodes"
+  ].includes(name)).map(({ name, value }) => [name, value]));
+  const before = await browserMetrics();
   await signIn(page, { replicaRows: largeCourseRows() });
   await page.locator('[data-action="open-course"]').tap();
   await page.locator('[data-action="open-module"]').first().tap();
@@ -1042,12 +1276,41 @@ test("navegação de estudo permanece imediata em um curso extenso", async ({ pa
   await expect(page.locator('[data-action="open-microsequence-overview"]')).not.toHaveCount(0);
   const backToModuleDuration = await measureSynchronousClick('[data-action="go-back"]');
   await expect(page.locator('[data-action="open-lesson"]')).not.toHaveCount(0);
+  const after = await browserMetrics();
+
+  const measurement = {
+    fixture: {
+      utf8Bytes: 3_432_348,
+      modules: 3,
+      lessons: 24,
+      microsequences: 175,
+      cards: 1_052
+    },
+    latencyMs: {
+      timerQueueDelay: delayedOverview.queueDelay,
+      openOverviewHandler: delayedOverview.handlerDuration,
+      openCard: openCardDuration,
+      backToLesson: backToLessonDuration,
+      backToModule: backToModuleDuration
+    },
+    chromium: {
+      before,
+      after,
+      jsHeapUsedDelta: after.JSHeapUsedSize - before.JSHeapUsedSize
+    }
+  };
+  testInfo.annotations.push({
+    type: "engineering-measurement",
+    description: JSON.stringify(measurement)
+  });
 
   expect(delayedOverview.queueDelay).toBeLessThan(750);
   expect(delayedOverview.handlerDuration).toBeLessThan(150);
   expect(openCardDuration).toBeLessThan(150);
   expect(backToLessonDuration).toBeLessThan(150);
   expect(backToModuleDuration).toBeLessThan(150);
+  expect(after.JSHeapUsedSize).toBeLessThan(256 * 1024 * 1024);
+  expect(measurement.chromium.jsHeapUsedDelta).toBeLessThan(160 * 1024 * 1024);
 });
 
 test("leitor mobile mantém altura e CTA ancorado entre cards de tamanhos diferentes", async ({ page }) => {
@@ -1142,9 +1405,12 @@ test("recarga online substitui shell antigo preservado no cache", async ({ brows
     await expect.poll(() => page.locator("#app-root").evaluate(
       (node) => getComputedStyle(node).justifyContent
     )).toBe("center");
-    const shellBox = await shell.boundingBox();
-    const viewportWidth = await page.evaluate(() => document.documentElement.clientWidth);
-    expect(Math.abs(shellBox.x - ((viewportWidth - shellBox.width) / 2))).toBeLessThan(2);
+    await expect.poll(async () => {
+      const shellBox = await page.locator(".app-shell:visible").first().boundingBox();
+      if (!shellBox) return Number.POSITIVE_INFINITY;
+      const viewportWidth = await page.evaluate(() => document.documentElement.clientWidth);
+      return Math.abs(shellBox.x - ((viewportWidth - shellBox.width) / 2));
+    }).toBeLessThan(2);
     await expect(page.locator("[data-library-open]")).toHaveCount(0);
     await expect(page.locator("[data-local-durability]")).toBeHidden();
   } finally {
@@ -1170,8 +1436,8 @@ test("sair em uma aba fecha imediatamente o documento nas demais abas", async ({
   await secondPage.goto("/");
   await expect(secondPage.locator('[data-action="open-course"]')).toHaveCount(1, { timeout: 15_000 });
 
-  await page.getByRole("button", { name: "Abrir painel" }).click();
-  await page.getByRole("button", { name: "Conta" }).click();
+  await page.getByRole("button", { name: "Conta e aparência" }).click();
+  await page.getByRole("button", { name: "Conta", exact: true }).click();
   await page.getByRole("menuitem", { name: "Sair" }).click();
 
   await expect(secondPage.getByText("Sessão encerrada")).toHaveCount(0);

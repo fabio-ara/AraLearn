@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { execFileSync } from "node:child_process";
 import { mkdir, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -13,13 +14,21 @@ const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const REPOSITORY_ROOT = path.resolve(SCRIPT_DIR, "..");
 const AUTHORING_ROOT = path.join(REPOSITORY_ROOT, "authoring");
 const OUTPUT_ROOT = path.join(REPOSITORY_ROOT, "docs", "downloads", "authoring");
+const DESIGN_SCHEMA_SYNC_SCRIPT = path.join(
+  SCRIPT_DIR,
+  "syncInstructionalDesignSchemas.mjs"
+);
 const PUBLIC_SUPABASE_URL = "https://jrfkphuhcseqmratijjr.supabase.co";
 const NORMATIVE_DOCS = ["aralearn-contract.md", "recursos-de-card.md"];
 const DISTRIBUTED_DOCS = [
   ...NORMATIVE_DOCS,
   "autoria-mcp.md",
+  "criar-cursos-pelo-chat.md",
+  "desenho-instrucional-parametrizado.md",
+  "fluxos-prompts-e-contratos.md",
   "persistencia-relacional.md",
-  "fundamentacao-pedagogica-dos-resources.md"
+  "fundamentacao-pedagogica-dos-resources.md",
+  "workspaces-educacionais.md"
 ];
 const CHATGPT_CORE_KNOWLEDGE_SOURCES = [
   "core/workflow.md",
@@ -28,6 +37,13 @@ const CHATGPT_CORE_KNOWLEDGE_SOURCES = [
   "core/quality.md",
   "core/sources.md",
   "core/safety.md",
+  "knowledge/instructional-analysis.md",
+  "knowledge/semantic-granularity.md",
+  "knowledge/explanatory-elaboration.md",
+  "knowledge/evidence-and-practice.md",
+  "knowledge/complex-professional-task.md",
+  "knowledge/parameter-resolution.md",
+  "knowledge/design-conformance-audit.md",
   "knowledge/packages.md",
   "knowledge/semantic-audit.md",
   "knowledge/term-ledger.md",
@@ -35,6 +51,7 @@ const CHATGPT_CORE_KNOWLEDGE_SOURCES = [
   "knowledge/publication.md"
 ];
 const CHATGPT_RESOURCE_KNOWLEDGE_SOURCES = [
+  "knowledge/resource-set-discovery.md",
   "knowledge/cards-and-resources.md",
   "knowledge/domain-patterns.md"
 ];
@@ -48,14 +65,14 @@ const CHATGPT_CORE_SCHEMAS = [
 const CHATGPT_KNOWLEDGE_VARIANTS = Object.freeze({
   core: Object.freeze({
     title: "Conhecimento essencial de autoria do AraLearn",
-    introduction: "Fluxo, qualidade, segurança e contratos estruturais do GPT de autoria. O schema completo dos cards permanece no MCP e deve ser consultado sob demanda.",
+    introduction: "Fluxo, análise, resolução, qualidade, segurança e contratos estruturais da autoria. Recupere somente os chunks pertinentes ao passo corrente; schemas completos permanecem no MCP e são consultados sob demanda.",
     sources: CHATGPT_CORE_KNOWLEDGE_SOURCES,
     schemas: CHATGPT_CORE_SCHEMAS,
     docs: ["aralearn-contract.md"]
   }),
   resources: Object.freeze({
     title: "Conhecimento didático dos resources do AraLearn",
-    introduction: "Critérios pedagógicos para escolher e combinar resources. Na única consultarBibliotecaDeResources, percorra explore, search, inspect e contracts; valide e audite cada card antes de salvá-lo.",
+    introduction: "Critérios para resolver ResourceSet, descobrir e combinar resources. Na única consultarBibliotecaDeResources, use o snapshot confiável, percorra explore, search, inspect e contracts e valide cada composição antes de salvá-la.",
     sources: CHATGPT_RESOURCE_KNOWLEDGE_SOURCES,
     schemas: [],
     docs: ["recursos-de-card.md"]
@@ -73,8 +90,6 @@ const REPRESENTATION_SELECTION_COMPONENT_REFERENCE =
 const PEDAGOGICAL_DIAGNOSIS_COMPONENT_NAME = "PedagogicalDiagnosis";
 const PEDAGOGICAL_DIAGNOSIS_COMPONENT_REFERENCE =
   `#/components/schemas/${PEDAGOGICAL_DIAGNOSIS_COMPONENT_NAME}`;
-
-
 const CRC32_TABLE = (() => {
   const table = new Uint32Array(256);
   for (let index = 0; index < 256; index += 1) {
@@ -297,6 +312,15 @@ function compactYamlFlowCollectionSpacing(source) {
   return documents.map((document) => YamlCst.stringify(document)).join("");
 }
 
+function compactActionDescription(value, maximum = 28) {
+  const description = String(value || "").trim();
+  const firstClause = description.split(/(?<=[.!?;])\s|,\s/u, 1)[0].trim();
+  if (firstClause.length <= maximum) return firstClause;
+  const prefix = firstClause.slice(0, maximum - 1);
+  const boundary = prefix.lastIndexOf(" ");
+  return `${prefix.slice(0, boundary > maximum / 2 ? boundary : -1).trimEnd()}.`;
+}
+
 function buildChatGptActionOpenApi() {
   const inputComponentName = (operationId) =>
     `Input${operationId.slice(0, 1).toUpperCase()}${operationId.slice(1)}`;
@@ -310,7 +334,7 @@ function buildChatGptActionOpenApi() {
       data: {
         type: "object",
         additionalProperties: true,
-        description: "Resultado confirmado. Reutilize os identificadores, a revisão e os hashes devolvidos nas chamadas seguintes.",
+        description: "Resultado confirmado; reutilize ids, revisão e hashes.",
         properties: {
           workspaceId: { type: "string", format: "uuid" },
           revision: { type: "integer", minimum: 1 },
@@ -466,16 +490,26 @@ function buildChatGptActionOpenApi() {
     "salvarCardNoWorkspace"
   ]);
   const successDescription = (definition) => {
-    const fields = definition.outputSchema?.oneOf?.[0]
-      ?.properties?.data?.required || [];
-    const outcome = structuralContentWrites.has(definition.name)
+    return structuralContentWrites.has(definition.name)
       ? "Conteúdo validado; não implica aprovação pedagógica."
       : definition.annotations?.readOnlyHint
         ? "Leitura concluída."
         : "Operação concluída.";
-    return fields.length
-      ? `${outcome} Campos: ${fields.join(", ")}.`
-      : `${outcome} Resultado em data.`;
+  };
+  const successResponses = new Map();
+  const successResponse = (definition) => {
+    const description = successDescription(definition);
+    if (!successResponses.has(description)) {
+      successResponses.set(description, {
+        description,
+        content: {
+          "application/json": {
+            schema: { $ref: "#/components/schemas/AraLearnActionSuccess" }
+          }
+        }
+      });
+    }
+    return successResponses.get(description);
   };
   const inputSchemas = Object.fromEntries(
     AUTHORING_WORKSPACE_MCP_TOOLS.map((definition) => [
@@ -502,7 +536,7 @@ function buildChatGptActionOpenApi() {
         post: {
           operationId: definition.name,
           summary: definition.title,
-          description: definition.description,
+          description: compactActionDescription(definition.description),
           "x-openai-isConsequential": Boolean(
             definition._meta?.["aralearn/actionConsequentialHint"]
           ),
@@ -518,14 +552,7 @@ function buildChatGptActionOpenApi() {
             }
           },
           responses: {
-            "200": {
-              description: successDescription(definition),
-              content: {
-                "application/json": {
-                  schema: { $ref: "#/components/schemas/AraLearnActionSuccess" }
-                }
-              }
-            },
+            "200": successResponse(definition),
             "400": responseRef("BadRequest"),
             "401": responseRef("AuthenticationRequired"),
             "403": responseRef("Forbidden"),
@@ -735,6 +762,11 @@ async function buildArchive(name, platform = null) {
     }))
   };
 }
+
+execFileSync(process.execPath, [DESIGN_SCHEMA_SYNC_SCRIPT, "--check"], {
+  cwd: REPOSITORY_ROOT,
+  stdio: "inherit"
+});
 
 await mkdir(OUTPUT_ROOT, { recursive: true });
 for (const fileName of [

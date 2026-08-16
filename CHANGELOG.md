@@ -6,6 +6,49 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 
 ### Added
 
+- shell responsivo com entrada explícita **Estudo/Autoria** na mesma aplicação
+  web e APK, landing de Workspaces/Coleções e destinos registrados Mapa,
+  Desenho, Conteúdo e Auditoria, preparado para Resultados contextual;
+- projeção canônica revisionada de estado dos workspaces e microssequências,
+  distinguindo planejamento, análise, materialização, finding e pronto sem usar
+  contagem de cards como meta nem depender de cache visitado;
+- editor progressivo de Resources com escolha explícita entre conjuntos,
+  famílias/facetas, paginação e aplicação a curso, lição, microssequência ou
+  grupo de microssequências, preservando membros fora da página;
+- cliente de Autoria vinculado à réplica da conta para lista, Mapa, Desenho,
+  findings paginados, conteúdo transitório e sincronização limitada das filas;
+- ferramenta agrupada `gerirDesenhoInstrucional` no MCP e na Action para ler o
+  slice JIT de uma microssequência, consultar um contrato promovido por vez e
+  persistir análise, assignments, `ResourceSet`, snapshot, blueprint e
+  manifesto pelas mesmas operações versionadas do backend;
+- oito chunks recuperáveis de knowledge para análise instrucional,
+  granularidade, elaboração, evidência e prática, tarefas profissionais,
+  resolução, descoberta sob `ResourceSet` e conformidade, com seleção
+  determinística por intenção e contexto;
+- regressão de engenharia versionada para os cenários multidisciplinares A–H
+  da #104, incluindo variação Auto local, preservação de override manual e
+  bloqueio por `research_lock`, sem alegação de validação educacional;
+- persistência relacional normalizada, imutável e versionada para análise
+  instrucional, definições e atribuições de parâmetros, snapshots efetivos,
+  `ResourceSet`, blueprints pedagógicos v2 e manifestos de materialização, com
+  CAS, idempotência, proveniência e referências exatas entre os artefatos;
+- resolvedor determinístico de parâmetros por
+  `workspace → course → module → lesson → microsequence`, com prioridade
+  `research_lock` → override manual → Auto → default, substituição integral pelo
+  ancestral aplicável mais próximo dentro do modo, conflito explícito para
+  duplicidade do mesmo modo no mesmo escopo e lock como barreira separada;
+- binding versionado entre análise, snapshot efetivo e blueprint pedagógico v2,
+  acompanhado de diff factual entre plano e materialização, sem transformar a
+  comparação determinística em parecer pedagógico;
+- réplica fracionada do estado de desenho em `syncState` e fila não canônica
+  somente para override manual ou restauração de Auto, sempre sujeitas a nova
+  validação remota de revisão, capacidade e locks;
+- evidência pública reproduzível do orçamento serializado de análise, snapshot
+  e manifesto em um cenário de 500 microssequências;
+- capítulo de desenho instrucional parametrizado distingue construtos
+  científicos, operacionalizações do AraLearn, propriedades técnicas e
+  hipóteses empíricas, preservando conjuntos, vetores e relações quando um
+  score apagaria informação;
 - o diagnóstico pedagógico contextual passa a integrar a autoria estrutural:
   condições de aprendizagem, exigências do conteúdo,
   dificuldades previstas e respostas de desenho ficam vinculadas por
@@ -19,6 +62,36 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 
 ### Changed
 
+- Coleções passa a integrar Autoria; Estudo permanece centrado em Trilhas e no
+  leitor, sem chat ou controles administrativos instrucionais;
+- parâmetros aplicáveis são apresentados por valor efetivo, origem, Auto,
+  controle estruturado e lock não editável, sem formulário extenso, IDs ou JSON;
+- o leitor corrente abre alvos de Mapa/Auditoria e restaura o contexto de
+  Autoria ou a seleção anterior de Estudo, inclusive para workspace
+  compartilhado que não foi adicionado a Trilhas;
+- os system prompts distribuídos passam a conter somente protocolo e
+  invariantes estáveis; teoria, exemplos e o catálogo de parâmetros ficam no
+  knowledge JIT, enquanto o workspace persistido continua sendo a fonte
+  canônica entre sessões;
+- a materialização remota passa a seguir análise → bootstrap versionado de
+  `ResourceSet` quando necessário → assignments → snapshot → descoberta
+  restrita → blueprint → cards em memória → validação → persistência →
+  releitura → manifesto, sempre uma microssequência por vez;
+- `contracts` da biblioteca de resources entrega exatamente uma versão por
+  chamada; política e `ResourceSet` podem bloquear aproximações, que nunca são
+  tratadas como equivalência silenciosa;
+- o planejamento separa fontes e objetivo, análise instrucional,
+  parâmetros, disponibilidade e seleção de resources, blueprint contextual e
+  materialização; cards, palavras, caracteres e quantidade de resources passam
+  a ser descritos apenas como métricas derivadas;
+- `ResourceSet` separa o conjunto exato de `package@version` disponível da
+  seleção local e das instâncias realmente materializadas, sem tratar
+  `canonical`, `versatile` e `substitute` como equivalência; cada seleção aponta
+  para o mesmo conjunto versionado que autoriza package, ajuste e papel;
+- workspaces anteriores à análise parametrizada permanecem explicitamente
+  `unresolved`; conteúdo já materializado é projetado como
+  `legacy_unrestricted`, sem inventar valores retroativos nem converter o
+  catálogo histórico em um `ResourceSet` fictício;
 - a autoria passa a consultar primeiro o contexto disponível, perguntar somente
   quando a informação ausente muda materialmente o desenho e persistir apenas
   contexto e decisões aprovadas, sem persistir conversa ou raciocínio privado;
@@ -41,27 +114,47 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 - os comandos de diminuir e aumentar ficam disponíveis no próprio quadro; a
   exploração conserva a largura móvel, deixa o retorno separado e recupera o
   enquadramento global ao atingir o menor zoom;
-- os modos contextuais passam à barra superior, liberando altura para o card; o
-  título ocupa a antiga posição do seletor, o painel recebe um ícone de áreas e
-  a geometria móvel fica simétrica mesmo quando há scrollbar;
+- os modos contextuais passam à barra superior, liberando altura para o card; no
+  leitor, o nome do curso deixa de ocupar uma linha visual, o painel recebe um
+  ícone de áreas e a geometria móvel fica simétrica mesmo quando há scrollbar;
 - a prosa principal passa a 15,5 px, com entrelinha e espaçamentos proporcionais,
   sem reduzir alvos de toque nem controles e textos interativos;
 - a ordenação passa a permutar pelo menos dois trechos nos próprios campos de
   `paragraph` e `table`, inclusive entre instâncias ou células diferentes, com
-  setas por ícone para a esquerda e a direita.
+  setas por ícone para a esquerda e a direita;
+- o dimensionamento da autoria estrutural volta a decorrer do escopo, das
+  dependências, das dificuldades e da progressão, sem cotas pedagógicas de
+  cards, microssequências, Partes ou alternativas.
 
 ### Fixed
 
+- caches de Autoria passam a avançar monotonicamente por revisão e a falhar de
+  forma best-effort; fila de Desenho é encontrada na inicialização, reconexão e
+  saída, sem exigir reabrir a microssequência;
+- conflito de parâmetro prevalece visualmente sobre pendência, e escolher Auto
+  coalesce override local ainda não enviado em vez de aplicá-lo depois;
+- paginação, pesquisa e filtros de Resources conservam desmarcações e membros
+  invisíveis; aplicação parcial mantém resultado por alvo e caminho explícito
+  de recuperação;
+- a extensão SQL da continuidade preserva as operações já vigentes e passa a
+  validar `representationSelection` e `pedagogicalDiagnosis` sem substituir o
+  validador anterior nem converter o novo desenho em `authoring_state`
+  monolítico;
 - lacunas em destinos distintos da tabela de transição mantêm valor e opções
   próprios, mesmo quando as respostas estruturais coincidem;
 - diagramas complexos deixam de depender de barras aninhadas no Android; o
   quadro mantém sua geometria enquanto o próprio desenho recebe zoom e pan;
 - a edição manual volta a atuar diretamente nos rótulos textuais visíveis, com
   caret e contorno no próprio resource, sem formulário auxiliar, texto técnico
-  ou alteração da geometria do card.
+  ou alteração da geometria do card;
+- o embaralhamento de alternativas volta a admitir qualquer permutação,
+  inclusive a ordem autoral original, sem viés de rotação.
 
 ### Removed
 
+- a entrada visual de Chatbot/assistência autoral interna e a duplicação de
+  Coleções em Estudo; linguagem natural de planejamento permanece no GPT
+  externo conectado ao workspace;
 - a calibração pedagógica global, seu perfil local, a terceira superfície do
   painel e as exportações de instruções calibradas deixam de integrar o produto;
   as decisões pedagógicas passam a ser locais e justificadas por

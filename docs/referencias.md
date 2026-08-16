@@ -147,6 +147,30 @@ Nicholas J. Cepeda; Edward Vul; Doug Rohrer; John T. Wixted; Harold Pashler (200
 
 Chave bibliográfica: `cepeda2008spacing`.
 
+<a id="ref-chen2023elementinteractivity"></a>
+
+### Chen et al. (2023)
+
+Ouhao Chen; Fred Paas; John Sweller (2023). **A Cognitive Load Theory Approach to Defining and Measuring Task Complexity Through Element Interactivity.** *Educational Psychology Review*, 35, p. 63. [DOI 10.1007/s10648-023-09782-w](https://doi.org/10.1007/s10648-023-09782-w).
+
+Chave bibliográfica: `chen2023elementinteractivity`.
+
+<a id="ref-chi1989selfexplanations"></a>
+
+### Chi et al. (1989)
+
+Michelene T. H. Chi; Miriam Bassok; Matthew W. Lewis; Peter Reimann; Robert Glaser (1989). **Self-Explanations: How Students Study and Use Examples in Learning to Solve Problems.** *Cognitive Science*, 13(2), p. 145–182. [DOI 10.1207/s15516709cog1302_1](https://doi.org/10.1207/s15516709cog1302_1).
+
+Chave bibliográfica: `chi1989selfexplanations`.
+
+<a id="ref-chi1994eliciting"></a>
+
+### Chi et al. (1994)
+
+Michelene T. H. Chi; Nicholas de Leeuw; Mei-Hung Chiu; Christian LaVancher (1994). **Eliciting Self-Explanations Improves Understanding.** *Cognitive Science*, 18(3), p. 439–477. [DOI 10.1207/s15516709cog1803_3](https://doi.org/10.1207/s15516709cog1803_3).
+
+Chave bibliográfica: `chi1994eliciting`.
+
 <a id="ref-degagne2019microlearning"></a>
 
 ### De Gagne et al. (2019)
@@ -251,6 +275,14 @@ Malcolm S. Knowles (1975). **Self-Directed Learning: A Guide for Learners and Te
 
 Chave bibliográfica: `knowles1975selfdirected`.
 
+<a id="ref-koedinger2012kli"></a>
+
+### Koedinger et al. (2012)
+
+Kenneth R. Koedinger; Albert T. Corbett; Charles Perfetti (2012). **The Knowledge-Learning-Instruction Framework: Bridging the Science-Practice Chasm to Enhance Robust Student Learning.** *Cognitive Science*, 36(5), p. 757–798. [DOI 10.1111/j.1551-6709.2012.01245.x](https://doi.org/10.1111/j.1551-6709.2012.01245.x).
+
+Chave bibliográfica: `koedinger2012kli`.
+
 <a id="ref-lai2022mobile"></a>
 
 ### Lai et al. (2022)
@@ -274,6 +306,14 @@ Chave bibliográfica: `lewis2020rag`.
 Richard E. Mayer (2009). **Multimedia Learning.** 2. ed., Cambridge University Press. [DOI 10.1017/CBO9780511811678](https://doi.org/10.1017/CBO9780511811678) · ISBN 9780521735353.
 
 Chave bibliográfica: `mayer2009multimedia`.
+
+<a id="ref-mislevy2003ecd"></a>
+
+### Mislevy et al. (2003)
+
+Robert J. Mislevy; Russell G. Almond; Janice F. Lukas (2003). **A Brief Introduction to Evidence-Centered Design.** Educational Testing Service, RR-03-16. [DOI 10.1002/j.2333-8504.2003.tb01908.x](https://doi.org/10.1002/j.2333-8504.2003.tb01908.x) · [acesso ao documento](https://www.ets.org/research/policy_research_reports/publications/report/2003/hsgs.html).
+
+Chave bibliográfica: `mislevy2003ecd`.
 
 <a id="ref-monk2008resumption"></a>
 
@@ -371,6 +411,14 @@ Jana Reisslein; Robert K. Atkinson; Patrick Seeling; Martin Reisslein (2006). **
 
 Chave bibliográfica: `reisslein2006expertisereversal`.
 
+<a id="ref-renkl2002learning"></a>
+
+### Renkl (2002)
+
+Alexander Renkl (2002). **Worked-Out Examples: Instructional Explanations Support Learning by Self-Explanations.** *Learning and Instruction*, 12(5), p. 529–556. [DOI 10.1016/S0959-4752(01)00030-5](https://doi.org/10.1016/S0959-4752(01)00030-5).
+
+Chave bibliográfica: `renkl2002learning`.
+
 <a id="ref-renkl2004fading"></a>
 
 ### Renkl et al. (2004)
@@ -467,6 +515,14 @@ UNESCO (2023). **Guidance for Generative AI in Education and Research.** UNESCO.
 
 Chave bibliográfica: `unesco2023genai`.
 
+<a id="ref-vanmerrienboer2019fourcomponent"></a>
+
+### van Merriënboer (2019)
+
+Jeroen J. G. van Merriënboer (2019). **The Four-Component Instructional Design Model: An Overview of Its Main Design Principles.** School of Health Professions Education, Maastricht University. [acesso ao documento](https://www.4cid.org/wp-content/uploads/2021/04/vanmerrienboer-4cid-overview-of-main-design-principles-2021.pdf) · ISBN 9789463806008.
+
+Chave bibliográfica: `vanmerrienboer2019fourcomponent`.
+
 <a id="ref-venable2016feds"></a>
 
 ### Venable et al. (2016)
@@ -498,6 +554,14 @@ Chave bibliográfica: `wang2005designbased`.
 Etienne Wenger (1998). **Communities of Practice: Learning, Meaning, and Identity.** Cambridge University Press. [DOI 10.1017/CBO9780511803932](https://doi.org/10.1017/CBO9780511803932) · ISBN 9780521663632.
 
 Chave bibliográfica: `wenger1998communities`.
+
+<a id="ref-wittwer2008explanations"></a>
+
+### Wittwer e Renkl (2008)
+
+Jörg Wittwer; Alexander Renkl (2008). **Why Instructional Explanations Often Do Not Work: A Framework for Understanding the Effectiveness of Instructional Explanations.** *Educational Psychologist*, 43(1), p. 49–64. [DOI 10.1080/00461520701756420](https://doi.org/10.1080/00461520701756420).
+
+Chave bibliográfica: `wittwer2008explanations`.
 
 <a id="ref-wood2021dialogic"></a>
 

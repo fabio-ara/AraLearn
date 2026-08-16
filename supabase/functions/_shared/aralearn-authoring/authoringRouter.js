@@ -1,4 +1,16 @@
 import { deterministicRequestUuid } from "./canonical.js";
+import {
+  executeWorkspaceDesignAction,
+  validateWorkspaceCardDesignAccess
+} from "./authoringDesignService.js";
+import {
+  executeExperimentEnrollmentAction,
+  executeWorkspaceExperimentAction
+} from "./authoringExperimentService.js";
+import {
+  executeAuthoringAnalyticsAction,
+  executeExperimentOutcomeAction
+} from "./authoringAnalyticsService.js";
 import { AuthoringApiError } from "./errors.js";
 import {
   STANDARD_BODY_LIMIT,
@@ -15,6 +27,8 @@ import {
   validateDeleteWorkspacePayload,
   validateEducationalWorkspaceActionPayload,
   validateEducationalWorkspaceCommentActionPayload,
+  validateExperimentEnrollmentActionPayload,
+  validateWorkspaceAnalyticsActionPayload,
   validateWorkspaceObservationActionPayload,
   validateMoveCatalogCoursePayload,
   validateRemovePersonalLibraryCoursePayload,
@@ -23,9 +37,15 @@ import {
   validateSubmitCatalogReviewPayload,
   validateUpdateCatalogCollectionPayload,
   validateWorkspaceContinuityActionPayload,
+  validateWorkspaceDesignActionPayload,
+  validateWorkspaceExperimentActionPayload,
   validateWorkspaceImportPayload,
   validateWorkspaceMutationPayload,
   validateWorkspacePublishPayload,
+  WORKSPACE_DESIGN_ACTION_BODY_LIMIT,
+  WORKSPACE_EXPERIMENT_ACTION_BODY_LIMIT,
+  EXPERIMENT_ENROLLMENT_ACTION_BODY_LIMIT,
+  WORKSPACE_ANALYTICS_ACTION_BODY_LIMIT,
   workspaceEntityType,
   workspaceUuid
 } from "./workspaceProtocol.js";
@@ -191,7 +211,10 @@ function workspaceObservationPagination(request) {
     );
   }
   return {
-    limit: positiveLimit(request, 20, 50),
+    // Achados estruturados carregam evidência pública e lifecycle. A página
+    // física fica menor que o limite solicitado para manter a Action abaixo
+    // de 96 KiB; o cursor autoritativo continua permitindo percorrer tudo.
+    limit: Math.min(positiveLimit(request, 20, 50), 5),
     beforeUpdatedAt,
     beforeId: beforeId == null ? null : validateUuid(beforeId),
     entityTypes: boundedStringList(url, "entityTypes", new Set([
@@ -674,13 +697,136 @@ export async function executeAuthoringRoute({
       requestId: null
     };
   }
+  if (route.name === "manageWorkspaceDesign") {
+    const value = validateWorkspaceDesignActionPayload(
+      await readJsonBody(request, WORKSPACE_DESIGN_ACTION_BODY_LIMIT)
+    );
+    reconcileRequestId(request, value);
+    if (new Set(["read_slice", "contracts"]).has(value.operation)) {
+      assertAuthoringScope(principal, "read");
+    } else {
+      assertAuthoringScope(principal, "write");
+    }
+    return {
+      data: await executeWorkspaceDesignAction({
+        adapter,
+        principal,
+        workspaceId: route.workspaceId,
+        deadlineAt,
+        ...value
+      }),
+      requestId: value.requestId || null
+    };
+  }
+  if (route.name === "manageWorkspaceExperiment") {
+    const value = validateWorkspaceExperimentActionPayload(
+      await readJsonBody(request, WORKSPACE_EXPERIMENT_ACTION_BODY_LIMIT)
+    );
+    reconcileRequestId(request, value);
+    if (new Set(["list", "list_options", "read"]).has(value.operation)) {
+      assertAuthoringScope(principal, "read");
+    } else {
+      assertAuthoringScope(principal, "write");
+    }
+    return {
+      data: await executeWorkspaceExperimentAction({
+        adapter,
+        principal,
+        workspaceId: route.workspaceId,
+        deadlineAt,
+        ...value
+      }),
+      requestId: value.requestId || null
+    };
+  }
+  if (route.name === "manageWorkspaceAnalytics") {
+    const value = validateWorkspaceAnalyticsActionPayload(
+      await readJsonBody(request, WORKSPACE_ANALYTICS_ACTION_BODY_LIMIT)
+    );
+    assertAuthoringScope(principal, "read");
+    return {
+      data: await executeAuthoringAnalyticsAction({
+        adapter,
+        principal,
+        workspaceId: route.workspaceId,
+        deadlineAt,
+        ...value
+      }),
+      requestId: null
+    };
+  }
+  if (route.name === "manageExperimentEnrollment") {
+    const value = validateExperimentEnrollmentActionPayload(
+      await readJsonBody(request, EXPERIMENT_ENROLLMENT_ACTION_BODY_LIMIT)
+    );
+    reconcileRequestId(request, value);
+    if (new Set(["read_policy", "status"]).has(value.operation)) {
+      assertAuthoringScope(principal, "read");
+    } else {
+      assertAuthoringScope(principal, "write");
+    }
+    if (value.operation === "record_outcome") {
+      return {
+        data: await executeExperimentOutcomeAction({
+          adapter,
+          principal,
+          deadlineAt,
+          ...value
+        }),
+        requestId: value.requestId
+      };
+    }
+    return {
+      data: await executeExperimentEnrollmentAction({
+        adapter,
+        principal,
+        deadlineAt,
+        ...value
+      }),
+      requestId: value.requestId || null
+    };
+  }
   if (route.name === "mutateWorkspace") {
     assertAuthoringScope(principal, "write");
     const value = await payload(request, validateWorkspaceMutationPayload);
+    const mutationOptions = {
+      principal,
+      workspaceId: route.workspaceId,
+      ...value
+    };
+    const replay = typeof adapter.replayWorkspaceMutation === "function"
+      ? () => adapter.replayWorkspaceMutation(mutationOptions)
+      : async () => null;
+    const replayed = await replay();
+    if (replayed) {
+      return { data: replayed, requestId: value.requestId };
+    }
+    try {
+      await validateWorkspaceCardDesignAccess({
+        adapter,
+        principal,
+        workspaceId: route.workspaceId,
+        expectedRevision: value.expectedRevision,
+        operation: value.operation,
+        arguments: value.arguments
+      });
+    } catch (cause) {
+      if (!(cause instanceof AuthoringApiError) || cause.status !== 409) throw cause;
+      const racedReplay = await replay();
+      if (racedReplay) return { data: racedReplay, requestId: value.requestId };
+      throw cause;
+    }
+    let result;
+    try {
+      result = await adapter.mutateWorkspace(mutationOptions);
+    } catch (cause) {
+      if (!(cause instanceof AuthoringApiError) || cause.status !== 409) throw cause;
+      const racedReplay = await replay();
+      if (racedReplay) return { data: racedReplay, requestId: value.requestId };
+      throw cause;
+    }
     return {
-      data: await adapter.mutateWorkspace({
-        principal, workspaceId: route.workspaceId, ...value
-      }),
+      data: result,
       requestId: value.requestId
     };
   }

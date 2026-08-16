@@ -356,6 +356,28 @@ parte do desenho de analytics, não etapa posterior
 ([Pardo e Siemens (2014)](referencias.md#ref-pardo2014ethical); [Prinsloo e Slade (2017)](referencias.md#ref-prinsloo2017ethics); [Tsai e Martinez-Maldonado (2022)](referencias.md#ref-tsai2022humancentered)). Dados de pesquisa devem permanecer separados do banco
 operacional sempre que o desenho e o risco assim exigirem.
 
+### Governança de variantes experimentais
+
+Uma condição experimental não é um rótulo aplicado depois da coleta. Ela é um
+protocolo versionado que fixa base, fatores, escopo, invariantes, regra de
+atribuição e instrumentos antes da exposição. O AraLearn deriva variantes de
+um mesmo artefato aprovado, registra diferenças e congela a revisão atribuída;
+uma mudança posterior gera outra revisão em vez de reescrever o tratamento.
+
+Parâmetros de desenho continuam sendo definições ordinárias. A autoridade de
+pesquisa apenas fixa valores ou `ResourceSet`s numa condição. O servidor, não o
+modelo de linguagem ou o dispositivo do participante, aplica locks, sorteio e
+balanceamento. Consentimento e vínculo de conta permanecem separados do
+pseudônimo usado pelo experimento, e o participante recebe somente a revisão
+que lhe foi atribuída.
+
+Essas propriedades tornam uma comparação reconstituível, mas não a tornam
+automaticamente válida. Randomização reprodutível não elimina viés de seleção;
+freeze não prova fidelidade de implementação; igualdade de contagem não prova
+equivalência semântica; e telemetria disponível não se torna outcome sem
+instrumento, finalidade e interpretação declarados. Consulte [Experimentos
+instrucionais parametrizados](experimentos-instrucionais-parametrizados.md).
+
 ## Limitações atuais do programa
 
 - a revisão bibliográfica é narrativa e não exaustiva;
@@ -382,3 +404,12 @@ operacional sempre que o desenho e o risco assim exigirem.
 | justificativa dos recursos | [Fundamentação pedagógica dos recursos](fundamentacao-pedagogica-dos-resources.md) | representação correta ainda exige avaliação de compreensão |
 | contribuição possível | [Contribuição e originalidade](contribuicao-originalidade.md) | originalidade e superioridade não são presumidas |
 | bibliografia canônica | [`referencias.bib`](referencias.bib) | presença na lista não determina força da evidência |
+## Governança de analytics e outcomes
+
+Uma métrica só entra no produto com pergunta, definição, unidade, derivação,
+denominador, tratamento de ausências, interpretação permitida e limite. A
+definição é versionada e imutável. Outcome experimental exige consentimento,
+instrumento e onda declarados, atribuição congelada e finalidade institucional.
+Exportação pseudonimizada reduz exposição, mas não torna o dado anônimo nem
+dispensa retenção, controle de acesso e direito de retirada. O produto não
+escolhe teste estatístico nem emite causalidade automaticamente.

@@ -108,14 +108,15 @@ contradições relevantes resolvidas antes do planejamento detalhado.
 
 ## Etapa 2 — planejar a progressão
 
-O assistente propõe módulos, lições e microssequências. Uma boa proposta
-explicita:
+O assistente propõe módulos, lições, microssequências e Partes. Esse primeiro
+plano é estrutural: não exige preencher antecipadamente a análise detalhada e
+todos os parâmetros de todas as unidades. Uma boa proposta explicita:
 
 - objetivo de cada unidade;
 - conceitos e relações cobertos;
 - pré-requisitos;
-- condições e exigências pertinentes a cada microssequência;
-- dificuldades previstas e a resposta de desenho ligada a cada uma;
+- condições, exigências e dificuldades já materiais para a estrutura;
+- respostas de desenho que precisem de aprovação prévia;
 - erros ou confusões que a prática poderá tornar observáveis;
 - tipos de prática previstos;
 - razão para separar ou reunir os assuntos;
@@ -127,19 +128,27 @@ explicação, exemplo, representação, prática e apoio conforme seu objetivo e
 dificuldades aprovadas. Não existe uma calibração pedagógica global que dispense
 esse julgamento.
 
+A análise instrucional detalhada e os valores efetivos são resolvidos
+just-in-time, uma microssequência por vez, imediatamente antes do blueprint e
+dos cards. Exceção: um protocolo de pesquisa pode fixar previamente valores ou
+locks que o assistente deve preservar.
+
 A unidade central de produção é a microssequência. Ela deve ensinar um avanço
 conceitual delimitado e praticá-lo. “Delimitado” não significa resumido: uma
 explicação difícil pode ocupar vários cards, desde a aproximação concreta até a
 formalização.
 
-Não há cota fixa de cards. Quando uma unidade precisaria concentrar conceitos
-independentes ou exceder o limite operacional de oito cards, ela é decomposta.
-A quantidade maior é consequência pedagógica aceitável; omitir etapas para
-reduzir custo não é.
+Não há cota fixa de cards. Uma unidade é decomposta quando precisaria concentrar
+conceitos, dependências, decisões ou formas de prática que exigem progressões
+próprias. Se a ferramenta recusar o tamanho do payload, a divisão respeita o
+menor limite causal. A quantidade resultante é consequência pedagógica
+aceitável; omitir etapas para reduzir custo não é.
 
-Analise a proposta, inclusive os vínculos dificuldade–resposta, e responda com
-aprovação ou ajustes. O assistente não deve começar a produção na mesma resposta
-em que pede essa decisão.
+Analise a proposta, inclusive os vínculos dificuldade–resposta. O assistente
+pede aprovação ou ajustes somente quando o mandato ou uma decisão material
+exigir e não começa a produção na mesma resposta em que fizer essa pergunta. Se
+o contexto e o escopo persistido já autorizarem a continuação, ele avança sem
+parada automática.
 
 Resultado esperado: árvore planejada, dividida em partes de revisão
 compreensíveis e visível como plano em Trilhas.
@@ -168,8 +177,14 @@ quê.
 
 ## Etapa 4 — produzir uma parte
 
-Depois da aprovação, o assistente materializa uma microssequência completa por
-vez. Para cada uma, deve produzir:
+Depois do planejamento — e da aprovação, quando ela for necessária —, o
+assistente materializa uma microssequência completa por vez. Antes de produzir,
+ele lê o slice persistido, cria ou atualiza a análise,
+recupera somente o knowledge pertinente e resolve valores Auto explícitos sem
+substituir override manual ou lock de pesquisa. Quando Auto precisa de um
+`ResourceSet` novo, o conjunto é primeiro composto por facetas, congelado com
+versões exatas e salvo; só o snapshot posterior o torna autoridade para a
+seleção. Para cada microssequência, deve produzir:
 
 - microteoria suficiente e progressiva;
 - exemplos ou representações que reduzam a dificuldade pertinente;
@@ -179,17 +194,22 @@ vez. Para cada uma, deve produzir:
 - tópicos, dependências e fontes.
 
 Quando uma representação especializada for necessária, o assistente consulta
-o catálogo, compara candidatos e carrega o contrato exato antes de construir o
-card. Se não houver opção ideal, pode usar o melhor substituto, mas deve
-informar brevemente a limitação.
+o catálogo sob `workspaceId` e `snapshotRef`, compara até oito candidatos e
+carrega exatamente um contrato versionado por chamada antes de construir o
+card. O `ResourceSet` e a política efetiva podem autorizar uma aproximação com
+limitação ou bloquear; o assistente nunca escolhe fora do conjunto nem finge
+equivalência.
 
 Práticas não são variadas por ornamentação. Lacuna, digitação, escolha,
 ordenação e outras respostas devem corresponder à operação cognitiva desejada.
 Um diagrama só entra quando sua estrutura torna uma relação mais direta do que
 texto ou tabela.
 
-Resultado esperado: parte salva, validada e estudável em Trilhas. O assistente
-só deve dizer que foi salva depois da confirmação do AraLearn.
+Os cards são compostos em memória, passam por validação de contrato e de
+representação, são salvos e relidos e somente então recebem o manifesto de
+materialização. Resultado esperado: parte salva, validada e estudável em
+Trilhas. O assistente só deve dizer que foi salva depois da confirmação do
+AraLearn.
 
 ## Etapa 5 — revisar o conteúdo
 
@@ -301,10 +321,11 @@ catálogo](autoria-do-catalogo.md).
 
 ## Como retomar em outra conversa
 
-Uma nova sessão deve começar lendo a retomada compacta do workspace: brief,
-condições confirmadas, diagnósticos e respostas aprovados, estrutura, partes,
-decisões, achados e revisões pendentes. O curso não depende de o modelo recordar
-mensagens anteriores.
+Uma nova sessão deve começar lendo a retomada compacta e, para a unidade
+corrente, o slice de desenho do workspace: brief, condições confirmadas,
+estrutura, Partes, análise, valores efetivos, `ResourceSet`, blueprint,
+manifesto, decisões, achados e revisões pendentes. O curso não depende de o
+modelo recordar mensagens anteriores.
 
 Persistem somente informações aprovadas e úteis para continuar ou auditar o
 trabalho. O raciocínio privado do modelo e o transcript integral do diálogo não

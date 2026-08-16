@@ -1,4 +1,5 @@
 import { ArtifactGarbageCollector } from "./artifactGarbageCollector.js";
+import { ArtifactStore } from "./artifactStore.js";
 import { AuthoringWorkspaceEngine } from "./workspaceEngine.js";
 import { AuthoringApiError } from "./errors.js";
 import { decodeJwtClaims } from "./security.js";
@@ -142,10 +143,18 @@ function apiError(status, body, fallbackCode = "database_error") {
     return new AuthoringApiError(403, "not_authorized", "A operação não foi autorizada.");
   }
   if (databaseCode === "40001") {
+    const conflict = structuredDatabaseDetail(body);
     return new AuthoringApiError(
       409,
       "stale_authoring_state",
-      "O estado da autoria mudou; atualize e tente novamente."
+      "O estado da autoria mudou; atualize e tente novamente.",
+      conflict && (
+        Number.isInteger(conflict.expectedRevision)
+        || Number.isInteger(conflict.currentRevision)
+      ) ? {
+          expectedRevision: conflict.expectedRevision ?? null,
+          currentRevision: conflict.currentRevision ?? null
+        } : undefined
     );
   }
   if (databaseCode === "55P03") {
@@ -275,6 +284,12 @@ export class SupabaseAuthoringAdapter {
       serverApiKey: this.serverApiKey,
       fetchImpl: this.fetchImpl,
       rpc: (functionName, payload, options) => this.rpc(functionName, payload, options)
+    });
+    this.artifacts = new ArtifactStore({
+      supabaseUrl: this.supabaseUrl,
+      serverApiKey: this.serverApiKey,
+      fetchImpl: this.fetchImpl,
+      requestTimeoutMs: Math.max(this.requestTimeoutMs, 15_000)
     });
     this.garbageCollector = new ArtifactGarbageCollector({
       supabaseUrl: this.supabaseUrl,
@@ -917,6 +932,247 @@ export class SupabaseAuthoringAdapter {
     }, { deadlineAt }));
   }
 
+  async listAuthoringDesignParameterDefinitions({
+    principal,
+    workspaceId,
+    scopeKind = null,
+    deadlineAt = null
+  }) {
+    return first(await this.rpc("list_authoring_design_parameter_definitions_v1", {
+      p_actor_id: principal.actorId,
+      p_workspace_id: workspaceId,
+      p_scope_kind: scopeKind
+    }, { deadlineAt }));
+  }
+
+  async getAuthoringInstructionalAnalysis({
+    principal,
+    workspaceId,
+    scopeKind,
+    scopeRef,
+    analysisRef = null,
+    deadlineAt = null
+  }) {
+    return first(await this.rpc("get_authoring_instructional_analysis_v1", {
+      p_actor_id: principal.actorId,
+      p_workspace_id: workspaceId,
+      p_scope_kind: scopeKind,
+      p_scope_ref: scopeRef,
+      p_analysis_id: analysisRef?.id ?? null,
+      p_analysis_version: analysisRef?.version ?? null
+    }, { deadlineAt }));
+  }
+
+  async listAuthoringDesignParameterAssignments({
+    principal,
+    workspaceId,
+    scopeKind,
+    scopeRef,
+    deadlineAt = null
+  }) {
+    return first(await this.rpc("list_authoring_design_parameter_assignments_v1", {
+      p_actor_id: principal.actorId,
+      p_workspace_id: workspaceId,
+      p_scope_kind: scopeKind,
+      p_scope_ref: scopeRef
+    }, { deadlineAt }));
+  }
+
+  async getAuthoringDesignState({
+    principal,
+    workspaceId,
+    scopeKind,
+    scopeRef,
+    deadlineAt = null
+  }) {
+    return first(await this.rpc("get_authoring_design_state_v1", {
+      p_actor_id: principal.actorId,
+      p_workspace_id: workspaceId,
+      p_scope_kind: scopeKind,
+      p_scope_ref: scopeRef
+    }, { deadlineAt }));
+  }
+
+  async replayAuthoringDesignMutation({
+    principal,
+    requestId,
+    payloadHash,
+    operation,
+    deadlineAt = null
+  }) {
+    return first(await this.rpc("replay_authoring_workspace_request_v5", {
+      p_owner_id: principal.actorId,
+      p_request_id: requestId,
+      p_payload_hash: payloadHash,
+      p_operation: operation
+    }, { deadlineAt }));
+  }
+
+  async getAuthoringEffectiveDesignSnapshot({
+    principal,
+    workspaceId,
+    snapshotRef,
+    deadlineAt = null
+  }) {
+    return first(await this.rpc("get_authoring_effective_design_snapshot_v1", {
+      p_actor_id: principal.actorId,
+      p_workspace_id: workspaceId,
+      p_snapshot_id: snapshotRef.id,
+      p_snapshot_version: snapshotRef.version
+    }, { deadlineAt }));
+  }
+
+  async getAuthoringResourceSet({
+    principal,
+    workspaceId,
+    resourceSetRef,
+    deadlineAt = null
+  }) {
+    return first(await this.rpc("get_authoring_resource_set_v1", {
+      p_actor_id: principal.actorId,
+      p_workspace_id: workspaceId,
+      p_resource_set_id: resourceSetRef.id,
+      p_resource_set_version: resourceSetRef.version
+    }, { deadlineAt }));
+  }
+
+  async getAuthoringPedagogicalBlueprintArtifact({
+    principal,
+    workspaceId,
+    blueprintRef,
+    deadlineAt = null
+  }) {
+    return first(await this.rpc("get_authoring_pedagogical_blueprint_artifact_v1", {
+      p_actor_id: principal.actorId,
+      p_workspace_id: workspaceId,
+      p_blueprint_id: blueprintRef.id,
+      p_blueprint_version: blueprintRef.version
+    }, { deadlineAt }));
+  }
+
+  async saveAuthoringInstructionalAnalysis({
+    principal,
+    workspaceId,
+    requestId,
+    payloadHash,
+    expectedRevision,
+    payload,
+    deadlineAt = null
+  }) {
+    return first(await this.rpc("save_authoring_instructional_analysis_v1", {
+      p_actor_id: principal.actorId,
+      p_workspace_id: workspaceId,
+      p_request_id: requestId,
+      p_payload_hash: payloadHash,
+      p_expected_revision: expectedRevision,
+      p_analysis: payload
+    }, { deadlineAt }));
+  }
+
+  async setAuthoringDesignParameter(options) {
+    return this.#manageAuthoringDesignParameter("set", options);
+  }
+
+  async removeAuthoringDesignParameter(options) {
+    return this.#manageAuthoringDesignParameter("remove", options);
+  }
+
+  async #manageAuthoringDesignParameter(operation, {
+    principal,
+    workspaceId,
+    requestId,
+    payloadHash,
+    expectedRevision,
+    payload,
+    deadlineAt = null
+  }) {
+    return first(await this.rpc("manage_authoring_design_parameter_assignment_v1", {
+      p_actor_id: principal.actorId,
+      p_workspace_id: workspaceId,
+      p_request_id: requestId,
+      p_payload_hash: payloadHash,
+      p_expected_revision: expectedRevision,
+      p_operation: operation,
+      p_assignment: payload
+    }, { deadlineAt }));
+  }
+
+  async saveAuthoringResourceSet({
+    principal,
+    workspaceId,
+    requestId,
+    payloadHash,
+    expectedRevision,
+    payload,
+    deadlineAt = null
+  }) {
+    return first(await this.rpc("save_authoring_resource_set_v1", {
+      p_actor_id: principal.actorId,
+      p_workspace_id: workspaceId,
+      p_request_id: requestId,
+      p_payload_hash: payloadHash,
+      p_expected_revision: expectedRevision,
+      p_resource_set: payload
+    }, { deadlineAt }));
+  }
+
+  async resolveAuthoringEffectiveDesign({
+    principal,
+    workspaceId,
+    requestId,
+    payloadHash,
+    expectedRevision,
+    payload,
+    deadlineAt = null
+  }) {
+    return first(await this.rpc("resolve_authoring_effective_design_v1", {
+      p_actor_id: principal.actorId,
+      p_workspace_id: workspaceId,
+      p_request_id: requestId,
+      p_payload_hash: payloadHash,
+      p_expected_revision: expectedRevision,
+      p_snapshot: payload
+    }, { deadlineAt }));
+  }
+
+  async saveAuthoringPedagogicalBlueprint({
+    principal,
+    workspaceId,
+    requestId,
+    payloadHash,
+    expectedRevision,
+    payload,
+    deadlineAt = null
+  }) {
+    return first(await this.rpc("save_authoring_pedagogical_blueprint_v1", {
+      p_actor_id: principal.actorId,
+      p_workspace_id: workspaceId,
+      p_request_id: requestId,
+      p_payload_hash: payloadHash,
+      p_expected_revision: expectedRevision,
+      p_blueprint: payload
+    }, { deadlineAt }));
+  }
+
+  async registerAuthoringMaterializationManifest({
+    principal,
+    workspaceId,
+    requestId,
+    payloadHash,
+    expectedRevision,
+    payload,
+    deadlineAt = null
+  }) {
+    return first(await this.rpc("register_authoring_materialization_manifest_v1", {
+      p_actor_id: principal.actorId,
+      p_workspace_id: workspaceId,
+      p_request_id: requestId,
+      p_payload_hash: payloadHash,
+      p_expected_revision: expectedRevision,
+      p_manifest: payload
+    }, { deadlineAt }));
+  }
+
   async getWorkspace(options) {
     return this.workspaceEngine.get(options);
   }
@@ -940,6 +1196,543 @@ export class SupabaseAuthoringAdapter {
     }, { deadlineAt }));
   }
 
+  async listAuthoringAuditCards({
+    principal,
+    workspaceId,
+    microsequencePath,
+    expectedRevision,
+    limit = 25,
+    afterPosition = null,
+    afterId = null,
+    deadlineAt = null
+  }) {
+    return first(await this.rpc("list_authoring_audit_cards_v1", {
+      p_actor_id: principal.actorId,
+      p_workspace_id: workspaceId,
+      p_microsequence_path: microsequencePath,
+      p_expected_revision: expectedRevision,
+      p_limit: limit,
+      p_after_position: afterPosition,
+      p_after_id: afterId
+    }, { deadlineAt }));
+  }
+
+  async listAuthoringPartAuditComponents({
+    principal,
+    workspaceId,
+    partRef,
+    limit = 10,
+    afterOrdinal = null,
+    deadlineAt = null
+  }) {
+    return first(await this.rpc("list_authoring_part_audit_components_v1", {
+      p_actor_id: principal.actorId,
+      p_workspace_id: workspaceId,
+      p_part_ref: partRef,
+      p_limit: limit,
+      p_after_ordinal: afterOrdinal
+    }, { deadlineAt }));
+  }
+
+  async registerAuthoringAuditRun({
+    principal,
+    workspaceId,
+    requestId,
+    payloadHash,
+    expectedRevision,
+    payload,
+    deadlineAt = null
+  }) {
+    return first(await this.rpc("register_authoring_audit_run_v1", {
+      p_actor_id: principal.actorId,
+      p_workspace_id: workspaceId,
+      p_request_id: requestId,
+      p_payload_hash: payloadHash,
+      p_expected_revision: expectedRevision,
+      p_audit: payload
+    }, { deadlineAt }));
+  }
+
+  async recordAuthoringSemanticAudit({
+    principal,
+    workspaceId,
+    requestId,
+    payloadHash,
+    expectedRevision,
+    payload,
+    deadlineAt = null
+  }) {
+    return first(await this.rpc("record_authoring_semantic_audit_v1", {
+      p_actor_id: principal.actorId,
+      p_workspace_id: workspaceId,
+      p_request_id: requestId,
+      p_payload_hash: payloadHash,
+      p_expected_revision: expectedRevision,
+      p_payload: payload
+    }, { deadlineAt }));
+  }
+
+  async getAuthoringAuditRun({
+    principal,
+    workspaceId,
+    auditRunRef = null,
+    scope = null,
+    limit = 20,
+    afterOrdinal = null,
+    componentLimit = 10,
+    afterComponentOrdinal = null,
+    anchorMicrosequenceRef = null,
+    deadlineAt = null
+  }) {
+    return first(await this.rpc("get_authoring_audit_run_v1", {
+      p_actor_id: principal.actorId,
+      p_workspace_id: workspaceId,
+      p_audit_run_id: auditRunRef?.id ?? null,
+      p_audit_run_version: auditRunRef?.version ?? null,
+      p_scope_kind: scope?.kind ?? null,
+      p_scope_ref: scope?.ref ?? null,
+      p_limit: limit,
+      p_after_ordinal: afterOrdinal,
+      p_component_limit: componentLimit,
+      p_after_component_ordinal: afterComponentOrdinal,
+      p_anchor_microsequence_ref: anchorMicrosequenceRef
+    }, { deadlineAt }));
+  }
+
+  async listAuthoringAuditRuns({
+    principal,
+    workspaceId,
+    scope = null,
+    limit = 20,
+    beforeCreatedAt = null,
+    beforeId = null,
+    deadlineAt = null
+  }) {
+    return first(await this.rpc("list_authoring_audit_runs_v1", {
+      p_actor_id: principal.actorId,
+      p_workspace_id: workspaceId,
+      p_scope_kind: scope?.kind ?? null,
+      p_scope_ref: scope?.ref ?? null,
+      p_limit: limit,
+      p_before_created_at: beforeCreatedAt,
+      p_before_id: beforeId
+    }, { deadlineAt }));
+  }
+
+  async listAuthoringExperiments({
+    actorId,
+    workspaceId,
+    experimentSetRef = null,
+    cursor = null,
+    limit = 20,
+    deadlineAt = null
+  }) {
+    return first(await this.rpc("list_authoring_experiments_v1", {
+      p_actor_id: actorId,
+      p_workspace_id: workspaceId,
+      p_experiment_set_ref: experimentSetRef,
+      p_cursor: cursor,
+      p_limit: limit
+    }, { deadlineAt }));
+  }
+
+  async listAuthoringExperimentOptions({
+    actorId,
+    workspaceId,
+    kind,
+    query = null,
+    optionsSetRef = null,
+    cursor = null,
+    limit = 20,
+    deadlineAt = null
+  }) {
+    return first(await this.rpc("list_authoring_experiment_options_v1", {
+      p_actor_id: actorId,
+      p_workspace_id: workspaceId,
+      p_kind: kind,
+      p_query: query,
+      p_options_set_ref: optionsSetRef,
+      p_cursor: cursor,
+      p_limit: limit
+    }, { deadlineAt }));
+  }
+
+  async getAuthoringExperiment({
+    actorId,
+    workspaceId,
+    experimentId,
+    section = "overview",
+    protocolRevision = null,
+    variantSetRef = null,
+    variantCursor = null,
+    variantLimit = 10,
+    differenceSetRef = null,
+    differenceRunCursor = null,
+    differenceRunLimit = 20,
+    differenceRunRef = null,
+    differenceCursor = null,
+    differenceLimit = 20,
+    participantSetRef = null,
+    participantCursor = null,
+    participantLimit = 20,
+    deadlineAt = null
+  }) {
+    return first(await this.rpc("get_authoring_experiment_v1", {
+      p_actor_id: actorId,
+      p_workspace_id: workspaceId,
+      p_experiment_id: experimentId,
+      p_section: section,
+      p_protocol_revision: protocolRevision,
+      p_variant_set_ref: variantSetRef,
+      p_variant_cursor: variantCursor,
+      p_variant_limit: variantLimit,
+      p_difference_set_ref: differenceSetRef,
+      p_difference_run_cursor: differenceRunCursor,
+      p_difference_run_limit: differenceRunLimit,
+      p_difference_run_ref: differenceRunRef,
+      p_difference_cursor: differenceCursor,
+      p_difference_limit: differenceLimit,
+      p_participant_set_ref: participantSetRef,
+      p_participant_cursor: participantCursor,
+      p_participant_limit: participantLimit
+    }, { deadlineAt }));
+  }
+
+  async manageAuthoringExperiment({
+    actorId,
+    workspaceId,
+    experimentId = null,
+    requestId,
+    payloadHash,
+    expectedExperimentRevision,
+    expectedWorkspaceRevision = null,
+    operation,
+    payload,
+    deadlineAt = null
+  }) {
+    return first(await this.rpc("manage_authoring_experiment_v1", {
+      p_actor_id: actorId,
+      p_workspace_id: workspaceId,
+      p_experiment_id: experimentId,
+      p_request_id: requestId,
+      p_payload_hash: payloadHash,
+      p_expected_experiment_revision: expectedExperimentRevision,
+      p_expected_workspace_revision: expectedWorkspaceRevision,
+      p_operation: operation,
+      p_payload: payload
+    }, { deadlineAt }));
+  }
+
+  async assignAuthoringExperimentParticipant({
+    actorId,
+    workspaceId,
+    experimentId,
+    requestId,
+    payloadHash,
+    expectedExperimentRevision,
+    payload,
+    deadlineAt = null
+  }) {
+    return first(await this.rpc("assign_authoring_experiment_participant_v1", {
+      p_actor_id: actorId,
+      p_workspace_id: workspaceId,
+      p_experiment_id: experimentId,
+      p_request_id: requestId,
+      p_payload_hash: payloadHash,
+      p_expected_experiment_revision: expectedExperimentRevision,
+      p_payload: payload
+    }, { deadlineAt }));
+  }
+
+  async manageAuthoringExperimentEnrollment({
+    actorId,
+    operation,
+    enrollmentCode = null,
+    enrollmentRef = null,
+    requestId = null,
+    payloadHash = null,
+    consentPolicyRef = null,
+    consentAcknowledged = null,
+    deadlineAt = null
+  }) {
+    return first(await this.rpc("manage_authoring_experiment_enrollment_v1", {
+      p_actor_id: actorId,
+      p_operation: operation,
+      p_enrollment_code: enrollmentCode,
+      p_enrollment_ref: enrollmentRef,
+      p_request_id: requestId,
+      p_payload_hash: payloadHash,
+      p_consent_policy_ref: consentPolicyRef,
+      p_consent_acknowledged: consentAcknowledged
+    }, { deadlineAt }));
+  }
+
+  async getAuthoringExperimentContext({
+    actorId,
+    workspaceId,
+    experimentRef = null,
+    variantRevisionRef = null,
+    variantSetRef = null,
+    scopePath = null,
+    differenceRunRef = null,
+    cursor = null,
+    limit = 20,
+    collection = null,
+    collectionSetRef = null,
+    collectionCursor = null,
+    collectionLimit = 20,
+    deadlineAt = null
+  }) {
+    return first(await this.rpc("get_authoring_experiment_context_v1", {
+      p_actor_id: actorId,
+      p_workspace_id: workspaceId,
+      p_experiment_ref: experimentRef,
+      p_variant_revision_ref: variantRevisionRef,
+      p_variant_set_ref: variantSetRef,
+      p_scope_path: scopePath,
+      p_cursor: differenceRunRef == null ? cursor : null,
+      p_limit: limit,
+      p_difference_run_ref: differenceRunRef,
+      p_difference_cursor: differenceRunRef == null ? null : cursor,
+      p_difference_limit: limit,
+      p_collection: collection,
+      p_collection_set_ref: collectionSetRef,
+      p_collection_cursor: collectionCursor,
+      p_collection_limit: collectionLimit
+    }, { deadlineAt }));
+  }
+
+  async getAuthoringExperimentVariantEvidenceInputs({
+    actorId,
+    workspaceId,
+    requestId,
+    payloadHash,
+    expectedExperimentRevision,
+    expectedWorkspaceRevision,
+    experimentRef,
+    variantRevisionRef,
+    mandateRef,
+    scopePath = null,
+    deadlineAt = null
+  }) {
+    const source = first(await this.rpc(
+      "prepare_authoring_experiment_variant_evidence_v1",
+      {
+        p_actor_id: actorId,
+        p_workspace_id: workspaceId,
+        p_experiment_id: experimentRef?.id,
+        p_request_id: requestId,
+        p_payload_hash: payloadHash,
+        p_expected_experiment_revision: expectedExperimentRevision,
+        p_expected_workspace_revision: expectedWorkspaceRevision,
+        p_variant_revision_ref: variantRevisionRef,
+        p_mandate_ref: mandateRef,
+        p_scope_path: scopePath
+      },
+      { deadlineAt }
+    ));
+    const freshProgress = first(await this.rpc(
+      "get_authoring_experiment_variant_evidence_progress_v1",
+      {
+        p_actor_id: actorId,
+        p_workspace_id: workspaceId,
+        p_variant_revision_ref: variantRevisionRef
+      },
+      { deadlineAt }
+    ));
+    const baselines = Array.isArray(source?.baselines) ? source.baselines : [];
+    const progressItems = Array.isArray(freshProgress?.baselines)
+      ? freshProgress.baselines
+      : [];
+    const baselineKey = (kind, ref) => [
+      kind,
+      ref?.id,
+      ref?.version
+    ].map((value) => String(value || "")).join(":");
+    const progressByBaseline = new Map(progressItems.map((item) => [
+      baselineKey(item?.baselineRef?.kind, item?.baselineRef?.ref),
+      item?.progress
+    ]));
+    const sourceKeys = baselines.map((baseline) => baselineKey(
+      baseline?.kind,
+      baseline?.ref
+    ));
+    if (freshProgress?.variantRevisionRef?.id !== variantRevisionRef?.id
+        || freshProgress?.variantRevisionRef?.version !== variantRevisionRef?.version
+        || progressItems.length !== baselines.length
+        || sourceKeys.some((key) => !progressByBaseline.has(key))) {
+      throw new AuthoringApiError(
+        409,
+        "experiment_evidence_baseline_changed",
+        "As baselines factuais mudaram; releia a variante antes de continuar."
+      );
+    }
+    const evidenceRefs = (artifact) => artifact?.hash
+      ? [`artifact:sha256:${artifact.hash}`]
+      : [];
+    return {
+      ...source,
+      experimentRef: freshProgress.experimentRef,
+      candidate: {
+        ...source.candidate,
+        artifactRef: source.candidate?.ref,
+        evidenceRefs: evidenceRefs(source.candidate?.artifact)
+      },
+      baselines: baselines.map((baseline) => ({
+        ...baseline,
+        baselineRef: {
+          kind: baseline.kind,
+          ref: baseline.ref
+        },
+        artifactRef: baseline.ref,
+        evidenceRefs: evidenceRefs(baseline.artifact),
+        progress: progressByBaseline.get(baselineKey(
+          baseline.kind,
+          baseline.ref
+        ))
+      }))
+    };
+  }
+
+  async loadAuthoringExperimentEvidenceArtifact({
+    artifact,
+    deadlineAt = null
+  }) {
+    return this.artifacts.getJson(artifact, { deadlineAt });
+  }
+
+  async registerAuthoringExperimentVariantEvidencePage({
+    actorId,
+    workspaceId,
+    experimentId,
+    requestId,
+    payloadHash,
+    expectedExperimentRevision,
+    expectedWorkspaceRevision,
+    variantRevisionRef,
+    mandateRef,
+    differenceRunRef,
+    baselineRef,
+    candidateVariantRevisionRef,
+    algorithmRef,
+    pageOrdinal,
+    pageCount,
+    hunkCount,
+    hunks,
+    deadlineAt = null
+  }) {
+    return first(await this.rpc(
+      "register_authoring_experiment_variant_evidence_v1",
+      {
+        p_actor_id: actorId,
+        p_workspace_id: workspaceId,
+        p_experiment_id: experimentId,
+        p_request_id: requestId,
+        p_payload_hash: payloadHash,
+        p_expected_experiment_revision: expectedExperimentRevision,
+        p_expected_workspace_revision: expectedWorkspaceRevision,
+        p_variant_revision_ref: variantRevisionRef,
+        p_mandate_ref: mandateRef,
+        p_evidence: {
+          differenceRunRef,
+          baselineRef,
+          candidateVariantRevisionRef,
+          algorithmRef,
+          pageOrdinal,
+          pageCount,
+          hunkCount,
+          hunks
+        }
+      },
+      { deadlineAt }
+    ));
+  }
+
+  async recordAuthoringExperimentDiffClassifications({
+    actorId,
+    workspaceId,
+    experimentId,
+    requestId,
+    payloadHash,
+    expectedExperimentRevision,
+    expectedWorkspaceRevision,
+    differenceRunRef,
+    variantRevisionRef,
+    mandateRef,
+    microsequencePath,
+    classifications,
+    deadlineAt = null
+  }) {
+    return first(await this.rpc(
+      "record_authoring_experiment_diff_classification_v1",
+      {
+        p_actor_id: actorId,
+        p_workspace_id: workspaceId,
+        p_experiment_id: experimentId,
+        p_request_id: requestId,
+        p_payload_hash: payloadHash,
+        p_expected_experiment_revision: expectedExperimentRevision,
+        p_expected_workspace_revision: expectedWorkspaceRevision,
+        p_difference_run_ref: differenceRunRef,
+        p_variant_revision_ref: variantRevisionRef,
+        p_mandate_ref: mandateRef,
+        p_scope_path: microsequencePath,
+        p_classifications: classifications
+      },
+      { deadlineAt }
+    ));
+  }
+
+  async getAuthoringAnalyticsOverview({
+    actorId, workspaceId, scope, deadlineAt = null
+  }) {
+    return first(await this.rpc("get_authoring_analytics_overview_v1", {
+      p_actor_id: actorId,
+      p_workspace_id: workspaceId,
+      p_scope: scope
+    }, { deadlineAt }));
+  }
+
+  async listAuthoringAnalyticsDataset({
+    actorId,
+    workspaceId,
+    dataset,
+    scope,
+    datasetSetRef = null,
+    cursor = null,
+    limit = 20,
+    deadlineAt = null
+  }) {
+    return first(await this.rpc("list_authoring_analytics_dataset_v1", {
+      p_actor_id: actorId,
+      p_workspace_id: workspaceId,
+      p_dataset: dataset,
+      p_scope: scope,
+      p_dataset_set_ref: datasetSetRef,
+      p_cursor: cursor,
+      p_limit: limit
+    }, { deadlineAt }));
+  }
+
+  async recordAuthoringExperimentOutcome({
+    actorId,
+    workspaceId,
+    enrollmentRef,
+    requestId,
+    payloadHash,
+    payload,
+    deadlineAt = null
+  }) {
+    return first(await this.rpc("record_authoring_experiment_outcome_v1", {
+      p_actor_id: actorId,
+      p_workspace_id: workspaceId,
+      p_enrollment_ref: enrollmentRef,
+      p_request_id: requestId,
+      p_payload_hash: payloadHash,
+      p_payload: payload
+    }, { deadlineAt }));
+  }
+
   async getWorkspaceEvents(options) {
     return this.workspaceEngine.events(options);
   }
@@ -950,6 +1743,10 @@ export class SupabaseAuthoringAdapter {
 
   async mutateWorkspace(options) {
     return this.workspaceEngine.mutate(options);
+  }
+
+  async replayWorkspaceMutation(options) {
+    return this.workspaceEngine.replayMutation(options);
   }
 
   async manageWorkspaceContinuity(options) {

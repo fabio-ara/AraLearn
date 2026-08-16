@@ -43,8 +43,8 @@ Não existe contrato monolítico de resources. Primeiro planeje a operação
 cognitiva e a estrutura que precisa permanecer visível. Em
 `consultarBibliotecaDeResources`, use `explore` para conhecer famílias e
 facetas, `search` para receber candidatos classificados, `inspect` para
-conferir os perfis e `contracts` para carregar, em lotes de até quatro, somente
-as versões escolhidas. Antes de persistir, use `validate_card` e
+conferir os perfis e `contracts` para carregar exatamente uma versão escolhida
+por chamada. Antes de persistir, use `validate_card` e
 `audit_representation`. `preview_card` apenas descreve a composição: a prévia
 visual fiel pertence ao renderer do aplicativo. Nunca invente campos ou
 coordenadas. Toda resposta dessa ferramenta segue
@@ -52,11 +52,10 @@ coordenadas. Toda resposta dessa ferramenta segue
 
 Os valores a seguir são tokens do protocolo, não certificações acadêmicas.
 `canonical` indica ajuste específico; `versatile`, uma representação
-transversal que preserva a estrutura; `substitute`, a melhor aproximação
-instalada. Somente `coverage.status: "substitute"` traz `chatDisclosure`. Um
-substituto não bloqueia a autoria: use-o, incorpore essa observação brevemente e
-com naturalidade no chat e registre na decisão autoral a representação ideal,
-para permitir futura troca quando surgir um package mais adequado.
+transversal que preserva a estrutura; `substitute`, uma aproximação instalada.
+A policy e o ResourceSet determinam quais ajustes são admitidos. Toda admissão
+não canônica conserva sua limitação e o `chatDisclosure`; bloqueio interrompe a
+seleção, sem autorizar package externo ou equivalência artificial.
 
 `validate_card` confere o envelope, schemas, referências e compatibilidades.
 `audit_representation` acrescenta a análise de `semantic_fit` para conteúdo,

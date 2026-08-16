@@ -14,6 +14,11 @@ import {
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const OUTPUT = path.join(ROOT, "docs", "downloads", "authoring");
+const DESIGN_SCHEMA_SYNC_SCRIPT = path.join(
+  ROOT,
+  "scripts",
+  "syncInstructionalDesignSchemas.mjs"
+);
 const CHATGPT_INSTRUCTIONS_MAX_CHARACTERS = 7_600;
 const forbiddenStaticAuthoring =
   /aralearn-authoring-api|X-AraLearn-API-Key|\barl_(?:\.{3}|[A-Za-z0-9_-]{4,})|ARALEARN_AUTHORING_(?:INTEGRATION|RECEIPT)_SECRET|authoring_api_(?:clients|keys)/iu;
@@ -26,6 +31,38 @@ const progressiveResourceOperations = [
   "contracts",
   "validate_card",
   "audit_representation"
+];
+const parameterizedDesignOperations = [
+  "read_slice",
+  "contracts",
+  "save_analysis",
+  "set_parameter",
+  "remove_parameter",
+  "save_resource_set",
+  "resolve_effective",
+  "save_blueprint",
+  "register_manifest"
+];
+const justInTimeKnowledgeFiles = [
+  "instructional-analysis.md",
+  "semantic-granularity.md",
+  "explanatory-elaboration.md",
+  "evidence-and-practice.md",
+  "complex-professional-task.md",
+  "parameter-resolution.md",
+  "resource-set-discovery.md",
+  "design-conformance-audit.md"
+];
+const forbiddenParameterCatalogInSystemPrompt = [
+  "new_units_per_theory_step_ceiling",
+  "simultaneous_new_units_per_coordination_set_ceiling",
+  "applicable_explanation_requirement_refs",
+  "evidence_alignment_relation",
+  "distinct_practice_opportunities_per_evidence_requirement",
+  "practice_variation_dimensions",
+  "accepted_performance_forms",
+  "representation_fallback_policy",
+  "available_resource_set_refs"
 ];
 
 function assertKnowledgeHasNoWrappedProse(content, fileName) {
@@ -220,6 +257,11 @@ function build() {
   });
 }
 
+execFileSync(process.execPath, [DESIGN_SCHEMA_SYNC_SCRIPT, "--check"], {
+  cwd: ROOT,
+  stdio: "pipe"
+});
+
 function readStoredZipEntries(archive) {
   const entries = new Map();
   let offset = 0;
@@ -303,6 +345,13 @@ for (const archive of manifest.archives) {
       .map(([, content]) => content.toString("utf8"))
       .join("\n");
     assert.match(platformInstructions, /consultarBibliotecaDeResources/u);
+    assert.match(platformInstructions, /gerirDesenhoInstrucional/u);
+    for (const operation of parameterizedDesignOperations) {
+      assert.ok(
+        platformInstructions.includes(operation),
+        `${archive.file} não instrui a operação de desenho ${operation}.`
+      );
+    }
     for (const operation of progressiveResourceOperations) {
       assert.ok(
         platformInstructions.includes(operation),
@@ -310,7 +359,10 @@ for (const archive of manifest.archives) {
       );
     }
     assert.match(platformInstructions, /preview_card/u);
-    assert.match(platformInstructions, /substitute/u);
+    assert.match(platformInstructions, /ResourceSet/u);
+    assert.match(platformInstructions, /política/iu);
+    assert.match(platformInstructions, /limitação/iu);
+    assert.match(platformInstructions, /bloqueio/iu);
   }
   if (archive.file === "aralearn-authoring-chatgpt.zip") {
     const setup = extracted.get("aralearn-authoring/platforms/chatgpt/SETUP.md")?.toString("utf8");
@@ -328,8 +380,12 @@ for (const archive of manifest.archives) {
   }
   const paths = new Set(archive.files.map(({ path: filePath }) => filePath));
   for (const requiredPath of [
+    "aralearn-authoring/docs/criar-cursos-pelo-chat.md",
+    "aralearn-authoring/docs/desenho-instrucional-parametrizado.md",
+    "aralearn-authoring/docs/fluxos-prompts-e-contratos.md",
     "aralearn-authoring/docs/persistencia-relacional.md",
-    "aralearn-authoring/docs/fundamentacao-pedagogica-dos-resources.md"
+    "aralearn-authoring/docs/fundamentacao-pedagogica-dos-resources.md",
+    "aralearn-authoring/docs/workspaces-educacionais.md"
   ]) {
     assert.ok(paths.has(requiredPath), `${archive.file} não contém ${requiredPath}.`);
   }
@@ -366,30 +422,38 @@ assert.match(coreKnowledge, /OAuth 2\.1/u);
 assert.match(coreKnowledge, /gateway MCP/u);
 for (const required of [
   "expectedRevision",
-  "microteoria",
-  "Trilhas",
   "reorganizarWorkspace",
   "move_entity",
-  "merge_microsequences",
-  "consultarCatalogo",
-  "listarCursosDaBibliotecaPessoal",
   "prepararAutoriaAraLearn",
   "lerWorkspaceDeAutoria",
   "view: \"resume\"",
   "gerirContinuidadeDaAutoria",
   "replace_stable_brief",
   "record_approved_plan",
-  "clear_mandate",
-  "pendingCorrectionRequestId",
-  "list_comments",
-  "list_observations",
-  "kinds: [\"note\"]",
-  "kinds: [\"audit_finding\"]",
-  "link_comment_correction",
-  "link_finding_correction"
+  "gerirDesenhoInstrucional",
+  "salvarCardsNaMicrossequencia",
+  "ResourceSet",
+  "snapshotRef",
+  "cards",
+  "manifesto"
 ]) {
   assert.ok(prompt.includes(required), `Prompt sem ${required}.`);
 }
+for (const operation of parameterizedDesignOperations) {
+  assert.ok(prompt.includes(operation), `Prompt sem operação de desenho ${operation}.`);
+}
+for (const forbidden of forbiddenParameterCatalogInSystemPrompt) {
+  assert.equal(
+    prompt.includes(forbidden),
+    false,
+    `Prompt de sistema incorporou o catálogo de parâmetros: ${forbidden}.`
+  );
+}
+assert.doesNotMatch(
+  prompt,
+  /(?:4C\/ID|Evidence-Centered Design|carga cognitiva|Sweller|Koedinger)/iu,
+  "Prompt de sistema incorporou teoria que pertence ao knowledge recuperável."
+);
 for (const obsolete of [
   "consultarProximaParte",
   "entregarFaseDeAutoria",
@@ -412,6 +476,15 @@ for (const obsoleteRule of [
 }
 assert.match(coreKnowledge, /workspace-mutation\.schema\.json/u);
 assert.match(resourceKnowledge, /consultarBibliotecaDeResources/u);
+for (const fileName of justInTimeKnowledgeFiles) {
+  const source = await readFile(
+    path.join(ROOT, "authoring", "knowledge", fileName),
+    "utf8"
+  );
+  assert.match(source, /`INTENT`/u, `${fileName} não declara orientação INTENT.`);
+  const heading = source.match(/^#\s+(.+)$/mu)?.[1];
+  assert.ok(heading && knowledge.includes(heading), `${fileName} não entrou no knowledge distribuído.`);
+}
 for (const operation of progressiveResourceOperations) {
   assert.ok(prompt.includes(operation), `Prompt sem operação ${operation}.`);
   assert.ok(resourceKnowledge.includes(operation), `Conhecimento sem operação ${operation}.`);
@@ -443,6 +516,34 @@ assert.ok(
 assert.ok(
   Buffer.byteLength(resourceKnowledge) < 180_000,
   "Conhecimento de resources cresceu além do limite de contexto planejado."
+);
+
+const microsoftDeclarativeAgent = JSON.parse(await readFile(
+  path.join(
+    ROOT,
+    "authoring",
+    "platforms",
+    "microsoft-365",
+    "declarative-agent",
+    "declarativeAgent.json"
+  ),
+  "utf8"
+));
+const microsoftInstructionsCopy = (await readFile(
+  path.join(
+    ROOT,
+    "authoring",
+    "platforms",
+    "microsoft-365",
+    "declarative-agent",
+    "instructions.txt"
+  ),
+  "utf8"
+)).trimEnd();
+assert.equal(
+  microsoftInstructionsCopy,
+  microsoftDeclarativeAgent.instructions,
+  "A cópia exata das instruções do agente Microsoft 365 divergiu do manifest."
 );
 
 const actionSource = await readFile(
@@ -652,19 +753,15 @@ for (const definition of AUTHORING_WORKSPACE_MCP_TOOLS) {
     definition.inputSchema,
     `${definition.name} divergiu do input contract canônico.`
   );
-  const successFields = definition.outputSchema.oneOf[0]
-    .properties.data.required || [];
   assert.equal(
     operation.responses["200"].content["application/json"].schema.$ref,
     "#/components/schemas/AraLearnActionSuccess"
   );
-  for (const field of successFields) {
-    assert.match(
-      operation.responses["200"].description,
-      new RegExp(`(?:^|, |: )${field}(?:,|\\.)`, "u"),
-      `${definition.name} não descreve o campo de sucesso ${field}.`
-    );
-  }
+  assert.match(
+    operation.responses["200"].description,
+    /^(?:Leitura concluída|Operação concluída|Conteúdo validado; não implica aprovação pedagógica)\.$/u,
+    `${definition.name} precisa de descrição curta; o output MCP fechado é normativo.`
+  );
   assert.equal(
     operation["x-openai-isConsequential"],
     Boolean(definition._meta?.["aralearn/actionConsequentialHint"]),
@@ -1074,6 +1171,12 @@ for (const artifact of [...manifest.archives, ...manifest.files]) {
 const schemaNames = (await readdir(path.join(ROOT, "authoring", "schemas"))).sort();
 assert.deepEqual(schemaNames, [
   "catalog-review.schema.json",
+  "design-parameter-assignment.schema.json",
+  "design-parameter-definition.schema.json",
+  "effective-design-snapshot.schema.json",
+  "instructional-analysis.schema.json",
+  "materialization-manifest.schema.json",
+  "resource-set.schema.json",
   "workspace-envelope.schema.json",
   "workspace-events.schema.json",
   "workspace-mutation.schema.json",

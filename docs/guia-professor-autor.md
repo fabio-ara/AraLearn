@@ -114,43 +114,63 @@ módulos, lições, microssequências e cards como partes identificáveis. O
 workspace permite materializar por etapas, examinar o que já existe e continuar
 em outra sessão sem depender do histórico completo da conversa.
 
-**Pré-condição:** configure uma integração externa de autoria no painel e
-autorize sua conta. A superfície **Plugin** atende clientes compatíveis com o
-Model Context Protocol (MCP), protocolo que permite a uma ferramenta solicitar
-operações estruturadas; a autorização usa OAuth, fluxo em que a pessoa concede
-acesso sem entregar sua senha ao cliente.
+**Pré-condição:** configure uma integração externa de autoria com o pacote
+versionado da distribuição e autorize sua conta. Clientes compatíveis com o
+Model Context Protocol (MCP) solicitam operações estruturadas; a autorização usa
+OAuth, fluxo em que a pessoa concede acesso sem entregar sua senha ao cliente.
 
 **Passos:**
 
 1. Pela conversa externa, crie ou abra o workspace.
-2. Defina público, finalidade, escopo, profundidade e fontes ainda ausentes do
-   contexto disponível.
+2. Use primeiro o pedido, o brief, as fontes e o planejamento já registrados;
+   complete somente público, finalidade, escopo ou fonte realmente ausentes.
 3. Responda somente às perguntas cuja informação possa mudar materialmente o
    desenho; o assistente deve indicar qual decisão depende da resposta.
-4. Revise a síntese de condições de aprendizagem, exigências do conteúdo,
-   dificuldades previstas e respostas de desenho propostas.
-5. Aprove ou corrija esses vínculos e a progressão antes de produzir os cards.
-6. Divida o trabalho em partes pequenas e ordenadas.
-7. Materialize uma microssequência por vez.
-8. Depois de cada parte, audite conteúdo, pré-requisitos, recursos, práticas e
+4. Revise o mapa de curso, lições e microssequências. Aprove ou corrija somente
+   quando o mandato ou uma decisão material exigir.
+5. Divida o trabalho em Partes coerentes, ordenadas e dimensionadas pela
+   cobertura e pela revisão humana, sem cota de cards ou microssequências.
+6. Para cada microssequência, leia o slice corrente e analise condições,
+   exigências do conteúdo, dificuldades previstas e respostas de desenho.
+7. Deixe os parâmetros em Auto sempre que não houver motivo para alterar. Se
+   precisar de outro valor, peça a mudança em linguagem natural; override
+   manual e lock de pesquisa usam a mesma estrutura persistida.
+8. Quando Auto precisar de um conjunto de resources novo, deixe o servidor
+   congelar as versões adequadas por facetas. Depois do snapshot, o assistente
+   escolhe localmente somente dentro desse conjunto e carrega um contrato exato
+   por chamada; você não seleciona package card a card nem informa ids.
+9. Construa toda a Parte autorizada, uma microssequência por vez: blueprint e
+   cards em memória, validação, gravação, releitura e manifesto. Avance sem nova
+   aprovação apenas porque uma microssequência terminou.
+10. Depois de cada Parte, audite conteúdo, pré-requisitos, resources, práticas e
    feedback.
-9. Verifique também se cada resposta prometida foi materializada, se alguma
+11. Verifique também se cada resposta prometida foi materializada, se alguma
    prática antecede sua base e se o curso depende de um meio indisponível.
-10. Repare os achados aprovados e reavalie.
-11. Abra o mesmo item em Trilhas para testar a experiência real de estudo.
+12. Repare somente os achados aprovados e reavalie de forma independente.
+13. No aplicativo, abra **Autoria → Workspaces** para acompanhar Mapa, Desenho,
+    Conteúdo e Auditoria. Ajuste valores somente por controles estruturados;
+    use Auto quando não quiser conservar override.
+14. Em **Desenho → Resources**, consulte ou restrinja o conjunto por facetas e
+    escopo. Não selecione a representação de cada card; o GPT escolhe localmente
+    entre as versões permitidas.
+15. Volte a **Estudo** e abra o mesmo conteúdo em Trilhas para testar a
+    experiência real.
 
 Condições descrevem o cenário; respostas são decisões locais. Não escolha um
 estilo pedagógico global para todo o curso. A síntese é uma hipótese de
 planejamento, não um diagnóstico automático dos estudantes: a responsabilidade
-por confirmá-la e aprovar o desenho continua sendo da pessoa autora.
+por decisões materiais e pela aprovação de findings continua sendo da pessoa
+autora.
 
 **Resultado esperado:** o conteúdo já materializado pode ser estudado sem esperar uma
 categoria burocrática de “pronto”. O planejamento corrente indica o que ainda
 falta; a ausência de partes futuras não torna ilegíveis as partes existentes.
 
 **Sem conexão:** a composição já replicada pode ser lida e receber correções
-textuais locais permitidas. Planejamento conversacional, reorganização e
-publicação dependem do servidor.
+textuais locais permitidas. O último Mapa/Desenho pode ser consultado e um
+override previamente autorizado pode ficar pendente; planejamento
+conversacional, novo conjunto de Resources, reorganização e publicação dependem
+do servidor.
 
 **Recuperação:** retome pelo estado compacto do workspace, releia a parte atual
 e confirme a revisão antes de continuar. Não use a lembrança da conversa como
@@ -159,6 +179,46 @@ e confirme a revisão antes de continuar. Não use a lembrança da conversa como
 
 O procedimento completo está em [Criar cursos pelo
 chat](criar-cursos-pelo-chat.md).
+
+## Decidir achados da Auditoria
+
+**Pré-condição:** a rodada de auditoria terminou e sua conta pode tomar decisões
+no workspace. Auditoria de conformidade não é revisão factual nem evidência de
+aprendizagem.
+
+**Passos:**
+
+1. Abra **Autoria → Workspace → Auditoria**.
+2. Escolha uma Parte ou microssequência. Leia `Conforme`, `Com achado` e `Não
+   verificada` como estados distintos; não trate ausência de verificação como
+   aprovação.
+3. Abra o achado e examine a evidência pública, o critério, a origem e o alvo
+   real. A gravidade organiza o trabalho; não é nota do curso ou do professor.
+   Em uma Parte, abra a microssequência desejada pela lista progressiva; o app
+   mantém a rodada filha que realmente compôs aquele histórico.
+4. Use **Aprovar para reparo** somente quando o problema e o escopo estiverem
+   corretos. Use **Rejeitar** para falso positivo ou interpretação inadequada.
+5. Depois das decisões, use **Preparar reparos**. Isso grava um mandato limitado
+   aos achados aprovados; não executa reparo dentro do aplicativo.
+6. Peça ao GPT externo conectado por MCP que retome o workspace e cumpra esse
+   mandato. Confira o conteúdo alterado.
+7. Quando o achado estiver reparado, use **Solicitar reauditoria da Parte**. Se
+   o conteúdo ainda não pertencer a uma Parte, solicite a reauditoria do
+   workspace. A nova rodada deve reler o estado corrente de forma independente
+   e pode encontrar outro problema.
+
+**Resultado esperado:** achado rejeitado nunca autoriza reparo; achado aprovado
+continua rastreável até correção e reauditoria; a Parte apresenta cobertura e
+distribuição sem score de qualidade.
+
+**Sem conexão:** resumo, evidência e alvo já sincronizados permanecem
+consultáveis. Decidir, preparar reparos e solicitar reauditoria exige rede,
+autoridade corrente e revisão atual do workspace.
+
+**Recuperação:** em conflito, releia o workspace. Não repita a decisão em cima
+de estado antigo nem substitua um mandato corrente sem concluir ou revisar seu
+escopo. Antes de pedir outra auditoria, conclua os demais achados ainda presentes
+no mandato de reparo preparado.
 
 ## Escolher e revisar recursos de representação
 
@@ -190,7 +250,7 @@ fazer triagem.
 
 **Passos:**
 
-1. Abra o detalhe do workspace em Trilhas.
+1. Abra **Autoria**, escolha o workspace e entre em **Auditoria**.
 2. Consulte as observações e filtre quando necessário.
 3. Leia o card exato antes de interpretar o texto.
 4. Responda ou marque a observação como considerada quando ainda houver trabalho.
@@ -245,6 +305,16 @@ medem atenção, frequência, dificuldade ou aprendizagem. Não construa ranking
 nota a partir desses estados. A distinção entre dado funcional e construto
 educacional está em [Estado de estudo não
 punitivo](estado-de-estudo-nao-punitivo.md).
+
+## Ler Resultados sem criar uma nota única
+
+Abra **Resultados** para confrontar valores efetivos, Resources materializados,
+Partes, findings e conclusão estrutural explícita. O gráfico e a tabela repetem
+a mesma base; use **Definição e proveniência** antes de interpretar. Auto não é
+superior a override, mais variedade de Resources não é melhor por si só e
+ausência de conclusão pode ser apenas dado ainda não sincronizado. Exporte CSV
+ou JSON somente quando precisar conferir o recorte versionado fora do app.
+Veja [Analytics instrucionais](analytics-instrucionais.md).
 
 ## Leituras relacionadas
 

@@ -303,6 +303,7 @@ function createJourneyAdapter() {
         review: true,
         comment: true,
         publish: true,
+        research: true,
         manage: true
       },
       revision: state.revision,
@@ -457,6 +458,16 @@ function createJourneyAdapter() {
           includeDescendants
         })
       });
+    },
+
+    async getAuthoringDesignState({ workspaceId }) {
+      const state = workspace(workspaceId);
+      return {
+        workspaceRevision: state.revision,
+        effectiveSnapshot: null,
+        materializationState: "legacy_untracked",
+        resourceAvailabilityState: "legacy_unrestricted"
+      };
     },
 
     async publishWorkspaceCourse({
@@ -880,10 +891,10 @@ test("jornada Dataprev atravessa Chatbot autoral e Plugin editorial sem snapshot
       "source-discipline",
       "contextual-planning",
       "incremental-materialization",
+      "human-review",
+      "resource-selection",
+      "resource-set-discovery",
       "coverage-and-dimensioning",
-      "blueprint-before-materialization",
-      "practice-design",
-      "resource-selection"
     ]
   );
 
@@ -914,13 +925,15 @@ test("jornada Dataprev atravessa Chatbot autoral e Plugin editorial sem snapshot
   });
   assert.equal(structured.revision, contextUpdated.revision + 1);
 
-  await actionCall(chatbot, "consultarBibliotecaDeResources", {
-    operation: "contracts",
-    packages: [
-      { packageId: "aralearn.resource.paragraph", version: "1.0.0" },
-      { packageId: "aralearn.resource.table", version: "1.0.0" }
-    ]
-  });
+  for (const packageId of [
+    "aralearn.resource.paragraph",
+    "aralearn.resource.table"
+  ]) {
+    await actionCall(chatbot, "consultarBibliotecaDeResources", {
+      operation: "contracts",
+      packages: [{ packageId, version: "1.0.0" }]
+    });
+  }
 
   const invalidCardCases = [
     {

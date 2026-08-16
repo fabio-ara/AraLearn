@@ -125,11 +125,111 @@ test("prosa do card mantém 15,5 px e entrelinha de 1,5 nas larguras móveis", a
     });
   }
 
+  await page.setViewportSize({ width: 320, height: 900 });
   await page.locator('[data-action="next-card"]').click();
   const gap = page.locator('[data-action="text-gap-open-choice"]');
   await expect(gap).toHaveCSS("font-size", "16px");
   await gap.click();
-  await expect(page.locator('[data-action="text-gap-set-choice"]').first()).toHaveCSS("font-size", "16px");
+  const option = page.locator('[data-action="text-gap-set-choice"]').first();
+  await expect(option).toHaveCSS("font-size", "11.04px");
+  await expect(option).toHaveCSS("font-weight", "400");
+  await expect(option).toHaveCSS("min-height", "28px");
+  await expect(option).toHaveCSS("overflow-wrap", "anywhere");
+});
+
+test("alternativas compactas preservam texto, alvo e teclado com ampliação", async ({ page }) => {
+  for (const theme of ["light", "dark"]) {
+    await page.evaluate((selectedTheme) => {
+      localStorage.setItem("aralearn.ui.theme", selectedTheme);
+      localStorage.removeItem("aralearn.resource-test.progress.v3");
+    }, theme);
+    await page.reload();
+    await page.waitForFunction(() => globalThis.__RESOURCE_TEST_COURSE_READY__ === true);
+    await openModule(page, 0);
+    await page.locator('[data-action="next-card"]').click();
+
+    const gap = page.locator('[data-action="text-gap-open-choice"]');
+    await gap.focus();
+    await gap.press("Enter");
+    const options = page.locator('[data-action="text-gap-set-choice"]');
+    await expect(options).toHaveCount(3);
+    await expect(page.locator("html")).toHaveAttribute("data-color-mode", theme);
+
+    const firstOption = options.first();
+    const originalLabel = await firstOption.textContent();
+    await firstOption.evaluate((button) => {
+      button.textContent = "identificador_sem_espacos_extremamente_longo_que_precisa_quebrar_sem_overflow_horizontal_1234567890";
+    });
+
+    for (const width of [320, 360, 390, 430]) {
+      await page.setViewportSize({ width, height: 900 });
+      for (const rootFontSize of [16, 32]) {
+        await page.evaluate((size) => {
+          document.documentElement.style.fontSize = `${size}px`;
+        }, rootFontSize);
+
+        const audit = await page.locator(".runtime-flow-prompt").evaluate((prompt) => {
+          const list = prompt.querySelector(".token-options");
+          const buttons = [...list.querySelectorAll(".token-option")];
+          const details = buttons.map((button) => {
+            const rect = button.getBoundingClientRect();
+            const range = document.createRange();
+            range.selectNodeContents(button);
+            return {
+              targetIsLargeEnough: rect.width >= 24 && rect.height >= 24,
+              overflowX: button.scrollWidth - button.clientWidth,
+              textIsInside: [...range.getClientRects()].every((line) => (
+                line.left >= rect.left - 0.6
+                && line.right <= rect.right + 0.6
+                && line.top >= rect.top - 0.6
+                && line.bottom <= rect.bottom + 0.6
+              )),
+              overflowWrap: getComputedStyle(button).overflowWrap
+            };
+          });
+          const maxScrollTop = Math.max(0, list.scrollHeight - list.clientHeight);
+          list.scrollTop = maxScrollTop;
+          const lastRect = buttons.at(-1).getBoundingClientRect();
+          const listRect = list.getBoundingClientRect();
+          const lastOptionIsReachable = maxScrollTop === 0 || (
+            lastRect.top >= listRect.top - 1 && lastRect.bottom <= listRect.bottom + 1
+          );
+          list.scrollTop = 0;
+          return {
+            fontSize: getComputedStyle(buttons[0]).fontSize,
+            details,
+            listOverflowX: list.scrollWidth - list.clientWidth,
+            promptOverflowX: prompt.scrollWidth - prompt.clientWidth,
+            documentOverflowX: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+            lastOptionIsReachable
+          };
+        });
+
+        expect(audit.fontSize).toBe(rootFontSize === 16 ? "11.04px" : "22.08px");
+        expect(audit.details.every(({ targetIsLargeEnough }) => targetIsLargeEnough)).toBe(true);
+        expect(audit.details.every(({ overflowX }) => overflowX <= 1)).toBe(true);
+        expect(audit.details.every(({ textIsInside }) => textIsInside)).toBe(true);
+        expect(audit.details.every(({ overflowWrap }) => overflowWrap === "anywhere")).toBe(true);
+        expect(audit.listOverflowX).toBeLessThanOrEqual(1);
+        expect(audit.promptOverflowX).toBeLessThanOrEqual(1);
+        expect(audit.documentOverflowX).toBeLessThanOrEqual(1);
+        expect(audit.lastOptionIsReachable).toBe(true);
+      }
+    }
+
+    await page.evaluate(() => {
+      document.documentElement.style.fontSize = "16px";
+    });
+    await firstOption.evaluate((button, label) => {
+      button.textContent = label;
+    }, originalLabel);
+    await gap.focus();
+    await gap.press("Tab");
+    await expect(firstOption).toBeFocused();
+    await firstOption.press("Enter");
+    await expect(options).toHaveCount(0);
+    await expect(gap).toHaveAttribute("data-empty", "false");
+  }
 });
 
 test("paragraph usa alternativas sob demanda e segundo toque esvazia a lacuna", async ({ page }) => {

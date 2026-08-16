@@ -155,7 +155,7 @@ administrativa global.
 7. Crie uma estrutura pequena e salve os cards validados de uma
    microssequência.
 8. Renomeie ou mova uma entidade com a revisão atual.
-9. Consulte `revisarMicroteoriasDoWorkspace`.
+9. Consulte o slice corrente com `gerirDesenhoInstrucional` e `read_slice`.
 10. Abra Trilhas e confirme que a parte pronta pode ser estudada sem publicação.
 11. Tente escrever com uma revisão antiga e confirme o conflito sem
     sobrescrita.

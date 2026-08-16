@@ -1,0 +1,156 @@
+{
+  "date": "2026-08-16",
+  "contract": "aralearn.authoring-integrated-validation.v1",
+  "state": "checkpoint_not_final_acceptance",
+  "validatedProductCommit": "cb777d0d7f5fc5c2c77be0839cc59564dd8a8e51",
+  "scope": ["issues-102-108", "issue-109-integration"],
+  "commits": {
+    "issue102": "e5951d51",
+    "issue103": "e037d628",
+    "issue104": "9d1a9a2f",
+    "issue105": "57511c6b",
+    "issue106": "e61f163a",
+    "issue107": "b63383d5",
+    "issue108": "f3346eb3"
+  },
+  "executions": [
+    {
+      "command": "npm test",
+      "passed": 1164,
+      "failed": 0,
+      "skipped": 1,
+      "total": 1165,
+      "durationSeconds": 112.468,
+      "note": "O skip requer ARALEARN_TEST_DATABASE_URL e psql para concorrência PostgreSQL real."
+    },
+    {
+      "command": "npm run test:e2e",
+      "passed": 143,
+      "failed": 0,
+      "skipped": 1,
+      "total": 144,
+      "durationSeconds": 243.8,
+      "note": "A captura visual é opt-in na execução normal."
+    },
+    {
+      "command": "node --test --test-name-pattern=\"#107 percorre base auditada\" tests/runtime/authoring-experiments-pglite.test.js",
+      "passed": 1,
+      "failed": 0,
+      "durationSeconds": 4.1
+    },
+    {
+      "command": "npx playwright test tests/e2e/study-card-progression.spec.js -g \"navegação de estudo permanece imediata em um curso extenso\"",
+      "passed": 1,
+      "failed": 0,
+      "durationSeconds": 7.1
+    },
+    {
+      "command": "npx supabase@2.109.1 db reset --local && npx supabase@2.109.1 test db --local",
+      "passed": 330,
+      "failed": 0,
+      "files": 7,
+      "note": "Migrações aplicadas em PostgreSQL local; pgTAP 009, 020, 030, 040, 050, 060 e 070 aprovados."
+    },
+    {
+      "command": "prepare-local-catalog-publisher + publishCatalogFixtures + npm run test:supabase:smoke",
+      "passed": 1,
+      "failed": 0,
+      "note": "Smoke PostgREST/Auth/RLS aprovado com a fixture canônica publicada localmente."
+    },
+    {
+      "command": "npm run test:authoring:mcp:local:oauth",
+      "passed": 1,
+      "failed": 0,
+      "note": "Discovery, DCR, PKCE, consentimento, mutação MCP e limpeza de concessão, cliente e usuário temporários aprovados na stack local."
+    },
+    {
+      "command": "Invoke-RestMethod hosted MCP protected-resource + OAuth discovery",
+      "passed": 1,
+      "failed": 0,
+      "note": "O projeto hospedado vinculado respondeu com recurso MCP canônico, escopo openid e PKCE S256; não inclui autenticação nem mutações hospedadas."
+    },
+    {
+      "command": "npm run test:authoring:mcp:hosted:oauth",
+      "passed": 1,
+      "failed": 0,
+      "note": "DCR, PKCE, consentimento, replay, autoria incremental, leitura e limpeza passaram no projeto hospedado vinculado. A Site URL hospedada foi corrigida para a origem pública antes da execução."
+    },
+    {
+      "command": "node supabase/tests/authoring-action-local-journey.mjs",
+      "passed": 1,
+      "failed": 0,
+      "note": "Jornada percorre análise, ResourceSet, parâmetros, snapshot, blueprint, cards, publicação, revisão editorial, catálogo e limpeza."
+    }
+  ],
+  "browserLargeCourse": {
+    "fixture": "large-professional-seed-course",
+    "utf8Bytes": 3432348,
+    "modules": 3,
+    "lessons": 24,
+    "microsequences": 175,
+    "cards": 1052,
+    "chromium": {
+      "jsHeapUsedBeforeBytes": 670596,
+      "jsHeapUsedAfterBytes": 14215064,
+      "jsHeapUsedDeltaBytes": 13544468,
+      "nodeCountAfter": 4737,
+      "documentCountAfter": 8
+    },
+    "latencyMilliseconds": {
+      "timerQueueDelay": 2,
+      "openOverviewHandler": 11,
+      "openCard": 29.1,
+      "backToLesson": 1.3,
+      "backToModule": 2.3
+    },
+    "limits": {
+      "maxJsHeapUsedBytes": 268435456,
+      "maxJsHeapUsedDeltaBytes": 167772160,
+      "maxSynchronousNavigationHandlerMilliseconds": 150
+    }
+  },
+  "relationalExperimentFixture": {
+    "engine": "PGlite/PostgreSQL",
+    "privateAuthoringRelations": 68,
+    "relationalBytesIncludingIndexesAndToast": 3817472,
+    "referencedArtifactBytes": 5120,
+    "note": "PGlite mede relações e referências da fixture; os bytes dos objetos não são simulados como um bucket de produção."
+  },
+  "offlineAndPayloadBudgets": {
+    "parameterizedDesign500Microsequences": {
+      "serializedRecords": 1500,
+      "serializedBytes": 7042790,
+      "evidence": "docs/evidence/parameterized-authoring-storage-budget-2026-08-15.json"
+    },
+    "workspaceDesignOfflineStore": {
+      "maxSliceBytes": 2097152,
+      "maxWorkspaceBytes": 33554432,
+      "maxQueueBytes": 524288,
+      "physicalIndexedDbBytes": "not_exposed_by_browser_api"
+    },
+    "mcpAndAction": {
+      "maxResponseBytes": 98304,
+      "openApiBytes": 82375,
+      "openApiPaths": 30,
+      "systemPromptBytes": 7563
+    }
+  },
+  "visualEvidence": {
+    "captureCommand": "ARALEARN_CAPTURE_AUTHORING=1 npx playwright test tests/e2e/authoring-workspace-surface.spec.js -g \"gera capturas canônicas\"",
+    "widths": [360, 390, 412, 1280],
+    "themes": ["light", "dark"],
+    "newFlowAndResultsImages": 16,
+    "allAuthoringImages": 27,
+    "allAuthoringImagesBytes": 4264159,
+    "manualSpotChecks": [
+      "docs/screenshots/authoring/authoring-flow-360-light.png",
+      "docs/screenshots/authoring/authoring-results-1280-dark.png"
+    ]
+  },
+  "notAcceptanceEvidence": [
+    "Não mede eficácia pedagógica, causalidade ou validade de instrumentos.",
+    "Não substitui a jornada Action atualizada ou a aceitação humana real.",
+    "Não substitui o roteiro com pessoa leiga real em celular e desktop."
+  ],
+  "resume": "docs/checkpoint-autoria-109.md"
+}

@@ -17,14 +17,16 @@ e os aproxima pela sincronização.
 ### Coleções
 
 **Coleções** é o catálogo compartilhado. Ele contém publicações oficiais que
-podem ser pesquisadas e adicionadas à área pessoal. Abrir um item no catálogo
+podem ser pesquisadas e adicionadas à área pessoal. Ela fica em **Autoria** por
+ser também a superfície de distribuição editorial. Abrir um item no catálogo
 não o adiciona à conta.
 
 ### Trilhas
 
-**Trilhas** reúne cursos selecionados e projetos de autoria aos quais a conta
-tem acesso. Os grupos de Trilhas são pessoais: servem para organização e não
-alteram o conteúdo de um curso, um workspace ou uma Coleção.
+**Trilhas** reúne os cursos selecionados para estudo. Os grupos de Trilhas são
+pessoais: servem para organização e não alteram o conteúdo de um curso, um
+workspace ou uma Coleção. Workspaces acessíveis aparecem em **Autoria**, não
+como um segundo tipo de item de estudo.
 
 ### Réplica local
 
@@ -110,7 +112,7 @@ os dados da identidade anterior.
 
 **Passos:**
 
-1. Abra o painel pelo botão de áreas, no canto superior direito.
+1. Abra **Conta e aparência**, no canto superior direito.
 2. No grupo **Aparência**, escolha **Tema do sistema**, **Tema claro** ou
    **Tema escuro**.
 
@@ -123,14 +125,216 @@ no AraLearn.
 **Recuperação:** se o tema não mudar, recarregue o aplicativo; não é necessário
 apagar os cursos.
 
+## Alternar entre Estudo e Autoria
+
+**Pré-condição:** entre numa conta que tenha ao menos permissão de leitura sobre
+um workspace para usar a Autoria.
+
+**Passos:** use **Estudo** para voltar às Trilhas ou **Autoria** para abrir
+Workspaces e Coleções.
+
+**Resultado esperado:** apenas uma atividade ocupa a tela no celular. No
+desktop, o espaço adicional organiza a mesma navegação sem criar funções
+exclusivas. Trocar de atividade não copia o curso, não publica conteúdo e não
+perde o ponto corrente do leitor.
+
+**Sem conexão:** Estudo usa os cursos já baixados. Autoria mostra a última
+projeção local conhecida e identifica aquilo que aguarda sincronização; ela não
+inventa permissão nem estado remoto.
+
+**Recuperação:** se o workspace esperado não aparecer, restabeleça a conexão e
+sincronize. Não adicione o curso a Trilhas apenas para torná-lo editável.
+
+## Acompanhar um workspace no Mapa
+
+**Pré-condição:** abra **Autoria → Workspaces** e escolha um workspace.
+
+**Passos:** em **Mapa**, abra uma Parte e depois uma microssequência.
+
+**Resultado esperado:** os estados indicam planejamento, análise, conteúdo
+materializado e achado pendente sem usar quantidade de cards como medida
+principal. Partes coordenam o trabalho; não são tratadas como unidades
+pedagógicas. O estado vem do workspace corrente, e não do histórico do chat ou
+de ter visitado a tela antes.
+
+**Sem conexão:** a árvore e os estados já sincronizados continuam consultáveis,
+marcados como cópia local quando pertinente.
+
+**Recuperação:** diante de conflito, releia o workspace. O aplicativo não
+combina silenciosamente revisões concorrentes.
+
+## Consultar ou ajustar o Desenho
+
+**Pré-condição:** selecione uma microssequência e abra **Desenho**.
+
+**Passos:**
+
+1. Leia o valor efetivo e sua origem em linguagem comum.
+2. Para um parâmetro editável, abra o controle e escolha um valor permitido ou
+   use o stepper.
+3. Use **Auto** para retirar o override local e voltar à resolução vigente.
+
+**Resultado esperado:** a tela mostra somente parâmetros aplicáveis. Um valor
+bloqueado por pesquisa permanece visível e não editável. Não é preciso conhecer
+schema, revisão, snapshot ou identificador de definição.
+
+**Sem conexão:** um override permitido pode ficar como alteração pendente. Se
+Auto for escolhido antes do envio, a intenção anterior é cancelada em vez de
+ser aplicada mais tarde. Na reconexão, capacidade, lock e revisão são
+revalidados.
+
+**Recuperação:** conflito tem precedência sobre “pendente”. Releia, descarte a
+intenção local ou tente novamente a partir do estado corrente; não há merge
+automático.
+
+## Consultar ou restringir Resources
+
+**Pré-condição:** na tela **Desenho**, abra **Resources** quando o controle
+estiver disponível.
+
+**Passos:**
+
+1. Quando houver mais de um conjunto efetivo, escolha explicitamente qual
+   deseja inspecionar; o aplicativo não os mistura.
+2. Pesquise ou filtre progressivamente por família e facetas.
+3. Marque ou desmarque representações sem configurar cada card.
+4. Escolha o escopo disponível: microssequência, lição, curso ou um conjunto de
+   microssequências.
+5. Aplique e confira o resumo de êxitos, conflitos ou falhas parciais.
+
+**Resultado esperado:** a primeira camada mostra apenas um resumo, como
+**Auto · catálogo completo** ou o nome do conjunto e sua quantidade. Páginas e
+filtros não apagam itens ainda não visíveis nem desfazem uma desmarcação. A
+limitação de uma representação ausente permanece explícita; disponibilidade
+não obriga o GPT a usar todos os resources.
+
+**Sem conexão:** o resumo efetivo já sincronizado permanece visível em
+**Desenho**. Abrir ou editar a seleção completa exige conexão, porque o
+aplicativo precisa reler todos os membros, a autoridade e os locks antes de
+gravar. A interface falha fechada quando não consegue preservar o conjunto.
+
+**Recuperação:** em aplicação parcial, revise os alvos indicados e tente somente
+os pendentes. Um conflito não é apresentado como sucesso global.
+
+## Preparar um experimento instrucional
+
+**Pré-condição:** abra **Desenho** num workspace em que sua conta tenha a
+capacidade de pesquisa. A ação **Experimentos** aparece mesmo antes de escolher
+uma microssequência, pois o escopo pode ser curso, lição ou micro.
+
+**Passos:**
+
+1. Escolha uma publicação aprovada como base e delimite o escopo.
+2. Selecione um fator; use **Adicionar outro fator** somente quando o protocolo
+   realmente exigir mais de um.
+3. Defina ao menos duas condições e informe todos os valores em cada uma. O
+   aplicativo não cria combinações automáticas.
+4. Marque invariantes e escolha a regra de atribuição. Para `ResourceSet`,
+   confira o conjunto permitido e sua contagem; permitido não significa usado.
+5. Revise instrumentos/outcomes por referência e valide o protocolo.
+6. Gere as variantes, materialize e audite cada workspace filho.
+7. No diff, examine mudanças requeridas, derivadas e não previstas. Corrija,
+   aceite explicitamente ou invalide as inesperadas.
+8. Congele cada revisão e, em outra ação, inicie a coleta.
+
+**Resultado esperado:** protocolo, condição, locks, materialização, auditoria e
+artefato congelado formam uma linhagem reconstituível. Atribuição é executada
+no servidor e fixa uma revisão; a UI não sorteia nem troca condição.
+
+**Sem conexão:** o último estado já sincronizado pode servir de referência,
+mas protocolo, condição, freeze, início e assignment ficam indisponíveis. Um
+participante já atribuído continua estudando offline o curso sincronizado; novo
+enrollment ou assignment requer rede.
+
+**Recuperação:** conflito ou revogação exige releitura; não há merge silencioso
+nem outbox experimental. Uma variante congelada não é editada: informe o
+motivo, confirme a preservação das atribuições existentes e escolha **Criar
+revisão corrigida**. Novos ingressos aguardam o novo ciclo de geração,
+auditoria, decisão e freeze. Consulte [Experimentos instrucionais
+parametrizados](experimentos-instrucionais-parametrizados.md).
+
+## Consultar Resultados
+
+**Pré-condição:** abra um workspace sincronizado. O recorte experimental exige
+capacidade de pesquisa; o resumo do workspace respeita a capacidade de leitura.
+
+**Passos:** abra **Resultados**, escolha **Workspace** ou um experimento e leia
+uma pergunta por seção. Gráfico e tabela mostram a mesma base numérica. Abra
+**Definição e proveniência** para consultar linhas e dicionário versionados. Use
+os botões de exportação para baixar desenho, processo, atribuições ou outcomes;
+uma exportação experimental conserva pseudônimos locais, não contas.
+
+**Resultado esperado:** desenho, processo autoral, conclusão estrutural
+explícita e experimento permanecem separados. Ausência aparece como ausência;
+não existe score único, ranking ou inferência automática de atenção, esforço,
+domínio, aprendizagem ou causalidade.
+
+**Sem conexão:** o último overview sincronizado pode ser lido como desatualizado.
+Paginar linhas ou exportar exige rede e um pin corrente, para não misturar
+revisões.
+
+**Recuperação:** se o dataset mudar durante a paginação, releia desde a primeira
+página. Não combine arquivos de pins diferentes. Consulte [Analytics
+instrucionais](analytics-instrucionais.md) e o [Dicionário de métricas e
+datasets](dicionario-metricas-datasets.md).
+
+## Consultar e decidir achados da Auditoria
+
+**Pré-condição:** abra um workspace com uma rodada de auditoria registrada.
+
+**Passos:** use **Conteúdo** para abrir o leitor atual. Em **Auditoria**, escolha
+o workspace, uma Parte ou a microssequência corrente; leia o resumo em camadas,
+abra um achado e consulte evidência, critério e origem. Use **Abrir conteúdo**
+para conferir o alvo. Se o achado veio do resumo geral, use **Abrir rodada da
+Parte** ou da microssequência para confirmar que ela terminou. Quando tiver
+autoridade, escolha **Aprovar para reparo**
+ou **Rejeitar**. Depois de decidir os achados, **Preparar reparos** autoriza o
+GPT externo a operar somente os aprovados. Um achado reparado oferece
+**Solicitar reauditoria da Parte**; se a microssequência ainda não pertencer a
+uma Parte, a ação solicita a reauditoria do workspace.
+Em **Proveniência**, listas extensas aparecem como quantidade exibida de um
+total registrado; a interface não apresenta a amostra truncada como lista completa.
+Em uma rodada de Parte, a lista progressiva de microssequências abre exatamente
+a rodada filha usada naquela composição. Uma rodada completa que já não
+corresponde ao estado corrente permanece consultável como histórico, sem ações.
+
+**Resultado esperado:** o primeiro nível distingue `Conforme`, `Com achado` e
+`Não verificada`; ausência de rodada nunca aparece como aprovação. Não há nota
+de qualidade. Uma rodada ainda em revisão aparece como pendente e só recebe o
+estado concluído depois do registro explícito de conclusão. O detalhe mostra
+somente evidência pública, não raciocínio
+privado. O leitor preserva curso, módulo, lição, microssequência, card e, quando
+possível, o resource exato. O retorno reabre o mesmo achado, filtro e posição.
+Um workspace compartilhado pode ser lido sem ser adicionado silenciosamente a
+Trilhas. Alvo removido é mostrado como indisponível, não redirecionado por
+semelhança. Reparo continua separado da auditoria e a reauditoria relê o estado
+corrente de forma independente.
+
+Achados rejeitados ou já resolvidos permanecem no histórico da rodada, mas não
+mantêm o recorte com o rótulo de pendência. Uma nova auditoria não substitui um
+mandato de reparo que ainda contenha outro achado em andamento.
+
+**Sem conexão:** conteúdo, resumo e evidências já sincronizados continuam
+legíveis; decisões, preparação de reparos e pedido de reauditoria ficam
+desabilitados até reconectar. Listas truncadas informam que o resumo é parcial
+em vez de afirmar que não há pendências; páginas já lidas da rodada permanecem
+somente para consulta.
+
+**Recuperação:** se o workspace mudar em outra aba, releia antes de decidir; o
+aplicativo não combina decisões concorrentes silenciosamente. Se o alvo deixou
+de existir, volte ao detalhe do achado; se ele foi movido, **Abrir conteúdo** usa
+o caminho corrente, não o endereço antigo da rodada. Ao voltar a Estudo, uma prévia
+transitória do workspace é removida e a seleção anterior de Trilhas é
+restaurada.
+
 ## Encontrar um curso no catálogo
 
 **Pré-condição:** a consulta a Coleções requer conexão.
 
 **Passos:**
 
-1. Abra o painel pelo botão de áreas, no canto superior direito.
-2. Selecione a aba **Coleções**.
+1. Abra **Autoria**.
+2. Selecione **Coleções**.
 3. Use **Pesquisar cursos em Coleções** para restringir a lista.
 4. Examine título e descrição do resultado.
 
@@ -422,15 +626,17 @@ conta autenticada.
 
 **Passos:**
 
-1. Abra o painel e selecione **Chatbot**.
-2. Na superfície **Chatbot**, baixe instruções, conhecimentos e o esquema de
-   integração; crie as credenciais OAuth e vincule o identificador do GPT salvo.
-3. Na superfície **Plugin**, copie nome, descrição, endpoint e método de
-   autenticação para configurar um cliente compatível com MCP.
+1. Obtenha o pacote versionado da integração na distribuição do AraLearn.
+2. Importe instruções, knowledge e o esquema da Action no serviço externo;
+   crie as credenciais OAuth e vincule o identificador salvo quando o cliente
+   exigir essa associação.
+3. Para um cliente MCP, use nome, endpoint e método de autenticação descritos no
+   pacote e no guia de instalação.
 
 **Resultado esperado:** a ferramenta externa autentica a própria conta por
-OAuth e recebe somente as operações permitidas. As duas superfícies acessam o
-mesmo modelo de workspaces; diferem na forma de configuração do cliente.
+OAuth e recebe somente as operações permitidas. O aplicativo não cria um chat
+interno de Autoria: linguagem natural permanece no cliente externo, enquanto o
+workspace persiste o estado canônico e a interface o apresenta.
 
 **Sem conexão:** materiais de configuração já baixados podem ser consultados;
 registrar credenciais, autorizar a conta e operar o servidor exige rede.

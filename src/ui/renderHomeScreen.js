@@ -101,12 +101,10 @@ function renderHomeCourseMeta(course) {
     ["microsequence", course.microsequenceCount, "microssequência", "microssequências"],
     ["card", course.totalCount, "card", "cards"]
   ].filter(([, count]) => Number(count) > 0);
-  const metrics = course.kind === "plan"
-    ? structuralMetrics
-    : [
-        ["progress", `${course.completedCount}/${course.totalCount}`, null, null],
-        ...structuralMetrics.slice(0, 2)
-      ];
+  const metrics = [
+    ["progress", `${course.completedCount}/${course.totalCount}`, null, null],
+    ...structuralMetrics.slice(0, 2)
+  ];
   if (!metrics.length) return "";
   return (
     '<p class="muted tiny progress-meta">' +
@@ -133,9 +131,7 @@ function buildHomeCoursePreviews(
   const courses = Array.isArray(project?.courses) ? project.courses : [];
   const loadedWorkspaceItems = new Set(loadedTrailItemIds);
   if (!Array.isArray(trailSnapshot?.items)) return [];
-  return trailSnapshot.items.filter((item) =>
-    isStudyableTrailItem(item) || (item.kind === "plan" && item.workspaceId)
-  ).map((item) => {
+  return trailSnapshot.items.filter(isStudyableTrailItem).map((item) => {
       const identity = String(courseKeyByTrailItemId?.[item.itemId] || trailItemCourseKey(item));
       const canUseProjectCourse = !item.workspaceId || loadedWorkspaceItems.has(item.itemId);
       const course = canUseProjectCourse
@@ -198,40 +194,35 @@ function renderCoursesTopbar() {
     '<span class="brand-text">AraLearn</span>' +
     "</span>" +
     "</h1>" +
-    '<div class="lesson-top-actions">' +
-    '<button class="icon-ghost" type="button" data-action="open-central" title="Abrir painel AraLearn" aria-label="Abrir painel AraLearn">' +
-    renderUiIcon("panel", "home-tab-icon") +
-    "</button>" +
-    "</div>" +
+    '<button class="icon-ghost" type="button" data-action="open-settings"' +
+    ' title="Conta e aparência" aria-label="Conta e aparência">' +
+    renderUiIcon("more", "home-tab-icon") + "</button>" +
     "</header>"
   );
 }
 
 function renderCourseOrigin(course) {
-  const plan = course.kind === "plan";
   const catalog = course.origin === "catalog";
-  const kind = plan ? "plan" : catalog ? "catalog" : "private";
-  const label = plan ? "Planejamento" : catalog ? "Curso de Coleções" : "Curso privado";
+  const kind = catalog ? "catalog" : "private";
+  const label = catalog ? "Curso de Coleções" : "Curso privado";
   return (
     '<span class="home-course-origin is-' + kind +
     '" title="' + label + '" aria-label="' + label + '">' +
-    renderUiIcon(plan ? "edit" : catalog ? "folder" : "key", "home-course-origin-icon") +
+    renderUiIcon(catalog ? "folder" : "key", "home-course-origin-icon") +
     "</span>"
   );
 }
 
 function renderCourseUtilities(course, { canOrganize = false } = {}) {
-  const resetProgress = course.kind === "plan"
-    ? ""
-    : renderContextMenuButton({
-        action: "reset-course-progress-direct",
-        icon: "rotate",
-        label: "Zerar progresso do curso",
-        data: {
-          "course-key": course.id,
-          "trail-item-id": course.trailItemId
-        }
-      });
+  const resetProgress = renderContextMenuButton({
+    action: "reset-course-progress-direct",
+    icon: "rotate",
+    label: "Zerar progresso do curso",
+    data: {
+      "course-key": course.id,
+      "trail-item-id": course.trailItemId
+    }
+  });
   const edit = course.permissions.canEdit
     ? renderContextMenuButton({
         action: "edit-course",
@@ -271,25 +262,16 @@ function renderCourseUtilities(course, { canOrganize = false } = {}) {
     selectionId: course.selectionId,
     workspaceId: course.workspaceId
   });
-  const deleteLabel = course.kind === "plan" ? "Excluir plano" : "Excluir curso privado";
   const remove = deleteMode && deleteMode !== "catalog"
     ? renderContextMenuButton({
         action: "delete-course-direct",
         icon: "trash",
-        label: deleteLabel,
+        label: "Excluir curso privado",
         className: "is-danger",
         data: {
           "course-key": course.id,
           "trail-item-id": course.trailItemId
         }
-      })
-    : "";
-  const openWorkspace = course.workspaceId
-    ? renderContextMenuButton({
-        action: "open-home-workspace",
-        icon: "prompt",
-        label: "Abrir detalhes da autoria",
-        data: { "workspace-id": course.workspaceId }
       })
     : "";
   return (
@@ -299,7 +281,7 @@ function renderCourseUtilities(course, { canOrganize = false } = {}) {
     '" title="Ações do curso" aria-label="Ações do curso">' +
     renderUiIcon("more", "home-tab-icon") + "</summary>" +
     '<div class="learning-spaces-context-menu-list home-course-context-actions">' +
-    resetProgress + openWorkspace + edit + moveToGroup + removeFromTrails + remove +
+    resetProgress + edit + moveToGroup + removeFromTrails + remove +
     "</div></details>"
   );
 }
@@ -470,7 +452,7 @@ function renderCoursePreview(course, reviewItems = [], {
 
 function buildCourseGroups(courses, trailSnapshot) {
   const byItemId = new Map(courses.map((course) => [course.trailItemId, course]));
-  return groupTrailItems(trailSnapshot, { includePlans: true }).map((group) => ({
+  return groupTrailItems(trailSnapshot).map((group) => ({
     id: group.id,
     title: group.title,
     courses: group.items.map((item) => byItemId.get(item.itemId)).filter(Boolean)
@@ -666,6 +648,12 @@ export function renderHomeScreen({ project, progress, editorSupport = {} }) {
   return (
     '<section class="screen">' +
     renderCoursesTopbar() +
+    '<nav class="home-product-switch" aria-label="Área principal">' +
+    '<button class="is-active" type="button" aria-current="page" title="Estudo">' +
+    renderUiIcon("trail", "home-tab-icon") + '<span>Estudo</span></button>' +
+    '<button type="button" data-action="open-authoring"' +
+    ' title="Abrir Autoria">' + renderUiIcon("edit", "home-tab-icon") +
+    '<span>Autoria</span></button></nav>' +
     '<main class="screen-content courses-home-screen navigation-screen">' +
     '<section class="courses-home-list">' +
     renderCoursesPane({ project, progress, editorSupport }) +

@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
 import { createHash, randomBytes, randomUUID } from "node:crypto";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -11,6 +12,39 @@ import {
 
 const LOCAL_APP_ORIGIN = "http://127.0.0.1:4182";
 const CLIENT_REDIRECT_URI = "https://mcp-smoke.aralearn.invalid/callback";
+
+function localEnvironmentFromStatus(environment = process.env) {
+  if (
+    environment.SUPABASE_URL
+    || environment.ARALEARN_SUPABASE_URL
+  ) return environment;
+
+  let status;
+  try {
+    const useWindowsCommandShell = process.platform === "win32";
+    status = JSON.parse(execFileSync(
+      useWindowsCommandShell ? (process.env.ComSpec || "cmd.exe") : "npx",
+      useWindowsCommandShell
+        ? ["/d", "/s", "/c", "npx --yes supabase@2.109.1 status --output json"]
+        : ["--yes", "supabase@2.109.1", "status", "--output", "json"],
+      { cwd: path.resolve(fileURLToPath(import.meta.url), "..", ".."), encoding: "utf8" }
+    ));
+  } catch (error) {
+    throw new Error(
+      "Não foi possível obter as credenciais da stack Supabase local. "
+      + "Inicie-a com 'npx --yes supabase@2.109.1 start' ou defina SUPABASE_URL, "
+      + "SUPABASE_SERVICE_ROLE_KEY e SUPABASE_ANON_KEY.",
+      { cause: error }
+    );
+  }
+
+  return {
+    ...environment,
+    SUPABASE_URL: status.API_URL,
+    SUPABASE_SERVICE_ROLE_KEY: status.SERVICE_ROLE_KEY,
+    SUPABASE_ANON_KEY: status.ANON_KEY
+  };
+}
 
 function normalizedEnvironment(environment) {
   return {
@@ -87,24 +121,33 @@ async function requestJson(fetchImpl, url, init, label, {
 }
 
 function oauthUserHeaders(publishableKey, accessToken, {
-  contentType = false
+  contentType = false,
+  origin = LOCAL_APP_ORIGIN
 } = {}) {
   return {
     apikey: publishableKey,
     Authorization: `Bearer ${accessToken}`,
-    Origin: LOCAL_APP_ORIGIN,
-    Referer: `${LOCAL_APP_ORIGIN}/`,
+    Origin: origin,
+    Referer: `${origin}/`,
     ...(contentType ? { "Content-Type": "application/json" } : {})
   };
 }
 
-function localConfiguration(environment) {
+function oauthConfiguration(environment, { allowHosted = false } = {}) {
   const normalized = normalizedEnvironment(environment);
   const configuration = resolveSupabaseServerEnvironment(normalized);
-  assert(
-    isLocalSupabaseUrl(configuration.supabaseUrl),
-    "A provisão OAuth destrutiva só pode usar a stack Supabase local."
-  );
+  if (allowHosted) {
+    assert(
+      !isLocalSupabaseUrl(configuration.supabaseUrl)
+      && /^https:\/\/[^/]+$/u.test(configuration.supabaseUrl),
+      "A provisão hospedada exige uma Project URL HTTPS não local."
+    );
+  } else {
+    assert(
+      isLocalSupabaseUrl(configuration.supabaseUrl),
+      "A provisão OAuth destrutiva só pode usar a stack Supabase local."
+    );
+  }
   const projectUrl = configuration.supabaseUrl.replace(/\/+$/u, "");
   return {
     ...configuration,
@@ -119,10 +162,13 @@ export async function provisionLocalMcpOAuthToken({
   createId = randomUUID,
   createBytes = randomBytes,
   nowSeconds = () => Math.floor(Date.now() / 1000),
-  lifecycle = {}
+  lifecycle = {},
+  allowHosted = false,
+  consentOrigin = LOCAL_APP_ORIGIN,
+  consentPath = "/"
 } = {}) {
   assert.equal(typeof fetchImpl, "function", "fetch indisponível para a provisão OAuth.");
-  const configuration = localConfiguration(environment);
+  const configuration = oauthConfiguration(environment, { allowHosted });
   Object.assign(lifecycle, configuration, {
     clientId: null,
     oauthGrantCreated: false,
@@ -259,14 +305,16 @@ export async function provisionLocalMcpOAuthToken({
   const consentUrl = new URL(consentLocation, configuration.projectUrl);
   assert.equal(
     consentUrl.origin,
-    LOCAL_APP_ORIGIN,
-    "O consentimento OAuth não aponta para a origem local do AraLearn."
+    consentOrigin,
+    "O consentimento OAuth não aponta para a origem configurada."
   );
-  assert.equal(
-    consentUrl.pathname,
-    "/",
-    "O consentimento OAuth não aponta para o caminho local configurado."
-  );
+  if (consentPath) {
+    assert.equal(
+      consentUrl.pathname,
+      consentPath,
+      "O consentimento OAuth não aponta para o caminho configurado."
+    );
+  }
   const authorizationId = consentUrl.searchParams.get("authorization_id");
   assert.match(
     String(authorizationId || ""),
@@ -282,7 +330,8 @@ export async function provisionLocalMcpOAuthToken({
     {
       headers: oauthUserHeaders(
         configuration.publishableKey,
-        session.access_token
+        session.access_token,
+        { origin: consentOrigin }
       )
     },
     "Leitura do consentimento OAuth"
@@ -300,7 +349,7 @@ export async function provisionLocalMcpOAuthToken({
       headers: oauthUserHeaders(
         configuration.publishableKey,
         session.access_token,
-        { contentType: true }
+        { contentType: true, origin: consentOrigin }
       ),
       body: JSON.stringify({ action: "approve" })
     },
@@ -347,6 +396,15 @@ export async function provisionLocalMcpOAuthToken({
     "A credencial administrativa não pode ser reutilizada como bearer do MCP."
   );
   return { ...lifecycle, accessToken };
+}
+
+export async function provisionHostedMcpOAuthToken(options = {}) {
+  return provisionLocalMcpOAuthToken({
+    ...options,
+    allowHosted: true,
+    consentOrigin: "https://fabio-ara.github.io",
+    consentPath: null
+  });
 }
 
 export async function cleanupLocalMcpOAuthProvision({
@@ -499,5 +557,5 @@ const entryPoint = process.argv[1]
   ? path.resolve(process.argv[1])
   : "";
 if (entryPoint === fileURLToPath(import.meta.url)) {
-  await runLocalMcpOAuthSmoke();
+  await runLocalMcpOAuthSmoke({ environment: localEnvironmentFromStatus() });
 }

@@ -86,7 +86,7 @@ export function pedagogicalBlueprintContract() {
     requiredSections: BLUEPRINT_KEYS,
     learningCondition: {
       required: COMPONENT_KEYS.learningCondition,
-      rule: "Registre somente uma condição real de estudo capaz de alterar o desenho desta microssequência."
+      rule: "Registre somente condições reais de estudo capazes de alterar o desenho desta microssequência."
     },
     contentDemand: {
       required: COMPONENT_KEYS.contentDemand,
@@ -261,6 +261,10 @@ export function evaluatePedagogicalBlueprint(raw, packageRegistry) {
 
   const practiceSteps = list(raw.practiceSteps);
   const practiceStepIds = requireUniqueIds(errors, practiceSteps, "practiceSteps");
+  const crossKindStepIds = practiceStepIds.filter((stepId) => knownTheorySteps.has(stepId));
+  if (crossKindStepIds.length) {
+    errors.push(`theorySteps e practiceSteps repetem ids: ${crossKindStepIds.join(", ")}.`);
+  }
   const knownPracticeSteps = new Set(practiceStepIds);
   const practicedLayers = new Set();
   practiceSteps.forEach((step, index) => {

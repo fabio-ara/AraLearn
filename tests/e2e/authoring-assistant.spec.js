@@ -1,7 +1,7 @@
 import { test, expect } from "@playwright/test";
 import { homeTrailSnapshotForProject } from "../support/homeTrailSnapshot.js";
 
-test("painel abre Chatbot e separa o Plugin", async ({ page }) => {
+test("painel público omite Chatbot e mantém Coleções separadas", async ({ page }) => {
   await page.goto("/");
   await page.evaluate(async () => {
     document.body.replaceChildren();
@@ -25,32 +25,20 @@ test("painel abre Chatbot e separa o Plugin", async ({ page }) => {
       async onSignedOut() {}
     });
     window.authoringAssistantTest = overlay;
-    await overlay.open("chatbot");
+    await overlay.open("collections");
   });
 
   await expect(page.locator("[data-learning-panel]")).toBeVisible();
-  const manage = page.getByRole("tab", { name: "Chatbot", exact: true });
-  await expect(manage).toHaveAttribute("aria-selected", "true");
-  await expect(page.getByRole("tab", { name: "Coleções" })).toHaveAttribute("aria-selected", "false");
-  await expect(page.locator('[data-assistant-action="surface-chatbot"]')).toHaveAttribute("aria-selected", "true");
-  await expect(page.locator('[data-assistant-action="surface-plugin"]')).toHaveAttribute("aria-selected", "false");
-  await expect(page.getByRole("button", { name: "Instruções" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Conhecimento essencial" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Resources" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Schema" })).toBeVisible();
-  await expect(page.getByRole("textbox", { name: "ID do GPT salvo" })).toHaveCount(0);
-  await page.locator('[data-assistant-action="surface-plugin"]').click();
-  await expect(page.getByRole("button", { name: "Nome" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Descrição" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Endpoint" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "OAuth" })).toBeVisible();
+  await expect(page.getByRole("tab", { name: "Chatbot", exact: true })).toHaveCount(0);
+  await expect(page.getByRole("tab", { name: "Coleções" })).toHaveAttribute("aria-selected", "true");
+  await expect(page.locator('[data-assistant-action="surface-chatbot"]')).toHaveCount(0);
+  await expect(page.locator('[data-assistant-action="surface-plugin"]')).toHaveCount(0);
   await page.getByRole("button", { name: "Fechar painel" }).click();
   await expect(page.locator("[data-learning-panel]")).toBeHidden();
 
-  await page.evaluate(() => window.authoringAssistantTest.open("chatbot"));
-  await manage.click();
-  await expect(page.locator('[data-assistant-action="surface-chatbot"]')).toBeVisible();
-  await page.getByRole("button", { name: "Conta" }).click();
+  await page.evaluate(() => window.authoringAssistantTest.open("settings"));
+  await expect(page.getByRole("dialog", { name: "Conta e aparência" })).toBeVisible();
+  await page.getByRole("button", { name: "Conta", exact: true }).click();
   await page.getByRole("menuitem", { name: "Sair" }).click();
   await expect.poll(() => page.evaluate(() => window.assistantSignedOut)).toBe(true);
 });

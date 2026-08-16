@@ -58,9 +58,11 @@ O AraLearn possui três classes de dados:
 
 1. **conteúdo pedagógico**, como cursos, microssequências, cards e pacotes de
    recursos;
-2. **estado pessoal**, como seleção, grupo, cursor, conclusão, marca **Rever** e
+2. **estado instrucional de autoria**, como análise, parâmetros resolvidos,
+   disponibilidade de resources, blueprint e manifesto;
+3. **estado pessoal**, como seleção, grupo, cursor, conclusão, marca **Rever** e
    observação;
-3. **controle operacional**, como revisão, cursor de sincronização, recibo de
+4. **controle operacional**, como revisão, cursor de sincronização, recibo de
    idempotência e operação pendente.
 
 Essas classes não percorrem necessariamente o mesmo canal. Um curso oficial é
@@ -77,6 +79,8 @@ projeção do curso no IndexedDB
 estado pessoal no PostgreSQL ◄── sincronização ──► estado e filas locais
 
 workspace no PostgreSQL ◄── RPC com CAS ──► edição autorizada
+
+desenho versionado no PostgreSQL ──► cache/fila não canônicos no syncState
 ```
 
 ## Por que usar IndexedDB
@@ -119,7 +123,7 @@ Os principais object stores são:
 | metadados estruturais | `guides`, `guideItems`, `topicStatements`, `microsequenceStatements`, `dependencies` | objetivos, limites e relações pedagógicas |
 | packages | `packageInstances`, `cardSources`, `cardTopics` | composição dos cards |
 | dados sincronizados | `courseSelections` | seleção oficial leve |
-| controle local | `outbox`, `syncState` | operações pendentes, curso instalado, curso adiado e curso de workspace |
+| controle local | `outbox`, `syncState` | operações pendentes, curso instalado, curso adiado, curso de workspace e fatias do desenho autoral |
 
 Índices como `byCourseId`, `byLessonPosition` e
 `byMicrosequencePosition` evitam varrer o banco inteiro para abrir uma parte.
@@ -188,12 +192,112 @@ coordenação concorrente. Ele mantém:
 - estado pessoal corrente;
 - membros, convites e capacidades de workspace;
 - composição mutável do workspace;
+- análises, parâmetros, conjuntos disponíveis, snapshots efetivos, blueprints e
+  manifestos versionados do desenho instrucional;
 - metadados e hash da revisão publicada;
 - feeds, cursores e recibos necessários à repetição segura.
 
 O PostgreSQL não conserva uma segunda decomposição de cada publicação oficial.
 O artefato integral fica no Storage. Essa decisão evita pagar simultaneamente
 pelo documento no Storage e por toda a mesma árvore em tabelas remotas.
+
+### Estado instrucional versionado do workspace
+
+O estado parametrizado não é acrescentado como um JSON monolítico em
+`authoring_state`. As migrations
+`20260815193000_parameterized_authoring_design.sql` e
+`20260815230000_authoring_blueprint_artifact_receipt.sql` separam as
+responsabilidades em famílias relacionais privadas e acrescentam a retomada dos
+hashes imutáveis do blueprint e a barreira para representações não canônicas:
+
+A mesma migração corrige a divergência da continuidade sem apagar comportamento
+anterior: o validador vigente continua responsável pelo envelope compacto,
+enquanto uma extensão fechada aceita `representationSelection` e
+`pedagogicalDiagnosis`; a allowlist de operações conserva o conjunto anterior e
+acrescenta somente as mutações do desenho parametrizado.
+
+| Família | Tabelas principais | Regra |
+| --- | --- | --- |
+| catálogo e análise | `authoring_design_parameter_definitions`; `authoring_instructional_analyses` | definições e análises são imutáveis por identidade e versão |
+| atribuições e resolução | `authoring_design_parameter_assignments`; `authoring_effective_design_snapshots`; tabelas filhas de valores e `ResourceSet`s | atribuições formam histórico append-only; o snapshot congela resultado e proveniência |
+| disponibilidade | `authoring_resource_sets`; `authoring_resource_set_members` | conjunto e membros fixam versões exatas do catálogo e dos packages |
+| plano | `authoring_pedagogical_blueprints`; `authoring_pedagogical_blueprint_bindings`; `authoring_microsequence_design_bindings` | blueprint v2 e binding completo são imutáveis e versionados; somente o apontador corrente da microssequência é uma projeção mutável |
+| realização | `authoring_materialization_manifests`; `authoring_materialization_states`; tabelas filhas de seleção, instâncias, cobertura e métricas | manifesto e projeções são imutáveis; o estado corrente incrementa quando cards da microssequência mudam |
+
+As RPCs públicas oferecem leituras focadas, preview da resolução e mutações
+transacionais. `list_authoring_design_parameter_definitions_v1`,
+`get_authoring_instructional_analysis_v1`,
+`list_authoring_design_parameter_assignments_v1`,
+`preview_authoring_effective_design_v1`,
+`get_authoring_effective_design_snapshot_v1`,
+`get_authoring_pedagogical_blueprint_artifact_v1`,
+`get_authoring_materialization_manifest_v1` e
+`get_authoring_design_state_v1` leem; as operações
+`save_authoring_instructional_analysis_v1`,
+`manage_authoring_design_parameter_assignment_v1`,
+`save_authoring_resource_set_v1`,
+`resolve_authoring_effective_design_v1`,
+`save_authoring_pedagogical_blueprint_v1` e
+`register_authoring_materialization_manifest_v1` escrevem. Desde a #104, MCP e
+Action encaminham essas operações por um serviço único, com slice progressivo
+por microssequência e recibos compactos.
+
+Cada escrita informa ator, workspace, `requestId`, hash do pedido e revisão
+esperada. O servidor bloqueia o workspace, aplica CAS, reavalia a capacidade e
+registra recibo idempotente antes de avançar a revisão. Objetos versionados
+rejeitam `UPDATE`; uma nova versão ou uma operação append-only preserva o estado
+anterior. Conteúdo conversacional e chaves de raciocínio privado são recusados.
+
+O caminho de ancestria é derivado das entidades correntes do workspace, não de
+um caminho fornecido como autoridade pelo cliente:
+
+```text
+workspace → course → module → lesson → microsequence
+```
+
+Parte fica fora da cadeia. O resolvedor prioriza `research_lock`,
+`manual_override`, `auto` e default, nessa ordem; `nearest_scope_replaces`
+escolhe a origem mais próxima dentro da mesma classe de autoridade e substitui
+o valor completo, inclusive conjunto, vetor ou relação. Duplicidade do mesmo
+modo no mesmo escopo falha explicitamente. O lock é uma barreira anterior à
+resolução local e não pode ser contornado por um override mais baixo. O snapshot
+registra modo da atribuição e proveniência de herança em campos distintos.
+
+Um `ResourceSet` restringe disponibilidade. Cada seleção do manifesto aponta
+para o `ResourceSet` versionado que, no mesmo registro, precisa conter o package
+e permitir seu `fit` e papel. Instâncias materializadas apontam para a seleção;
+assim, disponibilidade, escolha e uso real permanecem fatos diferentes.
+Qualquer `fit` não canônico exige limitação explícita. A interseção entre a
+política efetiva e a política do conjunto decide se `versatile` ou `substitute`
+é admitido ou bloqueado; uma aproximação nunca é tratada como equivalência.
+
+O backend deriva `contentHash` do conjunto corrente de cards da
+microssequência, em ordem canônica, e só registra o manifesto se o hash recebido
+for idêntico. O conjunto de `materializedSteps.artifactRefs` também precisa ser
+exatamente o conjunto de cards correntes: referência fantasma, omissão, extra
+ou duplicidade falha. O trigger sobre entidades incrementa
+`authoring_materialization_states.materialization_revision` em inserção,
+alteração, movimentação ou exclusão pertinente; hash e revisão participam da
+leitura de currentness.
+
+Essa igualdade demonstra quais cards integram a materialização, mas não prova,
+sozinha, que cada declaração de `materializedResources` corresponde às
+instâncias de package dentro do JSON de cada card. O gate de escrita valida os
+cards sob o snapshot corrente; a auditoria determinística da #106 deve ainda
+derivar o uso dos cards e confrontá-lo independentemente com o manifesto.
+
+Não há backfill de análise, parâmetros ou `ResourceSet` inventados. A leitura
+retorna `unresolved` para análise; qualquer conteúdo que exista sem manifesto
+parametrizado — inclusive se criado depois da migração pelo fluxo anterior —
+fica `legacy_untracked` e sua disponibilidade, `legacy_unrestricted`. Sem
+conteúdo, materialização e disponibilidade permanecem `unresolved` até que uma
+nova decisão seja registrada.
+
+`get_authoring_design_state_v1` também compara caminho, versão da entidade,
+resolução corrente, referências ligadas, hash canônico e revisão do estado de
+materialização. Se a árvore, um parâmetro ou um card avançou, análise, snapshot,
+blueprint ou manifesto retorna `stale` em vez de ser tratado como base atual
+para nova materialização.
 
 ### Estado pessoal por `trailItemId`
 
@@ -232,7 +336,9 @@ O AraLearn mantém canais separados:
 2. grupos de Trilhas usam RPCs transacionais e `requestId`;
 3. estado pessoal usa patches compactos por `trailItemId`, CAS e `mutationId`;
 4. workspace autoral usa revisão global, versões de partes e RPCs próprias;
-5. revisões de cursos são baixadas como artefatos por hash.
+5. desenho parametrizado usa cache fracionado e fila própria somente para
+   override manual ou restauração de Auto, com CAS remoto;
+6. revisões de cursos são baixadas como artefatos por hash.
 
 ### Consequências
 
@@ -247,7 +353,50 @@ testes. O código precisa classificar corretamente falha retentável, sessão
 ausente, rejeição definitiva e conflito. A matriz de testes em
 `tests/runtime/relational-sync.test.js`,
 `integrated-course-sync.test.js` e
-`trail-personal-state-repository.test.js` protege essas fronteiras.
+`trail-personal-state-repository.test.js`, acrescida de
+`workspace-design-offline-store.test.js`, protege essas fronteiras.
+
+### Cache e fila offline do desenho
+
+`WorkspaceDesignOfflineStore` reutiliza `syncState`; não cria object stores nem
+outra fonte canônica. Cada fatia contém o último estado remoto validado de uma
+microssequência e é isolada por conta e workspace. Resposta remota mais antiga
+não rebaixa a revisão local; a listagem é paginada e não exige carregar um curso
+grande inteiro.
+
+A fila guarda no máximo intenções `set_manual_override` e `restore_auto`.
+Enquanto pendente, um override aparece separado da fatia remota e é marcado
+como não autoritativo. A reconexão relê revisão, capacidade e locks; conflito é
+preservado para decisão, falha retentável continua pendente e confirmação só
+remove a intenção depois de armazenar o novo estado remoto. Repetir o mesmo
+`requestId` só é idempotente quando a impressão do payload coincide; conflito
+pode ser reenviado com a revisão relida ou descartado explicitamente.
+
+Uma intenção ainda não tentada é coalescida por slot: escolher Auto depois de
+um override local cancela o `set_manual_override`, em vez de enviá-lo mais
+tarde. O índice das filas é isolado por conta e permite que inicialização,
+reconexão e saída localizem pendências sem reabrir a microssequência. Resposta
+perdida consulta o recibo idempotente antes de repetir a mutação.
+
+Transações do `syncState` preservam índice e fila quando duas instâncias operam
+ao mesmo tempo. A sincronização usa Web Locks quando disponíveis; no fallback
+IndexedDB, uma lease renovável por workspace impede dois envios concorrentes e
+expira se a instância desaparecer.
+
+Lista de Workspaces e overview usam chaves por conta e escrita monotônica por
+revisão. A composição transitória do leitor reutiliza a paginação de Trilhas,
+com fence de revisão e cache por `trailItemId`; nenhum documento monolítico
+atravessa a Action. O cache é suplementar: quota ou falha do IndexedDB não
+transforma uma resposta online válida em erro. A projeção SQL
+`authoring-product-state-projection-v1` fornece os estados de lista e os
+marcadores de microssequência no mesmo fence da revisão; o cache não os infere
+por visitas anteriores.
+
+Os limites atuais são 2 MiB por fatia, 32 MiB de cache de desenho por workspace,
+512 KiB por fila, 100 operações por workspace, 10 mil entradas no índice local
+e 100 itens por página. Ao atingir o orçamento total, a fatia reconstruível mais
+antiga é removida antes do estado recente. Esses tetos são proteção técnica, não
+unidades pedagógicas nem promessa de capacidade do dispositivo.
 
 ## Ciclo de uma sincronização
 
@@ -330,6 +479,7 @@ porque escolheu não coletá-las.
 | payload inválido ou referência inexistente | rejeita sem commit parcial |
 | capacidade revogada | nega a operação; na leitura autenticada seguinte remove cache cuja autoridade terminou |
 | revisão avançou | recusa CAS e exige nova leitura |
+| override offline encontra lock de pesquisa ou capacidade revogada | não envia ou registra conflito; preserva a intenção separada do estado canônico |
 | resposta remota se perdeu | repete a mesma chave e o mesmo payload para recuperar o recibo |
 | artefato baixado não corresponde ao hash | isola a revisão e não substitui o curso válido |
 | outra aba substituiu a conexão IndexedDB | encerra a conexão antiga e repete a operação por uma conexão corrente |
@@ -370,6 +520,16 @@ reconstrói a base corrente, mas não recupera um histórico excluído. Tombston
 de revisão precisam permanecer enquanto não houver watermark específico que
 prove que todos os clientes relevantes observaram a retirada.
 
+O estado instrucional possui coleta privada e conservadora em lotes. Por padrão,
+somente versões com mais de 180 dias, já substituídas e sem referência vigente
+são candidatas; cada lote usa até 256 registros por família e `SKIP LOCKED`.
+Assignments referenciados por snapshot, blueprints ligados ou citados por
+manifesto, snapshots ligados a blueprint ou manifesto, análises referenciadas e
+`ResourceSet`s usados por assignment corrente, snapshot ou seleção são
+preservados. Manifestos não são removidos por idade nessa etapa. O limite de
+lote pode ser ajustado entre 1 e 1.000, mas encurtar a retenção exige decisão
+operacional explícita; coleta de lixo não é backup nem restauração histórica.
+
 ## Segurança da persistência
 
 Cada conta usa banco local distinto. No servidor, Row-Level Security e RPCs
@@ -385,8 +545,20 @@ de dados pessoais está em [Privacidade](privacidade.md).
 ## Evidência e pontos não demonstrados
 
 A suíte verifica transações locais, round-trip, troca de réplica, conflitos,
-falhas de rede simuladas, isolamento de conta, retenção e Auth/PostgREST no
-stack local. Esses testes não demonstram disponibilidade prolongada, perda
-física do dispositivo, comportamento de todos os navegadores sob pressão de
-armazenamento ou custo real em escala. A [Matriz de conformidade
-técnica](matriz-conformidade-tecnica.md) explicita esse limite.
+falhas de rede simuladas, isolamento de conta, retenção, resolução do desenho e
+Auth/PostgREST no stack local. A [medição pública do payload parametrizado](evidence/parameterized-authoring-storage-budget-2026-08-15.json)
+mede JSON UTF-8 representativo; ela não inclui páginas e índices do PostgreSQL,
+blueprints nem custo real de uma implantação. Os testes tampouco demonstram
+disponibilidade prolongada, perda física do dispositivo ou comportamento de
+todos os navegadores sob pressão de armazenamento. A [Matriz de conformidade
+técnica](matriz-conformidade-tecnica.md) explicita esses limites.
+## Analytics versionados
+
+A migration `20260817120000_authoring_analytics.sql` acrescenta dicionário
+imutável, observações explícitas de outcome, versões de dataset, receipts e
+quatro views relacionais. `datasetSetRef` combina workspace/experimento,
+revisões append-only e estado explícito de progresso. Outcomes fixam protocolo,
+condição, `VariantRevision`, instrumento, onda e pseudônimo; mudança semântica é
+nova linha/versão, não UPDATE. Exclusão da conta pode apenas anonimizar
+`recorded_by`. Tabelas privadas não recebem grants de cliente; RPCs são
+`service_role` e revalidam `read` ou `research`.

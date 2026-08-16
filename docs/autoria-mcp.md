@@ -187,6 +187,7 @@ estão:
 | Grupo | Finalidade |
 | --- | --- |
 | `consultarBibliotecaDeResources` | descobrir, inspecionar, validar e auditar representações de cards |
+| `gerirDesenhoInstrucional` | ler o slice JIT; operar análise, assignments, `ResourceSet`, snapshot, blueprint e manifesto; abrir e concluir audit runs |
 | `consultarCatalogo` | listar coleções e localizar cursos publicados |
 | `editarCatalogo` | criar ou atualizar coleções e mover cursos |
 | `retirarDoCatalogo` | retirar coleções ou cursos de circulação |
@@ -217,7 +218,7 @@ package. A biblioteca adota uma consulta progressiva:
 2. `search` procura uma lista curta pela intenção, disciplina, estrutura,
    operação cognitiva e modalidade de prática;
 3. `inspect` compara até oito perfis completos;
-4. `contracts` entrega os contratos de até quatro escolhas;
+4. `contracts` entrega exatamente um contrato versionado por chamada;
 5. `validate_card` verifica schema, referências e compatibilidade;
 6. `audit_representation` compara a composição com a intenção declarada;
 7. `preview_card` devolve um descritor estrutural.
@@ -237,15 +238,18 @@ A busca classifica candidatos com três tokens do contrato:
   mais apropriada.
 
 Esses termos descrevem o resultado do algoritmo de catálogo; `canonical` não é
-uma certificação externa de consenso acadêmico. Quando o ajuste é
-`substitute`, a autoria não é bloqueada. O modelo usa a melhor alternativa,
-informa brevemente a limitação no chat e registra a representação desejada na
-continuidade. Quando um package especializado for instalado, o ranking poderá
-preferi-lo sem mudar o kernel.
+uma certificação externa de consenso acadêmico. O ajuste, sozinho, não autoriza
+uso. Com `workspaceId` e `snapshotRef`, o servidor limita `explore` e `search`
+aos packages dos `ResourceSet`s efetivos e recusa `inspect` e `contracts` fora
+deles. A política persistida pode aceitar uma representação não canônica com
+limitação explícita ou bloquear a seleção; o `ResourceSet` pode restringir
+ainda mais. Bloqueio nunca é tratado como equivalência nem contornado com uma
+allowlist enviada pelo modelo.
 
 A decisão estruturada guarda intenção, package e versão escolhidos, ajuste,
-catálogo consultado e limitações. Ela pertence à proveniência da autoria e não
-é inserida no card exibido ao estudante.
+catálogo consultado, limitações e o `ResourceSet` exato que autorizou package,
+papel e ajuste. Ela pertence à proveniência da autoria e não é inserida no card
+exibido ao estudante.
 
 ## Conhecimento sob demanda
 
@@ -261,11 +265,14 @@ decisões; schemas e regras continuam decidindo o que pode ser persistido. Essa
 divisão evita tratar texto de orientação como se fosse uma restrição executável
 e evita sobrecarregar o prompt-base com todo o conhecimento do produto.
 
-Antes de iniciar uma autoria, `prepararAutoriaAraLearn` recebe a intenção, o
-nível estrutural e um resumo do contexto relevante. O resultado oferece um
-brief compacto e fontes identificadas. Uma fonte só pode ser citada no card
-depois de declarada nesse contexto. Conteúdo importado conserva as referências
-que já possuía.
+Antes de iniciar uma etapa, `prepararAutoriaAraLearn` recebe a intenção, o nível
+estrutural e um resumo do contexto relevante. Ele seleciona deterministicamente
+até oito trechos recuperáveis e indica ferramentas compatíveis. Para o desenho
+parametrizado, o knowledge cobre análise instrucional, granularidade semântica,
+elaboração explicativa, evidência e prática, tarefa profissional complexa,
+resolução de parâmetros, descoberta sob `ResourceSet` e auditoria de
+conformidade. Teoria, critérios científicos e exemplos ficam nesses trechos,
+não no prompt de sistema.
 
 O modelo usa primeiro pedido, workspace, curso e fontes disponíveis. Só abre
 diálogo quando uma informação ausente ou contraditória puder mudar
@@ -273,7 +280,42 @@ materialmente o desenho. Antes de construir, o planejamento de cada
 microssequência distingue condições de aprendizagem, exigências do conteúdo,
 dificuldades previstas e respostas locais ligadas a elas, e apresenta essa
 síntese para decisão humana. O contrato não oferece uma preferência pedagógica
-global nem infere um perfil individual de estudante.
+global nem infere um perfil individual de estudante. Aprovação humana é pedida
+somente quando o mandato ou uma decisão material exigir; uma microssequência
+concluída não cria, por si só, uma nova parada dentro do escopo autorizado.
+
+### Slice e mutações de desenho
+
+`gerirDesenhoInstrucional` reúne operações fechadas para `read_slice`, consulta
+de um contrato promovido, gravação da análise, criação ou remoção de assignment,
+persistência de `ResourceSet`, resolução efetiva, binding do blueprint v2 e
+registro do manifesto. `read_slice` começa em `overview`, com identidade,
+coordenação, estados, referências de artefatos e `availableViews`. O modelo abre
+somente as views anunciadas que precisar: `analysis`, `parameters`, `blueprint`,
+`binding`, `materialization`, `resource_set` ou `audit`. Assignments, locks, definições, snapshot,
+conjuntos, blueprint e manifesto não são despejados num payload monolítico;
+transcript e raciocínio privado não integram nenhuma view.
+
+Quando Auto precisa de um conjunto ainda inexistente, o modelo propõe facetas,
+o servidor expande o catálogo instalado e persiste referências exatas com
+proveniência. Esse bootstrap precede o assignment que referencia o conjunto e
+não autoriza seleção antes de `resolve_effective` produzir o snapshot. A
+materialização segue então blueprint e cards em memória, `validate_card` e
+`audit_representation` sob o snapshot corrente, persistência dos cards,
+releitura do estado e, por último, `register_manifest`. Escritas usam
+`expectedRevision` e `requestId`; conflito exige releitura, e replay idempotente
+não duplica estado.
+
+Auditoria usa as operações adicionais `run_audit` e
+`record_semantic_audit`, ainda na mesma ferramenta pública. A primeira relê
+cards e resources reais, calcula checks e abre uma rodada imutável; a segunda
+registra somente findings semânticos públicos e verificações no run corrente.
+A view `audit` pagina resumo e findings. O modelo não envia origem
+`deterministic`, não transforma a aceitação do manifesto em conformidade e não
+repara durante a rodada. A pessoa decide; o mandato de reparo inclui apenas
+aprovados; a reauditoria abre outro run e verifica todos os reparos elegíveis.
+Um resultado `still_open` acompanha a nova ocorrência da mesma identidade na
+rodada/child run corrente; `resolved` só é válido quando ela não reaparece.
 
 ## Continuidade entre sessões
 

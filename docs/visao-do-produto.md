@@ -120,7 +120,9 @@ O mesmo curso pode ser observado em dois contextos complementares:
 - no **Estudo**, a pessoa lê, pratica, recebe feedback, marca um card para rever
   e registra uma observação;
 - na **Autoria**, uma pessoa autorizada corrige textos, reorganiza a estrutura,
-  conversa com um serviço de linguagem ou coordena um projeto compartilhado.
+  acompanha Mapa/Desenho/Auditoria e coordena um projeto compartilhado. A
+  conversa de planejamento permanece num GPT ou cliente MCP externo; não existe
+  chat autoral interno no aplicativo.
 
 Uma correção local não precisa transportar o curso inteiro. A interface permite
 selecionar o card, a microssequência, a lição ou instâncias específicas de
@@ -173,10 +175,11 @@ punitivo](estado-de-estudo-nao-punitivo.md).
 
 ## Organização pessoal, catálogo e colaboração
 
-**Coleções** apresenta o catálogo compartilhado. **Trilhas** reúne o que a
-pessoa escolheu estudar e os projetos a que tem acesso. Abrir um curso no
-catálogo não o adiciona automaticamente: a seleção é uma decisão explícita.
-Grupos pessoais organizam Trilhas sem alterar o curso nem o catálogo.
+**Estudo** reúne em **Trilhas** aquilo que a pessoa escolheu estudar.
+**Autoria** reúne **Workspaces** acessíveis e **Coleções**, o catálogo
+compartilhado. Abrir um curso no catálogo ou uma prévia de workspace não o
+adiciona automaticamente a Trilhas: a seleção é uma decisão explícita. Grupos
+pessoais organizam Trilhas sem alterar curso, workspace ou catálogo.
 
 Um **workspace educacional** reúne uma composição de curso, participantes e
 permissões locais. A mesma pessoa pode assumir responsabilidades diferentes em

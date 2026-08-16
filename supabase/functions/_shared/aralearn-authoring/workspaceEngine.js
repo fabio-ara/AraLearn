@@ -647,29 +647,80 @@ export class AuthoringWorkspaceEngine {
     }, { deadlineAt }));
   }
 
+  async #workspaceProductStates(
+    principal,
+    workspaceIds,
+    deadlineAt = null,
+    { includeMicrosequences = false } = {}
+  ) {
+    const response = first(await this.rpc(
+      "get_authoring_workspace_product_states_v1",
+      {
+        p_actor_id: principal.actorId,
+        p_workspace_ids: workspaceIds,
+        p_include_microsequences: includeMicrosequences
+      },
+      { deadlineAt }
+    ));
+    if (!response || !Array.isArray(response.items)) {
+      throw new AuthoringApiError(
+        502,
+        "invalid_authoring_product_state_response",
+        "O backend não devolveu o andamento canônico da Autoria."
+      );
+    }
+    return response.items;
+  }
+
   async #consistentWorkspaceContinuity(
     principal,
     workspaceId,
     deadlineAt = null,
-    { courseIds = null, includeCardContent = false } = {}
+    {
+      courseIds = null,
+      includeCardContent = false,
+      includeProductState = false
+    } = {}
   ) {
     let last = null;
     for (let attempt = 0; attempt < 2; attempt += 1) {
-      const [reference, continuity] = await Promise.all([
+      const [reference, continuity, productStateItems] = await Promise.all([
         this.#workspaceReference(
           principal,
           workspaceId,
           deadlineAt,
           { courseIds, includeCardContent }
         ),
-        this.#workspaceContinuity(principal, workspaceId, deadlineAt)
+        this.#workspaceContinuity(principal, workspaceId, deadlineAt),
+        includeProductState
+          ? this.#workspaceProductStates(
+            principal,
+            [workspaceId],
+            deadlineAt,
+            { includeMicrosequences: true }
+          )
+          : Promise.resolve([])
       ]);
-      if (reference?.revision === continuity?.revision) {
-        return { reference, continuity };
+      const productState = includeProductState ? productStateItems[0] || null : null;
+      if (
+        reference?.revision === continuity?.revision
+        && (
+          !includeProductState
+          || (
+            productStateItems.length === 1
+            && String(productState?.workspaceId || "") === String(workspaceId)
+            && reference?.revision === productState?.revision
+          )
+        )
+      ) {
+        return { reference, continuity, productState };
       }
       last = {
         referenceRevision: reference?.revision ?? null,
-        continuityRevision: continuity?.revision ?? null
+        continuityRevision: continuity?.revision ?? null,
+        ...(includeProductState
+          ? { productStateRevision: productState?.revision ?? null }
+          : {})
       };
     }
     throw new AuthoringApiError(
@@ -879,12 +930,59 @@ export class AuthoringWorkspaceEngine {
     beforeId = null,
     deadlineAt = null
   }) {
-    return first(await this.rpc("list_authoring_workspaces_v5", {
-      ...principalArgs(principal),
-      p_limit: limit,
-      p_before_updated_at: beforeUpdatedAt,
-      p_before_id: beforeId
-    }, { deadlineAt }));
+    let last = null;
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      const page = first(await this.rpc("list_authoring_workspaces_v5", {
+        ...principalArgs(principal),
+        p_limit: limit,
+        p_before_updated_at: beforeUpdatedAt,
+        p_before_id: beforeId
+      }, { deadlineAt }));
+      const items = Array.isArray(page?.items) ? page.items : null;
+      if (!items) {
+        throw new AuthoringApiError(
+          502,
+          "invalid_authoring_workspace_list_response",
+          "O backend não devolveu a lista de workspaces esperada."
+        );
+      }
+      if (items.length === 0) return page;
+      const productStates = await this.#workspaceProductStates(
+        principal,
+        items.map(({ workspaceId }) => workspaceId),
+        deadlineAt
+      );
+      const byWorkspaceId = new Map(productStates.map((state) => [
+        String(state?.workspaceId || ""), state
+      ]));
+      const consistent = productStates.length === items.length
+        && items.every((item) => {
+          const state = byWorkspaceId.get(String(item.workspaceId || ""));
+          return state?.revision === item.revision;
+        });
+      if (consistent) {
+        return {
+          ...page,
+          items: items.map((item) => ({
+            ...item,
+            authoringState: byWorkspaceId.get(String(item.workspaceId)).authoringState
+          }))
+        };
+      }
+      last = {
+        workspaceRevisions: items.map(({ workspaceId, revision }) => ({
+          workspaceId,
+          revision,
+          productStateRevision: byWorkspaceId.get(String(workspaceId))?.revision ?? null
+        }))
+      };
+    }
+    throw new AuthoringApiError(
+      409,
+      "workspace_snapshot_changed",
+      "A lista mudou durante a leitura. Leia novamente antes de continuar.",
+      last
+    );
   }
 
   async events({
@@ -941,13 +1039,14 @@ export class AuthoringWorkspaceEngine {
     deadlineAt = null
   }) {
     if (view === "resume") {
-      const { reference, continuity } = await this.#consistentWorkspaceContinuity(
+      const { reference, continuity, productState } =
+        await this.#consistentWorkspaceContinuity(
         principal,
         workspaceId,
         deadlineAt,
-        { includeCardContent: false }
+        { includeCardContent: false, includeProductState: true }
       );
-      return buildWorkspaceResumeProjection(reference, continuity);
+      return buildWorkspaceResumeProjection(reference, continuity, productState);
     }
     if (view === "outline") {
       const reference = await this.#workspaceReference(
@@ -1009,6 +1108,37 @@ export class AuthoringWorkspaceEngine {
         errorCode: "invalid_course_view"
       })
     };
+  }
+
+  async replayMutation({
+    principal,
+    workspaceId,
+    requestId,
+    expectedRevision,
+    operation,
+    arguments: operationArguments,
+    deadlineAt = null
+  }) {
+    const payloadHash = await this.#hash(operation, {
+      workspaceId,
+      expectedRevision,
+      arguments: operationArguments
+    });
+    const replayed = await this.#replay(
+      principal,
+      requestId,
+      payloadHash,
+      operation,
+      deadlineAt
+    );
+    if (replayed && String(replayed.workspaceId || "") !== String(workspaceId)) {
+      throw new AuthoringApiError(
+        409,
+        "idempotency_key_reused",
+        "O requestId já foi usado em outro workspace."
+      );
+    }
+    return replayed || null;
   }
 
   async mutate({

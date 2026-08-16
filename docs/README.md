@@ -41,15 +41,18 @@ até as proposições avaliáveis:
 
 1. [Modelo didático](modelo-didatico.md) — microssequência, microteoria,
    prática e progressão;
-2. [Revisão de literatura](revisao-de-literatura.md) — bases, controvérsias e
+2. [Desenho instrucional parametrizado](desenho-instrucional-parametrizado.md)
+   — unidades defensáveis, parâmetros locais, `ResourceSet` e limites de
+   interpretação;
+3. [Revisão de literatura](revisao-de-literatura.md) — bases, controvérsias e
    lacunas;
-3. [Quadro teórico](quadro-teorico.md) — construtos, mecanismos e relações
+4. [Quadro teórico](quadro-teorico.md) — construtos, mecanismos e relações
    propostas;
-4. [Fundamentação pedagógica dos recursos](fundamentacao-pedagogica-dos-resources.md)
+5. [Fundamentação pedagógica dos recursos](fundamentacao-pedagogica-dos-resources.md)
    — quando uma representação visual é justificada;
-5. [Estado de estudo não punitivo](estado-de-estudo-nao-punitivo.md) — retomada,
+6. [Estado de estudo não punitivo](estado-de-estudo-nao-punitivo.md) — retomada,
    autorregulação e dados que deliberadamente não são coletados;
-6. [Observações pedagógicas](observacoes-pedagogicas.md) — feedback situado sem
+7. [Observações pedagógicas](observacoes-pedagogicas.md) — feedback situado sem
    converter interação em vigilância.
 
 Para consulta, use o [glossário de construtos](glossario-construtos.md). A
@@ -88,13 +91,19 @@ Comece pela tarefa em linguagem comum e só depois avance para os protocolos:
 
 1. [Criar cursos pelo chat](criar-cursos-pelo-chat.md) — planejar, construir,
    auditar, reparar e continuar;
-2. [Autoria e publicação do catálogo](autoria-do-catalogo.md) — workspace,
+2. [Desenho instrucional parametrizado](desenho-instrucional-parametrizado.md)
+   — análise, parâmetros e manifesto propostos antes da implementação;
+3. [Auditoria de conformidade instrucional](auditoria-de-conformidade-instrucional.md)
+   — fatos estruturais, revisão semântica, decisão humana, reparo e reauditoria;
+4. [Experimentos instrucionais parametrizados](experimentos-instrucionais-parametrizados.md)
+   — base comum, condições, variantes, freeze e atribuição governada;
+5. [Autoria e publicação do catálogo](autoria-do-catalogo.md) — workspace,
    revisão humana, submissão e publicação;
-3. [Assistência por modelo de linguagem](assistencia-por-ia.md) — seleção,
+6. [Assistência por modelo de linguagem](assistencia-por-ia.md) — seleção,
    conversa, versões locais, autoridade e limites;
-4. [Fluxos, instruções e contratos](fluxos-prompts-e-contratos.md) — como texto
+7. [Fluxos, instruções e contratos](fluxos-prompts-e-contratos.md) — como texto
    livre é separado de operações estruturadas;
-5. [Autoria por Model Context Protocol](autoria-mcp.md) — descoberta de
+8. [Autoria por Model Context Protocol](autoria-mcp.md) — descoberta de
    ferramentas, autenticação, chamadas e robustez.
 
 O [plano de controle e artefatos](plano-de-controle-e-artefatos.md) aprofunda a
@@ -114,13 +123,23 @@ resultado empírico:
 
 1. [Fundamentos de pesquisa e governança](fundamentos-pesquisa-e-governanca.md);
 2. [Contribuição e originalidade](contribuicao-originalidade.md);
-3. [Protocolo de avaliação](protocolo-avaliacao-artefato.md);
-4. [Auditoria acadêmica dos recursos](auditoria-academica-dos-resources.md);
-5. [Auditoria do front-end](auditoria-front-end.md).
+3. [Experimentos instrucionais parametrizados](experimentos-instrucionais-parametrizados.md);
+4. [Protocolo de avaliação](protocolo-avaliacao-artefato.md);
+5. [Auditoria acadêmica dos recursos](auditoria-academica-dos-resources.md);
+6. [Auditoria do front-end](auditoria-front-end.md).
 
 O [estado do produto](estado-atual-e-roadmap.md) informa o que está
 implementado, o que ainda requer estabilização e quais questões permanecem
 abertas, sem tratar teste de software como evidência de aprendizagem.
+Enquanto a regressão final de Autoria estiver em andamento, o
+[checkpoint recuperável da #109](checkpoint-autoria-109.md) registra evidências,
+pendências e o comando exato de retomada.
+O [roteiro de aceitação humana da Autoria](roteiro-aceitacao-humana-autoria.md)
+prepara a etapa com pessoa leiga que automação alguma pode aprovar.
+O [checklist de UX integrada](checklist-ux-autoria-integrada.md) separa a
+regressão automatizada da verificação humana e especializada ainda pendente.
+O [relatório docs↔código da Autoria](conformidade-documentacao-autoria.md)
+mostra as fontes de implementação e as evidências automatizadas por assunto.
 
 ## Operar e implantar
 
@@ -139,6 +158,11 @@ abertas, sem tratar teste de software como evidência de aprendizagem.
 | [Princípios editoriais](principios-editoriais.md) | critérios de clareza, profundidade e evidência |
 | [Glossário técnico](glossario-tecnico.md) | termos de computação e contratos |
 | [Glossário de construtos](glossario-construtos.md) | termos pedagógicos e metodológicos |
+| [Desenho instrucional parametrizado](desenho-instrucional-parametrizado.md) | análise científica, parâmetros, contratos e persistência interna |
+| [Auditoria de conformidade instrucional](auditoria-de-conformidade-instrucional.md) | checks determinísticos, juízo semântico, findings e reauditoria |
+| [Experimentos instrucionais parametrizados](experimentos-instrucionais-parametrizados.md) | protocolo, condições, variantes, freeze, atribuição e limites de inferência |
+| [Analytics instrucionais](analytics-instrucionais.md) | leitura ética, versionada e não punitiva de desenho, processo, estudo e experimento |
+| [Dicionário de métricas e datasets](dicionario-metricas-datasets.md) | definições, unidades, denominadores, ausências, proveniência e limites das métricas |
 | [Contrato público](aralearn-contract.md) | formatos canônicos de conteúdo |
 | [Recursos de card](recursos-de-card.md) | catálogo de representações e arquitetura de packages |
 | [Matriz de conformidade técnica](matriz-conformidade-tecnica.md) | afirmação técnica e ponto de verificação |

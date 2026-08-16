@@ -93,13 +93,18 @@ revisão.
 1. Use `prepararAutoriaAraLearn` para obter orientação pertinente à intenção.
 2. Se o workspace existir, leia `resume`; se não, crie-o vazio.
 3. Leia somente o recorte necessário.
-4. Planeje a árvore e crie a estrutura em lotes de até 40 entidades.
-5. Apresente o plano à pessoa e aguarde aprovação.
-6. Registre Partes, decisões e mandato em uma única operação
+4. Planeje a árvore e crie a estrutura em lotes de até 40 entidades; peça
+   decisão somente se o mandato ou uma escolha material exigir.
+5. Quando houver aprovação, registre Partes, decisões e mandato em uma única
    `record_approved_plan`.
-7. Descubra os resources e materialize uma microssequência por vez.
-8. Revise microteorias, cobertura e quantidade de práticas.
-9. Audite em leitura, registre achados compactos e repare apenas os aprovados.
+6. Por microssequência, use `gerirDesenhoInstrucional`: `read_slice`, knowledge
+   JIT, análise, bootstrap de `ResourceSet`, assignments e snapshot.
+7. Descubra resources sob o snapshot, carregue exatamente um contrato por
+   chamada, grave o blueprint, componha em memória e valide antes de salvar.
+8. Releia os cards persistidos e só então registre o manifesto; avance dentro
+   da Parte autorizada sem parada automática.
+9. Revise microteorias, audite em leitura, registre achados compactos e repare
+   apenas os aprovados.
 10. Estude em Trilhas; fixe uma revisão somente quando houver intenção de
     submissão ou distribuição.
 
@@ -115,15 +120,15 @@ Uma única ferramenta, `consultarBibliotecaDeResources`, organiza a descoberta:
 2. `search` procura pela intenção e informa cobertura `canonical`, `versatile`
    ou `substitute`;
 3. `inspect` compara até oito perfis;
-4. `contracts` entrega até quatro contratos exatos;
+4. `contracts` entrega exatamente um contrato por chamada;
 5. `validate_card` verifica o envelope montado;
 6. `audit_representation` verifica adequação semântica, interação de resposta e
    legibilidade do feedback.
 
-`preview_card` devolve `rendered: false`: é um descritor, não uma captura. Se a
-cobertura for `substitute`, use o melhor candidato, informe brevemente o
-`chatDisclosure` e preserve na decisão autoral qual representação seria ideal.
-Não invente um schema nem tente obter todos os contratos em uma chamada.
+`preview_card` devolve `rendered: false`: é um descritor, não uma captura.
+Obedeça à política e ao ResourceSet; preserve a limitação e o `chatDisclosure`
+quando uma aproximação for autorizada e não prossiga sob bloqueio. Não invente
+um schema nem tente obter todos os contratos em uma chamada.
 
 ## Gravar e corrigir
 

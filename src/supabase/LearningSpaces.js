@@ -6,6 +6,7 @@ import {
 import { rebaseCardAssistanceTextChange } from "../assist/cardAssistanceScope.js";
 import { validateProjectDocument } from "../domain/aralearnProject.js";
 import { canonicalStringify } from "../persistence/canonicalCourseHash.js";
+import { AuthoringWorkspaceClient } from "./AuthoringWorkspaceClient.js";
 import { courseFromWorkspaceParts } from "../ui/homeTrailProjection.js";
 
 const CACHE_VERSION = 5;
@@ -82,6 +83,26 @@ function authoringConflict(message) {
 function validEntityPath(value, min = 1, max = 5) {
   return Array.isArray(value) && value.length >= min && value.length <= max &&
     value.every((entry) => text(entry).trim());
+}
+
+function authoringContentPath(value) {
+  if (!validEntityPath(value) || value.some((entry) => text(entry).trim().length > 240)) {
+    throw new TypeError("Destino de conteúdo inválido.");
+  }
+  return value.map((entry) => text(entry).trim());
+}
+
+function courseFromWorkspaceResponse(response, item) {
+  if (!response?.draftCourse) return courseFromWorkspaceParts(response, item);
+  const validation = validateProjectDocument({
+    contract: "aralearn.library.v1",
+    scope: "course",
+    courses: [response.draftCourse]
+  });
+  if (!validation.ok) {
+    throw new Error("O rascunho offline deste curso viola o contrato por packages.");
+  }
+  return structuredClone(validation.value.courses[0]);
 }
 
 function normalizeWorkspaceAuthoringOperation(value = {}) {
@@ -586,11 +607,17 @@ export class LearningSpaces {
   #trailMutationInFlight = new Map();
   #trailMutationPersistence = Promise.resolve();
 
-  constructor({ catalog, authClient } = {}) {
+  constructor({ catalog, authClient, authoringRelationalStore = null } = {}) {
     if (!catalog || !authClient) throw new TypeError("Dependências do painel ausentes.");
     this.catalog = catalog;
     this.authClient = authClient;
     this.store = authClient.sessionStore;
+    this.authoringRelationalStore = authoringRelationalStore;
+    this.authoringClient = new AuthoringWorkspaceClient({
+      catalog,
+      authClient,
+      relationalStore: authoringRelationalStore
+    });
   }
 
   async readCache() {
@@ -1488,24 +1515,42 @@ export class LearningSpaces {
     });
   }
 
-  async loadWorkspaceCourse(item) {
-    if (globalThis.navigator?.onLine === false) {
+  async #loadWorkspaceCourseWithStatus(item, {
+    online = globalThis.navigator?.onLine !== false
+  } = {}) {
+    if (!online) {
       const cached = await this.readWorkspaceCourseCache(item);
-      if (cached) return this.#workspaceCourseWithDraft(item, cached);
+      if (cached) return {
+        response: await this.#workspaceCourseWithDraft(item, cached),
+        stale: true
+      };
       const draft = await this.#workspaceCourseDraftOnly(item);
-      if (draft) return draft;
+      if (draft) return { response: draft, stale: true };
       throw new Error("A composição deste curso ainda não está disponível offline.");
     }
     try {
-      return this.#workspaceCourseWithDraft(item, await this.#loadWorkspaceCourseRemote(item));
+      return {
+        response: await this.#workspaceCourseWithDraft(
+          item,
+          await this.#loadWorkspaceCourseRemote(item)
+        ),
+        stale: false
+      };
     } catch (error) {
       if (!retryableReadFailure(error)) throw error;
       const cached = await this.readWorkspaceCourseCache(item);
-      if (cached) return this.#workspaceCourseWithDraft(item, cached);
+      if (cached) return {
+        response: await this.#workspaceCourseWithDraft(item, cached),
+        stale: true
+      };
       const draft = await this.#workspaceCourseDraftOnly(item);
-      if (draft) return draft;
+      if (draft) return { response: draft, stale: true };
       throw error;
     }
+  }
+
+  async loadWorkspaceCourse(item, options = {}) {
+    return (await this.#loadWorkspaceCourseWithStatus(item, options)).response;
   }
 
   async #loadWorkspaceCourseRemote(item) {
@@ -1598,6 +1643,217 @@ export class LearningSpaces {
       throw new Error("O andamento do plano devolveu uma resposta inválida.");
     }
     return resume;
+  }
+
+  listAuthoringWorkspaces(options) {
+    return this.authoringClient.listAuthoringWorkspaces(options);
+  }
+
+  loadAuthoringWorkspaceOverview(workspaceId, options) {
+    return this.authoringClient.loadAuthoringWorkspaceOverview(workspaceId, options);
+  }
+
+  loadInstructionalExperimentEnrollmentPolicy(options) {
+    return this.authoringClient.loadInstructionalExperimentEnrollmentPolicy(options);
+  }
+
+  enrollInInstructionalExperiment(options) {
+    return this.authoringClient.enrollInInstructionalExperiment(options);
+  }
+
+  listInstructionalExperimentEnrollments() {
+    return this.authoringClient.listInstructionalExperimentEnrollments();
+  }
+
+  loadInstructionalExperimentEnrollmentStatus(options) {
+    return this.authoringClient.loadInstructionalExperimentEnrollmentStatus(options);
+  }
+
+  withdrawAuthoringExperimentEnrollment(options) {
+    return this.authoringClient.withdrawAuthoringExperimentEnrollment(options);
+  }
+
+  recordInstructionalExperimentOutcome(options) {
+    return this.authoringClient.recordInstructionalExperimentOutcome(options);
+  }
+
+  loadAuthoringAnalyticsOverview(options) {
+    return this.authoringClient.loadAuthoringAnalyticsOverview(options);
+  }
+
+  loadAuthoringAnalyticsDataset(options) {
+    return this.authoringClient.loadAuthoringAnalyticsDataset(options);
+  }
+
+  exportAuthoringAnalyticsDataset(options) {
+    return this.authoringClient.exportAuthoringAnalyticsDataset(options);
+  }
+
+  listAuthoringExperiments(options) {
+    return this.authoringClient.listAuthoringExperiments(options);
+  }
+
+  loadAuthoringExperiment(options) {
+    return this.authoringClient.loadAuthoringExperiment(options);
+  }
+
+  loadAuthoringExperimentOptionPage(options) {
+    return this.authoringClient.loadAuthoringExperimentOptionPage(options);
+  }
+
+  saveAuthoringExperimentProtocol(options) {
+    return this.authoringClient.saveAuthoringExperimentProtocol(options);
+  }
+
+  validateAuthoringExperiment(options) {
+    return this.authoringClient.validateAuthoringExperiment(options);
+  }
+
+  generateAuthoringExperimentVariants(options) {
+    return this.authoringClient.generateAuthoringExperimentVariants(options);
+  }
+
+  decideAuthoringExperimentDifference(options) {
+    return this.authoringClient.decideAuthoringExperimentDifference(options);
+  }
+
+  requestAuthoringExperimentCorrection(options) {
+    return this.authoringClient.requestAuthoringExperimentCorrection(options);
+  }
+
+  freezeAuthoringExperiment(options) {
+    return this.authoringClient.freezeAuthoringExperiment(options);
+  }
+
+  startAuthoringExperimentCollection(options) {
+    return this.authoringClient.startAuthoringExperimentCollection(options);
+  }
+
+  rotateAuthoringExperimentEnrollmentCode(options) {
+    return this.authoringClient.rotateAuthoringExperimentEnrollmentCode(options);
+  }
+
+  transitionAuthoringExperimentCollection(options) {
+    return this.authoringClient.transitionAuthoringExperimentCollection(options);
+  }
+
+  assignAuthoringExperimentParticipant(options) {
+    return this.authoringClient.assignAuthoringExperimentParticipant(options);
+  }
+
+  listAuthoringFindings(options) {
+    return this.authoringClient.listAuthoringFindings(options);
+  }
+
+  loadAuthoringFindingsPage(options) {
+    return this.authoringClient.listAuthoringFindings(options);
+  }
+
+  loadAuthoringAudit(options) {
+    return this.authoringClient.loadAuthoringAudit(options);
+  }
+
+  decideAuthoringFinding(options) {
+    return this.authoringClient.decideAuthoringFinding(options);
+  }
+
+  prepareAuthoringFindingRepairs(options) {
+    return this.authoringClient.prepareAuthoringFindingRepairs(options);
+  }
+
+  requestAuthoringReaudit(options) {
+    return this.authoringClient.requestAuthoringReaudit(options);
+  }
+
+  loadAuthoringDesign(options) {
+    return this.authoringClient.loadAuthoringDesign(options);
+  }
+
+  setAuthoringParameter(options) {
+    return this.authoringClient.setAuthoringParameter(options);
+  }
+
+  restoreAuthoringParameterAuto(options) {
+    return this.authoringClient.restoreAuthoringParameterAuto(options);
+  }
+
+  retryAuthoringParameterChange(options) {
+    return this.authoringClient.retryAuthoringParameterChange(options);
+  }
+
+  discardAuthoringParameterChange(options) {
+    return this.authoringClient.discardAuthoringParameterChange(options);
+  }
+
+  resolveAuthoringFindingTarget(options) {
+    return this.authoringClient.resolveAuthoringFindingTarget(options);
+  }
+
+  synchronizePendingAuthoringChanges(options) {
+    return this.authoringClient.synchronizePendingAuthoringChanges(options);
+  }
+
+  getPendingAuthoringChangeSummary(options) {
+    return this.authoringClient.getPendingAuthoringChangeSummary(options);
+  }
+
+  async loadAuthoringWorkspaceCourse({
+    workspaceId,
+    entityPath,
+    online = globalThis.navigator?.onLine !== false
+  } = {}) {
+    const normalizedWorkspaceId = text(workspaceId).trim().toLowerCase();
+    if (!UUID_PATTERN.test(normalizedWorkspaceId)) throw new TypeError("Workspace inválido.");
+    const path = authoringContentPath(entityPath);
+    const courseKey = path[0];
+    const trails = await this.loadTrails({ online });
+    const matches = (trails?.page?.items || []).filter((item) => (
+      text(item?.workspaceId).trim().toLowerCase() === normalizedWorkspaceId
+      && text(item?.courseKey).trim() === courseKey
+    ));
+    if (matches.length !== 1) {
+      throw new Error(matches.length
+        ? "Há mais de uma composição para este curso; atualize a Autoria."
+        : "A composição deste curso já não está disponível para sua conta.");
+    }
+    const item = matches[0];
+    const loaded = await this.#loadWorkspaceCourseWithStatus(item, { online });
+    const response = loaded.response;
+    if (text(response?.trailItemId).trim().toLowerCase() !== item.trailItemId
+        || text(response?.workspaceId).trim().toLowerCase() !== normalizedWorkspaceId
+        || text(response?.courseKey).trim() !== courseKey) {
+      throw new Error("A composição devolvida pertence a outro curso.");
+    }
+    const course = courseFromWorkspaceResponse(response, item);
+    if (text(course?.id).trim() !== courseKey) {
+      throw new Error("A composição devolvida pertence a outro curso.");
+    }
+    let cacheWriteFailed = false;
+    if (!loaded.stale) {
+      try {
+        await this.cacheWorkspaceCourse(item, response, course);
+      } catch {
+        cacheWriteFailed = true;
+      }
+    }
+    return {
+      workspaceId: normalizedWorkspaceId,
+      courseKey,
+      revision: Number(response.revision),
+      course,
+      entityPath: path,
+      stale: loaded.stale || trails.stale === true,
+      cacheWriteFailed,
+      transient: true
+    };
+  }
+
+  loadAuthoringResourceSetPage(options) {
+    return this.authoringClient.loadAuthoringResourceSetPage(options);
+  }
+
+  saveAuthoringResourceSetSelection(options) {
+    return this.authoringClient.saveAuthoringResourceSetSelection(options);
   }
 
   async createCourseWorkspace({ courseId, title } = {}) {

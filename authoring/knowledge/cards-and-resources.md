@@ -13,7 +13,7 @@ mais simples. Se isso não ocorrer, a seleção ou o package está errado.
 O catálogo MCP é a fonte de verdade sobre os packages instalados. Use somente
 `consultarBibliotecaDeResources`: `explore` apresenta famílias e facetas;
 `search` procura pela intenção e classifica a cobertura; `inspect` compara até
-oito perfis; `contracts` carrega no máximo quatro versões exatas por chamada.
+oito perfis; `contracts` carrega exatamente uma versão por chamada.
 Compare finalidade, operações, área, objeto, convenções, contraindicações,
 modalidades, slots e compatibilidades com o gesto cognitivo planejado; não
 escolha apenas pelo nome. O catálogo pode crescer sem alterar estas instruções.
@@ -25,10 +25,11 @@ possibilidade de resposta e a legibilidade do feedback. `preview_card` apenas
 descreve a composição e sempre informa `rendered: false`; Graphviz, Vega,
 viewport e screenshot pertencem ao renderer real do aplicativo.
 
-`canonical` é o ajuste específico e `versatile` é uma convenção transversal
-adequada. `substitute` é a melhor aproximação disponível e nunca bloqueia a
-autoria: prossiga e inclua o `chatDisclosure` devolvido em uma linha natural no
-chat, sem inseri-lo no conteúdo estudado.
+`canonical` é o ajuste específico, `versatile` é uma convenção transversal e
+`substitute` é uma aproximação. A política efetiva e o ResourceSet determinam
+se cada ajuste pode ser usado. Quando houver admissão não canônica, preserve a
+limitação e o `chatDisclosure`; quando houver bloqueio, não use alternativa
+externa nem finja equivalência.
 
 ## Composição do card
 

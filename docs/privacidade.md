@@ -42,6 +42,32 @@ Esses dados existem para que uma alteração não seja aplicada duas vezes, para
 
 O estado corrente de autoria não é um arquivo de conversa. A implementação conserva a estrutura atual necessária para continuar o trabalho e referências compactas de operações em curso. Mensagens completas de uma conversa externa, respostas brutas e cópias sucessivas do curso não são anexadas ao conteúdo como histórico textual.
 
+### Experimentos e participação
+
+Um experimento conserva protocolo, condições, revisões congeladas, referências
+de instrumentos, consentimento e recibos de atribuição. A conta participante
+não se torna membro do workspace autoral: o servidor cria um pseudônimo local
+ao experimento e entrega somente o curso privado da revisão atribuída.
+
+O vínculo entre pseudônimo e conta existe para autorização e sincronização,
+fica fora do contexto do modelo de linguagem e pode ser anonimizado quando a
+conta é excluída. Pesquisadores operam a referência pseudônima, não o
+identificador da conta. Roster, seed, aceite individual e outcomes não entram
+no MCP nem no contexto usado para materializar conteúdo.
+
+Quando a conta autora é excluída, bases já pinadas e variantes congeladas
+continuam privadas e têm a autoria anonimizada para preservar a evidência e a
+continuidade por outro administrador do experimento. Elas não se tornam cursos
+de catálogo. Cursos privados comuns que não foram pinados por um experimento
+mantêm a regra normal de exclusão em cascata.
+
+Consentir não equivale a ser atribuído, e atribuição não autoriza coleta
+indiscriminada. O registro fixa política e revisão do consentimento; protocolo
+e instrumento delimitam finalidade. A revisão do curso já atribuída pode ser
+replicada para estudo offline, mas novo enrollment ou assignment exige conexão.
+O fluxo técnico está em [Experimentos instrucionais
+parametrizados](experimentos-instrucionais-parametrizados.md).
+
 ### Estado pessoal de estudo
 
 A réplica funcional associa à conta e ao curso:
@@ -155,6 +181,17 @@ Sair da conta encerra a sessão e fecha as conexões locais, mas não deve ser c
 **Recuperação.** Uma falha ou resposta inválida não deve produzir alteração parcial. Refaça o pedido com escopo menor; se uma mudança já foi aplicada, use o histórico recente da sessão para desfazer ou restaurar.
 
 ## Responsabilidades em workspaces educacionais
+
+### Analytics e exportações
+
+Resultados experimentais exigem capacidade `research` e usam pseudônimo local
+ao experimento. Seed, `user_id`, consentimento individual e roster não entram
+nos datasets de analytics. O cache de overview é vinculado à conta e serve
+somente para leitura stale; linhas e exportações exigem rede. CSV e JSON podem
+ser dados pessoais ou educacionais mesmo pseudonimizados: exporte apenas para a
+finalidade informada, aplique retenção institucional e não tente reidentificar.
+Cliques, tempo, tentativas, velocidade e revelação não são coletados para criar
+indicadores de atenção, esforço ou aprendizagem.
 
 Permissão técnica não significa autorização pedagógica ou jurídica para qualquer uso. Quem administra um workspace deve:
 

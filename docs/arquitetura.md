@@ -46,6 +46,12 @@ adicionais.
 - **artefato**: documento integral e imutável produzido por materialização;
 - **materialização**: composição e validação das partes de um curso para gerar
   um documento concreto;
+- **snapshot efetivo de desenho**: registro compacto e imutável dos parâmetros,
+  fontes de resolução e `ResourceSet`s usados no desenho de um escopo; não é
+  cópia restaurável do workspace;
+- **conjunto de resources** (`ResourceSet`): lista versionada de
+  `package@version` que estava disponível numa condição, distinta do package
+  selecionado e da instância materializada;
 - **hash**: resumo de tamanho fixo calculado a partir de bytes; no AraLearn,
   SHA-256 identifica o conteúdo canônico e permite detectar se o documento
   recebido difere daquele que foi publicado;
@@ -153,7 +159,7 @@ O AraLearn separa responsabilidades:
 
 | Componente | Conteúdo mantido | Razão principal |
 | --- | --- | --- |
-| PostgreSQL | partes correntes do workspace, metadados, permissões, seleções, grupos, estado pessoal e ponteiros de publicação | transações, relações, restrições e coordenação concorrente |
+| PostgreSQL | partes correntes do workspace, estado instrucional versionado, metadados, permissões, seleções, grupos, estado pessoal e ponteiros de publicação | transações, relações, restrições e coordenação concorrente |
 | Supabase Storage | documento JSON integral de cada revisão publicada | distribuição de objetos imutáveis sem duplicar a árvore no banco |
 | IndexedDB | projeção dos cursos necessários, estado local e filas pendentes da conta autenticada | leitura e escrita transacionais no dispositivo, inclusive sem rede |
 
@@ -161,7 +167,10 @@ Durante a autoria, `private.authoring_workspace_entities` conserva uma linha
 por projeto, curso, módulo, lição, tópico, microssequência ou card. Na
 publicação, o servidor recompõe a árvore, valida `aralearn.library.v1`, calcula
 o SHA-256 e grava uma única revisão integral no Storage. No dispositivo, essa
-revisão é validada e projetada em object stores do IndexedDB.
+revisão é validada e projetada em object stores do IndexedDB. Análises,
+assignments, `ResourceSet`s, snapshots efetivos, blueprints v2 e manifestos usam
+tabelas relacionais próprias: são referências de desenho e proveniência, não
+uma duplicação da árvore publicada.
 
 ### Consequências
 
@@ -260,6 +269,76 @@ restaurar arbitrariamente um estado antigo. O histórico temporário da
 assistência no card também é volátil e não se confunde com versionamento do
 curso.
 
+### Estado instrucional versionado
+
+O documento corrente do curso continua mutável por entidade. Em paralelo, os
+artefatos que registram **qual desenho fundamentou uma materialização** são
+imutáveis e versionados:
+
+```text
+InstructionalAnalysis
+  → valores resolvidos + ResourceSet(s) no EffectiveDesignSnapshot
+  → binding do blueprint pedagógico v2
+  → MaterializationManifest
+```
+
+Definições de parâmetros são catalogadas por identidade e versão. Assignments
+formam um histórico append-only: uma remoção é outra operação versionada, não a
+reescrita do registro anterior. A resolução deriva no servidor o caminho
+`workspace → course → module → lesson → microsequence`; o cliente não escolhe a
+ancestria. Parte não aparece nessa cadeia porque coordena trabalho humano–GPT,
+mas não é unidade pedagógica nem entidade de herança.
+
+A resolução prioriza `research_lock`, `manual_override`, `auto` e default. Em
+cada classe de autoridade, o ancestral aplicável mais próximo substitui o valor
+completo (`nearest_scope_replaces`), inclusive para conjuntos, vetores e
+relações. Duas atribuições atuais do mesmo modo no mesmo escopo são conflito. Um
+lock é barreira independente e impede substituição inferior. Ausência de valor
+requerido permanece não resolvida; ordem de propriedades JSON nunca decide
+precedência.
+
+Cada blueprint persistido preserva o contrato pedagógico v2 e referencia a
+análise e o snapshot exatos. O binding liga unidades e requisitos aos passos sem
+copiar ou reduzir o blueprint. Depois da materialização, o manifesto referencia
+um único snapshot, o blueprint e as revisões materializadas. Uma projeção de
+diff compara apenas identidades, passos, cobertura declarada e resources; a
+auditoria semântico-instrucional continua responsabilidade separada.
+
+### Estado experimental e variantes congeladas
+
+O contador corrente do workspace não preserva uma versão histórica. Para um
+experimento, a base precisa apontar para a publicação imutável aprovada e seu
+hash. O servidor deriva cada condição num workspace filho privado, preserva o
+mapeamento da subárvore e grava locks ligados à revisão do protocolo. A base
+autoral continua separada e nenhum participante se torna membro desses espaços.
+
+```text
+base publication artifact
+  -> protocol revision + explicit condition
+  -> child workspace/course + research locks
+  -> design artifacts + audit + diff
+  -> frozen variant artifact
+  -> pseudonymous enrollment assignment
+```
+
+O freeze revalida conteúdo, snapshots, manifesto, auditoria e diff no mesmo
+fence e então impede novas escritas de conteúdo, desenho e publicação daquela
+revisão. Um reparo cria outro workspace/revisão filha. Essa escolha evita que a
+linha corrente do curso adultere retroativamente uma intervenção já atribuída.
+
+O control plane humano usa uma Action exclusiva do aplicativo e uma capacidade
+`research`. Ela não entra no registry MCP/OpenAPI. O GPT recebe apenas o
+contexto bounded de uma variante já criada e continua usando as operações
+comuns de materialização sob locks. Uma operação semântica pode classificar
+hunks factuais, mas decisão, seed, consentimento, atribuição e freeze permanecem
+fora dessa superfície.
+
+Enrollment e assignment são tabelas separadas do membership. O primeiro liga
+consentimento versionado a um pseudônimo local; o segundo é append-only e fixa
+curso, hash e revisão. A distribuição usa a seleção privada já compreendida por
+Trilhas, por isso a variante sincronizada abre offline sem revelar outras
+condições. Novo enrollment ou assignment exige rede e serialização do servidor.
+
 ### Consequências
 
 - o custo cresce com a estrutura atual, não com o número histórico de
@@ -329,10 +408,26 @@ operações pendentes permanecem no IndexedDB da conta. A interação de estudo 
 confirmada localmente e a sincronização ocorre em canal posterior. Cada conta
 usa banco identificado por UUID; trocar de conta abre outro namespace.
 
+O estado de desenho previamente sincronizado usa fatias por workspace e
+microssequência no `syncState`, sem criar um segundo banco local. A fatia remota
+é o único estado apresentado como canônico. Uma fila separada pode conservar
+apenas a intenção de definir override manual ou restaurar Auto; ela não altera o
+snapshot em cache, não cria `ResourceSet`, não concede autoridade de pesquisa e
+não modifica locks.
+
+`AuthoringWorkspaceClient` coordena lista, Mapa, fatias, findings e editor de
+Resources sobre a réplica explicitamente vinculada ao usuário. O índice global
+das filas permite sincronização limitada na inicialização, reconexão e saída,
+inclusive para um workspace aberto por link direto. Caches de lista e overview
+são best-effort e monotônicos: falhar ao gravá-los não invalida a resposta
+remota, e uma leitura antiga não substitui revisão mais nova de outra aba.
+
 Ao recuperar conexão, o cliente envia pendências, recebe mudanças remotas em
 páginas e instala novas revisões somente depois de validar contrato e hash. Um
 cache offline nunca concede edição, exclusão ou capacidade editorial: essas
-capacidades ficam falsas até nova leitura autenticada completa.
+capacidades ficam falsas até nova leitura autenticada completa. Para o desenho,
+a sincronização relê revisão, capacidade e locks antes do envio e só retira a
+intenção da fila depois de armazenar a nova fatia confirmada pelo servidor.
 
 ### Consequências
 
@@ -343,11 +438,13 @@ capacidades ficam falsas até nova leitura autenticada completa.
 
 ### Limites e evidência
 
-Primeiro login, primeiro download, autoria externa, governança e publicação
-continuam dependentes de rede. A implementação está em
+Primeiro login, primeiro download, autoria externa, governança, alterações de
+lock e publicação continuam dependentes de rede. A implementação está em
 `IndexedDbRelationalStore.js`, `RelationalSyncEngine.js` e
-`TrailPersonalStateRepository.js`; os testes relevantes incluem
-`workspace-offline-authoring.spec.js` e `study-card-progression.spec.js`.
+`TrailPersonalStateRepository.js`, além de `WorkspaceDesignOfflineStore.js` para
+o desenho parametrizado; os testes relevantes incluem
+`workspace-design-offline-store.test.js`, `workspace-offline-authoring.spec.js`
+e `study-card-progression.spec.js`.
 
 ## Decisão 7 — kernel pequeno e packages autônomos
 
@@ -461,10 +558,31 @@ workspace privado estudável
 → publicação em Coleções
 ```
 
-Trilhas projetam, para uma conta, workspaces acessíveis, cursos privados e
-seleções oficiais. Coleções organizam o catálogo global. A semelhança visual
-entre grupos não transfere autoridade: grupos de Trilhas pertencem à conta;
-coleções pertencem ao plano editorial.
+Estudo projeta em Trilhas os cursos selecionados. Autoria projeta Workspaces
+acessíveis e Coleções organiza o catálogo global. A semelhança visual entre
+cartões não transfere autoridade: grupos de Trilhas pertencem à conta;
+workspaces dependem da relação local e coleções pertencem ao plano editorial.
+
+## Superfície responsiva de Autoria
+
+`AuthoringWorkspaceSurface` é uma fachada visual sobre o mesmo estado operado
+por MCP/Action. Mapa, Desenho, Conteúdo e Auditoria são destinos registrados,
+não um dashboard simultâneo. O registro admite Resultados como extensão
+contextual. `authoringWorkspaceProjection` converte outline, resume e desenho
+em estados de produto; `authoringWorkspaceViewModel` normaliza essa projeção
+para renderização sem perder referências estruturadas.
+
+O PostgreSQL calcula uma projeção compacta de estado por workspace e, quando
+solicitado, por microssequência. O engine cerca essa leitura com a revisão do
+outline; a UI não depende de uma fatia já visitada nem de contagem de cards como
+meta. Conteúdo usa `lessonEditorApp`, a composição paginada vinculada ao curso
+do workspace e um snapshot transitório de navegação para abrir workspaces que
+não estão visíveis em Trilhas e restaurar Estudo ao sair.
+
+No celular, apenas um destino ocupa a área principal; no desktop, os mesmos
+destinos usam rail vertical. O código e o APK são os mesmos. Resources combina
+paginação remota do conjunto efetivo com busca/facetas do catálogo local da
+mesma versão, preserva membros invisíveis e aplica mudanças por escopo sob CAS.
 
 ## Autoria situada e integrações externas
 
@@ -485,11 +603,47 @@ executor. Protocolos de autenticação diferentes não significam motores de
 autoria diferentes. A autoridade efetiva continua sendo calculada pela conta
 conectada e pelo alvo da operação.
 
+O fluxo GPT–AraLearn preserva quatro responsabilidades separadas:
+
+| Camada | Responsabilidade |
+| --- | --- |
+| prompt de sistema | protocolo e invariantes estáveis; não enumera parâmetros nem teoria |
+| knowledge JIT | ciência, critérios, exemplos e políticas recuperáveis para o passo corrente |
+| MCP/Action | operações tipadas de leitura e mutação, com revisão, idempotência e autoridade |
+| workspace | estado persistente canônico; conversa e cache offline não são autoridade |
+
+`gerirDesenhoInstrucional` expõe o mesmo serviço fechado pelos dois
+adaptadores. `read_slice` entrega o menor contexto suficiente de uma
+microssequência; as demais operações consultam um contrato promovido, gravam
+análise e assignments, persistem `ResourceSet`, resolvem o snapshot, vinculam o
+blueprint v2 e registram o manifesto. O ciclo é retomável sem transcript e
+mantém a ordem análise → parâmetros → snapshot → disponibilidade → descoberta
+progressiva → blueprint → cards derivados → manifesto. Quando Auto precisa de
+um conjunto novo, o servidor expande facetas contra o catálogo instalado e
+congela referências exatas antes de o assignment citá-lo.
+
+Analytics usa uma Action app-only separada,
+`consultarAnalyticsInstrucional`, fora do MCP e do OpenAPI público. O Edge
+normaliza `overview|dataset|export`, limita páginas a 20, exige `datasetSetRef`
+nas continuações e rejeita respostas acima do orçamento comum. Views SQL
+projetam quatro datasets sem identidade real de participante; definições e
+outcomes são append-only. `record_outcome` reutiliza a Action app-only de
+enrollment e só aceita vínculo consentido, ativo e atribuído. A UI desenha
+gráfico e tabela a partir do mesmo array e mantém cache user-bound apenas do
+overview.
+
+Na biblioteca, `workspaceId` e `snapshotRef` formam contexto confiável. A busca
+é filtrada pelos conjuntos efetivos, cada chamada `contracts` devolve somente
+uma versão e a seleção identifica o conjunto que autorizou package, papel e
+ajuste. Sem contexto, o modo legado é explicitamente irrestrito e não prova
+conformidade com desenho parametrizado.
+
 ## Mapa do código
 
 | Diretório | Responsabilidade arquitetural |
 | --- | --- |
 | `src/domain/` | contrato da árvore didática e invariantes de domínio |
+| `src/authoring/` | contratos, validação, resolução, `ResourceSet`, binding, diff e protocolo experimental |
 | `src/resources/kernel/` | envelope de card, registro de packages e validação comum |
 | `src/resources/catalog/` | vocabulário controlado, busca e política de seleção |
 | `src/resources/packages/` | contratos, validação e renderização de cada package |
@@ -498,7 +652,7 @@ conectada e pelo alvo da operação.
 | `src/sync/` | identidade do dispositivo e canais de sincronização |
 | `src/supabase/` | Auth, HTTP, catálogo e configuração pública |
 | `src/assist/` e `src/generation/` | escopos, providers e assistência contextual |
-| `src/ui/` | navegação, estudo, edição e painéis |
+| `src/ui/` | navegação, estudo, edição, superfície responsiva de Autoria e retorno contextual |
 | `supabase/migrations/` | evolução versionada do esquema e das funções SQL |
 | `supabase/functions/` | interfaces HTTP protegidas e entrega de artefatos |
 
@@ -506,12 +660,20 @@ conectada e pelo alvo da operação.
 
 Os testes automatizados demonstram contratos executáveis, isolamento entre
 contas nos cenários cobertos, troca atômica da réplica, validação de hashes,
-recusa de revisões obsoletas, funcionamento offline em jornadas definidas e
-ausência de segredos nos artefatos examinados.
+recusa de revisões obsoletas, resolução determinística do desenho, fronteiras de
+`ResourceSet`, integração MCP/Action do slice e das mutações tipadas,
+funcionamento offline em jornadas definidas e ausência de segredos nos
+artefatos examinados.
 
-Eles não demonstram adequação pedagógica universal, usabilidade com todas as
-populações, disponibilidade prolongada, custo real em escala ou equivalência
-com outro backend. Essas afirmações exigem métodos próprios de avaliação. A
+Eles não demonstram adequação pedagógica universal, qualidade semântica do
+blueprint ou da materialização, usabilidade com todas as populações,
+disponibilidade prolongada, custo real em escala ou equivalência com outro
+backend. A #104 demonstra a exposição por MCP e Action e a #105, sua projeção
+visual responsiva; a auditoria semântico-instrucional completa pertence à #106. Os
+cenários A–H são regressões determinísticas de engenharia, não validação
+educacional. A regressão integral fica concentrada no fechamento da #109;
+etapas intermediárias executam testes proporcionais ao risco. Essas afirmações
+exigem métodos próprios de avaliação. A
 [Matriz de conformidade técnica](matriz-conformidade-tecnica.md) relaciona cada
 propriedade com código, migrations e testes; [Persistência relacional e
 sincronização](persistencia-relacional.md) aprofunda a réplica, a outbox e as

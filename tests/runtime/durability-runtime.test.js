@@ -105,6 +105,11 @@ test("inicialização ocupa a tela, explicita etapas e mantém recuperação loc
 test("sincronização é automática e oportunista sem atividade remota em segundo plano", () => {
   assert.match(main, /const AUTOMATIC_SYNC_INTERVAL_MS = 60_000/u);
   assert.match(main, /const AUTOMATIC_SYNC_AFTER_CHANGE_MS = 800/u);
+  assert.match(
+    main,
+    /addEventListener\("offline"[\s\S]*scheduleAutomaticSync\(100\);\s*\n\}/u,
+    "a fila de Autoria deve ser retomada logo após abrir uma sessão já online"
+  );
   assert.match(main, /onLocalCommit: scheduleAutomaticSync/u);
   assert.match(main, /document\.visibilityState !== "hidden"[\s\S]*navigator\?\.onLine !== false/u);
   assert.match(main, /visibilitychange[\s\S]*document\.visibilityState === "hidden"[\s\S]*clearTimeout\(automaticSyncTimer\)[\s\S]*bestEffortFlush/u);
@@ -162,11 +167,12 @@ test("conta pode ser excluída sem expor operação administrativa no cliente", 
   assert.doesNotMatch(remoteCatalog, /service.role|service_role|sb_secret_/iu);
 });
 
-test("painel integra Coleções e Chatbot sem duplicar organização nem a tela de estudo", () => {
+test("Coleções fica na Autoria sem chat interno nem duplicação na tela de Estudo", () => {
   assert.match(panel, /import \{ renderUiIcon \}/u);
   assert.match(panel, /node\.title = label/u);
   assert.match(panel, /node\.setAttribute\("aria-label", label\)/u);
-  assert.match(panel, /role="tablist"[\s\S]*data-panel-view="collections"[\s\S]*data-panel-view="chatbot"/u);
+  assert.match(panel, /role="tablist"[\s\S]*data-panel-view="collections"/u);
+  assert.doesNotMatch(panel, /data-panel-view="chatbot"/u);
   assert.doesNotMatch(panel, /data-panel-view="organize"/u);
   assert.match(panel, /title="Fechar painel" aria-label="Fechar painel"/u);
   assert.match(panel, /await spaces\.addCourseToTrails\(courseId\)/u);
@@ -178,7 +184,8 @@ test("painel integra Coleções e Chatbot sem duplicar organização nem a tela 
   assert.match(explicitCourseOriginMigration, /course_origin text/u);
   assert.match(removeTestLaboratoryMigration, /delete from public\.catalog_collection_courses/u);
   assert.match(styles, /\.remote-library-content[\s\S]*scrollbar-gutter: stable/u);
-  assert.match(homeScreen, /Abrir painel/u);
+  assert.match(homeScreen, /data-action="open-authoring"/u);
+  assert.doesNotMatch(homeScreen, /open-central|Abrir painel|Chatbot/u);
 });
 
 test("estados vazios usam uma tipografia compacta única nas superfícies do app", () => {

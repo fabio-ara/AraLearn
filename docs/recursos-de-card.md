@@ -74,7 +74,7 @@ Essa organização combina três necessidades. O modelo precisa recuperar candid
 1. `explore` mostra famílias e facetas;
 2. `search` ranqueia candidatos;
 3. `inspect` compara até oito perfis;
-4. `contracts` entrega até quatro contratos exatos;
+4. `contracts` entrega exatamente um contrato versionado por chamada;
 5. `validate_card` verifica estrutura e composição;
 6. `audit_representation` examina adequação e legibilidade;
 7. `preview_card` informa se o runtime pode abrir a composição.
@@ -91,7 +91,12 @@ O catálogo devolve um estado de cobertura:
 
 Esses termos descrevem o ajuste calculado, não proclamam que uma representação seja universal na academia. O agente deve confrontar convenções, exemplo e contraindicações depois da busca.
 
-Um resultado `substitute` não interrompe a construção. O chat informa brevemente a aproximação usada e sua perda. Essa política permite produzir em áreas ainda não completamente cobertas e transforma a observação do usuário em insumo para expansão futura do catálogo.
+O ajuste calculado não autoriza o uso sozinho. Com `workspaceId` e
+`snapshotRef`, a descoberta é limitada aos `ResourceSet`s efetivos, e o mesmo
+conjunto precisa admitir package, papel e ajuste. A política pode bloquear
+`versatile` ou `substitute` ou admiti-los com limitação explícita; o conjunto
+pode restringir ainda mais. Sem representação adequada, a autoria registra a
+lacuna e não finge equivalência.
 
 ## 5. Composição do card
 

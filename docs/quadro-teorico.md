@@ -92,6 +92,40 @@ O mesmo dado não responde a perguntas de todos os níveis:
 Um clique pertence ao nível de interação. Ele não mede compreensão, percurso,
 autorregulação ou colaboração sem uma cadeia de operacionalização validada.
 
+## Camada de análise instrucional
+
+Entre fontes e materialização, o AraLearn propõe uma camada explícita de
+análise instrucional. Ela descreve unidades editoriais, conhecimento prévio
+presumido, relações, conjuntos que precisam ser coordenados e requisitos de
+explicação, evidência, prática, fidelidade e representação. Essa camada não é
+um modelo psicológico do estudante.
+
+A distinção decorre de três limites teóricos. Componentes de conhecimento são
+latentes e sua granularidade depende da população e da tarefa
+([Koedinger et al. (2012)](referencias.md#ref-koedinger2012kli));
+interatividade de elementos depende da estrutura da informação e do
+conhecimento prévio e admite somente estimativa aproximada
+([Chen et al. (2023)](referencias.md#ref-chen2023elementinteractivity));
+e uma alegação de proficiência exige argumento entre evidência e tarefa, não
+apenas cobertura editorial
+([Mislevy et al. (2003)](referencias.md#ref-mislevy2003ecd)).
+
+Consequentemente:
+
+- novidade presumida é categoria por unidade, com contagem derivada, e não
+  medida de carga;
+- coordenação é hipergrafo ou conjunto de relações, ainda que sua cardinalidade
+  possa ser calculada;
+- explicação, evidência, variação, apoio e fidelidade permanecem conjuntos,
+  vetores ou relações quando essa forma preserva informação;
+- todo número exige unidade, denominador, escopo, algoritmo e versão;
+- cards, palavras, caracteres e quantidade de resources pertencem ao manifesto
+  posterior à materialização.
+
+A proposta técnica correspondente é descrita em [Desenho instrucional
+parametrizado](desenho-instrucional-parametrizado.md). Ela ainda não é contrato
+persistido nem resultado empírico.
+
 ## Construtos centrais
 
 | Construto ou resultado | Definição de trabalho | Manifestação possível | Interpretação proibida |
@@ -150,10 +184,12 @@ operacionalização, consequências esperadas, explicações rivais e limites.
 - **Decisão:** planejamento antecede quantidade de cards; não há tamanho fixo de
   microteoria ou prática.
 - **Fundamentação:** carga e segmentação dependem de tarefa e desenho
-  ([Sweller et al. (1998)](referencias.md#ref-sweller1998architecture); [Rey et al. (2019)](referencias.md#ref-rey2019segmenting)); microlearning é um campo
+  ([Sweller et al. (1998)](referencias.md#ref-sweller1998architecture); [Chen et al. (2023)](referencias.md#ref-chen2023elementinteractivity); [Rey et al. (2019)](referencias.md#ref-rey2019segmenting)); microlearning é um campo
   heterogêneo ([De Gagne et al. (2019)](referencias.md#ref-degagne2019microlearning)).
-- **Operacionalização:** pré-requisitos, referentes, termos, relações, exemplos
-  e verificações são declarados antes da materialização.
+- **Operacionalização:** unidades presumidas novas, pré-requisitos, referentes,
+  termos, relações, conjuntos de coordenação, requisitos de explicação e
+  evidência são declarados antes da materialização; contagens mantêm unidade e
+  denominador explícitos.
 - **Consequência esperada:** menos saltos conceituais e melhor capacidade de
   explicar e aplicar.
 - **Explicações rivais:** maior tempo total, repetição, qualidade do autor ou
@@ -169,11 +205,15 @@ operacionalização, consequências esperadas, explicações rivais e limites.
 - **Alternativas ou requisitos:** texto, recurso geral ou representação
   especializada; a escolha deve preservar convenção e gesto cognitivo.
 - **Decisão:** admitir packages por justificativa semântica, descobrir primeiro
-  por intenção e consultar depois o contrato específico.
+  por intenção e consultar depois o contrato específico. Um conjunto permitido
+  restringe disponibilidade; seleção local e uso materializado permanecem
+  estados diferentes.
 - **Fundamentação:** representações possuem funções, restrições e demandas de
   coordenação ([Ainsworth (2006)](referencias.md#ref-ainsworth2006deft); [Mayer (2009)](referencias.md#ref-mayer2009multimedia); [Ginns (2006)](referencias.md#ref-ginns2006contiguity)).
 - **Operacionalização:** catálogo facetado, contrato de alto nível, mecanismo de renderização
-  mecanismo de renderização determinístico, caso acadêmico complexo e auditoria disciplinar.
+  determinístico, conjunto versionado de `package@version`, caso acadêmico
+  complexo e auditoria disciplinar. Ausência de representação adequada é
+  registrada, não encoberta por equivalência.
 - **Consequência esperada:** interpretação mais precisa e menor tradução para
   prosa ou tabelas improvisadas.
 - **Explicações rivais:** novidade, familiaridade com a notação, dica no
@@ -212,8 +252,10 @@ operacionalização, consequências esperadas, explicações rivais e limites.
   ordenação.
 - **Fundamentação:** recuperação pode beneficiar aprendizagem, com moderadores e
   limites de transferência ([Agarwal et al. (2021)](referencias.md#ref-agarwal2021retrieval); [Pan e Rickard (2018)](referencias.md#ref-pan2018transfer)).
-- **Operacionalização:** cada prática declara o que verifica; lacunas são
-  independentes; tarefas posteriores distinguem retenção e transferência.
+- **Operacionalização:** cada prática declara alvo, operação e o que verifica;
+  oportunidades distintas conservam assinatura semântica para que mudança
+  cosmética não infle a contagem; tarefas posteriores distinguem retenção e
+  transferência.
 - **Consequência esperada:** correspondência mais clara entre objetivo e ação do
   estudante.
 - **Explicações rivais:** dificuldade, tempo, familiaridade ou pistas do formato.
@@ -345,6 +387,9 @@ instrumento, momento e interpretação próprios.
 - erro, ajuda ou resposta revelada como fracasso;
 - uso de IA como falta de conhecimento;
 - quantidade de cards ou recursos como qualidade;
+- cardinalidade de unidades ou relações como carga cognitiva medida;
+- disponibilidade de um resource como prova de que ele foi selecionado ou
+  materializado;
 - papel de workspace como colaboração;
 - materialização técnica como validação pedagógica;
 - esquema de dados válido como correção factual;

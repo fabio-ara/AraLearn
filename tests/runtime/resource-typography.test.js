@@ -31,7 +31,6 @@ test("conteúdo primário dos resources compartilha a escala tipográfica do tex
     ".package-relational-table",
     ".package-set-name",
     ".runtime-matrix-item",
-    ".token-option",
     ".package-math-graph-label-content",
     ".package-chart-legend",
     ".package-plane-legend",
@@ -43,7 +42,7 @@ test("conteúdo primário dos resources compartilha a escala tipográfica do tex
   assert.doesNotMatch(styles, /\.package-formula math\s*\{[^}]*font-size:\s*clamp/gu);
 });
 
-test("prosa e estruturas densas usam degraus próprios sem encolher controles", () => {
+test("prosa e estruturas densas usam degraus próprios e opções recuperam a escala compacta", () => {
   assert.match(tokens, /--type-prose:\s*0\.96875rem;/u);
   assert.match(tokens, /--leading-prose:\s*1\.5;/u);
   assert.match(tokens, /--type-dense:\s*0\.9375rem;/u);
@@ -54,6 +53,14 @@ test("prosa e estruturas densas usam degraus próprios sem encolher controles", 
 
   assertUsesType(".card-sheet-content", "prose");
   assertUsesType(".runtime-annotated-text-source", "prose");
+  assert.match(styles, /\.runtime-flow-prompt\s*\{[^}]*padding:\s*6px;[^}]*gap:\s*4px/u);
+  assert.match(styles, /\.token-options\s*\{[^}]*gap:\s*4px/u);
+  assert.match(styles, /\.token-option\s*\{[^}]*min-height:\s*28px/u);
+  assert.match(styles, /\.token-option\s*\{[^}]*padding:\s*3px 6px/u);
+  assert.match(styles, /\.token-option\s*\{[^}]*font-size:\s*0\.69rem/u);
+  assert.match(styles, /\.token-option\s*\{[^}]*font-weight:\s*400/u);
+  assert.match(styles, /\.token-option\s*\{[^}]*line-height:\s*1\.14/u);
+  assert.match(styles, /\.token-option\s*\{[^}]*overflow-wrap:\s*anywhere/u);
 
   for (const selector of [
     ".runtime-code-block pre",
