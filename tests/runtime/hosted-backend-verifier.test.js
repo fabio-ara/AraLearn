@@ -8,7 +8,7 @@ import {
   verifyHostedBackend
 } from "../../scripts/verifyHostedBackend.mjs";
 
-const EXPECTED_REVISION = "20260815233000";
+const EXPECTED_REVISION = "20260815235900";
 const EXPECTED_CONTRACT_VERSION = 1;
 const PUBLIC_KEY = "sb_publishable_test-public-value";
 const FEATURES = [
@@ -83,7 +83,8 @@ const FEATURES = [
   "flat-runtime-manifest-v1",
   "parameterized-authoring-design-v1",
   "authoring-blueprint-artifact-receipt-v1",
-  "authoring-product-state-projection-v1"
+  "authoring-product-state-projection-v1",
+  "authoring-design-conformance-audit-v1"
 ];
 
 function response(status, body, headers = {}) {
