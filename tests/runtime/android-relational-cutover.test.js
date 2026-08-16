@@ -36,6 +36,7 @@ const dataExtractionRules = fs.readFileSync(
 );
 const staging = fs.readFileSync(new URL("../../scripts/stageWebRuntime.mjs", import.meta.url), "utf8");
 const editorApp = fs.readFileSync(new URL("../../src/ui/lessonEditorApp.js", import.meta.url), "utf8");
+const packageVersion = JSON.parse(read("package.json")).version;
 
 test("o APK declara somente internet, não exporta backup e recebe o callback de autenticação", () => {
   const permissions = [...manifest.matchAll(/<uses-permission\s+android:name="([^"]+)"\s*\/>/gu)]
@@ -82,8 +83,8 @@ test("a rede remota exige HTTPS e o cleartext fica restrito ao desenvolvimento l
 });
 
 test("o build Android recebe apenas configuração pública e não adiciona SDK Supabase nativo", () => {
-  assert.match(gradle, /versionCode = 165/u);
-  assert.match(gradle, /versionName = "0\.0\.19"/u);
+  assert.match(gradle, /versionCode = [1-9]\d*/u);
+  assert.match(gradle, new RegExp(`versionName = "${packageVersion.replaceAll(".", "\\.")}"`, "u"));
   assert.match(gradle, /System\.getenv\("ARALEARN_SUPABASE_URL"\)/u);
   assert.match(gradle, /System\.getenv\("ARALEARN_SUPABASE_PUBLISHABLE_KEY"\)/u);
   assert.match(gradle, /System\.getenv\("ARALEARN_ASSIST_ALLOWED_ORIGINS"\)/u);

@@ -4,6 +4,21 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 
 ## [Unreleased]
 
+## [0.0.20] - 2026-08-16
+
+### Added
+
+- ciclo técnico de Autoria promovido: planejamento instrucional versionado,
+  auditoria de conformidade, variantes experimentais, atribuição controlada e
+  base de analytics preparada para coleta posterior;
+- publicação coordenada de migrations e funções remotas da Autoria antes do
+  lançamento do cliente correspondente.
+
+### Fixed
+
+- validações, proveniência, currentness, paginação e isolamento de variantes
+  foram reforçados no fluxo de Autoria e nos artefatos móveis.
+
 ### Added
 
 - shell responsivo com entrada explícita **Estudo/Autoria** na mesma aplicação
