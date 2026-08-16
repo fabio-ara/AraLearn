@@ -72,20 +72,22 @@ Os exemplos de [outcome em JSON](evidence/authoring-experiment-outcomes-example.
 e [CSV](evidence/authoring-experiment-outcomes-example.csv) são gerados pelo
 serializador do produto e usam apenas identificadores pseudonimizados.
 
-## O que ainda não pode ser dado como concluído
+## Validação humana pós-publicação ainda pendente
 
 1. Executar com uma pessoa real o roteiro de aceitação leiga, primeiro no
    celular e depois no desktop. Playwright e agentes não podem aprovar esse
    critério humano. O [roteiro pronto para aplicação](roteiro-aceitacao-humana-autoria.md)
    não substitui essa execução.
-2. Só depois desse item atualizar a #101/#109 como encerradas e promover o
-   checkpoint para `main`.
+2. O ciclo técnico foi promovido a `main` em 16 de agosto de 2026 após os
+   checks obrigatórios de validação e Supabase local. A execução humana segue
+   como validação pós-publicação e pode abrir correções; não é evidência já
+   obtida nem aprovação automática da experiência.
 
 ## Retomada exata
 
 ```powershell
 git fetch origin
-git switch checkpoint/autoria-109-20260816
+git switch main
 npm ci
 npm run lint
 node scripts/auditDocumentation.mjs
