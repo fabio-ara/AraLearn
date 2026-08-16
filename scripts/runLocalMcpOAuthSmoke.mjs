@@ -121,24 +121,33 @@ async function requestJson(fetchImpl, url, init, label, {
 }
 
 function oauthUserHeaders(publishableKey, accessToken, {
-  contentType = false
+  contentType = false,
+  origin = LOCAL_APP_ORIGIN
 } = {}) {
   return {
     apikey: publishableKey,
     Authorization: `Bearer ${accessToken}`,
-    Origin: LOCAL_APP_ORIGIN,
-    Referer: `${LOCAL_APP_ORIGIN}/`,
+    Origin: origin,
+    Referer: `${origin}/`,
     ...(contentType ? { "Content-Type": "application/json" } : {})
   };
 }
 
-function localConfiguration(environment) {
+function oauthConfiguration(environment, { allowHosted = false } = {}) {
   const normalized = normalizedEnvironment(environment);
   const configuration = resolveSupabaseServerEnvironment(normalized);
-  assert(
-    isLocalSupabaseUrl(configuration.supabaseUrl),
-    "A provisão OAuth destrutiva só pode usar a stack Supabase local."
-  );
+  if (allowHosted) {
+    assert(
+      !isLocalSupabaseUrl(configuration.supabaseUrl)
+      && /^https:\/\/[^/]+$/u.test(configuration.supabaseUrl),
+      "A provisão hospedada exige uma Project URL HTTPS não local."
+    );
+  } else {
+    assert(
+      isLocalSupabaseUrl(configuration.supabaseUrl),
+      "A provisão OAuth destrutiva só pode usar a stack Supabase local."
+    );
+  }
   const projectUrl = configuration.supabaseUrl.replace(/\/+$/u, "");
   return {
     ...configuration,
@@ -153,10 +162,13 @@ export async function provisionLocalMcpOAuthToken({
   createId = randomUUID,
   createBytes = randomBytes,
   nowSeconds = () => Math.floor(Date.now() / 1000),
-  lifecycle = {}
+  lifecycle = {},
+  allowHosted = false,
+  consentOrigin = LOCAL_APP_ORIGIN,
+  consentPath = "/"
 } = {}) {
   assert.equal(typeof fetchImpl, "function", "fetch indisponível para a provisão OAuth.");
-  const configuration = localConfiguration(environment);
+  const configuration = oauthConfiguration(environment, { allowHosted });
   Object.assign(lifecycle, configuration, {
     clientId: null,
     oauthGrantCreated: false,
@@ -293,14 +305,16 @@ export async function provisionLocalMcpOAuthToken({
   const consentUrl = new URL(consentLocation, configuration.projectUrl);
   assert.equal(
     consentUrl.origin,
-    LOCAL_APP_ORIGIN,
-    "O consentimento OAuth não aponta para a origem local do AraLearn."
+    consentOrigin,
+    "O consentimento OAuth não aponta para a origem configurada."
   );
-  assert.equal(
-    consentUrl.pathname,
-    "/",
-    "O consentimento OAuth não aponta para o caminho local configurado."
-  );
+  if (consentPath) {
+    assert.equal(
+      consentUrl.pathname,
+      consentPath,
+      "O consentimento OAuth não aponta para o caminho configurado."
+    );
+  }
   const authorizationId = consentUrl.searchParams.get("authorization_id");
   assert.match(
     String(authorizationId || ""),
@@ -316,7 +330,8 @@ export async function provisionLocalMcpOAuthToken({
     {
       headers: oauthUserHeaders(
         configuration.publishableKey,
-        session.access_token
+        session.access_token,
+        { origin: consentOrigin }
       )
     },
     "Leitura do consentimento OAuth"
@@ -334,7 +349,7 @@ export async function provisionLocalMcpOAuthToken({
       headers: oauthUserHeaders(
         configuration.publishableKey,
         session.access_token,
-        { contentType: true }
+        { contentType: true, origin: consentOrigin }
       ),
       body: JSON.stringify({ action: "approve" })
     },
@@ -381,6 +396,15 @@ export async function provisionLocalMcpOAuthToken({
     "A credencial administrativa não pode ser reutilizada como bearer do MCP."
   );
   return { ...lifecycle, accessToken };
+}
+
+export async function provisionHostedMcpOAuthToken(options = {}) {
+  return provisionLocalMcpOAuthToken({
+    ...options,
+    allowHosted: true,
+    consentOrigin: "https://fabio-ara.github.io",
+    consentPath: null
+  });
 }
 
 export async function cleanupLocalMcpOAuthProvision({

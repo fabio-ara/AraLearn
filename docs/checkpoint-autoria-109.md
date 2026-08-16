@@ -53,6 +53,10 @@ de checkpoint é `checkpoint/autoria-109-20260816`.
 - Projeto hospedado vinculado: a descoberta pública do recurso MCP e do OAuth
   confirmou o recurso canônico, escopo `openid` e PKCE `S256`; isso não é o
   smoke autenticado de mutação hospedada.
+- MCP hospedado: a jornada OAuth temporária confirmou DCR, PKCE, replay,
+  autoria incremental, leitura e limpeza. Durante a execução, a Site URL do
+  Auth foi corrigida para `https://fabio-ara.github.io/AraLearn/`; o perfil
+  local versionado permaneceu em `127.0.0.1`.
 - Jornada local da Custom GPT Action aprovada após percorrer análise,
   ResourceSet, parâmetros, snapshot, blueprint, materialização, publicação,
   revisão editorial, catálogo e limpeza.
@@ -70,14 +74,11 @@ serializador do produto e usam apenas identificadores pseudonimizados.
 
 ## O que ainda não pode ser dado como concluído
 
-1. Executar o smoke autenticado de mutação no ambiente hospedado autorizado,
-   com um access token OAuth de teste. A descoberta pública hospedada passou,
-   mas nenhum deploy ou mutação foi inferido a partir dela.
-2. Executar com uma pessoa real o roteiro de aceitação leiga, primeiro no
+1. Executar com uma pessoa real o roteiro de aceitação leiga, primeiro no
    celular e depois no desktop. Playwright e agentes não podem aprovar esse
    critério humano. O [roteiro pronto para aplicação](roteiro-aceitacao-humana-autoria.md)
    não substitui essa execução.
-3. Só depois desses itens atualizar a #101/#109 como encerradas e promover o
+2. Só depois desse item atualizar a #101/#109 como encerradas e promover o
    checkpoint para `main`.
 
 ## Retomada exata

@@ -70,6 +70,12 @@
       "note": "O projeto hospedado vinculado respondeu com recurso MCP canônico, escopo openid e PKCE S256; não inclui autenticação nem mutações hospedadas."
     },
     {
+      "command": "npm run test:authoring:mcp:hosted:oauth",
+      "passed": 1,
+      "failed": 0,
+      "note": "DCR, PKCE, consentimento, replay, autoria incremental, leitura e limpeza passaram no projeto hospedado vinculado. A Site URL hospedada foi corrigida para a origem pública antes da execução."
+    },
+    {
       "command": "node supabase/tests/authoring-action-local-journey.mjs",
       "passed": 1,
       "failed": 0,
@@ -143,7 +149,7 @@
   },
   "notAcceptanceEvidence": [
     "Não mede eficácia pedagógica, causalidade ou validade de instrumentos.",
-    "Não substitui a jornada Action atualizada ou a verificação hospedada.",
+    "Não substitui a jornada Action atualizada ou a aceitação humana real.",
     "Não substitui o roteiro com pessoa leiga real em celular e desktop."
   ],
   "resume": "docs/checkpoint-autoria-109.md"
