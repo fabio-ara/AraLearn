@@ -13,6 +13,7 @@ async function renderConstrainedHome(page, viewportWidth) {
   await page.goto("/");
   return page.evaluate(async ({ groupId, itemId, longTitle, longError }) => {
     const { renderHomeScreen } = await import("/src/ui/renderHomeScreen.js");
+    const { createExperimentEnrollmentSurface } = await import("/src/ui/ExperimentEnrollmentSurface.js");
     const snapshot = {
       space: "trails",
       groups: [{ id: groupId, title: "Outros estudos profissionais" }],
@@ -54,7 +55,15 @@ async function renderConstrainedHome(page, viewportWidth) {
           selectedHomeTrailItemId: itemId,
           homeOrganization: { selectedGroupId: groupId, error: longError }
         }
-      }) + "</div></div>";
+      }) + '</div></div><div class="experiment-enrollment-root"></div>';
+
+    const screen = document.querySelector(".screen");
+    const screenContent = document.querySelector(".screen-content");
+    const scrollbarGutter = Math.max(0, screenContent.offsetWidth - screenContent.clientWidth);
+    screen.style.setProperty("--screen-content-scrollbar-gutter", `${scrollbarGutter}px`);
+    const enrollmentRoot = document.querySelector(".experiment-enrollment-root");
+    enrollmentRoot.style.setProperty("--navigation-scrollbar-gutter", `${scrollbarGutter}px`);
+    createExperimentEnrollmentSurface({ root: enrollmentRoot, controller: {} });
 
     const selectors = [
       ".app-shell",
@@ -75,6 +84,14 @@ async function renderConstrainedHome(page, viewportWidth) {
     const cardRect = card.getBoundingClientRect();
     const productSwitch = document.querySelector(".home-product-switch");
     const productSwitchRect = productSwitch.getBoundingClientRect();
+    const actionCenters = [
+      '[data-action="open-settings"]',
+      '[data-action="open-course"]',
+      ".experiment-enrollment-launcher"
+    ].map((selector) => {
+      const rect = document.querySelector(selector).getBoundingClientRect();
+      return { selector, center: rect.left + rect.width / 2, right: rect.right };
+    });
     const menuGeometry = [
       ["grupo", document.querySelector(".home-group-context-menu")],
       ["curso", document.querySelector(".home-course-selector-actions > .home-course-context-menu")]
@@ -109,6 +126,7 @@ async function renderConstrainedHome(page, viewportWidth) {
       contentClientWidth: document.querySelector(".screen-content").clientWidth,
       contentScrollWidth: document.querySelector(".screen-content").scrollWidth,
       errorOverflowWrap: getComputedStyle(document.querySelector(".home-trails-error")).overflowWrap,
+      actionCenters,
       menuGeometry,
       geometry: selectors.map((selector) => {
         const element = document.querySelector(selector);
@@ -125,9 +143,77 @@ async function renderConstrainedHome(page, viewportWidth) {
   }, { groupId: GROUP_ID, itemId: ITEM_ID, longTitle: LONG_TITLE, longError: LONG_ERROR });
 }
 
+async function renderInternalSettings(page, viewportWidth) {
+  await page.setViewportSize({ width: viewportWidth, height: 760 });
+  return page.evaluate(async () => {
+    const { renderLessonScreen } = await import("/src/ui/renderLessonScreen.js");
+    const card = {
+      id: "card-a",
+      position: 1,
+      title: "Estado",
+      role: "theory",
+      content: [{
+        id: "paragraph-a",
+        package: "aralearn.resource.paragraph",
+        version: "1.0.0",
+        data: { text: "Conteúdo." }
+      }],
+      response: null,
+      feedback: [],
+      topics: [],
+      sources: []
+    };
+    const microsequence = { id: "micro-a", title: "Estados", dependsOn: [], cards: [card] };
+    const lesson = { id: "lesson-a", title: "Transições", microsequences: [microsequence] };
+    const moduleValue = { id: "module-a", title: "Processos", lessons: [lesson] };
+    const course = { id: "course-a", title: "Curso", modules: [moduleValue] };
+    document.body.innerHTML = '<div id="app-root"><div class="app-shell">' +
+      renderLessonScreen({
+        project: { contract: "aralearn.library.v1", scope: "course", courses: [course] },
+        view: "course",
+        selection: {
+          courseKey: course.id,
+          moduleKey: moduleValue.id,
+          lessonKey: lesson.id,
+          microsequenceKey: microsequence.id,
+          cardKey: card.id,
+          cardIndex: 0
+        },
+        course,
+        moduleValue,
+        lesson,
+        microsequence,
+        cards: [card],
+        card,
+        editorSupport: {
+          progress: { version: 1, lessons: {} },
+          entityModes: { course: "view" },
+          coursePermissions: {
+            canAuthorContent: true,
+            canEdit: true,
+            canEditMetadata: true,
+            canEditCards: true,
+            canUseBottomUpAi: true,
+            canUseCardAi: true,
+            canComment: true
+          }
+        }
+      }) + "</div></div>";
+    const screen = document.querySelector(".screen");
+    const content = document.querySelector(".screen-content");
+    screen.style.setProperty(
+      "--screen-content-scrollbar-gutter",
+      `${Math.max(0, content.offsetWidth - content.clientWidth)}px`
+    );
+    const rect = document.querySelector('[data-action="open-settings"]').getBoundingClientRect();
+    return { center: rect.left + rect.width / 2, right: rect.right };
+  });
+}
+
 test("Home contém erros e títulos longos sem distorcer ou recortar controles", async ({ page }) => {
   for (const viewportWidth of [1440, 430, 320]) {
     const result = await renderConstrainedHome(page, viewportWidth);
+    const internalSettings = await renderInternalSettings(page, viewportWidth);
     expect(result.cardScrollWidth, `card em ${viewportWidth}px`).toBeLessThanOrEqual(result.cardClientWidth);
     expect(result.contentScrollWidth, `conteúdo em ${viewportWidth}px`).toBeLessThanOrEqual(result.contentClientWidth);
     expect(Math.abs(result.productSwitch.left - result.card.left), `alinhamento em ${viewportWidth}px`)
@@ -137,6 +223,12 @@ test("Home contém erros e títulos longos sem distorcer ou recortar controles",
     expect(Math.abs(result.productSwitch.buttonWidths[0] - result.productSwitch.buttonWidths[1]),
       `opções simétricas em ${viewportWidth}px`).toBeLessThanOrEqual(1);
     expect(result.errorOverflowWrap).toBe("anywhere");
+    expect(Math.max(...result.actionCenters.map((item) => item.center)) -
+      Math.min(...result.actionCenters.map((item) => item.center)),
+    `eixo das ações em ${viewportWidth}px: ${JSON.stringify({ actions: result.actionCenters, card: result.card })}`)
+      .toBeLessThanOrEqual(0.5);
+    expect(Math.abs(internalSettings.center - result.actionCenters[0].center),
+      `Conta e aparência entre telas em ${viewportWidth}px`).toBeLessThanOrEqual(0.5);
     expect(result.geometry.filter((item) => !item.withinCard), `geometria em ${viewportWidth}px`).toEqual([]);
     expect(result.menuGeometry.filter((item) => !item.withinCard), `menus em ${viewportWidth}px`).toEqual([]);
     for (const menu of result.menuGeometry) {

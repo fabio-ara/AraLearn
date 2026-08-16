@@ -540,6 +540,12 @@ async function renderAuthenticatedApplication(root, config, authClient, session)
     },
     onViewChange(view) {
       activeStudyView = view;
+      const navigationGutter = editorRoot.querySelector(".screen")?.style
+        .getPropertyValue("--screen-content-scrollbar-gutter") || "0px";
+      experimentEnrollmentRoot.style.setProperty(
+        "--navigation-scrollbar-gutter",
+        navigationGutter
+      );
       const showEnrollmentEntry = view === "courses";
       if (!showEnrollmentEntry) experimentEnrollmentSurface?.close?.();
       experimentEnrollmentRoot.hidden = !showEnrollmentEntry;

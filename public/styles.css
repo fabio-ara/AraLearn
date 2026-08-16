@@ -1059,7 +1059,7 @@ input:-webkit-autofill:focus {
      ganha um segundo recuo, para que voltar e as ações laterais compartilhem
      a mesma aresta dos cartões abaixo. */
   padding-inline: 0;
-  margin-inline-end: var(--screen-content-scrollbar-gutter, 0px);
+  margin-inline-end: calc(var(--screen-content-scrollbar-gutter, 0px) + 1px);
 }
 
 .navigation-topbar > .icon-ghost,
@@ -1380,7 +1380,10 @@ input:-webkit-autofill:focus {
 }
 
 .home-topbar {
-  padding-inline: 12px;
+  /* A Home compartilha a mesma aresta de ações das telas internas. O recuo
+     lateral já pertence à moldura e a calha de rolagem é compensada pela
+     navigation-topbar. */
+  padding-inline: 0;
 }
 
 .home-topbar .brand-mark {
@@ -8693,7 +8696,12 @@ fieldset.authoring-experiment-fieldset {
 
 .experiment-enrollment-launcher {
   position: absolute;
-  right: max(12px, var(--safe-right));
+  right: calc(
+    var(--safe-right) +
+    10px +
+    var(--navigation-scrollbar-gutter, var(--shell-scrollbar-comp)) +
+    1px
+  );
   bottom: calc(max(12px, var(--safe-bottom-tappable)) + 62px);
   width: var(--tap);
   min-height: var(--tap);
@@ -9051,6 +9059,14 @@ label.authoring-experiment-continuity {
   gap: 6px;
   min-width: 0;
   max-width: 100%;
+}
+
+.home-course-selector-actions > .open-main {
+  /* 10 px do card e 2 px da prévia formam a calha até a aresta interna da
+     borda. Apenas a ação principal a ocupa; menus continuam
+     contidos no card. */
+  position: relative;
+  inset-inline-end: -12px;
 }
 
 .home-course-selector-actions > .open-main,

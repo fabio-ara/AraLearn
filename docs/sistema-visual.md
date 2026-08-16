@@ -115,6 +115,8 @@ pendente e oferece releitura, nova tentativa ou descarte explícito.
 
 No leitor, **Visualizar**, **Editar** e **IA** são estados contextuais da mesma superfície. Seus controles ocupam o centro da barra superior. O nome do curso não reaparece visualmente entre a barra e o card: permanece apenas como contexto acessível, pois o próprio card e a ação de retorno já situam o estudante. Em Visualizar, não permanecem controles de autoria. Em Editar, somente textos declarados pelos packages recebem affordance de edição. Cada rótulo editável mostra uma pista discreta sobre o próprio texto; foco forte e cursor de digitação pertencem exclusivamente ao rótulo ativo, nunca ao resource inteiro. Em IA, a seleção delimita o escopo enviado à conversa.
 
+Na moldura móvel, as ações à direita formam uma única linha vertical. **Conta e aparência**, **Abrir curso** e o ingresso por convite terminam na mesma aresta do card, inclusive quando a tela reserva uma calha para a barra de rolagem. A troca de tela não pode deslocar o botão de conta; a ação de voltar conserva, de forma independente, a aresta esquerda dos cards.
+
 Uma **affordance** é uma pista perceptível de como um elemento pode ser usado. Contorno de seleção, cursor, foco e rótulo precisam corresponder à operação disponível; aparência de botão não pode ser aplicada a texto sem ação.
 
 ## 6. Tipografia, espaço e forma
