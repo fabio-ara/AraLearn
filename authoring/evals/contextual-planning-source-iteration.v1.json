@@ -128,22 +128,7 @@
         "observations": [
           {
             "sourceId": "chatgpt-instructions",
-            "checkId": "prompt-dimension-learningConditions",
-            "observation": "required-content-absent"
-          },
-          {
-            "sourceId": "chatgpt-instructions",
-            "checkId": "prompt-dimension-contentDemands",
-            "observation": "required-content-absent"
-          },
-          {
-            "sourceId": "chatgpt-instructions",
-            "checkId": "prompt-dimension-anticipatedDifficulties",
-            "observation": "required-content-absent"
-          },
-          {
-            "sourceId": "chatgpt-instructions",
-            "checkId": "prompt-dimension-designResponses",
+            "checkId": "prompt-local-difficulties-and-responses",
             "observation": "required-content-absent"
           },
           {
@@ -297,20 +282,20 @@
   "final": {
     "revision": {
       "kind": "workspace-source-snapshot",
-      "label": "issue-96-final-precommit"
+      "label": "issue-109-integrated"
     },
     "sources": [
       {
         "id": "chatgpt-instructions",
         "path": "authoring/platforms/chatgpt/INSTRUCTIONS.md",
-        "sha256": "7b39d8969d2ab3b87d05b91ae45602765c336791c271f92539dccc0bfea77186",
-        "bytes": 7601
+        "sha256": "0acd4e6e667cd4dd1b5086fed268b7759a539ad7688150352442583d73990f4c",
+        "bytes": 7563
       },
       {
         "id": "authoring-knowledge",
         "path": "supabase/functions/_shared/aralearn-authoring/authoringKnowledge.js",
-        "sha256": "861816e9401e3651dc19847b3ba7a3d3cf402c41743bc2c77766a7eb19632877",
-        "bytes": 44141
+        "sha256": "8c3c36e086a2737655d90bfdbe2dc70047be1ccc1f2465a31b686d4d9574fc9c",
+        "bytes": 51109
       }
     ],
     "findings": []

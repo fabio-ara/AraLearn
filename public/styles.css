@@ -8643,9 +8643,9 @@ fieldset.authoring-experiment-fieldset {
   overflow-wrap: anywhere;
 }
 
-.experiment-enrollment-consent {
+label.experiment-enrollment-consent {
   min-height: var(--tap);
-  grid-template-columns: 22px minmax(0, 1fr) !important;
+  grid-template-columns: 22px minmax(0, 1fr);
   align-items: start;
   padding: 9px;
   border-radius: var(--radius-control);
@@ -8681,9 +8681,9 @@ fieldset.authoring-experiment-fieldset {
   font-size: var(--type-sm);
 }
 
-.authoring-experiment-continuity {
+label.authoring-experiment-continuity {
   min-height: var(--tap);
-  grid-template-columns: 22px minmax(0, 1fr) !important;
+  grid-template-columns: 22px minmax(0, 1fr);
   align-items: start;
   padding: 8px 9px;
   border-radius: var(--radius-control);

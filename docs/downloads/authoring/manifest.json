@@ -7,8 +7,8 @@
     {
       "file": "aralearn-authoring-core.zip",
       "platform": null,
-      "bytes": 840151,
-      "sha256": "4e87caa22d5aa7f76bedd8ec136f8d8f05a03cca863111602771b2ac9735e45b",
+      "bytes": 839565,
+      "sha256": "9aa129e9d2def4957bb494b56971d46ecd9243eff270e05a119fdd9ffb9ae9b3",
       "files": [
         {
           "path": "aralearn-authoring/core/editorial-cycle.md",
@@ -97,8 +97,8 @@
         },
         {
           "path": "aralearn-authoring/evals/contextual-planning-source-iteration.v1.json",
-          "bytes": 14535,
-          "sha256": "5d7a8209a082577a8a67f5523c3cdc26b66b0a1c0747746bc9b6ce2e25e50eca"
+          "bytes": 13949,
+          "sha256": "13bed695b587b7adee47802f4f64bdc36f2f61e991b11d15cb66d921c3493f09"
         },
         {
           "path": "aralearn-authoring/evals/instructional-conformance-audit-scenarios.v1.json",
@@ -285,8 +285,8 @@
     {
       "file": "aralearn-authoring-chatgpt.zip",
       "platform": "chatgpt",
-      "bytes": 1150853,
-      "sha256": "b926d9c964a4ade863f0ca2f0b3af60665e766ecb23336cf5434f11bc5f54cfa",
+      "bytes": 1150267,
+      "sha256": "5cdb2df835a3f21fcc98423683c4223856c0a0e12f968f6b2c2cca3d3ab5b08f",
       "files": [
         {
           "path": "aralearn-authoring/core/editorial-cycle.md",
@@ -375,8 +375,8 @@
         },
         {
           "path": "aralearn-authoring/evals/contextual-planning-source-iteration.v1.json",
-          "bytes": 14535,
-          "sha256": "5d7a8209a082577a8a67f5523c3cdc26b66b0a1c0747746bc9b6ce2e25e50eca"
+          "bytes": 13949,
+          "sha256": "13bed695b587b7adee47802f4f64bdc36f2f61e991b11d15cb66d921c3493f09"
         },
         {
           "path": "aralearn-authoring/evals/instructional-conformance-audit-scenarios.v1.json",
@@ -598,8 +598,8 @@
     {
       "file": "aralearn-authoring-gemini.zip",
       "platform": "gemini",
-      "bytes": 850382,
-      "sha256": "f4f7a5e70f2e8843611bf9ebe58ebf897f55aa57c9685c09818ab26320723164",
+      "bytes": 849796,
+      "sha256": "1c7b8c2d16adccd0431a0389a7c57b798334e8e6424678cff4591fecc31777ff",
       "files": [
         {
           "path": "aralearn-authoring/core/editorial-cycle.md",
@@ -688,8 +688,8 @@
         },
         {
           "path": "aralearn-authoring/evals/contextual-planning-source-iteration.v1.json",
-          "bytes": 14535,
-          "sha256": "5d7a8209a082577a8a67f5523c3cdc26b66b0a1c0747746bc9b6ce2e25e50eca"
+          "bytes": 13949,
+          "sha256": "13bed695b587b7adee47802f4f64bdc36f2f61e991b11d15cb66d921c3493f09"
         },
         {
           "path": "aralearn-authoring/evals/instructional-conformance-audit-scenarios.v1.json",
@@ -891,8 +891,8 @@
     {
       "file": "aralearn-authoring-microsoft-365.zip",
       "platform": "microsoft-365",
-      "bytes": 851877,
-      "sha256": "31936ccf32f899026560291576156b52f914a1ccb12faf1ccf44ef58e3de3232",
+      "bytes": 851291,
+      "sha256": "73fb8a99b212460696c1c6ada573893f265bfbd7e6eb7dc7cbd868d6ddbe8db4",
       "files": [
         {
           "path": "aralearn-authoring/core/editorial-cycle.md",
@@ -981,8 +981,8 @@
         },
         {
           "path": "aralearn-authoring/evals/contextual-planning-source-iteration.v1.json",
-          "bytes": 14535,
-          "sha256": "5d7a8209a082577a8a67f5523c3cdc26b66b0a1c0747746bc9b6ce2e25e50eca"
+          "bytes": 13949,
+          "sha256": "13bed695b587b7adee47802f4f64bdc36f2f61e991b11d15cb66d921c3493f09"
         },
         {
           "path": "aralearn-authoring/evals/instructional-conformance-audit-scenarios.v1.json",
@@ -1189,8 +1189,8 @@
     {
       "file": "aralearn-authoring-claude.zip",
       "platform": "claude",
-      "bytes": 851511,
-      "sha256": "9f9b89e83848f4e1406c83abff421e814cf3df0a4759d3103a1e2b48350a543d",
+      "bytes": 850925,
+      "sha256": "11ba4c2b66212f8e3b869923cc81eca792dc4c7806eb3b64dc11f92c0738363c",
       "files": [
         {
           "path": "aralearn-authoring/core/editorial-cycle.md",
@@ -1279,8 +1279,8 @@
         },
         {
           "path": "aralearn-authoring/evals/contextual-planning-source-iteration.v1.json",
-          "bytes": 14535,
-          "sha256": "5d7a8209a082577a8a67f5523c3cdc26b66b0a1c0747746bc9b6ce2e25e50eca"
+          "bytes": 13949,
+          "sha256": "13bed695b587b7adee47802f4f64bdc36f2f61e991b11d15cb66d921c3493f09"
         },
         {
           "path": "aralearn-authoring/evals/instructional-conformance-audit-scenarios.v1.json",
@@ -1482,8 +1482,8 @@
     {
       "file": "aralearn-authoring-generic.zip",
       "platform": "generic",
-      "bytes": 853035,
-      "sha256": "ecbc99cec4673808ca428c8915dc4d2b0f60070be75580688b88a58f1ea5a34a",
+      "bytes": 852449,
+      "sha256": "ff0cfffedefeae70a3f7c6f2ca56a8e5ac2aeeaeb827acf19c37e555dbbb374f",
       "files": [
         {
           "path": "aralearn-authoring/core/editorial-cycle.md",
@@ -1572,8 +1572,8 @@
         },
         {
           "path": "aralearn-authoring/evals/contextual-planning-source-iteration.v1.json",
-          "bytes": 14535,
-          "sha256": "5d7a8209a082577a8a67f5523c3cdc26b66b0a1c0747746bc9b6ce2e25e50eca"
+          "bytes": 13949,
+          "sha256": "13bed695b587b7adee47802f4f64bdc36f2f61e991b11d15cb66d921c3493f09"
         },
         {
           "path": "aralearn-authoring/evals/instructional-conformance-audit-scenarios.v1.json",

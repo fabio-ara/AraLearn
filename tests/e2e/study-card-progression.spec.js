@@ -1235,7 +1235,15 @@ test("ativação repetida mantém aberto o popup antes do avanço", async ({ pag
   await expect(page.locator(".runtime-card-title")).toHaveText("Um grafo pequeno");
 });
 
-test("navegação de estudo permanece imediata em um curso extenso", async ({ page }) => {
+test("navegação de estudo permanece imediata em um curso extenso", async ({ page }, testInfo) => {
+  const performanceSession = await page.context().newCDPSession(page);
+  await performanceSession.send("Performance.enable");
+  const browserMetrics = async () => Object.fromEntries((
+    await performanceSession.send("Performance.getMetrics")
+  ).metrics.filter(({ name }) => [
+    "Documents", "JSHeapTotalSize", "JSHeapUsedSize", "Nodes"
+  ].includes(name)).map(({ name, value }) => [name, value]));
+  const before = await browserMetrics();
   await signIn(page, { replicaRows: largeCourseRows() });
   await page.locator('[data-action="open-course"]').tap();
   await page.locator('[data-action="open-module"]').first().tap();
@@ -1268,12 +1276,41 @@ test("navegação de estudo permanece imediata em um curso extenso", async ({ pa
   await expect(page.locator('[data-action="open-microsequence-overview"]')).not.toHaveCount(0);
   const backToModuleDuration = await measureSynchronousClick('[data-action="go-back"]');
   await expect(page.locator('[data-action="open-lesson"]')).not.toHaveCount(0);
+  const after = await browserMetrics();
+
+  const measurement = {
+    fixture: {
+      utf8Bytes: 3_432_348,
+      modules: 3,
+      lessons: 24,
+      microsequences: 175,
+      cards: 1_052
+    },
+    latencyMs: {
+      timerQueueDelay: delayedOverview.queueDelay,
+      openOverviewHandler: delayedOverview.handlerDuration,
+      openCard: openCardDuration,
+      backToLesson: backToLessonDuration,
+      backToModule: backToModuleDuration
+    },
+    chromium: {
+      before,
+      after,
+      jsHeapUsedDelta: after.JSHeapUsedSize - before.JSHeapUsedSize
+    }
+  };
+  testInfo.annotations.push({
+    type: "engineering-measurement",
+    description: JSON.stringify(measurement)
+  });
 
   expect(delayedOverview.queueDelay).toBeLessThan(750);
   expect(delayedOverview.handlerDuration).toBeLessThan(150);
   expect(openCardDuration).toBeLessThan(150);
   expect(backToLessonDuration).toBeLessThan(150);
   expect(backToModuleDuration).toBeLessThan(150);
+  expect(after.JSHeapUsedSize).toBeLessThan(256 * 1024 * 1024);
+  expect(measurement.chromium.jsHeapUsedDelta).toBeLessThan(160 * 1024 * 1024);
 });
 
 test("leitor mobile mantém altura e CTA ancorado entre cards de tamanhos diferentes", async ({ page }) => {

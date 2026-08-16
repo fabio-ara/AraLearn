@@ -1223,7 +1223,7 @@ async function assignParticipant(database, {
   ]);
 }
 
-test("#107 percorre base auditada, valida protocolo e gera children com locks canônicos", async () => {
+test("#107 percorre base auditada, valida protocolo e gera children com locks canônicos", async (context) => {
   const database = await installExperimentDatabase();
   try {
     await database.exec(`
@@ -2166,6 +2166,28 @@ test("#107 percorre base auditada, valida protocolo e gera children com locks ca
       select count(*)::integer value
       from private.authoring_experiment_selection_write_tokens
     `), 0);
+
+    const relationalStorage = (await database.query(`
+      select count(*)::integer relation_count,
+        coalesce(sum(pg_total_relation_size(relation.oid)),0)::bigint total_bytes
+      from pg_class relation
+      join pg_namespace namespace on namespace.oid=relation.relnamespace
+      where namespace.nspname='private'
+        and relation.relkind='r'
+        and relation.relname like 'authoring_%'
+    `)).rows[0];
+    const artifactStorageBytes = Number(await scalar(database, `
+      select coalesce(sum(size_bytes),0)::bigint value
+      from private.artifact_refs
+    `));
+    const storageMeasurement = {
+      engine: "PGlite/PostgreSQL",
+      privateAuthoringRelations: relationalStorage.relation_count,
+      relationalBytesIncludingIndexesAndToast: Number(relationalStorage.total_bytes),
+      referencedArtifactBytes: artifactStorageBytes
+    };
+    context.diagnostic(`engineering-storage-measurement ${JSON.stringify(storageMeasurement)}`);
+    assert.ok(storageMeasurement.relationalBytesIncludingIndexesAndToast < 64 * 1024 * 1024);
   } finally {
     await database.close();
   }

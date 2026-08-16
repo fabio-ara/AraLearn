@@ -124,6 +124,7 @@ function mutationReference(document, revision = 7) {
       review: true,
       comment: true,
       publish: true,
+      research: true,
       manage: true
     },
     entities
@@ -160,6 +161,7 @@ function reference({ revision = 7, includeCardContent = true } = {}) {
       review: true,
       comment: true,
       publish: true,
+      research: true,
       manage: true
     },
     entities: [

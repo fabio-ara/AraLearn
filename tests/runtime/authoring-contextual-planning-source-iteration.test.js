@@ -107,7 +107,7 @@ test("mudança regressiva no prompt final produz finding mesmo com novo SHA", ()
   const input = fixtures();
   const sourceId = "chatgpt-instructions";
   input.finalSourceById[sourceId] = input.finalSourceById[sourceId].replace(
-    "questionário fixo",
+    /questionário fixo/gu,
     "roteiro fixo"
   );
   const sourceRecord = input.artifact.final.sources.find(
@@ -132,10 +132,10 @@ test("mudança regressiva no prompt final produz finding mesmo com novo SHA", ()
 test("regras distinguem proibição de incentivo por polaridade", async (t) => {
   const mutations = [
     {
-      name: "Nunca para Sempre no prompt",
+      name: "não aplique para aplique no prompt",
       sourceId: "chatgpt-instructions",
-      before: "Nunca aplique questionário fixo",
-      after: "Sempre aplique questionário fixo",
+      before: "não aplique questionário fixo",
+      after: "aplique questionário fixo",
       expectedCode: "MATERIAL_QUESTION_POLICY_MISSING"
     },
     {
@@ -146,10 +146,10 @@ test("regras distinguem proibição de incentivo por polaridade", async (t) => {
       expectedCode: "MATERIAL_QUESTION_POLICY_MISSING"
     },
     {
-      name: "use primeiro para não use primeiro",
+      name: "contexto primeiro para contexto por último",
       sourceId: "chatgpt-instructions",
-      before: "Antes de fechar o plano, use primeiro pedido",
-      after: "Antes de fechar o plano, não use primeiro pedido",
+      before: "Use primeiro o pedido e o contexto já existente",
+      after: "Use o pedido e o contexto por último",
       expectedCode: "CONTEXT_FIRST_MISSING"
     },
     {

@@ -113,7 +113,7 @@ const RULES = Object.freeze([
       requirement(
         "chatgpt-instructions",
         "context-first-in-prompt",
-        /Antes\s+de\s+fechar\s+o\s+plano,\s+use\s+primeiro\s+pedido/iu
+        /Use\s+primeiro\s+o\s+pedido\s+e\s+o\s+contexto\s+já\s+existente/iu
       ),
       requirement(
         "authoring-knowledge",
@@ -125,7 +125,7 @@ const RULES = Object.freeze([
       prohibition(
         "chatgpt-instructions",
         "context-first-negated-in-prompt",
-        /\b(?:não|nunca)\s+use\s+primeiro\s+pedido|\b(?:use|considere)\s+(?:o\s+)?(?:pedido|contexto)[^.\n]{0,50}\b(?:por\s+último|depois)\b|\bfeche\s+o\s+plano\s+antes\s+de\s+considerar\s+(?:o\s+)?contexto/iu
+        /\b(?:não|nunca)\s+use\s+primeiro\s+(?:o\s+)?pedido|\b(?:use|considere)\s+(?:o\s+)?(?:pedido|contexto)[^.\n]{0,50}\b(?:por\s+último|depois)\b|\bfeche\s+o\s+plano\s+antes\s+de\s+considerar\s+(?:o\s+)?contexto/iu
       ),
       prohibition(
         "authoring-knowledge",
@@ -138,19 +138,11 @@ const RULES = Object.freeze([
     code: "CONTEXTUAL_DIAGNOSIS_MISSING",
     title: "O diagnóstico contextual deve existir antes do plano.",
     required: [
-      ...[
-        "learningConditions",
-        "contentDemands",
-        "anticipatedDifficulties",
-        "designResponses"
-      ].map((dimension) => requirement(
+      requirement(
         "chatgpt-instructions",
-        `prompt-dimension-${dimension}`,
-        new RegExp(
-          `Por\\s+microssequência,\\s+relacione:[\\s\\S]{0,500}\\b${dimension}\\b`,
-          "u"
-        )
-      )),
+        "prompt-local-difficulties-and-responses",
+        /Relacione\s+dificuldades\s+previstas\s+a\s+respostas\s+de\s+desenho/iu
+      ),
       requirement(
         "authoring-knowledge",
         "knowledge-contextual-diagnosis",
@@ -175,7 +167,7 @@ const RULES = Object.freeze([
       requirement(
         "chatgpt-instructions",
         "no-fixed-questionnaire",
-        /Nunca\s+aplique\s+questionário\s+fixo/iu
+        /(?:Não|Nunca)\s+aplique\s+questionário\s+fixo/iu
       ),
       requirement(
         "authoring-knowledge",
@@ -208,7 +200,7 @@ const RULES = Object.freeze([
       requirement(
         "chatgpt-instructions",
         "prompt-difficulty-response-link",
-        /Vincule\s+a\s+cada\s+microssequência[\s\S]{0,220}dificuldade\s+e\s+resposta/iu
+        /Relacione\s+dificuldades\s+previstas\s+a\s+respostas\s+de\s+desenho/iu
       ),
       requirement(
         "authoring-knowledge",
@@ -218,7 +210,7 @@ const RULES = Object.freeze([
       requirement(
         "authoring-knowledge",
         "knowledge-materialization-check",
-        /Para\s+cada\s+difficultyResponses\s+persistido[\s\S]{0,140}cards[\s\S]{0,100}resposta\s+prometida/iu
+        /para\s+cada\s+difficultyResponses[\s\S]{0,140}resposta\s+prometida\s+nos\s+cards/iu
       )
     ],
     forbidden: [
@@ -236,12 +228,12 @@ const RULES = Object.freeze([
       requirement(
         "chatgpt-instructions",
         "prompt-human-plan",
-        /(?:^|[.!?]\s+)Resuma\s+dificuldades\s+materiais[\s\S]{0,120}respostas\s+planejadas[\s\S]{0,120}espere\s+a\s+decisão\s+antes\s+dos\s+cards/imu
+        /Após\s+aprovação\s+materialmente\s+necessária[\s\S]{0,180}record_approved_plan/iu
       ),
       requirement(
         "authoring-knowledge",
         "knowledge-human-plan",
-        /(?:^|[.!?:"]\s*)Mostre\s+cobertura[\s\S]{0,180}dificuldades\s+relevantes[\s\S]{0,100}respostas[\s\S]{0,100}pare\s+antes\s+dos\s+cards/imu
+        /Mostre\s+cobertura[\s\S]{0,180}dificuldades\s+relevantes[\s\S]{0,100}respostas[\s\S]{0,180}(?:peça\s+correção\s+ou\s+aprovação|mandato\s+exigir)/iu
       )
     ],
     forbidden: SOURCES.map((source) => prohibition(
@@ -257,12 +249,12 @@ const RULES = Object.freeze([
       requirement(
         "chatgpt-instructions",
         "prompt-approved-diagnosis-persistence",
-        /Após\s+aprovação\s+ou\s+ajuste,\s+use[\s\S]{0,180}record_approved_plan[\s\S]{0,220}Vincule[\s\S]{0,180}dificuldade\s+e\s+resposta/iu
+        /Relacione\s+dificuldades\s+previstas\s+a\s+respostas\s+de\s+desenho[\s\S]{0,180}record_approved_plan/iu
       ),
       requirement(
         "authoring-knowledge",
         "knowledge-approved-diagnosis-persistence",
-        /Após\s+aprovação,\s+use\s+summary[\s\S]{0,180}pedagogicalDiagnosis\.difficultyResponses/iu
+        /Use\s+summary[\s\S]{0,180}pedagogicalDiagnosis\.difficultyResponses/iu
       )
     ],
     forbidden: SOURCES.map((source) => prohibition(
@@ -283,7 +275,7 @@ const RULES = Object.freeze([
       requirement(
         "chatgpt-instructions",
         "no-heuristic-assessment",
-        /Não\s+use\s+regex,[\s\S]{0,100}avaliação\s+por\s+LLM[\s\S]{0,120}(?:correspondência\s+aproximada|fuzzy\s+matching)/iu
+        /Não\s+use\s+regex,[\s\S]{0,100}avaliação\s+por\s+(?:LLM|modelo)[\s\S]{0,120}(?:correspondência\s+aproximada|fuzzy\s+matching)/iu
       ),
       requirement(
         "authoring-knowledge",
@@ -316,12 +308,12 @@ const RULES = Object.freeze([
       requirement(
         "chatgpt-instructions",
         "prompt-coherence-audit",
-        /(?:^|\n)Confronte\s+diagnóstico,\s*plano\s+e\s+cards/imu
+        /audite\s+a\s+coerência\s+entre\s+diagnóstico,\s*plano\s+e\s+cards/iu
       ),
       requirement(
         "authoring-knowledge",
         "knowledge-coherence-audit",
-        /Para\s+cada\s+difficultyResponses\s+persistido,\s+procure\s+nos\s+cards\s+a\s+resposta\s+prometida/iu
+        /para\s+cada\s+difficultyResponses,\s+procure\s+a\s+resposta\s+prometida\s+nos\s+cards/iu
       )
     ],
     forbidden: SOURCES.map((source) => prohibition(
@@ -653,7 +645,7 @@ export function evaluateAuthoringSourceIteration({
   );
   ensure(
     artifact.final.revision.kind === "workspace-source-snapshot" &&
-      artifact.final.revision.label === "issue-96-final-precommit",
+      artifact.final.revision.label === "issue-109-integrated",
     "final-revision",
     "a revisão final não está identificada pelo snapshot canônico"
   );

@@ -2086,9 +2086,30 @@ test("tema claro/escuro, zoom de 200% e fila offline preservam operação", asyn
   await context.setOffline(false);
 });
 
-test("gera capturas canônicas de Mapa, Desenho e Auditoria", async ({ page }) => {
+test("gera capturas canônicas do fluxo integral de Autoria", async ({ page }) => {
   test.skip(!CAPTURE_AUTHORING_SCREENSHOTS, "Captura opt-in para não alterar artefatos em cada regressão.");
   fs.mkdirSync("docs/screenshots/authoring", { recursive: true });
+  for (const width of [360, 390, 412, 1280]) {
+    for (const theme of ["light", "dark"]) {
+      await page.setViewportSize({ width, height: width === 1280 ? 800 : 844 });
+      await mountAuthoring(page, { research: true, analyticsExperiment: true });
+      await page.evaluate((colorMode) => {
+        document.documentElement.setAttribute("data-color-mode", colorMode);
+      }, theme);
+      await page.getByRole("button", { name: /Curso de sinais/u }).click();
+      const suffix = `${width}-${theme}`;
+      await page.screenshot({
+        path: `docs/screenshots/authoring/authoring-flow-${suffix}.png`,
+        animations: "disabled"
+      });
+      await page.getByRole("tab", { name: "Resultados" }).click();
+      await expect(page.getByRole("heading", { name: "Desenho instrucional" })).toBeVisible();
+      await page.screenshot({
+        path: `docs/screenshots/authoring/authoring-results-${suffix}.png`,
+        animations: "disabled"
+      });
+    }
+  }
   for (const fixture of [
     { width: 390, height: 844, theme: "light" },
     { width: 1280, height: 800, theme: "dark" }

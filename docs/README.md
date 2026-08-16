@@ -131,6 +131,9 @@ resultado empírico:
 O [estado do produto](estado-atual-e-roadmap.md) informa o que está
 implementado, o que ainda requer estabilização e quais questões permanecem
 abertas, sem tratar teste de software como evidência de aprendizagem.
+Enquanto a regressão final de Autoria estiver em andamento, o
+[checkpoint recuperável da #109](checkpoint-autoria-109.md) registra evidências,
+pendências e o comando exato de retomada.
 
 ## Operar e implantar
 

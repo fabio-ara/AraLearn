@@ -90,6 +90,7 @@ function createJourneyAdapter(source) {
         review: true,
         comment: true,
         publish: true,
+        research: true,
         manage: true
       },
       revision,
