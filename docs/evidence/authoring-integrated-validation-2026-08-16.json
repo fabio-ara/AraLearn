@@ -2,6 +2,7 @@
   "date": "2026-08-16",
   "contract": "aralearn.authoring-integrated-validation.v1",
   "state": "checkpoint_not_final_acceptance",
+  "validatedProductCommit": "cb777d0d7f5fc5c2c77be0839cc59564dd8a8e51",
   "scope": ["issues-102-108", "issue-109-integration"],
   "commits": {
     "issue102": "e5951d51",
@@ -19,7 +20,7 @@
       "failed": 0,
       "skipped": 1,
       "total": 1165,
-      "durationSeconds": 122.3,
+      "durationSeconds": 112.468,
       "note": "O skip requer ARALEARN_TEST_DATABASE_URL e psql para concorrência PostgreSQL real."
     },
     {
@@ -28,7 +29,7 @@
       "failed": 0,
       "skipped": 1,
       "total": 144,
-      "durationSeconds": 216,
+      "durationSeconds": 243.8,
       "note": "A captura visual é opt-in na execução normal."
     },
     {

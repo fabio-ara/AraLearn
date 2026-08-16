@@ -58,21 +58,16 @@ serializador do produto e usam apenas identificadores pseudonimizados.
 
 ## O que ainda não pode ser dado como concluído
 
-1. Reexecutar `npm test` e `npm run test:e2e` no commit final do checkpoint. A
-   suíte integral acima passou no mesmo código de produto, antes somente da
-   adição das duas instrumentações de medição; ambas passaram focalmente.
-2. Completar o relatório final da #109, os exemplos exportados CSV/JSON e o
-   checklist comparativo de UX por persona.
-3. Executar os pgTAP `050`, `060` e `070` e os smokes locais quando Supabase
+1. Executar os pgTAP `050`, `060` e `070` e os smokes locais quando Supabase
    CLI, `psql` e a stack local estiverem disponíveis. Eles foram preparados,
    mas não foram executados neste ambiente.
-4. Verificar implantação hospedada apenas em ambiente autorizado. Nenhum
+2. Verificar implantação hospedada apenas em ambiente autorizado. Nenhum
    deploy foi inferido a partir dos testes locais.
-5. Executar com uma pessoa real o roteiro de aceitação leiga, primeiro no
+3. Executar com uma pessoa real o roteiro de aceitação leiga, primeiro no
    celular e depois no desktop. Playwright e agentes não podem aprovar esse
    critério humano. O [roteiro pronto para aplicação](roteiro-aceitacao-humana-autoria.md)
    não substitui essa execução.
-6. Só depois desses itens atualizar a #101/#109 como encerradas e promover o
+4. Só depois desses itens atualizar a #101/#109 como encerradas e promover o
    checkpoint para `main`.
 
 ## Retomada exata
@@ -81,8 +76,6 @@ serializador do produto e usam apenas identificadores pseudonimizados.
 git fetch origin
 git switch checkpoint/autoria-109-20260816
 npm ci
-npm test
-npm run test:e2e
 npm run lint
 node scripts/auditDocumentation.mjs
 npm run audit:frontend
@@ -96,6 +89,11 @@ Se a stack Supabase estiver disponível, executar depois os testes pgTAP e os
 smokes locais descritos em [Supabase](supabase.md). Se qualquer comando falhar,
 corrigir a regressão antes de produzir o relatório final; não reabrir contratos
 estáveis da #102–#108 por preferência de implementação.
+
+`npm test` e `npm run test:e2e` já foram repetidos integralmente neste
+checkpoint: respectivamente 1.164 aprovações com um skip de PostgreSQL real, e
+143 aprovações com uma captura opt-in ignorada. Repita-os somente se a retomada
+alterar código, contratos, pacotes ou superfícies cobertas.
 
 O [estado atual e roadmap](estado-atual-e-roadmap.md) continua sendo a fonte
 canônica de capacidades e limites. Este arquivo é apenas o marcador operacional
