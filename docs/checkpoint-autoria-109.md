@@ -47,6 +47,8 @@ de checkpoint é `checkpoint/autoria-109-20260816`.
 
 Esses números pertencem às fixtures e ao ambiente local de 16 de agosto de
 2026. Não são previsão de produção nem evidência de aprendizagem.
+O [relatório legível por máquina](evidence/authoring-integrated-validation-2026-08-16.json)
+preserva os comandos, limites e medidas observadas.
 
 ## O que ainda não pode ser dado como concluído
 

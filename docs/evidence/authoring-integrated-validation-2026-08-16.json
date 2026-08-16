@@ -1,0 +1,118 @@
+{
+  "date": "2026-08-16",
+  "contract": "aralearn.authoring-integrated-validation.v1",
+  "state": "checkpoint_not_final_acceptance",
+  "scope": ["issues-102-108", "issue-109-integration"],
+  "commits": {
+    "issue102": "e5951d51",
+    "issue103": "e037d628",
+    "issue104": "9d1a9a2f",
+    "issue105": "57511c6b",
+    "issue106": "e61f163a",
+    "issue107": "b63383d5",
+    "issue108": "f3346eb3"
+  },
+  "executions": [
+    {
+      "command": "npm test",
+      "passed": 1164,
+      "failed": 0,
+      "skipped": 1,
+      "total": 1165,
+      "durationSeconds": 122.3,
+      "note": "O skip requer ARALEARN_TEST_DATABASE_URL e psql para concorrência PostgreSQL real."
+    },
+    {
+      "command": "npm run test:e2e",
+      "passed": 143,
+      "failed": 0,
+      "skipped": 1,
+      "total": 144,
+      "durationSeconds": 216,
+      "note": "A captura visual é opt-in na execução normal."
+    },
+    {
+      "command": "node --test --test-name-pattern=\"#107 percorre base auditada\" tests/runtime/authoring-experiments-pglite.test.js",
+      "passed": 1,
+      "failed": 0,
+      "durationSeconds": 4.1
+    },
+    {
+      "command": "npx playwright test tests/e2e/study-card-progression.spec.js -g \"navegação de estudo permanece imediata em um curso extenso\"",
+      "passed": 1,
+      "failed": 0,
+      "durationSeconds": 7.1
+    }
+  ],
+  "browserLargeCourse": {
+    "fixture": "large-professional-seed-course",
+    "utf8Bytes": 3432348,
+    "modules": 3,
+    "lessons": 24,
+    "microsequences": 175,
+    "cards": 1052,
+    "chromium": {
+      "jsHeapUsedBeforeBytes": 670596,
+      "jsHeapUsedAfterBytes": 14215064,
+      "jsHeapUsedDeltaBytes": 13544468,
+      "nodeCountAfter": 4737,
+      "documentCountAfter": 8
+    },
+    "latencyMilliseconds": {
+      "timerQueueDelay": 2,
+      "openOverviewHandler": 11,
+      "openCard": 29.1,
+      "backToLesson": 1.3,
+      "backToModule": 2.3
+    },
+    "limits": {
+      "maxJsHeapUsedBytes": 268435456,
+      "maxJsHeapUsedDeltaBytes": 167772160,
+      "maxSynchronousNavigationHandlerMilliseconds": 150
+    }
+  },
+  "relationalExperimentFixture": {
+    "engine": "PGlite/PostgreSQL",
+    "privateAuthoringRelations": 68,
+    "relationalBytesIncludingIndexesAndToast": 3817472,
+    "referencedArtifactBytes": 5120,
+    "note": "PGlite mede relações e referências da fixture; os bytes dos objetos não são simulados como um bucket de produção."
+  },
+  "offlineAndPayloadBudgets": {
+    "parameterizedDesign500Microsequences": {
+      "serializedRecords": 1500,
+      "serializedBytes": 7042790,
+      "evidence": "docs/evidence/parameterized-authoring-storage-budget-2026-08-15.json"
+    },
+    "workspaceDesignOfflineStore": {
+      "maxSliceBytes": 2097152,
+      "maxWorkspaceBytes": 33554432,
+      "maxQueueBytes": 524288,
+      "physicalIndexedDbBytes": "not_exposed_by_browser_api"
+    },
+    "mcpAndAction": {
+      "maxResponseBytes": 98304,
+      "openApiBytes": 82375,
+      "openApiPaths": 30,
+      "systemPromptBytes": 7563
+    }
+  },
+  "visualEvidence": {
+    "captureCommand": "ARALEARN_CAPTURE_AUTHORING=1 npx playwright test tests/e2e/authoring-workspace-surface.spec.js -g \"gera capturas canônicas\"",
+    "widths": [360, 390, 412, 1280],
+    "themes": ["light", "dark"],
+    "newFlowAndResultsImages": 16,
+    "allAuthoringImages": 27,
+    "allAuthoringImagesBytes": 4264159,
+    "manualSpotChecks": [
+      "docs/screenshots/authoring/authoring-flow-360-light.png",
+      "docs/screenshots/authoring/authoring-results-1280-dark.png"
+    ]
+  },
+  "notAcceptanceEvidence": [
+    "Não mede eficácia pedagógica, causalidade ou validade de instrumentos.",
+    "Não substitui pgTAP, smoke Supabase local ou verificação hospedada.",
+    "Não substitui o roteiro com pessoa leiga real em celular e desktop."
+  ],
+  "resume": "docs/checkpoint-autoria-109.md"
+}
