@@ -138,6 +138,8 @@ O [roteiro de aceitação humana da Autoria](roteiro-aceitacao-humana-autoria.md
 prepara a etapa com pessoa leiga que automação alguma pode aprovar.
 O [checklist de UX integrada](checklist-ux-autoria-integrada.md) separa a
 regressão automatizada da verificação humana e especializada ainda pendente.
+O [relatório docs↔código da Autoria](conformidade-documentacao-autoria.md)
+mostra as fontes de implementação e as evidências automatizadas por assunto.
 
 ## Operar e implantar
 
