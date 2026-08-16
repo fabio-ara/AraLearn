@@ -186,6 +186,19 @@ export async function installExperimentDatabase() {
       deleted_at timestamptz,
       unique(collection_id,course_id)
     );
+    create table private.trail_items(
+      id uuid primary key default gen_random_uuid(),
+      workspace_id uuid not null references private.authoring_workspaces(id)
+        on delete cascade
+    );
+    create table public.trail_personal_states(
+      trail_item_id uuid not null references private.trail_items(id)
+        on delete cascade,
+      user_id uuid not null references auth.users(id) on delete cascade,
+      completed_card_count integer not null default 0,
+      updated_at timestamptz not null default now(),
+      primary key(trail_item_id,user_id)
+    );
 
     create function private.grant_workspace_publications_to_member_v1(
       p_workspace_id uuid,p_user_id uuid

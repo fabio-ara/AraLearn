@@ -2997,12 +2997,10 @@ declare
   v_protocol private.authoring_experiment_protocol_revisions%rowtype;
   v_workspace private.authoring_workspaces%rowtype;
   v_publication private.authoring_workspace_publications%rowtype;
-  v_course public.courses%rowtype;
   v_base_id uuid := extensions.gen_random_uuid();
   v_scope_version bigint;
   v_micro record;
   v_audited private.authoring_audit_run_microsequences%rowtype;
-  v_run_id uuid;
   v_ordinal integer := 0;
   v_resolved jsonb;
   v_invariant record;
@@ -3050,7 +3048,7 @@ begin
     raise exception 'baseRef não corresponde à publicação privada corrente.'
       using errcode = '40001';
   end if;
-  select * into v_course
+  perform 1
   from public.courses course
   where course.id = v_publication.course_id
     and course.status = 'published'
@@ -4808,7 +4806,6 @@ declare
   v_argument_hash text;
   v_workspace private.authoring_workspaces%rowtype;
   v_experiment private.authoring_experiments%rowtype;
-  v_protocol private.authoring_experiment_protocol_revisions%rowtype;
   v_candidate private.authoring_experiment_variant_revisions%rowtype;
   v_child private.authoring_workspaces%rowtype;
   v_classification private.authoring_experiment_diff_classifications%rowtype;
@@ -4820,7 +4817,6 @@ declare
   v_protocol_revision integer;
   v_title text;
   v_key text;
-  v_ref_version text;
   v_decision text;
   v_note text;
   v_transition text;
@@ -6676,13 +6672,14 @@ begin
         then null else 'hash:'||substr(page.after_hash,1,16) end,
       'classification',page.classification,
       'publicRationale',page.public_evidence,
-      'evidenceRefs',to_jsonb(page.evidence_refs),
+      'evidenceRefs',to_jsonb(page.classification_evidence_refs),
       'humanDecision',page.decision,
       'requiresParticipantContinuity',page.decision='correct'
     ) order by page.ordinal),'[]'::jsonb) into v_items
     from (select hunk.*,
         classification.id classification_id,classification.classification,
-        classification.public_evidence,classification.evidence_refs,
+        classification.public_evidence,
+        classification.evidence_refs classification_evidence_refs,
         decision.decision
       from private.authoring_experiment_difference_hunks hunk
       left join private.authoring_experiment_diff_classifications classification
@@ -6780,6 +6777,7 @@ declare
   v_base private.authoring_experiment_base_revisions%rowtype;
   v_child private.authoring_workspaces%rowtype;
   v_ref jsonb;
+  v_ref_hash text;
   v_offset integer;
   v_count integer;
   v_items jsonb;
@@ -6820,7 +6818,7 @@ begin
     perform private.require_educational_workspace_capability_v1(
       p_workspace_id,p_actor_id,'research'
     );
-    v_ref:=private.authoring_experiment_hash_v1(coalesce((
+    v_ref_hash:=private.authoring_experiment_hash_v1(coalesce((
       select jsonb_agg(jsonb_build_array(
         experiment.id,experiment.revision,revision.id,revision.variant_revision,
         revision.status
@@ -6835,7 +6833,7 @@ begin
     ),'[]'::jsonb));
     v_ref:=jsonb_build_object(
       'id','experiment-context-variants:'||p_workspace_id::text,
-      'version',v_ref
+      'version',v_ref_hash
     );
     v_offset:=private.require_authoring_experiment_page_ref_v1(
       p_variant_set_ref,v_ref,p_cursor,'O conjunto de alvos experimentais'
@@ -8244,22 +8242,22 @@ begin
         using errcode = '55000';
     end if;
     v_definition := v_rewritten;
-    v_rewritten := replace(
+    v_rewritten := regexp_replace(
       v_definition,
-      'case when course.owner_id is null then private.can_publish_catalog_v5(v_user_id)
-        else course.owner_id = v_user_id end as can_edit',
-      'case when course.experiment_variant or course.experiment_base then false when course.owner_id is null then private.can_publish_catalog_v5(v_user_id) else course.owner_id = v_user_id end as can_edit'
+      'case[[:space:]]+when[[:space:]]+course[.]owner_id[[:space:]]+is[[:space:]]+null[[:space:]]+then[[:space:]]+private[.]can_publish_catalog_v5\(v_user_id\)[[:space:]]+else[[:space:]]+course[.]owner_id[[:space:]]+=[[:space:]]+v_user_id[[:space:]]+end[[:space:]]+as[[:space:]]+can_edit',
+      'case when course.experiment_variant or course.experiment_base then false when course.owner_id is null then private.can_publish_catalog_v5(v_user_id) else course.owner_id = v_user_id end as can_edit',
+      'i'
     );
     if v_rewritten = v_definition then
       raise exception 'Permissão de edição experimental incompatível com Trilhas.'
         using errcode = '55000';
     end if;
     v_definition := v_rewritten;
-    v_rewritten := replace(
+    v_rewritten := regexp_replace(
       v_definition,
-      'case when course.owner_id is null then private.can_publish_catalog_v5(v_user_id)
-        else course.owner_id = v_user_id end as can_delete',
-      'case when course.experiment_variant or course.experiment_base then false when course.owner_id is null then private.can_publish_catalog_v5(v_user_id) else course.owner_id = v_user_id end as can_delete'
+      'case[[:space:]]+when[[:space:]]+course[.]owner_id[[:space:]]+is[[:space:]]+null[[:space:]]+then[[:space:]]+private[.]can_publish_catalog_v5\(v_user_id\)[[:space:]]+else[[:space:]]+course[.]owner_id[[:space:]]+=[[:space:]]+v_user_id[[:space:]]+end[[:space:]]+as[[:space:]]+can_delete',
+      'case when course.experiment_variant or course.experiment_base then false when course.owner_id is null then private.can_publish_catalog_v5(v_user_id) else course.owner_id = v_user_id end as can_delete',
+      'i'
     );
     if v_rewritten = v_definition then
       raise exception 'Permissão de remoção experimental incompatível com Trilhas.'

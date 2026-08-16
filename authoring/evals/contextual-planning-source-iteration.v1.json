@@ -294,8 +294,8 @@
       {
         "id": "authoring-knowledge",
         "path": "supabase/functions/_shared/aralearn-authoring/authoringKnowledge.js",
-        "sha256": "8c3c36e086a2737655d90bfdbe2dc70047be1ccc1f2465a31b686d4d9574fc9c",
-        "bytes": 51109
+        "sha256": "d9283d7149d03908a7f17778261f6d6cf24a5d223a569bbee5d1bdf0ef4d28db",
+        "bytes": 51167
       }
     ],
     "findings": []

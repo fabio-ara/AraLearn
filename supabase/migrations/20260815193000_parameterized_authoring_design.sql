@@ -41,7 +41,6 @@ as $function$
 declare
   v_selection jsonb;
   v_diagnosis jsonb;
-  v_item jsonb;
 begin
   if jsonb_typeof(p_decision) <> 'object'
      or exists (
@@ -564,7 +563,7 @@ alter table private.authoring_workspace_events
 create function private.authoring_design_contains_forbidden_key_v1(p_value jsonb)
 returns boolean
 language plpgsql
-immutable
+stable
 security definer
 set search_path = pg_catalog
 as $function$
@@ -650,7 +649,7 @@ $function$;
 create function private.valid_authoring_instructional_analysis_v1(p_analysis jsonb)
 returns boolean
 language plpgsql
-immutable
+stable
 set search_path = pg_catalog, private
 as $function$
 declare
@@ -934,7 +933,7 @@ create function private.valid_authoring_pedagogical_blueprint_v2(
 )
 returns boolean
 language plpgsql
-immutable
+stable
 set search_path = pg_catalog, private
 as $function$
 declare
@@ -1281,7 +1280,7 @@ create function private.valid_authoring_blueprint_binding_v1(
 )
 returns boolean
 language plpgsql
-immutable
+stable
 set search_path = pg_catalog, private
 as $function$
 declare
@@ -2704,7 +2703,7 @@ $function$;
 create function private.canonical_authoring_parameter_value_v1(p_value jsonb)
 returns jsonb
 language plpgsql
-immutable
+stable
 set search_path = pg_catalog
 as $function$
 declare
@@ -3534,7 +3533,7 @@ declare
   v_resolution_path jsonb := '[]'::jsonb;
   v_resolved jsonb := '[]'::jsonb;
   v_conflicts jsonb := '[]'::jsonb;
-  v_resource_refs text[] := '{}';
+  v_resource_refs text[] := '{}'::text[];
   v_definition private.authoring_design_parameter_definitions%rowtype;
   v_resource_set private.authoring_resource_sets%rowtype;
   v_assignment record;

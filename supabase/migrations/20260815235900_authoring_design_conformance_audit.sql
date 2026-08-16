@@ -1346,9 +1346,7 @@ declare
   v_refs jsonb;
   v_resource_set_refs jsonb;
   v_part jsonb;
-  v_input_microsequence_ids text[];
   v_part_microsequence_ids text[];
-  v_existing_part_microsequence_ids text[];
   v_finding jsonb;
   v_target jsonb;
   v_entity_type text;
@@ -2629,12 +2627,11 @@ security definer
 set search_path = pg_catalog, public, private
 as $function$
 declare
-  v_existing_request private.authoring_workspace_requests%rowtype;
   v_current_state jsonb;
 begin
   -- Replay permanece estrito e não volta a julgar uma intenção já registrada
   -- contra um estado posterior do workspace.
-  select * into v_existing_request
+  perform 1
   from private.authoring_workspace_requests request
   where request.owner_id = p_actor_id
     and request.request_id = p_request_id;
@@ -3519,7 +3516,11 @@ begin
       'scope', jsonb_build_object('kind', page.scope_kind, 'ref', page.scope_ref),
       'startedRevision', page.audited_workspace_revision,
       'completedRevision', page.completed_revision,
-      'summary', private.authoring_audit_summary_v1(page),
+      'summary', private.authoring_audit_summary_v1((
+        select run
+        from private.authoring_audit_runs run
+        where run.id = page.id
+      )),
       'createdAt', page.created_at,
       'completedAt', page.completed_at
     ) order by page.created_at desc, page.id desc), '[]'::jsonb),
