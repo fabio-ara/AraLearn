@@ -1054,6 +1054,7 @@ input:-webkit-autofill:focus {
 .navigation-topbar {
   grid-template-columns: var(--tap) minmax(0, 1fr) var(--tap);
   gap: 10px;
+  min-height: calc(var(--tap) + 8px + max(var(--safe-top), 8px));
   padding-top: max(var(--safe-top), 8px);
   /* A tela já tem o recuo da coluna de cartões. A barra de navegação não
      ganha um segundo recuo, para que voltar e as ações laterais compartilhem
@@ -8977,7 +8978,7 @@ label.authoring-experiment-continuity {
   min-width: 0;
   max-width: 100%;
   margin-top: 10px;
-  padding: 11px 2px 1px;
+  padding: 11px 2px 0;
   border-top: 1px solid var(--border-subtle);
 }
 
@@ -9062,14 +9063,16 @@ label.authoring-experiment-continuity {
 }
 
 .home-course-selector-actions > .open-main {
-  /* 10 px do card e 2 px da prévia formam a calha até a aresta interna da
-     borda. Apenas a ação principal a ocupa; menus continuam
-     contidos no card. */
+  /* Repete o botão dos cards de navegação: 40 px e os mesmos recuos medidos
+     a partir da borda. */
   position: relative;
-  inset-inline-end: -12px;
+  top: 2px;
+  width: 40px;
+  min-width: 40px;
+  height: 40px;
+  min-height: 40px;
 }
 
-.home-course-selector-actions > .open-main,
 .home-course-context-menu > summary {
   width: 44px;
   min-width: 44px;

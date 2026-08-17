@@ -84,14 +84,19 @@ async function renderConstrainedHome(page, viewportWidth) {
     const cardRect = card.getBoundingClientRect();
     const productSwitch = document.querySelector(".home-product-switch");
     const productSwitchRect = productSwitch.getBoundingClientRect();
-    const actionCenters = [
+    const globalActionCenters = [
       '[data-action="open-settings"]',
-      '[data-action="open-course"]',
       ".experiment-enrollment-launcher"
     ].map((selector) => {
       const rect = document.querySelector(selector).getBoundingClientRect();
-      return { selector, center: rect.left + rect.width / 2, right: rect.right };
+      return {
+        selector,
+        centerX: rect.left + rect.width / 2,
+        centerY: rect.top + rect.height / 2,
+        right: rect.right
+      };
     });
+    const openCourseRect = document.querySelector('[data-action="open-course"]').getBoundingClientRect();
     const menuGeometry = [
       ["grupo", document.querySelector(".home-group-context-menu")],
       ["curso", document.querySelector(".home-course-selector-actions > .home-course-context-menu")]
@@ -126,7 +131,13 @@ async function renderConstrainedHome(page, viewportWidth) {
       contentClientWidth: document.querySelector(".screen-content").clientWidth,
       contentScrollWidth: document.querySelector(".screen-content").scrollWidth,
       errorOverflowWrap: getComputedStyle(document.querySelector(".home-trails-error")).overflowWrap,
-      actionCenters,
+      globalActionCenters,
+      openCourse: {
+        width: openCourseRect.width,
+        height: openCourseRect.height,
+        rightInset: cardRect.right - openCourseRect.right,
+        bottomInset: cardRect.bottom - openCourseRect.bottom
+      },
       menuGeometry,
       geometry: selectors.map((selector) => {
         const element = document.querySelector(selector);
@@ -205,8 +216,22 @@ async function renderInternalSettings(page, viewportWidth) {
       "--screen-content-scrollbar-gutter",
       `${Math.max(0, content.offsetWidth - content.clientWidth)}px`
     );
-    const rect = document.querySelector('[data-action="open-settings"]').getBoundingClientRect();
-    return { center: rect.left + rect.width / 2, right: rect.right };
+    const settingsRect = document.querySelector('[data-action="open-settings"]').getBoundingClientRect();
+    const navigationCardRect = document.querySelector(".navigation-list-card").getBoundingClientRect();
+    const navigationOpenRect = document.querySelector(".navigation-list-card .open-mini").getBoundingClientRect();
+    return {
+      settings: {
+        centerX: settingsRect.left + settingsRect.width / 2,
+        centerY: settingsRect.top + settingsRect.height / 2,
+        right: settingsRect.right
+      },
+      openCard: {
+        width: navigationOpenRect.width,
+        height: navigationOpenRect.height,
+        rightInset: navigationCardRect.right - navigationOpenRect.right,
+        bottomInset: navigationCardRect.bottom - navigationOpenRect.bottom
+      }
+    };
   });
 }
 
@@ -223,12 +248,16 @@ test("Home contém erros e títulos longos sem distorcer ou recortar controles",
     expect(Math.abs(result.productSwitch.buttonWidths[0] - result.productSwitch.buttonWidths[1]),
       `opções simétricas em ${viewportWidth}px`).toBeLessThanOrEqual(1);
     expect(result.errorOverflowWrap).toBe("anywhere");
-    expect(Math.max(...result.actionCenters.map((item) => item.center)) -
-      Math.min(...result.actionCenters.map((item) => item.center)),
-    `eixo das ações em ${viewportWidth}px: ${JSON.stringify({ actions: result.actionCenters, card: result.card })}`)
+    expect(Math.max(...result.globalActionCenters.map((item) => item.centerX)) -
+      Math.min(...result.globalActionCenters.map((item) => item.centerX)),
+    `eixo das ações globais em ${viewportWidth}px: ${JSON.stringify(result.globalActionCenters)}`)
       .toBeLessThanOrEqual(0.5);
-    expect(Math.abs(internalSettings.center - result.actionCenters[0].center),
-      `Conta e aparência entre telas em ${viewportWidth}px`).toBeLessThanOrEqual(0.5);
+    expect(Math.abs(internalSettings.settings.centerX - result.globalActionCenters[0].centerX),
+      `eixo horizontal de Conta e aparência em ${viewportWidth}px`).toBeLessThanOrEqual(0.5);
+    expect(Math.abs(internalSettings.settings.centerY - result.globalActionCenters[0].centerY),
+      `eixo vertical de Conta e aparência em ${viewportWidth}px: ${JSON.stringify({ home: result.globalActionCenters[0], internal: internalSettings.settings })}`)
+      .toBeLessThanOrEqual(0.5);
+    expect(result.openCourse, `Abrir curso em ${viewportWidth}px`).toEqual(internalSettings.openCard);
     expect(result.geometry.filter((item) => !item.withinCard), `geometria em ${viewportWidth}px`).toEqual([]);
     expect(result.menuGeometry.filter((item) => !item.withinCard), `menus em ${viewportWidth}px`).toEqual([]);
     for (const menu of result.menuGeometry) {
