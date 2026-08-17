@@ -126,31 +126,26 @@ de adaptações artificiais e capacidade de revisão posterior.
 
 ### Disponibilidade, seleção e materialização
 
-Uma extensão conceitual propõe o `ResourceSet`: conjunto versionado de
-identidades exatas `package@version` que restringe os resources disponíveis num
-workspace, curso, módulo, lição, microssequência ou conjunto explícito de
-microssequências. O conjunto pode resultar de busca
-por famílias e facetas, mas sua expansão precisa ser reproduzível. Ele não
-carrega todos os contracts e não exige escolher manualmente um resource para
-cada card.
+A política de componentes corrente fixa a revisão do catálogo, a
+disponibilidade `all|allow_only` e listas exatas de referências permitidas,
+excluídas e preferidas em Curso, Módulo, Lição ou Microssequência. Ela não
+carrega todos os contracts nem exige escolher manualmente um componente para
+cada Unidade.
 
 Três fatos permanecem separados:
 
-1. **disponibilidade**: o package pertence ao conjunto permitido no escopo;
+1. **disponibilidade**: o package é permitido pela política efetiva;
 2. **seleção**: o planejamento escolheu localmente o package por estrutura,
    operação, ajuste, contraindicações e limitações;
 3. **materialização**: uma instância concreta apareceu no conteúdo produzido.
 
-Essa separação permite comparar condições de pesquisa sem criar outro motor de
-autoria: o mesmo processo seleciona localmente, mas somente entre os packages
-permitidos. `canonical`, `versatile` e `substitute` qualificam o ajuste do
-catálogo; não tornam duas representações equivalentes. Quando o conjunto não
-oferecer representação adequada, a limitação deve ser registrada em vez de
-selecionar fora da condição ou fingir equivalência.
-
-`ResourceSet` integra a proposta descrita em [Desenho instrucional
-parametrizado](desenho-instrucional-parametrizado.md). Ainda não é estado
-persistido nem restrição executada pelo runtime atual.
+Exclusão vence permissão; preferência apenas desempata entre candidatos ainda
+permitidos e semanticamente adequados. `canonical`, `versatile` e
+`substitute` qualificam o ajuste do catálogo; não tornam duas representações
+equivalentes. Quando a política não oferecer representação adequada, a
+limitação deve ser registrada em vez de selecionar fora do escopo ou fingir
+equivalência. O backend impõe a política na mesma transação que grava as
+Unidades e os componentes usados.
 
 ## 4. Carga cognitiva, progressão e leitura do recurso
 

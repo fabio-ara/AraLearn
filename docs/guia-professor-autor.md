@@ -3,6 +3,7 @@
 Autoria é a interface manual e visual do mesmo Curso vivo usado em Estudo e
 pelas ferramentas conversacionais. Nesta revisão, ela permite criar Cursos,
 editar o plano instrucional e as Partes em linguagem natural, consultar a
+configurar o desenho e a cobertura de cada Microssequência, consultar a
 hierarquia, inspecionar Unidades em sequência vertical, levar um pedido de
 materialização ao chat conectado e gerir acesso direto. Edição contextual de
 Unidades, proveniência, auditoria, correção,
@@ -37,9 +38,9 @@ pedido, causada por falha de rede, recupera o resultado em vez de criar outro
 Curso. Ela também cria um plano vazio com faixa preferencial inicial de 7–12
 Partes. Essa faixa é configurável e não constitui lei pedagógica.
 
-## Compreender as quatro áreas
+## Compreender as cinco áreas
 
-Ao abrir um Curso, a barra iconográfica oferece quatro destinos.
+Ao abrir um Curso, a barra iconográfica oferece cinco destinos.
 
 ### Planejamento
 
@@ -47,7 +48,6 @@ Mostra:
 
 - objetivo;
 - público e escopo;
-- orientação para a autoria;
 - faixa preferencial e origem dessa preferência;
 - resultados de aprendizagem pretendidos;
 - unidades de análise instrucional;
@@ -55,8 +55,8 @@ Mostra:
 - Partes, Microssequências vinculadas e progresso derivado;
 - atividade recente confirmada pelo serviço.
 
-O ícone de edição permite alterar título, objetivo, público, escopo, orientação
-e faixa preferencial. Cada uma das três listas aceita itens escritos em
+O ícone de edição permite alterar título, objetivo, público, escopo e faixa
+preferencial. Cada uma das três listas aceita itens escritos em
 linguagem natural, com controles para acrescentar, editar, reordenar e remover.
 Não existe editor de JSON nessa experiência.
 
@@ -69,6 +69,45 @@ produzidas.
 Os estados **Planejada**, **Em materialização**, **Atenção necessária**,
 **Parcial** e **Materializada** são calculados a partir de vínculos, Unidades,
 tentativas e etapas persistidas. A pessoa não marca esse status manualmente.
+
+### Parâmetros
+
+Começa no Curso e permite percorrer Módulo, Lição e Microssequência sem baixar
+a composição inteira. Cada decisão mostra valor efetivo, origem e objeto de
+onde veio.
+
+Os quatro parâmetros pedagógicos controlam introduções por Unidade expositiva,
+formas explicativas, oportunidades distintas de prática e dimensões de
+variação. Eles podem ser definidos no Curso, na Lição ou na Microssequência.
+Módulo mostra a herança, mas não oferece um override pedagógico sem necessidade
+demonstrada.
+
+**Remover definição local** não apaga o valor ancestral: resolve novamente a
+cadeia e mostra o valor restaurado. Automático, autor e condição de pesquisa
+são origens visíveis; condição de pesquisa não é lock nem experimento pronto.
+
+Orientações autorais ficam separadas do Planejamento. O texto original possui
+versão própria e pode receber uma interpretação com resumo, diretivas,
+divergências e perguntas sem ser reescrito. A orientação efetiva acumula os
+textos do Curso até o alvo.
+
+Em **Componentes didáticos**, escolha todos ou apenas um subconjunto e marque
+exclusões e preferências entre referências conhecidas do catálogo. Preferência
+não obriga uso; exclusão prevalece. A próxima materialização usa e registra a
+política resolvida.
+
+Ao chegar a uma Microssequência, **Cobertura planejada desta
+Microssequência** mostra as unidades de análise e os requisitos de evidência do
+plano. Marque somente o que aquele alvo deve realizar. A relação é
+muitos-para-muitos: o mesmo item pode aparecer em vários alvos e cada alvo pode
+receber vários itens. Salvar substitui as duas listas daquela Microssequência,
+sem atribuir automaticamente o plano inteiro.
+
+O resumo planejado×aplicado usa apenas fatos persistidos. Divergência indica
+que a materialização não demonstrou uma decisão planejada; não é nota de
+qualidade nem medida de aprendizagem. Formas, oportunidades e variações são
+declarações do agente ou da pessoa autora validadas internamente; o resumo não
+alega que o banco as observou semanticamente no conteúdo.
 
 ### Estrutura
 
@@ -148,18 +187,20 @@ O cliente MCP e a interface visual operam o mesmo Curso. O fluxo seguro é:
 
 1. listar os Cursos próprios;
 2. escolher o Curso pelo título e confirmar sua identidade;
-3. ler o plano instrucional, a hierarquia, a vista `study_units` ou páginas de
-   entidades;
+3. ler o plano instrucional, o desenho efetivo, a hierarquia, a vista
+   `study_units` ou páginas de entidades;
 4. formular a alteração;
 5. usar a revisão do Curso e a versão específica lidas como condições da
    escrita;
 6. reler e apresentar uma síntese verificável.
 
 O assistente pode criar Curso, alterar o plano por comandos semânticos,
+definir ou limpar parâmetros e orientações, gerir a política de componentes,
+atribuir itens do plano a cada Microssequência,
 confirmar etapas de materialização, alterar a composição por uma operação
 separada, gerir perfil e acesso e consultar componentes didáticos. Interface e
 MCP usam as mesmas relações, regras de domínio, transações e projeções; não há
-um plano reservado ao chat.
+um desenho reservado ao chat.
 
 Para revisar conteúdo, prefira `lerCurso` com `view: "study_units"`. Escolha o
 mesmo escopo disponível na interface e use a revisão devolvida, a âncora para
@@ -178,8 +219,10 @@ Para preparar a produção:
 1. descreva a intenção de cada Parte;
 2. organize as Partes na ordem de produção desejada;
 3. mova ou retire os vínculos de Microssequência já existentes, se necessário;
-4. use **Levar pedido ao chat conectado** na Parte escolhida;
-5. cole o texto no cliente conectado e acompanhe somente o progresso que o
+4. em **Parâmetros**, atribua a cada Microssequência suas unidades de análise e
+   seus requisitos de evidência;
+5. use **Levar pedido ao chat conectado** na Parte escolhida;
+6. cole o texto no cliente conectado e acompanhe somente o progresso que o
    serviço confirmar.
 
 O botão apenas copia o pedido para a área de transferência. Ele não abre uma
@@ -225,7 +268,6 @@ Não trate as seguintes ações como implementadas no runtime canônico:
 - editar cada Unidade diretamente;
 - inspecionar fontes e âncoras de ponta a ponta;
 - transformar observação de estudante em correção verificada;
-- configurar parâmetros pedagógicos por escopo;
 - criar condições e variantes comparáveis;
 - consultar analytics de Autoria;
 - disponibilizar Curso publicamente.

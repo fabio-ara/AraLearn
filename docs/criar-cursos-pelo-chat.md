@@ -2,23 +2,25 @@
 
 Este guia descreve o fluxo corrente de Autoria por um cliente conectado ao
 Model Context Protocol (MCP). A conversa e a interface visual operam o mesmo
-Curso vivo: não existe uma cópia “do assistente” para publicar depois.
+Curso vivo. Não existe uma cópia “do assistente”, um Workspace intermediário
+ou uma publicação paralela.
 
 ## O que já funciona
 
-O cliente pode, com a conta autorizada:
+Com uma conta autorizada, o cliente pode:
 
-- listar e ler Cursos próprios;
-- criar um Curso privado;
-- alterar título, objetivo, orientações e estado de autoria;
-- incluir, substituir ou excluir entidades didáticas em lotes;
+- listar, ler e criar Cursos próprios;
+- editar o plano instrucional e suas Partes;
+- configurar parâmetros pedagógicos, orientações por escopo e política de
+  componentes;
+- incluir, alterar ou excluir entidades didáticas em lotes delimitados;
+- iniciar, retomar e concluir a materialização de uma Parte;
 - consultar e validar contratos de componentes;
-- gerir perfil e acesso direto para Estudo.
+- gerir perfil e acesso direto ao Estudo.
 
-Parametrização semântica por escopo, proveniência completa, observações
-autorais, variantes experimentais e analytics de Autoria ainda não estão
-implementados como fluxos completos. A conversa pode discutir esses assuntos,
-mas não deve afirmar que os persistiu sem uma ferramenta correspondente.
+Observações autorais, variantes experimentais e analytics educacionais
+completos pertencem a marcos posteriores. A conversa pode discuti-los, mas não
+deve afirmar que os persistiu sem uma operação correspondente.
 
 ## Antes da primeira conversa
 
@@ -26,10 +28,10 @@ mas não deve afirmar que os persistiu sem uma ferramenta correspondente.
 2. Autorize uma conta individual por OAuth.
 3. Confirme que o cliente descobriu seis ferramentas e o recurso
    `aralearn://authoring/invariants`.
-4. Faça uma leitura antes de qualquer alteração.
+4. Leia o Curso e a projeção necessária antes de qualquer alteração.
 
-A conta nunca precisa receber uma chave administrativa. O servidor confere
-propriedade em cada operação de Autoria.
+A conta nunca recebe uma chave administrativa. O servidor confere propriedade
+em cada operação de Autoria.
 
 ## Começar pelo problema educacional
 
@@ -42,116 +44,174 @@ No primeiro pedido, descreva em linguagem natural:
 - restrições reais de tempo, linguagem ou acessibilidade;
 - dúvidas que ainda exigem decisão humana.
 
-Essas informações orientam o planejamento; não são justificativa para inventar
-fontes, resultados de aprendizagem ou parâmetros que não foram acordados.
+Essas informações orientam o planejamento. Elas não justificam inventar
+fontes, resultados de aprendizagem, valores de parâmetros ou eficácia que não
+foram demonstrados.
 
 ## Localizar ou criar o Curso
 
 Peça ao cliente para procurar pelo título. Ele deve usar `listarCursos` e, se
 houver homônimos, apresentar contexto suficiente para a escolha.
 
-Se o Curso ainda não existir, `criarCurso` cria uma raiz privada com título,
-objetivo e orientações. A operação usa um `requestId` estável: repetir a mesma
-intenção depois de uma falha não deve produzir duplicatas.
+Se o Curso ainda não existir, `criarCurso` cria uma raiz privada com título e
+objetivo. A operação usa um `requestId` estável: repetir a mesma intenção após
+uma resposta perdida não produz duplicatas.
 
 Não há Workspace, Coleção, Trilha ou estágio de publicação a escolher. O Curso
-criado é a mesma identidade que será aberta em Autoria e Estudo.
+criado é a mesma identidade aberta em Autoria e Estudo.
 
-## Planejar antes de materializar
+## Planejar sem duplicar autoridades
 
-O estado autoral corrente conserva:
+Use `lerCurso` com a vista `instructional_plan`. O plano conserva:
 
-- **Partes**, agrupamentos operacionais que dimensionam a produção;
-- **decisões**, escolhas relevantes já registradas;
-- **mandato**, orientações de alto nível para a autoria.
+- público e escopo;
+- resultados de aprendizagem pretendidos;
+- unidades de análise instrucional;
+- requisitos de evidência;
+- Partes e seus vínculos com Microssequências didáticas;
+- faixa preferencial de Partes, como hipótese operacional ajustável.
 
-Parte não substitui Módulo, Lição, Microssequência didática ou Unidade de
-estudo. Ela limita uma iteração de produção a um conjunto manejável. A
-quantidade pode ser ajustada ao Curso; não é uma regra pedagógica universal.
+Título e objetivo continuam na raiz do Curso. Orientações naturais não ficam
+num campo genérico do plano: elas são revisões próprias, versionadas e
+aplicadas por escopo na vista `course_design`.
 
-Antes de alterar, o cliente deve usar `lerCurso` na projeção adequada e
-registrar a revisão recebida. `alterarCurso` aceita a escrita somente se essa
-revisão ainda for corrente.
+Parte é um agrupamento operacional de produção. Ela não substitui Módulo,
+Lição, Microssequência didática ou Unidade de estudo e não define a ordem
+curricular.
+
+Depois que as Microssequências existem, atribua explicitamente a cada uma as
+unidades de análise e os requisitos de evidência que ela deve realizar. Um
+item pode pertencer a vários alvos e um alvo pode receber vários itens. Essa
+cobertura não é inferida do vínculo com a Parte nem do plano inteiro.
+
+## Configurar o desenho antes da materialização
+
+Leia `course_design` no escopo que será alterado. O contrato apresenta quatro
+parâmetros pedagógicos explícitos:
+
+- teto de novas unidades de análise por Unidade expositiva;
+- formas de explicação exigidas quando aplicáveis;
+- mínimo de oportunidades distintas de prática por requisito de evidência;
+- dimensões de variação exigidas entre essas oportunidades.
+
+Os defaults são hipóteses de produto, não leis pedagógicas. Uma atribuição
+`automatic` precisa de justificativa breve; `author` e
+`research_condition` registram decisões explícitas. Limpar uma atribuição
+restaura a resolução herdada ou o default, sem gravar uma cópia derivada.
+
+Orientações naturais são preservadas no texto original. Uma interpretação
+estruturada registra diretivas, divergências e perguntas sem substituir nem
+reescrever o original. Para um alvo, a pilha efetiva acumula as revisões do
+Curso até o escopo mais próximo.
+
+A política de componentes separa disponibilidade, exclusão e preferência:
+
+- `all` mantém o catálogo corrente disponível;
+- `allow_only` restringe a uma lista explícita;
+- exclusões sempre vencem;
+- preferências apenas desempatem opções permitidas e semanticamente adequadas.
+
+No escopo de Microssequência, leia `targetPlanItems` e use
+`set_target_plan_items` para substituir atomicamente as listas
+`instructionalAnalysisUnitIds` e `evidenceRequirementIds`. Nos demais escopos,
+`targetPlanItems` é `null`. IDs repetidos, de outro tipo ou de outro Curso são
+recusados.
 
 ## Descobrir componentes sob demanda
 
-O cliente não deve carregar todos os contratos da biblioteca no contexto. O
-fluxo econômico é:
+O cliente não carrega todos os contratos do catálogo no contexto. O fluxo
+econômico é:
 
 1. explorar famílias e facetas;
 2. buscar candidatos pela intenção didática;
-3. inspecionar poucos pacotes;
-4. obter apenas os contratos necessários;
-5. validar a composição proposta;
+3. inspecionar poucos packages;
+4. obter somente os contratos necessários;
+5. validar a Unidade proposta;
 6. preparar uma prévia quando a decisão exigir inspeção visual.
 
-Essa descoberta progressiva preserva contexto para o conteúdo e reduz o risco
-de escolher um componente apenas pelo nome.
+A política de componentes limita os candidatos, mas não prova que um package é
+pedagogicamente adequado.
 
 ## Produzir por Parte
 
-Uma Parte pode materializar várias entidades numa operação limitada. Para cada
-iteração, o cliente deve:
+Antes de iniciar uma tentativa, o servidor resolve e sela o desenho efetivo
+para as Microssequências-alvo: parâmetros, orientações versionadas, política de
+componentes e itens do plano atribuídos. Os catálogos selados conservam
+`id`, `position`, `statement` e `version`; cada alvo referencia somente seus
+IDs. O cliente não declara esse contexto como fato.
 
-1. reler planejamento, estrutura e revisão correntes;
-2. declarar brevemente o que pretende produzir;
-3. construir relações pai–filho e posições coerentes;
-4. validar as Unidades e seus componentes;
-5. enviar lotes de até 200 inclusões, substituições ou exclusões;
-6. reler o Curso e resumir o resultado efetivamente persistido.
+Para cada etapa de materialização, o cliente deve:
 
-Uma resposta técnica bem-sucedida não prova qualidade pedagógica. Ela prova
-que a transação respeitou o contrato e a revisão.
+1. retomar a tentativa persistida e sua próxima etapa;
+2. gerar somente o recorte autorizado;
+3. validar relações pai–filho e contratos das Unidades;
+4. informar fatos limitados sobre a aplicação do desenho;
+5. enviar o lote delimitado com as versões esperadas;
+6. reler o estado e resumir apenas o que foi persistido.
+
+O auditor verifica, para a Microssequência da etapa, schema, pertencimento ao
+subconjunto atribuído, contagens e coerência interna das declarações de formas,
+oportunidades e variações. Essas declarações vêm do agente ou da pessoa autora;
+o banco não as descobre semanticamente na prosa. Na mesma transação, o banco
+reconcilia materialmente os IDs de Unidades do lote, o pai/alvo e os
+`componentRefs` presentes no conteúdo, além do CAS e da política. Uma resposta
+técnica bem-sucedida não demonstra qualidade pedagógica ou efeito de
+aprendizagem.
 
 ## Conferir visualmente
 
 Depois de uma alteração:
 
-1. abra o mesmo Curso em **Autoria**;
-2. confira **Planejamento**, **Estrutura** e **Conteúdo**;
-3. abra-o em **Estudo** para verificar o renderer e a navegação reais;
-4. registre separadamente defeitos técnicos e decisões de conteúdo.
+1. confira **Planejamento** e **Parâmetros**;
+2. use **Estrutura** para a hierarquia compacta;
+3. percorra **Inspeção** na ordem curricular e no escopo desejado;
+4. abra o mesmo Curso em **Estudo** para verificar renderer e navegação reais;
+5. separe defeitos técnicos de decisões pedagógicas.
 
-Estrutura e Conteúdo são hoje superfícies paginadas de inspeção. Edição
-contextual completa, rolagem autoral contínua e o circuito de observação,
-auditoria e correção ainda são trabalho futuro.
+Respostas ficam inertes na Inspeção. A tela examina o conteúdo real, mas não é
+um segundo editor de Unidade.
 
 ## Revisar, corrigir e continuar
 
-Peça uma revisão com critério explícito, por exemplo coerência da progressão,
-adequação da representação ou cobertura do objetivo. O cliente deve citar os
-alvos encontrados, propor a menor mudança suficiente e aguardar decisão humana
-quando houver escolha pedagógica real.
+Peça uma revisão com critério explícito, por exemplo cobertura do objetivo,
+formas de explicação, oportunidades de prática ou adequação representacional.
+O cliente deve citar os alvos encontrados, confrontar o planejado com os fatos
+declarados como aplicados e propor a menor mudança suficiente. Para formas,
+oportunidades e variações, essa comparação é ponto de partida para revisão do
+conteúdo, não observação independente de que a declaração seja verdadeira.
 
-Para corrigir, ele relê o Curso, usa a nova revisão e altera somente as
-entidades necessárias. Não deve criar uma versão imutável, publicar uma cópia
-ou conservar um fluxo paralelo.
+Quando houver decisão pedagógica real, a pessoa confirma o valor ou a
+orientação. Uma automação não sobrescreve silenciosamente uma decisão explícita.
 
 ## Retomar em outra conversa
 
 Uma nova sessão deve:
 
 1. ler o recurso de invariantes;
-2. localizar o Curso pelo identificador ou pela lista;
-3. ler resumo, planejamento e páginas relevantes;
-4. explicar em poucas linhas o estado encontrado;
+2. localizar o Curso;
+3. ler o plano, o desenho no escopo e a tentativa pertinente;
+4. explicar em poucas linhas o estado recuperado;
 5. só então propor a próxima operação.
 
-O estado recuperável está no Curso. O prompt do cliente conserva invariantes e
-regras de uso das ferramentas, não uma cópia mutável do planejamento.
+O estado recuperável está no Curso. Prompt, conversa e raciocínio não viram uma
+cópia oculta do planejamento.
 
 ## Recuperar falhas
 
-- **Não autenticado:** refaça o OAuth; não troque por chave administrativa.
-- **Curso não encontrado:** confirme conta, título e propriedade.
-- **Conflito de revisão:** releia e reconcilie; não incremente a revisão à mão.
-- **Pedido repetido:** reutilize o mesmo `requestId` apenas para a mesma
-  intenção.
-- **Entidade inválida:** confira pai, posição, identidade e contrato de
-  componente antes de reenviar.
-- **Resultado não aparece na interface:** releia o Curso, confira console e
-  rede e verifique se a interface está no mesmo ambiente e conta.
+- **Não autenticado:** refaça o OAuth; não use chave administrativa.
+- **Curso não encontrado:** confirme conta, identificador e propriedade.
+- **Conflito de revisão:** releia e reconcilie; não incremente versão à mão.
+- **Pedido repetido:** reutilize o mesmo `requestId` somente para a mesma
+  intenção e o mesmo comando.
+- **Parâmetro ou orientação inválidos:** confira escopo, versão da orientação,
+  origem e contrato do valor.
+- **Componente bloqueado:** releia a política efetiva; preferência não autoriza
+  um package excluído.
+- **Entidade inválida:** confira pai, posição, identidade e contrato antes de
+  reenviar.
+- **Resultado ausente na interface:** releia o Curso e confirme ambiente,
+  conta, revisão e escopo.
 
 Os contratos técnicos completos estão em [Autoria por MCP](autoria-mcp.md). O
-[estado corrente](estado-atual-e-roadmap.md) distingue o que está conectado do
-que continua em desenvolvimento.
+[estado corrente](estado-atual-e-roadmap.md) distingue capacidades conectadas
+de avaliações e marcos ainda pendentes.

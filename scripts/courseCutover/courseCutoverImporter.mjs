@@ -21,6 +21,8 @@ const AUTHORING_PLAN_MIGRATION_VERSION = "20260817160000";
 const AUTHORING_PLAN_MIGRATION_NAME = "course_authoring_plan";
 const STUDY_UNIT_INSPECTION_MIGRATION_VERSION = "20260817170000";
 const STUDY_UNIT_INSPECTION_MIGRATION_NAME = "course_study_unit_inspection";
+const COURSE_DESIGN_MIGRATION_VERSION = "20260817180000";
+const COURSE_DESIGN_MIGRATION_NAME = "course_design_parameters";
 
 export const COURSE_CUTOVER_STAGING_SCHEMA = Object.freeze([
   Object.freeze({ name: "course_id", sql: "uuid not null" }),
@@ -1445,13 +1447,15 @@ export function buildCourseCutoverSql(
   migrationSql,
   profileAccessMigrationSql,
   authoringPlanMigrationSql,
-  studyUnitInspectionMigrationSql
+  studyUnitInspectionMigrationSql,
+  courseDesignMigrationSql
 ) {
   if (!isObject(preparation) || !Array.isArray(preparation.rows) ||
       !preparation.rows.length || typeof migrationSql !== "string" ||
       typeof profileAccessMigrationSql !== "string" ||
       typeof authoringPlanMigrationSql !== "string" ||
-      typeof studyUnitInspectionMigrationSql !== "string") {
+      typeof studyUnitInspectionMigrationSql !== "string" ||
+      typeof courseDesignMigrationSql !== "string") {
     fail(
       "invalid_cutover_execution",
       "Linhas ou migrations do corte estão ausentes."
@@ -1481,6 +1485,13 @@ export function buildCourseCutoverSql(
   );
   const studyUnitInspectionExecutionBody = withoutTransactionGuards(
     studyUnitInspectionTransaction.body
+  );
+  const courseDesignTransaction = transactionBody(
+    courseDesignMigrationSql,
+    "a migration do desenho pedagógico"
+  );
+  const courseDesignExecutionBody = withoutTransactionGuards(
+    courseDesignTransaction.body
   );
   const guardPositions = COURSE_CUTOVER_TRANSACTION_GUARDS.map((guard) =>
     migrationSql.indexOf(guard));
@@ -1529,6 +1540,7 @@ export function buildCourseCutoverSql(
     profileAccessTransaction.body,
     authoringPlanExecutionBody,
     studyUnitInspectionExecutionBody,
+    courseDesignExecutionBody,
     "insert into supabase_migrations.schema_migrations(version,statements,name)",
     `values (${sqlText(CUTOVER_MIGRATION_VERSION)},` +
       `array[${sqlText(identityTransaction.body)}]::text[],` +
@@ -1545,6 +1557,10 @@ export function buildCourseCutoverSql(
     `values (${sqlText(STUDY_UNIT_INSPECTION_MIGRATION_VERSION)},` +
       `array[${sqlText(studyUnitInspectionTransaction.body)}]::text[],` +
       `${sqlText(STUDY_UNIT_INSPECTION_MIGRATION_NAME)});`,
+    "insert into supabase_migrations.schema_migrations(version,statements,name)",
+    `values (${sqlText(COURSE_DESIGN_MIGRATION_VERSION)},` +
+      `array[${sqlText(courseDesignTransaction.body)}]::text[],` +
+      `${sqlText(COURSE_DESIGN_MIGRATION_NAME)});`,
     "commit;",
     ""
   ].join("\n");

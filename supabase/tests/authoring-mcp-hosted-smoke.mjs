@@ -222,8 +222,103 @@ if (process.env.ARALEARN_AUTHORING_MCP_EPHEMERAL_USER === "1") {
     maxBytes: 65_536
   });
   assert.equal(secondPage.items[0].studyUnit.id, "study-unit-hosted-smoke-2");
+
+  const analysisItemId = randomUUID();
+  const evidenceItemId = randomUUID();
+  const analysisChange = await tool("alterarCurso", {
+    requestId: randomUUID(),
+    courseId: created.courseId,
+    expectedRevision: changed.revision,
+    expectedPlanVersion: 1,
+    operation: "update_instructional_plan",
+    planCommand: {
+      type: "add_plan_item",
+      kind: "instructional_analysis_unit",
+      id: analysisItemId,
+      position: 0,
+      statement: "Distinguir configuração DNS de concessão DHCP."
+    }
+  });
+  assert.equal(analysisChange.courseRevision, changed.revision + 1);
+  assert.equal(analysisChange.planVersion, 2);
+  const evidenceChange = await tool("alterarCurso", {
+    requestId: randomUUID(),
+    courseId: created.courseId,
+    expectedRevision: analysisChange.courseRevision,
+    expectedPlanVersion: analysisChange.planVersion,
+    operation: "update_instructional_plan",
+    planCommand: {
+      type: "add_plan_item",
+      kind: "evidence_requirement",
+      id: evidenceItemId,
+      position: 0,
+      statement: "Explicar a relação DNS–DHCP em um caso novo."
+    }
+  });
+  assert.equal(evidenceChange.courseRevision, changed.revision + 2);
+  assert.equal(evidenceChange.planVersion, 3);
+
+  const targetChange = await tool("alterarCurso", {
+    requestId: randomUUID(),
+    courseId: created.courseId,
+    expectedRevision: evidenceChange.courseRevision,
+    operation: "update_course_design",
+    designCommand: {
+      type: "set_target_plan_items",
+      scope: {
+        kind: "didactic_microsequence",
+        ref: "microsequence-hosted-smoke"
+      },
+      instructionalAnalysisUnitIds: [analysisItemId],
+      evidenceRequirementIds: [evidenceItemId]
+    }
+  });
+  assert.equal(targetChange.courseRevision, changed.revision + 3);
+  assert.equal(targetChange.change.type, "set_target_plan_items");
+
+  const targetDesign = await tool("lerCurso", {
+    courseId: created.courseId,
+    view: "course_design",
+    scope: {
+      kind: "didactic_microsequence",
+      ref: "microsequence-hosted-smoke"
+    },
+    limit: 32
+  });
+  assert.deepEqual(targetDesign.targetPlanItems, {
+    instructionalAnalysisUnitIds: [analysisItemId],
+    evidenceRequirementIds: [evidenceItemId]
+  });
+
+  const initialDesign = await tool("lerCurso", {
+    courseId: created.courseId,
+    view: "course_design",
+    scope: { kind: "course", ref: created.courseId },
+    limit: 32
+  });
+  assert.equal(initialDesign.contract, "aralearn.course-design.v1");
+  assert.equal(initialDesign.targetPlanItems, null);
+  assert.equal(initialDesign.definitions.length, 4);
+  assert.equal(initialDesign.componentCatalog.options.length, 32);
+
+  const designChange = await tool("alterarCurso", {
+    requestId: randomUUID(),
+    courseId: created.courseId,
+    expectedRevision: targetChange.courseRevision,
+    operation: "update_course_design",
+    designCommand: {
+      type: "set_parameter",
+      scope: { kind: "course", ref: created.courseId },
+      parameterId: "new_analysis_unit_ceiling_per_expository_study_unit",
+      value: 3,
+      origin: "author",
+      reason: "Exercitar o desenho parametrizado no smoke hospedado."
+    }
+  });
+  assert.equal(designChange.courseRevision, changed.revision + 4);
+  assert.equal(designChange.change.type, "set_parameter");
 }
 
 console.log(
-  "Smoke MCP hospedado: OAuth, ferramentas correntes, componentes e Inspeção aprovados."
+  "Smoke MCP hospedado: OAuth, ferramentas correntes, desenho, componentes e Inspeção aprovados."
 );

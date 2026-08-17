@@ -2,6 +2,10 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import { CourseSupabaseAdapter } from "../../supabase/functions/_shared/aralearn-authoring/courseSupabaseAdapter.js";
+import { COURSE_DESIGN_PARAMETER_DEFINITIONS } from
+  "../../src/domain/courseDesignParameters.js";
+import { RESOURCE_PACKAGE_REGISTRY } from
+  "../../src/resources/catalog/resourceCatalog.js";
 
 const USER_ID = "10000000-0000-4000-8000-000000000001";
 const COURSE_ID = "20000000-0000-4000-8000-000000000002";
@@ -27,6 +31,226 @@ function adapter(fetchImpl, options = {}) {
     attempts: 1,
     ...options
   });
+}
+
+function componentCatalog() {
+  return {
+    version: "1-3e5629f8",
+    options: RESOURCE_PACKAGE_REGISTRY.listCatalog().map((manifest) => ({
+      ref: `${manifest.id}@${manifest.version}`,
+      label: manifest.label,
+      purpose: manifest.purpose
+    }))
+  };
+}
+
+function defaultComponentPolicy(excludedRefs = []) {
+  return {
+    catalogVersion: "1-3e5629f8",
+    availability: "all",
+    allowedRefs: [],
+    excludedRefs,
+    preferredRefs: []
+  };
+}
+
+function contextParameters() {
+  return COURSE_DESIGN_PARAMETER_DEFINITIONS.map((definition) => ({
+    parameterId: definition.id,
+    value: structuredClone(definition.defaultValue),
+    origin: "system_default",
+    reason: "Hipótese padrão de produto.",
+    sourceScope: null
+  }));
+}
+
+function designContext({ excludedRefs = [], targets = true } = {}) {
+  const inheritedPolicy = excludedRefs.length
+    ? {
+        changeId: "1",
+        policy: defaultComponentPolicy(excludedRefs),
+        origin: "author",
+        reason: "Componente excluído pelo autor.",
+        sourceScope: { kind: "course", ref: COURSE_ID }
+      }
+    : {
+        changeId: null,
+        policy: defaultComponentPolicy(),
+        origin: "system_default",
+        reason: "Todos os componentes instalados estão disponíveis por padrão.",
+        sourceScope: null
+      };
+  return {
+    contract: "aralearn.course-design-context.v1",
+    courseId: COURSE_ID,
+    courseRevision: 5,
+    authoringPartId: PART_ID,
+    componentCatalogVersion: "1-3e5629f8",
+    instructionalAnalysisUnits: [{
+      id: PLAN_ID,
+      position: 0,
+      statement: "Explicar a relação entre configuração e concessão.",
+      version: 1
+    }],
+    evidenceRequirements: [{
+      id: STEP_ID,
+      position: 0,
+      statement: "Explica a relação em dois casos distintos.",
+      version: 1
+    }],
+    guidanceRevisions: [],
+    targets: targets ? [{
+      didacticMicrosequenceId: "micro-a",
+      instructionalAnalysisUnitIds: [PLAN_ID],
+      evidenceRequirementIds: [STEP_ID],
+      parameters: contextParameters(),
+      guidanceRevisionIds: [],
+      componentPolicy: inheritedPolicy
+    }] : []
+  };
+}
+
+function runningMaterialization({
+  excludedRefs = [],
+  stepKind = "didactic_microsequence_materialization"
+} = {}) {
+  const didactic = stepKind === "didactic_microsequence_materialization";
+  const step = {
+    id: STEP_ID,
+    position: 0,
+    kind: stepKind,
+    targetDidacticMicrosequenceId: didactic ? "micro-a" : null,
+    productionPosition: didactic ? 0 : null,
+    status: "pending",
+    version: 1,
+    resultFacts: {},
+    updatedAt: "2026-08-17T10:00:00Z",
+    completedAt: null
+  };
+  return {
+    contract: "aralearn.course-authoring-part-materialization.v1",
+    courseId: COURSE_ID,
+    courseRevision: 5,
+    authoringPartId: PART_ID,
+    materialization: {
+      id: MATERIALIZATION_ID,
+      authoringPartVersion: 2,
+      channel: "mcp",
+      status: "running",
+      version: 1,
+      designContext: designContext({ excludedRefs }),
+      contextHash: "a".repeat(64),
+      resultFacts: {},
+      startedAt: "2026-08-17T10:00:00Z",
+      updatedAt: "2026-08-17T10:00:00Z",
+      completedAt: null,
+      steps: [step],
+      nextPendingStep: step
+    }
+  };
+}
+
+function materializationChange({
+  operation = "start",
+  channel = "mcp",
+  stepKind = "context_load",
+  version = 1,
+  authoringPartVersion = 1,
+  completedStepCount = 0,
+  failedStepCount = 0,
+  status = "running"
+} = {}) {
+  const didactic = stepKind === "didactic_microsequence_materialization";
+  const completed = operation === "record_step";
+  const nextPendingStep = status === "running" && !completed && failedStepCount === 0
+    ? {
+        id: STEP_ID,
+        position: 0,
+        kind: stepKind,
+        targetDidacticMicrosequenceId: didactic ? "micro-a" : null,
+        productionPosition: didactic ? 0 : null
+      }
+    : null;
+  return {
+    contract: "aralearn.course-authoring-materialization-change.v1",
+    courseId: COURSE_ID,
+    courseRevision: 5,
+    authoringPartId: PART_ID,
+    operation,
+    channel,
+    changed: true,
+    idempotent: false,
+    materialization: {
+      id: MATERIALIZATION_ID,
+      status,
+      version,
+      authoringPartVersion,
+      completedStepCount,
+      failedStepCount,
+      totalStepCount: 1,
+      nextPendingStep,
+      updatedAt: "2026-08-17T10:01:00Z",
+      completedAt: status === "running" ? null : "2026-08-17T10:01:00Z",
+      designContext: designContext({ targets: didactic }),
+      contextHash: "a".repeat(64)
+    },
+    step: completed ? {
+      id: STEP_ID,
+      status: failedStepCount ? "failed" : "completed",
+      version: 2
+    } : null,
+    entities: {
+      createdCount: 0,
+      updatedCount: 0,
+      deletedCount: 0,
+      linkedDidacticMicrosequenceId: didactic && completed ? "micro-a" : null
+    }
+  };
+}
+
+function courseDesignRead() {
+  return {
+    contract: "aralearn.course-design.v1",
+    courseId: COURSE_ID,
+    courseRevision: 5,
+    parameterCatalogVersion: "1.0.0",
+    scopeContext: {
+      current: { kind: "course", ref: COURSE_ID, label: "Curso" },
+      ancestors: [],
+      children: [],
+      childCount: 0,
+      hasMoreChildren: false,
+      nextChildCursor: null
+    },
+    targetPlanItems: null,
+    definitions: structuredClone(COURSE_DESIGN_PARAMETER_DEFINITIONS),
+    parameters: COURSE_DESIGN_PARAMETER_DEFINITIONS.map((definition) => ({
+      parameterId: definition.id,
+      localAssignment: null,
+      effectiveAssignment: {
+        changeId: null,
+        value: structuredClone(definition.defaultValue),
+        origin: "system_default",
+        reason: "Hipótese padrão de produto.",
+        sourceScope: null,
+        inherited: false
+      }
+    })),
+    guidance: { localRevision: null, effectiveRevisions: [] },
+    componentCatalog: componentCatalog(),
+    componentPolicy: {
+      localChange: null,
+      effectiveChange: {
+        changeId: null,
+        policy: defaultComponentPolicy(),
+        origin: "system_default",
+        reason: "Todos os componentes instalados estão disponíveis por padrão.",
+        sourceScope: null,
+        inherited: false
+      }
+    },
+    recentApplications: []
+  };
 }
 
 test("interrompe a leitura quando a resposta do banco excede o teto em bytes", async () => {
@@ -216,6 +440,223 @@ test("lê inspeção curricular limitada e acrescenta link exato da Unidade", as
   );
 });
 
+test("lê e altera parâmetros por RPC owner-only com catálogo validado", async () => {
+  const calls = [];
+  const value = adapter(async (url, init) => {
+    const payload = JSON.parse(init.body);
+    calls.push({ name: url.split("/").at(-1), payload });
+    if (url.endsWith("/rpc/get_owned_course_design_for_actor_v1")) {
+      return json(courseDesignRead());
+    }
+    if (url.endsWith("/rpc/apply_course_design_command_for_actor_v1")) {
+      return json({
+        contract: "aralearn.course-design-change.v1",
+        courseId: COURSE_ID,
+        courseRevision: 6,
+        requestId: "request-design-0001",
+        idempotent: false,
+        changed: true,
+        change: {
+          changeId: "1",
+          type: "clear_guidance",
+          scope: { kind: "course", ref: COURSE_ID }
+        }
+      });
+    }
+    assert.fail(`RPC inesperado: ${url}`);
+  });
+
+  const read = await value.getCourseDesign({
+    principal: { actorId: USER_ID },
+    courseId: COURSE_ID,
+    scopeKind: "course",
+    scopeRef: COURSE_ID,
+    childLimit: 16,
+    childCursor: null
+  });
+  assert.equal(read.componentCatalog.options.length, 32);
+  assert.equal(Object.hasOwn(read, "deepLink"), false);
+
+  const changed = await value.applyCourseDesignCommand({
+    principal: { actorId: USER_ID, authenticationKind: "application" },
+    courseId: COURSE_ID,
+    requestId: "request-design-0001",
+    expectedCourseRevision: 5,
+    command: {
+      type: "clear_guidance",
+      scope: { kind: "course", ref: COURSE_ID }
+    }
+  });
+  assert.equal(changed.changed, true);
+  assert.equal(Object.hasOwn(changed, "deepLink"), false);
+  assert.deepEqual(calls.map(({ name }) => name), [
+    "get_owned_course_design_for_actor_v1",
+    "apply_course_design_command_for_actor_v1"
+  ]);
+  assert.deepEqual(calls[0].payload, {
+    p_actor_id: USER_ID,
+    p_course_id: COURSE_ID,
+    p_scope_kind: "course",
+    p_scope_ref: COURSE_ID,
+    p_child_limit: 16,
+    p_child_cursor: null
+  });
+  assert.equal(calls[1].payload.p_channel, "application");
+  assert.equal(calls[1].payload.p_expected_course_revision, 5);
+
+  const drifted = courseDesignRead();
+  drifted.componentCatalog.options[0].purpose = "Contrato divergente";
+  const invalid = adapter(async () => json(drifted));
+  await assert.rejects(
+    () => invalid.getCourseDesign({
+      principal: { actorId: USER_ID },
+      courseId: COURSE_ID,
+      scopeKind: "course",
+      scopeRef: COURSE_ID
+    }),
+    (error) => error.code === "component_catalog_drift"
+  );
+
+  const oversized = adapter(async () => json({
+    code: "54000",
+    message: "Leitura de desenho excede 256 KiB."
+  }, 400));
+  await assert.rejects(
+    () => oversized.getCourseDesign({
+      principal: { actorId: USER_ID },
+      courseId: COURSE_ID,
+      scopeKind: "course",
+      scopeRef: COURSE_ID
+    }),
+    (error) => error.status === 413 && error.code === "course_design_response_too_large"
+  );
+
+  const reordered = courseDesignRead();
+  [reordered.componentCatalog.options[0], reordered.componentCatalog.options[1]] =
+    [reordered.componentCatalog.options[1], reordered.componentCatalog.options[0]];
+  const wrongOrder = adapter(async () => json(reordered));
+  await assert.rejects(
+    () => wrongOrder.getCourseDesign({
+      principal: { actorId: USER_ID },
+      courseId: COURSE_ID,
+      scopeKind: "course",
+      scopeRef: COURSE_ID
+    }),
+    (error) => error.code === "component_catalog_drift"
+  );
+
+  const wrongScope = courseDesignRead();
+  wrongScope.scopeContext.current = { kind: "lesson", ref: "lesson-a", label: "Lição A" };
+  const mismatchedRead = adapter(async () => json(wrongScope));
+  await assert.rejects(
+    () => mismatchedRead.getCourseDesign({
+      principal: { actorId: USER_ID },
+      courseId: COURSE_ID,
+      scopeKind: "course",
+      scopeRef: COURSE_ID
+    }),
+    (error) => error.code === "course_service_unavailable"
+  );
+
+  const mismatchedChange = adapter(async () => json({
+    contract: "aralearn.course-design-change.v1",
+    courseId: "10000000-0000-4000-8000-000000000099",
+    courseRevision: 6,
+    requestId: "request-design-other",
+    idempotent: false,
+    changed: true,
+    change: {
+      changeId: "1",
+      type: "clear_guidance",
+      scope: { kind: "course", ref: "10000000-0000-4000-8000-000000000099" }
+    }
+  }));
+  await assert.rejects(
+    () => mismatchedChange.applyCourseDesignCommand({
+      principal: { actorId: USER_ID, authenticationKind: "application" },
+      courseId: COURSE_ID,
+      requestId: "request-design-0001",
+      expectedCourseRevision: 5,
+      command: { type: "clear_guidance", scope: { kind: "course", ref: COURSE_ID } }
+    }),
+    (error) => error.code === "course_service_unavailable"
+  );
+});
+
+test("normaliza targetPlanItems e encaminha a atribuição multi-alvo sem aliases", async () => {
+  const readFixture = courseDesignRead();
+  readFixture.scopeContext = {
+    current: { kind: "didactic_microsequence", ref: "micro-a", label: "Micro A" },
+    ancestors: [
+      { kind: "course", ref: COURSE_ID, label: "Curso" },
+      { kind: "module", ref: "module-a", label: "Módulo A" },
+      { kind: "lesson", ref: "lesson-a", label: "Lição A" }
+    ],
+    children: [],
+    childCount: 0,
+    hasMoreChildren: false,
+    nextChildCursor: null
+  };
+  readFixture.targetPlanItems = {
+    instructionalAnalysisUnitIds: [PLAN_ID],
+    evidenceRequirementIds: [STEP_ID]
+  };
+  const calls = [];
+  const value = adapter(async (url, init) => {
+    const body = JSON.parse(init.body);
+    calls.push(body);
+    if (url.endsWith("/rpc/get_owned_course_design_for_actor_v1")) return json(readFixture);
+    return json({
+      contract: "aralearn.course-design-change.v1",
+      courseId: COURSE_ID,
+      courseRevision: 6,
+      requestId: "request-target-items-0001",
+      idempotent: false,
+      changed: true,
+      change: {
+        changeId: "2",
+        type: "set_target_plan_items",
+        scope: { kind: "didactic_microsequence", ref: "micro-a" }
+      }
+    });
+  });
+  const read = await value.getCourseDesign({
+    principal: { actorId: USER_ID },
+    courseId: COURSE_ID,
+    scopeKind: "didactic_microsequence",
+    scopeRef: "micro-a"
+  });
+  assert.deepEqual(read.targetPlanItems, readFixture.targetPlanItems);
+
+  const command = {
+    type: "set_target_plan_items",
+    scope: { kind: "didactic_microsequence", ref: "micro-a" },
+    instructionalAnalysisUnitIds: [PLAN_ID],
+    evidenceRequirementIds: [STEP_ID]
+  };
+  await value.applyCourseDesignCommand({
+    principal: { actorId: USER_ID, authenticationKind: "oauth" },
+    courseId: COURSE_ID,
+    requestId: "request-target-items-0001",
+    expectedCourseRevision: 5,
+    command
+  });
+  assert.deepEqual(calls[1].p_command, command);
+  assert.equal(calls[1].p_channel, "mcp");
+
+  const invalid = structuredClone(readFixture);
+  invalid.targetPlanItems.instructionalAnalysisUnitIds.push(PLAN_ID);
+  await assert.rejects(
+    () => adapter(async () => json(invalid)).getCourseDesign({
+      principal: { actorId: USER_ID },
+      courseId: COURSE_ID,
+      scopeKind: "didactic_microsequence",
+      scopeRef: "micro-a"
+    }),
+    (error) => error.code === "course_service_unavailable"
+  );
+});
+
 test("traduz concorrência do banco sem expor detalhes internos", async () => {
   const value = adapter(async () => json({ code: "40001", message: "private.secret" }, 400));
   await assert.rejects(
@@ -230,6 +671,21 @@ test("traduz concorrência do banco sem expor detalhes internos", async () => {
     (error) => error.status === 409 &&
       error.code === "stale_course_state" &&
       !error.message.includes("private.secret")
+  );
+
+  const requestConflict = adapter(async () => json({
+    code: "23514",
+    message: "requestId reutilizado com comando incompatível."
+  }, 400));
+  await assert.rejects(
+    () => requestConflict.applyCourseDesignCommand({
+      principal: { actorId: USER_ID, authenticationKind: "application" },
+      courseId: COURSE_ID,
+      requestId: "request-design-conflict",
+      expectedCourseRevision: 5,
+      command: { type: "clear_guidance", scope: { kind: "course", ref: COURSE_ID } }
+    }),
+    (error) => error.status === 409 && error.code === "request_id_conflict"
   );
 });
 
@@ -280,7 +736,6 @@ test("comando do plano é aplicado sobre a leitura cercada e enviado com o canal
           objective: "Aprender",
           audience: "",
           scope: "",
-          authoringGuidance: "",
           preferredPartCount: { minimum: 7, maximum: 12, origin: "automatic" },
           intendedLearningOutcomes: [],
           instructionalAnalysisUnits: [],
@@ -333,7 +788,6 @@ test("replay do plano chega ao receipt depois de outra revisão sem reaplicar o 
           objective: "Objetivo corrente",
           audience: "Público corrente",
           scope: "",
-          authoringGuidance: "",
           preferredPartCount: { minimum: 7, maximum: 12, origin: "automatic" },
           intendedLearningOutcomes: [],
           instructionalAnalysisUnits: [],
@@ -386,7 +840,8 @@ test("leitura retomável usa RPC owner-only e rejeita campos fora do DTO", async
       channel: "mcp",
       status: "running",
       version: 1,
-      designContext: { audience: "Docentes" },
+      designContext: designContext({ targets: false }),
+      contextHash: "a".repeat(64),
       resultFacts: {},
       startedAt: "2026-08-17T10:00:00Z",
       updatedAt: "2026-08-17T10:00:00Z",
@@ -427,6 +882,43 @@ test("leitura retomável usa RPC owner-only e rejeita campos fora do DTO", async
     }),
     /leitura da materialização/u
   );
+
+  const invalidPolicy = runningMaterialization();
+  invalidPolicy.materialization.designContext.targets[0].componentPolicy = {
+    ...invalidPolicy.materialization.designContext.targets[0].componentPolicy,
+    origin: "author",
+    sourceScope: { kind: "course", ref: COURSE_ID }
+  };
+  const invalidPolicyAdapter = adapter(async () => json(invalidPolicy));
+  await assert.rejects(
+    () => invalidPolicyAdapter.getCourseAuthoringPartMaterialization({
+      principal: { actorId: USER_ID },
+      courseId: COURSE_ID,
+      authoringPartId: PART_ID,
+      materializationId: MATERIALIZATION_ID
+    }),
+    /leitura da materialização/u
+  );
+
+  const overlappingPolicy = runningMaterialization();
+  const overlappingRef = componentCatalog().options[0].ref;
+  overlappingPolicy.materialization.designContext.targets[0].componentPolicy.policy = {
+    catalogVersion: "1-3e5629f8",
+    availability: "allow_only",
+    allowedRefs: [overlappingRef],
+    excludedRefs: [overlappingRef],
+    preferredRefs: []
+  };
+  const overlappingPolicyAdapter = adapter(async () => json(overlappingPolicy));
+  await assert.rejects(
+    () => overlappingPolicyAdapter.getCourseAuthoringPartMaterialization({
+      principal: { actorId: USER_ID },
+      courseId: COURSE_ID,
+      authoringPartId: PART_ID,
+      materializationId: MATERIALIZATION_ID
+    }),
+    /leitura da materialização/u
+  );
 });
 
 test("avanço de materialização encaminha somente a operação delimitada", async () => {
@@ -434,18 +926,10 @@ test("avanço de materialização encaminha somente a operação delimitada", as
   const value = adapter(async (url, init) => {
     assert.match(url, /advance_course_authoring_part_materialization_for_actor_v1$/u);
     request = JSON.parse(init.body);
-    return json({
-      contract: "aralearn.course-authoring-materialization-change.v1",
-      courseId: COURSE_ID,
-      courseRevision: 5,
-      authoringPartId: PART_ID,
-      operation: "start",
-      changed: true
-    });
+    return json(materializationChange());
   });
   const payload = {
     authoringPartVersion: 1,
-    designContext: { catalogVersion: "v1" },
     steps: [{
       id: PLAN_ID,
       position: 0,
@@ -468,9 +952,165 @@ test("avanço de materialização encaminha somente a operação delimitada", as
   });
 
   assert.equal(result.operation, "start");
+  assert.equal(result.materialization.designContext.contract, "aralearn.course-design-context.v1");
+  assert.equal(result.materialization.contextHash, "a".repeat(64));
   assert.equal(request.p_channel, "mcp");
   assert.equal(request.p_authoring_part_id, PART_ID);
   assert.deepEqual(request.p_payload, payload);
+
+  const invalid = adapter(async () => json({
+    ...materializationChange(),
+    materialization: { id: MATERIALIZATION_ID }
+  }));
+  await assert.rejects(
+    () => invalid.advanceCourseAuthoringPartMaterialization({
+      principal: { actorId: USER_ID, authenticationKind: "oauth" },
+      courseId: COURSE_ID,
+      authoringPartId: PART_ID,
+      materializationId: MATERIALIZATION_ID,
+      requestId: "request-materialization-0001",
+      expectedCourseRevision: 4,
+      expectedMaterializationVersion: 0,
+      operation: "start",
+      payload
+    }),
+    /leitura da materialização/u
+  );
+});
+
+test("record_step confere hash e policy selados antes da escrita", async () => {
+  const calls = [];
+  let excludedRefs = [];
+  const value = adapter(async (url) => {
+    calls.push(url.split("/").at(-1));
+    if (url.endsWith("/get_owned_course_authoring_part_materialization_for_actor_v1")) {
+      return json(runningMaterialization({ excludedRefs }));
+    }
+    if (url.endsWith("/advance_course_authoring_part_materialization_for_actor_v1")) {
+      return json(materializationChange({
+        operation: "record_step",
+        stepKind: "didactic_microsequence_materialization",
+        version: 2,
+        authoringPartVersion: 2,
+        completedStepCount: 1
+      }));
+    }
+    assert.fail(`RPC inesperado: ${url}`);
+  });
+  const paragraphRef = "aralearn.resource.paragraph@1.0.0";
+  const payload = {
+    stepId: STEP_ID,
+    expectedStepVersion: 1,
+    status: "completed",
+    resultFacts: {},
+    entityChanges: { upserts: [], deletes: [] },
+    designApplication: {
+      contextHash: "a".repeat(64),
+      didacticMicrosequenceId: "micro-a",
+      studyUnits: [{
+        studyUnitId: "unit-a",
+        mode: "expository",
+        introducedInstructionalAnalysisUnitIds: [],
+        explanationApplications: [],
+        practiceApplications: [],
+        componentRefs: [paragraphRef]
+      }]
+    }
+  };
+  const command = {
+    principal: { actorId: USER_ID, authenticationKind: "oauth" },
+    courseId: COURSE_ID,
+    authoringPartId: PART_ID,
+    materializationId: MATERIALIZATION_ID,
+    requestId: "request-materialization-step-0001",
+    expectedCourseRevision: 5,
+    expectedMaterializationVersion: 1,
+    operation: "record_step",
+    payload
+  };
+
+  const result = await value.advanceCourseAuthoringPartMaterialization(command);
+  assert.equal(result.operation, "record_step");
+  assert.deepEqual(calls, [
+    "get_owned_course_authoring_part_materialization_for_actor_v1",
+    "advance_course_authoring_part_materialization_for_actor_v1"
+  ]);
+
+  calls.length = 0;
+  await assert.rejects(
+    () => value.advanceCourseAuthoringPartMaterialization({
+      ...command,
+      payload: {
+        ...payload,
+        designApplication: { ...payload.designApplication, contextHash: "b".repeat(64) }
+      }
+    }),
+    (error) => error.code === "design_context_mismatch"
+  );
+  assert.deepEqual(calls, ["get_owned_course_authoring_part_materialization_for_actor_v1"]);
+
+  calls.length = 0;
+  excludedRefs = [paragraphRef];
+  await assert.rejects(
+    () => value.advanceCourseAuthoringPartMaterialization(command),
+    (error) => error.code === "component_disallowed_by_policy"
+  );
+  assert.deepEqual(calls, ["get_owned_course_authoring_part_materialization_for_actor_v1"]);
+});
+
+test("record_step exige designApplication somente na conclusão didática", async () => {
+  let stepKind = "context_load";
+  let writes = 0;
+  const value = adapter(async (url) => {
+    if (url.endsWith("/get_owned_course_authoring_part_materialization_for_actor_v1")) {
+      return json(runningMaterialization({ stepKind }));
+    }
+    if (url.endsWith("/advance_course_authoring_part_materialization_for_actor_v1")) {
+      writes += 1;
+      return json(materializationChange({
+        operation: "record_step",
+        stepKind,
+        version: 2,
+        authoringPartVersion: 2,
+        completedStepCount: 1
+      }));
+    }
+    assert.fail(`RPC inesperado: ${url}`);
+  });
+  const command = {
+    principal: { actorId: USER_ID, authenticationKind: "oauth" },
+    courseId: COURSE_ID,
+    authoringPartId: PART_ID,
+    materializationId: MATERIALIZATION_ID,
+    requestId: "request-materialization-context-step",
+    expectedCourseRevision: 5,
+    expectedMaterializationVersion: 1,
+    operation: "record_step",
+    payload: {
+      stepId: STEP_ID,
+      expectedStepVersion: 1,
+      status: "completed",
+      resultFacts: {},
+      entityChanges: { upserts: [], deletes: [] },
+      designApplication: null
+    }
+  };
+
+  await value.advanceCourseAuthoringPartMaterialization(command);
+  assert.equal(writes, 1);
+
+  stepKind = "didactic_microsequence_materialization";
+  await assert.rejects(
+    () => value.advanceCourseAuthoringPartMaterialization(command),
+    (error) => error.code === "design_application_requirement_mismatch"
+  );
+  assert.equal(writes, 1);
+
+  await value.advanceCourseAuthoringPartMaterialization({
+    ...command,
+    payload: { ...command.payload, status: "failed" }
+  });
+  assert.equal(writes, 2);
 });
 
 test("encaminha somente o segmento alterado sem reler a composição integral", async () => {

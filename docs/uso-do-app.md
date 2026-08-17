@@ -157,11 +157,11 @@ intervalo pode ser alterado e não é regra pedagógica.
 ## Consultar e editar o planejamento
 
 Abra o Curso e escolha **Planejamento**. A tela mostra objetivo, público,
-escopo, orientação de autoria, faixa preferencial, referências do plano,
-Partes, vínculos, contagens e atividade recente persistida.
+escopo, faixa preferencial, referências do plano, Partes, vínculos, contagens
+e atividade recente persistida.
 
-O ícone de edição permite alterar título, objetivo, público, escopo, orientação
-e faixa preferencial. Em **Referências do plano**, acrescente, edite, mova ou
+O ícone de edição permite alterar título, objetivo, público, escopo e faixa
+preferencial. Em **Referências do plano**, acrescente, edite, mova ou
 retire resultados de aprendizagem pretendidos, unidades de análise
 instrucional e requisitos de evidência. Todos são campos em linguagem natural;
 a interface não pede JSON.
@@ -176,6 +176,40 @@ Em **Partes**, você pode:
 
 Essas ações mudam o plano, não a hierarquia curricular. Retirar uma Parte ou
 um vínculo não apaga conteúdo já produzido.
+
+## Definir parâmetros, itens por alvo, orientações e componentes
+
+Abra **Parâmetros**. O primeiro contexto é o Curso; avance progressivamente por
+Módulo, Lição e Microssequência para examinar outro nível sem carregar o Curso
+inteiro.
+
+Cada parâmetro mostra o valor efetivo, sua origem e o escopo fonte. Para criar
+uma decisão local, escolha o valor, informe uma justificativa breve e salve.
+Para restaurar a herança, use **Remover definição local**. Módulo mostra
+parâmetros herdados, mas não permite um override pedagógico neste catálogo.
+
+Em **Orientação autoral**, escreva o texto natural daquele escopo. Uma nova
+edição conserva a versão anterior; uma interpretação automatizada aparece em
+bloco separado e nunca substitui o original. Limpar a orientação local mantém
+as orientações ancestrais.
+
+Em **Componentes didáticos**, escolha entre todos ou apenas os permitidos e
+marque exclusões e preferências nas opções conhecidas do catálogo. Não digite
+refs. Na próxima materialização, uma política explícita de pessoa autora ou de
+condição de pesquisa prevalece sobre políticas automáticas descendentes; dentro
+da mesma classe de autoridade, vale o escopo aplicável mais próximo.
+
+Numa Microssequência, **Cobertura planejada desta Microssequência** permite
+marcar quais unidades de análise e requisitos de evidência do plano pertencem
+àquele alvo. Um item pode servir a várias Microssequências e cada alvo pode
+receber vários itens. Salvar substitui somente as duas listas daquele alvo; a
+Parte e a ordem curricular não distribuem o plano automaticamente.
+
+O resumo **Planejado × aplicado** usa os fatos que a tentativa realmente
+persistiu. Ele pode apontar uma diferença de cobertura ou política, mas não é
+nota de aprendizagem ou qualidade. Formas, oportunidades e variações são
+declarações validadas do agente ou da pessoa autora, não interpretações
+semânticas produzidas pelo banco a partir da prosa.
 
 ## Levar uma Parte ao chat conectado
 

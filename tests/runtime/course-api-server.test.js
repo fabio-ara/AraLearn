@@ -182,6 +182,54 @@ test("preserva o envelope CAS do plano até o adaptador", async () => {
   assert.deepEqual(call.command, { type: "update_plan", audience: "Docentes" });
 });
 
+test("aplicativo usa a mesma leitura e mudança de parâmetros do MCP", async () => {
+  const calls = [];
+  const handler = createCourseApiHandler({
+    allowedOrigins: new Set([ORIGIN]),
+    adapter: {
+      async resolveApplicationPrincipal() {
+        return { actorId: COURSE_ID, scopes: ["authoring:write"] };
+      },
+      async getCourseDesign(value) {
+        calls.push(["read", value]);
+        return { contract: "aralearn.course-design.v1", courseId: COURSE_ID };
+      },
+      async applyCourseDesignCommand(value) {
+        calls.push(["write", value]);
+        return { contract: "aralearn.course-design-change.v1", changed: true };
+      }
+    }
+  });
+  const readResponse = await handler(request("/app/lerCurso", {
+    body: {
+      courseId: COURSE_ID,
+      view: "course_design",
+      scope: { kind: "course", ref: COURSE_ID },
+      limit: 16,
+      cursor: null
+    }
+  }));
+  assert.equal(readResponse.status, 200);
+
+  const writeResponse = await handler(request("/app/alterarCurso", {
+    body: {
+      requestId: "request-course-design-0001",
+      courseId: COURSE_ID,
+      expectedRevision: 5,
+      operation: "update_course_design",
+      designCommand: {
+        type: "clear_guidance",
+        scope: { kind: "course", ref: COURSE_ID }
+      }
+    }
+  }));
+  assert.equal(writeResponse.status, 200);
+  assert.equal(calls[0][1].scopeKind, "course");
+  assert.equal(calls[0][1].scopeRef, COURSE_ID);
+  assert.equal(calls[1][1].expectedCourseRevision, 5);
+  assert.equal(calls[1][1].command.type, "clear_guidance");
+});
+
 test("orienta reler o Curso e usar novo requestId após conflito de versão", async () => {
   const handler = createCourseApiHandler({
     allowedOrigins: new Set([ORIGIN]),

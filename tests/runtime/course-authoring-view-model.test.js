@@ -4,7 +4,10 @@ import test from "node:test";
 import {
   classifyCourseAuthoringError,
   courseListCardinality,
+  mergeCourseDesignScopePages,
   mergeCourseListPages,
+  normalizeCourseDesign,
+  normalizeCourseDesignChange,
   normalizeCourseAuthoringOutline,
   normalizeCourseAuthoringPlan,
   normalizeCourseDetail,
@@ -81,6 +84,165 @@ function outlineFixture() {
       }]
     },
     deepLink: `#/authoring/courses/${COURSE_ID}?section=structure`
+  };
+}
+
+function courseDesignFixture({
+  children = [{ kind: "module", ref: "module-a", label: "Base", position: 0 }],
+  childCount = children.length,
+  hasMoreChildren = false,
+  nextChildCursor = null
+} = {}) {
+  const definitions = [{
+    id: "new_analysis_unit_ceiling_per_expository_study_unit",
+    label: "Novas unidades de análise por Unidade expositiva",
+    construct: "Quantidade de unidades novas introduzidas em uma explicação.",
+    operationalization: "Conta identidades introduzidas por Unidade expositiva.",
+    limitations: "O agregado não demonstra desenvolvimento conceitual.",
+    defaultStatus: "product_hypothesis",
+    evidenceRefs: ["https://doi.org/10.1111/j.1551-6709.2012.01245.x"],
+    supportedScopes: ["course", "lesson", "didactic_microsequence"],
+    valueSchema: { type: "integer", minimum: 1, maximum: 8 },
+    defaultValue: 2
+  }, {
+    id: "required_explanation_forms",
+    label: "Formas exigidas de explicação",
+    construct: "Formas complementares usadas para desenvolver um termo.",
+    operationalization: "Registra as formas desenvolvidas na materialização.",
+    limitations: "Presença não prova clareza.",
+    defaultStatus: "product_hypothesis",
+    evidenceRefs: ["https://doi.org/10.1080/01638539609544975"],
+    supportedScopes: ["course", "lesson", "didactic_microsequence"],
+    valueSchema: {
+      type: "set",
+      allowedValues: [
+        "plain_definition", "concrete_example", "mechanism", "contrast",
+        "application_condition", "limit_or_exception", "worked_example", "representation_link"
+      ],
+      minimumItems: 1,
+      maximumItems: 8
+    },
+    defaultValue: ["plain_definition", "concrete_example", "mechanism", "contrast"]
+  }, {
+    id: "minimum_distinct_practice_opportunities_per_evidence_requirement",
+    label: "Oportunidades distintas de prática",
+    construct: "Quantidade de oportunidades para o mesmo requisito de evidência.",
+    operationalization: "Conta oportunidades distintas registradas.",
+    limitations: "Quantidade não mede recuperação bem-sucedida.",
+    defaultStatus: "product_hypothesis",
+    evidenceRefs: ["https://doi.org/10.1111/j.1467-9280.2006.01693.x"],
+    supportedScopes: ["course", "lesson", "didactic_microsequence"],
+    valueSchema: { type: "integer", minimum: 1, maximum: 16 },
+    defaultValue: 2
+  }, {
+    id: "required_practice_variation_dimensions",
+    label: "Dimensões exigidas de variação",
+    construct: "Aspectos variados entre oportunidades de prática.",
+    operationalization: "Registra as dimensões variadas mantendo a operação-alvo.",
+    limitations: "Variação registrada não prova transferência.",
+    defaultStatus: "product_hypothesis",
+    evidenceRefs: ["https://doi.org/10.1002/acp.1598"],
+    supportedScopes: ["course", "lesson", "didactic_microsequence"],
+    valueSchema: {
+      type: "set",
+      allowedValues: [
+        "case_or_data", "context", "task_feature", "external_representation", "support_level"
+      ],
+      minimumItems: 1,
+      maximumItems: 5
+    },
+    defaultValue: ["case_or_data"]
+  }];
+  const componentOptions = Array.from({ length: 32 }, (_, index) => ({
+    ref: `aralearn.resource.component_${String(index + 1).padStart(2, "0")}@1.0.0`,
+    label: `Componente ${index + 1}`,
+    purpose: `Finalidade acadêmica ${index + 1}.`
+  }));
+  return {
+    contract: "aralearn.course-design.v1",
+    courseId: COURSE_ID,
+    courseRevision: 3,
+    parameterCatalogVersion: "1.0.0",
+    scopeContext: {
+      current: { kind: "course", ref: COURSE_ID, label: "Fundamentos" },
+      ancestors: [],
+      children,
+      childCount,
+      hasMoreChildren,
+      nextChildCursor
+    },
+    definitions,
+    parameters: definitions.map((definition) => ({
+      parameterId: definition.id,
+      localAssignment: null,
+      effectiveAssignment: {
+        changeId: null,
+        value: structuredClone(definition.defaultValue),
+        origin: "system_default",
+        reason: "Hipótese operacional inicial do produto.",
+        sourceScope: null,
+        inherited: false
+      }
+    })),
+    guidance: {
+      localRevision: {
+        revisionId: "91000000-0000-4000-8000-000000000019",
+        guidance: "Explique cada termo antes de depender dele.",
+        origin: "migration",
+        reason: "Texto preservado do planejamento anterior."
+      },
+      effectiveRevisions: [{
+        revisionId: "91000000-0000-4000-8000-000000000019",
+        guidance: "Explique cada termo antes de depender dele.",
+        origin: "migration",
+        reason: "Texto preservado do planejamento anterior.",
+        sourceScope: { kind: "course", ref: COURSE_ID },
+        currentInterpretation: {
+          interpretationId: "12",
+          guidanceRevisionId: "91000000-0000-4000-8000-000000000019",
+          interpretation: {
+            summary: "Desenvolver termos antes de usá-los.",
+            directives: [{ kind: "require", statement: "Definir cada termo novo." }],
+            divergences: [],
+            questions: ["Qual exemplo concreto deve vir primeiro?"]
+          },
+          createdAt: "2026-08-17T12:00:00Z"
+        }
+      }]
+    },
+    componentCatalog: { version: "1-3e5629f8", options: componentOptions },
+    componentPolicy: {
+      localChange: null,
+      effectiveChange: {
+        changeId: null,
+        policy: {
+          catalogVersion: "1-3e5629f8",
+          availability: "all",
+          allowedRefs: [],
+          excludedRefs: [],
+          preferredRefs: []
+        },
+        origin: "system_default",
+        reason: "Todos os componentes atuais começam disponíveis.",
+        sourceScope: null,
+        inherited: false
+      }
+    },
+    targetPlanItems: null,
+    recentApplications: [{
+      materializationId: MATERIALIZATION_ID,
+      stepId: "92000000-0000-4000-8000-000000000029",
+      didacticMicrosequenceId: "micro-a",
+      recordedAt: "2026-08-17T12:10:00Z",
+      contextHash: "a".repeat(64),
+      studyUnitCount: 3,
+      modeCounts: { expository: 1, practice: 1, mixed: 1 },
+      introducedInstructionalAnalysisUnitIds: [ITEM_ID],
+      developedExplanationForms: ["plain_definition", "concrete_example"],
+      practiceOpportunityCount: 2,
+      variedDimensions: ["case_or_data"],
+      componentRefs: [componentOptions[0].ref]
+    }]
   };
 }
 
@@ -172,7 +334,6 @@ test("planejamento normaliza listas nomeadas e projeta Partes fora da hierarquia
       objective: "Compreender relações essenciais.",
       audience: "Pessoas iniciantes.",
       scope: "Relações fundamentais.",
-      authoringGuidance: "Priorizar exemplos concretos.",
       preferredPartCount: { minimum: 7, maximum: 12, origin: "automatic" },
       intendedLearningOutcomes: [{
         id: ITEM_ID,
@@ -288,7 +449,6 @@ test("atividade recente aceita somente o bigint identity decimal positivo do ban
       objective: "Aprender.",
       audience: "",
       scope: "",
-      authoringGuidance: "",
       preferredPartCount: { minimum: 7, maximum: 12, origin: "automatic" },
       intendedLearningOutcomes: [],
       instructionalAnalysisUnits: [],
@@ -348,7 +508,6 @@ test("caminho curricular usa o mesmo limite canônico de 240 caracteres", () => 
       objective: "Aprender.",
       audience: "",
       scope: "",
-      authoringGuidance: "",
       preferredPartCount: { minimum: 7, maximum: 12, origin: "automatic" },
       intendedLearningOutcomes: [],
       instructionalAnalysisUnits: [],
@@ -426,7 +585,6 @@ test("planejamento recusa segunda autoridade de título ou objetivo e vínculos 
       objective: "Aprender.",
       audience: null,
       scope: null,
-      authoringGuidance: null,
       preferredPartCount: { minimum: 7, maximum: 12, origin: "automatic" },
       intendedLearningOutcomes: [],
       instructionalAnalysisUnits: [],
@@ -460,6 +618,187 @@ test("planejamento recusa segunda autoridade de título ou objetivo e vínculos 
     }),
     (error) => error.code === "invalid_authoring_plan"
   );
+});
+
+test("desenho por escopo preserva hipótese, proveniência, orientação original e fatos aplicados", () => {
+  const design = normalizeCourseDesign(courseDesignFixture(), {
+    expectedCourseId: COURSE_ID,
+    expectedCourseRevision: 3,
+    expectedScope: { kind: "course", ref: COURSE_ID }
+  });
+  assert.equal(design.definitions.length, 4);
+  assert.equal(design.componentCatalog.options.length, 32);
+  assert.equal(design.parameters[0].effectiveAssignment.origin, "system_default");
+  assert.equal(design.guidance.localRevision.origin, "migration");
+  assert.equal(design.guidance.effectiveRevisions.length, 1);
+  assert.equal(design.targetPlanItems, null);
+  assert.equal(
+    design.guidance.effectiveRevisions[0].currentInterpretation.interpretation.directives[0].kind,
+    "require"
+  );
+  assert.deepEqual(design.recentApplications[0].modeCounts, {
+    expository: 1,
+    practice: 1,
+    mixed: 1
+  });
+
+  const micro = courseDesignFixture({ children: [] });
+  micro.scopeContext = {
+    current: {
+      kind: "didactic_microsequence",
+      ref: "micro-a",
+      label: "Microssequência A"
+    },
+    ancestors: [
+      { kind: "course", ref: COURSE_ID, label: "Fundamentos" },
+      { kind: "module", ref: "module-a", label: "Módulo A" },
+      { kind: "lesson", ref: "lesson-a", label: "Lição A" }
+    ],
+    children: [],
+    childCount: 0,
+    hasMoreChildren: false,
+    nextChildCursor: null
+  };
+  micro.guidance.localRevision = null;
+  micro.targetPlanItems = {
+    instructionalAnalysisUnitIds: [ITEM_ID],
+    evidenceRequirementIds: []
+  };
+  const normalizedMicro = normalizeCourseDesign(micro, {
+    expectedCourseId: COURSE_ID,
+    expectedCourseRevision: 3,
+    expectedScope: { kind: "didactic_microsequence", ref: "micro-a" }
+  });
+  assert.deepEqual(normalizedMicro.targetPlanItems.instructionalAnalysisUnitIds, [ITEM_ID]);
+});
+
+test("desenho rejeita contrato singular legado, campo extra e política preferida excluída", () => {
+  const singular = courseDesignFixture();
+  singular.guidance = {
+    localRevision: singular.guidance.localRevision,
+    effectiveRevision: singular.guidance.effectiveRevisions[0],
+    interpretations: []
+  };
+  assert.throws(
+    () => normalizeCourseDesign(singular),
+    (error) => error.code === "invalid_course_design"
+  );
+
+  assert.throws(
+    () => normalizeCourseDesign({
+      ...courseDesignFixture(),
+      deepLink: `#/authoring/courses/${COURSE_ID}?section=parameters`
+    }),
+    (error) => error.code === "invalid_course_design"
+  );
+
+  const conflict = courseDesignFixture();
+  const ref = conflict.componentCatalog.options[0].ref;
+  conflict.componentPolicy.effectiveChange.policy.excludedRefs = [ref];
+  conflict.componentPolicy.effectiveChange.policy.preferredRefs = [ref];
+  assert.throws(
+    () => normalizeCourseDesign(conflict),
+    (error) => error.code === "invalid_course_design"
+  );
+});
+
+test("confirmação de desenho preserva requestId opaco e expõe somente fato canônico", () => {
+  const requestId = "client.retry:001";
+  const changed = normalizeCourseDesignChange({
+    contract: "aralearn.course-design-change.v1",
+    courseId: COURSE_ID,
+    courseRevision: 4,
+    requestId,
+    idempotent: true,
+    changed: true,
+    change: {
+      changeId: "13",
+      type: "interpret_guidance",
+      scope: { kind: "lesson", ref: "lesson-a" }
+    }
+  }, { expectedCourseId: COURSE_ID, expectedRequestId: requestId });
+  assert.equal(changed.requestId, requestId);
+  assert.equal(changed.change.changeId, "13");
+
+  const targetChange = normalizeCourseDesignChange({
+    contract: "aralearn.course-design-change.v1",
+    courseId: COURSE_ID,
+    courseRevision: 5,
+    requestId,
+    idempotent: false,
+    changed: true,
+    change: {
+      changeId: "14",
+      type: "set_target_plan_items",
+      scope: { kind: "didactic_microsequence", ref: "micro-a" }
+    }
+  });
+  assert.equal(targetChange.change.scope.ref, "micro-a");
+
+  assert.throws(
+    () => normalizeCourseDesignChange({
+      contract: "aralearn.course-design-change.v1",
+      courseId: COURSE_ID,
+      courseRevision: 5,
+      requestId,
+      idempotent: false,
+      changed: true,
+      change: {
+        changeId: "14",
+        type: "set_target_plan_items",
+        scope: { kind: "lesson", ref: "lesson-a" }
+      }
+    }),
+    (error) => error.code === "invalid_course_design"
+  );
+
+  assert.equal(normalizeCourseDesignChange({
+    contract: "aralearn.course-design-change.v1",
+    courseId: COURSE_ID,
+    courseRevision: 4,
+    requestId,
+    idempotent: true,
+    changed: false,
+    change: null
+  }).change, null);
+
+  assert.throws(
+    () => normalizeCourseDesignChange({
+      contract: "aralearn.course-design-change.v1",
+      courseId: COURSE_ID,
+      courseRevision: 4,
+      requestId,
+      idempotent: false,
+      changed: true,
+      change: { type: "set_parameter" }
+    }),
+    (error) => error.code === "invalid_course_design"
+  );
+});
+
+test("paginação de escopos agrega mais de cinquenta opções sem repetir o desenho", () => {
+  const children = Array.from({ length: 50 }, (_, position) => ({
+    kind: "module",
+    ref: `module-${String(position + 1).padStart(2, "0")}`,
+    label: `Módulo ${position + 1}`,
+    position
+  }));
+  const first = courseDesignFixture({
+    children: children.slice(0, 32),
+    childCount: 50,
+    hasMoreChildren: true,
+    nextChildCursor: children[31].ref
+  });
+  const second = courseDesignFixture({
+    children: children.slice(32),
+    childCount: 50,
+    hasMoreChildren: false,
+    nextChildCursor: null
+  });
+  const merged = mergeCourseDesignScopePages(first, second);
+  assert.equal(merged.scopeContext.children.length, 50);
+  assert.equal(merged.scopeContext.children.at(-1).ref, "module-50");
+  assert.equal(merged.scopeContext.hasMoreChildren, false);
 });
 
 test("Autoria rejeita Curso compartilhado antes de projetar título ou deep link", () => {

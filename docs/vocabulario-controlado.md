@@ -109,12 +109,15 @@ A imagem abaixo é uma **hipótese visual ainda não implementada** para testar 
 
 | Termo encontrado | Interface | Domínio | Símbolo técnico-alvo | Decisão e etapa | Definição operacional | Base | Não usar como sinônimo |
 |---|---|---|---|---|---|---|---|
-| `parâmetro` | **Parâmetro de desenho instrucional** | **Parâmetro de desenho instrucional** | `design_parameter` | `restringir`; termo vigente; sem corte de renomeação | Propriedade controlável do desenho com definição, tipo, unidade, escopo, origem, valor efetivo e limites explícitos. | `definicao-propria` #122 | `configuração técnica`, `métrica`, `restrição editorial` |
+| `parâmetro` | **Parâmetro de desenho instrucional** | **Parâmetro de desenho instrucional** | `design_parameter` | `restringir`; termo vigente; sem corte de renomeação | Propriedade controlável do desenho com definição versionada, schema, escopos admitidos, origem, valor efetivo e limitações explícitas. | `definicao-propria` #122 | `configuração técnica`, `métrica`, `restrição editorial` |
 | `configuração` | **Configuração técnica** | **Configuração técnica** | `technical_configuration` | `restringir`; termo vigente; sem corte de renomeação | Valor que altera operação ou integração do software sem representar, por si, uma propriedade pedagógica pesquisada. | `observacao-tecnica` #116 | `parâmetro de desenho instrucional`, `política`, `condição experimental` |
 | `policy`, `política` | **Política aplicável** | **Política aplicável** | `enforced_policy` | `restringir`; termo vigente; sem corte de renomeação | Regra versionada que permite, restringe ou exige comportamento e que é efetivamente aplicada por uma fronteira do sistema. | `observacao-tecnica` #122 | `preferência`, `parâmetro`, `documentação sem execução` |
-| `default` | **Valor padrão** | **Valor padrão** | `default_value` | `substituir`; corte #122; remoção integral até #129 | Valor explicitamente definido e versionado que se aplica na ausência de atribuição mais específica; não é uma recomendação universal. | `definicao-propria` #122 | `auto`, `herança`, `melhor prática` |
+| `default` | **Valor padrão** | **Valor padrão** | `default_value` | `restringir`; termo vigente; sem corte de renomeação | Valor explicitamente definido e versionado que se aplica na ausência de atribuição mais específica; não é uma recomendação universal. | `definicao-propria` #122 | `auto`, `herança`, `melhor prática` |
 | `herança` | **Herança calculada** | **Herança calculada** | `resolved_inheritance` | `restringir`; termo vigente; sem corte de renomeação | Resultado do resolvedor que aplica um valor de escopo ancestral quando não existe atribuição de maior autoridade no alvo; não é uma atribuição gravada. | `definicao-propria` #122 | `cópia`, `default`, `sobrescrita` |
 | `sobrescrita`, `override` | **Sobrescrita explícita** | **Sobrescrita explícita** | `explicit_override` | `restringir`; termo vigente; sem corte de renomeação | Atribuição intencional em um escopo que substitui integralmente o valor herdado segundo a regra de autoridade declarada. | `definicao-propria` #122 | `edição do default`, `herança`, `lock de pesquisa` |
+| `orientação autoral`, `guidance` | **Orientação de autoria** | **Revisão de orientação de autoria** | `course_authoring_guidance_revision` | `restringir`; termo vigente; sem corte de renomeação | Revisão imutável do texto original de uma orientação, ligada a um Curso, escopo, origem, ator, canal e revisão do Curso. | `definicao-propria` #122 | `prompt`, `campo do plano`, `interpretação automatizada` |
+| `interpretação de orientação` | **Interpretação da orientação** | **Interpretação da orientação** | `course_authoring_guidance_interpretation` | `restringir`; termo vigente; sem corte de renomeação | Leitura estruturada, versionada e separada de uma revisão exata de orientação, com resumo, diretivas, divergências e perguntas. | `definicao-propria` #122 | `orientação original`, `raciocínio privado`, `resposta do modelo` |
+| `política de componentes` | **Política de componentes** | **Política de componentes do Curso** | `course_component_policy` | `restringir`; termo vigente; sem corte de renomeação | Política completa e versionada por escopo que fixa catálogo, disponibilidade, referências permitidas, excluídas e preferidas e é imposta na materialização. | `definicao-propria` #122 | `catálogo`, `componente usado`, `parâmetro pedagógico` |
 | `densidade conceitual` | **Densidade conceitual operacionalizada** | **Densidade conceitual operacionalizada** | `conceptual_density_measure` | `restringir`; termo vigente; sem corte de renomeação | Construto de pesquisa calculado a partir de unidades semânticas anotadas e de um denominador explícito, segundo esquema, versão e procedimento de validação declarados. | [evidencia-academica](https://doi.org/10.1037/0033-295X.85.5.363); [evidencia-academica](https://doi.org/10.1037/0003-066X.50.9.741) | `quantidade de caracteres`, `complexidade textual`, `carga cognitiva` |
 | `extensão editorial`, `limite de caracteres` | **Extensão editorial** | **Extensão editorial** | `editorial_extent` | `restringir`; termo vigente; sem corte de renomeação | Contagem observável de caracteres, palavras, linhas, altura, duração ou payload usada para ergonomia, edição ou limites técnicos, sem inferência pedagógica automática. | [evidencia-academica](https://doi.org/10.1080/01449290410001715714) | `densidade conceitual`, `dificuldade`, `completude`, `qualidade` |
 
@@ -557,10 +560,10 @@ As fichas explicam como aplicar cada decisão. O exemplo é situado no AraLearn;
 - **Equivalente em inglês:** instructional design parameter.
 - **Termo de domínio:** Parâmetro de desenho instrucional.
 - **Símbolo técnico-alvo:** `design_parameter`.
-- **Exemplo no AraLearn:** A densidade conceitual desejada é um Parâmetro de desenho instrucional quando possui definição, escala e escopo declarados.
+- **Exemplo no AraLearn:** O teto de novas unidades de análise por Unidade expositiva é um Parâmetro de desenho instrucional com inteiro positivo, escopos e origem declarados.
 - **Risco de ambiguidade:** Sem esta delimitação, “Parâmetro de desenho instrucional” pode ser confundido com configuração técnica, métrica, restrição editorial, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.
 - **Alternativas consideradas:** “Variável de desenho instrucional”: pode ser observada ou analisada sem ser controlável; Parâmetro exige tipo, escopo, origem e regra de resolução explícitos..
-- **Impacto da migração:** Não há corte de renomeação programado; novas superfícies nas camadas interface, domain, database, mcp, research devem aplicar esta definição sem inferir que a funcionalidade já esteja disponível.
+- **Impacto da migração:** O corte #122 instala o catálogo fechado, a resolução por escopo e a mesma superfície em interface, domínio, banco e MCP, sem aceitar definições livres ou o modelo anterior.
 
 #### Configuração técnica — `technical-configuration`
 
@@ -577,30 +580,30 @@ As fichas explicam como aplicar cada decisão. O exemplo é situado no AraLearn;
 - **Equivalente em inglês:** enforced policy.
 - **Termo de domínio:** Política aplicável.
 - **Símbolo técnico-alvo:** `enforced_policy`.
-- **Exemplo no AraLearn:** Uma restrição obrigatória de segurança é uma Política aplicável, separada de uma preferência autoral que pode ser alterada.
+- **Exemplo no AraLearn:** A Política de componentes registra catálogo, disponibilidade, exclusões e preferências e é imposta na mesma transação da materialização.
 - **Risco de ambiguidade:** Sem esta delimitação, “Política aplicável” pode ser confundido com preferência, parâmetro, documentação sem execução, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.
 - **Alternativas consideradas:** “Regra de negócio”: é ampla e pode existir apenas em documentação; Política aplicável exige versão e imposição efetiva numa fronteira do sistema..
-- **Impacto da migração:** Não há corte de renomeação programado; novas superfícies nas camadas domain, database, mcp, security devem aplicar esta definição sem inferir que a funcionalidade já esteja disponível.
+- **Impacto da migração:** O corte #122 substitui listas ou conjuntos opacos por uma política completa, versionada e aplicada no domínio, banco e MCP.
 
 #### Valor padrão — `default-value`
 
 - **Equivalente em inglês:** default value.
 - **Termo de domínio:** Valor padrão.
 - **Símbolo técnico-alvo:** `default_value`.
-- **Exemplo no AraLearn:** Se a pessoa não ajustar a densidade, o Valor padrão definido para o curso é aplicado e sua origem continua visível.
+- **Exemplo no AraLearn:** Sem atribuição aplicável, o teto de novas unidades usa o Valor padrão 2 e mostra origem system_default, sem criar uma linha herdada.
 - **Risco de ambiguidade:** Sem esta delimitação, “Valor padrão” pode ser confundido com auto, herança, melhor prática, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.
 - **Alternativas consideradas:** “Valor inicial”: só descreve o momento de criação, enquanto Valor padrão também pode ser resolvido sempre que uma atribuição específica estiver ausente..
-- **Impacto da migração:** Corte limpo coordenado em #122, com remoção integral até #129: renomear interface, domínio e símbolos nas camadas interface, domain, database, mcp, code, sem alias, fallback ou dupla escrita.
+- **Impacto da migração:** O corte #122 torna o default parte versionada da definição e o projeta como system_default, sem alias, fallback ou atribuição gravada.
 
 #### Herança calculada — `resolved-inheritance`
 
 - **Equivalente em inglês:** resolved inheritance.
 - **Termo de domínio:** Herança calculada.
 - **Símbolo técnico-alvo:** `resolved_inheritance`.
-- **Exemplo no AraLearn:** Uma lição mostra o valor efetivo herdado do módulo como Herança calculada e informa de qual nível ele veio.
+- **Exemplo no AraLearn:** Uma Microssequência mostra o valor efetivo herdado da Lição ou do Curso e informa o escopo fonte sem copiar a atribuição.
 - **Risco de ambiguidade:** Sem esta delimitação, “Herança calculada” pode ser confundido com cópia, default, sobrescrita, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.
 - **Alternativas consideradas:** “Propagação de valor”: sugere cópia ou escrita nos descendentes; Herança calculada é resolvida sem criar atribuições locais duplicadas..
-- **Impacto da migração:** Não há corte de renomeação programado; novas superfícies nas camadas interface, domain, database, mcp devem aplicar esta definição sem inferir que a funcionalidade já esteja disponível.
+- **Impacto da migração:** O corte #122 implementa a herança como resolução por caminho e proveniência, sem gravar valores derivados nos descendentes.
 
 #### Sobrescrita explícita — `explicit-override`
 
@@ -611,6 +614,36 @@ As fichas explicam como aplicar cada decisão. O exemplo é situado no AraLearn;
 - **Risco de ambiguidade:** Sem esta delimitação, “Sobrescrita explícita” pode ser confundido com edição do default, herança, lock de pesquisa, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.
 - **Alternativas consideradas:** “Exceção local”: não explicita que existe uma atribuição intencional que substitui integralmente o valor herdado segundo uma ordem de autoridade..
 - **Impacto da migração:** Não há corte de renomeação programado; novas superfícies nas camadas interface, domain, database, mcp devem aplicar esta definição sem inferir que a funcionalidade já esteja disponível.
+
+#### Orientação de autoria — `authoring-guidance-revision`
+
+- **Equivalente em inglês:** authoring guidance revision.
+- **Termo de domínio:** Revisão de orientação de autoria.
+- **Símbolo técnico-alvo:** `course_authoring_guidance_revision`.
+- **Exemplo no AraLearn:** Uma orientação da Lição complementa a orientação do Curso; a leitura efetiva preserva os dois textos e suas revisões na ordem estrutural.
+- **Risco de ambiguidade:** Sem esta delimitação, “Orientação de autoria” pode ser confundida com prompt, campo livre do plano ou interpretação automatizada, apagando origem e versão.
+- **Alternativas consideradas:** “Brief”: mistura intenção, contexto e estado e não preserva a pilha por escopo.; “Prompt persistido”: confunde uma decisão humana confirmada com a mensagem enviada a um modelo..
+- **Impacto da migração:** O corte #122 move a orientação do plano para revisões próprias e remove o campo anterior sem leitura ou escrita dupla.
+
+#### Interpretação da orientação — `authoring-guidance-interpretation`
+
+- **Equivalente em inglês:** authoring guidance interpretation.
+- **Termo de domínio:** Interpretação da orientação.
+- **Símbolo técnico-alvo:** `course_authoring_guidance_interpretation`.
+- **Exemplo no AraLearn:** A interpretação registra uma diretiva prefer e uma pergunta para a revisão exata sem alterar uma palavra do texto original.
+- **Risco de ambiguidade:** Sem esta separação, uma automação poderia parecer autora do texto humano ou substituir silenciosamente a orientação que deveria interpretar.
+- **Alternativas consideradas:** “Orientação estruturada”: sugere que a estrutura substitui o original, quando ambos precisam permanecer distinguíveis.; “Resumo do modelo”: não inclui diretivas, divergências, perguntas nem vínculo versionado..
+- **Impacto da migração:** O corte #122 cria um registro próprio ligado por UUID à revisão original; nova orientação não reaproveita interpretação antiga.
+
+#### Política de componentes — `course-component-policy`
+
+- **Equivalente em inglês:** course component policy.
+- **Termo de domínio:** Política de componentes do Curso.
+- **Símbolo técnico-alvo:** `course_component_policy`.
+- **Exemplo no AraLearn:** Uma Lição permite somente referências declaradas, exclui um package e prefere outro; a exclusão vence e o uso real ainda precisa ser validado.
+- **Risco de ambiguidade:** Sem esta delimitação, disponibilidade, preferência e uso podem ser contados como a mesma relação ou apresentados como qualidade pedagógica.
+- **Alternativas consideradas:** “Conjunto de componentes”: não distingue permissão, exclusão e preferência e sugere que disponibilidade equivale a uso.; “Lista de packages”: omite escopo, catálogo e regra de aplicação..
+- **Impacto da migração:** O corte #122 substitui conjuntos opacos por um valor fechado ligado à revisão executável do catálogo e sem alias de leitura.
 
 #### Densidade conceitual operacionalizada — `conceptual-density`
 

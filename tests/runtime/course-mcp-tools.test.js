@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import Ajv2020 from "ajv/dist/2020.js";
 
 import {
   COURSE_MCP_TOOLS,
@@ -114,6 +115,17 @@ test("mapeia lista, leituras e criação sem identidade indireta", () => {
   assert.equal(
     mapAuthoringMcpToolCall("lerCurso", {
       courseId: COURSE_ID,
+      view: "course_design",
+      scope: { kind: "lesson", ref: "lesson-a" },
+      limit: 16,
+      cursor: "micro-a"
+    }).path,
+    `/v1/courses/${COURSE_ID}/course-design?scopeKind=lesson&scopeRef=lesson-a` +
+      "&limit=16&cursor=micro-a"
+  );
+  assert.equal(
+    mapAuthoringMcpToolCall("lerCurso", {
+      courseId: COURSE_ID,
       view: "part_materialization",
       authoringPartId: PART_ID,
       materializationId: MATERIALIZATION_ID
@@ -158,6 +170,26 @@ test("mapeia plano, composição e materialização com cercas CAS explícitas",
     command: planCommand
   });
 
+  const designCommand = {
+    type: "set_target_plan_items",
+    scope: { kind: "didactic_microsequence", ref: "micro-a" },
+    instructionalAnalysisUnitIds: [PART_ID],
+    evidenceRequirementIds: [STEP_ID]
+  };
+  const designChange = mapAuthoringMcpToolCall("alterarCurso", {
+    requestId: REQUEST_ID,
+    courseId: COURSE_ID,
+    expectedRevision: 4,
+    operation: "update_course_design",
+    designCommand
+  });
+  assert.equal(designChange.path, `/v1/courses/${COURSE_ID}/course-design/changes`);
+  assert.deepEqual(designChange.body, {
+    requestId: REQUEST_ID,
+    expectedCourseRevision: 4,
+    command: designCommand
+  });
+
   const upsert = {
     entityType: "module",
     entityId: "module-a",
@@ -193,7 +225,6 @@ test("mapeia plano, composição e materialização com cercas CAS explícitas",
       materializationId: MATERIALIZATION_ID,
       expectedMaterializationVersion: 0,
       authoringPartVersion: 2,
-      designContext: { audience: "Docentes" },
       steps: [{
         id: STEP_ID,
         position: 0,
@@ -215,7 +246,6 @@ test("mapeia plano, composição e materialização com cercas CAS explícitas",
     operation: "start",
     payload: {
       authoringPartVersion: 2,
-      designContext: { audience: "Docentes" },
       steps: [{
         id: STEP_ID,
         position: 0,
@@ -276,18 +306,128 @@ test("schema MCP anuncia comandos do plano, Partes e materialização delimitada
   const schema = COURSE_MCP_TOOLS.find(({ name }) => name === "alterarCurso").inputSchema;
   assert.deepEqual(schema.properties.operation.enum, [
     "update_instructional_plan",
+    "update_course_design",
     "commit_course_composition",
     "advance_part_materialization"
   ]);
   assert.equal(schema.properties.planCommand.additionalProperties, false);
+  assert.equal(Object.hasOwn(schema.properties.planCommand.properties, "authoringGuidance"), false);
+  assert.equal(schema.properties.designCommand.oneOf.length, 8);
+  assert.equal(
+    schema.properties.designCommand.oneOf[7].properties.type.const,
+    "set_target_plan_items"
+  );
+  assert.equal(schema.properties.designCommand.oneOf[0].allOf.length, 4);
+  assert.equal(
+    schema.properties.designCommand.oneOf[0].properties.value.anyOf[1].minItems,
+    1
+  );
+  assert.equal(
+    schema.properties.designCommand.oneOf[4].properties.interpretation.properties
+      .directives.uniqueItems,
+    true
+  );
+  assert.equal(
+    schema.properties.designCommand.oneOf[0].properties.scope.properties.kind.enum
+      .includes("module"),
+    false
+  );
+  assert.equal(
+    schema.properties.designCommand.oneOf[5].properties.policy.properties.catalogVersion.const,
+    "1-3e5629f8"
+  );
+  assert.equal(schema.allOf.length, 4);
+  assert.ok(schema.allOf[0].then.required.includes("designCommand"));
+  assert.ok(schema.allOf[1].then.required.includes("planCommand"));
+  assert.equal(schema.allOf[2].then.anyOf.length, 2);
+  assert.ok(schema.allOf[3].then.required.includes("materializationCommand"));
   assert.ok(schema.properties.planCommand.properties.type.enum.includes("split_part"));
   assert.ok(schema.properties.planCommand.properties.type.enum.includes("assign_microsequence"));
   assert.equal(schema.properties.planCommand.properties.microsequenceIds.maxItems, 64);
   assert.equal(schema.properties.materializationCommand.properties.steps.maxItems, 64);
   assert.equal(
+    schema.properties.materializationCommand.properties.designApplication.anyOf[1].type,
+    "null"
+  );
+  assert.equal(
+    schema.properties.materializationCommand.properties.designApplication.anyOf[0]
+      .properties.studyUnits.items.properties.introducedInstructionalAnalysisUnitIds.maxItems,
+    256
+  );
+  assert.ok(schema.properties.materializationCommand.allOf[1].then.required
+    .includes("designApplication"));
+  assert.ok(schema.properties.materializationCommand.allOf[0].then.not.anyOf
+    .some(({ required }) => required.includes("designApplication")));
+  assert.equal(
     schema.properties.materializationCommand.properties.entityChanges.properties.upserts.maxItems,
     64
   );
+});
+
+test("schema MCP fecha policy, alvos de etapa e versões como o Router", () => {
+  const schema = COURSE_MCP_TOOLS.find(({ name }) => name === "alterarCurso").inputSchema;
+  const ajv = new Ajv2020({ allErrors: true, strict: false });
+  const validatePolicy = ajv.compile(
+    schema.properties.designCommand.oneOf[5].properties.policy
+  );
+  const ref = "aralearn.resource.paragraph@1.0.0";
+  assert.equal(validatePolicy({
+    catalogVersion: "1-3e5629f8",
+    availability: "all",
+    allowedRefs: [ref],
+    excludedRefs: [],
+    preferredRefs: []
+  }), false);
+
+  const validateTargetItems = ajv.compile(schema.properties.designCommand.oneOf[7]);
+  const targetItems = {
+    type: "set_target_plan_items",
+    scope: { kind: "didactic_microsequence", ref: "micro-a" },
+    instructionalAnalysisUnitIds: [PART_ID],
+    evidenceRequirementIds: [STEP_ID]
+  };
+  assert.equal(validateTargetItems(targetItems), true, JSON.stringify(validateTargetItems.errors));
+  assert.equal(validateTargetItems({
+    ...targetItems,
+    scope: { kind: "lesson", ref: "lesson-a" }
+  }), false);
+  assert.equal(validateTargetItems({
+    ...targetItems,
+    instructionalAnalysisUnitIds: [PART_ID, PART_ID]
+  }), false);
+  assert.equal(validatePolicy({
+    catalogVersion: "1-3e5629f8",
+    availability: "allow_only",
+    allowedRefs: [],
+    excludedRefs: [],
+    preferredRefs: []
+  }), false);
+
+  const validateMaterialization = ajv.compile(schema.properties.materializationCommand);
+  const start = {
+    operation: "start",
+    authoringPartId: PART_ID,
+    materializationId: MATERIALIZATION_ID,
+    expectedMaterializationVersion: 0,
+    authoringPartVersion: 2,
+    steps: [{
+      id: STEP_ID,
+      position: 0,
+      kind: "context_load",
+      targetDidacticMicrosequenceId: null,
+      productionPosition: null
+    }]
+  };
+  assert.equal(validateMaterialization(start), true, JSON.stringify(validateMaterialization.errors));
+  assert.equal(validateMaterialization({ ...start, expectedMaterializationVersion: 1 }), false);
+  assert.equal(validateMaterialization({
+    ...start,
+    steps: [{
+      ...start.steps[0],
+      targetDidacticMicrosequenceId: "micro-a",
+      productionPosition: 0
+    }]
+  }), false);
 });
 
 test("schema MCP anuncia leitura retomável somente com as duas identidades", () => {
@@ -297,6 +437,9 @@ test("schema MCP anuncia leitura retomável somente com as duas identidades", ()
   assert.equal(schema.properties.materializationId.pattern, schema.properties.courseId.pattern);
   assert.ok(schema.properties.view.enum.includes("study_units"));
   assert.equal(schema.properties.maxBytes.maximum, 1_500_000);
+  assert.deepEqual(schema.allOf[1].then.properties.scope, schema.properties.scope.anyOf[1]);
+  assert.ok(schema.allOf[1].then.not.anyOf
+    .some(({ required }) => required.includes("expectedRevision")));
 });
 
 test("schema MCP anuncia posição 1 para Unidade de estudo e 0 para as demais entidades", () => {

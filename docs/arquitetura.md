@@ -11,10 +11,17 @@ objetivo, plano instrucional e composição. O mesmo identificador é usado por
 Estudo, Autoria e MCP.
 
 **Plano instrucional.** Planejamento normalizado e editável do Curso. Reúne
-público, escopo, orientação de autoria, resultados de aprendizagem pretendidos,
-unidades de análise instrucional, requisitos de evidência e Partes de autoria.
-Título e objetivo aparecem nessa projeção para leitura, mas sua autoridade
-permanece exclusivamente na raiz do Curso.
+público, escopo, resultados de aprendizagem pretendidos, unidades de análise
+instrucional, requisitos de evidência e Partes de autoria. Título e objetivo
+aparecem nessa projeção para leitura, mas sua autoridade permanece
+exclusivamente na raiz do Curso.
+
+**Desenho por escopo.** Resolução versionada de parâmetros pedagógicos,
+orientações naturais e política de componentes para um alvo do Curso.
+Orientação conserva texto original e interpretação separada; política
+representacional não se mistura a limites técnicos. Numa Microssequência, o
+desenho inclui também a atribuição explícita dos itens de análise e evidência
+que aquele alvo deve realizar.
 
 **Parte de autoria.** Recorte operacional ordenado que liga uma intenção de
 produção a zero ou mais Microssequências didáticas. Sua posição de produção
@@ -256,7 +263,65 @@ reorganizados até terminar ou falhar, evitando estado irrecuperável.
 - a atividade recente informa apenas fatos persistidos e o canal `application`
   ou `mcp`.
 
-## Decisão 5 — estado pessoal separado do Curso
+## Decisão 5 — desenho pedagógico resolvido e selado pelo servidor
+
+### Problema
+
+Um campo livre no plano não permite distinguir intenção humana, interpretação
+automatizada, herança, default e decisão experimental. Permitir que o cliente
+declare o contexto usado numa materialização também tornaria a auditoria
+autorreferente.
+
+### Decisão e funcionamento
+
+O catálogo corrente possui quatro parâmetros fechados: teto de novas unidades
+de análise por Unidade expositiva, formas de explicação, mínimo de
+oportunidades distintas de prática e dimensões de variação. Cada definição
+declara schema, default como hipótese de produto, escopos admitidos,
+limitações e referências de fundamentação.
+
+Parâmetros usam Curso, Lição ou Microssequência. Orientação e política de
+componentes também admitem Módulo. A resolução escolhe primeiro a decisão
+explícita `author|research_condition` mais próxima, depois a automática mais
+próxima e, por fim, o default. Herança é calculada; limpar remove somente a
+atribuição local.
+
+Orientações são revisões imutáveis do texto original. A leitura acumula a pilha
+Curso→alvo e mantém interpretações estruturadas ligadas à revisão exata, sem
+reescrever o texto. Política de componentes é um valor completo, ligado à
+revisão exata do catálogo, cuja resolução escolhe primeiro a política
+`author|research_condition` mais próxima, depois a `automatic` mais próxima e,
+por fim, o default; exclusão vence e preferência não autoriza uso.
+
+`private.course_design_target_plan_items` representa a atribuição
+muitos-para-muitos de unidades de análise instrucional e requisitos de
+evidência às Microssequências. A leitura `targetPlanItems` expõe as duas listas
+somente no escopo de Microssequência; `set_target_plan_items` substitui o
+conjunto completo daquele alvo. Nada infere que toda Microssequência de uma
+Parte precise cobrir todos os itens do Curso.
+
+Ao iniciar uma materialização, o servidor resolve o desenho para cada
+Microssequência-alvo e sela um contexto limitado. Revisões de orientação são
+deduplicadas; os catálogos de análise e evidência selam
+`{id, position, statement, version}` e cada alvo referencia somente seus IDs.
+Na etapa, o cliente envia fatos limitados de aplicação e o auditor os confronta
+somente com o subconjunto daquele alvo.
+
+Formas explicativas, oportunidades e variações são declarações do agente ou da
+pessoa autora cuja forma, referências, contagens e coerência interna são
+validadas; o PostgreSQL não as extrai semanticamente do conteúdo. A checagem
+material na mesma transação reconcilia os IDs de Unidades, seu pai e alvo e os
+`componentRefs` presentes nas entidades com a política selada.
+
+### Consequências
+
+- interface e MCP mostram o mesmo valor efetivo, origem e fonte;
+- automação não sobrescreve silenciosamente decisão explícita;
+- defaults e conformidade são hipóteses e fatos técnicos, não eficácia;
+- limites de bytes, DOM e lote ficam fora do catálogo pedagógico;
+- prompt, conversa e raciocínio não viram estado do Curso.
+
+## Decisão 6 — estado pessoal separado do Curso
 
 ### Problema
 
@@ -286,7 +351,7 @@ pedido. Recibos expiram em sete dias e existem apenas para repetição segura.
 - observações pessoais já persistem, mas sua fila autoral unificada e seu ciclo
   de correção ainda não estão implementados.
 
-## Decisão 6 — propriedade e acesso direto
+## Decisão 7 — propriedade e acesso direto
 
 ### Problema
 
@@ -313,7 +378,7 @@ listada. MCP aplica a mesma regra pela ferramenta `gerirPessoas`.
 - conceder ou revogar é idempotente e produz um evento pequeno quando muda o
   estado.
 
-## Decisão 7 — perfil humano mínimo e avatar privado
+## Decisão 8 — perfil humano mínimo e avatar privado
 
 `public.person_profiles` conserva nome opcional e chave de avatar. Um perfil é
 criado para cada conta, sem transformar o produto em rede social. A interface
@@ -328,7 +393,7 @@ Curso. Antes da exclusão da conta, os objetos de avatar precisam ser removidos.
 O Storage não guarda conteúdo de Curso nesta etapa. Essa delimitação evita usar
 armazenamento de objetos apenas porque a infraestrutura existe.
 
-## Decisão 8 — dois transportes, uma regra de domínio
+## Decisão 9 — dois transportes, uma regra de domínio
 
 O aplicativo usa RPCs autenticadas para Estudo e a Edge Function
 `aralearn-course-api` para operações autorais. Clientes conversacionais usam
@@ -351,7 +416,7 @@ O sexto item é uma ferramenta de descoberta e validação da biblioteca, não u
 mutação do Curso. A lista separa capacidades de Curso das operações progressivas
 da biblioteca sem expor o banco diretamente.
 
-## Decisão 9 — núcleo pequeno e pacotes de componentes
+## Decisão 10 — núcleo pequeno e pacotes de componentes
 
 O núcleo de execução conhece composição, temas, acessibilidade e protocolos
 comuns. Cada pacote de componente conserva schema, validação, renderer,
@@ -370,6 +435,7 @@ compatibilidade permanente.
 | --- | --- |
 | identidade e composição do Curso | `src/domain/courseEntities.js` |
 | plano instrucional e comandos de Parte | `src/domain/courseAuthoringPlan.js` |
+| parâmetros, orientação e política de componentes | `src/domain/courseDesignParameters.js` |
 | cache local | `src/persistence/CourseLocalStore.js` |
 | estado pessoal e fila | `src/persistence/CoursePersonalStateRepository.js` |
 | acesso HTTP/RPC | `src/supabase/CourseApiClient.js` |
@@ -378,7 +444,7 @@ compatibilidade permanente.
 | Autoria visual | `src/ui/CourseAuthoringSurface.js` |
 | sequência vertical de Inspeção | `src/ui/CourseInspectionSequence.js` |
 | API e MCP | `supabase/functions/_shared/aralearn-authoring/course*` |
-| banco canônico | migrations `20260817140000` a `20260817170000` |
+| banco canônico | migrations `20260817140000` a `20260817180000` |
 | importador transitório | `scripts/courseCutover/` |
 
 ## Gates antes da promoção hospedada
@@ -394,15 +460,20 @@ está concluída. A promoção exige, nesta ordem:
    de navegador contra o schema resultante;
 4. confirmar que dispositivos conhecidos não possuem fila pendente do modelo
    substituído;
-5. executar o importador e as migrations `1400`, `1500`, `1600` e `1700`, nessa
-   ordem, na mesma transação hospedada, abortando diante de drift; o runner
-   declara e hasheia as quatro antes de `--apply` e não usa `db push` separado
-   para a `1700`;
+5. executar o importador e as migrations `1400`, `1500`, `1600`, `1700` e
+   `1800`, nessa ordem, na mesma transação hospedada, abortando diante de drift;
+   o runner declara e hasheia as cinco antes de `--apply` e não usa `db push`
+   separado para `1700` ou `1800`;
 6. publicar Edge Functions, site e APK somente depois da verificação hospedada.
 
 O importador é transitório e não entra no runtime. Não há leitura dupla,
 fallback, alias nem sincronização paralela. O Git preserva a arquitetura
 anterior.
+
+O preflight da `1800` também é fail-closed: bloqueia as relações legadas antes
+de conferir que estão vazias e aborta diante de qualquer tentativa ou etapa de
+materialização criada antes do novo contexto. Materialização antiga não é
+reinterpretada nem retomada sob o contrato novo.
 
 ## Propriedades demonstradas e questões abertas
 
@@ -412,6 +483,8 @@ anterior.
 | Cursos compartilhados aparecem somente em Estudo | implementado localmente | controladores owner-only e testes de acesso |
 | lista fina precede composição sob demanda | implementado localmente | RPCs paginadas, cache e testes de revisão |
 | plano e Partes são editáveis sem JSON pela interface e pelo MCP | implementado localmente | domínio, migration `1600`, API, MCP e testes focais |
+| parâmetros, itens do plano por alvo, orientação original e política são resolvidos pelo mesmo contrato na UI e no MCP | implementado localmente | domínio, relação muitos-para-muitos da migration `1800`, API/MCP, área Parâmetros e testes focais |
+| materialização sela enunciados, versões e subconjuntos por alvo e cerca fatos declarados | implementado localmente | migration `1800`, hash do contexto, validação interna e regressão DNS/DHCP; o banco reconcilia materialmente somente IDs de Unidades, pai/alvo e `componentRefs` |
 | UI e MCP inspecionam as mesmas Unidades por escopo e revisão | implementado localmente | migration `1700`, RPC owner-only, `lerCurso study_units`, cache e testes focais |
 | a Inspeção limita página, payload e janela visual | implementado localmente | 12/24 itens, hard cap de 1,75 MiB, cache limitado e no máximo 36 artigos |
 | remover ou reorganizar Parte não apaga conteúdo produzido | implementado localmente | relações separadas, transações e testes de domínio/banco |

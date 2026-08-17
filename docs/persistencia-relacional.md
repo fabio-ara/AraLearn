@@ -23,14 +23,16 @@ a autoridade do servidor para acesso ou concorrência.
 
 ## Modelo mental
 
-**Descrição textual:** o Curso possui raiz, plano instrucional e entidades no
-PostgreSQL; o dispositivo conserva descritores e Cursos já abertos; cada pessoa
-mantém um estado pessoal local e remoto; fotos ficam no Storage privado.
+**Descrição textual:** o Curso possui raiz, plano instrucional, desenho por
+escopo e entidades no PostgreSQL; o dispositivo conserva descritores e Cursos
+já abertos; cada pessoa mantém um estado pessoal local e remoto; fotos ficam no
+Storage privado.
 
 ```mermaid
 flowchart TD
     PG[(PostgreSQL)] --> C[Raiz do Curso]
     PG --> PL[Plano, itens e Partes]
+    PG --> D[Parâmetros, orientações e políticas]
     PG --> MT[Tentativas e etapas de materialização]
     PG --> E[Entidades didáticas]
     PG --> A[Acesso direto]
@@ -67,11 +69,13 @@ Partes ou outro planejamento não ficam num JSON da raiz.
 
 O planejamento usa relações próprias:
 
-- `private.course_instructional_plans`: público, escopo, orientação para a
-  autoria, faixa preferencial de Partes, origem da preferência e versão;
+- `private.course_instructional_plans`: público, escopo, faixa preferencial
+  de Partes, origem da preferência e versão;
 - `private.course_instructional_plan_items`: resultados de aprendizagem
   pretendidos, unidades de análise instrucional e requisitos de evidência,
   cada qual com identidade, posição, enunciado e versão;
+- `private.course_design_target_plan_items`: atribuição muitos-para-muitos de
+  unidades de análise e requisitos de evidência a Microssequências concretas;
 - `private.course_authoring_parts`: título, intenção, posição, versão e eventual
   retirada do plano;
 - `private.course_authoring_part_didactic_microsequences`: vínculo exclusivo e
@@ -90,18 +94,67 @@ Lições, Microssequências e Unidades permanecem em `course_entities`. Assim, o
 banco não interpreta uma mudança de plano como pedido implícito de exclusão de
 conteúdo.
 
+### Desenho pedagógico por escopo
+
+O desenho não volta a ser um JSON único. Relações append-only conservam o fato
+que realmente mudou:
+
+- `private.course_design_parameter_definitions`: catálogo pequeno, versionado
+  e imutável das quatro definições pedagógicas;
+- `private.course_design_parameter_changes`: atribuições e remoções por
+  parâmetro e escopo;
+- `private.course_authoring_guidance_revisions`: texto original ou remoção de
+  orientação por escopo;
+- `private.course_authoring_guidance_interpretations`: interpretação
+  estruturada ligada à revisão exata;
+- `private.course_component_policy_changes`: política completa ou remoção por
+  escopo.
+
+A atribuição por alvo não é append-only: ela representa o conjunto corrente e
+é substituída atomicamente por `set_target_plan_items`. Duas chaves
+estrangeiras compostas garantem que a Microssequência e o item pertencem ao
+mesmo Curso; somente `instructional_analysis_unit` e `evidence_requirement`
+podem entrar. A leitura `targetPlanItems` devolve as duas listas no escopo de
+Microssequência e `null` nos demais escopos.
+
+Defaults e herança são calculados e não geram linhas. Uma mudança efetiva
+avança a revisão do Curso e reutiliza `course_events` e
+`course_change_receipts`; no-op não cria atividade. Parâmetros admitem Curso,
+Lição e Microssequência. Orientação e política também admitem Módulo.
+
+A leitura owner-only recebe um alvo concreto, reconstrói seus ancestrais e
+devolve valores efetivos, origem, fonte e pilha de orientações. A política de
+componentes efetiva prioriza `author|research_condition` no escopo aplicável
+mais próximo, depois `automatic` no escopo mais próximo e, por fim, o default.
+O catálogo de componentes no DTO é a revisão executável corrente, não uma lista
+livre do cliente.
+
 ### Materialização retomável
 
 `private.course_authoring_part_materializations` conserva uma tentativa por
 Parte, a versão da Parte usada como base, ator, canal, estado, versão, contexto
-de desenho, fatos do resultado e instantes. Somente uma tentativa `running`
-pode existir por Parte.
+de desenho, fatos do resultado e instantes. O contexto é calculado pelo
+servidor a partir dos alvos, nunca aceito como declaração do cliente. Os
+catálogos selam `{id, position, statement, version}` dos itens atribuídos e
+cada alvo carrega somente suas duas listas de IDs. Somente uma tentativa
+`running` pode existir por Parte.
 
 `private.course_authoring_part_materialization_steps` conserva até 64 passos
 ordenados por tentativa: carga de contexto, materialização de uma
 Microssequência ou validação. Etapas registram estado, versão e fatos pequenos.
 Quando uma etapa materializa uma Microssequência, as alterações de entidades e
-o vínculo de produção são confirmados na mesma transação.
+o vínculo de produção são confirmados na mesma transação. Os fatos de aplicação
+referenciam o hash do contexto selado e são auditados somente contra o
+subconjunto atribuído ao alvo. Formas, oportunidades e dimensões de variação
+são declarações validadas internamente, não fatos extraídos semanticamente das
+entidades. O banco reconcilia materialmente os IDs de Unidades, o pai/alvo e os
+`componentRefs` gravados, que também precisam obedecer à política selada.
+
+No corte para a `1800`, não há conversor de tentativas antigas. O preflight
+bloqueia tabelas de materialização e recusa qualquer tentativa ou etapa já
+existente. Também bloqueia cada relação legada de desenho antes de confirmar
+que está vazia, evitando que uma escrita concorrente passe entre a contagem e o
+corte.
 
 Posições de produção ficam no intervalo `0–63` e são contíguas dentro da
 Parte. A restrição vale também na fronteira SQL, não apenas no cliente. Uma

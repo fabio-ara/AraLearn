@@ -252,7 +252,6 @@ try {
     planCommand: {
       type: "update_plan",
       title: "Curso vivo de smoke",
-      authoringGuidance: "Contexto privado do autor.",
     },
   };
   const metadata = await courseAction("alterarCurso", metadataArguments, ownerToken);
@@ -331,6 +330,19 @@ try {
               }],
               response: null,
               feedback: [], topics: [], sources: [],
+            }, {
+              id: "study-unit-smoke-3",
+              position: 3,
+              title: "Terceira Unidade canônica",
+              role: "theory",
+              content: [{
+                id: "content-smoke-3",
+                package: "aralearn.resource.paragraph",
+                version: "1.0.0",
+                data: { text: "Terceira página validada pela materialização." },
+              }],
+              response: null,
+              feedback: [], topics: [], sources: [],
             }],
           }],
         }],
@@ -350,7 +362,7 @@ try {
     deletes: [],
   }, ownerToken);
   assert.equal(composition.data.revision, 4);
-  assert.equal(composition.data.upsertedCount, 5);
+  assert.equal(composition.data.upsertedCount, 6);
 
   const assignment = await courseAction("alterarCurso", {
     requestId: crypto.randomUUID(),
@@ -368,12 +380,103 @@ try {
   assert.equal(assignment.data.courseRevision, 5);
   assert.equal(assignment.data.planVersion, 4);
 
+  const assignedAnalysisUnitId = crypto.randomUUID();
+  const unassignedAnalysisUnitId = crypto.randomUUID();
+  const evidenceRequirementId = crypto.randomUUID();
+  let planCourseRevision = assignment.data.courseRevision;
+  let planVersion = assignment.data.planVersion;
+  for (const [kind, id, statement] of [
+    [
+      "instructional_analysis_unit",
+      assignedAnalysisUnitId,
+      "Distinguir a configuração DNS da concessão DHCP.",
+    ],
+    [
+      "instructional_analysis_unit",
+      unassignedAnalysisUnitId,
+      "Relacionar uma reserva DHCP a outro caso de uso.",
+    ],
+    [
+      "evidence_requirement",
+      evidenceRequirementId,
+      "Explicar a relação DNS–DHCP em dois casos distintos.",
+    ],
+  ]) {
+    const planItemChange = await courseAction("alterarCurso", {
+      requestId: crypto.randomUUID(),
+      courseId,
+      expectedRevision: planCourseRevision,
+      expectedPlanVersion: planVersion,
+      operation: "update_instructional_plan",
+      planCommand: {
+        type: "add_plan_item",
+        kind,
+        id,
+        position: kind === "instructional_analysis_unit"
+          ? Number(id === unassignedAnalysisUnitId)
+          : 0,
+        statement,
+      },
+    }, ownerToken);
+    planCourseRevision = planItemChange.data.courseRevision;
+    planVersion = planItemChange.data.planVersion;
+  }
+  assert.equal(planCourseRevision, 8);
+  assert.equal(planVersion, 7);
+
+  const designBeforeMapping = await courseAction("lerCurso", {
+    courseId,
+    view: "course_design",
+    scope: { kind: "didactic_microsequence", ref: "microsequence-smoke" },
+    limit: 32,
+  }, ownerToken);
+  assert.deepEqual(designBeforeMapping.data.targetPlanItems, {
+    instructionalAnalysisUnitIds: [],
+    evidenceRequirementIds: [],
+  });
+  const paragraphComponentRef = "aralearn.resource.paragraph@1.0.0";
+  const targetPlanItems = await courseAction("alterarCurso", {
+    requestId: crypto.randomUUID(),
+    courseId,
+    expectedRevision: planCourseRevision,
+    operation: "update_course_design",
+    designCommand: {
+      type: "set_target_plan_items",
+      scope: { kind: "didactic_microsequence", ref: "microsequence-smoke" },
+      instructionalAnalysisUnitIds: [assignedAnalysisUnitId],
+      evidenceRequirementIds: [evidenceRequirementId],
+    },
+  }, ownerToken);
+  assert.equal(targetPlanItems.data.courseRevision, 9);
+  assert.equal(targetPlanItems.data.change.type, "set_target_plan_items");
+
+  const policyChange = await courseAction("alterarCurso", {
+    requestId: crypto.randomUUID(),
+    courseId,
+    expectedRevision: targetPlanItems.data.courseRevision,
+    operation: "update_course_design",
+    designCommand: {
+      type: "set_component_policy",
+      scope: { kind: "didactic_microsequence", ref: "microsequence-smoke" },
+      policy: {
+        catalogVersion: designBeforeMapping.data.componentCatalog.version,
+        availability: "allow_only",
+        allowedRefs: [paragraphComponentRef],
+        excludedRefs: [],
+        preferredRefs: [paragraphComponentRef],
+      },
+      origin: "author",
+      reason: "A materialização do smoke usa somente prosa corrente.",
+    },
+  }, ownerToken);
+  assert.equal(policyChange.data.courseRevision, 10);
+
   const materializationId = crypto.randomUUID();
   const stepId = crypto.randomUUID();
   const startedMaterialization = await courseAction("alterarCurso", {
     requestId: crypto.randomUUID(),
     courseId,
-    expectedRevision: 5,
+    expectedRevision: policyChange.data.courseRevision,
     operation: "advance_part_materialization",
     materializationCommand: {
       operation: "start",
@@ -381,18 +484,40 @@ try {
       materializationId,
       expectedMaterializationVersion: 0,
       authoringPartVersion: 2,
-      designContext: { purpose: "smoke local" },
       steps: [{
         id: stepId,
         position: 0,
-        kind: "context_load",
-        targetDidacticMicrosequenceId: null,
-        productionPosition: null,
+        kind: "didactic_microsequence_materialization",
+        targetDidacticMicrosequenceId: "microsequence-smoke",
+        productionPosition: 0,
       }],
     },
   }, ownerToken);
-  assert.equal(startedMaterialization.data.courseRevision, 6);
+  assert.equal(startedMaterialization.data.courseRevision, 11);
   assert.equal(startedMaterialization.data.materialization.version, 1);
+  const { contextHash, designContext } = startedMaterialization.data.materialization;
+  assert.match(contextHash, /^[a-f0-9]{64}$/u);
+  assert.deepEqual(
+    designContext.instructionalAnalysisUnits.map(({ id }) => id),
+    [assignedAnalysisUnitId],
+  );
+  assert.deepEqual(
+    Object.keys(designContext.instructionalAnalysisUnits[0]).sort(),
+    ["id", "position", "statement", "version"],
+  );
+  assert.deepEqual(
+    designContext.evidenceRequirements.map(({ id }) => id),
+    [evidenceRequirementId],
+  );
+  assert.deepEqual(designContext.targets.map((target) => ({
+    id: target.didacticMicrosequenceId,
+    analysis: target.instructionalAnalysisUnitIds,
+    evidence: target.evidenceRequirementIds,
+  })), [{
+    id: "microsequence-smoke",
+    analysis: [assignedAnalysisUnitId],
+    evidence: [evidenceRequirementId],
+  }]);
 
   const resumable = await courseAction("lerCurso", {
     courseId,
@@ -402,11 +527,120 @@ try {
   }, ownerToken);
   assert.equal(resumable.data.materialization.nextPendingStep.id, stepId);
   assert.equal(resumable.data.materialization.steps.length, 1);
+  assert.equal(resumable.data.materialization.steps[0].status, "pending");
+
+  const materializedStudyUnits = compositionRows
+    .filter(({ entityType }) => entityType === "study_unit")
+    .map((change, index) => ({
+      ...change,
+      content: {
+        ...change.content,
+        title: `Unidade materializada ${index + 1}`,
+        content: change.content.content.map((component) => ({
+          ...component,
+          data: {
+            ...component.data,
+            text: `Conteúdo factual materializado ${index + 1}.`,
+          },
+        })),
+      },
+    }));
+  const explanationApplication = {
+    instructionalAnalysisUnitId: assignedAnalysisUnitId,
+    developedForms: [
+      "plain_definition",
+      "concrete_example",
+      "mechanism",
+      "contrast",
+    ],
+    notApplicable: [],
+  };
+  const practiceApplication = (opportunityId) => ({
+    evidenceRequirementId,
+    opportunityId,
+    invariantTaskOperation: "explicar a relação entre configuração DNS e concessão DHCP",
+    variedDimensions: ["case_or_data"],
+  });
+  const designApplication = {
+    contextHash,
+    didacticMicrosequenceId: "microsequence-smoke",
+    studyUnits: [{
+      studyUnitId: "study-unit-smoke",
+      mode: "expository",
+      introducedInstructionalAnalysisUnitIds: [assignedAnalysisUnitId],
+      explanationApplications: [explanationApplication],
+      practiceApplications: [],
+      componentRefs: [paragraphComponentRef],
+    }, {
+      studyUnitId: "study-unit-smoke-2",
+      mode: "practice",
+      introducedInstructionalAnalysisUnitIds: [],
+      explanationApplications: [],
+      practiceApplications: [practiceApplication("dns-dhcp-case-a")],
+      componentRefs: [paragraphComponentRef],
+    }, {
+      studyUnitId: "study-unit-smoke-3",
+      mode: "practice",
+      introducedInstructionalAnalysisUnitIds: [],
+      explanationApplications: [],
+      practiceApplications: [practiceApplication("dns-dhcp-case-b")],
+      componentRefs: [paragraphComponentRef],
+    }],
+  };
+  const unassignedApplication = structuredClone(designApplication);
+  unassignedApplication.studyUnits[0].introducedInstructionalAnalysisUnitIds.push(
+    unassignedAnalysisUnitId,
+  );
+  unassignedApplication.studyUnits[0].explanationApplications.push({
+    ...explanationApplication,
+    instructionalAnalysisUnitId: unassignedAnalysisUnitId,
+  });
+  const rejectedStep = await request(
+    "/functions/v1/aralearn-course-api/app/alterarCurso",
+    {
+      method: "POST",
+      token: ownerToken,
+      origin: APPLICATION_ORIGIN,
+      body: {
+        requestId: crypto.randomUUID(),
+        courseId,
+        expectedRevision: 11,
+        operation: "advance_part_materialization",
+        materializationCommand: {
+          operation: "record_step",
+          authoringPartId,
+          materializationId,
+          expectedMaterializationVersion: 1,
+          stepId,
+          expectedStepVersion: 1,
+          status: "completed",
+          resultFacts: { audit: "unassigned_plan_item" },
+          entityChanges: { upserts: materializedStudyUnits, deletes: [] },
+          designApplication: unassignedApplication,
+        },
+      },
+    },
+  );
+  assert.equal(
+    rejectedStep.response.status,
+    422,
+    failureMessage("materialização com item não atribuído", rejectedStep),
+  );
+  const afterRejectedStep = await courseAction("lerCurso", {
+    courseId,
+    view: "part_materialization",
+    authoringPartId,
+    materializationId,
+  }, ownerToken);
+  assert.equal(afterRejectedStep.data.courseRevision, 11);
+  assert.equal(afterRejectedStep.data.materialization.version, 1);
+  assert.equal(afterRejectedStep.data.materialization.steps[0].status, "pending");
+  assert.equal(afterRejectedStep.data.materialization.steps[0].version, 1);
 
   const recordedStep = await courseAction("alterarCurso", {
     requestId: crypto.randomUUID(),
     courseId,
-    expectedRevision: 6,
+    expectedRevision: 11,
     operation: "advance_part_materialization",
     materializationCommand: {
       operation: "record_step",
@@ -416,17 +650,24 @@ try {
       stepId,
       expectedStepVersion: 1,
       status: "completed",
-      resultFacts: { contextLoaded: true },
-      entityChanges: { upserts: [], deletes: [] },
+      resultFacts: { audit: "target_specific_design" },
+      entityChanges: { upserts: materializedStudyUnits, deletes: [] },
+      designApplication,
     },
   }, ownerToken);
-  assert.equal(recordedStep.data.courseRevision, 7);
+  assert.equal(recordedStep.data.courseRevision, 12);
   assert.equal(recordedStep.data.materialization.version, 2);
+  assert.equal(recordedStep.data.step.status, "completed");
+  assert.equal(recordedStep.data.entities.updatedCount, 3);
+  assert.equal(
+    recordedStep.data.entities.linkedDidacticMicrosequenceId,
+    "microsequence-smoke",
+  );
 
   const finishedMaterialization = await courseAction("alterarCurso", {
     requestId: crypto.randomUUID(),
     courseId,
-    expectedRevision: 7,
+    expectedRevision: 12,
     operation: "advance_part_materialization",
     materializationCommand: {
       operation: "finish",
@@ -437,8 +678,57 @@ try {
       resultFacts: { validated: true },
     },
   }, ownerToken);
-  assert.equal(finishedMaterialization.data.courseRevision, 8);
+  assert.equal(finishedMaterialization.data.courseRevision, 13);
   assert.equal(finishedMaterialization.data.materialization.status, "completed");
+
+  const initialDesign = await courseAction("lerCurso", {
+    courseId,
+    view: "course_design",
+    scope: { kind: "course", ref: courseId },
+    limit: 32,
+  }, ownerToken);
+  assert.equal(initialDesign.data.contract, "aralearn.course-design.v1");
+  assert.equal(initialDesign.data.courseRevision, 13);
+  assert.equal(initialDesign.data.targetPlanItems, null);
+  assert.equal(initialDesign.data.definitions.length, 4);
+  assert.equal(initialDesign.data.componentCatalog.options.length, 32);
+  assert.deepEqual(initialDesign.data.guidance.effectiveRevisions, []);
+
+  const designRequestId = crypto.randomUUID();
+  const designArguments = {
+    requestId: designRequestId,
+    courseId,
+    expectedRevision: 13,
+    operation: "update_course_design",
+    designCommand: {
+      type: "set_parameter",
+      scope: { kind: "course", ref: courseId },
+      parameterId: "new_analysis_unit_ceiling_per_expository_study_unit",
+      value: 3,
+      origin: "author",
+      reason: "Exercitar a resolução explícita no smoke local.",
+    },
+  };
+  const designChange = await courseAction("alterarCurso", designArguments, ownerToken);
+  const replayedDesignChange = await courseAction("alterarCurso", designArguments, ownerToken);
+  assert.equal(designChange.data.courseRevision, 14);
+  assert.equal(designChange.data.change.type, "set_parameter");
+  assert.equal(replayedDesignChange.data.courseRevision, 14);
+  assert.equal(replayedDesignChange.data.idempotent, true);
+
+  const resolvedDesign = await courseAction("lerCurso", {
+    courseId,
+    view: "course_design",
+    scope: { kind: "course", ref: courseId },
+    limit: 32,
+  }, ownerToken);
+  const resolvedCeiling = resolvedDesign.data.parameters.find(
+    ({ parameterId }) => parameterId
+      === "new_analysis_unit_ceiling_per_expository_study_unit",
+  );
+  assert.equal(resolvedDesign.data.courseRevision, 14);
+  assert.equal(resolvedCeiling.effectiveAssignment.value, 3);
+  assert.equal(resolvedCeiling.effectiveAssignment.origin, "author");
 
   const ownerCourses = await rpc("list_owned_courses_v1", {
     p_query: "Curso vivo",
@@ -462,7 +752,7 @@ try {
   const firstInspectionPage = await courseAction("lerCurso", {
     courseId,
     view: "study_units",
-    expectedRevision: 8,
+    expectedRevision: 14,
     scope: { kind: "course" },
     direction: "forward",
     limit: 1,
@@ -472,12 +762,16 @@ try {
     firstInspectionPage.data.contract,
     "aralearn.course-study-unit-inspection-page.v1",
   );
-  assert.equal(firstInspectionPage.data.courseRevision, 8);
-  assert.equal(firstInspectionPage.data.totalCount, 2);
+  assert.equal(firstInspectionPage.data.courseRevision, 14);
+  assert.equal(firstInspectionPage.data.totalCount, 3);
   assert.equal(firstInspectionPage.data.items.length, 1);
   assert.equal(
     firstInspectionPage.data.items[0].studyUnit.id,
     "study-unit-smoke",
+  );
+  assert.equal(
+    firstInspectionPage.data.items[0].studyUnit.title,
+    "Unidade materializada 1",
   );
   assert.deepEqual(firstInspectionPage.data.nextCursor, {
     studyUnitId: "study-unit-smoke",
@@ -488,17 +782,16 @@ try {
   const secondInspectionPage = await courseAction("lerCurso", {
     courseId,
     view: "study_units",
-    expectedRevision: 8,
+    expectedRevision: 14,
     scope: { kind: "course" },
     cursor: firstInspectionPage.data.nextCursor,
     direction: "forward",
-    limit: 1,
+    limit: 2,
     maxBytes: 65_536,
   }, ownerToken);
-  assert.equal(secondInspectionPage.data.items.length, 1);
-  assert.equal(
-    secondInspectionPage.data.items[0].studyUnit.id,
-    "study-unit-smoke-2",
+  assert.deepEqual(
+    secondInspectionPage.data.items.map(({ studyUnit }) => studyUnit.id),
+    ["study-unit-smoke-2", "study-unit-smoke-3"],
   );
   assert.equal(secondInspectionPage.data.hasPrevious, true);
   assert.equal(secondInspectionPage.data.hasMore, false);
@@ -549,7 +842,7 @@ try {
       body: {
         courseId,
         view: "study_units",
-        expectedRevision: 8,
+        expectedRevision: 14,
         limit: 1,
         maxBytes: 65_536,
       },
@@ -568,7 +861,7 @@ try {
   assert.equal(Object.hasOwn(sharedCourse, "authoringState"), false);
   const sharedEntities = await rpc("list_course_entities_v1", {
     p_course_id: courseId,
-    p_expected_revision: 8,
+    p_expected_revision: 14,
     p_limit: 100,
     p_after_entity_type: null,
     p_after_entity_id: null,

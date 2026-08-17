@@ -48,6 +48,8 @@ oferece projeções distintas:
 - `summary` para identidade e cabeçalho;
 - `outline` para hierarquia compacta;
 - `instructional_plan` para plano, Partes, vínculos e atividade recente;
+- `course_design` para parâmetros, orientações e política de componentes no
+  escopo escolhido e, numa Microssequência, os itens do plano atribuídos;
 - `part_materialization` para retomar uma tentativa e suas etapas;
 - `study_units` para inspecionar Unidades em ordem curricular;
 - `entities` para uma página estrutural sob revisão fixada.
@@ -85,6 +87,21 @@ itens, criar ou reorganizar Partes e mover vínculos de Microssequência. Títul
 objetivo continuam pertencendo à raiz do Curso. Reorganizar uma Parte não apaga
 conteúdo didático.
 
+### Parâmetros, orientações e componentes
+
+O desenho é lido e alterado por escopo. Parâmetros possuem valores efetivos e
+proveniência visível; orientações preservam o texto original e uma
+interpretação estruturada separada; a política de componentes distingue
+disponibilidade, exclusão e preferência. Defaults são hipóteses de produto, e
+uma atribuição automática precisa de justificativa. Nenhuma automação
+sobrescreve silenciosamente uma decisão explícita.
+
+Unidades de análise e requisitos de evidência são atribuídos explicitamente a
+cada Microssequência. `targetPlanItems` mostra as duas listas no alvo, e
+`set_target_plan_items` as substitui de forma atômica. Essa relação
+muitos-para-muitos impede que uma etapa seja obrigada a declarar cobertura de
+itens destinados a outra Microssequência.
+
 ### Composição
 
 A composição usa o contrato `aralearn.course.v1`, coleção `studyUnits` e
@@ -110,9 +127,15 @@ verdade científica, adequação ao público ou eficácia educacional.
 ### Materialização retomável
 
 Uma Parte pode ter tentativa persistida com etapas pequenas. Iniciar, registrar
-etapa e finalizar são operações explícitas. Uma etapa de Microssequência pode
-confirmar entidades, vínculo, fatos, evento e recibo na mesma transação. O
-próximo passo vem do estado persistido, não da memória da conversa.
+etapa e finalizar são operações explícitas. Ao iniciar, o servidor resolve e
+sela os parâmetros, as revisões de orientação e a política efetivos; o cliente
+não declara esse contexto. O selo inclui enunciado e versão dos itens
+atribuídos, e cada etapa é auditada somente contra o subconjunto do seu alvo.
+Uma etapa de Microssequência confirma entidades, vínculo, fatos limitados de
+aplicação, evento e recibo na mesma transação. Formas, oportunidades e
+variações continuam sendo declarações validadas internamente; a reconciliação
+material do banco cobre IDs de Unidades, pai/alvo e `componentRefs`. O próximo
+passo vem do estado persistido, não da memória da conversa.
 
 ## Concorrência e repetição segura
 

@@ -8,16 +8,45 @@ import {
   normalizeCourseAuthoringPlan,
   normalizeCourseAuthoringPlanCommand
 } from "../aralearn/runtime/domain/courseAuthoringPlan.js";
+import {
+  COURSE_DESIGN_PARAMETER_DEFINITIONS,
+  CourseDesignParametersError,
+  normalizeCourseAuthoringGuidanceInterpretation,
+  normalizeCourseDesignChange,
+  normalizeCourseDesignParameterValue,
+  normalizeCourseDesignRead
+} from "../aralearn/runtime/domain/courseDesignParameters.js";
+import {
+  RESOURCE_CATALOG,
+  RESOURCE_PACKAGE_REGISTRY
+} from "../aralearn/runtime/resources/catalog/resourceCatalog.js";
 
 const DEFAULT_RESPONSE_LIMIT_BYTES = 2 * 1024 * 1024;
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
 const MATERIALIZATION_FIELDS = new Set([
   "id", "authoringPartVersion", "channel", "status", "version", "designContext",
-  "resultFacts", "startedAt", "updatedAt", "completedAt", "steps", "nextPendingStep"
+  "contextHash", "resultFacts", "startedAt", "updatedAt", "completedAt", "steps",
+  "nextPendingStep"
 ]);
 const MATERIALIZATION_STEP_FIELDS = new Set([
   "id", "position", "kind", "targetDidacticMicrosequenceId", "productionPosition",
   "status", "version", "resultFacts", "updatedAt", "completedAt"
+]);
+const MATERIALIZATION_CHANGE_FIELDS = new Set([
+  "contract", "courseId", "courseRevision", "authoringPartId", "operation",
+  "channel", "changed", "idempotent", "materialization", "step", "entities"
+]);
+const MATERIALIZATION_CHANGE_STATE_FIELDS = new Set([
+  "id", "status", "version", "authoringPartVersion", "completedStepCount",
+  "failedStepCount", "totalStepCount", "nextPendingStep", "updatedAt",
+  "completedAt", "designContext", "contextHash"
+]);
+const MATERIALIZATION_CHANGE_NEXT_STEP_FIELDS = new Set([
+  "id", "position", "kind", "targetDidacticMicrosequenceId", "productionPosition"
+]);
+const MATERIALIZATION_CHANGE_STEP_FIELDS = new Set(["id", "status", "version"]);
+const MATERIALIZATION_CHANGE_ENTITY_FIELDS = new Set([
+  "createdCount", "updatedCount", "deletedCount", "linkedDidacticMicrosequenceId"
 ]);
 const INSPECTION_FIELDS = new Set([
   "contract", "courseId", "courseRevision", "scope", "totalCount", "scopeOptions",
@@ -34,6 +63,20 @@ const AUTHORING_PART_STATES = new Set([
   "planned", "partially_materialized", "materializing", "attention_required",
   "materialized"
 ]);
+const COURSE_DESIGN_RESPONSE_LIMIT_BYTES = 256 * 1024;
+const COMPONENT_CATALOG_OPTIONS = Object.freeze(
+  RESOURCE_PACKAGE_REGISTRY.listCatalog()
+    .map((manifest) => Object.freeze({
+      ref: `${manifest.id}@${manifest.version}`,
+      label: manifest.label,
+      purpose: manifest.purpose
+    }))
+);
+const COMPONENT_REFS = new Set(COMPONENT_CATALOG_OPTIONS.map(({ ref }) => ref));
+const COURSE_DESIGN_PARAMETER_DEFAULTS = new Map(
+  COURSE_DESIGN_PARAMETER_DEFINITIONS.map(({ id, defaultValue }) => [id, defaultValue])
+);
+const CONTEXT_HASH_PATTERN = /^[a-f0-9]{64}$/u;
 
 function first(value) {
   return Array.isArray(value) ? value[0] || null : value;
@@ -68,6 +111,80 @@ function validTimestamp(value, { nullable = false } = {}) {
 
 function jsonRecord(value) {
   return value && typeof value === "object" && !Array.isArray(value);
+}
+
+function decimalIdentity(value) {
+  return typeof value === "string" && /^[1-9][0-9]*$/u.test(value);
+}
+
+function normalizedDesignScope(value, { nullable = false } = {}) {
+  if (nullable && value == null) return null;
+  if (!exactRecord(value, new Set(["kind", "ref"]))) return null;
+  if (typeof value.kind !== "string" || typeof value.ref !== "string") return null;
+  const kind = value.kind.trim();
+  const ref = value.ref.trim();
+  if (!new Set(["course", "module", "lesson", "didactic_microsequence"]).has(kind) ||
+      kind !== value.kind || !ref || ref !== value.ref || ref.length > 240) return null;
+  return { kind, ref };
+}
+
+function normalizeComponentPolicy(value) {
+  if (!exactRecord(value, new Set([
+    "catalogVersion", "availability", "allowedRefs", "excludedRefs", "preferredRefs"
+  ])) || value.catalogVersion !== RESOURCE_CATALOG.catalogVersion ||
+      !new Set(["all", "allow_only"]).has(value.availability)) {
+    throw new AuthoringApiError(
+      503,
+      "component_catalog_drift",
+      "A regra de componentes não corresponde ao catálogo ativo."
+    );
+  }
+  const lists = {};
+  for (const field of ["allowedRefs", "excludedRefs", "preferredRefs"]) {
+    const refs = value[field];
+    if (!Array.isArray(refs) || refs.length > 32 || new Set(refs).size !== refs.length ||
+        refs.some((ref) => typeof ref !== "string" || !COMPONENT_REFS.has(ref))) {
+      throw new AuthoringApiError(
+        503,
+        "component_catalog_drift",
+        "A regra de componentes contém referências fora do catálogo ativo."
+      );
+    }
+    lists[field] = [...refs];
+  }
+  const allowed = new Set(lists.allowedRefs);
+  const excluded = new Set(lists.excludedRefs);
+  if (value.availability === "all" && lists.allowedRefs.length !== 0 ||
+      value.availability === "allow_only" && lists.allowedRefs.length === 0 ||
+      lists.allowedRefs.some((ref) => excluded.has(ref)) ||
+      lists.preferredRefs.some((ref) => excluded.has(ref) ||
+        value.availability === "allow_only" && !allowed.has(ref))) {
+    throw new AuthoringApiError(
+      503,
+      "invalid_component_policy",
+      "A regra efetiva de componentes é inválida."
+    );
+  }
+  return {
+    catalogVersion: value.catalogVersion,
+    availability: value.availability,
+    ...lists
+  };
+}
+
+function assertComponentRefsAllowed(refs, policy) {
+  const allowed = new Set(policy.allowedRefs);
+  const excluded = new Set(policy.excludedRefs);
+  const denied = refs.find((ref) => excluded.has(ref) ||
+    policy.availability === "allow_only" && !allowed.has(ref));
+  if (denied) {
+    throw new AuthoringApiError(
+      422,
+      "component_disallowed_by_policy",
+      "A etapa usa componente excluído pela regra efetiva.",
+      { ref: denied }
+    );
+  }
 }
 
 function boundedInspectionId(value, { uuid = false } = {}) {
@@ -210,6 +327,220 @@ function normalizeInspectionPage(value, { courseId, expectedRevision, scopeKind,
   };
 }
 
+function normalizeEffectiveComponentPolicy(value) {
+  if (!exactRecord(value, new Set([
+    "changeId", "policy", "origin", "reason", "sourceScope"
+  ])) || value.changeId != null && !decimalIdentity(value.changeId) ||
+      !new Set([
+        "system_default", "automatic", "author", "research_condition"
+      ]).has(value.origin) || typeof value.reason !== "string" ||
+      !value.reason.trim() || value.reason.length > 1_000) {
+    invalidMaterializationRead();
+  }
+  const sourceScope = normalizedDesignScope(value.sourceScope, { nullable: true });
+  const systemDefault = value.origin === "system_default";
+  if ((value.sourceScope != null && !sourceScope) ||
+      (systemDefault && (value.changeId !== null || sourceScope !== null)) ||
+      (!systemDefault && (!decimalIdentity(value.changeId) || sourceScope === null))) {
+    invalidMaterializationRead();
+  }
+  let policy;
+  try {
+    policy = normalizeComponentPolicy(value.policy);
+  } catch {
+    invalidMaterializationRead();
+  }
+  if (systemDefault && (policy.availability !== "all" || policy.allowedRefs.length ||
+      policy.excludedRefs.length || policy.preferredRefs.length)) {
+    invalidMaterializationRead();
+  }
+  return {
+    changeId: value.changeId,
+    policy,
+    origin: value.origin,
+    reason: value.reason,
+    sourceScope
+  };
+}
+
+function normalizeMaterializationDesignContext(value, { courseId, authoringPartId }) {
+  const fields = new Set([
+    "contract", "courseId", "courseRevision", "authoringPartId",
+    "componentCatalogVersion", "instructionalAnalysisUnits",
+    "evidenceRequirements", "guidanceRevisions", "targets"
+  ]);
+  if (!exactRecord(value, fields) ||
+      value.contract !== "aralearn.course-design-context.v1" ||
+      String(value.courseId || "").trim().toLowerCase() !== courseId ||
+      String(value.authoringPartId || "").trim().toLowerCase() !== authoringPartId ||
+      !positiveSafeInteger(value.courseRevision) ||
+      value.componentCatalogVersion !== RESOURCE_CATALOG.catalogVersion ||
+      !Array.isArray(value.instructionalAnalysisUnits) ||
+      value.instructionalAnalysisUnits.length > 256 ||
+      !Array.isArray(value.evidenceRequirements) ||
+      value.evidenceRequirements.length > 256 ||
+      !Array.isArray(value.guidanceRevisions) || value.guidanceRevisions.length > 256 ||
+      !Array.isArray(value.targets) || value.targets.length > 64 ||
+      new TextEncoder().encode(JSON.stringify(value)).byteLength > 64 * 1024) {
+    invalidMaterializationRead();
+  }
+  const instructionalAnalysisUnits = value.instructionalAnalysisUnits.map((item) => {
+    if (!exactRecord(item, new Set(["id", "position", "statement", "version"])) ||
+        !UUID_PATTERN.test(String(item.id || "")) ||
+        !nonNegativeSafeInteger(item.position) || typeof item.statement !== "string" ||
+        !item.statement.trim() || item.statement.length > 2_000 ||
+        !positiveSafeInteger(item.version)) {
+      invalidMaterializationRead();
+    }
+    return structuredClone(item);
+  });
+  const evidenceRequirements = value.evidenceRequirements.map((item) => {
+    if (!exactRecord(item, new Set(["id", "position", "statement", "version"])) ||
+        !UUID_PATTERN.test(String(item.id || "")) ||
+        !nonNegativeSafeInteger(item.position) || typeof item.statement !== "string" ||
+        !item.statement.trim() || item.statement.length > 2_000 ||
+        !positiveSafeInteger(item.version)) {
+      invalidMaterializationRead();
+    }
+    return structuredClone(item);
+  });
+  if (new Set(instructionalAnalysisUnits.map(({ id }) => id)).size !==
+      instructionalAnalysisUnits.length ||
+      new Set(evidenceRequirements.map(({ id }) => id)).size !== evidenceRequirements.length) {
+    invalidMaterializationRead();
+  }
+  const instructionalAnalysisUnitIds = new Set(
+    instructionalAnalysisUnits.map(({ id }) => id)
+  );
+  const evidenceRequirementIds = new Set(evidenceRequirements.map(({ id }) => id));
+  const guidanceRevisions = value.guidanceRevisions.map((revision) => {
+    if (!exactRecord(revision, new Set([
+      "revisionId", "guidance", "origin", "reason", "sourceScope",
+      "currentInterpretation"
+    ])) || !UUID_PATTERN.test(String(revision.revisionId || "")) ||
+        typeof revision.guidance !== "string" || !revision.guidance.trim() ||
+        (revision.origin === "migration"
+          ? [...revision.guidance].length > 16_384
+          : revision.guidance.length > 8_192) ||
+        !new Set(["migration", "automatic", "author", "research_condition"])
+          .has(revision.origin) ||
+        typeof revision.reason !== "string" || !revision.reason.trim() ||
+        revision.reason.length > 1_000 || !normalizedDesignScope(revision.sourceScope)) {
+      invalidMaterializationRead();
+    }
+    const interpretation = revision.currentInterpretation;
+    if (interpretation != null) {
+      if (!exactRecord(interpretation, new Set([
+        "interpretationId", "guidanceRevisionId", "interpretation", "createdAt"
+      ])) || !decimalIdentity(interpretation.interpretationId) ||
+          interpretation.guidanceRevisionId !== revision.revisionId ||
+          !validTimestamp(interpretation.createdAt) || !jsonRecord(interpretation.interpretation) ||
+          new TextEncoder().encode(JSON.stringify(interpretation.interpretation)).byteLength >
+            8 * 1024) {
+        invalidMaterializationRead();
+      }
+      try {
+        normalizeCourseAuthoringGuidanceInterpretation(interpretation.interpretation);
+      } catch {
+        invalidMaterializationRead();
+      }
+    }
+    return structuredClone(revision);
+  });
+  if (new Set(guidanceRevisions.map(({ revisionId }) => revisionId)).size !==
+      guidanceRevisions.length) {
+    invalidMaterializationRead();
+  }
+  const guidanceRevisionIds = new Set(guidanceRevisions.map(({ revisionId }) => revisionId));
+  const guidanceRevisionPositions = new Map(guidanceRevisions.map(({ revisionId }, index) => [
+    revisionId,
+    index
+  ]));
+  const referencedGuidanceRevisionIds = new Set();
+  const targets = value.targets.map((target) => {
+    if (!exactRecord(target, new Set([
+      "didacticMicrosequenceId", "instructionalAnalysisUnitIds", "evidenceRequirementIds",
+      "parameters", "guidanceRevisionIds", "componentPolicy"
+    ])) || typeof target.didacticMicrosequenceId !== "string" ||
+        !target.didacticMicrosequenceId.trim() ||
+        target.didacticMicrosequenceId.length > 240 ||
+        !Array.isArray(target.parameters) || target.parameters.length !== 4 ||
+        !Array.isArray(target.instructionalAnalysisUnitIds) ||
+        target.instructionalAnalysisUnitIds.length > 256 ||
+        target.instructionalAnalysisUnitIds.some((id) =>
+          !UUID_PATTERN.test(String(id || "")) || !instructionalAnalysisUnitIds.has(id)) ||
+        new Set(target.instructionalAnalysisUnitIds).size !==
+          target.instructionalAnalysisUnitIds.length ||
+        !Array.isArray(target.evidenceRequirementIds) ||
+        target.evidenceRequirementIds.length > 256 ||
+        target.evidenceRequirementIds.some((id) =>
+          !UUID_PATTERN.test(String(id || "")) || !evidenceRequirementIds.has(id)) ||
+        new Set(target.evidenceRequirementIds).size !== target.evidenceRequirementIds.length ||
+        !Array.isArray(target.guidanceRevisionIds) || target.guidanceRevisionIds.length > 4 ||
+        target.guidanceRevisionIds.some((id) => !UUID_PATTERN.test(String(id || "")) ||
+          !guidanceRevisionIds.has(id)) ||
+        new Set(target.guidanceRevisionIds).size !== target.guidanceRevisionIds.length ||
+        target.guidanceRevisionIds.some((id, index, ids) => index > 0 &&
+          guidanceRevisionPositions.get(ids[index - 1]) >= guidanceRevisionPositions.get(id))) {
+      invalidMaterializationRead();
+    }
+    target.guidanceRevisionIds.forEach((id) => referencedGuidanceRevisionIds.add(id));
+    const parameters = target.parameters.map((parameter) => {
+      const sourceScope = normalizedDesignScope(parameter?.sourceScope, { nullable: true });
+      if (!exactRecord(parameter, new Set([
+        "parameterId", "value", "origin", "reason", "sourceScope"
+      ])) || typeof parameter.parameterId !== "string" ||
+          !new Set([
+            "system_default", "automatic", "author", "research_condition"
+          ]).has(parameter.origin) || typeof parameter.reason !== "string" ||
+          !parameter.reason.trim() || parameter.reason.length > 1_000 ||
+          (parameter.sourceScope != null && !sourceScope) ||
+          (parameter.origin === "system_default") !== (sourceScope == null) ||
+          new TextEncoder().encode(JSON.stringify(parameter.value)).byteLength > 4 * 1024) {
+        invalidMaterializationRead();
+      }
+      let value;
+      try {
+        value = normalizeCourseDesignParameterValue(parameter.parameterId, parameter.value);
+      } catch {
+        invalidMaterializationRead();
+      }
+      if (parameter.origin === "system_default" && JSON.stringify(value) !==
+          JSON.stringify(COURSE_DESIGN_PARAMETER_DEFAULTS.get(parameter.parameterId))) {
+        invalidMaterializationRead();
+      }
+      return { ...structuredClone(parameter), value, sourceScope };
+    });
+    if (new Set(parameters.map(({ parameterId }) => parameterId)).size !== 4) {
+      invalidMaterializationRead();
+    }
+    return {
+      didacticMicrosequenceId: target.didacticMicrosequenceId,
+      instructionalAnalysisUnitIds: [...target.instructionalAnalysisUnitIds],
+      evidenceRequirementIds: [...target.evidenceRequirementIds],
+      parameters,
+      guidanceRevisionIds: [...target.guidanceRevisionIds],
+      componentPolicy: normalizeEffectiveComponentPolicy(target.componentPolicy)
+    };
+  });
+  if (new Set(targets.map(({ didacticMicrosequenceId }) =>
+    didacticMicrosequenceId)).size !== targets.length ||
+      guidanceRevisions.some(({ revisionId }) => !referencedGuidanceRevisionIds.has(revisionId))) {
+    invalidMaterializationRead();
+  }
+  return {
+    contract: value.contract,
+    courseId,
+    courseRevision: Number(value.courseRevision),
+    authoringPartId,
+    componentCatalogVersion: value.componentCatalogVersion,
+    instructionalAnalysisUnits,
+    evidenceRequirements,
+    guidanceRevisions,
+    targets
+  };
+}
+
 function normalizeMaterializationStep(value) {
   if (!exactRecord(value, MATERIALIZATION_STEP_FIELDS)) invalidMaterializationRead();
   const id = String(value.id || "").trim().toLowerCase();
@@ -270,6 +601,7 @@ function normalizePartMaterialization(value, { courseId, authoringPartId, materi
       !new Set(["application", "mcp"]).has(channel) ||
       !new Set(["running", "completed", "failed"]).has(status) ||
       !positiveSafeInteger(source.version) || !jsonRecord(source.designContext) ||
+      typeof source.contextHash !== "string" || !CONTEXT_HASH_PATTERN.test(source.contextHash) ||
       !jsonRecord(source.resultFacts) ||
       !validTimestamp(source.startedAt) || !validTimestamp(source.updatedAt) ||
       !validTimestamp(source.completedAt, { nullable: true }) ||
@@ -277,6 +609,10 @@ function normalizePartMaterialization(value, { courseId, authoringPartId, materi
       !Array.isArray(source.steps) || source.steps.length < 1 || source.steps.length > 64) {
     invalidMaterializationRead();
   }
+  const designContext = normalizeMaterializationDesignContext(source.designContext, {
+    courseId,
+    authoringPartId
+  });
   const steps = source.steps.map(normalizeMaterializationStep);
   if (steps.some((step, index) => step.position !== index) ||
       new Set(steps.map((step) => step.id)).size !== steps.length) {
@@ -305,7 +641,8 @@ function normalizePartMaterialization(value, { courseId, authoringPartId, materi
       channel,
       status,
       version: Number(source.version),
-      designContext: structuredClone(source.designContext),
+      designContext,
+      contextHash: source.contextHash,
       resultFacts: structuredClone(source.resultFacts),
       startedAt: source.startedAt,
       updatedAt: source.updatedAt,
@@ -313,6 +650,157 @@ function normalizePartMaterialization(value, { courseId, authoringPartId, materi
       steps,
       nextPendingStep
     }
+  };
+}
+
+function normalizeMaterializationChangeNextStep(value) {
+  if (value == null) return null;
+  if (!exactRecord(value, MATERIALIZATION_CHANGE_NEXT_STEP_FIELDS)) {
+    invalidMaterializationRead();
+  }
+  const id = String(value.id || "").trim().toLowerCase();
+  const kind = String(value.kind || "").trim();
+  const targetDidacticMicrosequenceId = value.targetDidacticMicrosequenceId == null
+    ? null
+    : String(value.targetDidacticMicrosequenceId).trim();
+  const productionPosition = value.productionPosition == null
+    ? null
+    : Number(value.productionPosition);
+  const didactic = kind === "didactic_microsequence_materialization";
+  if (!UUID_PATTERN.test(id) || !nonNegativeSafeInteger(value.position) ||
+      !new Set(["context_load", "didactic_microsequence_materialization", "validation"]).has(kind) ||
+      didactic !== (targetDidacticMicrosequenceId != null &&
+        targetDidacticMicrosequenceId.length >= 1 &&
+        targetDidacticMicrosequenceId.length <= 240 &&
+        nonNegativeSafeInteger(productionPosition))) {
+    invalidMaterializationRead();
+  }
+  return {
+    id,
+    position: Number(value.position),
+    kind,
+    targetDidacticMicrosequenceId,
+    productionPosition
+  };
+}
+
+function normalizeMaterializationChange(value, {
+  courseId,
+  authoringPartId,
+  materializationId,
+  operation,
+  channel,
+  stepId = null
+}) {
+  if (!exactRecord(value, MATERIALIZATION_CHANGE_FIELDS) ||
+      value.contract !== "aralearn.course-authoring-materialization-change.v1" ||
+      String(value.courseId || "").trim().toLowerCase() !== courseId ||
+      String(value.authoringPartId || "").trim().toLowerCase() !== authoringPartId ||
+      value.operation !== operation || value.channel !== channel ||
+      !positiveSafeInteger(value.courseRevision) ||
+      typeof value.changed !== "boolean" || typeof value.idempotent !== "boolean" ||
+      !exactRecord(value.materialization, MATERIALIZATION_CHANGE_STATE_FIELDS) ||
+      !exactRecord(value.entities, MATERIALIZATION_CHANGE_ENTITY_FIELDS)) {
+    invalidMaterializationRead();
+  }
+  const source = value.materialization;
+  const id = String(source.id || "").trim().toLowerCase();
+  const status = String(source.status || "").trim();
+  const completedStepCount = Number(source.completedStepCount);
+  const failedStepCount = Number(source.failedStepCount);
+  const totalStepCount = Number(source.totalStepCount);
+  if (id !== materializationId || !UUID_PATTERN.test(id) ||
+      !new Set(["running", "completed", "failed"]).has(status) ||
+      !positiveSafeInteger(source.version) ||
+      !positiveSafeInteger(source.authoringPartVersion) ||
+      !nonNegativeSafeInteger(completedStepCount) ||
+      !nonNegativeSafeInteger(failedStepCount) ||
+      !positiveSafeInteger(totalStepCount) || totalStepCount > 64 ||
+      completedStepCount + failedStepCount > totalStepCount ||
+      !validTimestamp(source.updatedAt) ||
+      !validTimestamp(source.completedAt, { nullable: true }) ||
+      (status === "running") !== (source.completedAt == null) ||
+      !jsonRecord(source.designContext) ||
+      typeof source.contextHash !== "string" ||
+      !CONTEXT_HASH_PATTERN.test(source.contextHash)) {
+    invalidMaterializationRead();
+  }
+  if (status === "completed" &&
+      (completedStepCount !== totalStepCount || failedStepCount !== 0)) {
+    invalidMaterializationRead();
+  }
+  const nextPendingStep = normalizeMaterializationChangeNextStep(source.nextPendingStep);
+  const expectsPending = status === "running" && failedStepCount === 0 &&
+    completedStepCount < totalStepCount;
+  if ((nextPendingStep != null) !== expectsPending) invalidMaterializationRead();
+  const designContext = normalizeMaterializationDesignContext(source.designContext, {
+    courseId,
+    authoringPartId
+  });
+
+  let step = null;
+  if (value.step != null) {
+    if (!exactRecord(value.step, MATERIALIZATION_CHANGE_STEP_FIELDS)) {
+      invalidMaterializationRead();
+    }
+    step = {
+      id: String(value.step.id || "").trim().toLowerCase(),
+      status: String(value.step.status || "").trim(),
+      version: Number(value.step.version)
+    };
+    if (!UUID_PATTERN.test(step.id) ||
+        !new Set(["completed", "failed"]).has(step.status) ||
+        !positiveSafeInteger(step.version)) {
+      invalidMaterializationRead();
+    }
+  }
+  if ((operation === "record_step") !== (step != null) ||
+      stepId != null && step?.id !== stepId) {
+    invalidMaterializationRead();
+  }
+
+  const entities = {
+    createdCount: Number(value.entities.createdCount),
+    updatedCount: Number(value.entities.updatedCount),
+    deletedCount: Number(value.entities.deletedCount),
+    linkedDidacticMicrosequenceId: value.entities.linkedDidacticMicrosequenceId == null
+      ? null
+      : String(value.entities.linkedDidacticMicrosequenceId).trim()
+  };
+  if (![entities.createdCount, entities.updatedCount, entities.deletedCount].every(
+    nonNegativeSafeInteger
+  ) || entities.createdCount + entities.updatedCount + entities.deletedCount > 64 ||
+      entities.linkedDidacticMicrosequenceId != null &&
+      (!entities.linkedDidacticMicrosequenceId ||
+        entities.linkedDidacticMicrosequenceId.length > 240)) {
+    invalidMaterializationRead();
+  }
+
+  return {
+    contract: value.contract,
+    courseId,
+    courseRevision: Number(value.courseRevision),
+    authoringPartId,
+    operation,
+    channel,
+    changed: value.changed,
+    idempotent: value.idempotent,
+    materialization: {
+      id,
+      status,
+      version: Number(source.version),
+      authoringPartVersion: Number(source.authoringPartVersion),
+      completedStepCount,
+      failedStepCount,
+      totalStepCount,
+      nextPendingStep,
+      updatedAt: source.updatedAt,
+      completedAt: source.completedAt,
+      designContext,
+      contextHash: source.contextHash
+    },
+    step,
+    entities
   };
 }
 
@@ -354,6 +842,7 @@ function retryableStatus(status) {
 
 function databaseError(status, body) {
   const code = String(body?.code || "");
+  const databaseMessage = String(body?.message || "");
   if (status === 401 || code === "28000") {
     return new AuthoringApiError(401, "authentication_required", "Sessão inválida ou expirada.");
   }
@@ -361,13 +850,20 @@ function databaseError(status, body) {
     return new AuthoringApiError(403, "not_authorized", "A operação não foi autorizada.");
   }
   if (code === "PT404") {
-    return new AuthoringApiError(404, "not_found", "O Curso não foi encontrado.");
+    return new AuthoringApiError(404, "not_found", "O recurso solicitado não foi encontrado.");
   }
   if (code === "40001") {
     return new AuthoringApiError(
       409,
       "stale_course_state",
       "O Curso mudou; releia o estado e tente novamente."
+    );
+  }
+  if (code === "23514" && databaseMessage.startsWith("requestId reutilizado")) {
+    return new AuthoringApiError(
+      409,
+      "request_id_conflict",
+      "requestId já foi usado com outra operação ou outro conteúdo."
     );
   }
   if (status === 409 || code === "23505") {
@@ -463,6 +959,59 @@ function withInspectionDeepLinks(value, publicAppUrl) {
   return result;
 }
 
+function normalizeCourseDesignDatabaseValue(normalize) {
+  try {
+    return normalize();
+  } catch (error) {
+    if (!(error instanceof CourseDesignParametersError)) throw error;
+    throw new AuthoringApiError(
+      503,
+      "course_service_unavailable",
+      "O serviço devolveu um contrato de parâmetros inválido."
+    );
+  }
+}
+
+function validateComponentCatalogProjection(value) {
+  const catalog = value?.componentCatalog;
+  const options = Array.isArray(catalog?.options) ? catalog.options : [];
+  const validOptions = options.length === COMPONENT_CATALOG_OPTIONS.length &&
+    options.every((option, index) => {
+      const expected = COMPONENT_CATALOG_OPTIONS[index];
+      if (!exactRecord(option, new Set(["ref", "label", "purpose"])) ||
+          option.ref !== expected.ref || option.label !== expected.label ||
+          option.purpose !== expected.purpose) return false;
+      return true;
+    });
+  if (!jsonRecord(value) || !exactRecord(catalog, new Set(["version", "options"])) ||
+      catalog.version !== RESOURCE_CATALOG.catalogVersion ||
+      !validOptions) {
+    throw new AuthoringApiError(
+      503,
+      "component_catalog_drift",
+      "O catálogo aplicado ao Curso não corresponde ao catálogo ativo."
+    );
+  }
+  const normalized = normalizeCourseDesignDatabaseValue(() => normalizeCourseDesignRead(value));
+  const policies = [
+    normalized.componentPolicy?.localChange?.policy,
+    normalized.componentPolicy?.effectiveChange?.policy
+  ].filter(Boolean);
+  if (!policies.length) {
+    throw new AuthoringApiError(
+      503,
+      "course_service_unavailable",
+      "A leitura não contém regra efetiva de componentes."
+    );
+  }
+  policies.forEach(normalizeComponentPolicy);
+  if (new TextEncoder().encode(JSON.stringify(normalized)).byteLength >
+      COURSE_DESIGN_RESPONSE_LIMIT_BYTES) {
+    throw responseTooLarge();
+  }
+  return normalized;
+}
+
 function authoringChannel(principal) {
   if (principal?.authenticationKind === "application") return "application";
   if (principal?.authenticationKind === "oauth") return "mcp";
@@ -480,7 +1029,6 @@ function editableInstructionalPlan(value) {
     objective: plan.objective,
     audience: plan.audience ?? "",
     scope: plan.scope ?? "",
-    authoringGuidance: plan.authoringGuidance ?? "",
     preferredPartCount: plan.preferredPartCount,
     intendedLearningOutcomes: Array.isArray(plan.intendedLearningOutcomes)
       ? plan.intendedLearningOutcomes.map(({ id, position, statement }) => ({ id, position, statement }))
@@ -549,7 +1097,8 @@ export class CourseSupabaseAdapter {
   async #request(url, init, {
     retry = true,
     deadlineAt = null,
-    timeoutMs = this.requestTimeoutMs
+    timeoutMs = this.requestTimeoutMs,
+    responseLimitBytes = this.responseLimitBytes
   } = {}) {
     let lastError = null;
     for (let attempt = 1; attempt <= this.attempts; attempt += 1) {
@@ -561,7 +1110,7 @@ export class CourseSupabaseAdapter {
       const timer = setTimeout(() => controller.abort(), Math.max(1, Math.min(timeoutMs, remaining)));
       try {
         const response = await this.fetchImpl(url, { ...init, signal: controller.signal });
-        const source = await readBoundedResponseText(response, this.responseLimitBytes);
+        const source = await readBoundedResponseText(response, responseLimitBytes);
         let body = null;
         try {
           body = source ? JSON.parse(source) : null;
@@ -693,6 +1242,56 @@ export class CourseSupabaseAdapter {
       p_recent_limit: recentLimit
     }, { deadlineAt }));
     return withDeepLink(result, this.publicAppUrl, "planning");
+  }
+
+  async getCourseDesign({
+    principal,
+    courseId,
+    scopeKind,
+    scopeRef = null,
+    childLimit = 32,
+    childCursor = null,
+    deadlineAt = null
+  }) {
+    let result;
+    try {
+      result = first(await this.rpc("get_owned_course_design_for_actor_v1", {
+        p_actor_id: principal.actorId,
+        p_course_id: courseId,
+        p_scope_kind: scopeKind,
+        p_scope_ref: scopeRef,
+        p_child_limit: childLimit,
+        p_child_cursor: childCursor
+      }, { deadlineAt, responseLimitBytes: COURSE_DESIGN_RESPONSE_LIMIT_BYTES }));
+    } catch (error) {
+      if (error instanceof AuthoringApiError && error.code === "payload_too_large") {
+        throw new AuthoringApiError(
+          413,
+          "course_design_response_too_large",
+          "A leitura do desenho excedeu o limite de 256 KiB. Use um escopo mais específico."
+        );
+      }
+      if (error instanceof AuthoringApiError && error.code === "invalid_course_command") {
+        throw new AuthoringApiError(
+          422,
+          "invalid_course_design_query",
+          "O escopo ou cursor não corresponde à navegação do desenho."
+        );
+      }
+      throw error;
+    }
+    const normalized = validateComponentCatalogProjection(result);
+    const expectedScopeRef = scopeKind === "course" ? courseId : scopeRef;
+    if (normalized.courseId !== courseId ||
+        normalized.scopeContext.current.kind !== scopeKind ||
+        normalized.scopeContext.current.ref !== expectedScopeRef) {
+      throw new AuthoringApiError(
+        503,
+        "course_service_unavailable",
+        "A leitura do desenho não corresponde ao Curso e ao escopo solicitados."
+      );
+    }
+    return normalized;
   }
 
   async getCourseAuthoringPartMaterialization({
@@ -848,6 +1447,44 @@ export class CourseSupabaseAdapter {
     return withDeepLink(result, this.publicAppUrl, "planning");
   }
 
+  async applyCourseDesignCommand({
+    principal,
+    courseId,
+    requestId,
+    expectedCourseRevision,
+    command,
+    deadlineAt = null
+  }) {
+    const result = first(await this.rpc("apply_course_design_command_for_actor_v1", {
+      p_actor_id: principal.actorId,
+      p_course_id: courseId,
+      p_expected_course_revision: expectedCourseRevision,
+      p_command: command,
+      p_channel: authoringChannel(principal),
+      p_request_id: requestId
+    }, {
+      deadlineAt,
+      timeoutMs: 40_000,
+      responseLimitBytes: COURSE_DESIGN_RESPONSE_LIMIT_BYTES
+    }));
+    const normalized = normalizeCourseDesignDatabaseValue(() => normalizeCourseDesignChange(result));
+    const expectedScope = command.scope || null;
+    if (normalized.courseId !== courseId || normalized.requestId !== requestId ||
+        normalized.change != null && (
+          normalized.change.type !== command.type || expectedScope != null && (
+            normalized.change.scope.kind !== expectedScope.kind ||
+            normalized.change.scope.ref !== expectedScope.ref
+          )
+        )) {
+      throw new AuthoringApiError(
+        503,
+        "course_service_unavailable",
+        "A confirmação do desenho não corresponde ao comando solicitado."
+      );
+    }
+    return normalized;
+  }
+
   async advanceCourseAuthoringPartMaterialization({
     principal,
     courseId,
@@ -860,6 +1497,52 @@ export class CourseSupabaseAdapter {
     payload,
     deadlineAt = null
   }) {
+    if (operation === "record_step") {
+      const current = await this.getCourseAuthoringPartMaterialization({
+        principal,
+        courseId,
+        authoringPartId,
+        materializationId,
+        deadlineAt
+      });
+      const materialization = current.materialization;
+      const application = payload.designApplication;
+      const step = materialization.steps.find(({ id }) => id === payload.stepId);
+      if (!step) {
+        throw new AuthoringApiError(
+          409,
+          "materialization_step_not_found",
+          "A etapa não pertence à materialização corrente."
+        );
+      }
+      const requiresApplication = payload.status === "completed" &&
+        step.kind === "didactic_microsequence_materialization";
+      if ((application != null) !== requiresApplication) {
+        throw new AuthoringApiError(
+          409,
+          "design_application_requirement_mismatch",
+          "Os fatos de aplicação não correspondem ao tipo e ao resultado da etapa selada."
+        );
+      }
+      if (application != null) {
+        const target = materialization.designContext.targets.find(({ didacticMicrosequenceId }) =>
+          didacticMicrosequenceId === application.didacticMicrosequenceId
+        );
+        if (application.contextHash !== materialization.contextHash ||
+            step.targetDidacticMicrosequenceId !== application.didacticMicrosequenceId ||
+            !target) {
+          throw new AuthoringApiError(
+            409,
+            "design_context_mismatch",
+            "Os fatos da etapa não correspondem ao contexto de desenho selado."
+          );
+        }
+        const componentRefs = [...new Set(application.studyUnits.flatMap(
+          (studyUnit) => studyUnit.componentRefs
+        ))];
+        assertComponentRefsAllowed(componentRefs, target.componentPolicy.policy);
+      }
+    }
     const result = first(await this.rpc(
       "advance_course_authoring_part_materialization_for_actor_v1",
       {
@@ -876,7 +1559,15 @@ export class CourseSupabaseAdapter {
       },
       { deadlineAt, timeoutMs: 40_000 }
     ));
-    return withDeepLink(result, this.publicAppUrl, "planning");
+    const normalized = normalizeMaterializationChange(result, {
+      courseId,
+      authoringPartId,
+      materializationId,
+      operation,
+      channel: authoringChannel(principal),
+      stepId: operation === "record_step" ? payload.stepId : null
+    });
+    return withDeepLink(normalized, this.publicAppUrl, "planning");
   }
 
   async commitCourseComposition({

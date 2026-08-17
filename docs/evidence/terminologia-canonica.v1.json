@@ -1314,7 +1314,7 @@
       ],
       "productTerm": "Parâmetro de desenho instrucional",
       "technicalSymbol": "design_parameter",
-      "definition": "Propriedade controlável do desenho com definição, tipo, unidade, escopo, origem, valor efetivo e limites explícitos.",
+      "definition": "Propriedade controlável do desenho com definição versionada, schema, escopos admitidos, origem, valor efetivo e limitações explícitas.",
       "decision": "restringir",
       "cutoverStatus": "sem-corte",
       "layers": [
@@ -1339,10 +1339,10 @@
       "interfaceTerm": "Parâmetro de desenho instrucional",
       "domainTerm": "Parâmetro de desenho instrucional",
       "englishEquivalent": "instructional design parameter",
-      "araLearnExample": "A densidade conceitual desejada é um Parâmetro de desenho instrucional quando possui definição, escala e escopo declarados.",
+      "araLearnExample": "O teto de novas unidades de análise por Unidade expositiva é um Parâmetro de desenho instrucional com inteiro positivo, escopos e origem declarados.",
       "ambiguityRisk": "Sem esta delimitação, “Parâmetro de desenho instrucional” pode ser confundido com configuração técnica, métrica, restrição editorial, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
       "alternativesAssessment": "compared",
-      "migrationImpact": "Não há corte de renomeação programado; novas superfícies nas camadas interface, domain, database, mcp, research devem aplicar esta definição sem inferir que a funcionalidade já esteja disponível.",
+      "migrationImpact": "O corte #122 instala o catálogo fechado, a resolução por escopo e a mesma superfície em interface, domínio, banco e MCP, sem aceitar definições livres ou o modelo anterior.",
       "alternativesConsidered": [
         "“Variável de desenho instrucional”: pode ser observada ou analisada sem ser controlável; Parâmetro exige tipo, escopo, origem e regra de resolução explícitos."
       ]
@@ -1419,10 +1419,10 @@
       "interfaceTerm": "Política aplicável",
       "domainTerm": "Política aplicável",
       "englishEquivalent": "enforced policy",
-      "araLearnExample": "Uma restrição obrigatória de segurança é uma Política aplicável, separada de uma preferência autoral que pode ser alterada.",
+      "araLearnExample": "A Política de componentes registra catálogo, disponibilidade, exclusões e preferências e é imposta na mesma transação da materialização.",
       "ambiguityRisk": "Sem esta delimitação, “Política aplicável” pode ser confundido com preferência, parâmetro, documentação sem execução, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
       "alternativesAssessment": "compared",
-      "migrationImpact": "Não há corte de renomeação programado; novas superfícies nas camadas domain, database, mcp, security devem aplicar esta definição sem inferir que a funcionalidade já esteja disponível.",
+      "migrationImpact": "O corte #122 substitui listas ou conjuntos opacos por uma política completa, versionada e aplicada no domínio, banco e MCP.",
       "alternativesConsidered": [
         "“Regra de negócio”: é ampla e pode existir apenas em documentação; Política aplicável exige versão e imposição efetiva numa fronteira do sistema."
       ]
@@ -1436,8 +1436,8 @@
       "productTerm": "Valor padrão",
       "technicalSymbol": "default_value",
       "definition": "Valor explicitamente definido e versionado que se aplica na ausência de atribuição mais específica; não é uma recomendação universal.",
-      "decision": "substituir",
-      "cutoverStatus": "pendente",
+      "decision": "restringir",
+      "cutoverStatus": "sem-corte",
       "layers": [
         "interface",
         "domain",
@@ -1452,8 +1452,6 @@
         }
       ],
       "cutoverIssue": "#122",
-      "removeBy": "#129",
-      "transitionPolicy": "clean-cutover",
       "notSynonyms": [
         "auto",
         "herança",
@@ -1462,10 +1460,10 @@
       "interfaceTerm": "Valor padrão",
       "domainTerm": "Valor padrão",
       "englishEquivalent": "default value",
-      "araLearnExample": "Se a pessoa não ajustar a densidade, o Valor padrão definido para o curso é aplicado e sua origem continua visível.",
+      "araLearnExample": "Sem atribuição aplicável, o teto de novas unidades usa o Valor padrão 2 e mostra origem system_default, sem criar uma linha herdada.",
       "ambiguityRisk": "Sem esta delimitação, “Valor padrão” pode ser confundido com auto, herança, melhor prática, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
       "alternativesAssessment": "compared",
-      "migrationImpact": "Corte limpo coordenado em #122, com remoção integral até #129: renomear interface, domínio e símbolos nas camadas interface, domain, database, mcp, code, sem alias, fallback ou dupla escrita.",
+      "migrationImpact": "O corte #122 torna o default parte versionada da definição e o projeta como system_default, sem alias, fallback ou atribuição gravada.",
       "alternativesConsidered": [
         "“Valor inicial”: só descreve o momento de criação, enquanto Valor padrão também pode ser resolvido sempre que uma atribuição específica estiver ausente."
       ]
@@ -1502,10 +1500,10 @@
       "interfaceTerm": "Herança calculada",
       "domainTerm": "Herança calculada",
       "englishEquivalent": "resolved inheritance",
-      "araLearnExample": "Uma lição mostra o valor efetivo herdado do módulo como Herança calculada e informa de qual nível ele veio.",
+      "araLearnExample": "Uma Microssequência mostra o valor efetivo herdado da Lição ou do Curso e informa o escopo fonte sem copiar a atribuição.",
       "ambiguityRisk": "Sem esta delimitação, “Herança calculada” pode ser confundido com cópia, default, sobrescrita, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
       "alternativesAssessment": "compared",
-      "migrationImpact": "Não há corte de renomeação programado; novas superfícies nas camadas interface, domain, database, mcp devem aplicar esta definição sem inferir que a funcionalidade já esteja disponível.",
+      "migrationImpact": "O corte #122 implementa a herança como resolução por caminho e proveniência, sem gravar valores derivados nos descendentes.",
       "alternativesConsidered": [
         "“Propagação de valor”: sugere cópia ou escrita nos descendentes; Herança calculada é resolvida sem criar atribuições locais duplicadas."
       ]
@@ -1549,6 +1547,130 @@
       "migrationImpact": "Não há corte de renomeação programado; novas superfícies nas camadas interface, domain, database, mcp devem aplicar esta definição sem inferir que a funcionalidade já esteja disponível.",
       "alternativesConsidered": [
         "“Exceção local”: não explicita que existe uma atribuição intencional que substitui integralmente o valor herdado segundo uma ordem de autoridade."
+      ]
+    },
+    {
+      "id": "authoring-guidance-revision",
+      "family": "design-parameters",
+      "currentTerms": [
+        "orientação autoral",
+        "guidance"
+      ],
+      "productTerm": "Orientação de autoria",
+      "technicalSymbol": "course_authoring_guidance_revision",
+      "definition": "Revisão imutável do texto original de uma orientação, ligada a um Curso, escopo, origem, ator, canal e revisão do Curso.",
+      "decision": "restringir",
+      "cutoverStatus": "sem-corte",
+      "layers": [
+        "interface",
+        "domain",
+        "database",
+        "mcp"
+      ],
+      "sources": [
+        {
+          "status": "definicao-propria",
+          "ref": "#122"
+        }
+      ],
+      "cutoverIssue": "#122",
+      "notSynonyms": [
+        "prompt",
+        "campo do plano",
+        "interpretação automatizada"
+      ],
+      "interfaceTerm": "Orientação de autoria",
+      "domainTerm": "Revisão de orientação de autoria",
+      "englishEquivalent": "authoring guidance revision",
+      "araLearnExample": "Uma orientação da Lição complementa a orientação do Curso; a leitura efetiva preserva os dois textos e suas revisões na ordem estrutural.",
+      "ambiguityRisk": "Sem esta delimitação, “Orientação de autoria” pode ser confundida com prompt, campo livre do plano ou interpretação automatizada, apagando origem e versão.",
+      "alternativesAssessment": "compared",
+      "migrationImpact": "O corte #122 move a orientação do plano para revisões próprias e remove o campo anterior sem leitura ou escrita dupla.",
+      "alternativesConsidered": [
+        "“Brief”: mistura intenção, contexto e estado e não preserva a pilha por escopo.",
+        "“Prompt persistido”: confunde uma decisão humana confirmada com a mensagem enviada a um modelo."
+      ]
+    },
+    {
+      "id": "authoring-guidance-interpretation",
+      "family": "design-parameters",
+      "currentTerms": [
+        "interpretação de orientação"
+      ],
+      "productTerm": "Interpretação da orientação",
+      "technicalSymbol": "course_authoring_guidance_interpretation",
+      "definition": "Leitura estruturada, versionada e separada de uma revisão exata de orientação, com resumo, diretivas, divergências e perguntas.",
+      "decision": "restringir",
+      "cutoverStatus": "sem-corte",
+      "layers": [
+        "interface",
+        "domain",
+        "database",
+        "mcp"
+      ],
+      "sources": [
+        {
+          "status": "definicao-propria",
+          "ref": "#122"
+        }
+      ],
+      "cutoverIssue": "#122",
+      "notSynonyms": [
+        "orientação original",
+        "raciocínio privado",
+        "resposta do modelo"
+      ],
+      "interfaceTerm": "Interpretação da orientação",
+      "domainTerm": "Interpretação da orientação",
+      "englishEquivalent": "authoring guidance interpretation",
+      "araLearnExample": "A interpretação registra uma diretiva prefer e uma pergunta para a revisão exata sem alterar uma palavra do texto original.",
+      "ambiguityRisk": "Sem esta separação, uma automação poderia parecer autora do texto humano ou substituir silenciosamente a orientação que deveria interpretar.",
+      "alternativesAssessment": "compared",
+      "migrationImpact": "O corte #122 cria um registro próprio ligado por UUID à revisão original; nova orientação não reaproveita interpretação antiga.",
+      "alternativesConsidered": [
+        "“Orientação estruturada”: sugere que a estrutura substitui o original, quando ambos precisam permanecer distinguíveis.",
+        "“Resumo do modelo”: não inclui diretivas, divergências, perguntas nem vínculo versionado."
+      ]
+    },
+    {
+      "id": "course-component-policy",
+      "family": "design-parameters",
+      "currentTerms": [
+        "política de componentes"
+      ],
+      "productTerm": "Política de componentes",
+      "technicalSymbol": "course_component_policy",
+      "definition": "Política completa e versionada por escopo que fixa catálogo, disponibilidade, referências permitidas, excluídas e preferidas e é imposta na materialização.",
+      "decision": "restringir",
+      "cutoverStatus": "sem-corte",
+      "layers": [
+        "interface",
+        "domain",
+        "database",
+        "mcp"
+      ],
+      "sources": [
+        {
+          "status": "definicao-propria",
+          "ref": "#122"
+        }
+      ],
+      "cutoverIssue": "#122",
+      "notSynonyms": [
+        "catálogo",
+        "componente usado",
+        "parâmetro pedagógico"
+      ],
+      "interfaceTerm": "Política de componentes",
+      "domainTerm": "Política de componentes do Curso",
+      "englishEquivalent": "course component policy",
+      "araLearnExample": "Uma Lição permite somente referências declaradas, exclui um package e prefere outro; a exclusão vence e o uso real ainda precisa ser validado.",
+      "ambiguityRisk": "Sem esta delimitação, disponibilidade, preferência e uso podem ser contados como a mesma relação ou apresentados como qualidade pedagógica.",
+      "alternativesAssessment": "compared",
+      "migrationImpact": "O corte #122 substitui conjuntos opacos por um valor fechado ligado à revisão executável do catálogo e sem alias de leitura.",
+      "alternativesConsidered": [
+        "“Conjunto de componentes”: não distingue permissão, exclusão e preferência e sugere que disponibilidade equivale a uso.",
+        "“Lista de packages”: omite escopo, catálogo e regra de aplicação."
       ]
     },
     {

@@ -152,18 +152,12 @@ produziu resultados diferentes conforme o conhecimento prévio
 contextual; não fornecem um mecanismo para inferir automaticamente o que cada
 pessoa sabe nem demonstram a eficácia do produto.
 
-**Operacionalização.** Condições estáveis ficam no brief; o resumo da decisão
-conserva condição e exigência; `pedagogicalDiagnosis.difficultyResponses`
-preserva somente os pares relevantes de dificuldade e resposta ligados à
-microssequência. As referências locais aos passos e packages existem no
-blueprint de trabalho, mas não são copiadas para a continuidade compacta. O
-subsistema instrucional persiste separadamente análise, snapshot, blueprint v2,
-binding e manifesto versionados. Nenhuma camada persiste raciocínio privado do
-modelo nem o transcript integral do diálogo. Na
-auditoria, cada resposta prometida deve aparecer no plano e nos cards; também
-se procuram resposta ausente, densidade excessiva, prática antes da base,
-representação inadequada, perda de cobertura e dependência de meio externo
-indisponível.
+**Operacionalização.** Público, escopo, resultados pretendidos, unidades de
+análise e requisitos de evidência ficam no plano instrucional. Orientações
+naturais são revisões próprias por escopo; interpretações estruturadas
+permanecem separadas do texto original. Parâmetros e política de componentes
+possuem valores efetivos com origem e fonte visíveis. Nenhuma camada persiste
+raciocínio privado do modelo nem o transcript integral do diálogo.
 
 **Consequências, limites e responsabilidade.** A pessoa autora continua
 responsável por confirmar o público, julgar as hipóteses, revisar fontes e
@@ -173,13 +167,14 @@ certifica adequação disciplinar e não prediz resultados de aprendizagem.
 
 ## Análise instrucional e parâmetros locais
 
-O diagnóstico contextual informa a análise de cada microssequência, mas não a
-substitui. O modelo de desenho parametrizado separa o percurso abaixo:
+O plano e o desenho por escopo separam o percurso abaixo:
 
 ```text
-fontes e objetivo → análise instrucional → parâmetros efetivos
-  → seleção e composição de resources → blueprint contextual
-  → teoria, prática e cards → manifesto de materialização
+fontes e objetivo → itens do plano → atribuição explícita por Microssequência
+  → parâmetros e orientações efetivos
+  → política e seleção progressiva de componentes
+  → contexto selado pelo servidor → Unidades e fatos de aplicação
+  → Inspeção e revisão humana
 ```
 
 A **unidade de análise instrucional** é um recorte editorial ligado a fontes,
@@ -191,36 +186,38 @@ Do mesmo modo, classificar uma unidade como presumidamente nova, parcial,
 integrada ou desconhecida descreve uma hipótese para o desenho, não o domínio
 de uma pessoa.
 
-Quando unidades precisam ser processadas juntas, a análise conserva um
-conjunto de coordenação e suas relações. A cardinalidade é uma descrição do
-conjunto, não uma medida de carga cognitiva ou dificuldade. Interatividade de
-elementos depende da estrutura e do conhecimento prévio, e sua estimação é
-aproximada ([Chen et al. (2023)](referencias.md#ref-chen2023elementinteractivity)).
+Quando unidades precisam ser processadas juntas, a análise pode declarar essa
+relação em marco próprio. O plano corrente conserva identidades e enunciados,
+mas não inventa dependências semânticas entre unidades de análise. A estrutura
+curricular continua validando sua própria ordem e relações.
 
-Parâmetros podem variar por microssequência. O workspace pode fornecer defaults
-e políticas, mas não uma pedagogia global calibrável. A autoria pode manter um
-valor automático, aplicar uma alteração estruturada ou, em pesquisa, respeitar
-um lock. Números são admitidos somente com unidade e denominador claros; muitas
-decisões precisam continuar como categorias, conjuntos, vetores ou relações:
+Os quatro parâmetros correntes podem variar em Curso, Lição ou
+Microssequência: teto de novas unidades por Unidade expositiva, formas de
+explicação, oportunidades distintas de prática e dimensões de variação. Módulo
+pode receber orientação e política de componentes, mas não ganhou um parâmetro
+sem necessidade distinta demonstrada. Defaults são hipóteses do produto.
 
-- requisitos de explicação vinculados a conceitos e relações;
-- alvo, operação, tarefa e forma de desempenho esperada;
-- dimensões de variação e invariantes entre oportunidades de prática;
-- formas de apoio e sua retirada;
-- fidelidade e limitações do ambiente representado;
-- conjunto versionado de resources disponíveis.
+Uma atribuição explícita do autor ou de uma condição de pesquisa precede
+atribuição automática; dentro da mesma classe, vence o escopo aplicável mais
+próximo. `research_condition` é proveniência, não lock. Limpar restaura a
+herança ou o default sem copiar valor para o descendente.
 
-O **blueprint pedagógico v2** permanece o plano contextual que transforma essa
-análise em passos concretos. Ele não é substituído por um score nem por um
-perfil global. O manifesto posterior registra o que realmente foi produzido,
-inclusive cobertura e divergências, e só então deriva contagens de cards,
-palavras, caracteres e resources.
+No início da materialização, o servidor resolve e sela parâmetros,
+orientações, interpretações, política e os itens do plano atribuídos a cada
+Microssequência-alvo. O catálogo selado inclui identidade, posição, enunciado e
+versão, enquanto cada alvo referencia somente seu subconjunto.
 
-Os contratos correspondentes possuem validação, resolução e persistência
-internas. MCP/Action operam o estado por linguagem natural externa; a interface
-de Autoria mostra valores efetivos, Auto, locks e Resources em linguagem comum,
-sem transformar esse modelo numa ficha pedagógica extensa. Sua fundamentação,
-seu estatuto e seus limites estão em
+Na etapa, fatos limitados declaram introduções, formas desenvolvidas, prática,
+variações e componentes usados. Formas, oportunidades e variações são
+afirmações do agente ou da pessoa autora validadas quanto ao contrato; não são
+observadas semanticamente pelo banco. IDs de Unidades, pai/alvo e
+`componentRefs` são reconciliados com o conteúdo persistido. Esses fatos
+permitem confrontar planejado e declarado como aplicado; não constituem score,
+diagnóstico ou resultado de aprendizagem.
+
+Interface e MCP operam o mesmo contrato em linguagem comum, sem JSON, blueprint
+ou conjunto opaco de recursos. Sua fundamentação, seu estatuto e seus limites
+estão em
 [Desenho instrucional parametrizado](desenho-instrucional-parametrizado.md).
 
 ## Profundidade sem condensação

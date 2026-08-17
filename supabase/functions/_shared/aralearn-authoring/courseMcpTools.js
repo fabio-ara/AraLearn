@@ -1,13 +1,20 @@
 import { AuthoringApiError } from "./errors.js";
+import { COURSE_COMPONENT_CATALOG_VERSION } from
+  "../aralearn/runtime/domain/courseDesignParameters.js";
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
 const REQUEST_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$/u;
+const COMPONENT_REF_PATTERN = /^[a-z][a-z0-9._-]{2,119}@[0-9]+\.[0-9]+\.[0-9]+$/u;
 
 const objectSchema = (properties, required = Object.keys(properties)) => ({
   type: "object",
   additionalProperties: false,
   properties,
   required
+});
+
+const forbidFields = (fields) => ({
+  not: { anyOf: fields.map((field) => ({ required: [field] })) }
 });
 
 const stringSchema = (options = {}) => ({ type: "string", ...options });
@@ -46,7 +53,6 @@ const authoringPlanCommandSchema = {
   objective: stringSchema({ minLength: 1, maxLength: 2_000 }),
   audience: stringSchema({ maxLength: 4_000 }),
   scope: stringSchema({ maxLength: 8_000 }),
-  authoringGuidance: stringSchema({ maxLength: 16_384 }),
   preferredPartCount: objectSchema({
     minimum: { type: "integer", minimum: 1, maximum: 64 },
     maximum: { type: "integer", minimum: 1, maximum: 64 },
@@ -99,6 +105,187 @@ const courseStudyUnitScopeSchema = objectSchema({
   id: nullableString(stringSchema({ minLength: 1, maxLength: 240 }))
 });
 
+const courseDesignScopeSchema = objectSchema({
+  kind: stringSchema({ enum: [
+    "course", "module", "lesson", "didactic_microsequence"
+  ] }),
+  ref: stringSchema({ minLength: 1, maxLength: 240 })
+});
+const courseDesignParameterScopeSchema = objectSchema({
+  kind: stringSchema({ enum: ["course", "lesson", "didactic_microsequence"] }),
+  ref: stringSchema({ minLength: 1, maxLength: 240 })
+});
+
+const explanationFormSchema = stringSchema({ enum: [
+  "plain_definition", "concrete_example", "mechanism", "contrast",
+  "application_condition", "limit_or_exception", "worked_example",
+  "representation_link"
+] });
+const variationDimensionSchema = stringSchema({ enum: [
+  "case_or_data", "context", "task_feature", "external_representation",
+  "support_level"
+] });
+const parameterIdSchema = stringSchema({ enum: [
+  "new_analysis_unit_ceiling_per_expository_study_unit",
+  "required_explanation_forms",
+  "minimum_distinct_practice_opportunities_per_evidence_requirement",
+  "required_practice_variation_dimensions"
+] });
+const designWriteOriginSchema = stringSchema({ enum: [
+  "automatic", "author", "research_condition"
+] });
+const integerParameterValueSchema = { type: "integer", minimum: 1, maximum: 64 };
+const explanationFormsParameterValueSchema = {
+  type: "array", minItems: 1, maxItems: 8, uniqueItems: true,
+  items: explanationFormSchema
+};
+const practiceVariationParameterValueSchema = {
+  type: "array", minItems: 1, maxItems: 5, uniqueItems: true,
+  items: variationDimensionSchema
+};
+const parameterValueSchema = {
+  anyOf: [
+    integerParameterValueSchema,
+    explanationFormsParameterValueSchema,
+    practiceVariationParameterValueSchema
+  ]
+};
+const componentPolicySchema = objectSchema({
+  catalogVersion: { const: COURSE_COMPONENT_CATALOG_VERSION },
+  availability: stringSchema({ enum: ["all", "allow_only"] }),
+  allowedRefs: {
+    type: "array", maxItems: 32, uniqueItems: true,
+    items: stringSchema({ pattern: COMPONENT_REF_PATTERN.source, maxLength: 160 })
+  },
+  excludedRefs: {
+    type: "array", maxItems: 32, uniqueItems: true,
+    items: stringSchema({ pattern: COMPONENT_REF_PATTERN.source, maxLength: 160 })
+  },
+  preferredRefs: {
+    type: "array", maxItems: 32, uniqueItems: true,
+    items: stringSchema({ pattern: COMPONENT_REF_PATTERN.source, maxLength: 160 })
+  }
+});
+componentPolicySchema.allOf = [{
+  if: {
+    properties: { availability: { const: "all" } },
+    required: ["availability"]
+  },
+  then: { properties: { allowedRefs: { maxItems: 0 } } }
+}, {
+  if: {
+    properties: { availability: { const: "allow_only" } },
+    required: ["availability"]
+  },
+  then: { properties: { allowedRefs: { minItems: 1 } } }
+}];
+const courseDesignCommandSchema = {
+  oneOf: [
+    {
+      ...objectSchema({
+      type: { const: "set_parameter" },
+      scope: courseDesignParameterScopeSchema,
+      parameterId: parameterIdSchema,
+      value: parameterValueSchema,
+      origin: designWriteOriginSchema,
+      reason: stringSchema({ minLength: 1, maxLength: 1_000 })
+      }),
+      allOf: [{
+        if: {
+          properties: { parameterId: { const:
+            "new_analysis_unit_ceiling_per_expository_study_unit" } },
+          required: ["parameterId"]
+        },
+        then: { properties: { value: integerParameterValueSchema } }
+      }, {
+        if: {
+          properties: { parameterId: { const:
+            "minimum_distinct_practice_opportunities_per_evidence_requirement" } },
+          required: ["parameterId"]
+        },
+        then: { properties: { value: integerParameterValueSchema } }
+      }, {
+        if: {
+          properties: { parameterId: { const: "required_explanation_forms" } },
+          required: ["parameterId"]
+        },
+        then: { properties: { value: explanationFormsParameterValueSchema } }
+      }, {
+        if: {
+          properties: { parameterId: { const:
+            "required_practice_variation_dimensions" } },
+          required: ["parameterId"]
+        },
+        then: { properties: { value: practiceVariationParameterValueSchema } }
+      }]
+    },
+    objectSchema({
+      type: { const: "clear_parameter" },
+      scope: courseDesignParameterScopeSchema,
+      parameterId: parameterIdSchema
+    }),
+    objectSchema({
+      type: { const: "set_guidance" },
+      scope: courseDesignScopeSchema,
+      guidance: stringSchema({ minLength: 1, maxLength: 8_192 }),
+      origin: designWriteOriginSchema,
+      reason: stringSchema({ minLength: 1, maxLength: 1_000 })
+    }),
+    objectSchema({
+      type: { const: "clear_guidance" },
+      scope: courseDesignScopeSchema
+    }),
+    objectSchema({
+      type: { const: "interpret_guidance" },
+      guidanceRevisionId: uuidSchema,
+      interpretation: objectSchema({
+        summary: stringSchema({ minLength: 1, maxLength: 1_000 }),
+        directives: {
+          type: "array",
+          maxItems: 16,
+          uniqueItems: true,
+          items: objectSchema({
+            kind: stringSchema({ enum: ["require", "avoid", "prefer"] }),
+            statement: stringSchema({ minLength: 1, maxLength: 500 })
+          })
+        },
+        divergences: {
+          type: "array", maxItems: 16, uniqueItems: true,
+          items: stringSchema({ minLength: 1, maxLength: 500 })
+        },
+        questions: {
+          type: "array", maxItems: 16, uniqueItems: true,
+          items: stringSchema({ minLength: 1, maxLength: 500 })
+        }
+      })
+    }),
+    objectSchema({
+      type: { const: "set_component_policy" },
+      scope: courseDesignScopeSchema,
+      policy: componentPolicySchema,
+      origin: designWriteOriginSchema,
+      reason: stringSchema({ minLength: 1, maxLength: 1_000 })
+    }),
+    objectSchema({
+      type: { const: "clear_component_policy" },
+      scope: courseDesignScopeSchema
+    }),
+    objectSchema({
+      type: { const: "set_target_plan_items" },
+      scope: objectSchema({
+        kind: { const: "didactic_microsequence" },
+        ref: stringSchema({ minLength: 1, maxLength: 240 })
+      }),
+      instructionalAnalysisUnitIds: {
+        type: "array", maxItems: 256, uniqueItems: true, items: uuidSchema
+      },
+      evidenceRequirementIds: {
+        type: "array", maxItems: 256, uniqueItems: true, items: uuidSchema
+      }
+    })
+  ]
+};
+
 const courseEntitySchema = {
   ...objectSchema({
     entityType: stringSchema({
@@ -138,19 +325,90 @@ const materializationStepSchema = objectSchema({
     anyOf: [{ type: "integer", minimum: 0, maximum: 63 }, { type: "null" }]
   }
 });
+materializationStepSchema.allOf = [{
+  if: {
+    properties: { kind: { const: "didactic_microsequence_materialization" } },
+    required: ["kind"]
+  },
+  then: {
+    properties: {
+      targetDidacticMicrosequenceId: stringSchema({ minLength: 1, maxLength: 240 }),
+      productionPosition: { type: "integer", minimum: 0, maximum: 63 }
+    }
+  },
+  else: {
+    properties: {
+      targetDidacticMicrosequenceId: { type: "null" },
+      productionPosition: { type: "null" }
+    }
+  }
+}];
 
-const materializationCommandSchema = objectSchema({
+const designApplicationSchema = objectSchema({
+  contextHash: stringSchema({ pattern: "^[a-f0-9]{64}$" }),
+  didacticMicrosequenceId: stringSchema({ minLength: 1, maxLength: 240 }),
+  studyUnits: {
+    type: "array",
+    maxItems: 64,
+    items: objectSchema({
+      studyUnitId: stringSchema({ minLength: 1, maxLength: 240 }),
+      mode: stringSchema({ enum: ["expository", "practice", "mixed"] }),
+      introducedInstructionalAnalysisUnitIds: {
+        type: "array", maxItems: 256, uniqueItems: true, items: uuidSchema
+      },
+      explanationApplications: {
+        type: "array",
+        maxItems: 256,
+        items: objectSchema({
+          instructionalAnalysisUnitId: uuidSchema,
+          developedForms: {
+            type: "array", maxItems: 8, uniqueItems: true, items: explanationFormSchema
+          },
+          notApplicable: {
+            type: "array",
+            maxItems: 8,
+            items: objectSchema({
+              form: explanationFormSchema,
+              reason: stringSchema({ minLength: 1, maxLength: 240 })
+            })
+          }
+        })
+      },
+      practiceApplications: {
+        type: "array",
+        maxItems: 256,
+        items: objectSchema({
+          evidenceRequirementId: uuidSchema,
+          opportunityId: stringSchema({ minLength: 1, maxLength: 120 }),
+          invariantTaskOperation: stringSchema({ minLength: 1, maxLength: 240 }),
+          variedDimensions: {
+            type: "array", maxItems: 5, uniqueItems: true, items: variationDimensionSchema
+          }
+        })
+      },
+      componentRefs: {
+        type: "array",
+        maxItems: 32,
+        uniqueItems: true,
+        items: stringSchema({ pattern: COMPONENT_REF_PATTERN.source, maxLength: 160 })
+      }
+    })
+  }
+});
+
+const materializationCommandSchema = {
+  ...objectSchema({
   operation: stringSchema({ enum: ["start", "record_step", "finish"] }),
   authoringPartId: uuidSchema,
   materializationId: uuidSchema,
   expectedMaterializationVersion: { type: "integer", minimum: 0 },
   authoringPartVersion: { type: "integer", minimum: 1 },
-  designContext: { type: "object" },
   steps: { type: "array", minItems: 1, maxItems: 64, items: materializationStepSchema },
   stepId: uuidSchema,
   expectedStepVersion: { type: "integer", minimum: 1 },
   status: stringSchema({ enum: ["completed", "failed"] }),
   resultFacts: { type: "object" },
+  designApplication: nullableString(designApplicationSchema),
   entityChanges: {
     ...objectSchema({
     upserts: { type: "array", maxItems: 64, items: courseEntitySchema },
@@ -167,7 +425,39 @@ const materializationCommandSchema = objectSchema({
     }),
     description: "Lote com no máximo 64 alterações somando upserts e deletes."
   }
-}, ["operation", "authoringPartId", "materializationId", "expectedMaterializationVersion"]);
+  }, ["operation", "authoringPartId", "materializationId", "expectedMaterializationVersion"]),
+  allOf: [{
+    if: { properties: { operation: { const: "start" } }, required: ["operation"] },
+    then: {
+      required: ["authoringPartVersion", "steps"],
+      properties: { expectedMaterializationVersion: { const: 0 } },
+      ...forbidFields([
+        "stepId", "expectedStepVersion", "status", "resultFacts",
+        "designApplication", "entityChanges"
+      ])
+    }
+  }, {
+    if: { properties: { operation: { const: "record_step" } }, required: ["operation"] },
+    then: {
+      required: [
+        "stepId", "expectedStepVersion", "status", "resultFacts", "entityChanges",
+        "designApplication"
+      ],
+      properties: { expectedMaterializationVersion: { minimum: 1 } },
+      ...forbidFields(["authoringPartVersion", "steps"])
+    }
+  }, {
+    if: { properties: { operation: { const: "finish" } }, required: ["operation"] },
+    then: {
+      required: ["status", "resultFacts"],
+      properties: { expectedMaterializationVersion: { minimum: 1 } },
+      ...forbidFields([
+        "authoringPartVersion", "steps", "stepId", "expectedStepVersion",
+        "designApplication", "entityChanges"
+      ])
+    }
+  }]
+};
 
 const outputSchema = objectSchema({
   ok: { type: "boolean", const: true },
@@ -221,22 +511,27 @@ export const COURSE_MCP_TOOLS = Object.freeze([
   Object.freeze({
     name: "lerCurso",
     title: "Ler Curso",
-    description: "Lê o estado corrente de um Curso. Use instructional_plan para planejar por Partes, study_units para inspecionar Unidades de estudo em ordem curricular com links exatos, part_materialization para retomar uma materialização, outline para a hierarquia compacta e entities somente para alterações estruturais.",
+    description: "Lê o estado corrente de um Curso. Use instructional_plan para planejar por Partes, course_design para parâmetros, orientações e regras de componentes no escopo, study_units para inspecionar Unidades de estudo, part_materialization para retomar uma materialização, outline para a hierarquia compacta e entities somente para alterações estruturais.",
     inputSchema: {
       ...objectSchema({
       courseId: uuidSchema,
       view: stringSchema({ enum: [
-        "summary", "outline", "instructional_plan", "part_materialization", "study_units",
-        "entities"
+        "summary", "outline", "instructional_plan", "course_design",
+        "part_materialization", "study_units", "entities"
       ] }),
       authoringPartId: uuidSchema,
       materializationId: uuidSchema,
       expectedRevision: { type: "integer", minimum: 1 },
       limit: { type: "integer", minimum: 1, maximum: 100 },
       cursor: {
-        anyOf: [courseEntityCursorSchema, courseStudyUnitCursorSchema, { type: "null" }]
+        anyOf: [
+          courseEntityCursorSchema,
+          courseStudyUnitCursorSchema,
+          stringSchema({ minLength: 1, maxLength: 240 }),
+          { type: "null" }
+        ]
       },
-      scope: courseStudyUnitScopeSchema,
+      scope: { anyOf: [courseStudyUnitScopeSchema, courseDesignScopeSchema] },
       anchorStudyUnitId: stringSchema({ minLength: 1, maxLength: 240 }),
       direction: stringSchema({ enum: ["forward", "backward"] }),
       maxBytes: { type: "integer", minimum: 65_536, maximum: 1_500_000 }
@@ -246,7 +541,13 @@ export const COURSE_MCP_TOOLS = Object.freeze([
           properties: { view: { const: "part_materialization" } },
           required: ["view"]
         },
-        then: { required: ["authoringPartId", "materializationId"] },
+        then: {
+          required: ["authoringPartId", "materializationId"],
+          ...forbidFields([
+            "expectedRevision", "limit", "cursor", "scope", "anchorStudyUnitId",
+            "direction", "maxBytes"
+          ])
+        },
         else: {
           not: {
             anyOf: [
@@ -257,11 +558,33 @@ export const COURSE_MCP_TOOLS = Object.freeze([
         }
       }, {
         if: {
+          properties: { view: { const: "course_design" } },
+          required: ["view"]
+        },
+        then: {
+          ...forbidFields([
+            "authoringPartId", "materializationId", "expectedRevision",
+            "anchorStudyUnitId", "direction", "maxBytes"
+          ]),
+          properties: {
+            limit: { maximum: 64 },
+            scope: courseDesignScopeSchema,
+            cursor: {
+              anyOf: [
+                stringSchema({ minLength: 1, maxLength: 240 }),
+                { type: "null" }
+              ]
+            }
+          }
+        }
+      }, {
+        if: {
           properties: { view: { const: "study_units" } },
           required: ["view"]
         },
         then: {
           required: ["expectedRevision"],
+          ...forbidFields(["authoringPartId", "materializationId"]),
           properties: { limit: { maximum: 24 } }
         }
       }, {
@@ -269,7 +592,28 @@ export const COURSE_MCP_TOOLS = Object.freeze([
           properties: { view: { const: "entities" } },
           required: ["view"]
         },
-        then: { required: ["expectedRevision"] }
+        then: {
+          required: ["expectedRevision"],
+          ...forbidFields([
+            "authoringPartId", "materializationId", "scope", "anchorStudyUnitId",
+            "direction", "maxBytes"
+          ])
+        }
+      }, {
+        if: {
+          properties: { view: { enum: ["summary", "outline", "instructional_plan"] } },
+          required: ["view"]
+        },
+        then: { ...forbidFields([
+          "authoringPartId", "materializationId", "expectedRevision", "limit",
+          "cursor", "scope", "anchorStudyUnitId", "direction", "maxBytes"
+        ]) }
+      }, {
+        if: { not: { required: ["view"] } },
+        then: { ...forbidFields([
+          "authoringPartId", "materializationId", "expectedRevision", "limit",
+          "cursor", "scope", "anchorStudyUnitId", "direction", "maxBytes"
+        ]) }
       }]
     },
     outputSchema,
@@ -290,18 +634,21 @@ export const COURSE_MCP_TOOLS = Object.freeze([
   Object.freeze({
     name: "alterarCurso",
     title: "Alterar Curso",
-    description: "Altera o plano instrucional vivo, a composição ou uma materialização retomável de Parte. Releia a vista correspondente antes e use as versões correntes; o plano admite até 192 vínculos de microssequência no total, e cada lote de composição ou materialização permanece limitado e idempotente.",
-    inputSchema: objectSchema({
+    description: "Altera o plano instrucional vivo, os parâmetros e regras de Autoria, a composição ou uma materialização retomável de Parte. Releia a vista correspondente antes e use as versões correntes; cada alteração é limitada e idempotente.",
+    inputSchema: {
+      ...objectSchema({
       requestId: requestIdSchema,
       courseId: uuidSchema,
       expectedRevision: { type: "integer", minimum: 1 },
       expectedPlanVersion: { type: "integer", minimum: 1 },
       operation: stringSchema({ enum: [
         "update_instructional_plan",
+        "update_course_design",
         "commit_course_composition",
         "advance_part_materialization"
       ] }),
       planCommand: authoringPlanCommandSchema,
+      designCommand: courseDesignCommandSchema,
       materializationCommand: materializationCommandSchema,
       upserts: { type: "array", maxItems: 200, items: courseEntitySchema },
       deletes: {
@@ -314,7 +661,64 @@ export const COURSE_MCP_TOOLS = Object.freeze([
           entityId: stringSchema({ minLength: 1, maxLength: 240 })
         })
       }
-    }, ["requestId", "courseId", "expectedRevision", "operation"]),
+      }, ["requestId", "courseId", "expectedRevision", "operation"]),
+      allOf: [{
+        if: {
+          properties: { operation: { const: "update_course_design" } },
+          required: ["operation"]
+        },
+        then: {
+          required: ["designCommand"],
+          not: { anyOf: [
+            { required: ["expectedPlanVersion"] },
+            { required: ["planCommand"] },
+            { required: ["materializationCommand"] },
+            { required: ["upserts"] },
+            { required: ["deletes"] }
+          ] }
+        }
+      }, {
+        if: {
+          properties: { operation: { const: "update_instructional_plan" } },
+          required: ["operation"]
+        },
+        then: {
+          required: ["expectedPlanVersion", "planCommand"],
+          ...forbidFields([
+            "designCommand", "materializationCommand", "upserts", "deletes"
+          ])
+        }
+      }, {
+        if: {
+          properties: { operation: { const: "commit_course_composition" } },
+          required: ["operation"]
+        },
+        then: {
+          ...forbidFields([
+            "expectedPlanVersion", "planCommand", "designCommand",
+            "materializationCommand"
+          ]),
+          anyOf: [{
+            required: ["upserts"],
+            properties: { upserts: { minItems: 1 } }
+          }, {
+            required: ["deletes"],
+            properties: { deletes: { minItems: 1 } }
+          }]
+        }
+      }, {
+        if: {
+          properties: { operation: { const: "advance_part_materialization" } },
+          required: ["operation"]
+        },
+        then: {
+          required: ["materializationCommand"],
+          ...forbidFields([
+            "expectedPlanVersion", "planCommand", "designCommand", "upserts", "deletes"
+          ])
+        }
+      }]
+    },
     outputSchema,
     annotations: courseChangeAnnotations
   }),
@@ -469,10 +873,43 @@ function mapRead(raw) {
   const courseId = requiredUuid(raw.courseId, "courseId");
   const view = raw.view == null ? "outline" : requiredText(raw.view, "view", { maximum: 20 });
   if (!new Set([
-    "summary", "outline", "instructional_plan", "part_materialization", "study_units",
-    "entities"
+    "summary", "outline", "instructional_plan", "course_design",
+    "part_materialization", "study_units", "entities"
   ]).has(view)) {
     fail("invalid_tool_argument", "view é inválida.", { field: "view" });
+  }
+  if (view === "course_design") {
+    if (raw.authoringPartId != null || raw.materializationId != null ||
+        raw.expectedRevision != null || raw.anchorStudyUnitId != null ||
+        raw.direction != null || raw.maxBytes != null) {
+      fail("invalid_tool_argument", "A leitura dos parâmetros recebeu campos incompatíveis.");
+    }
+    const scope = raw.scope == null
+      ? { kind: "course", ref: courseId }
+      : object(raw.scope, "scope");
+    exactFields(scope, new Set(["kind", "ref"]));
+    const scopeKind = requiredText(scope.kind, "scope.kind", { maximum: 32 });
+    if (!new Set([
+      "course", "module", "lesson", "didactic_microsequence"
+    ]).has(scopeKind)) {
+      fail("invalid_tool_argument", "scope.kind é inválido.", { field: "scope.kind" });
+    }
+    const scopeRef = requiredText(scope.ref, "scope.ref", { maximum: 240 });
+    if (scopeKind === "course" && scopeRef !== courseId) {
+      fail("invalid_tool_argument", "scope.ref não identifica este Curso.", {
+        field: "scope.ref"
+      });
+    }
+    const limit = raw.limit == null ? 32 : positiveInteger(raw.limit, "limit", 64);
+    const cursor = raw.cursor == null
+      ? null
+      : requiredText(raw.cursor, "cursor", { maximum: 240 });
+    return route("GET", `/v1/courses/${courseId}/course-design${searchParams({
+      scopeKind,
+      scopeRef,
+      limit,
+      cursor
+    })}`);
   }
   if (view === "entities") {
     if (raw.authoringPartId != null || raw.materializationId != null) {
@@ -593,7 +1030,7 @@ function mapRead(raw) {
       raw.expectedRevision != null || raw.limit != null || raw.cursor != null ||
       raw.scope != null || raw.anchorStudyUnitId != null || raw.direction != null ||
       raw.maxBytes != null) {
-    fail("invalid_tool_argument", "Paginação só pertence à leitura de entidades.");
+    fail("invalid_tool_argument", "A leitura recebeu campos incompatíveis com a vista.");
   }
   return route("GET", `/v1/courses/${courseId}${searchParams({ view })}`);
 }
@@ -611,13 +1048,15 @@ function mapCreate(raw) {
 function mapChange(raw) {
   exactFields(raw, new Set([
     "requestId", "courseId", "expectedRevision", "expectedPlanVersion",
-    "operation", "planCommand", "materializationCommand", "upserts", "deletes"
+    "operation", "planCommand", "designCommand", "materializationCommand",
+    "upserts", "deletes"
   ]));
   const requestId = requiredRequestId(raw.requestId);
   const courseId = requiredUuid(raw.courseId, "courseId");
   const operation = requiredText(raw.operation, "operation", { maximum: 40 });
   if (!new Set([
     "update_instructional_plan",
+    "update_course_design",
     "commit_course_composition",
     "advance_part_materialization"
   ]).has(operation)) {
@@ -625,7 +1064,8 @@ function mapChange(raw) {
   }
   const expectedRevision = positiveInteger(raw.expectedRevision, "expectedRevision");
   if (operation === "update_instructional_plan") {
-    if (raw.materializationCommand != null || raw.upserts != null || raw.deletes != null) {
+    if (raw.designCommand != null || raw.materializationCommand != null ||
+        raw.upserts != null || raw.deletes != null) {
       fail("invalid_tool_argument", "O comando do plano recebeu campos incompatíveis.");
     }
     const command = boundedJsonObject(raw.planCommand, "planCommand", 32 * 1024);
@@ -636,8 +1076,21 @@ function mapChange(raw) {
       command
     });
   }
+  if (operation === "update_course_design") {
+    if (raw.expectedPlanVersion != null || raw.planCommand != null ||
+        raw.materializationCommand != null || raw.upserts != null || raw.deletes != null) {
+      fail("invalid_tool_argument", "O comando dos parâmetros recebeu campos incompatíveis.");
+    }
+    const command = boundedJsonObject(raw.designCommand, "designCommand", 32 * 1024);
+    return route("POST", `/v1/courses/${courseId}/course-design/changes`, requestId, {
+      requestId,
+      expectedCourseRevision: expectedRevision,
+      command
+    });
+  }
   if (operation === "commit_course_composition") {
-    if (raw.expectedPlanVersion != null || raw.planCommand != null || raw.materializationCommand != null) {
+    if (raw.expectedPlanVersion != null || raw.planCommand != null ||
+        raw.designCommand != null || raw.materializationCommand != null) {
       fail("invalid_tool_argument", "A composição recebeu campos incompatíveis.");
     }
     const upserts = Array.isArray(raw.upserts) ? raw.upserts : [];
@@ -655,7 +1108,8 @@ function mapChange(raw) {
       deletes
     });
   }
-  if (raw.expectedPlanVersion != null || raw.planCommand != null || raw.upserts != null || raw.deletes != null) {
+  if (raw.expectedPlanVersion != null || raw.planCommand != null ||
+      raw.designCommand != null || raw.upserts != null || raw.deletes != null) {
     fail("invalid_tool_argument", "A materialização recebeu campos incompatíveis.");
   }
   const command = boundedJsonObject(
@@ -670,6 +1124,30 @@ function mapChange(raw) {
   });
   if (!new Set(["start", "record_step", "finish"]).has(command.operation)) {
     fail("invalid_tool_argument", "A operação de materialização é inválida.");
+  }
+  const materializationBaseFields = [
+    "operation", "authoringPartId", "materializationId",
+    "expectedMaterializationVersion"
+  ];
+  if (command.operation === "start") {
+    exactFields(command, new Set([
+      ...materializationBaseFields, "authoringPartVersion", "steps"
+    ]));
+  } else if (command.operation === "record_step") {
+    exactFields(command, new Set([
+      ...materializationBaseFields, "stepId", "expectedStepVersion", "status",
+      "resultFacts", "entityChanges", "designApplication"
+    ]));
+    if (!Object.hasOwn(command, "designApplication")) {
+      fail(
+        "invalid_tool_argument",
+        "record_step precisa declarar designApplication como objeto ou null."
+      );
+    }
+  } else {
+    exactFields(command, new Set([
+      ...materializationBaseFields, "status", "resultFacts"
+    ]));
   }
   command.expectedMaterializationVersion = nonNegativeInteger(
     command.expectedMaterializationVersion,

@@ -84,11 +84,13 @@ Comece pelo comportamento já implementado:
 4. [Assistência por modelo de linguagem](assistencia-por-ia.md) — autoridade,
    contexto e concorrência;
 5. [Fluxos, instruções e contratos](fluxos-prompts-e-contratos.md) — separação
-   entre intenção textual e operação estruturada.
+   entre intenção textual e operação estruturada;
+6. [Desenho instrucional parametrizado](desenho-instrucional-parametrizado.md)
+   — parâmetros, orientação natural, herança e política de componentes.
 
-Os capítulos de parametrização, auditoria, experimentos, analytics e pesquisa
-descrevem problemas, fundamentos ou trabalho em evolução. Nenhum deve ser lido
-como prova de que toda a capacidade está disponível no runtime corrente:
+Os capítulos de auditoria, experimentos e analytics descrevem problemas,
+fundamentos ou trabalho em evolução. Nenhum deve ser lido como prova de que
+toda a capacidade está disponível no runtime corrente:
 
 - [Auditoria de conformidade instrucional](auditoria-de-conformidade-instrucional.md);
 - [Experimentos instrucionais parametrizados](experimentos-instrucionais-parametrizados.md);

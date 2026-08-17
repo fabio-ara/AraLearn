@@ -112,6 +112,77 @@ const localCutoverGate = postgresGate || !localDatabase || !runnerPassword
   ? "o gate do corte exige PostgreSQL local com senha na URL"
   : false;
 
+test("PostgreSQL aplica e relê o contrato de desenho #122 com replay idempotente", {
+  skip: postgresGate
+}, async () => {
+  const ownerId = "00000000-0000-4000-8000-000000001222";
+  const email = "course-design-122@aralearn.invalid";
+  await createUser(ownerId, email);
+  try {
+    const courseOutput = await result(psql(`
+      select set_config('request.jwt.claim.role','service_role',false);
+      select (public.create_course_for_actor_v1(
+        '${ownerId}',
+        'Curso PostgreSQL #122',
+        'Validar o desenho parametrizado no PostgreSQL.',
+        'course-122-create'
+      )->>'courseId');
+    `));
+    const courseId = courseOutput.split(/\r?\n/u).at(-1);
+    assert.match(courseId, /^[0-9a-f-]{36}$/u);
+    const command = `jsonb_build_object(
+      'type','set_parameter',
+      'scope',jsonb_build_object('kind','course','ref','${courseId}'),
+      'parameterId','new_analysis_unit_ceiling_per_expository_study_unit',
+      'value',3,
+      'origin','author',
+      'reason','Decisão validada no PostgreSQL.'
+    )`;
+    const firstOutput = await result(psql(`
+      select set_config('request.jwt.claim.role','service_role',false);
+      select concat(
+        change->>'contract','|',change->>'courseRevision','|',
+        change->>'idempotent','|',change->>'changed'
+      ) from (
+        select public.apply_course_design_command_for_actor_v1(
+          '${ownerId}','${courseId}',1,${command},
+          'application','course-122-design-1'
+        ) as change
+      ) applied;
+    `));
+    const first = firstOutput.split(/\r?\n/u).at(-1);
+    assert.equal(first, "aralearn.course-design-change.v1|2|false|true");
+    const replayOutput = await result(psql(`
+      select set_config('request.jwt.claim.role','service_role',false);
+      select concat(change->>'courseRevision','|',change->>'idempotent')
+      from (
+        select public.apply_course_design_command_for_actor_v1(
+          '${ownerId}','${courseId}',1,${command},
+          'application','course-122-design-1'
+        ) as change
+      ) applied;
+    `));
+    const replay = replayOutput.split(/\r?\n/u).at(-1);
+    assert.equal(replay, "2|true");
+    const readOutput = await result(psql(`
+      select set_config('request.jwt.claim.role','service_role',false);
+      select concat(
+        design->>'contract','|',jsonb_array_length(design->'definitions'),'|',
+        design#>>'{componentCatalog,version}','|',
+        design#>>'{parameters,0,effectiveAssignment,value}'
+      ) from (
+        select public.get_owned_course_design_for_actor_v1(
+          '${ownerId}','${courseId}','course','${courseId}',32,null
+        ) as design
+      ) loaded;
+    `));
+    const read = readOutput.split(/\r?\n/u).at(-1);
+    assert.equal(read, "aralearn.course-design.v1|4|1-3e5629f8|3");
+  } finally {
+    await cleanupUser(ownerId, email);
+  }
+});
+
 test("PostgreSQL serializa a criação idempotente do mesmo Curso", {
   skip: postgresGate
 }, async () => {

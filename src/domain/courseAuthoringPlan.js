@@ -19,7 +19,6 @@ const PLAN_FIELDS = new Set([
   "objective",
   "audience",
   "scope",
-  "authoringGuidance",
   "preferredPartCount",
   ...Object.keys(PLAN_ITEM_KINDS),
   "parts"
@@ -252,12 +251,6 @@ export function normalizeCourseAuthoringPlan(value) {
     objective: requiredText(candidate.objective, 2000, "invalid_course_authoring_objective", "O objetivo do Curso"),
     audience: optionalText(candidate.audience, 4000, "invalid_course_authoring_audience", "O público do Curso"),
     scope: optionalText(candidate.scope, 8000, "invalid_course_authoring_scope", "O escopo do Curso"),
-    authoringGuidance: optionalText(
-      candidate.authoringGuidance,
-      16384,
-      "invalid_course_authoring_guidance",
-      "A orientação de Autoria"
-    ),
     preferredPartCount: { minimum, maximum, origin },
     intendedLearningOutcomes: normalizeItems(
       candidate.intendedLearningOutcomes,
@@ -365,10 +358,9 @@ export function normalizeCourseAuthoringPlanCommand(commandValue) {
   const result = { type: command.type };
   if (command.type === "update_plan") {
     commandObject(command, [
-      "title", "objective", "audience", "scope", "authoringGuidance",
-      "preferredPartCount"
+      "title", "objective", "audience", "scope", "preferredPartCount"
     ]);
-    const fields = ["title", "objective", "audience", "scope", "authoringGuidance", "preferredPartCount"];
+    const fields = ["title", "objective", "audience", "scope", "preferredPartCount"];
     if (!fields.some((field) => Object.hasOwn(command, field))) {
       fail("empty_course_authoring_plan_command", "O comando não contém alteração.");
     }
@@ -385,8 +377,7 @@ export function normalizeCourseAuthoringPlanCommand(commandValue) {
     }
     for (const [field, maximum, label] of [
       ["audience", 4000, "O público do Curso"],
-      ["scope", 8000, "O escopo do Curso"],
-      ["authoringGuidance", 16384, "A orientação de Autoria"]
+      ["scope", 8000, "O escopo do Curso"]
     ]) {
       if (Object.hasOwn(command, field)) {
         result[field] = optionalText(command[field], maximum, "invalid_course_authoring_plan_command", label);
@@ -519,7 +510,6 @@ function planFixtureForCommandRange(preferredPartCount) {
     objective: "Objetivo",
     audience: "",
     scope: "",
-    authoringGuidance: "",
     preferredPartCount,
     intendedLearningOutcomes: [],
     instructionalAnalysisUnits: [],
@@ -534,12 +524,10 @@ export function applyCourseAuthoringPlanCommand(planValue, commandValue) {
 
   if (command.type === "update_plan") {
     commandObject(command, [
-      "title", "objective", "audience", "scope", "authoringGuidance",
-      "preferredPartCount"
+      "title", "objective", "audience", "scope", "preferredPartCount"
     ]);
     const patchFields = [
-      "title", "objective", "audience", "scope", "authoringGuidance",
-      "preferredPartCount"
+      "title", "objective", "audience", "scope", "preferredPartCount"
     ];
     if (!patchFields.some((field) => Object.hasOwn(command, field))) {
       fail("empty_course_authoring_plan_command", "O comando não contém alteração.");

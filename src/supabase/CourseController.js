@@ -52,6 +52,37 @@ function entityCacheKey(courseId, revision, limit, cursor, prefix = CACHE_PREFIX
   return `${prefix}.entities:${courseId}:${revision}:${limit}:${stableCursor(cursor)}`;
 }
 
+function courseDesignReadOptions(courseId, options = {}) {
+  if (!options || typeof options !== "object" || Array.isArray(options) ||
+      Object.keys(options).some((field) => !new Set(["scope", "limit", "cursor"]).has(field))) {
+    throw new TypeError("Leitura do desenho inválida.");
+  }
+  const { scope = null, limit = 32, cursor = null } = options;
+  const normalizedCourseId = String(courseId || "").trim().toLowerCase();
+  const candidate = scope ?? { kind: "course", ref: normalizedCourseId };
+  const kind = String(candidate?.kind || "").trim();
+  const ref = String(candidate?.ref || "").trim();
+  const normalizedLimit = Number(limit);
+  const normalizedCursor = cursor == null ? null : String(cursor).trim();
+  if (!UUID_PATTERN.test(normalizedCourseId) ||
+      !candidate || typeof candidate !== "object" || Array.isArray(candidate) ||
+      Object.keys(candidate).length !== 2 ||
+      Object.keys(candidate).some((field) => !new Set(["kind", "ref"]).has(field)) ||
+      !new Set(["course", "module", "lesson", "didactic_microsequence"]).has(kind) ||
+      kind !== candidate.kind || !ref || ref !== candidate.ref || ref.length > 240 ||
+      (kind === "course" && ref !== normalizedCourseId) ||
+      !Number.isSafeInteger(normalizedLimit) || normalizedLimit < 1 || normalizedLimit > 64 ||
+      (cursor != null && (!normalizedCursor || normalizedCursor !== cursor ||
+        normalizedCursor.length > 240))) {
+    throw new TypeError("Leitura dos parâmetros inválida.");
+  }
+  return {
+    scope: { kind, ref },
+    limit: normalizedLimit,
+    cursor: normalizedCursor
+  };
+}
+
 function retryableReadFailure(error) {
   const rawStatus = error?.status ?? error?.response?.status;
   const status = rawStatus == null || rawStatus === "" ? null : Number(rawStatus);
@@ -327,6 +358,7 @@ export class CourseController {
       ...(clearLists ? [this.store.deleteCachePrefix(`${this.cachePrefix}.list:`)] : []),
       this.store.deleteCachePrefix(courseCacheKey(courseId, this.cachePrefix)),
       this.store.deleteCachePrefix(instructionalPlanCacheKey(courseId, this.cachePrefix)),
+      this.store.deleteCachePrefix(`${this.cachePrefix}.course-design:${courseId}:`),
       this.store.deleteCachePrefix(authoringOutlineCacheKey(courseId, this.cachePrefix)),
       this.store.deleteCachePrefix(authoringInspectionCacheKey(courseId, this.cachePrefix)),
       this.store.deleteCachePrefix(authoringInspectionPositionKey(courseId, this.cachePrefix)),
@@ -456,6 +488,8 @@ export class CourseController {
       invalidationPrefixes: [
         `${this.cachePrefix}.list:`,
         courseCacheKey(courseId, this.cachePrefix),
+        instructionalPlanCacheKey(courseId, this.cachePrefix),
+        `${this.cachePrefix}.course-design:${courseId}:`,
         authoringOutlineCacheKey(courseId, this.cachePrefix),
         authoringInspectionCacheKey(courseId, this.cachePrefix),
         authoringInspectionPositionKey(courseId, this.cachePrefix),
@@ -473,6 +507,8 @@ export class CourseController {
         `${this.cachePrefix}.entities:${courseId}:${previousRevision}:`
       );
       await Promise.all([
+        this.store.deleteCachePrefix(instructionalPlanCacheKey(courseId, this.cachePrefix)),
+        this.store.deleteCachePrefix(`${this.cachePrefix}.course-design:${courseId}:`),
         this.store.deleteCachePrefix(authoringOutlineCacheKey(courseId, this.cachePrefix)),
         this.store.deleteCachePrefix(authoringInspectionCacheKey(courseId, this.cachePrefix))
       ]);
@@ -628,10 +664,32 @@ export class CourseController {
           `${this.cachePrefix}.list:`,
           courseCacheKey(courseId, this.cachePrefix),
           instructionalPlanCacheKey(courseId, this.cachePrefix),
+          `${this.cachePrefix}.course-design:${courseId}:`,
           `${this.cachePrefix}.entities:${courseId}:`
         ]
       }
     );
+  }
+
+  async loadCourseDesign(courseId, options = {}) {
+    if (typeof this.api.loadCourseDesign !== "function") {
+      throw new TypeError("A API de Cursos não oferece os parâmetros de Autoria.");
+    }
+    const normalizedOptions = courseDesignReadOptions(courseId, options);
+    const normalizedCourseId = String(courseId).trim().toLowerCase();
+    await this.store.deleteCachePrefix(
+      `${this.cachePrefix}.course-design:${normalizedCourseId}:`
+    );
+    try {
+      return structuredClone(
+        await this.api.loadCourseDesign(normalizedCourseId, normalizedOptions)
+      );
+    } catch (error) {
+      if (accessWasRevoked(error)) {
+        await this.#purgeCoursePrivacyCache(normalizedCourseId, { clearLists: true });
+      }
+      throw error;
+    }
   }
 
   loadAuthoringOutline(courseId) {
@@ -649,6 +707,7 @@ export class CourseController {
           `${this.cachePrefix}.list:`,
           courseCacheKey(courseId, this.cachePrefix),
           instructionalPlanCacheKey(courseId, this.cachePrefix),
+          `${this.cachePrefix}.course-design:${courseId}:`,
           authoringOutlineCacheKey(courseId, this.cachePrefix),
           authoringInspectionCacheKey(courseId, this.cachePrefix)
         ]
@@ -814,6 +873,35 @@ export class CourseController {
       this.store.deleteCachePrefix(`${this.cachePrefix}.list:`),
       this.store.deleteCachePrefix(courseCacheKey(courseId, this.cachePrefix)),
       this.store.deleteCachePrefix(instructionalPlanCacheKey(courseId, this.cachePrefix)),
+      this.store.deleteCachePrefix(`${this.cachePrefix}.course-design:${courseId}:`),
+      this.store.deleteCachePrefix(authoringOutlineCacheKey(courseId, this.cachePrefix)),
+      this.store.deleteCachePrefix(authoringInspectionCacheKey(courseId, this.cachePrefix))
+    ]);
+    return result;
+  }
+
+  async mutateCourseDesign(value = {}) {
+    if (typeof this.api.mutateCourseDesign !== "function") {
+      throw new TypeError("A API de Cursos não oferece a alteração dos parâmetros.");
+    }
+    if (!value || typeof value !== "object" || Array.isArray(value) ||
+        Object.keys(value).some((field) => !new Set([
+          "requestId", "courseId", "expectedCourseRevision", "command"
+        ]).has(field))) {
+      throw new TypeError("Alteração do desenho inválida.");
+    }
+    const { requestId, courseId, expectedCourseRevision, command } = value;
+    const result = await this.api.mutateCourseDesign({
+      requestId,
+      courseId,
+      expectedRevision: expectedCourseRevision,
+      designCommand: command
+    });
+    await Promise.all([
+      this.store.deleteCachePrefix(`${this.cachePrefix}.list:`),
+      this.store.deleteCachePrefix(courseCacheKey(courseId, this.cachePrefix)),
+      this.store.deleteCachePrefix(instructionalPlanCacheKey(courseId, this.cachePrefix)),
+      this.store.deleteCachePrefix(`${this.cachePrefix}.course-design:${courseId}:`),
       this.store.deleteCachePrefix(authoringOutlineCacheKey(courseId, this.cachePrefix)),
       this.store.deleteCachePrefix(authoringInspectionCacheKey(courseId, this.cachePrefix))
     ]);
@@ -827,6 +915,7 @@ export class CourseController {
       this.store.deleteCachePrefix(`${this.cachePrefix}.list:`),
       this.store.deleteCachePrefix(courseCacheKey(courseId, this.cachePrefix)),
       this.store.deleteCachePrefix(instructionalPlanCacheKey(courseId, this.cachePrefix)),
+      this.store.deleteCachePrefix(`${this.cachePrefix}.course-design:${courseId}:`),
       this.store.deleteCachePrefix(authoringOutlineCacheKey(courseId, this.cachePrefix)),
       this.store.deleteCachePrefix(authoringInspectionCacheKey(courseId, this.cachePrefix)),
       this.store.deleteCachePrefix(`${this.cachePrefix}.entities:${courseId}:`)

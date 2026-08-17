@@ -64,6 +64,22 @@ export function routeCourseRequest(method, pathname) {
       courseId: courseUuid(instructionalPlan[1])
     };
   }
+  const courseDesignChange = path.match(
+    /^\/v1\/courses\/([^/]+)\/course-design\/changes$/u
+  );
+  if (courseDesignChange && verb === "POST") {
+    return {
+      name: "applyCourseDesignCommand",
+      courseId: courseUuid(courseDesignChange[1])
+    };
+  }
+  const courseDesign = path.match(/^\/v1\/courses\/([^/]+)\/course-design$/u);
+  if (courseDesign && verb === "GET") {
+    return {
+      name: "getCourseDesign",
+      courseId: courseUuid(courseDesign[1])
+    };
+  }
   const composition = path.match(/^\/v1\/courses\/([^/]+)\/composition$/u);
   if (composition && verb === "POST") {
     return { name: "commitCourseComposition", courseId: courseUuid(composition[1]) };

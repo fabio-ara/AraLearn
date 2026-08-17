@@ -2,6 +2,13 @@ import { AuthoringApiError } from "./errors.js";
 import { courseUuid, readCourseJsonBody } from "./courseProtocol.js";
 import { validateCourseEntityContent } from
   "../aralearn/runtime/domain/courseEntities.js";
+import {
+  CourseDesignParametersError,
+  normalizeCourseDesignApplication,
+  normalizeCourseDesignCommand
+} from "../aralearn/runtime/domain/courseDesignParameters.js";
+import { RESOURCE_PACKAGE_REGISTRY } from
+  "../aralearn/runtime/resources/catalog/resourceCatalog.js";
 
 const REQUEST_ID = /^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$/u;
 const RFC3339 = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z$/u;
@@ -21,6 +28,9 @@ const ENTITY_CHILD_FIELDS = Object.freeze({
   study_unit: Object.freeze([])
 });
 const AVATAR_OBJECT_KEY = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\/[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\.(?:jpg|png|webp)$/u;
+const KNOWN_COMPONENT_REFS = RESOURCE_PACKAGE_REGISTRY.listCatalog().map(
+  ({ id, version }) => `${id}@${version}`
+);
 
 function fail(code, message, details = null, status = 422) {
   throw new AuthoringApiError(status, code, message, details);
@@ -112,6 +122,15 @@ function jsonObject(value, field, maximumBytes) {
     fail("payload_too_large", `${field} excede o limite.`, { field }, 413);
   }
   return normalized;
+}
+
+function normalizeCourseDesignDomain(normalize) {
+  try {
+    return normalize();
+  } catch (error) {
+    if (!(error instanceof CourseDesignParametersError)) throw error;
+    throw new AuthoringApiError(422, error.code, error.message, error.details);
+  }
 }
 
 function courseListQuery(request) {
@@ -217,6 +236,49 @@ function courseStudyUnitQuery(request) {
       maximum: 24
     }),
     maxBytes
+  };
+}
+
+function courseDesignScopeQuery(request, courseId) {
+  const url = new URL(request.url);
+  const queryFields = [...url.searchParams.keys()];
+  const allowedFields = new Set(["scopeKind", "scopeRef", "limit", "cursor"]);
+  const unknown = queryFields.find((field) => !allowedFields.has(field));
+  if (unknown || new Set(queryFields).size !== queryFields.length) {
+    fail(
+      "invalid_course_design_query",
+      "A leitura do desenho recebeu paginação incompatível.",
+      { field: unknown || "query" }
+    );
+  }
+  const scopeKind = String(url.searchParams.get("scopeKind") || "course").trim();
+  const scopeRefSource = url.searchParams.get("scopeRef");
+  const scopeRef = scopeRefSource == null && scopeKind === "course"
+    ? courseId
+    : String(scopeRefSource || "").trim();
+  if (!new Set([
+    "course", "module", "lesson", "didactic_microsequence"
+  ]).has(scopeKind) ||
+      (url.searchParams.has("scopeKind") && scopeKind !== url.searchParams.get("scopeKind")) ||
+      !scopeRef || scopeRef.length > 240 ||
+      (scopeRefSource != null && scopeRef !== scopeRefSource) ||
+      (scopeKind === "course" && scopeRef !== courseId)) {
+    fail("invalid_course_design_scope", "O escopo do desenho é inválido.", { field: "scope" });
+  }
+  const childCursorSource = url.searchParams.get("cursor");
+  const childCursor = childCursorSource == null ? null : childCursorSource.trim();
+  if (childCursorSource != null && (!childCursor || childCursor !== childCursorSource ||
+      childCursor.length > 240)) {
+    fail("invalid_pagination", "cursor é inválido.", { field: "cursor" });
+  }
+  return {
+    scopeKind,
+    scopeRef,
+    childLimit: positiveInteger(url.searchParams.get("limit"), "limit", {
+      defaultValue: 32,
+      maximum: 64
+    }),
+    childCursor
   };
 }
 
@@ -338,6 +400,31 @@ function validateInstructionalPlanChange(body, request) {
   };
 }
 
+function validateCourseDesignChange(body, request, courseId) {
+  exactFields(body, new Set([
+    "requestId", "expectedCourseRevision", "command"
+  ]));
+  const command = normalizeCourseDesignDomain(() => normalizeCourseDesignCommand(
+    jsonObject(body.command, "command", 32 * 1024),
+    { knownComponentRefs: KNOWN_COMPONENT_REFS }
+  ));
+  if (command.scope?.kind === "course" && command.scope.ref !== courseId) {
+    fail(
+      "invalid_course_design_scope",
+      "O escopo do comando não identifica este Curso.",
+      { field: "command.scope.ref" }
+    );
+  }
+  return {
+    requestId: requestIdFrom(request, body),
+    expectedCourseRevision: positiveInteger(
+      body.expectedCourseRevision,
+      "expectedCourseRevision"
+    ),
+    command
+  };
+}
+
 function validateMaterializationStep(value, index) {
   const step = jsonObject(value, `steps[${index}]`, 4 * 1024);
   exactFields(step, new Set([
@@ -386,6 +473,62 @@ function validateEntityChanges(value) {
   return { upserts, deletes };
 }
 
+function studyUnitComponentRefs(content) {
+  const instances = [
+    ...(Array.isArray(content?.content) ? content.content : []),
+    ...(content?.response ? [content.response] : []),
+    ...(Array.isArray(content?.feedback) ? content.feedback : [])
+  ];
+  return [...new Set(instances.map((instance) =>
+    `${instance.package}@${instance.version}`
+  ))].sort((left, right) => left.localeCompare(right, "en"));
+}
+
+function validateDesignApplication(value, entityChanges, { allowed }) {
+  if (value === null) {
+    return null;
+  }
+  if (value === undefined) {
+    fail(
+      "invalid_course_command",
+      "A etapa precisa declarar designApplication como objeto ou null."
+    );
+  }
+  if (!allowed) {
+    fail(
+      "invalid_course_command",
+      "Uma etapa que falhou não pode declarar aplicação do desenho."
+    );
+  }
+  const application = normalizeCourseDesignDomain(() => normalizeCourseDesignApplication(
+    jsonObject(value, "payload.designApplication", 16 * 1024),
+    { knownComponentRefs: KNOWN_COMPONENT_REFS }
+  ));
+  const changedStudyUnits = new Map(entityChanges.upserts
+    .filter(({ entityType }) => entityType === "study_unit")
+    .map((change) => [change.entityId, change]));
+  for (const studyUnit of application.studyUnits) {
+    const changed = changedStudyUnits.get(studyUnit.studyUnitId);
+    const expectedRefs = changed ? studyUnitComponentRefs(changed.content) : [];
+    if (!changed || changed.parentType !== "microsequence" ||
+        changed.parentId !== application.didacticMicrosequenceId ||
+        JSON.stringify(expectedRefs) !== JSON.stringify(studyUnit.componentRefs)) {
+      fail(
+        "design_application_content_mismatch",
+        "Os fatos declarados não correspondem ao alvo e ao conteúdo da Unidade gravada.",
+        { studyUnitId: studyUnit.studyUnitId }
+      );
+    }
+  }
+  if (application.studyUnits.length !== changedStudyUnits.size) {
+    fail(
+      "design_application_content_mismatch",
+      "Os fatos de aplicação não correspondem às Unidades alteradas."
+    );
+  }
+  return application;
+}
+
 function validateMaterializationChange(body, request) {
   exactFields(body, new Set([
     "requestId", "expectedCourseRevision", "expectedMaterializationVersion",
@@ -401,7 +544,7 @@ function validateMaterializationChange(body, request) {
   );
   const payload = jsonObject(body.payload, "payload", 512 * 1024);
   if (operation === "start") {
-    exactFields(payload, new Set(["authoringPartVersion", "designContext", "steps"]));
+    exactFields(payload, new Set(["authoringPartVersion", "steps"]));
     if (expectedMaterializationVersion !== 0 || !Array.isArray(payload.steps) ||
         payload.steps.length < 1 || payload.steps.length > 64) {
       fail("invalid_course_command", "O início da materialização é inválido.");
@@ -425,7 +568,6 @@ function validateMaterializationChange(body, request) {
           payload.authoringPartVersion,
           "payload.authoringPartVersion"
         ),
-        designContext: jsonObject(payload.designContext, "payload.designContext", 64 * 1024),
         steps
       }
     };
@@ -435,11 +577,32 @@ function validateMaterializationChange(body, request) {
   }
   if (operation === "record_step") {
     exactFields(payload, new Set([
-      "stepId", "expectedStepVersion", "status", "resultFacts", "entityChanges"
+      "stepId", "expectedStepVersion", "status", "resultFacts", "entityChanges",
+      "designApplication"
     ]));
     const status = text(payload.status, "payload.status", { maximum: 20 });
     if (!new Set(["completed", "failed"]).has(status)) {
       fail("invalid_course_command", "O estado da etapa é inválido.");
+    }
+    const entityChanges = validateEntityChanges(payload.entityChanges);
+    const resultFacts = jsonObject(payload.resultFacts, "payload.resultFacts", 16 * 1024);
+    if (Object.hasOwn(resultFacts, "designApplication")) {
+      fail(
+        "invalid_course_command",
+        "resultFacts não pode declarar o campo reservado designApplication."
+      );
+    }
+    const designApplication = validateDesignApplication(payload.designApplication, entityChanges, {
+      allowed: status === "completed"
+    });
+    if (new TextEncoder().encode(JSON.stringify({
+      ...resultFacts,
+      designApplication
+    })).byteLength > 16 * 1024) {
+      fail(
+        "invalid_course_command",
+        "Os fatos selados da etapa excedem 16 KiB."
+      );
     }
     return {
       requestId: requestIdFrom(request, body),
@@ -456,8 +619,9 @@ function validateMaterializationChange(body, request) {
           "payload.expectedStepVersion"
         ),
         status,
-        resultFacts: jsonObject(payload.resultFacts, "payload.resultFacts", 16 * 1024),
-        entityChanges: validateEntityChanges(payload.entityChanges)
+        resultFacts,
+        entityChanges,
+        designApplication
       }
     };
   }
@@ -591,6 +755,18 @@ export async function executeCourseRoute({ request, route, adapter, principal, d
       })
     };
   }
+  if (route.name === "getCourseDesign") {
+    assertPrincipal(principal);
+    return {
+      requestId: null,
+      data: await adapter.getCourseDesign({
+        principal,
+        courseId: route.courseId,
+        ...courseDesignScopeQuery(request, route.courseId),
+        deadlineAt
+      })
+    };
+  }
   if (route.name === "getCourseAuthoringPartMaterialization") {
     assertPrincipal(principal);
     return {
@@ -688,6 +864,23 @@ export async function executeCourseRoute({ request, route, adapter, principal, d
     return {
       requestId: value.requestId,
       data: await adapter.commitCourseInstructionalPlan({
+        principal,
+        courseId: route.courseId,
+        ...value,
+        deadlineAt
+      })
+    };
+  }
+  if (route.name === "applyCourseDesignCommand") {
+    assertPrincipal(principal, { write: true });
+    const value = validateCourseDesignChange(
+      await readCourseJsonBody(request),
+      request,
+      route.courseId
+    );
+    return {
+      requestId: value.requestId,
+      data: await adapter.applyCourseDesignCommand({
         principal,
         courseId: route.courseId,
         ...value,

@@ -54,5 +54,7 @@ test("conhecimento contém somente invariantes estáveis", () => {
   const value = readCourseAuthoringKnowledgeResource(resources[0].uri);
   assert.match(value.text, /Curso vivo e mutável/iu);
   assert.match(COURSE_AUTHORING_SERVER_INSTRUCTIONS, /não os fixe no prompt/iu);
+  assert.match(COURSE_AUTHORING_SERVER_INSTRUCTIONS, /targetPlanItems/iu);
+  assert.match(COURSE_AUTHORING_SERVER_INSTRUCTIONS, /somente as unidades de análise/iu);
   assert.doesNotMatch(value.text, /workspace|trilha|coleção|publica(?:ção|do)/iu);
 });

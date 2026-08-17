@@ -91,12 +91,13 @@ O catálogo devolve um estado de cobertura:
 
 Esses termos descrevem o ajuste calculado, não proclamam que uma representação seja universal na academia. O agente deve confrontar convenções, exemplo e contraindicações depois da busca.
 
-O ajuste calculado não autoriza o uso sozinho. Com `workspaceId` e
-`snapshotRef`, a descoberta é limitada aos `ResourceSet`s efetivos, e o mesmo
-conjunto precisa admitir package, papel e ajuste. A política pode bloquear
-`versatile` ou `substitute` ou admiti-los com limitação explícita; o conjunto
-pode restringir ainda mais. Sem representação adequada, a autoria registra a
-lacuna e não finge equivalência.
+O ajuste calculado não autoriza o uso sozinho. A política de componentes
+efetiva do Curso e do escopo fixa a revisão do catálogo, a disponibilidade
+`all|allow_only`, as exclusões e as preferências. Exclusão vence; preferência
+somente desempata candidatos ainda permitidos e semanticamente adequados.
+Durante a materialização, o servidor confronta os `package@version` realmente
+persistidos com essa política. Sem representação adequada, a autoria registra
+a lacuna e não finge equivalência.
 
 ## 5. Composição da Unidade de estudo
 

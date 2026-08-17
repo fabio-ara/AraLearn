@@ -521,6 +521,14 @@ mecanismo, condição de aplicação, limite, contraste, exemplo ou justificativ
 de procedimento. É instrumento de planejamento e auditoria, não checklist
 universal nem nota de qualidade.
 
+### Forma de explicação
+
+Realização observável pela qual uma unidade ou relação é desenvolvida, como
+definição simples, exemplo concreto, mecanismo, contraste, condição de
+aplicação, limite, exemplo resolvido ou ligação entre representações. A forma
+pode ser exigida somente quando aplicável e não é sinônimo de menção de uma
+palavra, comprimento do texto ou qualidade comprovada.
+
 ### Requisito de evidência
 
 Relação entre objetivo, alvo, operação, tarefa e forma aceitável de desempenho.
@@ -532,6 +540,14 @@ atividade em instrumento psicométrico nem demonstra domínio.
 Ocorrência em que alvo, operação e estrutura semântica permitem produzir a
 evidência pretendida sob um caso ou condição declarado. Troca cosmética de
 texto, ordem visual ou componente não cria necessariamente outra oportunidade.
+
+### Dimensão de variação da prática
+
+Aspecto declarado que muda entre oportunidades voltadas ao mesmo requisito de
+evidência, como caso ou dados, contexto, característica da tarefa,
+representação externa ou nível de apoio. A operação-alvo permanece invariável;
+trocar a operação tende a constituir outro requisito, não uma variação do
+mesmo.
 
 ### Fidelidade da tarefa
 

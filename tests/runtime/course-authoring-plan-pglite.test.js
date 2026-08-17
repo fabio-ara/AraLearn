@@ -4,12 +4,20 @@ import test from "node:test";
 
 import { PGlite } from "@electric-sql/pglite";
 
+import {
+  normalizeCourseDesignRead
+} from "../../src/domain/courseDesignParameters.js";
+
 const migrationUrl = new URL(
   "../../supabase/migrations/20260817160000_course_authoring_plan.sql",
   import.meta.url
 );
 const studyUnitInspectionMigrationUrl = new URL(
   "../../supabase/migrations/20260817170000_course_study_unit_inspection.sql",
+  import.meta.url
+);
+const courseDesignMigrationUrl = new URL(
+  "../../supabase/migrations/20260817180000_course_design_parameters.sql",
   import.meta.url
 );
 
@@ -22,6 +30,15 @@ const STEPS = [
   "40000000-0000-4000-8000-000000000001",
   "40000000-0000-4000-8000-000000000002",
   "40000000-0000-4000-8000-000000000003"
+];
+const DESIGN_ANALYSIS_IDS = Array.from(
+  { length: 7 },
+  (_, index) => `51000000-0000-4000-8000-${String(index + 1).padStart(12, "0")}`
+);
+const DESIGN_EVIDENCE_ID = "52000000-0000-4000-8000-000000000001";
+const DESIGN_EVIDENCE_ID_B = "52000000-0000-4000-8000-000000000002";
+const DESIGN_FORMS = [
+  "plain_definition", "concrete_example", "mechanism", "contrast"
 ];
 
 async function scalar(database, sql, parameters = []) {
@@ -285,6 +302,166 @@ async function applyMigration(database) {
 
 async function applyStudyUnitInspectionMigration(database) {
   await database.exec(await fs.readFile(studyUnitInspectionMigrationUrl, "utf8"));
+}
+
+async function applyCourseDesignMigration(database, {
+  nonEmptyLegacyState = false,
+  corruptLegacyCatalog = false,
+  pre1800Materialization = false
+} = {}) {
+  await database.exec(`
+    create table private.authoring_design_parameter_definitions(
+      parameter_id text primary key,
+      parameter_version text not null,
+      catalog_version text not null
+    );
+    insert into private.authoring_design_parameter_definitions values
+      ('accepted_performance_forms','1.0.0','1.0.0'),
+      ('applicable_explanation_requirement_refs','1.0.0','1.0.0'),
+      ('available_resource_set_refs','1.0.0','1.0.0'),
+      ('distinct_practice_opportunities_per_evidence_requirement','1.0.0','1.0.0'),
+      ('evidence_alignment_relation','1.0.0','1.0.0'),
+      ('new_units_per_theory_step_ceiling','1.0.0','1.0.0'),
+      ('practice_variation_dimensions','1.0.0','1.0.0'),
+      ('representation_fallback_policy','1.0.0','1.0.0'),
+      ('simultaneous_new_units_per_coordination_set_ceiling','1.0.0','1.0.0');
+    create table private.authoring_instructional_analyses(id integer);
+    create table private.authoring_design_parameter_assignments(id integer);
+    create table private.authoring_resource_sets(id integer);
+    create table private.authoring_effective_design_snapshots(id integer);
+    create table private.authoring_pedagogical_blueprints(id integer);
+    create table private.authoring_pedagogical_blueprint_bindings(id integer);
+    create table private.authoring_microsequence_design_bindings(id integer);
+    create table private.authoring_materialization_states(id integer);
+    create table private.authoring_materialization_manifests(id integer);
+  `);
+  if (nonEmptyLegacyState) {
+    await database.exec(`
+      insert into private.authoring_design_parameter_assignments values(1)
+    `);
+  }
+  if (corruptLegacyCatalog) {
+    await database.exec(`
+      update private.authoring_design_parameter_definitions
+      set catalog_version='2.0.0'
+      where parameter_id='accepted_performance_forms'
+    `);
+  }
+  if (pre1800Materialization) {
+    await database.exec(`
+      insert into private.course_authoring_part_materializations(
+        id,course_id,authoring_part_id,authoring_part_version,
+        actor_id,channel,status,design_context,result_facts,completed_at
+      )
+      select '59000000-0000-4000-8000-000000000001',
+        part.course_id,part.id,part.version,
+        '${OWNER}','application','completed','{}','{}',now()
+      from private.course_authoring_parts part
+      where part.course_id='${COURSE}' and part.retired_at is null
+      order by part.position
+      limit 1;
+      insert into private.course_authoring_part_materialization_steps(
+        id,course_id,materialization_id,position,step_kind,
+        target_didactic_microsequence_id,production_position,
+        status,result_facts,completed_at
+      ) values(
+        '59000000-0000-4000-8000-000000000002','${COURSE}',
+        '59000000-0000-4000-8000-000000000001',0,'context_load',
+        null,null,'completed','{}',now()
+      );
+    `);
+  }
+  await database.exec(await fs.readFile(courseDesignMigrationUrl, "utf8"));
+}
+
+function materializationApplication({
+  contextHash,
+  prefix = "designed",
+  componentRef,
+  didacticMicrosequenceId = "micro-a",
+  analysisIds = DESIGN_ANALYSIS_IDS,
+  evidenceRequirementId = DESIGN_EVIDENCE_ID
+}) {
+  const explanation = (instructionalAnalysisUnitId) => ({
+    instructionalAnalysisUnitId,
+    developedForms: DESIGN_FORMS,
+    notApplicable: []
+  });
+  const practice = (opportunityId) => ({
+    evidenceRequirementId,
+    opportunityId,
+    invariantTaskOperation: "explicar a relação entre configuração DNS e concessão DHCP",
+    variedDimensions: ["case_or_data"]
+  });
+  const groups = Array.from(
+    { length: Math.ceil(analysisIds.length / 2) },
+    (_, index) => analysisIds.slice(index * 2, index * 2 + 2)
+  );
+  return {
+    contextHash,
+    didacticMicrosequenceId,
+    studyUnits: [
+      ...groups.map((ids, index) => ({
+        studyUnitId: `${prefix}-expository-${index + 1}`,
+        mode: "expository",
+        introducedInstructionalAnalysisUnitIds: ids,
+        explanationApplications: ids.map(explanation),
+        practiceApplications: [],
+        componentRefs: [componentRef]
+      })),
+      ...(evidenceRequirementId ? [{
+        studyUnitId: `${prefix}-practice-1`,
+        mode: "practice",
+        introducedInstructionalAnalysisUnitIds: [],
+        explanationApplications: [],
+        practiceApplications: [practice("dns-case-a")],
+        componentRefs: [componentRef]
+      },
+      {
+        studyUnitId: `${prefix}-practice-2`,
+        mode: "practice",
+        introducedInstructionalAnalysisUnitIds: [],
+        explanationApplications: [],
+        practiceApplications: [practice("dns-case-b")],
+        componentRefs: [componentRef]
+      }] : [])
+    ]
+  };
+}
+
+function studyUnitUpserts(application, packageId, firstPosition = 1) {
+  return application.studyUnits.map((studyUnit, index) => ({
+    entityType: "study_unit",
+    entityId: studyUnit.studyUnitId,
+    parentType: "microsequence",
+    parentId: application.didacticMicrosequenceId,
+    position: firstPosition + index,
+    content: {
+      title: `Unidade factual ${index + 1}`,
+      kind: "study_unit",
+      resource: {
+        package: packageId,
+        version: "1.0.0",
+        data: { text: `Conteúdo factual ${index + 1}.` }
+      }
+    }
+  }));
+}
+
+async function applyDesignCommand(database, expectedRevision, command, requestId) {
+  return scalar(database, `
+    select public.apply_course_design_command_for_actor_v1(
+      $1,$2,$3,$4,'application',$5
+    ) as value
+  `, [OWNER, COURSE, expectedRevision, command, requestId]);
+}
+
+async function readCourseDesign(database, scopeKind, scopeRef, limit = 32, cursor = null) {
+  return scalar(database, `
+    select public.get_owned_course_design_for_actor_v1(
+      $1,$2,$3,$4,$5,$6
+    ) as value
+  `, [OWNER, COURSE, scopeKind, scopeRef, limit, cursor]);
 }
 
 function planTarget(planId, partId) {
@@ -1885,5 +2062,973 @@ test("pagina mais de 50 Unidades sem lacuna, repetição ou carga integral", asy
       'course_authoring_part_microsequences_order_v1'
     )
   `), 3);
+  await database.close();
+});
+
+test("#122 instala catálogo fechado, migra guidance e resolve set/clear no PGlite", async () => {
+  const database = await databaseFixture();
+  await applyMigration(database);
+  await applyStudyUnitInspectionMigration(database);
+  await applyCourseDesignMigration(database);
+  await actor(database, OWNER, "service_role");
+
+  const initial = await scalar(database, `
+    select public.get_owned_course_design_for_actor_v1(
+      $1::uuid,$2::uuid,'course',($2::uuid)::text,32,null
+    ) as value
+  `, [OWNER, COURSE]);
+  assert.deepEqual(normalizeCourseDesignRead(initial), initial);
+  assert.equal(initial.contract, "aralearn.course-design.v1");
+  assert.equal(initial.parameterCatalogVersion, "1.0.0");
+  assert.equal(initial.definitions.length, 4);
+  assert.equal(initial.componentCatalog.version, "1-3e5629f8");
+  assert.equal(initial.componentCatalog.options.length, 32);
+  assert.equal(initial.scopeContext.current.ref, COURSE);
+  assert.equal(initial.scopeContext.children.length, 1);
+  assert.equal(initial.guidance.effectiveRevisions.length, 1);
+  assert.equal(initial.guidance.effectiveRevisions[0].origin, "migration");
+  assert.equal(initial.parameters[0].effectiveAssignment.value, 2);
+  assert.equal(initial.parameters[0].effectiveAssignment.sourceScope, null);
+  const planRead = await scalar(database, `
+    select public.get_owned_course_instructional_plan_for_actor_v1(
+      $1,$2,20
+    ) as value
+  `, [OWNER, COURSE]);
+  assert.equal(Object.hasOwn(planRead.plan, "authoringGuidance"), false);
+  const planCommandDocument = await scalar(database, `
+    select private.course_instructional_plan_command_document_v1($1) as value
+  `, [COURSE]);
+  await assert.rejects(() => scalar(database, `
+    select public.commit_course_instructional_plan_for_actor_v1(
+      $1,$2,4,1,$3,$4,'application','legacy-guidance-plan'
+    ) as value
+  `, [OWNER, COURSE, { type: "update_plan" }, {
+    ...planCommandDocument,
+    authoringGuidance: "Alias legado proibido."
+  }]), /Commit do plano instrucional inválido/iu);
+
+  const changed = await scalar(database, `
+    select public.apply_course_design_command_for_actor_v1(
+      $1,$2,4,$3,'application','design-set-0001'
+    ) as value
+  `, [OWNER, COURSE, {
+    type: "set_parameter",
+    scope: { kind: "course", ref: COURSE },
+    parameterId: "new_analysis_unit_ceiling_per_expository_study_unit",
+    value: 3,
+    origin: "author",
+    reason: "Decisão explícita do autor."
+  }]);
+  assert.equal(changed.contract, "aralearn.course-design-change.v1");
+  assert.equal(changed.courseRevision, 5);
+  assert.equal(changed.changed, true);
+  assert.equal(changed.change.type, "set_parameter");
+
+  const retry = await scalar(database, `
+    select public.apply_course_design_command_for_actor_v1(
+      $1,$2,4,$3,'application','design-set-0001'
+    ) as value
+  `, [OWNER, COURSE, {
+    type: "set_parameter",
+    scope: { kind: "course", ref: COURSE },
+    parameterId: "new_analysis_unit_ceiling_per_expository_study_unit",
+    value: 3,
+    origin: "author",
+    reason: "Decisão explícita do autor."
+  }]);
+  assert.equal(retry.idempotent, true);
+  assert.equal(retry.courseRevision, 5);
+
+  const cleared = await scalar(database, `
+    select public.apply_course_design_command_for_actor_v1(
+      $1,$2,5,$3,'application','design-clear-01'
+    ) as value
+  `, [OWNER, COURSE, {
+    type: "clear_parameter",
+    scope: { kind: "course", ref: COURSE },
+    parameterId: "new_analysis_unit_ceiling_per_expository_study_unit"
+  }]);
+  assert.equal(cleared.courseRevision, 6);
+  const after = await scalar(database, `
+    select public.get_owned_course_design_for_actor_v1(
+      $1::uuid,$2::uuid,'course',($2::uuid)::text,32,null
+    ) as value
+  `, [OWNER, COURSE]);
+  assert.deepEqual(normalizeCourseDesignRead(after), after);
+  assert.equal(after.parameters[0].localAssignment, null);
+  assert.equal(after.parameters[0].effectiveAssignment.value, 2);
+  assert.equal(await scalar(database, `
+    select not exists(
+      select 1 from information_schema.columns
+      where table_schema='private'
+        and table_name='course_instructional_plans'
+        and column_name='authoring_guidance'
+    ) as value
+  `), true);
+  const manifest = await scalar(database, `
+    select public.get_aralearn_runtime_manifest() as value
+  `);
+  assert.deepEqual(manifest.features.slice(-3), [
+    "course-design-parameters-v1",
+    "course-authoring-guidance-v1",
+    "course-component-policy-v1"
+  ]);
+  await database.close();
+});
+
+test("#122 preserva orientação válida anterior acima do novo teto de escrita", async () => {
+  const guidance = "á".repeat(4_100);
+  const database = await databaseFixture({ brief: guidance });
+  await applyMigration(database);
+  await applyStudyUnitInspectionMigration(database);
+  await applyCourseDesignMigration(database);
+  await actor(database, OWNER, "service_role");
+
+  const read = await readCourseDesign(database, "course", COURSE);
+  assert.equal(read.guidance.localRevision.origin, "migration");
+  assert.equal(read.guidance.localRevision.guidance, guidance);
+  assert.deepEqual(normalizeCourseDesignRead(read), read);
+  await database.close();
+});
+
+test("#122 preflight falha fechado para catálogo, estado ou materialização anterior", async () => {
+  for (const scenario of [
+    { corruptLegacyCatalog: true, pattern: /catálogo legado/iu },
+    { nonEmptyLegacyState: true, pattern: /Estado legado de desenho não vazio/iu },
+    {
+      pre1800Materialization: true,
+      pattern: /Materializações anteriores a 1800.*1 materializações; 1 etapas/iu
+    }
+  ]) {
+    const database = await databaseFixture();
+    await applyMigration(database);
+    await applyStudyUnitInspectionMigration(database);
+    await assert.rejects(
+      () => applyCourseDesignMigration(database, scenario),
+      scenario.pattern
+    );
+    await database.exec("rollback");
+    assert.equal(await scalar(database, `
+      select to_regclass('private.course_design_parameter_definitions') is null as value
+    `), true);
+    assert.equal(await scalar(database, `
+      select public.get_aralearn_runtime_manifest()->>'schemaRevision' as value
+    `), "20260817170000");
+    if (scenario.pre1800Materialization) {
+      assert.deepEqual(await scalar(database, `
+        select jsonb_build_array(
+          (select count(*) from private.course_authoring_part_materializations),
+          (select count(*) from private.course_authoring_part_materialization_steps)
+        ) as value
+      `), [1, 1]);
+    }
+    await database.close();
+  }
+});
+
+test("#122 acumula guidance e resolve precedência e navegação sem árvore integral", async () => {
+  const database = await databaseFixture();
+  await applyMigration(database);
+  await applyStudyUnitInspectionMigration(database);
+  await applyCourseDesignMigration(database);
+  await actor(database, OWNER, "service_role");
+  await database.query(`
+    insert into private.course_entities(
+      course_id,entity_type,entity_id,parent_type,parent_id,position,content
+    ) values($1,'module','module-b',null,null,1,'{"title":"Módulo B"}')
+  `, [COURSE]);
+  const firstPage = await readCourseDesign(database, "course", COURSE, 1);
+  assert.equal(firstPage.scopeContext.childCount, 2);
+  assert.equal(firstPage.scopeContext.children.length, 1);
+  assert.equal(firstPage.scopeContext.hasMoreChildren, true);
+  assert.equal(firstPage.scopeContext.nextChildCursor, "module-a");
+  const secondPage = await readCourseDesign(
+    database,
+    "course",
+    COURSE,
+    1,
+    firstPage.scopeContext.nextChildCursor
+  );
+  assert.deepEqual(secondPage.scopeContext.children.map(({ ref }) => ref), ["module-b"]);
+  assert.equal(secondPage.scopeContext.hasMoreChildren, false);
+  assert.equal(secondPage.scopeContext.nextChildCursor, null);
+
+  await applyDesignCommand(database, 4, {
+    type: "set_guidance",
+    scope: { kind: "module", ref: "module-a" },
+    guidance: "No módulo, desenvolver o mecanismo antes da prática.",
+    origin: "author",
+    reason: "Decisão modular."
+  }, "guidance-module-1");
+  await applyDesignCommand(database, 5, {
+    type: "set_guidance",
+    scope: { kind: "lesson", ref: "lesson-a" },
+    guidance: "Na Lição, contrastar concessão e resolução de nomes.",
+    origin: "research_condition",
+    reason: "Condição de pesquisa registrada."
+  }, "guidance-lesson-1");
+  let microRead = await readCourseDesign(
+    database,
+    "didactic_microsequence",
+    "micro-a"
+  );
+  assert.deepEqual(
+    microRead.guidance.effectiveRevisions.map(({ sourceScope }) => sourceScope.kind),
+    ["course", "module", "lesson"]
+  );
+  assert.equal(microRead.guidance.localRevision, null);
+  const moduleRevision = microRead.guidance.effectiveRevisions[1];
+  const interpreted = await applyDesignCommand(database, 6, {
+    type: "interpret_guidance",
+    guidanceRevisionId: moduleRevision.revisionId,
+    interpretation: {
+      summary: "O mecanismo deve anteceder as oportunidades de prática.",
+      directives: [{
+        kind: "require",
+        statement: "Explicitar a sequência descoberta–oferta–solicitação–confirmação."
+      }],
+      divergences: ["A orientação da Lição também exige contraste."],
+      questions: ["Qual exemplo preserva a operação-alvo?"]
+    }
+  }, "guidance-interpret-1");
+  assert.deepEqual(interpreted.change.scope, { kind: "module", ref: "module-a" });
+  const replay = await applyDesignCommand(database, 6, {
+    type: "interpret_guidance",
+    guidanceRevisionId: moduleRevision.revisionId,
+    interpretation: {
+      summary: "O mecanismo deve anteceder as oportunidades de prática.",
+      directives: [{
+        kind: "require",
+        statement: "Explicitar a sequência descoberta–oferta–solicitação–confirmação."
+      }],
+      divergences: ["A orientação da Lição também exige contraste."],
+      questions: ["Qual exemplo preserva a operação-alvo?"]
+    }
+  }, "guidance-interpret-1");
+  assert.equal(replay.idempotent, true);
+  microRead = await readCourseDesign(database, "didactic_microsequence", "micro-a");
+  assert.equal(
+    microRead.guidance.effectiveRevisions[1].currentInterpretation.guidanceRevisionId,
+    moduleRevision.revisionId
+  );
+
+  await applyDesignCommand(database, 7, {
+    type: "set_guidance",
+    scope: { kind: "module", ref: "module-a" },
+    guidance: "Nova revisão modular sem herdar a interpretação anterior.",
+    origin: "author",
+    reason: "A orientação mudou."
+  }, "guidance-module-2");
+  microRead = await readCourseDesign(database, "didactic_microsequence", "micro-a");
+  assert.equal(microRead.guidance.effectiveRevisions[1].currentInterpretation, null);
+  await applyDesignCommand(database, 8, {
+    type: "clear_guidance",
+    scope: { kind: "module", ref: "module-a" }
+  }, "guidance-module-clear");
+  microRead = await readCourseDesign(database, "didactic_microsequence", "micro-a");
+  assert.deepEqual(
+    microRead.guidance.effectiveRevisions.map(({ sourceScope }) => sourceScope.kind),
+    ["course", "lesson"]
+  );
+
+  const parameterId = "new_analysis_unit_ceiling_per_expository_study_unit";
+  await applyDesignCommand(database, 9, {
+    type: "set_parameter",
+    scope: { kind: "course", ref: COURSE },
+    parameterId,
+    value: 3,
+    origin: "author",
+    reason: "Autor explicitou o teto."
+  }, "precedence-param-1");
+  const moduleRead = await readCourseDesign(database, "module", "module-a");
+  assert.equal(moduleRead.parameters[0].localAssignment, null);
+  assert.equal(moduleRead.parameters[0].effectiveAssignment.value, 3);
+  assert.equal(moduleRead.parameters[0].effectiveAssignment.inherited, true);
+  assert.deepEqual(normalizeCourseDesignRead(moduleRead), moduleRead);
+  await applyDesignCommand(database, 10, {
+    type: "set_parameter",
+    scope: { kind: "didactic_microsequence", ref: "micro-a" },
+    parameterId,
+    value: 6,
+    origin: "automatic",
+    reason: "Sugestão automática local."
+  }, "precedence-param-2");
+  microRead = await readCourseDesign(database, "didactic_microsequence", "micro-a");
+  assert.equal(microRead.parameters[0].localAssignment.value, 6);
+  assert.equal(microRead.parameters[0].effectiveAssignment.value, 3);
+  assert.deepEqual(microRead.parameters[0].effectiveAssignment.sourceScope, {
+    kind: "course",
+    ref: COURSE
+  });
+  await applyDesignCommand(database, 11, {
+    type: "clear_parameter",
+    scope: { kind: "course", ref: COURSE },
+    parameterId
+  }, "precedence-param-3");
+  microRead = await readCourseDesign(database, "didactic_microsequence", "micro-a");
+  assert.equal(microRead.parameters[0].effectiveAssignment.value, 6);
+  assert.equal(microRead.parameters[0].effectiveAssignment.inherited, false);
+
+  const paragraphRef = "aralearn.resource.paragraph@1.0.0";
+  await applyDesignCommand(database, 12, {
+    type: "set_component_policy",
+    scope: { kind: "course", ref: COURSE },
+    policy: {
+      catalogVersion: "1-3e5629f8",
+      availability: "allow_only",
+      allowedRefs: [paragraphRef],
+      excludedRefs: [],
+      preferredRefs: [paragraphRef]
+    },
+    origin: "research_condition",
+    reason: "Condição explícita do Curso."
+  }, "precedence-policy-1");
+  await applyDesignCommand(database, 13, {
+    type: "set_component_policy",
+    scope: { kind: "didactic_microsequence", ref: "micro-a" },
+    policy: {
+      catalogVersion: "1-3e5629f8",
+      availability: "all",
+      allowedRefs: [],
+      excludedRefs: [],
+      preferredRefs: []
+    },
+    origin: "automatic",
+    reason: "Sugestão automática local."
+  }, "precedence-policy-2");
+  microRead = await readCourseDesign(database, "didactic_microsequence", "micro-a");
+  assert.equal(microRead.componentPolicy.localChange.origin, "automatic");
+  assert.equal(microRead.componentPolicy.effectiveChange.origin, "research_condition");
+  assert.deepEqual(microRead.componentPolicy.effectiveChange.policy.allowedRefs, [paragraphRef]);
+  assert.deepEqual(normalizeCourseDesignRead(microRead), microRead);
+
+  const noOp = await applyDesignCommand(database, 14, {
+    type: "clear_guidance",
+    scope: { kind: "module", ref: "module-a" }
+  }, "guidance-clear-noop");
+  assert.equal(noOp.changed, false);
+  assert.equal(noOp.courseRevision, 14);
+  assert.equal(noOp.change, null);
+  await database.close();
+});
+
+test("#122 sela contexto e rejeita densidade ou componente divergente atomicamente", async () => {
+  const database = await databaseFixture();
+  await applyMigration(database);
+  await applyStudyUnitInspectionMigration(database);
+  await applyCourseDesignMigration(database);
+  await actor(database, OWNER, "service_role");
+  const plan = await scalar(database, `
+    select jsonb_build_object('id',id,'partId',(
+      select part.id from private.course_authoring_parts part
+      where part.course_id=plan.course_id and part.retired_at is null
+      order by part.position limit 1
+    )) as value
+    from private.course_instructional_plans plan where course_id=$1
+  `, [COURSE]);
+  for (const [position, id] of DESIGN_ANALYSIS_IDS.entries()) {
+    await database.query(`
+      insert into private.course_instructional_plan_items(
+        id,course_id,instructional_plan_id,item_kind,position,statement
+      ) values($1,$2,$3,'instructional_analysis_unit',$4,$5)
+    `, [id, COURSE, plan.id, position, `Relação DNS–DHCP ${position + 1}.`]);
+  }
+  await database.query(`
+    insert into private.course_instructional_plan_items(
+      id,course_id,instructional_plan_id,item_kind,position,statement
+      ) values($1,$2,$3,'evidence_requirement',0,$4)
+  `, [DESIGN_EVIDENCE_ID, COURSE, plan.id, "Explicar a operação-alvo em caso novo."]);
+
+  const targetPlanItemsCommand = {
+    type: "set_target_plan_items",
+    scope: { kind: "didactic_microsequence", ref: "micro-a" },
+    instructionalAnalysisUnitIds: DESIGN_ANALYSIS_IDS,
+    evidenceRequirementIds: [DESIGN_EVIDENCE_ID]
+  };
+  const assigned = await applyDesignCommand(
+    database,
+    4,
+    targetPlanItemsCommand,
+    "target-plan-items-01"
+  );
+  assert.equal(assigned.changed, true);
+  assert.equal(assigned.courseRevision, 5);
+  assert.equal(assigned.change.type, "set_target_plan_items");
+  const assignedReplay = await applyDesignCommand(
+    database,
+    4,
+    targetPlanItemsCommand,
+    "target-plan-items-01"
+  );
+  assert.equal(assignedReplay.idempotent, true);
+  assert.equal(assignedReplay.courseRevision, 5);
+  const designEventCount = await scalar(database, `
+    select count(*)::integer as value
+    from private.course_events
+    where course_id=$1 and operation='update_course_design'
+  `, [COURSE]);
+  const assignmentNoOp = await applyDesignCommand(database, 5, {
+    ...targetPlanItemsCommand,
+    instructionalAnalysisUnitIds: [...DESIGN_ANALYSIS_IDS].reverse()
+  }, "target-plan-items-noop");
+  assert.equal(assignmentNoOp.changed, false);
+  assert.equal(assignmentNoOp.courseRevision, 5);
+  assert.equal(assignmentNoOp.change, null);
+  assert.equal(await scalar(database, `
+    select count(*)::integer as value
+    from private.course_events
+    where course_id=$1 and operation='update_course_design'
+  `, [COURSE]), designEventCount);
+  const microDesign = await readCourseDesign(
+    database,
+    "didactic_microsequence",
+    "micro-a"
+  );
+  assert.deepEqual(normalizeCourseDesignRead(microDesign), microDesign);
+  assert.deepEqual(microDesign.targetPlanItems, {
+    instructionalAnalysisUnitIds: DESIGN_ANALYSIS_IDS,
+    evidenceRequirementIds: [DESIGN_EVIDENCE_ID]
+  });
+  await assert.rejects(() => database.query(`
+    insert into private.course_design_target_plan_items(
+      course_id,didactic_microsequence_id,plan_item_id,plan_item_kind
+    ) values($1,'micro-inexistente',$2,'instructional_analysis_unit')
+  `, [COURSE, DESIGN_ANALYSIS_IDS[0]]), (error) => error.code === "23503");
+  await assert.rejects(() => database.query(`
+    insert into private.course_design_target_plan_items(
+      course_id,didactic_microsequence_id,plan_item_id,plan_item_kind
+    ) values($1,'micro-a',$2,'intended_learning_outcome')
+  `, [COURSE, DESIGN_EVIDENCE_ID]), (error) => error.code === "23514");
+  await database.exec("begin");
+  try {
+    await database.query(`
+      delete from private.course_instructional_plan_items
+      where course_id=$1 and id=$2
+    `, [COURSE, DESIGN_ANALYSIS_IDS[0]]);
+    assert.equal(await scalar(database, `
+      select count(*)::integer as value
+      from private.course_design_target_plan_items
+      where course_id=$1 and plan_item_id=$2
+    `, [COURSE, DESIGN_ANALYSIS_IDS[0]]), 0);
+  } finally {
+    await database.exec("rollback");
+  }
+  const courseDesign = await readCourseDesign(database, "course", COURSE);
+  assert.equal(courseDesign.targetPlanItems, null);
+  await assert.rejects(
+    () => applyDesignCommand(database, 5, {
+      ...targetPlanItemsCommand,
+      instructionalAnalysisUnitIds: [DESIGN_EVIDENCE_ID]
+    }, "target-plan-items-kind"),
+    (error) => error.code === "22023" && /tipo incompatível/iu.test(error.message)
+  );
+  for (const [requestId, invalidCommand] of [
+    ["target-plan-items-extra", { ...targetPlanItemsCommand, extra: true }],
+    ["target-plan-items-scope", {
+      ...targetPlanItemsCommand,
+      scope: { kind: "course", ref: COURSE }
+    }],
+    ["target-plan-items-repeat", {
+      ...targetPlanItemsCommand,
+      instructionalAnalysisUnitIds: [
+        DESIGN_ANALYSIS_IDS[0], DESIGN_ANALYSIS_IDS[0]
+      ]
+    }],
+    ["target-plan-items-uuid", {
+      ...targetPlanItemsCommand,
+      instructionalAnalysisUnitIds: ["nao-e-uuid"]
+    }],
+    ["target-plan-items-missing", {
+      ...targetPlanItemsCommand,
+      instructionalAnalysisUnitIds: [
+        "51000000-0000-4000-8000-999999999999"
+      ]
+    }]
+  ]) {
+    await assert.rejects(
+      () => applyDesignCommand(database, 5, invalidCommand, requestId),
+      (error) => error.code === "22023"
+    );
+  }
+  await database.query(`
+    insert into public.course_access(course_id,user_id,granted_by)
+    values($1,$2,$3)
+  `, [COURSE, LEARNER, OWNER]);
+  await actor(database, LEARNER, "service_role");
+  await assert.rejects(() => scalar(database, `
+    select public.apply_course_design_command_for_actor_v1(
+      $1,$2,5,$3,'application','target-plan-owner-1'
+    ) as value
+  `, [LEARNER, COURSE, targetPlanItemsCommand]), (error) => error.code === "42501");
+  await actor(database, OWNER, "service_role");
+  assert.equal(await scalar(database, `
+    select not exists(
+      select 1
+      from unnest(array['select','insert','update','delete']) privilege(value)
+      where has_table_privilege(
+        'service_role','private.course_design_target_plan_items',privilege.value
+      )
+    ) as value
+  `), true);
+
+  const materializationId = "53000000-0000-4000-8000-000000000001";
+  const stepId = "53000000-0000-4000-8000-000000000002";
+  const start = await scalar(database, `
+    select public.advance_course_authoring_part_materialization_for_actor_v1(
+      $1,$2,$3,$4,5,0,'start',$5,'application','design-start-01'
+    ) as value
+  `, [OWNER, COURSE, plan.partId, materializationId, {
+    authoringPartVersion: 1,
+    steps: [{
+      id: stepId,
+      position: 0,
+      kind: "didactic_microsequence_materialization",
+      targetDidacticMicrosequenceId: "micro-a",
+      productionPosition: 0
+    }]
+  }]);
+  assert.equal(start.courseRevision, 6);
+  assert.equal(start.materialization.designContext.contract, "aralearn.course-design-context.v1");
+  assert.equal(start.materialization.designContext.instructionalAnalysisUnits.length, 7);
+  assert.equal(start.materialization.designContext.evidenceRequirements.length, 1);
+  assert.deepEqual(
+    Object.keys(start.materialization.designContext.instructionalAnalysisUnits[0]).sort(),
+    ["id", "position", "statement", "version"]
+  );
+  assert.deepEqual(
+    start.materialization.designContext.targets[0].instructionalAnalysisUnitIds,
+    DESIGN_ANALYSIS_IDS
+  );
+  assert.deepEqual(
+    start.materialization.designContext.targets[0].evidenceRequirementIds,
+    [DESIGN_EVIDENCE_ID]
+  );
+  assert.equal(start.materialization.designContext.targets[0].guidanceRevisionIds.length, 1);
+  assert.match(start.materialization.contextHash, /^[a-f0-9]{64}$/u);
+
+  const resumed = await scalar(database, `
+    select public.get_owned_course_authoring_part_materialization_for_actor_v1(
+      $1,$2,$3,$4
+    ) as value
+  `, [OWNER, COURSE, plan.partId, materializationId]);
+  assert.equal(resumed.materialization.contextHash, start.materialization.contextHash);
+  assert.deepEqual(resumed.materialization.designContext, start.materialization.designContext);
+
+  const planBeforeStatementEdit = await scalar(database, `
+    select private.course_instructional_plan_command_document_v1($1) as value
+  `, [COURSE]);
+  const editedStatement = "Relação DNS–DHCP revista depois do início.";
+  const planAfterStatementEdit = structuredClone(planBeforeStatementEdit);
+  planAfterStatementEdit.instructionalAnalysisUnits =
+    planAfterStatementEdit.instructionalAnalysisUnits.map((item) => (
+      item.id === DESIGN_ANALYSIS_IDS[0]
+        ? { ...item, statement: editedStatement }
+        : item
+    ));
+  const statementChange = await scalar(database, `
+    select public.commit_course_instructional_plan_for_actor_v1(
+      $1,$2,6,1,$3,$4,'application','design-statement-1'
+    ) as value
+  `, [OWNER, COURSE, {
+    type: "update_plan"
+  }, planAfterStatementEdit]);
+  assert.equal(statementChange.courseRevision, 7);
+  assert.equal(statementChange.planVersion, 2);
+  const remappedIds = DESIGN_ANALYSIS_IDS.slice(0, 6);
+  const remapped = await applyDesignCommand(database, 7, {
+    ...targetPlanItemsCommand,
+    instructionalAnalysisUnitIds: remappedIds
+  }, "target-plan-items-02");
+  assert.equal(remapped.courseRevision, 8);
+  const oldAfterCatalogChanges = await scalar(database, `
+    select public.get_owned_course_authoring_part_materialization_for_actor_v1(
+      $1,$2,$3,$4
+    ) as value
+  `, [OWNER, COURSE, plan.partId, materializationId]);
+  assert.equal(
+    oldAfterCatalogChanges.materialization.contextHash,
+    start.materialization.contextHash
+  );
+  assert.deepEqual(
+    oldAfterCatalogChanges.materialization.designContext,
+    start.materialization.designContext
+  );
+
+  const denseApplication = {
+    contextHash: start.materialization.contextHash,
+    didacticMicrosequenceId: "micro-a",
+    studyUnits: [{
+      studyUnitId: "dense-unit",
+      mode: "expository",
+      introducedInstructionalAnalysisUnitIds: DESIGN_ANALYSIS_IDS,
+      explanationApplications: DESIGN_ANALYSIS_IDS.map((id) => ({
+        instructionalAnalysisUnitId: id,
+        developedForms: ["plain_definition"],
+        notApplicable: []
+      })),
+      practiceApplications: [],
+      componentRefs: ["aralearn.resource.paragraph@1.0.0"]
+    }]
+  };
+  await assert.rejects(() => scalar(database, `
+    select public.advance_course_authoring_part_materialization_for_actor_v1(
+      $1,$2,$3,$4,8,1,'record_step',$5,'application','design-dense-01'
+    ) as value
+  `, [OWNER, COURSE, plan.partId, materializationId, {
+    stepId,
+    expectedStepVersion: 1,
+    status: "completed",
+    resultFacts: {},
+    entityChanges: {
+      upserts: studyUnitUpserts(denseApplication, "aralearn.resource.paragraph"),
+      deletes: [{ entityType: "study_unit", entityId: "card-a" }]
+    },
+    designApplication: denseApplication
+  }]), /Aplicação factual/iu);
+  assert.equal(await scalar(database, `
+    select revision as value from public.courses where id=$1
+  `, [COURSE]), 8);
+
+  const paragraphRef = "aralearn.resource.paragraph@1.0.0";
+  const application = materializationApplication({
+    contextHash: start.materialization.contextHash,
+    componentRef: paragraphRef
+  });
+  const mismatched = structuredClone(application);
+  mismatched.studyUnits[0].componentRefs = [];
+  await assert.rejects(() => scalar(database, `
+    select public.advance_course_authoring_part_materialization_for_actor_v1(
+      $1,$2,$3,$4,8,1,'record_step',$5,'application','design-refs-001'
+    ) as value
+  `, [OWNER, COURSE, plan.partId, materializationId, {
+    stepId,
+    expectedStepVersion: 1,
+    status: "completed",
+    resultFacts: {},
+    entityChanges: {
+      upserts: studyUnitUpserts(application, "aralearn.resource.paragraph"),
+      deletes: [{ entityType: "study_unit", entityId: "card-a" }]
+    },
+    designApplication: mismatched
+  }]), /Referências declaradas divergem/iu);
+  assert.equal(await scalar(database, `
+    select count(*)::integer as value from private.course_entities
+    where course_id=$1 and entity_type='study_unit'
+      and entity_id like 'designed-%'
+  `, [COURSE]), 0);
+
+  const recorded = await scalar(database, `
+    select public.advance_course_authoring_part_materialization_for_actor_v1(
+      $1,$2,$3,$4,8,1,'record_step',$5,'application','design-record-01'
+    ) as value
+  `, [OWNER, COURSE, plan.partId, materializationId, {
+    stepId,
+    expectedStepVersion: 1,
+    status: "completed",
+    resultFacts: { audit: "structured" },
+    entityChanges: {
+      upserts: studyUnitUpserts(application, "aralearn.resource.paragraph"),
+      deletes: [{ entityType: "study_unit", entityId: "card-a" }]
+    },
+    designApplication: application
+  }]);
+  assert.equal(recorded.courseRevision, 9);
+  assert.equal(recorded.step.status, "completed");
+  assert.equal(await scalar(database, `
+    select result_facts->'designApplication' = $3::jsonb as value
+    from private.course_authoring_part_materialization_steps
+    where materialization_id=$1 and id=$2
+  `, [materializationId, stepId, application]), true);
+
+  await scalar(database, `
+    select public.advance_course_authoring_part_materialization_for_actor_v1(
+      $1,$2,$3,$4,9,2,'finish',$5,'application','design-finish-01'
+    ) as value
+  `, [OWNER, COURSE, plan.partId, materializationId, {
+    status: "completed",
+    resultFacts: { audit: "structured" }
+  }]);
+  await scalar(database, `
+    select public.apply_course_design_command_for_actor_v1(
+      $1,$2,10,$3,'application','design-policy-1'
+    ) as value
+  `, [OWNER, COURSE, {
+    type: "set_component_policy",
+    scope: { kind: "didactic_microsequence", ref: "micro-a" },
+    policy: {
+      catalogVersion: "1-3e5629f8",
+      availability: "all",
+      allowedRefs: [],
+      excludedRefs: [paragraphRef],
+      preferredRefs: []
+    },
+    origin: "author",
+    reason: "O próximo lote precisa substituir o componente textual."
+  }]);
+
+  const nextMaterializationId = "53000000-0000-4000-8000-000000000003";
+  const nextStepId = "53000000-0000-4000-8000-000000000004";
+  const nextStart = await scalar(database, `
+    select public.advance_course_authoring_part_materialization_for_actor_v1(
+      $1,$2,$3,$4,11,0,'start',$5,'application','design-start-02'
+    ) as value
+  `, [OWNER, COURSE, plan.partId, nextMaterializationId, {
+    authoringPartVersion: 1,
+    steps: [{
+      id: nextStepId,
+      position: 0,
+      kind: "didactic_microsequence_materialization",
+      targetDidacticMicrosequenceId: "micro-a",
+      productionPosition: 0
+    }]
+  }]);
+  assert.notEqual(
+    nextStart.materialization.contextHash,
+    start.materialization.contextHash
+  );
+  assert.equal(
+    nextStart.materialization.designContext.instructionalAnalysisUnits.length,
+    6
+  );
+  assert.equal(
+    nextStart.materialization.designContext.instructionalAnalysisUnits[0].statement,
+    editedStatement
+  );
+  assert.equal(
+    nextStart.materialization.designContext.instructionalAnalysisUnits[0].version,
+    2
+  );
+  assert.deepEqual(
+    nextStart.materialization.designContext.targets[0].instructionalAnalysisUnitIds,
+    remappedIds
+  );
+  const codeRef = "aralearn.resource.code@1.0.0";
+  const replacementApplication = materializationApplication({
+    contextHash: nextStart.materialization.contextHash,
+    prefix: "replacement",
+    componentRef: codeRef,
+    analysisIds: remappedIds
+  });
+  await assert.rejects(() => scalar(database, `
+    select public.advance_course_authoring_part_materialization_for_actor_v1(
+      $1,$2,$3,$4,12,1,'record_step',$5,'application','design-policy-2'
+    ) as value
+  `, [OWNER, COURSE, plan.partId, nextMaterializationId, {
+    stepId: nextStepId,
+    expectedStepVersion: 1,
+    status: "completed",
+    resultFacts: {},
+    entityChanges: {
+      upserts: studyUnitUpserts(
+        replacementApplication,
+        "aralearn.resource.code",
+        7
+      ),
+      deletes: []
+    },
+    designApplication: replacementApplication
+  }]), /viola a política selada/iu);
+  assert.equal(await scalar(database, `
+    select revision as value from public.courses where id=$1
+  `, [COURSE]), 12);
+  assert.equal(await scalar(database, `
+    select count(*)::integer as value from private.course_entities
+    where course_id=$1 and entity_type='study_unit'
+      and entity_id like 'replacement-%'
+  `, [COURSE]), 0);
+
+  const recent = await scalar(database, `
+    select public.get_owned_course_design_for_actor_v1(
+      $1::uuid,$2::uuid,'didactic_microsequence','micro-a',32,null
+    ) as value
+  `, [OWNER, COURSE]);
+  assert.deepEqual(normalizeCourseDesignRead(recent), recent);
+  assert.equal(recent.recentApplications.length, 1);
+  assert.equal(recent.recentApplications[0].studyUnitCount, 6);
+  assert.deepEqual(recent.recentApplications[0].developedExplanationForms, DESIGN_FORMS);
+  await database.close();
+});
+
+test("#122 audita somente os itens atribuídos a cada uma de duas microssequências", async () => {
+  const database = await databaseFixture();
+  await applyMigration(database);
+  await applyStudyUnitInspectionMigration(database);
+  await applyCourseDesignMigration(database);
+  await actor(database, OWNER, "service_role");
+  const plan = await scalar(database, `
+    select jsonb_build_object('id',id,'partId',(
+      select part.id from private.course_authoring_parts part
+      where part.course_id=plan.course_id and part.retired_at is null
+      order by part.position limit 1
+    )) as value
+    from private.course_instructional_plans plan where course_id=$1
+  `, [COURSE]);
+  await database.query(`
+    insert into private.course_entities(
+      course_id,entity_type,entity_id,parent_type,parent_id,position,content
+    ) values(
+      $1,'microsequence','micro-b','lesson','lesson-a',1,
+      '{"title":"Micro B","dependsOn":[]}'
+    )
+  `, [COURSE]);
+  await database.query(`
+    insert into private.course_authoring_part_didactic_microsequences(
+      course_id,authoring_part_id,didactic_microsequence_id,production_position
+    ) values($1,$2,'micro-b',1)
+  `, [COURSE, plan.partId]);
+  for (const [position, id] of DESIGN_ANALYSIS_IDS.entries()) {
+    await database.query(`
+      insert into private.course_instructional_plan_items(
+        id,course_id,instructional_plan_id,item_kind,position,statement
+      ) values($1,$2,$3,'instructional_analysis_unit',$4,$5)
+    `, [id, COURSE, plan.id, position, `Unidade atribuída ${position + 1}.`]);
+  }
+  await database.query(`
+    insert into private.course_instructional_plan_items(
+      id,course_id,instructional_plan_id,item_kind,position,statement
+    ) values
+      ($1,$2,$3,'evidence_requirement',0,'Evidência exclusiva A.'),
+      ($4,$2,$3,'evidence_requirement',1,'Evidência exclusiva B.')
+  `, [DESIGN_EVIDENCE_ID, COURSE, plan.id, DESIGN_EVIDENCE_ID_B]);
+
+  const analysisA = DESIGN_ANALYSIS_IDS.slice(0, 3);
+  const analysisB = DESIGN_ANALYSIS_IDS.slice(3);
+  await applyDesignCommand(database, 4, {
+    type: "set_target_plan_items",
+    scope: { kind: "didactic_microsequence", ref: "micro-a" },
+    instructionalAnalysisUnitIds: analysisA,
+    evidenceRequirementIds: [DESIGN_EVIDENCE_ID]
+  }, "target-split-micro-a");
+  await applyDesignCommand(database, 5, {
+    type: "set_target_plan_items",
+    scope: { kind: "didactic_microsequence", ref: "micro-b" },
+    instructionalAnalysisUnitIds: analysisB,
+    evidenceRequirementIds: [DESIGN_EVIDENCE_ID_B]
+  }, "target-split-micro-b");
+
+  const materializationId = "54000000-0000-4000-8000-000000000001";
+  const stepA = "54000000-0000-4000-8000-000000000002";
+  const stepB = "54000000-0000-4000-8000-000000000003";
+  const started = await scalar(database, `
+    select public.advance_course_authoring_part_materialization_for_actor_v1(
+      $1,$2,$3,$4,6,0,'start',$5,'application','target-split-start'
+    ) as value
+  `, [OWNER, COURSE, plan.partId, materializationId, {
+    authoringPartVersion: 1,
+    steps: [{
+      id: stepA,
+      position: 0,
+      kind: "didactic_microsequence_materialization",
+      targetDidacticMicrosequenceId: "micro-a",
+      productionPosition: 0
+    }, {
+      id: stepB,
+      position: 1,
+      kind: "didactic_microsequence_materialization",
+      targetDidacticMicrosequenceId: "micro-b",
+      productionPosition: 1
+    }]
+  }]);
+  assert.equal(started.courseRevision, 7);
+  assert.deepEqual(
+    started.materialization.designContext.instructionalAnalysisUnits.map(({ id }) => id),
+    DESIGN_ANALYSIS_IDS
+  );
+  assert.deepEqual(
+    started.materialization.designContext.evidenceRequirements.map(({ id }) => id),
+    [DESIGN_EVIDENCE_ID, DESIGN_EVIDENCE_ID_B]
+  );
+  assert.deepEqual(
+    started.materialization.designContext.targets.map((target) => ({
+      id: target.didacticMicrosequenceId,
+      analysis: target.instructionalAnalysisUnitIds,
+      evidence: target.evidenceRequirementIds
+    })),
+    [{
+      id: "micro-a",
+      analysis: analysisA,
+      evidence: [DESIGN_EVIDENCE_ID]
+    }, {
+      id: "micro-b",
+      analysis: analysisB,
+      evidence: [DESIGN_EVIDENCE_ID_B]
+    }]
+  );
+
+  const paragraphRef = "aralearn.resource.paragraph@1.0.0";
+  const applicationA = materializationApplication({
+    contextHash: started.materialization.contextHash,
+    prefix: "split-a",
+    componentRef: paragraphRef,
+    analysisIds: analysisA,
+    evidenceRequirementId: DESIGN_EVIDENCE_ID
+  });
+  const applicationB = materializationApplication({
+    contextHash: started.materialization.contextHash,
+    prefix: "split-b",
+    componentRef: paragraphRef,
+    didacticMicrosequenceId: "micro-b",
+    analysisIds: analysisB,
+    evidenceRequirementId: DESIGN_EVIDENCE_ID_B
+  });
+  const recordedA = await scalar(database, `
+    select public.advance_course_authoring_part_materialization_for_actor_v1(
+      $1,$2,$3,$4,7,1,'record_step',$5,'application','target-split-a'
+    ) as value
+  `, [OWNER, COURSE, plan.partId, materializationId, {
+    stepId: stepA,
+    expectedStepVersion: 1,
+    status: "completed",
+    resultFacts: {},
+    entityChanges: {
+      upserts: studyUnitUpserts(applicationA, "aralearn.resource.paragraph"),
+      deletes: [{ entityType: "study_unit", entityId: "card-a" }]
+    },
+    designApplication: applicationA
+  }]);
+  assert.equal(recordedA.courseRevision, 8);
+
+  const omittedB = structuredClone(applicationB);
+  const lastExpository = omittedB.studyUnits.findLast(({ mode }) => mode === "expository");
+  lastExpository.introducedInstructionalAnalysisUnitIds.pop();
+  lastExpository.explanationApplications.pop();
+  await assert.rejects(() => scalar(database, `
+    select public.advance_course_authoring_part_materialization_for_actor_v1(
+      $1,$2,$3,$4,8,2,'record_step',$5,'application','target-split-omit'
+    ) as value
+  `, [OWNER, COURSE, plan.partId, materializationId, {
+    stepId: stepB,
+    expectedStepVersion: 1,
+    status: "completed",
+    resultFacts: {},
+    entityChanges: {
+      upserts: studyUnitUpserts(omittedB, "aralearn.resource.paragraph"),
+      deletes: []
+    },
+    designApplication: omittedB
+  }]), /Aplicação factual/iu);
+  assert.equal(await scalar(database, `
+    select count(*)::integer as value
+    from private.course_entities
+    where course_id=$1 and entity_type='study_unit'
+      and entity_id like 'split-b-%'
+  `, [COURSE]), 0);
+
+  const recordedB = await scalar(database, `
+    select public.advance_course_authoring_part_materialization_for_actor_v1(
+      $1,$2,$3,$4,8,2,'record_step',$5,'application','target-split-b'
+    ) as value
+  `, [OWNER, COURSE, plan.partId, materializationId, {
+    stepId: stepB,
+    expectedStepVersion: 1,
+    status: "completed",
+    resultFacts: {},
+    entityChanges: {
+      upserts: studyUnitUpserts(applicationB, "aralearn.resource.paragraph"),
+      deletes: []
+    },
+    designApplication: applicationB
+  }]);
+  assert.equal(recordedB.courseRevision, 9);
   await database.close();
 });

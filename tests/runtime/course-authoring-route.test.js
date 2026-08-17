@@ -11,8 +11,8 @@ import {
 const COURSE_ID = "10000000-0000-4000-8000-000000000001";
 const LETTERED_COURSE_ID = "abcdefab-cdef-4abc-8def-abcdefabcdef";
 
-test("rota canônica preserva courseId, seção real e no máximo um alvo da Inspeção", () => {
-  for (const section of ["planning", "structure", "inspection", "people"]) {
+test("rota canônica preserva courseId, seção real e um único alvo compatível", () => {
+  for (const section of ["planning", "parameters", "structure", "inspection", "people"]) {
     const hash = buildCourseAuthoringRoute(COURSE_ID, { section });
     assert.equal(hash, `#/authoring/courses/${COURSE_ID}?section=${section}`);
     assert.deepEqual(parseCourseAuthoringRoute(hash), { courseId: COURSE_ID, section, target: null });
@@ -43,6 +43,17 @@ test("rota canônica preserva courseId, seção real e no máximo um alvo da Ins
     section: "inspection",
     target: { kind: "unassigned", id: null }
   });
+  for (const [option, id, kind] of targets.slice(1, 4)) {
+    const hash = buildCourseAuthoringRoute(COURSE_ID, {
+      section: "parameters",
+      [option]: id
+    });
+    assert.deepEqual(parseCourseAuthoringRoute(hash), {
+      courseId: COURSE_ID,
+      section: "parameters",
+      target: { kind, id }
+    });
+  }
 });
 
 test("parser rejeita UUID não canônico, parâmetros extras e outros caminhos", () => {
@@ -52,6 +63,8 @@ test("parser rejeita UUID não canônico, parâmetros extras e outros caminhos",
     `#/authoring/courses/${COURSE_ID}`,
     `#/authoring/courses/${COURSE_ID}?section=map`,
     `#/authoring/courses/${COURSE_ID}?section=content`,
+    `#/authoring/courses/${COURSE_ID}?section=parameters&studyUnitId=a`,
+    `#/authoring/courses/${COURSE_ID}?section=parameters&authoringPartId=${LETTERED_COURSE_ID}`,
     `#/authoring/courses/${COURSE_ID}?section=inspection&moduleId=a&lessonId=b`,
     `#/authoring/courses/${COURSE_ID}?moduleId=a&section=inspection`,
     `#/authoring/courses/${COURSE_ID}/inspection?section=inspection`,
@@ -80,7 +93,14 @@ test("construtor de rota falha cedo para identidade ou seção inválida", () =>
   );
   assert.throws(
     () => buildCourseAuthoringRoute(COURSE_ID, { section: "structure", moduleId: "a" }),
-    /Somente a Inspeção/u
+    /não pertence à seção/u
+  );
+  assert.throws(
+    () => buildCourseAuthoringRoute(COURSE_ID, {
+      section: "parameters",
+      studyUnitId: "a"
+    }),
+    /não pertence à seção/u
   );
   assert.throws(
     () => buildCourseAuthoringRoute(COURSE_ID, { section: "inspection", mode: "edit" }),

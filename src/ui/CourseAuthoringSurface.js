@@ -2,6 +2,7 @@ import { renderUiIcon } from "./renderUiIcons.js";
 import { createUuid } from "../domain/identifiers.js";
 import { captureRenderState, restoreRenderState } from "./renderState.js";
 import { createCourseInspectionSequence } from "./CourseInspectionSequence.js";
+import { renderCourseDesignPanel } from "./CourseDesignPanel.js";
 import {
   buildCourseAuthoringRoute,
   isCourseAuthoringRouteCandidate,
@@ -10,7 +11,10 @@ import {
 import {
   classifyCourseAuthoringError,
   courseListCardinality,
+  mergeCourseDesignScopePages,
   mergeCourseListPages,
+  normalizeCourseDesign,
+  normalizeCourseDesignChange,
   normalizeCourseAuthoringOutline,
   normalizeCourseAuthoringPlan,
   normalizeCourseDetail,
@@ -352,13 +356,16 @@ function canAccessPlanning(course) {
 function renderSectionNavigation(course, section) {
   const definitions = [
     ...(canAccessPlanning(course)
-      ? [{ key: "planning", label: "Planejamento", icon: "intent" }]
+      ? [
+          { key: "planning", label: "Planejamento", icon: "intent" },
+          { key: "parameters", label: "Parâmetros", icon: "tags" }
+        ]
       : []),
     { key: "structure", label: "Estrutura", icon: "module" },
     { key: "inspection", label: "Inspeção", icon: "preview" },
     { key: "people", label: "Pessoas", icon: "account-add" }
   ];
-  return `<nav class="course-authoring-sections ${definitions.length === 4 ? "has-people" : "has-planning"}"` +
+  return `<nav class="course-authoring-sections ${definitions.length === 5 ? "has-five" : "has-planning"}"` +
     ' aria-label="Áreas do Curso">' +
     definitions.map((definition) => {
       const active = definition.key === section;
@@ -469,7 +476,6 @@ function renderPlanningEditForm(state, planning) {
     objective: planning.objective || "",
     audience: planning.audience || "",
     scope: planning.scope || "",
-    authoringGuidance: planning.authoringGuidance || "",
     rangeMinimum: planning.preferredPartCount.minimum,
     rangeMaximum: planning.preferredPartCount.maximum,
     rangeOrigin: planning.preferredPartCount.origin
@@ -487,8 +493,6 @@ function renderPlanningEditForm(state, planning) {
     `<textarea id="course-authoring-edit-audience" name="audience" maxlength="4000" rows="3">${escapeHtml(draft.audience)}</textarea>` +
     '<label for="course-authoring-edit-scope">Escopo</label>' +
     `<textarea id="course-authoring-edit-scope" name="scope" maxlength="8000" rows="4">${escapeHtml(draft.scope)}</textarea>` +
-    '<label for="course-authoring-edit-guidance">Orientação para a autoria</label>' +
-    `<textarea id="course-authoring-edit-guidance" name="authoringGuidance" maxlength="16384" rows="5">${escapeHtml(draft.authoringGuidance)}</textarea>` +
     '<fieldset class="course-authoring-range-fields"><legend>Faixa preferencial de Partes</legend>' +
     '<label for="course-authoring-range-minimum">Mínimo</label>' +
     `<input id="course-authoring-range-minimum" name="rangeMinimum" type="number" min="1" max="64" required value="${escapeHtml(draft.rangeMinimum)}">` +
@@ -927,12 +931,6 @@ function renderPlanningSection(state) {
       value: planning.scope,
       emptyLabel: "Ainda não definido."
     }) +
-    renderPlanningCard({
-      icon: "prompt",
-      label: "Orientação",
-      value: planning.authoringGuidance,
-      emptyLabel: "Ainda não definida."
-    }) +
     '</div><div class="course-authoring-planning-metrics" aria-label="Dimensões do planejamento">' +
     renderPlanningMetric({
       icon: "module",
@@ -966,6 +964,9 @@ function renderCourseSection(state) {
   }
   if (state.section === "planning") {
     return renderPlanningSection(state);
+  }
+  if (state.section === "parameters") {
+    return renderCourseDesignPanel(state);
   }
   if (state.section === "inspection" && state.course) {
     return '<div class="course-inspection-host" data-course-inspection-host></div>';
@@ -1053,6 +1054,26 @@ function cursorKey(value) {
   return value == null ? "" : JSON.stringify(value);
 }
 
+function designScopeForRoute(courseId, target = null) {
+  return Object.freeze(target
+    ? { kind: target.kind, ref: target.id }
+    : { kind: "course", ref: courseId });
+}
+
+function sameDesignScope(left, right) {
+  return left?.kind === right?.kind && left?.ref === right?.ref;
+}
+
+function designScopeRoute(courseId, scope) {
+  const options = { section: "parameters" };
+  if (scope.kind === "module") options.moduleId = scope.ref;
+  if (scope.kind === "lesson") options.lessonId = scope.ref;
+  if (scope.kind === "didactic_microsequence") {
+    options.didacticMicrosequenceId = scope.ref;
+  }
+  return buildCourseAuthoringRoute(courseId, options);
+}
+
 function writeFailureMessage(error) {
   if (error instanceof TypeError && error.message) return error.message;
   return classifyCourseAuthoringError(error).message;
@@ -1114,7 +1135,7 @@ function assertController(controller) {
     "listCourses", "getCourse", "loadAuthoringOutline", "loadAuthoringStudyUnits",
     "loadAuthoringInspectionPosition", "saveAuthoringInspectionPosition", "createCourse",
     "loadAuthoringPlan", "loadPartMaterialization", "mutateAuthoringPlan",
-    "requestPartMaterialization"
+    "requestPartMaterialization", "loadCourseDesign", "mutateCourseDesign"
   ]) {
     if (typeof controller?.[method] !== "function") {
       throw new TypeError(`Controller de Cursos sem ${method}.`);
@@ -1145,6 +1166,7 @@ export function createCourseAuthoringSurface({
 
   let listEpoch = 0;
   let courseEpoch = 0;
+  let designEpoch = 0;
   let materializationEpoch = 0;
   let hashListening = false;
   let inspectionSequence = null;
@@ -1176,6 +1198,11 @@ export function createCourseAuthoringSurface({
     authoringPlan: null,
     planningLoading: false,
     planningFailure: "",
+    courseDesign: null,
+    designLoading: false,
+    designFailure: "",
+    designMessage: "",
+    designBusy: false,
     planItemEditor: null,
     planItemDraft: null,
     partEditor: null,
@@ -1184,6 +1211,7 @@ export function createCourseAuthoringSurface({
     microsequenceAssignment: null,
     pendingCreateCommand: null,
     pendingPlanningCommand: null,
+    pendingDesignCommand: null,
     pendingMaterializationCommand: null,
     materializationBusyPartId: null,
     partMaterialization: null,
@@ -1346,6 +1374,47 @@ export function createCourseAuthoringSurface({
     }
   }
 
+  async function loadDesign(courseId, {
+    scope = designScopeForRoute(courseId, state.routeTarget),
+    cursor = null,
+    append = false,
+    expectedCourseRevision = state.course?.revision
+  } = {}) {
+    const epoch = ++designEpoch;
+    state.designLoading = true;
+    state.designFailure = "";
+    state.designMessage = append ? "Carregando mais escopos…" : "";
+    if (!append) state.courseDesign = null;
+    render();
+    try {
+      const page = normalizeCourseDesign(
+        await controller.loadCourseDesign(courseId, { scope, limit: 32, cursor }),
+        { expectedCourseId: courseId, expectedCourseRevision, expectedScope: scope }
+      );
+      if (!state.opened || epoch !== designEpoch || state.course?.courseId !== courseId ||
+          state.section !== "parameters") return false;
+      state.courseDesign = append && state.courseDesign
+        ? mergeCourseDesignScopePages(state.courseDesign, page)
+        : page;
+      state.designMessage = "";
+      return true;
+    } catch (error) {
+      if (!state.opened || epoch !== designEpoch || state.course?.courseId !== courseId ||
+          state.section !== "parameters") return false;
+      state.designFailure = classifyCourseAuthoringError(error, {
+        knownCourse: state.course
+      }).message;
+      state.designMessage = "";
+      return false;
+    } finally {
+      if (state.opened && epoch === designEpoch && state.course?.courseId === courseId &&
+          state.section === "parameters") {
+        state.designLoading = false;
+        render();
+      }
+    }
+  }
+
   async function loadPartMaterialization(part) {
     const latest = part?.progress?.lastMaterialization;
     if (!state.course || !state.authoringPlan || !part || !latest) return false;
@@ -1440,8 +1509,17 @@ export function createCourseAuthoringSurface({
   async function loadCourse(courseId, { force = false } = {}) {
     const needsOutline = state.section === "structure";
     const needsPlanning = state.section === "planning";
+    const needsDesign = state.section === "parameters";
+    const requestedDesignScope = designScopeForRoute(courseId, state.routeTarget);
+    const needsTargetPlan = needsDesign &&
+      requestedDesignScope.kind === "didactic_microsequence";
+    const needsAuthoringPlan = needsPlanning || needsTargetPlan;
     if (!force && state.course?.courseId === courseId &&
-        (!needsOutline || state.outline) && (!needsPlanning || state.authoringPlan)) {
+        (!needsOutline || state.outline) && (!needsAuthoringPlan || state.authoringPlan) &&
+        (!needsDesign || sameDesignScope(
+          state.courseDesign?.scopeContext?.current,
+          requestedDesignScope
+        ))) {
       if (state.section === "people" && !state.people) {
         return loadPeople(courseId);
       }
@@ -1461,6 +1539,12 @@ export function createCourseAuthoringSurface({
       state.planningDraft = null;
       state.authoringPlan = null;
       state.planningFailure = "";
+      ++designEpoch;
+      state.courseDesign = null;
+      state.designLoading = false;
+      state.designFailure = "";
+      state.designMessage = "";
+      state.pendingDesignCommand = null;
       state.planItemEditor = null;
       state.planItemDraft = null;
       state.partEditor = null;
@@ -1476,6 +1560,12 @@ export function createCourseAuthoringSurface({
       state.planningFailure = "";
       ++materializationEpoch;
       state.partMaterialization = null;
+    }
+    if (needsDesign) {
+      ++designEpoch;
+      state.courseDesign = null;
+      state.designFailure = "";
+      state.designMessage = "";
     }
     state.course = null;
     state.outline = null;
@@ -1510,6 +1600,22 @@ export function createCourseAuthoringSurface({
       if (state.section === "people") await loadPeople(courseId);
       if (state.section === "planning") {
         return loadPlanning(courseId, { expectedCourseRevision: course.revision });
+      }
+      if (state.section === "parameters") {
+        if (needsTargetPlan) {
+          const [planningLoaded, designLoaded] = await Promise.all([
+            loadPlanning(courseId, { expectedCourseRevision: course.revision }),
+            loadDesign(courseId, {
+              scope: requestedDesignScope,
+              expectedCourseRevision: course.revision
+            })
+          ]);
+          return planningLoaded && designLoaded;
+        }
+        return loadDesign(courseId, {
+          scope: requestedDesignScope,
+          expectedCourseRevision: course.revision
+        });
       }
       return true;
     } catch (error) {
@@ -1547,6 +1653,7 @@ export function createCourseAuthoringSurface({
       }
       state.routeKey = nextKey;
       const needsOutline = route.section === "structure";
+      const requestedDesignScope = designScopeForRoute(route.courseId, route.target);
       if (!force && state.course?.courseId === route.courseId &&
           (!needsOutline || state.outline)) {
         state.view = "course";
@@ -1555,6 +1662,13 @@ export function createCourseAuthoringSurface({
         }
         if (route.section === "planning" && !state.authoringPlan) {
           return loadPlanning(route.courseId);
+        }
+        if (route.section === "parameters" && !sameDesignScope(
+          state.courseDesign?.scopeContext?.current,
+          requestedDesignScope
+        )) {
+          state.pendingDesignCommand = null;
+          return loadDesign(route.courseId, { scope: requestedDesignScope });
         }
         render({ focus: "#course-authoring-section-title" });
         return true;
@@ -1576,6 +1690,12 @@ export function createCourseAuthoringSurface({
     state.planningDraft = null;
     state.authoringPlan = null;
     state.planningFailure = "";
+    ++designEpoch;
+    state.courseDesign = null;
+    state.designLoading = false;
+    state.designFailure = "";
+    state.designMessage = "";
+    state.pendingDesignCommand = null;
     state.planItemEditor = null;
     state.planItemDraft = null;
     state.partEditor = null;
@@ -1631,6 +1751,7 @@ export function createCourseAuthoringSurface({
     ++listEpoch;
     ++courseEpoch;
     ++materializationEpoch;
+    ++designEpoch;
     state.opened = false;
     state.loading = false;
     destroyInspectionSequence();
@@ -1775,6 +1896,113 @@ export function createCourseAuthoringSurface({
     });
   }
 
+  function formValue(form, name) {
+    const field = form?.elements?.[name] ?? form?.elements?.namedItem?.(name);
+    return String(field?.value ?? "").trim();
+  }
+
+  function checkedFormValues(form, name) {
+    const queried = typeof form?.querySelectorAll === "function"
+      ? [...form.querySelectorAll(`[name="${name}"]`)]
+      : [];
+    if (queried.length > 0) {
+      return queried.filter((field) => field.checked).map((field) => String(field.value));
+    }
+    const field = form?.elements?.[name];
+    const candidates = Array.isArray(field) ? field : field ? [field] : [];
+    return candidates.filter((item) => item.checked !== false).map((item) => String(item.value));
+  }
+
+  function structuredLines(value, label) {
+    const lines = String(value || "").split(/\r?\n/u).map((line) => line.trim()).filter(Boolean);
+    if (lines.length > 16 || lines.some((line) => line.length > 500) ||
+        new Set(lines).size !== lines.length) {
+      throw new TypeError(`${label}: use até 16 linhas diferentes, com no máximo 500 caracteres.`);
+    }
+    return lines;
+  }
+
+  function activeDesignScope() {
+    const current = state.courseDesign?.scopeContext?.current;
+    return current ? { kind: current.kind, ref: current.ref } : null;
+  }
+
+  async function runDesignCommand({
+    draft,
+    command,
+    startedMessage,
+    successMessage
+  }) {
+    if (!state.course || !state.courseDesign || state.designBusy) return false;
+    if (!pendingWriteMatches(state.pendingDesignCommand, draft)) {
+      state.pendingDesignCommand = null;
+    }
+    const retained = state.pendingDesignCommand?.request || {
+      requestId: createUuid(),
+      courseId: state.course.courseId,
+      expectedCourseRevision: state.courseDesign.courseRevision,
+      command: structuredClone(command)
+    };
+    state.pendingDesignCommand ||= {
+      draft: structuredClone(draft),
+      request: structuredClone(retained)
+    };
+    state.designBusy = true;
+    state.designFailure = "";
+    state.designMessage = startedMessage;
+    render();
+    try {
+      const result = normalizeCourseDesignChange(
+        await controller.mutateCourseDesign(structuredClone(retained)),
+        {
+          expectedCourseId: retained.courseId,
+          expectedRequestId: retained.requestId
+        }
+      );
+      const scope = activeDesignScope();
+      state.pendingDesignCommand = null;
+      state.course = Object.freeze({ ...state.course, revision: result.courseRevision });
+      state.knownCourse = state.course;
+      knownCourses.set(state.course.courseId, state.course);
+      const [planningLoaded, loaded] = await Promise.all([
+        scope?.kind === "didactic_microsequence"
+          ? loadPlanning(state.course.courseId, {
+            expectedCourseRevision: result.courseRevision
+          })
+          : true,
+        loadDesign(state.course.courseId, {
+          scope,
+          expectedCourseRevision: result.courseRevision
+        })
+      ]);
+      if (!planningLoaded) return false;
+      if (!loaded) return false;
+      state.designMessage = successMessage;
+      return true;
+    } catch (error) {
+      const ambiguous = ambiguousWriteFailure(error);
+      if (!ambiguous) state.pendingDesignCommand = null;
+      state.designFailure = ambiguous
+        ? ambiguousWriteFailureMessage(error)
+        : writeFailureMessage(error);
+      state.designMessage = "";
+      return false;
+    } finally {
+      state.designBusy = false;
+      render();
+    }
+  }
+
+  function runDirectDesignCommand(command, successMessage) {
+    const draft = structuredClone(command);
+    void runDesignCommand({
+      draft,
+      command,
+      startedMessage: "Atualizando parâmetros…",
+      successMessage
+    });
+  }
+
   async function requestPartMaterialization(part) {
     if (!part || state.writeBusy || state.materializationBusyPartId) return false;
     const hash = buildCourseAuthoringRoute(state.course.courseId, { section: "planning" });
@@ -1886,9 +2114,6 @@ export function createCourseAuthoringSurface({
       const objective = String(event.target.elements?.objective?.value || "").trim();
       const audience = String(event.target.elements?.audience?.value || "").trim();
       const scope = String(event.target.elements?.scope?.value || "").trim();
-      const authoringGuidance = String(
-        event.target.elements?.authoringGuidance?.value || ""
-      ).trim();
       const rangeMinimum = Number(event.target.elements?.rangeMinimum?.value);
       const rangeMaximum = Number(event.target.elements?.rangeMaximum?.value);
       const rangeOrigin = String(event.target.elements?.rangeOrigin?.value || "");
@@ -1897,14 +2122,13 @@ export function createCourseAuthoringSurface({
         objective,
         audience,
         scope,
-        authoringGuidance,
         rangeMinimum,
         rangeMaximum,
         rangeOrigin
       };
       state.planningDraft = draft;
       if (!title || title.length > 300 || !objective || objective.length > 2_000 ||
-          audience.length > 4_000 || scope.length > 8_000 || authoringGuidance.length > 16_384 ||
+          audience.length > 4_000 || scope.length > 8_000 ||
           !Number.isSafeInteger(rangeMinimum) || !Number.isSafeInteger(rangeMaximum) ||
           rangeMinimum < 1 || rangeMaximum > 64 || rangeMinimum > rangeMaximum ||
           !Object.hasOwn(PART_RANGE_ORIGIN_LABELS, rangeOrigin)) {
@@ -1919,7 +2143,6 @@ export function createCourseAuthoringSurface({
           objective,
           audience,
           scope,
-          authoringGuidance,
           preferredPartCount: {
             minimum: rangeMinimum,
             maximum: rangeMaximum,
@@ -1935,6 +2158,235 @@ export function createCourseAuthoringSurface({
           state.planningEditOpen = false;
           state.planningDraft = null;
         }
+      });
+      return;
+    }
+    if (event.target.matches?.("[data-course-design-scope]")) {
+      event.preventDefault();
+      if (!state.course || !state.courseDesign || state.designLoading) return;
+      const kind = formValue(event.target, "scopeKind");
+      const ref = formValue(event.target, "scopeRef");
+      const child = state.courseDesign.scopeContext.children.find((scope) =>
+        scope.kind === kind && scope.ref === ref);
+      if (!child) {
+        state.designFailure = "Selecione um escopo disponível.";
+        render({ focus: "#course-design-child-scope" });
+        return;
+      }
+      state.pendingDesignCommand = null;
+      void navigate(designScopeRoute(state.course.courseId, child));
+      return;
+    }
+    if (event.target.matches?.("[data-course-design-parameter]")) {
+      event.preventDefault();
+      if (!state.courseDesign || state.designBusy) return;
+      const parameterId = formValue(event.target, "parameterId");
+      const definition = state.courseDesign.definitions.find((item) => item.id === parameterId);
+      const scope = activeDesignScope();
+      if (!definition || !scope || !definition.supportedScopes.includes(scope.kind)) {
+        state.designFailure = "Este parâmetro não pode ser definido no escopo atual.";
+        render();
+        return;
+      }
+      const origin = formValue(event.target, "origin");
+      const reason = formValue(event.target, "reason");
+      let value;
+      if (definition.valueSchema.type === "integer") {
+        value = Number(formValue(event.target, "parameterValue"));
+        if (!Number.isSafeInteger(value) || value < definition.valueSchema.minimum ||
+            value > definition.valueSchema.maximum) {
+          state.designFailure = "Revise o valor do parâmetro.";
+          render();
+          return;
+        }
+      } else {
+        value = checkedFormValues(event.target, "parameterValue");
+        const allowed = new Set(definition.valueSchema.allowedValues);
+        if (value.length < definition.valueSchema.minimumItems ||
+            value.length > definition.valueSchema.maximumItems ||
+            new Set(value).size !== value.length || value.some((item) => !allowed.has(item))) {
+          state.designFailure = "Revise os valores exigidos pelo parâmetro.";
+          render();
+          return;
+        }
+      }
+      if (!new Set(["automatic", "author", "research_condition"]).has(origin) ||
+          !reason || reason.length > 1_000) {
+        state.designFailure = "Informe a origem e uma justificativa clara.";
+        render();
+        return;
+      }
+      const command = { type: "set_parameter", scope, parameterId, value, origin, reason };
+      void runDesignCommand({
+        draft: command,
+        command,
+        startedMessage: "Salvando parâmetro…",
+        successMessage: "Parâmetro salvo neste escopo."
+      });
+      return;
+    }
+    if (event.target.matches?.("[data-course-design-target-items]")) {
+      event.preventDefault();
+      if (!state.courseDesign || !state.authoringPlan || state.designBusy) return;
+      const scope = activeDesignScope();
+      if (scope?.kind !== "didactic_microsequence") {
+        state.designFailure = "A cobertura planejada só pode ser definida em uma Microssequência.";
+        render();
+        return;
+      }
+      const analysisKnown = new Set(
+        state.authoringPlan.plan.instructionalAnalysisUnits.map(({ id }) => id)
+      );
+      const evidenceKnown = new Set(
+        state.authoringPlan.plan.evidenceRequirements.map(({ id }) => id)
+      );
+      const instructionalAnalysisUnitIds = checkedFormValues(
+        event.target,
+        "instructionalAnalysisUnitIds"
+      );
+      const evidenceRequirementIds = checkedFormValues(
+        event.target,
+        "evidenceRequirementIds"
+      );
+      if (instructionalAnalysisUnitIds.length > 256 || evidenceRequirementIds.length > 256 ||
+          new Set(instructionalAnalysisUnitIds).size !== instructionalAnalysisUnitIds.length ||
+          new Set(evidenceRequirementIds).size !== evidenceRequirementIds.length ||
+          instructionalAnalysisUnitIds.some((id) => !analysisKnown.has(id)) ||
+          evidenceRequirementIds.some((id) => !evidenceKnown.has(id))) {
+        state.designFailure = "Revise os itens atribuídos a esta Microssequência.";
+        render();
+        return;
+      }
+      const command = {
+        type: "set_target_plan_items",
+        scope,
+        instructionalAnalysisUnitIds,
+        evidenceRequirementIds
+      };
+      void runDesignCommand({
+        draft: command,
+        command,
+        startedMessage: "Salvando cobertura planejada…",
+        successMessage: "Cobertura planejada salva para esta Microssequência."
+      });
+      return;
+    }
+    if (event.target.matches?.("[data-course-design-guidance]")) {
+      event.preventDefault();
+      if (!state.courseDesign || state.designBusy) return;
+      const scope = activeDesignScope();
+      const guidance = formValue(event.target, "guidance");
+      const origin = formValue(event.target, "origin");
+      const reason = formValue(event.target, "reason");
+      if (!scope || !guidance || guidance.length > 8_192 ||
+          new TextEncoder().encode(JSON.stringify(guidance)).byteLength > 8_192 ||
+          !new Set(["automatic", "author", "research_condition"]).has(origin) ||
+          !reason || reason.length > 1_000) {
+        state.designFailure = "Revise o texto original, a origem e a justificativa.";
+        render();
+        return;
+      }
+      const command = { type: "set_guidance", scope, guidance, origin, reason };
+      void runDesignCommand({
+        draft: command,
+        command,
+        startedMessage: "Salvando orientação…",
+        successMessage: "Texto original salvo; interpretações anteriores não foram sobrescritas."
+      });
+      return;
+    }
+    if (event.target.matches?.("[data-course-design-interpretation]")) {
+      event.preventDefault();
+      if (!state.courseDesign || state.designBusy) return;
+      try {
+        const guidanceRevisionId = formValue(event.target, "guidanceRevisionId");
+        const revision = state.courseDesign.guidance.effectiveRevisions.find((item) =>
+          item.revisionId === guidanceRevisionId);
+        const summary = formValue(event.target, "summary");
+        if (!revision || !summary || summary.length > 1_000) {
+          throw new TypeError("Revise o resumo da interpretação.");
+        }
+        const directives = [
+          ...structuredLines(formValue(event.target, "requireDirectives"), "Exigir")
+            .map((statement) => ({ kind: "require", statement })),
+          ...structuredLines(formValue(event.target, "avoidDirectives"), "Evitar")
+            .map((statement) => ({ kind: "avoid", statement })),
+          ...structuredLines(formValue(event.target, "preferDirectives"), "Preferir")
+            .map((statement) => ({ kind: "prefer", statement }))
+        ];
+        const interpretation = {
+          summary,
+          directives,
+          divergences: structuredLines(formValue(event.target, "divergences"), "Divergências"),
+          questions: structuredLines(formValue(event.target, "questions"), "Perguntas")
+        };
+        if (directives.length > 16 ||
+            new TextEncoder().encode(JSON.stringify(interpretation)).byteLength > 8_192) {
+          throw new TypeError("A interpretação excede o limite seguro.");
+        }
+        const command = { type: "interpret_guidance", guidanceRevisionId, interpretation };
+        void runDesignCommand({
+          draft: command,
+          command,
+          startedMessage: "Salvando interpretação…",
+          successMessage: "Interpretação salva separadamente do texto original."
+        });
+      } catch (error) {
+        state.designFailure = error instanceof TypeError
+          ? error.message
+          : "Revise a interpretação estruturada.";
+        render();
+      }
+      return;
+    }
+    if (event.target.matches?.("[data-course-design-policy]")) {
+      event.preventDefault();
+      if (!state.courseDesign || state.designBusy) return;
+      const scope = activeDesignScope();
+      const availability = formValue(event.target, "availability");
+      const origin = formValue(event.target, "origin");
+      const reason = formValue(event.target, "reason");
+      const known = new Set(state.courseDesign.componentCatalog.options.map((option) => option.ref));
+      const sortRefs = (refs) => refs.sort((left, right) => left.localeCompare(right, "en"));
+      const excludedRefs = sortRefs(checkedFormValues(event.target, "excludedRefs"));
+      const excluded = new Set(excludedRefs);
+      const allowedRefs = availability === "all"
+        ? []
+        : sortRefs(checkedFormValues(event.target, "allowedRefs")
+          .filter((ref) => !excluded.has(ref)));
+      const preferredRefs = sortRefs(checkedFormValues(event.target, "preferredRefs")
+        .filter((ref) => !excluded.has(ref)));
+      const allowed = availability === "all" ? known : new Set(allowedRefs);
+      const lists = [allowedRefs, excludedRefs, preferredRefs];
+      if (!scope || !new Set(["all", "allow_only"]).has(availability) ||
+          availability === "allow_only" && allowedRefs.length === 0 ||
+          lists.some((list) => list.length > 32 || new Set(list).size !== list.length ||
+            list.some((ref) => !known.has(ref))) ||
+          preferredRefs.some((ref) => !allowed.has(ref) || excluded.has(ref)) ||
+          !new Set(["automatic", "author", "research_condition"]).has(origin) ||
+          !reason || reason.length > 1_000) {
+        state.designFailure = "Revise disponibilidade, exclusões, preferências e justificativa.";
+        render();
+        return;
+      }
+      const command = {
+        type: "set_component_policy",
+        scope,
+        policy: {
+          catalogVersion: state.courseDesign.componentCatalog.version,
+          availability,
+          allowedRefs,
+          excludedRefs,
+          preferredRefs
+        },
+        origin,
+        reason
+      };
+      void runDesignCommand({
+        draft: command,
+        command,
+        startedMessage: "Salvando política de componentes…",
+        successMessage: "Política de componentes salva neste escopo."
       });
       return;
     }
@@ -2130,13 +2582,29 @@ export function createCourseAuthoringSurface({
     const node = event.target.closest?.("[data-course-authoring-action]");
     if (!node || (typeof root.contains === "function" && !root.contains(node))) return;
     const action = node.dataset.courseAuthoringAction;
-    if (["open-course", "change-section"].includes(action)) event.preventDefault();
+    if (["open-course", "change-section", "change-design-scope"].includes(action)) {
+      event.preventDefault();
+    }
     if (action === "open-course") {
       void navigate(buildCourseAuthoringRoute(node.dataset.courseId, { section: "inspection" }));
     } else if (action === "change-section" && state.course) {
       void navigate(buildCourseAuthoringRoute(state.course.courseId, {
         section: node.dataset.section
       }));
+    } else if (action === "change-design-scope" && state.course && state.courseDesign) {
+      const scope = {
+        kind: String(node.dataset.scopeKind || ""),
+        ref: String(node.dataset.scopeRef || "")
+      };
+      const available = [
+        ...state.courseDesign.scopeContext.ancestors,
+        state.courseDesign.scopeContext.current,
+        ...state.courseDesign.scopeContext.children
+      ].some((candidate) => sameDesignScope(candidate, scope));
+      if (available) {
+        state.pendingDesignCommand = null;
+        void navigate(designScopeRoute(state.course.courseId, scope));
+      }
     } else if (action === "show-list") {
       void showList();
     } else if (action === "close-surface") {
@@ -2151,8 +2619,43 @@ export function createCourseAuthoringSurface({
       void refresh();
     } else if (action === "retry-planning" && state.course) {
       void loadPlanning(state.course.courseId);
+    } else if (action === "retry-design" && state.course) {
+      void loadDesign(state.course.courseId, {
+        scope: designScopeForRoute(state.course.courseId, state.routeTarget)
+      });
     } else if (action === "retry-people" && state.course) {
       void loadPeople(state.course.courseId);
+    } else if (action === "load-more-design-scopes" && state.courseDesign?.scopeContext.hasMoreChildren &&
+        !state.designLoading) {
+      void loadDesign(state.course.courseId, {
+        scope: activeDesignScope(),
+        cursor: state.courseDesign.scopeContext.nextChildCursor,
+        append: true,
+        expectedCourseRevision: state.courseDesign.courseRevision
+      });
+    } else if (action === "clear-design-parameter" && state.courseDesign && !state.designBusy) {
+      const parameterId = String(node.dataset.parameterId || "");
+      const resolution = state.courseDesign.parameters.find((item) =>
+        item.parameterId === parameterId);
+      if (resolution?.localAssignment) {
+        runDirectDesignCommand({
+          type: "clear_parameter",
+          scope: activeDesignScope(),
+          parameterId
+        }, "A atribuição local foi removida; o valor herdado voltou a valer.");
+      }
+    } else if (action === "clear-design-guidance" && state.courseDesign?.guidance.localRevision &&
+        !state.designBusy) {
+      runDirectDesignCommand({
+        type: "clear_guidance",
+        scope: activeDesignScope()
+      }, "A orientação local foi removida; a pilha ancestral permanece.");
+    } else if (action === "clear-design-policy" && state.courseDesign?.componentPolicy.localChange &&
+        !state.designBusy) {
+      runDirectDesignCommand({
+        type: "clear_component_policy",
+        scope: activeDesignScope()
+      }, "A política local foi removida; a política herdada voltou a valer.");
     } else if (action === "open-create") {
       state.createOpen = true;
       state.createDraft = null;

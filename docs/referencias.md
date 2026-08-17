@@ -467,6 +467,14 @@ Richard E. Mayer (2009). **Multimedia Learning.** 2. ed., Cambridge University P
 
 Chave bibliográfica: `mayer2009multimedia`.
 
+<a id="ref-mcnamara1996coherence"></a>
+
+### McNamara e Kintsch (1996)
+
+Danielle S. McNamara; Walter Kintsch (1996). **Learning from Texts: Effects of Prior Knowledge and Text Coherence.** *Discourse Processes*, 22(3), p. 247–288. [DOI 10.1080/01638539609544975](https://doi.org/10.1080/01638539609544975).
+
+Chave bibliográfica: `mcnamara1996coherence`.
+
 <a id="ref-messick1995validity"></a>
 
 ### Messick (1995)

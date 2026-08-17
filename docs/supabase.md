@@ -70,10 +70,16 @@ auth.users
 | Relação | Responsabilidade | Observação de segurança |
 |---|---|---|
 | `public.courses` | identidade, proprietário, título, objetivo, revisão e datas | somente o proprietário edita |
-| `private.course_instructional_plans` | público, escopo, orientação, faixa preferencial e versão do plano | uma linha por Curso; título/objetivo não são duplicados |
+| `private.course_instructional_plans` | público, escopo, faixa preferencial e versão do plano | uma linha por Curso; título, objetivo e orientação não são duplicados |
 | `private.course_instructional_plan_items` | resultados pretendidos, unidades de análise e requisitos de evidência ordenados | leitura e escrita passam pelo contrato do plano |
+| `private.course_design_target_plan_items` | atribuição muitos-para-muitos de unidades de análise e requisitos de evidência a Microssequências | FKs compostas prendem item e alvo ao mesmo Curso; sem grants diretos |
 | `private.course_authoring_parts` | recortes operacionais ordenados, com título, intenção e versão | não integra a hierarquia curricular |
 | `private.course_authoring_part_didactic_microsequences` | vínculo exclusivo e ordem de produção de Microssequência por Parte | não altera `course_entities.position` |
+| `private.course_design_parameter_definitions` | quatro definições pedagógicas versionadas e imutáveis | defaults são hipóteses de produto; não existem definições livres |
+| `private.course_design_parameter_changes` | atribuições e remoções de parâmetros por escopo | append-only; herança e default são calculados |
+| `private.course_authoring_guidance_revisions` | texto original ou remoção de orientação por escopo | append-only; não é campo do plano |
+| `private.course_authoring_guidance_interpretations` | interpretação estruturada de uma revisão exata | não substitui nem reescreve o original |
+| `private.course_component_policy_changes` | política completa de componentes por escopo | catálogo exato, permissão, exclusão e preferência |
 | `private.course_authoring_part_materializations` | tentativas retomáveis e fatos limitados de materialização | somente uma tentativa em andamento por Parte |
 | `private.course_authoring_part_materialization_steps` | etapas ordenadas e versionadas de uma tentativa | na etapa didática, entidades e vínculo confirmam atomicamente |
 | `private.course_entities` | módulos, lições, tópicos, microssequências e unidades de estudo | leitura e escrita passam por RPCs validadas |
@@ -115,6 +121,11 @@ Unidades existentes e tentativa mais recente. Os estados visuais não são
 campos editáveis. Copiar um pedido de materialização para o chat não grava
 evento nem tentativa; somente `start`, `record_step` ou `finish` confirmados
 pelo serviço alteram os fatos persistidos.
+
+Separadamente do vínculo de produção, unidades de análise e requisitos de
+evidência são atribuídos às Microssequências por uma relação muitos-para-muitos.
+`set_target_plan_items` substitui atomicamente as duas listas de um alvo; não há
+propagação automática do plano inteiro para cada Microssequência.
 
 ## Composição didática paginada
 
@@ -189,6 +200,14 @@ avanço de materialização. A interface e o MCP não mantêm cópias paralelas:
 dois chegam às mesmas RPCs, recibos e eventos. O canal `application` ou `mcp`
 é registrado como fato de transporte, sem alterar regras de autoridade.
 
+Parâmetros, orientações e política resolvidos por escopo são lidos pela Edge
+owner-only em `get_owned_course_design_for_actor_v1`; mudanças convergem em
+`apply_course_design_command_for_actor_v1`. Essas RPCs exigem `service_role` e
+não criam um wrapper autenticado paralelo para o navegador.
+No escopo de Microssequência, a leitura inclui `targetPlanItems`; nos demais,
+esse campo é `null`. O comando `set_target_plan_items` usa a mesma RPC de
+desenho e mantém CAS, receipt e revisão do Curso.
+
 A leitura detalhada de uma tentativa passa pela RPC service-role owner-only
 `get_owned_course_authoring_part_materialization_for_actor_v1`. Ela recebe
 Curso, Parte e tentativa, devolve no máximo 64 etapas em até 1,25 MiB e permite
@@ -229,14 +248,17 @@ segunda verificação incompatível antes desse código.
 ## Escrita de Curso
 
 Criar um Curso recebe título e objetivo, cria a raiz privada vazia e cria seu
-plano normalizado na mesma transação. A escrita posterior se divide em três
+plano normalizado na mesma transação. A escrita posterior se divide em quatro
 famílias explícitas:
 
 1. **plano instrucional:** recebe comando semântico, revisão esperada do Curso
    e versão esperada do plano; calcula e valida o estado-alvo antes do commit;
-2. **composição:** recebe inserções/alterações e exclusões de entidades sob a
+2. **desenho por escopo:** altera parâmetro, orientação, interpretação ou
+   política sob a revisão esperada e com origem explícita, ou substitui os
+   itens do plano atribuídos a uma Microssequência;
+3. **composição:** recebe inserções/alterações e exclusões de entidades sob a
    revisão esperada, sem reescrever o plano;
-3. **materialização de Parte:** inicia tentativa, registra uma etapa ou finaliza
+4. **materialização de Parte:** inicia tentativa, registra uma etapa ou finaliza
    a tentativa sob revisão e versões esperadas.
 
 Todas autenticam a pessoa, confirmam propriedade, procuram repetição segura,
@@ -246,6 +268,18 @@ da Parte e entre 1 e 64 etapas. Registrar uma etapa admite até 64 mudanças de
 entidade no total e confirma conteúdo, vínculo, fatos e progresso numa única
 transação. Contexto e fatos possuem limites pequenos no banco e na Edge
 Function.
+
+Ao iniciar uma materialização, o servidor deriva e sela o desenho efetivo para
+as Microssequências-alvo. O cliente não fornece esse contexto. Catálogos de
+itens conservam `{id, position, statement, version}`, e cada alvo referencia
+somente os IDs atribuídos. Ao registrar a etapa, fatos limitados são auditados
+contra esse subconjunto e o hash selado.
+
+Formas explicativas, oportunidades e variações são declarações do agente ou da
+pessoa autora; schema, IDs, contagens e coerência interna são validados, mas o
+banco não as infere semanticamente do conteúdo. A reconciliação material da
+etapa cobre os IDs de Unidades, seu pai/alvo e os `componentRefs` extraídos das
+entidades persistidas e confrontados com a política.
 
 Na composição segmentada, o domínio valida cada linha de acordo com
 `module|lesson|topic|microsequence|study_unit`; o banco cerca a hierarquia e
@@ -389,11 +423,12 @@ linha](https://www.postgresql.org/docs/current/ddl-rowsecurity.html).
 ## Manifesto do runtime
 
 `supabase/runtime-manifest.json` descreve o contrato que site, Edge Functions e
-banco precisam compartilhar. A revisão local deste corte é `20260817170000`,
+banco precisam compartilhar. A revisão local deste corte é `20260817180000`,
 contrato v1. Entre as capacidades observáveis estão:
 
 - identidade única e viva de Curso;
 - plano instrucional normalizado e editável;
+- parâmetros pedagógicos, orientações por escopo e política de componentes;
 - Partes de autoria e materialização retomável;
 - composição paginada;
 - Unidade de estudo canônica e Inspeção vertical owner-only;
@@ -499,10 +534,15 @@ em modo de verificação:
 
 O projeto hospedado que já contém os oito Cursos é uma exceção operacional: a
 staging e as migrations `20260817140000`, `20260817150000`,
-`20260817160000` e `20260817170000` precisam usar a mesma conexão e transação e
+`20260817160000`, `20260817170000` e `20260817180000` precisam usar a mesma conexão e transação e
 não podem ser
 aplicadas isoladamente por `db push`. O importador transitório descrito abaixo
 executa esse corte. Uma instalação vazia continua usando o fluxo comum.
+
+A `1800` falha antes de alterar o schema se encontrar qualquer materialização
+ou etapa anterior ao novo contexto. Seu preflight bloqueia essas tabelas e as
+relações legadas de desenho antes de contar linhas; estado antigo não vazio ou
+uma escrita concorrente aborta a transação, em vez de ser reinterpretado.
 
 ```powershell
 pwsh -NoProfile -File .\scripts\deploySupabase.ps1 `
@@ -520,9 +560,10 @@ revisões diferentes; limpar IndexedDB não atualiza migrations remotas.
 ### Atestação privada do corte de identidade
 
 `scripts/courseCutover/` lê e valida a origem, produz a staging e executa
-staging + migrations `1400` → `1500` → `1600` → `1700` na mesma conexão e na
-mesma transação, e registra as quatro versões no ledger. Sem `--apply`, o
-comando não escreve no banco. Não há `db push` separado da `1700` nesse corte.
+staging + migrations `1400` → `1500` → `1600` → `1700` → `1800` na mesma
+conexão e na mesma transação, e registra as cinco versões no ledger. Sem
+`--apply`, o comando não escreve no banco. Não há `db push` separado da `1700`
+ou da `1800` nesse corte.
 
 Antes de qualquer aplicação, o runner grava fora do repositório público uma
 atestação privada sem conteúdo, token, senha ou chave. Ela contém somente hash
@@ -564,6 +605,7 @@ As afirmações deste documento podem ser confrontadas em:
 - `supabase/migrations/20260817150000_course_profiles_access.sql`;
 - `supabase/migrations/20260817160000_course_authoring_plan.sql`;
 - `supabase/migrations/20260817170000_course_study_unit_inspection.sql`;
+- `supabase/migrations/20260817180000_course_design_parameters.sql`;
 - `supabase/functions/_shared/aralearn-authoring/`;
 - `supabase/runtime-manifest.json`;
 - `tests/runtime/course-identity-cutover-pglite.test.js`;

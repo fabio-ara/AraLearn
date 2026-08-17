@@ -604,6 +604,99 @@ test("plano instrucional usa cache autoral e mutação encaminha um comando est�
     key.includes(`instructional-plan:${COURSE_ID}`)), false);
 });
 
+test("desenho exige leitura corrente, mantém DTO exato e mutação limpa o Curso", async () => {
+  const store = new MemoryStateStore();
+  const calls = [];
+  let online = true;
+  let revoked = false;
+  const design = {
+    contract: "aralearn.course-design.v1",
+    courseId: COURSE_ID,
+    courseRevision: 4,
+    scopeContext: { current: { kind: "lesson", ref: "lesson-a", label: "Lição A" } }
+  };
+  const api = {
+    async listCourses() { return courseListPage([]); },
+    async getCourse() { throw new Error("não usado"); },
+    async loadCourseDesign(courseId, options) {
+      calls.push(["read", courseId, options]);
+      if (revoked) {
+        const error = new Error("acesso revogado");
+        error.status = 403;
+        throw error;
+      }
+      if (!online) throw networkFailure();
+      return design;
+    },
+    async mutateCourseDesign(value) {
+      calls.push(["write", value]);
+      return { changed: true };
+    }
+  };
+  const controller = new CourseController({ api, store, ownerOnly: true });
+  const options = { scope: { kind: "lesson", ref: "lesson-a" }, limit: 16 };
+
+  assert.deepEqual(await controller.loadCourseDesign(COURSE_ID, options), design);
+  online = false;
+  await assert.rejects(
+    () => controller.loadCourseDesign(COURSE_ID, options),
+    /offline/u
+  );
+
+  online = true;
+  const command = {
+    type: "clear_guidance",
+    scope: { kind: "lesson", ref: "lesson-a" }
+  };
+  await controller.mutateCourseDesign({
+    requestId: COURSE_B,
+    courseId: COURSE_ID,
+    expectedCourseRevision: 4,
+    command
+  });
+  assert.deepEqual(calls.at(-1), ["write", {
+    requestId: COURSE_B,
+    courseId: COURSE_ID,
+    expectedRevision: 4,
+    designCommand: command
+  }]);
+  assert.equal([...store.values.keys()].some((key) => key.includes("course-design")), false);
+
+  for (const key of [
+    "course-authoring.v1.list:legacy",
+    `course-authoring.v1.header:${COURSE_ID}`,
+    `course-authoring.v1.instructional-plan:${COURSE_ID}`,
+    `course-authoring.v1.course-design:${COURSE_ID}:legacy`,
+    `course-authoring.v1.outline:${COURSE_ID}`,
+    `course-authoring.v1.study-unit-inspection:${COURSE_ID}`,
+    `course-authoring.v1.study-unit-inspection-position:${COURSE_ID}`,
+    `course-authoring.v1.entities:${COURSE_ID}:legacy`
+  ]) {
+    await store.putCache(key, { data: { sensitive: true } });
+  }
+  revoked = true;
+  await assert.rejects(
+    () => controller.loadCourseDesign(COURSE_ID, options),
+    /acesso revogado/u
+  );
+  assert.equal(store.values.size, 0);
+
+  await assert.rejects(
+    () => controller.loadCourseDesign(COURSE_ID, { ...options, offset: 16 }),
+    /Leitura do desenho inválida/u
+  );
+  await assert.rejects(
+    () => controller.mutateCourseDesign({
+      requestId: COURSE_B,
+      courseId: COURSE_ID,
+      expectedCourseRevision: 4,
+      command,
+      designCommand: command
+    }),
+    /Alteração do desenho inválida/u
+  );
+});
+
 test("inspeção autoral usa cache paginado limitado e posição local por dispositivo", async () => {
   const store = new MemoryStateStore();
   let online = true;

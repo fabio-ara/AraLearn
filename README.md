@@ -60,13 +60,16 @@ estudante](docs/guia-estudante.md) ensina o percurso completo.
 ## Como se cria e revisa conteúdo
 
 Autoria lista somente os Cursos pertencentes à pessoa autenticada. Um Curso
-novo nasce privado, com título, objetivo e orientações, e pode ser usado sem
+novo nasce privado, com título e objetivo, e pode ser usado sem
 passar por estados de rascunho, aprovação ou publicação.
 
-Ao abrir um Curso, a interface oferece quatro destinos compactos:
+Ao abrir um Curso, a interface oferece cinco destinos compactos:
 
-- **Planejamento:** título, objetivo, público, escopo, orientação, resultados
+- **Planejamento:** título, objetivo, público, escopo, resultados
   pretendidos, unidades de análise, requisitos de evidência e Partes de autoria;
+- **Parâmetros:** decisões pedagógicas, orientação natural, herança, política
+  de componentes, itens do plano atribuídos a cada Microssequência e comparação
+  factual entre planejado e aplicado;
 - **Estrutura:** hierarquia compacta de Módulos, Lições e Microssequências;
 - **Inspeção:** sequência vertical paginada das Unidades materializadas;
 - **Pessoas:** proprietário e acessos diretos concedidos somente para Estudo.
@@ -85,10 +88,15 @@ hierarquia do Curso, e a produção registra tentativas e etapas retomáveis. A
 interface pode copiar um pedido de materialização para o chat conectado, mas
 só mostra como produzido aquilo que o servidor efetivamente gravou.
 
+Na área **Parâmetros**, unidades de análise e requisitos de evidência do plano
+são atribuídos explicitamente às Microssequências que devem realizá-los. Um
+item pode servir a vários alvos e cada alvo pode receber vários itens; a
+materialização não presume que toda Microssequência cubra o plano inteiro.
+
 A Inspeção percorre o Curso inteiro ou um recorte por Parte, Unidades sem Parte,
 Módulo, Lição ou Microssequência, mantém no navegador uma janela limitada e
 conserva localmente a Unidade corrente. Respostas ficam desativadas nessa leitura. Edição
-contextual, proveniência, anotações autorais, correção, variantes e analytics
+contextual, anotações autorais, correção, variantes e analytics
 de pesquisa pertencem às próximas fatias.
 
 Comece pelo [guia do professor e autor](docs/guia-professor-autor.md). A

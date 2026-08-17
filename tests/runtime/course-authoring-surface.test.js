@@ -154,7 +154,6 @@ function authoringPlanFixture(overrides = {}) {
       objective: "Compreender relações essenciais.",
       audience: "Pessoas iniciantes.",
       scope: "Relações fundamentais.",
-      authoringGuidance: "Priorizar relações e exemplos concretos.",
       preferredPartCount: { minimum: 7, maximum: 12, origin: "automatic" },
       intendedLearningOutcomes: [{
         id: OUTCOME_ID,
@@ -254,6 +253,164 @@ function authoringPlanFixture(overrides = {}) {
       createdAt: "2026-08-17T10:10:00Z"
     }],
     ...overrides
+  };
+}
+
+function courseDesignFixture({
+  courseRevision = 5,
+  scope = { kind: "course", ref: COURSE_ID, label: "Fundamentos" },
+  ancestors = [],
+  children = [{ kind: "module", ref: "module-a", label: "Base", position: 0 }],
+  localParameter = null,
+  localPolicy = null,
+  targetPlanItems = null
+} = {}) {
+  const supportedScopes = ["course", "lesson", "didactic_microsequence"];
+  const definitions = [{
+    id: "new_analysis_unit_ceiling_per_expository_study_unit",
+    label: "Novas unidades de análise por Unidade expositiva",
+    valueSchema: { type: "integer", minimum: 1, maximum: 8 },
+    defaultValue: 2
+  }, {
+    id: "required_explanation_forms",
+    label: "Formas exigidas de explicação",
+    valueSchema: {
+      type: "set",
+      allowedValues: [
+        "plain_definition", "concrete_example", "mechanism", "contrast",
+        "application_condition", "limit_or_exception", "worked_example", "representation_link"
+      ],
+      minimumItems: 1,
+      maximumItems: 8
+    },
+    defaultValue: ["plain_definition", "concrete_example", "mechanism", "contrast"]
+  }, {
+    id: "minimum_distinct_practice_opportunities_per_evidence_requirement",
+    label: "Oportunidades distintas de prática",
+    valueSchema: { type: "integer", minimum: 1, maximum: 16 },
+    defaultValue: 2
+  }, {
+    id: "required_practice_variation_dimensions",
+    label: "Dimensões exigidas de variação",
+    valueSchema: {
+      type: "set",
+      allowedValues: [
+        "case_or_data", "context", "task_feature", "external_representation", "support_level"
+      ],
+      minimumItems: 1,
+      maximumItems: 5
+    },
+    defaultValue: ["case_or_data"]
+  }].map((definition) => ({
+    ...definition,
+    construct: `Construto de ${definition.label}.`,
+    operationalization: "Usa somente identidades e fatos persistidos.",
+    limitations: "O registro não prova qualidade nem aprendizagem.",
+    defaultStatus: "product_hypothesis",
+    evidenceRefs: ["https://doi.org/10.1111/j.1467-9280.2006.01693.x"],
+    supportedScopes
+  }));
+  const componentOptions = Array.from({ length: 32 }, (_, index) => ({
+    ref: `aralearn.resource.component_${String(index + 1).padStart(2, "0")}@1.0.0`,
+    label: `Componente ${index + 1}`,
+    purpose: `Finalidade acadêmica ${index + 1}.`
+  }));
+  const guidanceRevision = {
+    revisionId: "91000000-0000-4000-8000-000000000019",
+    guidance: "Explique cada termo antes de depender dele.",
+    origin: "author",
+    reason: "Evitar pressupostos ocultos."
+  };
+  const currentScope = { kind: scope.kind, ref: scope.ref };
+  const inherited = scope.kind !== "course";
+  return {
+    contract: "aralearn.course-design.v1",
+    courseId: COURSE_ID,
+    courseRevision,
+    parameterCatalogVersion: "1.0.0",
+    scopeContext: {
+      current: scope,
+      ancestors,
+      children,
+      childCount: children.length,
+      hasMoreChildren: false,
+      nextChildCursor: null
+    },
+    definitions,
+    parameters: definitions.map((definition, index) => {
+      const local = index === 0 ? localParameter : null;
+      return {
+        parameterId: definition.id,
+        localAssignment: local,
+        effectiveAssignment: local ? {
+          ...structuredClone(local),
+          sourceScope: currentScope,
+          inherited: false
+        } : {
+          changeId: inherited ? "7" : null,
+          value: structuredClone(definition.defaultValue),
+          origin: inherited ? "author" : "system_default",
+          reason: inherited ? "Decisão definida no Curso." : "Hipótese inicial do produto.",
+          sourceScope: inherited ? { kind: "course", ref: COURSE_ID } : null,
+          inherited
+        }
+      };
+    }),
+    guidance: {
+      localRevision: scope.kind === "course" ? guidanceRevision : null,
+      effectiveRevisions: [{
+        ...guidanceRevision,
+        sourceScope: { kind: "course", ref: COURSE_ID },
+        currentInterpretation: {
+          interpretationId: "4",
+          guidanceRevisionId: guidanceRevision.revisionId,
+          interpretation: {
+            summary: "Definir os termos antes do uso.",
+            directives: [{ kind: "require", statement: "Definir todo termo novo." }],
+            divergences: [],
+            questions: ["Qual exemplo deve abrir a explicação?"]
+          },
+          createdAt: "2026-08-17T12:00:00Z"
+        }
+      }]
+    },
+    componentCatalog: { version: "1-3e5629f8", options: componentOptions },
+    targetPlanItems,
+    componentPolicy: {
+      localChange: localPolicy,
+      effectiveChange: localPolicy ? {
+        ...structuredClone(localPolicy),
+        sourceScope: currentScope,
+        inherited: false
+      } : {
+        changeId: null,
+        policy: {
+          catalogVersion: "1-3e5629f8",
+          availability: "all",
+          allowedRefs: [],
+          excludedRefs: [],
+          preferredRefs: []
+        },
+        origin: "system_default",
+        reason: "Todos os componentes começam disponíveis.",
+        sourceScope: null,
+        inherited: false
+      }
+    },
+    recentApplications: [{
+      materializationId: MATERIALIZATION_ID,
+      stepId: MATERIALIZATION_STEP_IDS[0],
+      didacticMicrosequenceId: "micro-a",
+      recordedAt: "2026-08-17T12:10:00Z",
+      contextHash: "b".repeat(64),
+      studyUnitCount: 3,
+      modeCounts: { expository: 1, practice: 1, mixed: 1 },
+      introducedInstructionalAnalysisUnitIds: [ANALYSIS_ID],
+      developedExplanationForms: ["plain_definition", "concrete_example"],
+      practiceOpportunityCount: 2,
+      variedDimensions: ["case_or_data"],
+      componentRefs: [componentOptions[0].ref]
+    }]
   };
 }
 
@@ -379,11 +536,25 @@ function controllerFixture(overrides = {}) {
     async loadAuthoringPlan(courseId) {
       return { ...authoringPlanFixture(), courseId };
     },
+    async loadCourseDesign() {
+      return courseDesignFixture();
+    },
     async loadPartMaterialization() {
       return partMaterializationFixture();
     },
     async mutateAuthoringPlan() {
       return undefined;
+    },
+    async mutateCourseDesign() {
+      return {
+        contract: "aralearn.course-design-change.v1",
+        courseId: COURSE_ID,
+        courseRevision: 5,
+        requestId: "93000000-0000-4000-8000-000000000039",
+        idempotent: false,
+        changed: false,
+        change: null
+      };
     },
     async requestPartMaterialization() {
       return { delivery: "chat" };
@@ -574,7 +745,6 @@ test("Planejamento mostra plano vivo, Partes e fatos recentes sem JSON nem segun
           plan: {
             ...basePlan.plan,
             objective: "Comparar <origem> e aplicação.",
-            authoringGuidance: 'Usar <strong>fontes</strong> e "exemplos".',
             parts: [{
               ...basePlan.plan.parts[0],
               title: "<img src=x onerror=alert(1)>"
@@ -610,8 +780,6 @@ test("Planejamento mostra plano vivo, Partes e fatos recentes sem JSON nem segun
   assert.match(root.innerHTML, /aria-current="page"><svg[^>]*>[\s\S]*?<span>Planejamento<\/span>/u);
   assert.match(root.innerHTML, /<h3>Objetivo<\/h3>/u);
   assert.match(root.innerHTML, /Comparar &lt;origem&gt; e aplicação\./u);
-  assert.match(root.innerHTML, /<h3>Orientação<\/h3>/u);
-  assert.match(root.innerHTML, /Usar &lt;strong&gt;fontes&lt;\/strong&gt; e &quot;exemplos&quot;\./u);
   assert.match(root.innerHTML, /7–12/u);
   assert.match(root.innerHTML, /Escolha automática/u);
   assert.match(root.innerHTML, /Resultados de aprendizagem/u);
@@ -626,6 +794,468 @@ test("Planejamento mostra plano vivo, Partes e fatos recentes sem JSON nem segun
   assert.match(root.innerHTML, /Levar pedido ao chat/u);
   assert.doesNotMatch(root.innerHTML, /<img|authoringState|mandate|receipt|fila|já materializ/iu);
   assert.doesNotMatch(root.innerHTML, /\{[^}]*"parts"/u);
+});
+
+test("Parâmetros lê somente o escopo e separa pedagogia, orientação, componentes e produção", async () => {
+  const root = new FakeRoot();
+  const reads = [];
+  let outlineReads = 0;
+  let planReads = 0;
+  const surface = createCourseAuthoringSurface({
+    root,
+    controller: controllerFixture({
+      async loadCourseDesign(courseId, options) {
+        reads.push({ courseId, options: structuredClone(options) });
+        return courseDesignFixture();
+      },
+      async loadAuthoringOutline() {
+        outlineReads += 1;
+        throw new Error("Parâmetros não carrega a estrutura integral.");
+      },
+      async loadAuthoringPlan() {
+        planReads += 1;
+        throw new Error("Parâmetros não mistura a política de produção.");
+      }
+    }),
+    locationValue: {
+      pathname: "/",
+      search: "",
+      hash: buildCourseAuthoringRoute(COURSE_ID, { section: "parameters" })
+    },
+    windowValue: new FakeWindow()
+  });
+
+  assert.equal(await surface.open(), true);
+  assert.deepEqual(reads, [{
+    courseId: COURSE_ID,
+    options: {
+      scope: { kind: "course", ref: COURSE_ID },
+      limit: 32,
+      cursor: null
+    }
+  }]);
+  assert.equal(outlineReads, 0);
+  assert.equal(planReads, 0);
+  assert.match(root.innerHTML, /<h2 id="course-authoring-section-title">Parâmetros<\/h2>/u);
+  assert.match(root.innerHTML, /Hipótese operacional do produto/u);
+  assert.match(root.innerHTML, /Texto original/u);
+  assert.match(root.innerHTML, /Interpretação estruturada/u);
+  assert.match(root.innerHTML, /Política editorial e técnica/u);
+  assert.match(root.innerHTML, /Política de produção/u);
+  assert.match(root.innerHTML, /não mede qualidade, aprendizagem nem conformidade/u);
+  assert.equal((root.innerHTML.match(/class="course-design-component-option"/gu) || []).length, 32);
+  assert.doesNotMatch(root.innerHTML, /<pre|\{\s*"/u);
+});
+
+test("Módulo mostra herança, mas desabilita atribuição de parâmetro pedagógico", async () => {
+  const root = new FakeRoot();
+  const calls = [];
+  const design = courseDesignFixture({
+    scope: { kind: "module", ref: "module-a", label: "Base" },
+    ancestors: [{ kind: "course", ref: COURSE_ID, label: "Fundamentos" }],
+    children: [{ kind: "lesson", ref: "lesson-a", label: "Relações", position: 0 }]
+  });
+  const surface = createCourseAuthoringSurface({
+    root,
+    controller: controllerFixture({
+      async loadCourseDesign(courseId, options) {
+        calls.push({ courseId, options: structuredClone(options) });
+        return structuredClone(design);
+      }
+    }),
+    locationValue: {
+      pathname: "/",
+      search: "",
+      hash: buildCourseAuthoringRoute(COURSE_ID, {
+        section: "parameters",
+        moduleId: "module-a"
+      })
+    },
+    windowValue: new FakeWindow()
+  });
+
+  assert.equal(await surface.open(), true);
+  assert.deepEqual(calls[0].options.scope, { kind: "module", ref: "module-a" });
+  assert.match(root.innerHTML, /Módulo: Base/u);
+  assert.match(root.innerHTML, /não são definidos em Módulo/u);
+  assert.match(root.innerHTML, /<fieldset disabled>/u);
+  assert.doesNotMatch(root.innerHTML, /data-course-design-parameter/u);
+  assert.match(root.innerHTML, /Decisão definida no Curso/u);
+});
+
+test("Microssequência atribui itens estáveis do plano e recarrega plano e desenho", async () => {
+  const root = new FakeRoot();
+  const calls = [];
+  let revision = 5;
+  let planReads = 0;
+  const scope = {
+    kind: "didactic_microsequence",
+    ref: "micro-a",
+    label: "Primeiro caso"
+  };
+  const ancestors = [{ kind: "course", ref: COURSE_ID, label: "Fundamentos" }, {
+    kind: "module",
+    ref: "module-a",
+    label: "Base"
+  }, {
+    kind: "lesson",
+    ref: "lesson-a",
+    label: "Relações"
+  }];
+  let design = courseDesignFixture({
+    courseRevision: revision,
+    scope,
+    ancestors,
+    children: [],
+    targetPlanItems: {
+      instructionalAnalysisUnitIds: [ANALYSIS_ID],
+      evidenceRequirementIds: []
+    }
+  });
+  const surface = createCourseAuthoringSurface({
+    root,
+    controller: controllerFixture({
+      async getCourse(courseId) {
+        return {
+          courseId,
+          title: "Fundamentos",
+          goal: "Compreender relações essenciais.",
+          revision,
+          ownership: "owned",
+          canEdit: true
+        };
+      },
+      async loadAuthoringPlan() {
+        planReads += 1;
+        return { ...authoringPlanFixture(), courseRevision: revision };
+      },
+      async loadCourseDesign() {
+        return structuredClone(design);
+      },
+      async mutateCourseDesign(request) {
+        calls.push(structuredClone(request));
+        revision += 1;
+        design = courseDesignFixture({
+          courseRevision: revision,
+          scope,
+          ancestors,
+          children: [],
+          targetPlanItems: {
+            instructionalAnalysisUnitIds: structuredClone(
+              request.command.instructionalAnalysisUnitIds
+            ),
+            evidenceRequirementIds: structuredClone(request.command.evidenceRequirementIds)
+          }
+        });
+        return {
+          contract: "aralearn.course-design-change.v1",
+          courseId: COURSE_ID,
+          courseRevision: revision,
+          requestId: request.requestId,
+          idempotent: false,
+          changed: true,
+          change: {
+            changeId: "21",
+            type: request.command.type,
+            scope: structuredClone(request.command.scope)
+          }
+        };
+      }
+    }),
+    locationValue: {
+      pathname: "/",
+      search: "",
+      hash: buildCourseAuthoringRoute(COURSE_ID, {
+        section: "parameters",
+        didacticMicrosequenceId: "micro-a"
+      })
+    },
+    windowValue: new FakeWindow()
+  });
+
+  assert.equal(await surface.open(), true);
+  assert.equal(planReads, 1);
+  assert.match(root.innerHTML, /Cobertura planejada desta Microssequência/u);
+  assert.match(root.innerHTML, /Relação entre grandezas/u);
+  assert.match(root.innerHTML, /Resolver um caso novo/u);
+
+  root.listeners.get("submit")({
+    preventDefault() {},
+    target: {
+      matches(selector) { return selector === "[data-course-design-target-items]"; },
+      elements: {
+        instructionalAnalysisUnitIds: [{ value: ANALYSIS_ID, checked: false }],
+        evidenceRequirementIds: [{ value: EVIDENCE_ID, checked: true }]
+      }
+    }
+  });
+  for (let attempt = 0; attempt < 8 && planReads < 2; attempt += 1) {
+    await new Promise((resolve) => setImmediate(resolve));
+  }
+
+  assert.equal(calls.length, 1);
+  assert.deepEqual({ ...calls[0], requestId: "<uuid>" }, {
+    requestId: "<uuid>",
+    courseId: COURSE_ID,
+    expectedCourseRevision: 5,
+    command: {
+      type: "set_target_plan_items",
+      scope: { kind: "didactic_microsequence", ref: "micro-a" },
+      instructionalAnalysisUnitIds: [],
+      evidenceRequirementIds: [EVIDENCE_ID]
+    }
+  });
+  assert.equal(
+    planReads,
+    2,
+    root.innerHTML.match(/course-authoring-notice[^>]*>([^<]+)/u)?.[1] || "sem aviso de desenho"
+  );
+  assert.match(root.innerHTML, /Cobertura planejada salva para esta Microssequência/u);
+});
+
+test("salvar e limpar parâmetro usa CAS, origem explícita e restaura herança", async () => {
+  const root = new FakeRoot();
+  const calls = [];
+  let revision = 5;
+  let design = courseDesignFixture({
+    localParameter: {
+      changeId: "8",
+      value: 3,
+      origin: "author",
+      reason: "Decisão local anterior."
+    }
+  });
+  const surface = createCourseAuthoringSurface({
+    root,
+    controller: controllerFixture({
+      async getCourse(courseId) {
+        return {
+          courseId,
+          title: "Fundamentos",
+          goal: "Compreender relações essenciais.",
+          revision,
+          ownership: "owned",
+          canEdit: true
+        };
+      },
+      async loadCourseDesign() {
+        return structuredClone(design);
+      },
+      async mutateCourseDesign(request) {
+        calls.push(structuredClone(request));
+        revision += 1;
+        const parameter = design.parameters[0];
+        if (request.command.type === "set_parameter") {
+          const assignment = {
+            changeId: String(8 + revision),
+            value: request.command.value,
+            origin: request.command.origin,
+            reason: request.command.reason
+          };
+          parameter.localAssignment = assignment;
+          parameter.effectiveAssignment = {
+            ...assignment,
+            sourceScope: { kind: "course", ref: COURSE_ID },
+            inherited: false
+          };
+        } else {
+          parameter.localAssignment = null;
+          parameter.effectiveAssignment = {
+            changeId: null,
+            value: 2,
+            origin: "system_default",
+            reason: "Hipótese inicial do produto.",
+            sourceScope: null,
+            inherited: false
+          };
+        }
+        design.courseRevision = revision;
+        return {
+          contract: "aralearn.course-design-change.v1",
+          courseId: COURSE_ID,
+          courseRevision: revision,
+          requestId: request.requestId,
+          idempotent: false,
+          changed: true,
+          change: {
+            changeId: String(revision + 8),
+            type: request.command.type,
+            scope: structuredClone(request.command.scope)
+          }
+        };
+      }
+    }),
+    locationValue: {
+      pathname: "/",
+      search: "",
+      hash: buildCourseAuthoringRoute(COURSE_ID, { section: "parameters" })
+    },
+    windowValue: new FakeWindow()
+  });
+  await surface.open();
+  root.listeners.get("submit")({
+    preventDefault() {},
+    target: {
+      matches(selector) { return selector === "[data-course-design-parameter]"; },
+      elements: {
+        parameterId: { value: "new_analysis_unit_ceiling_per_expository_study_unit" },
+        parameterValue: { value: "4" },
+        origin: { value: "research_condition" },
+        reason: { value: "Condição experimental registrada." }
+      }
+    }
+  });
+  await new Promise((resolve) => setImmediate(resolve));
+  await new Promise((resolve) => setImmediate(resolve));
+
+  assert.equal(calls.length, 1);
+  assert.deepEqual({ ...calls[0], requestId: "<uuid>" }, {
+    requestId: "<uuid>",
+    courseId: COURSE_ID,
+    expectedCourseRevision: 5,
+    command: {
+      type: "set_parameter",
+      scope: { kind: "course", ref: COURSE_ID },
+      parameterId: "new_analysis_unit_ceiling_per_expository_study_unit",
+      value: 4,
+      origin: "research_condition",
+      reason: "Condição experimental registrada."
+    }
+  });
+  assert.match(root.innerHTML, /Parâmetro salvo neste escopo/u);
+
+  root.listeners.get("click")({
+    preventDefault() {},
+    target: {
+      closest() {
+        return {
+          dataset: {
+            courseAuthoringAction: "clear-design-parameter",
+            parameterId: "new_analysis_unit_ceiling_per_expository_study_unit"
+          }
+        };
+      }
+    }
+  });
+  await new Promise((resolve) => setImmediate(resolve));
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(calls.length, 2);
+  assert.deepEqual(calls[1].command, {
+    type: "clear_parameter",
+    scope: { kind: "course", ref: COURSE_ID },
+    parameterId: "new_analysis_unit_ceiling_per_expository_study_unit"
+  });
+  assert.equal(calls[1].expectedCourseRevision, 6);
+  assert.match(root.innerHTML, /valor herdado voltou a valer/u);
+});
+
+test("repete mutação de desenho com o mesmo requestId e payload após perder a resposta", async () => {
+  const root = new FakeRoot();
+  const calls = [];
+  const confirmations = new Map();
+  let revision = 5;
+  let design = courseDesignFixture();
+  const surface = createCourseAuthoringSurface({
+    root,
+    controller: controllerFixture({
+      async getCourse(courseId) {
+        return {
+          courseId,
+          title: "Fundamentos",
+          goal: "Compreender relações essenciais.",
+          revision,
+          ownership: "owned",
+          canEdit: true
+        };
+      },
+      async loadCourseDesign() {
+        return structuredClone(design);
+      },
+      async mutateCourseDesign(request) {
+        calls.push(structuredClone(request));
+        if (confirmations.has(request.requestId)) {
+          return {
+            ...confirmations.get(request.requestId),
+            idempotent: true
+          };
+        }
+        revision = 6;
+        const assignment = {
+          changeId: "14",
+          value: request.command.value,
+          origin: request.command.origin,
+          reason: request.command.reason
+        };
+        design = {
+          ...design,
+          courseRevision: revision,
+          parameters: design.parameters.map((parameter, index) => index === 0 ? {
+            ...parameter,
+            localAssignment: assignment,
+            effectiveAssignment: {
+              ...assignment,
+              sourceScope: { kind: "course", ref: COURSE_ID },
+              inherited: false
+            }
+          } : parameter)
+        };
+        const result = {
+          contract: "aralearn.course-design-change.v1",
+          courseId: COURSE_ID,
+          courseRevision: revision,
+          requestId: request.requestId,
+          idempotent: false,
+          changed: true,
+          change: {
+            changeId: "14",
+            type: request.command.type,
+            scope: structuredClone(request.command.scope)
+          }
+        };
+        confirmations.set(request.requestId, result);
+        const error = new TypeError("Failed to fetch");
+        error.code = "network_error";
+        throw error;
+      }
+    }),
+    locationValue: {
+      pathname: "/",
+      search: "",
+      hash: buildCourseAuthoringRoute(COURSE_ID, { section: "parameters" })
+    },
+    windowValue: new FakeWindow()
+  });
+  await surface.open();
+  const submit = {
+    preventDefault() {},
+    target: {
+      matches(selector) { return selector === "[data-course-design-parameter]"; },
+      elements: {
+        parameterId: { value: "new_analysis_unit_ceiling_per_expository_study_unit" },
+        parameterValue: { value: "4" },
+        origin: { value: "author" },
+        reason: { value: "Decisão editorial explícita." }
+      }
+    }
+  };
+
+  root.listeners.get("submit")(submit);
+  await new Promise((resolve) => setImmediate(resolve));
+  await new Promise((resolve) => setImmediate(resolve));
+
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].expectedCourseRevision, 5);
+  assert.match(root.innerHTML, /confirmar a mesma operação/u);
+
+  root.listeners.get("submit")(submit);
+  await new Promise((resolve) => setImmediate(resolve));
+  await new Promise((resolve) => setImmediate(resolve));
+
+  assert.equal(calls.length, 2);
+  assert.deepEqual(calls[1], calls[0]);
+  assert.equal(confirmations.size, 1);
+  assert.match(root.innerHTML, /Parâmetro salvo neste escopo/u);
+  assert.match(root.innerHTML, /value="4"/u);
 });
 
 test("Ver etapas lê uma materialização sob demanda e apresenta a retomada sem JSON", async () => {
@@ -812,8 +1442,7 @@ test("edita título canônico e plano humano sem JSON nem autoridade duplicada",
       ...authoringPlanFixture().plan,
       objective,
       audience: "Público anterior.",
-      scope: "Escopo anterior.",
-      authoringGuidance: "Orientação anterior."
+      scope: "Escopo anterior."
     }
   };
   const surface = createCourseAuthoringSurface({
@@ -847,7 +1476,6 @@ test("edita título canônico e plano humano sem JSON nem autoridade duplicada",
             objective,
             audience: value.audience,
             scope: value.scope,
-            authoringGuidance: value.authoringGuidance,
             preferredPartCount: value.preferredPartCount
           }
         };
@@ -881,7 +1509,6 @@ test("edita título canônico e plano humano sem JSON nem autoridade duplicada",
         objective: { value: "Novo objetivo." },
         audience: { value: "Pesquisadores iniciantes." },
         scope: { value: "Relações e aplicações." },
-        authoringGuidance: { value: "Usar exemplos e prática variada." },
         rangeMinimum: { value: "8" },
         rangeMaximum: { value: "10" },
         rangeOrigin: { value: "research_condition" }
@@ -902,7 +1529,6 @@ test("edita título canônico e plano humano sem JSON nem autoridade duplicada",
     objective: "Novo objetivo.",
     audience: "Pesquisadores iniciantes.",
     scope: "Relações e aplicações.",
-    authoringGuidance: "Usar exemplos e prática variada.",
     preferredPartCount: {
       minimum: 8,
       maximum: 10,
@@ -956,7 +1582,6 @@ test("repete alteração do plano com o mesmo requestId e payload após perder a
             objective,
             audience: value.audience,
             scope: value.scope,
-            authoringGuidance: value.authoringGuidance,
             preferredPartCount: value.preferredPartCount
           }
         };
@@ -991,7 +1616,6 @@ test("repete alteração do plano com o mesmo requestId e payload após perder a
         objective: { value: "Novo objetivo." },
         audience: { value: "Público." },
         scope: { value: "Escopo." },
-        authoringGuidance: { value: "Nova orientação." },
         rangeMinimum: { value: "7" },
         rangeMaximum: { value: "12" },
         rangeOrigin: { value: "author" }
@@ -1635,5 +2259,5 @@ test("renderer escapa conteúdo e CSS mantém enquadramento mobile-first sem rol
   assert.match(css, /-webkit-line-clamp: 4/u);
   assert.match(css, /min-height: var\(--tap\)/u);
   assert.doesNotMatch(css, /width: min\(100%, (?:560|620)px\)/u);
-  assert.doesNotMatch(css, /overflow-y|textarea/iu);
+  assert.doesNotMatch(css, /overflow-y/iu);
 });

@@ -30,7 +30,6 @@ function planFixture() {
     objective: "Analisar relações entre conceitos.",
     audience: "Estudantes de graduação.",
     scope: "Conceitos introdutórios e suas relações.",
-    authoringGuidance: "Usar exemplos contrastivos curtos.",
     preferredPartCount: { minimum: 7, maximum: 12, origin: "automatic" },
     intendedLearningOutcomes: [{ id: IDS.outcome, position: 0, statement: "Comparar os conceitos." }],
     instructionalAnalysisUnits: [{ id: IDS.analysis, position: 0, statement: "Resposta a cada Unidade de estudo." }],
@@ -56,6 +55,17 @@ test("normaliza o plano consultável com faixa 7–12 e itens de pesquisa estáv
   assert.equal(normalized.instructionalAnalysisUnits[0].id, IDS.analysis);
   assert.equal(normalized.evidenceRequirements[0].id, IDS.evidence);
   assert.deepEqual(normalizeEdgePlan(planFixture()), normalized);
+});
+
+test("plano não aceita mais orientação monolítica nem alias legado", () => {
+  assert.throws(
+    () => normalizeCourseAuthoringPlan({
+      ...planFixture(),
+      authoringGuidance: "Usar exemplos contrastivos curtos."
+    }),
+    (error) => error instanceof CourseAuthoringPlanError &&
+      error.code === "unknown_course_authoring_plan_field"
+  );
 });
 
 test("domínio e Edge rejeitam controles Unicode C0 e C1 nos textos do plano", () => {

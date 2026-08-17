@@ -57,6 +57,17 @@ test("roteia somente endpoints canônicos de Curso", () => {
     name: "commitCourseInstructionalPlan",
     courseId: COURSE_ID
   });
+  assert.deepEqual(routeCourseRequest("GET", `/v1/courses/${COURSE_ID}/course-design`), {
+    name: "getCourseDesign",
+    courseId: COURSE_ID
+  });
+  assert.deepEqual(routeCourseRequest(
+    "POST",
+    `/v1/courses/${COURSE_ID}/course-design/changes`
+  ), {
+    name: "applyCourseDesignCommand",
+    courseId: COURSE_ID
+  });
   assert.deepEqual(routeCourseRequest("POST", `/v1/courses/${COURSE_ID}/composition`), {
     name: "commitCourseComposition",
     courseId: COURSE_ID
@@ -571,6 +582,152 @@ test("composição e etapa rejeitam listas malformadas sem descartar dados", asy
     }),
     (error) => error.code === "invalid_course_command"
   );
+
+});
+
+test("etapa rejeita referência de componente desconhecida antes do adaptador", async () => {
+  const adapter = {
+    async advanceCourseAuthoringPartMaterialization() {
+      assert.fail("O adaptador não pode receber componente desconhecido.");
+    }
+  };
+  const path = `/v1/courses/${COURSE_ID}/authoring-parts/${PART_ID}` +
+    `/materializations/${MATERIALIZATION_ID}/changes`;
+  const value = request(path, {
+    method: "POST",
+    requestId: "request-materialization-components",
+    body: {
+      requestId: "request-materialization-components",
+      expectedCourseRevision: 7,
+      expectedMaterializationVersion: 1,
+      operation: "record_step",
+      payload: {
+        stepId: STEP_ID,
+        expectedStepVersion: 1,
+        status: "completed",
+        resultFacts: {},
+        entityChanges: {
+          upserts: [{
+            entityType: "study_unit",
+            entityId: "unit-a",
+            parentType: "microsequence",
+            parentId: "micro-a",
+            position: 1,
+            content: {
+              title: "Unidade A",
+              role: "theory",
+              content: [{
+                id: "paragraph-a",
+                package: "aralearn.resource.paragraph",
+                version: "1.0.0",
+                data: { text: "Conteúdo explicado." }
+              }],
+              response: null,
+              feedback: [],
+              topics: [],
+              sources: []
+            }
+          }],
+          deletes: []
+        },
+        designApplication: {
+          contextHash: "a".repeat(64),
+          didacticMicrosequenceId: "micro-a",
+          studyUnits: [{
+            studyUnitId: "unit-a",
+            mode: "expository",
+            introducedInstructionalAnalysisUnitIds: [],
+            explanationApplications: [],
+            practiceApplications: [],
+            componentRefs: ["aralearn.resource.unknown@1.0.0"]
+          }]
+        }
+      }
+    }
+  });
+  await assert.rejects(
+    () => executeCourseRoute({
+      request: value,
+      route: routeCourseRequest("POST", path),
+      adapter,
+      principal: PRINCIPAL
+    }),
+    (error) => error.code === "unknown_course_component_ref"
+  );
+});
+
+test("etapa rejeita fatos atribuídos a microssequência diferente do upsert", async () => {
+  const adapter = {
+    async advanceCourseAuthoringPartMaterialization() {
+      assert.fail("O adaptador não pode receber fatos atribuídos ao alvo errado.");
+    }
+  };
+  const path = `/v1/courses/${COURSE_ID}/authoring-parts/${PART_ID}` +
+    `/materializations/${MATERIALIZATION_ID}/changes`;
+  const requestId = "request-materialization-wrong-target";
+  const value = request(path, {
+    method: "POST",
+    requestId,
+    body: {
+      requestId,
+      expectedCourseRevision: 7,
+      expectedMaterializationVersion: 1,
+      operation: "record_step",
+      payload: {
+        stepId: STEP_ID,
+        expectedStepVersion: 1,
+        status: "completed",
+        resultFacts: {},
+        entityChanges: {
+          upserts: [{
+            entityType: "study_unit",
+            entityId: "unit-a",
+            parentType: "microsequence",
+            parentId: "micro-b",
+            position: 1,
+            content: {
+              title: "Unidade A",
+              role: "theory",
+              content: [{
+                id: "paragraph-a",
+                package: "aralearn.resource.paragraph",
+                version: "1.0.0",
+                data: { text: "Conteúdo explicado." }
+              }],
+              response: null,
+              feedback: [],
+              topics: [],
+              sources: []
+            }
+          }],
+          deletes: []
+        },
+        designApplication: {
+          contextHash: "a".repeat(64),
+          didacticMicrosequenceId: "micro-a",
+          studyUnits: [{
+            studyUnitId: "unit-a",
+            mode: "expository",
+            introducedInstructionalAnalysisUnitIds: [],
+            explanationApplications: [],
+            practiceApplications: [],
+            componentRefs: ["aralearn.resource.paragraph@1.0.0"]
+          }]
+        }
+      }
+    }
+  });
+
+  await assert.rejects(
+    () => executeCourseRoute({
+      request: value,
+      route: routeCourseRequest("POST", path),
+      adapter,
+      principal: PRINCIPAL
+    }),
+    (error) => error.code === "design_application_content_mismatch" &&
+      error.details?.studyUnitId === "unit-a"
+  );
 });
 
 test("rejeita cursor parcial e campos fora do comando", async () => {
@@ -773,6 +930,160 @@ test("lê e altera o plano instrucional com as duas cercas CAS", async () => {
   assert.deepEqual(calls[1][1].command, command);
 });
 
+test("lê e altera parâmetros por escopo concreto com validação fechada", async () => {
+  const calls = [];
+  const adapter = {
+    async getCourseDesign(value) {
+      calls.push(["read", value]);
+      return { contract: "aralearn.course-design.v1", courseId: COURSE_ID };
+    },
+    async applyCourseDesignCommand(value) {
+      calls.push(["write", value]);
+      return { contract: "aralearn.course-design-change.v1", changed: true };
+    }
+  };
+  const read = request(
+    `/v1/courses/${COURSE_ID}/course-design?scopeKind=lesson&scopeRef=lesson-a` +
+      "&limit=16&cursor=micro-a"
+  );
+  await executeCourseRoute({
+    request: read,
+    route: routeCourseRequest("GET", new URL(read.url).pathname),
+    adapter,
+    principal: PRINCIPAL
+  });
+  assert.equal(calls[0][1].scopeKind, "lesson");
+  assert.equal(calls[0][1].scopeRef, "lesson-a");
+  assert.equal(calls[0][1].childLimit, 16);
+  assert.equal(calls[0][1].childCursor, "micro-a");
+
+  const invalidQuery = request(
+    `/v1/courses/${COURSE_ID}/course-design?scopeKind=course&scopeRef=${COURSE_ID}` +
+      "&offset=16"
+  );
+  await assert.rejects(
+    () => executeCourseRoute({
+      request: invalidQuery,
+      route: routeCourseRequest("GET", new URL(invalidQuery.url).pathname),
+      adapter,
+      principal: PRINCIPAL
+    }),
+    (error) => error.code === "invalid_course_design_query"
+  );
+
+  const command = {
+    type: "set_guidance",
+    scope: { kind: "course", ref: COURSE_ID },
+    guidance: "Explique termos antes de coordená-los em mecanismos.",
+    origin: "author",
+    reason: "Orientação editorial explícita."
+  };
+  const write = request(`/v1/courses/${COURSE_ID}/course-design/changes`, {
+    method: "POST",
+    requestId: "request-design-0001",
+    body: {
+      requestId: "request-design-0001",
+      expectedCourseRevision: 4,
+      command
+    }
+  });
+  const result = await executeCourseRoute({
+    request: write,
+    route: routeCourseRequest("POST", new URL(write.url).pathname),
+    adapter,
+    principal: PRINCIPAL
+  });
+  assert.equal(result.requestId, "request-design-0001");
+  assert.equal(calls[1][1].expectedCourseRevision, 4);
+  assert.deepEqual(calls[1][1].command, command);
+
+  const targetCommand = {
+    type: "set_target_plan_items",
+    scope: { kind: "didactic_microsequence", ref: "micro-a" },
+    instructionalAnalysisUnitIds: [PART_ID],
+    evidenceRequirementIds: ["50000000-0000-4000-8000-000000000005"]
+  };
+  const targetWrite = request(`/v1/courses/${COURSE_ID}/course-design/changes`, {
+    method: "POST",
+    requestId: "request-design-targets",
+    body: {
+      requestId: "request-design-targets",
+      expectedCourseRevision: 5,
+      command: targetCommand
+    }
+  });
+  await executeCourseRoute({
+    request: targetWrite,
+    route: routeCourseRequest("POST", new URL(targetWrite.url).pathname),
+    adapter,
+    principal: PRINCIPAL
+  });
+  assert.deepEqual(calls[2][1].command, targetCommand);
+
+  const invalidTarget = request(`/v1/courses/${COURSE_ID}/course-design/changes`, {
+    method: "POST",
+    requestId: "request-design-targets-invalid",
+    body: {
+      requestId: "request-design-targets-invalid",
+      expectedCourseRevision: 5,
+      command: {
+        ...targetCommand,
+        scope: { kind: "lesson", ref: "lesson-a" }
+      }
+    }
+  });
+  await assert.rejects(
+    () => executeCourseRoute({
+      request: invalidTarget,
+      route: routeCourseRequest("POST", new URL(invalidTarget.url).pathname),
+      adapter,
+      principal: PRINCIPAL
+    }),
+    (error) => error.code === "invalid_course_design_scope"
+  );
+
+  const invalid = request(`/v1/courses/${COURSE_ID}/course-design/changes`, {
+    method: "POST",
+    requestId: "request-design-0002",
+    body: {
+      requestId: "request-design-0002",
+      expectedCourseRevision: 4,
+      command: { ...command, origin: "migration" }
+    }
+  });
+  await assert.rejects(
+    () => executeCourseRoute({
+      request: invalid,
+      route: routeCourseRequest("POST", new URL(invalid.url).pathname),
+      adapter,
+      principal: PRINCIPAL
+    }),
+    (error) => error.code === "invalid_course_design_origin"
+  );
+
+  const wrongCourse = request(`/v1/courses/${COURSE_ID}/course-design/changes`, {
+    method: "POST",
+    requestId: "request-design-wrong-course",
+    body: {
+      requestId: "request-design-wrong-course",
+      expectedCourseRevision: 4,
+      command: {
+        ...command,
+        scope: { kind: "course", ref: PART_ID }
+      }
+    }
+  });
+  await assert.rejects(
+    () => executeCourseRoute({
+      request: wrongCourse,
+      route: routeCourseRequest("POST", new URL(wrongCourse.url).pathname),
+      adapter,
+      principal: PRINCIPAL
+    }),
+    (error) => error.code === "invalid_course_design_scope"
+  );
+});
+
 test("lê uma materialização de Parte sem parâmetros implícitos", async () => {
   let call = null;
   const adapter = {
@@ -827,7 +1138,6 @@ test("avança materialização de Parte com versões e etapas delimitadas", asyn
     operation: "start",
     payload: {
       authoringPartVersion: 2,
-      designContext: { audience: "Docentes" },
       steps: [{
         id: STEP_ID,
         position: 0,
@@ -858,7 +1168,7 @@ test("avança materialização de Parte com versões e etapas delimitadas", asyn
   assert.deepEqual(call.payload.steps[0], body.payload.steps[0]);
 });
 
-test("materialização rejeita cerca ou alvo incoerente antes do adaptador", async () => {
+test("materialização rejeita contexto declarado pelo cliente antes do adaptador", async () => {
   const adapter = {
     async advanceCourseAuthoringPartMaterialization() {
       assert.fail("O adaptador não pode receber materialização inválida.");
@@ -891,6 +1201,94 @@ test("materialização rejeita cerca ou alvo incoerente antes do adaptador", asy
       adapter,
       principal: PRINCIPAL
     }),
+    (error) => error.code === "unknown_course_command_field" &&
+      error.details?.field === "designContext"
+  );
+});
+
+test("record_step mantém designApplication nulo fora de conclusão didática", async () => {
+  let call = null;
+  const adapter = {
+    async advanceCourseAuthoringPartMaterialization(value) {
+      call = value;
+      return { changed: true };
+    }
+  };
+  const path = `/v1/courses/${COURSE_ID}/authoring-parts/${PART_ID}` +
+    `/materializations/${MATERIALIZATION_ID}/changes`;
+  const base = {
+    requestId: "request-materialization-null-facts",
+    expectedCourseRevision: 7,
+    expectedMaterializationVersion: 1,
+    operation: "record_step",
+    payload: {
+      stepId: STEP_ID,
+      expectedStepVersion: 1,
+      status: "completed",
+      resultFacts: {},
+      entityChanges: { upserts: [], deletes: [] },
+      designApplication: null
+    }
+  };
+  await executeCourseRoute({
+    request: request(path, { method: "POST", requestId: base.requestId, body: base }),
+    route: routeCourseRequest("POST", path),
+    adapter,
+    principal: PRINCIPAL
+  });
+  assert.equal(call.payload.designApplication, null);
+
+  const missing = structuredClone(base);
+  missing.requestId = "request-materialization-missing-facts";
+  delete missing.payload.designApplication;
+  await assert.rejects(
+    () => executeCourseRoute({
+      request: request(path, { method: "POST", requestId: missing.requestId, body: missing }),
+      route: routeCourseRequest("POST", path),
+      adapter,
+      principal: PRINCIPAL
+    }),
     (error) => error.code === "invalid_course_command"
   );
+
+  const failed = {
+    ...base,
+    requestId: "request-materialization-failed-facts",
+    payload: {
+      ...base.payload,
+      status: "failed",
+      designApplication: {
+        contextHash: "a".repeat(64),
+        didacticMicrosequenceId: "micro-a",
+        studyUnits: []
+      }
+    }
+  };
+  await assert.rejects(
+    () => executeCourseRoute({
+      request: request(path, { method: "POST", requestId: failed.requestId, body: failed }),
+      route: routeCourseRequest("POST", path),
+      adapter,
+      principal: PRINCIPAL
+    }),
+    (error) => error.code === "invalid_course_command"
+  );
+
+  for (const [requestId, resultFacts] of [
+    ["request-materialization-reserved-facts", { designApplication: {} }],
+    ["request-materialization-large-facts", { note: "x".repeat(16_350) }]
+  ]) {
+    const invalidFacts = structuredClone(base);
+    invalidFacts.requestId = requestId;
+    invalidFacts.payload.resultFacts = resultFacts;
+    await assert.rejects(
+      () => executeCourseRoute({
+        request: request(path, { method: "POST", requestId, body: invalidFacts }),
+        route: routeCourseRequest("POST", path),
+        adapter,
+        principal: PRINCIPAL
+      }),
+      (error) => error.code === "invalid_course_command"
+    );
+  }
 });

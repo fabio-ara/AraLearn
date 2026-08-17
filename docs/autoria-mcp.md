@@ -32,8 +32,8 @@ invariantes de operação: Curso vivo, leitura antes de escrita, estado dinâmic
 persistido, Parte como agrupamento operacional, descoberta progressiva de
 componentes, materialização por etapas retomáveis e síntese breve do resultado.
 
-Plano, parâmetros, fontes, observações e configuração de pesquisa não devem
-ser copiados para esse recurso nem fixados no prompt do cliente. Eles pertencem
+Plano, parâmetros, orientações, política de componentes, fontes e observações
+não devem ser copiados para esse recurso nem fixados no prompt do cliente. Eles pertencem
 ao Curso e precisam poder mudar sem reconstruir o assistente.
 
 ## Componentes e fluxo de uma alteração
@@ -105,6 +105,10 @@ Lê uma destas projeções:
 - `outline`: hierarquia compacta;
 - `instructional_plan`: plano vivo, itens com identidades estáveis, Partes,
   vínculos, progresso derivado e atividade recente;
+- `course_design`: catálogo pedagógico, valor local e efetivo por escopo,
+  orientação original e interpretação, política de componentes, itens do plano
+  atribuídos quando o escopo é uma Microssequência e resumo
+  planejado×aplicado;
 - `part_materialization`: uma tentativa persistida, seu contexto e fatos
   limitados, as etapas com versão e a próxima etapa pendente;
 - `study_units`: Unidades de estudo em ordem curricular, com contexto, Parte e
@@ -132,6 +136,16 @@ passo é nulo. Essa vista é owner-only e não inclui prompt nem raciocínio pri
 Antes de auditar ou alterar estrutura, percorra todas as páginas pertinentes.
 Um resumo não demonstra que uma Unidade existe nem que sua composição é válida.
 
+`course_design` recebe um escopo concreto de Curso, Módulo, Lição ou
+Microssequência. A resposta traz o contexto progressivo, os quatro parâmetros,
+a pilha de orientações, a política efetiva e as 32 opções da revisão exata do
+catálogo de componentes. Parâmetros pedagógicos não aceitam override em Módulo;
+orientação e política aceitam. `targetPlanItems` contém as listas de unidades de
+análise e requisitos de evidência atribuídos quando o alvo é uma
+Microssequência e vale `null` nos demais escopos. A leitura falha fechada acima
+do hard cap executável de 256 KiB; não há promessa contratual de 96 KiB para
+toda resposta normal.
+
 ### `criarCurso`
 
 Cria atomicamente um Curso privado vazio e seu plano instrucional inicial.
@@ -149,11 +163,15 @@ autenticou a chamada é proprietária.
 
 ### `alterarCurso`
 
-Possui três operações fechadas:
+Possui quatro operações fechadas:
 
 - `update_instructional_plan`: aplica um comando semântico ao plano — atualizar
   campos naturais, incluir/editar/reordenar itens, incluir/editar/dividir/
   juntar/reordenar Partes ou mover vínculos de microssequência;
+- `update_course_design`: define ou limpa parâmetro, orientação e política de
+  componentes, registra interpretação ligada à revisão exata da orientação ou
+  aplica `set_target_plan_items` para substituir as duas listas de itens de uma
+  Microssequência;
 - `commit_course_composition`: inclui, substitui ou exclui entidades em lote;
 - `advance_part_materialization`: inicia uma tentativa, registra uma etapa
   delimitada ou finaliza a tentativa de uma Parte.
@@ -174,6 +192,20 @@ conteúdo de cada linha pelo tipo
 somente nas Lições afetadas. A escrita permanece segmentada e não recompõe o
 Curso integral antes de cada commit. Excluir ou reordenar uma Parte nunca
 exclui a composição didática.
+
+O início de uma materialização não aceita contexto declarado pelo cliente. O
+servidor resolve e sela parâmetros, orientações e política para as
+Microssequências-alvo. O contexto inclui catálogos de itens como
+`{id, position, statement, version}` e, em cada alvo, somente os IDs atribuídos
+a ele. Cada `record_step` apresenta uma aplicação factual limitada e é auditado
+apenas contra esse subconjunto, sob o hash do contexto.
+
+Formas de explicação, oportunidades e dimensões de variação são declarações do
+agente ou da pessoa autora com schema, referências, contagens e coerência
+interna validados; não são inferidas semanticamente da prosa pelo banco. A
+transação reconcilia materialmente os IDs de Unidades, o pai/alvo e os
+`componentRefs` do conteúdo. Referência desconhecida, excluída ou fora de
+`allow_only` reverte o lote inteiro.
 
 O cliente deve reler depois da escrita. Uma resposta de sucesso demonstra que
 a transação foi aceita, não que a mudança é pedagogicamente adequada.
@@ -238,12 +270,16 @@ O servidor entrega instruções curtas no `initialize` e pelo recurso de
 invariantes. O Curso conserva dados mutáveis:
 
 - título e objetivo;
-- plano instrucional com público, escopo, orientação, faixa preferencial,
+- plano instrucional com público, escopo, faixa preferencial,
   resultados pretendidos, unidades de análise e requisitos de evidência;
+- parâmetros pedagógicos, orientações autorais versionadas, interpretações e
+  política de componentes por escopo;
+- atribuições muitos-para-muitos de unidades de análise e requisitos de
+  evidência às Microssequências;
 - Partes operacionais, seus vínculos e tentativas de materialização;
 - composição didática;
-- futuramente, parâmetros, fontes, observações autorais e configuração de
-  pesquisa quando essas fatias forem implementadas.
+- futuramente, fontes, observações autorais e configuração de pesquisa quando
+  essas fatias forem implementadas.
 
 Essa separação evita que mudar o planejamento exija editar o prompt de sistema
 ou reconstruir uma base fixa. Também evita persistir conversa integral ou

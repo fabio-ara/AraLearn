@@ -71,10 +71,19 @@ servidor ou a revisão corrente não estão disponíveis.
 
 ### Planejamento
 
-Planejamento edita título, objetivo, público, escopo, orientação, faixa
-preferencial, itens e Partes em linguagem natural. Criar, dividir, unir,
+Planejamento edita título, objetivo, público, escopo, faixa preferencial, itens
+e Partes em linguagem natural. Criar, dividir, unir,
 reordenar ou retirar uma Parte não altera implicitamente a hierarquia didática.
 Copiar um pedido para o chat conectado não grava tentativa nem progresso.
+
+### Parâmetros
+
+Parâmetros percorre Curso, Módulo, Lição e Microssequência e separa valor
+efetivo, atribuição local, orientação original, interpretação e política de
+componentes. Numa Microssequência, a cobertura planejada oferece checkboxes
+para atribuir unidades de análise e requisitos de evidência. O estado visual é
+a relação muitos-para-muitos real: não apresenta o plano inteiro como se todo
+item pertencesse a todo alvo e não exige JSON.
 
 ### Estrutura
 
@@ -177,7 +186,7 @@ visual.
 | UI ↔ MCP e owner-only | testes de MCP, Router, Adapter e API |
 | constraints e concorrência | `course-postgres-concurrency.test.js` após reset real |
 | packages no renderer fiel | `package-study-rendering-regressions.test.js` |
-| promoção 1400 → 1700 | testes do importador e manifesto do runtime |
+| promoção 1400 → 1800 | testes do importador e manifesto do runtime |
 
 Testes automatizados não demonstram que pessoas leigas compreendem a navegação,
 que a carga cognitiva é baixa em uso prolongado ou que o Free Plan suportará a

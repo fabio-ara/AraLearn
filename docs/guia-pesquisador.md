@@ -1,193 +1,215 @@
 # Guia de investigação
 
-Este guia orienta a formulação de estudos sobre o AraLearn como artefato
-sociotécnico: um sistema de software cuja operação depende de pessoas, regras,
-conteúdo, instituições e infraestrutura. O objetivo é impedir que propriedades
-do código sejam confundidas com efeitos educacionais.
+## Finalidade
 
-## Antes de formular a pergunta
+Este guia ajuda a estudar o AraLearn sem confundir uma propriedade do software
+com um efeito educacional. A área **Parâmetros** torna decisões de desenho e
+fatos de materialização reproduzíveis; ela não cria por si só experimento,
+instrumento, medida, amostra ou inferência causal.
 
-Comece por três documentos:
+Antes de formular uma pergunta, consulte:
 
-1. [Visão do produto](visao-do-produto.md), para delimitar o problema e o
-   público;
-2. [Modelo didático](modelo-didatico.md), para compreender a intervenção
-   educacional pretendida;
-3. [Arquitetura](arquitetura.md), para identificar os componentes que
-   materializam essa intervenção.
+1. [Visão do produto](visao-do-produto.md);
+2. [Modelo didático](modelo-didatico.md);
+3. [Desenho instrucional parametrizado](desenho-instrucional-parametrizado.md);
+4. [Arquitetura](arquitetura.md);
+5. [Estado corrente](estado-atual-e-roadmap.md).
 
-Ao ler, classifique cada afirmação em uma destas categorias:
+## Classificar a afirmação
 
-- **evidência externa:** resultado ou argumento encontrado na literatura;
-- **decisão de design:** escolha feita para atender a um problema declarado;
+Toda afirmação de pesquisa deve receber um estatuto:
+
+- **evidência externa:** resultado ou argumento da literatura;
+- **decisão de design:** escolha feita para responder a um problema;
 - **propriedade implementada:** comportamento verificável do artefato;
 - **hipótese:** relação ainda sujeita a investigação;
-- **resultado empírico:** conclusão derivada de dados coletados e analisados
-  por um estudo adequado.
+- **resultado empírico:** conclusão produzida por um estudo adequado.
 
-Essa classificação evita inferências como “o sistema tem prática de
-recuperação, logo melhora a aprendizagem”. A literatura pode justificar a
-decisão de incorporar uma forma de prática; o efeito no contexto do AraLearn
-continua dependendo de população, conteúdo, exposição, comparação e medida.
+Por exemplo, a literatura sustenta investigar prática de recuperação e
+variação. O default de duas oportunidades no AraLearn é uma hipótese de
+produto. Um teste pode provar que duas oportunidades distintas foram
+registradas; não pode provar que uma pessoa aprendeu.
 
 ## Escolher a unidade de análise
 
-A pergunta deve informar o que será observado. Exemplos de unidades distintas:
+A pergunta precisa dizer o que será observado. São unidades diferentes:
 
-- uma pessoa retomando uma microssequência depois de uma interrupção;
-- um card e a relação entre sua microteoria, representação e prática;
-- uma sessão de autoria assistida e as revisões humanas realizadas;
-- um workspace educacional e sua divisão de responsabilidades;
-- uma publicação e o custo de armazenamento de suas revisões;
-- um pipeline de validação e sua capacidade de impedir estados inválidos.
+- uma pessoa retomando uma Microssequência;
+- uma Unidade de estudo e suas formas explicativas;
+- um requisito de evidência e suas oportunidades de prática;
+- uma sessão de autoria e suas revisões;
+- um Curso, uma Lição ou uma Microssequência sob determinada condição;
+- uma tentativa de materialização;
+- um evento técnico de revisão ou concorrência.
 
-Misturar unidades produz conclusões vagas. Desempenho de sincronização não é
-medida de aprendizagem; quantidade de alterações feitas por um modelo não é
-medida de qualidade autoral.
+Quantidade de mudanças feitas por um assistente não é qualidade autoral.
+Conformidade de uma Unidade não é desempenho do estudante. Egress, latência e
+Storage não são medidas de aprendizagem.
 
-## Selecionar uma estratégia de investigação
+## Usar os parâmetros correntes
 
-O corpus distingue duas famílias metodológicas complementares:
+O catálogo possui somente quatro operacionalizações:
 
-- **pesquisa baseada em design** investiga uma intervenção educacional em
-  contexto, por ciclos de concepção, uso, análise e refinamento
-  ([Design-Based Research Collective (2003)](referencias.md#ref-dbrc2003designbased); [Wang e Hannafin (2005)](referencias.md#ref-wang2005designbased));
-- **Design Science Research** investiga um artefato, sua utilidade e o
-  conhecimento de design produzido por sua construção e avaliação
-  ([Hevner et al. (2004)](referencias.md#ref-hevner2004designscience); [Peffers et al. (2007)](referencias.md#ref-peffers2007dsrm); [Venable et al. (2016)](referencias.md#ref-venable2016feds)).
+1. teto de unidades da análise introduzidas por Unidade expositiva;
+2. formas explicativas requeridas;
+3. oportunidades distintas por requisito de evidência;
+4. dimensões requeridas de variação da prática.
 
-Elas podem compartilhar episódios e dados, mas não são sinônimas. A primeira
-acentua a intervenção e a aprendizagem situada; a segunda acentua o artefato,
-seus requisitos e sua avaliação. O [protocolo de avaliação do
-artefato](protocolo-avaliacao-artefato.md) apresenta trilhas separadas para as
-duas estratégias.
+Cada definição informa constructo, operacionalização, limitações, evidência e
+estatuto do default. Não crie uma quinta definição alterando JSON ou tabela.
+Uma nova dimensão exige nova decisão de produto, revisão conceitual, migração,
+interface, MCP e testes.
+
+### Origem `research_condition`
+
+`research_condition` identifica que um valor pertence a uma condição
+deliberada. Ele não cria lock, protocolo, aleatorização, consentimento,
+atribuição de participante ou coleta. Uma pessoa autora pode substituí-lo no
+Curso vivo; o evento registra a mudança. Experimentos governados e variantes
+imutáveis pertencem a um marco posterior.
+
+Ao usar essa origem:
+
+- declare a pergunta e a condição fora do valor;
+- registre a revisão exata do Curso;
+- mantenha invariantes e diferenças planejadas em protocolo próprio;
+- não interprete o rótulo como garantia de isolamento experimental;
+- não use o estado pessoal cotidiano como outcome implícito.
+
+## Orientação natural e interpretação
+
+O texto original da orientação é imutável por revisão. Uma interpretação
+estruturada aponta para uma revisão exata e conserva resumo, diretivas,
+divergências e perguntas. O original continua sendo a fonte humana; a
+interpretação não pode reescrevê-lo.
+
+Quando uma orientação for fator ou contexto de um estudo, registre:
+
+- UUID e versão da revisão original;
+- escopo e origem;
+- UUID e versão da interpretação efetivamente usada, quando houver;
+- divergências e perguntas ainda abertas;
+- hash do contexto selado pela materialização.
+
+Uma nova redação é outra versão. Não a descreva como equivalente sem avaliação.
+
+## Planejado e aplicado
+
+O resumo imediato compara:
+
+- parâmetros efetivos resolvidos;
+- orientações e política efetivas;
+- itens do plano explicitamente atribuídos à Microssequência;
+- fatos estruturados declarados na materialização;
+- componentes realmente persistidos.
+
+Ele pode mostrar teto excedido, forma não contabilizada na declaração,
+oportunidade declarada insuficiente, variação declarada ausente ou componente
+proibido. Esses são achados de conformidade ao desenho, não scores
+educacionais.
+
+Os fatos aplicados preservam identidades de Unidades de estudo e declarações
+sobre unidades da análise, requisitos de evidência, oportunidades, formas,
+dimensões e packages. Forma, oportunidade e variação não são inferidas
+semanticamente do conteúdo pelo banco. A reconciliação material cobre IDs das
+Unidades, pai/alvo e `componentRefs`. O registro não preserva conversa, prompt,
+conteúdo gerado ou raciocínio privado.
+
+## Caso DNS e DHCP
+
+O corpus de regressão usa sete unidades explícitas: função do DNS, exemplo
+nome–IP, hierarquia, registros e distribuição, mecanismo de resolução,
+concessão DHCP e contraste DNS/DHCP.
+
+O caso examina propriedades do artefato:
+
+- teto de introduções por Unidade expositiva;
+- cobertura das sete identidades;
+- formas explicativas declaradas como desenvolvidas ou justificadamente não
+  aplicáveis;
+- oportunidades e variações por requisito;
+- operação-alvo invariável.
+
+Essas propriedades são verificadas sobre a aplicação factual fornecida ao
+auditor. O teste cerca schema, atribuição por alvo, contagens e coerência
+interna; não é uma observação semântica independente de que a explicação
+desenvolveu uma forma ou que duas práticas diferem de modo substantivo.
+
+Não há relação de dependência entre unidades de análise persistida neste marco;
+portanto o teste não a inventa. A ordem curricular de Módulos, Lições,
+Microssequências e Unidades continua verificável separadamente.
+
+Casos metamórficos impedem proxy de comprimento:
+
+- texto longo e estruturalmente claro pode passar;
+- texto curto com muitas introduções pode falhar;
+- fragmentar o mesmo texto sem desenvolver as formas continua falhando;
+- omitir uma identidade planejada falha cobertura.
 
 ## Construir a cadeia de evidência
 
-Para cada pergunta, registre:
+Para cada estudo, registre:
 
 | Elemento | Pergunta de controle |
 | --- | --- |
-| problema | o que ocorre hoje e para quem isso constitui problema? |
-| construto | qual conceito não observável se pretende estudar? |
-| indicador | qual dado pode representar parte desse construto? |
+| problema | o que ocorre hoje e para quem isso é um problema? |
+| constructo | qual conceito não observável se pretende estudar? |
+| operacionalização | qual regra ou unidade do AraLearn representa parte dele? |
+| indicador | qual dado observável será usado e qual seu denominador? |
 | mecanismo | por que a intervenção poderia produzir mudança? |
-| rival | que outra explicação produziria o mesmo resultado? |
-| decisão | qual resultado levaria a manter, alterar ou rejeitar o desenho? |
-| limite | para quais pessoas, tarefas e contextos a interpretação é válida? |
+| rival | que explicação alternativa produziria o mesmo resultado? |
+| decisão | que resultado mudaria o desenho? |
+| limite | para quais pessoas, tarefas e contextos a interpretação vale? |
 
-O [quadro teórico](quadro-teorico.md) formula proposições e mecanismos; o
-[glossário de construtos](glossario-construtos.md) impede que termos cotidianos
-sejam usados como medidas; a [matriz de rastreabilidade
-pedagógica](matriz-rastreabilidade-pedagogica.md) liga fundamento, decisão,
-implementação e avaliação.
+Um evento de parâmetro informa ator, canal, escopo, valor anterior e novo e
+revisão. Ele demonstra que uma decisão mudou, não por que mudou nem seu efeito.
 
-## Verificar afirmações técnicas
+## Dados e privacidade
 
-Quando a pergunta envolve computação, formule a propriedade de modo
-observável. Por exemplo:
-
-- uma operação repetida com a mesma chave não cria duas mudanças;
-- uma réplica local permite abrir o curso sem conexão;
-- uma migration transforma um schema conhecido em outro estado conhecido;
-- um package inválido não pode ser registrado no catálogo;
-- uma publicação aponta para o hash do artefato efetivamente validado.
-
-A [matriz de conformidade técnica](matriz-conformidade-tecnica.md) aponta para
-código, schemas, migrations e testes. Esses materiais permitem replicar a
-verificação, mas também devem ser criticados: um teste cobre entradas e
-ambientes delimitados e pode não revelar falhas fora deles.
-
-## Planejar dados educacionais
-
-O AraLearn não coleta automaticamente todo rastro possível. Antes de propor um
-novo dado, responda:
+O AraLearn não coleta automaticamente todo rastro possível. Antes de propor
+outro dado, responda:
 
 1. qual pergunta ele atende;
-2. qual construto pode e não pode representar;
+2. qual constructo pode e não pode representar;
 3. que decisão legítima poderá apoiar;
 4. por quanto tempo precisa existir;
 5. quem poderá acessá-lo;
 6. qual risco de vigilância, coerção ou interpretação indevida introduz.
 
-Esse procedimento segue a preocupação ética de que analytics educacionais
-devem ser orientados por finalidade, transparência e possibilidade de ação,
-não por disponibilidade técnica ([Pardo e Siemens (2014)](referencias.md#ref-pardo2014ethical); [Prinsloo e Slade (2017)](referencias.md#ref-prinsloo2017ethics)). O
-[estado de estudo não punitivo](estado-de-estudo-nao-punitivo.md) documenta os
-dados funcionais atuais e as inferências que não são autorizadas.
+Parâmetros, orientações e fatos de materialização pertencem ao Curso e à
+Autoria. Progresso, revisão e observações pessoais pertencem à pessoa. Não una
+esses conjuntos só porque compartilham um `courseId`.
 
-## Preparar variantes no AraLearn
+## Estratégia de investigação
 
-Quando a pergunta exige comparação entre versões instrucionais, use a ação
-avançada **Experimentos** dentro de Desenho. Ela não cria uma medida nem coleta
-todo rastro disponível; apenas governa a intervenção que poderá ser avaliada.
+Pesquisa baseada em design e Design Science Research podem compartilhar
+episódios e dados, mas não são sinônimas. A primeira acompanha intervenção e
+aprendizagem situada; a segunda investiga o artefato, seus requisitos e sua
+avaliação. Consulte o [protocolo de avaliação](protocolo-avaliacao-artefato.md).
 
-Antes de validar o protocolo:
+Para alegação causal, o contrato de parâmetros é insuficiente. Ainda são
+necessários, conforme a pergunta:
 
-1. escolha uma publicação privada aprovada como base comum;
-2. delimite curso, lição ou microssequências pertencentes à base;
-3. use definições de parâmetro existentes como fatores;
-4. declare cada condição completa, sem pedir produto cartesiano automático;
-5. informe o que deve permanecer invariante;
-6. selecione uma regra de atribuição e registre referências de consentimento,
-   instrumentos e outcomes;
-7. explique o que levará a corrigir, aceitar ou invalidar uma divergência.
+- população e critérios de inclusão;
+- consentimento e apreciação ética aplicável;
+- protocolo e hipóteses registrados;
+- condição de comparação;
+- regra de atribuição;
+- instrumentos e outcomes válidos;
+- controle de exposição, perdas e versões;
+- plano de análise e explicações rivais.
 
-Um `ResourceSet` como fator fixa disponibilidade por `package@version`. Essa
-lista não informa quais resources foram usados: seleção e materialização são
-auditadas separadamente. Ausência de uma representação ideal precisa aparecer
-como limitação da condição.
+## Relatar
 
-Depois da validação, o servidor deriva workspaces privados de variante da mesma
-base, aplica locks, conserva o mapeamento de escopo e impede que o assistente
-troque condição. A pessoa pesquisadora acompanha a materialização e a auditoria,
-decide diferenças não previstas e só então congela cada revisão. Iniciar coleta
-é uma ação separada do freeze.
+O relatório deve separar:
 
-Se um problema surgir depois do freeze, registre o motivo em **Criar revisão
-corrigida** e confirme `retain_existing`: participantes já atribuídos permanecem
-na revisão imutável recebida, novos ingressos aguardam a sucessora, e as
-comparações dependentes são refeitas. Nunca edite a revisão congelada.
-
-Participantes aderem sob consentimento versionado e recebem pseudônimo local ao
-experimento. A atribuição é executada pelo servidor — manual, aleatória com seed
-reprodutível ou balanceada simples — e fixa uma revisão congelada. A variante
-já sincronizada abre offline; nova atribuição requer conexão. Participante não
-entra no workspace autoral nem vê base, protocolo, seed ou outras condições.
-
-O fluxo completo, suas garantias técnicas e suas alegações proibidas estão em
-[Experimentos instrucionais parametrizados](experimentos-instrucionais-parametrizados.md).
-
-## Executar e relatar
-
-Durante a coleta, abra **Resultados**, selecione o experimento e confira N por
-condição, revisões congeladas, completude e ausências antes de qualquer resumo.
-As tabelas e exportações usam o mesmo `datasetSetRef`; um conflito de revisão
-interrompe a paginação. Outcome é uma observação explícita ligada ao
-instrumento, à onda e ao pseudônimo local — não um evento implícito de uso.
-Médias, mínimos, máximos e frequências são descritivos e não autorizam
-causalidade, significância ou ranking. Consulte o
-[dicionário de métricas e datasets](dicionario-metricas-datasets.md).
-
-Antes da coleta:
-
-- defina participantes, critérios de inclusão e contexto;
-- obtenha a apreciação ética aplicável;
-- registre instrumentos, protocolo, hipóteses e plano de análise;
-- identifique versões do aplicativo, dos cursos e dos contratos;
-- prepare um procedimento de interrupção e proteção de dados.
-
-Durante a análise, preserve resultados negativos e divergências. Ao relatar,
-separe claramente:
-
-- o que a literatura já sustentava;
-- o que o artefato implementava;
+- o que a literatura sustentava;
+- o que foi decisão de produto;
+- qual propriedade o software verificou;
 - o que o estudo observou;
-- que explicações rivais permanecem;
-- quais mudanças foram feitas depois da observação.
+- quais interpretações rivais permanecem;
+- quais alterações ocorreram depois da observação.
 
-A [revisão de literatura](revisao-de-literatura.md) atual é uma síntese
-orientada ao design, não uma revisão sistemática concluída. As referências
-canônicas estão em [referencias.bib](referencias.bib), e o [protocolo de
-avaliação](protocolo-avaliacao-artefato.md) deve ser adaptado à pergunta, à
-população e à instituição responsável pelo estudo.
+Preserve resultados negativos e divergências. Não apresente default como
+evidência, conformidade como aprendizagem, `research_condition` como
+randomização ou planned×applied como analytics final.

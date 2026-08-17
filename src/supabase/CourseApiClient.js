@@ -1,7 +1,9 @@
 import { createUuid, UUID_PATTERN } from "../domain/identifiers.js";
+import { normalizeCourseDesignCommand } from "../domain/courseDesignParameters.js";
 import { SupabaseHttpClient } from "./SupabaseHttpClient.js";
 
 const RFC3339 = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/u;
+const REQUEST_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$/u;
 const AVATAR_BUCKET = "person-avatars";
 const AVATAR_MAX_BYTES = 512 * 1024;
 const AVATAR_EXTENSIONS = Object.freeze({
@@ -68,6 +70,9 @@ const AUTHORING_INSPECTION_SCOPE_KINDS = new Set([
   "lesson",
   "didactic_microsequence"
 ]);
+const COURSE_DESIGN_SCOPE_KINDS = new Set([
+  "course", "module", "lesson", "didactic_microsequence"
+]);
 
 function boundedIdentifier(value, label) {
   const normalized = String(value || "").trim();
@@ -76,6 +81,14 @@ function boundedIdentifier(value, label) {
     throw new TypeError(`${label} inválida.`);
   }
   return normalized;
+}
+
+function requestIdentity(value) {
+  if (typeof value !== "string" || value !== value.trim() ||
+      !REQUEST_ID_PATTERN.test(value)) {
+    throw new TypeError("Identidade da alteração inválida.");
+  }
+  return value;
 }
 
 function authoringInspectionScope(value = { kind: "course", id: null }) {
@@ -99,6 +112,23 @@ function authoringStudyUnitCursor(value) {
   const source = exactObject(value, new Set(["studyUnitId"]), "Cursor da inspeção");
   if (Object.keys(source).length !== 1) throw new TypeError("Cursor da inspeção inválido.");
   return { studyUnitId: boundedIdentifier(source.studyUnitId, "Unidade do cursor") };
+}
+
+function courseDesignScope(value, courseId) {
+  const candidate = value ?? { kind: "course", ref: courseId };
+  const source = exactObject(candidate, new Set(["kind", "ref"]), "Escopo dos parâmetros");
+  if (Object.keys(source).length !== 2) {
+    throw new TypeError("Escopo dos parâmetros inválido.");
+  }
+  const kind = String(source.kind || "").trim();
+  if (!COURSE_DESIGN_SCOPE_KINDS.has(kind) || kind !== source.kind) {
+    throw new TypeError("Escopo dos parâmetros inválido.");
+  }
+  const ref = boundedIdentifier(source.ref, "Referência do escopo");
+  if (ref !== source.ref || (kind === "course" && ref !== courseId)) {
+    throw new TypeError("Escopo dos parâmetros inválido.");
+  }
+  return { kind, ref };
 }
 
 function timestamp(value, label) {
@@ -217,6 +247,39 @@ function plainObject(value, label) {
     throw new TypeError(`${label} inválido.`);
   }
   return structuredClone(value);
+}
+
+function boundedJsonObject(value, label, maximumBytes) {
+  const normalized = plainObject(value, label);
+  if (new TextEncoder().encode(JSON.stringify(normalized)).byteLength > maximumBytes) {
+    throw new TypeError(`${label} excede o limite.`);
+  }
+  return normalized;
+}
+
+function normalizedMaterializationCommand(value) {
+  const command = boundedJsonObject(value, "Comando de materialização", 512 * 1024);
+  const operation = String(command.operation || "").trim();
+  const base = [
+    "operation", "authoringPartId", "materializationId",
+    "expectedMaterializationVersion"
+  ];
+  const operationFields = operation === "start"
+    ? ["authoringPartVersion", "steps"]
+    : operation === "record_step"
+      ? [
+          "stepId", "expectedStepVersion", "status", "resultFacts",
+          "entityChanges", "designApplication"
+        ]
+      : operation === "finish"
+        ? ["status", "resultFacts"]
+        : [];
+  const fields = new Set([...base, ...operationFields]);
+  if (!operationFields.length || [...fields].some((field) => !Object.hasOwn(command, field)) ||
+      Object.keys(command).some((field) => !fields.has(field))) {
+    throw new TypeError("Comando de materialização inválido.");
+  }
+  return command;
 }
 
 function authenticationFailure(error) {
@@ -380,6 +443,23 @@ export class CourseApiClient {
     });
   }
 
+  loadCourseDesign(courseId, options = {}) {
+    const source = exactObject(
+      options,
+      new Set(["scope", "limit", "cursor"]),
+      "Leitura do desenho"
+    );
+    const { scope = null, limit = 32, cursor = null } = source;
+    const normalizedCourseId = uuid(courseId, "Curso");
+    return this.executeCourseAction("lerCurso", {
+      courseId: normalizedCourseId,
+      view: "course_design",
+      scope: courseDesignScope(scope, normalizedCourseId),
+      limit: positiveInteger(limit, "Limite de subescopos", { maximum: 64 }),
+      cursor: cursor == null ? null : boundedIdentifier(cursor, "Cursor de subescopos")
+    });
+  }
+
   loadAuthoringOutline(courseId) {
     return this.executeCourseAction("lerCurso", {
       courseId: uuid(courseId, "Curso"),
@@ -460,6 +540,31 @@ export class CourseApiClient {
     });
   }
 
+  mutateCourseDesign(value = {}) {
+    const source = exactObject(
+      value,
+      new Set(["requestId", "courseId", "expectedRevision", "designCommand"]),
+      "Alteração do desenho"
+    );
+    const {
+      requestId = createUuid(),
+      courseId,
+      expectedRevision,
+      designCommand
+    } = source;
+    return this.executeCourseAction("alterarCurso", {
+      requestId: requestIdentity(requestId),
+      courseId: uuid(courseId, "Curso"),
+      expectedRevision: positiveInteger(expectedRevision, "Versão de estado"),
+      operation: "update_course_design",
+      designCommand: boundedJsonObject(
+        normalizeCourseDesignCommand(designCommand),
+        "Comando dos parâmetros",
+        32 * 1024
+      )
+    });
+  }
+
   advanceAuthoringPartMaterialization({
     requestId = createUuid(),
     courseId,
@@ -471,10 +576,7 @@ export class CourseApiClient {
       courseId: uuid(courseId, "Curso"),
       expectedRevision: positiveInteger(expectedRevision, "Versão de estado"),
       operation: "advance_part_materialization",
-      materializationCommand: plainObject(
-        materializationCommand,
-        "Comando de materialização"
-      )
+      materializationCommand: normalizedMaterializationCommand(materializationCommand)
     });
   }
 

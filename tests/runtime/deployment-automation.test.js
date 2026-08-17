@@ -290,6 +290,14 @@ test("smoke real de Curso usa o resolvedor administrativo sem enviar a chave com
   assert.match(source, /entityType\s*\}\)\s*=>\s*entityType === "study_unit"/u);
   assert.match(source, /view:\s*"study_units"/u);
   assert.match(source, /aralearn\.course-study-unit-inspection-page\.v1/u);
+  assert.match(source, /view:\s*"course_design"/u);
+  assert.match(source, /operation:\s*"update_course_design"/u);
+  assert.match(source, /aralearn\.course-design\.v1/u);
+  assert.match(source, /type:\s*"set_target_plan_items"/u);
+  assert.match(source, /kind:\s*"didactic_microsequence_materialization"/u);
+  assert.match(source, /designApplication/u);
+  assert.match(source, /unassignedAnalysisUnitId/u);
+  assert.match(source, /steps\[0\]\.status,\s*"pending"/u);
   assert.match(source, /list_courses_v1/u);
   assert.match(source, /list_owned_courses_v1/u);
   assert.match(source, /mutate_course_personal_state_v1/u);
@@ -298,7 +306,7 @@ test("smoke real de Curso usa o resolvedor administrativo sem enviar a chave com
   assert.doesNotMatch(source, /Authorization:\s*`Bearer \$\{serverApiKey\}`/u);
 });
 
-test("smokes MCP exercitam somente o Curso e a Inspeção correntes", () => {
+test("smokes MCP exercitam somente Curso, desenho e Inspeção correntes", () => {
   for (const smokePath of [scripts.authoringMcpLocalSmoke, scripts.authoringMcpHostedSmoke]) {
     const source = fs.readFileSync(smokePath, "utf8");
     assert.match(source, /aralearn\.course\.v1/u);
@@ -306,6 +314,11 @@ test("smokes MCP exercitam somente o Curso e a Inspeção correntes", () => {
     assert.match(source, /entityType\s*\}\)\s*=>\s*entityType === "study_unit"/u);
     assert.match(source, /view:\s*"study_units"/u);
     assert.match(source, /aralearn\.course-study-unit-inspection-page\.v1/u);
+    assert.match(source, /view:\s*"course_design"/u);
+    assert.match(source, /operation:\s*"update_course_design"/u);
+    assert.match(source, /aralearn\.course-design\.v1/u);
+    assert.match(source, /type:\s*"set_target_plan_items"/u);
+    assert.match(source, /targetPlanItems/u);
     assert.doesNotMatch(source, /aralearn\.library\.v1/u);
     assert.doesNotMatch(source, /\bcards\s*:/u);
     assert.doesNotMatch(

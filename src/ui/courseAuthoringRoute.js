@@ -1,5 +1,5 @@
 export const COURSE_AUTHORING_SECTIONS = Object.freeze([
-  "planning", "structure", "inspection", "people"
+  "planning", "parameters", "structure", "inspection", "people"
 ]);
 
 const COURSE_AUTHORING_ROUTE_PREFIX = "#/authoring/courses/";
@@ -58,6 +58,14 @@ function normalizedTargetOptions(options) {
   return selected[0] || null;
 }
 
+function targetAllowedForSection(target, section) {
+  if (!target) return true;
+  if (section === "inspection") return true;
+  return section === "parameters" && [
+    "module", "lesson", "didactic_microsequence"
+  ].includes(target.kind);
+}
+
 export function buildCourseAuthoringRoute(courseId, options = {}) {
   if (!options || typeof options !== "object" || Array.isArray(options) ||
       Object.keys(options).some((field) => !BUILD_OPTION_FIELDS.has(field))) {
@@ -71,8 +79,8 @@ export function buildCourseAuthoringRoute(courseId, options = {}) {
     throw new TypeError("Seção de Curso inválida para a rota de Autoria.");
   }
   const target = normalizedTargetOptions(options);
-  if (target && section !== "inspection") {
-    throw new TypeError("Somente a Inspeção aceita um alvo curricular ou de Parte.");
+  if (!targetAllowedForSection(target, section)) {
+    throw new TypeError("O alvo não pertence à seção escolhida.");
   }
   const suffix = target
     ? `&${target.query}=${target.kind === "unassigned" ? "true" : encodeURIComponent(target.id)}`
@@ -97,7 +105,6 @@ export function parseCourseAuthoringRoute(hashValue) {
 
   let target = null;
   if (rawParameters.length === 2) {
-    if (section !== "inspection") return null;
     const separatorIndex = rawParameters[1].indexOf("=");
     if (separatorIndex <= 0 || rawParameters[1].indexOf("=", separatorIndex + 1) >= 0) return null;
     const query = rawParameters[1].slice(0, separatorIndex);
@@ -120,6 +127,7 @@ export function parseCourseAuthoringRoute(hashValue) {
       }
       target = Object.freeze({ kind: definition.kind, id });
     }
+    if (!targetAllowedForSection(target, section)) return null;
   }
   return Object.freeze({ courseId, section, target });
 }

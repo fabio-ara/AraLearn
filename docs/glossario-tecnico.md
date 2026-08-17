@@ -71,13 +71,41 @@ produzir e revisar várias Microssequências numa iteração. Não é um nível 
 Curso, Módulo, Lição, Microssequência e Unidade.
 
 **Plano instrucional do Curso.** Planejamento vivo que reúne público, escopo,
-orientação, resultados de aprendizagem pretendidos, unidades de análise
-instrucional, requisitos de evidência e Partes. Título e objetivo são projetados
-nele para leitura, mas pertencem somente à raiz `courses`.
+resultados de aprendizagem pretendidos, unidades de análise instrucional,
+requisitos de evidência e Partes. Título e objetivo são projetados nele para
+leitura, mas pertencem somente à raiz `courses`.
+
+**Parâmetro de desenho instrucional.** Definição fechada e versionada de uma
+decisão pedagógica controlável, com schema, escopos, default como hipótese de
+produto, limitações e referências. Não inclui limites técnicos ou métricas.
+
+**Atribuição de parâmetro.** Fato append-only que define ou remove o valor de
+um parâmetro num escopo e registra origem `automatic|author|research_condition`
+e motivo. Herança e `system_default` são calculados, não atribuídos.
+
+**Revisão de orientação de autoria.** Texto original imutável ligado a Curso,
+escopo, ator, origem, canal e revisão do Curso. Orientações efetivas acumulam do
+Curso ao alvo.
+
+**Interpretação da orientação.** Registro separado que referencia uma revisão
+exata e conserva resumo, diretivas, divergências e perguntas. Não substitui o
+texto humano nem armazena raciocínio privado.
+
+**Política de componentes.** Valor completo que fixa revisão do catálogo,
+disponibilidade `all|allow_only`, referências permitidas, excluídas e
+preferidas. A resolução prioriza `author|research_condition` mais próximo,
+depois `automatic` mais próximo e, por fim, o default. Exclusão vence e
+preferência não autoriza uso.
 
 **Item do plano instrucional.** Enunciado ordenado e versionado de um resultado
 de aprendizagem pretendido, uma unidade de análise instrucional ou um requisito
 de evidência. A pessoa o edita em linguagem natural, não como JSON.
+
+**Atribuição de item do plano a Microssequência.** Relação muitos-para-muitos
+entre uma Microssequência e itens dos tipos unidade de análise instrucional ou
+requisito de evidência. Ela define o subconjunto que a materialização daquele
+alvo precisa declarar; não é inferida da Parte nem abrange resultados de
+aprendizagem pretendidos.
 
 **Faixa preferencial de Partes.** Mínimo e máximo operacionais associados à
 origem `automatic`, `author` ou `research_condition`. O padrão 7–12 é
@@ -89,7 +117,8 @@ curricular da Microssequência e pode ser retirado sem excluir conteúdo.
 
 **Materialização de Parte.** Tentativa persistida e retomável de produzir ou
 atualizar conteúdo referente a uma Parte. Possui estado `running`, `completed`
-ou `failed`, versão, contexto de desenho e fatos do resultado.
+ou `failed`, versão, contexto de desenho derivado pelo servidor e fatos do
+resultado.
 
 **Etapa de materialização.** Passo pequeno de carga de contexto, materialização
 de uma Microssequência ou validação. Uma confirmação pode gravar fatos,

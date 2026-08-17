@@ -217,7 +217,14 @@ test("plano instrucional e materialização usam a mesma operação Edge do MCP"
       materializationId: USER_ID,
       expectedMaterializationVersion: 0,
       operation: "start",
-      payload: { authoringPartVersion: 1, designContext: {}, steps: [] }
+      authoringPartVersion: 1,
+      steps: [{
+        id: COURSE_ID,
+        position: 0,
+        kind: "context_load",
+        targetDidacticMicrosequenceId: null,
+        productionPosition: null
+      }]
     }
   });
 
@@ -245,6 +252,95 @@ test("plano instrucional e materialização usam a mesma operação Edge do MCP"
     audience: "Docentes"
   });
   assert.equal(calls[4].body.materializationCommand.operation, "start");
+  assert.throws(
+    () => client.advanceAuthoringPartMaterialization({
+      courseId: COURSE_ID,
+      expectedRevision: 5,
+      materializationCommand: {
+        authoringPartId: AVATAR_ID,
+        materializationId: USER_ID,
+        expectedMaterializationVersion: 0,
+        operation: "start",
+        authoringPartVersion: 1,
+        designContext: {},
+        steps: [{
+          id: COURSE_ID,
+          position: 0,
+          kind: "context_load",
+          targetDidacticMicrosequenceId: null,
+          productionPosition: null
+        }]
+      }
+    }),
+    /Comando de materialização inválido/u
+  );
+});
+
+test("parâmetros usam a mesma operação Edge do MCP com escopo concreto e CAS", async () => {
+  const calls = [];
+  const { client } = clientWithFetch(async (url, init) => {
+    calls.push({ url, body: JSON.parse(init.body) });
+    return jsonResponse({ ok: true, data: { changed: true } });
+  });
+
+  await client.loadCourseDesign(COURSE_ID, {
+    scope: { kind: "lesson", ref: "lesson-a" },
+    limit: 16,
+    cursor: "lesson-child-a"
+  });
+  await client.mutateCourseDesign({
+    requestId: "request-course-design-client",
+    courseId: COURSE_ID,
+    expectedRevision: 4,
+    designCommand: {
+      type: "set_parameter",
+      scope: { kind: "lesson", ref: "lesson-a" },
+      parameterId: "new_analysis_unit_ceiling_per_expository_study_unit",
+      value: 3,
+      origin: "author",
+      reason: "Adequar a granularidade ao público."
+    }
+  });
+
+  assert.deepEqual(calls[0].body, {
+    courseId: COURSE_ID,
+    view: "course_design",
+    scope: { kind: "lesson", ref: "lesson-a" },
+    limit: 16,
+    cursor: "lesson-child-a"
+  });
+  assert.equal(calls[1].body.operation, "update_course_design");
+  assert.equal(calls[1].body.requestId, "request-course-design-client");
+  assert.equal(calls[1].body.expectedRevision, 4);
+  assert.equal(calls[1].body.designCommand.origin, "author");
+  assert.throws(
+    () => client.mutateCourseDesign({
+      courseId: COURSE_ID,
+      expectedRevision: 4,
+      designCommand: {
+        type: "set_parameter",
+        scope: { kind: "module", ref: "module-a" },
+        parameterId: "new_analysis_unit_ceiling_per_expository_study_unit",
+        value: 3,
+        origin: "author",
+        reason: "Escopo inválido."
+      }
+    }),
+    (error) => error.code === "invalid_course_design_scope"
+  );
+  assert.throws(
+    () => client.loadCourseDesign(COURSE_ID, { scope: null, page: 2 }),
+    /Leitura do desenho inválido/u
+  );
+  assert.throws(
+    () => client.mutateCourseDesign({
+      courseId: COURSE_ID,
+      expectedRevision: 4,
+      designCommand: { type: "clear_guidance", scope: { kind: "course", ref: COURSE_ID } },
+      command: { type: "clear_guidance", scope: { kind: "course", ref: COURSE_ID } }
+    }),
+    /Alteração do desenho inválido/u
+  );
 });
 
 test("inspeção envia escopo, âncora e cursor canônicos à operação Edge", async () => {

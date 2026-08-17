@@ -213,11 +213,11 @@ Os tokens `canonical`, `versatile` e `substitute` são resultados do algoritmo d
 
 Nesse protocolo, `canonical` não certifica consenso universal da área acadêmica. A evidência para escolher um package continua sendo seu propósito, convenções, contraindicações e exemplo.
 
-Cobertura não é autorização. Sob um snapshot efetivo, package, papel e ajuste
-precisam ser admitidos pelo mesmo `ResourceSet`. A política `block` recusa
-`versatile` e `substitute`; `allow_versatile_with_limitation` admite somente
-`versatile` com limitação; `allow_substitute_with_limitation` pode admitir
-ambos, sempre com a limitação pertinente. O conjunto pode restringir mais.
+Cobertura não é autorização. A política de componentes efetiva fixa a revisão
+do catálogo, a disponibilidade `all|allow_only`, as exclusões e as
+preferências. Exclusão vence; preferência apenas desempata entre packages ainda
+permitidos e semanticamente adequados. Na materialização, o backend confronta
+as referências `package@version` realmente gravadas com a política selada.
 Ausência de representação adequada permanece registrada e nunca vira
 equivalência presumida.
 
@@ -228,7 +228,7 @@ O planejamento didático precede o contrato:
 ```text
 objetivo e progressão
 → operação-alvo necessária à tarefa
-→ `ResourceSet` efetivo e busca por facetas
+→ política efetiva e busca por facetas
 → comparação da lista curta
 → carregamento dos contratos escolhidos
 → composição da Unidade de estudo

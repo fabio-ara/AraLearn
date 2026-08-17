@@ -159,9 +159,10 @@ As fixtures em `supabase/fixtures/catalog/` não são seed remoto e não entram 
 Não aplique `20260817140000_course_identity_cutover.sql` nem
 `20260817150000_course_profiles_access.sql` nem
 `20260817160000_course_authoring_plan.sql` nem
-`20260817170000_course_study_unit_inspection.sql` por `db push` no projeto hospedado
+`20260817170000_course_study_unit_inspection.sql` nem
+`20260817180000_course_design_parameters.sql` por `db push` no projeto hospedado
 que contém os oito Cursos anteriores. O corte de identidade precisa receber a
-staging validada e as quatro migrations precisam ser confirmadas na mesma sessão
+staging validada e as cinco migrations precisam ser confirmadas na mesma sessão
 e na mesma transação. O comando transitório é:
 
 ```powershell
@@ -175,9 +176,9 @@ Sem `--apply`, o runner lê, converte e valida, mas não escreve no banco. Com
 2. valida documentos, topologia, sobreposições, contagens e metadados técnicos;
 3. grava a atestação privada `prepared`;
 4. relê a origem e aborta se o hash mudou;
-5. envia staging + as migrations `1400`, `1500`, `1600` e `1700` por uma única
+5. envia staging + as migrations `1400`, `1500`, `1600`, `1700` e `1800` por uma única
    conexão e uma única transação PostgreSQL;
-6. registra as quatro versões em `supabase_migrations.schema_migrations` dentro
+6. registra as cinco versões em `supabase_migrations.schema_migrations` dentro
    dessa transação;
 7. relê o modelo canônico, recompõe cada Curso e compara os hashes;
 8. grava a atestação privada `verified`.
@@ -191,7 +192,7 @@ As atestações ficam, por padrão, em
 `../AraLearn_private/evidence/course-cutover/`. Cada Curso registra somente
 `courseId`, `manifestHash`, `documentHash`, `rowHash`, `entityStateHash` e
 contagens. O relatório inclui ainda os hashes do snapshot, das resoluções e do
-conjunto das quatro migrations; não inclui conteúdo, credenciais nem uma segunda
+conjunto das cinco migrations; não inclui conteúdo, credenciais nem uma segunda
 cópia do banco. O runner recusa gravá-lo dentro do repositório público.
 
 A transação limita espera de lock a 15 segundos e cada instrução a 10 minutos;
@@ -200,6 +201,14 @@ processo excedido, drift ou divergência pós-aplicação encerram o comando com
 falha. O ensaio PostgreSQL focal mantém uma escrita-prova dentro da transação e
 confirma que lock timeout, statement timeout e término do processo não deixam
 essa escrita confirmada.
+
+O preflight da `1800` possui duas cercas adicionais. Primeiro, bloqueia as
+tabelas de tentativas e etapas e aborta se existir qualquer materialização
+anterior ao novo contexto; não há retomada ou conversão implícita desse estado.
+Depois, bloqueia cada relação legada de desenho antes de conferir que está
+vazia. Assim, uma escrita concorrente não pode atravessar a janela entre
+verificação e corte. Qualquer linha encontrada exige inspeção e decisão
+explícita antes de uma nova execução.
 
 Falhas durante a transação provocam rollback. A recomposição final acontece
 depois do commit; se ela divergir, as migrations já foram aplicadas, mas API,
@@ -213,14 +222,16 @@ npx.cmd --yes supabase@2.109.1 migration list --linked
 npx.cmd --yes supabase@2.109.1 db push --linked --dry-run
 ```
 
-As versões `20260817140000`, `20260817150000`, `20260817160000` e
-`20260817170000` precisam
+As versões `20260817140000`, `20260817150000`, `20260817160000`,
+`20260817170000` e `20260817180000` precisam
 constar como aplicadas e o dry-run não pode tentar reaplicá-las. Nunca execute
 `db push` em modo Apply antes do runner nesse projeto: a `1600` converte o
 estado autoral monolítico criado pela `1400`, e a `1700` conclui o corte para
 `aralearn.course.v1`, `microsequence.studyUnits`, discriminador exclusivo
-`study_unit` e Inspeção owner-only. Não existe janela intermediária nem passo
-separado de `db push` para a `1700`. Só depois dessas provas o roteiro geral
+`study_unit` e Inspeção owner-only; a `1800` remove a orientação escalar do
+plano e instala parâmetros, revisões de orientação e política de componentes.
+Não existe janela intermediária nem passo separado de `db push` para a `1700`
+ou a `1800`. Só depois dessas provas o roteiro geral
 pode publicar as funções e os clientes.
 
 No staging, entidades com raiz relacional levam sua versão e seus próprios
