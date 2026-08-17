@@ -71,11 +71,22 @@ function exactObject(value, fields, label) {
   return value;
 }
 
-function hasControlCharacter(value) {
+function hasControlCharacter(value, allowLayoutWhitespace = false) {
   return Array.from(value).some((character) => {
     const codePoint = character.codePointAt(0);
-    return codePoint < 32 || codePoint === 127;
+    if (codePoint >= 127 && codePoint <= 159) return true;
+    if (codePoint >= 32) return false;
+    return !allowLayoutWhitespace || ![9, 10, 13].includes(codePoint);
   });
+}
+
+function requiredText(value, label, maximum) {
+  const normalized = String(value || "").trim();
+  if (!normalized || normalized.length > maximum ||
+      hasControlCharacter(normalized, true)) {
+    throw new TypeError(`${label} inválido.`);
+  }
+  return normalized;
 }
 
 function reviewCursor(value) {
@@ -314,6 +325,69 @@ export class CourseApiClient {
       }
       throw error;
     }
+  }
+
+  loadAuthoringPlan(courseId) {
+    return this.executeCourseAction("lerCurso", {
+      courseId: uuid(courseId, "Curso"),
+      view: "instructional_plan"
+    });
+  }
+
+  loadPartMaterialization(courseId, authoringPartId, materializationId) {
+    return this.executeCourseAction("lerCurso", {
+      courseId: uuid(courseId, "Curso"),
+      view: "part_materialization",
+      authoringPartId: uuid(authoringPartId, "Parte de autoria"),
+      materializationId: uuid(materializationId, "Materialização")
+    });
+  }
+
+  createCourse({
+    requestId = createUuid(),
+    title,
+    objective
+  } = {}) {
+    return this.executeCourseAction("criarCurso", {
+      requestId: uuid(requestId, "Identidade da criação"),
+      title: requiredText(title, "Título do Curso", 300),
+      objective: requiredText(objective, "Objetivo do Curso", 2_000)
+    });
+  }
+
+  mutateAuthoringPlan({
+    requestId = createUuid(),
+    courseId,
+    expectedRevision,
+    expectedPlanVersion,
+    planCommand
+  } = {}) {
+    return this.executeCourseAction("alterarCurso", {
+      requestId: uuid(requestId, "Identidade da alteração"),
+      courseId: uuid(courseId, "Curso"),
+      expectedRevision: positiveInteger(expectedRevision, "Versão de estado"),
+      expectedPlanVersion: positiveInteger(expectedPlanVersion, "Versão do plano"),
+      operation: "update_instructional_plan",
+      planCommand: plainObject(planCommand, "Comando do plano")
+    });
+  }
+
+  advanceAuthoringPartMaterialization({
+    requestId = createUuid(),
+    courseId,
+    expectedRevision,
+    materializationCommand
+  } = {}) {
+    return this.executeCourseAction("alterarCurso", {
+      requestId: uuid(requestId, "Identidade da alteração"),
+      courseId: uuid(courseId, "Curso"),
+      expectedRevision: positiveInteger(expectedRevision, "Versão de estado"),
+      operation: "advance_part_materialization",
+      materializationCommand: plainObject(
+        materializationCommand,
+        "Comando de materialização"
+      )
+    });
   }
 
   getPersonProfile() {

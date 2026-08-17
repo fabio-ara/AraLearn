@@ -74,28 +74,114 @@ async function mountCourseAuthoring(page, {
       courseId: courseIds[0],
       title: "Fundamentos de relações",
       goal: "Compreender relações essenciais por meio de exemplos graduais.",
-      brief: "Priorizar explicações completas e exemplos concretos.",
       revision: 5,
-      authoringState: {
-        version: 1,
-        parts: [{ id: "part-a" }, { id: "part-b" }, { id: "part-c" }],
-        decisions: [{ id: "decision-a" }, { id: "decision-b" }],
-        mandate: null
+      plan: {
+        id: "71000000-0000-4000-8000-000000000011",
+        version: 3,
+        audience: "Pessoas iniciantes.",
+        scope: "Relações e evidências.",
+        authoringGuidance: "Priorizar explicações completas e exemplos concretos.",
+        preferredPartCount: { minimum: 7, maximum: 12, origin: "automatic" },
+        intendedLearningOutcomes: [],
+        instructionalAnalysisUnits: [],
+        evidenceRequirements: [],
+        parts: [{
+          id: "70000000-0000-4000-8000-000000000007",
+          title: "Relações iniciais",
+          intent: "Materializar a comparação orientada.",
+          version: 1,
+          position: 0,
+          microsequences: [{
+            id: "microsequence-a",
+            productionPosition: 0,
+            title: "Comparação orientada",
+            curriculumPath: {
+              moduleId: "module-a",
+              moduleTitle: "Base conceitual",
+              lessonId: "lesson-a",
+              lessonTitle: "Relações e evidências"
+            },
+            studyUnitCount: 2
+          }],
+          progress: {
+            state: "materializing",
+            microsequenceCount: 1,
+            studyUnitCount: 2,
+            lastMaterialization: {
+              id: "75000000-0000-4000-8000-000000000015",
+              status: "running",
+              version: 2,
+              completedStepCount: 1,
+              failedStepCount: 0,
+              totalStepCount: 2,
+              startedAt: "2026-08-17T12:00:00.000Z",
+              updatedAt: "2026-08-17T12:02:00.000Z",
+              completedAt: null
+            }
+          }
+        }],
+        counts: {
+          intendedLearningOutcomeCount: 0,
+          instructionalAnalysisUnitCount: 0,
+          evidenceRequirementCount: 0,
+          authoringPartCount: 1,
+          linkedDidacticMicrosequenceCount: 1,
+          studyUnitCount: 2
+        },
+        updatedAt: "2026-08-17T12:00:00.000Z"
       }
     }, {
       courseId: courseIds[1],
       title: "Aplicações comparadas",
       goal: "Aplicar os conceitos em situações contrastantes.",
-      brief: "Alternar explicação e prática.",
       revision: 2,
-      authoringState: { version: 1, parts: [], decisions: [], mandate: null }
+      plan: {
+        id: "72000000-0000-4000-8000-000000000012",
+        version: 1,
+        audience: null,
+        scope: null,
+        authoringGuidance: "Alternar explicação e prática.",
+        preferredPartCount: { minimum: 7, maximum: 12, origin: "automatic" },
+        intendedLearningOutcomes: [],
+        instructionalAnalysisUnits: [],
+        evidenceRequirements: [],
+        parts: [],
+        counts: {
+          intendedLearningOutcomeCount: 0,
+          instructionalAnalysisUnitCount: 0,
+          evidenceRequirementCount: 0,
+          authoringPartCount: 0,
+          linkedDidacticMicrosequenceCount: 0,
+          studyUnitCount: 0
+        },
+        updatedAt: "2026-08-17T12:00:00.000Z"
+      }
     }, {
       courseId: courseIds[2],
       title: "Leitura crítica de dados",
       goal: "Interpretar evidências com cautela.",
-      brief: "Distinguir dado, métrica e inferência.",
       revision: 3,
-      authoringState: { version: 1, parts: [], decisions: [], mandate: null }
+      plan: {
+        id: "73000000-0000-4000-8000-000000000013",
+        version: 1,
+        audience: null,
+        scope: null,
+        authoringGuidance: "Distinguir dado, métrica e inferência.",
+        preferredPartCount: { minimum: 7, maximum: 12, origin: "automatic" },
+        intendedLearningOutcomes: [],
+        instructionalAnalysisUnits: [],
+        evidenceRequirements: [],
+        parts: [],
+        counts: {
+          intendedLearningOutcomeCount: 0,
+          instructionalAnalysisUnitCount: 0,
+          evidenceRequirementCount: 0,
+          authoringPartCount: 0,
+          linkedDidacticMicrosequenceCount: 0,
+          studyUnitCount: 0
+        },
+        updatedAt: "2026-08-17T12:00:00.000Z"
+      }
     }];
     const count = requestedCardinality === "zero" ? 0 :
       requestedCardinality === "one" ? 1 : definitions.length;
@@ -157,8 +243,11 @@ async function mountCourseAuthoring(page, {
       headerReads: 0,
       documentReads: 0,
       peopleReads: 0,
+      planReads: 0,
+      materializationReads: [],
       createCalls: [],
-      updateCalls: [],
+      planMutations: [],
+      materializationRequests: [],
       closeCalls: 0
     };
     const counts = {
@@ -176,7 +265,10 @@ async function mountCourseAuthoring(page, {
         throw error;
       }
       return {
-        ...structuredClone(course),
+        courseId: course.courseId,
+        title: course.title,
+        goal: course.goal,
+        revision: course.revision,
         ownership: "owned",
         canEdit: true,
         counts
@@ -189,9 +281,7 @@ async function mountCourseAuthoring(page, {
         const items = courses.filter((course) =>
           !normalizedQuery || course.title.toLocaleLowerCase("pt-BR").includes(normalizedQuery)
         ).map((course) => ({
-          ...courseDetail(course.courseId),
-          authoringState: undefined,
-          brief: undefined
+          ...courseDetail(course.courseId)
         }));
         return {
           contract: "aralearn.course-list.v1",
@@ -219,22 +309,115 @@ async function mountCourseAuthoring(page, {
         courses.push({
           courseId: createdCourseId,
           title: value.title,
-          goal: value.goal,
-          brief: value.brief,
+          goal: value.objective,
           revision: 1,
-          authoringState: { version: 1, parts: [], decisions: [], mandate: null }
+          plan: {
+            id: "74000000-0000-4000-8000-000000000014",
+            version: 1,
+            audience: null,
+            scope: null,
+            authoringGuidance: null,
+            preferredPartCount: { minimum: 7, maximum: 12, origin: "automatic" },
+            intendedLearningOutcomes: [],
+            instructionalAnalysisUnits: [],
+            evidenceRequirements: [],
+            parts: [],
+            counts: {
+              intendedLearningOutcomeCount: 0,
+              instructionalAnalysisUnitCount: 0,
+              evidenceRequirementCount: 0,
+              authoringPartCount: 0,
+              linkedDidacticMicrosequenceCount: 0,
+              studyUnitCount: 0
+            },
+            updatedAt: "2026-08-17T12:00:00.000Z"
+          }
         });
         return { courseId: createdCourseId, revision: 1 };
       },
-      async updateCourse(value) {
-        probe.updateCalls.push(structuredClone(value));
+      async loadAuthoringPlan(courseId) {
+        probe.planReads += 1;
+        const course = courses.find((item) => item.courseId === courseId);
+        if (!course) throw new Error("Curso ausente");
+        return {
+          contract: "aralearn.course-instructional-plan.v1",
+          courseId,
+          courseRevision: course.revision,
+          plan: {
+            ...structuredClone(course.plan),
+            title: course.title,
+            objective: course.goal
+          },
+          recentActivity: []
+        };
+      },
+      async loadPartMaterialization(courseId, authoringPartId, materializationId) {
+        probe.materializationReads.push({
+          courseId,
+          authoringPartId,
+          materializationId
+        });
+        const steps = [{
+          id: "76000000-0000-4000-8000-000000000016",
+          position: 0,
+          kind: "context_load",
+          targetDidacticMicrosequenceId: null,
+          productionPosition: null,
+          status: "completed",
+          version: 2,
+          resultFacts: { loadedSources: 2 },
+          updatedAt: "2026-08-17T12:01:00.000Z",
+          completedAt: "2026-08-17T12:01:00.000Z"
+        }, {
+          id: "77000000-0000-4000-8000-000000000017",
+          position: 1,
+          kind: "validation",
+          targetDidacticMicrosequenceId: null,
+          productionPosition: null,
+          status: "pending",
+          version: 1,
+          resultFacts: {},
+          updatedAt: "2026-08-17T12:00:00.000Z",
+          completedAt: null
+        }];
+        return {
+          contract: "aralearn.course-authoring-part-materialization.v1",
+          courseId,
+          courseRevision: 5,
+          authoringPartId,
+          materialization: {
+            id: materializationId,
+            authoringPartVersion: 1,
+            channel: "mcp",
+            status: "running",
+            version: 2,
+            designContext: { focus: "Comparação orientada" },
+            resultFacts: {},
+            startedAt: "2026-08-17T12:00:00.000Z",
+            updatedAt: "2026-08-17T12:02:00.000Z",
+            completedAt: null,
+            steps,
+            nextPendingStep: steps[1]
+          }
+        };
+      },
+      async mutateAuthoringPlan(value) {
+        probe.planMutations.push(structuredClone(value));
         const course = courses.find((item) => item.courseId === value.courseId);
+        if (value.operation !== "update_plan") return;
         course.title = value.title;
-        course.goal = value.goal;
-        course.brief = value.brief;
-        course.authoringState = structuredClone(value.authoringState);
+        course.goal = value.objective;
+        course.plan.audience = value.audience || null;
+        course.plan.scope = value.scope || null;
+        course.plan.authoringGuidance = value.authoringGuidance || null;
+        course.plan.preferredPartCount = structuredClone(value.preferredPartCount);
+        course.plan.version += 1;
+        course.plan.updatedAt = "2026-08-17T12:05:00.000Z";
         course.revision += 1;
-        return { courseId: course.courseId, revision: course.revision };
+      },
+      async requestPartMaterialization(value) {
+        probe.materializationRequests.push(structuredClone(value));
+        return { delivery: "chat" };
       },
       async clearCourse() {},
       async listCourseAccess(courseId) {
@@ -305,6 +488,41 @@ test.describe("Autoria canônica mobile-first", () => {
       expect(clientErrors).toEqual([]);
     });
   }
+
+  for (const width of [360, 1280]) {
+    test(`etapas retomáveis abrem sob demanda sem overflow em ${width} px`, async ({
+      page
+    }, testInfo) => {
+      const clientErrors = captureClientErrors(page);
+      await page.setViewportSize({ width, height: width < 600 ? 780 : 900 });
+      const planningHash = `#/authoring/courses/${COURSE_IDS[0]}?section=planning`;
+      await mountCourseAuthoring(page, { cardinality: "many", hash: planningHash });
+
+      expect(await page.evaluate(() =>
+        globalThis.__courseAuthoringHarness.probe.materializationReads)).toEqual([]);
+      await page.getByRole("button", { name: "Ver etapas" }).click();
+      await expect(page.getByText("Etapas da materialização", { exact: true })).toBeVisible();
+      await expect(page.getByText("Próxima: etapa 2 · Validar produção", {
+        exact: true
+      })).toBeVisible();
+      await expect(page.getByLabel("Etapas da materialização")
+        .getByText("Comparação orientada", { exact: true })).toBeVisible();
+      expect(await page.evaluate(() =>
+        globalThis.__courseAuthoringHarness.probe.materializationReads)).toEqual([{
+        courseId: COURSE_IDS[0],
+        authoringPartId: "70000000-0000-4000-8000-000000000007",
+        materializationId: "75000000-0000-4000-8000-000000000015"
+      }]);
+      await expectNoHorizontalOverflow(page);
+
+      await page.screenshot({
+        path: testInfo.outputPath(`course-authoring-materialization-${width}.png`),
+        fullPage: true,
+        animations: "disabled"
+      });
+      expect(clientErrors).toEqual([]);
+    });
+  }
 });
 
 test("lista distingue zero e um Curso sem criar outra superfície", async ({ page }) => {
@@ -336,7 +554,8 @@ test("deep link lê só o cabeçalho no Planejamento e navega por toda a inspeç
   await expect(page.getByText("Priorizar explicações completas", { exact: false })).toBeVisible();
   expect(await page.evaluate(() => globalThis.__courseAuthoringHarness.probe)).toMatchObject({
     headerReads: 1,
-    documentReads: 0
+    documentReads: 0,
+    planReads: 1
   });
 
   await page.getByRole("link", { name: "Estrutura" }).click();
@@ -382,23 +601,41 @@ test("criação e edição persistem pelo controlador compartilhado", async ({ p
   await page.getByRole("button", { name: "Criar Curso" }).last().click();
   await page.getByLabel("Título").fill("Curso criado na Autoria");
   await page.getByLabel("Objetivo").fill("Investigar a comparação de explicações.");
-  await page.getByLabel("Orientações").fill("Conservar exemplos e registrar decisões.");
   await page.getByRole("button", { name: "Criar Curso" }).last().click();
   await expect(page.getByRole("heading", { name: "Planejamento" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Curso criado na Autoria" })).toBeVisible();
-  expect(await page.evaluate(() => globalThis.__courseAuthoringHarness.probe.createCalls))
-    .toHaveLength(1);
+  const createCalls = await page.evaluate(() =>
+    globalThis.__courseAuthoringHarness.probe.createCalls);
+  expect(createCalls).toHaveLength(1);
+  expect(createCalls[0]).toMatchObject({
+    title: "Curso criado na Autoria",
+    objective: "Investigar a comparação de explicações.",
+    requestId: expect.any(String)
+  });
 
   await page.getByRole("button", { name: "Editar planejamento" }).click();
-  await page.getByLabel("Título").fill("Curso revisado na Autoria");
+  await page.getByLabel("Título do Curso").fill("Curso revisado na Autoria");
   await page.getByLabel("Objetivo").fill("Comparar explicações com critérios explícitos.");
-  await page.getByLabel("Orientações").fill("Registrar decisões e manter exemplos completos.");
+  await page.getByLabel("Orientação para a autoria")
+    .fill("Registrar decisões e manter exemplos completos.");
   await page.getByRole("button", { name: "Salvar planejamento" }).click();
 
   await expect(page.getByRole("heading", { name: "Curso revisado na Autoria" })).toBeVisible();
   await expect(page.getByText("Planejamento salvo.")).toBeVisible();
-  expect(await page.evaluate(() => globalThis.__courseAuthoringHarness.probe.updateCalls))
-    .toHaveLength(1);
+  const planMutations = await page.evaluate(() =>
+    globalThis.__courseAuthoringHarness.probe.planMutations);
+  expect(planMutations).toHaveLength(1);
+  expect(planMutations[0]).toMatchObject({
+    courseId: CREATED_COURSE_ID,
+    expectedCourseRevision: 1,
+    expectedPlanVersion: 1,
+    operation: "update_plan",
+    title: "Curso revisado na Autoria",
+    objective: "Comparar explicações com critérios explícitos.",
+    authoringGuidance: "Registrar decisões e manter exemplos completos.",
+    preferredPartCount: { minimum: 7, maximum: 12, origin: "automatic" },
+    requestId: expect.any(String)
+  });
   await expectNoHorizontalOverflow(page);
   expect(clientErrors).toEqual([]);
 });

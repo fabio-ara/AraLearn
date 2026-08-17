@@ -157,9 +157,10 @@ As fixtures em `supabase/fixtures/catalog/` não são seed remoto e não entram 
 ### Corte único do projeto que já contém Cursos
 
 Não aplique `20260817140000_course_identity_cutover.sql` nem
-`20260817150000_course_profiles_access.sql` por `db push` no projeto hospedado
+`20260817150000_course_profiles_access.sql` nem
+`20260817160000_course_authoring_plan.sql` por `db push` no projeto hospedado
 que contém os oito Cursos anteriores. O corte de identidade precisa receber a
-staging validada e as duas migrations precisam ser confirmadas na mesma sessão
+staging validada e as três migrations precisam ser confirmadas na mesma sessão
 e na mesma transação. O comando transitório é:
 
 ```powershell
@@ -173,9 +174,9 @@ Sem `--apply`, o runner lê, converte e valida, mas não escreve no banco. Com
 2. valida documentos, topologia, sobreposições, contagens e metadados técnicos;
 3. grava a atestação privada `prepared`;
 4. relê a origem e aborta se o hash mudou;
-5. envia staging + as migrations `1400` e `1500` por uma única conexão e uma
-   única transação PostgreSQL;
-6. registra as duas versões em `supabase_migrations.schema_migrations` dentro
+5. envia staging + as migrations `1400`, `1500` e `1600` por uma única conexão
+   e uma única transação PostgreSQL;
+6. registra as três versões em `supabase_migrations.schema_migrations` dentro
    dessa transação;
 7. relê o modelo canônico, recompõe cada Curso e compara os hashes;
 8. grava a atestação privada `verified`.
@@ -189,7 +190,7 @@ As atestações ficam, por padrão, em
 `../AraLearn_private/evidence/course-cutover/`. Cada Curso registra somente
 `courseId`, `manifestHash`, `documentHash`, `rowHash`, `entityStateHash` e
 contagens. O relatório inclui ainda os hashes do snapshot, das resoluções e do
-conjunto das duas migrations; não inclui conteúdo, credenciais nem uma segunda
+conjunto das três migrations; não inclui conteúdo, credenciais nem uma segunda
 cópia do banco. O runner recusa gravá-lo dentro do repositório público.
 
 A transação limita espera de lock a 15 segundos e cada instrução a 10 minutos;
@@ -211,10 +212,12 @@ npx.cmd --yes supabase@2.109.1 migration list --linked
 npx.cmd --yes supabase@2.109.1 db push --linked --dry-run
 ```
 
-As versões `20260817140000` e `20260817150000` precisam constar como aplicadas
-e o dry-run não pode tentar reaplicá-las. Nunca execute `db push` em modo Apply
-antes do runner nesse projeto. Só depois dessas provas o roteiro geral pode
-publicar as funções e os clientes.
+As versões `20260817140000`, `20260817150000` e `20260817160000` precisam
+constar como aplicadas e o dry-run não pode tentar reaplicá-las. Nunca execute
+`db push` em modo Apply antes do runner nesse projeto: a `1600` converte o
+estado autoral monolítico criado pela `1400` no mesmo corte e não admite uma
+janela intermediária. Só depois dessas provas o roteiro geral pode publicar as
+funções e os clientes.
 
 No staging, entidades com raiz relacional levam sua versão e seus próprios
 instantes. Os dois Cursos disponíveis somente como publicação não permitem

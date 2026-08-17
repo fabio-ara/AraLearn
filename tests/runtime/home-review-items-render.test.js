@@ -3,7 +3,6 @@ import assert from "node:assert/strict";
 
 import { createEmptyProgressDocument } from "../../src/storage/progressStore.js";
 import { renderHomeScreen } from "../../src/ui/renderHomeScreen.js";
-import { homeTrailSnapshotForProject } from "../support/homeTrailSnapshot.js";
 
 function projectWith(courseIds) {
   return {
@@ -19,7 +18,7 @@ function projectWith(courseIds) {
   };
 }
 
-test("a home lista em um único menu apenas os cards para rever do curso selecionado", () => {
+test("a home lista em uma única fila apenas Unidades com caminho completo", () => {
   const selectedCourseId = 'course-"<&';
   const otherCourseId = "course-other";
   const selectedPath = [
@@ -30,62 +29,51 @@ test("a home lista em um único menu apenas os cards para rever do curso selecio
     'card-"<&'
   ];
   const project = projectWith([selectedCourseId, otherCourseId]);
-  const trailSnapshot = homeTrailSnapshotForProject(project);
   const html = renderHomeScreen({
     project,
     progress: createEmptyProgressDocument(),
-    editorSupport: {
-      selectedHomeCourseKey: selectedCourseId,
-      selectedHomeTrailItemId: trailSnapshot.items[0].trailItemId,
-      trailSnapshot,
-      reviewItems: [
-        {
-          title: '<img src=x onerror="globalThis.compromised=true">',
-          context: 'Curso & lição "segura"',
-          entityPath: selectedPath
-        },
-        {
-          title: "Card de outro curso",
-          context: "Outro",
-          entityPath: [otherCourseId, "module-b", "lesson-b", "micro-b", "card-b"]
-        },
-        {
-          title: "Caminho incompleto",
-          entityPath: [selectedCourseId, "module-a", "lesson-a", "micro-a"]
-        }
-      ]
-    }
+    reviewItems: [
+      {
+        title: '<img src=x onerror="globalThis.compromised=true">',
+        context: 'Curso & lição "segura"',
+        entityPath: selectedPath
+      },
+      {
+        title: "Unidade de outro Curso",
+        context: "Outro",
+        entityPath: [otherCourseId, "module-b", "lesson-b", "micro-b", "study-unit-b"]
+      },
+      {
+        title: "Caminho incompleto",
+        entityPath: [selectedCourseId, "module-a", "lesson-a", "micro-a"]
+      }
+    ]
   });
 
-  assert.equal((html.match(/home-course-review-menu/g) || []).length, 1);
-  assert.equal((html.match(/data-action="open-review-card"/g) || []).length, 1);
-  assert.match(html, /aria-label="Cards marcados para rever"/u);
-  assert.match(html, /data-course-key="course-&quot;&lt;&amp;"/u);
-  assert.match(html, /data-module-key="module-&quot;&lt;&amp;"/u);
-  assert.match(html, /data-lesson-key="lesson-&quot;&lt;&amp;"/u);
-  assert.match(html, /data-microsequence-key="microsequence-&quot;&lt;&amp;"/u);
-  assert.match(html, /data-card-key="card-&quot;&lt;&amp;"/u);
+  assert.equal((html.match(/study-review-queue/g) || []).length, 1);
+  assert.equal((html.match(/data-action="open-review-item"/g) || []).length, 2);
+  assert.match(html, /<strong>Rever<\/strong>/u);
+  assert.match(html, /data-course-id="course-&quot;&lt;&amp;"/u);
+  assert.match(html, /data-module-id="module-&quot;&lt;&amp;"/u);
+  assert.match(html, /data-lesson-id="lesson-&quot;&lt;&amp;"/u);
+  assert.match(html, /data-microsequence-id="microsequence-&quot;&lt;&amp;"/u);
+  assert.match(html, /data-study-unit-id="card-&quot;&lt;&amp;"/u);
   assert.match(html, /&lt;img src=x onerror=&quot;globalThis.compromised=true&quot;&gt;/u);
   assert.doesNotMatch(html, /<img src=x/u);
-  assert.doesNotMatch(html, /Card de outro curso|Caminho incompleto/u);
+  assert.match(html, /Unidade de outro Curso/u);
+  assert.doesNotMatch(html, /Caminho incompleto/u);
 });
 
-test("a home não cria menu Rever quando o curso selecionado não tem marca", () => {
+test("a home não cria fila Rever quando não há caminho navegável", () => {
   const project = projectWith(["course-a", "course-b"]);
-  const trailSnapshot = homeTrailSnapshotForProject(project);
   const html = renderHomeScreen({
     project,
     progress: createEmptyProgressDocument(),
-    editorSupport: {
-      selectedHomeCourseKey: "course-a",
-      selectedHomeTrailItemId: trailSnapshot.items[0].trailItemId,
-      trailSnapshot,
-      reviewItems: [{
-        title: "Card B",
-        entityPath: ["course-b", "module-b", "lesson-b", "micro-b", "card-b"]
-      }]
-    }
+    reviewItems: [{
+      title: "Caminho incompleto",
+      entityPath: ["course-b", "module-b", "lesson-b", "micro-b"]
+    }]
   });
 
-  assert.doesNotMatch(html, /home-course-review-menu|open-review-card/u);
+  assert.doesNotMatch(html, /study-review-queue|open-review-item/u);
 });

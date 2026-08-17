@@ -554,6 +554,114 @@ test("Autoria mantém cache próprio e solicita somente Cursos do proprietário"
     key.startsWith("course-authoring.v1.list:")), true);
 });
 
+test("plano instrucional usa cache autoral e mutação encaminha um comando estável", async () => {
+  const store = new MemoryStateStore();
+  const calls = [];
+  const plan = {
+    contract: "aralearn.course-instructional-plan.v1",
+    courseId: COURSE_ID,
+    courseRevision: 4,
+    plan: { id: COURSE_B, version: 2, parts: [] },
+    recentActivity: []
+  };
+  let online = true;
+  const api = {
+    async listCourses() { return courseListPage([]); },
+    async getCourse() { throw new Error("não usado"); },
+    async loadAuthoringPlan(courseId) {
+      calls.push(["read", courseId]);
+      if (!online) throw networkFailure();
+      return plan;
+    },
+    async mutateAuthoringPlan(value) {
+      calls.push(["write", value]);
+      return { changed: true };
+    }
+  };
+  const controller = new CourseController({ api, store, ownerOnly: true });
+
+  assert.equal((await controller.loadAuthoringPlan(COURSE_ID)).offline, false);
+  online = false;
+  assert.equal((await controller.loadAuthoringPlan(COURSE_ID)).offline, true);
+  online = true;
+  await controller.mutateAuthoringPlan({
+    requestId: COURSE_B,
+    courseId: COURSE_ID,
+    expectedCourseRevision: 4,
+    expectedPlanVersion: 2,
+    operation: "update_plan",
+    audience: "Docentes"
+  });
+
+  assert.deepEqual(calls.at(-1), ["write", {
+    requestId: COURSE_B,
+    courseId: COURSE_ID,
+    expectedRevision: 4,
+    expectedPlanVersion: 2,
+    planCommand: { type: "update_plan", audience: "Docentes" }
+  }]);
+  assert.equal([...store.values.keys()].some((key) =>
+    key.includes(`instructional-plan:${COURSE_ID}`)), false);
+});
+
+test("leitura de materialização é sempre remota e preserva as identidades explícitas", async () => {
+  const store = new MemoryStateStore();
+  const calls = [];
+  const materializationId = "30000000-0000-4000-8000-000000000003";
+  const partId = "40000000-0000-4000-8000-000000000004";
+  const value = { contract: "aralearn.course-authoring-part-materialization.v1" };
+  const controller = new CourseController({
+    store,
+    ownerOnly: true,
+    api: {
+      async listCourses() { return courseListPage([]); },
+      async getCourse() { throw new Error("não usado"); },
+      async loadPartMaterialization(...args) {
+        calls.push(args);
+        return value;
+      }
+    }
+  });
+
+  assert.equal(
+    await controller.loadPartMaterialization(COURSE_ID, partId, materializationId),
+    value
+  );
+  assert.deepEqual(calls, [[COURSE_ID, partId, materializationId]]);
+  assert.equal([...store.values.keys()].some((key) =>
+    key.includes("materialization")), false);
+});
+
+test("pedido de materialização é somente entregue ao chat conectado", async () => {
+  const store = new MemoryStateStore();
+  const deliveries = [];
+  const controller = new CourseController({
+    store,
+    api: {
+      async listCourses() { return courseListPage([]); },
+      async getCourse() { throw new Error("não usado"); }
+    },
+    deliverMaterializationRequest(payload) {
+      deliveries.push(payload);
+      return { delivery: "clipboard", message: "Pedido copiado." };
+    }
+  });
+  const payload = {
+    requestId: COURSE_B,
+    courseId: COURSE_ID,
+    authoringPartId: "30000000-0000-4000-8000-000000000003",
+    requestText: "Materialize esta Parte."
+  };
+
+  assert.deepEqual(await controller.requestPartMaterialization(payload), {
+    delivery: "clipboard",
+    message: "Pedido copiado."
+  });
+  assert.deepEqual(deliveries, [payload]);
+  payload.requestText = "alterado depois";
+  assert.equal(deliveries[0].requestText, "Materialize esta Parte.");
+});
+
 test("operações de perfil, acesso, avatar e conta são delegadas sem outra camada", async () => {
   const store = new MemoryStateStore();
   const calls = [];

@@ -187,6 +187,99 @@ test("Autoria usa RPCs owner-only sem mudar a leitura compartilhada do Estudo", 
   ]);
 });
 
+test("plano instrucional e materialização usam a mesma operação Edge do MCP", async () => {
+  const calls = [];
+  const { client } = clientWithFetch(async (url, init) => {
+    calls.push({ url, body: JSON.parse(init.body) });
+    return jsonResponse({ ok: true, data: { changed: true } });
+  });
+
+  await client.createCourse({
+    requestId: AVATAR_ID,
+    title: "Curso novo",
+    objective: "Aprender com evidência"
+  });
+  await client.loadAuthoringPlan(COURSE_ID);
+  await client.loadPartMaterialization(COURSE_ID, AVATAR_ID, USER_ID);
+  await client.mutateAuthoringPlan({
+    requestId: AVATAR_ID,
+    courseId: COURSE_ID,
+    expectedRevision: 4,
+    expectedPlanVersion: 2,
+    planCommand: { type: "update_plan", audience: "Docentes" }
+  });
+  await client.advanceAuthoringPartMaterialization({
+    requestId: AVATAR_ID,
+    courseId: COURSE_ID,
+    expectedRevision: 5,
+    materializationCommand: {
+      authoringPartId: AVATAR_ID,
+      materializationId: USER_ID,
+      expectedMaterializationVersion: 0,
+      operation: "start",
+      payload: { authoringPartVersion: 1, designContext: {}, steps: [] }
+    }
+  });
+
+  assert.deepEqual(calls.map(({ url }) => url.split("/").at(-1)), [
+    "criarCurso", "lerCurso", "lerCurso", "alterarCurso", "alterarCurso"
+  ]);
+  assert.deepEqual(calls.map(({ body }) => body.operation || body.view), [
+    undefined, "instructional_plan", "part_materialization",
+    "update_instructional_plan", "advance_part_materialization"
+  ]);
+  assert.deepEqual(calls[0].body, {
+    requestId: AVATAR_ID,
+    title: "Curso novo",
+    objective: "Aprender com evidência"
+  });
+  assert.deepEqual(calls[2].body, {
+    courseId: COURSE_ID,
+    view: "part_materialization",
+    authoringPartId: AVATAR_ID,
+    materializationId: USER_ID
+  });
+  assert.equal(calls[3].body.expectedPlanVersion, 2);
+  assert.deepEqual(calls[3].body.planCommand, {
+    type: "update_plan",
+    audience: "Docentes"
+  });
+  assert.equal(calls[4].body.materializationCommand.operation, "start");
+});
+
+test("cliente bloqueia controles no cabeçalho antes de abrir a rede", () => {
+  let calls = 0;
+  const { client } = clientWithFetch(async () => {
+    calls += 1;
+    return jsonResponse({ ok: true, data: {} });
+  });
+  assert.throws(
+    () => client.createCourse({
+      requestId: AVATAR_ID,
+      title: "Curso\u0001inválido",
+      objective: "Objetivo válido"
+    }),
+    /Título do Curso inválido/u
+  );
+  assert.throws(
+    () => client.createCourse({
+      requestId: AVATAR_ID,
+      title: "Curso válido",
+      objective: "Objetivo\u007finválido"
+    }),
+    /Objetivo do Curso inválido/u
+  );
+  assert.throws(
+    () => client.createCourse({
+      requestId: AVATAR_ID,
+      title: "Curso\u0085inválido",
+      objective: "Objetivo válido"
+    }),
+    /Título do Curso inválido/u
+  );
+  assert.equal(calls, 0);
+});
+
 test("perfil e acesso direto usam a mesma operação Edge do MCP", async () => {
   const calls = [];
   const { client } = clientWithFetch(async (url, init) => {

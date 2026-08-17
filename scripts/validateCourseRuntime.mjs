@@ -18,11 +18,14 @@ const REQUIRED_FEATURES = Object.freeze([
   "person-profile-v1",
   "study-only-course-access-v1",
   "private-person-avatar-v1",
-  "self-account-deletion-v1"
+  "self-account-deletion-v1",
+  "course-instructional-plan-v1",
+  "course-authoring-part-materialization-v1"
 ]);
 
 const CANONICAL_RUNTIME_FILES = Object.freeze([
   "public/main.js",
+  "src/domain/courseAuthoringPlan.js",
   "src/domain/courseEntities.js",
   "src/persistence/AuthSessionStore.js",
   "src/persistence/CourseLocalStore.js",
@@ -163,7 +166,7 @@ function equalArray(actual, expected) {
 
 async function validateManifest() {
   const manifest = JSON.parse(await read("supabase/runtime-manifest.json"));
-  if (manifest.schemaRevision !== "20260817150000" || manifest.contractVersion !== 1 ||
+  if (manifest.schemaRevision !== "20260817160000" || manifest.contractVersion !== 1 ||
       !equalArray(manifest.requiredFeatures, REQUIRED_FEATURES)) {
     fail("O manifesto estático não descreve exatamente o runtime canônico de Curso.");
   }
@@ -173,15 +176,23 @@ async function validateManifest() {
   const profileMigration = await read(
     "supabase/migrations/20260817150000_course_profiles_access.sql"
   );
+  const authoringPlanMigration = await read(
+    "supabase/migrations/20260817160000_course_authoring_plan.sql"
+  );
   if (!courseMigration.includes("$advance_course_runtime_manifest$") ||
       !courseMigration.includes("'schemaRevision', '20260817140000'") ||
       !profileMigration.includes("$advance_profile_access_runtime_manifest$") ||
-      !profileMigration.includes("'schemaRevision', '20260817150000'")) {
+      !profileMigration.includes("'schemaRevision', '20260817150000'") ||
+      !authoringPlanMigration.includes(
+        "$advance_course_instructional_plan_runtime_manifest$"
+      ) ||
+      !authoringPlanMigration.includes("'schemaRevision', '20260817160000'")) {
     fail("A migration de Curso não avança o manifesto remoto.");
   }
   for (const feature of REQUIRED_FEATURES) {
     if (!courseMigration.includes(`'${feature}'`) &&
-        !profileMigration.includes(`'${feature}'`)) {
+        !profileMigration.includes(`'${feature}'`) &&
+        !authoringPlanMigration.includes(`'${feature}'`)) {
       fail(`A migration de Curso não declara ${feature}.`);
     }
   }
@@ -197,6 +208,15 @@ async function validateRuntimeFiles() {
     source: await read(runtimePath)
   })));
   const edgeGraph = await collectEdgeRuntimeGraph();
+  const browserAuthoringPlan = entries.find(({ relativePath }) =>
+    relativePath === "src/domain/courseAuthoringPlan.js")?.source;
+  const edgeAuthoringPlan = edgeGraph.get(path.join(
+    repositoryRoot,
+    "supabase/functions/_shared/aralearn/runtime/domain/courseAuthoringPlan.js"
+  ));
+  if (!browserAuthoringPlan || browserAuthoringPlan !== edgeAuthoringPlan) {
+    fail("O domínio do plano instrucional diverge entre navegador e Edge.");
+  }
   for (const [filePath, source] of edgeGraph) {
     const runtimePath = relativePath(filePath);
     if (WILDCARD_SCOPE_AUTHORIZATION.test(source)) {

@@ -17,6 +17,8 @@ const CUTOVER_MIGRATION_VERSION = "20260817140000";
 const CUTOVER_MIGRATION_NAME = "course_identity_cutover";
 const PROFILE_ACCESS_MIGRATION_VERSION = "20260817150000";
 const PROFILE_ACCESS_MIGRATION_NAME = "course_profiles_access";
+const AUTHORING_PLAN_MIGRATION_VERSION = "20260817160000";
+const AUTHORING_PLAN_MIGRATION_NAME = "course_authoring_plan";
 
 export const COURSE_CUTOVER_STAGING_SCHEMA = Object.freeze([
   Object.freeze({ name: "course_id", sql: "uuid not null" }),
@@ -1372,14 +1374,24 @@ function transactionBody(migrationSql, label) {
   };
 }
 
+function withoutTransactionGuards(body) {
+  const guards = new Set(COURSE_CUTOVER_TRANSACTION_GUARDS);
+  return body.split(/\r?\n/u)
+    .filter((line) => !guards.has(line.trim()))
+    .join("\n")
+    .trim();
+}
+
 export function buildCourseCutoverSql(
   preparation,
   migrationSql,
-  profileAccessMigrationSql
+  profileAccessMigrationSql,
+  authoringPlanMigrationSql
 ) {
   if (!isObject(preparation) || !Array.isArray(preparation.rows) ||
       !preparation.rows.length || typeof migrationSql !== "string" ||
-      typeof profileAccessMigrationSql !== "string") {
+      typeof profileAccessMigrationSql !== "string" ||
+      typeof authoringPlanMigrationSql !== "string") {
     fail(
       "invalid_cutover_execution",
       "Linhas ou migrations do corte estão ausentes."
@@ -1395,6 +1407,13 @@ export function buildCourseCutoverSql(
   const profileAccessTransaction = transactionBody(
     profileAccessMigrationSql,
     "a migration de perfil e acesso"
+  );
+  const authoringPlanTransaction = transactionBody(
+    authoringPlanMigrationSql,
+    "a migration do plano instrucional"
+  );
+  const authoringPlanExecutionBody = withoutTransactionGuards(
+    authoringPlanTransaction.body
   );
   const guardPositions = COURSE_CUTOVER_TRANSACTION_GUARDS.map((guard) =>
     migrationSql.indexOf(guard));
@@ -1441,6 +1460,7 @@ export function buildCourseCutoverSql(
     "\\.",
     identityExecutionBody,
     profileAccessTransaction.body,
+    authoringPlanExecutionBody,
     "insert into supabase_migrations.schema_migrations(version,statements,name)",
     `values (${sqlText(CUTOVER_MIGRATION_VERSION)},` +
       `array[${sqlText(identityTransaction.body)}]::text[],` +
@@ -1449,6 +1469,10 @@ export function buildCourseCutoverSql(
     `values (${sqlText(PROFILE_ACCESS_MIGRATION_VERSION)},` +
       `array[${sqlText(profileAccessTransaction.body)}]::text[],` +
       `${sqlText(PROFILE_ACCESS_MIGRATION_NAME)});`,
+    "insert into supabase_migrations.schema_migrations(version,statements,name)",
+    `values (${sqlText(AUTHORING_PLAN_MIGRATION_VERSION)},` +
+      `array[${sqlText(authoringPlanTransaction.body)}]::text[],` +
+      `${sqlText(AUTHORING_PLAN_MIGRATION_NAME)});`,
     "commit;",
     ""
   ].join("\n");

@@ -374,6 +374,22 @@ várias microssequências. Ambas são construções próprias do produto: a prim
 orientativa de Partes pode ser configurada e nunca constitui uma regularidade
 pedagógica universal.
 
+Estudos de sistemas recentes oferecem evidência situada para manter o plano
+intermediário visível e editável, sem transferir a decisão pedagógica inteira
+ao modelo. O VIVID organizou geração, avaliação e modificação de diálogos
+educacionais por instrutores; sua avaliação com doze participantes tratou uma
+tarefa e um formato específicos, não a produção de Cursos em geral
+([Choi et al. (2024)](referencias.md#ref-choi2024vivid)). O Shiksha Copilot
+combinou geração, curadoria humana e adaptação docente de planos de aula; o
+estudo misto envolveu 1.043 docentes e 23 curadores num contexto multilíngue e
+de recursos limitados, no qual profissionais continuaram avaliando e
+contextualizando o material produzido
+([Dennison et al. (2026)](referencias.md#ref-dennison2026shiksha)). Esses
+resultados sustentam investigar planejamento revisável, intervenção humana e
+uso móvel no AraLearn. Eles não validam a entidade Parte, não determinam sua
+quantidade e não demonstram que a faixa de sete a doze melhora aprendizagem ou
+qualidade autoral; essa faixa permanece default de produto a ser estudado.
+
 ### Interatividade depende da estrutura e do público
 
 Na teoria da carga cognitiva, elemento designa a unidade que precisa ser

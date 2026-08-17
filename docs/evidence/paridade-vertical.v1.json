@@ -67,12 +67,14 @@
         "manifestFeatures": [
           "single-live-course-identity-v1",
           "paged-live-course-composition-v1",
-          "course-cas-idempotency-v1"
+          "course-cas-idempotency-v1",
+          "course-instructional-plan-v1",
+          "course-authoring-part-materialization-v1"
         ],
         "databasePatterns": [
-          "^table:(?:public\\.courses|private\\.course_entities|private\\.course_events|private\\.course_change_receipts)$",
-          "^function:private\\.(?:list_courses_for_actor_v1|get_course_for_actor_v1|list_course_entities_for_actor_v1)\\(.*\\)$",
-          "^function:public\\.(?:list_courses_v1|get_course_v1|list_course_entities_v1|list_courses_for_actor_v1|get_course_for_actor_v1|list_course_entities_for_actor_v1|create_course_for_actor_v1|commit_course_changes_for_actor_v1|list_owned_courses_for_actor_v1|get_owned_course_for_actor_v1|list_owned_course_entities_for_actor_v1|list_owned_courses_v1|get_owned_course_v1|list_owned_course_entities_v1)\\(.*\\)$"
+          "^table:(?:public\\.courses|private\\.course_entities|private\\.course_events|private\\.course_change_receipts|private\\.course_instructional_plans|private\\.course_instructional_plan_items|private\\.course_authoring_parts|private\\.course_authoring_part_didactic_microsequences|private\\.course_authoring_part_materializations|private\\.course_authoring_part_materialization_steps)$",
+          "^function:private\\.(?:list_courses_for_actor_v1|get_course_for_actor_v1|list_course_entities_for_actor_v1|course_instructional_plan_command_document_v1|course_authoring_part_progress_v1|get_course_instructional_plan_for_actor_v1|delete_course_authoring_relations_before_course_v1)\\(.*\\)$",
+          "^function:public\\.(?:list_courses_v1|get_course_v1|list_course_entities_v1|list_courses_for_actor_v1|get_course_for_actor_v1|list_course_entities_for_actor_v1|create_course_for_actor_v1|commit_course_composition_for_actor_v1|commit_course_instructional_plan_for_actor_v1|advance_course_authoring_part_materialization_for_actor_v1|get_owned_course_instructional_plan_for_actor_v1|get_owned_course_instructional_plan_v1|get_owned_course_authoring_part_materialization_for_actor_v1|list_owned_courses_for_actor_v1|get_owned_course_for_actor_v1|list_owned_course_entities_for_actor_v1|list_owned_courses_v1|get_owned_course_v1|list_owned_course_entities_v1)\\(.*\\)$"
         ]
       },
       "ui": [
@@ -82,11 +84,13 @@
       ],
       "visibleEffects": [
         { "path": "src/ui/CourseAuthoringSurface.js", "token": "renderPlanningSection" },
-        { "path": "src/ui/CourseAuthoringSurface.js", "token": "loadCourseDocument" }
+        { "path": "src/ui/CourseAuthoringSurface.js", "token": "loadCourseDocument" },
+        { "path": "src/ui/CourseAuthoringSurface.js", "token": "loadPartMaterialization" }
       ],
       "persistence": [
         { "path": "src/persistence/CourseLocalStore.js", "token": "class CourseLocalStore" },
-        { "path": "src/supabase/CourseController.js", "token": "updateCourse" }
+        { "path": "src/supabase/CourseController.js", "token": "mutateAuthoringPlan" },
+        { "path": "src/supabase/CourseController.js", "token": "loadPartMaterialization" }
       ],
       "routes": [
         { "path": "supabase/functions/_shared/aralearn-authoring/courseMcpTools.js", "token": "mapAuthoringMcpToolCall" },
@@ -95,7 +99,9 @@
       "tests": [
         "tests/runtime/course-mcp-tools.test.js",
         "tests/runtime/course-authoring-surface.test.js",
-        "tests/runtime/course-controller.test.js"
+        "tests/runtime/course-controller.test.js",
+        "tests/runtime/course-authoring-plan-pglite.test.js",
+        "tests/e2e/course-authoring-cutover.spec.js"
       ],
       "justification": "A interface e o MCP operam a mesma identidade, versão e composição. Uma mutação por ferramenta só é completa quando a releitura a torna visível na Autoria."
     },

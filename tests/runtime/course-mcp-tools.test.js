@@ -10,6 +10,9 @@ import {
 } from "../../supabase/functions/_shared/aralearn-authoring/courseMcpTools.js";
 
 const COURSE_ID = "10000000-0000-4000-8000-000000000001";
+const PART_ID = "20000000-0000-4000-8000-000000000002";
+const MATERIALIZATION_ID = "30000000-0000-4000-8000-000000000003";
+const STEP_ID = "40000000-0000-4000-8000-000000000004";
 const REQUEST_ID = "request-course-0001";
 
 test("registro expõe somente ferramentas centradas no Curso e nos componentes", () => {
@@ -55,7 +58,7 @@ test("leitura exige identidade e escrita também exige escopo", () => {
   }
 });
 
-test("mapeia lista, leitura, criação e alteração sem identidade indireta", () => {
+test("mapeia lista, leituras e criação sem identidade indireta", () => {
   assert.deepEqual(mapAuthoringMcpToolCall("listarCursos", {
     query: "redes",
     limit: 12,
@@ -86,31 +89,126 @@ test("mapeia lista, leitura, criação e alteração sem identidade indireta", (
     `/v1/courses/${COURSE_ID}/entities?expectedRevision=4&limit=25` +
       "&afterEntityType=microsequence&afterEntityId=micro-a"
   );
+  assert.equal(
+    mapAuthoringMcpToolCall("lerCurso", {
+      courseId: COURSE_ID,
+      view: "instructional_plan"
+    }).path,
+    `/v1/courses/${COURSE_ID}/instructional-plan`
+  );
+  assert.equal(
+    mapAuthoringMcpToolCall("lerCurso", {
+      courseId: COURSE_ID,
+      view: "part_materialization",
+      authoringPartId: PART_ID,
+      materializationId: MATERIALIZATION_ID
+    }).path,
+    `/v1/courses/${COURSE_ID}/authoring-parts/${PART_ID}` +
+      `/materializations/${MATERIALIZATION_ID}`
+  );
 
   assert.deepEqual(mapAuthoringMcpToolCall("criarCurso", {
     requestId: REQUEST_ID,
     title: "Curso",
-    goal: "Aprender"
+    objective: "Aprender"
   }).body, {
     requestId: REQUEST_ID,
     title: "Curso",
-    goal: "Aprender",
-    brief: ""
+    objective: "Aprender"
   });
+});
 
-  const change = mapAuthoringMcpToolCall("alterarCurso", {
+test("mapeia plano, composição e materialização com cercas CAS explícitas", () => {
+  const planCommand = {
+    type: "update_plan",
+    audience: "Docentes",
+    preferredPartCount: { minimum: 7, maximum: 10, origin: "author" }
+  };
+  const planChange = mapAuthoringMcpToolCall("alterarCurso", {
     requestId: REQUEST_ID,
     courseId: COURSE_ID,
-    expectedRevision: 2,
-    operation: "update_metadata",
-    title: "Novo título"
+    expectedRevision: 4,
+    expectedPlanVersion: 2,
+    operation: "update_instructional_plan",
+    planCommand
   });
-  assert.equal(change.path, `/v1/courses/${COURSE_ID}/changes`);
-  assert.deepEqual(change.body, {
+  assert.equal(
+    planChange.path,
+    `/v1/courses/${COURSE_ID}/instructional-plan/changes`
+  );
+  assert.deepEqual(planChange.body, {
     requestId: REQUEST_ID,
-    expectedRevision: 2,
-    operation: "update_metadata",
-    title: "Novo título"
+    expectedCourseRevision: 4,
+    expectedPlanVersion: 2,
+    command: planCommand
+  });
+
+  const upsert = {
+    entityType: "module",
+    entityId: "module-a",
+    parentType: null,
+    parentId: null,
+    position: 0,
+    content: { title: "Módulo" }
+  };
+  const composition = mapAuthoringMcpToolCall("alterarCurso", {
+    requestId: REQUEST_ID,
+    courseId: COURSE_ID,
+    expectedRevision: 4,
+    operation: "commit_course_composition",
+    upserts: [upsert],
+    deletes: []
+  });
+  assert.equal(composition.path, `/v1/courses/${COURSE_ID}/composition`);
+  assert.deepEqual(composition.body, {
+    requestId: REQUEST_ID,
+    expectedRevision: 4,
+    upserts: [upsert],
+    deletes: []
+  });
+
+  const materialization = mapAuthoringMcpToolCall("alterarCurso", {
+    requestId: REQUEST_ID,
+    courseId: COURSE_ID,
+    expectedRevision: 4,
+    operation: "advance_part_materialization",
+    materializationCommand: {
+      operation: "start",
+      authoringPartId: PART_ID,
+      materializationId: MATERIALIZATION_ID,
+      expectedMaterializationVersion: 0,
+      authoringPartVersion: 2,
+      designContext: { audience: "Docentes" },
+      steps: [{
+        id: STEP_ID,
+        position: 0,
+        kind: "context_load",
+        targetDidacticMicrosequenceId: null,
+        productionPosition: null
+      }]
+    }
+  });
+  assert.equal(
+    materialization.path,
+    `/v1/courses/${COURSE_ID}/authoring-parts/${PART_ID}` +
+      `/materializations/${MATERIALIZATION_ID}/changes`
+  );
+  assert.deepEqual(materialization.body, {
+    requestId: REQUEST_ID,
+    expectedCourseRevision: 4,
+    expectedMaterializationVersion: 0,
+    operation: "start",
+    payload: {
+      authoringPartVersion: 2,
+      designContext: { audience: "Docentes" },
+      steps: [{
+        id: STEP_ID,
+        position: 0,
+        kind: "context_load",
+        targetDidacticMicrosequenceId: null,
+        productionPosition: null
+      }]
+    }
   });
 });
 
@@ -130,11 +228,28 @@ test("rejeita argumentos desconhecidos e alteração vazia", () => {
     (error) => error.code === "unknown_tool_argument"
   );
   assert.throws(
+    () => mapAuthoringMcpToolCall("lerCurso", {
+      courseId: COURSE_ID,
+      view: "part_materialization",
+      authoringPartId: PART_ID
+    }),
+    (error) => error.code === "invalid_tool_argument"
+  );
+  assert.throws(
+    () => mapAuthoringMcpToolCall("lerCurso", {
+      courseId: COURSE_ID,
+      view: "outline",
+      authoringPartId: PART_ID,
+      materializationId: MATERIALIZATION_ID
+    }),
+    (error) => error.code === "invalid_tool_argument"
+  );
+  assert.throws(
     () => mapAuthoringMcpToolCall("alterarCurso", {
       requestId: REQUEST_ID,
       courseId: COURSE_ID,
       expectedRevision: 1,
-      operation: "commit_entities",
+      operation: "commit_course_composition",
       upserts: [],
       deletes: []
     }),
@@ -142,47 +257,29 @@ test("rejeita argumentos desconhecidos e alteração vazia", () => {
   );
 });
 
-test("estado autoral tem forma exata e limites idênticos ao banco", () => {
-  const state = {
-    version: 1,
-    parts: [{ id: "parte-1" }],
-    decisions: [{ id: "decisao-1" }],
-    mandate: null
-  };
-  const mapped = mapAuthoringMcpToolCall("alterarCurso", {
-    requestId: REQUEST_ID,
-    courseId: COURSE_ID,
-    expectedRevision: 2,
-    operation: "update_metadata",
-    authoringState: state
-  });
-  assert.deepEqual(mapped.body.authoringState, state);
-
-  for (const invalidState of [
-    {},
-    { ...state, extra: true },
-    { ...state, parts: Array.from({ length: 65 }, () => ({})) },
-    { ...state, decisions: Array.from({ length: 513 }, () => ({})) }
-  ]) {
-    assert.throws(
-      () => mapAuthoringMcpToolCall("alterarCurso", {
-        requestId: REQUEST_ID,
-        courseId: COURSE_ID,
-        expectedRevision: 2,
-        operation: "update_metadata",
-        authoringState: invalidState
-      }),
-      (error) => error.code === "invalid_tool_argument"
-    );
-  }
-
+test("schema MCP anuncia comandos do plano, Partes e materialização delimitada", () => {
   const schema = COURSE_MCP_TOOLS.find(({ name }) => name === "alterarCurso").inputSchema;
-  assert.deepEqual(schema.properties.authoringState.required, [
-    "version", "parts", "decisions", "mandate"
+  assert.deepEqual(schema.properties.operation.enum, [
+    "update_instructional_plan",
+    "commit_course_composition",
+    "advance_part_materialization"
   ]);
-  assert.equal(schema.properties.authoringState.additionalProperties, false);
-  assert.equal(schema.properties.authoringState.properties.parts.maxItems, 64);
-  assert.equal(schema.properties.authoringState.properties.decisions.maxItems, 512);
+  assert.equal(schema.properties.planCommand.additionalProperties, false);
+  assert.ok(schema.properties.planCommand.properties.type.enum.includes("split_part"));
+  assert.ok(schema.properties.planCommand.properties.type.enum.includes("assign_microsequence"));
+  assert.equal(schema.properties.planCommand.properties.microsequenceIds.maxItems, 64);
+  assert.equal(schema.properties.materializationCommand.properties.steps.maxItems, 64);
+  assert.equal(
+    schema.properties.materializationCommand.properties.entityChanges.properties.upserts.maxItems,
+    64
+  );
+});
+
+test("schema MCP anuncia leitura retomável somente com as duas identidades", () => {
+  const schema = COURSE_MCP_TOOLS.find(({ name }) => name === "lerCurso").inputSchema;
+  assert.ok(schema.properties.view.enum.includes("part_materialization"));
+  assert.equal(schema.properties.authoringPartId.pattern, schema.properties.courseId.pattern);
+  assert.equal(schema.properties.materializationId.pattern, schema.properties.courseId.pattern);
 });
 
 test("schema MCP anuncia posição 1 para card e 0 para as demais entidades", () => {

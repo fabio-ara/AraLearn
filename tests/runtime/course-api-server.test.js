@@ -6,6 +6,8 @@ import { AuthoringApiError } from "../../supabase/functions/_shared/aralearn-aut
 
 const ORIGIN = "https://app.example";
 const COURSE_ID = "10000000-0000-4000-8000-000000000001";
+const PART_ID = "20000000-0000-4000-8000-000000000002";
+const MATERIALIZATION_ID = "30000000-0000-4000-8000-000000000003";
 
 function request(path, { method = "POST", body = {}, token = "session" } = {}) {
   return new Request(`https://edge.example/functions/v1/aralearn-course-api${path}`, {
@@ -19,7 +21,7 @@ function request(path, { method = "POST", body = {}, token = "session" } = {}) {
   });
 }
 
-test("expõe somente operações autenticadas do aplicativo", async () => {
+test("expõe leitura autenticada do plano instrucional no aplicativo", async () => {
   const handler = createCourseApiHandler({
     allowedOrigins: new Set([ORIGIN]),
     adapter: {
@@ -27,19 +29,63 @@ test("expõe somente operações autenticadas do aplicativo", async () => {
         assert.equal(token, "session");
         return { actorId: COURSE_ID, scopes: ["authoring:write"] };
       },
-      async getCourse({ courseId }) {
-        return { courseId, revision: 1 };
+      async getCourseInstructionalPlan({ courseId }) {
+        return {
+          contract: "aralearn.course-instructional-plan.v1",
+          courseId,
+          courseRevision: 1,
+          plan: { version: 1, parts: [] },
+          recentActivity: []
+        };
       }
     }
   });
   const response = await handler(request("/app/lerCurso", {
-    body: { courseId: COURSE_ID }
+    body: { courseId: COURSE_ID, view: "instructional_plan" }
   }));
   const payload = await response.json();
 
   assert.equal(response.status, 200);
   assert.equal(response.headers.get("access-control-allow-origin"), ORIGIN);
   assert.equal(payload.data.courseId, COURSE_ID);
+  assert.equal(payload.data.plan.version, 1);
+});
+
+test("expõe a mesma leitura retomável da materialização ao aplicativo", async () => {
+  let call = null;
+  const handler = createCourseApiHandler({
+    allowedOrigins: new Set([ORIGIN]),
+    adapter: {
+      async resolveApplicationPrincipal() {
+        return { actorId: COURSE_ID, scopes: ["authoring:read"] };
+      },
+      async getCourseAuthoringPartMaterialization(value) {
+        call = value;
+        return {
+          contract: "aralearn.course-authoring-part-materialization.v1",
+          courseId: COURSE_ID,
+          courseRevision: 2,
+          authoringPartId: PART_ID,
+          materialization: { id: MATERIALIZATION_ID, steps: [] }
+        };
+      }
+    }
+  });
+  const response = await handler(request("/app/lerCurso", {
+    body: {
+      courseId: COURSE_ID,
+      view: "part_materialization",
+      authoringPartId: PART_ID,
+      materializationId: MATERIALIZATION_ID
+    }
+  }));
+  const payload = await response.json();
+
+  assert.equal(response.status, 200);
+  assert.equal(payload.data.materialization.id, MATERIALIZATION_ID);
+  assert.equal(call.courseId, COURSE_ID);
+  assert.equal(call.authoringPartId, PART_ID);
+  assert.equal(call.materializationId, MATERIALIZATION_ID);
 });
 
 test("não conserva endpoints OAuth ou de Workspace", async () => {
@@ -74,7 +120,7 @@ test("autentica antes de ler o corpo e interrompe payload acima de 512 KiB", asy
         authenticationCalls += 1;
         return { actorId: COURSE_ID, scopes: ["authoring:write"] };
       },
-      async commitCourseChanges() {
+      async commitCourseInstructionalPlan() {
         assert.fail("Um payload excedente não pode alcançar a operação.");
       }
     }
@@ -97,6 +143,45 @@ test("autentica antes de ler o corpo e interrompe payload acima de 512 KiB", asy
   assert.equal(authenticationCalls, 1);
 });
 
+test("preserva o envelope CAS do plano até o adaptador", async () => {
+  let call = null;
+  const handler = createCourseApiHandler({
+    allowedOrigins: new Set([ORIGIN]),
+    adapter: {
+      async resolveApplicationPrincipal() {
+        return { actorId: COURSE_ID, scopes: ["authoring:write"] };
+      },
+      async commitCourseInstructionalPlan(value) {
+        call = value;
+        return {
+          contract: "aralearn.course-instructional-plan-change.v1",
+          courseId: COURSE_ID,
+          courseRevision: 6,
+          planId: "20000000-0000-4000-8000-000000000002",
+          planVersion: 4
+        };
+      }
+    }
+  });
+  const response = await handler(request("/app/alterarCurso", {
+    body: {
+      requestId: "request-course-plan-0001",
+      courseId: COURSE_ID,
+      expectedRevision: 5,
+      expectedPlanVersion: 3,
+      operation: "update_instructional_plan",
+      planCommand: { type: "update_plan", audience: "Docentes" }
+    }
+  }));
+  const payload = await response.json();
+
+  assert.equal(response.status, 200);
+  assert.equal(payload.data.planVersion, 4);
+  assert.equal(call.expectedCourseRevision, 5);
+  assert.equal(call.expectedPlanVersion, 3);
+  assert.deepEqual(call.command, { type: "update_plan", audience: "Docentes" });
+});
+
 test("orienta reler o Curso e usar novo requestId após conflito de versão", async () => {
   const handler = createCourseApiHandler({
     allowedOrigins: new Set([ORIGIN]),
@@ -104,7 +189,7 @@ test("orienta reler o Curso e usar novo requestId após conflito de versão", as
       async resolveApplicationPrincipal() {
         return { actorId: COURSE_ID, scopes: ["authoring:write"] };
       },
-      async commitCourseChanges() {
+      async commitCourseInstructionalPlan() {
         throw new AuthoringApiError(
           409,
           "stale_course_state",
@@ -118,8 +203,9 @@ test("orienta reler o Curso e usar novo requestId após conflito de versão", as
       requestId: "request-course-stale-0001",
       courseId: COURSE_ID,
       expectedRevision: 1,
-      operation: "update_metadata",
-      title: "Curso revisto"
+      expectedPlanVersion: 1,
+      operation: "update_instructional_plan",
+      planCommand: { type: "update_plan", title: "Curso revisto" }
     }
   }));
   const payload = await response.json();

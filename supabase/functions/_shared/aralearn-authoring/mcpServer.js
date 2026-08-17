@@ -17,6 +17,7 @@ export const ARALEARN_MCP_PROTOCOL_VERSION = "2025-11-25";
 const JSON_RPC_VERSION = "2.0";
 const SERVER_INFO = Object.freeze({ name: "aralearn-authoring", version: "0.0.20" });
 const MCP_BODY_LIMIT = 1024 * 1024;
+const MCP_RESPONSE_LIMIT = 2 * 1024 * 1024;
 const MCP_OAUTH_SCOPES = Object.freeze(["openid"]);
 const BASE_HEADERS = Object.freeze({
   "Content-Type": "application/json; charset=utf-8",
@@ -27,7 +28,15 @@ const BASE_HEADERS = Object.freeze({
 });
 
 function jsonRpcResponse(status, payload, headers = {}) {
-  return new Response(payload == null ? null : JSON.stringify(payload), {
+  const body = payload == null ? null : JSON.stringify(payload);
+  if (body != null && new TextEncoder().encode(body).byteLength > MCP_RESPONSE_LIMIT) {
+    throw new AuthoringApiError(
+      413,
+      "mcp_response_too_large",
+      "A resposta MCP excede o limite de 2 MiB; reduza a página solicitada."
+    );
+  }
+  return new Response(body, {
     status,
     headers: { ...BASE_HEADERS, ...headers }
   });
@@ -217,7 +226,10 @@ function assertProtocolHeader(request, method) {
 function toolSuccess(requestId, value) {
   const structuredContent = { ok: true, requestId, data: value ?? null };
   return {
-    content: [{ type: "text", text: JSON.stringify(structuredContent) }],
+    content: [{
+      type: "text",
+      text: "Operação concluída; o resultado completo está em structuredContent."
+    }],
     structuredContent,
     isError: false
   };

@@ -25,8 +25,9 @@ estado pessoal: progresso, marcas para rever e observações.
 ### Autoria
 
 Autoria lista somente Cursos próprios. Ela permite criar Curso, inspecionar
-planejamento e composição e gerir acesso. O MCP autoral possui a mesma
-restrição de propriedade.
+e editar planejamento e Partes, inspecionar composição, copiar um pedido de
+materialização para o chat conectado e gerir acesso. O MCP autoral possui a
+mesma restrição de propriedade e opera o mesmo estado persistido.
 
 ### Réplica local
 
@@ -144,22 +145,48 @@ progresso daquele Curso; não remove conteúdo nem outros Cursos.
 
 1. Abra Autoria.
 2. Use **Criar Curso**.
-3. Informe título, objetivo e orientações opcionais.
+3. Informe título e objetivo.
 4. Salve.
 
 O Curso nasce privado. A lista usa paginação; se ele não aparecer após falha de
 rede, atualize quando a conexão retornar antes de repetir a criação com uma
-nova intenção.
+nova intenção. O plano nasce vazio com preferência inicial de 7–12 Partes; esse
+intervalo pode ser alterado e não é regra pedagógica.
 
 ## Consultar e editar o planejamento
 
-Abra o Curso e escolha **Planejamento**. A tela mostra objetivo, orientações,
-quantidade de Partes e quantidade de decisões.
+Abra o Curso e escolha **Planejamento**. A tela mostra objetivo, público,
+escopo, orientação de autoria, faixa preferencial, referências do plano,
+Partes, vínculos, contagens e atividade recente persistida.
 
-O ícone de edição permite alterar título, objetivo e orientações. O campo
-avançado de estado estruturado usa JSON e ainda não é a interface final para
-Partes ou parâmetros pedagógicos. Não o altere manualmente sem conhecer o
-contrato.
+O ícone de edição permite alterar título, objetivo, público, escopo, orientação
+e faixa preferencial. Em **Referências do plano**, acrescente, edite, mova ou
+retire resultados de aprendizagem pretendidos, unidades de análise
+instrucional e requisitos de evidência. Todos são campos em linguagem natural;
+a interface não pede JSON.
+
+Em **Partes**, você pode:
+
+- criar ou editar título e intenção operacional;
+- mover a Parte na ordem de produção;
+- dividir ou unir Partes;
+- mover uma Microssequência para outra Parte ou deixá-la sem Parte;
+- consultar Microssequências e Unidades já materializadas.
+
+Essas ações mudam o plano, não a hierarquia curricular. Retirar uma Parte ou
+um vínculo não apaga conteúdo já produzido.
+
+## Levar uma Parte ao chat conectado
+
+1. Na Parte desejada, use **Levar pedido ao chat conectado**.
+2. Aguarde a confirmação de que o texto foi copiado.
+3. Cole o pedido no cliente conectado e autorize o trabalho ali.
+4. Reabra ou atualize o planejamento para conferir os fatos confirmados.
+
+O botão apenas copia texto para a área de transferência. Ele não inicia uma
+tentativa, não altera a composição e não muda o status da Parte. Os estados
+Planejada, Em materialização, Atenção necessária, Parcial e Materializada são
+derivados de vínculos, Unidades, tentativas e etapas persistidas pelo serviço.
 
 ## Consultar Estrutura e Conteúdo
 
@@ -191,14 +218,15 @@ pessoa até a limpeza local; revogação não recolhe bytes já entregues.
 Conecte um cliente MCP com OAuth individual. A experiência esperada é:
 
 1. descrever a intenção;
-2. permitir que o cliente localize e leia o Curso;
+2. permitir que o cliente localize e leia o Curso e seu plano;
 3. revisar a proposta quando houver decisão de conteúdo;
 4. autorizar a mutação;
 5. receber síntese breve e link visual;
 6. conferir o resultado na Autoria e em Estudo.
 
 A pessoa não precisa escolher a ferramenta técnica. O cliente deve reler o
-Curso antes de escrever e usar a revisão recebida. Veja
+Curso antes de escrever e usar a revisão e a versão específica recebidas. Uma
+alteração do plano e uma alteração da composição são comandos separados. Veja
 [Autoria por MCP](autoria-mcp.md).
 
 ## Trabalhar sem conexão
@@ -234,7 +262,6 @@ deve ser usada como forma de sair.
 O runtime canônico desta revisão não apresenta como concluídos:
 
 - edição contextual completa de Unidades;
-- planejamento visual por Partes;
 - parâmetros semânticos por escopo;
 - proveniência e ancoragem completas;
 - fila autoral de observações, auditoria e correção;

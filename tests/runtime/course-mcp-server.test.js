@@ -11,6 +11,8 @@ const ORIGIN = "https://client.example";
 const RESOURCE_URL = "https://edge.example/functions/v1/aralearn-authoring-mcp";
 const AUTHORIZATION_SERVER = "https://project.example/auth/v1";
 const COURSE_ID = "10000000-0000-4000-8000-000000000001";
+const PART_ID = "20000000-0000-4000-8000-000000000002";
+const MATERIALIZATION_ID = "30000000-0000-4000-8000-000000000003";
 
 function handler(overrides = {}) {
   return createAuthoringMcpHandler({
@@ -68,21 +70,64 @@ test("MCP anuncia somente invariantes e ferramentas canônicas de Curso", async 
   assert.equal(names.some((name) => /workspace|trilha|cole(?:ç|c)[aã]o/iu.test(name)), false);
 });
 
-test("MCP publica um único recurso estável e lê Curso pela rota compartilhada", async () => {
+test("MCP publica um único recurso estável e lê o plano pela rota compartilhada", async () => {
   const resourcesResponse = await handler()(request("resources/list"));
   const resources = (await resourcesResponse.json()).result.resources;
   assert.deepEqual(resources.map(({ uri }) => uri), ["aralearn://authoring/invariants"]);
 
   const toolResponse = await handler({
-    async getCourse({ courseId }) {
-      return { courseId, title: "Curso", revision: 2 };
+    async getCourseInstructionalPlan({ courseId }) {
+      return {
+        contract: "aralearn.course-instructional-plan.v1",
+        courseId,
+        courseRevision: 2,
+        plan: { version: 3, parts: [] },
+        recentActivity: []
+      };
     }
   })(request("tools/call", {
     name: "lerCurso",
-    arguments: { courseId: COURSE_ID }
+    arguments: { courseId: COURSE_ID, view: "instructional_plan" }
   }));
   const payload = await toolResponse.json();
-  assert.equal(payload.result.structuredContent.data.revision, 2);
+  assert.equal(payload.result.structuredContent.data.courseRevision, 2);
+  assert.equal(payload.result.structuredContent.data.plan.version, 3);
+  assert.equal(
+    payload.result.content[0].text,
+    "Operação concluída; o resultado completo está em structuredContent."
+  );
+  assert.equal(payload.result.content[0].text.includes(COURSE_ID), false);
+});
+
+test("MCP lê a materialização retomável sem duplicar o DTO no texto", async () => {
+  let call = null;
+  const toolResponse = await handler({
+    async getCourseAuthoringPartMaterialization(value) {
+      call = value;
+      return {
+        contract: "aralearn.course-authoring-part-materialization.v1",
+        courseId: COURSE_ID,
+        courseRevision: 4,
+        authoringPartId: PART_ID,
+        materialization: { id: MATERIALIZATION_ID, version: 2, steps: [] }
+      };
+    }
+  })(request("tools/call", {
+    name: "lerCurso",
+    arguments: {
+      courseId: COURSE_ID,
+      view: "part_materialization",
+      authoringPartId: PART_ID,
+      materializationId: MATERIALIZATION_ID
+    }
+  }));
+  const payload = await toolResponse.json();
+
+  assert.equal(payload.result.structuredContent.data.materialization.id,
+    MATERIALIZATION_ID);
+  assert.equal(call.authoringPartId, PART_ID);
+  assert.equal(call.materializationId, MATERIALIZATION_ID);
+  assert.equal(payload.result.content[0].text.includes(MATERIALIZATION_ID), false);
 });
 
 test("MCP interrompe envelope acima de 1 MiB antes de despachar ferramenta", async () => {
@@ -116,7 +161,7 @@ test("MCP interrompe envelope acima de 1 MiB antes de despachar ferramenta", asy
 
 test("MCP torna recuperável o conflito de versão do Curso sem instruções substituídas", async () => {
   const response = await handler({
-    async commitCourseChanges() {
+    async commitCourseInstructionalPlan() {
       throw new AuthoringApiError(
         409,
         "stale_course_state",
@@ -129,8 +174,9 @@ test("MCP torna recuperável o conflito de versão do Curso sem instruções sub
       requestId: "request-course-stale-0002",
       courseId: COURSE_ID,
       expectedRevision: 3,
-      operation: "update_metadata",
-      goal: "Objetivo atualizado"
+      expectedPlanVersion: 2,
+      operation: "update_instructional_plan",
+      planCommand: { type: "update_plan", objective: "Objetivo atualizado" }
     }
   }));
   const payload = await response.json();

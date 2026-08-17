@@ -7,8 +7,18 @@ variantes ou analytics de pesquisa.
 ## Vocabulário necessário
 
 **Curso vivo.** Objeto instrucional identificável e mutável que reúne título,
-objetivo, orientações, estado de autoria e composição. O mesmo identificador é
-usado por Estudo, Autoria e MCP.
+objetivo, plano instrucional e composição. O mesmo identificador é usado por
+Estudo, Autoria e MCP.
+
+**Plano instrucional.** Planejamento normalizado e editável do Curso. Reúne
+público, escopo, orientação de autoria, resultados de aprendizagem pretendidos,
+unidades de análise instrucional, requisitos de evidência e Partes de autoria.
+Título e objetivo aparecem nessa projeção para leitura, mas sua autoridade
+permanece exclusivamente na raiz do Curso.
+
+**Parte de autoria.** Recorte operacional ordenado que liga uma intenção de
+produção a zero ou mais Microssequências didáticas. Sua posição de produção
+não muda a hierarquia curricular e sua remoção não apaga conteúdo didático.
 
 **Entidade do Curso.** Linha que representa Módulo, Lição, Tópico,
 Microssequência didática ou Unidade de estudo. A posição e a relação com o pai
@@ -72,9 +82,10 @@ não consegue saber qual estado é o vigente.
 ### Decisão e funcionamento
 
 `public.courses` é a raiz. Ela conserva `id`, proprietário, título, objetivo,
-orientações, revisão e um estado autoral pequeno. `private.course_entities`
-conserva a composição normalizada. Toda entidade carrega `course_id`; não há
-identidade intermediária necessária para abri-la em Estudo.
+revisão e datas. `private.course_instructional_plans` e suas relações guardam o
+planejamento autoral; `private.course_entities` conserva a composição
+normalizada. Toda relação aponta diretamente para `course_id`; não há
+identidade intermediária necessária para abrir o Curso em Estudo.
 
 O Curso pode ser estudado enquanto muda. Uma nova edição incrementa a revisão,
 mas não transforma o conteúdo em outro Curso. Nesta etapa não existe estado
@@ -160,7 +171,67 @@ tabela para cada nível didático. O custo é manter validação equivalente no
 domínio JavaScript e no banco; os testes de roundtrip e da migration verificam
 essa fronteira.
 
-## Decisão 4 — estado pessoal separado do Curso
+## Decisão 4 — plano vivo e Partes operacionais normalizadas
+
+### Problema
+
+Um grande JSON de autoria obriga pessoas e clientes conversacionais a trocar o
+documento inteiro, oculta relações e cria uma segunda interpretação do estado.
+Também confunde a ordem em que conteúdo será produzido com a ordem curricular
+em que será estudado.
+
+### Decisão e funcionamento
+
+Cada Curso possui exatamente um plano em
+`private.course_instructional_plans`. Itens ordenados ficam em
+`private.course_instructional_plan_items`; Partes vivas, em
+`private.course_authoring_parts`; e o vínculo exclusivo entre Parte e
+Microssequência, em
+`private.course_authoring_part_didactic_microsequences`. A posição desse
+vínculo é ordem de produção, não `course_entities.position`.
+
+A interface apresenta campos e listas em linguagem natural. Ela permite editar
+o plano, acrescentar, editar, remover e reordenar itens, criar, editar,
+reordenar, dividir e unir Partes e mover ou retirar vínculos. Nenhuma dessas
+operações exige editar JSON. Remover ou reorganizar o plano conserva Módulos,
+Lições, Microssequências e Unidades já produzidos.
+
+A faixa preferencial nasce em 7–12 Partes. Ela pode ser alterada pela pessoa ou
+por uma condição de pesquisa e registra sua origem; é um padrão operacional,
+não lei pedagógica, resultado científico nem validação do número ideal.
+
+Materializar uma Parte é um processo retomável em
+`private.course_authoring_part_materializations` e
+`private.course_authoring_part_materialization_steps`. Começar, registrar uma
+etapa e finalizar são comandos pequenos, limitados, idempotentes e protegidos
+por revisão do Curso, versão do plano, versão da Parte ou versão da tentativa,
+conforme a operação. Uma etapa que altera entidades confirma composição,
+vínculo, fatos e progresso na mesma transação. O progresso exibido é derivado
+de vínculos, Unidades e tentativas persistidas; não é um selo manual.
+
+O botão visual **Levar pedido ao chat conectado** apenas copia uma solicitação.
+Ele não inicia tentativa, não materializa conteúdo e não muda o status. Somente
+fatos confirmados por API/MCP podem aparecer como atividade ou progresso.
+
+A vista leve do plano conserva somente o resumo da última tentativa. Quando a
+pessoa escolhe **Ver etapas**, ou quando um cliente MCP precisa retomar, uma
+leitura owner-only busca somente aquela tentativa e no máximo 64 etapas. O DTO
+inclui as versões, o contexto e os fatos limitados e a próxima etapa pendente;
+não depende do histórico da conversa nem carrega todas as tentativas do Curso.
+Uma Parte com tentativa em andamento não pode ser alterada ou ter vínculos
+reorganizados até terminar ou falhar, evitando estado irrecuperável.
+
+### Consequências
+
+- planejamento e composição possuem comandos separados e não se sobrescrevem;
+- interface e MCP leem e alteram o mesmo plano e os mesmos recibos;
+- repetição idêntica devolve o recibo selado; reutilização divergente da chave
+  é conflito;
+- CAS desatualizado exige releitura e reconciliação, sem última escrita vencer;
+- a atividade recente informa apenas fatos persistidos e o canal `application`
+  ou `mcp`.
+
+## Decisão 5 — estado pessoal separado do Curso
 
 ### Problema
 
@@ -190,7 +261,7 @@ pedido. Recibos expiram em sete dias e existem apenas para repetição segura.
 - observações pessoais já persistem, mas sua fila autoral unificada e seu ciclo
   de correção ainda não estão implementados.
 
-## Decisão 5 — propriedade e acesso direto
+## Decisão 6 — propriedade e acesso direto
 
 ### Problema
 
@@ -217,7 +288,7 @@ listada. MCP aplica a mesma regra pela ferramenta `gerirPessoas`.
 - conceder ou revogar é idempotente e produz um evento pequeno quando muda o
   estado.
 
-## Decisão 6 — perfil humano mínimo e avatar privado
+## Decisão 7 — perfil humano mínimo e avatar privado
 
 `public.person_profiles` conserva nome opcional e chave de avatar. Um perfil é
 criado para cada conta, sem transformar o produto em rede social. A interface
@@ -232,13 +303,15 @@ Curso. Antes da exclusão da conta, os objetos de avatar precisam ser removidos.
 O Storage não guarda conteúdo de Curso nesta etapa. Essa delimitação evita usar
 armazenamento de objetos apenas porque a infraestrutura existe.
 
-## Decisão 7 — dois transportes, uma regra de domínio
+## Decisão 8 — dois transportes, uma regra de domínio
 
 O aplicativo usa RPCs autenticadas para Estudo e a Edge Function
 `aralearn-course-api` para operações autorais. Clientes conversacionais usam
 `aralearn-authoring-mcp`, autenticado por OAuth. As duas Edge Functions chamam
-o mesmo roteador de Curso e as mesmas funções de serviço; não reimplementam
-propriedade, revisão ou idempotência.
+o mesmo roteador de Curso, o mesmo domínio de plano e as mesmas funções de
+serviço; não reimplementam propriedade, revisão ou idempotência. Planejamento,
+composição e avanço de materialização são operações distintas no protocolo,
+embora compartilhem a revisão do mesmo Curso.
 
 As ferramentas MCP correntes são seis:
 
@@ -253,7 +326,7 @@ O sexto item é uma ferramenta de descoberta e validação da biblioteca, não u
 mutação do Curso. A lista separa capacidades de Curso das operações progressivas
 da biblioteca sem expor o banco diretamente.
 
-## Decisão 8 — núcleo pequeno e pacotes de componentes
+## Decisão 9 — núcleo pequeno e pacotes de componentes
 
 O núcleo de execução conhece composição, temas, acessibilidade e protocolos
 comuns. Cada pacote de componente conserva schema, validação, renderer,
@@ -271,6 +344,7 @@ compatibilidade permanente.
 | Responsabilidade | Local principal |
 | --- | --- |
 | identidade e composição do Curso | `src/domain/courseEntities.js` |
+| plano instrucional e comandos de Parte | `src/domain/courseAuthoringPlan.js` |
 | cache local | `src/persistence/CourseLocalStore.js` |
 | estado pessoal e fila | `src/persistence/CoursePersonalStateRepository.js` |
 | acesso HTTP/RPC | `src/supabase/CourseApiClient.js` |
@@ -278,7 +352,7 @@ compatibilidade permanente.
 | aplicação de Estudo | `src/study/` |
 | Autoria visual | `src/ui/CourseAuthoringSurface.js` |
 | API e MCP | `supabase/functions/_shared/aralearn-authoring/course*` |
-| banco canônico | migrations `20260817140000` e `20260817150000` |
+| banco canônico | migrations `20260817140000`, `20260817150000` e `20260817160000` |
 | importador transitório | `scripts/courseCutover/` |
 
 ## Gates antes da promoção hospedada
@@ -294,8 +368,8 @@ está concluída. A promoção exige, nesta ordem:
    de navegador contra o schema resultante;
 4. confirmar que dispositivos conhecidos não possuem fila pendente do modelo
    substituído;
-5. executar o importador e a migration na mesma transação hospedada, abortando
-   diante de drift;
+5. executar o importador e as migrations `1400`, `1500` e `1600` na mesma
+   transação hospedada, abortando diante de drift;
 6. publicar Edge Functions, site e APK somente depois da verificação hospedada.
 
 O importador é transitório e não entra no runtime. Não há leitura dupla,
@@ -309,6 +383,9 @@ anterior.
 | um identificador representa o Curso em Estudo, Autoria e MCP | implementado localmente | domínio, migrations, testes de API/MCP e jornada de navegador |
 | Cursos compartilhados aparecem somente em Estudo | implementado localmente | controladores owner-only e testes de acesso |
 | lista fina precede composição sob demanda | implementado localmente | RPCs paginadas, cache e testes de revisão |
+| plano e Partes são editáveis sem JSON pela interface e pelo MCP | implementado localmente | domínio, migration `1600`, API, MCP e testes focais |
+| remover ou reorganizar Parte não apaga conteúdo produzido | implementado localmente | relações separadas, transações e testes de domínio/banco |
+| progresso de Parte reflete somente fatos persistidos | implementado localmente | projeção relacional de vínculos, entidades, tentativas e etapas |
 | estado pessoal não altera o Curso | implementado localmente | schema, RPC e repositório local |
 | perfil e avatar respeitam relação direta | implementado localmente | RLS, bucket privado e interface de Conta |
 | o corte preserva todos os dados reais | ainda não demonstrado | importação hospedada bloqueada por componentes sem equivalente |

@@ -44,13 +44,39 @@ function rejectUnknownFields(value, allowedFields, path, errors) {
   });
 }
 
-function validateRequiredText(value, fieldName, path, errors, label = fieldName) {
+function hasInvalidControlCharacter(value, { allowLayoutWhitespace = false } = {}) {
+  return [...value].some((character) => {
+    const point = character.codePointAt(0);
+    if (point >= 127 && point <= 159) return true;
+    if (point >= 32) return false;
+    return !allowLayoutWhitespace || ![9, 10, 13].includes(point);
+  });
+}
+
+function validateRequiredText(
+  value,
+  fieldName,
+  path,
+  errors,
+  label = fieldName,
+  {
+    maximum = Number.POSITIVE_INFINITY,
+    rejectControls = false,
+    allowLayoutWhitespace = false
+  } = {}
+) {
   const fieldPath = `${path}.${fieldName}`;
   if (!hasOwn(value, fieldName) || typeof value[fieldName] !== "string" || !text(value[fieldName])) {
     pushError(errors, fieldPath, `${label} é obrigatório e deve ser texto não vazio.`);
     return "";
   }
-  return text(value[fieldName]);
+  const normalized = text(value[fieldName]);
+  if (normalized.length > maximum ||
+      (rejectControls && hasInvalidControlCharacter(normalized, { allowLayoutWhitespace }))) {
+    pushError(errors, fieldPath, `${label} excede o limite ou contém controle inválido.`);
+    return "";
+  }
+  return normalized;
 }
 
 function validateRequiredArray(value, fieldName, path, errors) {
@@ -296,7 +322,14 @@ function validateMicrosequence(microsequence, path, errors) {
   }
   rejectUnknownFields(microsequence, MICROSEQUENCE_FIELDS, path, errors);
   const id = validateRequiredText(microsequence, "id", path, errors, "microsequence.id");
-  const title = validateRequiredText(microsequence, "title", path, errors, "microsequence.title");
+  const title = validateRequiredText(
+    microsequence,
+    "title",
+    path,
+    errors,
+    "microsequence.title",
+    { maximum: 300, rejectControls: true, allowLayoutWhitespace: true }
+  );
   const goal = validateRequiredText(microsequence, "goal", path, errors, "microsequence.goal");
   const role = validateRequiredText(microsequence, "role", path, errors, "microsequence.role");
   if (role && !MICROSEQUENCE_ROLES.has(role)) {
@@ -355,7 +388,11 @@ function validateLesson(lesson, path, errors) {
   validateLessonDependencies(microsequencesInput, `${path}.microsequences`, errors);
   return {
     id: validateRequiredText(lesson, "id", path, errors, "lesson.id"),
-    title: validateRequiredText(lesson, "title", path, errors, "lesson.title"),
+    title: validateRequiredText(lesson, "title", path, errors, "lesson.title", {
+      maximum: 300,
+      rejectControls: true,
+      allowLayoutWhitespace: true
+    }),
     guide: validateGuide(lesson.guide, `${path}.guide`, errors),
     topics: topicsInput
       .map((topic, index) => validateTopic(topic, `${path}.topics[${index}]`, errors))
@@ -376,7 +413,11 @@ function validateModule(moduleValue, path, errors) {
   validateSiblingIds(lessonsInput, `${path}.lessons`, errors, "lições do módulo");
   return {
     id: validateRequiredText(moduleValue, "id", path, errors, "module.id"),
-    title: validateRequiredText(moduleValue, "title", path, errors, "module.title"),
+    title: validateRequiredText(moduleValue, "title", path, errors, "module.title", {
+      maximum: 300,
+      rejectControls: true,
+      allowLayoutWhitespace: true
+    }),
     guide: validateGuide(moduleValue.guide, `${path}.guide`, errors),
     lessons: lessonsInput
       .map((lesson, index) => validateLesson(lesson, `${path}.lessons[${index}]`, errors))
@@ -394,7 +435,11 @@ function validateCourse(course, path, errors) {
   validateSiblingIds(modulesInput, `${path}.modules`, errors, "módulos do curso");
   return {
     id: validateRequiredText(course, "id", path, errors, "course.id"),
-    title: validateRequiredText(course, "title", path, errors, "course.title"),
+    title: validateRequiredText(course, "title", path, errors, "course.title", {
+      maximum: 300,
+      rejectControls: true,
+      allowLayoutWhitespace: true
+    }),
     goal: validateRequiredText(course, "goal", path, errors, "course.goal"),
     modules: modulesInput
       .map((moduleValue, index) => validateModule(moduleValue, `${path}.modules[${index}]`, errors))

@@ -446,6 +446,19 @@ function clearAuthoringRoute() {
   );
 }
 
+async function deliverPartMaterializationRequest({ requestText } = {}) {
+  const text = String(requestText || "").trim();
+  if (!text) throw new TypeError("O pedido de materialização está vazio.");
+  if (typeof globalThis.navigator?.clipboard?.writeText !== "function") {
+    throw new Error("Não foi possível copiar o pedido para o chat conectado.");
+  }
+  await globalThis.navigator.clipboard.writeText(text);
+  return {
+    delivery: "clipboard",
+    message: "Pedido copiado para levar ao chat conectado."
+  };
+}
+
 async function renderAuthenticatedApplication(root, config, authClient) {
   const courseApi = new CourseApiClient({
     projectUrl: config.projectUrl,
@@ -456,7 +469,8 @@ async function renderAuthenticatedApplication(root, config, authClient) {
   const authoringController = new CourseController({
     api: courseApi,
     store: courseLocalStore,
-    ownerOnly: true
+    ownerOnly: true,
+    deliverMaterializationRequest: deliverPartMaterializationRequest
   });
   const studyBridge = new CourseStudyBridge({ controller: studyController });
   repository = new CourseStudyRepository({

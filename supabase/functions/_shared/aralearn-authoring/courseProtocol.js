@@ -26,9 +26,47 @@ export function routeCourseRequest(method, pathname) {
     if (verb === "GET") return { name: "listCourses" };
     if (verb === "POST") return { name: "createCourse" };
   }
-  const change = path.match(/^\/v1\/courses\/([^/]+)\/changes$/u);
-  if (change && verb === "POST") {
-    return { name: "commitCourseChanges", courseId: courseUuid(change[1]) };
+  const materializationChange = path.match(
+    /^\/v1\/courses\/([^/]+)\/authoring-parts\/([^/]+)\/materializations\/([^/]+)\/changes$/u
+  );
+  if (materializationChange && verb === "POST") {
+    return {
+      name: "advanceCourseAuthoringPartMaterialization",
+      courseId: courseUuid(materializationChange[1]),
+      authoringPartId: courseUuid(materializationChange[2], "authoringPartId"),
+      materializationId: courseUuid(materializationChange[3], "materializationId")
+    };
+  }
+  const materialization = path.match(
+    /^\/v1\/courses\/([^/]+)\/authoring-parts\/([^/]+)\/materializations\/([^/]+)$/u
+  );
+  if (materialization && verb === "GET") {
+    return {
+      name: "getCourseAuthoringPartMaterialization",
+      courseId: courseUuid(materialization[1]),
+      authoringPartId: courseUuid(materialization[2], "authoringPartId"),
+      materializationId: courseUuid(materialization[3], "materializationId")
+    };
+  }
+  const instructionalPlanChange = path.match(
+    /^\/v1\/courses\/([^/]+)\/instructional-plan\/changes$/u
+  );
+  if (instructionalPlanChange && verb === "POST") {
+    return {
+      name: "commitCourseInstructionalPlan",
+      courseId: courseUuid(instructionalPlanChange[1])
+    };
+  }
+  const instructionalPlan = path.match(/^\/v1\/courses\/([^/]+)\/instructional-plan$/u);
+  if (instructionalPlan && verb === "GET") {
+    return {
+      name: "getCourseInstructionalPlan",
+      courseId: courseUuid(instructionalPlan[1])
+    };
+  }
+  const composition = path.match(/^\/v1\/courses\/([^/]+)\/composition$/u);
+  if (composition && verb === "POST") {
+    return { name: "commitCourseComposition", courseId: courseUuid(composition[1]) };
   }
   const entities = path.match(/^\/v1\/courses\/([^/]+)\/entities$/u);
   if (entities && verb === "GET") {
@@ -63,11 +101,30 @@ export async function readCourseJsonBody(request, limit = COURSE_BODY_LIMIT) {
   if (Number.isFinite(declared) && declared > limit) {
     throw new AuthoringApiError(413, "payload_too_large", "O corpo excede o limite.");
   }
-  const source = await request.text();
-  if (!source) throw new AuthoringApiError(422, "invalid_payload", "O corpo JSON é obrigatório.");
-  if (new TextEncoder().encode(source).byteLength > limit) {
-    throw new AuthoringApiError(413, "payload_too_large", "O corpo excede o limite.");
+  const reader = request.body?.getReader?.();
+  if (!reader) {
+    throw new AuthoringApiError(422, "invalid_payload", "O corpo JSON é obrigatório.");
   }
+  const decoder = new TextDecoder("utf-8", { fatal: true });
+  let source = "";
+  let received = 0;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      received += value.byteLength;
+      if (received > limit) {
+        await reader.cancel().catch(() => undefined);
+        throw new AuthoringApiError(413, "payload_too_large", "O corpo excede o limite.");
+      }
+      source += decoder.decode(value, { stream: true });
+    }
+    source += decoder.decode();
+  } catch (error) {
+    if (error instanceof AuthoringApiError) throw error;
+    throw new AuthoringApiError(400, "invalid_json", "O corpo não contém objeto JSON válido.");
+  }
+  if (!source) throw new AuthoringApiError(422, "invalid_payload", "O corpo JSON é obrigatório.");
   try {
     const value = JSON.parse(source);
     if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error();

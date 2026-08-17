@@ -3,9 +3,13 @@ const INVARIANTS_URI = "aralearn://authoring/invariants";
 export const COURSE_AUTHORING_SERVER_INSTRUCTIONS = [
   "O AraLearn mantém um Curso vivo e mutável como única autoridade da autoria.",
   "Leia o Curso antes de alterá-lo e envie sempre a versão de estado recebida.",
-  "Planejamento, parâmetros, fontes, observações e configuração de pesquisa pertencem ao estado persistido do Curso; não os fixe no prompt.",
+  "Leia o plano instrucional persistido antes de replanejar; preserve os ids dos itens e das Partes e envie também a versão do plano.",
+  "Plano instrucional, itens, Partes, vínculos e materializações pertencem ao estado persistido do Curso; não os fixe no prompt.",
+  "Parâmetros, fontes, observações e configuração de pesquisa só existem quando uma ferramenta corrente os expõe como fatos persistidos; não os suponha nem os invente.",
   "Use as ferramentas para observar ou modificar fatos. Não invente conteúdo, fontes, resultados, permissões ou estado de materialização.",
   "Uma Parte de autoria é um agrupamento operacional configurável; não é nível da hierarquia didática.",
+  "Materialize uma Parte por etapas pequenas: inicie a tentativa, registre cada etapa com o mesmo requestId nos replays e finalize somente depois de persistir e validar os fatos reais.",
+  "Uma tentativa interrompida é retomada pelo estado persistido; não reconstrua progresso pela conversa nem anuncie conteúdo que não foi gravado.",
   "Use consultarComponentesDidaticos progressivamente: explore ou pesquise, inspecione candidatos e carregue apenas o contrato necessário.",
   "Ao concluir uma operação, informe brevemente o que mudou, qual conteúdo foi afetado e que incerteza ainda exige decisão humana."
 ].join("\n");

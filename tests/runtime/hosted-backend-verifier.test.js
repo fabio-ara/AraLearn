@@ -7,7 +7,7 @@ import {
   verifyHostedBackend
 } from "../../scripts/verifyHostedBackend.mjs";
 
-const EXPECTED_REVISION = "20260817150000";
+const EXPECTED_REVISION = "20260817160000";
 const EXPECTED_CONTRACT_VERSION = 1;
 const PUBLIC_KEY = "sb_publishable_test-public-value";
 const FEATURES = [
@@ -23,7 +23,9 @@ const FEATURES = [
   "person-profile-v1",
   "study-only-course-access-v1",
   "private-person-avatar-v1",
-  "self-account-deletion-v1"
+  "self-account-deletion-v1",
+  "course-instructional-plan-v1",
+  "course-authoring-part-materialization-v1"
 ];
 
 function response(status, body, headers = {}) {

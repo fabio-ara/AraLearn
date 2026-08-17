@@ -23,13 +23,16 @@ a autoridade do servidor para acesso ou concorrência.
 
 ## Modelo mental
 
-**Descrição textual:** o Curso possui uma raiz e entidades no PostgreSQL; o
-dispositivo conserva descritores e Cursos já abertos; cada pessoa mantém um
-estado pessoal local e remoto; fotos ficam no Storage privado.
+**Descrição textual:** o Curso possui raiz, plano instrucional e entidades no
+PostgreSQL; o dispositivo conserva descritores e Cursos já abertos; cada pessoa
+mantém um estado pessoal local e remoto; fotos ficam no Storage privado.
 
 ```mermaid
 flowchart TD
-    PG[(PostgreSQL)] --> C[Curso e entidades]
+    PG[(PostgreSQL)] --> C[Raiz do Curso]
+    PG --> PL[Plano, itens e Partes]
+    PG --> MT[Tentativas e etapas de materialização]
+    PG --> E[Entidades didáticas]
     PG --> A[Acesso direto]
     PG --> P[Estado pessoal]
     IDB[(IndexedDB)] --> L[Listas e Cursos em cache]
@@ -49,18 +52,73 @@ flowchart TD
 - proprietário;
 - título;
 - objetivo;
-- orientações;
 - revisão corrente;
-- estado básico de autoria;
 - datas de criação e atualização.
 
 Não existe coluna de arquivamento ou exclusão lógica no Curso canônico. Nenhum
 comando atual de Estudo, Autoria ou MCP produz esse estado; mantê-lo no banco
 criaria uma possibilidade sem operação correspondente no produto.
 
-O estado de autoria v1 é um objeto fechado com `version`, `parts`, `decisions`
-e `mandate`, limitado a 1 MiB. Isso é um contrato mínimo para retomada, não um
-convite para colocar todo dado futuro num JSON único.
+Título e objetivo possuem uma única autoridade nessa relação. A projeção do
+plano os inclui para leitura conjunta, mas não persiste uma cópia. Orientações,
+Partes ou outro planejamento não ficam num JSON da raiz.
+
+### Plano instrucional e Partes
+
+O planejamento usa relações próprias:
+
+- `private.course_instructional_plans`: público, escopo, orientação para a
+  autoria, faixa preferencial de Partes, origem da preferência e versão;
+- `private.course_instructional_plan_items`: resultados de aprendizagem
+  pretendidos, unidades de análise instrucional e requisitos de evidência,
+  cada qual com identidade, posição, enunciado e versão;
+- `private.course_authoring_parts`: título, intenção, posição, versão e eventual
+  retirada do plano;
+- `private.course_authoring_part_didactic_microsequences`: vínculo exclusivo e
+  ordem de produção de cada Microssequência numa Parte.
+
+A faixa 7–12 é o default de um plano novo, dentro do intervalo permitido de 1 a
+64. Ela é configurável e sua origem é persistida; o banco não a trata como lei
+pedagógica. Posições são contíguas no plano. A ordem do vínculo não substitui a
+posição curricular da entidade. Um plano admite até 192 vínculos de
+Microssequência no total. O alvo normalizado ocupa no máximo 512 KiB e a
+projeção enriquecida é recusada acima de 1,75 MiB, mantendo margem para o teto
+de 2 MiB do transporte.
+
+Remover, dividir, unir ou reordenar Partes altera relações do plano. Módulos,
+Lições, Microssequências e Unidades permanecem em `course_entities`. Assim, o
+banco não interpreta uma mudança de plano como pedido implícito de exclusão de
+conteúdo.
+
+### Materialização retomável
+
+`private.course_authoring_part_materializations` conserva uma tentativa por
+Parte, a versão da Parte usada como base, ator, canal, estado, versão, contexto
+de desenho, fatos do resultado e instantes. Somente uma tentativa `running`
+pode existir por Parte.
+
+`private.course_authoring_part_materialization_steps` conserva até 64 passos
+ordenados por tentativa: carga de contexto, materialização de uma
+Microssequência ou validação. Etapas registram estado, versão e fatos pequenos.
+Quando uma etapa materializa uma Microssequência, as alterações de entidades e
+o vínculo de produção são confirmados na mesma transação.
+
+Posições de produção ficam no intervalo `0–63` e são contíguas dentro da
+Parte. A restrição vale também na fronteira SQL, não apenas no cliente. Uma
+tentativa `running` cerca a Parte e seus vínculos contra alteração; campos de
+cabeçalho e itens independentes do plano podem continuar mudando.
+
+`get_owned_course_authoring_part_materialization_for_actor_v1` recupera uma
+tentativa owner-only com até 64 etapas e resposta de no máximo 1,25 MiB. A
+projeção informa `nextPendingStep` somente quando a tentativa pode continuar.
+O plano leve não repete esses dados. Um índice por Curso, Parte e atualização
+sustenta a busca da tentativa mais recente. Quota e retenção histórica serão
+fechadas com a política de evidência da #124 antes da promoção hospedada; esta
+etapa não apaga fatos automaticamente.
+
+O status mostrado na interface é derivado dessas relações, dos vínculos e das
+Unidades vivas. Copiar um pedido para o chat não grava tentativa ou etapa e não
+altera o status.
 
 ### Entidades do Curso
 
@@ -102,9 +160,9 @@ Curso. Assim, remover uma Unidade não deixa um contador persistido incorreto.
 ### Eventos e recibos
 
 `private.course_events` registra somente eventos pequenos que já possuem
-consumidor de auditoria ou pesquisa: criação, alteração de metadados,
-substituição de composição, concessão e revogação de acesso. O resumo não
-replica o Curso nem contém e-mail.
+consumidor de interface, auditoria ou pesquisa: criação, mudança de plano,
+avanço de materialização, alteração de composição, concessão e revogação de
+acesso. O resumo não replica o Curso nem contém e-mail.
 
 Eventos de conteúdo usam `changeKind` para distinguir a natureza observada da
 mudança e contagens de entidades efetivamente criadas, alteradas ou removidas.
@@ -158,6 +216,7 @@ Cada conta possui `aralearn-course-v1-<user-id>`, com uma store genérica
 
 - páginas da lista de Estudo ou Autoria;
 - cabeçalho de Curso;
+- projeção do plano instrucional e atividade recente;
 - páginas de entidades por revisão;
 - documento composto validado;
 - estado pessoal e sua pendência.
@@ -184,20 +243,30 @@ Essa sequência evita misturar o começo de uma revisão com o fim de outra.
 ## Concorrência do Curso
 
 Criação e alteração usam uma chave de pedido. Alteração também informa
-`expectedRevision`. Na transação, o servidor:
+`expectedRevision`; plano e materialização acrescentam a versão esperada do
+objeto específico. Na transação, o servidor:
 
 1. valida pessoa e propriedade;
 2. bloqueia o Curso;
 3. procura recibo compatível;
 4. compara a revisão;
-5. valida metadados ou entidades;
+5. valida o comando e o estado-alvo;
 6. aplica tudo ou nada;
 7. calcula as diferenças efetivas;
 8. se algo mudou, incrementa a revisão e registra o evento;
 9. registra o recibo, inclusive quando o pedido válido não mudou nada.
 
-Se a revisão estiver desatualizada, a mutação falha. O cliente precisa reler e
-reconciliar; não há “última escrita vence” silenciosa.
+Se uma revisão ou versão estiver desatualizada, a mutação falha. O cliente
+precisa reler e reconciliar; não há “última escrita vence” silenciosa. Plano e
+materialização incluem comando, versões esperadas e canal no hash; composição
+inclui o lote exato e a revisão esperada. Por isso, uma repetição idêntica pode
+recuperar o recibo antes do CAS, enquanto reutilizar a chave com outro conteúdo
+é conflito.
+
+Planejamento, composição e materialização possuem commits separados. A etapa
+de materialização é a única que pode combinar seu fato operacional com um lote
+pequeno de entidades e o vínculo correspondente; isso ocorre numa única
+transação, não por sincronização posterior.
 
 ## Sincronização do estado pessoal
 
@@ -263,9 +332,10 @@ infraestrutura universal antecipada.
 
 ## Orçamento do Supabase Free Plan
 
-O desenho reduz custo por quatro meios: lista fina, composição sob demanda,
-uma tabela de entidades em vez de uma tabela por nível, e Storage restrito a
-objetos pequenos nesta etapa. Ainda faltam medições longitudinais de:
+O desenho reduz custo por lista fina, composição sob demanda, uma tabela de
+entidades em vez de uma tabela por nível, plano relacional pequeno, fatos
+limitados por tentativa/etapa e Storage restrito a objetos pequenos nesta
+etapa. Ainda faltam medições longitudinais de:
 
 - egress por abertura e atualização;
 - tamanho de índices e tabelas após migração;
@@ -278,9 +348,10 @@ registrar baseline e repetir a medição com dados reais.
 
 ## Evidência e pontos não demonstrados
 
-Testes locais cobrem composição, paginação, cache, revisão, idempotência,
-conflito multi-dispositivo, autorização e migration em PGlite. Jornada de
-navegador exercitou Estudo móvel sobre o novo controlador.
+Testes locais cobrem composição, plano, comandos de Parte, materialização,
+paginação, cache, revisão, idempotência, conflito multi-dispositivo,
+autorização e migrations em PGlite. Jornada de navegador exercita o corte
+local; promoção hospedada e nova aceitação humana ainda são gates.
 
 Ainda não estão demonstrados:
 

@@ -5,6 +5,10 @@ import { routeCourseRequest } from "../../supabase/functions/_shared/aralearn-au
 import { executeCourseRoute } from "../../supabase/functions/_shared/aralearn-authoring/courseRouter.js";
 
 const COURSE_ID = "10000000-0000-4000-8000-000000000001";
+const PLAN_ID = "15000000-0000-4000-8000-000000000005";
+const PART_ID = "20000000-0000-4000-8000-000000000002";
+const MATERIALIZATION_ID = "30000000-0000-4000-8000-000000000003";
+const STEP_ID = "40000000-0000-4000-8000-000000000004";
 const PRINCIPAL = { actorId: COURSE_ID, scopes: ["authoring:write"] };
 
 function request(path, { method = "GET", body = null, requestId = null } = {}) {
@@ -35,9 +39,43 @@ test("roteia somente endpoints canônicos de Curso", () => {
     name: "listCourseEntities",
     courseId: COURSE_ID
   });
-  assert.deepEqual(routeCourseRequest("POST", `/v1/courses/${COURSE_ID}/changes`), {
-    name: "commitCourseChanges",
+  assert.deepEqual(routeCourseRequest(
+    "GET",
+    `/v1/courses/${COURSE_ID}/instructional-plan`
+  ), {
+    name: "getCourseInstructionalPlan",
     courseId: COURSE_ID
+  });
+  assert.deepEqual(routeCourseRequest(
+    "POST",
+    `/v1/courses/${COURSE_ID}/instructional-plan/changes`
+  ), {
+    name: "commitCourseInstructionalPlan",
+    courseId: COURSE_ID
+  });
+  assert.deepEqual(routeCourseRequest("POST", `/v1/courses/${COURSE_ID}/composition`), {
+    name: "commitCourseComposition",
+    courseId: COURSE_ID
+  });
+  assert.deepEqual(routeCourseRequest(
+    "GET",
+    `/v1/courses/${COURSE_ID}/authoring-parts/${PART_ID}` +
+      `/materializations/${MATERIALIZATION_ID}`
+  ), {
+    name: "getCourseAuthoringPartMaterialization",
+    courseId: COURSE_ID,
+    authoringPartId: PART_ID,
+    materializationId: MATERIALIZATION_ID
+  });
+  assert.deepEqual(routeCourseRequest(
+    "POST",
+    `/v1/courses/${COURSE_ID}/authoring-parts/${PART_ID}` +
+      `/materializations/${MATERIALIZATION_ID}/changes`
+  ), {
+    name: "advanceCourseAuthoringPartMaterialization",
+    courseId: COURSE_ID,
+    authoringPartId: PART_ID,
+    materializationId: MATERIALIZATION_ID
   });
   assert.deepEqual(routeCourseRequest("GET", `/v1/courses/${COURSE_ID}/access`), {
     name: "listCourseAccess",
@@ -122,7 +160,7 @@ test("cria Curso e reconcilia requestId", async () => {
   const body = {
     requestId: "request-course-0001",
     title: "Curso",
-    goal: "Aprender"
+    objective: "Aprender"
   };
   const value = request("/v1/courses", {
     method: "POST",
@@ -138,14 +176,61 @@ test("cria Curso e reconcilia requestId", async () => {
 
   assert.equal(result.requestId, body.requestId);
   assert.equal(call.title, "Curso");
-  assert.equal(call.brief, "");
+  assert.equal(call.objective, "Aprender");
 });
 
-test("commit exige versão, conteúdo e escopo de escrita", async () => {
+test("criação rejeita controles e preserva quebras de layout deliberadas", async () => {
+  const calls = [];
+  const adapter = {
+    async createCourse(value) {
+      calls.push(value);
+      return { courseId: COURSE_ID, revision: 1 };
+    }
+  };
+  for (const [title, objective, requestId] of [
+    ["Curso\u0001inválido", "Objetivo válido", "request-control-0001"],
+    ["Curso válido", "Objetivo\u007finválido", "request-control-0002"],
+    ["Curso\u0085inválido", "Objetivo válido", "request-control-0003"]
+  ]) {
+    const value = request("/v1/courses", {
+      method: "POST",
+      requestId,
+      body: { requestId, title, objective }
+    });
+    await assert.rejects(
+      executeCourseRoute({
+        request: value,
+        route: routeCourseRequest("POST", "/v1/courses"),
+        adapter,
+        principal: PRINCIPAL
+      }),
+      (error) => error.code === "invalid_course_command"
+    );
+  }
+  const requestId = "request-layout-0001";
+  const value = request("/v1/courses", {
+    method: "POST",
+    requestId,
+    body: {
+      requestId,
+      title: "Curso válido",
+      objective: "Objetivo em duas linhas.\n\tCom detalhe."
+    }
+  });
+  await executeCourseRoute({
+    request: value,
+    route: routeCourseRequest("POST", "/v1/courses"),
+    adapter,
+    principal: PRINCIPAL
+  });
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].objective, "Objetivo em duas linhas.\n\tCom detalhe.");
+});
+
+test("commit de composição exige versão, conteúdo e escopo de escrita", async () => {
   const body = {
     requestId: "request-change-0001",
     expectedRevision: 2,
-    operation: "commit_entities",
     upserts: [{
       entityType: "module",
       entityId: "module-a",
@@ -158,9 +243,12 @@ test("commit exige versão, conteúdo e escopo de escrita", async () => {
   };
   let call = null;
   const adapter = {
-    async commitCourseChanges(value) { call = value; return { courseId: COURSE_ID, revision: 3 }; }
+    async commitCourseComposition(value) {
+      call = value;
+      return { courseId: COURSE_ID, revision: 3 };
+    }
   };
-  const value = request(`/v1/courses/${COURSE_ID}/changes`, {
+  const value = request(`/v1/courses/${COURSE_ID}/composition`, {
     method: "POST",
     requestId: body.requestId,
     body
@@ -173,7 +261,7 @@ test("commit exige versão, conteúdo e escopo de escrita", async () => {
   assert.equal(call.expectedRevision, 2);
   assert.equal(call.upserts.length, 1);
 
-  const deniedRequest = request(`/v1/courses/${COURSE_ID}/changes`, {
+  const deniedRequest = request(`/v1/courses/${COURSE_ID}/composition`, {
     method: "POST",
     requestId: body.requestId,
     body
@@ -195,16 +283,15 @@ test("commit exige versão, conteúdo e escopo de escrita", async () => {
   }
 });
 
-test("commit rejeita hierarquia, posição e conteúdo incompatíveis antes do banco", async () => {
+test("composição rejeita hierarquia, posição e conteúdo incompatíveis antes do banco", async () => {
   const adapter = {
-    async commitCourseChanges() {
+    async commitCourseComposition() {
       assert.fail("O adaptador não pode receber uma entidade inválida.");
     }
   };
   const body = {
     requestId: "request-course-invalid-entity",
     expectedRevision: 1,
-    operation: "commit_entities",
     upserts: [{
       entityType: "card",
       entityId: "unit-a",
@@ -215,7 +302,7 @@ test("commit rejeita hierarquia, posição e conteúdo incompatíveis antes do b
     }],
     deletes: []
   };
-  const value = request(`/v1/courses/${COURSE_ID}/changes`, {
+  const value = request(`/v1/courses/${COURSE_ID}/composition`, {
     method: "POST",
     requestId: body.requestId,
     body
@@ -228,6 +315,105 @@ test("commit rejeita hierarquia, posição e conteúdo incompatíveis antes do b
       principal: PRINCIPAL
     }),
     (error) => error.code === "invalid_course_entity"
+  );
+});
+
+test("composição rejeita título curricular fora do contrato antes do banco", async () => {
+  const adapter = {
+    async commitCourseComposition() {
+      assert.fail("O adaptador não pode receber título curricular inválido.");
+    }
+  };
+  const invalidTitles = ["M".repeat(301), "Micro\u0001inválida", "Micro\u0085inválida"];
+  for (const [index, title] of invalidTitles.entries()) {
+    const body = {
+      requestId: `request-course-invalid-title-${index}`,
+      expectedRevision: 1,
+      upserts: [{
+        entityType: index === 0 ? "module" : "microsequence",
+        entityId: index === 0 ? "module-a" : "micro-a",
+        parentType: index === 0 ? null : "lesson",
+        parentId: index === 0 ? null : "lesson-a",
+        position: 0,
+        content: { title }
+      }],
+      deletes: []
+    };
+    const path = `/v1/courses/${COURSE_ID}/composition`;
+    const value = request(path, {
+      method: "POST",
+      requestId: body.requestId,
+      body
+    });
+    await assert.rejects(
+      () => executeCourseRoute({
+        request: value,
+        route: routeCourseRequest("POST", path),
+        adapter,
+        principal: PRINCIPAL
+      }),
+      (error) => error.code === "invalid_course_command"
+    );
+  }
+});
+
+test("composição e etapa rejeitam listas malformadas sem descartar dados", async () => {
+  const adapter = {
+    async commitCourseComposition() {
+      assert.fail("O adaptador não pode receber composição parcial.");
+    },
+    async advanceCourseAuthoringPartMaterialization() {
+      assert.fail("O adaptador não pode receber etapa parcial.");
+    }
+  };
+  const compositionPath = `/v1/courses/${COURSE_ID}/composition`;
+  const malformedComposition = request(compositionPath, {
+    method: "POST",
+    requestId: "request-course-malformed-lists",
+    body: {
+      requestId: "request-course-malformed-lists",
+      expectedRevision: 1,
+      upserts: {},
+      deletes: [{ entityType: "card", entityId: "unit-a" }]
+    }
+  });
+  await assert.rejects(
+    () => executeCourseRoute({
+      request: malformedComposition,
+      route: routeCourseRequest("POST", compositionPath),
+      adapter,
+      principal: PRINCIPAL
+    }),
+    (error) => error.code === "invalid_course_command"
+  );
+
+  const materializationPath = `/v1/courses/${COURSE_ID}/authoring-parts/${PART_ID}` +
+    `/materializations/${MATERIALIZATION_ID}/changes`;
+  const malformedStep = request(materializationPath, {
+    method: "POST",
+    requestId: "request-materialization-lists",
+    body: {
+      requestId: "request-materialization-lists",
+      expectedCourseRevision: 7,
+      expectedMaterializationVersion: 1,
+      operation: "record_step",
+      payload: {
+        stepId: STEP_ID,
+        expectedStepVersion: 1,
+        status: "completed",
+        resultFacts: {},
+        entityChanges: { upserts: {}, deletes: [] }
+      }
+    }
+  });
+  await assert.rejects(
+    () => executeCourseRoute({
+      request: malformedStep,
+      route: routeCourseRequest("POST", materializationPath),
+      adapter,
+      principal: PRINCIPAL
+    }),
+    (error) => error.code === "invalid_course_command"
   );
 });
 
@@ -249,7 +435,7 @@ test("rejeita cursor parcial e campos fora do comando", async () => {
     body: {
       requestId: "request-course-0001",
       title: "Curso",
-      goal: "Aprender",
+      objective: "Aprender",
       workspaceId: COURSE_ID
     }
   });
@@ -368,43 +554,187 @@ test("conceder ou revogar acesso exige confirmação explícita", async () => {
   }
 });
 
-test("estado autoral aceita somente o objeto canônico completo", async () => {
-  const validState = { version: 1, parts: [], decisions: [], mandate: null };
+test("lê e altera o plano instrucional com as duas cercas CAS", async () => {
   const calls = [];
   const adapter = {
-    async commitCourseChanges(value) {
-      calls.push(value);
-      return { courseId: COURSE_ID, revision: 2 };
+    async getCourseInstructionalPlan(value) {
+      calls.push(["read", value]);
+      return {
+        contract: "aralearn.course-instructional-plan.v1",
+        courseId: COURSE_ID,
+        courseRevision: 3,
+        plan: { id: PLAN_ID, version: 5, parts: [] },
+        recentActivity: []
+      };
+    },
+    async commitCourseInstructionalPlan(value) {
+      calls.push(["commit", value]);
+      return {
+        contract: "aralearn.course-instructional-plan-change.v1",
+        courseId: COURSE_ID,
+        courseRevision: 4,
+        planId: PLAN_ID,
+        planVersion: 6
+      };
     }
   };
-  const route = routeCourseRequest("POST", `/v1/courses/${COURSE_ID}/changes`);
-  const valid = request(`/v1/courses/${COURSE_ID}/changes`, {
+
+  const read = request(`/v1/courses/${COURSE_ID}/instructional-plan?recentLimit=8`);
+  const readResult = await executeCourseRoute({
+    request: read,
+    route: routeCourseRequest("GET", new URL(read.url).pathname),
+    adapter,
+    principal: PRINCIPAL
+  });
+  assert.equal(readResult.data.plan.version, 5);
+  assert.equal(calls[0][1].recentLimit, 8);
+
+  const command = {
+    type: "update_plan",
+    objective: "Compreender redes",
+    preferredPartCount: { minimum: 7, maximum: 10, origin: "author" }
+  };
+  const commit = request(`/v1/courses/${COURSE_ID}/instructional-plan/changes`, {
     method: "POST",
-    requestId: "request-state-0001",
+    requestId: "request-plan-0001",
     body: {
-      requestId: "request-state-0001",
-      expectedRevision: 1,
-      operation: "update_metadata",
-      authoringState: validState
+      requestId: "request-plan-0001",
+      expectedCourseRevision: 3,
+      expectedPlanVersion: 5,
+      command
     }
   });
-  await executeCourseRoute({ request: valid, route, adapter, principal: PRINCIPAL });
-  assert.deepEqual(calls[0].authoringState, validState);
+  const commitResult = await executeCourseRoute({
+    request: commit,
+    route: routeCourseRequest("POST", new URL(commit.url).pathname),
+    adapter,
+    principal: PRINCIPAL
+  });
+  assert.equal(commitResult.requestId, "request-plan-0001");
+  assert.equal(commitResult.data.planVersion, 6);
+  assert.equal(calls[1][1].expectedCourseRevision, 3);
+  assert.equal(calls[1][1].expectedPlanVersion, 5);
+  assert.deepEqual(calls[1][1].command, command);
+});
 
-  for (const invalidState of [{}, { ...validState, extra: true }]) {
-    const invalid = request(`/v1/courses/${COURSE_ID}/changes`, {
-      method: "POST",
-      requestId: "request-state-0002",
-      body: {
-        requestId: "request-state-0002",
-        expectedRevision: 1,
-        operation: "update_metadata",
-        authoringState: invalidState
-      }
-    });
-    await assert.rejects(
-      () => executeCourseRoute({ request: invalid, route, adapter, principal: PRINCIPAL }),
-      (error) => error.code === "invalid_course_command"
-    );
-  }
+test("lê uma materialização de Parte sem parâmetros implícitos", async () => {
+  let call = null;
+  const adapter = {
+    async getCourseAuthoringPartMaterialization(value) {
+      call = value;
+      return {
+        contract: "aralearn.course-authoring-part-materialization.v1",
+        courseId: COURSE_ID,
+        courseRevision: 8,
+        authoringPartId: PART_ID,
+        materialization: { id: MATERIALIZATION_ID, steps: [] }
+      };
+    }
+  };
+  const value = request(
+    `/v1/courses/${COURSE_ID}/authoring-parts/${PART_ID}` +
+      `/materializations/${MATERIALIZATION_ID}`
+  );
+  const result = await executeCourseRoute({
+    request: value,
+    route: routeCourseRequest("GET", new URL(value.url).pathname),
+    adapter,
+    principal: PRINCIPAL
+  });
+
+  assert.equal(result.requestId, null);
+  assert.equal(result.data.materialization.id, MATERIALIZATION_ID);
+  assert.equal(call.courseId, COURSE_ID);
+  assert.equal(call.authoringPartId, PART_ID);
+  assert.equal(call.materializationId, MATERIALIZATION_ID);
+});
+
+test("avança materialização de Parte com versões e etapas delimitadas", async () => {
+  let call = null;
+  const adapter = {
+    async advanceCourseAuthoringPartMaterialization(value) {
+      call = value;
+      return {
+        contract: "aralearn.course-authoring-materialization-change.v1",
+        courseId: COURSE_ID,
+        courseRevision: 8,
+        authoringPartId: PART_ID,
+        operation: "start",
+        materialization: { id: MATERIALIZATION_ID, status: "running", version: 1 }
+      };
+    }
+  };
+  const body = {
+    requestId: "request-materialization-0001",
+    expectedCourseRevision: 7,
+    expectedMaterializationVersion: 0,
+    operation: "start",
+    payload: {
+      authoringPartVersion: 2,
+      designContext: { audience: "Docentes" },
+      steps: [{
+        id: STEP_ID,
+        position: 0,
+        kind: "didactic_microsequence_materialization",
+        targetDidacticMicrosequenceId: "micro-a",
+        productionPosition: 0
+      }]
+    }
+  };
+  const value = request(
+    `/v1/courses/${COURSE_ID}/authoring-parts/${PART_ID}` +
+      `/materializations/${MATERIALIZATION_ID}/changes`,
+    { method: "POST", requestId: body.requestId, body }
+  );
+  const result = await executeCourseRoute({
+    request: value,
+    route: routeCourseRequest("POST", new URL(value.url).pathname),
+    adapter,
+    principal: PRINCIPAL
+  });
+
+  assert.equal(result.data.materialization.version, 1);
+  assert.equal(call.courseId, COURSE_ID);
+  assert.equal(call.authoringPartId, PART_ID);
+  assert.equal(call.materializationId, MATERIALIZATION_ID);
+  assert.equal(call.expectedCourseRevision, 7);
+  assert.equal(call.expectedMaterializationVersion, 0);
+  assert.deepEqual(call.payload.steps[0], body.payload.steps[0]);
+});
+
+test("materialização rejeita cerca ou alvo incoerente antes do adaptador", async () => {
+  const adapter = {
+    async advanceCourseAuthoringPartMaterialization() {
+      assert.fail("O adaptador não pode receber materialização inválida.");
+    }
+  };
+  const body = {
+    requestId: "request-materialization-0002",
+    expectedCourseRevision: 7,
+    expectedMaterializationVersion: 1,
+    operation: "start",
+    payload: {
+      authoringPartVersion: 2,
+      designContext: {},
+      steps: [{
+        id: STEP_ID,
+        position: 0,
+        kind: "context_load",
+        targetDidacticMicrosequenceId: "micro-a",
+        productionPosition: 0
+      }]
+    }
+  };
+  const path = `/v1/courses/${COURSE_ID}/authoring-parts/${PART_ID}` +
+    `/materializations/${MATERIALIZATION_ID}/changes`;
+  const value = request(path, { method: "POST", requestId: body.requestId, body });
+  await assert.rejects(
+    () => executeCourseRoute({
+      request: value,
+      route: routeCourseRequest("POST", path),
+      adapter,
+      principal: PRINCIPAL
+    }),
+    (error) => error.code === "invalid_course_command"
+  );
 });

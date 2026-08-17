@@ -40,7 +40,7 @@ test("impede escrita sem escopo", async () => {
       rawArguments: {
         requestId: "request-course-0001",
         title: "Curso",
-        goal: "Aprender"
+        objective: "Aprender"
       }
     }),
     (error) => error.status === 403

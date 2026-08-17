@@ -150,7 +150,6 @@ test("PostgreSQL serializa a criação idempotente do mesmo Curso", {
          '${ownerId}',
          'Curso concorrente',
          'Provar serialização idempotente',
-         '',
          '${requestId}'
        );
        commit;`
@@ -165,7 +164,6 @@ test("PostgreSQL serializa a criação idempotente do mesmo Curso", {
         '${ownerId}',
         'Curso concorrente',
         'Provar serialização idempotente',
-        '',
         '${requestId}'
       );
       commit;
@@ -186,7 +184,7 @@ test("PostgreSQL serializa a criação idempotente do mesmo Curso", {
       join public.courses course on course.id=receipt.course_id
       where receipt.actor_id='${ownerId}'
         and receipt.request_id='${requestId}'
-        and receipt.operation='create'
+        and receipt.operation='create_course'
         and course.title='Curso concorrente';
     `));
     assert.equal(verification, "1|1");
@@ -258,7 +256,10 @@ test("PostgreSQL confirma hierarquia fora de ordem somente ao fechar a transaç�
       begin;
       insert into private.course_entities(
         course_id,entity_type,entity_id,parent_type,parent_id,position,content
-      ) values('${courseId}','lesson','orphan','module','missing',1,'{}'::jsonb);
+      ) values(
+        '${courseId}','lesson','orphan','module','missing',1,
+        '{"title":"Lição órfã"}'::jsonb
+      );
       commit;
     `)), /course_entities_parent_fk_v1|foreign key/iu);
     assert.equal(await result(psql(`
@@ -285,8 +286,8 @@ test("PostgreSQL aceita apenas uma composição concorrente na mesma versão", {
     const mutation = (suffix) => result(psql(`
       begin;
       select set_config('request.jwt.claim.role','service_role',true);
-      select public.commit_course_changes_for_actor_v1(
-        '${ownerId}','${courseId}',1,'commit_entities',null,null,null,null,
+      select public.commit_course_composition_for_actor_v1(
+        '${ownerId}','${courseId}',1,
         jsonb_build_array(
           jsonb_build_object('entityType','module','entityId','m-${suffix}',
             'parentType',null,'parentId',null,'position',0,

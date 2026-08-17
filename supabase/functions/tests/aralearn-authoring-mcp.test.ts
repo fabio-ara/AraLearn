@@ -81,7 +81,7 @@ Deno.test("gateway MCP cria Curso pelo mesmo caso de uso do aplicativo", async (
     arguments: {
       requestId: "deno-course-create-0001",
       title: "Curso",
-      goal: "Compreender o tema."
+      objective: "Compreender o tema."
     }
   }));
   const body = await response.json();

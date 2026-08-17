@@ -1,6 +1,5 @@
 import { AuthoringApiError } from "./errors.js";
-import { readCourseJsonBody } from "./courseProtocol.js";
-import { normalizeCourseAuthoringState } from "./courseAuthoringState.js";
+import { courseUuid, readCourseJsonBody } from "./courseProtocol.js";
 
 const REQUEST_ID = /^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$/u;
 const RFC3339 = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z$/u;
@@ -48,11 +47,34 @@ function positiveInteger(value, field, { defaultValue = null, maximum = Number.M
   return normalized;
 }
 
-function text(value, field, { maximum, optional = false, trim = true } = {}) {
+function nonNegativeInteger(value, field, { maximum = Number.MAX_SAFE_INTEGER } = {}) {
+  const normalized = Number(value);
+  if (!Number.isSafeInteger(normalized) || normalized < 0 || normalized > maximum) {
+    fail("invalid_course_command", `${field} é inválido.`, { field });
+  }
+  return normalized;
+}
+
+function hasControlCharacter(value, allowLayoutWhitespace = false) {
+  return Array.from(value).some((character) => {
+    const codePoint = character.codePointAt(0);
+    if (codePoint >= 127 && codePoint <= 159) return true;
+    if (codePoint >= 32) return false;
+    return !allowLayoutWhitespace || ![9, 10, 13].includes(codePoint);
+  });
+}
+
+function text(value, field, {
+  maximum,
+  optional = false,
+  trim = true,
+  allowLayoutWhitespace = false
+} = {}) {
   if (value == null && optional) return null;
   const source = typeof value === "string" ? value : "";
   const normalized = trim ? source.trim() : source;
-  if ((!normalized && !optional) || normalized.length > maximum) {
+  if ((!normalized && !optional) || normalized.length > maximum ||
+      hasControlCharacter(normalized, allowLayoutWhitespace)) {
     fail("invalid_course_command", `${field} é inválido.`, { field });
   }
   return normalized;
@@ -74,14 +96,20 @@ function exactFields(value, allowed) {
   if (unknown) fail("unknown_course_command_field", `O campo ${unknown} não pertence ao comando.`, { field: unknown });
 }
 
-function authoringState(value) {
-  try {
-    return normalizeCourseAuthoringState(value);
-  } catch {
-    fail("invalid_course_command", "authoringState é inválido.", {
-      field: "authoringState"
-    });
+function jsonObject(value, field, maximumBytes) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    fail("invalid_course_command", `${field} precisa ser um objeto.`, { field });
   }
+  let normalized;
+  try {
+    normalized = structuredClone(value);
+  } catch {
+    fail("invalid_course_command", `${field} precisa conter somente dados JSON.`, { field });
+  }
+  if (new TextEncoder().encode(JSON.stringify(normalized)).byteLength > maximumBytes) {
+    fail("payload_too_large", `${field} excede o limite.`, { field }, 413);
+  }
+  return normalized;
 }
 
 function courseListQuery(request) {
@@ -174,55 +202,36 @@ function validateEntity(value, index) {
       invalidContentField) {
     fail("invalid_course_entity", "A posição ou o conteúdo da entidade é inválido.", { index });
   }
-  return { ...identity, parentType, parentId, position, content: value.content };
+  const content = { ...value.content };
+  if (["module", "lesson", "microsequence"].includes(identity.entityType)) {
+    content.title = text(value.content.title, "content.title", {
+      maximum: 300,
+      allowLayoutWhitespace: true
+    });
+  }
+  return { ...identity, parentType, parentId, position, content };
 }
 
 function validateCreate(body, request) {
-  exactFields(body, new Set(["requestId", "title", "goal", "brief"]));
+  exactFields(body, new Set(["requestId", "title", "objective"]));
   return {
     requestId: requestIdFrom(request, body),
-    title: text(body.title, "title", { maximum: 300 }),
-    goal: text(body.goal, "goal", { maximum: 2_000 }),
-    brief: body.brief == null ? "" : text(body.brief, "brief", {
-      maximum: 16_384,
-      optional: true,
-      trim: false
+    title: text(body.title, "title", { maximum: 300, allowLayoutWhitespace: true }),
+    objective: text(body.objective, "objective", {
+      maximum: 2_000,
+      allowLayoutWhitespace: true
     })
   };
 }
 
-function validateChange(body, request) {
-  exactFields(body, new Set([
-    "requestId", "expectedRevision", "operation", "title", "goal", "brief",
-    "authoringState", "upserts", "deletes"
-  ]));
-  const requestId = requestIdFrom(request, body);
+function validateCompositionChange(body, request) {
+  exactFields(body, new Set(["requestId", "expectedRevision", "upserts", "deletes"]));
   const expectedRevision = positiveInteger(body.expectedRevision, "expectedRevision");
-  const operation = text(body.operation, "operation", { maximum: 40 });
-  if (operation === "update_metadata") {
-    const supplied = ["title", "goal", "brief", "authoringState"].filter((field) => Object.hasOwn(body, field));
-    if (!supplied.length) fail("invalid_course_command", "Informe ao menos um metadado para alterar.");
-    return {
-      requestId,
-      expectedRevision,
-      operation,
-      ...(Object.hasOwn(body, "title") ? { title: text(body.title, "title", { maximum: 300 }) } : {}),
-      ...(Object.hasOwn(body, "goal") ? { goal: text(body.goal, "goal", { maximum: 2_000 }) } : {}),
-      ...(Object.hasOwn(body, "brief") ? { brief: text(body.brief, "brief", {
-        maximum: 16_384,
-        optional: true,
-        trim: false
-      }) } : {}),
-      ...(Object.hasOwn(body, "authoringState")
-        ? { authoringState: authoringState(body.authoringState) }
-        : {})
-    };
+  if (!Array.isArray(body.upserts) || !Array.isArray(body.deletes)) {
+    fail("invalid_course_command", "Upserts e exclusões precisam ser listas.");
   }
-  if (operation !== "commit_entities") {
-    fail("invalid_course_command", "operation é inválida.", { field: "operation" });
-  }
-  const upserts = Array.isArray(body.upserts) ? body.upserts.map(validateEntity) : [];
-  const deletes = Array.isArray(body.deletes) ? body.deletes.map(validateEntityIdentity) : [];
+  const upserts = body.upserts.map(validateEntity);
+  const deletes = body.deletes.map(validateEntityIdentity);
   if (!upserts.length && !deletes.length) {
     fail("invalid_course_command", "Informe entidades para inserir, alterar ou excluir.");
   }
@@ -232,7 +241,170 @@ function validateChange(body, request) {
   if (new TextEncoder().encode(JSON.stringify({ upserts, deletes })).byteLength > 480 * 1024) {
     fail("payload_too_large", "A alteração de entidades excede o limite.", null, 413);
   }
-  return { requestId, expectedRevision, operation, upserts, deletes };
+  return {
+    requestId: requestIdFrom(request, body),
+    expectedRevision,
+    upserts,
+    deletes
+  };
+}
+
+function validateInstructionalPlanChange(body, request) {
+  exactFields(body, new Set([
+    "requestId", "expectedCourseRevision", "expectedPlanVersion", "command"
+  ]));
+  return {
+    requestId: requestIdFrom(request, body),
+    expectedCourseRevision: positiveInteger(
+      body.expectedCourseRevision,
+      "expectedCourseRevision"
+    ),
+    expectedPlanVersion: positiveInteger(body.expectedPlanVersion, "expectedPlanVersion"),
+    command: jsonObject(body.command, "command", 32 * 1024)
+  };
+}
+
+function validateMaterializationStep(value, index) {
+  const step = jsonObject(value, `steps[${index}]`, 4 * 1024);
+  exactFields(step, new Set([
+    "id", "position", "kind", "targetDidacticMicrosequenceId", "productionPosition"
+  ]));
+  const kind = text(step.kind, `steps[${index}].kind`, { maximum: 48 });
+  if (!new Set([
+    "context_load", "didactic_microsequence_materialization", "validation"
+  ]).has(kind)) {
+    fail("invalid_course_command", "O tipo da etapa de materialização é inválido.", { index });
+  }
+  const targetDidacticMicrosequenceId = step.targetDidacticMicrosequenceId == null
+    ? null
+    : text(step.targetDidacticMicrosequenceId, `steps[${index}].targetDidacticMicrosequenceId`, {
+        maximum: 240
+      });
+  const productionPosition = step.productionPosition == null
+    ? null
+    : nonNegativeInteger(step.productionPosition, `steps[${index}].productionPosition`, {
+        maximum: 63
+      });
+  if ((kind === "didactic_microsequence_materialization") !==
+      (targetDidacticMicrosequenceId !== null && productionPosition !== null)) {
+    fail("invalid_course_command", "O alvo da etapa de materialização é inválido.", { index });
+  }
+  return {
+    id: courseUuid(step.id, `steps[${index}].id`),
+    position: nonNegativeInteger(step.position, `steps[${index}].position`, { maximum: 63 }),
+    kind,
+    targetDidacticMicrosequenceId,
+    productionPosition
+  };
+}
+
+function validateEntityChanges(value) {
+  const changes = jsonObject(value, "payload.entityChanges", 256 * 1024);
+  exactFields(changes, new Set(["upserts", "deletes"]));
+  if (!Array.isArray(changes.upserts) || !Array.isArray(changes.deletes)) {
+    fail("invalid_course_command", "As alterações da etapa precisam ser listas.");
+  }
+  const upserts = changes.upserts.map(validateEntity);
+  const deletes = changes.deletes.map(validateEntityIdentity);
+  if (upserts.length > 64 || deletes.length > 64 || upserts.length + deletes.length > 64) {
+    fail("invalid_course_command", "A etapa excede 64 alterações de entidade.");
+  }
+  return { upserts, deletes };
+}
+
+function validateMaterializationChange(body, request) {
+  exactFields(body, new Set([
+    "requestId", "expectedCourseRevision", "expectedMaterializationVersion",
+    "operation", "payload"
+  ]));
+  const operation = text(body.operation, "operation", { maximum: 20 });
+  if (!new Set(["start", "record_step", "finish"]).has(operation)) {
+    fail("invalid_course_command", "A operação de materialização é inválida.");
+  }
+  const expectedMaterializationVersion = nonNegativeInteger(
+    body.expectedMaterializationVersion,
+    "expectedMaterializationVersion"
+  );
+  const payload = jsonObject(body.payload, "payload", 512 * 1024);
+  if (operation === "start") {
+    exactFields(payload, new Set(["authoringPartVersion", "designContext", "steps"]));
+    if (expectedMaterializationVersion !== 0 || !Array.isArray(payload.steps) ||
+        payload.steps.length < 1 || payload.steps.length > 64) {
+      fail("invalid_course_command", "O início da materialização é inválido.");
+    }
+    const steps = payload.steps.map(validateMaterializationStep);
+    if (new Set(steps.map(({ id }) => id)).size !== steps.length ||
+        new Set(steps.map(({ position }) => position)).size !== steps.length ||
+        steps.some(({ position }, index) => position !== index)) {
+      fail("invalid_course_command", "As etapas precisam ter identidades e posições únicas.");
+    }
+    return {
+      requestId: requestIdFrom(request, body),
+      expectedCourseRevision: positiveInteger(
+        body.expectedCourseRevision,
+        "expectedCourseRevision"
+      ),
+      expectedMaterializationVersion,
+      operation,
+      payload: {
+        authoringPartVersion: positiveInteger(
+          payload.authoringPartVersion,
+          "payload.authoringPartVersion"
+        ),
+        designContext: jsonObject(payload.designContext, "payload.designContext", 64 * 1024),
+        steps
+      }
+    };
+  }
+  if (expectedMaterializationVersion < 1) {
+    fail("invalid_course_command", "A versão da materialização precisa ser corrente.");
+  }
+  if (operation === "record_step") {
+    exactFields(payload, new Set([
+      "stepId", "expectedStepVersion", "status", "resultFacts", "entityChanges"
+    ]));
+    const status = text(payload.status, "payload.status", { maximum: 20 });
+    if (!new Set(["completed", "failed"]).has(status)) {
+      fail("invalid_course_command", "O estado da etapa é inválido.");
+    }
+    return {
+      requestId: requestIdFrom(request, body),
+      expectedCourseRevision: positiveInteger(
+        body.expectedCourseRevision,
+        "expectedCourseRevision"
+      ),
+      expectedMaterializationVersion,
+      operation,
+      payload: {
+        stepId: courseUuid(payload.stepId, "payload.stepId"),
+        expectedStepVersion: positiveInteger(
+          payload.expectedStepVersion,
+          "payload.expectedStepVersion"
+        ),
+        status,
+        resultFacts: jsonObject(payload.resultFacts, "payload.resultFacts", 16 * 1024),
+        entityChanges: validateEntityChanges(payload.entityChanges)
+      }
+    };
+  }
+  exactFields(payload, new Set(["status", "resultFacts"]));
+  const status = text(payload.status, "payload.status", { maximum: 20 });
+  if (!new Set(["completed", "failed"]).has(status)) {
+    fail("invalid_course_command", "O estado final da materialização é inválido.");
+  }
+  return {
+    requestId: requestIdFrom(request, body),
+    expectedCourseRevision: positiveInteger(
+      body.expectedCourseRevision,
+      "expectedCourseRevision"
+    ),
+    expectedMaterializationVersion,
+    operation,
+    payload: {
+      status,
+      resultFacts: jsonObject(payload.resultFacts, "payload.resultFacts", 16 * 1024)
+    }
+  };
 }
 
 function validateProfileUpdate(body) {
@@ -328,6 +500,36 @@ export async function executeCourseRoute({ request, route, adapter, principal, d
       })
     };
   }
+  if (route.name === "getCourseInstructionalPlan") {
+    assertPrincipal(principal);
+    const recentLimit = positiveInteger(
+      new URL(request.url).searchParams.get("recentLimit"),
+      "recentLimit",
+      { defaultValue: 20, maximum: 50 }
+    );
+    return {
+      requestId: null,
+      data: await adapter.getCourseInstructionalPlan({
+        principal,
+        courseId: route.courseId,
+        recentLimit,
+        deadlineAt
+      })
+    };
+  }
+  if (route.name === "getCourseAuthoringPartMaterialization") {
+    assertPrincipal(principal);
+    return {
+      requestId: null,
+      data: await adapter.getCourseAuthoringPartMaterialization({
+        principal,
+        courseId: route.courseId,
+        authoringPartId: route.authoringPartId,
+        materializationId: route.materializationId,
+        deadlineAt
+      })
+    };
+  }
   if (route.name === "listCourseEntities") {
     assertPrincipal(principal);
     return {
@@ -394,12 +596,40 @@ export async function executeCourseRoute({ request, route, adapter, principal, d
       data: await adapter.createCourse({ principal, ...value, deadlineAt })
     };
   }
-  if (route.name === "commitCourseChanges") {
+  if (route.name === "commitCourseInstructionalPlan") {
     assertPrincipal(principal, { write: true });
-    const value = validateChange(await readCourseJsonBody(request), request);
+    const value = validateInstructionalPlanChange(await readCourseJsonBody(request), request);
     return {
       requestId: value.requestId,
-      data: await adapter.commitCourseChanges({
+      data: await adapter.commitCourseInstructionalPlan({
+        principal,
+        courseId: route.courseId,
+        ...value,
+        deadlineAt
+      })
+    };
+  }
+  if (route.name === "advanceCourseAuthoringPartMaterialization") {
+    assertPrincipal(principal, { write: true });
+    const value = validateMaterializationChange(await readCourseJsonBody(request), request);
+    return {
+      requestId: value.requestId,
+      data: await adapter.advanceCourseAuthoringPartMaterialization({
+        principal,
+        courseId: route.courseId,
+        authoringPartId: route.authoringPartId,
+        materializationId: route.materializationId,
+        ...value,
+        deadlineAt
+      })
+    };
+  }
+  if (route.name === "commitCourseComposition") {
+    assertPrincipal(principal, { write: true });
+    const value = validateCompositionChange(await readCourseJsonBody(request), request);
+    return {
+      requestId: value.requestId,
+      data: await adapter.commitCourseComposition({
         principal,
         courseId: route.courseId,
         ...value,

@@ -2,9 +2,10 @@
 
 Autoria é a interface manual e visual do mesmo Curso vivo usado em Estudo e
 pelas ferramentas conversacionais. Nesta revisão, ela permite criar Cursos,
-consultar planejamento e composição, alterar o planejamento básico e gerir
-acesso direto. Edição contextual de Unidades, proveniência, auditoria,
-correção, variantes e analytics ainda não devem ser tratadas como disponíveis.
+editar o plano instrucional e as Partes em linguagem natural, consultar a
+composição, levar um pedido de materialização ao chat conectado e gerir acesso
+direto. Edição contextual de Unidades, proveniência, auditoria, correção,
+variantes e analytics ainda não devem ser tratadas como disponíveis.
 
 ## Abrir a Autoria
 
@@ -24,8 +25,7 @@ continuar visíveis, mas uma composição ainda não carregada exige conexão.
 1. Use o ícone **Criar Curso**.
 2. Informe um título claro.
 3. Descreva o objetivo instrucional.
-4. Acrescente orientações iniciais, se houver.
-5. Salve.
+4. Salve.
 
 O Curso nasce privado e vazio. Não existe uma etapa separada de publicação para
 torná-lo estudável: assim que a composição contém Unidades válidas, o próprio
@@ -33,7 +33,8 @@ proprietário pode abri-las em Estudo.
 
 A criação é atômica e idempotente. Isso significa que uma repetição do mesmo
 pedido, causada por falha de rede, recupera o resultado em vez de criar outro
-Curso.
+Curso. Ela também cria um plano vazio com faixa preferencial inicial de 7–12
+Partes. Essa faixa é configurável e não constitui lei pedagógica.
 
 ## Compreender as quatro áreas
 
@@ -44,18 +45,29 @@ Ao abrir um Curso, a barra iconográfica oferece quatro destinos.
 Mostra:
 
 - objetivo;
-- orientações;
-- número de Partes de autoria registradas;
-- número de decisões registradas.
+- público e escopo;
+- orientação para a autoria;
+- faixa preferencial e origem dessa preferência;
+- resultados de aprendizagem pretendidos;
+- unidades de análise instrucional;
+- requisitos de evidência;
+- Partes, Microssequências vinculadas e progresso derivado;
+- atividade recente confirmada pelo serviço.
 
-O ícone de edição permite alterar título, objetivo e orientações. Há também um
-campo avançado de **Estado estruturado**, atualmente em JSON, com quatro campos
-fechados: versão, Partes, decisões e mandato.
+O ícone de edição permite alterar título, objetivo, público, escopo, orientação
+e faixa preferencial. Cada uma das três listas aceita itens escritos em
+linguagem natural, com controles para acrescentar, editar, reordenar e remover.
+Não existe editor de JSON nessa experiência.
 
-Esse campo avançado é uma limitação corrente, não a experiência final desejada.
-A interface futura deverá oferecer controles compreensíveis e edição em
-linguagem natural sem expor JSON a uma pessoa leiga. Enquanto isso, não altere
-o estado estruturado manualmente sem compreender seu contrato.
+Uma Parte possui título, intenção operacional e ordem de produção. É possível
+acrescentar, editar, reordenar, dividir ou unir Partes e mover uma
+Microssequência entre elas. Parte não é um nível do currículo. Remover uma
+Parte ou um vínculo conserva a Microssequência e todas as Unidades já
+produzidas.
+
+Os estados **Planejada**, **Em materialização**, **Atenção necessária**,
+**Parcial** e **Materializada** são calculados a partir de vínculos, Unidades,
+tentativas e etapas persistidas. A pessoa não marca esse status manualmente.
 
 ### Estrutura
 
@@ -127,21 +139,48 @@ O cliente MCP e a interface visual operam o mesmo Curso. O fluxo seguro é:
 
 1. listar os Cursos próprios;
 2. escolher o Curso pelo título e confirmar sua identidade;
-3. ler resumo, hierarquia ou páginas de entidades;
+3. ler o plano instrucional, a hierarquia ou páginas de entidades;
 4. formular a alteração;
-5. usar a revisão lida como condição da escrita;
+5. usar a revisão do Curso e a versão específica lidas como condições da
+   escrita;
 6. reler e apresentar uma síntese verificável.
 
-O assistente pode criar Curso, alterar metadados ou composição, gerir perfil e
-acesso e consultar componentes didáticos. Ele não deve pedir à pessoa que
-escolha ferramentas técnicas nem expor identificadores quando um link visual
-for suficiente.
+O assistente pode criar Curso, alterar o plano por comandos semânticos,
+confirmar etapas de materialização, alterar a composição por uma operação
+separada, gerir perfil e acesso e consultar componentes didáticos. Interface e
+MCP usam as mesmas relações, regras de domínio, transações e projeções; não há
+um plano reservado ao chat.
 
 Se outra edição alterar o Curso antes da escrita, o servidor recusa a revisão
 antiga. A resposta correta é reler e reconciliar a intenção; sobrescrever
 silenciosamente anularia o propósito do controle de concorrência.
 
-## Produzir conteúdo nesta revisão
+## Planejar e produzir por Parte nesta revisão
+
+Para preparar a produção:
+
+1. descreva a intenção de cada Parte;
+2. organize as Partes na ordem de produção desejada;
+3. mova ou retire os vínculos de Microssequência já existentes, se necessário;
+4. use **Levar pedido ao chat conectado** na Parte escolhida;
+5. cole o texto no cliente conectado e acompanhe somente o progresso que o
+   serviço confirmar.
+
+O botão apenas copia o pedido para a área de transferência. Ele não abre uma
+tentativa, não cria Unidades e não transforma a Parte em materializada. Quando
+o cliente conectado realmente executa o trabalho, cada tentativa possui etapas
+retomáveis e recibos. Só fatos persistidos aparecem no status e na atividade
+recente.
+
+Quando existe uma tentativa, **Ver etapas** carrega somente seus detalhes:
+estado e versão de cada etapa, próxima etapa pendente e fatos limitados que o
+serviço realmente registrou. Fechar esse detalhe não muda o Curso. A mesma
+leitura está em `lerCurso` com a vista `part_materialization`, permitindo que
+um chat reconectado continue sem confiar na memória da conversa anterior.
+
+Durante uma tentativa em andamento, ainda é possível corrigir título, objetivo
+e itens independentes do plano. Alterar, retirar, reordenar ou trocar vínculos
+da Parte em execução é recusado até que ela termine ou seja marcada como falha.
 
 A composição pode ser alterada pelo MCP em lotes atômicos de até 200 inclusões,
 substituições ou exclusões. Cada entidade precisa respeitar:
@@ -152,11 +191,11 @@ substituições ou exclusões. Cada entidade precisa respeitar:
 - contrato fechado de conteúdo;
 - revisão corrente do Curso.
 
-**Parte de autoria** continua sendo a unidade operacional necessária para
-planejar e materializar várias Microssequências numa interação, mas o novo ciclo
-completo de Partes ainda não está conectado. O estado básico já reserva Partes
-e a interface mostra sua contagem; dimensionamento, progresso, retomada e
-mudança de plano ainda pertencem à próxima fatia.
+Uma etapa de materialização pode confirmar no mesmo commit mudanças de
+entidades, vínculo com a Microssequência-alvo, fatos da etapa, revisão do Curso
+e atividade. A escrita geral da composição permanece separada do planejamento:
+editar o plano não substitui o conteúdo, e editar o conteúdo não reescreve o
+plano implicitamente.
 
 ## O que ainda não fazer pela interface
 

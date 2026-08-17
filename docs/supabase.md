@@ -52,6 +52,11 @@ auth.users
    ├── person_profiles ── referência ──> Storage/person-avatars
    │
    ├── courses (proprietário)
+   │      ├── course_instructional_plans
+   │      │      ├── course_instructional_plan_items
+   │      │      └── course_authoring_parts
+   │      │             ├── vínculos com Microssequências didáticas
+   │      │             └── materializações e etapas
    │      ├── course_entities (composição didática)
    │      ├── course_access (acesso direto ao Estudo)
    │      ├── course_events (eventos canônicos)
@@ -64,7 +69,13 @@ auth.users
 
 | Relação | Responsabilidade | Observação de segurança |
 |---|---|---|
-| `public.courses` | identidade, proprietário, título, objetivo, orientações, revisão e estado autoral | somente o proprietário edita |
+| `public.courses` | identidade, proprietário, título, objetivo, revisão e datas | somente o proprietário edita |
+| `private.course_instructional_plans` | público, escopo, orientação, faixa preferencial e versão do plano | uma linha por Curso; título/objetivo não são duplicados |
+| `private.course_instructional_plan_items` | resultados pretendidos, unidades de análise e requisitos de evidência ordenados | leitura e escrita passam pelo contrato do plano |
+| `private.course_authoring_parts` | recortes operacionais ordenados, com título, intenção e versão | não integra a hierarquia curricular |
+| `private.course_authoring_part_didactic_microsequences` | vínculo exclusivo e ordem de produção de Microssequência por Parte | não altera `course_entities.position` |
+| `private.course_authoring_part_materializations` | tentativas retomáveis e fatos limitados de materialização | somente uma tentativa em andamento por Parte |
+| `private.course_authoring_part_materialization_steps` | etapas ordenadas e versionadas de uma tentativa | na etapa didática, entidades e vínculo confirmam atomicamente |
 | `private.course_entities` | módulos, lições, tópicos, microssequências e unidades de estudo | leitura e escrita passam por RPCs validadas |
 | `public.course_access` | vínculo direto entre Curso e pessoa autorizada a estudar | não concede Autoria |
 | `public.course_personal_states` | continuidade, conclusões, marcações **Rever** e observações da própria pessoa | isolado por pessoa |
@@ -82,6 +93,28 @@ habilitada](https://supabase.com/docs/guides/database/postgres/row-level-securit
 concluídas. A lista calcula a interseção entre o estado pessoal e as Unidades
 vivas; isso impede que a exclusão autoral de uma Unidade deixe uma métrica
 derivada desatualizada.
+
+## Plano instrucional e Partes de autoria
+
+O plano é uma projeção única `aralearn.course-instructional-plan.v1`. Ela reúne
+título e objetivo lidos de `public.courses` com os campos das relações de
+planejamento, os vínculos, o progresso derivado e a atividade recente. A
+projeção não cria colunas ou JSONs duplicados para título e objetivo.
+
+O plano novo usa 7–12 como faixa preferencial de Partes e registra se a origem
+é automática, da pessoa autora ou de uma condição de pesquisa. A faixa aceita
+configuração de 1 a 64 e não é regra pedagógica. Partes podem ser criadas,
+editadas, reordenadas, divididas, unidas ou retiradas. Vínculos de
+Microssequência podem ser atribuídos, movidos ou removidos. Essas mutações não
+apagam `course_entities`. O plano aceita até 192 vínculos no total e 512 KiB;
+a projeção enriquecida falha fechada acima de 1,75 MiB, antes do teto de 2 MiB
+do transporte.
+
+Uma Parte expõe progresso calculado a partir das Microssequências vinculadas,
+Unidades existentes e tentativa mais recente. Os estados visuais não são
+campos editáveis. Copiar um pedido de materialização para o chat não grava
+evento nem tentativa; somente `start`, `record_step` ou `finish` confirmados
+pelo serviço alteram os fatos persistidos.
 
 ## Composição didática paginada
 
@@ -122,7 +155,7 @@ As RPCs autenticadas de Estudo aceitam Curso próprio ou compartilhado:
 | RPC | Resultado |
 |---|---|
 | `list_courses_v1` | página de cabeçalhos acessíveis |
-| `get_course_v1` | cabeçalho fino, sem orientações e estado autoral |
+| `get_course_v1` | cabeçalho fino, sem plano nem orientação privada de autoria |
 | `list_course_entities_v1` | página da composição sob uma revisão esperada |
 | `list_course_review_items_v1` | fila **Rever** paginada sem baixar todos os Cursos |
 | `load_course_personal_state_v1` | estado pessoal remoto |
@@ -135,7 +168,8 @@ A Autoria usa wrappers que aceitam somente Cursos pertencentes à pessoa:
 | RPC | Resultado |
 |---|---|
 | `list_owned_courses_v1` | página de Cursos próprios |
-| `get_owned_course_v1` | planejamento e estado autoral, sem composição duplicada |
+| `get_owned_course_v1` | cabeçalho e hierarquia compacta, sem planejamento duplicado |
+| `get_owned_course_instructional_plan_v1` | plano normalizado, Partes, progresso e atividade recente |
 | `list_owned_course_entities_v1` | composição paginada de Curso próprio |
 
 Um link profundo para Curso apenas compartilhado é recusado pela superfície de
@@ -147,6 +181,18 @@ sejam entregues por engano.
 A Edge Function `aralearn-course-api` oferece o mesmo executor autoral à
 interface. A Edge Function `aralearn-authoring-mcp` adapta esse executor ao
 **Model Context Protocol** (MCP) com OAuth 2.1.
+
+O executor separa consulta/mudança do plano, commit geral da composição e
+avanço de materialização. A interface e o MCP não mantêm cópias paralelas: os
+dois chegam às mesmas RPCs, recibos e eventos. O canal `application` ou `mcp`
+é registrado como fato de transporte, sem alterar regras de autoridade.
+
+A leitura detalhada de uma tentativa passa pela RPC service-role owner-only
+`get_owned_course_authoring_part_materialization_for_actor_v1`. Ela recebe
+Curso, Parte e tentativa, devolve no máximo 64 etapas em até 1,25 MiB e permite
+retomada depois de reinício. O navegador e o MCP chegam a ela pelo mesmo
+executor `lerCurso`; não existe wrapper autenticada paralela nem listagem
+irrestrita do histórico.
 
 As ferramentas canônicas são:
 
@@ -170,52 +216,53 @@ segunda verificação incompatível antes desse código.
 
 ## Escrita de Curso
 
-Criar um Curso produz um objeto privado vazio. Alterar metadados ou composição
-usa uma única operação transacional:
+Criar um Curso recebe título e objetivo, cria a raiz privada vazia e cria seu
+plano normalizado na mesma transação. A escrita posterior se divide em três
+famílias explícitas:
 
-1. autentica a pessoa;
-2. confirma que ela é proprietária;
-3. compara a revisão esperada;
-4. valida o estado autoral e as entidades;
-5. aplica inserções, alterações e remoções;
-6. calcula quais valores realmente diferem;
-7. avança a revisão e registra evento somente quando algo mudou;
-8. registra o recibo técnico mesmo para uma repetição válida sem mudança;
-9. devolve o estado confirmado.
+1. **plano instrucional:** recebe comando semântico, revisão esperada do Curso
+   e versão esperada do plano; calcula e valida o estado-alvo antes do commit;
+2. **composição:** recebe inserções/alterações e exclusões de entidades sob a
+   revisão esperada, sem reescrever o plano;
+3. **materialização de Parte:** inicia tentativa, registra uma etapa ou finaliza
+   a tentativa sob revisão e versões esperadas.
 
-O estado autoral tem exatamente quatro campos no contrato v1:
+Todas autenticam a pessoa, confirmam propriedade, procuram repetição segura,
+aplicam CAS, validam limites, calculam diferenças, avançam a revisão somente
+quando há mudança e devolvem recibo mínimo. Começar uma tentativa fixa a versão
+da Parte e entre 1 e 64 etapas. Registrar uma etapa admite até 64 mudanças de
+entidade no total e confirma conteúdo, vínculo, fatos e progresso numa única
+transação. Contexto e fatos possuem limites pequenos no banco e na Edge
+Function.
 
-```json
-{
-  "version": 1,
-  "parts": [],
-  "decisions": [],
-  "mandate": null
-}
-```
-
-`parts` admite até 64 itens, `decisions` até 512, e o objeto completo até 1
-MiB. Chaves adicionais e o objeto vazio são recusados. Esses limites são
-idênticos no PostgreSQL, na API e no schema MCP.
+Plano e materialização incluem comando, versões esperadas e canal no hash;
+composição inclui o lote exato e a revisão esperada. O servidor consulta o
+recibo antes de rejeitar CAS: assim, uma repetição idêntica recupera o mesmo
+resultado mesmo depois de a primeira chamada ter avançado a revisão. A mesma
+chave com outro conteúdo é conflito, não nova operação.
 
 Receipts reutilizam o fluxo canônico de mudança de Curso. Perfil e acesso não
 criam um segundo ledger. Recibos expirados são removidos também pelo par exato
 ator–pedido antes de uma nova inserção, mesmo quando a limpeza global por lote
 não alcançou aquela linha.
 
-Um pedido que apresenta os mesmos metadados ou as mesmas entidades é um
-**no-op** (operação sem efeito). Ele não avança a revisão do Curso, não aumenta
-a versão da entidade e não cria atividade autoral falsa. Repetir o mesmo
-`requestId` devolve o resultado selado com `idempotent=true`.
+Um pedido que apresenta o mesmo plano ou as mesmas entidades é um **no-op**
+(operação sem efeito). Ele não avança a revisão do Curso, não aumenta versões e
+não cria atividade autoral falsa. Repetir o mesmo `requestId` devolve o
+resultado selado com `idempotent=true`.
+
+O gesto visual de copiar um pedido para o chat não chama essas mutações. Por
+isso, ele não cria recibo, evento, tentativa ou progresso.
 
 ### Tipos de mudança dos eventos
 
-`private.course_events.operation` representa três famílias de conteúdo:
-criação, metadados e composição. O campo `summary.changeKind` conserva a
-distinção analítica mais precisa. Eventos novos de composição informam
-`createdCount`, `updatedCount` e `deletedCount` calculados sobre diferenças
-reais; eventos novos de metadados informam os nomes efetivamente alterados em
-`changedFields`, além das contagens zeradas de entidades.
+`private.course_events.operation` distingue criação, metadados históricos do
+corte, composição, plano instrucional, materialização e acesso. Eventos de
+plano informam `activityKind=plan_changed`, canal, tipo de comando e contagens.
+Eventos de materialização distinguem início, etapa registrada e finalização e
+referenciam Parte e tentativa. Eventos de composição informam `createdCount`,
+`updatedCount` e `deletedCount` calculados sobre diferenças reais. Nenhum deles
+replica o plano ou o conteúdo.
 
 O corte reclassifica os 36 eventos existentes por este mapa temporário:
 
@@ -324,10 +371,12 @@ linha](https://www.postgresql.org/docs/current/ddl-rowsecurity.html).
 ## Manifesto do runtime
 
 `supabase/runtime-manifest.json` descreve o contrato que site, Edge Functions e
-banco precisam compartilhar. A revisão corrente é `20260817150000`, contrato
-v1. Entre as capacidades observáveis estão:
+banco precisam compartilhar. A revisão local deste corte é `20260817160000`,
+contrato v1. Entre as capacidades observáveis estão:
 
 - identidade única e viva de Curso;
+- plano instrucional normalizado e editável;
+- Partes de autoria e materialização retomável;
 - composição paginada;
 - acesso direto e restrito ao Estudo;
 - estado pessoal;
@@ -345,8 +394,11 @@ que anuncie outra revisão.
 
 O desenho reduz trabalho e armazenamento sem criar infraestrutura paralela:
 
-- listas devolvem projeções finas, sem `brief`, estado autoral ou composição;
+- listas devolvem projeções finas, sem plano instrucional ou composição;
 - composição e fila **Rever** são paginadas;
+- plano é lido sob demanda e traz atividade recente limitada;
+- tentativas conservam apenas contexto e fatos limitados, sem transcrição de
+  chat;
 - o navegador de Autoria não pede `outline` e depois as mesmas entidades;
 - estado pessoal permanece compacto por pessoa e Curso;
 - recibos expiram e são limpos em lotes;
@@ -422,10 +474,11 @@ Publicar migrations, Edge Functions ou dados é uma operação remota de impacto
 Use o roteiro detalhado de [Implantação](implantacao.md). O script seguro começa
 em modo de verificação:
 
-O projeto hospedado que já contém os oito Cursos é uma exceção operacional:
-a migration de identidade precisa receber sua staging na mesma conexão e não
-pode ser aplicada isoladamente por `db push`. O importador transitório descrito
-abaixo executa esse corte. Uma instalação vazia continua usando o fluxo comum.
+O projeto hospedado que já contém os oito Cursos é uma exceção operacional: a
+staging e as migrations `20260817140000`, `20260817150000` e
+`20260817160000` precisam usar a mesma conexão e transação e não podem ser
+aplicadas isoladamente por `db push`. O importador transitório descrito abaixo
+executa esse corte. Uma instalação vazia continua usando o fluxo comum.
 
 ```powershell
 pwsh -NoProfile -File .\scripts\deploySupabase.ps1 `
@@ -443,12 +496,13 @@ revisões diferentes; limpar IndexedDB não atualiza migrations remotas.
 ### Atestação privada do corte de identidade
 
 `scripts/courseCutover/` lê e valida a origem, produz a staging e executa
-staging + migration na mesma conexão e na mesma transação. Sem `--apply`, o
-comando não escreve no banco.
+staging + conjunto ordenado de migrations na mesma conexão e na mesma
+transação. Sem `--apply`, o comando não escreve no banco.
 
 Antes de qualquer aplicação, o runner grava fora do repositório público uma
 atestação privada sem conteúdo, token, senha ou chave. Ela contém somente hash
-do snapshot, hash das resoluções semânticas, hash da migration e, para cada
+do snapshot, hash das resoluções semânticas, hash do conjunto de migrations e,
+para cada
 Curso, identidade, hashes de manifesto/documento/linhas/estado técnico e
 contagens. O diretório padrão é
 `../AraLearn_private/evidence/course-cutover/`; um caminho dentro do
@@ -472,10 +526,10 @@ validação. Eles não são seed remoto, não entram automaticamente no site ou 
 e não devem ser copiados diretamente para tabelas ou buckets.
 
 Quando uma fixture precisar se tornar um Curso real, valide primeiro seu
-contrato local e use a mesma criação e o mesmo commit de composição oferecidos
-pela Autoria e pelo MCP. Esse caminho preserva proprietário, revisão, evento,
-recibo e validação estrutural. O corte atual não mantém uma promoção remota
-paralela que contorne essas regras.
+contrato local e use a mesma criação, o mesmo plano e o mesmo commit separado de
+composição oferecidos pela Autoria e pelo MCP. Esse caminho preserva
+proprietário, revisão, evento, recibo e validação estrutural. O corte atual não
+mantém uma promoção remota paralela que contorne essas regras.
 
 ## Evidência e limites da verificação
 
@@ -483,9 +537,11 @@ As afirmações deste documento podem ser confrontadas em:
 
 - `supabase/migrations/20260817140000_course_identity_cutover.sql`;
 - `supabase/migrations/20260817150000_course_profiles_access.sql`;
+- `supabase/migrations/20260817160000_course_authoring_plan.sql`;
 - `supabase/functions/_shared/aralearn-authoring/`;
 - `supabase/runtime-manifest.json`;
 - `tests/runtime/course-identity-cutover-pglite.test.js`;
+- `tests/runtime/course-authoring-plan.test.js`;
 - `tests/runtime/course-api-client.test.js`;
 - `tests/runtime/course-mcp-tools.test.js`;
 - `supabase/tests/course-runtime-local-smoke.mjs`.

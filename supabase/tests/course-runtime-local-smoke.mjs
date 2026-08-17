@@ -222,8 +222,7 @@ try {
   const createArguments = {
     requestId: createRequestId,
     title: "Curso de smoke canônico",
-    goal: "Validar a identidade viva de Curso",
-    brief: "Contexto privado do autor.",
+    objective: "Validar a identidade viva de Curso",
   };
   const created = await courseAction("criarCurso", createArguments, ownerToken);
   const replayedCreate = await courseAction("criarCurso", createArguments, ownerToken);
@@ -246,20 +245,38 @@ try {
     requestId: metadataRequestId,
     courseId,
     expectedRevision: 1,
-    operation: "update_metadata",
-    title: "Curso vivo de smoke",
-    authoringState: {
-      version: 1,
-      parts: [{ partId: "part-1", status: "planned" }],
-      decisions: [],
-      mandate: null,
+    expectedPlanVersion: 1,
+    operation: "update_instructional_plan",
+    planCommand: {
+      type: "update_plan",
+      title: "Curso vivo de smoke",
+      authoringGuidance: "Contexto privado do autor.",
     },
   };
   const metadata = await courseAction("alterarCurso", metadataArguments, ownerToken);
   const metadataReplay = await courseAction("alterarCurso", metadataArguments, ownerToken);
-  assert.equal(metadata.data.revision, 2);
-  assert.equal(metadataReplay.data.revision, 2);
+  assert.equal(metadata.data.courseRevision, 2);
+  assert.equal(metadata.data.planVersion, 2);
+  assert.equal(metadataReplay.data.courseRevision, 2);
   assert.equal(metadataReplay.data.idempotent, true);
+
+  const authoringPartId = crypto.randomUUID();
+  const partChange = await courseAction("alterarCurso", {
+    requestId: crypto.randomUUID(),
+    courseId,
+    expectedRevision: 2,
+    expectedPlanVersion: 2,
+    operation: "update_instructional_plan",
+    planCommand: {
+      type: "add_part",
+      id: authoringPartId,
+      position: 0,
+      title: "Parte canônica",
+      intent: "Produzir e validar uma microssequência.",
+    },
+  }, ownerToken);
+  assert.equal(partChange.data.courseRevision, 3);
+  assert.equal(partChange.data.planVersion, 3);
 
   const compositionRows = flattenCourseDocument({
     contract: "aralearn.library.v1",
@@ -308,13 +325,101 @@ try {
   const composition = await courseAction("alterarCurso", {
     requestId: crypto.randomUUID(),
     courseId,
-    expectedRevision: 2,
-    operation: "commit_entities",
+    expectedRevision: 3,
+    operation: "commit_course_composition",
     upserts: compositionRows,
     deletes: [],
   }, ownerToken);
-  assert.equal(composition.data.revision, 3);
+  assert.equal(composition.data.revision, 4);
   assert.equal(composition.data.upsertedCount, 4);
+
+  const assignment = await courseAction("alterarCurso", {
+    requestId: crypto.randomUUID(),
+    courseId,
+    expectedRevision: 4,
+    expectedPlanVersion: 3,
+    operation: "update_instructional_plan",
+    planCommand: {
+      type: "assign_microsequence",
+      partId: authoringPartId,
+      microsequenceId: "microsequence-smoke",
+      position: 0,
+    },
+  }, ownerToken);
+  assert.equal(assignment.data.courseRevision, 5);
+  assert.equal(assignment.data.planVersion, 4);
+
+  const materializationId = crypto.randomUUID();
+  const stepId = crypto.randomUUID();
+  const startedMaterialization = await courseAction("alterarCurso", {
+    requestId: crypto.randomUUID(),
+    courseId,
+    expectedRevision: 5,
+    operation: "advance_part_materialization",
+    materializationCommand: {
+      operation: "start",
+      authoringPartId,
+      materializationId,
+      expectedMaterializationVersion: 0,
+      authoringPartVersion: 2,
+      designContext: { purpose: "smoke local" },
+      steps: [{
+        id: stepId,
+        position: 0,
+        kind: "context_load",
+        targetDidacticMicrosequenceId: null,
+        productionPosition: null,
+      }],
+    },
+  }, ownerToken);
+  assert.equal(startedMaterialization.data.courseRevision, 6);
+  assert.equal(startedMaterialization.data.materialization.version, 1);
+
+  const resumable = await courseAction("lerCurso", {
+    courseId,
+    view: "part_materialization",
+    authoringPartId,
+    materializationId,
+  }, ownerToken);
+  assert.equal(resumable.data.materialization.nextPendingStep.id, stepId);
+  assert.equal(resumable.data.materialization.steps.length, 1);
+
+  const recordedStep = await courseAction("alterarCurso", {
+    requestId: crypto.randomUUID(),
+    courseId,
+    expectedRevision: 6,
+    operation: "advance_part_materialization",
+    materializationCommand: {
+      operation: "record_step",
+      authoringPartId,
+      materializationId,
+      expectedMaterializationVersion: 1,
+      stepId,
+      expectedStepVersion: 1,
+      status: "completed",
+      resultFacts: { contextLoaded: true },
+      entityChanges: { upserts: [], deletes: [] },
+    },
+  }, ownerToken);
+  assert.equal(recordedStep.data.courseRevision, 7);
+  assert.equal(recordedStep.data.materialization.version, 2);
+
+  const finishedMaterialization = await courseAction("alterarCurso", {
+    requestId: crypto.randomUUID(),
+    courseId,
+    expectedRevision: 7,
+    operation: "advance_part_materialization",
+    materializationCommand: {
+      operation: "finish",
+      authoringPartId,
+      materializationId,
+      expectedMaterializationVersion: 2,
+      status: "completed",
+      resultFacts: { validated: true },
+    },
+  }, ownerToken);
+  assert.equal(finishedMaterialization.data.courseRevision, 8);
+  assert.equal(finishedMaterialization.data.materialization.status, "completed");
 
   const ownerCourses = await rpc("list_owned_courses_v1", {
     p_query: "Curso vivo",
@@ -327,7 +432,13 @@ try {
     p_course_id: courseId,
   }, ownerToken);
   assert.equal(ownerCourse.courseId, courseId);
-  assert.equal(ownerCourse.authoringState.parts[0].partId, "part-1");
+  assert.equal(Object.hasOwn(ownerCourse, "authoringState"), false);
+  const ownerPlan = await courseAction("lerCurso", {
+    courseId,
+    view: "instructional_plan",
+  }, ownerToken);
+  assert.equal(ownerPlan.data.plan.parts[0].id, authoringPartId);
+  assert.equal(ownerPlan.data.plan.parts[0].progress.state, "materialized");
 
   const learnerBeforeGrant = await rpc("list_courses_v1", {
     p_query: null,
@@ -379,7 +490,7 @@ try {
   assert.equal(Object.hasOwn(sharedCourse, "authoringState"), false);
   const sharedEntities = await rpc("list_course_entities_v1", {
     p_course_id: courseId,
-    p_expected_revision: 3,
+    p_expected_revision: 8,
     p_limit: 100,
     p_after_entity_type: null,
     p_after_entity_id: null,

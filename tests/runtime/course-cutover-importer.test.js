@@ -464,7 +464,16 @@ test("gera um único script transacional para TEMP, COPY e migration", async () 
     "../../supabase/migrations/20260817150000_course_profiles_access.sql",
     import.meta.url
   ), "utf8");
-  const sql = buildCourseCutoverSql(result, migration, profileAccessMigration);
+  const authoringPlanMigration = fs.readFileSync(new URL(
+    "../../supabase/migrations/20260817160000_course_authoring_plan.sql",
+    import.meta.url
+  ), "utf8");
+  const sql = buildCourseCutoverSql(
+    result,
+    migration,
+    profileAccessMigration,
+    authoringPlanMigration
+  );
   assert.match(sql, /^\\set ON_ERROR_STOP on\nbegin;/u);
   const copyPosition = sql.indexOf("copy course_content_import_v1(");
   for (const guard of COURSE_CUTOVER_TRANSACTION_GUARDS) {
@@ -485,10 +494,17 @@ test("gera um único script transacional para TEMP, COPY e migration", async () 
     sql,
     /insert into supabase_migrations\.schema_migrations\(version,statements,name\)[\s\S]*20260817150000[\s\S]*course_profiles_access/u
   );
+  assert.match(
+    sql,
+    /insert into supabase_migrations\.schema_migrations\(version,statements,name\)[\s\S]*20260817160000[\s\S]*course_authoring_plan/u
+  );
   assert.ok(
     sql.indexOf("create table public.person_profiles") >
       sql.indexOf("create table public.courses") &&
-    sql.indexOf("create table public.person_profiles") < sql.lastIndexOf("commit;")
+    sql.indexOf("create table public.person_profiles") <
+      sql.indexOf("create table private.course_instructional_plans") &&
+    sql.indexOf("create table private.course_instructional_plans") <
+      sql.lastIndexOf("commit;")
   );
 
   const migrationSchema = migration.match(
@@ -512,7 +528,8 @@ test("gera um único script transacional para TEMP, COPY e migration", async () 
     () => buildCourseCutoverSql(
       result,
       migration.replace("        course_goal text not null,", "        course_goal text,"),
-      profileAccessMigration
+      profileAccessMigration,
+      authoringPlanMigration
     ),
     (error) => error.code === "migration_staging_schema_drift"
   );
@@ -520,7 +537,8 @@ test("gera um único script transacional para TEMP, COPY e migration", async () 
     () => buildCourseCutoverSql(
       result,
       migration.replace("set local lock_timeout = '15s';", ""),
-      profileAccessMigration
+      profileAccessMigration,
+      authoringPlanMigration
     ),
     (error) => error.code === "migration_transaction_guard_drift"
   );
@@ -531,7 +549,8 @@ test("gera um único script transacional para TEMP, COPY e migration", async () 
         "set local lock_timeout = '15s';",
         "set local lock_timeout = '15s';\nset local lock_timeout = '15s';"
       ),
-      profileAccessMigration
+      profileAccessMigration,
+      authoringPlanMigration
     ),
     (error) => error.code === "migration_transaction_guard_drift"
   );
@@ -539,7 +558,17 @@ test("gera um único script transacional para TEMP, COPY e migration", async () 
     () => buildCourseCutoverSql(
       result,
       migration,
-      profileAccessMigration.replace(/^commit;\s*$/mu, "")
+      profileAccessMigration.replace(/^commit;\s*$/mu, ""),
+      authoringPlanMigration
+    ),
+    (error) => error.code === "migration_transaction_drift"
+  );
+  assert.throws(
+    () => buildCourseCutoverSql(
+      result,
+      migration,
+      profileAccessMigration,
+      authoringPlanMigration.replace(/^commit;\s*$/mu, "")
     ),
     (error) => error.code === "migration_transaction_drift"
   );
@@ -559,6 +588,7 @@ test("recusa staging ou manifesto alterados depois da atestação", async () => 
   assert.throws(
     () => buildCourseCutoverSql(
       changedManifest,
+      "begin;\ncommit;\n",
       "begin;\ncommit;\n",
       "begin;\ncommit;\n"
     ),

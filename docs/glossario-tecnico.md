@@ -38,8 +38,8 @@ de um pedido. Hash verifica igualdade de bytes; não cifra nem autoriza.
 ## Curso e conteúdo
 
 **Curso vivo (`course`).** Raiz identificável e mutável usada por Estudo,
-Autoria e MCP. Conserva proprietário, metadados, revisão e estado autoral; sua
-composição fica em entidades relacionadas.
+Autoria e MCP. Conserva proprietário, título, objetivo, revisão e datas; seu
+plano instrucional e sua composição ficam em relações próprias.
 
 **Revisão de Curso (`revision`).** Inteiro crescente que muda a cada alteração
 autoral confirmada. É condição de concorrência, não identidade de outro Curso.
@@ -66,6 +66,35 @@ inclui mais do que prática de recuperação.
 **Parte de autoria.** Agrupamento operacional configurável para planejar,
 produzir e revisar várias Microssequências numa iteração. Não é um nível entre
 Curso, Módulo, Lição, Microssequência e Unidade.
+
+**Plano instrucional do Curso.** Planejamento vivo que reúne público, escopo,
+orientação, resultados de aprendizagem pretendidos, unidades de análise
+instrucional, requisitos de evidência e Partes. Título e objetivo são projetados
+nele para leitura, mas pertencem somente à raiz `courses`.
+
+**Item do plano instrucional.** Enunciado ordenado e versionado de um resultado
+de aprendizagem pretendido, uma unidade de análise instrucional ou um requisito
+de evidência. A pessoa o edita em linguagem natural, não como JSON.
+
+**Faixa preferencial de Partes.** Mínimo e máximo operacionais associados à
+origem `automatic`, `author` ou `research_condition`. O padrão 7–12 é
+configurável e pesquisável; não é lei pedagógica nem evidência de eficácia.
+
+**Vínculo de produção.** Relação exclusiva entre uma Parte e uma
+Microssequência didática, com posição própria de produção. Não altera a posição
+curricular da Microssequência e pode ser retirado sem excluir conteúdo.
+
+**Materialização de Parte.** Tentativa persistida e retomável de produzir ou
+atualizar conteúdo referente a uma Parte. Possui estado `running`, `completed`
+ou `failed`, versão, contexto de desenho e fatos do resultado.
+
+**Etapa de materialização.** Passo pequeno de carga de contexto, materialização
+de uma Microssequência ou validação. Uma confirmação pode gravar fatos,
+entidades, vínculo, revisão e atividade na mesma transação.
+
+**Progresso derivado de Parte.** Projeção calculada de vínculos, Unidades,
+tentativa mais recente e suas etapas. Não é campo que a pessoa ou o modelo marca
+como concluído por declaração.
 
 ## Componentes didáticos
 
@@ -131,8 +160,9 @@ autoral.
 **Concorrência otimista.** Estratégia em que a leitura não bloqueia o objeto; a
 escrita só confirma se a versão observada ainda for corrente.
 
-**Compare-and-swap (CAS).** Comparação atômica de `expectedRevision` com a
-revisão corrente antes da troca de estado.
+**Compare-and-swap (CAS).** Comparação atômica de `expectedRevision` e, quando
+aplicável, da versão esperada do plano, Parte, tentativa ou etapa antes da troca
+de estado.
 
 **Idempotência.** Propriedade de repetir o mesmo pedido sem duplicar seu efeito.
 Depende da mesma chave e do mesmo conteúdo.
@@ -156,6 +186,10 @@ tabela de locks de produto.
 
 **Evento de Curso.** Registro append-only pequeno de uma mudança com consumidor
 de auditoria ou pesquisa. Não replica o conteúdo e não registra e-mail.
+
+**Atividade recente de autoria.** Projeção limitada de eventos persistidos de
+plano e materialização. Informa espécie, revisão, canal, Parte/tentativa e
+instante; copiar um pedido para o chat não cria atividade.
 
 ## Autenticação e autorização
 
@@ -226,10 +260,21 @@ ferramenta de mutação, mas não substitui a verificação de propriedade.
 **Prompt de sistema.** Instruções estáveis do cliente. Não deve conter cópia do
 planejamento mutável do Curso.
 
-**Estado de autoria do Curso.** Estado persistido compartilhado por interface e
-MCP. A versão corrente contém Partes, decisões e mandato; parâmetros, fontes e
-dados de pesquisa só integrarão o contrato quando suas fatias forem
-implementadas.
+**Pedido levado ao chat.** Texto que a interface copia para a área de
+transferência para uso num cliente conectado. A cópia não inicia tentativa,
+não materializa conteúdo e não autoriza mostrar progresso novo.
+
+**Comando de plano.** Operação semântica fechada para atualizar campos, gerir e
+reordenar itens, gerir/dividir/unir Partes ou atribuir, mover e retirar vínculos
+de Microssequência. Interface e MCP aplicam o mesmo domínio.
+
+**Comando de composição.** Operação separada que cria, altera ou remove
+entidades didáticas. Separá-la do comando de plano impede que reorganizar uma
+Parte substitua ou apague conteúdo implicitamente.
+
+**Canal de autoria.** Origem persistida da mutação: `application` para a
+interface ou `mcp` para cliente conversacional. Canal descreve transporte; não
+muda autoridade, validação ou estado.
 
 ## Termos ainda não implementados de ponta a ponta
 

@@ -30,7 +30,7 @@ Há duas classes de objeto:
 O recurso corrente é `aralearn://authoring/invariants`. Ele contém somente
 invariantes de operação: Curso vivo, leitura antes de escrita, estado dinâmico
 persistido, Parte como agrupamento operacional, descoberta progressiva de
-componentes e síntese breve do resultado.
+componentes, materialização por etapas retomáveis e síntese breve do resultado.
 
 Plano, parâmetros, fontes, observações e configuração de pesquisa não devem
 ser copiados para esse recurso nem fixados no prompt do cliente. Eles pertencem
@@ -101,42 +101,66 @@ homônimos sem confirmar o contexto.
 
 Lê uma destas projeções:
 
-- `summary`: cabeçalho e estado autoral corrente;
+- `summary`: cabeçalho fino do Curso;
 - `outline`: hierarquia compacta;
+- `instructional_plan`: plano vivo, itens com identidades estáveis, Partes,
+  vínculos, progresso derivado e atividade recente;
+- `part_materialization`: uma tentativa persistida, seu contexto e fatos
+  limitados, as etapas com versão e a próxima etapa pendente;
 - `entities`: página de entidades do Curso.
 
 `entities` exige `expectedRevision`. O cursor contém tipo e identidade da
 última entidade. Se a revisão mudar durante a paginação, a leitura é recusada;
 o cliente deve reiniciar a partir do estado corrente.
 
+`part_materialization` exige `authoringPartId` e `materializationId`, ambos
+obtidos do plano ou do recibo anterior. A resposta traz no máximo 64 etapas e
+`nextPendingStep`; por isso um cliente novo retoma trabalho real sem depender
+da conversa anterior. Se uma etapa falhou ou a tentativa terminou, o próximo
+passo é nulo. Essa vista é owner-only e não inclui prompt nem raciocínio privado.
+
 Antes de auditar ou alterar estrutura, percorra todas as páginas pertinentes.
 Um resumo não demonstra que uma Unidade existe nem que sua composição é válida.
 
 ### `criarCurso`
 
-Cria atomicamente um Curso privado vazio. Exige:
+Cria atomicamente um Curso privado vazio e seu plano instrucional inicial.
+Exige:
 
 - `requestId` estável para a intenção;
 - título;
-- objetivo;
-- orientações opcionais.
+- objetivo.
+
+O plano nasce vazio com preferência automática de 7–12 Partes. A faixa é um
+ponto de partida editável e pesquisável, não uma prescrição sobre ensino.
 
 Não cria recipiente, estágio editorial ou cópia de distribuição. A pessoa que
 autenticou a chamada é proprietária.
 
 ### `alterarCurso`
 
-Possui duas operações:
+Possui três operações fechadas:
 
-- `update_metadata`: altera ao menos um entre título, objetivo, orientações e
-  estado de autoria;
-- `commit_entities`: inclui, substitui ou exclui entidades em lote.
+- `update_instructional_plan`: aplica um comando semântico ao plano — atualizar
+  campos naturais, incluir/editar/reordenar itens, incluir/editar/dividir/
+  juntar/reordenar Partes ou mover vínculos de microssequência;
+- `commit_course_composition`: inclui, substitui ou exclui entidades em lote;
+- `advance_part_materialization`: inicia uma tentativa, registra uma etapa
+  delimitada ou finaliza a tentativa de uma Parte.
 
-Ambas exigem `courseId`, `requestId` e `expectedRevision`. Cada grupo de
-inclusões ou exclusões aceita no máximo 200 itens. A transação valida pais,
-posições, identidades, conteúdo e recomposição do documento. Exclusão de pai
-remove seus descendentes pela relação canônica e a resposta informa a
-quantidade efetiva removida.
+Todas exigem `courseId`, `requestId` e a revisão esperada do Curso. Alterar o
+plano exige também sua versão. Um comando carrega intenção e identidades
+estáveis; o servidor calcula e persiste o alvo inteiro na mesma transação.
+O alvo do plano aceita até 192 vínculos de Microssequência no total e 512 KiB;
+esse limite mantém sua leitura enriquecida abaixo do orçamento do transporte.
+
+Cada grupo de composição aceita no máximo 200 itens. Uma etapa de
+materialização aceita no máximo 64 mudanças de entidade e 256 KiB, fixa a
+versão da Parte e mantém conteúdo, etapa, vínculo, revisão, evento e recibo na
+mesma transação. A tentativa persiste o próximo passo; repetir a mesma chamada
+recupera o recibo antes do CAS. A transação valida pais, posições, identidades,
+conteúdo e recomposição do documento. Excluir ou reordenar uma Parte nunca
+exclui a composição didática.
 
 O cliente deve reler depois da escrita. Uma resposta de sucesso demonstra que
 a transação foi aceita, não que a mudança é pedagogicamente adequada.
@@ -177,6 +201,13 @@ Cada Curso possui uma revisão inteira crescente. Uma mutação só é aceita qu
 **compare-and-swap (CAS)**: comparar a revisão lida e trocar o estado numa única
 transação.
 
+O plano e cada tentativa de materialização também possuem versões próprias.
+Assim, uma mudança alheia fora da Parte não apaga trabalho em andamento, mas
+alterar a própria Parte ou repetir uma etapa sobre uma versão antiga produz um
+conflito explícito. Enquanto uma tentativa está em andamento, cabeçalho e
+itens independentes do plano continuam editáveis; a Parte, sua posição e seus
+vínculos ficam cercados até a tentativa terminar ou ser marcada como falha.
+
 Cada mutação também possui `requestId`. O servidor conserva um recibo pequeno e
 temporário:
 
@@ -193,8 +224,10 @@ Releia, compare a intenção com o estado novo e proponha a reconciliação.
 O servidor entrega instruções curtas no `initialize` e pelo recurso de
 invariantes. O Curso conserva dados mutáveis:
 
-- título, objetivo e orientações;
-- estado de autoria com Partes, decisões e mandato;
+- título e objetivo;
+- plano instrucional com público, escopo, orientação, faixa preferencial,
+  resultados pretendidos, unidades de análise e requisitos de evidência;
+- Partes operacionais, seus vínculos e tentativas de materialização;
 - composição didática;
 - futuramente, parâmetros, fontes, observações autorais e configuração de
   pesquisa quando essas fatias forem implementadas.
@@ -223,13 +256,13 @@ Erros previsíveis incluem:
 - Curso inexistente ou não pertencente à pessoa;
 - revisão desatualizada;
 - `requestId` reutilizado com outro comando;
-- entidade ou estado de autoria inválido;
+- entidade, plano, Parte ou etapa de materialização inválida;
 - e-mail sem conta correspondente;
 - confirmação ausente;
 - limite de payload ou prazo excedido.
 
-O transporte aceita mensagens de até 32 MiB, mas as ferramentas usam limites
-menores por campo e lote. O prazo de uma chamada não autoriza aumentar lote
+O transporte aceita mensagens de até 1 MiB, e as ferramentas usam limites
+ainda menores por campo e lote. O prazo de uma chamada não autoriza aumentar lote
 indefinidamente; produção por Partes precisa respeitar limites reais de modelo,
 rede e transação.
 

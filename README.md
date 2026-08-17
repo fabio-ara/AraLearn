@@ -65,7 +65,8 @@ passar por estados de rascunho, aprovação ou publicação.
 
 Ao abrir um Curso, a interface oferece quatro destinos compactos:
 
-- **Planejamento:** objetivo, orientações e o estado estruturado corrente;
+- **Planejamento:** título, objetivo, público, escopo, orientação, resultados
+  pretendidos, unidades de análise, requisitos de evidência e Partes de autoria;
 - **Estrutura:** Módulos, Lições e Microssequências didáticas;
 - **Conteúdo:** Unidades de estudo já materializadas;
 - **Pessoas:** proprietário e acessos diretos concedidos somente para Estudo.
@@ -77,10 +78,17 @@ componentes didáticos. A revisão de estado e as chaves de repetição segura
 impedem que duas edições silenciosamente se sobrescrevam ou que uma chamada
 repetida duplique uma operação.
 
-Planejamento avançado por Partes, inspeção vertical contínua, proveniência,
-anotações autorais, correção, variantes e analytics de pesquisa pertencem à
-evolução da Autoria. A documentação não os apresenta como concluídos antes de
-existirem de ponta a ponta na interface, no MCP, na persistência e nos testes.
+O planejamento por Partes já é persistido e editável em linguagem natural. A
+faixa inicial de 7–12 Partes é uma sugestão configurável, não uma lei
+pedagógica. Cada Parte referencia microssequências reais sem entrar na
+hierarquia do Curso, e a produção registra tentativas e etapas retomáveis. A
+interface pode copiar um pedido de materialização para o chat conectado, mas
+só mostra como produzido aquilo que o servidor efetivamente gravou.
+
+Inspeção vertical contínua, proveniência, anotações autorais, correção,
+variantes e analytics de pesquisa pertencem às próximas fatias. A documentação
+não os apresenta como concluídos antes de existirem de ponta a ponta na
+interface, no MCP, na persistência e nos testes.
 
 Comece pelo [guia do professor e autor](docs/guia-professor-autor.md). A
 explicação do protocolo está em [Autoria por MCP](docs/autoria-mcp.md).

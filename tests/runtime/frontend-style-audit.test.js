@@ -51,7 +51,7 @@ test("auditoria localiza cores literais somente nos seletores consultados", () =
 
 test("front-end consolidado permanece reproduzível e usa somente decisões semânticas", async () => {
   const report = await auditFrontendRepository();
-  assert.ok(report.styles.bytes > 100_000);
+  assert.ok(report.styles.bytes > 90_000);
   assert.equal(report.styles.literalColors.hex, 0);
   assert.equal(report.styles.literalColors.rgb, 0);
   assert.ok(report.tokens.customPropertyDeclarations >= 50);

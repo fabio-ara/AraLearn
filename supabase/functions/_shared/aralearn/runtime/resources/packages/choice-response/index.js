@@ -21,7 +21,7 @@ function instruction(data) {
 function responseFeedback(blockKey, feedback) {
   if (!feedback) return "";
   if (feedback === "correct") return '<div class="inline-feedback ok"><p class="tiny">Correto.</p></div>';
-  if (feedback === "incomplete") return '<div class="inline-feedback warn"><p class="tiny">Selecione pelo menos uma resposta.</p></div>';
+  if (feedback === "incomplete") return '<div class="inline-feedback warn" role="alert" aria-live="assertive"><p class="tiny">Selecione pelo menos uma resposta.</p></div>';
   const key = escapePackageAttribute(blockKey);
   return `<div class="inline-feedback err has-actions"><p class="tiny">As respostas marcadas não correspondem ao conjunto esperado.</p><div class="feedback-icons"><button class="icon-pill" type="button" data-action="choice-view-answer" data-choice-block-key="${key}" title="Ver resposta" aria-label="Ver resposta">${renderPackageActionIcon("answer")}</button><button class="icon-pill primary" type="button" data-action="choice-try-again" data-choice-block-key="${key}" title="Tentar de novo" aria-label="Tentar de novo">${renderPackageActionIcon("retry")}</button></div></div>`;
 }

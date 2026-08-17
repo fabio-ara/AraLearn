@@ -22,6 +22,10 @@ function courseCacheKey(courseId, prefix = CACHE_PREFIX) {
   return `${prefix}.header:${courseId}`;
 }
 
+function instructionalPlanCacheKey(courseId, prefix = CACHE_PREFIX) {
+  return `${prefix}.instructional-plan:${courseId}`;
+}
+
 function entityCacheKey(courseId, revision, limit, cursor, prefix = CACHE_PREFIX) {
   return `${prefix}.entities:${courseId}:${revision}:${limit}:${stableCursor(cursor)}`;
 }
@@ -136,6 +140,7 @@ export class CourseController {
     api,
     store,
     ownerOnly = false,
+    deliverMaterializationRequest = null,
     now = () => new Date().toISOString()
   } = {}) {
     if (!api || typeof api.listCourses !== "function" || typeof api.getCourse !== "function") {
@@ -150,6 +155,11 @@ export class CourseController {
     this.store = store;
     this.ownerOnly = ownerOnly === true;
     this.cachePrefix = this.ownerOnly ? "course-authoring.v1" : CACHE_PREFIX;
+    if (deliverMaterializationRequest != null &&
+        typeof deliverMaterializationRequest !== "function") {
+      throw new TypeError("Entrega ao chat inválida.");
+    }
+    this.deliverMaterializationRequest = deliverMaterializationRequest;
     this.now = now;
     this.accessibleCourseRefresh = null;
   }
@@ -158,6 +168,7 @@ export class CourseController {
     await Promise.all([
       ...(clearLists ? [this.store.deleteCachePrefix(`${this.cachePrefix}.list:`)] : []),
       this.store.deleteCachePrefix(courseCacheKey(courseId, this.cachePrefix)),
+      this.store.deleteCachePrefix(instructionalPlanCacheKey(courseId, this.cachePrefix)),
       this.store.deleteCachePrefix(`${this.cachePrefix}.entities:${courseId}:`),
       this.store.deleteCachePrefix(`${COURSE_PERSONAL_STATE_CACHE_CONTRACT}:${courseId}`),
       this.store.deleteCachePrefix(REVIEW_PAGE_CACHE_KEY)
@@ -438,12 +449,78 @@ export class CourseController {
     return this.#purgeCoursePrivacyCache(courseId, { clearLists: true });
   }
 
-  createCourse(values) {
-    return this.api.executeCourseAction("criarCurso", values);
+  loadAuthoringPlan(courseId) {
+    const key = instructionalPlanCacheKey(courseId, this.cachePrefix);
+    return this.#readThrough(
+      key,
+      () => this.api.loadAuthoringPlan(courseId),
+      {
+        accessSensitive: true,
+        invalidationPrefixes: [
+          `${this.cachePrefix}.list:`,
+          courseCacheKey(courseId, this.cachePrefix),
+          instructionalPlanCacheKey(courseId, this.cachePrefix),
+          `${this.cachePrefix}.entities:${courseId}:`
+        ]
+      }
+    );
   }
 
-  updateCourse(values) {
-    return this.api.executeCourseAction("alterarCurso", values);
+  loadPartMaterialization(courseId, authoringPartId, materializationId) {
+    if (typeof this.api.loadPartMaterialization !== "function") {
+      throw new TypeError("A API de Cursos não oferece a leitura da materialização.");
+    }
+    return this.api.loadPartMaterialization(
+      courseId,
+      authoringPartId,
+      materializationId
+    );
+  }
+
+  async mutateAuthoringPlan({
+    requestId,
+    courseId,
+    expectedCourseRevision,
+    expectedPlanVersion,
+    operation,
+    ...payload
+  } = {}) {
+    const result = await this.api.mutateAuthoringPlan({
+      requestId,
+      courseId,
+      expectedRevision: expectedCourseRevision,
+      expectedPlanVersion,
+      planCommand: { type: operation, ...payload }
+    });
+    await Promise.all([
+      this.store.deleteCachePrefix(`${this.cachePrefix}.list:`),
+      this.store.deleteCachePrefix(courseCacheKey(courseId, this.cachePrefix)),
+      this.store.deleteCachePrefix(instructionalPlanCacheKey(courseId, this.cachePrefix))
+    ]);
+    return result;
+  }
+
+  async advanceAuthoringPartMaterialization(values = {}) {
+    const result = await this.api.advanceAuthoringPartMaterialization(values);
+    const courseId = values.courseId;
+    await Promise.all([
+      this.store.deleteCachePrefix(`${this.cachePrefix}.list:`),
+      this.store.deleteCachePrefix(courseCacheKey(courseId, this.cachePrefix)),
+      this.store.deleteCachePrefix(instructionalPlanCacheKey(courseId, this.cachePrefix)),
+      this.store.deleteCachePrefix(`${this.cachePrefix}.entities:${courseId}:`)
+    ]);
+    return result;
+  }
+
+  requestPartMaterialization(payload) {
+    if (!this.deliverMaterializationRequest) {
+      throw new Error("Nenhum chat conectado pode receber este pedido.");
+    }
+    return Promise.resolve(this.deliverMaterializationRequest(structuredClone(payload)));
+  }
+
+  createCourse(values) {
+    return this.api.createCourse(values);
   }
 
   getPersonProfile() {
@@ -486,5 +563,6 @@ export class CourseController {
 export {
   ACCESSIBLE_COURSE_IDS_CACHE_KEY,
   ACCESSIBLE_COURSE_IDS_CONTRACT,
-  CACHE_PREFIX as COURSE_CACHE_PREFIX
+  CACHE_PREFIX as COURSE_CACHE_PREFIX,
+  instructionalPlanCacheKey as courseInstructionalPlanCacheKey
 };

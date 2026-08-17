@@ -140,6 +140,34 @@ test("a fronteira exige ids explícitos em todos os níveis, inclusive no card",
   });
 });
 
+test("títulos curriculares têm até 300 caracteres e rejeitam controles inválidos", () => {
+  const valid = canonicalProject();
+  nested(valid).course.title = "C".repeat(300);
+  nested(valid).moduleValue.title = "Módulo em duas linhas\ncom contexto";
+  nested(valid).lesson.title = "Lição com\ttabulação";
+  nested(valid).microsequence.title = "Microssequência válida";
+  assert.equal(validateProjectDocument(valid).ok, true, errorText(validateProjectDocument(valid)));
+
+  const cases = [
+    ["course", (project) => { nested(project).course.title = "C".repeat(301); }],
+    ["module", (project) => { nested(project).moduleValue.title = "Módulo\u0001inválido"; }],
+    ["lesson", (project) => { nested(project).lesson.title = "Lição\u007finválida"; }],
+    ["microsequence", (project) => {
+      nested(project).microsequence.title = "M".repeat(301);
+    }],
+    ["microsequence", (project) => {
+      nested(project).microsequence.title = "Micro\u0085inválida";
+    }]
+  ];
+  cases.forEach(([entityName, mutate]) => {
+    const project = canonicalProject();
+    mutate(project);
+    const result = validateProjectDocument(project);
+    assert.equal(result.ok, false, entityName);
+    assert.match(errorText(result), new RegExp(`${entityName}\\.title`), entityName);
+  });
+});
+
 test("a fronteira rejeita ids duplicados entre entidades irmãs", () => {
   const cases = [
     ["course", (project) => project.courses.push(structuredClone(project.courses[0]))],

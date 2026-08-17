@@ -195,6 +195,14 @@ Michelene T. H. Chi; Nicholas de Leeuw; Mei-Hung Chiu; Christian LaVancher (1994
 
 Chave bibliográfica: `chi1994eliciting`.
 
+<a id="ref-choi2024vivid"></a>
+
+### Choi et al. (2024)
+
+Seulgi Choi; Hyewon Lee; Yoonjoo Lee; Juho Kim (2024). **VIVID: Human–AI Collaborative Authoring of Vicarious Dialogues from Lecture Videos.** In: *Proceedings of the 2024 CHI Conference on Human Factors in Computing Systems*, Association for Computing Machinery, p. 1–26. [DOI 10.1145/3613904.3642867](https://doi.org/10.1145/3613904.3642867).
+
+Chave bibliográfica: `choi2024vivid`.
+
 <a id="ref-chun2011attention"></a>
 
 ### Chun et al. (2011)
@@ -210,6 +218,14 @@ Chave bibliográfica: `chun2011attention`.
 Jennie Chang De Gagne; Hyeyoung Kate Park; Katherine Hall; Amanda Woodward; Sandra Yamane; Sang Suk Kim (2019). **Microlearning in Health Professions Education: Scoping Review.** *JMIR Medical Education*, 5(2), p. e13997. [DOI 10.2196/13997](https://doi.org/10.2196/13997).
 
 Chave bibliográfica: `degagne2019microlearning`.
+
+<a id="ref-dennison2026shiksha"></a>
+
+### Dennison et al. (2026)
+
+Deepak Varuvel Dennison; Bakhtawar Ahtisham; Kavyansh Chourasia; Nirmit Arora; Rahul Singh; René F. Kizilcec; Akshay Nambi; Tanuja Ganu; Aditya Vashistha (2026). **Shiksha Copilot: Teacher–AI Collaboration for Curating and Customizing Lesson Plans in Low-Resource Schools.** *Proceedings of the ACM on Human-Computer Interaction*, 10(2), p. 1–47. [DOI 10.1145/3788074](https://doi.org/10.1145/3788074).
+
+Chave bibliográfica: `dennison2026shiksha`.
 
 <a id="ref-dbrc2003designbased"></a>
 

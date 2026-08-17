@@ -7,6 +7,7 @@ import {
   courseListCardinality,
   mergeCourseEntityPages,
   mergeCourseListPages,
+  normalizeCourseAuthoringPlan,
   normalizeCourseDetail,
   normalizeCourseEntityPage,
   normalizeCourseListPage,
@@ -16,6 +17,12 @@ import {
 
 const COURSE_ID = "10000000-0000-4000-8000-000000000001";
 const SECOND_COURSE_ID = "20000000-0000-4000-8000-000000000002";
+const PART_ID = "30000000-0000-4000-8000-000000000003";
+const SECOND_PART_ID = "40000000-0000-4000-8000-000000000004";
+const ITEM_ID = "50000000-0000-4000-8000-000000000005";
+const MATERIALIZATION_ID = "60000000-0000-4000-8000-000000000006";
+const EVENT_ID = "42";
+const PLAN_ID = "80000000-0000-4000-8000-000000000008";
 
 function courseItem(courseId = COURSE_ID, title = "Fundamentos") {
   return {
@@ -117,36 +124,315 @@ test("detalhe e páginas de entidades exigem o mesmo Curso e a mesma revisão", 
   );
 });
 
-test("detalhe clona o estado autoral e projeta somente o resumo canônico do planejamento", () => {
-  const source = {
-    version: 1,
-    parts: [{ id: "part-a", privateNote: "não renderizar" }, { id: "part-b" }],
-    decisions: [{ id: "decision-a" }],
-    mandate: { note: "interno" }
-  };
+test("planejamento normaliza listas nomeadas e projeta Partes fora da hierarquia", () => {
   const course = normalizeCourseDetail({
     courseId: COURSE_ID,
     title: "Fundamentos",
     goal: "Compreender relações essenciais.",
-    brief: "Priorizar exemplos concretos.",
     revision: 3,
     ownership: "owned",
-    canEdit: true,
-    authoringState: source
+    canEdit: true
   }, { expectedCourseId: COURSE_ID });
+  const plan = normalizeCourseAuthoringPlan({
+    contract: "aralearn.course-instructional-plan.v1",
+    courseId: COURSE_ID,
+    courseRevision: 3,
+    plan: {
+      id: PLAN_ID,
+      version: 2,
+      title: "Fundamentos",
+      objective: "Compreender relações essenciais.",
+      audience: "Pessoas iniciantes.",
+      scope: "Relações fundamentais.",
+      authoringGuidance: "Priorizar exemplos concretos.",
+      preferredPartCount: { minimum: 7, maximum: 12, origin: "automatic" },
+      intendedLearningOutcomes: [{
+        id: ITEM_ID,
+        position: 0,
+        statement: "Comparar relações.",
+        version: 1
+      }],
+      instructionalAnalysisUnits: [],
+      evidenceRequirements: [],
+      parts: [{
+        id: PART_ID,
+        title: "Relações iniciais",
+        intent: "Materializar exemplos fundamentais.",
+        version: 2,
+        position: 0,
+        microsequences: [{
+          id: "micro-a",
+          productionPosition: 0,
+          title: "Primeiro caso",
+          curriculumPath: {
+            moduleId: "module-a",
+            moduleTitle: "Base",
+            lessonId: "lesson-a",
+            lessonTitle: "Relações"
+          },
+          studyUnitCount: 2
+        }],
+        progress: {
+          state: "partially_materialized",
+          microsequenceCount: 1,
+          studyUnitCount: 2,
+          lastMaterialization: {
+            id: MATERIALIZATION_ID,
+            status: "running",
+            version: 1,
+            completedStepCount: 2,
+            failedStepCount: 0,
+            totalStepCount: 4,
+            startedAt: "2026-08-17T10:00:00Z",
+            updatedAt: "2026-08-17T10:10:00Z",
+            completedAt: null
+          }
+        }
+      }, {
+        id: SECOND_PART_ID,
+        title: "Aplicações",
+        intent: null,
+        version: 1,
+        position: 1,
+        microsequences: [],
+        progress: {
+          state: "planned",
+          microsequenceCount: 0,
+          studyUnitCount: 0,
+          lastMaterialization: null
+        }
+      }],
+      counts: {
+        intendedLearningOutcomeCount: 1,
+        instructionalAnalysisUnitCount: 0,
+        evidenceRequirementCount: 0,
+        authoringPartCount: 2,
+        linkedDidacticMicrosequenceCount: 1,
+        studyUnitCount: 2
+      },
+      updatedAt: "2026-08-17T10:10:00Z"
+    },
+    recentActivity: [{
+      eventId: EVENT_ID,
+      revision: 3,
+      kind: "plan_changed",
+      channel: "mcp",
+      instructionalPlanItemId: ITEM_ID,
+      partId: null,
+      materializationId: null,
+      createdAt: "2026-08-17T10:10:00Z"
+    }]
+  }, { expectedCourseId: COURSE_ID, expectedCourseRevision: 3 });
 
-  assert.notEqual(course.authoringState, source);
-  assert.notEqual(course.authoringState.parts, source.parts);
-  source.parts.push({ id: "part-c" });
-  assert.equal(course.authoringState.parts.length, 2);
-  assert.equal(Object.isFrozen(course.authoringState.parts[0]), true);
-  assert.deepEqual(projectCoursePlanning(course), {
+  const projection = projectCoursePlanning(course, plan);
+  assert.equal(Object.isFrozen(plan.plan.parts[0]), true);
+  assert.equal(Object.isFrozen(plan.plan.intendedLearningOutcomes[0]), true);
+  assert.deepEqual({
+    objective: projection.objective,
+    audience: projection.audience,
+    range: projection.preferredPartCount,
+    linked: projection.linkedMicrosequenceCount,
+    studyUnits: projection.studyUnitCount,
+    status: projection.parts[0].status
+  }, {
     objective: "Compreender relações essenciais.",
-    orientations: "Priorizar exemplos concretos.",
-    partCount: 2,
-    decisionCount: 1
+    audience: "Pessoas iniciantes.",
+    range: { minimum: 7, maximum: 12, origin: "automatic" },
+    linked: 1,
+    studyUnits: 2,
+    status: "partially_materialized"
   });
+  assert.equal(projection.parts[0].linkedMicrosequenceCount, 1);
+  assert.equal(projection.recentActivity[0].eventId, "42");
+  assert.equal(projection.recentActivity[0].kind, "plan_changed");
+  assert.equal(projection.recentActivity[0].instructionalPlanItemId, ITEM_ID);
   assert.deepEqual(projectCourseEntities([], { section: "planning" }), []);
+});
+
+test("atividade recente aceita somente o bigint identity decimal positivo do banco", () => {
+  const payload = {
+    contract: "aralearn.course-instructional-plan.v1",
+    courseId: COURSE_ID,
+    courseRevision: 4,
+    plan: {
+      id: PLAN_ID,
+      version: 2,
+      title: "Fundamentos",
+      objective: "Aprender.",
+      audience: "",
+      scope: "",
+      authoringGuidance: "",
+      preferredPartCount: { minimum: 7, maximum: 12, origin: "automatic" },
+      intendedLearningOutcomes: [],
+      instructionalAnalysisUnits: [],
+      evidenceRequirements: [],
+      parts: [],
+      counts: {
+        intendedLearningOutcomeCount: 0,
+        instructionalAnalysisUnitCount: 0,
+        evidenceRequirementCount: 0,
+        authoringPartCount: 0,
+        linkedDidacticMicrosequenceCount: 0,
+        studyUnitCount: 0
+      },
+      updatedAt: "2026-08-17T10:10:00Z"
+    },
+    recentActivity: [{
+      eventId: "9223372036854775807",
+      revision: 4,
+      kind: "plan_changed",
+      channel: "application",
+      instructionalPlanItemId: null,
+      partId: null,
+      materializationId: null,
+      createdAt: "2026-08-17T10:10:00Z"
+    }]
+  };
+
+  const normalized = normalizeCourseAuthoringPlan(payload);
+  assert.equal(normalized.recentActivity[0].eventId, "9223372036854775807");
+  for (const eventId of [
+    "0",
+    "01",
+    "9223372036854775808",
+    "70000000-0000-4000-8000-000000000007",
+    42
+  ]) {
+    assert.throws(
+      () => normalizeCourseAuthoringPlan({
+        ...payload,
+        recentActivity: [{ ...payload.recentActivity[0], eventId }]
+      }),
+      (error) => error.code === "invalid_authoring_plan"
+    );
+  }
+});
+
+test("caminho curricular usa o mesmo limite canônico de 240 caracteres", () => {
+  const curriculumId = "x".repeat(240);
+  const base = {
+    contract: "aralearn.course-instructional-plan.v1",
+    courseId: COURSE_ID,
+    courseRevision: 3,
+    plan: {
+      id: PLAN_ID,
+      version: 1,
+      title: "Fundamentos",
+      objective: "Aprender.",
+      audience: "",
+      scope: "",
+      authoringGuidance: "",
+      preferredPartCount: { minimum: 7, maximum: 12, origin: "automatic" },
+      intendedLearningOutcomes: [],
+      instructionalAnalysisUnits: [],
+      evidenceRequirements: [],
+      parts: [{
+        id: PART_ID,
+        title: "Parte",
+        intent: "",
+        version: 1,
+        position: 0,
+        microsequences: [{
+          id: "micro-a",
+          productionPosition: 0,
+          title: "Microssequência",
+          curriculumPath: {
+            moduleId: curriculumId,
+            moduleTitle: "Módulo",
+            lessonId: curriculumId,
+            lessonTitle: "Lição"
+          },
+          studyUnitCount: 0
+        }],
+        progress: {
+          state: "partially_materialized",
+          microsequenceCount: 1,
+          studyUnitCount: 0,
+          lastMaterialization: null
+        }
+      }],
+      counts: {
+        intendedLearningOutcomeCount: 0,
+        instructionalAnalysisUnitCount: 0,
+        evidenceRequirementCount: 0,
+        authoringPartCount: 1,
+        linkedDidacticMicrosequenceCount: 1,
+        studyUnitCount: 0
+      },
+      updatedAt: "2026-08-17T10:10:00Z"
+    },
+    recentActivity: []
+  };
+
+  assert.equal(
+    normalizeCourseAuthoringPlan(base).plan.parts[0].microsequences[0]
+      .curriculumPath.moduleId.length,
+    240
+  );
+  for (const field of ["moduleId", "lessonId"]) {
+    const invalid = structuredClone(base);
+    invalid.plan.parts[0].microsequences[0].curriculumPath[field] = "x".repeat(241);
+    assert.throws(
+      () => normalizeCourseAuthoringPlan(invalid),
+      (error) => error.code === "invalid_authoring_plan"
+    );
+  }
+});
+
+test("planejamento recusa segunda autoridade de título ou objetivo e vínculos duplicados", () => {
+  const course = normalizeCourseDetail({
+    courseId: COURSE_ID,
+    title: "Fundamentos",
+    goal: "Aprender.",
+    revision: 3,
+    ownership: "owned",
+    canEdit: true
+  });
+  const base = {
+    contract: "aralearn.course-instructional-plan.v1",
+    courseId: COURSE_ID,
+    courseRevision: 3,
+    plan: {
+      id: PLAN_ID,
+      version: 1,
+      title: "Outro título",
+      objective: "Aprender.",
+      audience: null,
+      scope: null,
+      authoringGuidance: null,
+      preferredPartCount: { minimum: 7, maximum: 12, origin: "automatic" },
+      intendedLearningOutcomes: [],
+      instructionalAnalysisUnits: [],
+      evidenceRequirements: [],
+      parts: [],
+      counts: {
+        intendedLearningOutcomeCount: 0,
+        instructionalAnalysisUnitCount: 0,
+        evidenceRequirementCount: 0,
+        authoringPartCount: 0,
+        linkedDidacticMicrosequenceCount: 0,
+        studyUnitCount: 0
+      },
+      updatedAt: "2026-08-17T10:00:00Z"
+    },
+    recentActivity: []
+  };
+  const plan = normalizeCourseAuthoringPlan(base);
+  assert.throws(
+    () => projectCoursePlanning(course, plan),
+    (error) => error.code === "invalid_authoring_plan"
+  );
+  assert.throws(
+    () => normalizeCourseAuthoringPlan({
+      ...base,
+      plan: {
+        ...base.plan,
+        title: "Fundamentos",
+        preferredPartCount: { minimum: 13, maximum: 12, origin: "author" }
+      }
+    }),
+    (error) => error.code === "invalid_authoring_plan"
+  );
 });
 
 test("Autoria rejeita Curso compartilhado antes de projetar título ou deep link", () => {
