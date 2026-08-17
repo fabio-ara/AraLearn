@@ -324,7 +324,6 @@ function contentPackageStudyUnits(manifest, prefix, packageIndex) {
       response: null,
       feedback: [],
       topics: [],
-      sources: []
     },
     {
       id: `${prefix}-practice-card`,
@@ -335,7 +334,6 @@ function contentPackageStudyUnits(manifest, prefix, packageIndex) {
       response,
       feedback: [paragraphInstance(`${prefix}-practice-feedback`, feedbackText(manifest), "feedback")],
       topics: [],
-      sources: []
     }
   ];
 }
@@ -444,7 +442,6 @@ function responsePackageStudyUnits(manifest, prefix) {
       response: null,
       feedback: [],
       topics: [],
-      sources: []
     },
     {
       id: `${prefix}-practice-card`,
@@ -455,7 +452,6 @@ function responsePackageStudyUnits(manifest, prefix) {
       response: practice.response,
       feedback: [paragraphInstance(`${prefix}-practice-feedback`, feedbackText(manifest), "feedback")],
       topics: [],
-      sources: []
     }
   ];
 }

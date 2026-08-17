@@ -260,8 +260,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a01-01-vocabulario-execucao",
@@ -320,8 +319,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a01-01-tipagem-dinamica",
@@ -374,8 +372,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a01-01-type-observa-mudanca",
@@ -439,8 +436,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a01-01-lacuna-tipo-valor",
@@ -488,8 +484,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a01-01-fluxo-execucao",
@@ -548,8 +543,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a01-01-erro-ordem-variavel",
@@ -606,8 +600,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 },
@@ -665,8 +658,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a01-02-print-gap",
@@ -716,8 +708,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a01-02-atribuicao-gap",
@@ -767,8 +758,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a01-02-valor-ou-nome",
@@ -836,8 +826,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a01-02-fstring-gap",
@@ -887,8 +876,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a01-02-prever-fstring",
@@ -952,8 +940,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a01-02-print-nao-guarda",
@@ -1006,8 +993,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 },
@@ -1066,8 +1052,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a01-03-partes-chamada",
@@ -1120,8 +1105,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a01-03-identificar-argumento",
@@ -1174,8 +1158,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a01-03-type-gap",
@@ -1225,8 +1208,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a01-03-guardar-tipo",
@@ -1294,8 +1276,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a01-03-parenteses",
@@ -1363,8 +1344,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a01-03-retorno-observavel-gap",
@@ -1412,8 +1392,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 },
@@ -1475,8 +1454,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a01-04-operadores",
@@ -1545,8 +1523,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a01-04-comparacao-gap",
@@ -1596,8 +1573,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a01-04-and-gap",
@@ -1647,8 +1623,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a01-04-previsao-logica",
@@ -1712,8 +1687,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a01-04-igualdade-vs-atribuicao",
@@ -1781,8 +1755,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a01-04-fluxo-condicao-logica",
@@ -1845,8 +1818,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 },
@@ -1906,8 +1878,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a01-05-fluxo-if-else",
@@ -1970,8 +1941,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a01-05-if-gap",
@@ -2021,8 +1991,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a01-05-indentacao-choice",
@@ -2089,8 +2058,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a01-05-elif-previsao",
@@ -2154,8 +2122,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a01-05-else-gap",
@@ -2205,8 +2172,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a01-05-erro-dois-pontos",
@@ -2259,8 +2225,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 },
@@ -2318,8 +2283,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a01-06-conversoes",
@@ -2373,8 +2337,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a01-06-int-input-gap",
@@ -2424,8 +2387,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a01-06-float-input-gap",
@@ -2475,8 +2437,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a01-06-prever-tipos-input",
@@ -2540,8 +2501,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a01-06-comparacao-numerica-input",
@@ -2609,8 +2569,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a01-06-erro-soma-texto",
@@ -2658,8 +2617,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 },
@@ -2718,8 +2676,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a01-07-fluxo-while",
@@ -2780,8 +2737,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a01-07-update-contador",
@@ -2831,8 +2787,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a01-07-range-previsao",
@@ -2896,8 +2851,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a01-07-range-1-5",
@@ -2947,8 +2901,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a01-07-for-indentacao",
@@ -3015,8 +2968,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a01-07-while-ou-for",
@@ -3069,8 +3021,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 },
@@ -3128,8 +3079,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a01-08-lista-teoria",
@@ -3159,8 +3109,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a01-08-indice-zero",
@@ -3210,8 +3159,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a01-08-for-if-gap",
@@ -3261,8 +3209,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a01-08-bug-lista-inteira",
@@ -3330,8 +3277,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a01-08-mini-desafio-gap",
@@ -3381,8 +3327,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a01-08-mini-desafio-escolha",
@@ -3449,8 +3394,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 }
@@ -3725,8 +3669,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a02-00-funcao-metodo-comparacao",
@@ -3775,8 +3718,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a02-00-len-gap",
@@ -3826,8 +3768,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a02-00-append-gap",
@@ -3877,8 +3818,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a02-00-argumento-append",
@@ -3931,8 +3871,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a02-00-efeito-retorno",
@@ -3985,8 +3924,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a02-00-sintaxe-metodo",
@@ -4054,8 +3992,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 },
@@ -4115,8 +4052,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a02-01-criar-lista",
@@ -4146,8 +4082,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a02-01-primeiro-ultimo-gap",
@@ -4208,8 +4143,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a02-01-alterar-item",
@@ -4259,8 +4193,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a02-01-append-remove",
@@ -4310,8 +4243,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a02-01-remove-valor",
@@ -4361,8 +4293,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a02-01-pop-indice",
@@ -4412,8 +4343,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a02-01-pop-lista-particularidade",
@@ -4466,8 +4396,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 },
@@ -4558,8 +4487,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a02-02-tupla-criar",
@@ -4627,8 +4555,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a02-02-tupla-imutavel",
@@ -4681,8 +4608,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a02-02-set-gap",
@@ -4732,8 +4658,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a02-02-set-remove-precisao",
@@ -4761,8 +4686,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a02-02-set-add",
@@ -4812,8 +4736,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a02-02-set-remove",
@@ -4863,8 +4786,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a02-02-set-sem-indice",
@@ -4932,8 +4854,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a02-02-estrutura-uso",
@@ -4986,8 +4907,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 },
@@ -5049,8 +4969,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a02-03-criar-dicionario",
@@ -5080,8 +4999,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a02-03-acessar-chave",
@@ -5131,8 +5049,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a02-03-alterar-valor",
@@ -5182,8 +5099,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a02-03-adicionar-campo",
@@ -5233,8 +5149,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a02-03-pop-chave",
@@ -5284,8 +5199,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a02-03-items-gap",
@@ -5335,8 +5249,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a02-03-erro-indice-dicionario",
@@ -5393,8 +5306,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 },
@@ -5451,8 +5363,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a02-04-len-gap",
@@ -5502,8 +5413,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a02-04-sum-gap",
@@ -5553,8 +5463,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a02-04-min-max-gap",
@@ -5615,8 +5524,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a02-04-media-gap",
@@ -5666,8 +5574,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a02-04-print-vs-calculo",
@@ -5724,8 +5631,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a02-04-media-len-choice",
@@ -5793,8 +5699,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a02-04-item-unico-erro",
@@ -5862,8 +5767,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 },
@@ -5977,8 +5881,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a02-05-append-exato",
@@ -6028,8 +5931,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a02-05-remove-exato",
@@ -6079,8 +5981,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a02-05-pop-lexico-teoria",
@@ -6108,8 +6009,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a02-05-pop-sem-argumento",
@@ -6169,8 +6069,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a02-05-pop-lista-dict",
@@ -6231,8 +6130,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a02-05-prevendo-estado-lista",
@@ -6300,8 +6198,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a02-05-remove-ou-pop-indice",
@@ -6369,8 +6266,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a02-05-items-exato",
@@ -6420,8 +6316,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a02-05-linha-chave-valor",
@@ -6478,8 +6373,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a02-05-sintaxe-dict-metodo",
@@ -6547,8 +6441,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 },
@@ -6609,8 +6502,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a02-06-range-gap",
@@ -6660,8 +6552,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a02-06-for-lista",
@@ -6711,8 +6602,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a02-06-for-tupla",
@@ -6762,8 +6652,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a02-06-for-set",
@@ -6813,8 +6702,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a02-06-for-dict-items",
@@ -6864,8 +6752,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a02-06-producao-item-atual",
@@ -6933,8 +6820,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a02-06-fluxo-for-if",
@@ -7008,8 +6894,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 },
@@ -7067,8 +6952,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a02-07-def-parametro-gap",
@@ -7118,8 +7002,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a02-07-identificar-parametro",
@@ -7172,8 +7055,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a02-07-chamada-argumento-gap",
@@ -7223,8 +7105,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a02-07-parametro-nao-literal",
@@ -7292,8 +7173,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a02-07-ordem-def-chamada",
@@ -7350,8 +7230,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a02-07-funcao-sem-retorno",
@@ -7381,8 +7260,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 },
@@ -7439,8 +7317,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a02-08-print-return-tabela",
@@ -7494,8 +7371,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a02-08-return-media-gap",
@@ -7545,8 +7421,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a02-08-choice-return",
@@ -7614,8 +7489,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a02-08-qual-devolve",
@@ -7672,8 +7546,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a02-08-parametro-na-media",
@@ -7741,8 +7614,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a02-08-solucao-afterblocks",
@@ -7802,8 +7674,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 },
@@ -7890,8 +7761,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a02-09-funcao-medidas-gap",
@@ -7963,8 +7833,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a02-09-contar-adequadas-gap",
@@ -8014,8 +7883,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a02-09-previsao-contagem",
@@ -8079,8 +7947,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a02-09-corrigir-lista-inteira",
@@ -8158,8 +8025,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a02-09-composite-final",
@@ -8256,8 +8122,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a02-09-script-escolha",
@@ -8325,8 +8190,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 }
@@ -8668,8 +8532,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a03-01-vocabulario-import",
@@ -8728,8 +8591,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a03-01-completar-imports",
@@ -8790,8 +8652,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a03-01-identificar-alias",
@@ -8844,8 +8705,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a03-01-comparar-scripts-import",
@@ -8913,8 +8773,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 },
@@ -8971,8 +8830,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a03-02-lista-array",
@@ -9021,8 +8879,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a03-02-criar-array",
@@ -9072,8 +8929,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a03-02-escolher-criacao-array",
@@ -9141,8 +8997,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a03-02-observar-tipo",
@@ -9192,8 +9047,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 },
@@ -9280,8 +9134,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a03-03-completar-funcoes",
@@ -9364,8 +9217,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a03-03-prever-media",
@@ -9418,8 +9270,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a03-03-max-min",
@@ -9472,8 +9323,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a03-03-escolher-media",
@@ -9541,8 +9391,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 },
@@ -9599,8 +9448,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a03-04-antes-depois",
@@ -9659,8 +9507,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a03-04-prever-saida",
@@ -9728,8 +9575,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a03-04-erro-append",
@@ -9782,8 +9628,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a03-04-completar-operacao",
@@ -9833,8 +9678,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 },
@@ -9892,8 +9736,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a03-05-dicionario-colunas",
@@ -9947,8 +9790,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a03-05-completar-dataframe",
@@ -9998,8 +9840,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a03-05-chave-coluna",
@@ -10052,8 +9893,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a03-05-comparar-listas",
@@ -10121,8 +9961,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 },
@@ -10178,8 +10017,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a03-06-completar-leitura",
@@ -10229,8 +10067,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a03-06-caminho-com-aspas",
@@ -10283,8 +10120,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a03-06-comparar-read-csv",
@@ -10352,8 +10188,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a03-06-validar-primeira-leitura",
@@ -10403,8 +10238,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 },
@@ -10493,8 +10327,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a03-07-metodo-atributo",
@@ -10562,8 +10395,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a03-07-shape-lacuna",
@@ -10622,8 +10454,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a03-07-interpretar-shape",
@@ -10676,8 +10507,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a03-07-completar-diagnostico",
@@ -10760,8 +10590,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 },
@@ -10837,8 +10666,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a03-08-coluna-unica-gap",
@@ -10888,8 +10716,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a03-08-varias-colunas-choice",
@@ -10957,8 +10784,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a03-08-colunas-da-base",
@@ -11022,8 +10848,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a03-08-series-dataframe",
@@ -11076,8 +10901,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 },
@@ -11159,8 +10983,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a03-09-completar-metricas",
@@ -11232,8 +11055,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a03-09-media-verificavel",
@@ -11316,8 +11138,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a03-09-script-metricas",
@@ -11385,8 +11206,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a03-09-lacuna-metodo",
@@ -11434,8 +11254,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 },
@@ -11544,8 +11363,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a03-10-filtro-temperatura",
@@ -11595,8 +11413,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a03-10-filtro-falha",
@@ -11646,8 +11463,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a03-10-igualdade",
@@ -11700,8 +11516,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a03-10-contagens-filtros",
@@ -11784,8 +11599,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 },
@@ -11844,8 +11658,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a03-11-regra-classificacao",
@@ -11899,8 +11712,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a03-11-completar-where",
@@ -11961,8 +11773,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a03-11-classificar-amostras",
@@ -12045,8 +11856,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a03-11-versao-where",
@@ -12114,8 +11924,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a03-11-contagem-classificacao",
@@ -12190,8 +11999,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 },
@@ -12273,8 +12081,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a03-12-contar-setor",
@@ -12324,8 +12131,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a03-12-contagem-setor",
@@ -12404,8 +12210,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a03-12-describe-gap",
@@ -12455,8 +12260,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a03-12-describe-sentido",
@@ -12509,8 +12313,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 },
@@ -12602,8 +12405,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a03-13-completar-groupby",
@@ -12675,8 +12477,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a03-13-versoes-groupby",
@@ -12744,8 +12545,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a03-13-medias-setor",
@@ -12790,8 +12590,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a03-13-interpretar-groupby",
@@ -12844,8 +12643,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 },
@@ -12975,8 +12773,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a03-14-script-final",
@@ -13044,8 +12841,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a03-14-completar-integracao",
@@ -13139,8 +12935,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a03-14-resultados-chave",
@@ -13235,8 +13030,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a03-14-checagem-final",
@@ -13329,8 +13123,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a03-14-fechamento",
@@ -13378,8 +13171,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 }
@@ -13653,8 +13445,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a04-01-termos-tabulares",
@@ -13713,8 +13504,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a04-01-linha-coluna-celula",
@@ -13767,8 +13557,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a04-01-fluxo-fonte-tabela-analise",
@@ -13827,8 +13616,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a04-01-data-date-gap",
@@ -13876,8 +13664,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a04-01-registro-inspecao",
@@ -13930,8 +13717,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 },
@@ -13993,8 +13779,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a04-02-leitura-base-teoria",
@@ -14024,8 +13809,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a04-02-partes-leitura",
@@ -14084,8 +13868,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a04-02-gap-read-excel",
@@ -14135,8 +13918,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a04-02-argumento-retorno",
@@ -14189,8 +13971,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a04-02-escolher-script-leitura",
@@ -14258,8 +14039,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 },
@@ -14319,8 +14099,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a04-03-atributo-metodo",
@@ -14379,8 +14158,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a04-03-shape-gap",
@@ -14440,8 +14218,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a04-03-columns-list-gap",
@@ -14501,8 +14278,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a04-03-colunas-reais",
@@ -14555,8 +14331,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a04-03-head-shape-escolha",
@@ -14624,8 +14399,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 },
@@ -14691,8 +14465,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a04-04-mapa-colunas",
@@ -14775,8 +14548,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a04-04-dtypes-gap",
@@ -14826,8 +14598,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a04-04-media-identificador",
@@ -14880,8 +14651,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a04-04-categoria-gap",
@@ -14929,8 +14699,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a04-04-aprovado-binario",
@@ -14983,8 +14752,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 },
@@ -15045,8 +14813,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a04-05-cenarios-data",
@@ -15095,8 +14862,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a04-05-conversao-simples",
@@ -15126,8 +14892,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a04-05-conversao-serial",
@@ -15188,8 +14953,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a04-05-atribuicao-correta",
@@ -15246,8 +15010,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a04-05-pd-to-datetime",
@@ -15300,8 +15063,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 },
@@ -15365,8 +15127,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a04-06-fluxo-isna-sum",
@@ -15430,8 +15191,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a04-06-isna-sum-gap",
@@ -15502,8 +15262,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a04-06-fluxo-duplicated-sum",
@@ -15567,8 +15326,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a04-06-duplicated-gap",
@@ -15628,8 +15386,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a04-06-interpretar-ausentes",
@@ -15682,8 +15439,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a04-06-booleanos-soma-gap",
@@ -15731,8 +15487,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 },
@@ -15794,8 +15549,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a04-07-fluxo-mascara",
@@ -15854,8 +15608,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a04-07-filtro-nao-gap",
@@ -15905,8 +15658,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a04-07-filtro-produto-gap",
@@ -15956,8 +15708,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a04-07-filtro-composto-gap",
@@ -16007,8 +15758,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a04-07-escolher-filtro-composto",
@@ -16076,8 +15826,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a04-07-mascara-retorno",
@@ -16130,8 +15879,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 },
@@ -16194,8 +15942,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a04-08-metodos-retornos",
@@ -16260,8 +16007,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a04-08-media-gap",
@@ -16311,8 +16057,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a04-08-desvio-max-gap",
@@ -16373,8 +16118,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a04-08-value-counts-gap",
@@ -16424,8 +16168,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a04-08-escolher-metrica",
@@ -16478,8 +16221,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a04-08-retorno-describe",
@@ -16532,8 +16274,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 },
@@ -16594,8 +16335,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a04-09-fluxo-groupby",
@@ -16664,8 +16404,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a04-09-groupby-produto-gap",
@@ -16715,8 +16454,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a04-09-groupby-lote-sort-gap",
@@ -16766,8 +16504,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a04-09-escolher-groupby",
@@ -16835,8 +16572,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a04-09-leitura-conceitual",
@@ -16885,8 +16621,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a04-09-interpretar-ranking",
@@ -16939,8 +16674,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 },
@@ -17003,8 +16737,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a04-10-fluxo-analise",
@@ -17083,8 +16816,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a04-10-script-integrado-correto",
@@ -17152,8 +16884,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a04-10-mini-script-gap",
@@ -17236,8 +16967,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a04-10-detectar-vs-corrigir",
@@ -17290,8 +17020,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a04-10-conclusao-gap",
@@ -17339,8 +17068,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a04-10-interpretacao-final",
@@ -17393,8 +17121,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 }
@@ -17637,8 +17364,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a05-01-02",
@@ -17682,8 +17408,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a05-01-03",
@@ -17736,8 +17461,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a05-01-04",
@@ -17785,8 +17509,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a05-01-05",
@@ -17855,8 +17578,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a05-01-06",
@@ -17909,8 +17631,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 },
@@ -17990,8 +17711,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a05-02-02",
@@ -18019,8 +17739,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a05-02-03",
@@ -18070,8 +17789,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a05-02-04",
@@ -18124,8 +17842,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a05-02-05",
@@ -18175,8 +17892,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a05-02-06",
@@ -18226,8 +17942,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a05-02-07",
@@ -18276,8 +17991,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a05-02-08",
@@ -18344,8 +18058,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 },
@@ -18399,8 +18112,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a05-03-02",
@@ -18450,8 +18162,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a05-03-03",
@@ -18501,8 +18212,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a05-03-04",
@@ -18551,8 +18261,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a05-03-05",
@@ -18602,8 +18311,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a05-03-06",
@@ -18656,8 +18364,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a05-03-07",
@@ -18705,8 +18412,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a05-03-08",
@@ -18759,8 +18465,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 },
@@ -18813,8 +18518,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a05-04-02",
@@ -18864,8 +18568,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a05-04-03",
@@ -18915,8 +18618,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a05-04-04",
@@ -18965,8 +18667,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a05-04-05",
@@ -19019,8 +18720,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 },
@@ -19073,8 +18773,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a05-05-02",
@@ -19138,8 +18837,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a05-05-03",
@@ -19183,8 +18881,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a05-05-04",
@@ -19233,8 +18930,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a05-05-05",
@@ -19287,8 +18983,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a05-05-06",
@@ -19338,8 +19033,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 },
@@ -19393,8 +19087,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a05-06-02",
@@ -19444,8 +19137,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a05-06-03",
@@ -19473,8 +19165,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a05-06-04",
@@ -19524,8 +19215,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a05-06-05",
@@ -19584,8 +19274,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a05-06-06",
@@ -19638,8 +19327,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 },
@@ -19693,8 +19381,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a05-07-02",
@@ -19744,8 +19431,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a05-07-03",
@@ -19773,8 +19459,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a05-07-04",
@@ -19824,8 +19509,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a05-07-05",
@@ -19874,8 +19558,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a05-07-06",
@@ -19928,8 +19611,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a05-07-07",
@@ -19996,8 +19678,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 },
@@ -20051,8 +19732,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a05-08-02",
@@ -20080,8 +19760,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a05-08-03",
@@ -20131,8 +19810,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a05-08-04",
@@ -20182,8 +19860,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a05-08-05",
@@ -20233,8 +19910,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a05-08-06",
@@ -20287,8 +19963,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 },
@@ -20341,8 +20016,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a05-09-02",
@@ -20392,8 +20066,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a05-09-03",
@@ -20443,8 +20116,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a05-09-04",
@@ -20493,8 +20165,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a05-09-05",
@@ -20547,8 +20218,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 },
@@ -20601,8 +20271,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a05-10-02",
@@ -20652,8 +20321,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a05-10-03",
@@ -20703,8 +20371,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a05-10-04",
@@ -20778,8 +20445,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a05-10-05",
@@ -20829,8 +20495,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a05-10-06",
@@ -20883,8 +20548,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 },
@@ -20944,8 +20608,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a05-11-02",
@@ -20973,8 +20636,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a05-11-03",
@@ -21024,8 +20686,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a05-11-04",
@@ -21075,8 +20736,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a05-11-05",
@@ -21125,8 +20785,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a05-11-06",
@@ -21170,8 +20829,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a05-11-07",
@@ -21224,8 +20882,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 },
@@ -21282,8 +20939,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a05-12-02",
@@ -21333,8 +20989,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a05-12-03",
@@ -21384,8 +21039,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a05-12-04",
@@ -21435,8 +21089,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a05-12-05",
@@ -21464,8 +21117,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a05-12-06",
@@ -21515,8 +21167,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a05-12-07",
@@ -21583,8 +21234,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 },
@@ -21698,8 +21348,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a05-13-02",
@@ -21752,8 +21401,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a05-13-03",
@@ -21806,8 +21454,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a05-13-04",
@@ -21874,8 +21521,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a05-13-05",
@@ -21942,8 +21588,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a05-13-06",
@@ -22002,8 +21647,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a05-13-07",
@@ -22056,8 +21700,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 }
@@ -22263,8 +21906,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "a06-00-c02-pergunta-tipo-grafico",
@@ -22329,8 +21971,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "a06-00-c03-fluxo-escolha",
@@ -22442,8 +22083,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "a06-00-c04-escolha-setor",
@@ -22496,8 +22136,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 },
@@ -22577,8 +22216,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "a06-01-c02-imports",
@@ -22661,8 +22299,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "a06-01-c03-read-csv-conceito",
@@ -22690,8 +22327,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "a06-01-c04-read-csv-gap",
@@ -22752,8 +22388,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "a06-01-c05-inspecao-inicial",
@@ -22836,8 +22471,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "a06-01-c06-shape-atributo",
@@ -22890,8 +22524,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 },
@@ -22997,8 +22630,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "a06-02-c02-decisao-grafico",
@@ -23089,8 +22721,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "a06-02-c03-escolha-histograma",
@@ -23143,8 +22774,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "a06-02-c04-linha-cautela",
@@ -23197,8 +22827,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 },
@@ -23257,8 +22886,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "a06-03-c02-sintaxe-bar",
@@ -23288,8 +22916,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "a06-03-c03-partes-bar",
@@ -23342,8 +22969,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "a06-03-c04-code-gap-bar",
@@ -23436,8 +23062,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "a06-03-c05-erro-index-values",
@@ -23490,8 +23115,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 },
@@ -23545,8 +23169,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "a06-04-c02-code-gap-plot",
@@ -23618,8 +23241,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "a06-04-c03-interpretacao-linha",
@@ -23672,8 +23294,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "a06-04-c04-fluxo-linha",
@@ -23741,8 +23362,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 },
@@ -23796,8 +23416,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "a06-05-c02-barras-vs-hist",
@@ -23851,8 +23470,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "a06-05-c03-code-gap-hist",
@@ -23924,8 +23542,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "a06-05-c04-interpretar-hist",
@@ -23978,8 +23595,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 },
@@ -24034,8 +23650,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "a06-06-c02-code-gap-scatter",
@@ -24107,8 +23722,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "a06-06-c03-eixos-scatter",
@@ -24161,8 +23775,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "a06-06-c04-causalidade",
@@ -24215,8 +23828,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 },
@@ -24271,8 +23883,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "a06-07-c02-matplotlib-seaborn",
@@ -24316,8 +23927,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "a06-07-c03-code-gap-countplot",
@@ -24400,8 +24010,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "a06-07-c04-data-x",
@@ -24454,8 +24063,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 },
@@ -24512,8 +24120,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "a06-08-c02-partes-boxplot",
@@ -24566,8 +24173,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "a06-08-c03-code-gap-boxplot",
@@ -24639,8 +24245,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "a06-08-c04-erro-boxplot",
@@ -24693,8 +24298,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 },
@@ -24748,8 +24352,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "a06-09-c02-histplot-countplot",
@@ -24798,8 +24401,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "a06-09-c03-code-gap-histplot",
@@ -24871,8 +24473,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "a06-09-c04-erro-aspas",
@@ -24925,8 +24526,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 },
@@ -24981,8 +24581,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "a06-10-c02-x-y-hue",
@@ -25036,8 +24635,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "a06-10-c03-code-gap-scatterplot-hue",
@@ -25109,8 +24707,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "a06-10-c04-hue-nao-e-eixo",
@@ -25163,8 +24760,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 },
@@ -25243,8 +24839,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "a06-11-c02-code-choice-turno",
@@ -25336,8 +24931,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "a06-11-c03-hist-producao",
@@ -25387,8 +24981,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "a06-11-c04-code-choice-boxplot-tempo",
@@ -25455,8 +25048,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "a06-11-c05-scatter-producao-consumo",
@@ -25517,8 +25109,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "a06-11-c06-escolha-final-pratica",
@@ -25571,8 +25162,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 },
@@ -25658,8 +25248,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "a06-12-c02-interpretacao-valida",
@@ -25712,8 +25301,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "a06-12-c03-escolher-tres-graficos",
@@ -25766,8 +25354,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "a06-12-c04-lacuna-limitacao",
@@ -25815,8 +25402,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "a06-12-c05-eixos-e-limite",
@@ -25869,8 +25455,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 }
@@ -26172,8 +25757,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a07-01-02-ler-csv",
@@ -26223,8 +25807,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a07-01-03-inspecao-inicial",
@@ -26286,8 +25869,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a07-01-04-colunas-reais",
@@ -26356,8 +25938,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a07-01-05-tipo-variavel",
@@ -26410,8 +25991,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a07-01-06-ponte-pandas-estatistica",
@@ -26465,8 +26045,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a07-01-07-coluna-para-falha",
@@ -26519,8 +26098,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 },
@@ -26577,8 +26155,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a07-02-02-tipos-e-comandos",
@@ -26631,8 +26208,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a07-02-03-lacuna-dispersao",
@@ -26680,8 +26256,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a07-02-04-escolha-metrica",
@@ -26734,8 +26309,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a07-02-05-operacao-pandas-estatistica",
@@ -26789,8 +26363,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a07-02-06-pergunta-define-metrica",
@@ -26843,8 +26416,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 },
@@ -26900,8 +26472,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a07-03-02-media-temperatura",
@@ -26951,8 +26522,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a07-03-03-mediana-tempo",
@@ -27002,8 +26572,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a07-03-04-media-producao",
@@ -27071,8 +26640,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a07-03-05-interpretar-mediana",
@@ -27125,8 +26693,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a07-03-06-interpretar-centro-temperatura",
@@ -27179,8 +26746,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a07-03-07-erro-mediana-metade-media",
@@ -27233,8 +26799,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 },
@@ -27288,8 +26853,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a07-04-02-moda-setor",
@@ -27339,8 +26903,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a07-04-03-falha-zero",
@@ -27393,8 +26956,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a07-04-04-series-ou-escalar",
@@ -27462,8 +27024,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a07-04-05-saida-esperada",
@@ -27514,8 +27075,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a07-04-06-moda-setor-contexto",
@@ -27568,8 +27128,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 },
@@ -27659,8 +27218,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a07-05-02-calculo-amplitude",
@@ -27721,8 +27279,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a07-05-03-interpretacao-amplitude",
@@ -27775,8 +27332,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a07-05-04-erro-ordem",
@@ -27838,8 +27394,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a07-05-05-amplitude-producao-contexto",
@@ -27892,8 +27447,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 },
@@ -27975,8 +27529,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a07-06-02-variancia-temperatura",
@@ -28026,8 +27579,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a07-06-03-desvio-producao",
@@ -28077,8 +27629,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a07-06-04-interpretar-desvio",
@@ -28131,8 +27682,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a07-06-05-unidades",
@@ -28185,8 +27735,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a07-06-06-desvio-nao-e-erro",
@@ -28239,8 +27788,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a07-06-07-escolher-medida-na-unidade",
@@ -28293,8 +27841,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 },
@@ -28351,8 +27898,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a07-07-02-tabela-quantis",
@@ -28406,8 +27952,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a07-07-03-percentil-producao",
@@ -28457,8 +28002,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a07-07-04-q2-mediana",
@@ -28511,8 +28055,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a07-07-05-quartis-temperatura",
@@ -28580,8 +28123,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a07-07-06-escala-do-percentil",
@@ -28643,8 +28185,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a07-07-07-interpretar-p90-producao",
@@ -28697,8 +28238,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 },
@@ -28791,8 +28331,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a07-08-02-probabilidade-falha",
@@ -28842,8 +28381,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a07-08-03-probabilidade-temperatura",
@@ -28904,8 +28442,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a07-08-04-decimal-porcentagem",
@@ -28958,8 +28495,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a07-08-05-exercicio-maior-74",
@@ -29027,8 +28563,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a07-08-06-filtro-e-proporcao",
@@ -29090,8 +28625,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a07-08-07-media-binaria-falha",
@@ -29144,8 +28678,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 },
@@ -29201,8 +28734,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a07-09-02-completar-histplot",
@@ -29263,8 +28795,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a07-09-03-leitura-visual",
@@ -29317,8 +28848,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a07-09-04-versao-completa-hist",
@@ -29396,8 +28926,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a07-09-05-histograma-nao-temporal",
@@ -29450,8 +28979,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a07-09-06-coluna-real-no-histograma",
@@ -29501,8 +29029,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 },
@@ -29587,8 +29114,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a07-10-02-producao-tres-medidas",
@@ -29650,8 +29176,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a07-10-03-tempo-amplitude-desvio",
@@ -29723,8 +29248,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a07-10-04-quartis-producao",
@@ -29792,8 +29316,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a07-10-05-probabilidade-exercicio",
@@ -29846,8 +29369,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a07-10-06-cenario-medida-tempo",
@@ -29900,8 +29422,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 },
@@ -30069,8 +29590,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a07-11-02-percentil-final",
@@ -30120,8 +29640,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a07-11-03-histograma-final",
@@ -30171,8 +29690,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a07-11-04-diagnostico-erros",
@@ -30225,8 +29743,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 },
@@ -30302,8 +29819,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a07-12-02-interpretacoes-seguras",
@@ -30352,8 +29868,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a07-12-03-media-mediana-proximas",
@@ -30406,8 +29921,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a07-12-04-limite-conclusao",
@@ -30460,8 +29974,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a07-12-05-fechamento",
@@ -30489,8 +30002,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 },
@@ -30578,8 +30090,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a07-13-02-escolher-pacote-metricas",
@@ -30632,8 +30143,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a07-13-03-comando-proporcao-desafio",
@@ -30683,8 +30193,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a07-13-04-script-minimo-desafio",
@@ -30746,8 +30255,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-a07-13-05-interpretacao-segura-desafio",
@@ -30800,8 +30308,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 }
@@ -31045,8 +30552,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "a08-01-c02",
@@ -31115,8 +30621,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "a08-01-c03",
@@ -31164,8 +30669,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "a08-01-c04",
@@ -31218,8 +30722,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "a08-01-c05",
@@ -31267,8 +30770,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 },
@@ -31343,8 +30845,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "a08-02-c02",
@@ -31394,8 +30895,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "a08-02-c03",
@@ -31445,8 +30945,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "a08-02-c04",
@@ -31508,8 +31007,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "a08-02-c05",
@@ -31537,8 +31035,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 },
@@ -31614,8 +31111,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "a08-03-c02",
@@ -31665,8 +31161,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "a08-03-c03",
@@ -31716,8 +31211,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "a08-03-c04",
@@ -31796,8 +31290,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "a08-03-c05",
@@ -31859,8 +31352,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "a08-03-c06",
@@ -31908,8 +31400,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 },
@@ -31988,8 +31479,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "a08-04-c02",
@@ -32042,8 +31532,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "a08-04-c03",
@@ -32091,8 +31580,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "a08-04-c04",
@@ -32140,8 +31628,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "a08-04-c05",
@@ -32189,8 +31676,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 },
@@ -32264,8 +31750,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "a08-05-c02",
@@ -32334,8 +31819,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "a08-05-c03",
@@ -32383,8 +31867,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "a08-05-c04",
@@ -32447,8 +31930,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "a08-05-c05",
@@ -32496,8 +31978,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 },
@@ -32583,8 +32064,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "a08-06-c02",
@@ -32634,8 +32114,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "a08-06-c03",
@@ -32685,8 +32164,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "a08-06-c04",
@@ -32731,8 +32209,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "a08-06-c05",
@@ -32780,8 +32257,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "a08-06-c06",
@@ -32829,8 +32305,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 },
@@ -32883,8 +32358,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "a08-07-c02",
@@ -32934,8 +32408,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "a08-07-c03",
@@ -32985,8 +32458,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "a08-07-c04",
@@ -33048,8 +32520,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "a08-07-c05",
@@ -33097,8 +32568,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "a08-07-c06",
@@ -33147,8 +32617,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 },
@@ -33224,8 +32693,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "a08-08-c02",
@@ -33275,8 +32743,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "a08-08-c03",
@@ -33329,8 +32796,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "a08-08-c04",
@@ -33378,8 +32844,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "a08-08-c05",
@@ -33427,8 +32892,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "a08-08-c06",
@@ -33476,8 +32940,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 },
@@ -33551,8 +33014,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "a08-09-c02",
@@ -33602,8 +33064,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "a08-09-c03",
@@ -33656,8 +33117,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "a08-09-c04",
@@ -33705,8 +33165,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "a08-09-c05",
@@ -33778,8 +33237,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 },
@@ -33833,8 +33291,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "a08-10-c02",
@@ -33895,8 +33352,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "a08-10-c03",
@@ -33946,8 +33402,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "a08-10-c04",
@@ -34009,8 +33464,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "a08-10-c05",
@@ -34058,8 +33512,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "a08-10-c06",
@@ -34107,8 +33560,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 },
@@ -34162,8 +33614,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "a08-11-c02",
@@ -34212,8 +33663,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "a08-11-c03",
@@ -34263,8 +33713,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "a08-11-c04",
@@ -34314,8 +33763,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "a08-11-c05",
@@ -34363,8 +33811,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "a08-11-c06",
@@ -34412,8 +33859,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 },
@@ -34508,8 +33954,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "a08-12-c02",
@@ -34559,8 +34004,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "a08-12-c03",
@@ -34610,8 +34054,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "a08-12-c04",
@@ -34661,8 +34104,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "a08-12-c05",
@@ -34712,8 +34154,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "a08-12-c06",
@@ -34775,8 +34216,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "a08-12-c07",
@@ -34867,8 +34307,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "a08-12-c08",
@@ -34916,8 +34355,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 },
@@ -34969,8 +34407,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "a08-13-c02",
@@ -35020,8 +34457,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "a08-13-c03",
@@ -35071,8 +34507,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "a08-13-c04",
@@ -35121,8 +34556,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "a08-13-c05",
@@ -35172,8 +34606,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "a08-13-c06",
@@ -35221,8 +34654,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "a08-13-c07",
@@ -35270,8 +34702,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 },
@@ -35345,8 +34776,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "a08-14-c02",
@@ -35408,8 +34838,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "a08-14-c03",
@@ -35457,8 +34886,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "a08-14-c04",
@@ -35503,8 +34931,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "a08-14-c05",
@@ -35552,8 +34979,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 },
@@ -35646,8 +35072,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "a08-15-c02",
@@ -35729,8 +35154,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "a08-15-c03",
@@ -35792,8 +35216,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "a08-15-c04",
@@ -35841,8 +35264,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "a08-15-c05",
@@ -35920,8 +35342,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "a08-15-c06",
@@ -35980,8 +35401,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "a08-15-c07",
@@ -36029,8 +35449,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "a08-15-c08",
@@ -36126,8 +35545,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 }

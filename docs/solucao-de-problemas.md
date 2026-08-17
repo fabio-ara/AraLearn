@@ -92,6 +92,26 @@ Outro cliente alterou o Curso depois da leitura. Reabra ou releia o Curso,
 compare a intenção com o estado novo e aplique apenas o que ainda faz sentido.
 Não aumente a revisão à mão e não repita a escrita às cegas.
 
+## Não consigo salvar uma atribuição de Fontes
+
+Confira se cada Fonte escolhida possui ao menos uma Âncora ativa na revisão
+exata e se o conjunto exibido contém tudo o que deve permanecer no alvo. Salvar
+substitui o conjunto completo; não há modo de acréscimo parcial. Se o Curso ou
+o alvo mudou, releia e reconcilie antes de tentar novamente.
+
+Uma referência **Legado não resolvido** pode não ter metadados nem Âncora. Para
+resolvê-la, revise a mesma identidade literal; não crie uma Fonte parecida nem
+remova espaços do identificador. Depois de falha de rede sem resposta, repita o
+mesmo pedido com o mesmo `requestId` e comando.
+
+## O Estudo não mostra uma Fonte ou um link
+
+Abra **Fontes** na Unidade: a consulta é sob demanda e não ocorre junto com o
+conteúdo. Fonte oculta ou legada não resolvida é omitida. A visibilidade
+**Citação** mostra identificação e localização, mas não URL; somente **Citação
+e link** pode mostrar o endereço. Se o acesso foi revogado ou o Curso não
+existe mais, o aplicativo limpa o estado local em vez de conservar o painel.
+
 ## O MCP não encontra ou não altera o Curso
 
 1. confirme OAuth e conta;

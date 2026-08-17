@@ -230,6 +230,95 @@ test("aplicativo usa a mesma leitura e mudança de parâmetros do MCP", async ()
   assert.equal(calls[1][1].command.type, "clear_guidance");
 });
 
+test("aplicativo usa o mesmo contrato de Fontes do MCP", async () => {
+  const calls = [];
+  const legacySourceId = ` legacy-${"s".repeat(300)} `;
+  const handler = createCourseApiHandler({
+    allowedOrigins: new Set([ORIGIN]),
+    adapter: {
+      async resolveApplicationPrincipal() {
+        return { actorId: COURSE_ID, scopes: ["authoring:read", "authoring:write"] };
+      },
+      async getCourseSources(value) {
+        calls.push(["read", value]);
+        return {
+          contract: "aralearn.course-sources.v1",
+          courseId: COURSE_ID,
+          courseRevision: 5,
+          mode: "target",
+          query: { sourceId: null, targetKind: "study_unit", targetId: "unit-a" },
+          items: [],
+          nextCursor: null
+        };
+      },
+      async executeCourseSourceCommand(value) {
+        calls.push(["write", value]);
+        return {
+          contract: "aralearn.course-source-change.v1",
+          courseId: COURSE_ID,
+          courseRevision: 6,
+          requestId: "request-course-source-0001",
+          idempotent: false,
+          changed: true,
+          change: { type: "retire_source", subjectId: legacySourceId, revision: 2 }
+        };
+      }
+    }
+  });
+  const readResponse = await handler(request("/app/lerCurso", {
+    body: {
+      courseId: COURSE_ID,
+      view: "course_sources",
+      expectedRevision: 5,
+      mode: "target",
+      targetKind: "study_unit",
+      targetId: "unit-a",
+      limit: 12,
+      cursor: null
+    }
+  }));
+  assert.equal(readResponse.status, 200);
+
+  const writeResponse = await handler(request("/app/alterarCurso", {
+    body: {
+      requestId: "request-course-source-0001",
+      courseId: COURSE_ID,
+      expectedRevision: 5,
+      operation: "update_course_sources",
+      sourceCommand: {
+        type: "retire_source",
+        sourceId: legacySourceId,
+        expectedSourceRevision: 1
+      }
+    }
+  }));
+  assert.equal(writeResponse.status, 200);
+  assert.equal(calls[0][1].expectedRevision, 5);
+  assert.equal(calls[0][1].targetId, "unit-a");
+  assert.equal(calls[1][1].expectedCourseRevision, 5);
+  assert.deepEqual(calls[1][1].command, {
+    type: "retire_source",
+    sourceId: legacySourceId,
+    expectedSourceRevision: 1
+  });
+
+  const spoofed = await handler(request("/app/alterarCurso", {
+    body: {
+      requestId: "request-course-source-0002",
+      courseId: COURSE_ID,
+      expectedRevision: 5,
+      operation: "update_course_sources",
+      sourceCommand: {
+        type: "retire_source",
+        sourceId: "source-a",
+        expectedSourceRevision: 1,
+        actorId: COURSE_ID
+      }
+    }
+  }));
+  assert.equal(spoofed.status, 422);
+});
+
 test("orienta reler o Curso e usar novo requestId após conflito de versão", async () => {
   const handler = createCourseApiHandler({
     allowedOrigins: new Set([ORIGIN]),

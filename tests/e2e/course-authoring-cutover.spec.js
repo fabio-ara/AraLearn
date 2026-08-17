@@ -44,7 +44,8 @@ async function expectNoHorizontalOverflow(page) {
   const section = await page.locator(".course-authoring-surface").getAttribute("data-section");
   const maximum = section === "inspection"
     ? page.viewportSize().width
-    : section === "parameters" ? 720.5 : 430.5;
+    : section === "sources" ? 900.5
+      : section === "parameters" ? 720.5 : 430.5;
   expect(frameWidth).toBeLessThanOrEqual(maximum);
 }
 
@@ -268,10 +269,64 @@ async function mountCourseAuthoring(page, {
           }
         } : null,
         feedback: [],
-        topics: [],
-        sources: []
+        topics: []
       };
     });
+    const sourceCatalog = Array.from({ length: 60 }, (_, index) => {
+      const ordinal = index + 1;
+      return {
+        sourceId: `source-${String(ordinal).padStart(2, "0")}`,
+        revision: 1,
+        status: "active",
+        kind: ordinal % 2 === 0 ? "article" : "book",
+        title: `Fonte verificável ${ordinal}`,
+        citationText: `Autoria ${ordinal}. Fonte verificável ${ordinal}. 2026.`,
+        url: `https://example.test/fontes/${ordinal}`,
+        editionOrVersion: ordinal % 2 === 0 ? null : "1ª edição",
+        studyVisibility: "citation_and_link",
+        anchorCount: ordinal <= 2 ? 1 : 0,
+        createdAt: "2026-08-17T12:00:00.000Z"
+      };
+    });
+    const sourceDetails = new Map(sourceCatalog.map((source, index) => [
+      source.sourceId,
+      [{
+        ...structuredClone(source),
+        actorId: ownerId,
+        anchors: index < 2 ? [{
+          anchorId: `anchor-${source.sourceId}`,
+          revision: 1,
+          sourceRevision: 1,
+          status: "active",
+          selector: { kind: "page_range", startPage: index + 10, endPage: index + 12 },
+          verificationExcerpt: index === 0 ? "Trecho mínimo para conferência." : null,
+          actorId: ownerId,
+          createdAt: "2026-08-17T12:00:00.000Z"
+        }] : []
+      }]
+    ]));
+    const sourceTargetKey = (targetKind, targetId) => `${targetKind}:${targetId}`;
+    const sourceTargets = new Map([[sourceTargetKey(
+      "plan_item",
+      "79000000-0000-4000-8000-000000000019"
+    ), [{
+      attributionId: "7b000000-0000-4000-8000-00000000001b",
+      targetKind: "plan_item",
+      targetId: "79000000-0000-4000-8000-000000000019",
+      targetVersion: 1,
+      targetHash: "a".repeat(64),
+      revision: 1,
+      sourceLinks: [{
+        sourceId: "source-01",
+        sourceRevision: 1,
+        relation: "supported_by",
+        anchors: [{ anchorId: "anchor-source-01", anchorRevision: 1 }]
+      }],
+      actorId: ownerId,
+      createdAt: "2026-08-17T12:00:00.000Z",
+      effective: true
+    }]]]);
+    const sourceReceipts = new Map();
     const probe = {
       listReads: 0,
       headerReads: 0,
@@ -283,6 +338,8 @@ async function mountCourseAuthoring(page, {
       planReads: 0,
       designReads: [],
       designMutations: [],
+      sourceReads: [],
+      sourceMutations: [],
       materializationReads: [],
       createCalls: [],
       planMutations: [],
@@ -743,6 +800,241 @@ async function mountCourseAuthoring(page, {
           recentActivity: []
         };
       },
+      async loadCourseSources(courseId, options) {
+        probe.sourceReads.push({ courseId, ...structuredClone(options) });
+        const detail = courseDetail(courseId);
+        if (options.expectedRevision !== detail.revision) {
+          const error = new Error("Revisão alterada");
+          error.code = "course_revision_changed";
+          throw error;
+        }
+        const cursorOffset = options.cursor === null
+          ? 0
+          : Number(String(options.cursor).replace(/^source-page-/u, ""));
+        if (!Number.isSafeInteger(cursorOffset) || cursorOffset < 0) {
+          throw new TypeError("Cursor inválido");
+        }
+        let items;
+        let nextCursor;
+        let query;
+        if (options.mode === "catalog") {
+          items = sourceCatalog.slice(cursorOffset, cursorOffset + options.limit);
+          nextCursor = cursorOffset + items.length < sourceCatalog.length
+            ? `source-page-${cursorOffset + items.length}`
+            : null;
+          query = { sourceId: null, targetKind: null, targetId: null };
+        } else if (options.mode === "source") {
+          const history = sourceDetails.get(options.sourceId) || [];
+          if (options.targetKind !== null) {
+            const targetHistory = sourceTargets.get(sourceTargetKey(
+              options.targetKind,
+              options.targetId
+            )) || [];
+            const effective = targetHistory.find((item) => item.effective) || null;
+            const link = effective?.sourceLinks.find(({ sourceId }) =>
+              sourceId === options.sourceId) || null;
+            const pinned = link == null
+              ? null
+              : history.find(({ revision }) => revision === link.sourceRevision) || null;
+            items = pinned ? [pinned] : [];
+            nextCursor = null;
+            query = {
+              sourceId: options.sourceId,
+              targetKind: options.targetKind,
+              targetId: options.targetId
+            };
+          } else {
+            items = history.slice(cursorOffset, cursorOffset + options.limit);
+            nextCursor = cursorOffset + items.length < history.length
+              ? `source-page-${cursorOffset + items.length}`
+              : null;
+            query = { sourceId: options.sourceId, targetKind: null, targetId: null };
+          }
+        } else {
+          const history = sourceTargets.get(sourceTargetKey(
+            options.targetKind,
+            options.targetId
+          )) || [];
+          items = history.slice(cursorOffset, cursorOffset + options.limit);
+          nextCursor = cursorOffset + items.length < history.length
+            ? `source-page-${cursorOffset + items.length}`
+            : null;
+          query = {
+            sourceId: null,
+            targetKind: options.targetKind,
+            targetId: options.targetId
+          };
+        }
+        return {
+          contract: "aralearn.course-sources.v1",
+          courseId,
+          courseRevision: detail.revision,
+          mode: options.mode,
+          query,
+          items: structuredClone(items),
+          nextCursor
+        };
+      },
+      async mutateCourseSources(request) {
+        probe.sourceMutations.push(structuredClone(request));
+        if (sourceReceipts.has(request.requestId)) {
+          return {
+            ...structuredClone(sourceReceipts.get(request.requestId)),
+            idempotent: true
+          };
+        }
+        const course = courses.find((item) => item.courseId === request.courseId);
+        if (!course) throw new Error("Curso ausente");
+        if (request.expectedCourseRevision !== course.revision) {
+          const error = new Error("Revisão alterada");
+          error.code = "course_revision_changed";
+          throw error;
+        }
+        const command = request.command;
+        let subjectId;
+        let revision;
+        if (command.type === "save_source") {
+          const history = sourceDetails.get(command.sourceId) || [];
+          const current = history[0] || null;
+          if ((current?.revision || 0) !== command.expectedSourceRevision) {
+            const error = new Error("Fonte alterada");
+            error.status = 409;
+            throw error;
+          }
+          revision = command.expectedSourceRevision + 1;
+          const detailed = {
+            sourceId: command.sourceId,
+            revision,
+            status: "active",
+            ...structuredClone(command.source),
+            anchorCount: 0,
+            createdAt: "2026-08-17T12:20:00.000Z",
+            actorId: ownerId,
+            anchors: []
+          };
+          sourceDetails.set(command.sourceId, [detailed, ...history]);
+          const { actorId: discardedActor, anchors: discardedAnchors, ...catalogItem } = detailed;
+          void discardedActor;
+          void discardedAnchors;
+          const catalogIndex = sourceCatalog.findIndex(({ sourceId }) =>
+            sourceId === command.sourceId);
+          if (catalogIndex < 0) sourceCatalog.push(catalogItem);
+          else sourceCatalog[catalogIndex] = catalogItem;
+          subjectId = command.sourceId;
+        } else if (command.type === "retire_source") {
+          const history = sourceDetails.get(command.sourceId) || [];
+          const current = history[0] || null;
+          if (!current || current.revision !== command.expectedSourceRevision) {
+            const error = new Error("Fonte alterada");
+            error.status = 409;
+            throw error;
+          }
+          revision = current.revision + 1;
+          const retired = {
+            ...structuredClone(current),
+            revision,
+            status: "retired",
+            anchorCount: 0,
+            createdAt: "2026-08-17T12:21:00.000Z",
+            anchors: []
+          };
+          sourceDetails.set(command.sourceId, [retired, ...history]);
+          const { actorId: discardedActor, anchors: discardedAnchors, ...catalogItem } = retired;
+          void discardedActor;
+          void discardedAnchors;
+          const catalogIndex = sourceCatalog.findIndex(({ sourceId }) =>
+            sourceId === command.sourceId);
+          sourceCatalog[catalogIndex] = catalogItem;
+          subjectId = command.sourceId;
+        } else if (command.type === "save_anchor") {
+          const history = sourceDetails.get(command.sourceId) || [];
+          const source = history.find(({ revision: sourceRevision }) =>
+            sourceRevision === command.sourceRevision);
+          const previous = source?.anchors.find(({ anchorId }) =>
+            anchorId === command.anchorId) || null;
+          if (!source || (previous?.revision || 0) !== command.expectedAnchorRevision) {
+            const error = new Error("Âncora alterada");
+            error.status = 409;
+            throw error;
+          }
+          revision = command.expectedAnchorRevision + 1;
+          const anchor = {
+            anchorId: command.anchorId,
+            revision,
+            sourceRevision: command.sourceRevision,
+            status: "active",
+            selector: structuredClone(command.selector),
+            verificationExcerpt: command.verificationExcerpt,
+            actorId: ownerId,
+            createdAt: "2026-08-17T12:22:00.000Z"
+          };
+          source.anchors = [anchor, ...source.anchors.filter(({ anchorId }) =>
+            anchorId !== command.anchorId)];
+          source.anchorCount = source.anchors.filter(({ status }) => status === "active").length;
+          const catalog = sourceCatalog.find(({ sourceId }) => sourceId === command.sourceId);
+          if (catalog?.revision === source.revision) catalog.anchorCount = source.anchorCount;
+          subjectId = command.anchorId;
+        } else if (command.type === "retire_anchor") {
+          let source = null;
+          let previous = null;
+          for (const history of sourceDetails.values()) {
+            source = history.find((candidate) => candidate.anchors.some(({ anchorId }) =>
+              anchorId === command.anchorId));
+            if (source) {
+              previous = source.anchors.find(({ anchorId }) => anchorId === command.anchorId);
+              break;
+            }
+          }
+          if (!source || previous.revision !== command.expectedAnchorRevision) {
+            const error = new Error("Âncora alterada");
+            error.status = 409;
+            throw error;
+          }
+          revision = previous.revision + 1;
+          Object.assign(previous, {
+            revision,
+            status: "retired",
+            createdAt: "2026-08-17T12:23:00.000Z"
+          });
+          source.anchorCount = source.anchors.filter(({ status }) => status === "active").length;
+          const catalog = sourceCatalog.find(({ sourceId }) => sourceId === source.sourceId);
+          if (catalog?.revision === source.revision) catalog.anchorCount = source.anchorCount;
+          subjectId = command.anchorId;
+        } else if (command.type === "set_target_sources") {
+          const key = sourceTargetKey(command.targetKind, command.targetId);
+          const history = sourceTargets.get(key) || [];
+          history.forEach((attribution) => { attribution.effective = false; });
+          revision = (history[0]?.revision || 0) + 1;
+          history.unshift({
+            attributionId: crypto.randomUUID(),
+            targetKind: command.targetKind,
+            targetId: command.targetId,
+            targetVersion: command.expectedTargetVersion,
+            targetHash: "b".repeat(64),
+            revision,
+            sourceLinks: structuredClone(command.sourceLinks),
+            actorId: ownerId,
+            createdAt: "2026-08-17T12:24:00.000Z",
+            effective: true
+          });
+          sourceTargets.set(key, history);
+          subjectId = command.targetId;
+        } else {
+          throw new TypeError("Comando de Fonte desconhecido");
+        }
+        course.revision += 1;
+        const result = {
+          contract: "aralearn.course-source-change.v1",
+          courseId: request.courseId,
+          courseRevision: course.revision,
+          requestId: request.requestId,
+          idempotent: false,
+          changed: true,
+          change: { type: command.type, subjectId, revision }
+        };
+        sourceReceipts.set(request.requestId, structuredClone(result));
+        return result;
+      },
       async loadCourseDesign(courseId, options) {
         probe.designReads.push({ courseId, ...structuredClone(options) });
         return buildCourseDesign(courseId, options);
@@ -1039,6 +1331,150 @@ test.describe("Autoria canônica mobile-first", () => {
       expect(clientErrors).toEqual([]);
     });
   }
+
+  for (const width of [360, 390, 430, 1280]) {
+    test(`Fontes pagina 60 registros e preserva detalhe legível em ${width} px`, async ({
+      page
+    }, testInfo) => {
+      const clientErrors = captureClientErrors(page);
+      await page.setViewportSize({ width, height: width < 600 ? 820 : 900 });
+      const sourcesHash = `#/authoring/courses/${COURSE_IDS[0]}?section=sources`;
+      await mountCourseAuthoring(page, { cardinality: "many", hash: sourcesHash });
+
+      await expect(page.getByRole("heading", { name: "Fontes", exact: true })).toBeVisible();
+      await expect(page.locator(".course-source-card")).toHaveCount(10);
+      await page.getByRole("button", { name: "Carregar mais fontes" }).click();
+      await expect(page.locator(".course-source-card")).toHaveCount(20);
+      await page.getByRole("button", { name: "Carregar mais fontes" }).click();
+      await expect(page.locator(".course-source-card")).toHaveCount(30);
+      await page.getByRole("button", { name: "Carregar mais fontes" }).click();
+      await expect(page.locator(".course-source-card")).toHaveCount(40);
+      await page.getByRole("button", { name: "Carregar mais fontes" }).click();
+      await expect(page.locator(".course-source-card")).toHaveCount(50);
+      await page.getByRole("button", { name: "Carregar mais fontes" }).click();
+      await expect(page.locator(".course-source-card")).toHaveCount(60);
+      await expect(page.getByRole("button", {
+        name: "Abrir fonte: Fonte verificável 1",
+        exact: true
+      })).toBeVisible();
+      await expectNoHorizontalOverflow(page);
+
+      await page.getByRole("button", {
+        name: "Abrir fonte: Fonte verificável 1",
+        exact: true
+      }).click();
+      await expect(page.locator("#course-source-detail-title")).toHaveText(
+        "Fonte verificável 1"
+      );
+      await expect(page.getByText("Páginas 10–12", { exact: true })).toBeVisible();
+      await expect(page.getByText("Trecho mínimo para conferência.", {
+        exact: true
+      })).toBeVisible();
+      await expectNoHorizontalOverflow(page);
+
+      await page.screenshot({
+        path: testInfo.outputPath(`course-sources-${width}.png`),
+        fullPage: true,
+        animations: "disabled"
+      });
+      expect(await page.evaluate(() => globalThis.__courseAuthoringHarness.probe.sourceReads
+        .filter(({ mode }) => mode === "catalog")
+        .map(({ limit, cursor }) => ({ limit, cursor })))).toEqual([
+        { limit: 10, cursor: null },
+        { limit: 10, cursor: "source-page-10" },
+        { limit: 10, cursor: "source-page-20" },
+        { limit: 10, cursor: "source-page-30" },
+        { limit: 10, cursor: "source-page-40" },
+        { limit: 10, cursor: "source-page-50" }
+      ]);
+      expect(clientErrors).toEqual([]);
+    });
+  }
+});
+
+test("Planejamento substitui o conjunto completo de Fontes sem formulário JSON", async ({ page }) => {
+  const clientErrors = captureClientErrors(page);
+  await page.setViewportSize({ width: 390, height: 820 });
+  const planningHash = `#/authoring/courses/${COURSE_IDS[0]}?section=planning`;
+  await mountCourseAuthoring(page, { cardinality: "many", hash: planningHash });
+
+  await page.getByRole("button", { name: "Definir fontes do item" }).first().click();
+  await expect(page.getByRole("dialog", { name: /Fontes de Relação entre nomes/u }))
+    .toBeVisible();
+  await expect(page.locator(".course-source-target-link")).toHaveCount(1);
+  await page.getByRole("button", {
+    name: "Vincular fonte: Fonte verificável 2",
+    exact: true
+  }).click();
+  await expect(page.locator(".course-source-target-link")).toHaveCount(2);
+  await page.getByRole("checkbox", { name: "Páginas 11–13" }).check();
+  await expect(page.getByRole("dialog")).not.toContainText("JSON");
+  await page.getByRole("button", { name: "Salvar conjunto completo" }).click();
+  await expect.poll(() => page.evaluate(() =>
+    globalThis.__courseAuthoringHarness.probe.sourceMutations.length)).toBe(1);
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+
+  const writes = await page.evaluate(() =>
+    globalThis.__courseAuthoringHarness.probe.sourceMutations);
+  expect(writes).toHaveLength(1);
+  expect(writes[0].command).toEqual({
+    type: "set_target_sources",
+    targetKind: "plan_item",
+    targetId: "79000000-0000-4000-8000-000000000019",
+    expectedTargetVersion: 1,
+    sourceLinks: [{
+      sourceId: "source-01",
+      sourceRevision: 1,
+      relation: "supported_by",
+      anchors: [{ anchorId: "anchor-source-01", anchorRevision: 1 }]
+    }, {
+      sourceId: "source-02",
+      sourceRevision: 1,
+      relation: "supported_by",
+      anchors: [{ anchorId: "anchor-source-02", anchorRevision: 1 }]
+    }]
+  });
+  expect(clientErrors).toEqual([]);
+});
+
+test("Inspeção substitui o conjunto completo da versão exata da Unidade", async ({ page }) => {
+  const clientErrors = captureClientErrors(page);
+  await page.setViewportSize({ width: 390, height: 820 });
+  const inspectionHash = `#/authoring/courses/${COURSE_IDS[0]}?section=inspection`;
+  await mountCourseAuthoring(page, { cardinality: "many", hash: inspectionHash });
+
+  await page.locator(
+    'summary[aria-label="Abrir detalhes de Exemplo guiado com diagrama"]'
+  ).click();
+  await page.getByRole("button", { name: "Definir fontes" }).click();
+  await expect(page.getByRole("dialog", {
+    name: "Fontes de Exemplo guiado com diagrama"
+  })).toBeVisible();
+  await page.getByRole("button", {
+    name: "Vincular fonte: Fonte verificável 1",
+    exact: true
+  }).click();
+  await page.getByRole("checkbox", { name: "Páginas 10–12" }).check();
+  await page.getByRole("button", { name: "Salvar conjunto completo" }).click();
+  await expect.poll(() => page.evaluate(() =>
+    globalThis.__courseAuthoringHarness.probe.sourceMutations.length)).toBe(1);
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+
+  const command = await page.evaluate(() =>
+    globalThis.__courseAuthoringHarness.probe.sourceMutations[0].command);
+  expect(command).toEqual({
+    type: "set_target_sources",
+    targetKind: "study_unit",
+    targetId: "study-unit-01",
+    expectedTargetVersion: 1,
+    sourceLinks: [{
+      sourceId: "source-01",
+      sourceRevision: 1,
+      relation: "supported_by",
+      anchors: [{ anchorId: "anchor-source-01", anchorRevision: 1 }]
+    }]
+  });
+  expect(clientErrors).toEqual([]);
 });
 
 for (const width of [360, 390, 430, 1280]) {

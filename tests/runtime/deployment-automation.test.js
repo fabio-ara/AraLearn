@@ -279,7 +279,7 @@ test("validação integrada do Supabase só aceita o stack local e restaura o am
   );
 });
 
-test("smoke real de Curso usa o resolvedor administrativo sem enviar a chave como Bearer", () => {
+test("smoke real de Curso cobre proveniência redigida sem enviar a chave como Bearer", () => {
   const source = fs.readFileSync(scripts.courseRuntimeSmoke, "utf8");
   assert.match(source, /resolveSupabaseAdministrativeEnvironment/u);
   assert.match(source, /supabaseServerHeaders/u);
@@ -296,6 +296,27 @@ test("smoke real de Curso usa o resolvedor administrativo sem enviar a chave com
   assert.match(source, /type:\s*"set_target_plan_items"/u);
   assert.match(source, /kind:\s*"didactic_microsequence_materialization"/u);
   assert.match(source, /designApplication/u);
+  assert.match(source, /sourceAttributionApplication/u);
+  assert.match(source, /sourceAttributionApplications/u);
+  assert.match(source, /aralearn\.course-design-context\.v2/u);
+  assert.match(source, /aralearn\.course-source-attribution-application\.v1/u);
+  assert.match(source, /view:\s*"course_sources"/u);
+  assert.match(source, /operation:\s*"update_course_sources"/u);
+  assert.match(source, /type:\s*"save_source"/u);
+  assert.match(source, /type:\s*"save_anchor"/u);
+  assert.match(source, /type:\s*"set_target_sources"/u);
+  assert.match(source, /verificationExcerpt/u);
+  assert.match(source, /get_course_study_citations_v1/u);
+  assert.match(
+    source,
+    /get_course_study_citations_v1"[\s\S]{0,180}p_expected_revision:\s*17/u
+  );
+  assert.match(source, /aralearn\.course-study-citations\.v1/u);
+  assert.match(source, /staleRemovedStudyUnitCitations[\s\S]+code,\s*"40001"/u);
+  assert.match(source, /revokedCitations[\s\S]+status,[\s\S]+404[\s\S]+"PT404"/u);
+  assert.match(source, /rejectedSourceAttribution/u);
+  assert.match(source, /afterRejectedSourceAttribution\.data\.courseRevision/u);
+  assert.match(source, /verificationExcerpt\|studyVisibility\|actorId\|channel\|history\|excerpt/u);
   assert.match(source, /unassignedAnalysisUnitId/u);
   assert.match(source, /steps\[0\]\.status,\s*"pending"/u);
   assert.match(source, /list_courses_v1/u);
@@ -303,10 +324,11 @@ test("smoke real de Curso usa o resolvedor administrativo sem enviar a chave com
   assert.match(source, /mutate_course_personal_state_v1/u);
   assert.doesNotMatch(source, /aralearn\.library\.v1/u);
   assert.doesNotMatch(source, /\bcards\s*:/u);
+  assert.doesNotMatch(source, /\bsources\s*:/u);
   assert.doesNotMatch(source, /Authorization:\s*`Bearer \$\{serverApiKey\}`/u);
 });
 
-test("smokes MCP exercitam somente Curso, desenho e Inspeção correntes", () => {
+test("smokes MCP exercitam Fonte, Âncora e composição de proveniência atômica", () => {
   for (const smokePath of [scripts.authoringMcpLocalSmoke, scripts.authoringMcpHostedSmoke]) {
     const source = fs.readFileSync(smokePath, "utf8");
     assert.match(source, /aralearn\.course\.v1/u);
@@ -319,8 +341,19 @@ test("smokes MCP exercitam somente Curso, desenho e Inspeção correntes", () =>
     assert.match(source, /aralearn\.course-design\.v1/u);
     assert.match(source, /type:\s*"set_target_plan_items"/u);
     assert.match(source, /targetPlanItems/u);
+    assert.match(source, /view:\s*"course_sources"/u);
+    assert.match(source, /operation:\s*"update_course_sources"/u);
+    assert.match(source, /type:\s*"save_source"/u);
+    assert.match(source, /type:\s*"save_anchor"/u);
+    assert.match(source, /type:\s*"set_target_sources"/u);
+    assert.match(source, /sourceAttributionApplications/u);
+    assert.match(source, /rejectedTool/u);
+    assert.match(source, /rejectedAttribution/u);
+    assert.match(source, /afterRejectedAttribution\.courseRevision/u);
+    assert.match(source, /targetVersion,\s*2/u);
     assert.doesNotMatch(source, /aralearn\.library\.v1/u);
     assert.doesNotMatch(source, /\bcards\s*:/u);
+    assert.doesNotMatch(source, /\bsources\s*:/u);
     assert.doesNotMatch(
       source,
       /criarWorkspaceDeAutoria|salvarCardsNaMicrossequencia|listarCardsDaMicrossequencia/u

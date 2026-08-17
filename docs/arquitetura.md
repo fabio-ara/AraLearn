@@ -1,8 +1,8 @@
 # Arquitetura do AraLearn
 
 Este capítulo explica a arquitetura implementada no código corrente. Ele não
-descreve como concluídas as camadas futuras de proveniência, auditoria,
-variantes ou analytics de pesquisa.
+descreve como concluídas as camadas futuras de observações autorais reunidas,
+auditoria, variantes ou analytics de pesquisa.
 
 ## Vocabulário necessário
 
@@ -22,6 +22,15 @@ Orientação conserva texto original e interpretação separada; política
 representacional não se mistura a limites técnicos. Numa Microssequência, o
 desenho inclui também a atribuição explícita dos itens de análise e evidência
 que aquele alvo deve realizar.
+
+**Fonte e Âncora.** Uma Fonte é uma identidade privada do Curso com revisões
+append-only. Uma Âncora localiza evidência numa revisão exata por página,
+tempo, fragmento URI ou trecho textual; seu trecho de verificação permanece
+privado.
+
+**Atribuição de Fonte.** Conjunto completo, ordenado e versionado de vínculos
+entre revisões de Fontes, Âncoras exatas e um item do plano ou uma Unidade. A
+relação declara se a Fonte informa, sustenta, foi adaptada ou foi citada.
 
 **Parte de autoria.** Recorte operacional ordenado que liga uma intenção de
 produção a zero ou mais Microssequências didáticas. Sua posição de produção
@@ -55,8 +64,9 @@ operação. Reutilizá-la com outro conteúdo é conflito, não uma nova solicit
 **Descrição textual:** Estudo e Autoria usam controladores separados porque
 possuem autoridades diferentes, mas ambos chegam ao mesmo Curso. A interface e
 o cliente MCP compartilham o serviço de Curso; o dispositivo conserva cache e
-estado pessoal no IndexedDB; PostgreSQL é a autoridade remota. Storage contém
-somente fotos privadas de perfil nesta etapa.
+estado pessoal no IndexedDB; PostgreSQL é a autoridade remota. Metadados e URLs
+de Fontes ficam no PostgreSQL; Storage contém somente fotos privadas de perfil
+nesta etapa e não armazena os arquivos referenciados.
 
 ```mermaid
 flowchart LR
@@ -69,6 +79,8 @@ flowchart LR
     A <--> E
     E <--> R
     R <--> D[(PostgreSQL)]
+    D --> F[Fontes e atribuições]
+    F --> S
     A <--> V[(Storage de avatar)]
 ```
 
@@ -304,7 +316,9 @@ Ao iniciar uma materialização, o servidor resolve o desenho para cada
 Microssequência-alvo e sela um contexto limitado. Revisões de orientação são
 deduplicadas; os catálogos de análise e evidência selam
 `{id, position, statement, version}` e cada alvo referencia somente seus IDs.
-Na etapa, o cliente envia fatos limitados de aplicação e o auditor os confronta
+O contexto `aralearn.course-design-context.v2` também sela as revisões e
+Âncoras atribuídas a esses itens do plano. Na etapa, o cliente envia fatos
+limitados de aplicação e aplicações de proveniência; o auditor os confronta
 somente com o subconjunto daquele alvo.
 
 Formas explicativas, oportunidades e variações são declarações do agente ou da
@@ -429,6 +443,49 @@ antigos sem equivalência instalada; eles bloqueiam a migração em vez de serem
 convertidos por aproximação. A resolução dessa lacuna é gate de dados, não
 compatibilidade permanente.
 
+## Decisão 11 — proveniência relacional fora do conteúdo
+
+### Problema
+
+Um vetor textual `sources` dentro de cada Unidade mistura conteúdo público com
+catálogo privado, não identifica versão nem localização e permite que uma
+correção silenciosa reescreva a explicação histórica.
+
+### Decisão e funcionamento
+
+Cinco tabelas privadas conservam revisões de Fontes, revisões de Âncoras,
+snapshots de atribuição e seus vínculos ordenados. Leituras owner-only separam
+catálogo, detalhe e histórico do alvo. Escritas novas admitem no máximo 32
+Fontes por alvo e oito identidades de Âncora por revisão de Fonte, e cada vínculo exige ao menos uma
+Âncora ativa da revisão exata.
+
+O corte remove `StudyUnit.sources` do documento canônico. A composição recebe
+um `sourceAttributionApplications` separado e completo para cada Unidade
+incluída ou substituída, inclusive vazio. O Estudo consulta citações somente ao
+abrir a Unidade e recebe uma projeção redigida: Fonte oculta ou legada não
+resolvida é omitida; `citation` omite URL; `citation_and_link` pode entregá-la.
+
+A migration `1900` preserva cada referência anterior em ordem como
+`legacy_reference`, com identidade literal, estado `unresolved_legacy`,
+metadados nulos e visibilidade oculta. Resolver acrescenta uma revisão ativa
+sob essa mesma identidade. Não existe inferência de título, URL, Âncora ou
+autoria, nem compatibilidade permanente com `sources` no conteúdo.
+
+Na materialização, o servidor só aceita
+`aralearn.course-source-attribution-application.v1` formado por Fontes e
+Âncoras seladas no contexto. Entidades, vínculo, aplicação, atribuições, etapa,
+evento e recibo pertencem à mesma transação.
+
+### Consequências
+
+- histórico e ordem são verificáveis sem expor o catálogo ao Estudo;
+- visibilidade de estudo não concede acesso ao trecho privado de verificação,
+  ator, canal ou histórico;
+- a atribuição por alvo não equivale a uma cadeia de alegações no padrão W3C
+  nem prova autoria científica;
+- observações ancoradas pertencem à #124; achados, correções e verificação
+  independente pertencem à #125.
+
 ## Organização do código
 
 | Responsabilidade | Local principal |
@@ -436,6 +493,7 @@ compatibilidade permanente.
 | identidade e composição do Curso | `src/domain/courseEntities.js` |
 | plano instrucional e comandos de Parte | `src/domain/courseAuthoringPlan.js` |
 | parâmetros, orientação e política de componentes | `src/domain/courseDesignParameters.js` |
+| Fontes, Âncoras e atribuições | `src/domain/courseSources.js` |
 | cache local | `src/persistence/CourseLocalStore.js` |
 | estado pessoal e fila | `src/persistence/CoursePersonalStateRepository.js` |
 | acesso HTTP/RPC | `src/supabase/CourseApiClient.js` |
@@ -443,8 +501,9 @@ compatibilidade permanente.
 | aplicação de Estudo | `src/study/` |
 | Autoria visual | `src/ui/CourseAuthoringSurface.js` |
 | sequência vertical de Inspeção | `src/ui/CourseInspectionSequence.js` |
+| catálogo visual de Fontes | `src/ui/CourseSourcesPanel.js` |
 | API e MCP | `supabase/functions/_shared/aralearn-authoring/course*` |
-| banco canônico | migrations `20260817140000` a `20260817180000` |
+| banco canônico | migrations `20260817140000` a `20260817190000` |
 | importador transitório | `scripts/courseCutover/` |
 
 ## Gates antes da promoção hospedada
@@ -460,10 +519,10 @@ está concluída. A promoção exige, nesta ordem:
    de navegador contra o schema resultante;
 4. confirmar que dispositivos conhecidos não possuem fila pendente do modelo
    substituído;
-5. executar o importador e as migrations `1400`, `1500`, `1600`, `1700` e
-   `1800`, nessa ordem, na mesma transação hospedada, abortando diante de drift;
-   o runner declara e hasheia as cinco antes de `--apply` e não usa `db push`
-   separado para `1700` ou `1800`;
+5. executar o importador e as migrations `1400`, `1500`, `1600`, `1700`,
+   `1800` e `1900`, nessa ordem, na mesma transação hospedada, abortando diante
+   de drift; o runner declara e hasheia as seis antes de `--apply` e não usa
+   `db push` separado para `1700`, `1800` ou `1900`;
 6. publicar Edge Functions, site e APK somente depois da verificação hospedada.
 
 O importador é transitório e não entra no runtime. Não há leitura dupla,
@@ -475,6 +534,15 @@ de conferir que estão vazias e aborta diante de qualquer tentativa ou etapa de
 materialização criada antes do novo contexto. Materialização antiga não é
 reinterpretada nem retomada sob o contrato novo.
 
+O preflight da `1900` bloqueia materializações em andamento e referências
+legadas malformadas. A atestação `prepared` e a verificação pós-corte incluem
+`sourceReferenceHash`, hash canônico da ordem de
+`{studyUnitId, sourceOrdinal, sourceId}`, junto com os hashes e contagens já
+selados. O inventário vertical pós-`1900` possui 2.010 objetos: 416 ligados aos
+seis casos correntes — 84 deles em `course-source-provenance` — e 1.594
+isolados para remoção na #130. Nenhum total
+anterior serve como prova desse schema.
+
 ## Propriedades demonstradas e questões abertas
 
 | Afirmação | Estado | Evidência ou limite |
@@ -485,6 +553,9 @@ reinterpretada nem retomada sob o contrato novo.
 | plano e Partes são editáveis sem JSON pela interface e pelo MCP | implementado localmente | domínio, migration `1600`, API, MCP e testes focais |
 | parâmetros, itens do plano por alvo, orientação original e política são resolvidos pelo mesmo contrato na UI e no MCP | implementado localmente | domínio, relação muitos-para-muitos da migration `1800`, API/MCP, área Parâmetros e testes focais |
 | materialização sela enunciados, versões e subconjuntos por alvo e cerca fatos declarados | implementado localmente | migration `1800`, hash do contexto, validação interna e regressão DNS/DHCP; o banco reconcilia materialmente somente IDs de Unidades, pai/alvo e `componentRefs` |
+| Fontes e Âncoras preservam revisões e atribuições por alvo fora do conteúdo | implementado localmente | domínio compartilhado, migration `1900`, API/MCP, sexta área de Autoria e testes focais |
+| Estudo recebe somente citações visíveis e sob demanda | implementado localmente | RPC redigida, cache lazy e casos de ocultação, URL e revogação; não há edição de Fontes no Estudo |
+| composição e materialização confirmam proveniência junto com conteúdo | implementado localmente | aplicação completa por Unidade, contexto v2, transações e rollback focal |
 | UI e MCP inspecionam as mesmas Unidades por escopo e revisão | implementado localmente | migration `1700`, RPC owner-only, `lerCurso study_units`, cache e testes focais |
 | a Inspeção limita página, payload e janela visual | implementado localmente | 12/24 itens, hard cap de 1,75 MiB, cache limitado e no máximo 36 artigos |
 | remover ou reorganizar Parte não apaga conteúdo produzido | implementado localmente | relações separadas, transações e testes de domínio/banco |
@@ -493,5 +564,5 @@ reinterpretada nem retomada sob o contrato novo.
 | perfil e avatar respeitam relação direta | implementado localmente | RLS, bucket privado e interface de Conta |
 | o corte preserva todos os dados reais | ainda não demonstrado | importação hospedada bloqueada por componentes sem equivalente |
 | a interface é compreensível por pessoas leigas | ainda não demonstrado | exige aceitação humana em celular e desktop |
-| o modelo cabe no Free Plan em uso prolongado | ainda não demonstrado | faltam séries de egress, Storage e carga real |
+| o modelo cabe no Free Plan em uso prolongado | ainda não demonstrado | Fontes usam metadados/URLs, páginas de 24, leitura lazy, 32 vínculos por alvo e oito identidades de Âncora por revisão, mas faltam séries de banco, egress, Storage, funções e crescimento append-only |
 | o desenho melhora aprendizagem | não demonstrado | exige estudo educacional com instrumentos e análise adequados |

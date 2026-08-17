@@ -21,6 +21,150 @@ const stringSchema = (options = {}) => ({ type: "string", ...options });
 const uuidSchema = stringSchema({ pattern: UUID_PATTERN.source });
 const requestIdSchema = stringSchema({ pattern: REQUEST_ID_PATTERN.source });
 const nullableString = (schema) => ({ anyOf: [schema, { type: "null" }] });
+const COURSE_SOURCE_NO_CONTROL_PATTERN =
+  "^(?!\\s)(?![\\s\\S]*\\s$)[^\\u0000-\\u001F\\u007F-\\u009F]+$";
+const COURSE_SOURCE_LAYOUT_TEXT_PATTERN =
+  "^[^\\u0000-\\u0008\\u000B\\u000C\\u000E-\\u001F\\u007F-\\u009F]+$";
+const COURSE_SOURCE_TRIMMED_LAYOUT_TEXT_PATTERN =
+  "^(?!\\s)(?![\\s\\S]*\\s$)[^\\u0000-\\u0008\\u000B\\u000C\\u000E-\\u001F\\u007F-\\u009F]+$";
+const courseSourceOpaqueIdSchema = stringSchema({
+  minLength: 1,
+  maxLength: 240,
+  pattern: COURSE_SOURCE_NO_CONTROL_PATTERN
+});
+const legacySourceIdSchema = stringSchema({
+  minLength: 1,
+  maxLength: 2_048,
+  pattern: "^[^\\u0000-\\u001F\\u007F-\\u009F]+$"
+});
+
+const sourceAnchorLinkSchema = objectSchema({
+  anchorId: courseSourceOpaqueIdSchema,
+  anchorRevision: { type: "integer", minimum: 1 }
+});
+const sourceLinkSchema = {
+  ...objectSchema({
+    sourceId: legacySourceIdSchema,
+    sourceRevision: { type: "integer", minimum: 1 },
+    relation: stringSchema({ enum: [
+      "informed_by", "supported_by", "adapted_from", "quoted_from"
+    ] }),
+    anchors: {
+      type: "array", minItems: 1, maxItems: 8, uniqueItems: true,
+      items: sourceAnchorLinkSchema
+    }
+  }),
+  allOf: [{
+    if: { properties: { relation: { const: "quoted_from" } }, required: ["relation"] },
+    then: { properties: { anchors: { minItems: 1 } } }
+  }]
+};
+const sourceLinksSchema = {
+  type: "array", maxItems: 32, uniqueItems: true, items: sourceLinkSchema
+};
+
+const sourceSelectorSchema = {
+  oneOf: [
+    objectSchema({
+      kind: { const: "page_range" },
+      startPage: { type: "integer", minimum: 1, maximum: 1_000_000 },
+      endPage: { type: "integer", minimum: 1, maximum: 1_000_000 }
+    }),
+    objectSchema({
+      kind: { const: "time_range" },
+      startMilliseconds: { type: "integer", minimum: 0, maximum: 2_147_483_647 },
+      endMilliseconds: { type: "integer", minimum: 1, maximum: 2_147_483_647 }
+    }),
+    objectSchema({
+      kind: { const: "uri_fragment" },
+      fragment: stringSchema({
+        minLength: 1,
+        maxLength: 2_048,
+        pattern: "^(?!#)(?!\\s)(?![\\s\\S]*\\s$)[^\\u0000-\\u001F\\u007F-\\u009F]+$"
+      })
+    }),
+    objectSchema({
+      kind: { const: "text_quote" },
+      exact: stringSchema({
+        minLength: 1, maxLength: 4_000, pattern: COURSE_SOURCE_LAYOUT_TEXT_PATTERN
+      }),
+      prefix: nullableString(stringSchema({
+        minLength: 1, maxLength: 500, pattern: COURSE_SOURCE_TRIMMED_LAYOUT_TEXT_PATTERN
+      })),
+      suffix: nullableString(stringSchema({
+        minLength: 1, maxLength: 500, pattern: COURSE_SOURCE_TRIMMED_LAYOUT_TEXT_PATTERN
+      }))
+    })
+  ]
+};
+
+const sourceDocumentSchema = {
+  ...objectSchema({
+    kind: stringSchema({ enum: ["web_page", "article", "book", "document", "media", "other"] }),
+    title: stringSchema({
+      minLength: 1, maxLength: 300, pattern: COURSE_SOURCE_NO_CONTROL_PATTERN
+    }),
+    citationText: nullableString(stringSchema({
+      minLength: 1, maxLength: 2_048, pattern: COURSE_SOURCE_TRIMMED_LAYOUT_TEXT_PATTERN
+    })),
+    url: nullableString(stringSchema({ minLength: 8, maxLength: 2_048, pattern: "^https://[^\\s]+$" })),
+    editionOrVersion: nullableString(stringSchema({
+      minLength: 1, maxLength: 120, pattern: COURSE_SOURCE_NO_CONTROL_PATTERN
+    })),
+    studyVisibility: stringSchema({ enum: ["hidden", "citation", "citation_and_link"] })
+  }),
+  allOf: [{
+    if: {
+      properties: { studyVisibility: { enum: ["citation", "citation_and_link"] } },
+      required: ["studyVisibility"]
+    },
+    then: { properties: { citationText: {
+      type: "string",
+      minLength: 1,
+      maxLength: 2_048,
+      pattern: COURSE_SOURCE_TRIMMED_LAYOUT_TEXT_PATTERN
+    } } }
+  }]
+};
+
+const sourceCommandSchema = {
+  oneOf: [
+    objectSchema({
+      type: { const: "save_source" },
+      sourceId: legacySourceIdSchema,
+      expectedSourceRevision: { type: "integer", minimum: 0 },
+      source: sourceDocumentSchema
+    }),
+    objectSchema({
+      type: { const: "retire_source" },
+      sourceId: legacySourceIdSchema,
+      expectedSourceRevision: { type: "integer", minimum: 1 }
+    }),
+    objectSchema({
+      type: { const: "save_anchor" },
+      anchorId: courseSourceOpaqueIdSchema,
+      sourceId: legacySourceIdSchema,
+      sourceRevision: { type: "integer", minimum: 1 },
+      expectedAnchorRevision: { type: "integer", minimum: 0 },
+      selector: sourceSelectorSchema,
+      verificationExcerpt: nullableString(stringSchema({
+        minLength: 1, maxLength: 2_000, pattern: COURSE_SOURCE_LAYOUT_TEXT_PATTERN
+      }))
+    }),
+    objectSchema({
+      type: { const: "retire_anchor" },
+      anchorId: courseSourceOpaqueIdSchema,
+      expectedAnchorRevision: { type: "integer", minimum: 1 }
+    }),
+    objectSchema({
+      type: { const: "set_target_sources" },
+      targetKind: stringSchema({ enum: ["plan_item", "study_unit"] }),
+      targetId: courseSourceOpaqueIdSchema,
+      expectedTargetVersion: { type: "integer", minimum: 1 },
+      sourceLinks: sourceLinksSchema
+    })
+  ]
+};
 
 const authoringPlanCommandSchema = {
   ...objectSchema({
@@ -48,6 +192,7 @@ const authoringPlanCommandSchema = {
   id: uuidSchema,
   position: { type: "integer", minimum: 0, maximum: 255 },
   statement: stringSchema({ minLength: 1, maxLength: 2_000 }),
+  sourceLinks: sourceLinksSchema,
   orderedIds: { type: "array", maxItems: 256, uniqueItems: true, items: uuidSchema },
   title: stringSchema({ minLength: 1, maxLength: 300 }),
   objective: stringSchema({ minLength: 1, maxLength: 2_000 }),
@@ -73,6 +218,13 @@ const authoringPlanCommandSchema = {
   microsequenceId: stringSchema({ minLength: 1, maxLength: 240 })
   }, ["type"]),
   allOf: [{
+    if: {
+      properties: { type: { enum: ["add_plan_item", "update_plan_item"] } },
+      required: ["type"]
+    },
+    then: { required: ["sourceLinks"] },
+    else: forbidFields(["sourceLinks"])
+  }, {
     if: { properties: { type: { const: "add_part" } }, required: ["type"] },
     then: { properties: { position: { maximum: 63 } } }
   }, {
@@ -396,6 +548,22 @@ const designApplicationSchema = objectSchema({
   }
 });
 
+const sourceAttributionStudyUnitSchema = objectSchema({
+  studyUnitId: stringSchema({ minLength: 1, maxLength: 240 }),
+  sourceLinks: sourceLinksSchema
+});
+const sourceAttributionApplicationsSchema = {
+  type: "array",
+  maxItems: 64,
+  items: sourceAttributionStudyUnitSchema
+};
+const sourceAttributionApplicationSchema = objectSchema({
+  contract: { const: "aralearn.course-source-attribution-application.v1" },
+  contextHash: stringSchema({ pattern: "^[a-f0-9]{64}$" }),
+  didacticMicrosequenceId: stringSchema({ minLength: 1, maxLength: 240 }),
+  studyUnits: sourceAttributionApplicationsSchema
+});
+
 const materializationCommandSchema = {
   ...objectSchema({
   operation: stringSchema({ enum: ["start", "record_step", "finish"] }),
@@ -407,8 +575,14 @@ const materializationCommandSchema = {
   stepId: uuidSchema,
   expectedStepVersion: { type: "integer", minimum: 1 },
   status: stringSchema({ enum: ["completed", "failed"] }),
-  resultFacts: { type: "object" },
+  resultFacts: {
+    type: "object",
+    ...forbidFields([
+      "designApplication", "sourceAttributionApplication", "entityChanges", "content"
+    ])
+  },
   designApplication: nullableString(designApplicationSchema),
+  sourceAttributionApplication: nullableString(sourceAttributionApplicationSchema),
   entityChanges: {
     ...objectSchema({
     upserts: { type: "array", maxItems: 64, items: courseEntitySchema },
@@ -433,7 +607,7 @@ const materializationCommandSchema = {
       properties: { expectedMaterializationVersion: { const: 0 } },
       ...forbidFields([
         "stepId", "expectedStepVersion", "status", "resultFacts",
-        "designApplication", "entityChanges"
+        "designApplication", "sourceAttributionApplication", "entityChanges"
       ])
     }
   }, {
@@ -441,7 +615,7 @@ const materializationCommandSchema = {
     then: {
       required: [
         "stepId", "expectedStepVersion", "status", "resultFacts", "entityChanges",
-        "designApplication"
+        "designApplication", "sourceAttributionApplication"
       ],
       properties: { expectedMaterializationVersion: { minimum: 1 } },
       ...forbidFields(["authoringPartVersion", "steps"])
@@ -453,7 +627,7 @@ const materializationCommandSchema = {
       properties: { expectedMaterializationVersion: { minimum: 1 } },
       ...forbidFields([
         "authoringPartVersion", "steps", "stepId", "expectedStepVersion",
-        "designApplication", "entityChanges"
+        "designApplication", "sourceAttributionApplication", "entityChanges"
       ])
     }
   }]
@@ -511,13 +685,13 @@ export const COURSE_MCP_TOOLS = Object.freeze([
   Object.freeze({
     name: "lerCurso",
     title: "Ler Curso",
-    description: "Lê o estado corrente de um Curso. Use instructional_plan para planejar por Partes, course_design para parâmetros, orientações e regras de componentes no escopo, study_units para inspecionar Unidades de estudo, part_materialization para retomar uma materialização, outline para a hierarquia compacta e entities somente para alterações estruturais.",
+    description: "Lê o estado corrente de um Curso. Use instructional_plan para planejar por Partes, course_design para parâmetros e regras de componentes, course_sources para o catálogo privado e a proveniência por alvo, study_units para inspecionar Unidades de estudo, part_materialization para retomar uma materialização, outline para a hierarquia compacta e entities somente para alterações estruturais.",
     inputSchema: {
       ...objectSchema({
       courseId: uuidSchema,
       view: stringSchema({ enum: [
         "summary", "outline", "instructional_plan", "course_design",
-        "part_materialization", "study_units", "entities"
+        "course_sources", "part_materialization", "study_units", "entities"
       ] }),
       authoringPartId: uuidSchema,
       materializationId: uuidSchema,
@@ -534,7 +708,11 @@ export const COURSE_MCP_TOOLS = Object.freeze([
       scope: { anyOf: [courseStudyUnitScopeSchema, courseDesignScopeSchema] },
       anchorStudyUnitId: stringSchema({ minLength: 1, maxLength: 240 }),
       direction: stringSchema({ enum: ["forward", "backward"] }),
-      maxBytes: { type: "integer", minimum: 65_536, maximum: 1_500_000 }
+      maxBytes: { type: "integer", minimum: 65_536, maximum: 1_500_000 },
+      mode: stringSchema({ enum: ["catalog", "source", "target"] }),
+      sourceId: legacySourceIdSchema,
+      targetKind: stringSchema({ enum: ["plan_item", "study_unit"] }),
+      targetId: courseSourceOpaqueIdSchema
       }, ["courseId"]),
       allOf: [{
         if: {
@@ -556,6 +734,56 @@ export const COURSE_MCP_TOOLS = Object.freeze([
             ]
           }
         }
+      }, {
+        if: {
+          properties: { view: { const: "course_sources" } },
+          required: ["view"]
+        },
+        then: {
+          required: ["expectedRevision"],
+          ...forbidFields([
+            "authoringPartId", "materializationId", "scope", "anchorStudyUnitId",
+            "direction", "maxBytes"
+          ]),
+          properties: {
+            limit: { maximum: 24 },
+            cursor: {
+              anyOf: [
+                stringSchema({ minLength: 1, maxLength: 240,
+                  pattern: "^[A-Za-z0-9+/_-]+={0,2}$" }),
+                { type: "null" }
+              ]
+            }
+          },
+          allOf: [{
+            if: { properties: { mode: { const: "source" } }, required: ["mode"] },
+            then: {
+              required: ["sourceId"],
+              allOf: [{
+                if: { required: ["targetKind"] },
+                then: { required: ["targetId"], ...forbidFields(["cursor"]) }
+              }, {
+                if: { required: ["targetId"] },
+                then: { required: ["targetKind"], ...forbidFields(["cursor"]) }
+              }]
+            }
+          }, {
+            if: { properties: { mode: { const: "target" } }, required: ["mode"] },
+            then: {
+              required: ["targetKind", "targetId"],
+              ...forbidFields(["sourceId"])
+            }
+          }, {
+            if: {
+              anyOf: [
+                { not: { required: ["mode"] } },
+                { properties: { mode: { const: "catalog" } }, required: ["mode"] }
+              ]
+            },
+            then: { ...forbidFields(["sourceId", "targetKind", "targetId"]) }
+          }]
+        },
+        else: forbidFields(["mode", "sourceId", "targetKind", "targetId"])
       }, {
         if: {
           properties: { view: { const: "course_design" } },
@@ -634,7 +862,7 @@ export const COURSE_MCP_TOOLS = Object.freeze([
   Object.freeze({
     name: "alterarCurso",
     title: "Alterar Curso",
-    description: "Altera o plano instrucional vivo, os parâmetros e regras de Autoria, a composição ou uma materialização retomável de Parte. Releia a vista correspondente antes e use as versões correntes; cada alteração é limitada e idempotente.",
+    description: "Altera o plano instrucional vivo, Fontes e proveniência, os parâmetros e regras de Autoria, a composição ou uma materialização retomável de Parte. Releia a vista correspondente antes e use as versões correntes; cada alteração é limitada e idempotente.",
     inputSchema: {
       ...objectSchema({
       requestId: requestIdSchema,
@@ -644,13 +872,16 @@ export const COURSE_MCP_TOOLS = Object.freeze([
       operation: stringSchema({ enum: [
         "update_instructional_plan",
         "update_course_design",
+        "update_course_sources",
         "commit_course_composition",
         "advance_part_materialization"
       ] }),
       planCommand: authoringPlanCommandSchema,
       designCommand: courseDesignCommandSchema,
+      sourceCommand: sourceCommandSchema,
       materializationCommand: materializationCommandSchema,
       upserts: { type: "array", maxItems: 200, items: courseEntitySchema },
+      sourceAttributionApplications: sourceAttributionApplicationsSchema,
       deletes: {
         type: "array",
         maxItems: 200,
@@ -672,10 +903,25 @@ export const COURSE_MCP_TOOLS = Object.freeze([
           not: { anyOf: [
             { required: ["expectedPlanVersion"] },
             { required: ["planCommand"] },
+            { required: ["sourceCommand"] },
             { required: ["materializationCommand"] },
             { required: ["upserts"] },
-            { required: ["deletes"] }
+            { required: ["deletes"] },
+            { required: ["sourceAttributionApplications"] }
           ] }
+        }
+      }, {
+        if: {
+          properties: { operation: { const: "update_course_sources" } },
+          required: ["operation"]
+        },
+        then: {
+          required: ["sourceCommand"],
+          ...forbidFields([
+            "expectedPlanVersion", "planCommand", "designCommand",
+            "materializationCommand", "upserts", "deletes",
+            "sourceAttributionApplications"
+          ])
         }
       }, {
         if: {
@@ -685,7 +931,8 @@ export const COURSE_MCP_TOOLS = Object.freeze([
         then: {
           required: ["expectedPlanVersion", "planCommand"],
           ...forbidFields([
-            "designCommand", "materializationCommand", "upserts", "deletes"
+            "designCommand", "sourceCommand", "materializationCommand", "upserts",
+            "deletes", "sourceAttributionApplications"
           ])
         }
       }, {
@@ -694,9 +941,10 @@ export const COURSE_MCP_TOOLS = Object.freeze([
           required: ["operation"]
         },
         then: {
+          required: ["sourceAttributionApplications"],
           ...forbidFields([
             "expectedPlanVersion", "planCommand", "designCommand",
-            "materializationCommand"
+            "sourceCommand", "materializationCommand"
           ]),
           anyOf: [{
             required: ["upserts"],
@@ -714,7 +962,8 @@ export const COURSE_MCP_TOOLS = Object.freeze([
         then: {
           required: ["materializationCommand"],
           ...forbidFields([
-            "expectedPlanVersion", "planCommand", "designCommand", "upserts", "deletes"
+            "expectedPlanVersion", "planCommand", "designCommand", "sourceCommand",
+            "upserts", "deletes", "sourceAttributionApplications"
           ])
         }
       }]
@@ -798,6 +1047,33 @@ function requiredText(value, field, { maximum, optional = false } = {}) {
   return normalized;
 }
 
+function requiredOpaqueText(value, field, maximum) {
+  if (typeof value !== "string" || value.length < 1 || value.length > maximum * 2 ||
+      [...value].length > maximum ||
+      new TextEncoder().encode(value).byteLength > maximum * 4 ||
+      [...value].some((character) => {
+        const point = character.codePointAt(0);
+        return point < 32 || point >= 127 && point <= 159;
+      })) {
+    fail("invalid_tool_argument", `${field} é inválido.`, { field });
+  }
+  return value;
+}
+
+function requiredCourseSourceText(value, field, maximum) {
+  const normalized = typeof value === "string" ? value.trim() : "";
+  if (!normalized || normalized !== value || normalized.length > maximum * 2 ||
+      [...normalized].length > maximum ||
+      new TextEncoder().encode(normalized).byteLength > maximum * 4 ||
+      [...normalized].some((character) => {
+        const point = character.codePointAt(0);
+        return point < 32 || point >= 127 && point <= 159;
+      })) {
+    fail("invalid_tool_argument", `${field} é inválido.`, { field });
+  }
+  return normalized;
+}
+
 function requiredUuid(value, field) {
   const normalized = requiredText(value, field, { maximum: 36 });
   if (!UUID_PATTERN.test(normalized)) fail("invalid_tool_argument", `${field} não contém UUID válido.`, { field });
@@ -868,15 +1144,20 @@ function mapRead(raw) {
   exactFields(raw, new Set([
     "courseId", "view", "authoringPartId", "materializationId",
     "expectedRevision", "limit", "cursor", "scope", "anchorStudyUnitId",
-    "direction", "maxBytes"
+    "direction", "maxBytes", "mode", "sourceId", "targetKind", "targetId"
   ]));
   const courseId = requiredUuid(raw.courseId, "courseId");
   const view = raw.view == null ? "outline" : requiredText(raw.view, "view", { maximum: 20 });
   if (!new Set([
     "summary", "outline", "instructional_plan", "course_design",
-    "part_materialization", "study_units", "entities"
+    "course_sources", "part_materialization", "study_units", "entities"
   ]).has(view)) {
     fail("invalid_tool_argument", "view é inválida.", { field: "view" });
+  }
+  if (view !== "course_sources" && [
+    raw.mode, raw.sourceId, raw.targetKind, raw.targetId
+  ].some((value) => value != null)) {
+    fail("invalid_tool_argument", "A leitura recebeu campos de Fonte incompatíveis.");
   }
   if (view === "course_design") {
     if (raw.authoringPartId != null || raw.materializationId != null ||
@@ -909,6 +1190,60 @@ function mapRead(raw) {
       scopeRef,
       limit,
       cursor
+    })}`);
+  }
+  if (view === "course_sources") {
+    if (raw.authoringPartId != null || raw.materializationId != null ||
+        raw.scope != null || raw.anchorStudyUnitId != null || raw.direction != null ||
+        raw.maxBytes != null) {
+      fail("invalid_tool_argument", "A leitura de Fontes recebeu campos incompatíveis.");
+    }
+    const expectedRevision = positiveInteger(raw.expectedRevision, "expectedRevision");
+    const mode = raw.mode == null
+      ? "catalog"
+      : requiredText(raw.mode, "mode", { maximum: 16 });
+    if (!new Set(["catalog", "source", "target"]).has(mode)) {
+      fail("invalid_tool_argument", "mode é inválido.", { field: "mode" });
+    }
+    const sourceId = raw.sourceId == null
+      ? null
+      : requiredOpaqueText(raw.sourceId, "sourceId", 2_048);
+    const targetKind = raw.targetKind == null
+      ? null
+      : requiredText(raw.targetKind, "targetKind", { maximum: 16 });
+    const targetId = raw.targetId == null
+      ? null
+      : requiredCourseSourceText(raw.targetId, "targetId", 240);
+    const hasTargetContext = targetKind !== null || targetId !== null;
+    const validTargetContext = targetKind !== null && targetId !== null;
+    if ((mode === "source") !== (sourceId !== null) ||
+        mode === "catalog" && hasTargetContext ||
+        mode === "target" && (sourceId !== null || !validTargetContext) ||
+        mode === "source" && hasTargetContext && !validTargetContext ||
+        (targetKind !== null && !new Set(["plan_item", "study_unit"]).has(targetKind)) ||
+        (targetKind === "plan_item" && !UUID_PATTERN.test(targetId))) {
+      fail("invalid_tool_argument", "A consulta de Fontes é inválida.");
+    }
+    const cursor = raw.cursor == null
+      ? null
+      : requiredText(raw.cursor, "cursor", { maximum: 240 });
+    if (cursor != null && !/^[A-Za-z0-9+/_-]+={0,2}$/u.test(cursor)) {
+      fail("invalid_tool_argument", "cursor é inválido.", { field: "cursor" });
+    }
+    if (mode === "source" && hasTargetContext && cursor !== null) {
+      fail("invalid_tool_argument", "A revisão contextual não aceita cursor.", {
+        field: "cursor"
+      });
+    }
+    const limit = raw.limit == null ? 10 : positiveInteger(raw.limit, "limit", 24);
+    return route("GET", `/v1/courses/${courseId}/sources${searchParams({
+      expectedRevision,
+      mode,
+      sourceId,
+      targetKind,
+      targetId,
+      cursor,
+      limit
     })}`);
   }
   if (view === "entities") {
@@ -1049,7 +1384,7 @@ function mapChange(raw) {
   exactFields(raw, new Set([
     "requestId", "courseId", "expectedRevision", "expectedPlanVersion",
     "operation", "planCommand", "designCommand", "materializationCommand",
-    "upserts", "deletes"
+    "sourceCommand", "upserts", "deletes", "sourceAttributionApplications"
   ]));
   const requestId = requiredRequestId(raw.requestId);
   const courseId = requiredUuid(raw.courseId, "courseId");
@@ -1057,6 +1392,7 @@ function mapChange(raw) {
   if (!new Set([
     "update_instructional_plan",
     "update_course_design",
+    "update_course_sources",
     "commit_course_composition",
     "advance_part_materialization"
   ]).has(operation)) {
@@ -1064,11 +1400,12 @@ function mapChange(raw) {
   }
   const expectedRevision = positiveInteger(raw.expectedRevision, "expectedRevision");
   if (operation === "update_instructional_plan") {
-    if (raw.designCommand != null || raw.materializationCommand != null ||
-        raw.upserts != null || raw.deletes != null) {
+    if (raw.designCommand != null || raw.sourceCommand != null ||
+        raw.materializationCommand != null || raw.upserts != null ||
+        raw.deletes != null || raw.sourceAttributionApplications != null) {
       fail("invalid_tool_argument", "O comando do plano recebeu campos incompatíveis.");
     }
-    const command = boundedJsonObject(raw.planCommand, "planCommand", 32 * 1024);
+    const command = boundedJsonObject(raw.planCommand, "planCommand", 192 * 1024);
     return route("POST", `/v1/courses/${courseId}/instructional-plan/changes`, requestId, {
       requestId,
       expectedCourseRevision: expectedRevision,
@@ -1078,7 +1415,9 @@ function mapChange(raw) {
   }
   if (operation === "update_course_design") {
     if (raw.expectedPlanVersion != null || raw.planCommand != null ||
-        raw.materializationCommand != null || raw.upserts != null || raw.deletes != null) {
+        raw.sourceCommand != null || raw.materializationCommand != null ||
+        raw.upserts != null || raw.deletes != null ||
+        raw.sourceAttributionApplications != null) {
       fail("invalid_tool_argument", "O comando dos parâmetros recebeu campos incompatíveis.");
     }
     const command = boundedJsonObject(raw.designCommand, "designCommand", 32 * 1024);
@@ -1088,13 +1427,37 @@ function mapChange(raw) {
       command
     });
   }
+  if (operation === "update_course_sources") {
+    if (raw.expectedPlanVersion != null || raw.planCommand != null ||
+        raw.designCommand != null || raw.materializationCommand != null ||
+        raw.upserts != null || raw.deletes != null ||
+        raw.sourceAttributionApplications != null) {
+      fail("invalid_tool_argument", "O comando de Fontes recebeu campos incompatíveis.");
+    }
+    const command = boundedJsonObject(raw.sourceCommand, "sourceCommand", 192 * 1024);
+    return route("POST", `/v1/courses/${courseId}/sources/changes`, requestId, {
+      requestId,
+      expectedCourseRevision: expectedRevision,
+      command
+    });
+  }
   if (operation === "commit_course_composition") {
     if (raw.expectedPlanVersion != null || raw.planCommand != null ||
-        raw.designCommand != null || raw.materializationCommand != null) {
+        raw.designCommand != null || raw.sourceCommand != null ||
+        raw.materializationCommand != null) {
       fail("invalid_tool_argument", "A composição recebeu campos incompatíveis.");
     }
     const upserts = Array.isArray(raw.upserts) ? raw.upserts : [];
     const deletes = Array.isArray(raw.deletes) ? raw.deletes : [];
+    const sourceAttributionApplications = Array.isArray(raw.sourceAttributionApplications)
+      ? raw.sourceAttributionApplications
+      : null;
+    if (sourceAttributionApplications == null) {
+      fail(
+        "invalid_tool_argument",
+        "A composição precisa declarar sourceAttributionApplications."
+      );
+    }
     if (!upserts.length && !deletes.length) {
       fail("invalid_tool_argument", "Informe entidades para inserir, alterar ou excluir.");
     }
@@ -1105,11 +1468,13 @@ function mapChange(raw) {
       requestId,
       expectedRevision,
       upserts,
-      deletes
+      deletes,
+      sourceAttributionApplications
     });
   }
   if (raw.expectedPlanVersion != null || raw.planCommand != null ||
-      raw.designCommand != null || raw.upserts != null || raw.deletes != null) {
+      raw.designCommand != null || raw.sourceCommand != null || raw.upserts != null ||
+      raw.deletes != null || raw.sourceAttributionApplications != null) {
     fail("invalid_tool_argument", "A materialização recebeu campos incompatíveis.");
   }
   const command = boundedJsonObject(
@@ -1136,12 +1501,14 @@ function mapChange(raw) {
   } else if (command.operation === "record_step") {
     exactFields(command, new Set([
       ...materializationBaseFields, "stepId", "expectedStepVersion", "status",
-      "resultFacts", "entityChanges", "designApplication"
+      "resultFacts", "entityChanges", "designApplication",
+      "sourceAttributionApplication"
     ]));
-    if (!Object.hasOwn(command, "designApplication")) {
+    if (!Object.hasOwn(command, "designApplication") ||
+        !Object.hasOwn(command, "sourceAttributionApplication")) {
       fail(
         "invalid_tool_argument",
-        "record_step precisa declarar designApplication como objeto ou null."
+        "record_step precisa declarar as aplicações de desenho e proveniência como objeto ou null."
       );
     }
   } else {

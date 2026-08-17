@@ -13,6 +13,7 @@ const PLAN_ID = "30000000-0000-4000-8000-000000000003";
 const PART_ID = "40000000-0000-4000-8000-000000000004";
 const MATERIALIZATION_ID = "50000000-0000-4000-8000-000000000005";
 const STEP_ID = "60000000-0000-4000-8000-000000000006";
+const PLAN_ITEM_ID = "70000000-0000-4000-8000-000000000007";
 
 function json(value, status = 200) {
   return new Response(JSON.stringify(value), {
@@ -54,6 +55,29 @@ function defaultComponentPolicy(excludedRefs = []) {
   };
 }
 
+function studyUnitUpsert() {
+  return {
+    entityType: "study_unit",
+    entityId: "unit-a",
+    parentType: "microsequence",
+    parentId: "micro-a",
+    position: 1,
+    content: {
+      title: "Unidade A",
+      role: "theory",
+      content: [{
+        id: "paragraph-a",
+        package: "aralearn.resource.paragraph",
+        version: "1.0.0",
+        data: { text: "Conteúdo explicado." }
+      }],
+      response: null,
+      feedback: [],
+      topics: []
+    }
+  };
+}
+
 function contextParameters() {
   return COURSE_DESIGN_PARAMETER_DEFINITIONS.map((definition) => ({
     parameterId: definition.id,
@@ -64,7 +88,7 @@ function contextParameters() {
   }));
 }
 
-function designContext({ excludedRefs = [], targets = true } = {}) {
+function designContext({ excludedRefs = [], targets = true, contextSources = [] } = {}) {
   const inheritedPolicy = excludedRefs.length
     ? {
         changeId: "1",
@@ -81,7 +105,7 @@ function designContext({ excludedRefs = [], targets = true } = {}) {
         sourceScope: null
       };
   return {
-    contract: "aralearn.course-design-context.v1",
+    contract: "aralearn.course-design-context.v2",
     courseId: COURSE_ID,
     courseRevision: 5,
     authoringPartId: PART_ID,
@@ -105,14 +129,33 @@ function designContext({ excludedRefs = [], targets = true } = {}) {
       evidenceRequirementIds: [STEP_ID],
       parameters: contextParameters(),
       guidanceRevisionIds: [],
-      componentPolicy: inheritedPolicy
+      componentPolicy: inheritedPolicy,
+      sourceAttributions: {
+        instructionalAnalysisUnits: [{
+          planItemId: PLAN_ID,
+          planItemVersion: 1,
+          targetHash: "b".repeat(64),
+          attributionRevision: 1,
+          attributionHash: "c".repeat(64),
+          sources: structuredClone(contextSources)
+        }],
+        evidenceRequirements: [{
+          planItemId: STEP_ID,
+          planItemVersion: 1,
+          targetHash: "d".repeat(64),
+          attributionRevision: 1,
+          attributionHash: "e".repeat(64),
+          sources: []
+        }]
+      }
     }] : []
   };
 }
 
 function runningMaterialization({
   excludedRefs = [],
-  stepKind = "didactic_microsequence_materialization"
+  stepKind = "didactic_microsequence_materialization",
+  contextSources = []
 } = {}) {
   const didactic = stepKind === "didactic_microsequence_materialization";
   const step = {
@@ -138,7 +181,7 @@ function runningMaterialization({
       channel: "mcp",
       status: "running",
       version: 1,
-      designContext: designContext({ excludedRefs }),
+      designContext: designContext({ excludedRefs, contextSources }),
       contextHash: "a".repeat(64),
       resultFacts: {},
       startedAt: "2026-08-17T10:00:00Z",
@@ -158,7 +201,8 @@ function materializationChange({
   authoringPartVersion = 1,
   completedStepCount = 0,
   failedStepCount = 0,
-  status = "running"
+  status = "running",
+  contextSources = []
 } = {}) {
   const didactic = stepKind === "didactic_microsequence_materialization";
   const completed = operation === "record_step";
@@ -191,7 +235,7 @@ function materializationChange({
       nextPendingStep,
       updatedAt: "2026-08-17T10:01:00Z",
       completedAt: status === "running" ? null : "2026-08-17T10:01:00Z",
-      designContext: designContext({ targets: didactic }),
+      designContext: designContext({ targets: didactic, contextSources }),
       contextHash: "a".repeat(64)
     },
     step: completed ? {
@@ -391,8 +435,7 @@ test("lê inspeção curricular limitada e acrescenta link exato da Unidade", as
           }],
           response: null,
           feedback: [],
-          topics: [],
-          sources: []
+          topics: []
         },
         version: 2,
         updatedAt: "2026-08-17T10:00:00Z",
@@ -583,6 +626,219 @@ test("lê e altera parâmetros por RPC owner-only com catálogo validado", async
   );
 });
 
+test("Fontes usam RPC owner-only, DTO exato, bind de consulta e teto de 256 KiB", async () => {
+  const calls = [];
+  const legacySourceId = ` legacy-${"s".repeat(300)} `;
+  const readResult = {
+    contract: "aralearn.course-sources.v1",
+    courseId: COURSE_ID,
+    courseRevision: 5,
+    mode: "catalog",
+    query: { sourceId: null, targetId: null, targetKind: null },
+    items: [{
+      sourceId: "source-a",
+      revision: 1,
+      status: "active",
+      kind: "web_page",
+      title: "Fonte A",
+      citationText: "Fonte A, 2026.",
+      url: "https://example.test/fonte-a",
+      editionOrVersion: null,
+      studyVisibility: "citation_and_link",
+      anchorCount: 0,
+      createdAt: "2026-08-17T10:00:00Z"
+    }],
+    nextCursor: null
+  };
+  const changeResult = {
+    contract: "aralearn.course-source-change.v1",
+    courseId: COURSE_ID,
+    courseRevision: 6,
+    requestId: "request-source-0001",
+    idempotent: false,
+    changed: true,
+    change: { type: "retire_source", subjectId: legacySourceId, revision: 2 }
+  };
+  const value = adapter(async (url, init) => {
+    const payload = JSON.parse(init.body);
+    calls.push({ name: url.split("/").at(-1), payload });
+    if (url.endsWith("/get_owned_course_sources_for_actor_v1")) return json(readResult);
+    if (url.endsWith("/execute_course_source_command_for_actor_v1")) {
+      return json(changeResult);
+    }
+    assert.fail(`RPC inesperado: ${url}`);
+  });
+
+  const read = await value.getCourseSources({
+    principal: { actorId: USER_ID },
+    courseId: COURSE_ID,
+    expectedRevision: 5,
+    mode: "catalog"
+  });
+  assert.equal(read.items[0].sourceId, "source-a");
+  assert.deepEqual(calls[0].payload, {
+    p_actor_id: USER_ID,
+    p_course_id: COURSE_ID,
+    p_expected_revision: 5,
+    p_mode: "catalog",
+    p_source_id: null,
+    p_target_kind: null,
+    p_target_id: null,
+    p_cursor: null,
+    p_limit: 10
+  });
+
+  let contextualPayload = null;
+  const contextualResult = {
+    ...readResult,
+    mode: "source",
+    query: {
+      sourceId: legacySourceId,
+      targetKind: "study_unit",
+      targetId: "unit-a"
+    },
+    items: [],
+    nextCursor: null
+  };
+  const contextualValue = adapter(async (_url, init) => {
+    contextualPayload = JSON.parse(init.body);
+    return json(contextualResult);
+  });
+  assert.deepEqual(await contextualValue.getCourseSources({
+    principal: { actorId: USER_ID },
+    courseId: COURSE_ID,
+    expectedRevision: 5,
+    mode: "source",
+    sourceId: legacySourceId,
+    targetKind: "study_unit",
+    targetId: "unit-a"
+  }), contextualResult);
+  assert.deepEqual(contextualPayload, {
+    p_actor_id: USER_ID,
+    p_course_id: COURSE_ID,
+    p_expected_revision: 5,
+    p_mode: "source",
+    p_source_id: legacySourceId,
+    p_target_kind: "study_unit",
+    p_target_id: "unit-a",
+    p_cursor: null,
+    p_limit: 10
+  });
+
+  const changed = await value.executeCourseSourceCommand({
+    principal: { actorId: USER_ID, authenticationKind: "oauth" },
+    courseId: COURSE_ID,
+    requestId: "request-source-0001",
+    expectedCourseRevision: 5,
+    command: {
+      type: "retire_source",
+      sourceId: legacySourceId,
+      expectedSourceRevision: 1
+    }
+  });
+  assert.equal(changed.courseRevision, 6);
+  assert.equal(calls[1].payload.p_channel, "mcp");
+  assert.deepEqual(calls[1].payload.p_command, {
+    type: "retire_source",
+    sourceId: legacySourceId,
+    expectedSourceRevision: 1
+  });
+
+  let linkedPayload = null;
+  const linkedValue = adapter(async (_url, init) => {
+    linkedPayload = JSON.parse(init.body);
+    return json({
+      ...changeResult,
+      requestId: "request-source-links-1",
+      change: { type: "set_target_sources", subjectId: "unit-a", revision: 3 }
+    });
+  });
+  const legacyLinks = [{
+    sourceId: legacySourceId,
+    sourceRevision: 2,
+    relation: "supported_by",
+    anchors: [{ anchorId: "anchor-a", anchorRevision: 1 }]
+  }];
+  await linkedValue.executeCourseSourceCommand({
+    principal: { actorId: USER_ID, authenticationKind: "application" },
+    courseId: COURSE_ID,
+    requestId: "request-source-links-1",
+    expectedCourseRevision: 5,
+    command: {
+      type: "set_target_sources",
+      targetKind: "study_unit",
+      targetId: "unit-a",
+      expectedTargetVersion: 2,
+      sourceLinks: legacyLinks
+    }
+  });
+  assert.deepEqual(linkedPayload.p_command.sourceLinks, legacyLinks);
+
+  for (const spoofed of [
+    { ...readResult, courseId: USER_ID },
+    { ...readResult, query: { sourceId: "source-a", targetKind: null, targetId: null } },
+    { ...readResult, items: [{ ...readResult.items[0], actorId: USER_ID }] },
+    { ...readResult, nextCursor: "source:cursor" }
+  ]) {
+    const invalid = adapter(async () => json(spoofed));
+    await assert.rejects(
+      () => invalid.getCourseSources({
+        principal: { actorId: USER_ID },
+        courseId: COURSE_ID,
+        expectedRevision: 5,
+        mode: "catalog"
+      }),
+      (error) => error.status === 503 && error.code === "course_service_unavailable"
+    );
+  }
+
+  const oversized = adapter(async () => json({ payload: "x".repeat(270_000) }));
+  await assert.rejects(
+    () => oversized.getCourseSources({
+      principal: { actorId: USER_ID },
+      courseId: COURSE_ID,
+      expectedRevision: 5,
+      mode: "catalog"
+    }),
+    (error) => error.status === 413 && error.code === "course_sources_response_too_large"
+  );
+
+  await assert.rejects(
+    () => value.executeCourseSourceCommand({
+      principal: { actorId: USER_ID },
+      courseId: COURSE_ID,
+      requestId: "request-source-bad-1",
+      expectedCourseRevision: 5,
+      command: {
+        type: "retire_source",
+        sourceId: "source-a",
+        expectedSourceRevision: 1,
+        actorId: USER_ID
+      }
+    }),
+    (error) => error.status === 422 && error.code === "invalid_course_source_command"
+  );
+
+  const spoofedChange = adapter(async () => json({
+    ...changeResult,
+    change: { ...changeResult.change, subjectId: "source-other" }
+  }));
+  await assert.rejects(
+    () => spoofedChange.executeCourseSourceCommand({
+      principal: { actorId: USER_ID, authenticationKind: "application" },
+      courseId: COURSE_ID,
+      requestId: "request-source-0001",
+      expectedCourseRevision: 5,
+      command: {
+        type: "retire_source",
+        sourceId: legacySourceId,
+        expectedSourceRevision: 1
+      }
+    }),
+    (error) => error.status === 503 && error.code === "course_service_unavailable"
+  );
+});
+
 test("normaliza targetPlanItems e encaminha a atribuição multi-alvo sem aliases", async () => {
   const readFixture = courseDesignRead();
   readFixture.scopeContext = {
@@ -737,7 +993,17 @@ test("comando do plano é aplicado sobre a leitura cercada e enviado com o canal
           audience: "",
           scope: "",
           preferredPartCount: { minimum: 7, maximum: 12, origin: "automatic" },
-          intendedLearningOutcomes: [],
+          intendedLearningOutcomes: [{
+            id: PLAN_ITEM_ID,
+            position: 0,
+            statement: "Explicar a evidência.",
+            sourceLinks: [{
+              sourceId: "source-a",
+              sourceRevision: 2,
+              relation: "supported_by",
+              anchors: [{ anchorId: "anchor-a", anchorRevision: 1 }]
+            }]
+          }],
           instructionalAnalysisUnits: [],
           evidenceRequirements: [],
           parts: []
@@ -768,6 +1034,12 @@ test("comando do plano é aplicado sobre a leitura cercada e enviado com o canal
   ]);
   assert.equal(calls[1].payload.p_channel, "application");
   assert.equal(calls[1].payload.p_plan.audience, "Docentes");
+  assert.deepEqual(calls[1].payload.p_plan.intendedLearningOutcomes[0].sourceLinks, [{
+    sourceId: "source-a",
+    sourceRevision: 2,
+    relation: "supported_by",
+    anchors: [{ anchorId: "anchor-a", anchorRevision: 1 }]
+  }]);
   assert.deepEqual(calls[1].payload.p_command, {
     type: "update_plan",
     audience: "Docentes"
@@ -952,7 +1224,7 @@ test("avanço de materialização encaminha somente a operação delimitada", as
   });
 
   assert.equal(result.operation, "start");
-  assert.equal(result.materialization.designContext.contract, "aralearn.course-design-context.v1");
+  assert.equal(result.materialization.designContext.contract, "aralearn.course-design-context.v2");
   assert.equal(result.materialization.contextHash, "a".repeat(64));
   assert.equal(request.p_channel, "mcp");
   assert.equal(request.p_authoring_part_id, PART_ID);
@@ -981,10 +1253,21 @@ test("avanço de materialização encaminha somente a operação delimitada", as
 test("record_step confere hash e policy selados antes da escrita", async () => {
   const calls = [];
   let excludedRefs = [];
+  const contextSources = [{
+    sourceId: "source-a",
+    sourceRevision: 1,
+    relation: "quoted_from",
+    sourceHash: "f".repeat(64),
+    anchors: [{
+      anchorId: "anchor-a",
+      anchorRevision: 1,
+      anchorHash: "9".repeat(64)
+    }]
+  }];
   const value = adapter(async (url) => {
     calls.push(url.split("/").at(-1));
     if (url.endsWith("/get_owned_course_authoring_part_materialization_for_actor_v1")) {
-      return json(runningMaterialization({ excludedRefs }));
+      return json(runningMaterialization({ excludedRefs, contextSources }));
     }
     if (url.endsWith("/advance_course_authoring_part_materialization_for_actor_v1")) {
       return json(materializationChange({
@@ -992,7 +1275,8 @@ test("record_step confere hash e policy selados antes da escrita", async () => {
         stepKind: "didactic_microsequence_materialization",
         version: 2,
         authoringPartVersion: 2,
-        completedStepCount: 1
+        completedStepCount: 1,
+        contextSources
       }));
     }
     assert.fail(`RPC inesperado: ${url}`);
@@ -1003,7 +1287,7 @@ test("record_step confere hash e policy selados antes da escrita", async () => {
     expectedStepVersion: 1,
     status: "completed",
     resultFacts: {},
-    entityChanges: { upserts: [], deletes: [] },
+    entityChanges: { upserts: [studyUnitUpsert()], deletes: [] },
     designApplication: {
       contextHash: "a".repeat(64),
       didacticMicrosequenceId: "micro-a",
@@ -1014,6 +1298,20 @@ test("record_step confere hash e policy selados antes da escrita", async () => {
         explanationApplications: [],
         practiceApplications: [],
         componentRefs: [paragraphRef]
+      }]
+    },
+    sourceAttributionApplication: {
+      contract: "aralearn.course-source-attribution-application.v1",
+      contextHash: "a".repeat(64),
+      didacticMicrosequenceId: "micro-a",
+      studyUnits: [{
+        studyUnitId: "unit-a",
+        sourceLinks: [{
+          sourceId: "source-a",
+          sourceRevision: 1,
+          relation: "quoted_from",
+          anchors: [{ anchorId: "anchor-a", anchorRevision: 1 }]
+        }]
       }]
     }
   };
@@ -1050,6 +1348,18 @@ test("record_step confere hash e policy selados antes da escrita", async () => {
   assert.deepEqual(calls, ["get_owned_course_authoring_part_materialization_for_actor_v1"]);
 
   calls.length = 0;
+  const spoofedSourceApplication = structuredClone(payload.sourceAttributionApplication);
+  spoofedSourceApplication.studyUnits[0].sourceLinks[0].anchors[0].anchorRevision = 2;
+  await assert.rejects(
+    () => value.advanceCourseAuthoringPartMaterialization({
+      ...command,
+      payload: { ...payload, sourceAttributionApplication: spoofedSourceApplication }
+    }),
+    (error) => error.code === "source_not_allowed_by_context"
+  );
+  assert.deepEqual(calls, ["get_owned_course_authoring_part_materialization_for_actor_v1"]);
+
+  calls.length = 0;
   excludedRefs = [paragraphRef];
   await assert.rejects(
     () => value.advanceCourseAuthoringPartMaterialization(command),
@@ -1058,7 +1368,7 @@ test("record_step confere hash e policy selados antes da escrita", async () => {
   assert.deepEqual(calls, ["get_owned_course_authoring_part_materialization_for_actor_v1"]);
 });
 
-test("record_step exige designApplication somente na conclusão didática", async () => {
+test("record_step exige ambas as aplicações somente na conclusão didática", async () => {
   let stepKind = "context_load";
   let writes = 0;
   const value = adapter(async (url) => {
@@ -1092,7 +1402,8 @@ test("record_step exige designApplication somente na conclusão didática", asyn
       status: "completed",
       resultFacts: {},
       entityChanges: { upserts: [], deletes: [] },
-      designApplication: null
+      designApplication: null,
+      sourceAttributionApplication: null
     }
   };
 
@@ -1102,7 +1413,7 @@ test("record_step exige designApplication somente na conclusão didática", asyn
   stepKind = "didactic_microsequence_materialization";
   await assert.rejects(
     () => value.advanceCourseAuthoringPartMaterialization(command),
-    (error) => error.code === "design_application_requirement_mismatch"
+    (error) => error.code === "materialization_application_requirement_mismatch"
   );
   assert.equal(writes, 1);
 
@@ -1134,10 +1445,12 @@ test("encaminha somente o segmento alterado sem reler a composição integral", 
     requestId: "request-change-segment-0001",
     expectedRevision: 2,
     upserts,
-    deletes: []
+    deletes: [],
+    sourceAttributionApplications: []
   });
   assert.equal(calls.length, 1);
   assert.deepEqual(calls[0].body.p_upserts, upserts);
+  assert.deepEqual(calls[0].body.p_source_attribution_applications, []);
 });
 
 test("perfil e acesso usam somente os RPCs canônicos para o ator autenticado", async () => {

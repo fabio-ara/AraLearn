@@ -7,7 +7,7 @@ const encoder = new TextEncoder();
 
 export const COURSE_DESIGN_CONTRACT = "aralearn.course-design.v1";
 export const COURSE_DESIGN_CHANGE_CONTRACT = "aralearn.course-design-change.v1";
-export const COURSE_DESIGN_CONTEXT_CONTRACT = "aralearn.course-design-context.v1";
+export const COURSE_DESIGN_CONTEXT_CONTRACT = "aralearn.course-design-context.v2";
 export const COURSE_DESIGN_PARAMETER_CATALOG_VERSION = "1.0.0";
 export const COURSE_COMPONENT_CATALOG_VERSION = "1-3e5629f8";
 

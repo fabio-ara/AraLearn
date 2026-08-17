@@ -99,8 +99,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-fixture-minimal-complete",
@@ -148,8 +147,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 }

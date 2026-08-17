@@ -24,15 +24,16 @@ a autoridade do servidor para acesso ou concorrência.
 ## Modelo mental
 
 **Descrição textual:** o Curso possui raiz, plano instrucional, desenho por
-escopo e entidades no PostgreSQL; o dispositivo conserva descritores e Cursos
-já abertos; cada pessoa mantém um estado pessoal local e remoto; fotos ficam no
-Storage privado.
+escopo, Fontes, atribuições e entidades no PostgreSQL; o dispositivo conserva
+descritores e Cursos já abertos; cada pessoa mantém um estado pessoal local e
+remoto; fotos ficam no Storage privado.
 
 ```mermaid
 flowchart TD
     PG[(PostgreSQL)] --> C[Raiz do Curso]
     PG --> PL[Plano, itens e Partes]
     PG --> D[Parâmetros, orientações e políticas]
+    PG --> F[Fontes, Âncoras e atribuições]
     PG --> MT[Tentativas e etapas de materialização]
     PG --> E[Entidades didáticas]
     PG --> A[Acesso direto]
@@ -129,6 +130,31 @@ mais próximo, depois `automatic` no escopo mais próximo e, por fim, o default.
 O catálogo de componentes no DTO é a revisão executável corrente, não uma lista
 livre do cliente.
 
+### Fontes, Âncoras e atribuições
+
+Cinco relações privadas separam catálogo, localização e vínculo:
+
+- `private.course_source_revisions`: revisões append-only de cada Fonte;
+- `private.course_source_anchor_revisions`: revisões append-only de Âncoras
+  ligadas a uma revisão exata da Fonte;
+- `private.course_source_attributions`: snapshots append-only do conjunto de um
+  item do plano ou de uma Unidade;
+- `private.course_source_attribution_sources`: Fontes ordenadas e sua relação;
+- `private.course_source_attribution_anchors`: Âncoras exatas de cada vínculo.
+
+Uma atribuição nova não vazia exige ao menos uma Âncora ativa da revisão exata
+por Fonte. A escrita aceita no máximo 32 Fontes por alvo e oito identidades de
+Âncora por revisão de Fonte e substitui o conjunto completo sob revisão do Curso e versão/hash do
+alvo. Catálogo e históricos são owner-only, paginados em até 24 itens e
+limitados a 256 KiB por resposta.
+
+A migration `1900` remove `sources` do JSON das Unidades e preserva as
+referências anteriores como uma baseline ordenada `legacy_reference`. Cada
+identidade literal vira uma revisão `unresolved_legacy`, com metadados nulos e
+visibilidade oculta; essa baseline pode não possuir Âncora. Resolver acrescenta
+uma revisão ativa sob a mesma identidade, sem trim, substituição silenciosa ou
+metadado inventado.
+
 ### Materialização retomável
 
 `private.course_authoring_part_materializations` conserva uma tentativa por
@@ -136,19 +162,23 @@ Parte, a versão da Parte usada como base, ator, canal, estado, versão, context
 de desenho, fatos do resultado e instantes. O contexto é calculado pelo
 servidor a partir dos alvos, nunca aceito como declaração do cliente. Os
 catálogos selam `{id, position, statement, version}` dos itens atribuídos e
-cada alvo carrega somente suas duas listas de IDs. Somente uma tentativa
-`running` pode existir por Parte.
+cada alvo carrega somente suas duas listas de IDs. O contexto
+`aralearn.course-design-context.v2` sela também as revisões de Fontes e Âncoras
+ligadas a esses itens. Somente uma tentativa `running` pode existir por Parte.
 
 `private.course_authoring_part_materialization_steps` conserva até 64 passos
 ordenados por tentativa: carga de contexto, materialização de uma
 Microssequência ou validação. Etapas registram estado, versão e fatos pequenos.
-Quando uma etapa materializa uma Microssequência, as alterações de entidades e
-o vínculo de produção são confirmados na mesma transação. Os fatos de aplicação
-referenciam o hash do contexto selado e são auditados somente contra o
-subconjunto atribuído ao alvo. Formas, oportunidades e dimensões de variação
-são declarações validadas internamente, não fatos extraídos semanticamente das
-entidades. O banco reconcilia materialmente os IDs de Unidades, o pai/alvo e os
-`componentRefs` gravados, que também precisam obedecer à política selada.
+Quando uma etapa materializa uma Microssequência, as alterações de entidades, o
+vínculo de produção e as atribuições das Unidades são confirmados na mesma
+transação. Cada aplicação
+`aralearn.course-source-attribution-application.v1` só pode usar revisões e
+Âncoras já seladas. Os fatos de aplicação referenciam o hash do contexto e são
+auditados somente contra o subconjunto atribuído ao alvo. Formas,
+oportunidades e dimensões de variação são declarações validadas internamente,
+não fatos extraídos semanticamente das entidades. O banco reconcilia
+materialmente os IDs de Unidades, o pai/alvo e os `componentRefs` gravados, que
+também precisam obedecer à política selada.
 
 No corte para a `1800`, não há conversor de tentativas antigas. O preflight
 bloqueia tabelas de materialização e recusa qualquer tentativa ou etapa já
@@ -165,9 +195,10 @@ cabeçalho e itens independentes do plano podem continuar mudando.
 tentativa owner-only com até 64 etapas e resposta de no máximo 1,25 MiB. A
 projeção informa `nextPendingStep` somente quando a tentativa pode continuar.
 O plano leve não repete esses dados. Um índice por Curso, Parte e atualização
-sustenta a busca da tentativa mais recente. Quota e retenção histórica serão
-fechadas com a política de evidência da #124 antes da promoção hospedada; esta
-etapa não apaga fatos automaticamente.
+sustenta a busca da tentativa mais recente. Quota e retenção histórica seguem
+como gate operacional separado antes da promoção hospedada; a #124 trata de
+observações e Anotação ancorada, não redefine retroativamente esta retenção.
+Esta etapa não apaga fatos automaticamente.
 
 O status mostrado na interface é derivado dessas relações, dos vínculos e das
 Unidades vivas. Copiar um pedido para o chat não grava tentativa ou etapa e não
@@ -186,6 +217,12 @@ O discriminador final da Unidade é `study_unit`; o documento
 `aralearn.course.v1` a expõe em `microsequence.studyUnits`. Não há alias no
 contrato corrente. A posição de cada Unidade é local à Microssequência e
 permanece estável no achatamento e na recomposição.
+
+O conteúdo da Unidade não possui `sources`. Uma composição que inclua esse
+campo falha fechada. Para cada Unidade incluída ou substituída, a operação
+declara exatamente uma entrada de `sourceAttributionApplications`, ainda que o
+conjunto seja vazio; entidade, atribuição, revisão, evento e recibo são
+atômicos.
 
 Uma chave estrangeira composta impede que uma entidade aponte para pai de
 outro Curso. Restrições de posição impedem irmãos duplicados. Excluir um pai
@@ -219,8 +256,9 @@ Curso. Assim, remover uma Unidade não deixa um contador persistido incorreto.
 
 `private.course_events` registra somente eventos pequenos que já possuem
 consumidor de interface, auditoria ou pesquisa: criação, mudança de plano,
-avanço de materialização, alteração de composição, concessão e revogação de
-acesso. O resumo não replica o Curso nem contém e-mail.
+avanço de materialização, alteração de composição, mudança de Fonte, Âncora ou
+atribuição, concessão e revogação de acesso. O resumo não replica o Curso nem
+contém e-mail.
 
 Eventos de conteúdo usam `changeKind` para distinguir a natureza observada da
 mudança e contagens de entidades efetivamente criadas, alteradas ou removidas.
@@ -255,10 +293,10 @@ A própria pessoa envia e apaga. A leitura usa a mesma relação direta do perfi
 A referência só pode ser registrada depois que o objeto existe e pertence à
 conta. Ao excluir a conta, os objetos devem ser removidos antes da transação.
 
-Não há documento integral imutável de Curso no Storage canônico. Fontes e
-mídias de conteúdo poderão usar objetos quando seu tamanho e padrão de acesso
-justificarem, mas essa decisão pertence às fatias que implementarem esses
-dados.
+Não há documento integral imutável de Curso no Storage canônico. Fontes guardam
+somente metadados e URLs no PostgreSQL; o AraLearn não copia seus bytes para o
+Storage. Mídias de conteúdo só poderão usar objetos quando seu tamanho e padrão
+de acesso justificarem uma decisão própria.
 
 ## O que fica no IndexedDB
 
@@ -323,6 +361,21 @@ ao topo fixo e revisão. Mudança de revisão reancora pela identidade; alvo
 explicitamente removido é informado como ausente. Revogação ou outra perda de
 autoridade purga páginas e posição privadas.
 
+### Citações sob demanda no Estudo
+
+A abertura do Curso e a navegação entre Unidades não consultam Fontes. Somente
+ao abrir o painel de uma Unidade o Estudo chama
+`get_course_study_citations_v1` com Curso, Unidade e revisão esperada. A
+resposta é estrita, limitada a 256 KiB e mantida apenas no estado corrente da
+tela.
+
+A projeção omite Fontes `hidden` e `unresolved_legacy`. `citation` leva título,
+citação, edição/versão e seletores, mas URL nula;
+`citation_and_link` pode levar a URL. Trecho de verificação, ator, canal,
+histórico e comandos de edição nunca atravessam essa fronteira. Mudança de
+Unidade ou revisão limpa a leitura; 404, revogação ou outra perda de autoridade
+purga os dados locais do Curso.
+
 ## Concorrência do Curso
 
 Criação e alteração usam uma chave de pedido. Alteração também informa
@@ -341,15 +394,17 @@ objeto específico. Na transação, o servidor:
 9. registra o recibo, inclusive quando o pedido válido não mudou nada.
 
 Se uma revisão ou versão estiver desatualizada, a mutação falha. O cliente
-precisa reler e reconciliar; não há “última escrita vence” silenciosa. Plano e
-materialização incluem comando, versões esperadas e canal no hash; composição
-inclui o lote exato e a revisão esperada. Por isso, uma repetição idêntica pode
-recuperar o recibo antes do CAS, enquanto reutilizar a chave com outro conteúdo
-é conflito.
+precisa reler e reconciliar; não há “última escrita vence” silenciosa. Plano,
+Fontes e materialização incluem comando, versões esperadas e canal no hash;
+composição inclui o lote e as aplicações de atribuição exatos, além da revisão
+esperada. Por isso, uma repetição idêntica pode recuperar o recibo antes do CAS,
+enquanto reutilizar a chave com outro conteúdo é conflito.
 
-Planejamento, composição e materialização possuem commits separados. A etapa
-de materialização é a única que pode combinar seu fato operacional com um lote
-pequeno de entidades e o vínculo correspondente; isso ocorre numa única
+Planejamento, atribuição direta, composição e materialização possuem commits
+separados. `set_target_sources` substitui atomicamente o conjunto do alvo. A
+composição combina cada upsert de Unidade com sua aplicação completa; a etapa
+de materialização combina o fato operacional com lote de entidades, vínculo e
+atribuições permitidas pelo contexto. Cada combinação ocorre numa única
 transação, não por sincronização posterior.
 
 A composição continua segmentada: o serviço não recompõe o Curso integral a
@@ -410,7 +465,10 @@ infraestrutura universal antecipada.
 - tabelas privadas não são acessadas diretamente pelo navegador;
 - RPCs públicas têm `EXECUTE` concedido por função e papel exatos;
 - funções de serviço exigem service role e identidade explícita do ator;
-- RLS protege Curso, entidades, acesso, estado pessoal, perfil e Storage;
+- RLS protege Curso, entidades, Fontes, atribuições, acesso, estado pessoal,
+  perfil e Storage;
+- a RPC de Estudo projeta somente citações visíveis e não expõe catálogo,
+  histórico ou trechos privados;
 - Curso compartilhado não revela orientações privadas na busca;
 - coestudantes não obtêm perfis entre si;
 - eventos de acesso não registram e-mail;
@@ -423,31 +481,39 @@ infraestrutura universal antecipada.
 
 O desenho reduz custo por lista fina, composição sob demanda, uma tabela de
 entidades em vez de uma tabela por nível, plano relacional pequeno, fatos
-limitados por tentativa/etapa e Storage restrito a objetos pequenos nesta
-etapa. Ainda faltam medições longitudinais de:
+limitados por tentativa/etapa, Fontes paginadas e citações lazy, e Storage
+restrito a objetos pequenos nesta etapa. Ainda faltam medições longitudinais
+de:
 
 - egress por abertura e atualização;
 - tamanho de índices e tabelas após migração;
 - crescimento de estados pessoais e eventos;
 - invocações e duração de Edge Functions;
-- ocupação de avatares e futuras fontes.
+- ocupação de avatares;
+- crescimento append-only de revisões, Âncoras e atribuições de Fontes.
 
 Na Inspeção, paginação de até 24 itens, janela de até 36 Unidades, cache de até
 quatro páginas ou 8 MiB por Curso e hard cap de resposta de 1,75 MiB limitam
 DOM, memória, armazenamento e egress. Esses limites tornam o ensaio no Free
 Plan mensurável; não demonstram, por si só, sustentabilidade em uso prolongado.
 
+Para Fontes, páginas de até 24 itens, respostas de 256 KiB, no máximo 32
+vínculos novos por alvo e oito identidades de Âncora por revisão limitam cada operação. O
+catálogo mantém apenas metadados e URLs e o Estudo lê por Unidade somente ao
+abrir o painel. Isso limita o custo por pedido; não mede banco, egress ou
+invocações em uso real.
+
 Limite implementado não é evidência de sustentabilidade. A promoção deve
 registrar baseline e repetir a medição com dados reais.
 
 ## Evidência e pontos não demonstrados
 
-Testes locais cobrem composição, plano, comandos de Parte, materialização,
-paginação, cache, revisão, idempotência, conflito multi-dispositivo,
-autorização e migrations em PGlite. O ensaio focal em PostgreSQL real cobre
-concorrência e o contrato final da Unidade após reset. Jornada de navegador
-exercita o corte local; promoção hospedada e nova aceitação humana ainda são
-gates.
+Testes locais cobrem composição, plano, comandos de Parte, Fontes, Âncoras,
+atribuições, projeção redigida de Estudo, materialização, paginação, cache,
+revisão, idempotência, conflito multi-dispositivo, autorização e migrations em
+PGlite. O ensaio focal em PostgreSQL real cobre concorrência e o contrato final
+da Unidade após reset. Jornada de navegador exercita o corte local; promoção
+hospedada e nova aceitação humana ainda são gates.
 
 Ainda não estão demonstrados:
 
@@ -455,7 +521,21 @@ Ainda não estão demonstrados:
 - comportamento prolongado com vários dispositivos;
 - orçamento real do Free Plan;
 - migração e Edge Functions hospedadas;
+- reprodução do inventário vertical pós-`1900` com 2.010 objetos, dos quais 416
+  correntes e 1.594 isolados para remoção na #130;
 - APK assinado do novo corte.
+
+A atestação privada do corte inclui `sourceReferenceHash`, calculado sobre as
+tuplas ordenadas `{studyUnitId, sourceOrdinal, sourceId}`. O mesmo valor precisa
+coincidir entre origem, artefato preparado e verificação pós-`1900`, ao lado de
+`documentHash`, `rowHash`, `entityStateHash` e contagens. O inventário final
+liga 416 objetos a seis casos correntes — 272 de Autoria, 84 de proveniência,
+25 de Estudo, 31 de pessoas/acesso, um de componentes e três de transportes —
+e mantém 1.594 no legado da #130.
+
+Este marco não reúne observações pessoais e autorais nem cria Anotação
+ancorada; essa fronteira é da #124. Também não implementa achado, correção,
+revisão ou verificação independente, reservados à #125.
 
 O importador hospedado permanece bloqueado até que componentes antigos sem
 equivalência recebam uma decisão semântica. Ele é transitório e não se torna

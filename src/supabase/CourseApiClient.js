@@ -1,9 +1,18 @@
 import { createUuid, UUID_PATTERN } from "../domain/identifiers.js";
+import { normalizeCourseAuthoringPlanCommand } from "../domain/courseAuthoringPlan.js";
 import { normalizeCourseDesignCommand } from "../domain/courseDesignParameters.js";
+import {
+  normalizeCourseSourceAttributionApplication,
+  normalizeCourseSourceChange,
+  normalizeCourseSourceCommand,
+  normalizeCourseSourcesRead,
+  normalizeCourseStudyCitationsRead
+} from "../domain/courseSources.js";
 import { SupabaseHttpClient } from "./SupabaseHttpClient.js";
 
 const RFC3339 = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/u;
 const REQUEST_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$/u;
+const SOURCE_CURSOR_PATTERN = /^[A-Za-z0-9+/_-]+={0,2}$/u;
 const AVATAR_BUCKET = "person-avatars";
 const AVATAR_MAX_BYTES = 512 * 1024;
 const AVATAR_EXTENSIONS = Object.freeze({
@@ -73,10 +82,32 @@ const AUTHORING_INSPECTION_SCOPE_KINDS = new Set([
 const COURSE_DESIGN_SCOPE_KINDS = new Set([
   "course", "module", "lesson", "didactic_microsequence"
 ]);
+const COURSE_SOURCE_MODES = new Set(["catalog", "source", "target"]);
+const COURSE_SOURCE_TARGET_KINDS = new Set(["plan_item", "study_unit"]);
 
-function boundedIdentifier(value, label) {
+function boundedIdentifier(value, label, { maximum = 240 } = {}) {
   const normalized = String(value || "").trim();
-  if (!normalized || normalized !== value || normalized.length > 240 ||
+  if (!normalized || normalized !== value || normalized.length > maximum ||
+      hasControlCharacter(normalized)) {
+    throw new TypeError(`${label} inválida.`);
+  }
+  return normalized;
+}
+
+function boundedLegacySourceId(value, label) {
+  if (typeof value !== "string" || value.length < 1 || value.length > 4_096 ||
+      [...value].length > 2_048 || new TextEncoder().encode(value).byteLength > 8_192 ||
+      hasControlCharacter(value)) {
+    throw new TypeError(`${label} inválida.`);
+  }
+  return value;
+}
+
+function boundedCourseSourceIdentifier(value, label, { maximum = 240 } = {}) {
+  const normalized = typeof value === "string" ? value.trim() : "";
+  if (!normalized || normalized !== value || normalized.length > maximum * 2 ||
+      [...normalized].length > maximum ||
+      new TextEncoder().encode(normalized).byteLength > maximum * 4 ||
       hasControlCharacter(normalized)) {
     throw new TypeError(`${label} inválida.`);
   }
@@ -89,6 +120,14 @@ function requestIdentity(value) {
     throw new TypeError("Identidade da alteração inválida.");
   }
   return value;
+}
+
+function courseSourceCommandSubjectId(command) {
+  return command.type === "save_source" || command.type === "retire_source"
+    ? command.sourceId
+    : command.type === "save_anchor" || command.type === "retire_anchor"
+      ? command.anchorId
+      : command.targetId;
 }
 
 function authoringInspectionScope(value = { kind: "course", id: null }) {
@@ -129,6 +168,52 @@ function courseDesignScope(value, courseId) {
     throw new TypeError("Escopo dos parâmetros inválido.");
   }
   return { kind, ref };
+}
+
+function courseSourcesReadOptions(value = {}) {
+  const source = exactObject(value, new Set([
+    "expectedRevision", "mode", "sourceId", "targetKind", "targetId", "cursor", "limit"
+  ]), "Leitura de Fontes");
+  const expectedRevision = positiveInteger(
+    source.expectedRevision,
+    "Versão do Curso"
+  );
+  const mode = source.mode == null ? "catalog" : String(source.mode).trim();
+  const sourceId = source.sourceId == null
+    ? null
+    : boundedLegacySourceId(source.sourceId, "Identidade da Fonte");
+  const targetKind = source.targetKind == null ? null : String(source.targetKind).trim();
+  const targetId = source.targetId == null
+    ? null
+    : boundedCourseSourceIdentifier(source.targetId, "Identidade do alvo");
+  const cursor = source.cursor == null ? null : String(source.cursor).trim();
+  const limit = source.limit == null
+    ? 10
+    : positiveInteger(source.limit, "Limite de Fontes", { maximum: 24 });
+  const hasTargetContext = targetKind !== null || targetId !== null;
+  const validTargetContext = targetKind !== null && targetId !== null;
+  if (!COURSE_SOURCE_MODES.has(mode) || mode !== (source.mode ?? "catalog") ||
+      (mode === "source") !== (sourceId !== null) ||
+      mode === "catalog" && hasTargetContext ||
+      mode === "target" && (sourceId !== null || !validTargetContext) ||
+      mode === "source" && hasTargetContext && !validTargetContext ||
+      (targetKind !== null && !COURSE_SOURCE_TARGET_KINDS.has(targetKind)) ||
+      (targetKind === "plan_item" && !UUID_PATTERN.test(targetId)) ||
+      (mode === "source" && hasTargetContext && cursor !== null) ||
+      (source.cursor != null && (
+        cursor !== source.cursor || cursor.length > 240 || !SOURCE_CURSOR_PATTERN.test(cursor)
+      ))) {
+    throw new TypeError("Leitura de Fontes inválida.");
+  }
+  return {
+    expectedRevision,
+    mode,
+    sourceId,
+    targetKind,
+    targetId,
+    cursor,
+    limit
+  };
 }
 
 function timestamp(value, label) {
@@ -269,7 +354,7 @@ function normalizedMaterializationCommand(value) {
     : operation === "record_step"
       ? [
           "stepId", "expectedStepVersion", "status", "resultFacts",
-          "entityChanges", "designApplication"
+          "entityChanges", "designApplication", "sourceAttributionApplication"
         ]
       : operation === "finish"
         ? ["status", "resultFacts"]
@@ -278,6 +363,11 @@ function normalizedMaterializationCommand(value) {
   if (!operationFields.length || [...fields].some((field) => !Object.hasOwn(command, field)) ||
       Object.keys(command).some((field) => !fields.has(field))) {
     throw new TypeError("Comando de materialização inválido.");
+  }
+  if (operation === "record_step") {
+    command.sourceAttributionApplication = command.sourceAttributionApplication == null
+      ? null
+      : normalizeCourseSourceAttributionApplication(command.sourceAttributionApplication);
   }
   return command;
 }
@@ -292,6 +382,21 @@ function authenticationFailure(error) {
     "JWT_EXPIRED",
     "PGRST301"
   ]).has(code);
+}
+
+function courseRevisionChangedError(cause = null) {
+  const error = new Error("O Curso mudou durante a leitura das citações.");
+  error.name = "CourseRevisionChangedError";
+  error.status = 409;
+  error.code = "course_revision_changed";
+  if (cause) error.cause = cause;
+  return error;
+}
+
+function courseRevisionConflict(error) {
+  const status = Number(error?.status || error?.response?.status || 0);
+  const code = String(error?.code || error?.response?.code || "").toUpperCase();
+  return status === 409 || code === "40001" || code === "COURSE_REVISION_CHANGED";
 }
 
 function storageObjectPath(objectKey) {
@@ -384,6 +489,35 @@ export class CourseApiClient {
     );
   }
 
+  async getStudyUnitCitations(courseId, studyUnitId, { expectedRevision } = {}) {
+    const normalizedCourseId = uuid(courseId, "Curso");
+    const normalizedStudyUnitId = boundedCourseSourceIdentifier(
+      studyUnitId,
+      "Identidade da Unidade de estudo"
+    );
+    const normalizedRevision = positiveInteger(expectedRevision, "Versão do Curso");
+    let rawResult;
+    try {
+      rawResult = await this.rpc("get_course_study_citations_v1", {
+        p_course_id: normalizedCourseId,
+        p_expected_revision: normalizedRevision,
+        p_study_unit_id: normalizedStudyUnitId
+      });
+    } catch (error) {
+      if (courseRevisionConflict(error)) throw courseRevisionChangedError(error);
+      throw error;
+    }
+    const result = normalizeCourseStudyCitationsRead(rawResult);
+    if (result.courseRevision !== normalizedRevision) {
+      throw courseRevisionChangedError();
+    }
+    if (result.courseId !== normalizedCourseId ||
+        result.studyUnitId !== normalizedStudyUnitId) {
+      throw new TypeError("As citações não correspondem ao Curso solicitado.");
+    }
+    return result;
+  }
+
   loadPersonalState(courseId) {
     return this.rpc("load_course_personal_state_v1", {
       p_course_id: uuid(courseId, "Curso")
@@ -458,6 +592,30 @@ export class CourseApiClient {
       limit: positiveInteger(limit, "Limite de subescopos", { maximum: 64 }),
       cursor: cursor == null ? null : boundedIdentifier(cursor, "Cursor de subescopos")
     });
+  }
+
+  async loadCourseSources(courseId, options = {}) {
+    const normalizedCourseId = uuid(courseId, "Curso");
+    const normalized = courseSourcesReadOptions(options);
+    const result = normalizeCourseSourcesRead(await this.executeCourseAction("lerCurso", {
+      courseId: normalizedCourseId,
+      view: "course_sources",
+      ...normalized
+    }));
+    if (result.courseId !== normalizedCourseId ||
+        result.courseRevision !== normalized.expectedRevision ||
+        result.mode !== normalized.mode ||
+        result.query.sourceId !== normalized.sourceId ||
+        result.query.targetKind !== normalized.targetKind ||
+        result.query.targetId !== normalized.targetId ||
+        result.nextCursor !== null && !SOURCE_CURSOR_PATTERN.test(result.nextCursor) ||
+        normalized.mode === "source" && result.items.some(({ sourceId }) =>
+          sourceId !== normalized.sourceId) ||
+        normalized.mode === "target" && result.items.some(({ targetKind, targetId }) =>
+          targetKind !== normalized.targetKind || targetId !== normalized.targetId)) {
+      throw new TypeError("A leitura de Fontes não corresponde ao pedido.");
+    }
+    return result;
   }
 
   loadAuthoringOutline(courseId) {
@@ -536,7 +694,9 @@ export class CourseApiClient {
       expectedRevision: positiveInteger(expectedRevision, "Versão de estado"),
       expectedPlanVersion: positiveInteger(expectedPlanVersion, "Versão do plano"),
       operation: "update_instructional_plan",
-      planCommand: plainObject(planCommand, "Comando do plano")
+      planCommand: normalizeCourseAuthoringPlanCommand(
+        plainObject(planCommand, "Comando do plano")
+      )
     });
   }
 
@@ -563,6 +723,34 @@ export class CourseApiClient {
         32 * 1024
       )
     });
+  }
+
+  async mutateCourseSources(value = {}) {
+    const source = exactObject(
+      value,
+      new Set(["requestId", "courseId", "expectedRevision", "sourceCommand"]),
+      "Alteração de Fontes"
+    );
+    const requestId = requestIdentity(source.requestId ?? createUuid());
+    const courseId = uuid(source.courseId, "Curso");
+    const expectedRevision = positiveInteger(source.expectedRevision, "Versão de estado");
+    const sourceCommand = normalizeCourseSourceCommand(source.sourceCommand);
+    const result = normalizeCourseSourceChange(await this.executeCourseAction("alterarCurso", {
+      requestId,
+      courseId,
+      expectedRevision,
+      operation: "update_course_sources",
+      sourceCommand
+    }));
+    if (result.courseId !== courseId || result.requestId !== requestId ||
+        result.courseRevision !== expectedRevision + (result.changed ? 1 : 0) ||
+        result.change != null && (
+          result.change.type !== sourceCommand.type ||
+          result.change.subjectId !== courseSourceCommandSubjectId(sourceCommand)
+        )) {
+      throw new TypeError("A confirmação de Fontes não corresponde ao comando.");
+    }
+    return result;
   }
 
   advanceAuthoringPartMaterialization({

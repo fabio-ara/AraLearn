@@ -3,14 +3,25 @@ import { courseUuid, readCourseJsonBody } from "./courseProtocol.js";
 import { validateCourseEntityContent } from
   "../aralearn/runtime/domain/courseEntities.js";
 import {
+  CourseAuthoringPlanError,
+  normalizeCourseAuthoringPlanCommand
+} from "../aralearn/runtime/domain/courseAuthoringPlan.js";
+import {
   CourseDesignParametersError,
   normalizeCourseDesignApplication,
   normalizeCourseDesignCommand
 } from "../aralearn/runtime/domain/courseDesignParameters.js";
+import {
+  CourseSourcesError,
+  normalizeCourseSourceAttributionApplication,
+  normalizeCourseSourceCommand,
+  normalizeSourceAttributionApplications
+} from "../aralearn/runtime/domain/courseSources.js";
 import { RESOURCE_PACKAGE_REGISTRY } from
   "../aralearn/runtime/resources/catalog/resourceCatalog.js";
 
 const REQUEST_ID = /^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$/u;
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
 const RFC3339 = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z$/u;
 const ENTITY_TYPES = new Set(["module", "lesson", "topic", "microsequence", "study_unit"]);
 const ENTITY_PARENT = Object.freeze({
@@ -129,6 +140,24 @@ function normalizeCourseDesignDomain(normalize) {
     return normalize();
   } catch (error) {
     if (!(error instanceof CourseDesignParametersError)) throw error;
+    throw new AuthoringApiError(422, error.code, error.message, error.details);
+  }
+}
+
+function normalizeCourseSourcesDomain(normalize) {
+  try {
+    return normalize();
+  } catch (error) {
+    if (!(error instanceof CourseSourcesError)) throw error;
+    throw new AuthoringApiError(422, error.code, error.message, error.details);
+  }
+}
+
+function normalizeCoursePlanDomain(normalize) {
+  try {
+    return normalize();
+  } catch (error) {
+    if (!(error instanceof CourseAuthoringPlanError)) throw error;
     throw new AuthoringApiError(422, error.code, error.message, error.details);
   }
 }
@@ -282,6 +311,63 @@ function courseDesignScopeQuery(request, courseId) {
   };
 }
 
+function courseSourcesQuery(request) {
+  const url = new URL(request.url);
+  const fields = [...url.searchParams.keys()];
+  const allowed = new Set([
+    "expectedRevision", "mode", "sourceId", "targetKind", "targetId", "cursor", "limit"
+  ]);
+  const unknown = fields.find((field) => !allowed.has(field));
+  if (unknown || new Set(fields).size !== fields.length) {
+    fail("invalid_course_sources_query", "A leitura de Fontes recebeu campos incompatíveis.", {
+      field: unknown || "query"
+    });
+  }
+  const mode = String(url.searchParams.get("mode") || "catalog").trim();
+  const sourceId = url.searchParams.get("sourceId");
+  const targetKind = url.searchParams.get("targetKind");
+  const targetId = url.searchParams.get("targetId");
+  const cursor = url.searchParams.get("cursor");
+  const boundedId = (value, maximum = 240) => value != null && value === value.trim() &&
+    value.length >= 1 && value.length <= maximum * 2 &&
+    [...value].length <= maximum &&
+    new TextEncoder().encode(value).byteLength <= maximum * 4 &&
+    !hasControlCharacter(value);
+  const legacySourceId = (value) => value != null && value.length >= 1 &&
+    value.length <= 4_096 && [...value].length <= 2_048 &&
+    new TextEncoder().encode(value).byteLength <= 8_192 && !hasControlCharacter(value);
+  const hasTargetContext = targetKind !== null || targetId !== null;
+  const validTargetContext = targetKind !== null && targetId !== null;
+  if (!new Set(["catalog", "source", "target"]).has(mode) ||
+      (mode === "source") !== legacySourceId(sourceId) ||
+      mode === "catalog" && hasTargetContext ||
+      mode === "target" && (sourceId !== null || !validTargetContext) ||
+      mode === "source" && hasTargetContext && !validTargetContext ||
+      (targetKind !== null && !new Set(["plan_item", "study_unit"]).has(targetKind)) ||
+      (targetId !== null && !boundedId(targetId)) ||
+      (targetKind === "plan_item" && !UUID_PATTERN.test(targetId)) ||
+      (mode === "source" && hasTargetContext && cursor !== null) ||
+      cursor != null && (cursor.length > 240 ||
+        !/^[A-Za-z0-9+/_-]+={0,2}$/u.test(cursor))) {
+    fail("invalid_course_sources_query", "A consulta de Fontes é inválida.");
+  }
+  return {
+    expectedRevision: positiveInteger(
+      url.searchParams.get("expectedRevision"),
+      "expectedRevision"
+    ),
+    mode,
+    sourceId,
+    targetKind,
+    targetId,
+    cursor,
+    limit: positiveInteger(url.searchParams.get("limit"), "limit", {
+      defaultValue: 10,
+      maximum: 24
+    })
+  };
+}
+
 function validateEntityIdentity(value, index) {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     fail("invalid_course_entity", "A identidade da entidade é inválida.", { index });
@@ -361,7 +447,10 @@ function validateCreate(body, request) {
 }
 
 function validateCompositionChange(body, request) {
-  exactFields(body, new Set(["requestId", "expectedRevision", "upserts", "deletes"]));
+  exactFields(body, new Set([
+    "requestId", "expectedRevision", "upserts", "deletes",
+    "sourceAttributionApplications"
+  ]));
   const expectedRevision = positiveInteger(body.expectedRevision, "expectedRevision");
   if (!Array.isArray(body.upserts) || !Array.isArray(body.deletes)) {
     fail("invalid_course_command", "Upserts e exclusões precisam ser listas.");
@@ -377,11 +466,28 @@ function validateCompositionChange(body, request) {
   if (new TextEncoder().encode(JSON.stringify({ upserts, deletes })).byteLength > 480 * 1024) {
     fail("payload_too_large", "A alteração de entidades excede o limite.", null, 413);
   }
+  const sourceAttributionApplications = normalizeCourseSourcesDomain(() =>
+    normalizeSourceAttributionApplications(body.sourceAttributionApplications)
+  );
+  const studyUnitIds = upserts
+    .filter(({ entityType }) => entityType === "study_unit")
+    .map(({ entityId }) => entityId)
+    .sort((left, right) => left.localeCompare(right, "en"));
+  const attributedIds = sourceAttributionApplications
+    .map(({ studyUnitId }) => studyUnitId)
+    .sort((left, right) => left.localeCompare(right, "en"));
+  if (JSON.stringify(studyUnitIds) !== JSON.stringify(attributedIds)) {
+    fail(
+      "course_source_attribution_content_mismatch",
+      "Cada Unidade inserida ou alterada precisa de uma aplicação de proveniência exata."
+    );
+  }
   return {
     requestId: requestIdFrom(request, body),
     expectedRevision,
     upserts,
-    deletes
+    deletes,
+    sourceAttributionApplications
   };
 }
 
@@ -396,7 +502,25 @@ function validateInstructionalPlanChange(body, request) {
       "expectedCourseRevision"
     ),
     expectedPlanVersion: positiveInteger(body.expectedPlanVersion, "expectedPlanVersion"),
-    command: jsonObject(body.command, "command", 32 * 1024)
+    command: normalizeCoursePlanDomain(() => normalizeCourseAuthoringPlanCommand(
+      jsonObject(body.command, "command", 192 * 1024)
+    ))
+  };
+}
+
+function validateCourseSourceChange(body, request) {
+  exactFields(body, new Set([
+    "requestId", "expectedCourseRevision", "command"
+  ]));
+  return {
+    requestId: requestIdFrom(request, body),
+    expectedCourseRevision: positiveInteger(
+      body.expectedCourseRevision,
+      "expectedCourseRevision"
+    ),
+    command: normalizeCourseSourcesDomain(() => normalizeCourseSourceCommand(
+      jsonObject(body.command, "command", 192 * 1024)
+    ))
   };
 }
 
@@ -529,6 +653,48 @@ function validateDesignApplication(value, entityChanges, { allowed }) {
   return application;
 }
 
+function validateSourceAttributionApplication(value, entityChanges, { allowed }) {
+  if (value === null) return null;
+  if (value === undefined) {
+    fail(
+      "invalid_course_command",
+      "A etapa precisa declarar sourceAttributionApplication como objeto ou null."
+    );
+  }
+  if (!allowed) {
+    fail(
+      "invalid_course_command",
+      "Uma etapa que falhou não pode declarar aplicação de proveniência."
+    );
+  }
+  const application = normalizeCourseSourcesDomain(() =>
+    normalizeCourseSourceAttributionApplication(
+      jsonObject(value, "payload.sourceAttributionApplication", 196 * 1024)
+    )
+  );
+  const changedStudyUnits = new Map(entityChanges.upserts
+    .filter(({ entityType }) => entityType === "study_unit")
+    .map((change) => [change.entityId, change]));
+  for (const studyUnit of application.studyUnits) {
+    const changed = changedStudyUnits.get(studyUnit.studyUnitId);
+    if (!changed || changed.parentType !== "microsequence" ||
+        changed.parentId !== application.didacticMicrosequenceId) {
+      fail(
+        "course_source_attribution_content_mismatch",
+        "Os fatos de proveniência não correspondem ao alvo e às Unidades gravadas.",
+        { studyUnitId: studyUnit.studyUnitId }
+      );
+    }
+  }
+  if (application.studyUnits.length !== changedStudyUnits.size) {
+    fail(
+      "course_source_attribution_content_mismatch",
+      "Os fatos de proveniência não correspondem às Unidades alteradas."
+    );
+  }
+  return application;
+}
+
 function validateMaterializationChange(body, request) {
   exactFields(body, new Set([
     "requestId", "expectedCourseRevision", "expectedMaterializationVersion",
@@ -578,7 +744,7 @@ function validateMaterializationChange(body, request) {
   if (operation === "record_step") {
     exactFields(payload, new Set([
       "stepId", "expectedStepVersion", "status", "resultFacts", "entityChanges",
-      "designApplication"
+      "designApplication", "sourceAttributionApplication"
     ]));
     const status = text(payload.status, "payload.status", { maximum: 20 });
     if (!new Set(["completed", "failed"]).has(status)) {
@@ -586,22 +752,31 @@ function validateMaterializationChange(body, request) {
     }
     const entityChanges = validateEntityChanges(payload.entityChanges);
     const resultFacts = jsonObject(payload.resultFacts, "payload.resultFacts", 16 * 1024);
-    if (Object.hasOwn(resultFacts, "designApplication")) {
+    const duplicatedFact = [
+      "designApplication", "sourceAttributionApplication", "entityChanges", "content"
+    ].find((field) => Object.hasOwn(resultFacts, field));
+    if (duplicatedFact) {
       fail(
         "invalid_course_command",
-        "resultFacts não pode declarar o campo reservado designApplication."
+        `resultFacts não pode duplicar o campo reservado ${duplicatedFact}.`
       );
     }
     const designApplication = validateDesignApplication(payload.designApplication, entityChanges, {
       allowed: status === "completed"
     });
+    const sourceAttributionApplication = validateSourceAttributionApplication(
+      payload.sourceAttributionApplication,
+      entityChanges,
+      { allowed: status === "completed" }
+    );
     if (new TextEncoder().encode(JSON.stringify({
       ...resultFacts,
-      designApplication
-    })).byteLength > 16 * 1024) {
+      designApplication,
+      sourceAttributionApplication
+    })).byteLength > 212 * 1024) {
       fail(
         "invalid_course_command",
-        "Os fatos selados da etapa excedem 16 KiB."
+        "Os fatos selados da etapa excedem o limite."
       );
     }
     return {
@@ -621,7 +796,8 @@ function validateMaterializationChange(body, request) {
         status,
         resultFacts,
         entityChanges,
-        designApplication
+        designApplication,
+        sourceAttributionApplication
       }
     };
   }
@@ -767,6 +943,18 @@ export async function executeCourseRoute({ request, route, adapter, principal, d
       })
     };
   }
+  if (route.name === "getCourseSources") {
+    assertPrincipal(principal);
+    return {
+      requestId: null,
+      data: await adapter.getCourseSources({
+        principal,
+        courseId: route.courseId,
+        ...courseSourcesQuery(request),
+        deadlineAt
+      })
+    };
+  }
   if (route.name === "getCourseAuthoringPartMaterialization") {
     assertPrincipal(principal);
     return {
@@ -881,6 +1069,22 @@ export async function executeCourseRoute({ request, route, adapter, principal, d
     return {
       requestId: value.requestId,
       data: await adapter.applyCourseDesignCommand({
+        principal,
+        courseId: route.courseId,
+        ...value,
+        deadlineAt
+      })
+    };
+  }
+  if (route.name === "executeCourseSourceCommand") {
+    assertPrincipal(principal, { write: true });
+    const value = validateCourseSourceChange(
+      await readCourseJsonBody(request),
+      request
+    );
+    return {
+      requestId: value.requestId,
+      data: await adapter.executeCourseSourceCommand({
         principal,
         courseId: route.courseId,
         ...value,

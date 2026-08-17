@@ -1,3 +1,5 @@
+import { normalizeCourseSourceLinks } from "./courseSources.js";
+
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
 const MAX_LINKED_MICROSEQUENCES = 192;
 
@@ -24,7 +26,7 @@ const PLAN_FIELDS = new Set([
   "parts"
 ]);
 
-const ITEM_FIELDS = new Set(["id", "position", "statement"]);
+const ITEM_FIELDS = new Set(["id", "position", "statement", "sourceLinks"]);
 const PART_FIELDS = new Set([
   "id",
   "position",
@@ -142,15 +144,16 @@ function normalizeItems(value, collection) {
       fail("invalid_course_authoring_plan_item", `O item ${index} de ${collection} possui identidade ou posição inválida.`);
     }
     identities.add(id);
-    return {
-      id,
-      position,
+      return {
+        id,
+        position,
       statement: requiredText(
         candidate.statement,
         2000,
         "invalid_course_authoring_plan_item_statement",
         "O enunciado do item de planejamento"
-      )
+        ),
+        sourceLinks: normalizeCourseSourceLinks(candidate.sourceLinks)
     };
   });
   contiguousPositions(items, "invalid_course_authoring_plan_item_positions", collection);
@@ -305,7 +308,8 @@ function insertAt(values, value, position) {
 }
 
 function sameItem(left, right) {
-  return left.id === right.id && left.statement === right.statement;
+  return left.id === right.id && left.statement === right.statement &&
+    JSON.stringify(left.sourceLinks) === JSON.stringify(right.sourceLinks);
 }
 
 function samePart(left, right) {
@@ -392,9 +396,9 @@ export function normalizeCourseAuthoringPlanCommand(commandValue) {
 
   if (["add_plan_item", "update_plan_item", "remove_plan_item", "reorder_plan_items"].includes(command.type)) {
     const fields = command.type === "add_plan_item"
-      ? ["kind", "id", "position", "statement"]
+      ? ["kind", "id", "position", "statement", "sourceLinks"]
       : command.type === "update_plan_item"
-        ? ["kind", "id", "statement"]
+        ? ["kind", "id", "statement", "sourceLinks"]
         : command.type === "remove_plan_item"
           ? ["kind", "id"]
           : ["kind", "orderedIds"];
@@ -422,6 +426,7 @@ export function normalizeCourseAuthoringPlanCommand(commandValue) {
         "invalid_course_authoring_plan_item_statement",
         "O enunciado do item de planejamento"
       );
+      result.sourceLinks = normalizeCourseSourceLinks(command.sourceLinks);
     }
     return result;
   }
@@ -540,9 +545,9 @@ export function applyCourseAuthoringPlanCommand(planValue, commandValue) {
 
   if (["add_plan_item", "update_plan_item", "remove_plan_item", "reorder_plan_items"].includes(command.type)) {
     const fields = command.type === "add_plan_item"
-      ? ["kind", "id", "position", "statement"]
+      ? ["kind", "id", "position", "statement", "sourceLinks"]
       : command.type === "update_plan_item"
-        ? ["kind", "id", "statement"]
+        ? ["kind", "id", "statement", "sourceLinks"]
         : command.type === "remove_plan_item"
           ? ["kind", "id"]
           : ["kind", "orderedIds"];
@@ -561,7 +566,8 @@ export function applyCourseAuthoringPlanCommand(planValue, commandValue) {
         const item = normalizeItems([{
           id,
           position: 0,
-          statement: command.statement
+          statement: command.statement,
+          sourceLinks: command.sourceLinks
         }], "O item de planejamento")[0];
         if (index >= 0) {
           if (!sameItem(collection[index], item)) {
@@ -576,6 +582,7 @@ export function applyCourseAuthoringPlanCommand(planValue, commandValue) {
           "invalid_course_authoring_plan_item_statement",
           "O enunciado do item de planejamento"
         );
+        collection[index].sourceLinks = normalizeCourseSourceLinks(command.sourceLinks);
       } else if (index >= 0) {
         collection.splice(index, 1);
         collection.forEach((item, position) => { item.position = position; });

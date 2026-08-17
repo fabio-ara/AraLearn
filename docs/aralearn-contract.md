@@ -19,7 +19,7 @@ o mesmo documento de maneiras incompatíveis.
 O [glossário técnico](glossario-tecnico.md) reúne definições mais amplas e
 remissões para os capítulos correspondentes.
 
-O sistema separa quatro responsabilidades:
+O sistema separa sete responsabilidades:
 
 | Contrato | Responsabilidade |
 |---|---|
@@ -27,6 +27,9 @@ O sistema separa quatro responsabilidades:
 | envelope de Unidade de estudo | composição de conteúdo, resposta e feedback |
 | contrato de cada pacote de recurso (`package`) | dados próprios de uma representação ou interação |
 | `aralearn.resource-library.v1` | descoberta, inspeção e validação do catálogo de pacotes |
+| `aralearn.course-sources.v1` | catálogo privado, revisões, Âncoras e atribuições de Fontes na Autoria |
+| `aralearn.course-source-change.v1` | recibo estrito de uma mutação de Fonte, Âncora ou atribuição |
+| `aralearn.course-study-citations.v1` | projeção redigida e sob demanda das citações visíveis no Estudo |
 
 Essa separação evita um esquema monolítico: acrescentar uma representação não
 exige alterar o núcleo, e consultar o catálogo não exige enviar todos os
@@ -114,8 +117,7 @@ Toda Unidade de estudo tem esta moldura:
   "content": [],
   "response": null,
   "feedback": [],
-  "topics": [],
-  "sources": []
+  "topics": []
 }
 ```
 
@@ -123,8 +125,12 @@ Toda Unidade de estudo tem esta moldura:
 
 - Unidade de teoria: ao menos uma instância em `content` e `response: null`;
 - Unidade de prática: exatamente uma instância em `response`; `content` pode ficar vazio quando a própria resposta contém todo o estímulo;
-- `feedback`, `topics` e `sources`: sempre listas;
+- `feedback` e `topics`: sempre listas;
 - ids de instância: únicos dentro da Unidade.
+
+`sources` não pertence ao envelope nem ao conteúdo de uma Unidade. O corte é
+estrito: produtores e consumidores rejeitam esse campo; não há alias, fallback
+ou leitura dupla do formato anterior.
 
 Uma instância de `content`, `response` ou `feedback` tem:
 
@@ -146,7 +152,40 @@ O kernel conhece `id`, `package`, `version` e o slot ocupado. O package conhece
 
 Uma resposta `choice` já contém o estímulo e as alternativas quando esse é seu contrato. Repetir a mesma pergunta num `paragraph` cria dois focos, aumenta o custo de leitura e permite divergência durante edição. O validador de composição rejeita padrões conhecidos de duplicação; conteúdo adicional só deve existir quando fornece contexto necessário que não pertence à resposta.
 
-## 4. Perfil unitário do mesmo contrato
+## 4. Fontes, Âncoras e atribuições fora do envelope
+
+Uma Fonte possui identidade estável e revisões append-only. Uma Âncora aponta
+para uma revisão exata por página, tempo, fragmento URI ou trecho textual. A
+atribuição registra, em ordem, quais revisões e Âncoras sustentam um item do
+plano ou uma Unidade de estudo e qual relação foi declarada:
+`informed_by`, `supported_by`, `adapted_from` ou `quoted_from`.
+
+Toda atribuição nova não vazia exige ao menos uma Âncora ativa da revisão exata
+para cada Fonte. O limite de escrita é 32 Fontes por alvo e oito identidades de
+Âncora por revisão de Fonte. Salvar substitui o conjunto completo sob revisão esperada do Curso e
+versão exata do alvo; o histórico permanece append-only.
+
+Referências anteriores ao contrato são preservadas, na mesma identidade e
+ordem, como `legacy_reference`. Enquanto não resolvidas, têm estado
+`unresolved_legacy`, metadados nulos, visibilidade `hidden` e podem não possuir
+Âncora. Resolver significa acrescentar uma revisão ativa sob a identidade
+literal existente, inclusive seus espaços; não significa criar uma Fonte
+paralela nem inventar metadados.
+
+O catálogo owner-only usa `aralearn.course-sources.v1` e pagina os modos
+`catalog`, `source` e `target` sob a revisão esperada. O Estudo não recebe esse
+catálogo. Ao abrir Fontes numa Unidade, ele solicita
+`aralearn.course-study-citations.v1`: Fontes ocultas ou ainda não resolvidas são
+omitidas, `citation` não entrega URL e `citation_and_link` pode entregá-la. A
+projeção não contém trecho privado de verificação, ator, canal nem histórico.
+
+Uma escrita geral de composição declara exatamente uma aplicação de
+atribuição para cada Unidade incluída ou substituída, mesmo vazia, na mesma
+transação das entidades. Uma etapa de materialização só pode aplicar Fontes e
+Âncoras seladas a partir dos itens do plano e confirma conteúdo, atribuições,
+evento e recibo atomicamente.
+
+## 5. Perfil unitário do mesmo contrato
 
 O kernel também oferece uma fronteira unitária para validar um único Curso:
 
@@ -164,7 +203,7 @@ A implementação está em `src/resources/kernel/courseContract.js`.
 
 Ter uma fronteira unitária explícita é preferível a inferir que qualquer objeto semelhante a curso está completo. A consequência é que o chamador precisa escolher deliberadamente o envelope adequado.
 
-## 5. Contratos próprios dos packages
+## 6. Contratos próprios dos packages
 
 Cada package fornece:
 
@@ -186,7 +225,7 @@ O contrato autoral descreve objetos do domínio, não coordenadas de desenho. Um
 
 A alternativa seria pedir ao autor ou ao modelo que produzisse SVG, HTML ou posições. Isso aumentaria ambiguidades, permitiria sobreposição e acoplaria conteúdo a uma largura de tela. O custo da decisão adotada é construir um package competente para cada convenção que não possa ser representada adequadamente por outro.
 
-## 6. Protocolo `aralearn.resource-library.v1`
+## 7. Protocolo `aralearn.resource-library.v1`
 
 Esse protocolo descreve o catálogo de packages, não o conteúdo didático. Ele oferece descoberta progressiva:
 
@@ -221,7 +260,7 @@ as referências `package@version` realmente gravadas com a política selada.
 Ausência de representação adequada permanece registrada e nunca vira
 equivalência presumida.
 
-## 7. Fluxo de autoria
+## 8. Fluxo de autoria
 
 O planejamento didático precede o contrato:
 
@@ -242,7 +281,7 @@ Essa sequência economiza contexto: o modelo recebe descrições e apenas os sch
 
 Packages complementares podem coexistir na mesma Unidade quando cada um cumpre uma função necessária, como fórmula e gráfico. A prática possui uma única resposta formal, embora possa usar múltiplos conteúdos e feedbacks. O validador rejeita slots ou compatibilidades inválidos.
 
-## 8. Curso vivo e completude
+## 9. Curso vivo e completude
 
 O documento não carrega estados burocráticos como “rascunho”, “pronto” ou
 “publicado”. Uma Microssequência com Unidades válidas já é estudável; uma
@@ -253,7 +292,7 @@ O runtime corrente não oferece publicação pública. Estudo, Autoria e MCP ope
 o mesmo Curso vivo, cuja composição relacional é validada sem mudar de
 identidade por um rótulo editorial.
 
-## 9. Limites e verificação
+## 10. Limites e verificação
 
 Validação estrutural não demonstra qualidade pedagógica, correção científica ou legibilidade em qualquer viewport. Auditoria semântica também depende de critérios implementados e não substitui revisão humana especializada. Por isso o fluxo combina:
 

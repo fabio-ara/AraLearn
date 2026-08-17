@@ -13,14 +13,17 @@ Com uma conta autorizada, o cliente pode:
 - editar o plano instrucional e suas Partes;
 - configurar parâmetros pedagógicos, orientações por escopo e política de
   componentes;
+- criar, revisar e aposentar Fontes e Âncoras e atribuí-las a itens do plano ou
+  Unidades;
 - incluir, alterar ou excluir entidades didáticas em lotes delimitados;
 - iniciar, retomar e concluir a materialização de uma Parte;
 - consultar e validar contratos de componentes;
 - gerir perfil e acesso direto ao Estudo.
 
-Observações autorais, variantes experimentais e analytics educacionais
-completos pertencem a marcos posteriores. A conversa pode discuti-los, mas não
-deve afirmar que os persistiu sem uma operação correspondente.
+Observações autorais reunidas e Anotação ancorada pertencem à #124; achados,
+correções e verificação pertencem à #125. Variantes experimentais e analytics
+educacionais completos também são posteriores. A conversa pode discuti-los,
+mas não deve afirmar que os persistiu sem uma operação correspondente.
 
 ## Antes da primeira conversa
 
@@ -117,6 +120,24 @@ No escopo de Microssequência, leia `targetPlanItems` e use
 `targetPlanItems` é `null`. IDs repetidos, de outro tipo ou de outro Curso são
 recusados.
 
+## Registrar Fontes e Âncoras antes de produzir
+
+Use `lerCurso` com `view: "course_sources"` para percorrer o catálogo, abrir uma
+Fonte ou ler o histórico de um alvo. Crie ou revise a Fonte sem inventar
+metadados; depois crie Âncoras de página, tempo, fragmento URI ou trecho textual
+na revisão exata.
+
+Toda atribuição nova declara se a Fonte informa, sustenta, foi adaptada ou foi
+citada e exige ao menos uma Âncora ativa. `set_target_sources` substitui o
+conjunto completo e ordenado do item do plano ou da Unidade; não o trate como
+acréscimo parcial. Referência legada não resolvida mantém identidade e ordem,
+fica oculta e deve ser resolvida sob a mesma identidade literal.
+
+Não coloque `sources` no JSON de uma Unidade. Para cada Unidade incluída ou
+substituída pelo commit da composição, envie exatamente uma aplicação separada
+de atribuição, ainda que vazia. Repetir depois de resposta perdida preserva o
+mesmo `requestId` e o mesmo comando.
+
 ## Descobrir componentes sob demanda
 
 O cliente não carrega todos os contratos do catálogo no contexto. O fluxo
@@ -136,7 +157,7 @@ pedagogicamente adequado.
 
 Antes de iniciar uma tentativa, o servidor resolve e sela o desenho efetivo
 para as Microssequências-alvo: parâmetros, orientações versionadas, política de
-componentes e itens do plano atribuídos. Os catálogos selados conservam
+componentes, itens do plano atribuídos e Fontes/Âncoras desses itens. Os catálogos selados conservam
 `id`, `position`, `statement` e `version`; cada alvo referencia somente seus
 IDs. O cliente não declara esse contexto como fato.
 
@@ -146,15 +167,16 @@ Para cada etapa de materialização, o cliente deve:
 2. gerar somente o recorte autorizado;
 3. validar relações pai–filho e contratos das Unidades;
 4. informar fatos limitados sobre a aplicação do desenho;
-5. enviar o lote delimitado com as versões esperadas;
-6. reler o estado e resumir apenas o que foi persistido.
+5. informar aplicações de Fontes somente com revisões e Âncoras seladas;
+6. enviar o lote delimitado com as versões esperadas;
+7. reler o estado e resumir apenas o que foi persistido.
 
 O auditor verifica, para a Microssequência da etapa, schema, pertencimento ao
 subconjunto atribuído, contagens e coerência interna das declarações de formas,
 oportunidades e variações. Essas declarações vêm do agente ou da pessoa autora;
 o banco não as descobre semanticamente na prosa. Na mesma transação, o banco
-reconcilia materialmente os IDs de Unidades do lote, o pai/alvo e os
-`componentRefs` presentes no conteúdo, além do CAS e da política. Uma resposta
+reconcilia materialmente os IDs de Unidades do lote, o pai/alvo, as atribuições
+de Fonte e os `componentRefs` presentes no conteúdo, além do CAS e da política. Uma resposta
 técnica bem-sucedida não demonstra qualidade pedagógica ou efeito de
 aprendizagem.
 
@@ -162,11 +184,14 @@ aprendizagem.
 
 Depois de uma alteração:
 
-1. confira **Planejamento** e **Parâmetros**;
+1. confira **Planejamento**, **Parâmetros** e **Fontes**;
 2. use **Estrutura** para a hierarquia compacta;
-3. percorra **Inspeção** na ordem curricular e no escopo desejado;
-4. abra o mesmo Curso em **Estudo** para verificar renderer e navegação reais;
-5. separe defeitos técnicos de decisões pedagógicas.
+3. percorra **Inspeção** na ordem curricular e confira a atribuição da Unidade;
+4. abra o mesmo Curso em **Estudo** para verificar renderer, navegação e a
+   projeção redigida de Fontes;
+5. confirme que Fonte oculta ou não resolvida não aparece e que **Citação** não
+   entrega link;
+6. separe defeitos técnicos de decisões pedagógicas.
 
 Respostas ficam inertes na Inspeção. A tela examina o conteúdo real, mas não é
 um segundo editor de Unidade.
@@ -190,8 +215,9 @@ Uma nova sessão deve:
 1. ler o recurso de invariantes;
 2. localizar o Curso;
 3. ler o plano, o desenho no escopo e a tentativa pertinente;
-4. explicar em poucas linhas o estado recuperado;
-5. só então propor a próxima operação.
+4. ler o catálogo ou as atribuições de Fontes pertinentes;
+5. explicar em poucas linhas o estado recuperado;
+6. só então propor a próxima operação.
 
 O estado recuperável está no Curso. Prompt, conversa e raciocínio não viram uma
 cópia oculta do planejamento.
@@ -207,6 +233,8 @@ cópia oculta do planejamento.
   origem e contrato do valor.
 - **Componente bloqueado:** releia a política efetiva; preferência não autoriza
   um package excluído.
+- **Fonte ou Âncora inválida:** releia a revisão, o alvo e o conjunto completo;
+  não retire a Âncora nem normalize a identidade legada para contornar o erro.
 - **Entidade inválida:** confira pai, posição, identidade e contrato antes de
   reenviar.
 - **Resultado ausente na interface:** releia o Curso e confirme ambiente,

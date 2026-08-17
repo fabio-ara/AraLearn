@@ -118,6 +118,50 @@
       "justification": "A interface e o MCP operam a mesma identidade, versão e composição. Uma mutação por ferramenta só é completa quando a releitura a torna visível na Autoria."
     },
     {
+      "id": "course-source-provenance",
+      "intent": "Identificar Fontes versionadas, localizar Âncoras exatas, atribuí-las a itens e Unidades e mostrar no Estudo somente a citação autorizada.",
+      "classification": "ui",
+      "status": "current",
+      "terminologyReview": "#116",
+      "objects": {
+        "manifestFeatures": [
+          "course-sources-v1",
+          "course-source-provenance-v1"
+        ],
+        "databasePatterns": [
+          "^table:private\\.course_source_(?:revisions|anchor_revisions|attributions|attribution_sources|attribution_anchors)$",
+      "^function:private\\.(?:advance_course_authoring_part_materialization_design_core_v1|apply_course_source_attribution_v1|assert_course_source_target_citation_budget_v1|commit_course_composition_core_v1|commit_course_instructional_plan_core_v1|course_design_context_with_sources_v1|course_effective_source_attribution_v1|course_effective_source_links_v1|course_instructional_plan_command_document_core_v1|course_materialization_design_context_core_v1|course_plan_item_sources_projection_v1|course_plan_sources_projection_v1|course_plan_without_sources_v1|course_source_context_plan_items_v1|course_source_cursor_v1|course_source_json_hash_v1|course_source_links_v1|course_source_target_state_v1|course_study_citations_payload_v1|get_course_instructional_plan_for_actor_core_v1|get_owned_course_authoring_part_materialization_design_core_v1|reject_course_source_fact_change_v1|valid_course_design_application_v2|valid_course_source_links_shape_v1|valid_course_source_materialization_application_v1)\\(.*\\)$",
+          "^function:public\\.(?:execute_course_source_command_for_actor_v1|get_course_study_citations_v1|get_owned_course_sources_for_actor_v1)\\(.*\\)$"
+        ]
+      },
+      "ui": [
+        { "path": "src/ui/CourseSourcesPanel.js", "token": "data-source-action=\"add-source\"" },
+        { "path": "src/study/CourseStudyScreen.js", "token": "data-action=\"toggle-citations\"" }
+      ],
+      "visibleEffects": [
+        { "path": "src/ui/CourseSourcesPanel.js", "token": "renderCourseSourcesPanel" },
+        { "path": "src/study/CourseStudyScreen.js", "token": "study-citations-panel" }
+      ],
+      "persistence": [
+        { "path": "src/supabase/CourseController.js", "token": "loadCourseSources" },
+        { "path": "src/supabase/CourseController.js", "token": "mutateCourseSources" },
+        { "path": "src/study/CourseStudyRepository.js", "token": "getStudyUnitCitations" }
+      ],
+      "routes": [
+        { "path": "src/supabase/CourseApiClient.js", "token": "view: \"course_sources\"" },
+        { "path": "supabase/functions/_shared/aralearn-authoring/courseProtocol.js", "token": "name: \"getCourseSources\"" },
+        { "path": "supabase/functions/_shared/aralearn-authoring/courseRouter.js", "token": "courseSourcesQuery" }
+      ],
+      "tests": [
+        "tests/runtime/course-sources.test.js",
+        "tests/runtime/course-sources-panel.test.js",
+        "tests/runtime/course-authoring-plan-pglite.test.js",
+        "tests/e2e/course-authoring-cutover.spec.js",
+        "tests/e2e/course-study-cutover.spec.js"
+      ],
+      "justification": "Catálogo, Âncora, atribuição append-only e projeção redigida são uma única cadeia observável. A relação só é completa quando a mesma autoridade sustenta o planejamento, a composição atômica, a materialização e a citação lazy no Estudo."
+    },
+    {
       "id": "person-profile-and-course-access",
       "intent": "Manter um perfil humano mínimo e conceder ou revogar acesso direto ao Estudo de um Curso, sem papéis institucionais intermediários.",
       "classification": "ui",

@@ -1,5 +1,5 @@
 {
-  "schemaRevision": "20260817180000",
+  "schemaRevision": "20260817190000",
   "contractVersion": 1,
   "requiredFeatures": [
     "flat-runtime-manifest-v1",
@@ -20,6 +20,8 @@
     "course-study-unit-inspection-v1",
     "course-design-parameters-v1",
     "course-authoring-guidance-v1",
-    "course-component-policy-v1"
+    "course-component-policy-v1",
+    "course-sources-v1",
+    "course-source-provenance-v1"
   ]
 }

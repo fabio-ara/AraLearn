@@ -316,7 +316,7 @@ try {
                 data: { text: "Conteúdo validado pela jornada local." },
               }],
               response: null,
-              feedback: [], topics: [], sources: [],
+              feedback: [], topics: [],
             }, {
               id: "study-unit-smoke-2",
               position: 2,
@@ -329,7 +329,7 @@ try {
                 data: { text: "Segunda página validada sem recompor o Curso." },
               }],
               response: null,
-              feedback: [], topics: [], sources: [],
+              feedback: [], topics: [],
             }, {
               id: "study-unit-smoke-3",
               position: 3,
@@ -342,7 +342,7 @@ try {
                 data: { text: "Terceira página validada pela materialização." },
               }],
               response: null,
-              feedback: [], topics: [], sources: [],
+              feedback: [], topics: [],
             }],
           }],
         }],
@@ -360,6 +360,11 @@ try {
     operation: "commit_course_composition",
     upserts: compositionRows,
     deletes: [],
+    sourceAttributionApplications: [
+      "study-unit-smoke",
+      "study-unit-smoke-2",
+      "study-unit-smoke-3",
+    ].map((studyUnitId) => ({ studyUnitId, sourceLinks: [] })),
   }, ownerToken);
   assert.equal(composition.data.revision, 4);
   assert.equal(composition.data.upsertedCount, 6);
@@ -416,6 +421,7 @@ try {
           ? Number(id === unassignedAnalysisUnitId)
           : 0,
         statement,
+        sourceLinks: [],
       },
     }, ownerToken);
     planCourseRevision = planItemChange.data.courseRevision;
@@ -450,10 +456,188 @@ try {
   assert.equal(targetPlanItems.data.courseRevision, 9);
   assert.equal(targetPlanItems.data.change.type, "set_target_plan_items");
 
-  const policyChange = await courseAction("alterarCurso", {
+  const sourceId = "source-smoke-verified";
+  const anchorId = "anchor-smoke-verified";
+  const savedSource = await courseAction("alterarCurso", {
     requestId: crypto.randomUUID(),
     courseId,
     expectedRevision: targetPlanItems.data.courseRevision,
+    operation: "update_course_sources",
+    sourceCommand: {
+      type: "save_source",
+      sourceId,
+      expectedSourceRevision: 0,
+      source: {
+        kind: "web_page",
+        title: "Referência verificada do smoke",
+        citationText: "AraLearn. Referência verificada do smoke, 2026.",
+        url: "https://example.test/aralearn/source-smoke",
+        editionOrVersion: "2026-08-17",
+        studyVisibility: "citation_and_link",
+      },
+    },
+  }, ownerToken);
+  assert.equal(savedSource.data.courseRevision, 10);
+  assert.deepEqual(savedSource.data.change, {
+    type: "save_source",
+    subjectId: sourceId,
+    revision: 1,
+  });
+
+  const savedAnchor = await courseAction("alterarCurso", {
+    requestId: crypto.randomUUID(),
+    courseId,
+    expectedRevision: savedSource.data.courseRevision,
+    operation: "update_course_sources",
+    sourceCommand: {
+      type: "save_anchor",
+      anchorId,
+      sourceId,
+      sourceRevision: 1,
+      expectedAnchorRevision: 0,
+      selector: {
+        kind: "text_quote",
+        exact: "Conteúdo factual materializado",
+        prefix: "Trecho anterior",
+        suffix: "Trecho posterior",
+      },
+      verificationExcerpt: "Trecho privado usado somente para verificação autoral.",
+    },
+  }, ownerToken);
+  assert.equal(savedAnchor.data.courseRevision, 11);
+  assert.deepEqual(savedAnchor.data.change, {
+    type: "save_anchor",
+    subjectId: anchorId,
+    revision: 1,
+  });
+
+  const sourceLink = {
+    sourceId,
+    sourceRevision: 1,
+    relation: "supported_by",
+    anchors: [{ anchorId, anchorRevision: 1 }],
+  };
+  const sourceDetail = await courseAction("lerCurso", {
+    courseId,
+    view: "course_sources",
+    expectedRevision: savedAnchor.data.courseRevision,
+    mode: "source",
+    sourceId,
+    limit: 10,
+  }, ownerToken);
+  assert.equal(sourceDetail.data.contract, "aralearn.course-sources.v1");
+  assert.deepEqual(sourceDetail.data.query, {
+    sourceId,
+    targetKind: null,
+    targetId: null,
+  });
+  assert.equal(sourceDetail.data.items[0].status, "active");
+  assert.equal(sourceDetail.data.items[0].anchors[0].anchorId, anchorId);
+  assert.equal(
+    sourceDetail.data.items[0].anchors[0].verificationExcerpt,
+    "Trecho privado usado somente para verificação autoral.",
+  );
+
+  const rejectedSourceAttribution = await request(
+    "/functions/v1/aralearn-course-api/app/alterarCurso",
+    {
+      method: "POST",
+      token: ownerToken,
+      origin: APPLICATION_ORIGIN,
+      body: {
+        requestId: crypto.randomUUID(),
+        courseId,
+        expectedRevision: savedAnchor.data.courseRevision,
+        operation: "update_course_sources",
+        sourceCommand: {
+          type: "set_target_sources",
+          targetKind: "plan_item",
+          targetId: assignedAnalysisUnitId,
+          expectedTargetVersion: 1,
+          sourceLinks: [{
+            sourceId: "source-smoke-inexistente",
+            sourceRevision: 1,
+            relation: "supported_by",
+            anchors: [{
+              anchorId: "anchor-smoke-inexistente",
+              anchorRevision: 1,
+            }],
+          }],
+        },
+      },
+    },
+  );
+  assert.equal(
+    rejectedSourceAttribution.response.status,
+    422,
+    failureMessage("atribuição com Fonte e Âncora inexistentes", rejectedSourceAttribution),
+  );
+  const afterRejectedSourceAttribution = await courseAction("lerCurso", {
+    courseId,
+    view: "course_sources",
+    expectedRevision: savedAnchor.data.courseRevision,
+    mode: "catalog",
+    limit: 10,
+  }, ownerToken);
+  assert.equal(afterRejectedSourceAttribution.data.courseRevision, 11);
+  assert.deepEqual(
+    afterRejectedSourceAttribution.data.items.map(({ sourceId: itemSourceId }) => itemSourceId),
+    [sourceId],
+  );
+
+  const attributedPlanItem = await courseAction("alterarCurso", {
+    requestId: crypto.randomUUID(),
+    courseId,
+    expectedRevision: savedAnchor.data.courseRevision,
+    operation: "update_course_sources",
+    sourceCommand: {
+      type: "set_target_sources",
+      targetKind: "plan_item",
+      targetId: assignedAnalysisUnitId,
+      expectedTargetVersion: 1,
+      sourceLinks: [sourceLink],
+    },
+  }, ownerToken);
+  assert.equal(attributedPlanItem.data.courseRevision, 12);
+  assert.equal(attributedPlanItem.data.change.type, "set_target_sources");
+  const planItemSources = await courseAction("lerCurso", {
+    courseId,
+    view: "course_sources",
+    expectedRevision: attributedPlanItem.data.courseRevision,
+    mode: "target",
+    targetKind: "plan_item",
+    targetId: assignedAnalysisUnitId,
+    limit: 10,
+  }, ownerToken);
+  assert.equal(planItemSources.data.items[0].effective, true);
+  assert.deepEqual(planItemSources.data.items[0].sourceLinks, [sourceLink]);
+  const contextualSourceDetail = await courseAction("lerCurso", {
+    courseId,
+    view: "course_sources",
+    expectedRevision: attributedPlanItem.data.courseRevision,
+    mode: "source",
+    sourceId,
+    targetKind: "plan_item",
+    targetId: assignedAnalysisUnitId,
+    limit: 1,
+  }, ownerToken);
+  assert.deepEqual(contextualSourceDetail.data.query, {
+    sourceId,
+    targetKind: "plan_item",
+    targetId: assignedAnalysisUnitId,
+  });
+  assert.equal(contextualSourceDetail.data.nextCursor, null);
+  assert.equal(contextualSourceDetail.data.items.length, 1);
+  assert.equal(contextualSourceDetail.data.items[0].revision, sourceLink.sourceRevision);
+  assert.equal(
+    contextualSourceDetail.data.items[0].anchors[0].revision,
+    sourceLink.anchors[0].anchorRevision,
+  );
+
+  const policyChange = await courseAction("alterarCurso", {
+    requestId: crypto.randomUUID(),
+    courseId,
+    expectedRevision: attributedPlanItem.data.courseRevision,
     operation: "update_course_design",
     designCommand: {
       type: "set_component_policy",
@@ -469,7 +653,7 @@ try {
       reason: "A materialização do smoke usa somente prosa corrente.",
     },
   }, ownerToken);
-  assert.equal(policyChange.data.courseRevision, 10);
+  assert.equal(policyChange.data.courseRevision, 13);
 
   const materializationId = crypto.randomUUID();
   const stepId = crypto.randomUUID();
@@ -493,10 +677,11 @@ try {
       }],
     },
   }, ownerToken);
-  assert.equal(startedMaterialization.data.courseRevision, 11);
+  assert.equal(startedMaterialization.data.courseRevision, 14);
   assert.equal(startedMaterialization.data.materialization.version, 1);
   const { contextHash, designContext } = startedMaterialization.data.materialization;
   assert.match(contextHash, /^[a-f0-9]{64}$/u);
+  assert.equal(designContext.contract, "aralearn.course-design-context.v2");
   assert.deepEqual(
     designContext.instructionalAnalysisUnits.map(({ id }) => id),
     [assignedAnalysisUnitId],
@@ -518,6 +703,27 @@ try {
     analysis: [assignedAnalysisUnitId],
     evidence: [evidenceRequirementId],
   }]);
+  const sealedTarget = designContext.targets[0];
+  assert.equal(
+    sealedTarget.sourceAttributions.instructionalAnalysisUnits[0].planItemId,
+    assignedAnalysisUnitId,
+  );
+  assert.deepEqual(
+    sealedTarget.sourceAttributions.instructionalAnalysisUnits[0].sources.map((source) => ({
+      sourceId: source.sourceId,
+      sourceRevision: source.sourceRevision,
+      relation: source.relation,
+      anchors: source.anchors.map(({ anchorId: sealedAnchorId, anchorRevision }) => ({
+        anchorId: sealedAnchorId,
+        anchorRevision,
+      })),
+    })),
+    [sourceLink],
+  );
+  assert.doesNotMatch(
+    JSON.stringify(sealedTarget.sourceAttributions),
+    /citationText|verificationExcerpt|studyVisibility|actorId|channel|history|excerpt/iu,
+  );
 
   const resumable = await courseAction("lerCurso", {
     courseId,
@@ -587,6 +793,21 @@ try {
       componentRefs: [paragraphComponentRef],
     }],
   };
+  const sourceAttributionApplication = {
+    contract: "aralearn.course-source-attribution-application.v1",
+    contextHash,
+    didacticMicrosequenceId: "microsequence-smoke",
+    studyUnits: [{
+      studyUnitId: "study-unit-smoke",
+      sourceLinks: [sourceLink],
+    }, {
+      studyUnitId: "study-unit-smoke-2",
+      sourceLinks: [],
+    }, {
+      studyUnitId: "study-unit-smoke-3",
+      sourceLinks: [],
+    }],
+  };
   const unassignedApplication = structuredClone(designApplication);
   unassignedApplication.studyUnits[0].introducedInstructionalAnalysisUnitIds.push(
     unassignedAnalysisUnitId,
@@ -604,7 +825,7 @@ try {
       body: {
         requestId: crypto.randomUUID(),
         courseId,
-        expectedRevision: 11,
+        expectedRevision: 14,
         operation: "advance_part_materialization",
         materializationCommand: {
           operation: "record_step",
@@ -617,6 +838,7 @@ try {
           resultFacts: { audit: "unassigned_plan_item" },
           entityChanges: { upserts: materializedStudyUnits, deletes: [] },
           designApplication: unassignedApplication,
+          sourceAttributionApplication,
         },
       },
     },
@@ -632,7 +854,7 @@ try {
     authoringPartId,
     materializationId,
   }, ownerToken);
-  assert.equal(afterRejectedStep.data.courseRevision, 11);
+  assert.equal(afterRejectedStep.data.courseRevision, 14);
   assert.equal(afterRejectedStep.data.materialization.version, 1);
   assert.equal(afterRejectedStep.data.materialization.steps[0].status, "pending");
   assert.equal(afterRejectedStep.data.materialization.steps[0].version, 1);
@@ -640,7 +862,7 @@ try {
   const recordedStep = await courseAction("alterarCurso", {
     requestId: crypto.randomUUID(),
     courseId,
-    expectedRevision: 11,
+    expectedRevision: 14,
     operation: "advance_part_materialization",
     materializationCommand: {
       operation: "record_step",
@@ -653,9 +875,10 @@ try {
       resultFacts: { audit: "target_specific_design" },
       entityChanges: { upserts: materializedStudyUnits, deletes: [] },
       designApplication,
+      sourceAttributionApplication,
     },
   }, ownerToken);
-  assert.equal(recordedStep.data.courseRevision, 12);
+  assert.equal(recordedStep.data.courseRevision, 15);
   assert.equal(recordedStep.data.materialization.version, 2);
   assert.equal(recordedStep.data.step.status, "completed");
   assert.equal(recordedStep.data.entities.updatedCount, 3);
@@ -667,7 +890,7 @@ try {
   const finishedMaterialization = await courseAction("alterarCurso", {
     requestId: crypto.randomUUID(),
     courseId,
-    expectedRevision: 12,
+    expectedRevision: 15,
     operation: "advance_part_materialization",
     materializationCommand: {
       operation: "finish",
@@ -678,7 +901,7 @@ try {
       resultFacts: { validated: true },
     },
   }, ownerToken);
-  assert.equal(finishedMaterialization.data.courseRevision, 13);
+  assert.equal(finishedMaterialization.data.courseRevision, 16);
   assert.equal(finishedMaterialization.data.materialization.status, "completed");
 
   const initialDesign = await courseAction("lerCurso", {
@@ -688,7 +911,7 @@ try {
     limit: 32,
   }, ownerToken);
   assert.equal(initialDesign.data.contract, "aralearn.course-design.v1");
-  assert.equal(initialDesign.data.courseRevision, 13);
+  assert.equal(initialDesign.data.courseRevision, 16);
   assert.equal(initialDesign.data.targetPlanItems, null);
   assert.equal(initialDesign.data.definitions.length, 4);
   assert.equal(initialDesign.data.componentCatalog.options.length, 32);
@@ -698,7 +921,7 @@ try {
   const designArguments = {
     requestId: designRequestId,
     courseId,
-    expectedRevision: 13,
+    expectedRevision: 16,
     operation: "update_course_design",
     designCommand: {
       type: "set_parameter",
@@ -711,9 +934,9 @@ try {
   };
   const designChange = await courseAction("alterarCurso", designArguments, ownerToken);
   const replayedDesignChange = await courseAction("alterarCurso", designArguments, ownerToken);
-  assert.equal(designChange.data.courseRevision, 14);
+  assert.equal(designChange.data.courseRevision, 17);
   assert.equal(designChange.data.change.type, "set_parameter");
-  assert.equal(replayedDesignChange.data.courseRevision, 14);
+  assert.equal(replayedDesignChange.data.courseRevision, 17);
   assert.equal(replayedDesignChange.data.idempotent, true);
 
   const resolvedDesign = await courseAction("lerCurso", {
@@ -726,7 +949,7 @@ try {
     ({ parameterId }) => parameterId
       === "new_analysis_unit_ceiling_per_expository_study_unit",
   );
-  assert.equal(resolvedDesign.data.courseRevision, 14);
+  assert.equal(resolvedDesign.data.courseRevision, 17);
   assert.equal(resolvedCeiling.effectiveAssignment.value, 3);
   assert.equal(resolvedCeiling.effectiveAssignment.origin, "author");
 
@@ -752,7 +975,7 @@ try {
   const firstInspectionPage = await courseAction("lerCurso", {
     courseId,
     view: "study_units",
-    expectedRevision: 14,
+    expectedRevision: 17,
     scope: { kind: "course" },
     direction: "forward",
     limit: 1,
@@ -762,7 +985,7 @@ try {
     firstInspectionPage.data.contract,
     "aralearn.course-study-unit-inspection-page.v1",
   );
-  assert.equal(firstInspectionPage.data.courseRevision, 14);
+  assert.equal(firstInspectionPage.data.courseRevision, 17);
   assert.equal(firstInspectionPage.data.totalCount, 3);
   assert.equal(firstInspectionPage.data.items.length, 1);
   assert.equal(
@@ -782,7 +1005,7 @@ try {
   const secondInspectionPage = await courseAction("lerCurso", {
     courseId,
     view: "study_units",
-    expectedRevision: 14,
+    expectedRevision: 17,
     scope: { kind: "course" },
     cursor: firstInspectionPage.data.nextCursor,
     direction: "forward",
@@ -842,7 +1065,7 @@ try {
       body: {
         courseId,
         view: "study_units",
-        expectedRevision: 14,
+        expectedRevision: 17,
         limit: 1,
         maxBytes: 65_536,
       },
@@ -861,12 +1084,68 @@ try {
   assert.equal(Object.hasOwn(sharedCourse, "authoringState"), false);
   const sharedEntities = await rpc("list_course_entities_v1", {
     p_course_id: courseId,
-    p_expected_revision: 14,
+    p_expected_revision: 17,
     p_limit: 100,
     p_after_entity_type: null,
     p_after_entity_id: null,
   }, learnerToken);
   assert.equal(sharedEntities.items[0]?.entityId, "module-smoke");
+
+  const sharedCitations = await rpc("get_course_study_citations_v1", {
+    p_course_id: courseId,
+    p_expected_revision: 17,
+    p_study_unit_id: "study-unit-smoke",
+  }, learnerToken);
+  assert.deepEqual(Object.keys(sharedCitations).sort(), [
+    "citations", "contract", "courseId", "courseRevision", "studyUnitId",
+  ]);
+  assert.equal(sharedCitations.contract, "aralearn.course-study-citations.v1");
+  assert.equal(sharedCitations.courseId, courseId);
+  assert.equal(sharedCitations.courseRevision, 17);
+  assert.equal(sharedCitations.studyUnitId, "study-unit-smoke");
+  assert.equal(sharedCitations.citations.length, 1);
+  assert.deepEqual(Object.keys(sharedCitations.citations[0]).sort(), [
+    "anchors", "citationText", "editionOrVersion", "sourceId",
+    "sourceRevision", "title", "url",
+  ]);
+  assert.equal(sharedCitations.citations[0].sourceId, sourceId);
+  assert.equal(sharedCitations.citations[0].url, "https://example.test/aralearn/source-smoke");
+  assert.deepEqual(Object.keys(sharedCitations.citations[0].anchors[0]).sort(), [
+    "anchorId", "anchorRevision", "selector",
+  ]);
+  assert.equal(sharedCitations.citations[0].anchors[0].anchorId, anchorId);
+  assert.doesNotMatch(
+    JSON.stringify(sharedCitations),
+    /verificationExcerpt|studyVisibility|actorId|channel|history|excerpt/iu,
+  );
+
+  const removedStudyUnit = await courseAction("alterarCurso", {
+    requestId: crypto.randomUUID(),
+    courseId,
+    expectedRevision: 17,
+    operation: "commit_course_composition",
+    upserts: [],
+    deletes: [{ entityType: "study_unit", entityId: "study-unit-smoke" }],
+    sourceAttributionApplications: [],
+  }, ownerToken);
+  assert.equal(removedStudyUnit.data.revision, 18);
+  const staleRemovedStudyUnitCitations = await request(
+    "/rest/v1/rpc/get_course_study_citations_v1",
+    {
+      method: "POST",
+      token: learnerToken,
+      body: {
+        p_course_id: courseId,
+        p_expected_revision: 17,
+        p_study_unit_id: "study-unit-smoke",
+      },
+    },
+  );
+  assert(
+    [409, 500].includes(staleRemovedStudyUnitCitations.response.status),
+    failureMessage("conflito de citações stale", staleRemovedStudyUnitCitations),
+  );
+  assert.equal(staleRemovedStudyUnitCitations.payload?.code, "40001");
 
   const learnerApiList = await courseAction("listarCursos", {}, learnerToken);
   assert.equal(itemForCourse(learnerApiList.data, courseId), null);
@@ -934,6 +1213,24 @@ try {
     p_before_id: null,
   }, learnerToken);
   assert.equal(itemForCourse(afterRevoke, courseId), null);
+  const revokedCitations = await request(
+    "/rest/v1/rpc/get_course_study_citations_v1",
+    {
+      method: "POST",
+      token: learnerToken,
+      body: {
+        p_course_id: courseId,
+        p_expected_revision: removedStudyUnit.data.revision,
+        p_study_unit_id: "study-unit-smoke-2",
+      },
+    },
+  );
+  assert.equal(
+    revokedCitations.response.status,
+    404,
+    failureMessage("citações após revogação", revokedCitations),
+  );
+  assert.equal(revokedCitations.payload?.code, "PT404");
   assertDenied(
     await request("/rest/v1/rpc/load_course_personal_state_v1", {
       method: "POST",
@@ -944,7 +1241,7 @@ try {
   );
 
   console.log(
-    "Smoke local de Curso: Course API, PostgREST, RLS, acesso direto e estado pessoal aprovados.",
+    "Smoke local de Curso: Fontes, proveniência, citações redigidas, RLS e estado pessoal aprovados.",
   );
 } finally {
   await removeLocalUser(learner?.id);

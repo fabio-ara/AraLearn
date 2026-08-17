@@ -5,7 +5,8 @@
 O Supabase reúne quatro serviços usados pelo AraLearn:
 
 - **Auth**, que comprova a identidade da conta e mantém a sessão;
-- **PostgreSQL**, que conserva Cursos, composição, acesso e estado pessoal;
+- **PostgreSQL**, que conserva Cursos, composição, Fontes, acesso e estado
+  pessoal;
 - **Storage**, que guarda avatares privados;
 - **Edge Functions**, que oferecem a API autoral e o servidor MCP.
 
@@ -57,6 +58,7 @@ auth.users
    │      │      └── course_authoring_parts
    │      │             ├── vínculos com Microssequências didáticas
    │      │             └── materializações e etapas
+   │      ├── course_source_* (Fontes, Âncoras e atribuições)
    │      ├── course_entities (composição didática)
    │      ├── course_access (acesso direto ao Estudo)
    │      ├── course_events (eventos canônicos)
@@ -82,6 +84,11 @@ auth.users
 | `private.course_component_policy_changes` | política completa de componentes por escopo | catálogo exato, permissão, exclusão e preferência |
 | `private.course_authoring_part_materializations` | tentativas retomáveis e fatos limitados de materialização | somente uma tentativa em andamento por Parte |
 | `private.course_authoring_part_materialization_steps` | etapas ordenadas e versionadas de uma tentativa | na etapa didática, entidades e vínculo confirmam atomicamente |
+| `private.course_source_revisions` | revisões append-only do catálogo de Fontes | catálogo e histórico owner-only; legado não resolvido fica oculto |
+| `private.course_source_anchor_revisions` | Âncoras versionadas de página, tempo, fragmento ou trecho | cada Âncora pertence a uma revisão exata da Fonte |
+| `private.course_source_attributions` | snapshots append-only por item do plano ou Unidade | no máximo um snapshot é efetivo para a versão/hash corrente do alvo |
+| `private.course_source_attribution_sources` | Fontes ordenadas e relação declarada em cada snapshot | escrita nova exige Âncora ativa e exata |
+| `private.course_source_attribution_anchors` | Âncoras exatas de cada vínculo | sem catálogo ou trecho privado na projeção de Estudo |
 | `private.course_entities` | módulos, lições, tópicos, microssequências e unidades de estudo | leitura e escrita passam por RPCs validadas |
 | `public.course_access` | vínculo direto entre Curso e pessoa autorizada a estudar | não concede Autoria |
 | `public.course_personal_states` | continuidade, conclusões, marcações **Rever** e observações da própria pessoa | isolado por pessoa |
@@ -149,6 +156,13 @@ discriminador anterior; constraints e funções correntes aceitam somente
 `study_unit`. Identidades, posição local na Microssequência e metadados da linha
 são preservados, sem alias permanente.
 
+A migration `1900` conclui outro corte único: `StudyUnit.sources` deixa de
+existir no conteúdo. Uma composição com esse campo é rejeitada, sem alias,
+fallback ou leitura dupla. Para cada Unidade incluída ou substituída, o commit
+recebe exatamente uma aplicação separada em `sourceAttributionApplications`,
+mesmo vazia, e confirma entidade, atribuição, revisão, evento e recibo na mesma
+transação.
+
 Listas e composição são paginadas por cursores estáveis. Na Autoria, o
 navegador busca primeiro o cabeçalho fino e depois recompõe a hierarquia a
 partir das páginas de entidades. O cabeçalho não repete o `outline`, evitando
@@ -170,6 +184,7 @@ As RPCs autenticadas de Estudo aceitam Curso próprio ou compartilhado:
 | `list_courses_v1` | página de cabeçalhos acessíveis |
 | `get_course_v1` | cabeçalho fino, sem plano nem orientação privada de autoria |
 | `list_course_entities_v1` | página da composição sob uma revisão esperada |
+| `get_course_study_citations_v1` | citações visíveis e redigidas de uma Unidade, carregadas sob demanda |
 | `list_course_review_items_v1` | fila **Rever** paginada sem baixar todos os Cursos |
 | `load_course_personal_state_v1` | estado pessoal remoto |
 | `mutate_course_personal_state_v1` | alteração pessoal com CAS e idempotência |
@@ -207,6 +222,21 @@ não criam um wrapper autenticado paralelo para o navegador.
 No escopo de Microssequência, a leitura inclui `targetPlanItems`; nos demais,
 esse campo é `null`. O comando `set_target_plan_items` usa a mesma RPC de
 desenho e mantém CAS, receipt e revisão do Curso.
+
+O catálogo e a proveniência owner-only usam
+`get_owned_course_sources_for_actor_v1`, com os modos paginados `catalog`,
+`source` e `target`, e `execute_course_source_command_for_actor_v1`, que aceita
+os cinco comandos fechados de Fonte, Âncora e atribuição. Ambas revalidam ator,
+propriedade e revisão; a escrita preserva `requestId`, CAS e recibo. O browser e
+o MCP consomem o mesmo DTO estrito `aralearn.course-sources.v1` e o mesmo recibo
+`aralearn.course-source-change.v1`.
+
+A RPC de Estudo é outra projeção, não uma permissão sobre o catálogo. Ela omite
+Fontes `hidden` e `unresolved_legacy`; `citation` devolve URL nula e
+`citation_and_link` pode devolvê-la. Trecho de verificação, ator, canal,
+histórico e controles de edição nunca são enviados. A consulta ocorre somente
+quando a pessoa abre Fontes na Unidade, sob a revisão corrente, e falha fechada
+acima de 256 KiB.
 
 A leitura detalhada de uma tentativa passa pela RPC service-role owner-only
 `get_owned_course_authoring_part_materialization_for_actor_v1`. Ela recebe
@@ -248,7 +278,7 @@ segunda verificação incompatível antes desse código.
 ## Escrita de Curso
 
 Criar um Curso recebe título e objetivo, cria a raiz privada vazia e cria seu
-plano normalizado na mesma transação. A escrita posterior se divide em quatro
+plano normalizado na mesma transação. A escrita posterior se divide em cinco
 famílias explícitas:
 
 1. **plano instrucional:** recebe comando semântico, revisão esperada do Curso
@@ -256,23 +286,28 @@ famílias explícitas:
 2. **desenho por escopo:** altera parâmetro, orientação, interpretação ou
    política sob a revisão esperada e com origem explícita, ou substitui os
    itens do plano atribuídos a uma Microssequência;
-3. **composição:** recebe inserções/alterações e exclusões de entidades sob a
-   revisão esperada, sem reescrever o plano;
-4. **materialização de Parte:** inicia tentativa, registra uma etapa ou finaliza
+3. **Fontes e proveniência:** cria, revisa ou aposenta Fonte, salva ou aposenta
+   Âncora, ou substitui o conjunto completo e ordenado de um alvo;
+4. **composição:** recebe inserções/alterações e exclusões de entidades, com a
+   aplicação completa de Fontes de cada Unidade alterada, sob a revisão
+   esperada, sem reescrever o plano;
+5. **materialização de Parte:** inicia tentativa, registra uma etapa ou finaliza
    a tentativa sob revisão e versões esperadas.
 
 Todas autenticam a pessoa, confirmam propriedade, procuram repetição segura,
 aplicam CAS, validam limites, calculam diferenças, avançam a revisão somente
 quando há mudança e devolvem recibo mínimo. Começar uma tentativa fixa a versão
 da Parte e entre 1 e 64 etapas. Registrar uma etapa admite até 64 mudanças de
-entidade no total e confirma conteúdo, vínculo, fatos e progresso numa única
-transação. Contexto e fatos possuem limites pequenos no banco e na Edge
-Function.
+entidade no total e confirma conteúdo, vínculo, atribuições, fatos e progresso
+numa única transação. Contexto e fatos possuem limites pequenos no banco e na
+Edge Function.
 
 Ao iniciar uma materialização, o servidor deriva e sela o desenho efetivo para
 as Microssequências-alvo. O cliente não fornece esse contexto. Catálogos de
-itens conservam `{id, position, statement, version}`, e cada alvo referencia
-somente os IDs atribuídos. Ao registrar a etapa, fatos limitados são auditados
+itens conservam `{id, position, statement, version}`, cada alvo referencia
+somente os IDs atribuídos e `aralearn.course-design-context.v2` sela também as
+revisões de Fontes e Âncoras desses itens. Ao registrar a etapa, fatos limitados
+e aplicações `aralearn.course-source-attribution-application.v1` são auditados
 contra esse subconjunto e o hash selado.
 
 Formas explicativas, oportunidades e variações são declarações do agente ou da
@@ -285,10 +320,11 @@ Na composição segmentada, o domínio valida cada linha de acordo com
 `module|lesson|topic|microsequence|study_unit`; o banco cerca a hierarquia e
 verifica `dependsOn` somente nas Lições afetadas pelo lote. Uma escrita não
 recompõe o Curso inteiro, mas também não deixa conteúdo de outro tipo passar sem
-validação semântica.
+validação semântica. `sources` dentro da Unidade é inválido; cada upsert de
+Unidade possui exatamente uma aplicação separada, inclusive vazia.
 
-Plano e materialização incluem comando, versões esperadas e canal no hash;
-composição inclui o lote exato e a revisão esperada. O servidor consulta o
+Plano, Fontes e materialização incluem comando, versões esperadas e canal no
+hash; composição inclui o lote, as aplicações exatas e a revisão esperada. O servidor consulta o
 recibo antes de rejeitar CAS: assim, uma repetição idêntica recupera o mesmo
 resultado mesmo depois de a primeira chamada ter avançado a revisão. A mesma
 chave com outro conteúdo é conflito, não nova operação.
@@ -423,7 +459,7 @@ linha](https://www.postgresql.org/docs/current/ddl-rowsecurity.html).
 ## Manifesto do runtime
 
 `supabase/runtime-manifest.json` descreve o contrato que site, Edge Functions e
-banco precisam compartilhar. A revisão local deste corte é `20260817180000`,
+banco precisam compartilhar. A revisão local deste corte é `20260817190000`,
 contrato v1. Entre as capacidades observáveis estão:
 
 - identidade única e viva de Curso;
@@ -432,6 +468,8 @@ contrato v1. Entre as capacidades observáveis estão:
 - Partes de autoria e materialização retomável;
 - composição paginada;
 - Unidade de estudo canônica e Inspeção vertical owner-only;
+- Fontes e Âncoras versionadas, proveniência por alvo e citações redigidas no
+  Estudo;
 - acesso direto e restrito ao Estudo;
 - estado pessoal;
 - CAS e idempotência;
@@ -439,6 +477,10 @@ contrato v1. Entre as capacidades observáveis estão:
 - perfil humano;
 - avatar privado;
 - exclusão da própria conta.
+
+As flags novas são `course-sources-v1` e
+`course-source-provenance-v1`; site e funções não devem inferir essa capacidade
+somente pela presença de tabelas.
 
 `scripts/validateCourseRuntime.mjs` compara o JSON versionado, as migrations e
 os contratos fonte. Uma versão do site não deve ser publicada contra um banco
@@ -454,6 +496,10 @@ O desenho reduz trabalho e armazenamento sem criar infraestrutura paralela:
   de até 1,75 MiB;
 - o cache de Inspeção conserva no máximo quatro páginas ou 8 MiB por Curso,
   separado por revisão e pedido exato;
+- o catálogo de Fontes pagina até 24 itens e 256 KiB; escritas novas limitam 32
+  Fontes por alvo e oito identidades de Âncora por revisão de Fonte;
+- o Estudo busca citações somente ao abrir uma Unidade, e o PostgreSQL guarda
+  metadados e URLs, não os bytes das Fontes;
 - plano é lido sob demanda e traz atividade recente limitada;
 - tentativas conservam apenas contexto e fatos limitados, sem transcrição de
   chat;
@@ -463,6 +509,11 @@ O desenho reduz trabalho e armazenamento sem criar infraestrutura paralela:
 - avatar tem limite pequeno e upload direto;
 - API e MCP reutilizam as mesmas RPCs e o mesmo executor;
 - não existe backend separado para perfil, compartilhamento ou observabilidade.
+
+Esses limites tornam o consumo mensurável, mas não demonstram que o Free Plan
+sustenta uso prolongado. Revisões, Âncoras e atribuições são append-only; banco,
+egress, Storage, invocações e duração de funções ainda precisam de baseline e
+série real após a promoção.
 
 As cotas comerciais do Supabase podem mudar. Antes de uma implantação, confira
 as [cotas do plano](https://supabase.com/pricing), o [compute e o
@@ -534,8 +585,8 @@ em modo de verificação:
 
 O projeto hospedado que já contém os oito Cursos é uma exceção operacional: a
 staging e as migrations `20260817140000`, `20260817150000`,
-`20260817160000`, `20260817170000` e `20260817180000` precisam usar a mesma conexão e transação e
-não podem ser
+`20260817160000`, `20260817170000`, `20260817180000` e
+`20260817190000` precisam usar a mesma conexão e transação e não podem ser
 aplicadas isoladamente por `db push`. O importador transitório descrito abaixo
 executa esse corte. Uma instalação vazia continua usando o fluxo comum.
 
@@ -543,6 +594,11 @@ A `1800` falha antes de alterar o schema se encontrar qualquer materialização
 ou etapa anterior ao novo contexto. Seu preflight bloqueia essas tabelas e as
 relações legadas de desenho antes de contar linhas; estado antigo não vazio ou
 uma escrita concorrente aborta a transação, em vez de ser reinterpretado.
+
+A `1900` também falha antes do corte se houver materialização em andamento ou
+referência legada malformada. Ela remove `StudyUnit.sources`, cria revisões
+`unresolved_legacy` e baselines de atribuição na ordem original, e confere
+contagem, identidade, ordem e hash antes de confirmar.
 
 ```powershell
 pwsh -NoProfile -File .\scripts\deploySupabase.ps1 `
@@ -560,24 +616,32 @@ revisões diferentes; limpar IndexedDB não atualiza migrations remotas.
 ### Atestação privada do corte de identidade
 
 `scripts/courseCutover/` lê e valida a origem, produz a staging e executa
-staging + migrations `1400` → `1500` → `1600` → `1700` → `1800` na mesma
-conexão e na mesma transação, e registra as cinco versões no ledger. Sem
-`--apply`, o comando não escreve no banco. Não há `db push` separado da `1700`
-ou da `1800` nesse corte.
+staging + migrations `1400` → `1500` → `1600` → `1700` → `1800` → `1900` na
+mesma conexão e na mesma transação, e registra as seis versões no ledger. Sem
+`--apply`, o comando não escreve no banco. Não há `db push` separado da `1700`,
+da `1800` ou da `1900` nesse corte.
 
 Antes de qualquer aplicação, o runner grava fora do repositório público uma
 atestação privada sem conteúdo, token, senha ou chave. Ela contém somente hash
 do snapshot, hash das resoluções semânticas, hash do conjunto de migrations e,
-para cada
-Curso, identidade, hashes de manifesto/documento/linhas/estado técnico e
-contagens. O diretório padrão é
+para cada Curso, identidade, hashes de manifesto/documento/linhas/estado
+técnico, `sourceReferenceHash` e contagens. `sourceReferenceHash` é o hash
+canônico das tuplas ordenadas
+`{studyUnitId, sourceOrdinal, sourceId}` e preserva a identidade literal das
+referências. O diretório padrão é
 `../AraLearn_private/evidence/course-cutover/`; um caminho dentro do
 repositório público é recusado.
 
 Depois do commit, o runner relê os Cursos, recompõe cada documento e confere
-novamente `documentHash`, `rowHash`, `entityStateHash` e contagens. Só então
-grava a atestação `verified`. Os manifestos não viram tabela nem campo de
+novamente `documentHash`, `rowHash`, `entityStateHash`,
+`sourceReferenceHash` e contagens. Só então grava a atestação `verified`. Os manifestos não viram tabela nem campo de
 runtime: são evidência privada de uma operação única.
+
+O inventário vertical pós-`1900` possui 2.010 objetos: 416 ligados aos seis
+casos correntes e 1.594 isolados para remoção na #130. A distribuição corrente
+é 272 de Autoria, 84 de proveniência de Fontes, 25 de Estudo, 31 de
+pessoas/acesso, um de componentes e três de transportes. Contagens de schemas
+anteriores não são prova do corte final.
 
 Entidades que vieram da raiz relacional preservam `version`, `created_at` e
 `updated_at`. Para os dois Cursos existentes somente como publicação, a origem
@@ -606,10 +670,14 @@ As afirmações deste documento podem ser confrontadas em:
 - `supabase/migrations/20260817160000_course_authoring_plan.sql`;
 - `supabase/migrations/20260817170000_course_study_unit_inspection.sql`;
 - `supabase/migrations/20260817180000_course_design_parameters.sql`;
+- `supabase/migrations/20260817190000_course_sources_provenance.sql`;
 - `supabase/functions/_shared/aralearn-authoring/`;
 - `supabase/runtime-manifest.json`;
 - `tests/runtime/course-identity-cutover-pglite.test.js`;
 - `tests/runtime/course-authoring-plan.test.js`;
+- `tests/runtime/course-sources.test.js`;
+- `tests/runtime/course-sources-panel.test.js`;
+- `tests/runtime/course-cutover-source.test.js`;
 - `tests/runtime/course-api-client.test.js`;
 - `tests/runtime/course-mcp-tools.test.js`;
 - `tests/runtime/course-inspection-sequence.test.js`;
@@ -619,3 +687,6 @@ As afirmações deste documento podem ser confrontadas em:
 Um teste aprovado demonstra o cenário codificado. Ele não prova disponibilidade
 permanente do provedor, segurança absoluta ou restauração de um backup que
 nunca foi ensaiado.
+
+Fontes e proveniência por alvo não incluem o ciclo de Observações e Anotação
+ancorada da #124 nem os achados, correções, revisões e verificações da #125.

@@ -389,6 +389,53 @@ function documentFixture() {
   };
 }
 
+function documentWithStudyUnitFixture() {
+  return {
+    contract: "aralearn.course.v1",
+    courses: [{
+      id: COURSE_ID,
+      title: "Curso",
+      goal: "Aprender.",
+      modules: [{
+        id: "module-a",
+        title: "Módulo",
+        guide: { goal: "Guiar.", include: [], exclude: [], notation: [], avoid: [] },
+        lessons: [{
+          id: "lesson-a",
+          title: "Lição",
+          guide: { goal: "Ensinar.", include: [], exclude: [], notation: [], avoid: [] },
+          topics: [],
+          microsequences: [{
+            id: "microsequence-a",
+            title: "Microssequência",
+            goal: "Explicar.",
+            role: "explain",
+            dependsOn: [],
+            covers: [],
+            checks: [],
+            errors: [],
+            studyUnits: [{
+              id: "unit-a",
+              position: 1,
+              title: "Unidade",
+              role: "theory",
+              content: [{
+                id: "content-a",
+                package: "aralearn.resource.paragraph",
+                version: "1.0.0",
+                data: { text: "Conteúdo atual." }
+              }],
+              response: null,
+              feedback: [],
+              topics: []
+            }]
+          }]
+        }]
+      }]
+    }]
+  };
+}
+
 test("é o único componente que pagina, recompõe e sinaliza documento offline", async () => {
   const store = new MemoryStateStore();
   const fixture = documentFixture();
@@ -472,6 +519,63 @@ test("é o único componente que pagina, recompõe e sinaliza documento offline"
   assert.equal(cached.offline, true);
   assert.equal(cached.stale, true);
   assert.equal(cached.readOnly, true);
+});
+
+test("cache verificado legado com StudyUnit.sources é purgado antes da releitura remota", async () => {
+  const store = new MemoryStateStore();
+  const fixture = documentWithStudyUnitFixture();
+  const { rows } = flattenCourseDocument(fixture);
+  const entityKey = `course.v1.entities:${COURSE_ID}:3:500:start`;
+  let headerReads = 0;
+  let entityReads = 0;
+  let expectPurged = false;
+  const controller = new CourseController({
+    store,
+    api: {
+      async listCourses() { throw new Error("não usado"); },
+      async getCourse() {
+        headerReads += 1;
+        return {
+          contract: "aralearn.course.v1",
+          courseId: COURSE_ID,
+          title: "Curso",
+          goal: "Aprender.",
+          revision: 3
+        };
+      },
+      async getCourseEntities() {
+        entityReads += 1;
+        if (expectPurged) {
+          assert.equal(store.values.has(entityKey), false);
+          expectPurged = false;
+        }
+        return {
+          contract: "aralearn.course-entities.v1",
+          courseId: COURSE_ID,
+          revision: 3,
+          items: rows,
+          hasMore: false,
+          nextCursor: null
+        };
+      }
+    }
+  });
+
+  await controller.loadCourseDocument(COURSE_ID);
+  const cachedPage = store.values.get(entityKey);
+  cachedPage.data.items.find(({ entityType }) => entityType === "study_unit")
+    .content.sources = [];
+  expectPurged = true;
+
+  const repaired = await controller.loadCourseDocument(COURSE_ID, {
+    verifiedRevision: 3
+  });
+  assert.deepEqual(repaired.document, fixture);
+  assert.equal(repaired.cacheVerified, undefined);
+  assert.equal(headerReads, 2);
+  assert.equal(entityReads, 2);
+  assert.equal(expectPurged, false);
+  assert.equal(JSON.stringify(store.values.get(entityKey)).includes('"sources"'), false);
 });
 
 test("a projeção de lista exclui estado autoral antes de chegar ao cache", async () => {
@@ -695,6 +799,261 @@ test("desenho exige leitura corrente, mantém DTO exato e mutação limpa o Curs
     }),
     /Alteração do desenho inválida/u
   );
+});
+
+test("Controller compartilha citações redigidas e reserva catálogo completo ao proprietário", async () => {
+  const store = new MemoryStateStore();
+  const calls = [];
+  const legacySourceId = ` legacy-${"s".repeat(300)} `;
+  const sources = {
+    contract: "aralearn.course-sources.v1",
+    courseId: COURSE_ID,
+    courseRevision: 4,
+    mode: "catalog",
+    query: { sourceId: null, targetId: null, targetKind: null },
+    items: [],
+    nextCursor: null
+  };
+  const contextualSources = {
+    ...sources,
+    mode: "source",
+    query: {
+      sourceId: legacySourceId,
+      targetKind: "study_unit",
+      targetId: "unit-a"
+    }
+  };
+  const change = {
+    contract: "aralearn.course-source-change.v1",
+    courseId: COURSE_ID,
+    courseRevision: 5,
+    requestId: "request-source-controller-1",
+    idempotent: false,
+    changed: true,
+    change: { type: "retire_source", subjectId: legacySourceId, revision: 2 }
+  };
+  const citations = {
+    contract: "aralearn.course-study-citations.v1",
+    courseId: COURSE_ID,
+    courseRevision: 4,
+    studyUnitId: "unit-a",
+    citations: [{
+      sourceId: legacySourceId,
+      sourceRevision: 1,
+      title: "Fonte A",
+      citationText: "Fonte A, 2026.",
+      url: null,
+      editionOrVersion: null,
+      anchors: []
+    }]
+  };
+  const api = {
+    async listCourses() { return courseListPage([]); },
+    async getCourse() { throw new Error("não usado"); },
+    async loadCourseSources(courseId, options) {
+      calls.push(["read", courseId, options]);
+      return options.mode === "source" ? contextualSources : sources;
+    },
+    async mutateCourseSources(value) {
+      calls.push(["write", structuredClone(value)]);
+      return change;
+    },
+    async getStudyUnitCitations(courseId, studyUnitId, options) {
+      calls.push(["citations", courseId, studyUnitId, options]);
+      return citations;
+    }
+  };
+  const owner = new CourseController({ api, store, ownerOnly: true });
+  const shared = new CourseController({ api, store });
+  assert.deepEqual(await owner.loadCourseSources(COURSE_ID, {
+    expectedRevision: 4,
+    mode: "catalog"
+  }), sources);
+  await assert.rejects(
+    () => shared.loadCourseSources(COURSE_ID, { expectedRevision: 4, mode: "catalog" }),
+    /catálogo privado/u
+  );
+  assert.deepEqual(await shared.getStudyUnitCitations(
+    COURSE_ID,
+    "unit-a",
+    { expectedRevision: 4 }
+  ), citations);
+  assert.deepEqual(calls[0], ["read", COURSE_ID, {
+    expectedRevision: 4,
+    mode: "catalog",
+    sourceId: null,
+    targetKind: null,
+    targetId: null,
+    cursor: null,
+    limit: 10
+  }]);
+  assert.deepEqual(calls[1], ["citations", COURSE_ID, "unit-a", {
+    expectedRevision: 4
+  }]);
+  assert.deepEqual(await owner.loadCourseSources(COURSE_ID, {
+    expectedRevision: 4,
+    mode: "source",
+    sourceId: legacySourceId,
+    targetKind: "study_unit",
+    targetId: "unit-a"
+  }), contextualSources);
+  assert.deepEqual(calls[2], ["read", COURSE_ID, {
+    expectedRevision: 4,
+    mode: "source",
+    sourceId: legacySourceId,
+    targetKind: "study_unit",
+    targetId: "unit-a",
+    cursor: null,
+    limit: 10
+  }]);
+
+  for (const key of [
+    `course-authoring.v1.course-sources:${COURSE_ID}:catalog`,
+    `course-authoring.v1.entities:${COURSE_ID}:4:start`,
+    `course-authoring.v1.header:${COURSE_ID}`
+  ]) {
+    await store.putCache(key, { sensitive: true });
+  }
+  const command = {
+    type: "retire_source",
+    sourceId: legacySourceId,
+    expectedSourceRevision: 1
+  };
+  const mutation = {
+    requestId: "request-source-controller-1",
+    courseId: COURSE_ID,
+    expectedCourseRevision: 4,
+    command
+  };
+  assert.deepEqual(await owner.mutateCourseSources(mutation), change);
+  assert.deepEqual(await owner.mutateCourseSources(mutation), change);
+  assert.deepEqual(calls.at(-2), calls.at(-1));
+  assert.deepEqual(calls.at(-1)[1], {
+    requestId: "request-source-controller-1",
+    courseId: COURSE_ID,
+    expectedRevision: 4,
+    sourceCommand: command
+  });
+  assert.equal([...store.values.keys()].some((key) => key.includes(COURSE_ID)), false);
+
+  const astralTargetId = "🔎".repeat(240);
+  const astralSources = {
+    ...sources,
+    mode: "target",
+    query: { sourceId: null, targetKind: "study_unit", targetId: astralTargetId }
+  };
+  const astralCitations = {
+    ...citations,
+    studyUnitId: astralTargetId,
+    citations: []
+  };
+  const astralController = new CourseController({
+    store: new MemoryStateStore(),
+    ownerOnly: true,
+    api: {
+      ...api,
+      async loadCourseSources() { return astralSources; },
+      async getStudyUnitCitations() { return astralCitations; }
+    }
+  });
+  assert.deepEqual(await astralController.loadCourseSources(COURSE_ID, {
+    expectedRevision: 4,
+    mode: "target",
+    targetKind: "study_unit",
+    targetId: astralTargetId
+  }), astralSources);
+  assert.deepEqual(await astralController.getStudyUnitCitations(
+    COURSE_ID,
+    astralTargetId,
+    { expectedRevision: 4 }
+  ), astralCitations);
+  await assert.rejects(
+    () => astralController.loadCourseSources(COURSE_ID, {
+      expectedRevision: 4,
+      mode: "target",
+      targetKind: "study_unit",
+      targetId: "🔎".repeat(241)
+    }),
+    /Leitura de Fontes inválida/u
+  );
+  await assert.rejects(
+    () => astralController.getStudyUnitCitations(
+      COURSE_ID,
+      "🔎".repeat(241),
+      { expectedRevision: 4 }
+    ),
+    /Leitura de citações inválida/u
+  );
+
+  const leaking = new CourseController({
+    store: new MemoryStateStore(),
+    api: {
+      ...api,
+      async getStudyUnitCitations() {
+        return {
+          ...citations,
+          citations: [{ ...citations.citations[0], verificationExcerpt: "privado" }]
+        };
+      }
+    }
+  });
+  await assert.rejects(
+    () => leaking.getStudyUnitCitations(COURSE_ID, "unit-a", { expectedRevision: 4 }),
+    (error) => error.code === "invalid_course_study_citations"
+  );
+});
+
+test("Controller preserva caches no conflito de citações e purga somente a revogação real", async () => {
+  const store = new MemoryStateStore();
+  let failure = "stale";
+  const controller = new CourseController({
+    store,
+    api: {
+      async listCourses() { return courseListPage([]); },
+      async getCourse() { throw new Error("não usado"); },
+      async getStudyUnitCitations() {
+        if (failure === "stale") {
+          throw Object.assign(new Error("Revisão base desatualizada."), {
+            status: 500,
+            code: "40001"
+          });
+        }
+        throw Object.assign(new Error("Curso não encontrado."), {
+          status: 404,
+          code: "PT404"
+        });
+      }
+    }
+  });
+  const privateKeys = [
+    "course.v1.list::start",
+    `course.v1.header:${COURSE_ID}`,
+    `course.v1.entities:${COURSE_ID}:4:start`,
+    `${COURSE_PERSONAL_STATE_CACHE_CONTRACT}:${COURSE_ID}`
+  ];
+  for (const key of privateKeys) await store.putCache(key, { sensitive: true });
+
+  await assert.rejects(
+    () => controller.getStudyUnitCitations(
+      COURSE_ID,
+      "unit-removed-after-revision-4",
+      { expectedRevision: 4 }
+    ),
+    (error) => error.code === "course_revision_changed" &&
+      error.status === 409 && error.cause?.code === "40001"
+  );
+  assert.deepEqual([...store.values.keys()].sort(), [...privateKeys].sort());
+
+  failure = "revoked";
+  await assert.rejects(
+    () => controller.getStudyUnitCitations(
+      COURSE_ID,
+      "unit-a",
+      { expectedRevision: 4 }
+    ),
+    (error) => error.status === 404 && error.code === "PT404"
+  );
+  assert.deepEqual([...store.values.keys()], []);
 });
 
 test("inspeção autoral usa cache paginado limitado e posição local por dispositivo", async () => {

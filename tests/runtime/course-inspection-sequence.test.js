@@ -106,8 +106,7 @@ function studyUnit(index) {
     }],
     response: null,
     feedback: [],
-    topics: [],
-    sources: []
+    topics: []
   };
 }
 
@@ -422,4 +421,42 @@ test("sincroniza abas só por sinal e relê a posição local antes de reancorar
 
   sequence.destroy();
   assert.equal(channel.closed, true);
+});
+
+test("Inspeção abre atribuição completa da versão exata da Unidade", async () => {
+  const root = new FakeRoot();
+  const targets = [];
+  const sequence = createCourseInspectionSequence({
+    root,
+    controller: controllerFixture(),
+    course: {
+      courseId: COURSE_ID,
+      revision: REVISION,
+      ownership: "owned",
+      canEdit: true
+    },
+    onEditSources(target) {
+      targets.push(target);
+    },
+    windowValue: new FakeWindow(),
+    documentValue: { visibilityState: "visible", addEventListener() {}, removeEventListener() {} },
+    navigatorValue: {}
+  });
+  await sequence.open();
+  assert.match(root.innerHTML, /data-inspection-edit-sources/u);
+
+  const node = {
+    dataset: { studyUnitId: "unit-01" },
+    closest(selector) {
+      return selector === "[data-inspection-edit-sources]" ? this : null;
+    }
+  };
+  await root.listeners.get("click")({ target: node, preventDefault() {} });
+  assert.deepEqual(targets, [{
+    targetKind: "study_unit",
+    targetId: "unit-01",
+    targetVersion: 1,
+    targetLabel: "Unidade 1"
+  }]);
+  sequence.destroy();
 });

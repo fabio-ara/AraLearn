@@ -118,8 +118,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-fixture-visual-graph",
@@ -157,8 +156,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "card-fixture-visual-relation-map",
@@ -214,8 +212,7 @@
                           }
                         }
                       ],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 }

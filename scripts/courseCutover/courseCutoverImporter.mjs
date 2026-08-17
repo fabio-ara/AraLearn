@@ -23,6 +23,8 @@ const STUDY_UNIT_INSPECTION_MIGRATION_VERSION = "20260817170000";
 const STUDY_UNIT_INSPECTION_MIGRATION_NAME = "course_study_unit_inspection";
 const COURSE_DESIGN_MIGRATION_VERSION = "20260817180000";
 const COURSE_DESIGN_MIGRATION_NAME = "course_design_parameters";
+const COURSE_SOURCES_MIGRATION_VERSION = "20260817190000";
+const COURSE_SOURCES_MIGRATION_NAME = "course_sources_provenance";
 
 export const COURSE_CUTOVER_STAGING_SCHEMA = Object.freeze([
   Object.freeze({ name: "course_id", sql: "uuid not null" }),
@@ -149,6 +151,13 @@ function clone(value) {
 
 function text(value) {
   return typeof value === "string" ? value.trim() : "";
+}
+
+function hasControl(value) {
+  return [...value].some((character) => {
+    const point = character.codePointAt(0);
+    return point < 32 || (point >= 127 && point <= 159);
+  });
 }
 
 function isObject(value) {
@@ -707,7 +716,7 @@ function sourceCourse(value) {
   fail("invalid_course_artifact", "Artefato não contém um Curso reconhecível.");
 }
 
-function countCourse(document) {
+function countCourse(document, { sourceReferenceCount = null } = {}) {
   const counts = {
     modules: 0,
     lessons: 0,
@@ -730,14 +739,88 @@ function countCourse(document) {
             counts.studyUnits += 1;
             counts.packageInstances += (studyUnit.content || []).length +
               (studyUnit.response ? 1 : 0) + (studyUnit.feedback || []).length;
-            counts.sourceReferences += (studyUnit.sources || []).length;
+            if (sourceReferenceCount === null) {
+              counts.sourceReferences += (studyUnit.sources || []).length;
+            }
             counts.topicReferences += (studyUnit.topics || []).length;
           }
         }
       }
     }
   }
+  if (sourceReferenceCount !== null) {
+    counts.sourceReferences = sourceReferenceCount;
+  }
   return counts;
+}
+
+function legacySourceReferences(course) {
+  const references = [];
+  for (const moduleValue of course.modules || []) {
+    for (const lesson of moduleValue.lessons || []) {
+      for (const microsequence of lesson.microsequences || []) {
+        for (const studyUnit of microsequence.studyUnits || []) {
+          const sources = studyUnit.sources === undefined ? [] : studyUnit.sources;
+          if (!Array.isArray(sources) || sources.length > 128) {
+            fail(
+              "invalid_legacy_source_references",
+              "Referências legadas de uma Unidade excedem o contrato de preservação."
+            );
+          }
+          sources.forEach((sourceId, sourceOrdinal) => {
+            if (typeof sourceId !== "string" || sourceId.length < 1 ||
+                [...sourceId].length > 2048 || hasControl(sourceId)) {
+              fail(
+                "invalid_legacy_source_references",
+                "Referência legada vazia, com controle ou acima do limite."
+              );
+            }
+            references.push({ studyUnitId: studyUnit.id, sourceOrdinal, sourceId });
+          });
+          const sourceLinks = sources.map((sourceId) => ({
+            sourceId,
+            sourceRevision: 1,
+            relation: "legacy_reference",
+            anchors: []
+          }));
+          if (Buffer.byteLength(JSON.stringify(sourceLinks), "utf8") > 131_072) {
+            fail(
+              "invalid_legacy_source_references",
+              "Referências legadas de uma Unidade excedem o envelope preservável."
+            );
+          }
+        }
+      }
+    }
+  }
+  return references.sort((left, right) =>
+    Buffer.compare(
+      Buffer.from(left.studyUnitId, "utf8"),
+      Buffer.from(right.studyUnitId, "utf8")
+    ) || left.sourceOrdinal - right.sourceOrdinal);
+}
+
+function withoutLegacySources(course) {
+  const result = clone(course);
+  for (const moduleValue of result.modules || []) {
+    for (const lesson of moduleValue.lessons || []) {
+      for (const microsequence of lesson.microsequences || []) {
+        for (const studyUnit of microsequence.studyUnits || []) {
+          delete studyUnit.sources;
+        }
+      }
+    }
+  }
+  return result;
+}
+
+function sourceReferencesByStudyUnit(references) {
+  const result = new Map();
+  for (const reference of references) {
+    if (!result.has(reference.studyUnitId)) result.set(reference.studyUnitId, []);
+    result.get(reference.studyUnitId).push(reference.sourceId);
+  }
+  return result;
 }
 
 function countStructuralSource(course) {
@@ -768,9 +851,15 @@ function countStructuralSource(course) {
   return counts;
 }
 
-function preservationSignature(course, { legacy = false } = {}) {
+function preservationSignature(course, {
+  legacy = false,
+  sourceReferences = null
+} = {}) {
   const structure = [];
   const references = [];
+  const sourcesByStudyUnit = sourceReferences === null
+    ? null
+    : sourceReferencesByStudyUnit(sourceReferences);
   const visit = (type, entity, parentType, parentId, position) => {
     const currentType = type === "card" ? "study_unit" : type;
     const currentParentType = parentType === "card" ? "study_unit" : parentType;
@@ -784,7 +873,7 @@ function preservationSignature(course, { legacy = false } = {}) {
     if (currentType === "study_unit") {
       references.push({
         id: entity.id,
-        sources: clone(entity.sources ?? []),
+        sources: clone(sourcesByStudyUnit?.get(entity.id) ?? entity.sources ?? []),
         topics: clone(entity.topics ?? [])
       });
     }
@@ -807,9 +896,11 @@ function preservationSignature(course, { legacy = false } = {}) {
   return { structure, references };
 }
 
-function assertPreservedCounts(beforeCourse, document) {
+function assertPreservedCounts(beforeCourse, document, sourceReferences) {
   const before = countStructuralSource(beforeCourse);
-  const after = countCourse(document);
+  const after = countCourse(document, {
+    sourceReferenceCount: sourceReferences.length
+  });
   const comparableAfter = { ...after };
   delete comparableAfter.packageInstances;
   if (canonicalRevisionString(before) !== canonicalRevisionString(comparableAfter)) {
@@ -819,7 +910,9 @@ function assertPreservedCounts(beforeCourse, document) {
     });
   }
   const beforeSignature = preservationSignature(beforeCourse, { legacy: true });
-  const afterSignature = preservationSignature(document.courses[0]);
+  const afterSignature = preservationSignature(document.courses[0], {
+    sourceReferences
+  });
   if (canonicalRevisionString(beforeSignature.structure) !==
       canonicalRevisionString(afterSignature.structure)) {
     fail(
@@ -842,7 +935,9 @@ export function convertCourseDocument(value, {
     fail("missing_target_course_id", "Identidade de destino do Curso ausente.");
   }
   const beforeCourse = clone(sourceCourse(value));
-  const convertedCourse = convertCourseTree(beforeCourse, targetCourseId, resolutions);
+  const transitionalCourse = convertCourseTree(beforeCourse, targetCourseId, resolutions);
+  const sourceReferences = legacySourceReferences(transitionalCourse);
+  const convertedCourse = withoutLegacySources(transitionalCourse);
   const candidate = {
     contract: "aralearn.course.v1",
     courses: [convertedCourse]
@@ -859,7 +954,7 @@ export function convertCourseDocument(value, {
   if (!text(header.title) || !text(header.goal)) {
     fail("invalid_course_header", "Curso convertido exige título e objetivo não vazios.");
   }
-  const counts = assertPreservedCounts(beforeCourse, document);
+  const counts = assertPreservedCounts(beforeCourse, document, sourceReferences);
   const flattened = flattenCourseDocument(document);
   const recomposed = composeCourseDocument(flattened.course, flattened.rows);
   if (canonicalRevisionString(recomposed) !== canonicalRevisionString(document)) {
@@ -871,6 +966,8 @@ export function convertCourseDocument(value, {
     rows: flattened.rows,
     documentHash: canonicalSha256(document),
     rowHash: canonicalSha256(flattened.rows),
+    sourceReferences,
+    sourceReferenceHash: canonicalSha256(sourceReferences),
     counts
   };
 }
@@ -1090,6 +1187,7 @@ function buildManifest(entry, converted, entityMetadata, inputs) {
     inputs,
     documentHash: converted.documentHash,
     rowHash: converted.rowHash,
+    sourceReferenceHash: converted.sourceReferenceHash,
     entityStateHash: canonicalSha256(entityMetadata),
     counts: converted.counts
   };
@@ -1102,6 +1200,9 @@ function stagingRows(prepared) {
       entityIdentity(metadata.entityType, metadata.entityId),
       metadata
     ]));
+    const sourcesByStudyUnit = sourceReferencesByStudyUnit(
+      converted.sourceReferences
+    );
     return converted.rows.map((row) => {
       const metadata = metadataByIdentity.get(entityIdentity(row.entityType, row.entityId));
       if (!metadata) {
@@ -1125,7 +1226,9 @@ function stagingRows(prepared) {
       entity_version: metadata.version,
       entity_created_at: metadata.createdAt,
       entity_updated_at: metadata.updatedAt,
-      content: row.content
+      content: row.entityType === "study_unit"
+        ? { ...row.content, sources: clone(sourcesByStudyUnit.get(row.entityId) || []) }
+        : row.content
       };
     });
   });
@@ -1185,7 +1288,11 @@ export function attestPreparedCourseCutover(preparation) {
           canonicalRevisionString(converted.rows) ||
         canonicalSha256(converted.document) !== converted.documentHash ||
         canonicalSha256(converted.rows) !== converted.rowHash ||
-        canonicalRevisionString(countCourse(converted.document)) !==
+        canonicalSha256(converted.sourceReferences) !==
+          converted.sourceReferenceHash ||
+        canonicalRevisionString(countCourse(converted.document, {
+          sourceReferenceCount: converted.sourceReferences.length
+        })) !==
           canonicalRevisionString(converted.counts)) {
       fail(
         "cutover_attestation_failed",
@@ -1241,7 +1348,7 @@ export function verifyAppliedCourseCutover(preparation, verification) {
   const courses = new Map();
   for (const course of verification.courses) {
     if (!text(course?.courseId) || courses.has(course.courseId) ||
-        !Array.isArray(course.entities)) {
+        !Array.isArray(course.entities) || !Array.isArray(course.sourceReferences)) {
       fail(
         "invalid_cutover_verification",
         "Verificação pós-corte contém Curso duplicado ou inválido."
@@ -1294,16 +1401,35 @@ export function verifyAppliedCourseCutover(preparation, verification) {
       }
       return { entityType: row.entityType, entityId: row.entityId, ...metadata };
     });
+    const sourceReferences = source.sourceReferences.map((reference) => {
+      if (!isObject(reference) || !text(reference.studyUnitId) ||
+          !Number.isInteger(reference.sourceOrdinal) ||
+          reference.sourceOrdinal < 0 || typeof reference.sourceId !== "string") {
+        fail(
+          "invalid_cutover_verification",
+          "Verificação pós-corte contém referência de Fonte inválida."
+        );
+      }
+      return {
+        studyUnitId: reference.studyUnitId,
+        sourceOrdinal: reference.sourceOrdinal,
+        sourceId: reference.sourceId
+      };
+    });
     const actual = {
       courseId: source.courseId,
       manifestHash: expected.manifest.manifestHash,
       documentHash: canonicalSha256(document),
       rowHash: canonicalSha256(flattened.rows),
+      sourceReferenceHash: canonicalSha256(sourceReferences),
       entityStateHash: canonicalSha256(entityMetadata),
-      counts: countCourse(document)
+      counts: countCourse(document, {
+        sourceReferenceCount: sourceReferences.length
+      })
     };
     if (actual.documentHash !== expected.manifest.documentHash ||
         actual.rowHash !== expected.manifest.rowHash ||
+        actual.sourceReferenceHash !== expected.manifest.sourceReferenceHash ||
         actual.entityStateHash !== expected.manifest.entityStateHash ||
         canonicalRevisionString(actual.counts) !==
           canonicalRevisionString(expected.manifest.counts)) {
@@ -1345,8 +1471,11 @@ export async function prepareCourseCutover(snapshot, {
       });
     }
     if (live && artifact && (live.documentHash !== artifact.documentHash ||
+        live.sourceReferenceHash !== artifact.sourceReferenceHash ||
         canonicalRevisionString(live.document) !==
-          canonicalRevisionString(artifact.document))) {
+          canonicalRevisionString(artifact.document) ||
+        canonicalRevisionString(live.sourceReferences) !==
+          canonicalRevisionString(artifact.sourceReferences))) {
       fail(
         "course_overlap_drift",
         "Raiz viva e publicação sobrepostas não são semanticamente idênticas."
@@ -1448,14 +1577,16 @@ export function buildCourseCutoverSql(
   profileAccessMigrationSql,
   authoringPlanMigrationSql,
   studyUnitInspectionMigrationSql,
-  courseDesignMigrationSql
+  courseDesignMigrationSql,
+  courseSourcesMigrationSql
 ) {
   if (!isObject(preparation) || !Array.isArray(preparation.rows) ||
       !preparation.rows.length || typeof migrationSql !== "string" ||
       typeof profileAccessMigrationSql !== "string" ||
       typeof authoringPlanMigrationSql !== "string" ||
       typeof studyUnitInspectionMigrationSql !== "string" ||
-      typeof courseDesignMigrationSql !== "string") {
+      typeof courseDesignMigrationSql !== "string" ||
+      typeof courseSourcesMigrationSql !== "string") {
     fail(
       "invalid_cutover_execution",
       "Linhas ou migrations do corte estão ausentes."
@@ -1492,6 +1623,13 @@ export function buildCourseCutoverSql(
   );
   const courseDesignExecutionBody = withoutTransactionGuards(
     courseDesignTransaction.body
+  );
+  const courseSourcesTransaction = transactionBody(
+    courseSourcesMigrationSql,
+    "a migration de Fontes e proveniência"
+  );
+  const courseSourcesExecutionBody = withoutTransactionGuards(
+    courseSourcesTransaction.body
   );
   const guardPositions = COURSE_CUTOVER_TRANSACTION_GUARDS.map((guard) =>
     migrationSql.indexOf(guard));
@@ -1541,6 +1679,7 @@ export function buildCourseCutoverSql(
     authoringPlanExecutionBody,
     studyUnitInspectionExecutionBody,
     courseDesignExecutionBody,
+    courseSourcesExecutionBody,
     "insert into supabase_migrations.schema_migrations(version,statements,name)",
     `values (${sqlText(CUTOVER_MIGRATION_VERSION)},` +
       `array[${sqlText(identityTransaction.body)}]::text[],` +
@@ -1561,6 +1700,10 @@ export function buildCourseCutoverSql(
     `values (${sqlText(COURSE_DESIGN_MIGRATION_VERSION)},` +
       `array[${sqlText(courseDesignTransaction.body)}]::text[],` +
       `${sqlText(COURSE_DESIGN_MIGRATION_NAME)});`,
+    "insert into supabase_migrations.schema_migrations(version,statements,name)",
+    `values (${sqlText(COURSE_SOURCES_MIGRATION_VERSION)},` +
+      `array[${sqlText(courseSourcesTransaction.body)}]::text[],` +
+      `${sqlText(COURSE_SOURCES_MIGRATION_NAME)});`,
     "commit;",
     ""
   ].join("\n");

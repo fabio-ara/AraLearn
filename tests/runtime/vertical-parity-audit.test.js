@@ -62,7 +62,7 @@ test("o audit rejeita o canal abolido de ferramentas exclusivas do aplicativo", 
   ));
 });
 
-test("o inventário pós-corte separa os cinco casos correntes do legado físico", async () => {
+test("o inventário pós-corte separa os seis casos correntes do legado físico", async () => {
   const current = await registry();
   const inventory = JSON.parse(await readFile(databaseInventoryPath, "utf8"));
   const assignments = new Map(inventory.objects.map(({ object, caseId }) => [object, caseId]));
@@ -74,6 +74,10 @@ test("o inventário pós-corte separa os cinco casos correntes do legado físico
     new Set([...currentCaseIds, "pre-course-database-removal"])
   );
   assert.equal(assignments.get("table:public.courses"), "course-authoring-experience");
+  assert.equal(
+    assignments.get("table:private.course_source_revisions"),
+    "course-source-provenance"
+  );
   assert.equal(
     assignments.get("table:public.course_personal_states"),
     "study-course-experience"

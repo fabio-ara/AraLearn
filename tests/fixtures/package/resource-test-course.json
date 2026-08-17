@@ -81,8 +81,7 @@
                       ],
                       "response": null,
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "resource-test-1-choice",
@@ -123,8 +122,7 @@
                         }
                       },
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "resource-test-1-text",
@@ -161,8 +159,7 @@
                         }
                       },
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 }
@@ -246,8 +243,7 @@
                       ],
                       "response": null,
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "resource-test-2-choice",
@@ -288,8 +284,7 @@
                         }
                       },
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "resource-test-2-text",
@@ -326,8 +321,7 @@
                         }
                       },
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 }
@@ -443,8 +437,7 @@
                       ],
                       "response": null,
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "resource-test-3-choice",
@@ -517,8 +510,7 @@
                         }
                       },
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "resource-test-3-text",
@@ -587,8 +579,7 @@
                         }
                       },
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 }
@@ -712,8 +703,7 @@
                       ],
                       "response": null,
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "resource-test-4-choice",
@@ -794,8 +784,7 @@
                         }
                       },
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "resource-test-4-text",
@@ -872,8 +861,7 @@
                         }
                       },
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 }
@@ -1112,8 +1100,7 @@
                       ],
                       "response": null,
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "resource-test-5-choice",
@@ -1303,8 +1290,7 @@
                         }
                       },
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "resource-test-5-text",
@@ -1490,8 +1476,7 @@
                         }
                       },
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 }
@@ -1628,8 +1613,7 @@
                       ],
                       "response": null,
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "resource-test-6-choice",
@@ -1721,8 +1705,7 @@
                         }
                       },
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "resource-test-6-text",
@@ -1810,8 +1793,7 @@
                         }
                       },
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 }
@@ -1938,8 +1920,7 @@
                       ],
                       "response": null,
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "resource-test-7-choice",
@@ -2021,8 +2002,7 @@
                         }
                       },
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "resource-test-7-text",
@@ -2100,8 +2080,7 @@
                         }
                       },
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 }
@@ -2202,8 +2181,7 @@
                       ],
                       "response": null,
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "resource-test-8-choice",
@@ -2261,8 +2239,7 @@
                         }
                       },
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "resource-test-8-text",
@@ -2316,8 +2293,7 @@
                         }
                       },
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 }
@@ -2425,8 +2401,7 @@
                       ],
                       "response": null,
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "resource-test-9-choice",
@@ -2491,8 +2466,7 @@
                         }
                       },
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "resource-test-9-text",
@@ -2553,8 +2527,7 @@
                         }
                       },
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 }
@@ -2684,8 +2657,7 @@
                       ],
                       "response": null,
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "resource-test-10-choice",
@@ -2764,8 +2736,7 @@
                         }
                       },
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "resource-test-10-text",
@@ -2840,8 +2811,7 @@
                         }
                       },
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 }
@@ -3041,8 +3011,7 @@
                       ],
                       "response": null,
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 }
@@ -3274,8 +3243,7 @@
                       ],
                       "response": null,
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 }
@@ -3477,8 +3445,7 @@
                       ],
                       "response": null,
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "resource-test-13-choice",
@@ -3635,8 +3602,7 @@
                         }
                       },
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "resource-test-13-text",
@@ -3789,8 +3755,7 @@
                         }
                       },
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 }
@@ -3929,8 +3894,7 @@
                       ],
                       "response": null,
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "resource-test-14-choice",
@@ -4024,8 +3988,7 @@
                         }
                       },
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "resource-test-14-text",
@@ -4115,8 +4078,7 @@
                         }
                       },
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 }
@@ -4294,8 +4256,7 @@
                       ],
                       "response": null,
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "resource-test-15-choice",
@@ -4428,8 +4389,7 @@
                         }
                       },
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "resource-test-15-text",
@@ -4558,8 +4518,7 @@
                         }
                       },
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 }
@@ -4733,8 +4692,7 @@
                       ],
                       "response": null,
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "resource-test-16-choice",
@@ -4861,8 +4819,7 @@
                         }
                       },
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "resource-test-16-text",
@@ -4985,8 +4942,7 @@
                         }
                       },
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 }
@@ -5166,8 +5122,7 @@
                       ],
                       "response": null,
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "resource-test-17-choice",
@@ -5300,8 +5255,7 @@
                         }
                       },
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "resource-test-17-text",
@@ -5430,8 +5384,7 @@
                         }
                       },
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 }
@@ -5587,8 +5540,7 @@
                       ],
                       "response": null,
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "resource-test-18-choice",
@@ -5699,8 +5651,7 @@
                         }
                       },
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "resource-test-18-text",
@@ -5807,8 +5758,7 @@
                         }
                       },
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 }
@@ -6028,8 +5978,7 @@
                       ],
                       "response": null,
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "resource-test-19-choice",
@@ -6204,8 +6153,7 @@
                         }
                       },
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "resource-test-19-text",
@@ -6376,8 +6324,7 @@
                         }
                       },
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 }
@@ -6521,8 +6468,7 @@
                       ],
                       "response": null,
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "resource-test-20-choice",
@@ -6621,8 +6567,7 @@
                         }
                       },
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "resource-test-20-text",
@@ -6717,8 +6662,7 @@
                         }
                       },
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 }
@@ -6877,8 +6821,7 @@
                       ],
                       "response": null,
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "resource-test-21-choice",
@@ -6992,8 +6935,7 @@
                         }
                       },
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "resource-test-21-text",
@@ -7103,8 +7045,7 @@
                         }
                       },
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 }
@@ -7254,8 +7195,7 @@
                       ],
                       "response": null,
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "resource-test-22-choice",
@@ -7358,8 +7298,7 @@
                         }
                       },
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "resource-test-22-text",
@@ -7458,8 +7397,7 @@
                         }
                       },
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 }
@@ -7608,8 +7546,7 @@
                       ],
                       "response": null,
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "resource-test-23-choice",
@@ -7711,8 +7648,7 @@
                         }
                       },
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "resource-test-23-text",
@@ -7810,8 +7746,7 @@
                         }
                       },
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 }
@@ -7976,8 +7911,7 @@
                       ],
                       "response": null,
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "resource-test-24-choice",
@@ -8097,8 +8031,7 @@
                         }
                       },
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "resource-test-24-text",
@@ -8214,8 +8147,7 @@
                         }
                       },
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 }
@@ -8357,8 +8289,7 @@
                       ],
                       "response": null,
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "resource-test-25-choice",
@@ -8457,8 +8388,7 @@
                         }
                       },
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "resource-test-25-text",
@@ -8553,8 +8483,7 @@
                         }
                       },
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 }
@@ -8729,8 +8658,7 @@
                       ],
                       "response": null,
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "resource-test-26-choice",
@@ -8858,8 +8786,7 @@
                         }
                       },
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "resource-test-26-text",
@@ -8983,8 +8910,7 @@
                         }
                       },
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 }
@@ -9138,8 +9064,7 @@
                       ],
                       "response": null,
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "resource-test-27-choice",
@@ -9260,8 +9185,7 @@
                         }
                       },
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "resource-test-27-text",
@@ -9366,8 +9290,7 @@
                         }
                       },
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 }
@@ -9500,8 +9423,7 @@
                       ],
                       "response": null,
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "resource-test-28-choice",
@@ -9587,8 +9509,7 @@
                         }
                       },
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "resource-test-28-text",
@@ -9670,8 +9591,7 @@
                         }
                       },
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 }
@@ -9790,8 +9710,7 @@
                       ],
                       "response": null,
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "resource-test-29-choice",
@@ -9863,8 +9782,7 @@
                         }
                       },
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 }
@@ -9957,8 +9875,7 @@
                         }
                       },
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 }
@@ -10066,8 +9983,7 @@
                         }
                       },
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     },
                     {
                       "id": "gap-typing-card",
@@ -10101,8 +10017,7 @@
                         }
                       },
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 }
@@ -10217,8 +10132,7 @@
                         }
                       },
                       "feedback": [],
-                      "topics": [],
-                      "sources": []
+                      "topics": []
                     }
                   ]
                 }

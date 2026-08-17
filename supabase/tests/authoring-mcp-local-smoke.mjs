@@ -94,6 +94,12 @@ if (!accessToken) {
     assert.equal(result.isError, false, result.structuredContent?.error?.message);
     return result.structuredContent.data;
   }
+  async function rejectedTool(name, argumentsValue = {}) {
+    const result = await call("tools/call", { name, arguments: argumentsValue });
+    assert.equal(result.isError, true, JSON.stringify(result));
+    assert.equal(result.structuredContent?.ok, false);
+    return result.structuredContent.error;
+  }
 
   const initialized = await call("initialize", {
     protocolVersion,
@@ -181,8 +187,7 @@ if (!accessToken) {
               }],
               response: null,
               feedback: [],
-              topics: [],
-              sources: []
+              topics: []
             }))
           }]
         }]
@@ -200,15 +205,182 @@ if (!accessToken) {
     expectedRevision: read.revision,
     operation: "commit_course_composition",
     upserts: compositionRows,
-    deletes: []
+    deletes: [],
+    sourceAttributionApplications: [1, 2].map((position) => ({
+      studyUnitId: `study-unit-mcp-smoke-${position}`,
+      sourceLinks: []
+    }))
   });
   assert.equal(changed.revision, 2);
   assert.equal(changed.upsertedCount, 5);
 
+  const sourceId = "source-mcp-smoke-verified";
+  const anchorId = "anchor-mcp-smoke-verified";
+  const savedSource = await tool("alterarCurso", {
+    requestId: randomUUID(),
+    courseId: created.courseId,
+    expectedRevision: changed.revision,
+    operation: "update_course_sources",
+    sourceCommand: {
+      type: "save_source",
+      sourceId,
+      expectedSourceRevision: 0,
+      source: {
+        kind: "web_page",
+        title: "Fonte verificada pelo MCP local",
+        citationText: "AraLearn. Fonte verificada pelo MCP local, 2026.",
+        url: "https://example.test/aralearn/mcp-local-source",
+        editionOrVersion: "2026-08-17",
+        studyVisibility: "citation_and_link"
+      }
+    }
+  });
+  assert.equal(savedSource.courseRevision, changed.revision + 1);
+  assert.deepEqual(savedSource.change, {
+    type: "save_source",
+    subjectId: sourceId,
+    revision: 1
+  });
+
+  const savedAnchor = await tool("alterarCurso", {
+    requestId: randomUUID(),
+    courseId: created.courseId,
+    expectedRevision: savedSource.courseRevision,
+    operation: "update_course_sources",
+    sourceCommand: {
+      type: "save_anchor",
+      anchorId,
+      sourceId,
+      sourceRevision: 1,
+      expectedAnchorRevision: 0,
+      selector: { kind: "page_range", startPage: 1, endPage: 2 },
+      verificationExcerpt: "Trecho privado verificado pelo MCP local."
+    }
+  });
+  assert.equal(savedAnchor.courseRevision, changed.revision + 2);
+  const sourceLink = {
+    sourceId,
+    sourceRevision: 1,
+    relation: "supported_by",
+    anchors: [{ anchorId, anchorRevision: 1 }]
+  };
+  const sourceDetail = await tool("lerCurso", {
+    courseId: created.courseId,
+    view: "course_sources",
+    expectedRevision: savedAnchor.courseRevision,
+    mode: "source",
+    sourceId,
+    limit: 10
+  });
+  assert.equal(sourceDetail.contract, "aralearn.course-sources.v1");
+  assert.equal(sourceDetail.items[0].anchors[0].anchorId, anchorId);
+  assert.equal(
+    sourceDetail.items[0].anchors[0].verificationExcerpt,
+    "Trecho privado verificado pelo MCP local."
+  );
+
+  const firstStudyUnitRow = compositionRows.find(
+    ({ entityType, entityId }) => entityType === "study_unit"
+      && entityId === "study-unit-mcp-smoke-1"
+  );
+  const invalidAtomicRow = {
+    ...firstStudyUnitRow,
+    content: { ...firstStudyUnitRow.content, title: "Alteração que deve reverter" }
+  };
+  const rejectedAttribution = await rejectedTool("alterarCurso", {
+    requestId: randomUUID(),
+    courseId: created.courseId,
+    expectedRevision: savedAnchor.courseRevision,
+    operation: "commit_course_composition",
+    upserts: [invalidAtomicRow],
+    deletes: [],
+    sourceAttributionApplications: [{
+      studyUnitId: invalidAtomicRow.entityId,
+      sourceLinks: [{
+        sourceId: "source-mcp-smoke-inexistente",
+        sourceRevision: 1,
+        relation: "supported_by",
+        anchors: [{ anchorId: "anchor-mcp-smoke-inexistente", anchorRevision: 1 }]
+      }]
+    }]
+  });
+  assert.match(String(rejectedAttribution.code || ""), /invalid|source/iu);
+  const afterRejectedAttribution = await tool("lerCurso", {
+    courseId: created.courseId,
+    view: "study_units",
+    expectedRevision: savedAnchor.courseRevision,
+    scope: { kind: "course" },
+    direction: "forward",
+    limit: 1,
+    maxBytes: 65_536
+  });
+  assert.equal(afterRejectedAttribution.courseRevision, savedAnchor.courseRevision);
+  assert.equal(afterRejectedAttribution.items[0].studyUnit.title, "Unidade MCP 1");
+
+  const targetAttribution = await tool("alterarCurso", {
+    requestId: randomUUID(),
+    courseId: created.courseId,
+    expectedRevision: savedAnchor.courseRevision,
+    operation: "update_course_sources",
+    sourceCommand: {
+      type: "set_target_sources",
+      targetKind: "study_unit",
+      targetId: firstStudyUnitRow.entityId,
+      expectedTargetVersion: 1,
+      sourceLinks: [sourceLink]
+    }
+  });
+  assert.equal(targetAttribution.courseRevision, changed.revision + 3);
+  assert.equal(targetAttribution.change.type, "set_target_sources");
+
+  const attributedTarget = await tool("lerCurso", {
+    courseId: created.courseId,
+    view: "course_sources",
+    expectedRevision: targetAttribution.courseRevision,
+    mode: "target",
+    targetKind: "study_unit",
+    targetId: firstStudyUnitRow.entityId,
+    limit: 10
+  });
+  assert.equal(attributedTarget.items[0].effective, true);
+  assert.deepEqual(attributedTarget.items[0].sourceLinks, [sourceLink]);
+
+  const atomicStudyUnitRow = {
+    ...firstStudyUnitRow,
+    content: { ...firstStudyUnitRow.content, title: "Unidade MCP 1 com proveniência" }
+  };
+  const provenanceComposition = await tool("alterarCurso", {
+    requestId: randomUUID(),
+    courseId: created.courseId,
+    expectedRevision: targetAttribution.courseRevision,
+    operation: "commit_course_composition",
+    upserts: [atomicStudyUnitRow],
+    deletes: [],
+    sourceAttributionApplications: [{
+      studyUnitId: atomicStudyUnitRow.entityId,
+      sourceLinks: [sourceLink]
+    }]
+  });
+  assert.equal(provenanceComposition.revision, changed.revision + 4);
+  assert.equal(provenanceComposition.updatedCount, 1);
+
+  const atomicTarget = await tool("lerCurso", {
+    courseId: created.courseId,
+    view: "course_sources",
+    expectedRevision: provenanceComposition.revision,
+    mode: "target",
+    targetKind: "study_unit",
+    targetId: atomicStudyUnitRow.entityId,
+    limit: 10
+  });
+  assert.equal(atomicTarget.items[0].effective, true);
+  assert.equal(atomicTarget.items[0].targetVersion, 2);
+  assert.deepEqual(atomicTarget.items[0].sourceLinks, [sourceLink]);
+
   const firstPage = await tool("lerCurso", {
     courseId: created.courseId,
     view: "study_units",
-    expectedRevision: changed.revision,
+    expectedRevision: provenanceComposition.revision,
     scope: { kind: "course" },
     direction: "forward",
     limit: 1,
@@ -220,6 +392,7 @@ if (!accessToken) {
   );
   assert.equal(firstPage.totalCount, 2);
   assert.equal(firstPage.items[0].studyUnit.id, "study-unit-mcp-smoke-1");
+  assert.equal(firstPage.items[0].studyUnit.title, "Unidade MCP 1 com proveniência");
   assert.deepEqual(firstPage.nextCursor, {
     studyUnitId: "study-unit-mcp-smoke-1"
   });
@@ -227,7 +400,7 @@ if (!accessToken) {
   const secondPage = await tool("lerCurso", {
     courseId: created.courseId,
     view: "study_units",
-    expectedRevision: changed.revision,
+    expectedRevision: provenanceComposition.revision,
     scope: { kind: "course" },
     cursor: firstPage.nextCursor,
     direction: "forward",
@@ -243,7 +416,7 @@ if (!accessToken) {
   const analysisChange = await tool("alterarCurso", {
     requestId: randomUUID(),
     courseId: created.courseId,
-    expectedRevision: changed.revision,
+    expectedRevision: provenanceComposition.revision,
     expectedPlanVersion: 1,
     operation: "update_instructional_plan",
     planCommand: {
@@ -251,10 +424,11 @@ if (!accessToken) {
       kind: "instructional_analysis_unit",
       id: analysisItemId,
       position: 0,
-      statement: "Distinguir configuração DNS de concessão DHCP."
+      statement: "Distinguir configuração DNS de concessão DHCP.",
+      sourceLinks: []
     }
   });
-  assert.equal(analysisChange.courseRevision, changed.revision + 1);
+  assert.equal(analysisChange.courseRevision, provenanceComposition.revision + 1);
   assert.equal(analysisChange.planVersion, 2);
   const evidenceChange = await tool("alterarCurso", {
     requestId: randomUUID(),
@@ -267,10 +441,11 @@ if (!accessToken) {
       kind: "evidence_requirement",
       id: evidenceItemId,
       position: 0,
-      statement: "Explicar a relação DNS–DHCP em um caso novo."
+      statement: "Explicar a relação DNS–DHCP em um caso novo.",
+      sourceLinks: []
     }
   });
-  assert.equal(evidenceChange.courseRevision, changed.revision + 2);
+  assert.equal(evidenceChange.courseRevision, provenanceComposition.revision + 2);
   assert.equal(evidenceChange.planVersion, 3);
 
   const targetChange = await tool("alterarCurso", {
@@ -288,7 +463,7 @@ if (!accessToken) {
       evidenceRequirementIds: [evidenceItemId]
     }
   });
-  assert.equal(targetChange.courseRevision, changed.revision + 3);
+  assert.equal(targetChange.courseRevision, provenanceComposition.revision + 3);
   assert.equal(targetChange.change.type, "set_target_plan_items");
 
   const targetDesign = await tool("lerCurso", {
@@ -330,7 +505,7 @@ if (!accessToken) {
       reason: "Exercitar a resolução explícita pelo MCP local."
     }
   });
-  assert.equal(designChange.courseRevision, changed.revision + 4);
+  assert.equal(designChange.courseRevision, provenanceComposition.revision + 4);
   assert.equal(designChange.change.type, "set_parameter");
 
   const resolvedDesign = await tool("lerCurso", {
@@ -353,5 +528,5 @@ if (!accessToken) {
   const profile = await tool("gerirPessoas", { operation: "read_profile" });
   assert.match(String(profile.userId || ""), /^[0-9a-f-]{36}$/iu);
 
-  console.log("Smoke MCP local: OAuth e Curso vivo aprovados.");
+  console.log("Smoke MCP local: OAuth, Fonte verificada e proveniência atômica aprovados.");
 }

@@ -17,6 +17,16 @@ import {
   normalizeCourseDesignRead
 } from "../aralearn/runtime/domain/courseDesignParameters.js";
 import {
+  COURSE_DESIGN_CONTEXT_V2_CONTRACT,
+  CourseSourcesError,
+  normalizeCourseSourceAttributionApplication,
+  normalizeCourseSourceChange,
+  normalizeCourseSourceCommand,
+  normalizeCourseSourceContext,
+  normalizeCourseSourcesRead,
+  normalizeSourceAttributionApplications
+} from "../aralearn/runtime/domain/courseSources.js";
+import {
   RESOURCE_CATALOG,
   RESOURCE_PACKAGE_REGISTRY
 } from "../aralearn/runtime/resources/catalog/resourceCatalog.js";
@@ -64,6 +74,7 @@ const AUTHORING_PART_STATES = new Set([
   "materialized"
 ]);
 const COURSE_DESIGN_RESPONSE_LIMIT_BYTES = 256 * 1024;
+const COURSE_SOURCES_RESPONSE_LIMIT_BYTES = 256 * 1024;
 const COMPONENT_CATALOG_OPTIONS = Object.freeze(
   RESOURCE_PACKAGE_REGISTRY.listCatalog()
     .map((manifest) => Object.freeze({
@@ -77,6 +88,7 @@ const COURSE_DESIGN_PARAMETER_DEFAULTS = new Map(
   COURSE_DESIGN_PARAMETER_DEFINITIONS.map(({ id, defaultValue }) => [id, defaultValue])
 );
 const CONTEXT_HASH_PATTERN = /^[a-f0-9]{64}$/u;
+const SOURCE_CURSOR_PATTERN = /^[A-Za-z0-9+/_-]+={0,2}$/u;
 
 function first(value) {
   return Array.isArray(value) ? value[0] || null : value;
@@ -111,6 +123,12 @@ function validTimestamp(value, { nullable = false } = {}) {
 
 function jsonRecord(value) {
   return value && typeof value === "object" && !Array.isArray(value);
+}
+
+function duplicatesMaterializationPayload(value) {
+  return jsonRecord(value) && [
+    "designApplication", "sourceAttributionApplication", "entityChanges", "content"
+  ].some((field) => Object.hasOwn(value, field));
 }
 
 function decimalIdentity(value) {
@@ -185,6 +203,45 @@ function assertComponentRefsAllowed(refs, policy) {
       { ref: denied }
     );
   }
+}
+
+function assertSourceLinksAllowedByContext(studyUnits, target) {
+  const allowedSources = new Map();
+  for (const attribution of [
+    ...target.sourceAttributions.instructionalAnalysisUnits,
+    ...target.sourceAttributions.evidenceRequirements
+  ]) {
+    for (const source of attribution.sources) {
+      const key = `${source.sourceId}\0${source.sourceRevision}\0${source.relation}`;
+      const anchors = allowedSources.get(key) || new Set();
+      source.anchors.forEach(({ anchorId, anchorRevision }) =>
+        anchors.add(`${anchorId}\0${anchorRevision}`));
+      allowedSources.set(key, anchors);
+    }
+  }
+  for (const studyUnit of studyUnits) {
+    for (const sourceLink of studyUnit.sourceLinks) {
+      const key = `${sourceLink.sourceId}\0${sourceLink.sourceRevision}\0${sourceLink.relation}`;
+      const anchors = allowedSources.get(key);
+      if (!anchors || sourceLink.anchors.some(({ anchorId, anchorRevision }) =>
+        !anchors.has(`${anchorId}\0${anchorRevision}`))) {
+        throw new AuthoringApiError(
+          422,
+          "source_not_allowed_by_context",
+          "A aplicação usa Fonte, revisão, relação ou Âncora fora do contexto selado.",
+          { studyUnitId: studyUnit.studyUnitId, sourceId: sourceLink.sourceId }
+        );
+      }
+    }
+  }
+}
+
+function courseSourceCommandSubjectId(command) {
+  return command.type === "save_source" || command.type === "retire_source"
+    ? command.sourceId
+    : command.type === "save_anchor" || command.type === "retire_anchor"
+      ? command.anchorId
+      : command.targetId;
 }
 
 function boundedInspectionId(value, { uuid = false } = {}) {
@@ -364,26 +421,31 @@ function normalizeEffectiveComponentPolicy(value) {
 }
 
 function normalizeMaterializationDesignContext(value, { courseId, authoringPartId }) {
+  const sourceContext = normalizeCourseSourcesDatabaseValue(() =>
+    normalizeCourseSourceContext(value)
+  );
   const fields = new Set([
     "contract", "courseId", "courseRevision", "authoringPartId",
     "componentCatalogVersion", "instructionalAnalysisUnits",
     "evidenceRequirements", "guidanceRevisions", "targets"
   ]);
-  if (!exactRecord(value, fields) ||
-      value.contract !== "aralearn.course-design-context.v1" ||
-      String(value.courseId || "").trim().toLowerCase() !== courseId ||
-      String(value.authoringPartId || "").trim().toLowerCase() !== authoringPartId ||
-      !positiveSafeInteger(value.courseRevision) ||
-      value.componentCatalogVersion !== RESOURCE_CATALOG.catalogVersion ||
-      !Array.isArray(value.instructionalAnalysisUnits) ||
-      value.instructionalAnalysisUnits.length > 256 ||
-      !Array.isArray(value.evidenceRequirements) ||
-      value.evidenceRequirements.length > 256 ||
-      !Array.isArray(value.guidanceRevisions) || value.guidanceRevisions.length > 256 ||
-      !Array.isArray(value.targets) || value.targets.length > 64 ||
-      new TextEncoder().encode(JSON.stringify(value)).byteLength > 64 * 1024) {
+  if (!exactRecord(sourceContext, fields) ||
+      sourceContext.contract !== COURSE_DESIGN_CONTEXT_V2_CONTRACT ||
+      String(sourceContext.courseId || "").trim().toLowerCase() !== courseId ||
+      String(sourceContext.authoringPartId || "").trim().toLowerCase() !== authoringPartId ||
+      !positiveSafeInteger(sourceContext.courseRevision) ||
+      sourceContext.componentCatalogVersion !== RESOURCE_CATALOG.catalogVersion ||
+      !Array.isArray(sourceContext.instructionalAnalysisUnits) ||
+      sourceContext.instructionalAnalysisUnits.length > 256 ||
+      !Array.isArray(sourceContext.evidenceRequirements) ||
+      sourceContext.evidenceRequirements.length > 256 ||
+      !Array.isArray(sourceContext.guidanceRevisions) ||
+      sourceContext.guidanceRevisions.length > 256 ||
+      !Array.isArray(sourceContext.targets) || sourceContext.targets.length > 64 ||
+      new TextEncoder().encode(JSON.stringify(sourceContext)).byteLength > 64 * 1024) {
     invalidMaterializationRead();
   }
+  value = sourceContext;
   const instructionalAnalysisUnits = value.instructionalAnalysisUnits.map((item) => {
     if (!exactRecord(item, new Set(["id", "position", "statement", "version"])) ||
         !UUID_PATTERN.test(String(item.id || "")) ||
@@ -460,7 +522,7 @@ function normalizeMaterializationDesignContext(value, { courseId, authoringPartI
   const targets = value.targets.map((target) => {
     if (!exactRecord(target, new Set([
       "didacticMicrosequenceId", "instructionalAnalysisUnitIds", "evidenceRequirementIds",
-      "parameters", "guidanceRevisionIds", "componentPolicy"
+      "parameters", "guidanceRevisionIds", "componentPolicy", "sourceAttributions"
     ])) || typeof target.didacticMicrosequenceId !== "string" ||
         !target.didacticMicrosequenceId.trim() ||
         target.didacticMicrosequenceId.length > 240 ||
@@ -514,13 +576,25 @@ function normalizeMaterializationDesignContext(value, { courseId, authoringPartI
     if (new Set(parameters.map(({ parameterId }) => parameterId)).size !== 4) {
       invalidMaterializationRead();
     }
+    const sourceAttributions = structuredClone(target.sourceAttributions);
+    const attributedInstructionalAnalysisUnitIds = sourceAttributions
+      .instructionalAnalysisUnits.map(({ planItemId }) => planItemId);
+    const attributedEvidenceRequirementIds = sourceAttributions
+      .evidenceRequirements.map(({ planItemId }) => planItemId);
+    if (JSON.stringify(attributedInstructionalAnalysisUnitIds) !==
+          JSON.stringify(target.instructionalAnalysisUnitIds) ||
+        JSON.stringify(attributedEvidenceRequirementIds) !==
+          JSON.stringify(target.evidenceRequirementIds)) {
+      invalidMaterializationRead();
+    }
     return {
       didacticMicrosequenceId: target.didacticMicrosequenceId,
       instructionalAnalysisUnitIds: [...target.instructionalAnalysisUnitIds],
       evidenceRequirementIds: [...target.evidenceRequirementIds],
       parameters,
       guidanceRevisionIds: [...target.guidanceRevisionIds],
-      componentPolicy: normalizeEffectiveComponentPolicy(target.componentPolicy)
+      componentPolicy: normalizeEffectiveComponentPolicy(target.componentPolicy),
+      sourceAttributions
     };
   });
   if (new Set(targets.map(({ didacticMicrosequenceId }) =>
@@ -557,6 +631,7 @@ function normalizeMaterializationStep(value) {
       !new Set(["context_load", "didactic_microsequence_materialization", "validation"]).has(kind) ||
       !new Set(["pending", "completed", "failed"]).has(status) ||
       !positiveSafeInteger(value.version) || !jsonRecord(value.resultFacts) ||
+      duplicatesMaterializationPayload(value.resultFacts) ||
       !validTimestamp(value.updatedAt) ||
       !validTimestamp(value.completedAt, { nullable: true }) ||
       (status === "pending") !== (value.completedAt == null) ||
@@ -602,7 +677,7 @@ function normalizePartMaterialization(value, { courseId, authoringPartId, materi
       !new Set(["running", "completed", "failed"]).has(status) ||
       !positiveSafeInteger(source.version) || !jsonRecord(source.designContext) ||
       typeof source.contextHash !== "string" || !CONTEXT_HASH_PATTERN.test(source.contextHash) ||
-      !jsonRecord(source.resultFacts) ||
+      !jsonRecord(source.resultFacts) || duplicatesMaterializationPayload(source.resultFacts) ||
       !validTimestamp(source.startedAt) || !validTimestamp(source.updatedAt) ||
       !validTimestamp(source.completedAt, { nullable: true }) ||
       (status === "running") !== (source.completedAt == null) ||
@@ -972,6 +1047,28 @@ function normalizeCourseDesignDatabaseValue(normalize) {
   }
 }
 
+function normalizeCourseSourcesDatabaseValue(normalize) {
+  try {
+    return normalize();
+  } catch (error) {
+    if (!(error instanceof CourseSourcesError)) throw error;
+    throw new AuthoringApiError(
+      503,
+      "course_service_unavailable",
+      "O Supabase devolveu um contrato de Fontes inválido."
+    );
+  }
+}
+
+function normalizeCourseSourcesInputValue(normalize) {
+  try {
+    return normalize();
+  } catch (error) {
+    if (!(error instanceof CourseSourcesError)) throw error;
+    throw new AuthoringApiError(422, error.code, error.message, error.details);
+  }
+}
+
 function validateComponentCatalogProjection(value) {
   const catalog = value?.componentCatalog;
   const options = Array.isArray(catalog?.options) ? catalog.options : [];
@@ -1031,13 +1128,19 @@ function editableInstructionalPlan(value) {
     scope: plan.scope ?? "",
     preferredPartCount: plan.preferredPartCount,
     intendedLearningOutcomes: Array.isArray(plan.intendedLearningOutcomes)
-      ? plan.intendedLearningOutcomes.map(({ id, position, statement }) => ({ id, position, statement }))
+      ? plan.intendedLearningOutcomes.map(({ id, position, statement, sourceLinks }) => ({
+          id, position, statement, sourceLinks
+        }))
       : [],
     instructionalAnalysisUnits: Array.isArray(plan.instructionalAnalysisUnits)
-      ? plan.instructionalAnalysisUnits.map(({ id, position, statement }) => ({ id, position, statement }))
+      ? plan.instructionalAnalysisUnits.map(({ id, position, statement, sourceLinks }) => ({
+          id, position, statement, sourceLinks
+        }))
       : [],
     evidenceRequirements: Array.isArray(plan.evidenceRequirements)
-      ? plan.evidenceRequirements.map(({ id, position, statement }) => ({ id, position, statement }))
+      ? plan.evidenceRequirements.map(({ id, position, statement, sourceLinks }) => ({
+          id, position, statement, sourceLinks
+        }))
       : [],
     parts: Array.isArray(plan.parts)
       ? plan.parts.map((part) => ({
@@ -1264,7 +1367,9 @@ export class CourseSupabaseAdapter {
         p_child_cursor: childCursor
       }, { deadlineAt, responseLimitBytes: COURSE_DESIGN_RESPONSE_LIMIT_BYTES }));
     } catch (error) {
-      if (error instanceof AuthoringApiError && error.code === "payload_too_large") {
+      if (error instanceof AuthoringApiError && new Set([
+        "payload_too_large", "course_response_too_large"
+      ]).has(error.code)) {
         throw new AuthoringApiError(
           413,
           "course_design_response_too_large",
@@ -1289,6 +1394,71 @@ export class CourseSupabaseAdapter {
         503,
         "course_service_unavailable",
         "A leitura do desenho não corresponde ao Curso e ao escopo solicitados."
+      );
+    }
+    return normalized;
+  }
+
+  async getCourseSources({
+    principal,
+    courseId,
+    expectedRevision,
+    mode,
+    sourceId = null,
+    targetKind = null,
+    targetId = null,
+    cursor = null,
+    limit = 10,
+    deadlineAt = null
+  }) {
+    let result;
+    try {
+      result = first(await this.rpc("get_owned_course_sources_for_actor_v1", {
+        p_actor_id: principal.actorId,
+        p_course_id: courseId,
+        p_expected_revision: expectedRevision,
+        p_mode: mode,
+        p_source_id: sourceId,
+        p_target_kind: targetKind,
+        p_target_id: targetId,
+        p_cursor: cursor,
+        p_limit: limit
+      }, {
+        deadlineAt,
+        responseLimitBytes: COURSE_SOURCES_RESPONSE_LIMIT_BYTES
+      }));
+    } catch (error) {
+      if (error instanceof AuthoringApiError && new Set([
+        "payload_too_large", "course_response_too_large"
+      ]).has(error.code)) {
+        throw new AuthoringApiError(
+          413,
+          "course_sources_response_too_large",
+          "A leitura de Fontes excedeu o limite de 256 KiB. Use uma página menor."
+        );
+      }
+      throw error;
+    }
+    const normalized = normalizeCourseSourcesDatabaseValue(() =>
+      normalizeCourseSourcesRead(result)
+    );
+    const expectedQuery = { sourceId, targetKind, targetId };
+    if (normalized.courseId !== courseId ||
+        normalized.courseRevision !== expectedRevision ||
+        normalized.mode !== mode ||
+        normalized.query.sourceId !== expectedQuery.sourceId ||
+        normalized.query.targetKind !== expectedQuery.targetKind ||
+        normalized.query.targetId !== expectedQuery.targetId ||
+        normalized.nextCursor !== null &&
+          !SOURCE_CURSOR_PATTERN.test(normalized.nextCursor) ||
+        mode === "source" && normalized.items.some(({ sourceId: itemSourceId }) =>
+          itemSourceId !== sourceId) ||
+        mode === "target" && normalized.items.some((item) =>
+          item.targetKind !== targetKind || item.targetId !== targetId)) {
+      throw new AuthoringApiError(
+        503,
+        "course_service_unavailable",
+        "A leitura de Fontes não corresponde ao Curso e à consulta solicitados."
       );
     }
     return normalized;
@@ -1485,6 +1655,51 @@ export class CourseSupabaseAdapter {
     return normalized;
   }
 
+  async executeCourseSourceCommand({
+    principal,
+    courseId,
+    requestId,
+    expectedCourseRevision,
+    command,
+    deadlineAt = null
+  }) {
+    const normalizedCommand = normalizeCourseSourcesInputValue(() =>
+      normalizeCourseSourceCommand(command)
+    );
+    const result = first(await this.rpc(
+      "execute_course_source_command_for_actor_v1",
+      {
+        p_actor_id: principal.actorId,
+        p_course_id: courseId,
+        p_expected_revision: expectedCourseRevision,
+        p_command: normalizedCommand,
+        p_channel: authoringChannel(principal),
+        p_request_id: requestId
+      }, {
+        deadlineAt,
+        timeoutMs: 40_000,
+        responseLimitBytes: COURSE_SOURCES_RESPONSE_LIMIT_BYTES
+      }
+    ));
+    const normalized = normalizeCourseSourcesDatabaseValue(() =>
+      normalizeCourseSourceChange(result)
+    );
+    if (normalized.courseId !== courseId || normalized.requestId !== requestId ||
+        normalized.courseRevision !==
+          expectedCourseRevision + (normalized.changed ? 1 : 0) ||
+        normalized.change != null && (
+          normalized.change.type !== normalizedCommand.type ||
+          normalized.change.subjectId !== courseSourceCommandSubjectId(normalizedCommand)
+        )) {
+      throw new AuthoringApiError(
+        503,
+        "course_service_unavailable",
+        "A confirmação de Fontes não corresponde ao comando solicitado."
+      );
+    }
+    return normalized;
+  }
+
   async advanceCourseAuthoringPartMaterialization({
     principal,
     courseId,
@@ -1497,6 +1712,7 @@ export class CourseSupabaseAdapter {
     payload,
     deadlineAt = null
   }) {
+    let payloadForRpc = payload;
     if (operation === "record_step") {
       const current = await this.getCourseAuthoringPartMaterialization({
         principal,
@@ -1507,6 +1723,16 @@ export class CourseSupabaseAdapter {
       });
       const materialization = current.materialization;
       const application = payload.designApplication;
+      const sourceApplication = payload.sourceAttributionApplication == null
+        ? null
+        : normalizeCourseSourcesInputValue(() =>
+            normalizeCourseSourceAttributionApplication(
+              payload.sourceAttributionApplication
+            ));
+      payloadForRpc = {
+        ...payload,
+        sourceAttributionApplication: sourceApplication
+      };
       const step = materialization.steps.find(({ id }) => id === payload.stepId);
       if (!step) {
         throw new AuthoringApiError(
@@ -1517,11 +1743,12 @@ export class CourseSupabaseAdapter {
       }
       const requiresApplication = payload.status === "completed" &&
         step.kind === "didactic_microsequence_materialization";
-      if ((application != null) !== requiresApplication) {
+      if ((application != null) !== requiresApplication ||
+          (sourceApplication != null) !== requiresApplication) {
         throw new AuthoringApiError(
           409,
-          "design_application_requirement_mismatch",
-          "Os fatos de aplicação não correspondem ao tipo e ao resultado da etapa selada."
+          "materialization_application_requirement_mismatch",
+          "Os fatos de desenho e proveniência não correspondem ao tipo e ao resultado da etapa selada."
         );
       }
       if (application != null) {
@@ -1541,6 +1768,33 @@ export class CourseSupabaseAdapter {
           (studyUnit) => studyUnit.componentRefs
         ))];
         assertComponentRefsAllowed(componentRefs, target.componentPolicy.policy);
+        const designStudyUnitIds = application.studyUnits
+          .map(({ studyUnitId }) => studyUnitId)
+          .sort((left, right) => left.localeCompare(right, "en"));
+        const sourceStudyUnitIds = sourceApplication.studyUnits
+          .map(({ studyUnitId }) => studyUnitId)
+          .sort((left, right) => left.localeCompare(right, "en"));
+        const changedStudyUnits = Array.isArray(payload.entityChanges?.upserts)
+          ? payload.entityChanges.upserts.filter(({ entityType }) => entityType === "study_unit")
+          : [];
+        const changedStudyUnitIds = changedStudyUnits
+          .map(({ entityId }) => entityId)
+          .sort((left, right) => left.localeCompare(right, "en"));
+        if (sourceApplication.contextHash !== materialization.contextHash ||
+            sourceApplication.didacticMicrosequenceId !==
+              application.didacticMicrosequenceId ||
+            JSON.stringify(sourceStudyUnitIds) !== JSON.stringify(designStudyUnitIds) ||
+            JSON.stringify(sourceStudyUnitIds) !== JSON.stringify(changedStudyUnitIds) ||
+            changedStudyUnits.some(({ parentType, parentId }) =>
+              parentType !== "microsequence" ||
+              parentId !== application.didacticMicrosequenceId)) {
+          throw new AuthoringApiError(
+            409,
+            "source_context_mismatch",
+            "Os fatos de proveniência não correspondem ao contexto e às Unidades seladas."
+          );
+        }
+        assertSourceLinksAllowedByContext(sourceApplication.studyUnits, target);
       }
     }
     const result = first(await this.rpc(
@@ -1553,7 +1807,7 @@ export class CourseSupabaseAdapter {
         p_expected_course_revision: expectedCourseRevision,
         p_expected_materialization_version: expectedMaterializationVersion,
         p_operation: operation,
-        p_payload: payload,
+        p_payload: payloadForRpc,
         p_channel: authoringChannel(principal),
         p_request_id: requestId
       },
@@ -1577,14 +1831,19 @@ export class CourseSupabaseAdapter {
     expectedRevision,
     upserts = [],
     deletes = [],
+    sourceAttributionApplications = [],
     deadlineAt = null
   }) {
+    const normalizedApplications = normalizeCourseSourcesInputValue(() =>
+      normalizeSourceAttributionApplications(sourceAttributionApplications)
+    );
     const result = first(await this.rpc("commit_course_composition_for_actor_v1", {
       p_actor_id: principal.actorId,
       p_course_id: courseId,
       p_expected_revision: expectedRevision,
       p_upserts: upserts,
       p_deletes: deletes,
+      p_source_attribution_applications: normalizedApplications,
       p_request_id: requestId
     }, { deadlineAt, timeoutMs: 40_000 }));
     return withDeepLink(result, this.publicAppUrl);

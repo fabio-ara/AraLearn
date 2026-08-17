@@ -23,7 +23,7 @@ export function validateStudyUnitEnvelope(studyUnit, registry, path = "$.studyUn
     return { valid: false, errors: [`${path} precisa ser um objeto.`] };
   }
   const allowedKeys = new Set([
-    "id", "position", "title", "role", "content", "response", "feedback", "topics", "sources"
+    "id", "position", "title", "role", "content", "response", "feedback", "topics"
   ]);
   Object.keys(studyUnit).forEach((key) => {
     if (!allowedKeys.has(key)) errors.push(`${path}.${key} não pertence ao envelope.`);
@@ -38,7 +38,7 @@ export function validateStudyUnitEnvelope(studyUnit, registry, path = "$.studyUn
     errors.push(`${path}.content precisa de ao menos uma instância em Unidade de estudo de teoria.`);
   }
   if (!Array.isArray(studyUnit.feedback)) errors.push(`${path}.feedback precisa ser uma lista.`);
-  for (const field of ["topics", "sources"]) {
+  for (const field of ["topics"]) {
     if (!Array.isArray(studyUnit[field]) || studyUnit[field].some((item) => !text(item))) {
       errors.push(`${path}.${field} precisa ser uma lista de textos não vazios.`);
     } else if (new Set(studyUnit[field]).size !== studyUnit[field].length) {
@@ -93,8 +93,7 @@ export function normalizeStudyUnitEnvelope(studyUnit, registry) {
     content: list(studyUnit?.content).map((instance) => registry.normalizeInstance(instance, "content")),
     response: studyUnit?.response ? registry.normalizeInstance(studyUnit.response, "response") : null,
     feedback: list(studyUnit?.feedback).map((instance) => registry.normalizeInstance(instance, "feedback")),
-    topics: [...new Set(list(studyUnit?.topics).map(text).filter(Boolean))],
-    sources: [...new Set(list(studyUnit?.sources).map(text).filter(Boolean))]
+    topics: [...new Set(list(studyUnit?.topics).map(text).filter(Boolean))]
   };
   const validation = validateStudyUnitEnvelope(normalized, registry);
   if (!validation.valid) throw new TypeError(validation.errors.join(" "));

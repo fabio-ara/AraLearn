@@ -156,6 +156,21 @@ select jsonb_build_object(
     'courseId', course.id,
     'title', course.title,
     'goal', course.goal,
+    'sourceReferences', coalesce((
+      select jsonb_agg(jsonb_build_object(
+        'studyUnitId', attribution.target_id,
+        'sourceOrdinal', source_link.source_ordinal,
+        'sourceId', source_link.source_id
+      ) order by convert_to(attribution.target_id,'UTF8'),
+        source_link.source_ordinal)
+      from private.course_source_attributions attribution
+      join private.course_source_attribution_sources source_link
+        on source_link.course_id = attribution.course_id
+       and source_link.attribution_id = attribution.id
+      where attribution.course_id = course.id
+        and attribution.target_kind = 'study_unit'
+        and attribution.revision = 1
+    ), '[]'::jsonb),
     'entities', coalesce((
       select jsonb_agg(jsonb_build_object(
         'entityType', entity.entity_type,

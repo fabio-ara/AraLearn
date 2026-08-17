@@ -3,12 +3,14 @@ import {
   validateProgressDocument
 } from "../storage/progressStore.js";
 import { CoursePersonalStateRepository } from "../persistence/CoursePersonalStateRepository.js";
+import { normalizeCourseStudyCitationsRead } from "../domain/courseSources.js";
 import { findCourse } from "./CourseStudyNavigation.js";
 
 const COURSE_DOCUMENT_CONTRACT = "aralearn.course.v1";
 const MAX_LIST_PAGES = 100;
 const REVIEW_PAGE_SIZE = 20;
 const REVIEW_PAGE_CACHE_KEY = "course.v1.review-page";
+const COURSE_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
 
 function clone(value) {
   return value == null ? value : structuredClone(value);
@@ -22,6 +24,16 @@ function courseIdFromReference(reference) {
       : reference?.courseId;
   return String(value || "").trim().toLowerCase();
 }
+
+function studyUnitIdFromReference(reference) {
+  const value = Array.isArray(reference)
+    ? reference[4]
+    : Array.isArray(reference?.entityPath)
+      ? reference.entityPath[4]
+      : reference?.studyUnitId;
+  return String(value || "").trim();
+}
+
 
 function mergeProgress(progressValues) {
   const result = createEmptyProgressDocument();
@@ -51,7 +63,24 @@ function networkFailure(error) {
     (error?.name === "TypeError" && /fetch|network|load failed/iu.test(String(error.message || "")));
 }
 
+function courseRevisionConflict(error) {
+  const status = Number(error?.status || error?.response?.status || 0);
+  const code = String(error?.code || error?.response?.code || "").toUpperCase();
+  return status === 409 || code === "40001" || code === "COURSE_REVISION_CHANGED";
+}
+
+function courseRevisionChangedError(cause = null) {
+  if (String(cause?.code || "").toLowerCase() === "course_revision_changed") return cause;
+  const error = new Error("O Curso mudou durante a leitura das citações.");
+  error.name = "CourseRevisionChangedError";
+  error.status = 409;
+  error.code = "course_revision_changed";
+  if (cause) error.cause = cause;
+  return error;
+}
+
 function courseAccessRevoked(error) {
+  if (courseRevisionConflict(error)) return false;
   const status = Number(error?.status || error?.response?.status || 0);
   const code = String(error?.code || error?.response?.code || "").toUpperCase();
   return error?.authRequired !== true && status !== 401 && (
@@ -259,6 +288,44 @@ export class CourseStudyRepository {
     }
     this.#rebuildProject();
     return clone(loaded.course);
+  }
+
+  async loadStudyUnitCitations(reference) {
+    if (typeof this.api.getStudyUnitCitations !== "function") {
+      throw new TypeError("API de citações do Estudo indisponível.");
+    }
+    const courseId = courseIdFromReference(reference);
+    const studyUnitId = studyUnitIdFromReference(reference);
+    const descriptor = this.courseList.find((item) => item.courseId === courseId);
+    const loaded = this.loadedCourseById.get(courseId);
+    const expectedRevision = loaded?.revision || descriptor?.revision;
+    if (!COURSE_ID_PATTERN.test(courseId) || !studyUnitId ||
+        !Number.isSafeInteger(expectedRevision) || expectedRevision < 1) {
+      throw new TypeError("Referência de Unidade de estudo inválida para citações.");
+    }
+    let rawCitations;
+    try {
+      rawCitations = await this.api.getStudyUnitCitations(
+        courseId,
+        studyUnitId,
+        { expectedRevision }
+      );
+    } catch (error) {
+      const normalizedError = courseRevisionConflict(error)
+        ? courseRevisionChangedError(error)
+        : error;
+      if (courseAccessRevoked(normalizedError)) await this.#purgeRevokedCourses([courseId]);
+      throw normalizedError;
+    }
+    const citations = normalizeCourseStudyCitationsRead(rawCitations);
+    if (citations.courseId !== courseId || citations.courseRevision !== expectedRevision ||
+        citations.studyUnitId !== studyUnitId) {
+      if (citations.courseRevision !== expectedRevision) {
+        throw courseRevisionChangedError();
+      }
+      throw new TypeError("As citações não correspondem à Unidade solicitada.");
+    }
+    return citations;
   }
 
   loadProject() {

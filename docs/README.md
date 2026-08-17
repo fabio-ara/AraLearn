@@ -20,9 +20,9 @@ científica nem representa endosso institucional.
 2. [Uso do aplicativo](uso-do-app.md) — conta, lista de Cursos, Estudo,
    Autoria e sincronização;
 3. [Guia do estudante](guia-estudante.md) — primeiro percurso, retomada,
-   revisão e observações;
+   revisão, observações e citações redigidas;
 4. [Guia do professor e autor](guia-professor-autor.md) — criação privada,
-   planejamento, inspeção e acesso direto;
+   planejamento, Fontes, inspeção e acesso direto;
 5. [Solução de problemas](solucao-de-problemas.md) — diagnóstico por sintoma e
    recuperação segura.
 
@@ -60,7 +60,8 @@ liga decisões, literatura, implementação e avaliação prevista.
    IndexedDB, PostgreSQL, Storage, cache e fila;
 3. [Supabase](supabase.md) — Auth, banco, Storage, Edge Functions, migrations e
    políticas de acesso;
-4. [Contrato de conteúdo](aralearn-contract.md) — envelopes e validação;
+4. [Contrato de conteúdo](aralearn-contract.md) — envelopes, clean cut de
+   Fontes e validação;
 5. [Componentes didáticos e packages](componentes-didaticos.md) — núcleo,
    pacotes, catálogo e renderização;
 6. [Sistema visual](sistema-visual.md) — tipografia, responsividade e
@@ -76,7 +77,7 @@ cada propriedade pode ser verificada.
 Comece pelo comportamento já implementado:
 
 1. [Guia do professor e autor](guia-professor-autor.md) — criar e abrir Cursos,
-   editar planejamento e conceder acesso para Estudo;
+   editar planejamento e proveniência e conceder acesso para Estudo;
 2. [Autoria por Model Context Protocol](autoria-mcp.md) — ferramentas que
    operam o mesmo Curso da interface;
 3. [Criar Cursos pelo chat](criar-cursos-pelo-chat.md) — percurso

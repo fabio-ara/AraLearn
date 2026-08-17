@@ -38,7 +38,7 @@ function course(courseId, suffix) {
               data: { text: "Conteúdo." }
             }],
             response: null,
-            feedback: [], topics: [], sources: []
+            feedback: [], topics: []
           }]
         }]
       }]
@@ -74,7 +74,7 @@ function addSecondModule(courseValue, suffix) {
             data: { text: "Conteúdo anterior." }
           }],
           response: null,
-          feedback: [], topics: [], sources: []
+          feedback: [], topics: []
         }, {
           id: `unit-${suffix}`,
           position: 2,
@@ -87,7 +87,7 @@ function addSecondModule(courseValue, suffix) {
             data: { text: "Outro conteúdo." }
           }],
           response: null,
-          feedback: [], topics: [], sources: []
+          feedback: [], topics: []
         }]
       }]
     }]
@@ -129,7 +129,7 @@ test("compõe a tela de Estudo de Cursos e isola estado pessoal por courseId", a
         data: { text: "Conteúdo posterior." }
       }],
       response: null,
-      feedback: [], topics: [], sources: []
+      feedback: [], topics: []
     }]
   });
   const documents = new Map([
@@ -584,4 +584,122 @@ test("flush purga Curso revogado após mutação offline pendente e libera ciclo
   await repository.flush();
   assert.deepEqual(repository.loadCourseSummaries(), []);
   assert.deepEqual(repository.loadReviewItems(), []);
+});
+
+test("citações são buscadas somente por Unidade carregada e vinculadas à revisão do Curso", async () => {
+  const calls = [];
+  const clearedCourses = [];
+  let citationFailure = "";
+  const document = course(COURSE_A, "a");
+  const repository = new CourseStudyRepository({
+    bridge: {
+      async listAccessibleCourses() {
+        return {
+          items: [{
+            courseId: COURSE_A,
+            title: document.title,
+            goal: document.goal,
+            revision: 4,
+            ownership: "shared",
+            canEdit: false,
+            moduleCount: 1,
+            lessonCount: 1,
+            microsequenceCount: 1,
+            studyUnitCount: 1,
+            completedStudyUnitCount: 0
+          }],
+          hasMore: false,
+          nextCursor: null
+        };
+      },
+      async loadCourse() {
+        return { document: { contract: "aralearn.course.v1", courses: [document] } };
+      },
+      async clearCourse(courseId) {
+        clearedCourses.push(courseId);
+      }
+    },
+    api: {
+      async listCourseReviewItems() {
+        return { items: [], hasMore: false, nextCursor: null };
+      },
+      async loadPersonalState() {
+        return null;
+      },
+      async mutatePersonalState() {
+        throw new Error("Não deve alterar estado pessoal.");
+      },
+      async getStudyUnitCitations(courseId, studyUnitId, options) {
+        calls.push({ courseId, studyUnitId, options });
+        if (citationFailure === "stale") {
+          throw Object.assign(new Error("Revisão base desatualizada."), {
+            status: 500,
+            code: "40001"
+          });
+        }
+        if (citationFailure === "revoked") {
+          throw Object.assign(new Error("Curso não encontrado"), {
+            status: 404,
+            code: "PT404"
+          });
+        }
+        return {
+          contract: "aralearn.course-study-citations.v1",
+          courseId,
+          courseRevision: 4,
+          studyUnitId,
+          citations: [{
+            sourceId: "fonte-publica",
+            sourceRevision: 2,
+            title: "Fonte pública",
+            citationText: "Autoria. Fonte pública. 2026.",
+            url: "https://example.test/fonte",
+            editionOrVersion: null,
+            anchors: [{
+              anchorId: "anchor-publica",
+              anchorRevision: 1,
+              selector: { kind: "page_range", startPage: 8, endPage: 9 }
+            }]
+          }]
+        };
+      }
+    },
+    cache: cache()
+  });
+  await repository.initialize();
+  await repository.loadCourse(COURSE_A);
+
+  const citations = await repository.loadStudyUnitCitations({
+    courseId: COURSE_A,
+    studyUnitId: "unit-a"
+  });
+  assert.deepEqual(calls, [{
+    courseId: COURSE_A,
+    studyUnitId: "unit-a",
+    options: { expectedRevision: 4 }
+  }]);
+  assert.equal(citations.citations[0].title, "Fonte pública");
+  assert.equal("verificationExcerpt" in citations.citations[0].anchors[0], false);
+
+  citationFailure = "stale";
+  await assert.rejects(
+    repository.loadStudyUnitCitations({
+      courseId: COURSE_A,
+      studyUnitId: "unit-removed-after-revision-4"
+    }),
+    (error) => error?.code === "course_revision_changed" &&
+      error?.status === 409 && error?.cause?.code === "40001"
+  );
+  assert.equal(repository.loadProject().courses[0]?.id, COURSE_A);
+  assert.equal(repository.loadCourseSummaries()[0]?.courseId, COURSE_A);
+  assert.deepEqual(clearedCourses, []);
+
+  citationFailure = "revoked";
+  await assert.rejects(
+    repository.loadStudyUnitCitations({ courseId: COURSE_A, studyUnitId: "unit-a" }),
+    (error) => error?.status === 404 && error?.code === "PT404"
+  );
+  assert.deepEqual(repository.loadProject().courses, []);
+  assert.deepEqual(repository.loadCourseSummaries(), []);
+  assert.deepEqual(clearedCourses, [COURSE_A]);
 });

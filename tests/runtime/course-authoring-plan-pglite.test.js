@@ -20,6 +20,10 @@ const courseDesignMigrationUrl = new URL(
   "../../supabase/migrations/20260817180000_course_design_parameters.sql",
   import.meta.url
 );
+const courseSourcesMigrationUrl = new URL(
+  "../../supabase/migrations/20260817190000_course_sources_provenance.sql",
+  import.meta.url
+);
 
 const OWNER = "00000000-0000-4000-8000-000000000001";
 const LEARNER = "00000000-0000-4000-8000-000000000002";
@@ -49,6 +53,19 @@ async function scalar(database, sql, parameters = []) {
 async function actor(database, actorId, role = "authenticated") {
   await database.query("select set_config('request.jwt.claim.sub',$1,false)", [actorId]);
   await database.query("select set_config('request.jwt.claim.role',$1,false)", [role]);
+}
+
+function isPgrstConflict(error, expectedMessage) {
+  try {
+    const payload = JSON.parse(error.message);
+    const transport = JSON.parse(error.detail);
+    return error.code === "PGRST" && payload.code === "40001" &&
+      payload.message === expectedMessage && payload.details === null &&
+      payload.hint === null && transport.status === 409 &&
+      Object.keys(transport.headers).length === 0;
+  } catch {
+    return false;
+  }
 }
 
 async function databaseFixture({
@@ -374,6 +391,10 @@ async function applyCourseDesignMigration(database, {
   await database.exec(await fs.readFile(courseDesignMigrationUrl, "utf8"));
 }
 
+async function applyCourseSourcesMigration(database) {
+  await database.exec(await fs.readFile(courseSourcesMigrationUrl, "utf8"));
+}
+
 function materializationApplication({
   contextHash,
   prefix = "designed",
@@ -462,6 +483,20 @@ async function readCourseDesign(database, scopeKind, scopeRef, limit = 32, curso
       $1,$2,$3,$4,$5,$6
     ) as value
   `, [OWNER, COURSE, scopeKind, scopeRef, limit, cursor]);
+}
+
+async function executeCourseSourceCommand(
+  database,
+  expectedRevision,
+  command,
+  requestId,
+  actorId = OWNER
+) {
+  return scalar(database, `
+    select public.execute_course_source_command_for_actor_v1(
+      $1,$2,$3,$4::jsonb,'application',$5
+    ) as value
+  `, [actorId, COURSE, expectedRevision, command, requestId]);
 }
 
 function planTarget(planId, partId) {
@@ -3030,5 +3065,2294 @@ test("#122 audita somente os itens atribuídos a cada uma de duas microssequênc
     designApplication: applicationB
   }]);
   assert.equal(recordedB.courseRevision, 9);
+  await database.close();
+});
+
+test("#123 converte todas as referências legacy sem trim, dedupe ou mudança de ordem", async () => {
+  const database = await databaseFixture();
+  await applyMigration(database);
+  await applyStudyUnitInspectionMigration(database);
+  await applyCourseDesignMigration(database);
+  const astralReference = "🧠".repeat(2048);
+  const references = [
+    "  Referência ç  ", "https://exemplo.test/a:b", "  Referência ç  ",
+    astralReference
+  ];
+  await database.query(`
+    update private.course_entities
+    set content = content || jsonb_build_object('sources',$2::jsonb)
+    where course_id=$1 and entity_type='study_unit' and entity_id='card-a'
+  `, [COURSE, JSON.stringify(references)]);
+
+  await applyCourseSourcesMigration(database);
+
+  const links = await database.query(`
+    select link.source_ordinal,link.source_id,link.source_revision,link.relation
+    from private.course_source_attributions attribution
+    join private.course_source_attribution_sources link
+      on link.course_id=attribution.course_id
+      and link.attribution_id=attribution.id
+    where attribution.course_id=$1
+      and attribution.target_kind='study_unit'
+      and attribution.target_id='card-a'
+    order by link.source_ordinal
+  `, [COURSE]);
+  assert.deepEqual(links.rows.map((row) => ({
+    ordinal: row.source_ordinal,
+    sourceId: row.source_id,
+    revision: Number(row.source_revision),
+    relation: row.relation
+  })), references.map((sourceId, ordinal) => ({
+    ordinal,
+    sourceId,
+    revision: 1,
+    relation: "legacy_reference"
+  })));
+  assert.equal(await scalar(database, `
+    select count(*)::integer as value
+    from private.course_source_revisions where course_id=$1
+  `, [COURSE]), 3);
+  assert.deepEqual(await scalar(database, `
+    select jsonb_build_array(
+      char_length(source_id),octet_length(source_id)
+    ) as value
+    from private.course_source_revisions
+    where course_id=$1 and source_id=$2
+  `, [COURSE, astralReference]), [2048, 8192]);
+  assert.equal(await scalar(database, `
+    select bool_and(
+      status='unresolved_legacy' and kind is null and title is null
+      and citation_text is null and url is null
+      and edition_or_version is null and study_visibility='hidden'
+      and actor_id is null
+    ) as value
+    from private.course_source_revisions where course_id=$1
+  `, [COURSE]), true);
+  assert.equal(await scalar(database, `
+    select not (content ? 'sources') as value
+    from private.course_entities
+    where course_id=$1 and entity_type='study_unit' and entity_id='card-a'
+  `, [COURSE]), true);
+  const manifest = await scalar(database, `
+    select public.get_aralearn_runtime_manifest() as value
+  `);
+  assert.equal(manifest.schemaRevision, "20260817190000");
+  assert.equal(manifest.features.includes("course-sources-v1"), true);
+  assert.equal(manifest.features.includes("course-source-provenance-v1"), true);
+  assert.equal(await scalar(database, `
+    select count(*) = 6 and bool_and(
+      routine.provolatile = expected.volatility
+    ) as value
+    from (values
+      (
+        'private.course_source_context_plan_items_v1(uuid,jsonb)'
+          ::regprocedure::oid,
+        'v'::"char"
+      ),
+      (
+        'private.course_design_context_with_sources_v1(jsonb)'
+          ::regprocedure::oid,
+        'v'::"char"
+      ),
+      (
+        'private.course_materialization_design_context_v1(uuid,uuid,bigint,jsonb)'
+          ::regprocedure::oid,
+        'v'::"char"
+      ),
+      (
+        'public.get_owned_course_sources_for_actor_v1(uuid,uuid,bigint,text,text,text,text,text,integer)'
+          ::regprocedure::oid,
+        'v'::"char"
+      ),
+      (
+        'public.get_course_study_citations_v1(uuid,bigint,text)'
+          ::regprocedure::oid,
+        'v'::"char"
+      ),
+      (
+        'private.course_plan_without_sources_v1(jsonb)'::regprocedure::oid,
+        's'::"char"
+      )
+    ) expected(oid,volatility)
+    join pg_proc routine on routine.oid = expected.oid
+  `), true);
+  assert.equal(await scalar(database, `
+    select strpos(lower(pg_get_functiondef(
+      'public.get_owned_course_sources_for_actor_v1(uuid,uuid,bigint,text,text,text,text,text,integer)'
+        ::regprocedure::oid
+    )),'for share') > 0
+    and strpos(lower(pg_get_functiondef(
+      'public.get_course_study_citations_v1(uuid,bigint,text)'
+        ::regprocedure::oid
+    )),'for share') > 0
+    and strpos(pg_get_functiondef(
+      'public.get_course_study_citations_v1(uuid,bigint,text)'
+        ::regprocedure::oid
+    ),'course-access:') > 0 as value
+  `), true);
+  await database.close();
+});
+
+test("#123 preflight rejeita controles em identidade legacy e reverte integralmente", async () => {
+  const database = await databaseFixture();
+  await applyMigration(database);
+  await applyStudyUnitInspectionMigration(database);
+  await applyCourseDesignMigration(database);
+  await database.query(`
+    update private.course_entities
+    set content = content || jsonb_build_object('sources',$2::jsonb)
+    where course_id=$1 and entity_type='study_unit' and entity_id='card-a'
+  `, [COURSE, JSON.stringify(["válida", "inválida\ncom quebra"])]);
+  await assert.rejects(
+    () => applyCourseSourcesMigration(database),
+    /StudyUnit\.sources legado possui shape, limite ou ordem incompatível/iu
+  );
+  await database.exec("rollback").catch(() => {});
+  assert.equal(await scalar(database, `
+    select to_regclass('private.course_source_revisions') is null as value
+  `), true);
+  assert.equal(await scalar(database, `
+    select public.get_aralearn_runtime_manifest()->>'schemaRevision' as value
+  `), "20260817180000");
+  assert.deepEqual(await scalar(database, `
+    select content->'sources' as value from private.course_entities
+    where course_id=$1 and entity_type='study_unit' and entity_id='card-a'
+  `, [COURSE]), ["válida", "inválida\ncom quebra"]);
+  await database.close();
+});
+
+test("#123 preflight aborta legado que não cabe nos envelopes sem truncar", async () => {
+  const database = await databaseFixture();
+  await applyMigration(database);
+  await applyStudyUnitInspectionMigration(database);
+  await applyCourseDesignMigration(database);
+  const longReference = "界".repeat(2048);
+  const references = Array.from({ length: 128 }, () => longReference);
+  await database.query(`
+    update private.course_entities
+    set content = content || jsonb_build_object('sources',$2::jsonb)
+    where course_id=$1 and entity_type='study_unit' and entity_id='card-a'
+  `, [COURSE, JSON.stringify(references)]);
+  await assert.rejects(
+    () => applyCourseSourcesMigration(database),
+    (error) => error.code === "54000"
+      && /excede o orçamento preservável de proveniência/iu.test(error.message)
+  );
+  await database.exec("rollback").catch(() => {});
+  assert.equal(await scalar(database, `
+    select to_regclass('private.course_source_revisions') is null as value
+  `), true);
+  assert.equal(await scalar(database, `
+    select public.get_aralearn_runtime_manifest()->>'schemaRevision' as value
+  `), "20260817180000");
+  const preserved = await scalar(database, `
+    select content->'sources' as value
+    from private.course_entities
+    where course_id=$1 and entity_type='study_unit' and entity_id='card-a'
+  `, [COURSE]);
+  assert.equal(preserved.length, 128);
+  assert.equal(preserved[0], longReference);
+  assert.equal(preserved[127], longReference);
+  await database.close();
+});
+
+test("#123 limita cada revisão de Fonte a oito identidades de Âncora", async () => {
+  const database = await databaseFixture();
+  await applyMigration(database);
+  await applyStudyUnitInspectionMigration(database);
+  await applyCourseDesignMigration(database);
+  await database.query(`
+    update private.course_entities
+    set content=content || '{"sources":[]}'::jsonb
+    where course_id=$1 and entity_type='study_unit'
+  `, [COURSE]);
+  await applyCourseSourcesMigration(database);
+  await actor(database, OWNER, "service_role");
+
+  const sourceId = "source-anchor-limit";
+  const saved = await executeCourseSourceCommand(database, 4, {
+    type: "save_source",
+    sourceId,
+    expectedSourceRevision: 0,
+    source: {
+      kind: "document",
+      title: "Fonte com conjunto limitado de Âncoras",
+      citationText: "AUTOR. Fonte com conjunto limitado de Âncoras.",
+      url: null,
+      editionOrVersion: null,
+      studyVisibility: "citation"
+    }
+  }, "source-anchor-limit-save");
+  assert.equal(saved.courseRevision, 5);
+
+  for (let index = 0; index < 8; index += 1) {
+    const result = await executeCourseSourceCommand(database, 5 + index, {
+      type: "save_anchor",
+      anchorId: `source-anchor-limit-${index}`,
+      sourceId,
+      sourceRevision: 1,
+      expectedAnchorRevision: 0,
+      selector: { kind: "page_range", startPage: index + 1, endPage: index + 1 },
+      verificationExcerpt: null
+    }, `source-anchor-limit-create-${index}`);
+    assert.equal(result.courseRevision, 6 + index);
+  }
+
+  const edited = await executeCourseSourceCommand(database, 13, {
+    type: "save_anchor",
+    anchorId: "source-anchor-limit-0",
+    sourceId,
+    sourceRevision: 1,
+    expectedAnchorRevision: 1,
+    selector: { kind: "page_range", startPage: 10, endPage: 10 },
+    verificationExcerpt: null
+  }, "source-anchor-limit-edit");
+  assert.equal(edited.courseRevision, 14);
+  assert.equal(edited.change.revision, 2);
+
+  const secondSourceId = "source-anchor-limit-second";
+  const secondSource = await executeCourseSourceCommand(database, 14, {
+    type: "save_source",
+    sourceId: secondSourceId,
+    expectedSourceRevision: 0,
+    source: {
+      kind: "document",
+      title: "Segunda Fonte para testar identidade",
+      citationText: null,
+      url: null,
+      editionOrVersion: null,
+      studyVisibility: "hidden"
+    }
+  }, "source-anchor-limit-second");
+  assert.equal(secondSource.courseRevision, 15);
+  await assert.rejects(
+    () => executeCourseSourceCommand(database, 15, {
+      type: "save_anchor",
+      anchorId: "source-anchor-limit-0",
+      sourceId: secondSourceId,
+      sourceRevision: 1,
+      expectedAnchorRevision: 2,
+      selector: { kind: "page_range", startPage: 10, endPage: 10 },
+      verificationExcerpt: null
+    }, "source-anchor-identity-denied"),
+    /permanece presa à revisão original da Fonte/iu
+  );
+
+  await assert.rejects(
+    () => executeCourseSourceCommand(database, 15, {
+      type: "save_anchor",
+      anchorId: "source-anchor-limit-8",
+      sourceId,
+      sourceRevision: 1,
+      expectedAnchorRevision: 0,
+      selector: { kind: "page_range", startPage: 11, endPage: 11 },
+      verificationExcerpt: null
+    }, "source-anchor-limit-denied"),
+    /no máximo oito identidades de Âncora/iu
+  );
+  assert.equal(await scalar(database, `
+    select revision as value from public.courses where id=$1
+  `, [COURSE]), 15);
+  assert.equal(await scalar(database, `
+    select count(distinct anchor_id)::integer as value
+    from private.course_source_anchor_revisions
+    where course_id=$1 and source_id=$2 and source_revision=1
+  `, [COURSE, sourceId]), 8);
+
+  const read = await scalar(database, `
+    select public.get_owned_course_sources_for_actor_v1(
+      $1,$2,$3,'source',$4,null,null,null,20
+    ) as value
+  `, [OWNER, COURSE, 15, sourceId]);
+  assert.equal(read.items.length, 1);
+  assert.equal(read.items[0].anchorCount, 8);
+  assert.equal(read.items[0].anchors.length, 8);
+  await database.close();
+});
+
+test("#123 limites SQL contam scalars Unicode e preservam byte caps", async () => {
+  const database = await databaseFixture();
+  await applyMigration(database);
+  await applyStudyUnitInspectionMigration(database);
+  await applyCourseDesignMigration(database);
+  await database.query(`
+    update private.course_entities
+    set content=content || '{"sources":[]}'::jsonb
+    where course_id=$1 and entity_type='study_unit'
+  `, [COURSE]);
+  await applyCourseSourcesMigration(database);
+  await actor(database, OWNER, "service_role");
+  const sourceId = "🧠".repeat(240);
+  const title = "😀".repeat(300);
+  const citationText = "📚".repeat(2048);
+  const editionOrVersion = "🧪".repeat(120);
+  const saved = await executeCourseSourceCommand(database, 4, {
+    type: "save_source",
+    sourceId,
+    expectedSourceRevision: 0,
+    source: {
+      kind: "document",
+      title,
+      citationText,
+      url: null,
+      editionOrVersion,
+      studyVisibility: "citation"
+    }
+  }, "source-unicode-scalars-save");
+  assert.equal(saved.courseRevision, 5);
+  const anchorId = "⚓".repeat(240);
+  const exact = "🔎".repeat(4000);
+  const prefix = "⬅".repeat(500);
+  const suffix = "➡".repeat(500);
+  const verificationExcerpt = "✅".repeat(2000);
+  const anchored = await executeCourseSourceCommand(database, 5, {
+    type: "save_anchor",
+    anchorId,
+    sourceId,
+    sourceRevision: 1,
+    expectedAnchorRevision: 0,
+    selector: { kind: "text_quote", exact, prefix, suffix },
+    verificationExcerpt
+  }, "source-unicode-scalars-anchor");
+  assert.equal(anchored.courseRevision, 6);
+  assert.deepEqual(await scalar(database, `
+    select jsonb_build_array(
+      char_length(source_id),octet_length(source_id),
+      char_length(title),octet_length(title),
+      char_length(citation_text),octet_length(citation_text),
+      char_length(edition_or_version),octet_length(edition_or_version)
+    ) as value
+    from private.course_source_revisions
+    where course_id=$1 and source_id=$2 and revision=1
+  `, [COURSE, sourceId]), [240, 960, 300, 1200, 2048, 8192, 120, 480]);
+  assert.deepEqual(await scalar(database, `
+    select jsonb_build_array(
+      char_length(anchor_id),octet_length(anchor_id),
+      char_length(selector->>'exact'),octet_length(selector->>'exact'),
+      char_length(selector->>'prefix'),octet_length(selector->>'prefix'),
+      char_length(selector->>'suffix'),octet_length(selector->>'suffix'),
+      char_length(verification_excerpt),octet_length(verification_excerpt)
+    ) as value
+    from private.course_source_anchor_revisions
+    where course_id=$1 and anchor_id=$2 and revision=1
+  `, [COURSE, anchorId]), [
+    240, 720, 4000, 16000, 500, 1500, 500, 1500, 2000, 6000
+  ]);
+  const layoutAnchor = await executeCourseSourceCommand(database, 6, {
+    type: "save_anchor",
+    anchorId: "anchor-layout-unicode",
+    sourceId,
+    sourceRevision: 1,
+    expectedAnchorRevision: 0,
+    selector: {
+      kind: "text_quote",
+      exact: " \nA\tB\r ",
+      prefix: "antes\ndepois",
+      suffix: "fim\tcontexto"
+    },
+    verificationExcerpt: " \nTrecho\tverificado\r "
+  }, "source-layout-anchor-ok");
+  assert.equal(layoutAnchor.courseRevision, 7);
+
+  for (const [requestId, selector] of [
+    ["source-fragment-border", { kind: "uri_fragment", fragment: " secao" }],
+    ["source-fragment-layout", { kind: "uri_fragment", fragment: "secao\tparte" }],
+    ["source-quote-soh-denied", {
+      kind: "text_quote", exact: "A\u0001B", prefix: null, suffix: null
+    }],
+    ["source-quote-c1-denied", {
+      kind: "text_quote", exact: "A\u0085B", prefix: null, suffix: null
+    }],
+    ["source-prefix-blank", {
+      kind: "text_quote", exact: "Trecho", prefix: " ", suffix: null
+    }],
+    ["source-suffix-border", {
+      kind: "text_quote", exact: "Trecho", prefix: null, suffix: "\nvalor"
+    }]
+  ]) {
+    await assert.rejects(() => executeCourseSourceCommand(database, 7, {
+      type: "save_anchor",
+      anchorId: `anchor-${requestId}`,
+      sourceId,
+      sourceRevision: 1,
+      expectedAnchorRevision: 0,
+      selector,
+      verificationExcerpt: null
+    }, requestId), (error) => error.code === "23514");
+  }
+  for (const [requestId, source] of [
+    ["source-title-layout-bad", {
+      kind: "document", title: "Título\nquebrado", citationText: null,
+      url: null, editionOrVersion: null, studyVisibility: "hidden"
+    }],
+    ["source-edition-layout", {
+      kind: "document", title: "Título válido", citationText: null,
+      url: null, editionOrVersion: "v1\tx", studyVisibility: "hidden"
+    }],
+    ["source-citation-border", {
+      kind: "document", title: "Título válido", citationText: "\nCitação",
+      url: null, editionOrVersion: null, studyVisibility: "citation"
+    }]
+  ]) {
+    await assert.rejects(() => executeCourseSourceCommand(database, 7, {
+      type: "save_source",
+      sourceId: requestId,
+      expectedSourceRevision: 0,
+      source
+    }, requestId), (error) => error.code === "23514");
+  }
+  assert.equal(await scalar(database, `
+    select revision as value from public.courses where id=$1
+  `, [COURSE]), 7);
+  await database.close();
+});
+
+test("#123 resolve identidade legacy longa, protege tabelas e permite cascatas reais", async () => {
+  const database = await databaseFixture();
+  await applyMigration(database);
+  await applyStudyUnitInspectionMigration(database);
+  await applyCourseDesignMigration(database);
+  const legacySourceId = `  ${"fonte-ç".repeat(36)}  `;
+  assert.ok(legacySourceId.length > 240 && legacySourceId.length < 2048);
+  await database.query(`
+    update private.course_entities
+    set content = content || jsonb_build_object('sources',$2::jsonb)
+    where course_id=$1 and entity_type='study_unit' and entity_id='card-a'
+  `, [COURSE, JSON.stringify([legacySourceId])]);
+  await applyCourseSourcesMigration(database);
+  await actor(database, OWNER, "service_role");
+
+  const source = {
+    kind: "article",
+    title: "Fonte legada agora verificada",
+    citationText: "AUTOR. Fonte legada agora verificada.",
+    url: "https://example.test/legacy",
+    editionOrVersion: null,
+    studyVisibility: "citation_and_link"
+  };
+  const saveCommand = {
+    type: "save_source",
+    sourceId: legacySourceId,
+    expectedSourceRevision: 1,
+    source
+  };
+  const saved = await executeCourseSourceCommand(
+    database, 4, saveCommand, "source-legacy-resolve-0001"
+  );
+  assert.equal(saved.changed, true);
+  assert.equal(saved.courseRevision, 5);
+  assert.equal(saved.change.subjectId, legacySourceId);
+  assert.equal(saved.change.revision, 2);
+  const replay = await executeCourseSourceCommand(
+    database, 4, saveCommand, "source-legacy-resolve-0001"
+  );
+  assert.equal(replay.idempotent, true);
+  assert.equal(replay.courseRevision, 5);
+  const noOp = await executeCourseSourceCommand(database, 5, {
+    ...saveCommand,
+    expectedSourceRevision: 2
+  }, "source-legacy-noop-0001");
+  assert.equal(noOp.changed, false);
+  assert.equal(noOp.courseRevision, 5);
+  assert.equal(await scalar(database, `
+    select count(*)::integer as value from private.course_events
+    where course_id=$1 and operation='update_course_sources'
+  `, [COURSE]), 1);
+
+  await assert.rejects(
+    () => executeCourseSourceCommand(database, 5, {
+      ...saveCommand,
+      sourceId: `${"nova".repeat(61)}x`,
+      expectedSourceRevision: 0
+    }, "source-long-new-denied-0001"),
+    /precisa resolver uma referência legada existente/iu
+  );
+  assert.equal(await scalar(database, `
+    select revision as value from public.courses where id=$1
+  `, [COURSE]), 5);
+
+  const anchorResult = await executeCourseSourceCommand(database, 5, {
+    type: "save_anchor",
+    anchorId: "anchor-legacy-a",
+    sourceId: legacySourceId,
+    sourceRevision: 2,
+    expectedAnchorRevision: 0,
+    selector: { kind: "page_range", startPage: 3, endPage: 4 },
+    verificationExcerpt: "Trecho conferido."
+  }, "source-legacy-anchor-0001");
+  assert.equal(anchorResult.courseRevision, 6);
+  const sourceLinks = [{
+    sourceId: legacySourceId,
+    sourceRevision: 2,
+    relation: "supported_by",
+    anchors: [{ anchorId: "anchor-legacy-a", anchorRevision: 1 }]
+  }];
+  const assigned = await executeCourseSourceCommand(database, 6, {
+    type: "set_target_sources",
+    targetKind: "study_unit",
+    targetId: "card-a",
+    expectedTargetVersion: 1,
+    sourceLinks
+  }, "source-legacy-assign-0001");
+  assert.equal(assigned.courseRevision, 7);
+
+  const authoritySnapshot = () => scalar(database, `
+    select jsonb_build_object(
+      'course',(
+        select to_jsonb(course) from public.courses course where course.id=$1
+      ),
+      'sources',(
+        select coalesce(jsonb_agg(to_jsonb(source)
+          order by source.source_id,source.revision),'[]'::jsonb)
+        from private.course_source_revisions source where source.course_id=$1
+      ),
+      'anchors',(
+        select coalesce(jsonb_agg(to_jsonb(anchor_value)
+          order by anchor_value.anchor_id,anchor_value.revision),'[]'::jsonb)
+        from private.course_source_anchor_revisions anchor_value
+        where anchor_value.course_id=$1
+      ),
+      'attributions',(
+        select coalesce(jsonb_agg(to_jsonb(attribution)
+          order by attribution.target_kind,attribution.target_id,
+            attribution.revision),'[]'::jsonb)
+        from private.course_source_attributions attribution
+        where attribution.course_id=$1
+      ),
+      'sourceLinks',(
+        select coalesce(jsonb_agg(to_jsonb(source_link)
+          order by source_link.attribution_id,source_link.source_ordinal),
+          '[]'::jsonb)
+        from private.course_source_attribution_sources source_link
+        where source_link.course_id=$1
+      ),
+      'anchorLinks',(
+        select coalesce(jsonb_agg(to_jsonb(anchor_link)
+          order by anchor_link.attribution_id,anchor_link.source_ordinal,
+            anchor_link.anchor_ordinal),'[]'::jsonb)
+        from private.course_source_attribution_anchors anchor_link
+        where anchor_link.course_id=$1
+      ),
+      'events',(
+        select coalesce(jsonb_agg(to_jsonb(event_value)
+          order by event_value.revision),'[]'::jsonb)
+        from private.course_events event_value where event_value.course_id=$1
+      ),
+      'receipts',(
+        select coalesce(jsonb_agg(to_jsonb(receipt)
+          order by receipt.actor_id,receipt.request_id),'[]'::jsonb)
+        from private.course_change_receipts receipt where receipt.course_id=$1
+      )
+    ) as value
+  `, [COURSE]);
+  const stateBeforeStaleCommands = await authoritySnapshot();
+  for (const staleCase of [{
+    expectedCourseRevision: 6,
+    command: { ...saveCommand, expectedSourceRevision: 2 },
+    requestId: "source-stale-course-0001",
+    message: "O Curso mudou; releia antes de salvar a Fonte."
+  }, {
+    expectedCourseRevision: 7,
+    command: { ...saveCommand, expectedSourceRevision: 1 },
+    requestId: "source-stale-source-0001",
+    message: "A Fonte mudou; releia antes de salvar."
+  }, {
+    expectedCourseRevision: 7,
+    command: {
+      type: "save_anchor",
+      anchorId: "anchor-legacy-a",
+      sourceId: legacySourceId,
+      sourceRevision: 2,
+      expectedAnchorRevision: 0,
+      selector: { kind: "page_range", startPage: 3, endPage: 4 },
+      verificationExcerpt: "Trecho conferido."
+    },
+    requestId: "source-stale-anchor-0001",
+    message: "A Âncora mudou; releia antes de salvar."
+  }, {
+    expectedCourseRevision: 7,
+    command: {
+      type: "set_target_sources",
+      targetKind: "study_unit",
+      targetId: "card-a",
+      expectedTargetVersion: 2,
+      sourceLinks
+    },
+    requestId: "source-stale-target-0001",
+    message: "O alvo de proveniência mudou; releia antes de salvar."
+  }]) {
+    await assert.rejects(() => executeCourseSourceCommand(
+      database,
+      staleCase.expectedCourseRevision,
+      staleCase.command,
+      staleCase.requestId
+    ), (error) => isPgrstConflict(error, staleCase.message));
+    assert.deepEqual(await authoritySnapshot(), stateBeforeStaleCommands);
+  }
+
+  const tableNames = [
+    "course_source_revisions", "course_source_anchor_revisions",
+    "course_source_attributions", "course_source_attribution_sources",
+    "course_source_attribution_anchors"
+  ];
+  for (const tableName of tableNames) {
+    const security = await database.query(`
+      select relrowsecurity,relforcerowsecurity
+      from pg_class where oid=$1::regclass
+    `, [`private.${tableName}`]);
+    assert.deepEqual(security.rows[0], {
+      relrowsecurity: true,
+      relforcerowsecurity: true
+    });
+    for (const role of ["anon", "authenticated", "service_role"]) {
+      assert.equal(await scalar(database, `
+        select has_table_privilege($1,$2,'select,insert,update,delete') as value
+      `, [role, `private.${tableName}`]), false);
+    }
+  }
+  for (const role of ["anon", "authenticated", "service_role"]) {
+    await database.exec(`set role ${role}`);
+    await assert.rejects(
+      () => database.query("select * from private.course_source_revisions"),
+      /permission denied/iu
+    );
+    await database.exec("reset role");
+  }
+
+  await database.query(
+    "update public.courses set owner_id=$2 where id=$1",
+    [COURSE, LEARNER]
+  );
+  await database.query("delete from auth.users where id=$1", [OWNER]);
+  assert.equal(await scalar(database, `
+    select count(*)::integer as value from public.courses where id=$1
+  `, [COURSE]), 1);
+  assert.equal(await scalar(database, `
+    select bool_and(actor_id is null) as value
+    from (
+      select actor_id from private.course_source_revisions where course_id=$1
+      union all
+      select actor_id from private.course_source_anchor_revisions where course_id=$1
+      union all
+      select actor_id from private.course_source_attributions where course_id=$1
+    ) facts
+  `, [COURSE]), true);
+
+  await database.query("delete from public.courses where id=$1", [COURSE]);
+  for (const tableName of tableNames) {
+    assert.equal(await scalar(database, `
+      select count(*)::integer as value from private.${tableName}
+    `), 0);
+  }
+  await database.close();
+
+  const accountDatabase = await databaseFixture();
+  await applyMigration(accountDatabase);
+  await applyStudyUnitInspectionMigration(accountDatabase);
+  await applyCourseDesignMigration(accountDatabase);
+  await accountDatabase.query(`
+    update private.course_entities
+    set content=content || '{"sources":[]}'::jsonb
+    where course_id=$1 and entity_type='study_unit' and entity_id='card-a'
+  `, [COURSE]);
+  await applyCourseSourcesMigration(accountDatabase);
+  await actor(accountDatabase, OWNER, "service_role");
+  await executeCourseSourceCommand(accountDatabase, 4, {
+    type: "save_source",
+    sourceId: "source-account-delete",
+    expectedSourceRevision: 0,
+    source: {
+      kind: "document",
+      title: "Fonte eliminada com o Curso",
+      citationText: null,
+      url: null,
+      editionOrVersion: null,
+      studyVisibility: "hidden"
+    }
+  }, "source-account-delete-01");
+  await actor(accountDatabase, OWNER, "authenticated");
+  const deleted = await scalar(accountDatabase, `
+    select public.delete_my_account_v1('EXCLUIR MINHA CONTA') as value
+  `);
+  assert.deepEqual(deleted, {
+    contract: "aralearn.account-deletion.v1",
+    status: "deleted"
+  });
+  assert.equal(await scalar(accountDatabase, `
+    select count(*)::integer as value from public.courses
+  `), 0);
+  assert.equal(await scalar(accountDatabase, `
+    select count(*)::integer as value from private.course_source_revisions
+  `), 0);
+  assert.equal(await scalar(accountDatabase, `
+    select count(*)::integer as value from private.course_source_attributions
+  `), 0);
+  assert.equal(await scalar(accountDatabase, `
+    select count(*)::integer as value from auth.users where id=$1
+  `, [OWNER]), 0);
+  await accountDatabase.close();
+});
+
+test("#123 lookup contextual encontra revisão pinada sem varrer histórico longo", async () => {
+  const database = await databaseFixture();
+  await applyMigration(database);
+  await applyStudyUnitInspectionMigration(database);
+  await applyCourseDesignMigration(database);
+  await database.query(`
+    update private.course_entities
+    set content=content || '{"sources":[]}'::jsonb
+    where course_id=$1 and entity_type='study_unit'
+  `, [COURSE]);
+  await applyCourseSourcesMigration(database);
+  await actor(database, OWNER, "service_role");
+  const sourceId = "source-history-context";
+  await executeCourseSourceCommand(database, 4, {
+    type: "save_source",
+    sourceId,
+    expectedSourceRevision: 0,
+    source: {
+      kind: "document",
+      title: "Revisão pinada",
+      citationText: "Fonte pinada.",
+      url: null,
+      editionOrVersion: null,
+      studyVisibility: "citation"
+    }
+  }, "source-context-save-0001");
+  await executeCourseSourceCommand(database, 5, {
+    type: "save_anchor",
+    anchorId: "anchor-history-context",
+    sourceId,
+    sourceRevision: 1,
+    expectedAnchorRevision: 0,
+    selector: { kind: "page_range", startPage: 2, endPage: 3 },
+    verificationExcerpt: "Trecho privado pinado."
+  }, "source-context-anchor-01");
+  await executeCourseSourceCommand(database, 6, {
+    type: "set_target_sources",
+    targetKind: "study_unit",
+    targetId: "card-a",
+    expectedTargetVersion: 1,
+    sourceLinks: [{
+      sourceId,
+      sourceRevision: 1,
+      relation: "supported_by",
+      anchors: [{ anchorId: "anchor-history-context", anchorRevision: 1 }]
+    }]
+  }, "source-context-assign-01");
+  await database.query(`
+    insert into private.course_source_anchor_revisions(
+      course_id,anchor_id,revision,source_id,source_revision,status,
+      selector,verification_excerpt,actor_id
+    ) values
+      ($1,'anchor-history-context',2,$2,1,'retired',
+        '{"kind":"page_range","startPage":2,"endPage":3}',
+        'Revisão posterior não pinada.',$3),
+      ($1,'anchor-history-available',1,$2,1,'active',
+        '{"kind":"page_range","startPage":8,"endPage":8}',null,$3),
+      ($1,'anchor-history-available',2,$2,1,'active',
+        '{"kind":"page_range","startPage":9,"endPage":9}',null,$3)
+  `, [COURSE, sourceId, OWNER]);
+  await database.query(`
+    insert into private.course_source_revisions(
+      course_id,source_id,revision,status,kind,title,citation_text,url,
+      edition_or_version,study_visibility,actor_id
+    )
+    select $1,$2,revision,'active','document',
+      'Revisão ' || revision::text,'Fonte corrente.',null,null,'citation',$3
+    from generate_series(2,105) revision
+  `, [COURSE, sourceId, OWNER]);
+  await database.query(`
+    insert into private.course_source_revisions(
+      course_id,source_id,revision,status,kind,title,citation_text,url,
+      edition_or_version,study_visibility,actor_id
+    )
+    select $1,'source-catalog-default-' || lpad(identity::text,2,'0'),
+      1,'active','document','Fonte ' || identity::text,
+      'Fonte de catálogo.',null,null,'citation',$2
+    from generate_series(0,9) identity
+  `, [COURSE, OWNER]);
+
+  const defaultCatalog = await scalar(database, `
+    select public.get_owned_course_sources_for_actor_v1(
+      $1,$2,7,'catalog'
+    ) as value
+  `, [OWNER, COURSE]);
+  assert.equal(defaultCatalog.items.length, 10);
+  assert.equal(typeof defaultCatalog.nextCursor, "string");
+  const catalogContinuation = await scalar(database, `
+    select public.get_owned_course_sources_for_actor_v1(
+      $1,$2,7,'catalog',null,null,null,$3,10
+    ) as value
+  `, [OWNER, COURSE, defaultCatalog.nextCursor]);
+  assert.equal(catalogContinuation.items.length, 1);
+  assert.equal(catalogContinuation.nextCursor, null);
+  await assert.rejects(() => scalar(database, `
+    select public.get_owned_course_sources_for_actor_v1(
+      $1,$2,7,'catalog',null,null,null,$3,9
+    ) as value
+  `, [OWNER, COURSE, defaultCatalog.nextCursor]), (error) => (
+    error.code === "22023" && /Cursor de Fontes inválido/iu.test(error.message)
+  ));
+  const otherCourse = "10000000-0000-4000-8000-000000000098";
+  await database.query(`
+    insert into public.courses(id,owner_id,title,goal,revision)
+    values($1,$2,'Curso B','Provar binding do cursor.',7)
+  `, [otherCourse, OWNER]);
+  await assert.rejects(() => scalar(database, `
+    select public.get_owned_course_sources_for_actor_v1(
+      $1,$2,7,'catalog',null,null,null,$3,10
+    ) as value
+  `, [OWNER, otherCourse, defaultCatalog.nextCursor]), (error) => (
+    error.code === "22023" && /Cursor de Fontes inválido/iu.test(error.message)
+  ));
+
+  const history = await scalar(database, `
+    select public.get_owned_course_sources_for_actor_v1(
+      $1,$2,7,'source',$3,null,null,null,1
+    ) as value
+  `, [OWNER, COURSE, sourceId]);
+  assert.equal(history.items.length, 1);
+  assert.equal(history.items[0].revision, 105);
+  assert.equal(typeof history.nextCursor, "string");
+  assert.deepEqual(history.query, {
+    sourceId,
+    targetKind: null,
+    targetId: null
+  });
+  await assert.rejects(() => scalar(database, `
+    select public.get_owned_course_sources_for_actor_v1(
+      $1,$2,7,'source','source-catalog-default-00',null,null,$3,1
+    ) as value
+  `, [OWNER, COURSE, history.nextCursor]), (error) => error.code === "22023");
+  await assert.rejects(() => scalar(database, `
+    select public.get_owned_course_sources_for_actor_v1(
+      $1,$2,7,'source',$3,null,null,$4,2
+    ) as value
+  `, [OWNER, COURSE, sourceId, history.nextCursor]), (error) => error.code === "22023");
+
+  const contextual = await scalar(database, `
+    select public.get_owned_course_sources_for_actor_v1(
+      $1,$2,7,'source',$3,'study_unit','card-a',null,1
+    ) as value
+  `, [OWNER, COURSE, sourceId]);
+  assert.equal(contextual.items.length, 1);
+  assert.equal(contextual.items[0].revision, 1);
+  assert.equal(contextual.items[0].anchorCount, 2);
+  assert.equal(contextual.items[0].anchors.length, 2);
+  assert.deepEqual(contextual.items[0].anchors.map((anchor) => ({
+    anchorId: anchor.anchorId,
+    revision: anchor.revision,
+    status: anchor.status
+  })), [{
+    anchorId: "anchor-history-available",
+    revision: 2,
+    status: "active"
+  }, {
+    anchorId: "anchor-history-context",
+    revision: 1,
+    status: "active"
+  }]);
+  assert.equal(contextual.nextCursor, null);
+  assert.deepEqual(contextual.query, {
+    sourceId,
+    targetKind: "study_unit",
+    targetId: "card-a"
+  });
+  const absentFromTarget = await scalar(database, `
+    select public.get_owned_course_sources_for_actor_v1(
+      $1,$2,7,'source','source-catalog-default-00',
+      'study_unit','card-a',null,1
+    ) as value
+  `, [OWNER, COURSE]);
+  assert.deepEqual(absentFromTarget.items, []);
+  assert.equal(absentFromTarget.nextCursor, null);
+  const targetPage = await scalar(database, `
+    select public.get_owned_course_sources_for_actor_v1(
+      $1,$2,7,'target',null,'study_unit','card-a',null,1
+    ) as value
+  `, [OWNER, COURSE]);
+  assert.equal(typeof targetPage.nextCursor, "string");
+  await assert.rejects(() => scalar(database, `
+    select public.get_owned_course_sources_for_actor_v1(
+      $1,$2,7,'target',null,'study_unit','card-b',$3,1
+    ) as value
+  `, [OWNER, COURSE, targetPage.nextCursor]), (error) => error.code === "22023");
+  await assert.rejects(() => scalar(database, `
+    select public.get_owned_course_sources_for_actor_v1(
+      $1,$2,7,'source',$3,'study_unit','card-a',$4,1
+    ) as value
+  `, [OWNER, COURSE, sourceId, history.nextCursor]), (error) => (
+    error.code === "22023" && /Consulta de Fontes inválida/iu.test(error.message)
+  ));
+  await assert.rejects(() => scalar(database, `
+    select public.get_owned_course_sources_for_actor_v1(
+      $1,$2,7,'source',$3,'study_unit',null,null,1
+    ) as value
+  `, [OWNER, COURSE, sourceId]), (error) => error.code === "22023");
+  await database.exec("begin");
+  try {
+    await database.query(`
+      update public.courses set revision=8 where id=$1
+    `, [COURSE]);
+    await assert.rejects(() => scalar(database, `
+      select public.get_owned_course_sources_for_actor_v1(
+        $1,$2,7,'catalog',null,null,null,$3,10
+      ) as value
+    `, [OWNER, COURSE, defaultCatalog.nextCursor]), (error) =>
+      isPgrstConflict(error, "O Curso mudou durante a leitura de Fontes."));
+  } finally {
+    await database.exec("rollback");
+  }
+  await database.exec("begin");
+  try {
+    await database.query(`
+      update public.courses set revision=8 where id=$1
+    `, [COURSE]);
+    await assert.rejects(() => scalar(database, `
+      select public.get_owned_course_sources_for_actor_v1(
+        $1,$2,8,'catalog',null,null,null,$3,10
+      ) as value
+    `, [OWNER, COURSE, defaultCatalog.nextCursor]), (error) => error.code === "22023");
+  } finally {
+    await database.exec("rollback");
+  }
+  await database.close();
+});
+
+test("#123 grava plano e composição com atribuições atômicas, vazias e replay", async () => {
+  const database = await databaseFixture();
+  await applyMigration(database);
+  await applyStudyUnitInspectionMigration(database);
+  await applyCourseDesignMigration(database);
+  await database.query(`
+    update private.course_entities
+    set content=content || '{"sources":[]}'::jsonb
+    where course_id=$1 and entity_type='study_unit' and entity_id='card-a'
+  `, [COURSE]);
+  await applyCourseSourcesMigration(database);
+  await actor(database, OWNER, "service_role");
+
+  const sourceSaved = await executeCourseSourceCommand(database, 4, {
+    type: "save_source",
+    sourceId: "source-plan-a",
+    expectedSourceRevision: 0,
+    source: {
+      kind: "article",
+      title: "Fonte do planejamento",
+      citationText: "AUTOR. Fonte do planejamento.",
+      url: "https://example.test/plan",
+      editionOrVersion: null,
+      studyVisibility: "citation"
+    }
+  }, "source-plan-save-0001");
+  assert.equal(sourceSaved.courseRevision, 5);
+  const anchorSaved = await executeCourseSourceCommand(database, 5, {
+    type: "save_anchor",
+    anchorId: "anchor-plan-a",
+    sourceId: "source-plan-a",
+    sourceRevision: 1,
+    expectedAnchorRevision: 0,
+    selector: { kind: "text_quote", exact: "Trecho factual.", prefix: null, suffix: null },
+    verificationExcerpt: "Trecho factual."
+  }, "source-plan-anchor-0001");
+  assert.equal(anchorSaved.courseRevision, 6);
+  const supportedLink = {
+    sourceId: "source-plan-a",
+    sourceRevision: 1,
+    relation: "supported_by",
+    anchors: [{ anchorId: "anchor-plan-a", anchorRevision: 1 }]
+  };
+
+  const planBefore = await scalar(database, `
+    select private.course_instructional_plan_command_document_v1($1) as value
+  `, [COURSE]);
+  const planItem = {
+    id: PLAN_ITEM,
+    position: 0,
+    statement: "Comparar relações em um caso novo.",
+    sourceLinks: [supportedLink]
+  };
+  const planAfter = structuredClone(planBefore);
+  planAfter.intendedLearningOutcomes.push(planItem);
+  const addCommand = {
+    type: "add_plan_item",
+    kind: "intended_learning_outcome",
+    id: PLAN_ITEM,
+    position: 0,
+    statement: planItem.statement,
+    sourceLinks: planItem.sourceLinks
+  };
+  const added = await scalar(database, `
+    select public.commit_course_instructional_plan_for_actor_v1(
+      $1,$2,6,1,$3::jsonb,$4::jsonb,'application','source-plan-add-0001'
+    ) as value
+  `, [OWNER, COURSE, addCommand, planAfter]);
+  assert.equal(added.courseRevision, 7);
+  assert.equal(added.planVersion, 2);
+  assert.equal(added.changed, true);
+  assert.equal(await scalar(database, `
+    select count(*)::integer as value
+    from private.course_source_attributions
+    where course_id=$1 and target_kind='plan_item' and target_id=$2
+  `, [COURSE, PLAN_ITEM]), 1);
+  const planReplay = await scalar(database, `
+    select public.commit_course_instructional_plan_for_actor_v1(
+      $1,$2,6,1,$3::jsonb,$4::jsonb,'application','source-plan-add-0001'
+    ) as value
+  `, [OWNER, COURSE, addCommand, planAfter]);
+  assert.equal(planReplay.idempotent, true);
+  assert.equal(planReplay.courseRevision, 7);
+
+  const sourceOnlyPlan = await scalar(database, `
+    select private.course_instructional_plan_command_document_v1($1) as value
+  `, [COURSE]);
+  const informedLink = { ...supportedLink, relation: "informed_by" };
+  sourceOnlyPlan.intendedLearningOutcomes[0].sourceLinks = [informedLink];
+  const sourceOnlyCommand = {
+    type: "update_plan_item",
+    kind: "intended_learning_outcome",
+    id: PLAN_ITEM,
+    statement: planItem.statement,
+    sourceLinks: [informedLink]
+  };
+  const sourceOnly = await scalar(database, `
+    select public.commit_course_instructional_plan_for_actor_v1(
+      $1,$2,7,2,$3::jsonb,$4::jsonb,'application','source-plan-only-0001'
+    ) as value
+  `, [OWNER, COURSE, sourceOnlyCommand, sourceOnlyPlan]);
+  assert.equal(sourceOnly.changed, true);
+  assert.equal(sourceOnly.courseRevision, 8);
+  assert.equal(sourceOnly.planVersion, 3);
+  assert.equal(await scalar(database, `
+    select count(*)::integer as value
+    from private.course_source_attributions
+    where course_id=$1 and target_kind='plan_item' and target_id=$2
+  `, [COURSE, PLAN_ITEM]), 2);
+  assert.equal(await scalar(database, `
+    select attribution.target_version=1
+      and attribution.target_hash=(
+        private.course_source_target_state_v1(
+          attribution.course_id,attribution.target_kind,attribution.target_id
+        )->>'hash'
+      )
+      and private.course_source_links_v1(
+        attribution.course_id,attribution.id
+      )=$3::jsonb as value
+    from private.course_source_attributions attribution
+    where attribution.course_id=$1 and attribution.target_kind='plan_item'
+      and attribution.target_id=$2
+    order by attribution.revision desc limit 1
+  `, [COURSE, PLAN_ITEM, [informedLink]]), true);
+  await database.exec("begin");
+  try {
+    await database.query(`
+      update private.course_instructional_plan_items
+      set position=1,version=version+1
+      where course_id=$1 and id=$2
+    `, [COURSE, PLAN_ITEM]);
+    assert.equal(await scalar(database, `
+      select private.course_effective_source_attribution_v1(
+        $1,'plan_item',$2::text
+      ) is null as value
+    `, [COURSE, PLAN_ITEM]), true);
+  } finally {
+    await database.exec("rollback");
+  }
+  await database.exec("begin");
+  try {
+    await database.query(`
+      update private.course_instructional_plan_items
+      set statement='Hash semântico mudou.',version=version+1
+      where course_id=$1 and id=$2
+    `, [COURSE, PLAN_ITEM]);
+    assert.equal(await scalar(database, `
+      select private.course_effective_source_attribution_v1(
+        $1,'plan_item',$2::text
+      ) is null as value
+    `, [COURSE, PLAN_ITEM]), true);
+  } finally {
+    await database.exec("rollback");
+  }
+
+  const invalidPlan = structuredClone(sourceOnlyPlan);
+  invalidPlan.intendedLearningOutcomes[0].statement = "Mudança que precisa reverter.";
+  invalidPlan.intendedLearningOutcomes[0].sourceLinks = [{
+    ...supportedLink,
+    anchors: [{ anchorId: "anchor-missing", anchorRevision: 1 }]
+  }];
+  await assert.rejects(() => scalar(database, `
+    select public.commit_course_instructional_plan_for_actor_v1(
+      $1,$2,8,3,$3::jsonb,$4::jsonb,'application','source-plan-invalid-01'
+    ) as value
+  `, [OWNER, COURSE, {
+    type: "update_plan_item",
+    kind: "intended_learning_outcome",
+    id: PLAN_ITEM,
+    statement: "Mudança que precisa reverter.",
+    sourceLinks: invalidPlan.intendedLearningOutcomes[0].sourceLinks
+  }, invalidPlan]), /Âncora.*(?:atual|corrente).*ativa/iu);
+  assert.equal(await scalar(database, `
+    select statement=$3 and version=1 as value
+    from private.course_instructional_plan_items
+    where course_id=$1 and id=$2
+  `, [COURSE, PLAN_ITEM, planItem.statement]), true);
+  assert.deepEqual(await scalar(database, `
+    select jsonb_build_array(course.revision,plan.version) as value
+    from public.courses course
+    join private.course_instructional_plans plan on plan.course_id=course.id
+    where course.id=$1
+  `, [COURSE]), [8, 3]);
+
+  const cardUpsert = {
+    entityType: "study_unit",
+    entityId: "card-a",
+    parentType: "microsequence",
+    parentId: "micro-a",
+    position: 1,
+    content: { title: "Unidade A revista" }
+  };
+  await assert.rejects(() => scalar(database, `
+    select public.commit_course_composition_for_actor_v1(
+      $1,$2,8,$3::jsonb,'[]'::jsonb,'[]'::jsonb,'source-composition-missing'
+    ) as value
+  `, [OWNER, COURSE, [cardUpsert]]), /proveniência explícita para cada Unidade/iu);
+  assert.equal(await scalar(database, `
+    select content->>'title' as value from private.course_entities
+    where course_id=$1 and entity_type='study_unit' and entity_id='card-a'
+  `, [COURSE]), "Unidade A");
+
+  const emptyApplication = [{ studyUnitId: "card-a", sourceLinks: [] }];
+  const composed = await scalar(database, `
+    select public.commit_course_composition_for_actor_v1(
+      $1,$2,8,$3::jsonb,'[]'::jsonb,$4::jsonb,'source-composition-empty'
+    ) as value
+  `, [OWNER, COURSE, [cardUpsert], emptyApplication]);
+  assert.equal(composed.revision, 9);
+  assert.equal(await scalar(database, `
+    select count(*)::integer as value
+    from private.course_source_attributions
+    where course_id=$1 and target_kind='study_unit' and target_id='card-a'
+  `, [COURSE]), 2);
+  const compositionReplay = await scalar(database, `
+    select public.commit_course_composition_for_actor_v1(
+      $1,$2,8,$3::jsonb,'[]'::jsonb,$4::jsonb,'source-composition-empty'
+    ) as value
+  `, [OWNER, COURSE, [cardUpsert], emptyApplication]);
+  assert.equal(compositionReplay.idempotent, true);
+  assert.equal(compositionReplay.revision, 9);
+
+  const invalidCard = { ...cardUpsert, content: { title: "Não pode persistir" } };
+  const invalidApplication = [{
+    studyUnitId: "card-a",
+    sourceLinks: [{
+      ...supportedLink,
+      anchors: [{ anchorId: "anchor-missing", anchorRevision: 1 }]
+    }]
+  }];
+  await assert.rejects(() => scalar(database, `
+    select public.commit_course_composition_for_actor_v1(
+      $1,$2,9,$3::jsonb,'[]'::jsonb,$4::jsonb,'source-composition-invalid'
+    ) as value
+  `, [OWNER, COURSE, [invalidCard], invalidApplication]), /Âncora.*(?:atual|corrente).*ativa/iu);
+  assert.equal(await scalar(database, `
+    select content->>'title' as value from private.course_entities
+    where course_id=$1 and entity_type='study_unit' and entity_id='card-a'
+  `, [COURSE]), "Unidade A revista");
+  assert.equal(await scalar(database, `
+    select revision as value from public.courses where id=$1
+  `, [COURSE]), 9);
+
+  const sourceOnlyComposition = await scalar(database, `
+    select public.commit_course_composition_for_actor_v1(
+      $1,$2,9,$3::jsonb,'[]'::jsonb,$4::jsonb,'source-composition-only'
+    ) as value
+  `, [OWNER, COURSE, [cardUpsert], [{
+    studyUnitId: "card-a",
+    sourceLinks: [supportedLink]
+  }]]);
+  assert.equal(sourceOnlyComposition.revision, 10);
+  assert.equal(sourceOnlyComposition.createdCount, 0);
+  assert.equal(sourceOnlyComposition.updatedCount, 0);
+  const compositionAttributions = await database.query(`
+    select attribution.revision,attribution.target_version,attribution.target_hash,
+      private.course_source_links_v1(attribution.course_id,attribution.id) links,
+      attribution.target_hash=(
+        private.course_source_target_state_v1(
+          attribution.course_id,attribution.target_kind,attribution.target_id
+        )->>'hash'
+      ) effective
+    from private.course_source_attributions attribution
+    where course_id=$1 and target_kind='study_unit' and target_id='card-a'
+    order by revision
+  `, [COURSE]);
+  assert.equal(compositionAttributions.rows.length, 3);
+  assert.deepEqual(
+    compositionAttributions.rows.map((row) => Number(row.target_version)),
+    [1, 2, 2]
+  );
+  assert.deepEqual(compositionAttributions.rows[1].links, []);
+  assert.deepEqual(compositionAttributions.rows[2].links, [supportedLink]);
+  assert.equal(
+    compositionAttributions.rows[1].target_hash,
+    compositionAttributions.rows[2].target_hash
+  );
+  assert.equal(compositionAttributions.rows[2].effective, true);
+  const collisionComposition = await scalar(database, `
+    select public.commit_course_composition_for_actor_v1(
+      $1,$2,10,$3::jsonb,'[]'::jsonb,$4::jsonb,'source-composition-collision'
+    ) as value
+  `, [OWNER, COURSE, [cardUpsert, {
+    entityType: "lesson",
+    entityId: "card-a",
+    parentType: "module",
+    parentId: "module-a",
+    position: 1,
+    content: { title: "Lição com identidade textual coincidente" }
+  }], [{
+    studyUnitId: "card-a",
+    sourceLinks: [supportedLink]
+  }]]);
+  assert.equal(collisionComposition.revision, 11);
+  assert.equal(await scalar(database, `
+    select count(*)::integer as value from private.course_entities
+    where course_id=$1 and entity_type='lesson' and entity_id='card-a'
+  `, [COURSE]), 1);
+  await database.close();
+});
+
+test("#123 efetividade exige versão e hash ao retornar A-B-A", async () => {
+  const database = await databaseFixture();
+  await applyMigration(database);
+  await applyStudyUnitInspectionMigration(database);
+  await applyCourseDesignMigration(database);
+  await database.query(`
+    update private.course_entities
+    set content=content || '{"sources":[]}'::jsonb
+    where course_id=$1 and entity_type='study_unit'
+  `, [COURSE]);
+  await applyCourseSourcesMigration(database);
+  await actor(database, OWNER, "service_role");
+  const originalContent = await scalar(database, `
+    select content as value from private.course_entities
+    where course_id=$1 and entity_type='study_unit' and entity_id='card-a'
+  `, [COURSE]);
+
+  await database.query(`
+    update private.course_entities
+    set content=jsonb_set(content,'{title}',to_jsonb('Estado B'::text)),
+      version=version+1
+    where course_id=$1 and entity_type='study_unit' and entity_id='card-a'
+  `, [COURSE]);
+  const stateB = await executeCourseSourceCommand(database, 4, {
+    type: "set_target_sources",
+    targetKind: "study_unit",
+    targetId: "card-a",
+    expectedTargetVersion: 2,
+    sourceLinks: []
+  }, "source-version-state-b");
+  assert.equal(stateB.courseRevision, 5);
+  assert.equal(stateB.change.revision, 2);
+
+  await database.query(`
+    update private.course_entities
+    set content=$2::jsonb,version=version+1
+    where course_id=$1 and entity_type='study_unit' and entity_id='card-a'
+  `, [COURSE, originalContent]);
+  const returnedA = await executeCourseSourceCommand(database, 5, {
+    type: "set_target_sources",
+    targetKind: "study_unit",
+    targetId: "card-a",
+    expectedTargetVersion: 3,
+    sourceLinks: []
+  }, "source-version-return-a");
+  assert.equal(returnedA.changed, true);
+  assert.equal(returnedA.courseRevision, 6);
+  assert.equal(returnedA.change.revision, 3);
+  const replay = await executeCourseSourceCommand(database, 5, {
+    type: "set_target_sources",
+    targetKind: "study_unit",
+    targetId: "card-a",
+    expectedTargetVersion: 3,
+    sourceLinks: []
+  }, "source-version-return-a");
+  assert.equal(replay.idempotent, true);
+  assert.equal(replay.courseRevision, 6);
+  const noOp = await executeCourseSourceCommand(database, 6, {
+    type: "set_target_sources",
+    targetKind: "study_unit",
+    targetId: "card-a",
+    expectedTargetVersion: 3,
+    sourceLinks: []
+  }, "source-version-noop-a");
+  assert.equal(noOp.changed, false);
+  assert.equal(noOp.courseRevision, 6);
+
+  const history = await database.query(`
+    select revision,target_version,target_hash
+    from private.course_source_attributions
+    where course_id=$1 and target_kind='study_unit' and target_id='card-a'
+    order by revision
+  `, [COURSE]);
+  assert.deepEqual(history.rows.map(({ revision, target_version }) => ({
+    revision,
+    targetVersion: target_version
+  })), [
+    { revision: 1, targetVersion: 1 },
+    { revision: 2, targetVersion: 2 },
+    { revision: 3, targetVersion: 3 }
+  ]);
+  assert.equal(history.rows[0].target_hash, history.rows[2].target_hash);
+  assert.notEqual(history.rows[0].target_hash, history.rows[1].target_hash);
+  const targetRead = await scalar(database, `
+    select public.get_owned_course_sources_for_actor_v1(
+      $1,$2,6,'target',null,'study_unit','card-a',null,1
+    ) as value
+  `, [OWNER, COURSE]);
+  assert.equal(targetRead.items.length, 1);
+  assert.equal(targetRead.items[0].revision, 3);
+  assert.equal(targetRead.items[0].targetVersion, 3);
+  assert.equal(targetRead.items[0].effective, true);
+  await database.close();
+});
+
+test("#123 reorder do plano reaplica links na versão nova e mantém target efetivo", async () => {
+  const database = await databaseFixture();
+  await applyMigration(database);
+  await applyStudyUnitInspectionMigration(database);
+  await applyCourseDesignMigration(database);
+  await database.query(`
+    update private.course_entities
+    set content=content || '{"sources":[]}'::jsonb
+    where course_id=$1 and entity_type='study_unit'
+  `, [COURSE]);
+  await applyCourseSourcesMigration(database);
+  await actor(database, OWNER, "service_role");
+  const firstId = "61000000-0000-4000-8000-000000000001";
+  const secondId = "61000000-0000-4000-8000-000000000002";
+  const initialPlan = await scalar(database, `
+    select private.course_instructional_plan_command_document_v1($1) as value
+  `, [COURSE]);
+  const firstPlan = structuredClone(initialPlan);
+  firstPlan.intendedLearningOutcomes.push({
+    id: firstId,
+    position: 0,
+    statement: "Primeiro item.",
+    sourceLinks: []
+  });
+  const first = await scalar(database, `
+    select public.commit_course_instructional_plan_for_actor_v1(
+      $1,$2,4,1,$3::jsonb,$4::jsonb,'application','source-reorder-add-first'
+    ) as value
+  `, [OWNER, COURSE, {
+    type: "add_plan_item",
+    kind: "intended_learning_outcome",
+    id: firstId,
+    position: 0,
+    statement: "Primeiro item.",
+    sourceLinks: []
+  }, firstPlan]);
+  assert.equal(first.courseRevision, 5);
+  assert.equal(first.planVersion, 2);
+
+  const secondPlan = await scalar(database, `
+    select private.course_instructional_plan_command_document_v1($1) as value
+  `, [COURSE]);
+  secondPlan.intendedLearningOutcomes.push({
+    id: secondId,
+    position: 1,
+    statement: "Segundo item.",
+    sourceLinks: []
+  });
+  const second = await scalar(database, `
+    select public.commit_course_instructional_plan_for_actor_v1(
+      $1,$2,5,2,$3::jsonb,$4::jsonb,'application','source-reorder-add-second'
+    ) as value
+  `, [OWNER, COURSE, {
+    type: "add_plan_item",
+    kind: "intended_learning_outcome",
+    id: secondId,
+    position: 1,
+    statement: "Segundo item.",
+    sourceLinks: []
+  }, secondPlan]);
+  assert.equal(second.courseRevision, 6);
+  assert.equal(second.planVersion, 3);
+
+  const reorderPlan = await scalar(database, `
+    select private.course_instructional_plan_command_document_v1($1) as value
+  `, [COURSE]);
+  reorderPlan.intendedLearningOutcomes = [
+    { ...reorderPlan.intendedLearningOutcomes[1], position: 0 },
+    { ...reorderPlan.intendedLearningOutcomes[0], position: 1 }
+  ];
+  const reorderCommand = {
+    type: "reorder_plan_items",
+    kind: "intended_learning_outcome",
+    orderedIds: [secondId, firstId]
+  };
+  const reordered = await scalar(database, `
+    select public.commit_course_instructional_plan_for_actor_v1(
+      $1,$2,6,3,$3::jsonb,$4::jsonb,'application','source-reorder-items-01'
+    ) as value
+  `, [OWNER, COURSE, reorderCommand, reorderPlan]);
+  assert.equal(reordered.changed, true);
+  assert.equal(reordered.courseRevision, 7);
+  assert.equal(reordered.planVersion, 4);
+  assert.deepEqual((await database.query(`
+    select id::text,position,version from private.course_instructional_plan_items
+    where course_id=$1 and id in ($2,$3)
+    order by position
+  `, [COURSE, firstId, secondId])).rows, [
+    { id: secondId, position: 0, version: 2 },
+    { id: firstId, position: 1, version: 2 }
+  ]);
+  for (const itemId of [firstId, secondId]) {
+    const target = await scalar(database, `
+      select public.get_owned_course_sources_for_actor_v1(
+        $1,$2,7,'target',null,'plan_item',$3,null,1
+      ) as value
+    `, [OWNER, COURSE, itemId]);
+    assert.equal(target.items.length, 1);
+    assert.equal(target.items[0].revision, 2);
+    assert.equal(target.items[0].targetVersion, 2);
+    assert.equal(target.items[0].effective, true);
+    assert.deepEqual(target.items[0].sourceLinks, []);
+  }
+  const replay = await scalar(database, `
+    select public.commit_course_instructional_plan_for_actor_v1(
+      $1,$2,6,3,$3::jsonb,$4::jsonb,'application','source-reorder-items-01'
+    ) as value
+  `, [OWNER, COURSE, reorderCommand, reorderPlan]);
+  assert.equal(replay.idempotent, true);
+  assert.equal(replay.courseRevision, 7);
+  assert.equal(await scalar(database, `
+    select count(*)::integer as value
+    from private.course_source_attributions
+    where course_id=$1 and target_kind='plan_item'
+      and target_id in ($2,$3)
+  `, [COURSE, firstId, secondId]), 4);
+  await database.close();
+});
+
+test("#123 composição relê versão real após cascade e recriação da Unidade", async () => {
+  const database = await databaseFixture();
+  await applyMigration(database);
+  await applyStudyUnitInspectionMigration(database);
+  await applyCourseDesignMigration(database);
+  await database.query(`
+    update private.course_entities
+    set content=content || '{"sources":[]}'::jsonb
+    where course_id=$1 and entity_type='study_unit' and entity_id='card-a'
+  `, [COURSE]);
+  await database.query(`
+    insert into private.course_entities(
+      course_id,entity_type,entity_id,parent_type,parent_id,position,content
+    ) values
+      ($1,'microsequence','micro-new','lesson','lesson-a',1,
+        '{"title":"Micro nova","dependsOn":[]}'),
+      ($1,'microsequence','micro-old','lesson','lesson-a',2,
+        '{"title":"Micro antiga","dependsOn":[]}'),
+      ($1,'study_unit','move-unit','microsequence','micro-old',1,$2::jsonb)
+  `, [COURSE, {
+    title: "Original",
+    role: "theory",
+    content: [{
+      id: "p-original",
+      package: "aralearn.resource.paragraph",
+      version: "1.0.0",
+      data: { text: "Conteúdo original." }
+    }],
+    response: null,
+    feedback: [],
+    topics: [],
+    sources: []
+  }]);
+  await applyCourseSourcesMigration(database);
+  await actor(database, OWNER, "service_role");
+
+  const movedContent = {
+    title: "Movida",
+    role: "theory",
+    content: [{
+      id: "p-move",
+      package: "aralearn.resource.paragraph",
+      version: "1.0.0",
+      data: { text: "Conteúdo movido." }
+    }],
+    response: null,
+    feedback: [],
+    topics: []
+  };
+  const changed = await scalar(database, `
+    select public.commit_course_composition_for_actor_v1(
+      $1,$2,4,$3::jsonb,$4::jsonb,$5::jsonb,'source-cascade-recreate'
+    ) as value
+  `, [OWNER, COURSE, [{
+    entityType: "study_unit",
+    entityId: "move-unit",
+    parentType: "microsequence",
+    parentId: "micro-new",
+    position: 1,
+    content: movedContent
+  }], [{
+    entityType: "microsequence",
+    entityId: "micro-old"
+  }], [{
+    studyUnitId: "move-unit",
+    sourceLinks: []
+  }]]);
+  assert.equal(changed.revision, 5);
+
+  const state = await scalar(database, `
+    select private.course_source_target_state_v1(
+      $1,'study_unit','move-unit'
+    ) as value
+  `, [COURSE]);
+  assert.equal(state.version, 1);
+  const attribution = await database.query(`
+    select revision,target_version,target_hash
+    from private.course_source_attributions
+    where course_id=$1 and target_kind='study_unit' and target_id='move-unit'
+    order by revision desc limit 1
+  `, [COURSE]);
+  assert.deepEqual(attribution.rows[0], {
+    revision: 2,
+    target_version: 1,
+    target_hash: state.hash
+  });
+  assert.equal(await scalar(database, `
+    select count(*)::integer as value from private.course_change_receipts
+    where actor_id=$1 and request_id='source-cascade-recreate'
+  `, [OWNER]), 1);
+  assert.equal(await scalar(database, `
+    select count(*)::integer as value from private.course_events
+    where course_id=$1 and revision=5 and operation='replace_course_composition'
+  `, [COURSE]), 1);
+  const movedWithoutContentChange = await scalar(database, `
+    select public.commit_course_composition_for_actor_v1(
+      $1,$2,5,$3::jsonb,'[]'::jsonb,$4::jsonb,'source-move-same-content'
+    ) as value
+  `, [OWNER, COURSE, [{
+    entityType: "study_unit",
+    entityId: "move-unit",
+    parentType: "microsequence",
+    parentId: "micro-a",
+    position: 2,
+    content: movedContent
+  }], [{ studyUnitId: "move-unit", sourceLinks: [] }]]);
+  assert.equal(movedWithoutContentChange.revision, 6);
+  const movedState = await scalar(database, `
+    select private.course_source_target_state_v1(
+      $1,'study_unit','move-unit'
+    ) as value
+  `, [COURSE]);
+  assert.equal(movedState.version, 2);
+  assert.equal(movedState.hash, state.hash);
+  assert.deepEqual((await database.query(`
+    select revision,target_version,target_hash
+    from private.course_source_attributions
+    where course_id=$1 and target_kind='study_unit' and target_id='move-unit'
+    order by revision desc limit 1
+  `, [COURSE])).rows[0], {
+    revision: 3,
+    target_version: 2,
+    target_hash: movedState.hash
+  });
+  const movedTargetRead = await scalar(database, `
+    select public.get_owned_course_sources_for_actor_v1(
+      $1,$2,6,'target',null,'study_unit','move-unit',null,1
+    ) as value
+  `, [OWNER, COURSE]);
+  assert.equal(movedTargetRead.items.length, 1);
+  assert.equal(movedTargetRead.items[0].targetVersion, 2);
+  assert.equal(movedTargetRead.items[0].effective, true);
+  await database.close();
+});
+
+test("#123 materialização sela somente itens mapeados e grava atribuições com a etapa", async () => {
+  const database = await databaseFixture();
+  await applyMigration(database);
+  await applyStudyUnitInspectionMigration(database);
+  await applyCourseDesignMigration(database);
+  await actor(database, OWNER, "service_role");
+  const plan = await scalar(database, `
+    select jsonb_build_object('id',plan.id,'partId',(
+      select part.id from private.course_authoring_parts part
+      where part.course_id=plan.course_id and part.retired_at is null
+      order by part.position limit 1
+    )) as value
+    from private.course_instructional_plans plan where course_id=$1
+  `, [COURSE]);
+  for (const [position, id] of DESIGN_ANALYSIS_IDS.entries()) {
+    await database.query(`
+      insert into private.course_instructional_plan_items(
+        id,course_id,instructional_plan_id,item_kind,position,statement
+      ) values($1,$2,$3,'instructional_analysis_unit',$4,$5)
+    `, [id, COURSE, plan.id, position, `Relação DNS–DHCP ${position + 1}.`]);
+  }
+  const unmappedAnalysisId = "51000000-0000-4000-8000-000000000099";
+  await database.query(`
+    insert into private.course_instructional_plan_items(
+      id,course_id,instructional_plan_id,item_kind,position,statement
+    ) values($1,$2,$3,'instructional_analysis_unit',7,$4),
+      ($5,$2,$3,'evidence_requirement',0,$6)
+  `, [
+    unmappedAnalysisId, COURSE, plan.id, "Item deliberadamente não mapeado.",
+    DESIGN_EVIDENCE_ID, "Explicar a operação-alvo em caso novo."
+  ]);
+  const targetCommand = {
+    type: "set_target_plan_items",
+    scope: { kind: "didactic_microsequence", ref: "micro-a" },
+    instructionalAnalysisUnitIds: DESIGN_ANALYSIS_IDS,
+    evidenceRequirementIds: [DESIGN_EVIDENCE_ID]
+  };
+  const mapped = await applyDesignCommand(
+    database, 4, targetCommand, "source-material-map-0001"
+  );
+  assert.equal(mapped.courseRevision, 5);
+  await database.query(`
+    update private.course_entities
+    set content=content || '{"sources":[]}'::jsonb
+    where course_id=$1 and entity_type='study_unit' and entity_id='card-a'
+  `, [COURSE]);
+  await applyCourseSourcesMigration(database);
+
+  const materializationId = "55000000-0000-4000-8000-000000000001";
+  const stepId = "55000000-0000-4000-8000-000000000002";
+  const started = await scalar(database, `
+    select public.advance_course_authoring_part_materialization_for_actor_v1(
+      $1,$2,$3,$4,5,0,'start',$5::jsonb,'application','source-material-start-01'
+    ) as value
+  `, [OWNER, COURSE, plan.partId, materializationId, {
+    authoringPartVersion: 1,
+    steps: [{
+      id: stepId,
+      position: 0,
+      kind: "didactic_microsequence_materialization",
+      targetDidacticMicrosequenceId: "micro-a",
+      productionPosition: 0
+    }]
+  }]);
+  assert.equal(started.courseRevision, 6);
+  const context = started.materialization.designContext;
+  assert.equal(context.contract, "aralearn.course-design-context.v2");
+  assert.deepEqual(
+    context.targets[0].sourceAttributions.instructionalAnalysisUnits
+      .map(({ planItemId }) => planItemId),
+    DESIGN_ANALYSIS_IDS
+  );
+  assert.deepEqual(
+    context.targets[0].sourceAttributions.evidenceRequirements
+      .map(({ planItemId }) => planItemId),
+    [DESIGN_EVIDENCE_ID]
+  );
+  assert.equal(JSON.stringify(context).includes(unmappedAnalysisId), false);
+  assert.equal(
+    context.targets[0].sourceAttributions.instructionalAnalysisUnits
+      .every(({ sources }) => sources.length === 0),
+    true
+  );
+
+  const designApplication = materializationApplication({
+    contextHash: started.materialization.contextHash,
+    componentRef: "aralearn.resource.paragraph@1.0.0"
+  });
+  designApplication.studyUnits[0].studyUnitId = "micro-a";
+  const upserts = studyUnitUpserts(
+    designApplication,
+    "aralearn.resource.paragraph"
+  );
+  const sourceApplication = {
+    contract: "aralearn.course-source-attribution-application.v1",
+    contextHash: started.materialization.contextHash,
+    didacticMicrosequenceId: "micro-a",
+    studyUnits: designApplication.studyUnits.map(({ studyUnitId }) => ({
+      studyUnitId,
+      sourceLinks: []
+    }))
+  };
+  const entityChanges = {
+    upserts: [...upserts, {
+      entityType: "microsequence",
+      entityId: upserts[0].entityId,
+      parentType: "lesson",
+      parentId: "lesson-a",
+      position: 0,
+      content: { title: "Micro A", dependsOn: [] }
+    }],
+    deletes: [{ entityType: "study_unit", entityId: "card-a" }]
+  };
+  const missingSourceApplicationPayload = {
+    stepId,
+    expectedStepVersion: 1,
+    status: "completed",
+    resultFacts: {},
+    entityChanges,
+    designApplication,
+    sourceAttributionApplication: null
+  };
+  await assert.rejects(() => scalar(database, `
+    select public.advance_course_authoring_part_materialization_for_actor_v1(
+      $1,$2,$3,$4,6,1,'record_step',$5::jsonb,'application','source-material-missing'
+    ) as value
+  `, [
+    OWNER, COURSE, plan.partId, materializationId,
+    missingSourceApplicationPayload
+  ]), /Aplicações não correspondem à espécie da etapa/iu);
+  assert.equal(await scalar(database, `
+    select count(*)::integer as value from private.course_entities
+    where course_id=$1 and entity_type='study_unit' and entity_id like 'designed-%'
+  `, [COURSE]), 0);
+  assert.equal(await scalar(database, `
+    select revision as value from public.courses where id=$1
+  `, [COURSE]), 6);
+
+  const invalidSourceApplication = structuredClone(sourceApplication);
+  invalidSourceApplication.studyUnits.pop();
+  await assert.rejects(() => scalar(database, `
+    select public.advance_course_authoring_part_materialization_for_actor_v1(
+      $1,$2,$3,$4,6,1,'record_step',$5::jsonb,'application','source-material-invalid'
+    ) as value
+  `, [OWNER, COURSE, plan.partId, materializationId, {
+    ...missingSourceApplicationPayload,
+    sourceAttributionApplication: invalidSourceApplication
+  }]), /Aplicação factual do desenho ou da proveniência é inválida/iu);
+  assert.equal(await scalar(database, `
+    select count(*)::integer as value from private.course_entities
+    where course_id=$1 and entity_type='study_unit' and entity_id like 'designed-%'
+  `, [COURSE]), 0);
+
+  const recordPayload = {
+    ...missingSourceApplicationPayload,
+    sourceAttributionApplication: sourceApplication
+  };
+  const recorded = await scalar(database, `
+    select public.advance_course_authoring_part_materialization_for_actor_v1(
+      $1,$2,$3,$4,6,1,'record_step',$5::jsonb,'application','source-material-record-01'
+    ) as value
+  `, [OWNER, COURSE, plan.partId, materializationId, recordPayload]);
+  assert.equal(recorded.courseRevision, 7);
+  assert.equal(recorded.step.status, "completed");
+  assert.equal(await scalar(database, `
+    select count(*)::integer as value from private.course_entities
+    where course_id=$1 and entity_id=$2
+      and entity_type in ('microsequence','study_unit')
+  `, [COURSE, upserts[0].entityId]), 2);
+  const storedFacts = await scalar(database, `
+    select result_facts as value
+    from private.course_authoring_part_materialization_steps
+    where course_id=$1 and materialization_id=$2 and id=$3
+  `, [COURSE, materializationId, stepId]);
+  assert.equal(Object.hasOwn(storedFacts, "sourceAttributionApplication"), false);
+  assert.match(storedFacts.sourceAttributionApplicationHash, /^[a-f0-9]{64}$/u);
+  assert.equal(storedFacts.sourceAttributionStudyUnitCount, upserts.length);
+  assert.equal(storedFacts.sourceAttributionSourceCount, 0);
+  assert.equal(storedFacts.sourceAttributionAnchorCount, 0);
+
+  const generatedAttributions = await database.query(`
+    select attribution.target_id,attribution.target_version,
+      attribution.target_hash=(
+        private.course_source_target_state_v1(
+          attribution.course_id,attribution.target_kind,attribution.target_id
+        )->>'hash'
+      ) hash_matches,
+      private.course_source_links_v1(attribution.course_id,attribution.id) links
+    from private.course_source_attributions attribution
+    where attribution.course_id=$1 and attribution.target_kind='study_unit'
+      and attribution.target_id in (
+        select jsonb_array_elements_text($2::jsonb)
+      )
+    order by attribution.target_id
+  `, [COURSE, upserts.map(({ entityId }) => entityId)]);
+  assert.equal(generatedAttributions.rows.length, upserts.length);
+  assert.equal(
+    generatedAttributions.rows.every((row) => (
+      Number(row.target_version) === 1 && row.hash_matches && row.links.length === 0
+    )),
+    true
+  );
+  const recordedReplay = await scalar(database, `
+    select public.advance_course_authoring_part_materialization_for_actor_v1(
+      $1,$2,$3,$4,6,1,'record_step',$5::jsonb,'application','source-material-record-01'
+    ) as value
+  `, [OWNER, COURSE, plan.partId, materializationId, recordPayload]);
+  assert.equal(recordedReplay.idempotent, true);
+  assert.equal(recordedReplay.courseRevision, 7);
+  assert.equal(await scalar(database, `
+    select count(*)::integer as value
+    from private.course_source_attributions
+    where course_id=$1 and target_kind='study_unit'
+      and target_id in (select jsonb_array_elements_text($2::jsonb))
+  `, [COURSE, upserts.map(({ entityId }) => entityId)]), upserts.length);
+  await database.close();
+});
+
+test("#123 redação Study omite privados e rejeita unresolved, retired e cross-course", async () => {
+  const database = await databaseFixture();
+  await applyMigration(database);
+  await applyStudyUnitInspectionMigration(database);
+  await applyCourseDesignMigration(database);
+  await database.query(`
+    update private.course_entities
+    set content=content || jsonb_build_object('sources',$2::jsonb)
+    where course_id=$1 and entity_type='study_unit' and entity_id='card-a'
+  `, [COURSE, JSON.stringify(["referência ainda não resolvida"])]);
+  await applyCourseSourcesMigration(database);
+  assert.equal(await scalar(database, `
+    select to_regprocedure(
+      'public.get_course_study_citations_v1(uuid,text)'
+    ) is null as value
+  `), true);
+  assert.equal(await scalar(database, `
+    select to_regprocedure(
+      'public.get_course_study_citations_v1(uuid,bigint,text)'
+    ) is not null as value
+  `), true);
+  await actor(database, OWNER, "service_role");
+
+  await assert.rejects(() => executeCourseSourceCommand(database, 4, {
+    type: "save_anchor",
+    anchorId: "anchor-unresolved",
+    sourceId: "referência ainda não resolvida",
+    sourceRevision: 1,
+    expectedAnchorRevision: 0,
+    selector: { kind: "page_range", startPage: 1, endPage: 1 },
+    verificationExcerpt: null
+  }, "source-unresolved-anchor-01"), /revisão corrente e ativa da Fonte/iu);
+  assert.equal(await scalar(database, `
+    select revision as value from public.courses where id=$1
+  `, [COURSE]), 4);
+
+  await executeCourseSourceCommand(database, 4, {
+    type: "save_source",
+    sourceId: "source-visible-a",
+    expectedSourceRevision: 0,
+    source: {
+      kind: "article",
+      title: "Fonte visível",
+      citationText: "AUTOR. Fonte visível.",
+      url: "https://example.test/visible",
+      editionOrVersion: "2",
+      studyVisibility: "citation_and_link"
+    }
+  }, "source-visible-save-001");
+  await executeCourseSourceCommand(database, 5, {
+    type: "save_anchor",
+    anchorId: "anchor-visible-a",
+    sourceId: "source-visible-a",
+    sourceRevision: 1,
+    expectedAnchorRevision: 0,
+    selector: { kind: "page_range", startPage: 7, endPage: 8 },
+    verificationExcerpt: "Trecho privado que não pode vazar."
+  }, "source-visible-anchor-01");
+  await executeCourseSourceCommand(database, 6, {
+    type: "save_source",
+    sourceId: "source-hidden-a",
+    expectedSourceRevision: 0,
+    source: {
+      kind: "document",
+      title: "Fonte oculta",
+      citationText: null,
+      url: "https://example.test/hidden",
+      editionOrVersion: null,
+      studyVisibility: "hidden"
+    }
+  }, "source-hidden-save-0001");
+  await executeCourseSourceCommand(database, 7, {
+    type: "save_anchor",
+    anchorId: "anchor-hidden-a",
+    sourceId: "source-hidden-a",
+    sourceRevision: 1,
+    expectedAnchorRevision: 0,
+    selector: { kind: "uri_fragment", fragment: "secao-privada" },
+    verificationExcerpt: "Outro trecho privado."
+  }, "source-hidden-anchor-01");
+  const visibleLink = {
+    sourceId: "source-visible-a",
+    sourceRevision: 1,
+    relation: "quoted_from",
+    anchors: [{ anchorId: "anchor-visible-a", anchorRevision: 1 }]
+  };
+  const hiddenLink = {
+    sourceId: "source-hidden-a",
+    sourceRevision: 1,
+    relation: "informed_by",
+    anchors: [{ anchorId: "anchor-hidden-a", anchorRevision: 1 }]
+  };
+  const assigned = await executeCourseSourceCommand(database, 8, {
+    type: "set_target_sources",
+    targetKind: "study_unit",
+    targetId: "card-a",
+    expectedTargetVersion: 1,
+    sourceLinks: [visibleLink, hiddenLink]
+  }, "source-study-assign-0001");
+  assert.equal(assigned.courseRevision, 9);
+  await database.query(`
+    insert into public.course_access(course_id,user_id,granted_by)
+    values($1,$2,$3)
+  `, [COURSE, LEARNER, OWNER]);
+  await actor(database, LEARNER, "authenticated");
+  const citations = await scalar(database, `
+    select public.get_course_study_citations_v1($1,$2,$3) as value
+  `, [COURSE, 9, "card-a"]);
+  assert.equal(citations.contract, "aralearn.course-study-citations.v1");
+  assert.equal(citations.citations.length, 1);
+  assert.deepEqual(Object.keys(citations.citations[0]).sort(), [
+    "anchors", "citationText", "editionOrVersion", "sourceId",
+    "sourceRevision", "title", "url"
+  ]);
+  assert.equal(citations.citations[0].sourceId, "source-visible-a");
+  assert.deepEqual(Object.keys(citations.citations[0].anchors[0]).sort(), [
+    "anchorId", "anchorRevision", "selector"
+  ]);
+  assert.equal(
+    JSON.stringify(citations).includes("Trecho privado"),
+    false
+  );
+  assert.equal(JSON.stringify(citations).includes("source-hidden-a"), false);
+
+  await actor(database, OWNER, "service_role");
+  const hiddenCurrent = await executeCourseSourceCommand(database, 9, {
+    type: "save_source",
+    sourceId: "source-visible-a",
+    expectedSourceRevision: 1,
+    source: {
+      kind: "article",
+      title: "Fonte visível",
+      citationText: "AUTOR. Fonte visível.",
+      url: "https://example.test/visible",
+      editionOrVersion: "2",
+      studyVisibility: "hidden"
+    }
+  }, "source-visible-hide-0001");
+  assert.equal(hiddenCurrent.courseRevision, 10);
+  await actor(database, LEARNER, "authenticated");
+  const hiddenCurrentCitations = await scalar(database, `
+    select public.get_course_study_citations_v1($1,$2,$3) as value
+  `, [COURSE, 10, "card-a"]);
+  assert.deepEqual(hiddenCurrentCitations.citations, []);
+
+  await actor(database, OWNER, "service_role");
+  const citationOnlyCurrent = await executeCourseSourceCommand(database, 10, {
+    type: "save_source",
+    sourceId: "source-visible-a",
+    expectedSourceRevision: 2,
+    source: {
+      kind: "article",
+      title: "Fonte visível",
+      citationText: "AUTOR. Fonte visível.",
+      url: "https://example.test/visible",
+      editionOrVersion: "2",
+      studyVisibility: "citation"
+    }
+  }, "source-visible-citation-01");
+  assert.equal(citationOnlyCurrent.courseRevision, 11);
+  await actor(database, LEARNER, "authenticated");
+  const citationOnly = await scalar(database, `
+    select public.get_course_study_citations_v1($1,$2,$3) as value
+  `, [COURSE, 11, "card-a"]);
+  assert.equal(citationOnly.citations.length, 1);
+  assert.equal(citationOnly.citations[0].url, null);
+  await assert.rejects(() => scalar(database, `
+    select public.get_course_study_citations_v1($1,10,'missing-unit') as value
+  `, [COURSE]), (error) => {
+    const payload = JSON.parse(error.message);
+    const transport = JSON.parse(error.detail);
+    return error.code === "PGRST" &&
+      payload.code === "40001" &&
+      payload.message === "O Curso mudou durante a leitura de citações." &&
+      payload.details === null && payload.hint === null &&
+      transport.status === 409 && Object.keys(transport.headers).length === 0;
+  });
+  await assert.rejects(() => scalar(database, `
+    select public.get_course_study_citations_v1($1,11,'missing-unit') as value
+  `, [COURSE]), (error) => error.code === "PT404");
+
+  await database.query(`
+    update private.course_entities
+    set content=jsonb_set(content,'{title}',to_jsonb('Unidade alterada'::text)),
+      version=version+1
+    where course_id=$1 and entity_type='study_unit' and entity_id='card-a'
+  `, [COURSE]);
+  const staleCitations = await scalar(database, `
+    select public.get_course_study_citations_v1($1,$2,$3) as value
+  `, [COURSE, 11, "card-a"]);
+  assert.deepEqual(staleCitations.citations, []);
+
+  await actor(database, OWNER, "service_role");
+  const retired = await executeCourseSourceCommand(database, 11, {
+    type: "retire_source",
+    sourceId: "source-visible-a",
+    expectedSourceRevision: 3
+  }, "source-visible-retire-01");
+  assert.equal(retired.courseRevision, 12);
+  const attributionCount = await scalar(database, `
+    select count(*)::integer as value
+    from private.course_source_attributions
+    where course_id=$1 and target_kind='study_unit' and target_id='card-a'
+  `, [COURSE]);
+  await assert.rejects(() => executeCourseSourceCommand(database, 12, {
+    type: "set_target_sources",
+    targetKind: "study_unit",
+    targetId: "card-a",
+    expectedTargetVersion: 2,
+    sourceLinks: [visibleLink]
+  }, "source-retired-assign-01"), /Fonte atual, ativa/iu);
+  assert.equal(await scalar(database, `
+    select revision as value from public.courses where id=$1
+  `, [COURSE]), 12);
+  assert.equal(await scalar(database, `
+    select count(*)::integer as value
+    from private.course_source_attributions
+    where course_id=$1 and target_kind='study_unit' and target_id='card-a'
+  `, [COURSE]), attributionCount);
+
+  const secondCourse = "10000000-0000-4000-8000-000000000099";
+  await database.query(`
+    insert into public.courses(id,owner_id,title,goal,revision)
+    values($1,$2,'Segundo Curso','Testar isolamento.',1)
+  `, [secondCourse, OWNER]);
+  await database.query(`
+    insert into private.course_entities(
+      course_id,entity_type,entity_id,parent_type,parent_id,position,content
+    ) values
+      ($1,'module','module-x',null,null,0,'{"title":"Módulo X"}'),
+      ($1,'lesson','lesson-x','module','module-x',0,'{"title":"Lição X"}'),
+      ($1,'microsequence','micro-x','lesson','lesson-x',0,
+        '{"title":"Micro X","dependsOn":[]}'),
+      ($1,'study_unit','unit-x','microsequence','micro-x',1,
+        '{"title":"Unidade X"}')
+  `, [secondCourse]);
+  await assert.rejects(() => scalar(database, `
+    select public.execute_course_source_command_for_actor_v1(
+      $1,$2,1,$3::jsonb,'application','source-cross-course-01'
+    ) as value
+  `, [OWNER, secondCourse, {
+    type: "set_target_sources",
+    targetKind: "study_unit",
+    targetId: "unit-x",
+    expectedTargetVersion: 1,
+    sourceLinks: [hiddenLink]
+  }]), /Fonte atual, ativa/iu);
+  assert.equal(await scalar(database, `
+    select count(*)::integer as value
+    from private.course_source_attributions where course_id=$1
+  `, [secondCourse]), 0);
+  assert.equal(await scalar(database, `
+    select revision as value from public.courses where id=$1
+  `, [secondCourse]), 1);
+  await database.close();
+});
+
+test("#123 cerca citações densas no último payload legível sem revisão parcial", async () => {
+  const database = await databaseFixture();
+  await applyMigration(database);
+  await applyStudyUnitInspectionMigration(database);
+  await applyCourseDesignMigration(database);
+  await database.query(`
+    update private.course_entities
+    set content=content || '{"sources":[]}'::jsonb
+    where course_id=$1 and entity_type='study_unit' and entity_id='card-a'
+  `, [COURSE]);
+  await applyCourseSourcesMigration(database);
+  const selector = {
+    kind: "text_quote",
+    exact: "x".repeat(4000),
+    prefix: "p".repeat(500),
+    suffix: "s".repeat(500)
+  };
+  const denseLinks = [];
+  for (let sourceIndex = 0; sourceIndex < 7; sourceIndex += 1) {
+    const sourceId = `dense-source-${sourceIndex}`;
+    await database.query(`
+      insert into private.course_source_revisions(
+        course_id,source_id,revision,status,kind,title,citation_text,url,
+        edition_or_version,study_visibility,actor_id
+      ) values($1,$2,1,'active','document',$3,'C',null,null,'citation',$4)
+    `, [COURSE, sourceId, `S${sourceIndex}`, OWNER]);
+    const anchors = [];
+    for (let anchorIndex = 0; anchorIndex < 8; anchorIndex += 1) {
+      const anchorId = `dense-anchor-${sourceIndex}-${anchorIndex}`;
+      await database.query(`
+        insert into private.course_source_anchor_revisions(
+          course_id,anchor_id,revision,source_id,source_revision,status,
+          selector,verification_excerpt,actor_id
+        ) values($1,$2,1,$3,1,'active',$4::jsonb,null,$5)
+      `, [COURSE, anchorId, sourceId, selector, OWNER]);
+      anchors.push({ anchorId, anchorRevision: 1 });
+    }
+    denseLinks.push({
+      sourceId,
+      sourceRevision: 1,
+      relation: "supported_by",
+      anchors
+    });
+  }
+  await actor(database, OWNER, "service_role");
+  const acceptedCommand = {
+    type: "set_target_sources",
+    targetKind: "study_unit",
+    targetId: "card-a",
+    expectedTargetVersion: 1,
+    sourceLinks: denseLinks.slice(0, 6)
+  };
+  const accepted = await executeCourseSourceCommand(
+    database, 4, acceptedCommand, "source-budget-accepted-01"
+  );
+  assert.equal(accepted.courseRevision, 5);
+  assert.equal(accepted.changed, true);
+  const replay = await executeCourseSourceCommand(
+    database, 4, acceptedCommand, "source-budget-accepted-01"
+  );
+  assert.equal(replay.idempotent, true);
+  assert.equal(replay.courseRevision, 5);
+  const noOp = await executeCourseSourceCommand(
+    database, 5, acceptedCommand, "source-budget-noop-0001"
+  );
+  assert.equal(noOp.changed, false);
+  assert.equal(noOp.courseRevision, 5);
+
+  await actor(database, OWNER, "authenticated");
+  const acceptedPayload = await scalar(database, `
+    select public.get_course_study_citations_v1($1,5,'card-a') as value
+  `, [COURSE]);
+  assert.equal(acceptedPayload.citations.length, 6);
+  const acceptedBytes = await scalar(database, `
+    select octet_length(
+      public.get_course_study_citations_v1($1,5,'card-a')::text
+    )::integer as value
+  `, [COURSE]);
+  assert.equal(acceptedBytes <= 262144, true);
+  const reservedBigintBytes = await scalar(database, `
+    select octet_length(private.course_study_citations_payload_v1(
+      $1,'card-a',9223372036854775807
+    )::text)::integer as value
+  `, [COURSE]);
+  assert.equal(reservedBigintBytes > acceptedBytes, true);
+  assert.equal(reservedBigintBytes <= 262144, true);
+
+  await actor(database, OWNER, "service_role");
+  const eventCount = await scalar(database, `
+    select count(*)::integer as value from private.course_events
+    where course_id=$1 and operation='update_course_sources'
+  `, [COURSE]);
+  const attributionCount = await scalar(database, `
+    select count(*)::integer as value
+    from private.course_source_attributions
+    where course_id=$1 and target_kind='study_unit' and target_id='card-a'
+  `, [COURSE]);
+  await assert.rejects(() => executeCourseSourceCommand(database, 5, {
+    ...acceptedCommand,
+    sourceLinks: denseLinks
+  }, "source-budget-rejected-01"), (error) => (
+    error.code === "54000" && /Citações de Estudo excedem 256 KiB/iu.test(error.message)
+  ));
+  assert.equal(await scalar(database, `
+    select revision as value from public.courses where id=$1
+  `, [COURSE]), 5);
+  assert.equal(await scalar(database, `
+    select count(*)::integer as value from private.course_events
+    where course_id=$1 and operation='update_course_sources'
+  `, [COURSE]), eventCount);
+  assert.equal(await scalar(database, `
+    select count(*)::integer as value
+    from private.course_source_attributions
+    where course_id=$1 and target_kind='study_unit' and target_id='card-a'
+  `, [COURSE]), attributionCount);
+  assert.equal(await scalar(database, `
+    select count(*)::integer as value from private.course_change_receipts
+    where actor_id=$1 and request_id='source-budget-rejected-01'
+  `, [OWNER]), 0);
+  await actor(database, OWNER, "authenticated");
+  const afterReject = await scalar(database, `
+    select public.get_course_study_citations_v1($1,5,'card-a') as value
+  `, [COURSE]);
+  assert.deepEqual(afterReject, acceptedPayload);
+
+  await actor(database, OWNER, "service_role");
+  const directDenseAttribution = await scalar(database, `
+    select private.apply_course_source_attribution_v1(
+      $1,'study_unit','card-a',1,$2::jsonb,$3,false
+    ) as value
+  `, [COURSE, denseLinks, OWNER]);
+  assert.equal(directDenseAttribution.changed, true);
+  const hiddenSeventh = await executeCourseSourceCommand(database, 5, {
+    type: "save_source",
+    sourceId: "dense-source-6",
+    expectedSourceRevision: 1,
+    source: {
+      kind: "document",
+      title: "S6",
+      citationText: "C",
+      url: null,
+      editionOrVersion: null,
+      studyVisibility: "hidden"
+    }
+  }, "source-budget-hide-seventh");
+  assert.equal(hiddenSeventh.courseRevision, 6);
+  await actor(database, OWNER, "authenticated");
+  const hiddenSeventhPayload = await scalar(database, `
+    select public.get_course_study_citations_v1($1,6,'card-a') as value
+  `, [COURSE]);
+  assert.deepEqual(hiddenSeventhPayload.citations, acceptedPayload.citations);
+
+  await actor(database, OWNER, "service_role");
+  const beforeReexposureEvents = await scalar(database, `
+    select count(*)::integer as value from private.course_events
+    where course_id=$1 and operation='update_course_sources'
+  `, [COURSE]);
+  const beforeReexposureAttributions = await scalar(database, `
+    select count(*)::integer as value
+    from private.course_source_attributions
+    where course_id=$1 and target_kind='study_unit' and target_id='card-a'
+  `, [COURSE]);
+  await assert.rejects(() => executeCourseSourceCommand(database, 6, {
+    type: "save_source",
+    sourceId: "dense-source-6",
+    expectedSourceRevision: 2,
+    source: {
+      kind: "document",
+      title: "S6",
+      citationText: "C",
+      url: null,
+      editionOrVersion: null,
+      studyVisibility: "citation"
+    }
+  }, "source-budget-reexpose-01"), (error) => (
+    error.code === "54000" && /Citações de Estudo excedem 256 KiB/iu.test(error.message)
+  ));
+  assert.equal(await scalar(database, `
+    select revision as value from public.courses where id=$1
+  `, [COURSE]), 6);
+  assert.deepEqual(await scalar(database, `
+    select jsonb_build_object(
+      'revision',revision,'status',status,'studyVisibility',study_visibility
+    ) as value
+    from private.course_source_revisions
+    where course_id=$1 and source_id='dense-source-6'
+    order by revision desc limit 1
+  `, [COURSE]), {
+    revision: 2,
+    status: "active",
+    studyVisibility: "hidden"
+  });
+  assert.equal(await scalar(database, `
+    select count(*)::integer as value from private.course_events
+    where course_id=$1 and operation='update_course_sources'
+  `, [COURSE]), beforeReexposureEvents);
+  assert.equal(await scalar(database, `
+    select count(*)::integer as value
+    from private.course_source_attributions
+    where course_id=$1 and target_kind='study_unit' and target_id='card-a'
+  `, [COURSE]), beforeReexposureAttributions);
+  assert.equal(await scalar(database, `
+    select count(*)::integer as value from private.course_change_receipts
+    where actor_id=$1 and request_id='source-budget-reexpose-01'
+  `, [OWNER]), 0);
+  await actor(database, OWNER, "authenticated");
+  assert.deepEqual(await scalar(database, `
+    select public.get_course_study_citations_v1($1,6,'card-a') as value
+  `, [COURSE]), hiddenSeventhPayload);
   await database.close();
 });

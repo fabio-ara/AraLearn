@@ -109,6 +109,8 @@ Lê uma destas projeções:
   orientação original e interpretação, política de componentes, itens do plano
   atribuídos quando o escopo é uma Microssequência e resumo
   planejado×aplicado;
+- `course_sources`: catálogo de Fontes, detalhe versionado de uma Fonte ou
+  histórico de atribuições de um alvo;
 - `part_materialization`: uma tentativa persistida, seu contexto e fatos
   limitados, as etapas com versão e a próxima etapa pendente;
 - `study_units`: Unidades de estudo em ordem curricular, com contexto, Parte e
@@ -146,6 +148,20 @@ Microssequência e vale `null` nos demais escopos. A leitura falha fechada acima
 do hard cap executável de 256 KiB; não há promessa contratual de 96 KiB para
 toda resposta normal.
 
+`course_sources` exige `expectedRevision` e escolhe exatamente um modo:
+`catalog`, `source` ou `target`. A leitura é owner-only, estrita e paginada em
+até 24 itens. `source` recebe a identidade literal da Fonte; `target` recebe
+`plan_item|study_unit` e a identidade do alvo. O cursor é opaco, não pode ser
+fabricado pelo cliente e só vale sob a revisão lida. O catálogo traz a revisão
+corrente; o detalhe preserva revisões e Âncoras; o alvo preserva atribuições
+append-only e indica qual ainda corresponde à versão e ao hash atuais.
+
+O objeto lido contém exatamente `contract`, `courseId`, `courseRevision`,
+`mode`, `query`, `items` e `nextCursor`. `query` explicita os três binds e deixa
+nulos os que não pertencem ao modo. Cada vínculo de alvo tem
+`{sourceId, sourceRevision, relation, anchors}`; cada referência de Âncora tem
+`{anchorId, anchorRevision}`. Campos adicionais não são extensão tolerada.
+
 ### `criarCurso`
 
 Cria atomicamente um Curso privado vazio e seu plano instrucional inicial.
@@ -163,7 +179,7 @@ autenticou a chamada é proprietária.
 
 ### `alterarCurso`
 
-Possui quatro operações fechadas:
+Possui cinco operações fechadas:
 
 - `update_instructional_plan`: aplica um comando semântico ao plano — atualizar
   campos naturais, incluir/editar/reordenar itens, incluir/editar/dividir/
@@ -172,6 +188,9 @@ Possui quatro operações fechadas:
   componentes, registra interpretação ligada à revisão exata da orientação ou
   aplica `set_target_plan_items` para substituir as duas listas de itens de uma
   Microssequência;
+- `update_course_sources`: cria ou revisa uma Fonte, aposenta Fonte ou Âncora,
+  salva Âncora ou substitui o conjunto ordenado de Fontes de um item do plano
+  ou de uma Unidade;
 - `commit_course_composition`: inclui, substitui ou exclui entidades em lote;
 - `advance_part_materialization`: inicia uma tentativa, registra uma etapa
   delimitada ou finaliza a tentativa de uma Parte.
@@ -181,6 +200,21 @@ plano exige também sua versão. Um comando carrega intenção e identidades
 estáveis; o servidor calcula e persiste o alvo inteiro na mesma transação.
 O alvo do plano aceita até 192 vínculos de Microssequência no total e 512 KiB;
 esse limite mantém sua leitura enriquecida abaixo do orçamento do transporte.
+
+`update_course_sources` aceita somente os comandos `save_source`,
+`retire_source`, `save_anchor`, `retire_anchor` e `set_target_sources`. Um
+vínculo novo declara `informed_by`, `supported_by`, `adapted_from` ou
+`quoted_from` e exige ao menos uma Âncora ativa da revisão exata. Há no máximo
+32 Fontes por alvo e oito identidades de Âncora por revisão de Fonte.
+`legacy_reference` é apenas fato de
+migração e nunca opção de escrita. Uma identidade legada não resolvida é
+resolvida in-place, preservando literalmente o identificador; o cliente não a
+normaliza nem cria substituto.
+
+O recibo de Fonte contém exatamente `contract`, `courseId`, `courseRevision`,
+`requestId`, `idempotent`, `changed` e `change`. `change` é nulo no no-op; caso
+contrário, contém `type`, `subjectId` e `revision`, e `changed` precisa refletir
+essa diferença.
 
 Cada grupo de composição aceita no máximo 200 itens. Uma etapa de
 materialização aceita no máximo 64 mudanças de entidade e 256 KiB, fixa a
@@ -193,12 +227,22 @@ somente nas Lições afetadas. A escrita permanece segmentada e não recompõe o
 Curso integral antes de cada commit. Excluir ou reordenar uma Parte nunca
 exclui a composição didática.
 
+`commit_course_composition` não aceita `sources` dentro de `studyUnits`. Para
+cada Unidade incluída ou substituída, o pedido leva exatamente uma entrada em
+`sourceAttributionApplications` com o conjunto completo de vínculos, inclusive
+quando vazio. Entidades, atribuições, revisão, evento e recibo confirmam ou
+revertem juntos.
+
 O início de uma materialização não aceita contexto declarado pelo cliente. O
-servidor resolve e sela parâmetros, orientações e política para as
-Microssequências-alvo. O contexto inclui catálogos de itens como
+servidor resolve e sela parâmetros, orientações, política e atribuições de
+Fontes dos itens do plano para as Microssequências-alvo. O contexto
+`aralearn.course-design-context.v2` inclui catálogos de itens como
 `{id, position, statement, version}` e, em cada alvo, somente os IDs atribuídos
-a ele. Cada `record_step` apresenta uma aplicação factual limitada e é auditado
-apenas contra esse subconjunto, sob o hash do contexto.
+a ele, além das revisões e Âncoras seladas. Cada `record_step` apresenta uma
+aplicação factual limitada e aplicações
+`aralearn.course-source-attribution-application.v1`; somente fatos presentes
+no contexto podem ser gravados. Conteúdo, vínculos, atribuições, etapa, evento e
+recibo são atômicos sob o hash do contexto.
 
 Formas de explicação, oportunidades e dimensões de variação são declarações do
 agente ou da pessoa autora com schema, referências, contagens e coerência
@@ -276,10 +320,12 @@ invariantes. O Curso conserva dados mutáveis:
   política de componentes por escopo;
 - atribuições muitos-para-muitos de unidades de análise e requisitos de
   evidência às Microssequências;
+- catálogo privado e versionado de Fontes e Âncoras, mais atribuições
+  append-only a itens do plano e Unidades;
 - Partes operacionais, seus vínculos e tentativas de materialização;
 - composição didática;
-- futuramente, fontes, observações autorais e configuração de pesquisa quando
-  essas fatias forem implementadas.
+- futuramente, observações autorais reunidas, achados de auditoria e
+  configuração de pesquisa quando essas fatias forem implementadas.
 
 Essa separação evita que mudar o planejamento exija editar o prompt de sistema
 ou reconstruir uma base fixa. Também evita persistir conversa integral ou
@@ -305,6 +351,7 @@ Erros previsíveis incluem:
 - Curso inexistente ou não pertencente à pessoa;
 - revisão desatualizada;
 - `requestId` reutilizado com outro comando;
+- Fonte, revisão, Âncora, relação ou alvo inválido;
 - entidade, plano, Parte ou etapa de materialização inválida;
 - e-mail sem conta correspondente;
 - confirmação ausente;
@@ -316,6 +363,13 @@ resposta, com hard cap de 1,75 MiB sob o teto de 2 MiB. O prazo de uma chamada
 não autoriza aumentar lote
 indefinidamente; produção por Partes precisa respeitar limites reais de modelo,
 rede e transação.
+
+As leituras de Fontes têm resposta máxima de 256 KiB, página de até 24 itens e
+cursor opaco de até 240 caracteres. Metadados e URLs ficam no PostgreSQL; o
+contrato não envia arquivos de referência ao Storage. Esses limites reduzem
+transferência, mas o crescimento append-only e o consumo real de banco, egress
+e funções ainda precisam ser medidos antes de afirmar sustentabilidade no Free
+Plan.
 
 ## Configuração
 

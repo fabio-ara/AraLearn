@@ -65,6 +65,25 @@ Uma resposta incorreta não produz nota global nem bloqueio do Curso. A
 interface oferece nova tentativa ou exibição da resposta quando o contrato do
 componente prevê essas ações.
 
+## Consultar as fontes de uma Unidade
+
+Na Unidade, use o ícone **Fontes**. A consulta acontece somente quando o painel
+é aberto; o Curso não baixa o catálogo privado junto com o conteúdo.
+
+O painel pode mostrar título, citação, edição ou versão, localização exata e,
+quando autorizado, o link externo. Há três regras de privacidade:
+
+- uma Fonte configurada como **Oculta** não aparece;
+- uma referência legada ainda não resolvida não aparece;
+- uma Fonte configurada como **Citação** mostra a identificação, mas não o
+  link; somente **Citação e link** entrega a URL.
+
+O Estudo recebe apenas essa projeção redigida. Trecho de verificação privado,
+histórico de revisões, identidade de quem editou e controles para alterar ou
+retirar Fontes permanecem na Autoria. Fechar e reabrir o painel na mesma
+Unidade pode reutilizar a leitura corrente; perder acesso ao Curso limpa os
+dados locais relacionados.
+
 ## Marcar para rever
 
 Na Unidade, use o ícone **Marcar para rever**. O estado pressionado indica que a

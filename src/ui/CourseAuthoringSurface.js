@@ -3,6 +3,7 @@ import { createUuid } from "../domain/identifiers.js";
 import { captureRenderState, restoreRenderState } from "./renderState.js";
 import { createCourseInspectionSequence } from "./CourseInspectionSequence.js";
 import { renderCourseDesignPanel } from "./CourseDesignPanel.js";
+import { createCourseSourcesPanel } from "./CourseSourcesPanel.js";
 import {
   buildCourseAuthoringRoute,
   isCourseAuthoringRouteCandidate,
@@ -358,14 +359,15 @@ function renderSectionNavigation(course, section) {
     ...(canAccessPlanning(course)
       ? [
           { key: "planning", label: "Planejamento", icon: "intent" },
-          { key: "parameters", label: "Parâmetros", icon: "tags" }
+          { key: "parameters", label: "Parâmetros", icon: "tags" },
+          { key: "sources", label: "Fontes", icon: "study" }
         ]
       : []),
     { key: "structure", label: "Estrutura", icon: "module" },
     { key: "inspection", label: "Inspeção", icon: "preview" },
     { key: "people", label: "Pessoas", icon: "account-add" }
   ];
-  return `<nav class="course-authoring-sections ${definitions.length === 5 ? "has-five" : "has-planning"}"` +
+  return `<nav class="course-authoring-sections ${definitions.length === 6 ? "has-six" : "has-planning"}"` +
     ' aria-label="Áreas do Curso">' +
     definitions.map((definition) => {
       const active = definition.key === section;
@@ -545,6 +547,7 @@ function renderPlanItems(state, planning) {
         '<div class="course-authoring-compact-actions">' +
         renderActionButton({ action: "move-plan-item-up", icon: "arrow-up", label: "Mover item para cima", data, disabled: state.writeBusy || index === 0 }) +
         renderActionButton({ action: "move-plan-item-down", icon: "arrow-down", label: "Mover item para baixo", data, disabled: state.writeBusy || index === list.length - 1 }) +
+        renderActionButton({ action: "edit-plan-item-sources", icon: "study", label: "Definir fontes do item", data, disabled: state.writeBusy }) +
         renderActionButton({ action: "edit-plan-item", icon: "edit", label: "Editar item", data, disabled: state.writeBusy }) +
         renderActionButton({ action: "remove-plan-item", icon: "trash", label: "Remover item", data, disabled: state.writeBusy }) +
         "</div></article>";
@@ -968,6 +971,16 @@ function renderCourseSection(state) {
   if (state.section === "parameters") {
     return renderCourseDesignPanel(state);
   }
+  if (state.section === "sources" && state.course) {
+    if (!canAccessPlanning(state.course)) {
+      return statusPanel({
+        kind: "error",
+        title: "Fontes indisponíveis",
+        message: "Somente a pessoa proprietária pode consultar e alterar as fontes deste Curso."
+      });
+    }
+    return '<div class="course-sources-host" data-course-sources-host></div>';
+  }
   if (state.section === "inspection" && state.course) {
     return '<div class="course-inspection-host" data-course-inspection-host></div>';
   }
@@ -1025,7 +1038,10 @@ function renderCourseDetail(state) {
     (state.section !== "planning" && visibleCourse?.goal
       ? `<p class="course-authoring-course-goal">${escapeHtml(visibleCourse.goal)}</p>`
       : "") + navigation +
-    `<main class="course-authoring-course-content">${renderCourseSection(state)}</main></div>`;
+    `<main class="course-authoring-course-content">${renderCourseSection(state)}</main>` +
+    (state.sourceTarget
+      ? '<div class="course-source-target-overlay"><div data-course-source-target-host></div></div>'
+      : "") + "</div>";
 }
 
 function renderInvalidRoute() {
@@ -1170,6 +1186,8 @@ export function createCourseAuthoringSurface({
   let materializationEpoch = 0;
   let hashListening = false;
   let inspectionSequence = null;
+  let sourcesPanel = null;
+  let targetSourcesPanel = null;
   const knownCourses = new Map();
   const avatarUrls = new Map();
   const state = {
@@ -1215,6 +1233,7 @@ export function createCourseAuthoringSurface({
     pendingMaterializationCommand: null,
     materializationBusyPartId: null,
     partMaterialization: null,
+    sourceTarget: null,
     writeBusy: false,
     writeMessage: "",
     writeFailure: "",
@@ -1231,6 +1250,86 @@ export function createCourseAuthoringSurface({
     inspectionSequence = null;
   }
 
+  function destroySourcesPanels() {
+    sourcesPanel?.destroy?.();
+    targetSourcesPanel?.destroy?.();
+    sourcesPanel = null;
+    targetSourcesPanel = null;
+  }
+
+  function acceptSourcesCourseRevision(nextRevision) {
+    if (!state.course || !Number.isSafeInteger(nextRevision) || nextRevision < state.course.revision) {
+      return;
+    }
+    state.course = Object.freeze({ ...state.course, revision: nextRevision });
+    state.knownCourse = state.course;
+    knownCourses.set(state.course.courseId, state.course);
+    state.outline = null;
+    state.authoringPlan = null;
+    state.courseDesign = null;
+  }
+
+  function openTargetSources({ targetKind, targetId, targetVersion, targetLabel }) {
+    if (!state.course || !canAccessPlanning(state.course)) return;
+    state.sourceTarget = { targetKind, targetId, targetVersion, targetLabel };
+    state.writeFailure = "";
+    render();
+  }
+
+  function mountSourcesPanels() {
+    if (!state.course) return;
+    const shared = {
+      controller,
+      courseId: state.course.courseId,
+      courseRevision: state.course.revision,
+      confirmValue,
+      onCourseRevisionChange: acceptSourcesCourseRevision
+    };
+    if (state.section === "sources" && canAccessPlanning(state.course)) {
+      const host = root.querySelector?.("[data-course-sources-host]");
+      if (host) {
+        try {
+          sourcesPanel = createCourseSourcesPanel({ root: host, mode: "catalog", ...shared });
+          void sourcesPanel.open();
+        } catch (error) {
+          host.innerHTML = statusPanel({
+            kind: "error",
+            title: "Fontes indisponíveis",
+            message: writeFailureMessage(error)
+          });
+        }
+      }
+    }
+    if (state.sourceTarget) {
+      const host = root.querySelector?.("[data-course-source-target-host]");
+      if (host) {
+        try {
+          targetSourcesPanel = createCourseSourcesPanel({
+            root: host,
+            mode: "target",
+            ...shared,
+            ...state.sourceTarget,
+            onClose() {
+              state.sourceTarget = null;
+              render();
+            },
+            onTargetSaved() {
+              state.sourceTarget = null;
+              void loadCourse(state.course.courseId, { force: true });
+            }
+          });
+          void targetSourcesPanel.open();
+        } catch (error) {
+          host.innerHTML = statusPanel({
+            kind: "error",
+            title: "Atribuição indisponível",
+            message: writeFailureMessage(error)
+          });
+        }
+      }
+    }
+  }
+
   function mountInspectionSequence() {
     if (state.view !== "course" || state.section !== "inspection" || !state.course) return;
     const host = root.querySelector?.("[data-course-inspection-host]");
@@ -1242,6 +1341,7 @@ export function createCourseAuthoringSurface({
         course: state.course,
         routeTarget: state.routeTarget,
         onNavigate: (hash) => navigate(hash),
+        onEditSources: (target) => openTargetSources(target),
         windowValue,
         documentValue,
         navigatorValue
@@ -1259,9 +1359,11 @@ export function createCourseAuthoringSurface({
   function render({ focus = "" } = {}) {
     if (!state.opened) return;
     destroyInspectionSequence();
+    destroySourcesPanels();
     root.innerHTML = renderCourseAuthoringSurface(state);
     root.setAttribute?.("aria-busy", String(state.loading));
     mountInspectionSequence();
+    mountSourcesPanels();
     if (focus && typeof root.querySelector === "function") {
       globalThis.queueMicrotask?.(() => root.querySelector(focus)?.focus());
     }
@@ -1531,6 +1633,7 @@ export function createCourseAuthoringSurface({
     state.knownCourse = knownCourses.get(courseId) ||
       (state.course?.courseId === courseId ? state.course : null);
     if (state.course?.courseId !== courseId) {
+      state.sourceTarget = null;
       state.people = null;
       state.peopleFailure = "";
       state.peopleMessage = "";
@@ -1645,6 +1748,7 @@ export function createCourseAuthoringSurface({
     }
     if (route) {
       const nextKey = hash;
+      if (state.routeKey && state.routeKey !== nextKey) state.sourceTarget = null;
       state.section = route.section;
       state.routeTarget = route.target;
       if (!force && state.routeKey === nextKey) {
@@ -1682,6 +1786,7 @@ export function createCourseAuthoringSurface({
     state.knownCourse = null;
     state.outline = null;
     state.routeTarget = null;
+    state.sourceTarget = null;
     state.people = null;
     state.peopleFailure = "";
     state.peopleMessage = "";
@@ -2688,6 +2793,17 @@ export function createCourseAuthoringSurface({
       state.writeFailure = "";
       state.writeMessage = "";
       render({ focus: "#course-authoring-item-text" });
+    } else if (action === "edit-plan-item-sources" && !state.writeBusy) {
+      const listName = String(node.dataset.planList || "");
+      const id = String(node.dataset.itemId || "");
+      const item = state.authoringPlan?.plan?.[listName]?.find?.((value) => value.id === id);
+      if (!item) return;
+      openTargetSources({
+        targetKind: "plan_item",
+        targetId: item.id,
+        targetVersion: item.version,
+        targetLabel: item.statement
+      });
     } else if (action === "cancel-plan-item") {
       state.planItemEditor = null;
       state.planItemDraft = null;

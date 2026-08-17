@@ -374,7 +374,11 @@ test("PostgreSQL aceita apenas uma composição concorrente na mesma versão", {
           jsonb_build_object('entityType','study_unit','entityId','u-${suffix}',
             'parentType','microsequence','parentId','s-${suffix}','position',1,
             'content',jsonb_build_object('title','Unidade ${suffix}'))
-        ), '[]'::jsonb, 'concurrency:composition:${suffix}'
+        ), '[]'::jsonb,
+        jsonb_build_array(jsonb_build_object(
+          'studyUnitId','u-${suffix}','sourceLinks',jsonb_build_array()
+        )),
+        'concurrency:composition:${suffix}'
       );
       commit;
     `));

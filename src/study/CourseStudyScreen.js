@@ -237,6 +237,50 @@ function renderMicrosequenceOverview(
     (units || '<p class="empty-state-copy">Sem unidades.</p>') + "</section></main></section>";
 }
 
+function citationSelectorLabel(selector) {
+  if (selector.kind === "page_range") {
+    return selector.startPage === selector.endPage
+      ? `p. ${selector.startPage}`
+      : `pp. ${selector.startPage}–${selector.endPage}`;
+  }
+  if (selector.kind === "time_range") {
+    return `${selector.startMilliseconds / 1_000}–${selector.endMilliseconds / 1_000} s`;
+  }
+  if (selector.kind === "uri_fragment") return `trecho #${selector.fragment}`;
+  return `“${selector.exact}”`;
+}
+
+function renderStudyCitations({ open, loading, value, error }) {
+  if (!open) return "";
+  let content;
+  if (loading) {
+    content = '<p class="study-citations-status" role="status">Carregando fontes…</p>';
+  } else if (error) {
+    content = `<p class="study-citations-status is-error" role="alert">${escapeHtml(error)}</p>` +
+      '<button type="button" data-action="retry-citations">Tentar novamente</button>';
+  } else if (!value?.citations?.length) {
+    content = '<p class="study-citations-status">Esta Unidade não possui fontes públicas.</p>';
+  } else {
+    content = '<ol class="study-citation-list">' + value.citations.map((citation) =>
+      '<li><article><h3>' + escapeHtml(citation.title) + "</h3>" +
+      `<p>${escapeHtml(citation.citationText)}</p>` +
+      (citation.editionOrVersion
+        ? `<small>${escapeHtml(citation.editionOrVersion)}</small>`
+        : "") +
+      (citation.anchors.length
+        ? `<ul>${citation.anchors.map(({ selector }) =>
+            `<li>${escapeHtml(citationSelectorLabel(selector))}</li>`).join("")}</ul>`
+        : "") +
+      (citation.url
+        ? `<a href="${escapeHtml(citation.url)}" target="_blank" rel="noreferrer">Abrir fonte</a>`
+        : "") + "</article></li>").join("") + "</ol>";
+  }
+  return '<section class="study-citations-panel" aria-labelledby="study-citations-title">' +
+    '<header><div><p>Proveniência desta Unidade</p><h2 id="study-citations-title">Fontes</h2></div>' +
+    '<button type="button" data-action="toggle-citations" aria-label="Fechar fontes" title="Fechar fontes">' +
+    renderUiIcon("remove-state", "home-tab-icon") + "</button></header>" + content + "</section>";
+}
+
 function renderStudyUnit({
   course,
   lesson,
@@ -247,7 +291,11 @@ function renderStudyUnit({
   feedbackOpen,
   hasObservation,
   markedForReview,
-  runtimeStatus
+  runtimeStatus,
+  citationsOpen,
+  citationsLoading,
+  citations,
+  citationsError
 }) {
   const units = microsequence.studyUnits || [];
   const runtime = renderPackageStudyUnitBlocksWithDock(studyUnit, {
@@ -286,6 +334,12 @@ function renderStudyUnit({
     '<div class="runtime-card-rendered-content"><div class="runtime-card-title">' +
     escapeHtml(studyUnit.title || studyUnit.id) + '</div><div class="card-sheet-content">' +
     runtime.bodyHtml + "</div>" + runtime.dockHtml + "</div></article></section>" +
+    renderStudyCitations({
+      open: citationsOpen,
+      loading: citationsLoading,
+      value: citations,
+      error: citationsError
+    }) +
     '<div class="study-reader-stage-meta"><span class="study-reader-count" aria-label="Unidade ' +
     String(studyUnitIndex + 1) + " de " + String(units.length) + '">' +
     renderUiIcon("study-unit", "study-reader-count-icon") +
@@ -293,6 +347,9 @@ function renderStudyUnit({
     String(units.length) + "</span></span></div>" +
     '<section class="study-reader-footer"><div class="study-action-dock"><div class="study-action-stack">' +
     '<div class="study-next-wrap runtime-card-external-dock">' +
+    '<button class="icon-ghost study-citations-btn" type="button" data-action="toggle-citations"' +
+    ` aria-expanded="${String(citationsOpen)}" title="Fontes" aria-label="Fontes">` +
+    renderUiIcon("study", "home-tab-icon") + "</button>" +
     '<button class="icon-ghost study-comment-btn' + (hasObservation ? " has-comment" : "") +
     '" type="button" data-action="open-observation" title="Observação" aria-label="Observação">' +
     renderUiIcon("prompt", "home-tab-icon") + "</button>" +
@@ -328,7 +385,11 @@ export function renderCourseStudyScreen({
   packageStudyUnitOptions = {},
   feedbackOpen = false,
   hasObservation = false,
-  markedForReview = false
+  markedForReview = false,
+  citationsOpen = false,
+  citationsLoading = false,
+  citations = null,
+  citationsError = ""
 }) {
   if (view === "courses") {
     return renderHomeScreen({
@@ -363,6 +424,10 @@ export function renderCourseStudyScreen({
     feedbackOpen,
     hasObservation,
     markedForReview,
-    runtimeStatus
+    runtimeStatus,
+    citationsOpen,
+    citationsLoading,
+    citations,
+    citationsError
   });
 }

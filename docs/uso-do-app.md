@@ -25,8 +25,8 @@ estado pessoal: progresso, marcas para rever e observações.
 ### Autoria
 
 Autoria lista somente Cursos próprios. Ela permite criar Curso, inspecionar
-e editar planejamento e Partes, percorrer a composição em uma sequência
-vertical, copiar um pedido de
+e editar planejamento e Partes, configurar Parâmetros, manter Fontes e Âncoras,
+percorrer a composição em uma sequência vertical, copiar um pedido de
 materialização para o chat conectado e gerir acesso. O MCP autoral possui a
 mesma restrição de propriedade e opera o mesmo estado persistido.
 
@@ -105,6 +105,11 @@ concessão significa prática, não edição.
 Na primeira abertura, o cliente baixa a composição em páginas, verifica que
 todas pertencem à mesma revisão, recompõe o documento e o valida. Depois disso,
 o Curso fica disponível no cache local.
+
+Para consultar a proveniência de uma Unidade, use **Fontes** dentro dela. A
+leitura só acontece ao abrir o painel. Fonte oculta ou legada não resolvida não
+aparece; **Citação** não entrega URL e **Citação e link** pode entregá-la. O
+Estudo nunca apresenta histórico, trecho privado de verificação ou edição.
 
 ## Responder e avançar
 
@@ -211,6 +216,26 @@ nota de aprendizagem ou qualidade. Formas, oportunidades e variações são
 declarações validadas do agente ou da pessoa autora, não interpretações
 semânticas produzidas pelo banco a partir da prosa.
 
+## Manter Fontes, Âncoras e atribuições
+
+Abra **Fontes** para percorrer o catálogo privado em páginas. É possível criar
+uma Fonte, acrescentar uma revisão, aposentar e abrir o histórico. No detalhe da
+revisão, acrescente uma Âncora por página, tempo, fragmento URI ou trecho
+textual. O trecho de verificação é opcional e permanece privado.
+
+O histórico visual carrega uma revisão por página e oferece continuar; isso é
+comportamento da interface corrente, não um teto contratual do serviço.
+
+Toda atribuição nova exige ao menos uma Âncora ativa da revisão exata. No
+Planejamento, use **Definir fontes** num item de análise ou evidência; na
+Inspeção, use o mesmo controle na Unidade. Salvar substitui o conjunto completo
+e preserva a ordem escolhida: confira todas as Fontes antes de confirmar.
+
+**Legado não resolvido** identifica uma referência anterior sem metadados ou
+Âncora suficientes. Ela fica oculta no Estudo. Ao resolver, mantenha a mesma
+identidade apresentada e acrescente a revisão completa; não crie uma duplicata
+nem invente título ou link.
+
 ## Levar uma Parte ao chat conectado
 
 1. Na Parte desejada, use **Levar pedido ao chat conectado**.
@@ -230,6 +255,9 @@ as Unidades de estudo em uma sequência vertical fiel ao renderer de Estudo,
 sem ativar respostas nem edição. Escolha o Curso inteiro, uma Parte, as
 Unidades sem Parte, um Módulo, uma Lição ou uma Microssequência; cada troca de
 escopo volta ao início daquele recorte.
+
+O controle **Definir fontes** é uma edição da atribuição separada, não do
+conteúdo renderizado. Respostas continuam inertes.
 
 Uma página traz normalmente 12 Unidades, e a interface mantém no DOM no máximo
 36 por vez. Ao se aproximar de uma extremidade, o aplicativo busca a página
@@ -267,7 +295,8 @@ pessoa até a limpeza local; revogação não recolhe bytes já entregues.
 Conecte um cliente MCP com OAuth individual. A experiência esperada é:
 
 1. descrever a intenção;
-2. permitir que o cliente localize e leia o Curso e seu plano;
+2. permitir que o cliente localize e leia o Curso, seu plano e as Fontes
+   pertinentes;
 3. revisar a proposta quando houver decisão de conteúdo;
 4. autorizar a mutação;
 5. receber síntese breve e link visual;
@@ -311,9 +340,8 @@ deve ser usada como forma de sair.
 O runtime canônico desta revisão não apresenta como concluídos:
 
 - edição contextual completa de Unidades;
-- parâmetros semânticos por escopo;
-- proveniência e ancoragem completas;
-- fila autoral de observações, auditoria e correção;
+- observações autorais reunidas e Anotação ancorada da #124;
+- achados, correção, revisão e verificação da #125;
 - variantes experimentais;
 - analytics de Autoria;
 - disponibilização pública.

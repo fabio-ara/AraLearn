@@ -126,6 +126,56 @@ test("mapeia lista, leituras e criação sem identidade indireta", () => {
   assert.equal(
     mapAuthoringMcpToolCall("lerCurso", {
       courseId: COURSE_ID,
+      view: "course_sources",
+      expectedRevision: 4,
+      mode: "source",
+      sourceId: "source-a",
+      cursor: "YWZ0ZXI="
+    }).path,
+    `/v1/courses/${COURSE_ID}/sources?expectedRevision=4&mode=source` +
+      "&sourceId=source-a&cursor=YWZ0ZXI%3D&limit=10"
+  );
+  assert.equal(
+    mapAuthoringMcpToolCall("lerCurso", {
+      courseId: COURSE_ID,
+      view: "course_sources",
+      expectedRevision: 4,
+      mode: "source",
+      sourceId: "source-a",
+      targetKind: "study_unit",
+      targetId: "unit-a"
+    }).path,
+    `/v1/courses/${COURSE_ID}/sources?expectedRevision=4&mode=source` +
+      "&sourceId=source-a&targetKind=study_unit&targetId=unit-a&limit=10"
+  );
+  const astralTargetId = "🔎".repeat(240);
+  assert.equal(
+    mapAuthoringMcpToolCall("lerCurso", {
+      courseId: COURSE_ID,
+      view: "course_sources",
+      expectedRevision: 4,
+      mode: "target",
+      targetKind: "study_unit",
+      targetId: astralTargetId
+    }).path,
+    `/v1/courses/${COURSE_ID}/sources?expectedRevision=4&mode=target` +
+      `&targetKind=study_unit&targetId=${encodeURIComponent(astralTargetId)}&limit=10`
+  );
+  assert.throws(
+    () => mapAuthoringMcpToolCall("lerCurso", {
+      courseId: COURSE_ID,
+      view: "course_sources",
+      expectedRevision: 4,
+      mode: "target",
+      targetKind: "study_unit",
+      targetId: "🔎".repeat(241)
+    }),
+    (error) => error.code === "invalid_tool_argument" &&
+      error.details?.field === "targetId"
+  );
+  assert.equal(
+    mapAuthoringMcpToolCall("lerCurso", {
+      courseId: COURSE_ID,
       view: "part_materialization",
       authoringPartId: PART_ID,
       materializationId: MATERIALIZATION_ID
@@ -204,14 +254,46 @@ test("mapeia plano, composição e materialização com cercas CAS explícitas",
     expectedRevision: 4,
     operation: "commit_course_composition",
     upserts: [upsert],
-    deletes: []
+    deletes: [],
+    sourceAttributionApplications: []
   });
   assert.equal(composition.path, `/v1/courses/${COURSE_ID}/composition`);
   assert.deepEqual(composition.body, {
     requestId: REQUEST_ID,
     expectedRevision: 4,
     upserts: [upsert],
-    deletes: []
+    deletes: [],
+    sourceAttributionApplications: []
+  });
+
+  const sourceCommand = {
+    type: "set_target_sources",
+    targetKind: "study_unit",
+    targetId: "unit-a",
+    expectedTargetVersion: 3,
+    sourceLinks: [{
+      sourceId: "source-a",
+      sourceRevision: 2,
+      relation: "quoted_from",
+      anchors: [{ anchorId: "anchor-a", anchorRevision: 1 }]
+    }]
+  };
+  assert.deepEqual(mapAuthoringMcpToolCall("alterarCurso", {
+    requestId: REQUEST_ID,
+    courseId: COURSE_ID,
+    expectedRevision: 4,
+    operation: "update_course_sources",
+    sourceCommand
+  }), {
+    kind: "route",
+    method: "POST",
+    path: `/v1/courses/${COURSE_ID}/sources/changes`,
+    requestId: REQUEST_ID,
+    body: {
+      requestId: REQUEST_ID,
+      expectedCourseRevision: 4,
+      command: sourceCommand
+    }
   });
 
   const materialization = mapAuthoringMcpToolCall("alterarCurso", {
@@ -255,6 +337,33 @@ test("mapeia plano, composição e materialização com cercas CAS explícitas",
       }]
     }
   });
+});
+
+test("mapeamento MCP limita comando de Fontes a 196608 bytes", () => {
+  const base = {
+    requestId: REQUEST_ID,
+    courseId: COURSE_ID,
+    expectedRevision: 4,
+    operation: "update_course_sources"
+  };
+  const overhead = new TextEncoder().encode(JSON.stringify({ padding: "" })).byteLength;
+  const atLimit = { padding: "x".repeat(196_608 - overhead) };
+  assert.equal(
+    new TextEncoder().encode(JSON.stringify(atLimit)).byteLength,
+    196_608
+  );
+  assert.deepEqual(
+    mapAuthoringMcpToolCall("alterarCurso", { ...base, sourceCommand: atLimit }).body.command,
+    atLimit
+  );
+  assert.throws(
+    () => mapAuthoringMcpToolCall("alterarCurso", {
+      ...base,
+      sourceCommand: { padding: `${atLimit.padding}x` }
+    }),
+    (error) => error.code === "invalid_tool_argument" &&
+      error.details?.field === "sourceCommand"
+  );
 });
 
 test("rejeita argumentos desconhecidos e alteração vazia", () => {
@@ -307,6 +416,7 @@ test("schema MCP anuncia comandos do plano, Partes e materialização delimitada
   assert.deepEqual(schema.properties.operation.enum, [
     "update_instructional_plan",
     "update_course_design",
+    "update_course_sources",
     "commit_course_composition",
     "advance_part_materialization"
   ]);
@@ -336,11 +446,13 @@ test("schema MCP anuncia comandos do plano, Partes e materialização delimitada
     schema.properties.designCommand.oneOf[5].properties.policy.properties.catalogVersion.const,
     "1-3e5629f8"
   );
-  assert.equal(schema.allOf.length, 4);
+  assert.equal(schema.allOf.length, 5);
   assert.ok(schema.allOf[0].then.required.includes("designCommand"));
-  assert.ok(schema.allOf[1].then.required.includes("planCommand"));
-  assert.equal(schema.allOf[2].then.anyOf.length, 2);
-  assert.ok(schema.allOf[3].then.required.includes("materializationCommand"));
+  assert.ok(schema.allOf[1].then.required.includes("sourceCommand"));
+  assert.ok(schema.allOf[2].then.required.includes("planCommand"));
+  assert.equal(schema.allOf[3].then.anyOf.length, 2);
+  assert.ok(schema.allOf[3].then.required.includes("sourceAttributionApplications"));
+  assert.ok(schema.allOf[4].then.required.includes("materializationCommand"));
   assert.ok(schema.properties.planCommand.properties.type.enum.includes("split_part"));
   assert.ok(schema.properties.planCommand.properties.type.enum.includes("assign_microsequence"));
   assert.equal(schema.properties.planCommand.properties.microsequenceIds.maxItems, 64);
@@ -353,6 +465,11 @@ test("schema MCP anuncia comandos do plano, Partes e materialização delimitada
     schema.properties.materializationCommand.properties.designApplication.anyOf[0]
       .properties.studyUnits.items.properties.introducedInstructionalAnalysisUnitIds.maxItems,
     256
+  );
+  assert.equal(
+    schema.properties.materializationCommand.properties.sourceAttributionApplication.anyOf[0]
+      .properties.contract.const,
+    "aralearn.course-source-attribution-application.v1"
   );
   assert.ok(schema.properties.materializationCommand.allOf[1].then.required
     .includes("designApplication"));
@@ -437,9 +554,260 @@ test("schema MCP anuncia leitura retomável somente com as duas identidades", ()
   assert.equal(schema.properties.materializationId.pattern, schema.properties.courseId.pattern);
   assert.ok(schema.properties.view.enum.includes("study_units"));
   assert.equal(schema.properties.maxBytes.maximum, 1_500_000);
-  assert.deepEqual(schema.allOf[1].then.properties.scope, schema.properties.scope.anyOf[1]);
-  assert.ok(schema.allOf[1].then.not.anyOf
+  assert.ok(schema.properties.view.enum.includes("course_sources"));
+  assert.equal(schema.properties.sourceId.maxLength, 2_048);
+  const sourceCommand = COURSE_MCP_TOOLS.find(({ name }) => name === "alterarCurso")
+    .inputSchema.properties.sourceCommand;
+  assert.equal(sourceCommand.oneOf[0].properties.sourceId.maxLength, 2_048);
+  assert.equal(sourceCommand.oneOf[2].properties.sourceId.maxLength, 2_048);
+  assert.equal(
+    sourceCommand.oneOf[4].properties.sourceLinks.items.properties.sourceId.maxLength,
+    2_048
+  );
+  assert.equal(sourceCommand.oneOf[2].properties.anchorId.maxLength, 240);
+  assert.deepEqual(schema.allOf[2].then.properties.scope, schema.properties.scope.anyOf[1]);
+  assert.ok(schema.allOf[2].then.not.anyOf
     .some(({ required }) => required.includes("expectedRevision")));
+});
+
+test("schema MCP discrimina Fontes e bloqueia spoof e campos excedentes", () => {
+  const changeSchema = COURSE_MCP_TOOLS.find(({ name }) => name === "alterarCurso").inputSchema;
+  const readSchema = COURSE_MCP_TOOLS.find(({ name }) => name === "lerCurso").inputSchema;
+  const ajv = new Ajv2020({ allErrors: true, strict: false });
+  const validateChange = ajv.compile(changeSchema);
+  const validateRead = ajv.compile(readSchema);
+  const sourceChange = {
+    requestId: REQUEST_ID,
+    courseId: COURSE_ID,
+    expectedRevision: 4,
+    operation: "update_course_sources",
+    sourceCommand: {
+      type: "save_source",
+      sourceId: "source-a",
+      expectedSourceRevision: 0,
+      source: {
+        kind: "web_page",
+        title: "Fonte A",
+        citationText: "Fonte A, 2026.",
+        url: "https://example.test/fonte-a",
+        editionOrVersion: null,
+        studyVisibility: "citation_and_link"
+      }
+    }
+  };
+  assert.equal(validateChange(sourceChange), true, JSON.stringify(validateChange.errors));
+  const legacySourceId = ` legacy-${"s".repeat(300)} `;
+  assert.equal(validateChange({
+    ...sourceChange,
+    sourceCommand: {
+      ...sourceChange.sourceCommand,
+      sourceId: legacySourceId,
+      expectedSourceRevision: 1
+    }
+  }), true, JSON.stringify(validateChange.errors));
+  assert.equal(validateChange({
+    ...sourceChange,
+    sourceCommand: {
+      ...sourceChange.sourceCommand,
+      sourceId: "🔎".repeat(2_048),
+      expectedSourceRevision: 1,
+      source: {
+        ...sourceChange.sourceCommand.source,
+        title: "🔎".repeat(300)
+      }
+    }
+  }), true, JSON.stringify(validateChange.errors));
+  assert.equal(validateChange({
+    ...sourceChange,
+    sourceCommand: {
+      ...sourceChange.sourceCommand,
+      source: {
+        ...sourceChange.sourceCommand.source,
+        title: "🔎".repeat(301)
+      }
+    }
+  }), false);
+  const astralAnchor = {
+    type: "save_anchor",
+    anchorId: "anchor-unicode",
+    sourceId: "source-a",
+    sourceRevision: 1,
+    expectedAnchorRevision: 0,
+    selector: {
+      kind: "text_quote",
+      exact: "🔎".repeat(4_000),
+      prefix: null,
+      suffix: null
+    },
+    verificationExcerpt: "🧭".repeat(2_000)
+  };
+  assert.equal(validateChange({
+    ...sourceChange,
+    sourceCommand: astralAnchor
+  }), true, JSON.stringify(validateChange.errors));
+  assert.equal(validateChange({
+    ...sourceChange,
+    sourceCommand: {
+      ...astralAnchor,
+      selector: { ...astralAnchor.selector, exact: "🔎".repeat(4_001) },
+      verificationExcerpt: null
+    }
+  }), false);
+  assert.equal(validateChange({
+    ...sourceChange,
+    sourceCommand: {
+      ...astralAnchor,
+      selector: { ...astralAnchor.selector, exact: "trecho" },
+      verificationExcerpt: "🧭".repeat(2_001)
+    }
+  }), false);
+  assert.equal(validateChange({
+    ...sourceChange,
+    sourceCommand: {
+      ...sourceChange.sourceCommand,
+      source: {
+        ...sourceChange.sourceCommand.source,
+        title: "Título\ninválido"
+      }
+    }
+  }), false);
+  assert.equal(validateChange({
+    ...sourceChange,
+    sourceCommand: {
+      ...astralAnchor,
+      selector: {
+        kind: "text_quote",
+        exact: " \ttrecho\r\n ",
+        prefix: "antes\tcontexto",
+        suffix: "depois\ncontexto"
+      },
+      verificationExcerpt: " \ttrecho\r\n "
+    }
+  }), true, JSON.stringify(validateChange.errors));
+  assert.equal(validateChange({
+    ...sourceChange,
+    sourceCommand: {
+      type: "save_anchor",
+      anchorId: "anchor-a",
+      sourceId: legacySourceId,
+      sourceRevision: 1,
+      expectedAnchorRevision: 0,
+      selector: { kind: "page_range", startPage: 1, endPage: 1 },
+      verificationExcerpt: null
+    }
+  }), true, JSON.stringify(validateChange.errors));
+  assert.equal(validateChange({
+    ...sourceChange,
+    sourceCommand: {
+      type: "set_target_sources",
+      targetKind: "study_unit",
+      targetId: "unit-a",
+      expectedTargetVersion: 2,
+      sourceLinks: [{
+        sourceId: legacySourceId,
+        sourceRevision: 1,
+        relation: "supported_by",
+        anchors: [{ anchorId: "anchor-a", anchorRevision: 1 }]
+      }]
+    }
+  }), true, JSON.stringify(validateChange.errors));
+  assert.equal(validateChange({
+    ...sourceChange,
+    sourceCommand: { ...sourceChange.sourceCommand, sourceId: "legacy\u0000source" }
+  }), false);
+  assert.equal(validateChange({
+    ...sourceChange,
+    sourceCommand: { ...sourceChange.sourceCommand, actorId: COURSE_ID }
+  }), false);
+  assert.equal(validateChange({
+    ...sourceChange,
+    sourceCommand: {
+      type: "set_target_sources",
+      targetKind: "study_unit",
+      targetId: "unit-a",
+      expectedTargetVersion: 2,
+      sourceLinks: [{
+        sourceId: "source-a",
+        sourceRevision: 1,
+        relation: "quoted_from",
+        anchors: []
+      }]
+    }
+  }), false);
+  assert.equal(validateChange({
+    ...sourceChange,
+    sourceCommand: {
+      type: "set_target_sources",
+      targetKind: "study_unit",
+      targetId: "unit-a",
+      expectedTargetVersion: 2,
+      sourceLinks: [{
+        sourceId: "source-a",
+        sourceRevision: 1,
+        relation: "supported_by",
+        anchors: []
+      }]
+    }
+  }), false);
+  assert.equal(validateRead({
+    courseId: COURSE_ID,
+    view: "course_sources",
+    expectedRevision: 4,
+    mode: "target",
+    targetKind: "study_unit",
+    targetId: "unit-a"
+  }), true, JSON.stringify(validateRead.errors));
+  assert.equal(validateRead({
+    courseId: COURSE_ID,
+    view: "course_sources",
+    expectedRevision: 4,
+    mode: "source",
+    sourceId: "source-a",
+    targetKind: "study_unit",
+    targetId: "unit-a"
+  }), true, JSON.stringify(validateRead.errors));
+  assert.equal(validateRead({
+    courseId: COURSE_ID,
+    view: "course_sources",
+    expectedRevision: 4,
+    mode: "source",
+    sourceId: "🔎".repeat(2_048),
+    targetKind: "study_unit",
+    targetId: "unit-a"
+  }), true, JSON.stringify(validateRead.errors));
+  assert.equal(validateRead({
+    courseId: COURSE_ID,
+    view: "course_sources",
+    expectedRevision: 4,
+    mode: "target",
+    targetKind: "study_unit",
+    targetId: "🔎".repeat(240)
+  }), true, JSON.stringify(validateRead.errors));
+  assert.equal(validateRead({
+    courseId: COURSE_ID,
+    view: "course_sources",
+    expectedRevision: 4,
+    mode: "target",
+    targetKind: "study_unit",
+    targetId: "🔎".repeat(241)
+  }), false);
+  assert.equal(validateRead({
+    courseId: COURSE_ID,
+    view: "course_sources",
+    expectedRevision: 4,
+    mode: "source",
+    sourceId: "界".repeat(2_049)
+  }), false);
+  assert.equal(validateRead({
+    courseId: COURSE_ID,
+    view: "course_sources",
+    expectedRevision: 4,
+    mode: "source",
+    sourceId: "source-a",
+    targetKind: "study_unit",
+    targetId: "unit-a",
+    cursor: "YWZ0ZXI="
+  }), false);
 });
 
 test("schema MCP anuncia posição 1 para Unidade de estudo e 0 para as demais entidades", () => {

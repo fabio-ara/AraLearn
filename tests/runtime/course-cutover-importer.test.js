@@ -253,8 +253,12 @@ test("converte a topologia sintética inteira, compara overlaps e gera staging",
   assert.ok(result.prepared.every(({ converted }) =>
     converted.document.contract === "aralearn.course.v1" &&
     converted.rows.some((row) => row.entityType === "study_unit") &&
-    converted.rows.every((row) => row.entityType !== "card")));
+    converted.rows.every((row) => row.entityType !== "card") &&
+    converted.rows.filter((row) => row.entityType === "study_unit")
+      .every((row) => !Object.hasOwn(row.content, "sources"))));
   assert.ok(result.rows.some((row) => row.entity_type === "card"));
+  assert.ok(result.rows.filter((row) => row.entity_type === "card").every((row) =>
+    Array.isArray(row.content.sources)));
   assert.ok(result.rows.every((row) => /^[0-9a-f]{64}$/u.test(row.manifest_hash)));
   assert.ok(result.rows.every((row) => row.course_title && row.course_goal));
   const relationalRow = result.rows.find((row) =>
@@ -275,7 +279,13 @@ test("converte a topologia sintética inteira, compara overlaps e gera staging",
     .lessons[0].microsequences[0].studyUnits[0];
   assert.equal(gap.response.package, "aralearn.response.gap");
   assert.equal(gap.content[0].data.rows[0][1], "alfa");
-  assert.deepEqual(gap.sources, ["source:synthetic:gap"]);
+  assert.equal(Object.hasOwn(gap, "sources"), false);
+  assert.deepEqual(result.prepared[2].converted.sourceReferences, [{
+    studyUnitId: gap.id,
+    sourceOrdinal: 0,
+    sourceId: "source:synthetic:gap"
+  }]);
+  assert.match(result.prepared[2].converted.sourceReferenceHash, /^[0-9a-f]{64}$/u);
   assert.deepEqual(gap.topics, ["topic-1"]);
 
   const graph = result.prepared[3].converted.document.courses[0].modules[0]
@@ -335,6 +345,14 @@ test("aborta bytes, overlap, cabeçalho e metassintaxe ambíguos", async () => {
     (error) => error.code === "course_overlap_drift"
   );
 
+  const sourceOverlap = syntheticSources();
+  sourceOverlap.snapshot.topology[4].workspaceEntities.find((row) =>
+    row.entityType === "card").content.sources = ["fonte-divergente"];
+  await assert.rejects(
+    prepareCourseCutover(sourceOverlap.snapshot, sourceOverlap),
+    (error) => error.code === "course_overlap_drift"
+  );
+
   const header = syntheticSources();
   header.snapshot.topology[0].targetHeader.goal = "";
   await assert.rejects(
@@ -361,6 +379,65 @@ test("aborta bytes, overlap, cabeçalho e metassintaxe ambíguos", async () => {
     ), { targetCourseId: fixture.entries[0].courseId }),
     (error) => error.code === "ambiguous_inline_gap"
   );
+});
+
+test("preserva espaços, Unicode e duplicatas nas referências, mas recusa controle", () => {
+  const spaced = legacyCard("table_gap");
+  spaced.sources = ["  fonte:Árvore  ", "https://example.test/a:b"];
+  const converted = convertCourseDocument(replaceCard(
+    fixture.entries[0].liveDocument,
+    spaced
+  ), { targetCourseId: fixture.entries[0].courseId });
+  assert.deepEqual(converted.sourceReferences.map(({ sourceId }) => sourceId),
+    spaced.sources);
+  assert.equal(Object.hasOwn(
+    converted.document.courses[0].modules[0].lessons[0].microsequences[0]
+      .studyUnits[0],
+    "sources"
+  ), false);
+
+  const duplicate = legacyCard("table_gap");
+  duplicate.sources = ["fonte-1", "fonte-1"];
+  const duplicated = convertCourseDocument(replaceCard(
+    fixture.entries[0].liveDocument,
+    duplicate
+  ), { targetCourseId: fixture.entries[0].courseId });
+  assert.deepEqual(duplicated.sourceReferences.map(({ sourceId }) => sourceId),
+    duplicate.sources);
+
+  const astral = legacyCard("table_gap");
+  astral.sources = ["😀".repeat(1500)];
+  const astralConverted = convertCourseDocument(replaceCard(
+    fixture.entries[0].liveDocument,
+    astral
+  ), { targetCourseId: fixture.entries[0].courseId });
+  assert.deepEqual(astralConverted.sourceReferences.map(({ sourceId }) => sourceId),
+    astral.sources);
+
+  const tooManyScalars = legacyCard("table_gap");
+  tooManyScalars.sources = ["界".repeat(2049)];
+  assert.throws(() => convertCourseDocument(replaceCard(
+    fixture.entries[0].liveDocument,
+    tooManyScalars
+  ), { targetCourseId: fixture.entries[0].courseId }),
+  (error) => error.code === "invalid_legacy_source_references");
+
+  const oversizedEnvelope = legacyCard("table_gap");
+  oversizedEnvelope.sources = Array.from({ length: 128 }, (_, index) =>
+    `${String(index).padStart(3, "0")}-${"界".repeat(2044)}`);
+  assert.throws(() => convertCourseDocument(replaceCard(
+    fixture.entries[0].liveDocument,
+    oversizedEnvelope
+  ), { targetCourseId: fixture.entries[0].courseId }),
+  (error) => error.code === "invalid_legacy_source_references");
+
+  const control = legacyCard("table_gap");
+  control.sources = ["fonte\u0085incompatível"];
+  assert.throws(() => convertCourseDocument(replaceCard(
+    fixture.entries[0].liveDocument,
+    control
+  ), { targetCourseId: fixture.entries[0].courseId }),
+  (error) => error.code === "invalid_legacy_source_references");
 });
 
 test("aborta metadados técnicos ausentes ou defaults sem base declarada", async () => {
@@ -481,13 +558,18 @@ test("gera um único script transacional para TEMP, COPY e migration", async () 
     "../../supabase/migrations/20260817180000_course_design_parameters.sql",
     import.meta.url
   ), "utf8");
+  const courseSourcesMigration = fs.readFileSync(new URL(
+    "../../supabase/migrations/20260817190000_course_sources_provenance.sql",
+    import.meta.url
+  ), "utf8");
   const sql = buildCourseCutoverSql(
     result,
     migration,
     profileAccessMigration,
     authoringPlanMigration,
     studyUnitInspectionMigration,
-    courseDesignMigration
+    courseDesignMigration,
+    courseSourcesMigration
   );
   assert.match(sql, /^\\set ON_ERROR_STOP on\nbegin;/u);
   const copyPosition = sql.indexOf("copy course_content_import_v1(");
@@ -521,6 +603,10 @@ test("gera um único script transacional para TEMP, COPY e migration", async () 
     sql,
     /insert into supabase_migrations\.schema_migrations\(version,statements,name\)[\s\S]*20260817180000[\s\S]*course_design_parameters/u
   );
+  assert.match(
+    sql,
+    /insert into supabase_migrations\.schema_migrations\(version,statements,name\)[\s\S]*20260817190000[\s\S]*course_sources_provenance/u
+  );
   assert.ok(
     sql.indexOf("create table public.person_profiles") >
       sql.indexOf("create table public.courses") &&
@@ -529,6 +615,8 @@ test("gera um único script transacional para TEMP, COPY e migration", async () 
     sql.indexOf("create table private.course_instructional_plans") <
       sql.indexOf("create table private.course_design_parameter_definitions") &&
     sql.indexOf("create table private.course_design_parameter_definitions") <
+      sql.indexOf("create table private.course_source_revisions") &&
+    sql.indexOf("create table private.course_source_revisions") <
       sql.lastIndexOf("commit;")
   );
 
@@ -556,7 +644,8 @@ test("gera um único script transacional para TEMP, COPY e migration", async () 
       profileAccessMigration,
       authoringPlanMigration,
       studyUnitInspectionMigration,
-      courseDesignMigration
+      courseDesignMigration,
+      courseSourcesMigration
     ),
     (error) => error.code === "migration_staging_schema_drift"
   );
@@ -567,7 +656,8 @@ test("gera um único script transacional para TEMP, COPY e migration", async () 
       profileAccessMigration,
       authoringPlanMigration,
       studyUnitInspectionMigration,
-      courseDesignMigration
+      courseDesignMigration,
+      courseSourcesMigration
     ),
     (error) => error.code === "migration_transaction_guard_drift"
   );
@@ -581,7 +671,8 @@ test("gera um único script transacional para TEMP, COPY e migration", async () 
       profileAccessMigration,
       authoringPlanMigration,
       studyUnitInspectionMigration,
-      courseDesignMigration
+      courseDesignMigration,
+      courseSourcesMigration
     ),
     (error) => error.code === "migration_transaction_guard_drift"
   );
@@ -592,7 +683,8 @@ test("gera um único script transacional para TEMP, COPY e migration", async () 
       profileAccessMigration.replace(/^commit;\s*$/mu, ""),
       authoringPlanMigration,
       studyUnitInspectionMigration,
-      courseDesignMigration
+      courseDesignMigration,
+      courseSourcesMigration
     ),
     (error) => error.code === "migration_transaction_drift"
   );
@@ -603,7 +695,8 @@ test("gera um único script transacional para TEMP, COPY e migration", async () 
       profileAccessMigration,
       authoringPlanMigration.replace(/^commit;\s*$/mu, ""),
       studyUnitInspectionMigration,
-      courseDesignMigration
+      courseDesignMigration,
+      courseSourcesMigration
     ),
     (error) => error.code === "migration_transaction_drift"
   );
@@ -614,7 +707,8 @@ test("gera um único script transacional para TEMP, COPY e migration", async () 
       profileAccessMigration,
       authoringPlanMigration,
       studyUnitInspectionMigration.replace(/^commit;\s*$/mu, ""),
-      courseDesignMigration
+      courseDesignMigration,
+      courseSourcesMigration
     ),
     (error) => error.code === "migration_transaction_drift"
   );
@@ -625,7 +719,20 @@ test("gera um único script transacional para TEMP, COPY e migration", async () 
       profileAccessMigration,
       authoringPlanMigration,
       studyUnitInspectionMigration,
-      courseDesignMigration.replace(/^commit;\s*$/mu, "")
+      courseDesignMigration.replace(/^commit;\s*$/mu, ""),
+      courseSourcesMigration
+    ),
+    (error) => error.code === "migration_transaction_drift"
+  );
+  assert.throws(
+    () => buildCourseCutoverSql(
+      result,
+      migration,
+      profileAccessMigration,
+      authoringPlanMigration,
+      studyUnitInspectionMigration,
+      courseDesignMigration,
+      courseSourcesMigration.replace(/^commit;\s*$/mu, "")
     ),
     (error) => error.code === "migration_transaction_drift"
   );
@@ -645,6 +752,7 @@ test("recusa staging ou manifesto alterados depois da atestação", async () => 
   assert.throws(
     () => buildCourseCutoverSql(
       changedManifest,
+      "begin;\ncommit;\n",
       "begin;\ncommit;\n",
       "begin;\ncommit;\n",
       "begin;\ncommit;\n",
@@ -676,6 +784,7 @@ test("recompõe o estado aplicado e confirma hashes sem incluir conteúdo na evi
         courseId: entry.courseId,
         title: converted.course.title,
         goal: converted.course.goal,
+        sourceReferences: clone(converted.sourceReferences),
         entities: converted.rows.map((row) => ({
           ...row,
           content: clone(row.content),
@@ -690,11 +799,19 @@ test("recompõe o estado aplicado e confirma hashes sem incluir conteúdo na evi
   assert.equal(evidence.length, 8);
   assert.deepEqual(Object.keys(evidence[0]).sort(), [
     "counts", "courseId", "documentHash", "entityStateHash", "manifestHash",
-    "rowHash"
+    "rowHash", "sourceReferenceHash"
   ]);
   assert.equal(JSON.stringify(evidence).includes("Módulo"), false);
 
   verification.courses[0].entities[0].content.title = "Conteúdo divergente";
+  assert.throws(
+    () => verifyAppliedCourseCutover(preparation, verification),
+    (error) => error.code === "cutover_verification_drift"
+  );
+
+  verification.courses[0].entities[0].content.title =
+    preparation.prepared[0].converted.rows[0].content.title;
+  verification.courses[0].sourceReferences[0].sourceId += "-drift";
   assert.throws(
     () => verifyAppliedCourseCutover(preparation, verification),
     (error) => error.code === "cutover_verification_drift"

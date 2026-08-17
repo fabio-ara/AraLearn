@@ -31,9 +31,9 @@ function planFixture() {
     audience: "Estudantes de graduação.",
     scope: "Conceitos introdutórios e suas relações.",
     preferredPartCount: { minimum: 7, maximum: 12, origin: "automatic" },
-    intendedLearningOutcomes: [{ id: IDS.outcome, position: 0, statement: "Comparar os conceitos." }],
-    instructionalAnalysisUnits: [{ id: IDS.analysis, position: 0, statement: "Resposta a cada Unidade de estudo." }],
-    evidenceRequirements: [{ id: IDS.evidence, position: 0, statement: "Registrar revisão após resposta." }],
+    intendedLearningOutcomes: [{ id: IDS.outcome, position: 0, statement: "Comparar os conceitos.", sourceLinks: [] }],
+    instructionalAnalysisUnits: [{ id: IDS.analysis, position: 0, statement: "Resposta a cada Unidade de estudo.", sourceLinks: [] }],
+    evidenceRequirements: [{ id: IDS.evidence, position: 0, statement: "Registrar revisão após resposta.", sourceLinks: [] }],
     parts: [{
       id: IDS.part,
       position: 0,
@@ -104,7 +104,8 @@ test("aplica os mesmos comandos fechados no navegador e no Edge com replay deter
       kind: "evidence_requirement",
       id: "10000000-0000-4000-8000-000000000009",
       position: 1,
-      statement: "Conservar a resposta antes da revisão."
+      statement: "Conservar a resposta antes da revisão.",
+      sourceLinks: []
     }
   ];
   let browser = planFixture();

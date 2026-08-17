@@ -68,6 +68,17 @@ test("roteia somente endpoints canônicos de Curso", () => {
     name: "applyCourseDesignCommand",
     courseId: COURSE_ID
   });
+  assert.deepEqual(routeCourseRequest("GET", `/v1/courses/${COURSE_ID}/sources`), {
+    name: "getCourseSources",
+    courseId: COURSE_ID
+  });
+  assert.deepEqual(routeCourseRequest(
+    "POST",
+    `/v1/courses/${COURSE_ID}/sources/changes`
+  ), {
+    name: "executeCourseSourceCommand",
+    courseId: COURSE_ID
+  });
   assert.deepEqual(routeCourseRequest("POST", `/v1/courses/${COURSE_ID}/composition`), {
     name: "commitCourseComposition",
     courseId: COURSE_ID
@@ -215,6 +226,217 @@ test("lê Unidades de estudo por escopo com âncora e orçamento limitado", asyn
   );
 });
 
+test("Fontes usam consulta cercada e comando discriminado sem campos de autoridade", async () => {
+  const calls = [];
+  const adapter = {
+    async getCourseSources(value) {
+      calls.push(["read", value]);
+      return { ok: true };
+    },
+    async executeCourseSourceCommand(value) {
+      calls.push(["write", value]);
+      return { changed: true };
+    }
+  };
+  const readPath = `/v1/courses/${COURSE_ID}/sources?expectedRevision=8` +
+    "&mode=target&targetKind=study_unit&targetId=unit-a&limit=12";
+  const read = request(readPath);
+  await executeCourseRoute({
+    request: read,
+    route: routeCourseRequest("GET", new URL(read.url).pathname),
+    adapter,
+    principal: PRINCIPAL
+  });
+  assert.deepEqual({
+    courseId: calls[0][1].courseId,
+    expectedRevision: calls[0][1].expectedRevision,
+    mode: calls[0][1].mode,
+    sourceId: calls[0][1].sourceId,
+    targetKind: calls[0][1].targetKind,
+    targetId: calls[0][1].targetId,
+    cursor: calls[0][1].cursor,
+    limit: calls[0][1].limit
+  }, {
+    courseId: COURSE_ID,
+    expectedRevision: 8,
+    mode: "target",
+    sourceId: null,
+    targetKind: "study_unit",
+    targetId: "unit-a",
+    cursor: null,
+    limit: 12
+  });
+
+  const legacySourceId = ` legacy-${"s".repeat(300)} `;
+  const legacyReadPath = `/v1/courses/${COURSE_ID}/sources?expectedRevision=8` +
+    `&mode=source&sourceId=${encodeURIComponent(legacySourceId)}`;
+  const legacyRead = request(legacyReadPath);
+  await executeCourseRoute({
+    request: legacyRead,
+    route: routeCourseRequest("GET", new URL(legacyRead.url).pathname),
+    adapter,
+    principal: PRINCIPAL
+  });
+  assert.equal(calls[1][1].sourceId, legacySourceId);
+  assert.equal(calls[1][1].limit, 10);
+
+  const requestId = "request-source-0001";
+  const command = {
+    type: "save_source",
+    sourceId: "source-a",
+    expectedSourceRevision: 0,
+    source: {
+      kind: "web_page",
+      title: "Fonte A",
+      citationText: "Fonte A, 2026.",
+      url: "https://example.test/fonte-a",
+      editionOrVersion: null,
+      studyVisibility: "citation_and_link"
+    }
+  };
+  const writePath = `/v1/courses/${COURSE_ID}/sources/changes`;
+  const write = request(writePath, {
+    method: "POST",
+    requestId,
+    body: { requestId, expectedCourseRevision: 8, command }
+  });
+  await executeCourseRoute({
+    request: write,
+    route: routeCourseRequest("POST", writePath),
+    adapter,
+    principal: PRINCIPAL
+  });
+  assert.equal(calls[2][1].expectedCourseRevision, 8);
+  assert.deepEqual(calls[2][1].command, command);
+
+  const legacyWriteRequestId = "request-source-legacy-1";
+  const legacyWriteCommand = {
+    ...command,
+    sourceId: legacySourceId,
+    expectedSourceRevision: 1
+  };
+  const legacyWrite = request(writePath, {
+    method: "POST",
+    requestId: legacyWriteRequestId,
+    body: {
+      requestId: legacyWriteRequestId,
+      expectedCourseRevision: 8,
+      command: legacyWriteCommand
+    }
+  });
+  await executeCourseRoute({
+    request: legacyWrite,
+    route: routeCourseRequest("POST", writePath),
+    adapter,
+    principal: PRINCIPAL
+  });
+  assert.equal(calls[3][1].command.sourceId, legacySourceId);
+
+  const astralSourceId = "🔎".repeat(2_048);
+  const contextualPath = `/v1/courses/${COURSE_ID}/sources?expectedRevision=8` +
+    `&mode=source&sourceId=${encodeURIComponent(astralSourceId)}` +
+    "&targetKind=study_unit&targetId=unit-a";
+  const contextualRead = request(contextualPath);
+  await executeCourseRoute({
+    request: contextualRead,
+    route: routeCourseRequest("GET", new URL(contextualRead.url).pathname),
+    adapter,
+    principal: PRINCIPAL
+  });
+  assert.deepEqual({
+    sourceId: calls[4][1].sourceId,
+    targetKind: calls[4][1].targetKind,
+    targetId: calls[4][1].targetId,
+    cursor: calls[4][1].cursor,
+    limit: calls[4][1].limit
+  }, {
+    sourceId: astralSourceId,
+    targetKind: "study_unit",
+    targetId: "unit-a",
+    cursor: null,
+    limit: 10
+  });
+
+  const astralTargetId = "🔎".repeat(240);
+  const astralTargetPath = `/v1/courses/${COURSE_ID}/sources?expectedRevision=8` +
+    `&mode=target&targetKind=study_unit&targetId=${encodeURIComponent(astralTargetId)}`;
+  const astralTargetRead = request(astralTargetPath);
+  await executeCourseRoute({
+    request: astralTargetRead,
+    route: routeCourseRequest("GET", new URL(astralTargetRead.url).pathname),
+    adapter,
+    principal: PRINCIPAL
+  });
+  assert.equal(calls[5][1].targetId, astralTargetId);
+
+  const oversizedTargetPath = `/v1/courses/${COURSE_ID}/sources?expectedRevision=8` +
+    `&mode=target&targetKind=study_unit&targetId=${encodeURIComponent("🔎".repeat(241))}`;
+  const oversizedTargetRead = request(oversizedTargetPath);
+  await assert.rejects(
+    () => executeCourseRoute({
+      request: oversizedTargetRead,
+      route: routeCourseRequest("GET", new URL(oversizedTargetRead.url).pathname),
+      adapter,
+      principal: PRINCIPAL
+    }),
+    (error) => error.code === "invalid_course_sources_query"
+  );
+
+  for (const invalidCommand of [
+    { ...command, actorId: COURSE_ID },
+    { ...command, source: { ...command.source, url: "http://example.test/fonte-a" } },
+    { ...command, sourceId: "s".repeat(2_049) },
+    { ...command, sourceId: "legacy\u0000source", expectedSourceRevision: 1 }
+  ]) {
+    const invalidRequestId = `request-source-bad-${calls.length}`;
+    const invalid = request(writePath, {
+      method: "POST",
+      requestId: invalidRequestId,
+      body: { requestId: invalidRequestId, expectedCourseRevision: 8, command: invalidCommand }
+    });
+    await assert.rejects(
+      () => executeCourseRoute({
+        request: invalid,
+        route: routeCourseRequest("POST", writePath),
+        adapter,
+        principal: PRINCIPAL
+      }),
+      (error) => error.status === 422
+    );
+  }
+});
+
+test("Router limita comando de Fontes a 196608 bytes antes do domínio", async () => {
+  const writePath = `/v1/courses/${COURSE_ID}/sources/changes`;
+  const requestId = "request-source-bytes-1";
+  const overhead = new TextEncoder().encode(JSON.stringify({ padding: "" })).byteLength;
+  const atLimit = { padding: "x".repeat(196_608 - overhead) };
+  const adapter = {
+    async executeCourseSourceCommand() {
+      assert.fail("comando estruturalmente inválido não deve alcançar o adaptador");
+    }
+  };
+  for (const [command, predicate] of [
+    [atLimit, (error) => error.status === 422 && error.code !== "payload_too_large"],
+    [{ padding: `${atLimit.padding}x` }, (error) => error.code === "payload_too_large"]
+  ]) {
+    const value = request(writePath, {
+      method: "POST",
+      requestId,
+      body: { requestId, expectedCourseRevision: 8, command }
+    });
+    await assert.rejects(
+      () => executeCourseRoute({
+        request: value,
+        route: routeCourseRequest("POST", writePath),
+        adapter,
+        principal: PRINCIPAL
+      }),
+      predicate
+    );
+  }
+});
+
 test("cria Curso e reconcilia requestId", async () => {
   let call = null;
   const adapter = {
@@ -311,7 +533,8 @@ test("commit de composição exige versão, conteúdo e escopo de escrita", asyn
         }
       }
     }],
-    deletes: []
+    deletes: [],
+    sourceAttributionApplications: []
   };
   let call = null;
   const adapter = {
@@ -624,8 +847,7 @@ test("etapa rejeita referência de componente desconhecida antes do adaptador", 
               }],
               response: null,
               feedback: [],
-              topics: [],
-              sources: []
+              topics: []
             }
           }],
           deletes: []
@@ -641,6 +863,12 @@ test("etapa rejeita referência de componente desconhecida antes do adaptador", 
             practiceApplications: [],
             componentRefs: ["aralearn.resource.unknown@1.0.0"]
           }]
+        },
+        sourceAttributionApplication: {
+          contract: "aralearn.course-source-attribution-application.v1",
+          contextHash: "a".repeat(64),
+          didacticMicrosequenceId: "micro-a",
+          studyUnits: [{ studyUnitId: "unit-a", sourceLinks: [] }]
         }
       }
     }
@@ -696,8 +924,7 @@ test("etapa rejeita fatos atribuídos a microssequência diferente do upsert", a
               }],
               response: null,
               feedback: [],
-              topics: [],
-              sources: []
+              topics: []
             }
           }],
           deletes: []
@@ -713,6 +940,12 @@ test("etapa rejeita fatos atribuídos a microssequência diferente do upsert", a
             practiceApplications: [],
             componentRefs: ["aralearn.resource.paragraph@1.0.0"]
           }]
+        },
+        sourceAttributionApplication: {
+          contract: "aralearn.course-source-attribution-application.v1",
+          contextHash: "a".repeat(64),
+          didacticMicrosequenceId: "micro-a",
+          studyUnits: [{ studyUnitId: "unit-a", sourceLinks: [] }]
         }
       }
     }
@@ -1227,7 +1460,8 @@ test("record_step mantém designApplication nulo fora de conclusão didática", 
       status: "completed",
       resultFacts: {},
       entityChanges: { upserts: [], deletes: [] },
-      designApplication: null
+      designApplication: null,
+      sourceAttributionApplication: null
     }
   };
   await executeCourseRoute({
@@ -1237,10 +1471,11 @@ test("record_step mantém designApplication nulo fora de conclusão didática", 
     principal: PRINCIPAL
   });
   assert.equal(call.payload.designApplication, null);
+  assert.equal(call.payload.sourceAttributionApplication, null);
 
   const missing = structuredClone(base);
   missing.requestId = "request-materialization-missing-facts";
-  delete missing.payload.designApplication;
+  delete missing.payload.sourceAttributionApplication;
   await assert.rejects(
     () => executeCourseRoute({
       request: request(path, { method: "POST", requestId: missing.requestId, body: missing }),
@@ -1261,7 +1496,8 @@ test("record_step mantém designApplication nulo fora de conclusão didática", 
         contextHash: "a".repeat(64),
         didacticMicrosequenceId: "micro-a",
         studyUnits: []
-      }
+      },
+      sourceAttributionApplication: null
     }
   };
   await assert.rejects(
@@ -1276,7 +1512,7 @@ test("record_step mantém designApplication nulo fora de conclusão didática", 
 
   for (const [requestId, resultFacts] of [
     ["request-materialization-reserved-facts", { designApplication: {} }],
-    ["request-materialization-large-facts", { note: "x".repeat(16_350) }]
+    ["request-materialization-large-facts", { note: "x".repeat(16_500) }]
   ]) {
     const invalidFacts = structuredClone(base);
     invalidFacts.requestId = requestId;
@@ -1288,7 +1524,7 @@ test("record_step mantém designApplication nulo fora de conclusão didática", 
         adapter,
         principal: PRINCIPAL
       }),
-      (error) => error.code === "invalid_course_command"
+      (error) => new Set(["invalid_course_command", "payload_too_large"]).has(error.code)
     );
   }
 });

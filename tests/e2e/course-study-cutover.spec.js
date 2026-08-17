@@ -19,7 +19,8 @@ test("Cursos navegam até a unidade, praticam e salvam estado pessoal no runtime
     const progress = { version: 1, lessons: {} };
     const state = {
       completed: [], observations: {}, review: new Map(), loadedCourses: [], failDelete: false,
-      externalProject: null, remotePersonal: null, refreshes: 0, revoked: false
+      externalProject: null, remotePersonal: null, refreshes: 0, revoked: false,
+      citationReads: [], citationRevision: 4, citationsRevoked: false
     };
     globalThis.__courseStudyProbe = state;
     const initialProject = {
@@ -43,7 +44,7 @@ test("Cursos navegam até a unidade, praticam e salvam estado pessoal no runtime
         studyUnitCount: course.modules.reduce((courseTotal, moduleValue) =>
           courseTotal + moduleValue.lessons.reduce((lessonTotal, lesson) =>
             lessonTotal + lesson.microsequences.reduce((microTotal, microsequence) =>
-              microTotal + microsequence.cards.length, 0), 0), 0),
+              microTotal + microsequence.studyUnits.length, 0), 0), 0),
         completedStudyUnitCount: state.completed.length
       })),
       loadProject: () => structuredClone(activeProject),
@@ -51,6 +52,48 @@ test("Cursos navegam até a unidade, praticam e salvam estado pessoal no runtime
         state.loadedCourses.push(courseId);
         activeProject = state.externalProject || documentValue;
         return structuredClone(activeProject.courses.find((course) => course.id === courseId));
+      },
+      loadStudyUnitCitations: async (reference) => {
+        state.citationReads.push(structuredClone(reference));
+        if (state.citationsRevoked) {
+          activeProject = { contract: activeProject.contract, courses: [] };
+          throw Object.assign(new Error("Curso não encontrado."), {
+            status: 404,
+            code: "PT404"
+          });
+        }
+        const revisedProjection = state.citationRevision === 5;
+        return {
+          contract: "aralearn.course-study-citations.v1",
+          courseId: reference.courseId,
+          courseRevision: state.citationRevision,
+          studyUnitId: reference.studyUnitId,
+          citations: [{
+            sourceId: "fonte-somente-citada",
+            sourceRevision: 2,
+            title: revisedProjection ? "Fonte somente citada atualizada" : "Fonte somente citada",
+            citationText: revisedProjection
+              ? "Autoria. Fonte somente citada atualizada. 2026."
+              : "Autoria. Fonte somente citada. 2026.",
+            url: null,
+            editionOrVersion: "2ª edição",
+            anchors: [{
+              anchorId: "anchor-publica",
+              anchorRevision: 1,
+              selector: { kind: "page_range", startPage: 8, endPage: 9 }
+            }]
+          }, {
+            sourceId: "fonte-com-link",
+            sourceRevision: 1,
+            title: revisedProjection ? "Fonte com link público atualizada" : "Fonte com link público",
+            citationText: revisedProjection
+              ? "Autoria. Fonte com link público atualizada. 2026."
+              : "Autoria. Fonte com link público. 2026.",
+            url: "https://example.test/fonte-publica",
+            editionOrVersion: null,
+            anchors: []
+          }]
+        };
       },
       loadCommentForPath: (reference) => state.observations[reference.studyUnitId] || null,
       saveCommentForPath: async (reference, draft) => {
@@ -133,6 +176,36 @@ test("Cursos navegam até a unidade, praticam e salvam estado pessoal no runtime
   await page.getByRole("button", { name: "Abrir microssequência didática" }).click();
   await page.getByRole("button", { name: "Abrir unidade" }).first().click();
   await expect(page.getByText("A conjunção só é verdadeira", { exact: false })).toBeVisible();
+
+  expect(await page.evaluate(() => globalThis.__courseStudyProbe.citationReads)).toEqual([]);
+  await page.locator("[data-action='toggle-citations']").click();
+  await expect(page.getByRole("heading", { name: "Fontes", exact: true })).toBeVisible();
+  await expect(page.getByText("Fonte somente citada", { exact: true })).toBeVisible();
+  await expect(page.getByText("Fonte com link público", { exact: true })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Abrir fonte" })).toHaveCount(1);
+  await expect(page.locator(".study-citations-panel"))
+    .not.toContainText("Fonte oculta");
+  await expect(page.locator(".study-citations-panel"))
+    .not.toContainText("Legado não resolvido");
+  await expect(page.locator(".study-citations-panel [data-source-action]")).toHaveCount(0);
+  expect(await page.evaluate(() => globalThis.__courseStudyProbe.citationReads.length)).toBe(1);
+  await page.getByRole("button", { name: "Fontes", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Fontes", exact: true })).toHaveCount(0);
+  await page.getByRole("button", { name: "Fontes", exact: true }).click();
+  await expect(page.getByText("Fonte com link público", { exact: true })).toBeVisible();
+  expect(await page.evaluate(() => globalThis.__courseStudyProbe.citationReads.length)).toBe(1);
+  await page.getByRole("button", { name: "Fechar fontes" }).click();
+
+  await page.evaluate(async (documentValue) => {
+    globalThis.__courseStudyProbe.citationRevision = 5;
+    await globalThis.__courseStudyApp.replaceProject(structuredClone(documentValue));
+  }, project);
+  await expect(page.locator(".study-citations-panel")).toHaveCount(0);
+  await page.locator("[data-action='toggle-citations']").click();
+  await expect(page.getByText("Fonte somente citada atualizada", { exact: true })).toBeVisible();
+  await expect(page.getByText("Fonte com link público atualizada", { exact: true })).toBeVisible();
+  expect(await page.evaluate(() => globalThis.__courseStudyProbe.citationReads.length)).toBe(2);
+  await page.getByRole("button", { name: "Fechar fontes" }).click();
 
   await page.evaluate(() => globalThis.__courseStudyApp.setOfflineStatus(true));
   await expect(page.getByRole("status")).toContainText(
@@ -278,12 +351,15 @@ test("Cursos navegam até a unidade, praticam e salvam estado pessoal no runtime
   await expect(page.getByRole("heading", { name: "Microssequências didáticas" })).toBeVisible();
   expect(await page.evaluate(() => globalThis.__courseStudyProbe.completed.length)).toBe(1);
 
-  await page.evaluate(async () => {
-    globalThis.__courseStudyProbe.revoked = true;
-    await globalThis.__courseStudyApp.refreshPersonalState();
-  });
+  await page.getByRole("button", { name: "Abrir microssequência didática" }).click();
+  await page.getByRole("button", { name: "Abrir unidade" }).first().click();
+  await page.evaluate(() => { globalThis.__courseStudyProbe.citationsRevoked = true; });
+  await page.locator("[data-action='toggle-citations']").click();
   await expect(page.getByText("Nenhum Curso acessível.")).toBeVisible();
   await expect(page.locator(".comment-sheet")).toHaveCount(0);
+  await expect(page.locator(".study-citations-panel")).toHaveCount(0);
+  await expect(page.getByText("A conjunção só é verdadeira", { exact: false })).toHaveCount(0);
+  await expect(page.getByText("Fonte com link público atualizada", { exact: true })).toHaveCount(0);
 });
 
 test("lista fina carrega o Curso somente quando o progresso é zerado", async ({ page }) => {
@@ -356,8 +432,7 @@ test("runtime canônico preserva teclado, lacunas, anotações e avanço simples
     content,
     response,
     feedback,
-    topics: [],
-    sources: []
+    topics: []
   });
   const projectValue = {
     contract: "aralearn.library.v1",
@@ -376,7 +451,7 @@ test("runtime canônico preserva teclado, lacunas, anotações e avanço simples
             id: "micro-interactions",
             title: "Interações",
             goal: "Operar respostas e anotações pelo teclado e por toque.",
-            cards: [
+            studyUnits: [
               card("choice-card", 1, "Escolha", [packageInstance(
                 "choice-context",
                 "aralearn.resource.paragraph",

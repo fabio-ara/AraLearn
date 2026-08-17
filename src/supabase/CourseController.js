@@ -1,5 +1,11 @@
 import { composeCourseDocument } from "../domain/courseEntities.js";
 import { UUID_PATTERN } from "../domain/identifiers.js";
+import {
+  normalizeCourseSourceChange,
+  normalizeCourseSourceCommand,
+  normalizeCourseSourcesRead,
+  normalizeCourseStudyCitationsRead
+} from "../domain/courseSources.js";
 import { COURSE_PERSONAL_STATE_CACHE_CONTRACT } from
   "../persistence/CoursePersonalStateRepository.js";
 
@@ -34,6 +40,10 @@ function instructionalPlanCacheKey(courseId, prefix = CACHE_PREFIX) {
 
 function authoringOutlineCacheKey(courseId, prefix = CACHE_PREFIX) {
   return `${prefix}.outline:${courseId}`;
+}
+
+function courseSourcesCachePrefix(courseId, prefix = CACHE_PREFIX) {
+  return `${prefix}.course-sources:${courseId}:`;
 }
 
 function authoringInspectionCacheKey(courseId, prefix = CACHE_PREFIX) {
@@ -83,6 +93,78 @@ function courseDesignReadOptions(courseId, options = {}) {
   };
 }
 
+function courseSourceOpaqueId(value, maximum = 240) {
+  return typeof value === "string" && value === value.trim() &&
+    value.length >= 1 && value.length <= maximum * 2 &&
+    [...value].length <= maximum &&
+    new TextEncoder().encode(value).byteLength <= maximum * 4 &&
+    ![...value].some((character) => {
+      const point = character.codePointAt(0);
+      return point < 32 || point >= 127 && point <= 159;
+    });
+}
+
+function courseSourcesReadOptions(courseId, options = {}) {
+  const allowed = new Set([
+    "expectedRevision", "mode", "sourceId", "targetKind", "targetId", "cursor", "limit"
+  ]);
+  const normalizedCourseId = String(courseId || "").trim().toLowerCase();
+  if (!options || typeof options !== "object" || Array.isArray(options) ||
+      Object.keys(options).some((field) => !allowed.has(field)) ||
+      !UUID_PATTERN.test(normalizedCourseId)) {
+    throw new TypeError("Leitura de Fontes inválida.");
+  }
+  const expectedRevision = Number(options.expectedRevision);
+  const mode = options.mode ?? "catalog";
+  const sourceId = options.sourceId ?? null;
+  const targetKind = options.targetKind ?? null;
+  const targetId = options.targetId ?? null;
+  const cursor = options.cursor ?? null;
+  const limit = options.limit ?? 10;
+  const hasTargetContext = targetKind !== null || targetId !== null;
+  const validTargetContext = targetKind !== null && targetId !== null;
+  const legacySourceId = (value) => typeof value === "string" &&
+    value.length >= 1 && value.length <= 4_096 && [...value].length <= 2_048 &&
+    new TextEncoder().encode(value).byteLength <= 8_192 &&
+    ![...value].some((character) => {
+      const point = character.codePointAt(0);
+      return point < 32 || point >= 127 && point <= 159;
+    });
+  if (!Number.isSafeInteger(expectedRevision) || expectedRevision < 1 ||
+      !new Set(["catalog", "source", "target"]).has(mode) ||
+      (mode === "source") !== legacySourceId(sourceId) ||
+      mode === "catalog" && hasTargetContext ||
+      mode === "target" && (sourceId !== null || !validTargetContext) ||
+      mode === "source" && hasTargetContext && !validTargetContext ||
+      (targetKind !== null && !new Set(["plan_item", "study_unit"]).has(targetKind)) ||
+      (targetId !== null && !courseSourceOpaqueId(targetId)) ||
+      (targetKind === "plan_item" && !UUID_PATTERN.test(targetId)) ||
+      (mode === "source" && hasTargetContext && cursor !== null) ||
+      cursor !== null && (typeof cursor !== "string" || cursor !== cursor.trim() ||
+        cursor.length < 1 || cursor.length > 240 ||
+        !/^[A-Za-z0-9+/_-]+={0,2}$/u.test(cursor)) ||
+      !Number.isSafeInteger(limit) || limit < 1 || limit > 24) {
+    throw new TypeError("Leitura de Fontes inválida.");
+  }
+  return {
+    expectedRevision,
+    mode,
+    sourceId,
+    targetKind,
+    targetId,
+    cursor,
+    limit
+  };
+}
+
+function courseSourceCommandSubjectId(command) {
+  return command.type === "save_source" || command.type === "retire_source"
+    ? command.sourceId
+    : command.type === "save_anchor" || command.type === "retire_anchor"
+      ? command.anchorId
+      : command.targetId;
+}
+
 function retryableReadFailure(error) {
   const rawStatus = error?.status ?? error?.response?.status;
   const status = rawStatus == null || rawStatus === "" ? null : Number(rawStatus);
@@ -96,7 +178,24 @@ function retryableReadFailure(error) {
   );
 }
 
+function courseRevisionConflict(error) {
+  const status = Number(error?.status || error?.response?.status || 0);
+  const code = String(error?.code || error?.response?.code || "").toUpperCase();
+  return status === 409 || code === "40001" || code === "COURSE_REVISION_CHANGED";
+}
+
+function courseRevisionChangedError(cause = null) {
+  if (String(cause?.code || "").toLowerCase() === "course_revision_changed") return cause;
+  const error = new Error("O Curso mudou durante a leitura das citações.");
+  error.name = "CourseRevisionChangedError";
+  error.status = 409;
+  error.code = "course_revision_changed";
+  if (cause) error.cause = cause;
+  return error;
+}
+
 function accessWasRevoked(error) {
+  if (courseRevisionConflict(error)) return false;
   const status = Number(error?.status || error?.response?.status || 0);
   const code = String(error?.code || error?.response?.code || "").toUpperCase();
   return error?.authRequired === true || status === 401 || status === 403 || status === 404 ||
@@ -359,6 +458,7 @@ export class CourseController {
       this.store.deleteCachePrefix(courseCacheKey(courseId, this.cachePrefix)),
       this.store.deleteCachePrefix(instructionalPlanCacheKey(courseId, this.cachePrefix)),
       this.store.deleteCachePrefix(`${this.cachePrefix}.course-design:${courseId}:`),
+      this.store.deleteCachePrefix(courseSourcesCachePrefix(courseId, this.cachePrefix)),
       this.store.deleteCachePrefix(authoringOutlineCacheKey(courseId, this.cachePrefix)),
       this.store.deleteCachePrefix(authoringInspectionCacheKey(courseId, this.cachePrefix)),
       this.store.deleteCachePrefix(authoringInspectionPositionKey(courseId, this.cachePrefix)),
@@ -490,6 +590,7 @@ export class CourseController {
         courseCacheKey(courseId, this.cachePrefix),
         instructionalPlanCacheKey(courseId, this.cachePrefix),
         `${this.cachePrefix}.course-design:${courseId}:`,
+        courseSourcesCachePrefix(courseId, this.cachePrefix),
         authoringOutlineCacheKey(courseId, this.cachePrefix),
         authoringInspectionCacheKey(courseId, this.cachePrefix),
         authoringInspectionPositionKey(courseId, this.cachePrefix),
@@ -509,6 +610,7 @@ export class CourseController {
       await Promise.all([
         this.store.deleteCachePrefix(instructionalPlanCacheKey(courseId, this.cachePrefix)),
         this.store.deleteCachePrefix(`${this.cachePrefix}.course-design:${courseId}:`),
+        this.store.deleteCachePrefix(courseSourcesCachePrefix(courseId, this.cachePrefix)),
         this.store.deleteCachePrefix(authoringOutlineCacheKey(courseId, this.cachePrefix)),
         this.store.deleteCachePrefix(authoringInspectionCacheKey(courseId, this.cachePrefix))
       ]);
@@ -539,6 +641,46 @@ export class CourseController {
     );
   }
 
+  async getStudyUnitCitations(courseId, studyUnitId, { expectedRevision } = {}) {
+    if (typeof this.api.getStudyUnitCitations !== "function") {
+      throw new TypeError("A API de Cursos não oferece citações de Estudo.");
+    }
+    const normalizedCourseId = String(courseId || "").trim().toLowerCase();
+    const normalizedStudyUnitId = String(studyUnitId || "").trim();
+    const normalizedRevision = Number(expectedRevision);
+    if (!UUID_PATTERN.test(normalizedCourseId) ||
+        !normalizedStudyUnitId || normalizedStudyUnitId !== studyUnitId ||
+        !courseSourceOpaqueId(normalizedStudyUnitId) ||
+        !Number.isSafeInteger(normalizedRevision) || normalizedRevision < 1) {
+      throw new TypeError("Leitura de citações inválida.");
+    }
+    try {
+      const result = normalizeCourseStudyCitationsRead(
+        await this.api.getStudyUnitCitations(
+          normalizedCourseId,
+          normalizedStudyUnitId,
+          { expectedRevision: normalizedRevision }
+        )
+      );
+      if (result.courseRevision !== normalizedRevision) {
+        throw courseRevisionChangedError();
+      }
+      if (result.courseId !== normalizedCourseId ||
+          result.studyUnitId !== normalizedStudyUnitId) {
+        throw new TypeError("As citações não correspondem à Unidade solicitada.");
+      }
+      return result;
+    } catch (error) {
+      const normalizedError = courseRevisionConflict(error)
+        ? courseRevisionChangedError(error)
+        : error;
+      if (accessWasRevoked(normalizedError)) {
+        await this.#purgeCoursePrivacyCache(normalizedCourseId, { clearLists: true });
+      }
+      throw normalizedError;
+    }
+  }
+
   async #readVerifiedCachedDocument(courseId, revision, entityPageSize) {
     const cachedCourse = cachedPayload(await this.store.getCache(
       courseCacheKey(courseId, this.cachePrefix)
@@ -554,14 +696,23 @@ export class CourseController {
       if (!page || Number(page.revision) !== revision || !Array.isArray(page.items)) return null;
       rows.push(...page.items);
       if (page.hasMore !== true) {
-        return {
-          course: structuredClone(cachedCourse),
-          rows,
-          document: composeCourseDocument({
+        let document;
+        try {
+          document = composeCourseDocument({
             id: String(cachedCourse.courseId || "").trim(),
             title: String(cachedCourse.title || "").trim(),
             goal: String(cachedCourse.goal || "").trim()
-          }, rows),
+          }, rows);
+        } catch {
+          await this.store.deleteCachePrefix(
+            `${this.cachePrefix}.entities:${courseId}:${revision}:`
+          );
+          return null;
+        }
+        return {
+          course: structuredClone(cachedCourse),
+          rows,
+          document,
           offline: false,
           stale: false,
           cacheVerified: true
@@ -665,6 +816,7 @@ export class CourseController {
           courseCacheKey(courseId, this.cachePrefix),
           instructionalPlanCacheKey(courseId, this.cachePrefix),
           `${this.cachePrefix}.course-design:${courseId}:`,
+          courseSourcesCachePrefix(courseId, this.cachePrefix),
           `${this.cachePrefix}.entities:${courseId}:`
         ]
       }
@@ -692,6 +844,49 @@ export class CourseController {
     }
   }
 
+  async loadCourseSources(courseId, options = {}) {
+    if (!this.ownerOnly || typeof this.api.loadCourseSources !== "function") {
+      throw new TypeError("A API de Autoria não oferece o catálogo privado de Fontes.");
+    }
+    const normalizedCourseId = String(courseId || "").trim().toLowerCase();
+    const normalizedOptions = courseSourcesReadOptions(normalizedCourseId, options);
+    await this.store.deleteCachePrefix(
+      courseSourcesCachePrefix(normalizedCourseId, this.cachePrefix)
+    );
+    try {
+      const result = normalizeCourseSourcesRead(
+        await this.api.loadCourseSources(normalizedCourseId, normalizedOptions)
+      );
+      const expectedQuery = {
+        sourceId: normalizedOptions.sourceId,
+        targetKind: normalizedOptions.targetKind,
+        targetId: normalizedOptions.targetId
+      };
+      if (result.courseId !== normalizedCourseId ||
+          result.courseRevision !== normalizedOptions.expectedRevision ||
+          result.mode !== normalizedOptions.mode ||
+          result.query.sourceId !== expectedQuery.sourceId ||
+          result.query.targetKind !== expectedQuery.targetKind ||
+          result.query.targetId !== expectedQuery.targetId ||
+          result.nextCursor !== null &&
+            !/^[A-Za-z0-9+/_-]+={0,2}$/u.test(result.nextCursor) ||
+          normalizedOptions.mode === "source" && result.items.some(({ sourceId }) =>
+            sourceId !== normalizedOptions.sourceId) ||
+          normalizedOptions.mode === "target" &&
+            result.items.some(({ targetKind, targetId }) =>
+              targetKind !== normalizedOptions.targetKind ||
+              targetId !== normalizedOptions.targetId)) {
+        throw new TypeError("A leitura de Fontes não corresponde ao pedido.");
+      }
+      return result;
+    } catch (error) {
+      if (accessWasRevoked(error)) {
+        await this.#purgeCoursePrivacyCache(normalizedCourseId, { clearLists: true });
+      }
+      throw error;
+    }
+  }
+
   loadAuthoringOutline(courseId) {
     if (typeof this.api.loadAuthoringOutline !== "function") {
       throw new TypeError("A API de Cursos não oferece a estrutura autoral.");
@@ -708,6 +903,7 @@ export class CourseController {
           courseCacheKey(courseId, this.cachePrefix),
           instructionalPlanCacheKey(courseId, this.cachePrefix),
           `${this.cachePrefix}.course-design:${courseId}:`,
+          courseSourcesCachePrefix(courseId, this.cachePrefix),
           authoringOutlineCacheKey(courseId, this.cachePrefix),
           authoringInspectionCacheKey(courseId, this.cachePrefix)
         ]
@@ -874,6 +1070,7 @@ export class CourseController {
       this.store.deleteCachePrefix(courseCacheKey(courseId, this.cachePrefix)),
       this.store.deleteCachePrefix(instructionalPlanCacheKey(courseId, this.cachePrefix)),
       this.store.deleteCachePrefix(`${this.cachePrefix}.course-design:${courseId}:`),
+      this.store.deleteCachePrefix(courseSourcesCachePrefix(courseId, this.cachePrefix)),
       this.store.deleteCachePrefix(authoringOutlineCacheKey(courseId, this.cachePrefix)),
       this.store.deleteCachePrefix(authoringInspectionCacheKey(courseId, this.cachePrefix))
     ]);
@@ -902,8 +1099,53 @@ export class CourseController {
       this.store.deleteCachePrefix(courseCacheKey(courseId, this.cachePrefix)),
       this.store.deleteCachePrefix(instructionalPlanCacheKey(courseId, this.cachePrefix)),
       this.store.deleteCachePrefix(`${this.cachePrefix}.course-design:${courseId}:`),
+      this.store.deleteCachePrefix(courseSourcesCachePrefix(courseId, this.cachePrefix)),
       this.store.deleteCachePrefix(authoringOutlineCacheKey(courseId, this.cachePrefix)),
       this.store.deleteCachePrefix(authoringInspectionCacheKey(courseId, this.cachePrefix))
+    ]);
+    return result;
+  }
+
+  async mutateCourseSources(value = {}) {
+    if (!this.ownerOnly || typeof this.api.mutateCourseSources !== "function") {
+      throw new TypeError("A API de Autoria não oferece alterações de Fontes.");
+    }
+    if (!value || typeof value !== "object" || Array.isArray(value) ||
+        Object.keys(value).some((field) => !new Set([
+          "requestId", "courseId", "expectedCourseRevision", "command"
+        ]).has(field))) {
+      throw new TypeError("Alteração de Fontes inválida.");
+    }
+    const requestId = String(value.requestId || "");
+    const courseId = String(value.courseId || "").trim().toLowerCase();
+    const expectedCourseRevision = Number(value.expectedCourseRevision);
+    if (!/^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$/u.test(requestId) ||
+        !UUID_PATTERN.test(courseId) ||
+        !Number.isSafeInteger(expectedCourseRevision) || expectedCourseRevision < 1) {
+      throw new TypeError("Alteração de Fontes inválida.");
+    }
+    const command = normalizeCourseSourceCommand(value.command);
+    const result = normalizeCourseSourceChange(await this.api.mutateCourseSources({
+      requestId,
+      courseId,
+      expectedRevision: expectedCourseRevision,
+      sourceCommand: command
+    }));
+    if (result.courseId !== courseId || result.requestId !== requestId ||
+        result.courseRevision !== expectedCourseRevision + (result.changed ? 1 : 0) ||
+        result.change != null && (
+          result.change.type !== command.type ||
+          result.change.subjectId !== courseSourceCommandSubjectId(command)
+        )) {
+      throw new TypeError("A confirmação de Fontes não corresponde ao comando.");
+    }
+    await Promise.all([
+      this.store.deleteCachePrefix(`${this.cachePrefix}.list:`),
+      this.store.deleteCachePrefix(courseCacheKey(courseId, this.cachePrefix)),
+      this.store.deleteCachePrefix(instructionalPlanCacheKey(courseId, this.cachePrefix)),
+      this.store.deleteCachePrefix(courseSourcesCachePrefix(courseId, this.cachePrefix)),
+      this.store.deleteCachePrefix(authoringInspectionCacheKey(courseId, this.cachePrefix)),
+      this.store.deleteCachePrefix(`${this.cachePrefix}.entities:${courseId}:`)
     ]);
     return result;
   }
@@ -916,6 +1158,7 @@ export class CourseController {
       this.store.deleteCachePrefix(courseCacheKey(courseId, this.cachePrefix)),
       this.store.deleteCachePrefix(instructionalPlanCacheKey(courseId, this.cachePrefix)),
       this.store.deleteCachePrefix(`${this.cachePrefix}.course-design:${courseId}:`),
+      this.store.deleteCachePrefix(courseSourcesCachePrefix(courseId, this.cachePrefix)),
       this.store.deleteCachePrefix(authoringOutlineCacheKey(courseId, this.cachePrefix)),
       this.store.deleteCachePrefix(authoringInspectionCacheKey(courseId, this.cachePrefix)),
       this.store.deleteCachePrefix(`${this.cachePrefix}.entities:${courseId}:`)

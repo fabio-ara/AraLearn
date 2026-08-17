@@ -41,6 +41,10 @@ const DEFAULT_COURSE_DESIGN_MIGRATION = path.join(
   REPOSITORY_ROOT,
   "supabase/migrations/20260817180000_course_design_parameters.sql"
 );
+const DEFAULT_COURSE_SOURCES_MIGRATION = path.join(
+  REPOSITORY_ROOT,
+  "supabase/migrations/20260817190000_course_sources_provenance.sql"
+);
 const DEFAULT_POOLER_URL = path.join(REPOSITORY_ROOT, "supabase/.temp/pooler-url");
 const DEFAULT_PROJECT_REF = path.join(REPOSITORY_ROOT, "supabase/.temp/project-ref");
 const DEFAULT_ATTESTATION_DIRECTORY = path.resolve(
@@ -137,7 +141,7 @@ function assertSafeAttestation(report) {
   const hashFields = ["snapshotHash", "resolutionsHash", "migrationHash"];
   const courseFields = new Set([
     "courseId", "manifestHash", "documentHash", "rowHash",
-    "entityStateHash", "counts"
+    "sourceReferenceHash", "entityStateHash", "counts"
   ]);
   const countFields = new Set([
     "modules", "lessons", "topics", "microsequences", "studyUnits",
@@ -153,7 +157,8 @@ function assertSafeAttestation(report) {
         !hasExactFields(course, courseFields) ||
         !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu
           .test(course.courseId || "") ||
-        ["manifestHash", "documentHash", "rowHash", "entityStateHash"]
+        ["manifestHash", "documentHash", "rowHash", "sourceReferenceHash",
+          "entityStateHash"]
           .some((field) => !/^[0-9a-f]{64}$/u.test(course[field] || "")) ||
         !course.counts || typeof course.counts !== "object" ||
         Array.isArray(course.counts) || Object.keys(course.counts).length < 1 ||
@@ -178,6 +183,7 @@ function attestationCourses(preparation) {
     manifestHash: manifest.manifestHash,
     documentHash: manifest.documentHash,
     rowHash: manifest.rowHash,
+    sourceReferenceHash: manifest.sourceReferenceHash,
     entityStateHash: manifest.entityStateHash,
     counts: manifest.counts
   })).sort((left, right) => left.courseId.localeCompare(right.courseId));
@@ -310,6 +316,7 @@ export async function runCourseIdentityCutover({
   authoringPlanMigrationSql,
   studyUnitInspectionMigrationSql,
   courseDesignMigrationSql,
+  courseSourcesMigrationSql,
   readSnapshot = readCourseCutoverSnapshot,
   createArtifactLoader = createRevisionArtifactLoader,
   prepare = prepareCourseCutover,
@@ -326,7 +333,8 @@ export async function runCourseIdentityCutover({
       typeof profileAccessMigrationSql !== "string" ||
       typeof authoringPlanMigrationSql !== "string" ||
       typeof studyUnitInspectionMigrationSql !== "string" ||
-      typeof courseDesignMigrationSql !== "string") {
+      typeof courseDesignMigrationSql !== "string" ||
+      typeof courseSourcesMigrationSql !== "string") {
     fail("invalid_cutover_execution", "Sessões ou migrations do corte estão ausentes.");
   }
   const snapshotSession = {
@@ -350,7 +358,8 @@ export async function runCourseIdentityCutover({
       resolutionsHash: canonicalSha256(resolutions),
       migrationHash: sha256Text(
         `${migrationSql}\n${profileAccessMigrationSql}\n${authoringPlanMigrationSql}` +
-          `\n${studyUnitInspectionMigrationSql}\n${courseDesignMigrationSql}`
+          `\n${studyUnitInspectionMigrationSql}\n${courseDesignMigrationSql}` +
+          `\n${courseSourcesMigrationSql}`
       )
     };
     await writeAttestation({
@@ -373,7 +382,8 @@ export async function runCourseIdentityCutover({
       profileAccessMigrationSql,
       authoringPlanMigrationSql,
       studyUnitInspectionMigrationSql,
-      courseDesignMigrationSql
+      courseDesignMigrationSql,
+      courseSourcesMigrationSql
     );
     await executeSql(sql, {
       ...sessions.database,
@@ -407,7 +417,7 @@ function helpText() {
     "Uso: node scripts/courseCutover/runCourseIdentityCutover.mjs [opções]",
     "",
     "Sem --apply, não escreve no banco; valida e grava atestação privada.",
-    "  --apply                 executa TEMP + COPY + migrations 1400/1500/1600/1700/1800 em uma transação",
+    "  --apply                 executa TEMP + COPY + migrations 1400/1500/1600/1700/1800/1900 em uma transação",
     "  --secrets-stdin         lê as sessões efêmeras de um objeto JSON no stdin",
     "  --resolutions ARQUIVO   lê decisões semânticas de arquivo fora do repositório",
     "  --help                  mostra esta ajuda",
@@ -446,6 +456,10 @@ export async function main(argv = process.argv.slice(2)) {
     DEFAULT_COURSE_DESIGN_MIGRATION,
     4 * 1024 * 1024
   );
+  const courseSourcesMigrationSql = await readLimitedFile(
+    DEFAULT_COURSE_SOURCES_MIGRATION,
+    4 * 1024 * 1024
+  );
   const result = await runCourseIdentityCutover({
     apply: argumentsValue.apply,
     sessions,
@@ -454,7 +468,8 @@ export async function main(argv = process.argv.slice(2)) {
     profileAccessMigrationSql,
     authoringPlanMigrationSql,
     studyUnitInspectionMigrationSql,
-    courseDesignMigrationSql
+    courseDesignMigrationSql,
+    courseSourcesMigrationSql
   });
   process.stdout.write(`${JSON.stringify(result)}\n`);
 }

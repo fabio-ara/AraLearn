@@ -3,11 +3,12 @@
 Autoria é a interface manual e visual do mesmo Curso vivo usado em Estudo e
 pelas ferramentas conversacionais. Nesta revisão, ela permite criar Cursos,
 editar o plano instrucional e as Partes em linguagem natural, consultar a
-configurar o desenho e a cobertura de cada Microssequência, consultar a
-hierarquia, inspecionar Unidades em sequência vertical, levar um pedido de
-materialização ao chat conectado e gerir acesso direto. Edição contextual de
-Unidades, proveniência, auditoria, correção,
-variantes e analytics ainda não devem ser tratadas como disponíveis.
+configuração do desenho e a cobertura de cada Microssequência, manter Fontes e
+Âncoras, atribuí-las a itens do plano ou Unidades, consultar a hierarquia,
+inspecionar Unidades em sequência vertical, levar um pedido de materialização
+ao chat conectado e gerir acesso direto. Edição contextual de Unidades,
+observações autorais reunidas, auditoria, correção, variantes e analytics ainda
+não devem ser tratadas como disponíveis.
 
 ## Abrir a Autoria
 
@@ -38,9 +39,9 @@ pedido, causada por falha de rede, recupera o resultado em vez de criar outro
 Curso. Ela também cria um plano vazio com faixa preferencial inicial de 7–12
 Partes. Essa faixa é configurável e não constitui lei pedagógica.
 
-## Compreender as cinco áreas
+## Compreender as seis áreas
 
-Ao abrir um Curso, a barra iconográfica oferece cinco destinos.
+Ao abrir um Curso, a barra iconográfica oferece seis destinos.
 
 ### Planejamento
 
@@ -108,6 +109,44 @@ que a materialização não demonstrou uma decisão planejada; não é nota de
 qualidade nem medida de aprendizagem. Formas, oportunidades e variações são
 declarações do agente ou da pessoa autora validadas internamente; o resumo não
 alega que o banco as observou semanticamente no conteúdo.
+
+### Fontes
+
+Mostra o catálogo privado do Curso em páginas de até 24 itens. Uma Fonte possui identidade
+estável, revisão, estado, tipo, título, citação, URL opcional, edição ou versão
+opcional e visibilidade no Estudo. É possível criar uma Fonte, acrescentar uma
+nova revisão ou aposentá-la. O histórico permanece preservado; revisar não
+reescreve o fato anterior.
+
+Na interface corrente, o histórico de Fonte ou de alvo mostra uma revisão por
+página e oferece carregar mais. Essa é uma escolha de apresentação para manter
+o painel leve, não um limite prometido pelo contrato da API.
+
+No detalhe de uma revisão, crie Âncoras por intervalo de páginas, intervalo de
+tempo, fragmento URI ou trecho textual exato. Uma Âncora fica presa à revisão
+exata da Fonte e também é versionada. O trecho de verificação é privado e
+opcional: ajuda a conferir a localização, mas nunca é enviado ao Estudo.
+
+**Definir fontes** no Planejamento ou na Inspeção abre o editor do alvo. Salvar
+substitui o conjunto completo, preservando a ordem escolhida. Cada vínculo novo
+declara uma relação — **informa**, **sustenta**, **foi adaptado de** ou **foi
+citado de** — e exige ao menos uma Âncora ativa da revisão exata da Fonte. Não
+há vínculo novo sem localização comprovada.
+
+Referências textuais anteriores aparecem como **Legado não resolvido**. Elas
+mantêm identidade literal e ordem, podem exceder o limite de uma identidade
+nova e permanecem ocultas. Resolver cria uma nova revisão ativa sob a mesma
+identidade; não troque, apare ou “corrija” espaços do identificador legado. O
+AraLearn não inventa título, citação, link ou Âncora ausente.
+
+A visibilidade controla somente a projeção de Estudo:
+
+- **Oculta** não aparece;
+- **Citação** apresenta identificação e localização, sem URL;
+- **Citação e link** também entrega a URL HTTPS.
+
+O catálogo completo, revisões, trecho de verificação, autoria técnica e
+histórico continuam owner-only.
 
 ### Estrutura
 
@@ -188,7 +227,7 @@ O cliente MCP e a interface visual operam o mesmo Curso. O fluxo seguro é:
 1. listar os Cursos próprios;
 2. escolher o Curso pelo título e confirmar sua identidade;
 3. ler o plano instrucional, o desenho efetivo, a hierarquia, a vista
-   `study_units` ou páginas de entidades;
+   `course_sources`, a vista `study_units` ou páginas de entidades;
 4. formular a alteração;
 5. usar a revisão do Curso e a versão específica lidas como condições da
    escrita;
@@ -197,10 +236,11 @@ O cliente MCP e a interface visual operam o mesmo Curso. O fluxo seguro é:
 O assistente pode criar Curso, alterar o plano por comandos semânticos,
 definir ou limpar parâmetros e orientações, gerir a política de componentes,
 atribuir itens do plano a cada Microssequência,
-confirmar etapas de materialização, alterar a composição por uma operação
-separada, gerir perfil e acesso e consultar componentes didáticos. Interface e
-MCP usam as mesmas relações, regras de domínio, transações e projeções; não há
-um desenho reservado ao chat.
+criar, revisar e aposentar Fontes e Âncoras, substituir atribuições de
+proveniência, confirmar etapas de materialização, alterar a composição por uma
+operação separada, gerir perfil e acesso e consultar componentes didáticos.
+Interface e MCP usam as mesmas relações, regras de domínio, transações e
+projeções; não há um desenho reservado ao chat.
 
 Para revisar conteúdo, prefira `lerCurso` com `view: "study_units"`. Escolha o
 mesmo escopo disponível na interface e use a revisão devolvida, a âncora para
@@ -221,8 +261,10 @@ Para preparar a produção:
 3. mova ou retire os vínculos de Microssequência já existentes, se necessário;
 4. em **Parâmetros**, atribua a cada Microssequência suas unidades de análise e
    seus requisitos de evidência;
-5. use **Levar pedido ao chat conectado** na Parte escolhida;
-6. cole o texto no cliente conectado e acompanhe somente o progresso que o
+5. em **Fontes**, resolva o catálogo e as Âncoras e atribua conjuntos completos
+   aos itens do plano que sustentam a Parte;
+6. use **Levar pedido ao chat conectado** na Parte escolhida;
+7. cole o texto no cliente conectado e acompanhe somente o progresso que o
    serviço confirmar.
 
 O botão apenas copia o pedido para a área de transferência. Ele não abre uma
@@ -252,12 +294,17 @@ substituições ou exclusões. Cada entidade precisa respeitar:
 
 O contrato da composição usa `aralearn.course.v1`, `studyUnits` como coleção da
 Microssequência e `study_unit` como tipo persistido. Esses nomes não possuem
-alias corrente. Cada linha alterada é validada pelo seu tipo, e dependências de
-Microssequência são verificadas no escopo das Lições atingidas.
+alias corrente. `sources` não é campo da Unidade. Para cada Unidade incluída ou
+substituída, a mesma operação declara exatamente uma aplicação de atribuição,
+mesmo quando o conjunto é vazio. Cada linha alterada é validada pelo seu tipo,
+e dependências de Microssequência são verificadas no escopo das Lições
+atingidas.
 
 Uma etapa de materialização pode confirmar no mesmo commit mudanças de
-entidades, vínculo com a Microssequência-alvo, fatos da etapa, revisão do Curso
-e atividade. A escrita geral da composição permanece separada do planejamento:
+entidades, vínculo com a Microssequência-alvo, aplicação do desenho, atribuição
+de Fontes, fatos da etapa, revisão do Curso e atividade. O servidor aceita
+somente revisões e Âncoras já seladas a partir das atribuições dos itens do
+plano. A escrita geral da composição permanece separada do planejamento:
 editar o plano não substitui o conteúdo, e editar o conteúdo não reescreve o
 plano implicitamente.
 
@@ -266,8 +313,9 @@ plano implicitamente.
 Não trate as seguintes ações como implementadas no runtime canônico:
 
 - editar cada Unidade diretamente;
-- inspecionar fontes e âncoras de ponta a ponta;
 - transformar observação de estudante em correção verificada;
+- registrar observações autorais no ciclo unificado da #124;
+- produzir achados, correções ou verificação independente da #125;
 - criar condições e variantes comparáveis;
 - consultar analytics de Autoria;
 - disponibilizar Curso publicamente.
@@ -282,11 +330,13 @@ Depois de alterar um Curso:
 
 1. releia o Curso na Autoria;
 2. use a Inspeção e o link profundo da Unidade afetada;
-3. abra-o em Estudo;
-4. percorra a hierarquia até a mesma Unidade;
-5. confira conteúdo, resposta, feedback e navegação;
-6. teste em 360, 390 e 430 px e desktop;
-7. registre qualquer divergência como observação precisa.
+3. confira na atribuição a revisão e as Âncoras exatas das Fontes;
+4. abra-o em Estudo;
+5. percorra a hierarquia até a mesma Unidade;
+6. confira conteúdo, resposta, feedback, navegação e a projeção redigida de
+   Fontes;
+7. teste em 360, 390 e 430 px e desktop;
+8. registre qualquer divergência como observação precisa.
 
 A síntese deve distinguir o que mudou para quem estuda, o que mudou por trás,
 por que foi necessário, qual complexidade entrou ou saiu, como foi verificado e

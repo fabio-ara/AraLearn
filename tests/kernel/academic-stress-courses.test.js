@@ -8,30 +8,30 @@ const fixtureUrl = new URL("../fixtures/pedagogy/academic-stress-courses.json", 
 const project = JSON.parse(fs.readFileSync(fixtureUrl, "utf8"));
 const lessons = project.courses.flatMap(({ modules }) => modules).flatMap(({ lessons: values }) => values);
 const microsequences = lessons.flatMap(({ microsequences: values }) => values);
-const cards = microsequences.flatMap(({ cards: values }) => values);
+const studyUnits = microsequences.flatMap(({ studyUnits: values }) => values);
 
-const packagesIn = (card) => [
-  ...card.content.map(({ package: packageId }) => packageId),
-  ...(card.response ? [card.response.package] : []),
-  ...card.feedback.map(({ package: packageId }) => packageId)
+const packagesIn = (studyUnit) => [
+  ...studyUnit.content.map(({ package: packageId }) => packageId),
+  ...(studyUnit.response ? [studyUnit.response.package] : []),
+  ...studyUnit.feedback.map(({ package: packageId }) => packageId)
 ];
 
 test("corpus acadêmico inteiro permanece materializável", () => {
   const validation = validateProjectDocument(project);
   assert.equal(validation.ok, true, JSON.stringify(validation.errors, null, 2));
   assert.equal(project.courses.length, 2);
-  assert.equal(cards.length, 31);
+  assert.equal(studyUnits.length, 31);
 });
 
 test("cada módulo situa o iniciante antes de apresentar notação densa", () => {
   project.courses.flatMap(({ modules }) => modules).forEach((moduleValue) => {
     const first = moduleValue.lessons[0].microsequences[0];
-    const firstCard = first.cards[0];
+    const firstStudyUnit = first.studyUnits[0];
     assert.equal(first.role, "explain", moduleValue.id);
     assert.equal(first.dependsOn.length, 0, moduleValue.id);
-    assert.equal(firstCard.role, "theory", moduleValue.id);
-    assert.deepEqual(packagesIn(firstCard), ["aralearn.resource.paragraph"], moduleValue.id);
-    assert.match(firstCard.content[0].data.text, /(?:Imagine|precisa|processo|participam|aplicações)/iu, moduleValue.id);
+    assert.equal(firstStudyUnit.role, "theory", moduleValue.id);
+    assert.deepEqual(packagesIn(firstStudyUnit), ["aralearn.resource.paragraph"], moduleValue.id);
+    assert.match(firstStudyUnit.content[0].data.text, /(?:Imagine|precisa|processo|participam|aplicações)/iu, moduleValue.id);
   });
 });
 
@@ -49,17 +49,17 @@ test("a prática depende de teoria e cobra apenas tópicos previamente ensinados
       };
       practice.dependsOn.forEach(visit);
       practice.covers.forEach((topicId) => assert.ok(taughtTopics.has(topicId), `${practice.id}: ${topicId} não ensinado`));
-      practice.cards.forEach((card) => {
-        assert.equal(card.role, "practice", card.id);
-        assert.ok(card.response, card.id);
-        assert.ok(card.feedback.length > 0, card.id);
+      practice.studyUnits.forEach((studyUnit) => {
+        assert.equal(studyUnit.role, "practice", studyUnit.id);
+        assert.ok(studyUnit.response, studyUnit.id);
+        assert.ok(studyUnit.feedback.length > 0, studyUnit.id);
       });
     });
   });
 });
 
 test("representações especializadas só aparecem quando a estrutura não cabe em recurso mais simples", () => {
-  const contentPackages = new Set(cards.flatMap(({ content }) => content.map(({ package: packageId }) => packageId)));
+  const contentPackages = new Set(studyUnits.flatMap(({ content }) => content.map(({ package: packageId }) => packageId)));
   [
     "aralearn.resource.entity_relationship",
     "aralearn.resource.database_schema",
@@ -71,7 +71,7 @@ test("representações especializadas só aparecem quando a estrutura não cabe 
 
   const modulePackages = Object.fromEntries(project.courses.flatMap(({ modules }) => modules).map((moduleValue) => [
     moduleValue.id,
-    new Set(moduleValue.lessons.flatMap(({ microsequences: values }) => values).flatMap(({ cards: values }) => values).flatMap(packagesIn))
+    new Set(moduleValue.lessons.flatMap(({ microsequences: values }) => values).flatMap(({ studyUnits: values }) => values).flatMap(packagesIn))
   ]));
   assert.equal(modulePackages["ifsp-algorithms"].has("aralearn.resource.table"), true);
   assert.equal(modulePackages["ifsp-algorithms"].has("aralearn.resource.algorithm_trace"), false);
@@ -81,27 +81,26 @@ test("representações especializadas só aparecem quando a estrutura não cabe 
 
 test("a prática é abundante e varia o gesto de resposta sem quota pedagógica arbitrária", () => {
   project.courses.forEach((course) => {
-    const courseCards = course.modules.flatMap(({ lessons: values }) => values)
+    const courseStudyUnits = course.modules.flatMap(({ lessons: values }) => values)
       .flatMap(({ microsequences: values }) => values)
-      .flatMap(({ cards: values }) => values);
-    const responsePackages = new Set(courseCards.filter(({ response }) => response).map(({ response }) => response.package));
-    assert.ok(courseCards.filter(({ role }) => role === "practice").length >= 6, course.id);
+      .flatMap(({ studyUnits: values }) => values);
+    const responsePackages = new Set(courseStudyUnits.filter(({ response }) => response).map(({ response }) => response.package));
+    assert.ok(courseStudyUnits.filter(({ role }) => role === "practice").length >= 6, course.id);
     assert.ok(responsePackages.size >= 3, course.id);
   });
 });
 
 test("a teoria do corpus não volta ao parágrafo-resumo", () => {
-  cards.filter(({ role }) => role === "theory").forEach((card) => {
-    card.content.filter(({ package: packageId }) => packageId === "aralearn.resource.paragraph").forEach(({ data }) => {
+  studyUnits.filter(({ role }) => role === "theory").forEach((studyUnit) => {
+    studyUnit.content.filter(({ package: packageId }) => packageId === "aralearn.resource.paragraph").forEach(({ data }) => {
       const wordCount = data.text.trim().split(/\s+/u).length;
-      assert.ok(wordCount <= 85, `${card.id}: ${wordCount} palavras`);
+      assert.ok(wordCount <= 85, `${studyUnit.id}: ${wordCount} palavras`);
     });
   });
 });
 
-test("todo card conserva proveniência pública e oficial do recorte", () => {
-  cards.forEach((card) => {
-    assert.ok(card.sources.length > 0, card.id);
-    card.sources.forEach((source) => assert.match(source, /^https:\/\/(?:spo\.ifsp\.edu\.br|conhecimento\.fgv\.br|www\.rfc-editor\.org|www\.omg\.org)\//u, `${card.id}: ${source}`));
+test("nenhuma Unidade duplica proveniência no envelope de conteúdo", () => {
+  studyUnits.forEach((studyUnit) => {
+    assert.equal(Object.hasOwn(studyUnit, "sources"), false, studyUnit.id);
   });
 });

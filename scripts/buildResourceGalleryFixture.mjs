@@ -36,7 +36,6 @@ const studyUnits = RESOURCE_PACKAGE_REGISTRY.listCatalog().map((manifest, index)
     response: slot === "response" ? instance : null,
     feedback: [paragraph(`feedback-${index + 1}`, manifest.accessibility)],
     topics: [],
-    sources: []
   };
 });
 

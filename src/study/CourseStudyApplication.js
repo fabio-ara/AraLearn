@@ -84,6 +84,12 @@ function runForwardStudyInteraction(event, action) {
   return true;
 }
 
+function courseAccessWasRevoked(error) {
+  const status = Number(error?.status || error?.response?.status || 0);
+  const code = String(error?.code || error?.response?.code || "").toUpperCase();
+  return status === 403 || status === 404 || code === "42501" || code === "PT404";
+}
+
 export function createCourseStudyApplication({
   root,
   repository,
@@ -100,6 +106,7 @@ export function createCourseStudyApplication({
     throw new TypeError("Documento de Cursos inválido.");
   }
 
+  let citationsEpoch = 0;
   const state = {
     project: clone(initialProject),
     view: "courses",
@@ -114,6 +121,10 @@ export function createCourseStudyApplication({
     commentExists: false,
     commentError: "",
     commentSaving: false,
+    citationsOpen: false,
+    citationsLoading: false,
+    citations: null,
+    citationsError: "",
     accountProfile: null,
     connectionOffline: globalThis.navigator?.onLine === false
   };
@@ -254,6 +265,14 @@ export function createCourseStudyApplication({
     };
   }
 
+  function resetCitations() {
+    ++citationsEpoch;
+    state.citationsOpen = false;
+    state.citationsLoading = false;
+    state.citations = null;
+    state.citationsError = "";
+  }
+
   function resetStudyUnitInteraction() {
     const entry = currentResponseEntry();
     if (entry && state.responseByBlockKey[entry.blockKey]) {
@@ -262,6 +281,64 @@ export function createCourseStudyApplication({
     state.activeGapPrompt = null;
     state.pendingStudyFocus = null;
     state.feedbackOpen = false;
+    resetCitations();
+  }
+
+  function reconcileProjectAfterCitationRevocation() {
+    const nextProject = repository.loadProject?.();
+    if (!nextProject || !Array.isArray(nextProject.courses)) return false;
+    const retained = retainContext(nextProject, state.selection, state.view);
+    state.project = clone(nextProject);
+    state.selection = retained.selection;
+    state.view = retained.view;
+    resetStudyUnitInteraction();
+    state.commentOpen = false;
+    state.commentSaving = false;
+    state.commentError = "";
+    render({ preserveFocus: false });
+    return true;
+  }
+
+  async function toggleCitations() {
+    const reference = canonicalReference(state.selection);
+    if (!reference || typeof repository.loadStudyUnitCitations !== "function") return false;
+    if (state.citationsOpen) {
+      state.citationsOpen = false;
+      render();
+      return true;
+    }
+    state.citationsOpen = true;
+    if (state.citations) {
+      render();
+      return true;
+    }
+    const epoch = ++citationsEpoch;
+    state.citationsLoading = true;
+    state.citationsError = "";
+    render();
+    try {
+      const result = await repository.loadStudyUnitCitations(reference);
+      if (epoch !== citationsEpoch) return false;
+      state.citations = result;
+      return true;
+    } catch (error) {
+      if (epoch !== citationsEpoch) return false;
+      if (courseAccessWasRevoked(error) && reconcileProjectAfterCitationRevocation()) {
+        return false;
+      }
+      const code = String(error?.code || "").toLowerCase();
+      state.citationsError = code === "course_revision_changed"
+        ? "O Curso mudou. Reabra esta Unidade para consultar as fontes atuais."
+        : /offline|network|failed to fetch|connection/iu.test(`${code} ${error?.message || ""}`)
+          ? "Sem conexão para consultar as fontes desta Unidade."
+          : "Não foi possível consultar as fontes desta Unidade.";
+      return false;
+    } finally {
+      if (epoch === citationsEpoch) {
+        state.citationsLoading = false;
+        render();
+      }
+    }
   }
 
   function selectMicrosequence(microsequenceId, studyUnitIndex = 0) {
@@ -685,6 +762,16 @@ export function createCourseStudyApplication({
     });
     root.querySelector("[data-action='open-observation']")?.addEventListener("click", openComment);
     root.querySelector("[data-action='toggle-review']")?.addEventListener("click", () => void toggleReview());
+    root.querySelectorAll("[data-action='toggle-citations']").forEach((node) =>
+      node.addEventListener("click", () => void toggleCitations()));
+    root.querySelector("[data-action='retry-citations']")?.addEventListener(
+      "click",
+      () => {
+        state.citations = null;
+        state.citationsOpen = false;
+        void toggleCitations();
+      }
+    );
 
     root.querySelectorAll("[data-action='choice-toggle']").forEach((node) => {
       node.addEventListener("click", () => selectChoice(node));
@@ -872,7 +959,11 @@ export function createCourseStudyApplication({
       packageStudyUnitOptions: packageStudyUnitOptions(),
       feedbackOpen: state.feedbackOpen,
       hasObservation: Boolean(reference && repository.loadCommentForPath(reference)),
-      markedForReview: Boolean(reference && repository.isStudyUnitMarkedForReview(reference))
+      markedForReview: Boolean(reference && repository.isStudyUnitMarkedForReview(reference)),
+      citationsOpen: state.citationsOpen,
+      citationsLoading: state.citationsLoading,
+      citations: state.citations,
+      citationsError: state.citationsError
     }) + (state.commentOpen ? renderStudyUnitCommentOverlay({
       draft: state.commentDraft,
       exists: state.commentExists,
@@ -911,6 +1002,8 @@ export function createCourseStudyApplication({
       if (!nextProject || !Array.isArray(nextProject.courses)) {
         throw new TypeError("Documento de Cursos inválido.");
       }
+      resetCitations();
+      render();
       const previousSelection = clone(state.selection);
       const previousView = state.view;
       const previousStudyUnit = clone(context().studyUnit);

@@ -57,29 +57,36 @@ do conteúdo canônico. Uma pessoa com acesso pode estudar e conservar seu
 próprio estado, mas não recebe autoridade para editar o Curso. O [guia do
 estudante](docs/guia-estudante.md) ensina o percurso completo.
 
+Quando uma Unidade possui atribuições públicas, o botão **Fontes** busca as
+citações somente ao ser aberto. O Estudo nunca recebe o catálogo privado: uma
+Fonte oculta ou legada não resolvida não aparece, e o link externo só é
+entregue quando a pessoa autora autorizou **citação e link**.
+
 ## Como se cria e revisa conteúdo
 
 Autoria lista somente os Cursos pertencentes à pessoa autenticada. Um Curso
 novo nasce privado, com título e objetivo, e pode ser usado sem
 passar por estados de rascunho, aprovação ou publicação.
 
-Ao abrir um Curso, a interface oferece cinco destinos compactos:
+Ao abrir um Curso, a interface oferece seis destinos compactos:
 
 - **Planejamento:** título, objetivo, público, escopo, resultados
   pretendidos, unidades de análise, requisitos de evidência e Partes de autoria;
 - **Parâmetros:** decisões pedagógicas, orientação natural, herança, política
   de componentes, itens do plano atribuídos a cada Microssequência e comparação
   factual entre planejado e aplicado;
+- **Fontes:** catálogo privado e versionado, Âncoras exatas e atribuições
+  ordenadas a itens do plano ou Unidades de estudo;
 - **Estrutura:** hierarquia compacta de Módulos, Lições e Microssequências;
 - **Inspeção:** sequência vertical paginada das Unidades materializadas;
 - **Pessoas:** proprietário e acessos diretos concedidos somente para Estudo.
 
 As ferramentas de autoria por **Model Context Protocol (MCP)** leem e alteram
 esse mesmo Curso. Elas listam Cursos próprios, leem a composição paginada,
-criam e alteram Cursos, gerem perfil e acesso e consultam a biblioteca de
-componentes didáticos. A revisão de estado e as chaves de repetição segura
-impedem que duas edições silenciosamente se sobrescrevam ou que uma chamada
-repetida duplique uma operação.
+criam e alteram Cursos, consultam e vinculam Fontes, gerem perfil e acesso e
+consultam a biblioteca de componentes didáticos. A revisão de estado e as
+chaves de repetição segura impedem que duas edições silenciosamente se
+sobrescrevam ou que uma chamada repetida duplique uma operação.
 
 O planejamento por Partes já é persistido e editável em linguagem natural. A
 faixa inicial de 7–12 Partes é uma sugestão configurável, não uma lei
@@ -92,6 +99,13 @@ Na área **Parâmetros**, unidades de análise e requisitos de evidência do pla
 são atribuídos explicitamente às Microssequências que devem realizá-los. Um
 item pode servir a vários alvos e cada alvo pode receber vários itens; a
 materialização não presume que toda Microssequência cubra o plano inteiro.
+
+Na área **Fontes**, cada registro possui revisões append-only e pode receber
+Âncoras de página, tempo, fragmento URI ou trecho textual. Toda atribuição nova
+substitui o conjunto completo do alvo e exige ao menos uma Âncora ativa da
+revisão exata da Fonte. Referências textuais herdadas foram preservadas, na
+mesma identidade e ordem, como legado não resolvido e oculto; o sistema não
+inventa metadados para completá-las.
 
 A Inspeção percorre o Curso inteiro ou um recorte por Parte, Unidades sem Parte,
 Módulo, Lição ou Microssequência, mantém no navegador uma janela limitada e
@@ -143,14 +157,22 @@ iconográfica entre áreas.
 ## Estado e limites
 
 O código desta revisão implementa a identidade única de Curso vivo, a lista e
-a composição paginadas, a Inspeção vertical owner-only, o estado pessoal, a
-Autoria restrita ao proprietário, o acesso direto para Estudo e o perfil humano
-mínimo com nome e foto privada.
+a composição paginadas, a Inspeção vertical owner-only, Fontes e proveniência
+por alvo, o estado pessoal, a Autoria restrita ao proprietário, o acesso direto
+para Estudo e o perfil humano mínimo com nome e foto privada.
+
+O corte é limpo: `StudyUnit.sources` não existe mais no conteúdo. Composição e
+materialização confirmam as atribuições separadas na mesma transação das
+Unidades, e a migration `1900` preserva referências anteriores como legado
+oculto e não resolvido até resolução in-place. Isso não antecipa Observações e
+Anotação ancorada da #124 nem auditoria, correção e verificação da #125.
 
 Esse corte ainda não está promovido ao serviço hospedado. Antes da promoção, o
 importador precisa converter e validar todos os Cursos reais, os componentes
 didáticos bloqueadores precisam ter equivalência semântica, o banco local deve
-ser reconstruído e a migração remota deve passar pelos mesmos gates. Portanto,
+ser reconstruído e as migrations `1400` a `1900` devem passar juntas pelos
+mesmos gates. Os limites de paginação e payload tornam o consumo mensurável,
+mas ainda não provam sustentabilidade no Supabase Free Plan. Portanto,
 a aplicação pública e o APK da última release podem refletir a arquitetura
 anterior até a publicação de uma nova versão.
 

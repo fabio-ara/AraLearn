@@ -328,17 +328,29 @@ Parte substitua ou apague conteúdo implicitamente.
 interface ou `mcp` para cliente conversacional. Canal descreve transporte; não
 muda autoridade, validação ou estado.
 
+## Fontes e proveniência implementadas
+
+**Fonte.** Objeto interno ou externo do qual uma afirmação ou representação é
+derivada. No Curso, possui identidade estável e revisões append-only; não é
+sinônimo de citação, Âncora ou arquivo armazenado.
+
+**Âncora de fonte.** Seletor versionado que localiza página, intervalo de tempo,
+fragmento URI ou trecho textual numa revisão exata da Fonte.
+
+**Atribuição de Fonte.** Snapshot ordenado dos vínculos entre um item do plano
+ou uma Unidade, revisões de Fontes, relações declaradas e Âncoras exatas.
+
+**Proveniência.** Relação verificável entre Fonte, planejamento e Unidade. O
+corte corrente prova identidade, revisão, relação, localização, ordem e
+aplicação por alvo; não afirma uma cadeia W3C completa nem autoria científica.
+
+**Legado não resolvido.** Referência anterior preservada na mesma identidade e
+ordem, sem metadados ou Âncora inventados e oculta no Estudo até receber uma
+revisão ativa in-place.
+
 ## Termos ainda não implementados de ponta a ponta
 
 As definições abaixo delimitam a direção sem alegar capacidade corrente.
-
-**Fonte.** Objeto interno ou externo do qual uma afirmação ou representação é
-derivada.
-
-**Âncora de fonte.** Seletor que localiza o trecho pertinente dentro da fonte.
-
-**Proveniência.** Relação verificável entre fonte, planejamento, Unidade,
-alteração e agente responsável.
 
 **Observação autoral.** Retorno situado que integra o fluxo compartilhado de
 Autoria. É distinta da observação pessoal já persistida em Estudo.

@@ -2261,3 +2261,29 @@ test("renderer escapa conteúdo e CSS mantém enquadramento mobile-first sem rol
   assert.doesNotMatch(css, /width: min\(100%, (?:560|620)px\)/u);
   assert.doesNotMatch(css, /overflow-y/iu);
 });
+
+test("Curso próprio expõe Fontes como sexta área sem embutir dados no envelope", () => {
+  const course = {
+    courseId: COURSE_ID,
+    title: "Fundamentos",
+    goal: "Compreender relações essenciais.",
+    revision: 5,
+    ownership: "owned",
+    canEdit: true,
+    counts: null
+  };
+  const markup = renderCourseAuthoringSurface({
+    view: "course",
+    section: "sources",
+    course,
+    knownCourse: course,
+    loading: false,
+    failure: null,
+    sourceTarget: null
+  });
+
+  assert.match(markup, /class="course-authoring-sections has-six"/u);
+  assert.match(markup, /<span>Fontes<\/span>/u);
+  assert.match(markup, /data-course-sources-host/u);
+  assert.doesNotMatch(markup, /studyUnit\.sources/u);
+});

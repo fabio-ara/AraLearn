@@ -44,6 +44,7 @@ sincronizada pode existir somente naquele dispositivo.
 | apresentar a pessoa | identificador, nome de apresentação opcional e referência do avatar | PostgreSQL |
 | exibir o avatar | arquivo JPEG, PNG ou WebP de até 512 KiB | bucket privado `person-avatars` |
 | identificar o Curso | proprietário, título, objetivo, orientações e composição didática | PostgreSQL |
+| documentar Fontes e proveniência | revisões de Fonte, metadados, URL, Âncoras, trecho privado de verificação e atribuições por alvo | PostgreSQL privado; arquivos externos não são copiados para o Storage |
 | autorizar o Estudo | Curso, pessoa favorecida, concedente e momento da concessão | PostgreSQL |
 | retomar o Estudo | posição, conclusões, marcações **Rever** e observações pessoais | PostgreSQL e réplica local |
 | aplicar alterações com segurança | revisão esperada, identificador do pedido, evento e recibo técnico temporário | PostgreSQL privado |
@@ -95,6 +96,23 @@ Todo Curso nasce privado. A pessoa proprietária é a única que pode:
 
 Uma pessoa favorecida pode listar e abrir o Curso apenas no Estudo. A resposta
 de Estudo não contém orientações privadas de Autoria nem estado autoral.
+
+### Fontes na Autoria e no Estudo
+
+Somente a pessoa proprietária acessa catálogo, histórico, Fonte oculta, legado
+não resolvido, trecho de verificação, ator e controles de edição. O Estudo não
+recebe esse conjunto ao abrir o Curso. Quando a pessoa abre **Fontes** numa
+Unidade, uma RPC revalida o acesso e entrega apenas a projeção autorizada:
+
+- Fonte `hidden` ou `unresolved_legacy` é omitida;
+- `citation` apresenta citação e localização, mas URL nula;
+- `citation_and_link` pode apresentar também a URL;
+- histórico, trecho privado, ator, canal e edição permanecem ausentes.
+
+A projeção vale para a Unidade e revisão correntes. Revogação, 404 ou outra
+perda de autoridade aciona a mesma purga local do Curso. O AraLearn conserva
+metadados e links, não uma cópia dos bytes apontados pela Fonte; o site externo
+possui tratamento de dados próprio quando o link é aberto.
 
 Conceder ou revogar exige confirmação humana explícita. Revogar remove o acesso
 ao conteúdo, mas preserva no servidor o estado pessoal daquela pessoa. Na

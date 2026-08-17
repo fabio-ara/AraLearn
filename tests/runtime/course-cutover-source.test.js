@@ -18,12 +18,12 @@ import { canonicalSha256 } from "../../scripts/courseCutover/courseCutoverImport
 import { runCourseIdentityCutover } from
   "../../scripts/courseCutover/runCourseIdentityCutover.mjs";
 
-test("ajuda descreve as cinco migrations da transação hospedada", async () => {
+test("ajuda descreve as seis migrations da transação hospedada", async () => {
   const source = await fs.readFile(new URL(
     "../../scripts/courseCutover/runCourseIdentityCutover.mjs",
     import.meta.url
   ), "utf8");
-  assert.match(source, /migrations 1400\/1500\/1600\/1700\/1800 em uma transação/u);
+  assert.match(source, /migrations 1400\/1500\/1600\/1700\/1800\/1900 em uma transação/u);
 });
 
 test("snapshot SQL lê somente a árvore e os quatro descritores correntes", () => {
@@ -46,6 +46,7 @@ test("snapshot SQL lê somente a árvore e os quatro descritores correntes", () 
   );
   assert.doesNotMatch(COURSE_CUTOVER_SOURCE_SQL, /storage\.objects/iu);
   assert.match(COURSE_CUTOVER_VERIFICATION_SQL, /private\.course_entities/u);
+  assert.match(COURSE_CUTOVER_VERIFICATION_SQL, /course_source_attribution_sources/u);
   assert.match(COURSE_CUTOVER_VERIFICATION_SQL, /'createdAt', entity\.created_at/u);
 });
 
@@ -159,6 +160,7 @@ test("runner só escreve com --apply, relê drift e sempre limpa o temp", async 
         manifestHash: "1".repeat(64),
         documentHash: "2".repeat(64),
         rowHash: "3".repeat(64),
+        sourceReferenceHash: "5".repeat(64),
         entityStateHash: "4".repeat(64),
         counts: { studyUnits: 8 }
       }
@@ -198,6 +200,7 @@ test("runner só escreve com --apply, relê drift e sempre limpa o temp", async 
     authoringPlanMigrationSql: "authoring-plan-migration",
     studyUnitInspectionMigrationSql: "study-unit-inspection-migration",
     courseDesignMigrationSql: "course-design-migration",
+    courseSourcesMigrationSql: "course-sources-migration",
     readSnapshot,
     createArtifactLoader,
     prepare: async (snapshot) => makePreparation(snapshot),
@@ -210,6 +213,14 @@ test("runner só escreve com --apply, relê drift e sempre limpa o temp", async 
   assert.equal(readOptions.at(-1).processTimeoutMs, 90_000);
   assert.equal(attestations.at(-1).phase, "prepared");
   assert.equal(attestations.at(-1).courses[0].entityStateHash, "4".repeat(64));
+  assert.equal(attestations.at(-1).migrationHash, createHash("sha256").update(
+    [
+      "migration", "profile-migration", "authoring-plan-migration",
+      "study-unit-inspection-migration", "course-design-migration",
+      "course-sources-migration"
+    ].join("\n"),
+    "utf8"
+  ).digest("hex"));
 
   let reads = 0;
   await assert.rejects(runCourseIdentityCutover({
@@ -220,6 +231,7 @@ test("runner só escreve com --apply, relê drift e sempre limpa o temp", async 
     authoringPlanMigrationSql: "authoring-plan-migration",
     studyUnitInspectionMigrationSql: "study-unit-inspection-migration",
     courseDesignMigrationSql: "course-design-migration",
+    courseSourcesMigrationSql: "course-sources-migration",
     readSnapshot: async () => (++reads === 1 ? firstSnapshot : { marker: "drift" }),
     createArtifactLoader,
     prepare: async (snapshot) => makePreparation(snapshot),
@@ -237,6 +249,7 @@ test("runner só escreve com --apply, relê drift e sempre limpa o temp", async 
     authoringPlanMigrationSql: "authoring-plan-migration",
     studyUnitInspectionMigrationSql: "study-unit-inspection-migration",
     courseDesignMigrationSql: "course-design-migration",
+    courseSourcesMigrationSql: "course-sources-migration",
     readSnapshot: async () => firstSnapshot,
     createArtifactLoader,
     prepare: async (snapshot) => makePreparation(snapshot),
@@ -251,6 +264,7 @@ test("runner só escreve com --apply, relê drift e sempre limpa o temp", async 
       manifestHash: "1".repeat(64),
       documentHash: "2".repeat(64),
       rowHash: "3".repeat(64),
+      sourceReferenceHash: "5".repeat(64),
       entityStateHash: "4".repeat(64),
       counts: { studyUnits: 8 }
     }],
@@ -279,6 +293,7 @@ test("runner grava atestação mínima somente fora do repositório público", a
         manifestHash: "1".repeat(64),
         documentHash: "2".repeat(64),
         rowHash: "3".repeat(64),
+        sourceReferenceHash: "5".repeat(64),
         entityStateHash: "4".repeat(64),
         counts: { studyUnits: 8 }
       }
@@ -304,6 +319,7 @@ test("runner grava atestação mínima somente fora do repositório público", a
     authoringPlanMigrationSql: "authoring-plan-migration-without-content",
     studyUnitInspectionMigrationSql: "study-unit-inspection-migration-without-content",
     courseDesignMigrationSql: "course-design-migration-without-content",
+    courseSourcesMigrationSql: "course-sources-migration-without-content",
     readSnapshot: async () => snapshot,
     createArtifactLoader,
     prepare: async () => preparation,
@@ -324,7 +340,7 @@ test("runner grava atestação mínima somente fora do repositório público", a
     ]);
     assert.deepEqual(Object.keys(report.courses[0]).sort(), [
       "counts", "courseId", "documentHash", "entityStateHash", "manifestHash",
-      "rowHash"
+      "rowHash", "sourceReferenceHash"
     ]);
     assert.equal(JSON.stringify(report).includes("database-secret"), false);
     assert.equal(JSON.stringify(report).includes("user-secret"), false);

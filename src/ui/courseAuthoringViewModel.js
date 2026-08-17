@@ -1,4 +1,8 @@
 import { isCanonicalCourseId } from "./courseAuthoringRoute.js";
+import {
+  normalizeCourseSourceChange as normalizeCourseSourceChangeDomain,
+  normalizeCourseSourcesRead
+} from "../domain/courseSources.js";
 
 const OWNERSHIP_VALUES = new Set(["owned"]);
 const AUTHORING_PLAN_ORIGINS = new Set(["automatic", "author", "research_condition"]);
@@ -1458,6 +1462,59 @@ export function mergeCourseDesignScopePages(currentValue, incomingValue) {
       children: Object.freeze(children)
     })
   });
+}
+
+export function normalizeCourseSourcesPage(value, {
+  expectedCourseId = "",
+  expectedCourseRevision = null,
+  expectedMode = "",
+  expectedSourceId = null,
+  expectedTargetKind = null,
+  expectedTargetId = null
+} = {}) {
+  const normalized = normalizeCourseSourcesRead(value);
+  if ((expectedCourseId && normalized.courseId !== expectedCourseId) ||
+      (expectedCourseRevision !== null &&
+       normalized.courseRevision !== expectedCourseRevision)) {
+    fail("course_revision_changed", "O Curso mudou durante a leitura de fontes.");
+  }
+  if ((expectedMode && normalized.mode !== expectedMode) ||
+      (expectedSourceId !== null && normalized.query.sourceId !== expectedSourceId) ||
+      (expectedTargetKind !== null && normalized.query.targetKind !== expectedTargetKind) ||
+      (expectedTargetId !== null && normalized.query.targetId !== expectedTargetId)) {
+    fail("invalid_course_sources", "A leitura de fontes não corresponde à consulta solicitada.");
+  }
+  return normalized;
+}
+
+export function mergeCourseSourceCatalogPages(currentValue, incomingValue) {
+  const incoming = normalizeCourseSourcesPage(incomingValue, {
+    expectedCourseId: currentValue?.courseId || "",
+    expectedCourseRevision: currentValue?.courseRevision ?? null,
+    expectedMode: "catalog"
+  });
+  if (currentValue?.contract !== incoming.contract || currentValue?.mode !== "catalog" ||
+      currentValue?.query?.sourceId !== null || currentValue?.query?.targetKind !== null ||
+      currentValue?.query?.targetId !== null || !Array.isArray(currentValue?.items)) {
+    fail("invalid_course_sources", "As páginas do catálogo pertencem a leituras diferentes.");
+  }
+  const items = [...currentValue.items, ...incoming.items];
+  if (new Set(items.map(({ sourceId }) => sourceId)).size !== items.length) {
+    fail("invalid_course_sources", "A paginação repetiu uma fonte.");
+  }
+  return Object.freeze({ ...incoming, items: Object.freeze(items) });
+}
+
+export function normalizeCourseSourceChange(value, {
+  expectedCourseId = "",
+  expectedRequestId = ""
+} = {}) {
+  const normalized = normalizeCourseSourceChangeDomain(value);
+  if ((expectedCourseId && normalized.courseId !== expectedCourseId) ||
+      (expectedRequestId && normalized.requestId !== expectedRequestId)) {
+    fail("invalid_course_sources", "A confirmação não pertence à operação enviada.");
+  }
+  return normalized;
 }
 
 function outlineRequiredText(value, label, maximum = 300) {

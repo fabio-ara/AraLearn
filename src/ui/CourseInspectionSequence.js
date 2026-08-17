@@ -140,7 +140,7 @@ function normalizePathNode(value, kind) {
 function normalizeStudyUnit(value) {
   exactRecord(
     value,
-    ["id", "position", "title", "role", "content", "response", "feedback", "topics", "sources"],
+    ["id", "position", "title", "role", "content", "response", "feedback", "topics"],
     "Uma Unidade de estudo da Inspeção é inválida."
   );
   const cloned = structuredClone(value);
@@ -148,7 +148,7 @@ function normalizeStudyUnit(value) {
   cloned.position = natural(cloned.position, "A posição da Unidade de estudo", { minimum: 1 });
   cloned.title = requiredText(cloned.title, "O título da Unidade de estudo");
   if (!new Set(["theory", "practice"]).has(cloned.role) || !Array.isArray(cloned.content) ||
-      !Array.isArray(cloned.feedback) || !Array.isArray(cloned.topics) || !Array.isArray(cloned.sources)) {
+      !Array.isArray(cloned.feedback) || !Array.isArray(cloned.topics)) {
     throw new TypeError("O envelope da Unidade de estudo é inválido.");
   }
   return Object.freeze(cloned);
@@ -359,7 +359,7 @@ function renderContext(state, item) {
     ` data-inspection-context-study-unit>Esta Unidade</a></nav></details>`;
 }
 
-function renderStudyUnit(item, totalCount) {
+function renderStudyUnit(item, totalCount, canEditSources) {
   const path = item.curriculumPath;
   const runtime = renderPackageStudyUnitBlocksWithDock(item.studyUnit, {
     omitRepeatedHeading: true,
@@ -384,6 +384,11 @@ function renderStudyUnit(item, totalCount) {
     `<button type="button" data-inspection-copy-link data-deep-link="${escapeHtml(item.deepLink)}"` +
     ` data-inspection-control-key="copy:${escapeHtml(item.studyUnit.id)}">` +
     `${renderUiIcon("copy", "course-authoring-button-icon")}<span>Copiar link</span></button>` +
+    (canEditSources
+      ? `<button type="button" data-inspection-edit-sources data-study-unit-id="${escapeHtml(item.studyUnit.id)}"` +
+        ` data-inspection-control-key="sources:${escapeHtml(item.studyUnit.id)}">` +
+        `${renderUiIcon("study", "course-authoring-button-icon")}<span>Definir fontes</span></button>`
+      : "") +
     "</div></details></header>" +
     (runtime.dockHtml
       ? '<p class="course-inspection-response-notice">Respostas desativadas durante a inspeção.</p>'
@@ -449,7 +454,7 @@ function renderSequence(state) {
     body = '<ol class="course-inspection-sequence" aria-label="Sequência vertical de inspeção">' +
       `<li class="course-inspection-spacer" aria-hidden="true" style="height:${Math.round(beforeCount * state.averageHeight)}px"></li>` +
       renderBoundaryButton("backward", state) +
-      state.items.map((item) => renderStudyUnit(item, state.totalCount)).join("") +
+      state.items.map((item) => renderStudyUnit(item, state.totalCount, state.canEditSources)).join("") +
       renderBoundaryButton("forward", state) +
       `<li class="course-inspection-spacer" aria-hidden="true" style="height:${Math.round(afterCount * state.averageHeight)}px"></li></ol>`;
   }
@@ -506,6 +511,7 @@ export function createCourseInspectionSequence({
   course,
   routeTarget = null,
   onNavigate = () => {},
+  onEditSources = () => {},
   windowValue = globalThis.window || null,
   documentValue = globalThis.document || null,
   navigatorValue = globalThis.navigator || null
@@ -515,13 +521,15 @@ export function createCourseInspectionSequence({
       typeof controller?.loadAuthoringInspectionPosition !== "function" ||
       typeof controller?.saveAuthoringInspectionPosition !== "function" ||
       !UUID_PATTERN.test(String(course?.courseId || "")) ||
-      !Number.isSafeInteger(course?.revision) || course.revision < 1) {
+      !Number.isSafeInteger(course?.revision) || course.revision < 1 ||
+      typeof onEditSources !== "function") {
     throw new TypeError("Dependências da sequência de Inspeção são inválidas.");
   }
   const requested = inspectionRequestFromTarget(routeTarget);
   const state = {
     courseId: course.courseId,
     pinnedRevision: course.revision,
+    canEditSources: course.ownership === "owned" && course.canEdit === true,
     scope: requested.scope,
     explicitTarget: Boolean(routeTarget),
     explicitAnchor: routeTarget?.kind === "study_unit",
@@ -958,6 +966,20 @@ export function createCourseInspectionSequence({
         if (status) status.textContent = "Link copiado.";
       } catch {
         if (status) status.textContent = "Não foi possível copiar o link.";
+      }
+      return;
+    }
+    const editSources = event.target.closest?.("[data-inspection-edit-sources]");
+    if (editSources) {
+      const item = state.items.find(({ studyUnit }) =>
+        studyUnit.id === String(editSources.dataset.studyUnitId || ""));
+      if (item) {
+        onEditSources({
+          targetKind: "study_unit",
+          targetId: item.studyUnit.id,
+          targetVersion: item.version,
+          targetLabel: item.studyUnit.title
+        });
       }
       return;
     }

@@ -24,7 +24,9 @@ const REQUIRED_FEATURES = Object.freeze([
   "course-study-unit-inspection-v1",
   "course-design-parameters-v1",
   "course-authoring-guidance-v1",
-  "course-component-policy-v1"
+  "course-component-policy-v1",
+  "course-sources-v1",
+  "course-source-provenance-v1"
 ]);
 
 const CANONICAL_RUNTIME_FILES = Object.freeze([
@@ -32,15 +34,21 @@ const CANONICAL_RUNTIME_FILES = Object.freeze([
   "src/domain/courseAuthoringPlan.js",
   "src/domain/courseDesignParameters.js",
   "src/domain/courseEntities.js",
+  "src/domain/courseSources.js",
   "src/persistence/AuthSessionStore.js",
   "src/persistence/CourseLocalStore.js",
   "src/persistence/CoursePersonalStateRepository.js",
   "src/study/CourseStudyBridge.js",
+  "src/study/CourseStudyApplication.js",
   "src/study/CourseStudyRepository.js",
+  "src/study/CourseStudyScreen.js",
+  "src/resources/kernel/studyUnitEnvelope.js",
   "src/supabase/CourseApiClient.js",
   "src/supabase/CourseController.js",
   "src/ui/CourseAuthoringSurface.js",
   "src/ui/CourseDesignPanel.js",
+  "src/ui/CourseInspectionSequence.js",
+  "src/ui/CourseSourcesPanel.js",
   "src/ui/courseAuthoringRoute.js",
   "src/ui/courseAuthoringViewModel.js",
   "supabase/functions/_shared/aralearn-authoring/courseApiServer.js",
@@ -80,6 +88,18 @@ const FORBIDDEN_RUNTIME_SYMBOLS = Object.freeze([
   "salvarCardsNaMicrossequencia",
   "authoringGuidance",
   "componentOptions"
+]);
+
+const STUDY_UNIT_SOURCE_CONTRACT_FILES = new Set([
+  "src/resources/kernel/studyUnitEnvelope.js",
+  "supabase/functions/_shared/aralearn/runtime/resources/kernel/studyUnitEnvelope.js"
+]);
+
+const FORBIDDEN_COURSE_SOURCE_ALIASES = Object.freeze([
+  { pattern: /aralearn\.course-design-context\.v1/u, label: "contexto de materialização v1" },
+  { pattern: /\b(?:sourceUses|unitSourceUses)\b/u, label: "alias de atribuição de Fonte" },
+  { pattern: /\b(?:view|operation)\s*:\s*["'](?:sources|update_sources)["']/u,
+    label: "alias de operação de Fonte" }
 ]);
 
 const WILDCARD_SCOPE_AUTHORIZATION =
@@ -174,7 +194,7 @@ function equalArray(actual, expected) {
 
 async function validateManifest() {
   const manifest = JSON.parse(await read("supabase/runtime-manifest.json"));
-  if (manifest.schemaRevision !== "20260817180000" || manifest.contractVersion !== 1 ||
+  if (manifest.schemaRevision !== "20260817190000" || manifest.contractVersion !== 1 ||
       !equalArray(manifest.requiredFeatures, REQUIRED_FEATURES)) {
     fail("O manifesto estático não descreve exatamente o runtime canônico de Curso.");
   }
@@ -193,6 +213,9 @@ async function validateManifest() {
   const designMigration = await read(
     "supabase/migrations/20260817180000_course_design_parameters.sql"
   );
+  const sourcesMigration = await read(
+    "supabase/migrations/20260817190000_course_sources_provenance.sql"
+  );
   if (!courseMigration.includes("$advance_course_runtime_manifest$") ||
       !courseMigration.includes("'schemaRevision', '20260817140000'") ||
       !profileMigration.includes("$advance_profile_access_runtime_manifest$") ||
@@ -206,7 +229,9 @@ async function validateManifest() {
       ) ||
       !inspectionMigration.includes("'schemaRevision', '20260817170000'") ||
       !designMigration.includes("$advance_course_design_runtime_manifest$") ||
-      !designMigration.includes("'schemaRevision','20260817180000'")) {
+      !designMigration.includes("'schemaRevision','20260817180000'") ||
+      !sourcesMigration.includes("$advance_course_sources_runtime_manifest$") ||
+      !sourcesMigration.includes("'schemaRevision','20260817190000'")) {
     fail("A migration de Curso não avança o manifesto remoto.");
   }
   for (const feature of REQUIRED_FEATURES) {
@@ -214,7 +239,8 @@ async function validateManifest() {
         !profileMigration.includes(`'${feature}'`) &&
         !authoringPlanMigration.includes(`'${feature}'`) &&
         !inspectionMigration.includes(`'${feature}'`) &&
-        !designMigration.includes(`'${feature}'`)) {
+        !designMigration.includes(`'${feature}'`) &&
+        !sourcesMigration.includes(`'${feature}'`)) {
       fail(`A migration de Curso não declara ${feature}.`);
     }
   }
@@ -248,6 +274,15 @@ async function validateRuntimeFiles() {
   if (!browserCourseDesign || browserCourseDesign !== edgeCourseDesign) {
     fail("O domínio do desenho parametrizado diverge entre navegador e Edge.");
   }
+  const browserCourseSources = entries.find(({ relativePath }) =>
+    relativePath === "src/domain/courseSources.js")?.source;
+  const edgeCourseSources = edgeGraph.get(path.join(
+    repositoryRoot,
+    "supabase/functions/_shared/aralearn/runtime/domain/courseSources.js"
+  ));
+  if (!browserCourseSources || browserCourseSources !== edgeCourseSources) {
+    fail("O domínio de Fontes diverge entre navegador e Edge.");
+  }
   for (const [filePath, source] of edgeGraph) {
     const runtimePath = relativePath(filePath);
     if (WILDCARD_SCOPE_AUTHORIZATION.test(source)) {
@@ -262,6 +297,15 @@ async function validateRuntimeFiles() {
       if (source.includes(symbol)) {
         fail(`${relativePath} ainda usa o símbolo substituído ${symbol}.`);
       }
+    }
+    if (STUDY_UNIT_SOURCE_CONTRACT_FILES.has(relativePath) && /\bsources\b/u.test(source)) {
+      fail(`${relativePath} ainda expõe StudyUnit.sources.`);
+    }
+    if (/\b(?:studyUnit|study_unit|cloned)(?:\?\.|\.)sources\b/u.test(source)) {
+      fail(`${relativePath} ainda lê StudyUnit.sources.`);
+    }
+    for (const { pattern, label } of FORBIDDEN_COURSE_SOURCE_ALIASES) {
+      if (pattern.test(source)) fail(`${relativePath} ainda usa ${label}.`);
     }
   }
   if (!entries.some(({ relativePath: runtimePath }) =>

@@ -343,6 +343,285 @@ test("parâmetros usam a mesma operação Edge do MCP com escopo concreto e CAS"
   );
 });
 
+test("Fontes e citações usam contratos estritos, redigidos e vinculados ao pedido", async () => {
+  const calls = [];
+  const legacySourceId = ` legacy-${"s".repeat(300)} `;
+  const read = {
+    contract: "aralearn.course-sources.v1",
+    courseId: COURSE_ID,
+    courseRevision: 4,
+    mode: "target",
+    query: { sourceId: null, targetKind: "study_unit", targetId: "unit-a" },
+    items: [],
+    nextCursor: null
+  };
+  const changed = {
+    contract: "aralearn.course-source-change.v1",
+    courseId: COURSE_ID,
+    courseRevision: 5,
+    requestId: "request-source-client-1",
+    idempotent: false,
+    changed: true,
+    change: { type: "set_target_sources", subjectId: "unit-a", revision: 2 }
+  };
+  const citations = {
+    contract: "aralearn.course-study-citations.v1",
+    courseId: COURSE_ID,
+    courseRevision: 4,
+    studyUnitId: "unit-a",
+    citations: [{
+      sourceId: legacySourceId,
+      sourceRevision: 1,
+      title: "Fonte A",
+      citationText: "Fonte A, 2026.",
+      url: "https://example.test/fonte-a",
+      editionOrVersion: null,
+      anchors: [{
+        anchorId: "anchor-a",
+        anchorRevision: 1,
+        selector: { kind: "page_range", startPage: 3, endPage: 4 }
+      }]
+    }]
+  };
+  const { client } = clientWithFetch(async (url, init) => {
+    const body = JSON.parse(init.body);
+    calls.push({ url, body });
+    if (url.endsWith("/rpc/get_course_study_citations_v1")) return jsonResponse(citations);
+    if (body.view === "course_sources") return jsonResponse({ ok: true, data: read });
+    if (body.operation === "update_course_sources") {
+      return jsonResponse({ ok: true, data: changed });
+    }
+    assert.fail(`Requisição inesperada: ${url}`);
+  });
+
+  assert.deepEqual(await client.loadCourseSources(COURSE_ID, {
+    expectedRevision: 4,
+    mode: "target",
+    targetKind: "study_unit",
+    targetId: "unit-a",
+    cursor: null
+  }), read);
+  const sourceCommand = {
+    type: "set_target_sources",
+    targetKind: "study_unit",
+    targetId: "unit-a",
+    expectedTargetVersion: 1,
+    sourceLinks: [{
+      sourceId: legacySourceId,
+      sourceRevision: 1,
+      relation: "quoted_from",
+      anchors: [{ anchorId: "anchor-a", anchorRevision: 1 }]
+    }]
+  };
+  assert.deepEqual(await client.mutateCourseSources({
+    requestId: "request-source-client-1",
+    courseId: COURSE_ID,
+    expectedRevision: 4,
+    sourceCommand
+  }), changed);
+  assert.deepEqual(await client.getStudyUnitCitations(
+    COURSE_ID,
+    "unit-a",
+    { expectedRevision: 4 }
+  ), citations);
+  assert.deepEqual(calls[0].body, {
+    courseId: COURSE_ID,
+    view: "course_sources",
+    expectedRevision: 4,
+    mode: "target",
+    sourceId: null,
+    targetKind: "study_unit",
+    targetId: "unit-a",
+    cursor: null,
+    limit: 10
+  });
+  assert.equal(calls[1].body.operation, "update_course_sources");
+  assert.deepEqual(calls[1].body.sourceCommand, sourceCommand);
+  assert.deepEqual(calls[2].body, {
+    p_course_id: COURSE_ID,
+    p_expected_revision: 4,
+    p_study_unit_id: "unit-a"
+  });
+
+  const staleCitations = clientWithFetch(async () => jsonResponse({
+    code: "40001",
+    message: "Revisão base desatualizada."
+  }, 500)).client;
+  await assert.rejects(
+    () => staleCitations.getStudyUnitCitations(
+      COURSE_ID,
+      "unit-a",
+      { expectedRevision: 4 }
+    ),
+    (error) => error.code === "course_revision_changed" &&
+      error.status === 409 && error.cause?.code === "40001" &&
+      !(error instanceof TypeError)
+  );
+
+  const astralSourceId = "🔎".repeat(1_500);
+  let contextualRequest = null;
+  const contextualRead = {
+    contract: "aralearn.course-sources.v1",
+    courseId: COURSE_ID,
+    courseRevision: 4,
+    mode: "source",
+    query: {
+      sourceId: astralSourceId,
+      targetKind: "study_unit",
+      targetId: "unit-a"
+    },
+    items: [],
+    nextCursor: null
+  };
+  const contextualClient = clientWithFetch(async (url, init) => {
+    contextualRequest = { url, body: JSON.parse(init.body) };
+    return jsonResponse({ ok: true, data: contextualRead });
+  }).client;
+  assert.deepEqual(await contextualClient.loadCourseSources(COURSE_ID, {
+    expectedRevision: 4,
+    mode: "source",
+    sourceId: astralSourceId,
+    targetKind: "study_unit",
+    targetId: "unit-a"
+  }), contextualRead);
+  assert.deepEqual(contextualRequest.body, {
+    courseId: COURSE_ID,
+    view: "course_sources",
+    expectedRevision: 4,
+    mode: "source",
+    sourceId: astralSourceId,
+    targetKind: "study_unit",
+    targetId: "unit-a",
+    cursor: null,
+    limit: 10
+  });
+  await assert.rejects(
+    () => contextualClient.loadCourseSources(COURSE_ID, {
+      expectedRevision: 4,
+      mode: "source",
+      sourceId: "界".repeat(2_049)
+    }),
+    /Identidade da Fonte inválida/u
+  );
+
+  const astralTargetId = "🔎".repeat(240);
+  const astralTargetRead = {
+    contract: "aralearn.course-sources.v1",
+    courseId: COURSE_ID,
+    courseRevision: 4,
+    mode: "target",
+    query: { sourceId: null, targetKind: "study_unit", targetId: astralTargetId },
+    items: [],
+    nextCursor: null
+  };
+  const astralTargetClient = clientWithFetch(async () =>
+    jsonResponse({ ok: true, data: astralTargetRead })).client;
+  assert.deepEqual(await astralTargetClient.loadCourseSources(COURSE_ID, {
+    expectedRevision: 4,
+    mode: "target",
+    targetKind: "study_unit",
+    targetId: astralTargetId
+  }), astralTargetRead);
+  await assert.rejects(
+    () => astralTargetClient.loadCourseSources(COURSE_ID, {
+      expectedRevision: 4,
+      mode: "target",
+      targetKind: "study_unit",
+      targetId: "🔎".repeat(241)
+    }),
+    /Identidade do alvo inválida/u
+  );
+
+  const astralCitationRead = {
+    contract: "aralearn.course-study-citations.v1",
+    courseId: COURSE_ID,
+    courseRevision: 4,
+    studyUnitId: astralTargetId,
+    citations: []
+  };
+  const astralCitationClient = clientWithFetch(async () =>
+    jsonResponse(astralCitationRead)).client;
+  assert.deepEqual(await astralCitationClient.getStudyUnitCitations(
+    COURSE_ID,
+    astralTargetId,
+    { expectedRevision: 4 }
+  ), astralCitationRead);
+  await assert.rejects(
+    () => astralCitationClient.getStudyUnitCitations(
+      COURSE_ID,
+      "🔎".repeat(241),
+      { expectedRevision: 4 }
+    ),
+    /Identidade da Unidade de estudo inválida/u
+  );
+
+  await assert.rejects(
+    () => client.loadCourseSources(COURSE_ID, {
+      expectedRevision: 4,
+      mode: "source",
+      sourceId: "source-a",
+      targetKind: "study_unit"
+    }),
+    /Leitura de Fontes inválida/u
+  );
+  await assert.rejects(
+    () => client.mutateCourseSources({
+      requestId: "request-source-client-2",
+      courseId: COURSE_ID,
+      expectedRevision: 4,
+      sourceCommand: { ...sourceCommand, actorId: USER_ID }
+    }),
+    (error) => error.code === "invalid_course_source_command"
+  );
+  await assert.rejects(
+    () => client.mutateCourseSources({
+      requestId: "request-source-client-3",
+      courseId: COURSE_ID,
+      expectedRevision: 4,
+      sourceCommand: {
+        type: "save_source",
+        sourceId: "source-a",
+        expectedSourceRevision: 0,
+        source: {
+          kind: "web_page",
+          title: "Fonte A",
+          citationText: "Fonte A, 2026.",
+          url: "http://example.test/fonte-a",
+          editionOrVersion: null,
+          studyVisibility: "citation"
+        }
+      }
+    }),
+    (error) => error.code === "invalid_course_source"
+  );
+
+  const leakedCitations = clientWithFetch(async () => jsonResponse({
+    ...citations,
+    citations: [{ ...citations.citations[0], studyVisibility: "hidden" }]
+  })).client;
+  await assert.rejects(
+    () => leakedCitations.getStudyUnitCitations(
+      COURSE_ID,
+      "unit-a",
+      { expectedRevision: 4 }
+    ),
+    (error) => error.code === "invalid_course_study_citations"
+  );
+  const driftedRead = clientWithFetch(async () => jsonResponse({
+    ok: true,
+    data: { ...read, courseId: USER_ID }
+  })).client;
+  await assert.rejects(
+    () => driftedRead.loadCourseSources(COURSE_ID, {
+      expectedRevision: 4,
+      mode: "target",
+      targetKind: "study_unit",
+      targetId: "unit-a"
+    }),
+    /não corresponde ao pedido/u
+  );
+});
+
 test("inspeção envia escopo, âncora e cursor canônicos à operação Edge", async () => {
   const calls = [];
   const { client } = clientWithFetch(async (url, init) => {
