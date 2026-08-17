@@ -59,10 +59,13 @@ até as proposições avaliáveis:
 7. [Observações pedagógicas](observacoes-pedagogicas.md) — feedback situado sem
    converter interação em vigilância.
 
-Para consulta, use o [glossário de construtos](glossario-construtos.md). A
-[matriz de rastreabilidade pedagógica](matriz-rastreabilidade-pedagogica.md)
-liga cada decisão à literatura, à implementação e à forma prevista de
-avaliação.
+Para consulta, use o [glossário de construtos](glossario-construtos.md). O
+[vocabulário controlado](vocabulario-controlado.md) mostra, por camada, quais
+nomes permanecem, quais estão restritos e quais sairão em corte limpo. Suas
+fichas distinguem o rótulo simples da interface, o conceito de domínio e o
+símbolo técnico-alvo, com exemplos, riscos e alternativas examinadas. A [matriz
+de rastreabilidade pedagógica](matriz-rastreabilidade-pedagogica.md) liga cada
+decisão à literatura, à implementação e à forma prevista de avaliação.
 
 ## Estudar a engenharia
 
@@ -158,6 +161,7 @@ fontes de implementação e as evidências automatizadas por assunto.
 | [Princípios editoriais](principios-editoriais.md) | critérios de clareza, profundidade e evidência |
 | [Glossário técnico](glossario-tecnico.md) | termos de computação e contratos |
 | [Glossário de construtos](glossario-construtos.md) | termos pedagógicos e metodológicos |
+| [Vocabulário controlado](vocabulario-controlado.md) | mapa gerado de nomes atuais, termos canônicos, símbolos e etapas de corte |
 | [Desenho instrucional parametrizado](desenho-instrucional-parametrizado.md) | análise científica, parâmetros, contratos e persistência interna |
 | [Auditoria de conformidade instrucional](auditoria-de-conformidade-instrucional.md) | checks determinísticos, juízo semântico, findings e reauditoria |
 | [Experimentos instrucionais parametrizados](experimentos-instrucionais-parametrizados.md) | protocolo, condições, variantes, freeze, atribuição e limites de inferência |

@@ -102,7 +102,7 @@ dialogado.
   previsíveis e da necessidade de retomada. Quando houver várias práticas,
   torne visível a variação de caso, representação, estratégia, erro provável ou
   grau de apoio.
-- O recurso escolhido corresponde à operação cognitiva. Em
+- O recurso escolhido corresponde à operação-alvo da tarefa. Em
   `consultarBibliotecaDeResources`, percorra `explore`, `search`, `inspect` e
   `contracts`, estes para exatamente uma versão por chamada. Use `validate_card`
   e depois `audit_representation`: a auditoria distingue `semantic_fit` no
@@ -150,7 +150,7 @@ dialogado.
 - Uma prática cobra uma decisão principal. Ela pode mobilizar pré-requisitos aprovados, mas não pode exigir que a pessoa reconstrua o caso a partir de posição, cor, legenda extensa, card anterior, feedback ou resposta oculta.
 - Um card de prática pode reunir mais dados e elementos visuais que um card de
   teoria quando o contexto completo for necessário à decisão. Essa densidade
-  precisa servir ao gesto cognitivo principal; não autoriza inventário de
+  precisa servir à operação-alvo principal da tarefa; não autoriza inventário de
   assuntos, ornamentação ou relações irrelevantes.
 - Termo técnico, símbolo, sigla, unidade, papel, convenção ou relação nova recebe explicação suficiente antes de ser exigido. Expanda a sigla na primeira ocorrência e explique sua função, não apenas as letras. Para comando, utilitário ou palavra reservada, apresente forma literal, significado, função e ambiente; por exemplo, `pwd` significa `print working directory` e mostra o diretório de trabalho atual. Não use jargão mais avançado como explicação de uma lacuna conceitual.
 - Quando o estudante deve completar uma representação, use um package de

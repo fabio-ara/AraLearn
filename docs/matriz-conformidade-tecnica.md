@@ -99,6 +99,7 @@ Esta matriz é versionada junto com o repositório. Não fixa contagem de testes
 |---|---|---|---|
 | dados pessoais são isolados por JWT, RLS e RPC | migrations, políticas e cliente Auth | pgTAP, PostgREST e smoke com duas contas | demonstrado nos fluxos cobertos |
 | uma estrutura persistente pode surgir sem caso de uso revisado | `auditVerticalParity.mjs`; inventário exato versionado de relações, funções, índices, restrições, triggers, policies, estado RLS e buckets | `vertical-parity-audit.test.js`; comparação do PostgreSQL após `db reset` na CI | não oferecido: todo objeto novo falha até a regeneração e a revisão explícitas do inventário; a classificação estrutural não demonstra necessidade de produto nem correção da regra SQL |
+| termo abolido, decisão incompleta ou alias de legado pode entrar no estado corrente | `docs/evidence/terminologia-canonica.v1.json`; `scripts/auditTerminology.mjs`; documento humano derivado `docs/vocabulario-controlado.md` | `tests/runtime/terminology-audit.test.js`; `npm run audit:terminology` | não oferecido: cada ficha exige termos de interface e domínio, equivalente inglês, símbolo-alvo, definição, exemplo, risco, alternativas específicas, fontes, impacto de migração, issue e não sinônimos; `cutoverStatus` descreve apenas o corte terminológico, corte pendente exige `removeBy` e decisão concluída falha diante de símbolo abolido fora de migrations e evidência histórica; aliases, fallbacks e boilerplate são rejeitados; a imagem continua hipótese visual não implementada |
 | papel nominal concede toda operação sem examinar alvo | adaptador Supabase e migrations de capacidade | testes de acesso e protocolo | não oferecido; papel e relações derivam capacidade e cada operação revalida alvo/estado |
 | MCP usa Streamable HTTP sem sessão de servidor | `mcpServer.js`; função `aralearn-authoring-mcp` | testes runtime, Deno e jornada MCP | demonstrado: protocolo `2025-11-25`, JSON-RPC e sem `MCP-Session-Id`; corpo até 32 MiB |
 | MCP aceita credencial estática de autoria | servidor MCP e segurança | testes OAuth e smoke local | não oferecido; exige access token OAuth do recurso protegido |
@@ -158,6 +159,7 @@ npm.cmd run audit:frontend
 npm.cmd run audit:residues
 npm.cmd run audit:docs
 npm.cmd run audit:parity
+npm.cmd run audit:terminology
 ```
 
 Durante a evolução da Autoria, a validação intermediária é proporcional ao

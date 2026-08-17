@@ -319,13 +319,14 @@ incompreensão aparece.
 dependência; a rápida pode reintroduzir busca improdutiva. A decisão precisa ser
 avaliada por operação, experiência e resultado.
 
-## Prática orientada pelo gesto cognitivo
+## Prática orientada pela operação-alvo da tarefa
 
-Um **gesto cognitivo** é a operação que a pessoa precisa realizar sobre o
+Uma **operação-alvo da tarefa** é aquilo que a atividade solicita que a pessoa
+faça sobre o
 conteúdo: recordar, localizar, discriminar, relacionar, ordenar, completar,
-explicar, calcular, transformar, provar ou aplicar, entre outras. O termo é
-usado como instrumento de planejamento, não como taxonomia psicológica
-universal.
+explicar, calcular, transformar, provar ou aplicar, entre outras possibilidades.
+Ela descreve a demanda planejada, não um gesto de entrada, um comportamento já
+observado ou um processo cognitivo que o aplicativo tenha medido.
 
 **Problema.** Variar componentes visuais sem variar a operação produz aparência
 de diversidade. Aplicar sempre múltipla escolha também pode reduzir tarefas de
@@ -336,7 +337,7 @@ preferência, por distribuição fixa ou pela evidência necessária. O formato
 precisa corresponder ao que o objetivo exige e permanecer situado no objeto
 representado.
 
-**Decisão.** A prática é escolhida pelo gesto cognitivo e pode combinar:
+**Decisão.** A prática é escolhida pela operação-alvo e pode combinar:
 
 - seleção de uma ou mais alternativas quando discriminar opções é relevante;
 - lacuna localizada dentro de texto, tabela, código, matriz, fórmula ou

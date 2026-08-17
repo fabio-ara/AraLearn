@@ -177,7 +177,7 @@ export const setDiagramPackage = Object.freeze({
     label: "Diagrama de conjuntos",
     purpose: "Representar inclusão, exclusão e interseção entre dois ou três conjuntos, preservando as regiões de Venn ou a topologia de Euler.",
     slots: Object.freeze(["content", "feedback"]),
-    cognitiveOperations: Object.freeze(["inspect-intersection", "classify-membership", "compare-sets", "apply-set-operation"]),
+    taskOperations: Object.freeze(["inspect-intersection", "classify-membership", "compare-sets", "apply-set-operation"]),
     academic: academicProfile({
       domains: ["teoria dos conjuntos", "lógica", "probabilidade", "bancos de dados"],
       knowledgeObjects: ["conjunto", "interseção", "união", "complemento", "região"],

@@ -83,7 +83,7 @@ baixa consequência, sem nota ou ranking.
 - **Manifestação possível:** formular meta, escolher estratégia, acompanhar sua
   adequação e ajustá-la diante de resultado ou feedback.
 - **Não equivale a:** estudar sem professor, progredir no curso, acessar com
-  frequência ou marcar um card para revisão.
+  frequência ou marcar uma unidade para revisão.
 - **Evidência necessária:** combinação de tarefa, relato situado, produto e
   instrumento apropriado; o indicador precisa corresponder à fase investigada.
 
@@ -140,8 +140,8 @@ computacionais que propõem, transformam ou analisam conteúdo durante a autoria
   ([Koedinger et al. (2012)](referencias.md#ref-koedinger2012kli)).
 - **Manifestação possível:** padrão de sucesso, erro, explicação ou aplicação
   em conjunto apropriado de tarefas.
-- **Não equivale a:** tópico, card, unidade editorial, campo de banco ou algo
-  que o sistema observe diretamente.
+- **Não equivale a:** tópico, unidade de estudo, unidade
+  editorial, campo de banco ou algo que o sistema observe diretamente.
 - **Evidência necessária:** modelo explícito, tarefas alinhadas, inferência e
   exame de alternativas compatíveis com a finalidade da avaliação.
 
@@ -198,15 +198,79 @@ computacionais que propõem, transformam ou analisam conteúdo durante a autoria
 - **Evidência necessária:** especificar o que deveria ser recuperado, que apoio
   estava disponível e que resposta foi produzida.
 
-### Gesto cognitivo
+### Gesto de entrada
+
+- **Tipo:** termo técnico observável.
+- **Definição:** movimento físico captado pela interface, como toque, deslize,
+  arrasto ou pinça.
+- **Manifestação possível:** evento de ponteiro ou toque com alvo e instante
+  identificados.
+- **Não equivale a:** ação de interface concluída, operação intelectual,
+  atenção, intenção ou aprendizagem.
+- **Evidência necessária:** instrumentação técnica validada e contexto da
+  interface; o gesto isolado não sustenta interpretação psicológica.
+
+### Ação de interface
+
+- **Tipo:** termo técnico observável.
+- **Definição:** mudança de estado solicitada por um controle, como abrir,
+  avançar, voltar, confirmar ou anotar.
+- **Manifestação possível:** transição de estado aceita, recusada ou interrompida.
+- **Não equivale a:** gesto que a iniciou, operação-alvo da tarefa ou resultado
+  educacional.
+- **Evidência necessária:** estado anterior, ação, alvo e resultado técnico.
+
+### Operação-alvo da tarefa
 
 - **Tipo:** termo operacional de planejamento.
-- **Definição:** operação que a tarefa exige sobre o conteúdo, como localizar,
+- **Definição:** operação que a tarefa solicita sobre o conteúdo, como localizar,
   comparar, relacionar, ordenar, calcular, transformar, explicar ou provar.
-- **Manifestação possível:** ação e justificativa coerentes com o objetivo.
-- **Não equivale a:** modalidade visual ou componente de interface.
+- **Manifestação possível:** resposta e justificativa coerentes com o objetivo.
+- **Não equivale a:** gesto de entrada, modalidade visual, botão, processo
+  cognitivo diretamente observado ou garantia de aprendizagem.
 - **Evidência necessária:** correspondência explícita entre objetivo, tarefa,
   resposta e critério de avaliação.
+
+### Ação epistêmica
+
+- **Tipo:** conceito teórico aplicado à interação.
+- **Definição:** ação externa realizada para revelar informação ou simplificar
+  o trabalho cognitivo, distinguível de uma ação pragmática que apenas aproxima
+  o estado final ([Kirsh e Maglio (1994)](referencias.md#ref-kirshmaglio1994epistemic);
+  [Kirsh (2010)](referencias.md#ref-kirsh2010external)).
+- **Manifestação possível:** reorganizar uma representação para tornar uma
+  relação perceptível antes de decidir.
+- **Não equivale a:** todo toque, rolagem, anotação ou manipulação externa.
+- **Evidência necessária:** tarefa e análise que demonstrem a função da ação,
+  incluindo explicações alternativas.
+
+### Atenção
+
+- **Tipo:** família de construtos cognitivos.
+- **Definição:** seleção de informação ou de representações internas segundo
+  mecanismos e condições específicos
+  ([Chun et al. (2011)](referencias.md#ref-chun2011attention)).
+- **Manifestação possível:** desempenho em tarefa e medidas validadas para o
+  mecanismo atencional investigado.
+- **Não equivale a:** visibilidade na viewport, foco de teclado, clique, rolagem,
+  tempo de permanência, conclusão ou ausência de troca de janela.
+- **Evidência necessária:** definição do mecanismo, desenho e instrumento
+  compatíveis; explicações neurocientíficas exigem cautela de tradução entre
+  níveis ([Howard-Jones (2014)](referencias.md#ref-howardjones2014neuroscience)).
+
+### Engajamento
+
+- **Tipo:** construto multidimensional.
+- **Definição:** relação situada com a atividade que pode envolver dimensões
+  comportamentais, cognitivas e afetivas
+  ([Henrie et al. (2015)](referencias.md#ref-henrie2015engagement)).
+- **Manifestação possível:** combinação de participação observável,
+  autorrelato, produto e desempenho conforme a dimensão investigada.
+- **Não equivale a:** `engagement_score`, cliques, tempo, frequência, sequência
+  de rolagem ou qualquer rastro isolado.
+- **Evidência necessária:** definição da dimensão, instrumento e triangulação
+  proporcionais ao uso; logs e autorrelatos podem divergir sistematicamente
+  ([Parry et al. (2021)](referencias.md#ref-parry2021digitalmedia)).
 
 ## Resultados de aprendizagem
 
@@ -217,7 +281,7 @@ computacionais que propõem, transformam ou analisam conteúdo durante a autoria
   discriminação, relação ou aplicação coerente.
 - **Manifestação possível:** explicar por que uma resposta se aplica,
   distinguir casos próximos ou aplicar o conceito a exemplo apropriado.
-- **Não equivale a:** concluir card, repetir frase, reconhecer familiaridade ou
+- **Não equivale a:** concluir uma unidade, repetir frase, reconhecer familiaridade ou
   declarar confiança.
 - **Evidência necessária:** tarefa e rubrica alinhadas ao conceito, com controle
   de pistas e conhecimentos prévios.
@@ -319,16 +383,20 @@ computacionais que propõem, transformam ou analisam conteúdo durante a autoria
 - **Evidência necessária:** análise do processo, das relações e do produto
   coletivo, incluindo conflitos e casos negativos.
 
-### Observação situada
+### Anotação ancorada
 
-- **Tipo:** termo operacional.
-- **Definição:** manifestação voluntária ligada ao card corrente, como dúvida,
-  possível erro, confusão ou sugestão.
-- **Manifestação possível:** texto registrado, retorno reencontrado e decisão de
-  ação.
-- **Não equivale a:** diagnóstico de dificuldade, domínio ou qualidade docente.
-- **Evidência necessária:** conteúdo qualitativo e contexto; ausência de
-  observação não significa compreensão.
+- **Tipo:** termo operacional alinhado ao modelo Web Annotation; na interface,
+  aparece como **Observação**.
+- **Definição:** anotação com corpo e alvo endereçável, autoria, motivação e
+  estado. Pode registrar dúvida, possível erro, confusão ou sugestão ligada a
+  uma unidade específica
+  ([W3C (2017)](https://www.w3.org/TR/annotation-model/)).
+- **Manifestação possível:** texto registrado, alvo reencontrável, autoria e
+  decisão de ação.
+- **Não equivale a:** achado de auditoria, mensagem de chat sem alvo,
+  diagnóstico de dificuldade, domínio ou qualidade docente.
+- **Evidência necessária:** corpo, alvo e contexto; ausência de observação não
+  significa compreensão.
 
 ## Resultados compostos de qualidade
 
@@ -347,8 +415,8 @@ computacionais que propõem, transformam ou analisam conteúdo durante a autoria
 ### Qualidade representacional
 
 - **Tipo:** resultado composto.
-- **Definição:** fidelidade às convenções acadêmicas do domínio e apoio ao gesto
-  cognitivo sem ambiguidade evitável.
+- **Definição:** fidelidade às convenções acadêmicas do domínio e apoio à
+  operação-alvo da tarefa sem ambiguidade evitável.
 - **Manifestação possível:** especialista reconhece a notação e novato consegue
   interpretar a relação depois da base necessária.
 - **Não equivale a:** ausência de overflow, aparência sofisticada, uso de
@@ -377,10 +445,56 @@ computacionais que propõem, transformam ou analisam conteúdo durante a autoria
   evidência pública permanecem coerentes segundo checks e revisão semântica.
 - **Não equivale a:** qualidade pedagógica global, aprendizagem, compreensão,
   eficácia do reparo ou validade de um parâmetro.
-- **Evidência necessária:** audit run reproduzível, cards reais, regras
+- **Evidência necessária:** audit run reproduzível, unidades reais, regras
   declaradas, julgamento humano nos itens semânticos e reauditoria após reparo.
 
 ## Termos operacionais do modelo didático
+
+### Segmento discursivo
+
+Trecho delimitado segundo critério declarado, como relação retórica, intenção
+discursiva, subtópico, proposição ou função informacional. Não existe uma
+fronteira semântica universal independente de teoria, procedimento e tarefa
+([Mann e Thompson (1988)](referencias.md#ref-mann1988rst);
+[Passonneau e Litman (1997)](referencias.md#ref-passonneau1997segmentation);
+[Pons Bordería e Borreguero Zuloaga (2024)](referencias.md#ref-ponsborderia2024unidades)).
+Uma segmentação de pesquisa registra critério, versão, anotador e eventual
+adjudicação. Parágrafo é unidade gráfica possível, não prova de unidade
+conceitual, retórica ou instrucional.
+
+### Extensão editorial
+
+Contagem observável de caracteres, palavras, linhas, altura, duração ou payload.
+Pode orientar ergonomia, renderização e limites técnicos, mas não mede por si
+mesma densidade conceitual, dificuldade, completude, atenção ou compreensão.
+
+### Complexidade textual
+
+Família multidimensional de propriedades linguísticas, discursivas, lexicais e
+sintáticas, dependente de população, corpus e tarefa
+([Graesser et al. (2004)](referencias.md#ref-graesser2004cohmetrix);
+[Leal et al. (2024)](referencias.md#ref-leal2024nilcmetrix);
+[Gazzola et al. (2022)](referencias.md#ref-gazzola2022textcomplexity)). Uma
+métrica automática pode servir como descritor ou covariável; não deve virar
+diretamente nível pedagógico, diagnóstico ou nota de qualidade.
+
+### Unidade de estudo
+
+Menor unidade persistida, ordenável, endereçável e renderizável apresentada em
+Estudo e Autoria. Pode ser somente expositiva ou também reunir uma ou mais
+representações, solicitação de resposta e feedback. É termo operacional próprio
+do AraLearn: não equivale a gênero discursivo, componente de conhecimento ou
+unidade psicológica. A aparência corrente em bloco retangular não define essa
+ontologia, e o termo não promete interatividade quando ela não existe.
+
+### Flashcard
+
+Item específico organizado em torno de uma pista e de uma resposta para
+recuperação. Pode integrar prática distribuída, mas formato, agendamento e
+resultado não são sinônimos. Explicação, diagrama, simulação e unidade de
+apresentação sem recuperação não são flashcards; uma revisão de escopo em
+profissões da saúde não deve ser generalizada automaticamente a outros domínios
+([Barrison et al. (2025)](referencias.md#ref-barrison2025flashcards)).
 
 ### Coerência do percurso
 
@@ -458,22 +572,27 @@ pré-requisito, decompor uma explicação, oferecer exemplo, escolher uma
 representação ou planejar prática. Não equivale a estilo global do curso nem a
 alegação de que a resposta será eficaz.
 
-### Microssequência
+### Microssequência didática
 
-Unidade situada entre card e lição que trabalha objetivo delimitado com
-contexto, teoria e prática suficientes. Não possui duração ou quantidade fixa.
+Construto próprio do AraLearn: conjunto ordenado de unidades de estudo e
+interação orientado a um objetivo instrucional delimitado, com contexto, teoria
+e prática suficientes para esse escopo. Não corresponde automaticamente a
+parágrafo, subtópico, duração ou quantidade fixa e não é apresentado como
+unidade universal da pesquisa educacional.
 
-### Parte
+### Parte de autoria
 
 Unidade operacional que agrupa trabalho autoral manejável segundo coesão,
-dependências, complexidade das microssequências e carga de revisão. Não é
-unidade pedagógica e não possui cota fixa de cards ou quantidade universal por
-curso.
+dependências, complexidade das microssequências e carga de revisão. É uma
+unidade de materialização, não um nível didático. A faixa orientativa de 7 a 12
+Partes por curso é um valor padrão configurável para coordenar produção e
+revisão, não cota pedagógica nem quantidade universal; cada Parte pode abranger
+várias microssequências.
 
 ### Microteoria
 
-Conjunto de cards teóricos suficiente para fundamentar as práticas locais. Não
-significa teoria resumida, rasa ou desconectada de pré-requisitos.
+Conjunto de unidades teóricas suficiente para fundamentar as práticas locais.
+Não significa teoria resumida, rasa ou desconectada de pré-requisitos.
 
 ### Baixa consequência
 
@@ -553,23 +672,53 @@ limite precedem a coleta de dados ([Pardo e Siemens (2014)](referencias.md#ref-p
 - **Evidência necessária:** unidade de atribuição, algoritmo e versão, ocultação
   adequada, perdas, desvios e análise coerente com o procedimento real.
 
-### Outcome
+### Métrica
 
-- **Tipo:** resultado observado ou derivado segundo instrumento declarado.
+- **Tipo:** regra de cálculo operacional.
+- **Definição:** transformação versionada de dados declarados, com fórmula,
+  unidade, denominador, filtros e tratamento de ausências reproduzíveis.
+- **Não equivale a:** medida obtida, indicador interpretado, desfecho de pesquisa
+  ou construto validado.
+- **Evidência necessária:** dados de entrada preservados, versão e teste do
+  cálculo; precisão computacional não valida a interpretação educacional.
+
+### Medida
+
+- **Tipo:** valor observado ou derivado.
+- **Definição:** resultado da observação ou da aplicação de uma métrica sob
+  instrumento, população, momento e condições identificados.
+- **Não equivale a:** construto, explicação causal ou decisão.
+- **Evidência necessária:** qualidade e validade proporcionais à interpretação e
+  ao uso pretendidos
+  ([Messick (1995)](referencias.md#ref-messick1995validity);
+  [American Educational Research Association et al. (2014)](referencias.md#ref-aera2014standards)).
+
+### Indicador
+
+- **Tipo:** interpretação operacional orientada a uma finalidade.
+- **Definição:** medida ou combinação de medidas interpretada segundo regra
+  explícita para apoiar acompanhamento ou decisão delimitada.
+- **Não equivale a:** dado bruto, dashboard, alerta automático ou verdade sobre
+  atenção, engajamento, domínio e qualidade.
+- **Evidência necessária:** finalidade, limiar ou modelo, interpretação permitida
+  e proibida, explicações alternativas e consequência da decisão.
+
+### Desfecho de pesquisa
+
+- **Tipo:** resultado selecionado no protocolo.
 - **Definição:** variável de resultado definida antes da interpretação, com
   unidade, instrumento, momento, versão e regra de cálculo identificáveis.
 - **Não equivale a:** clique, conclusão, evento de telemetria, score técnico,
-  finding de auditoria ou qualquer dado disponível.
+  achado de avaliação ou qualquer dado disponível.
 - **Evidência necessária:** validade e confiabilidade proporcionais ao uso,
   população e condição de coleta, além de tratamento de dados ausentes e casos
-  adversos. A #107 conserva apenas referências governadas; coleta e análise
-  pertencem à #108.
+  adversos.
 
 ### Inferência causal
 
 - **Tipo:** interpretação metodológica.
 - **Definição:** conclusão de que uma diferença de condição contribuiu para uma
-  diferença de outcome sob desenho, pressupostos e análise explicitados.
+  diferença de desfecho sob desenho, pressupostos e análise explicitados.
 - **Não equivale a:** correlação, diferença descritiva, assignment determinístico,
   freeze reproduzível ou execução bem-sucedida de testes de software.
 - **Evidência necessária:** comparabilidade, aderência, mensuração adequada,
@@ -604,7 +753,7 @@ explicitar contexto e limites.
 
 ## Regra de operacionalização
 
-Qualquer indicador futuro deve registrar:
+Qualquer métrica, indicador ou desfecho futuro deve registrar:
 
 1. construto ou resultado;
 2. unidade de análise;
@@ -627,7 +776,7 @@ desenvolvimento e validação próprios.
   não equivale a atenção, esforço, domínio ou aprendizagem.
 - **Completude de instrumento** descreve observações presentes e ausentes no
   recorte esperado; não mede adesão sem uma definição prévia do protocolo.
-- **Diferença entre condições** é descrição de desenho ou outcome; não é efeito
+- **Diferença entre condições** é descrição de desenho ou desfecho; não é efeito
   causal sem identificação, instrumento válido e análise apropriada.
 - **Ausência** é dado não disponível ou explicitamente ausente. Não deve ser
   convertida automaticamente em zero, fracasso ou abandono.

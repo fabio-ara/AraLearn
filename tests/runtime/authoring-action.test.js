@@ -352,7 +352,7 @@ test("Action encaminha intenção e facetas para a biblioteca única de resource
       query: "glosa interlinear",
       disciplineIds: ["discipline.language"],
       structureIds: ["structure.interlinear"],
-      operationIds: ["operation.identify"],
+      taskOperationIds: ["task_operation.identify"],
       limit: 3
     }
   ));

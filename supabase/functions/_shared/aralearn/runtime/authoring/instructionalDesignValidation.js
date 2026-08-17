@@ -392,7 +392,7 @@ function canonicalize(kind, raw) {
       "families",
       "disciplines",
       "structures",
-      "cognitiveOperations",
+      "taskOperations",
       "practiceModalities"
     ].forEach((key) => {
       value.facetBasis[key] = sortedUnique(value.facetBasis[key]);

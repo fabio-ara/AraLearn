@@ -27,7 +27,7 @@ const BLUEPRINT_LIST_KEYS = Object.freeze([
 ]);
 const COMPONENT_KEYS = Object.freeze({
   learningCondition: Object.freeze(["id", "description", "designRelevance"]),
-  contentDemand: Object.freeze(["id", "description", "cognitiveOperations"]),
+  contentDemand: Object.freeze(["id", "description", "taskOperations"]),
   anticipatedDifficulty: Object.freeze([
     "id", "description", "contentDemandIds", "learningConditionIds"
   ]),
@@ -37,10 +37,10 @@ const COMPONENT_KEYS = Object.freeze({
   ]),
   layer: Object.freeze(["id", "plainLanguageReferent", "formalTerms", "requiresLayerIds"]),
   theoryStep: Object.freeze([
-    "id", "layerIds", "purpose", "cognitiveOperation", "packageCandidateIds"
+    "id", "layerIds", "purpose", "taskOperation", "packageCandidateIds"
   ]),
   practiceStep: Object.freeze([
-    "id", "targetLayerIds", "decision", "cognitiveOperation", "packageCandidateIds", "feedback"
+    "id", "targetLayerIds", "decision", "taskOperation", "packageCandidateIds", "feedback"
   ])
 });
 
@@ -155,11 +155,11 @@ export function evaluatePedagogicalBlueprint(raw, packageRegistry) {
     requireClosedObject(errors, entry, `contentDemands[${index}]`, COMPONENT_KEYS.contentDemand);
     requireText(errors, entry?.id, `contentDemands[${index}].id`);
     requireText(errors, entry?.description, `contentDemands[${index}].description`);
-    if (!list(entry?.cognitiveOperations).length) {
-      errors.push(`contentDemands[${index}].cognitiveOperations precisa nomear ao menos uma operação.`);
+    if (!list(entry?.taskOperations).length) {
+      errors.push(`contentDemands[${index}].taskOperations precisa nomear ao menos uma operação.`);
     }
-    list(entry?.cognitiveOperations).forEach((operation, operationIndex) => {
-      requireText(errors, operation, `contentDemands[${index}].cognitiveOperations[${operationIndex}]`);
+    list(entry?.taskOperations).forEach((operation, operationIndex) => {
+      requireText(errors, operation, `contentDemands[${index}].taskOperations[${operationIndex}]`);
     });
   });
 
@@ -242,7 +242,7 @@ export function evaluatePedagogicalBlueprint(raw, packageRegistry) {
     requireClosedObject(errors, step, `theorySteps[${index}]`, COMPONENT_KEYS.theoryStep);
     requireText(errors, step?.id, `theorySteps[${index}].id`);
     requireText(errors, step?.purpose, `theorySteps[${index}].purpose`);
-    requireText(errors, step?.cognitiveOperation, `theorySteps[${index}].cognitiveOperation`);
+    requireText(errors, step?.taskOperation, `theorySteps[${index}].taskOperation`);
     if (!list(step?.layerIds).length) errors.push(`theorySteps[${index}].layerIds está vazio.`);
     list(step?.layerIds).forEach((layerId) => {
       if (!knownLayers.has(text(layerId))) errors.push(`theorySteps[${index}] referencia camada inexistente: ${layerId}.`);
@@ -252,7 +252,7 @@ export function evaluatePedagogicalBlueprint(raw, packageRegistry) {
     list(step?.packageCandidateIds).forEach((candidateId) => {
       const definition = candidates.get(text(candidateId));
       if (!definition) errors.push(`theorySteps[${index}] referencia candidato inexistente: ${candidateId}.`);
-      else if (!definition.manifest.cognitiveOperations.includes(text(step?.cognitiveOperation))) errors.push(`theorySteps[${index}] escolhe ${candidateId} sem compatibilidade com ${step?.cognitiveOperation}.`);
+      else if (!definition.manifest.taskOperations.includes(text(step?.taskOperation))) errors.push(`theorySteps[${index}] escolhe ${candidateId} sem compatibilidade com ${step?.taskOperation}.`);
     });
   });
   layerIds.forEach((layerId) => {
@@ -271,7 +271,7 @@ export function evaluatePedagogicalBlueprint(raw, packageRegistry) {
     requireClosedObject(errors, step, `practiceSteps[${index}]`, COMPONENT_KEYS.practiceStep);
     requireText(errors, step?.id, `practiceSteps[${index}].id`);
     requireText(errors, step?.decision, `practiceSteps[${index}].decision`);
-    requireText(errors, step?.cognitiveOperation, `practiceSteps[${index}].cognitiveOperation`);
+    requireText(errors, step?.taskOperation, `practiceSteps[${index}].taskOperation`);
     requireText(errors, step?.feedback, `practiceSteps[${index}].feedback`);
     if (!list(step?.targetLayerIds).length) errors.push(`practiceSteps[${index}].targetLayerIds está vazio.`);
     list(step?.targetLayerIds).forEach((layerId) => {
@@ -282,7 +282,7 @@ export function evaluatePedagogicalBlueprint(raw, packageRegistry) {
     list(step?.packageCandidateIds).forEach((candidateId) => {
       const definition = candidates.get(text(candidateId));
       if (!definition) errors.push(`practiceSteps[${index}] referencia candidato inexistente: ${candidateId}.`);
-      else if (!definition.manifest.cognitiveOperations.includes(text(step?.cognitiveOperation))) errors.push(`practiceSteps[${index}] escolhe ${candidateId} sem compatibilidade com ${step?.cognitiveOperation}.`);
+      else if (!definition.manifest.taskOperations.includes(text(step?.taskOperation))) errors.push(`practiceSteps[${index}] escolhe ${candidateId} sem compatibilidade com ${step?.taskOperation}.`);
     });
   });
 

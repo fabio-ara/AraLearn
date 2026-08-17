@@ -32,7 +32,7 @@ function blueprint() {
     contentDemands: [{
       id: "transport-demand",
       description: "Relacionar entrega, processo e requisitos do serviço.",
-      cognitiveOperations: ["trace_delivery", "discriminate_by_requirement"]
+      taskOperations: ["trace_delivery", "discriminate_by_requirement"]
     }],
     anticipatedDifficulties: [],
     designResponses: [],
@@ -56,14 +56,14 @@ function blueprint() {
         id: "theory-process-delivery",
         layerIds: ["delivery-layer"],
         purpose: "Explicar entrega.",
-        cognitiveOperation: "explain",
+        taskOperation: "explain",
         packageCandidateIds: ["prose"]
       },
       {
         id: "theory-transport-choice",
         layerIds: ["transport-layer"],
         purpose: "Contrastar serviços.",
-        cognitiveOperation: "explain",
+        taskOperation: "explain",
         packageCandidateIds: ["prose"]
       }
     ],
@@ -71,7 +71,7 @@ function blueprint() {
       id: "practice-transport-choice",
       targetLayerIds: ["transport-layer"],
       decision: "Escolher serviço pelo requisito.",
-      cognitiveOperation: "discriminate",
+      taskOperation: "discriminate",
       packageCandidateIds: ["choice"],
       feedback: "Contrasta o requisito determinante."
     }],

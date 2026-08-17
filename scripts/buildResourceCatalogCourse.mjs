@@ -8,8 +8,8 @@ import { RESOURCE_PACKAGE_REGISTRY } from "../src/resources/packages/index.js";
 
 const scriptPath = fileURLToPath(import.meta.url);
 const scriptDirectory = path.dirname(scriptPath);
-const OPERATION_LABELS = new Map(
-  RESOURCE_CATALOG.explore().facets.operations.map(({ id, label }) => [id, label])
+const TASK_OPERATION_LABELS = new Map(
+  RESOURCE_CATALOG.explore().facets.taskOperations.map(({ id, label }) => [id, label])
 );
 
 export const RESOURCE_CATALOG_COURSE_FILE_NAME = "aralearn-catalogo-recursos-course.json";
@@ -170,11 +170,13 @@ function theoryIntroduction(manifest) {
 
 function feedbackText(manifest) {
   const profile = RESOURCE_CATALOG.getProfile(manifest.id, manifest.version);
-  const operation = OPERATION_LABELS.get(profile?.operationIds?.[0]);
+  const taskOperation = TASK_OPERATION_LABELS.get(profile?.taskOperationIds?.[0]);
   const avoidWhen = manifest.academic?.avoidWhen?.[0];
   return [
     `Critério de revisão para ${manifest.label}: a representação deve realizar a finalidade declarada — ${manifest.purpose}`,
-    operation ? `A operação cognitiva em foco é ${operation.toLocaleLowerCase("pt-BR")}.` : "",
+    taskOperation
+      ? `A operação-alvo da tarefa é ${taskOperation.toLocaleLowerCase("pt-BR")}.`
+      : "",
     avoidWhen ? `Evite este recurso quando ${avoidWhen}.` : ""
   ].filter(Boolean).join(" ");
 }

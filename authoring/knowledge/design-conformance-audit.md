@@ -53,7 +53,7 @@ abre um audit run versionado e pagina findings sem ultrapassar o limite do
 protocolo.
 
 Um manifesto registrado com contrato válido ainda pode conter divergência de
-desenvolvimento, operação cognitiva ou cobertura. Nunca trate a aceitação do
+desenvolvimento, operação-alvo da tarefa ou cobertura. Nunca trate a aceitação do
 manifesto como aprovação pedagógica.
 
 ## Auditoria semântico-instrucional

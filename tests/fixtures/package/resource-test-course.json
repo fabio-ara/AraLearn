@@ -16,7 +16,7 @@
               "representação canônica e interação declarada"
             ],
             "exclude": [
-              "adaptação artificial de outra operação cognitiva"
+              "adaptação artificial de outra operação-alvo da tarefa"
             ],
             "notation": [
               "prosa acadêmica contínua",
@@ -179,7 +179,7 @@
               "representação canônica e interação declarada"
             ],
             "exclude": [
-              "adaptação artificial de outra operação cognitiva"
+              "adaptação artificial de outra operação-alvo da tarefa"
             ],
             "notation": [
               "fonte monoespaçada",
@@ -344,7 +344,7 @@
               "representação canônica e interação declarada"
             ],
             "exclude": [
-              "adaptação artificial de outra operação cognitiva"
+              "adaptação artificial de outra operação-alvo da tarefa"
             ],
             "notation": [
               "cabeçalhos explícitos",
@@ -605,7 +605,7 @@
               "representação canônica e interação declarada"
             ],
             "exclude": [
-              "adaptação artificial de outra operação cognitiva"
+              "adaptação artificial de outra operação-alvo da tarefa"
             ],
             "notation": [
               "alvo e comentário identificados",
@@ -890,7 +890,7 @@
               "representação canônica e interação declarada"
             ],
             "exclude": [
-              "adaptação artificial de outra operação cognitiva"
+              "adaptação artificial de outra operação-alvo da tarefa"
             ],
             "notation": [
               "eventos circulares",
@@ -1508,7 +1508,7 @@
               "representação canônica e interação declarada"
             ],
             "exclude": [
-              "adaptação artificial de outra operação cognitiva"
+              "adaptação artificial de outra operação-alvo da tarefa"
             ],
             "notation": [
               "alinhamento interlinear por unidade",
@@ -1828,7 +1828,7 @@
               "representação canônica e interação declarada"
             ],
             "exclude": [
-              "adaptação artificial de outra operação cognitiva"
+              "adaptação artificial de outra operação-alvo da tarefa"
             ],
             "notation": [
               "raiz no topo",
@@ -2118,7 +2118,7 @@
               "representação canônica e interação declarada"
             ],
             "exclude": [
-              "adaptação artificial de outra operação cognitiva"
+              "adaptação artificial de outra operação-alvo da tarefa"
             ],
             "notation": [
               "entradas sem grade de tabela",
@@ -2334,7 +2334,7 @@
               "representação canônica e interação declarada"
             ],
             "exclude": [
-              "adaptação artificial de outra operação cognitiva"
+              "adaptação artificial de outra operação-alvo da tarefa"
             ],
             "notation": [
               "reagentes à esquerda",
@@ -2571,7 +2571,7 @@
               "representação canônica e interação declarada"
             ],
             "exclude": [
-              "adaptação artificial de outra operação cognitiva"
+              "adaptação artificial de outra operação-alvo da tarefa"
             ],
             "notation": [
               "terminais arredondados",
@@ -2858,7 +2858,7 @@
               "representação canônica e interação declarada"
             ],
             "exclude": [
-              "adaptação artificial de outra operação cognitiva"
+              "adaptação artificial de outra operação-alvo da tarefa"
             ],
             "notation": [
               "estrutura bidimensional preservada",
@@ -3059,7 +3059,7 @@
               "representação canônica e interação declarada"
             ],
             "exclude": [
-              "adaptação artificial de outra operação cognitiva"
+              "adaptação artificial de outra operação-alvo da tarefa"
             ],
             "notation": [
               "eixos e unidades nomeados",
@@ -3292,7 +3292,7 @@
               "representação canônica e interação declarada"
             ],
             "exclude": [
-              "adaptação artificial de outra operação cognitiva"
+              "adaptação artificial de outra operação-alvo da tarefa"
             ],
             "notation": [
               "eixos, unidades e domínios nomeados",
@@ -3807,7 +3807,7 @@
               "representação canônica e interação declarada"
             ],
             "exclude": [
-              "adaptação artificial de outra operação cognitiva"
+              "adaptação artificial de outra operação-alvo da tarefa"
             ],
             "notation": [
               "um único sistema em foco",
@@ -4133,7 +4133,7 @@
               "representação canônica e interação declarada"
             ],
             "exclude": [
-              "adaptação artificial de outra operação cognitiva"
+              "adaptação artificial de outra operação-alvo da tarefa"
             ],
             "notation": [
               "fronteira única de sistema",
@@ -4576,7 +4576,7 @@
               "representação canônica e interação declarada"
             ],
             "exclude": [
-              "adaptação artificial de outra operação cognitiva"
+              "adaptação artificial de outra operação-alvo da tarefa"
             ],
             "notation": [
               "quadro ibd nomeado",
@@ -5003,7 +5003,7 @@
               "representação canônica e interação declarada"
             ],
             "exclude": [
-              "adaptação artificial de outra operação cognitiva"
+              "adaptação artificial de outra operação-alvo da tarefa"
             ],
             "notation": [
               "vértices como círculos discretos",
@@ -5448,7 +5448,7 @@
               "representação canônica e interação declarada"
             ],
             "exclude": [
-              "adaptação artificial de outra operação cognitiva"
+              "adaptação artificial de outra operação-alvo da tarefa"
             ],
             "notation": [
               "dois conjuntos delimitados",
@@ -5825,7 +5825,7 @@
               "representação canônica e interação declarada"
             ],
             "exclude": [
-              "adaptação artificial de outra operação cognitiva"
+              "adaptação artificial de outra operação-alvo da tarefa"
             ],
             "notation": [
               "relações como esquemas nomeados",
@@ -6394,7 +6394,7 @@
               "representação canônica e interação declarada"
             ],
             "exclude": [
-              "adaptação artificial de outra operação cognitiva"
+              "adaptação artificial de outra operação-alvo da tarefa"
             ],
             "notation": [
               "endereços nas extremidades",
@@ -6735,7 +6735,7 @@
               "representação canônica e interação declarada"
             ],
             "exclude": [
-              "adaptação artificial de outra operação cognitiva"
+              "adaptação artificial de outra operação-alvo da tarefa"
             ],
             "notation": [
               "equipamentos tipados e nomeados",
@@ -7121,7 +7121,7 @@
               "representação canônica e interação declarada"
             ],
             "exclude": [
-              "adaptação artificial de outra operação cognitiva"
+              "adaptação artificial de outra operação-alvo da tarefa"
             ],
             "notation": [
               "régua de bits",
@@ -7476,7 +7476,7 @@
               "representação canônica e interação declarada"
             ],
             "exclude": [
-              "adaptação artificial de outra operação cognitiva"
+              "adaptação artificial de outra operação-alvo da tarefa"
             ],
             "notation": [
               "contorno por conjunto",
@@ -7828,7 +7828,7 @@
               "representação canônica e interação declarada"
             ],
             "exclude": [
-              "adaptação artificial de outra operação cognitiva"
+              "adaptação artificial de outra operação-alvo da tarefa"
             ],
             "notation": [
               "estado como nó",
@@ -8232,7 +8232,7 @@
               "representação canônica e interação declarada"
             ],
             "exclude": [
-              "adaptação artificial de outra operação cognitiva"
+              "adaptação artificial de outra operação-alvo da tarefa"
             ],
             "notation": [
               "V e F por valoração",
@@ -8571,7 +8571,7 @@
               "representação canônica e interação declarada"
             ],
             "exclude": [
-              "adaptação artificial de outra operação cognitiva"
+              "adaptação artificial de outra operação-alvo da tarefa"
             ],
             "notation": [
               "entidades como caixas nomeadas",
@@ -9001,7 +9001,7 @@
               "representação canônica e interação declarada"
             ],
             "exclude": [
-              "adaptação artificial de outra operação cognitiva"
+              "adaptação artificial de outra operação-alvo da tarefa"
             ],
             "notation": [
               "estado por linha",
@@ -9063,6 +9063,8 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "Compare a função de transição do autômato que reconhece cadeias binárias terminadas em 01.",
+                            "stateColumnLabel": "Estado",
+                            "legend": "→ inicial · ◎ final ou aceitação",
                             "states": [
                               {
                                 "id": "q0",
@@ -9151,6 +9153,8 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "Compare a função de transição do autômato que reconhece cadeias binárias terminadas em 01.",
+                            "stateColumnLabel": "Estado",
+                            "legend": "→ inicial · ◎ final ou aceitação",
                             "states": [
                               {
                                 "id": "q0",
@@ -9271,6 +9275,8 @@
                           "version": "1.0.0",
                           "data": {
                             "prompt": "Compare a função de transição do autômato que reconhece cadeias binárias terminadas em 01.",
+                            "stateColumnLabel": "Estado",
+                            "legend": "→ inicial · ◎ final ou aceitação",
                             "states": [
                               {
                                 "id": "q0",
@@ -9378,7 +9384,7 @@
               "representação canônica e interação declarada"
             ],
             "exclude": [
-              "adaptação artificial de outra operação cognitiva"
+              "adaptação artificial de outra operação-alvo da tarefa"
             ],
             "notation": [
               "quadro ativo no topo",
@@ -9682,7 +9688,7 @@
               "representação canônica e interação declarada"
             ],
             "exclude": [
-              "adaptação artificial de outra operação cognitiva"
+              "adaptação artificial de outra operação-alvo da tarefa"
             ],
             "notation": [
               "interações em ordem temporal",
@@ -9875,7 +9881,7 @@
               "representação canônica e interação declarada"
             ],
             "exclude": [
-              "adaptação artificial de outra operação cognitiva"
+              "adaptação artificial de outra operação-alvo da tarefa"
             ],
             "notation": [
               "representação legível"
@@ -9969,7 +9975,7 @@
               "representação canônica e interação declarada"
             ],
             "exclude": [
-              "adaptação artificial de outra operação cognitiva"
+              "adaptação artificial de outra operação-alvo da tarefa"
             ],
             "notation": [
               "representação legível"
@@ -10113,7 +10119,7 @@
               "representação canônica e interação declarada"
             ],
             "exclude": [
-              "adaptação artificial de outra operação cognitiva"
+              "adaptação artificial de outra operação-alvo da tarefa"
             ],
             "notation": [
               "representação legível"

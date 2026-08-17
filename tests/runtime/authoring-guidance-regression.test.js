@@ -388,7 +388,7 @@ test("regressão de engenharia #104: ResourceSet é autoridade persistida", () =
         families: [],
         disciplines: [],
         structures: [],
-        cognitiveOperations: [],
+        taskOperations: [],
         practiceModalities: []
       },
       provenanceRefs: ["test:guidance-resource-set-auto"]

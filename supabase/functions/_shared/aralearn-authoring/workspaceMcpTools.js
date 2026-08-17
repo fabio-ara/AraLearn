@@ -497,9 +497,9 @@ const RESOURCE_LIBRARY_EXPLORE_SCHEMA = schema([
     })
   },
   facets: schema([
-    "disciplines", "structures", "operations", "practiceModes"
+    "disciplines", "structures", "taskOperations", "practiceModes"
   ], Object.fromEntries([
-    "disciplines", "structures", "operations", "practiceModes"
+    "disciplines", "structures", "taskOperations", "practiceModes"
   ].map((field) => [field, {
     type: "array",
     maxItems: 64,
@@ -3635,13 +3635,13 @@ const AUTHORING_DESIGN_RESOURCE_SET_PAGE_SCHEMA = schema([
   }),
   facets: schema([
     "catalogVersion", "families", "disciplines", "structures",
-    "cognitiveOperations", "practiceModalities"
+    "taskOperations", "practiceModalities"
   ], {
     catalogVersion: NON_EMPTY_STRING,
     families: STRING_LIST,
     disciplines: STRING_LIST,
     structures: STRING_LIST,
-    cognitiveOperations: STRING_LIST,
+    taskOperations: STRING_LIST,
     practiceModalities: STRING_LIST
   }),
   constraints: schema([
@@ -4150,7 +4150,7 @@ const RESOURCE_LIBRARY_INPUT_SCHEMA = Object.freeze({
     cardRole: { type: "string", enum: ["theory", "practice"] },
     disciplineIds: { type: "array", maxItems: 12, uniqueItems: true, items: ID },
     structureIds: { type: "array", maxItems: 12, uniqueItems: true, items: ID },
-    operationIds: { type: "array", maxItems: 12, uniqueItems: true, items: ID },
+    taskOperationIds: { type: "array", maxItems: 12, uniqueItems: true, items: ID },
     practiceModeIds: { type: "array", maxItems: 8, uniqueItems: true, items: ID },
     knowledgeObjects: { type: "array", maxItems: 12, uniqueItems: true, items: NON_EMPTY_STRING },
     notationIsLearningObject: { type: "boolean" },

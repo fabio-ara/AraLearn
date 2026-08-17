@@ -125,6 +125,36 @@ test("bibliografia cobre desenho de pesquisa, cognição, autorregulação e IA 
   }
 });
 
+test("revisão linguístico-semiótica separa unidade, gesto e inferência", () => {
+  const bibliography = read("docs/referencias.bib");
+  const review = read("docs/revisao-de-literatura.md");
+  const glossary = read("docs/glossario-construtos.md");
+
+  for (const key of [
+    "miller1984genre",
+    "kintsch1978model",
+    "schnotz2003representations",
+    "haverkamp2023screens",
+    "kirshmaglio1994epistemic",
+    "chun2011attention",
+    "messick1995validity",
+    "aera2014standards",
+    "barrison2025flashcards"
+  ]) {
+    assert.match(bibliography, new RegExp(`\\{${key},`, "u"));
+  }
+
+  assert.match(review, /ambiente de aprendizagem, autoria\s+e pesquisa com unidades de estudo estruturadas/u);
+  assert.match(glossary, /### Unidade de estudo/u);
+  assert.match(glossary, /### Anotação ancorada/u);
+  assert.match(glossary, /### Flashcard/u);
+  assert.match(glossary, /### Gesto de entrada/u);
+  assert.match(glossary, /### Operação-alvo da tarefa/u);
+  assert.match(glossary, /### Atenção/u);
+  assert.match(glossary, /### Métrica/u);
+  assert.match(glossary, /### Desfecho de pesquisa/u);
+});
+
 test("governança de pesquisa separa DBR, DSR e estados epistêmicos", () => {
   const foundations = read("docs/fundamentos-pesquisa-e-governanca.md");
   const protocol = read("docs/protocolo-avaliacao-artefato.md");

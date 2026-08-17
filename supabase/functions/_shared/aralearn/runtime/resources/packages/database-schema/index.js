@@ -74,7 +74,7 @@ export const databaseSchemaPackage = Object.freeze({
     label: "Esquema relacional",
     purpose: "Representar relações, atributos, chaves e dependências referenciais no modelo lógico relacional.",
     slots: Object.freeze(["content", "feedback"]),
-    cognitiveOperations: Object.freeze(["identify-key", "trace-foreign-key", "normalize-schema", "inspect-cardinality"]),
+    taskOperations: Object.freeze(["identify-key", "trace-foreign-key", "normalize-schema", "inspect-cardinality"]),
     academic: academicProfile({
       domains: ["bancos de dados", "modelagem lógica de dados"],
       knowledgeObjects: ["relação", "atributo", "chave primária", "chave estrangeira", "integridade referencial"],

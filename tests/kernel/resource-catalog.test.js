@@ -49,13 +49,13 @@ test("catálogo organiza todo package em sete famílias canônicas e facetas con
     familyIds: new Set(RESOURCE_FAMILIES.map(({ id }) => id)),
     disciplineIds: new Set(RESOURCE_VOCABULARIES.disciplines.map(({ id }) => id)),
     structureIds: new Set(RESOURCE_VOCABULARIES.structures.map(({ id }) => id)),
-    operationIds: new Set(RESOURCE_VOCABULARIES.operations.map(({ id }) => id)),
+    taskOperationIds: new Set(RESOURCE_VOCABULARIES.taskOperations.map(({ id }) => id)),
     practiceModeIds: new Set(RESOURCE_VOCABULARIES.practiceModes.map(({ id }) => id))
   };
   manifests.forEach((manifest) => {
     const profile = RESOURCE_CATALOG.getProfile(manifest.id, manifest.version);
     assert.ok(profile, manifest.id);
-    assert.ok(manifest.academic.taxonomy.operationIds.length, manifest.id);
+    assert.ok(manifest.academic.taxonomy.taskOperationIds.length, manifest.id);
     assert.equal(profile.familyIds.includes(profile.primaryFamilyId), true, manifest.id);
     for (const [field, ids] of Object.entries(allowed)) {
       assert.equal(profile[field].every((id) => ids.has(id)), true, `${manifest.id}: ${field}`);
@@ -68,7 +68,7 @@ test("busca distingue uso canônico, versátil e substitutivo sem bloquear", () 
     query: "topologia de rede",
     disciplineIds: ["discipline.engineering"],
     structureIds: ["structure.network_topology"],
-    operationIds: ["operation.trace"]
+    taskOperationIds: ["task_operation.trace"]
   });
   assert.equal(canonical.coverage.status, "canonical");
   assert.equal(canonical.coverage.chatDisclosure, null);
@@ -165,7 +165,7 @@ test("validação e auditoria separam conteúdo, resposta e feedback sem simular
       query: "gráfico estatístico de tendência",
       disciplineIds: ["discipline.statistics"],
       structureIds: ["structure.quantitative_series"],
-      operationIds: ["operation.compare"],
+      taskOperationIds: ["task_operation.compare"],
       practiceModeIds: ["practice.selection"]
     }
   });
@@ -193,7 +193,7 @@ test("auditoria nunca aprova semanticamente um card estruturalmente inválido", 
     card,
     intent: {
       structureIds: ["structure.quantitative_series"],
-      operationIds: ["operation.compare"]
+      taskOperationIds: ["task_operation.compare"]
     }
   });
   assert.equal(audit.structural.valid, false);

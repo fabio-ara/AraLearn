@@ -21,7 +21,7 @@ linguagem e ainda precisar descobrir sozinha:
 - quais conceitos precisam ser apresentados primeiro;
 - quanto conteúdo cabe em uma etapa sem perder a continuidade;
 - em que momento observar um exemplo ou uma representação visual;
-- que prática exige o gesto cognitivo pretendido;
+- que prática exige a operação-alvo pretendida;
 - como interpretar o feedback e retomar o estudo posteriormente.
 
 Essa dificuldade possui uma dimensão pedagógica e outra de interação. Na

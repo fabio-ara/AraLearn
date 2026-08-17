@@ -16,7 +16,7 @@
         "families": ["exposition"],
         "disciplines": ["computing"],
         "structures": ["prose"],
-        "cognitiveOperations": ["explain"],
+        "taskOperations": ["explain"],
         "practiceModalities": []
       },
       "selectionConstraints": {
@@ -42,7 +42,7 @@
         "families": ["exposition"],
         "disciplines": ["computing"],
         "structures": ["relation"],
-        "cognitiveOperations": ["explain"],
+        "taskOperations": ["explain"],
         "practiceModalities": []
       },
       "selectionConstraints": {

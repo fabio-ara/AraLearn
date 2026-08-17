@@ -42,7 +42,7 @@ formal pode esconder a estrutura que precisa ser compreendida.
 **Alternativas e requisitos.** Há três alternativas principais: usar prosa;
 usar uma representação genérica, como tabela; ou criar uma representação
 especializada. A alternativa especializada deve conservar uma estrutura que se
-perderia nas demais, corresponder a uma operação cognitiva identificável e
+perderia nas demais, corresponder a uma operação-alvo da tarefa identificável e
 seguir uma convenção reconhecível na área de conhecimento.
 
 **Decisão.** Um package especializado só é admitido quando sua semântica não é
@@ -90,7 +90,7 @@ autoria assistida por modelo de linguagem, sem exigir que o autor conheça todos
 os contratos de antemão.
 
 **Decisão.** O planejamento declara o objetivo, os conhecimentos necessários,
-o gesto cognitivo e a evidência esperada. Em seguida, consulta um catálogo
+a operação-alvo da tarefa e a evidência esperada. Em seguida, consulta um catálogo
 descritivo; somente depois de escolher um tipo solicita seu contrato
 específico.
 
@@ -110,7 +110,7 @@ nível:
 - quais modalidades de resposta podem ser coordenadas;
 - quais limitações impedem seu uso responsável.
 
-Uma busca pode combinar intenção, domínio, forma lógica, gesto cognitivo e
+Uma busca pode combinar intenção, domínio, forma lógica, operação-alvo e
 capacidade de interação. O contrato recebido depois da seleção descreve
 entidades, relações e valores, mas não exige coordenadas, cores ou detalhes da
 biblioteca de renderização.
@@ -495,7 +495,7 @@ Antes de integrar um package ao catálogo produtivo, a revisão deve responder:
 5. como a geometria é calculada sem coordenadas autorais;
 6. como rótulos longos e respostas preenchidas afetam dimensões;
 7. quais campos são editáveis e quais permanecem estruturais;
-8. quais gestos cognitivos admitem prática interna;
+8. quais operações-alvo da tarefa admitem prática interna;
 9. como vários alvos mantêm identidade e estado independentes;
 10. como a representação é descrita sem depender de visão ou cor;
 11. como se comporta em telas móveis, temas, zoom, teclado e toque;

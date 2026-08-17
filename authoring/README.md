@@ -69,7 +69,7 @@ Cada representação de card é um **pacote de recurso** (`package`) independent
 O pacote declara:
 
 - quando a representação é apropriada ou deve ser evitada;
-- quais operações cognitivas ela apoia;
+- quais operações-alvo das tarefas ela apoia;
 - seu contrato de conteúdo;
 - os alvos válidos de prática;
 - como validar e renderizar a estrutura.

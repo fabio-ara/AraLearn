@@ -107,7 +107,7 @@ function moduleForCards({ id, title, goal, cards, conventions = ["representaçã
     guide: {
       goal,
       include: ["representação canônica e interação declarada"],
-      exclude: ["adaptação artificial de outra operação cognitiva"],
+      exclude: ["adaptação artificial de outra operação-alvo da tarefa"],
       notation: conventions,
       avoid: ["usar a forma quando ela não acrescenta significado"]
     },

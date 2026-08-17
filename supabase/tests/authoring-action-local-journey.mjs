@@ -131,7 +131,7 @@ function blueprintForMicrosequence() {
       contentDemands: [{
         id: "demand:a",
         description: "Comparar relações e justificar a distinção.",
-        cognitiveOperations: ["explain"]
+        taskOperations: ["explain"]
       }],
       anticipatedDifficulties: [],
       designResponses: [],
@@ -146,21 +146,21 @@ function blueprintForMicrosequence() {
         id: "theory:a",
         layerIds: ["layer:a"],
         purpose: "Desenvolver a distinção antes da prática.",
-        cognitiveOperation: "explain",
+        taskOperation: "explain",
         packageCandidateIds: ["paragraph"]
       }],
       practiceSteps: [{
         id: "practice:table",
         targetLayerIds: ["layer:a"],
         decision: "Comparar as responsabilidades de cada modelo.",
-        cognitiveOperation: "compare-fields",
+        taskOperation: "compare-fields",
         packageCandidateIds: ["table"],
         feedback: "Retomar a camada que cada modelo deixa sob responsabilidade do cliente."
       }, {
         id: "practice:gap",
         targetLayerIds: ["layer:a"],
         decision: "Completar o termo técnico estudado.",
-        cognitiveOperation: "recall",
+        taskOperation: "recall",
         packageCandidateIds: ["gap"],
         feedback: "Retomar o termo técnico apresentado no passo anterior."
       }],
@@ -231,7 +231,7 @@ function resourceSetForMicrosequence(microsequenceRef) {
       families: ["family.text_language", "family.quantitative_symbolic", "family.response"],
       disciplines: ["discipline.transversal"],
       structures: ["structure.prose", "structure.table", "structure.response_gap"],
-      cognitiveOperations: ["operation.explain", "operation.compare", "operation.recall"],
+      taskOperations: ["task_operation.explain", "task_operation.compare", "task_operation.recall"],
       practiceModalities: ["practice.exposition", "practice.gap"]
     },
     selectionConstraints: {

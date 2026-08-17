@@ -629,7 +629,7 @@
             "required": [
               "id",
               "targetUnitRefs",
-              "operation",
+              "taskOperation",
               "claim",
               "acceptablePerformanceForms",
               "taskFeatures",
@@ -650,7 +650,7 @@
                 },
                 "uniqueItems": true
               },
-              "operation": {
+              "taskOperation": {
                 "type": "string",
                 "minLength": 1
               },
@@ -802,7 +802,7 @@
               "id",
               "targetUnitRefs",
               "structures",
-              "cognitiveOperations",
+              "taskOperations",
               "acceptableFits",
               "rationale"
             ],
@@ -828,7 +828,7 @@
                 },
                 "uniqueItems": true
               },
-              "cognitiveOperations": {
+              "taskOperations": {
                 "type": "array",
                 "items": {
                   "type": "string",
@@ -1528,7 +1528,7 @@
             "families",
             "disciplines",
             "structures",
-            "cognitiveOperations",
+            "taskOperations",
             "practiceModalities"
           ],
           "properties": {
@@ -1560,7 +1560,7 @@
               },
               "uniqueItems": true
             },
-            "cognitiveOperations": {
+            "taskOperations": {
               "type": "array",
               "items": {
                 "type": "string",

@@ -15,8 +15,8 @@ observado continuam sendo confrontados pelas matrizes e pelos testes
 apropriados.
 
 A linha de base possuía 57 páginas. Nesta etapa, três registros transitórios
-foram retirados e duas páginas permanentes foram acrescentadas; por isso, a
-tabela corrente contém 56 páginas. As três retiradas e seus destinos são
+foram retirados e três páginas permanentes foram acrescentadas; por isso, a
+tabela corrente contém 57 páginas. As três retiradas e seus destinos são
 registrados abaixo, para que o corte editorial também permaneça verificável.
 
 ## Estados editoriais
@@ -89,6 +89,7 @@ registrados abaixo, para que o corte editorial também permaneça verificável.
 | `solucao-de-problemas.md` | reformular | manter neste caminho somente com sintomas e procedimentos ainda reproduzíveis |
 | `supabase.md` | reformular | manter neste caminho conforme banco, Storage, autenticação e funções efetivamente usados |
 | `uso-do-app.md` | reformular | manter neste caminho como guia do comportamento real, sem antecipar recursos |
+| `vocabulario-controlado.md` | gerado | reconstruir de `evidence/terminologia-canonica.v1.json` com `npm run audit:terminology -- --render` |
 | `visao-do-produto.md` | reformular | manter neste caminho como intenção corrente, separada do estado implementado |
 | `workspaces-educacionais.md` | fundir | incorporar colaboração necessária em `guia-professor-autor.md` e arquitetura vigente em `arquitetura.md` |
 

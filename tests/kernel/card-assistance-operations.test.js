@@ -113,7 +113,7 @@ test("composição mista admite resposta compatível com o conteúdo que ela exe
             version: "1.0.0",
             label: "Parágrafo",
             fit: "versatile",
-            matched: ["operation:operation.explain"],
+            matched: ["taskOperation:task_operation.explain"],
             responseCompatibility: ["aralearn.response.gap"]
           }
         ]

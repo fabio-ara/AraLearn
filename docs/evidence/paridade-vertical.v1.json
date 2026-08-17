@@ -118,7 +118,7 @@
       "objects": {
         "mcpTools": ["consultarBibliotecaDeResources", "gerirDesenhoInstrucional"],
         "manifestFeaturePatterns": [
-          "^(?:canonical-resource-registry|package-library-v1|package-contract-discovery-v1|catalog-package-artifact-cutover-v1|parameterized-authoring-design-v1|authoring-blueprint-artifact-receipt-v1|authoring-design-conformance-audit-v1)$"
+          "^(?:canonical-resource-registry|package-library-v1|package-contract-discovery-v1|catalog-package-artifact-cutover-v1|parameterized-authoring-design-v1|authoring-blueprint-artifact-receipt-v1|authoring-design-conformance-audit-v1|task-operation-terminology-v1)$"
         ],
         "databasePatterns": [
           "^(?:table|view):private\\.(?:authoring_(?:audit_.+|design_.+|effective_design_.+|instructional_.+|manifest_.+|materialization_manifests|microsequence_design_.+|pedagogical_.+|resource_set_.+|resource_sets)|current_authoring_design_parameter_assignments_v1)$",

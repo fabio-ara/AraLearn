@@ -363,7 +363,11 @@ const RESOURCE_FACET_DEFINITIONS = Object.freeze([
   Object.freeze({ sourceKey: "families", requestKey: "families", label: "Famílias" }),
   Object.freeze({ sourceKey: "disciplines", requestKey: "disciplines", label: "Disciplinas" }),
   Object.freeze({ sourceKey: "structures", requestKey: "structures", label: "Estruturas" }),
-  Object.freeze({ sourceKey: "operations", requestKey: "cognitiveOperations", label: "Operações" }),
+  Object.freeze({
+    sourceKey: "taskOperations",
+    requestKey: "taskOperations",
+    label: "Operações-alvo"
+  }),
   Object.freeze({ sourceKey: "practiceModes", requestKey: "practiceModalities", label: "Prática" })
 ]);
 

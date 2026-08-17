@@ -1,0 +1,134 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="760" viewBox="0 0 1200 760" role="img" aria-labelledby="title description">
+  <title id="title">Protótipo de vocabulário da Autoria em celular e desktop</title>
+  <desc id="description">À esquerda, uma tela móvel mostra um curso, uma Parte de autoria e unidades de estudo. À direita, a mesma linguagem aparece numa superfície desktop e é ligada aos nomes técnicos, sem expor jargão à pessoa usuária.</desc>
+  <defs>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="6" stdDeviation="12" flood-color="#172033" flood-opacity="0.12"/>
+    </filter>
+    <style>
+      .page { fill: #f4f6fb; }
+      .surface { fill: #ffffff; }
+      .soft { fill: #eef3ff; }
+      .soft-green { fill: #eaf7ef; }
+      .soft-amber { fill: #fff5df; }
+      .ink { fill: #172033; }
+      .muted { fill: #667085; }
+      .blue { fill: #2457d6; }
+      .green { fill: #137a43; }
+      .amber { fill: #9a5b00; }
+      .line { fill: none; stroke: #d9deea; stroke-width: 1.5; }
+      .blue-line { fill: none; stroke: #2457d6; stroke-width: 2; }
+      .heading { font: 600 20px "Segoe UI", Arial, sans-serif; }
+      .title { font: 600 25px "Segoe UI", Arial, sans-serif; }
+      .label { font: 600 15px "Segoe UI", Arial, sans-serif; }
+      .body { font: 400 14px "Segoe UI", Arial, sans-serif; }
+      .small { font: 400 12px "Segoe UI", Arial, sans-serif; }
+      .code { font: 500 13px Consolas, monospace; }
+    </style>
+  </defs>
+
+  <rect width="1200" height="760" class="page"/>
+  <text x="28" y="28" class="muted small">Protótipo conceitual · termos de interface simples, conceitos técnicos rastreáveis</text>
+
+  <!-- Celular -->
+  <rect x="28" y="48" width="390" height="684" rx="30" class="surface" filter="url(#shadow)"/>
+  <rect x="160" y="58" width="126" height="5" rx="2.5" fill="#d5dae6"/>
+  <text x="52" y="101" class="muted small">Autoria</text>
+  <text x="52" y="132" class="ink heading">Teoria dos Grafos</text>
+  <circle cx="374" cy="113" r="20" class="soft"/>
+  <path d="M365 113h18M374 104v18" class="blue-line"/>
+
+  <rect x="48" y="153" width="350" height="62" rx="14" class="soft"/>
+  <text x="66" y="178" class="ink label">Parte de autoria 7 · em produção</text>
+  <text x="66" y="201" class="blue body">8 de 12 unidades de estudo prontas</text>
+
+  <text x="52" y="251" class="ink label">Inspeção rápida</text>
+  <text x="52" y="272" class="muted small">Role verticalmente; a hierarquia continua visível.</text>
+
+  <rect x="48" y="291" width="350" height="104" rx="16" class="surface" stroke="#d9deea"/>
+  <rect x="48" y="291" width="5" height="104" rx="2.5" fill="#2457d6"/>
+  <text x="68" y="318" class="muted small">Unidade 18 · Microssequência 4</text>
+  <text x="68" y="345" class="ink label">Adjacência e incidência</text>
+  <text x="68" y="369" class="muted body">Representação estruturada + explicação</text>
+  <circle cx="366" cy="365" r="15" class="soft-amber"/>
+  <path d="M361 361h10M361 365h7M361 369h5" stroke="#9a5b00" stroke-width="1.6" fill="none"/>
+
+  <rect x="48" y="407" width="350" height="104" rx="16" class="surface" stroke="#d9deea"/>
+  <text x="68" y="434" class="muted small">Unidade 19 · Microssequência 4</text>
+  <text x="68" y="461" class="ink label">Item de prática de recuperação</text>
+  <text x="68" y="485" class="muted body">Matriz de adjacência · resposta + feedback</text>
+  <circle cx="366" cy="481" r="15" class="soft-green"/>
+  <path d="M359 481l5 5 9-11" stroke="#137a43" stroke-width="2" fill="none"/>
+
+  <rect x="48" y="523" width="350" height="72" rx="16" class="surface" stroke="#d9deea"/>
+  <text x="68" y="552" class="muted small">Unidade 20 · ainda não produzida</text>
+  <text x="68" y="578" class="ink label">Caminhos e conectividade</text>
+
+  <rect x="48" y="612" width="350" height="48" rx="14" fill="#2457d6"/>
+  <text x="223" y="642" text-anchor="middle" fill="#ffffff" class="label">Adicionar observação</text>
+
+  <line x1="48" y1="681" x2="398" y2="681" class="line"/>
+  <text x="92" y="710" text-anchor="middle" class="blue small">Curso</text>
+  <text x="180" y="710" text-anchor="middle" class="muted small">Plano</text>
+  <text x="270" y="710" text-anchor="middle" class="muted small">Fontes</text>
+  <text x="354" y="710" text-anchor="middle" class="muted small">Dados</text>
+
+  <!-- Desktop e correspondência -->
+  <rect x="450" y="48" width="722" height="684" rx="20" class="surface" filter="url(#shadow)"/>
+  <rect x="450" y="48" width="84" height="684" rx="20" fill="#172033"/>
+  <circle cx="492" cy="93" r="18" fill="#2457d6"/>
+  <path d="M483 93h18M492 84v18" stroke="#ffffff" stroke-width="2" fill="none"/>
+  <text x="492" y="143" text-anchor="middle" fill="#ffffff" class="small">Curso</text>
+  <text x="492" y="202" text-anchor="middle" fill="#aeb8cb" class="small">Plano</text>
+  <text x="492" y="261" text-anchor="middle" fill="#aeb8cb" class="small">Fontes</text>
+  <text x="492" y="320" text-anchor="middle" fill="#aeb8cb" class="small">Dados</text>
+
+  <text x="566" y="95" class="ink title">Uma linguagem, dois níveis</text>
+  <text x="566" y="121" class="muted body">A interface explica a tarefa; a engenharia preserva precisão e rastreabilidade.</text>
+
+  <text x="566" y="169" class="muted small">NA INTERFACE</text>
+  <text x="890" y="169" class="muted small">NA IMPLEMENTAÇÃO</text>
+
+  <rect x="558" y="185" width="274" height="58" rx="12" class="soft"/>
+  <text x="576" y="210" class="ink label">Parte de autoria</text>
+  <text x="576" y="231" class="muted small">recorte planejável e revisável</text>
+  <path d="M842 214h34" class="blue-line"/>
+  <path d="M870 208l8 6-8 6" class="blue-line"/>
+  <rect x="888" y="185" width="252" height="58" rx="12" fill="#f7f8fb"/>
+  <text x="906" y="220" class="ink code">authoring_part</text>
+
+  <rect x="558" y="255" width="274" height="58" rx="12" class="soft"/>
+  <text x="576" y="280" class="ink label">Unidade de estudo</text>
+  <text x="576" y="301" class="muted small">conteúdo diretamente apresentado</text>
+  <path d="M842 284h34" class="blue-line"/>
+  <path d="M870 278l8 6-8 6" class="blue-line"/>
+  <rect x="888" y="255" width="252" height="58" rx="12" fill="#f7f8fb"/>
+  <text x="906" y="290" class="ink code">study_unit</text>
+
+  <rect x="558" y="325" width="274" height="58" rx="12" class="soft"/>
+  <text x="576" y="350" class="ink label">Componente didático</text>
+  <text x="576" y="371" class="muted small">capacidade modular instalada</text>
+  <path d="M842 354h34" class="blue-line"/>
+  <path d="M870 348l8 6-8 6" class="blue-line"/>
+  <rect x="888" y="325" width="252" height="58" rx="12" fill="#f7f8fb"/>
+  <text x="906" y="360" class="ink code">instructional_component</text>
+
+  <rect x="558" y="395" width="274" height="58" rx="12" class="soft"/>
+  <text x="576" y="420" class="ink label">Observação</text>
+  <text x="576" y="441" class="muted small">domínio: anotação ancorada a um alvo</text>
+  <path d="M842 424h34" class="blue-line"/>
+  <path d="M870 418l8 6-8 6" class="blue-line"/>
+  <rect x="888" y="395" width="252" height="58" rx="12" fill="#f7f8fb"/>
+  <text x="906" y="430" class="ink code">anchored_annotation</text>
+
+  <rect x="558" y="483" width="582" height="116" rx="14" class="soft-green"/>
+  <text x="578" y="511" class="green label">Capacidade, representação e formato são distintos</text>
+  <text x="578" y="537" class="ink body">Componente didático: capacidade modular instalada.</text>
+  <text x="578" y="560" class="ink body">Representação externa e formato de resposta não são essa capacidade.</text>
+  <text x="578" y="583" class="ink body">Item de prática de recuperação: atividade real de pista e resposta.</text>
+
+  <rect x="558" y="615" width="582" height="84" rx="14" class="soft-amber"/>
+  <text x="578" y="643" class="amber label">O protótipo ainda não decide a implementação</text>
+  <text x="578" y="667" class="ink body">Os nomes orientam o próximo corte; schema e navegação continuam sujeitos</text>
+  <text x="578" y="688" class="ink body">à prova no runtime, à migração dos dados e à avaliação humana final.</text>
+</svg>

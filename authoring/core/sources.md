@@ -42,13 +42,13 @@ atividades em tarefas reais ou reconhecidas, nesta ordem preferencial:
 1. material fornecido pela pessoa autora;
 2. exercícios da mesma banca ou instituição avaliadora;
 3. exercícios da mesma banca para cargo, área ou assunto semelhante;
-4. exercícios de outra banca com operação cognitiva equivalente;
+4. exercícios de outra banca que exijam operação-alvo equivalente;
 5. katas reconhecidos;
 6. exemplos de documentação oficial;
 7. livros, listas e repositórios confiáveis;
 8. construção original fundamentada, quando não houver fonte adequada.
 
-Ancorar não significa copiar. Adapte o contexto, preserve a operação cognitiva,
+Ancorar não significa copiar. Adapte o contexto, preserve a operação-alvo da tarefa,
 construa distratores plausíveis, mantenha resposta verificável e retire do
 conteúdo do estudante toda menção a número de questão, nome de arquivo, PDF ou
 bastidor da adaptação. Registre em `card.sources` somente o identificador já

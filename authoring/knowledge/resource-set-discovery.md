@@ -16,7 +16,7 @@ O contexto confiável da consulta contém `workspaceId` e a referência do snaps
 
 Quando Auto precisar de um conjunto ainda inexistente, faça um bootstrap separado: explore e busque por famílias/facetas para propor disponibilidade, congele referências exatas de `package@version` e persista o ResourceSet antes do assignment que o referencia. Essa busca inicial não autoriza seleção nem demonstra conformidade. A autoridade começa depois que a referência entra no snapshot efetivo.
 
-1. Leia os requisitos de estrutura, operação cognitiva, fidelidade e representação da análise e do blueprint em formação.
+1. Leia os requisitos de estrutura, operação-alvo da tarefa, fidelidade e representação da análise e do blueprint em formação.
 2. Use `explore` para famílias e facetas permitidas.
 3. Use `search` para candidatos e preserve a referência exata do ResourceSet autorizador.
 4. Use `inspect` apenas nos candidatos plausíveis.

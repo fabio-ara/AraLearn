@@ -63,7 +63,7 @@ export const entityRelationshipPackage = Object.freeze({
     label: "Modelo entidade-relacionamento",
     purpose: "Representar entidades, atributos e cardinalidades no nível conceitual da modelagem de dados.",
     slots: Object.freeze(["content", "feedback"]),
-    cognitiveOperations: Object.freeze(["identify-entity", "inspect-cardinality", "compare-optional-participation", "derive-relational-model"]),
+    taskOperations: Object.freeze(["identify-entity", "inspect-cardinality", "compare-optional-participation", "derive-relational-model"]),
     academic: academicProfile({
       domains: ["bancos de dados", "modelagem conceitual de dados", "engenharia de software"],
       knowledgeObjects: ["entidade", "atributo", "relacionamento", "cardinalidade", "participação"],

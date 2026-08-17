@@ -179,7 +179,7 @@ export const orderingResponsePackage = Object.freeze({
     label: "Ordenação",
     purpose: "Pedir que o estudante reconstrua a ordem de expressões nos próprios campos textuais em que elas são lidas.",
     slots: Object.freeze(["response"]),
-    cognitiveOperations: Object.freeze(["order", "reconstruct-process", "sequence-causes"]),
+    taskOperations: Object.freeze(["order", "reconstruct-process", "sequence-causes"]),
     responseCompatibility: Object.freeze([]),
     academic: academicProfile({
       domains: ["transversal"],

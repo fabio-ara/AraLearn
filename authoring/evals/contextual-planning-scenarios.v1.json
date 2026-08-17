@@ -182,7 +182,7 @@
           "aralearn.resource.database_schema",
           "aralearn.resource.packet_layout"
         ],
-        "selectionRule": "Escolher pela estrutura e pela operação cognitiva, sem hardcode disciplinar."
+        "selectionRule": "Escolher pela estrutura e pela operação-alvo da tarefa, sem hardcode disciplinar."
       },
       "humanPlan": "Mostrar cobertura integral, dependências, dificuldades e respostas; pausar antes dos cards.",
       "practicePolicy": "Usar choice, ordering ou gap com opções apenas quando a resposta for inequívoca; correspondências simples usam gap no resource textual.",

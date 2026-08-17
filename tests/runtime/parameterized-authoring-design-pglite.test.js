@@ -33,10 +33,19 @@ const experimentMigrationUrl = new URL(
   "../../supabase/migrations/20260816120000_parameterized_authoring_experiments.sql",
   import.meta.url
 );
+const taskOperationMigrationUrl = new URL(
+  "../../supabase/migrations/20260817130000_task_operation_terminology.sql",
+  import.meta.url
+);
 
 const ACTOR = "10000000-0000-4000-8000-000000000001";
 const AUTHOR_ONLY = "10000000-0000-4000-8000-000000000002";
 const WORKSPACE = "20000000-0000-4000-8000-000000000001";
+const LEGACY_EVIDENCE_OPERATION_KEY = ["oper", "ation"].join("");
+const LEGACY_TASK_OPERATION_KEY = ["cognitive", "Operation"].join("");
+const LEGACY_TASK_OPERATIONS_KEY = ["cognitive", "Operations"].join("");
+const LEGACY_TASK_OPERATION_ID_PREFIX = ["oper", "ation."].join("");
+const UNRELATED_TECHNICAL_OPERATION_ID = ["oper", "ation.start"].join("");
 const test = process.argv[1]
   && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)
   ? testRunner
@@ -102,7 +111,7 @@ export function analysisPayload(revision = 1, overrides = {}) {
     evidenceRequirements: [{
       id: "evidence:a",
       targetUnitRefs: ["unit:a"],
-      operation: "compare",
+      taskOperation: "compare",
       claim: "A pessoa distingue causalidade de associação.",
       acceptablePerformanceForms: ["explanation_with_example"],
       taskFeatures: ["paired_cases"],
@@ -129,7 +138,7 @@ export function pedagogicalBlueprintV2() {
     contentDemands: [{
       id: "demand:a",
       description: "Comparar relações e justificar a distinção.",
-      cognitiveOperations: ["compare"]
+      taskOperations: ["compare"]
     }],
     anticipatedDifficulties: [],
     designResponses: [],
@@ -144,14 +153,14 @@ export function pedagogicalBlueprintV2() {
       id: "theory:a",
       layerIds: ["layer:a"],
       purpose: "Desenvolver a distinção antes da prática.",
-      cognitiveOperation: "compare",
+      taskOperation: "compare",
       packageCandidateIds: ["concept-map"]
     }],
     practiceSteps: [{
       id: "practice:a",
       targetLayerIds: ["layer:a"],
       decision: "Classificar a relação apresentada.",
-      cognitiveOperation: "compare",
+      taskOperation: "compare",
       packageCandidateIds: ["concept-map"],
       feedback: "Retomar a evidência necessária para afirmar causalidade."
     }],
@@ -202,7 +211,7 @@ export function pedagogicalBlueprintBinding() {
   };
 }
 
-export async function setupDatabase() {
+export async function setupDatabase({ applyTaskOperationCutover = true } = {}) {
   const database = new PGlite();
   await database.exec(`
     create schema private;
@@ -559,6 +568,9 @@ export async function setupDatabase() {
     $$;
   `);
   await database.exec(await fs.readFile(auditMigrationUrl, "utf8"));
+  if (applyTaskOperationCutover) {
+    await database.exec(await fs.readFile(taskOperationMigrationUrl, "utf8"));
+  }
   return database;
 }
 
@@ -605,7 +617,7 @@ export async function saveResourceSet(database, revision, {
       families: ["relationships"],
       disciplines: [],
       structures: ["network"],
-      cognitiveOperations: ["compare"],
+      taskOperations: ["compare"],
       practiceModalities: []
     },
     selectionConstraints: {
@@ -732,7 +744,362 @@ export const PARAMETER_VALUES = Object.freeze([
   }]
 ]);
 
-test("migration instala desenho parametrizado aditivo e preserva legado", async () => {
+test("corte de operações-alvo converte dados existentes sem leitura dupla", async () => {
+  const database = await setupDatabase({ applyTaskOperationCutover: false });
+  try {
+    const currentAnalysis = analysisPayload(1, {
+      objective: UNRELATED_TECHNICAL_OPERATION_ID,
+      representationRequirements: [{
+        id: "representation:a",
+        targetUnitRefs: ["unit:a"],
+        structures: ["prose"],
+        taskOperations: ["task_operation.compare"],
+        acceptableFits: ["canonical"],
+        rationale: "A comparação precisa permanecer observável na tarefa."
+      }]
+    });
+    const legacyAnalysis = structuredClone(currentAnalysis);
+    for (const requirement of legacyAnalysis.evidenceRequirements) {
+      requirement[LEGACY_EVIDENCE_OPERATION_KEY] = requirement.taskOperation;
+      delete requirement.taskOperation;
+    }
+    for (const requirement of legacyAnalysis.representationRequirements) {
+      requirement[LEGACY_TASK_OPERATIONS_KEY] = requirement.taskOperations.map((value) => (
+        value.replace(/^task_operation\./u, LEGACY_TASK_OPERATION_ID_PREFIX)
+      ));
+      delete requirement.taskOperations;
+    }
+    await scalar(database, `
+      select public.save_authoring_instructional_analysis_v1(
+        $1,$2,$3,$4,1,$5::jsonb
+      ) value
+    `, [
+      ACTOR,
+      WORKSPACE,
+      "legacy-analysis-request",
+      await mutationHash(database, "save_instructional_analysis", legacyAnalysis),
+      JSON.stringify(legacyAnalysis)
+    ]);
+
+    const legacyResourceSet = {
+      contract: "ResourceSet@1",
+      modelVersion: "1.0.0",
+      id: "legacy-resource-set",
+      version: "1.0.0",
+      scope: { kind: "workspace", ref: WORKSPACE },
+      packages: [{
+        packageId: "aralearn.resource.concept_map",
+        version: "1.0.0"
+      }],
+      resolvedCatalogVersion: "legacy-catalog",
+      facetBasis: {
+        catalogVersion: "legacy-catalog",
+        families: ["relationships"],
+        disciplines: [],
+        structures: ["network"],
+        [LEGACY_TASK_OPERATIONS_KEY]: [`${LEGACY_TASK_OPERATION_ID_PREFIX}compare`],
+        practiceModalities: []
+      },
+      selectionConstraints: {
+        allowedFits: ["canonical"],
+        allowEmbeddedPractice: false,
+        allowResponsePackages: false,
+        onNoAdequateRepresentation: "block"
+      },
+      provenanceRefs: [UNRELATED_TECHNICAL_OPERATION_ID]
+    };
+    await scalar(database, `
+      select public.save_authoring_resource_set_v1(
+        $1,$2,$3,$4,2,$5::jsonb
+      ) value
+    `, [
+      ACTOR,
+      WORKSPACE,
+      "legacy-resource-set-request",
+      await mutationHash(database, "save_resource_set", legacyResourceSet),
+      JSON.stringify(legacyResourceSet)
+    ]);
+
+    const legacyBlueprint = pedagogicalBlueprintV2();
+    legacyBlueprint.contentDemands[0].description = UNRELATED_TECHNICAL_OPERATION_ID;
+    for (const demand of legacyBlueprint.contentDemands) {
+      demand[LEGACY_TASK_OPERATIONS_KEY] = demand.taskOperations;
+      delete demand.taskOperations;
+    }
+    for (const step of [
+      ...legacyBlueprint.theorySteps,
+      ...legacyBlueprint.practiceSteps
+    ]) {
+      step[LEGACY_TASK_OPERATION_KEY] = step.taskOperation;
+      delete step.taskOperation;
+    }
+    const legacyBlueprintHash = await scalar(database, `
+      select private.authoring_design_json_hash_v1($1::jsonb) value
+    `, [JSON.stringify(legacyBlueprint)]);
+    await database.query(`
+      insert into private.authoring_effective_design_snapshots(
+        workspace_id,snapshot_id,snapshot_version,model_version,
+        scope_kind,scope_ref,scope_path,scope_entity_version,
+        analysis_id,analysis_version,parameter_catalog_version,
+        resolution_version,based_on_workspace_revision,created_revision,
+        payload_hash,frozen_at,created_by
+      ) values(
+        $1,'legacy-snapshot','1.0.0','1.0.0',
+        'microsequence','micro-a',array['course-a','module-a','lesson-a','micro-a'],1,
+        'analysis-a','1.0.0','1.0.0','1.0.0',3,4,$2,now(),$3
+      )
+    `, [WORKSPACE, hash("d"), ACTOR]);
+    await database.query(`
+      insert into private.authoring_pedagogical_blueprints(
+        workspace_id,blueprint_id,blueprint_version,contract_version,
+        model_version,microsequence_ref,scope_path,scope_entity_version,
+        analysis_id,analysis_version,snapshot_id,snapshot_version,
+        based_on_workspace_revision,created_revision,payload,payload_hash,
+        created_by
+      ) values(
+        $1,'legacy-blueprint','1.0.0',2,'1.0.0','micro-a',
+        array['course-a','module-a','lesson-a','micro-a'],1,
+        'analysis-a','1.0.0','legacy-snapshot','1.0.0',3,4,$2::jsonb,$3,$4
+      )
+    `, [WORKSPACE, JSON.stringify(legacyBlueprint), legacyBlueprintHash, ACTOR]);
+    const legacyManifest = {
+      contract: "MaterializationManifest@1",
+      id: "legacy-manifest",
+      version: "1.0.0",
+      blueprintHash: legacyBlueprintHash,
+      resourceSelections: [{
+        rationale: UNRELATED_TECHNICAL_OPERATION_ID
+      }]
+    };
+    const legacyManifestHash = await scalar(database, `
+      select private.authoring_design_json_hash_v1($1::jsonb) value
+    `, [JSON.stringify(legacyManifest)]);
+    await database.query(`
+      insert into private.authoring_materialization_manifests(
+        workspace_id,manifest_id,manifest_version,model_version,
+        scope_kind,scope_ref,scope_path,scope_entity_version,
+        analysis_id,analysis_version,snapshot_id,snapshot_version,
+        blueprint_id,blueprint_version,materialized_workspace_revision,
+        materialization_state_revision,created_revision,content_hash,
+        blueprint_hash,payload,payload_hash,declared_created_at,created_by
+      ) values(
+        $1,'legacy-manifest','1.0.0','1.0.0','microsequence','micro-a',
+        array['course-a','module-a','lesson-a','micro-a'],1,
+        'analysis-a','1.0.0','legacy-snapshot','1.0.0',
+        'legacy-blueprint','1.0.0',4,0,5,$2,$3,$4::jsonb,$5,now(),$6
+      )
+    `, [
+      WORKSPACE,
+      hash("c"),
+      legacyBlueprintHash,
+      JSON.stringify(legacyManifest),
+      legacyManifestHash,
+      ACTOR
+    ]);
+    await database.query(`
+      insert into private.authoring_workspace_requests(
+        owner_id,request_id,operation,payload_hash,workspace_id,result
+      ) values
+        ($1,'legacy-blueprint-request','save_pedagogical_blueprint',$2,$3,$4::jsonb),
+        ($1,'legacy-manifest-request','register_materialization_manifest',$5,$3,$6::jsonb)
+    `, [
+      ACTOR,
+      hash("b"),
+      WORKSPACE,
+      JSON.stringify({
+        blueprintRef: { id: "legacy-blueprint", version: "1.0.0" },
+        blueprintHash: legacyBlueprintHash
+      }),
+      hash("e"),
+      JSON.stringify({
+        manifestRef: { id: "legacy-manifest", version: "1.0.0" },
+        payloadHash: legacyManifestHash
+      })
+    ]);
+    const unrelatedTechnicalText = [
+      "A documentação de um sistema alheio usa",
+      `${UNRELATED_TECHNICAL_OPERATION_ID}.`
+    ].join(" ");
+    await database.query(`
+      update private.authoring_workspace_entities
+      set content=jsonb_build_object('note',$2::text)
+      where workspace_id=$1 and entity_type='project' and entity_id='project-a'
+    `, [WORKSPACE, unrelatedTechnicalText]);
+
+    await database.exec(await fs.readFile(taskOperationMigrationUrl, "utf8"));
+
+    const convertedAnalysis = await scalar(database, `
+      select payload value
+      from private.authoring_instructional_analyses
+      where workspace_id=$1 and analysis_id='analysis-a'
+    `, [WORKSPACE]);
+    assert.equal(
+      convertedAnalysis.evidenceRequirements[0].taskOperation,
+      "compare"
+    );
+    assert.deepEqual(
+      convertedAnalysis.representationRequirements[0].taskOperations,
+      ["task_operation.compare"]
+    );
+    assert.equal(
+      convertedAnalysis.objective,
+      UNRELATED_TECHNICAL_OPERATION_ID
+    );
+    assert.equal(
+      Object.hasOwn(convertedAnalysis.evidenceRequirements[0], "operation"),
+      false
+    );
+    assert.equal(
+      Object.hasOwn(
+        convertedAnalysis.representationRequirements[0],
+        LEGACY_TASK_OPERATIONS_KEY
+      ),
+      false
+    );
+    assert.equal(await scalar(database, `
+      select payload_hash=private.authoring_design_json_hash_v1(payload) value
+      from private.authoring_instructional_analyses
+      where workspace_id=$1 and analysis_id='analysis-a'
+    `, [WORKSPACE]), true);
+
+    const convertedResourceSet = await scalar(database, `
+      select public.get_authoring_resource_set_v1(
+        $1,$2,'legacy-resource-set','1.0.0'
+      ) value
+    `, [ACTOR, WORKSPACE]);
+    assert.deepEqual(
+      convertedResourceSet.facetBasis.taskOperations,
+      ["task_operation.compare"]
+    );
+    assert.deepEqual(
+      convertedResourceSet.provenanceRefs,
+      [UNRELATED_TECHNICAL_OPERATION_ID]
+    );
+    assert.equal(
+      Object.hasOwn(convertedResourceSet.facetBasis, LEGACY_TASK_OPERATIONS_KEY),
+      false
+    );
+    assert.equal(await scalar(database, `
+      select payload_hash=private.authoring_design_json_hash_v1($3::jsonb) value
+      from private.authoring_resource_sets
+      where workspace_id=$1 and resource_set_id=$2
+    `, [WORKSPACE, "legacy-resource-set", JSON.stringify(convertedResourceSet)]), true);
+    assert.equal(await scalar(database, `
+      select request.result->>'payloadHash'=analysis.payload_hash value
+      from private.authoring_workspace_requests request
+      join private.authoring_instructional_analyses analysis
+        on analysis.workspace_id=request.workspace_id
+      where request.owner_id=$1
+        and request.request_id='legacy-analysis-request'
+        and analysis.analysis_id='analysis-a'
+    `, [ACTOR]), true);
+    assert.equal(await scalar(database, `
+      select request.result->>'payloadHash'=resource_set.payload_hash value
+      from private.authoring_workspace_requests request
+      join private.authoring_resource_sets resource_set
+        on resource_set.workspace_id=request.workspace_id
+      where request.owner_id=$1
+        and request.request_id='legacy-resource-set-request'
+        and resource_set.resource_set_id='legacy-resource-set'
+    `, [ACTOR]), true);
+
+    const convertedBlueprint = await scalar(database, `
+      select payload value
+      from private.authoring_pedagogical_blueprints
+      where workspace_id=$1 and blueprint_id='legacy-blueprint'
+    `, [WORKSPACE]);
+    assert.deepEqual(convertedBlueprint.contentDemands[0].taskOperations, ["compare"]);
+    assert.equal(
+      convertedBlueprint.contentDemands[0].description,
+      UNRELATED_TECHNICAL_OPERATION_ID
+    );
+    assert.equal(convertedBlueprint.theorySteps[0].taskOperation, "compare");
+    assert.equal(convertedBlueprint.practiceSteps[0].taskOperation, "compare");
+    assert.equal(
+      Object.hasOwn(convertedBlueprint.contentDemands[0], LEGACY_TASK_OPERATIONS_KEY),
+      false
+    );
+    assert.equal(
+      Object.hasOwn(convertedBlueprint.theorySteps[0], LEGACY_TASK_OPERATION_KEY),
+      false
+    );
+    const convertedBlueprintHash = await scalar(database, `
+      select payload_hash value
+      from private.authoring_pedagogical_blueprints
+      where workspace_id=$1 and blueprint_id='legacy-blueprint'
+        and payload_hash=private.authoring_design_json_hash_v1(payload)
+    `, [WORKSPACE]);
+    assert.match(convertedBlueprintHash, /^[a-f0-9]{64}$/u);
+    assert.notEqual(convertedBlueprintHash, legacyBlueprintHash);
+    assert.equal(await scalar(database, `
+      select blueprint_hash=$2
+        and payload->>'blueprintHash'=$2
+        and payload#>>'{resourceSelections,0,rationale}'=$3
+        and payload_hash=private.authoring_design_json_hash_v1(payload) value
+      from private.authoring_materialization_manifests
+      where workspace_id=$1 and manifest_id='legacy-manifest'
+    `, [
+      WORKSPACE,
+      convertedBlueprintHash,
+      UNRELATED_TECHNICAL_OPERATION_ID
+    ]), true);
+    assert.equal(await scalar(database, `
+      select result->>'blueprintHash'=$2 value
+      from private.authoring_workspace_requests
+      where owner_id=$1 and request_id='legacy-blueprint-request'
+    `, [ACTOR, convertedBlueprintHash]), true);
+    assert.equal(await scalar(database, `
+      select request.result->>'payloadHash'=manifest.payload_hash value
+      from private.authoring_workspace_requests request
+      join private.authoring_materialization_manifests manifest
+        on manifest.workspace_id=request.workspace_id
+      where request.owner_id=$1
+        and request.request_id='legacy-manifest-request'
+        and manifest.manifest_id='legacy-manifest'
+    `, [ACTOR]), true);
+    assert.equal(await scalar(database, `
+      select bool_and(operation in (
+        'save_instructional_analysis','save_resource_set',
+        'save_pedagogical_blueprint','register_materialization_manifest'
+      )) value
+      from private.authoring_workspace_requests
+      where owner_id=$1 and request_id like 'legacy-%-request'
+    `, [ACTOR]), true);
+    assert.equal(await scalar(database, `
+      select to_regprocedure(
+        'private.authoring_task_operation_cutover_json_v1(jsonb)'
+      ) is null value
+    `), true);
+    assert.equal(await scalar(database, `
+      select content->>'note' value
+      from private.authoring_workspace_entities
+      where workspace_id=$1 and entity_type='project' and entity_id='project-a'
+    `, [WORKSPACE]), unrelatedTechnicalText);
+
+    assert.equal(await scalar(database, `
+      select private.valid_authoring_instructional_analysis_v1($1::jsonb) value
+    `, [JSON.stringify(convertedAnalysis)]), true);
+    assert.equal(await scalar(database, `
+      select private.valid_authoring_instructional_analysis_v1($1::jsonb) value
+    `, [JSON.stringify(legacyAnalysis)]), false);
+    const manifest = await scalar(database, `
+      select public.get_aralearn_runtime_manifest() value
+    `);
+    assert.equal(manifest.schemaRevision, "20260817130000");
+    assert.equal(manifest.features.includes("task-operation-terminology-v1"), true);
+    await assert.rejects(database.exec(`
+      update private.authoring_instructional_analyses set payload=payload
+    `), /versionados de desenho são imutáveis/iu);
+    await assert.rejects(
+      database.exec(await fs.readFile(taskOperationMigrationUrl, "utf8")),
+      /já foi aplicado/iu
+    );
+  } finally {
+    await database.close();
+  }
+});
+
+test("migration instala desenho parametrizado aditivo e preserva dados existentes", async () => {
   const database = await setupDatabase();
   try {
     const catalogCount = await scalar(database, `
@@ -754,7 +1121,7 @@ test("migration instala desenho parametrizado aditivo e preserva legado", async 
     const manifest = await scalar(database, `
       select public.get_aralearn_runtime_manifest() value
     `);
-    assert.equal(manifest.schemaRevision, "20260815235900");
+    assert.equal(manifest.schemaRevision, "20260817130000");
     assert.equal(manifest.features.includes("flat-runtime-manifest-v1"), true);
     assert.equal(
       manifest.features.includes("parameterized-authoring-design-v1"),
@@ -766,6 +1133,10 @@ test("migration instala desenho parametrizado aditivo e preserva legado", async 
     );
     assert.equal(
       manifest.features.includes("authoring-design-conformance-audit-v1"),
+      true
+    );
+    assert.equal(
+      manifest.features.includes("task-operation-terminology-v1"),
       true
     );
     assert.equal(await scalar(database, `
@@ -3084,12 +3455,12 @@ test("GC é limitado, preserva referências e o resolver atende curso grande", a
       ) values
       ($1::uuid,'gc-resource-set','1.0.0','1.0.0','workspace',($1::uuid)::text,'{}',
        '1.0.0','{"catalogVersion":"1.0.0","families":[],"disciplines":[],
-       "structures":[],"cognitiveOperations":[],"practiceModalities":[]}',
+       "structures":[],"taskOperations":[],"practiceModalities":[]}',
        array['canonical'],false,false,'block','{}',$2,1,2,$3,
        now()-interval '400 days'),
       ($1::uuid,'gc-resource-set','2.0.0','1.0.0','workspace',($1::uuid)::text,'{}',
        '1.0.0','{"catalogVersion":"1.0.0","families":[],"disciplines":[],
-       "structures":[],"cognitiveOperations":[],"practiceModalities":[]}',
+       "structures":[],"taskOperations":[],"practiceModalities":[]}',
        array['canonical'],false,false,'block','{}',$2,2,3,$3,
        now()-interval '399 days')
     `, [WORKSPACE, hash("a"), ACTOR]);

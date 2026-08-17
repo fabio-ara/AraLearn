@@ -109,7 +109,7 @@ function publicProfile(manifest) {
     domains: manifest.academic.domains,
     knowledgeObjects: manifest.academic.knowledgeObjects,
     conventions: manifest.academic.conventions,
-    cognitiveOperations: manifest.cognitiveOperations,
+    taskOperations: manifest.taskOperations,
     practiceModes: manifest.academic.practiceModes,
     taxonomy: manifest.academic.taxonomy
   });
@@ -123,10 +123,10 @@ function publicProfile(manifest) {
     familyIds: Object.freeze([...taxonomy.familyIds]),
     disciplineIds: Object.freeze([...taxonomy.disciplineIds]),
     structureIds: Object.freeze([...taxonomy.structureIds]),
-    operationIds: Object.freeze([...taxonomy.operationIds]),
+    taskOperationIds: Object.freeze([...taxonomy.taskOperationIds]),
     practiceModeIds: Object.freeze([...taxonomy.practiceModeIds]),
     specificity: taxonomy.specificity,
-    cognitiveOperations: Object.freeze([...manifest.cognitiveOperations]),
+    taskOperations: Object.freeze([...manifest.taskOperations]),
     knowledgeObjects: Object.freeze([...manifest.academic.knowledgeObjects]),
     conventions: Object.freeze([...manifest.academic.conventions]),
     useWhen: Object.freeze([...manifest.academic.appropriateWhen]),
@@ -149,7 +149,7 @@ function searchText(profile) {
     profile.packageId,
     profile.label,
     profile.purpose,
-    ...profile.cognitiveOperations,
+    ...profile.taskOperations,
     ...profile.knowledgeObjects,
     ...profile.conventions,
     ...profile.useWhen
@@ -167,7 +167,7 @@ function searchCandidate(profile, intent) {
   const facets = [
     ["discipline", intent.disciplineIds, profile.disciplineIds, 18],
     ["structure", intent.structureIds, profile.structureIds, 28],
-    ["operation", intent.operationIds, profile.operationIds, 16],
+    ["taskOperation", intent.taskOperationIds, profile.taskOperationIds, 16],
     ["practice", intent.practiceModeIds, profile.practiceModeIds, 8]
   ];
   for (const [label, requested, available, weight] of facets) {
@@ -204,7 +204,7 @@ function searchCandidate(profile, intent) {
   if (intent.notationIsLearningObject && contraindicationHits.length) score -= 40;
 
   const missingStructural = missing.some((entry) => (
-    entry.startsWith("structure:") || entry.startsWith("operation:")
+    entry.startsWith("structure:") || entry.startsWith("taskOperation:")
     || entry.startsWith("practice:") || entry.startsWith("preserve:")
   ));
   const disciplineRequested = intent.disciplineIds.length > 0;
@@ -213,7 +213,7 @@ function searchCandidate(profile, intent) {
   let fit;
   if (!missingStructural && (!disciplineRequested || disciplineMatched)
       && contraindicationHits.length === 0
-      && (intent.structureIds.length || intent.operationIds.length || queryExact)) {
+      && (intent.structureIds.length || intent.taskOperationIds.length || queryExact)) {
     fit = "canonical";
   } else if (!missingStructural && contraindicationHits.length === 0
       && (!disciplineRequested || disciplineMatched || !intent.notationIsLearningObject)
@@ -263,7 +263,7 @@ function normalizedIntent(raw = {}) {
     cardRole,
     disciplineIds: validatedFacetIds("disciplineIds", raw.disciplineIds),
     structureIds: validatedFacetIds("structureIds", raw.structureIds),
-    operationIds: validatedFacetIds("operationIds", raw.operationIds),
+    taskOperationIds: validatedFacetIds("taskOperationIds", raw.taskOperationIds),
     practiceModeIds: validatedFacetIds("practiceModeIds", raw.practiceModeIds),
     knowledgeObjects: normalizedList(raw.knowledgeObjects),
     mustPreserve: normalizedList(raw.mustPreserve),
@@ -296,7 +296,7 @@ function coverage(candidates, intent) {
   const best = candidates[0] || null;
   const desiredResource = intent.query || [
     ...intent.structureIds,
-    ...intent.operationIds,
+    ...intent.taskOperationIds,
     ...intent.knowledgeObjects
   ].join(", ") || "representação solicitada";
   if (!best) {
@@ -384,7 +384,11 @@ export function createResourceCatalog(registry) {
       facets: {
         disciplines: facetRecords(RESOURCE_VOCABULARIES.disciplines, selected, "disciplineIds"),
         structures: facetRecords(RESOURCE_VOCABULARIES.structures, selected, "structureIds"),
-        operations: facetRecords(RESOURCE_VOCABULARIES.operations, selected, "operationIds"),
+        taskOperations: facetRecords(
+          RESOURCE_VOCABULARIES.taskOperations,
+          selected,
+          "taskOperationIds"
+        ),
         practiceModes: facetRecords(RESOURCE_VOCABULARIES.practiceModes, selected, "practiceModeIds")
       }
     };
@@ -709,7 +713,11 @@ export function createResourceCatalog(registry) {
         facets: {
           disciplines: facetRecords(RESOURCE_VOCABULARIES.disciplines, selected, "disciplineIds"),
           structures: facetRecords(RESOURCE_VOCABULARIES.structures, selected, "structureIds"),
-          operations: facetRecords(RESOURCE_VOCABULARIES.operations, selected, "operationIds"),
+          taskOperations: facetRecords(
+            RESOURCE_VOCABULARIES.taskOperations,
+            selected,
+            "taskOperationIds"
+          ),
           practiceModes: facetRecords(RESOURCE_VOCABULARIES.practiceModes, selected, "practiceModeIds")
         }
       };

@@ -9,7 +9,7 @@ Essa separação resolve dois problemas:
 
 ## 1. Quando um package é justificável
 
-Uma caixa visual não se torna um resource apenas por ter estilo próprio. O package é justificável quando texto, tabela genérica ou outro package existente perderia uma relação relevante, uma notação convencional ou uma operação cognitiva.
+Uma caixa visual não se torna um resource apenas por ter estilo próprio. O package é justificável quando texto, tabela genérica ou outro package existente perderia uma relação relevante, uma notação convencional ou uma operação-alvo da tarefa.
 
 ### Critério de decisão
 
@@ -59,7 +59,7 @@ O registro rejeita packages que não implementam essas obrigações. Um package 
 O catálogo não é uma lista solta de nomes. Ele descreve packages com facetas controladas:
 
 - domínios e objetos de conhecimento;
-- operações cognitivas;
+- operações-alvo das tarefas;
 - convenções acadêmicas;
 - modalidades de prática;
 - tecnologias de renderização;

@@ -163,7 +163,7 @@ function blueprintV2() {
     contentDemands: [{
       id: "transport-demand",
       description: "Relacionar entrega, processo e requisitos do serviço.",
-      cognitiveOperations: ["trace_delivery", "discriminate_by_requirement"]
+      taskOperations: ["trace_delivery", "discriminate_by_requirement"]
     }],
     anticipatedDifficulties: [],
     designResponses: [],
@@ -173,14 +173,14 @@ function blueprintV2() {
       { id: "transport-layer", plainLanguageReferent: "Escolha segundo requisitos.", formalTerms: ["TCP", "UDP"], requiresLayerIds: ["delivery-layer"] }
     ],
     theorySteps: [
-      { id: "theory-process-delivery", layerIds: ["delivery-layer"], purpose: "Explicar entrega.", cognitiveOperation: "explain", packageCandidateIds: ["prose"] },
-      { id: "theory-transport-choice", layerIds: ["transport-layer"], purpose: "Contrastar serviços.", cognitiveOperation: "explain", packageCandidateIds: ["prose"] }
+      { id: "theory-process-delivery", layerIds: ["delivery-layer"], purpose: "Explicar entrega.", taskOperation: "explain", packageCandidateIds: ["prose"] },
+      { id: "theory-transport-choice", layerIds: ["transport-layer"], purpose: "Contrastar serviços.", taskOperation: "explain", packageCandidateIds: ["prose"] }
     ],
     practiceSteps: [{
       id: "practice-transport-choice",
       targetLayerIds: ["transport-layer"],
       decision: "Escolher serviço pelo requisito.",
-      cognitiveOperation: "discriminate",
+      taskOperation: "discriminate",
       packageCandidateIds: ["choice"],
       feedback: "Contrasta o requisito determinante."
     }],

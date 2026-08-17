@@ -216,7 +216,7 @@ package. A biblioteca adota uma consulta progressiva:
 
 1. `explore` apresenta famílias e vocabulários, sem schemas extensos;
 2. `search` procura uma lista curta pela intenção, disciplina, estrutura,
-   operação cognitiva e modalidade de prática;
+   operação-alvo da tarefa e modalidade de prática;
 3. `inspect` compara até oito perfis completos;
 4. `contracts` entrega exatamente um contrato versionado por chamada;
 5. `validate_card` verifica schema, referências e compatibilidade;

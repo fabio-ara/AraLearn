@@ -142,9 +142,9 @@ function packageSearchIntent(catalog, query, limit) {
     structureIds: namesRepresentation
       ? []
       : unique(contentProfiles.flatMap(({ structureIds = [] }) => structureIds)),
-    operationIds: namesRepresentation
+    taskOperationIds: namesRepresentation
       ? []
-      : unique(contentProfiles.flatMap(({ operationIds = [] }) => operationIds)),
+      : unique(contentProfiles.flatMap(({ taskOperationIds = [] }) => taskOperationIds)),
     practiceModeIds: currentCard.role === "practice"
       ? unique(responseProfiles.flatMap(({ practiceModeIds = [] }) => practiceModeIds))
       : [],

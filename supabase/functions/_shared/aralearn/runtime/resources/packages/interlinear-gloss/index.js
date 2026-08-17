@@ -9,7 +9,7 @@ export const interlinearGlossPackage = Object.freeze({
   manifest: Object.freeze({
     id: "aralearn.resource.interlinear_gloss", version: "1.0.0", label: "Glosa interlinear",
     purpose: "Alinhar formas linguísticas segmentadas, glosas morfema a morfema, tradução livre e legenda de abreviações.", slots: Object.freeze(["content", "feedback"]),
-    cognitiveOperations: Object.freeze(["align-form-gloss", "analyze-morphemes", "compare-language-forms", "interpret-grammatical-category"]),
+    taskOperations: Object.freeze(["align-form-gloss", "analyze-morphemes", "compare-language-forms", "interpret-grammatical-category"]),
     academic: academicProfile({ domains: ["linguística", "morfologia", "sintaxe", "ensino de línguas"], knowledgeObjects: ["forma segmentada", "morfema", "glosa", "tradução livre", "abreviação gramatical"], conventions: ["alinhamento interlinear por unidade", "mesmas fronteiras na forma e na glosa", "tradução livre separada", "abreviações gramaticais em versal"], appropriateWhen: ["a análise depende da correspondência entre formas e propriedades gramaticais"], avoidWhen: ["uma citação ou tradução simples é suficiente", "a tarefa não é linguística"], technologies: ["HTML semântico", "atributos de idioma e direção"], practiceModes: ["exposition", "gap", "typing", "selection"] }),
     responseCompatibility: Object.freeze(["aralearn.response.gap", "aralearn.response.choice"]), limitations: Object.freeze(["Não substitui uma análise morfológica explicada.", "As abreviações precisam ser introduzidas ao estudante antes ou junto do primeiro uso."]),
     accessibility: "Cada unidade anuncia forma e glosa; a tradução livre e a legenda de abreviações são lidas separadamente."

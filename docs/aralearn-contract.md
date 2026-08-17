@@ -160,7 +160,7 @@ Ter uma fronteira unitária explícita é preferível a inferir que qualquer obj
 Cada package fornece:
 
 - manifest com id, versão, propósito e slots;
-- operações cognitivas e taxonomia acadêmica;
+- operações-alvo das tarefas e taxonomia acadêmica;
 - adequações, contraindicações, limitações e acessibilidade;
 - contrato autoral de alto nível e exemplo;
 - schema de `data`;
@@ -215,7 +215,7 @@ O planejamento didático precede o contrato:
 
 ```text
 objetivo e progressão
-→ gesto cognitivo necessário
+→ operação-alvo necessária à tarefa
 → `ResourceSet` efetivo e busca por facetas
 → comparação da lista curta
 → carregamento dos contratos escolhidos

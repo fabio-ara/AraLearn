@@ -19,7 +19,7 @@ export const PROTECTED_AUTHORING_CORE_MODULES = Object.freeze([
   Object.freeze({
     id: "package-discovery",
     title: "Descoberta de packages sob demanda",
-    text: "Selecione resources pela estrutura preservada e pela operação cognitiva do passo planejado. Explore o catálogo compacto, compare poucos candidatos e solicite somente os contratos exatos escolhidos. Não suponha contrato monolítico, invente campos ou use variedade visual como objetivo."
+    text: "Selecione resources pela estrutura preservada e pela operação-alvo da tarefa planejada. Explore o catálogo compacto, compare poucos candidatos e solicite somente os contratos exatos escolhidos. Não suponha contrato monolítico, invente campos ou use variedade visual como objetivo."
   }),
   Object.freeze({
     id: "stage-persistence-and-human-review",

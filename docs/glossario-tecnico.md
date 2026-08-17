@@ -353,7 +353,7 @@ hidratação e avaliação. O kernel não conhece a geometria nem o vocabulário
 cada representação. Implementação: `src/resources/kernel/`.
 
 **Manifest de package.** Metadados versionados que descrevem propósito, slots,
-operações cognitivas, taxonomia acadêmica, compatibilidades, limitações,
+operações-alvo das tarefas, taxonomia acadêmica, compatibilidades, limitações,
 acessibilidade e permissões autorais. O manifest é metadado do package; não é
 o manifesto de implantação da aplicação.
 

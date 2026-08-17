@@ -163,10 +163,10 @@ test("síntese e desenvolvimento são estados de cobertura do mesmo requisito", 
   assert.equal(developed.explanationCoverage.counts.developed, 1);
 });
 
-test("evidência preserva operação, características da tarefa, observável e critério", () => {
+test("evidência preserva operação-alvo, características da tarefa, observável e critério", () => {
   fixture.scenarios.forEach((entry) => {
     entry.analysis.evidenceRequirements.forEach((requirement) => {
-      assert.ok(requirement.operation);
+      assert.ok(requirement.taskOperation);
       assert.ok(requirement.taskFeatures.length);
       assert.ok(requirement.criterion.observable);
       assert.ok(requirement.criterion.successCondition);
@@ -179,7 +179,7 @@ test("evidência preserva operação, características da tarefa, observável e 
   const execution = professional.analysis.evidenceRequirements.find(
     ({ id }) => id === professional.expectations.executionEvidenceRef
   );
-  assert.notEqual(recognition.operation, execution.operation);
+  assert.notEqual(recognition.taskOperation, execution.taskOperation);
   assert.equal(recognition.fidelityRequirementRef, null);
   assert.equal(execution.fidelityRequirementRef, professional.expectations.fidelityRequirementRef);
   const fidelity = professional.analysis.fidelityRequirements[0];

@@ -91,7 +91,7 @@ test("ResourceSet filtra descoberta progressiva e recusa contrato fora do conjun
     query: "explicação progressiva em prosa",
     slot: "content",
     structureIds: ["structure.prose"],
-    operationIds: ["operation.explain"]
+    taskOperationIds: ["task_operation.explain"]
   });
   assert.equal(searched.candidates[0].packageId, "aralearn.resource.paragraph");
   assert.deepEqual(searched.candidates[0].authorizedByResourceSetRef, {
@@ -132,7 +132,7 @@ test("avaliação exata de candidato preserva fit, limitação e ResourceSet aut
     cardRole: "theory",
     slot: "content",
     structureIds: ["structure.prose"],
-    operationIds: ["operation.explain"]
+    taskOperationIds: ["task_operation.explain"]
   });
   assert.equal(assessed.status, "authorized");
   assert.equal(assessed.candidate.fit, "canonical");
@@ -149,7 +149,7 @@ test("avaliação exata de candidato preserva fit, limitação e ResourceSet aut
     cardRole: "practice",
     slot: "response",
     structureIds: ["structure.quantitative_series"],
-    operationIds: ["operation.compare"]
+    taskOperationIds: ["task_operation.compare"]
   });
   assert.equal(blocked.status, "incompatible_slot");
 });
@@ -272,7 +272,7 @@ test("validação e auditoria rejeitam package materializado fora da disponibili
     card: outside,
     intent: {
       structureIds: ["structure.quantitative_series"],
-      operationIds: ["operation.compare"]
+      taskOperationIds: ["task_operation.compare"]
     }
   });
   assert.equal(audit.structural.valid, false);
@@ -401,7 +401,7 @@ test("executor MCP não aceita allowlist e aplica o snapshot persistido ao paylo
       query: "explicação progressiva em prosa",
       slot: "content",
       structureIds: ["structure.prose"],
-      operationIds: ["operation.explain"]
+      taskOperationIds: ["task_operation.explain"]
     },
     deadlineAt: Date.now() + 10_000
   });

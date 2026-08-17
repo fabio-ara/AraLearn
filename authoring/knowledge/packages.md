@@ -39,8 +39,8 @@ pergunta, `content` os materializa sem repetir o enunciado. `feedback` pode
 combinar packages compatíveis. Cada instância declara id, package, versão
 semântica e `data` validado pelo contrato daquele package.
 
-Não existe contrato monolítico de resources. Primeiro planeje a operação
-cognitiva e a estrutura que precisa permanecer visível. Em
+Não existe contrato monolítico de resources. Primeiro planeje a operação-alvo
+da tarefa e a estrutura que precisa permanecer visível. Em
 `consultarBibliotecaDeResources`, use `explore` para conhecer famílias e
 facetas, `search` para receber candidatos classificados, `inspect` para
 conferir os perfis e `contracts` para carregar exatamente uma versão escolhida
@@ -69,7 +69,7 @@ por `explore`. Depois leia, no perfil do candidato, `conventions`, `useWhen` e
 operação, torna a relação mais previsível e não acrescenta gramática visual a
 ser decifrada. Diversidade visual não é motivo de seleção. Na teoria, avance
 sem condensar assuntos; na prática, mantenha no card o caso completo e somente
-a complexidade necessária ao gesto cognitivo.
+a complexidade necessária à operação-alvo da tarefa.
 
 Microssequências sem cards continuam no planejamento. Com cards, ficam
 imediatamente renderizáveis e estudáveis. Não envie status de publicação,

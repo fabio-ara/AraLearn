@@ -114,7 +114,7 @@ artefatos e APK antes da publicação do site.
 
 ### Pré-condição
 
-Defina primeiro o gesto cognitivo que a representação resolve e por que texto,
+Defina primeiro a operação-alvo da tarefa que a representação sustenta e por que texto,
 tabela ou um package existente não o resolvem adequadamente.
 
 ### Passos

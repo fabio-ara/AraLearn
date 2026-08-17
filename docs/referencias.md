@@ -43,6 +43,14 @@ Shaaron Ainsworth (2006). **DeFT: A Conceptual Framework for Considering Learnin
 
 Chave bibliográfica: `ainsworth2006deft`.
 
+<a id="ref-aera2014standards"></a>
+
+### American Educational Research Association et al. (2014)
+
+American Educational Research Association; American Psychological Association; National Council on Measurement in Education (2014). **Standards for Educational and Psychological Testing.** Washington, DC, American Educational Research Association. [acesso ao documento](https://www.testingstandards.net/uploads/7/6/6/4/76643089/standards_2014edition.pdf).
+
+Chave bibliográfica: `aera2014standards`.
+
 <a id="ref-amershi2019humanai"></a>
 
 ### Amershi et al. (2019)
@@ -66,6 +74,22 @@ Chave bibliográfica: `nist2024genai`.
 Albert Bandura (2001). **Social Cognitive Theory: An Agentic Perspective.** *Annual Review of Psychology*, 52, p. 1–26. [DOI 10.1146/annurev.psych.52.1.1](https://doi.org/10.1146/annurev.psych.52.1.1).
 
 Chave bibliográfica: `bandura2001agency`.
+
+<a id="ref-barrison2025flashcards"></a>
+
+### Barrison et al. (2025)
+
+Philip D. Barrison; Emily A. Balczewski; Emily Capellari; Zach Landis-Lewis; Alexandra H. Vinson (2025). **Electronic Flashcards in Health Professions Education: A Scoping Review.** *Academic Medicine*, 100(4), p. 497–506. [DOI 10.1097/ACM.0000000000005968](https://doi.org/10.1097/ACM.0000000000005968).
+
+Chave bibliográfica: `barrison2025flashcards`.
+
+<a id="ref-baughan2022dissociation"></a>
+
+### Baughan et al. (2022)
+
+Amanda Baughan; Mingrui Ray Zhang; Raveena Rao; Kai Lukoff; Anastasia Schaadhardt; Lisa D. Butler; Alexis Hiniker (2022). **I Don't Even Remember What I Read: How Design Influences Dissociation on Social Media.** In: *Proceedings of the 2022 CHI Conference on Human Factors in Computing Systems*, ACM, p. 1–13. [DOI 10.1145/3491102.3501899](https://doi.org/10.1145/3491102.3501899).
+
+Chave bibliográfica: `baughan2022dissociation`.
 
 <a id="ref-bjork2011desirable"></a>
 
@@ -171,6 +195,14 @@ Michelene T. H. Chi; Nicholas de Leeuw; Mei-Hung Chiu; Christian LaVancher (1994
 
 Chave bibliográfica: `chi1994eliciting`.
 
+<a id="ref-chun2011attention"></a>
+
+### Chun et al. (2011)
+
+Marvin M. Chun; Julie D. Golomb; Nicholas B. Turk-Browne (2011). **A Taxonomy of External and Internal Attention.** *Annual Review of Psychology*, 62(1), p. 73–101. [DOI 10.1146/annurev.psych.093008.100427](https://doi.org/10.1146/annurev.psych.093008.100427).
+
+Chave bibliográfica: `chun2011attention`.
+
 <a id="ref-degagne2019microlearning"></a>
 
 ### De Gagne et al. (2019)
@@ -186,6 +218,14 @@ Chave bibliográfica: `degagne2019microlearning`.
 Design-Based Research Collective (2003). **Design-Based Research: An Emerging Paradigm for Educational Inquiry.** *Educational Researcher*, 32(1), p. 5–8. [DOI 10.3102/0013189X032001005](https://doi.org/10.3102/0013189X032001005).
 
 Chave bibliográfica: `dbrc2003designbased`.
+
+<a id="ref-dyson2004layout"></a>
+
+### Dyson (2004)
+
+Mary C. Dyson (2004). **How Physical Text Layout Affects Reading from Screen.** *Behaviour & Information Technology*, 23(6), p. 377–393. [DOI 10.1080/01449290410001715714](https://doi.org/10.1080/01449290410001715714).
+
+Chave bibliográfica: `dyson2004layout`.
 
 <a id="ref-foroughi2016resumption"></a>
 
@@ -203,6 +243,14 @@ Paulo Freire (2021). **Pedagogia da autonomia: saberes necessários à prática 
 
 Chave bibliográfica: `freire2021autonomia`.
 
+<a id="ref-gazzola2022textcomplexity"></a>
+
+### Gazzola et al. (2022)
+
+Murilo Gazzola; Sidney Leal; Breno Pedroni; Fábio Theoto Rocha; Sabine Pompéia; Sandra Aluísio (2022). **Text Complexity of Open Educational Resources in Portuguese: Mixing Written and Spoken Registers in a Multi-task Approach.** *Language Resources and Evaluation*, 56(2), p. 621–650. [DOI 10.1007/s10579-021-09571-3](https://doi.org/10.1007/s10579-021-09571-3).
+
+Chave bibliográfica: `gazzola2022textcomplexity`.
+
 <a id="ref-ginns2006contiguity"></a>
 
 ### Ginns (2006)
@@ -210,6 +258,14 @@ Chave bibliográfica: `freire2021autonomia`.
 Paul Ginns (2006). **Integrating Information: A Meta-Analysis of the Spatial Contiguity and Temporal Contiguity Effects.** *Learning and Instruction*, 16(6), p. 511–525. [DOI 10.1016/j.learninstruc.2006.10.001](https://doi.org/10.1016/j.learninstruc.2006.10.001).
 
 Chave bibliográfica: `ginns2006contiguity`.
+
+<a id="ref-graesser2004cohmetrix"></a>
+
+### Graesser et al. (2004)
+
+Arthur C. Graesser; Danielle S. McNamara; Max M. Louwerse; Zhiqiang Cai (2004). **Coh-Metrix: Analysis of Text on Cohesion and Language.** *Behavior Research Methods, Instruments, & Computers*, 36(2), p. 193–202. [DOI 10.3758/BF03195564](https://doi.org/10.3758/BF03195564).
+
+Chave bibliográfica: `graesser2004cohmetrix`.
 
 <a id="ref-gregor2013positioning"></a>
 
@@ -227,6 +283,30 @@ John Hattie; Helen Timperley (2007). **The Power of Feedback.** *Review of Educa
 
 Chave bibliográfica: `hattie2007feedback`.
 
+<a id="ref-haverkamp2023screens"></a>
+
+### Haverkamp et al. (2023)
+
+Ymkje E. Haverkamp; Ivar Bråten; Natalia Latini; Ladislao Salmerón (2023). **Is It the Size, the Movement, or Both? Investigating Effects of Screen Size and Text Movement on Processing, Understanding, and Motivation When Students Read Informational Text.** *Reading and Writing*, 36(7), p. 1589–1608. [DOI 10.1007/s11145-022-10328-9](https://doi.org/10.1007/s11145-022-10328-9).
+
+Chave bibliográfica: `haverkamp2023screens`.
+
+<a id="ref-hearst1997texttiling"></a>
+
+### Hearst (1997)
+
+Marti A. Hearst (1997). **TextTiling: Segmenting Text into Multi-paragraph Subtopic Passages.** *Computational Linguistics*, 23(1), p. 33–64. [acesso ao documento](https://aclanthology.org/J97-1003/).
+
+Chave bibliográfica: `hearst1997texttiling`.
+
+<a id="ref-henrie2015engagement"></a>
+
+### Henrie et al. (2015)
+
+Curtis R. Henrie; Lisa R. Halverson; Charles R. Graham (2015). **Measuring Student Engagement in Technology-mediated Learning: A Review.** *Computers & Education*, 90, p. 36–53. [DOI 10.1016/j.compedu.2015.09.005](https://doi.org/10.1016/j.compedu.2015.09.005).
+
+Chave bibliográfica: `henrie2015engagement`.
+
 <a id="ref-hevner2004designscience"></a>
 
 ### Hevner et al. (2004)
@@ -234,6 +314,14 @@ Chave bibliográfica: `hattie2007feedback`.
 Alan R. Hevner; Salvatore T. March; Jinsoo Park; Sudha Ram (2004). **Design Science in Information Systems Research.** *MIS Quarterly*, 28(1), p. 75–105. [DOI 10.2307/25148625](https://doi.org/10.2307/25148625).
 
 Chave bibliográfica: `hevner2004designscience`.
+
+<a id="ref-howardjones2014neuroscience"></a>
+
+### Howard-Jones (2014)
+
+Paul A. Howard-Jones (2014). **Neuroscience and Education: Myths and Messages.** *Nature Reviews Neuroscience*, 15(12), p. 817–824. [DOI 10.1038/nrn3817](https://doi.org/10.1038/nrn3817).
+
+Chave bibliográfica: `howardjones2014neuroscience`.
 
 <a id="ref-iso2018usability"></a>
 
@@ -267,6 +355,30 @@ Jeffrey D. Karpicke; Henry L. Roediger (2008). **The Critical Importance of Retr
 
 Chave bibliográfica: `karpicke2008retrieval`.
 
+<a id="ref-kintsch1978model"></a>
+
+### Kintsch e van Dijk (1978)
+
+Walter Kintsch; Teun A. van Dijk (1978). **Toward a Model of Text Comprehension and Production.** *Psychological Review*, 85(5), p. 363–394. [DOI 10.1037/0033-295X.85.5.363](https://doi.org/10.1037/0033-295X.85.5.363).
+
+Chave bibliográfica: `kintsch1978model`.
+
+<a id="ref-kirsh2010external"></a>
+
+### Kirsh (2010)
+
+David Kirsh (2010). **Thinking with External Representations.** *AI & Society*, 25(4), p. 441–454. [DOI 10.1007/s00146-010-0272-8](https://doi.org/10.1007/s00146-010-0272-8).
+
+Chave bibliográfica: `kirsh2010external`.
+
+<a id="ref-kirshmaglio1994epistemic"></a>
+
+### Kirsh e Maglio (1994)
+
+David Kirsh; Paul Maglio (1994). **On Distinguishing Epistemic from Pragmatic Action.** *Cognitive Science*, 18(4), p. 513–549. [DOI 10.1207/s15516709cog1804_1](https://doi.org/10.1207/s15516709cog1804_1).
+
+Chave bibliográfica: `kirshmaglio1994epistemic`.
+
 <a id="ref-knowles1975selfdirected"></a>
 
 ### Knowles (1975)
@@ -291,6 +403,14 @@ Yuzhi Lai; Nadira Saab; Wilfried Admiraal (2022). **Learning Strategies in Self-
 
 Chave bibliográfica: `lai2022mobile`.
 
+<a id="ref-leal2024nilcmetrix"></a>
+
+### Leal et al. (2024)
+
+Sidney Evaldo Leal; Magali Sanches Duran; Carolina Evaristo Scarton; Nathan Siegle Hartmann; Sandra Maria Aluísio (2024). **NILC-Metrix: Assessing the Complexity of Written and Spoken Language in Brazilian Portuguese.** *Language Resources and Evaluation*, 58(1), p. 73–110. [DOI 10.1007/s10579-023-09693-w](https://doi.org/10.1007/s10579-023-09693-w).
+
+Chave bibliográfica: `leal2024nilcmetrix`.
+
 <a id="ref-lewis2020rag"></a>
 
 ### Lewis et al. (2020)
@@ -299,6 +419,30 @@ Patrick Lewis; Ethan Perez; Aleksandra Piktus; Fabio Petroni; Vladimir Karpukhin
 
 Chave bibliográfica: `lewis2020rag`.
 
+<a id="ref-li2021interaction"></a>
+
+### Li et al. (2021)
+
+Jutao Li; Jiutai Song; Yanqun Huang; Yuzhen Wang; Jie Zhang (2021). **Effects of Different Interaction Modes on Fatigue and Reading Effectiveness with Mobile Phones.** *International Journal of Industrial Ergonomics*, 85, p. 103189. [DOI 10.1016/j.ergon.2021.103189](https://doi.org/10.1016/j.ergon.2021.103189).
+
+Chave bibliográfica: `li2021interaction`.
+
+<a id="ref-mann1988rst"></a>
+
+### Mann e Thompson (1988)
+
+William C. Mann; Sandra A. Thompson (1988). **Rhetorical Structure Theory: Toward a Functional Theory of Text Organization.** *Text*, 8(3), p. 243–281. [DOI 10.1515/text.1.1988.8.3.243](https://doi.org/10.1515/text.1.1988.8.3.243).
+
+Chave bibliográfica: `mann1988rst`.
+
+<a id="ref-martinec2005imagetext"></a>
+
+### Martinec e Salway (2005)
+
+Radan Martinec; Andrew Salway (2005). **A System for Image–Text Relations in New (and Old) Media.** *Visual Communication*, 4(3), p. 337–371. [DOI 10.1177/1470357205055928](https://doi.org/10.1177/1470357205055928).
+
+Chave bibliográfica: `martinec2005imagetext`.
+
 <a id="ref-mayer2009multimedia"></a>
 
 ### Mayer (2009)
@@ -306,6 +450,22 @@ Chave bibliográfica: `lewis2020rag`.
 Richard E. Mayer (2009). **Multimedia Learning.** 2. ed., Cambridge University Press. [DOI 10.1017/CBO9780511811678](https://doi.org/10.1017/CBO9780511811678) · ISBN 9780521735353.
 
 Chave bibliográfica: `mayer2009multimedia`.
+
+<a id="ref-messick1995validity"></a>
+
+### Messick (1995)
+
+Samuel Messick (1995). **Validity of Psychological Assessment: Validation of Inferences from Persons' Responses and Performances as Scientific Inquiry into Score Meaning.** *American Psychologist*, 50(9), p. 741–749. [DOI 10.1037/0003-066X.50.9.741](https://doi.org/10.1037/0003-066X.50.9.741).
+
+Chave bibliográfica: `messick1995validity`.
+
+<a id="ref-miller1984genre"></a>
+
+### Miller (1984)
+
+Carolyn R. Miller (1984). **Genre as Social Action.** *Quarterly Journal of Speech*, 70(2), p. 151–167. [DOI 10.1080/00335638409383686](https://doi.org/10.1080/00335638409383686).
+
+Chave bibliográfica: `miller1984genre`.
 
 <a id="ref-mislevy2003ecd"></a>
 
@@ -371,6 +531,22 @@ Abelardo Pardo; George Siemens (2014). **Ethical and Privacy Principles for Lear
 
 Chave bibliográfica: `pardo2014ethical`.
 
+<a id="ref-parry2021digitalmedia"></a>
+
+### Parry et al. (2021)
+
+Douglas A. Parry; Brittany I. Davidson; Craig J. R. Sewall; Jacob T. Fisher; Hannah Mieczkowski; Daniel S. Quintana (2021). **A Systematic Review and Meta-analysis of Discrepancies between Logged and Self-reported Digital Media Use.** *Nature Human Behaviour*, 5(11), p. 1535–1547. [DOI 10.1038/s41562-021-01117-5](https://doi.org/10.1038/s41562-021-01117-5).
+
+Chave bibliográfica: `parry2021digitalmedia`.
+
+<a id="ref-passonneau1997segmentation"></a>
+
+### Passonneau e Litman (1997)
+
+Rebecca J. Passonneau; Diane J. Litman (1997). **Discourse Segmentation by Human and Automated Means.** *Computational Linguistics*, 23(1), p. 103–139. [acesso ao documento](https://aclanthology.org/J97-1005/).
+
+Chave bibliográfica: `passonneau1997segmentation`.
+
 <a id="ref-peffers2007dsrm"></a>
 
 ### Peffers et al. (2007)
@@ -394,6 +570,14 @@ Chave bibliográfica: `peters2024scoping`.
 Cosima Piepenbrock; Susanne Mayr; Axel Buchner (2014). **Smaller Pupil Size and Better Proofreading Performance with Positive than with Negative Polarity Displays.** *Ergonomics*, 57(11), p. 1670–1677. [DOI 10.1080/00140139.2014.948496](https://doi.org/10.1080/00140139.2014.948496).
 
 Chave bibliográfica: `piepenbrock2014polarity`.
+
+<a id="ref-ponsborderia2024unidades"></a>
+
+### Pons Bordería e Borreguero Zuloaga (2024)
+
+Salvador Pons Bordería; Margarita Borreguero Zuloaga (2024). **Unidades discursivas del texto escrito: revisión crítica del estado de la cuestión y directrices para una nueva propuesta.** *Círculo de Lingüística Aplicada a la Comunicación*, 99, p. 7–21. [DOI 10.5209/clac.96949](https://doi.org/10.5209/clac.96949).
+
+Chave bibliográfica: `ponsborderia2024unidades`.
 
 <a id="ref-prinsloo2017ethics"></a>
 
@@ -435,6 +619,14 @@ Günter Daniel Rey; Maik Beege; Steve Nebel; Maria Wirzberger; Tobias H. Schmitt
 
 Chave bibliográfica: `rey2019segmenting`.
 
+<a id="ref-richter2016signaling"></a>
+
+### Richter et al. (2016)
+
+Juliane Richter; Katharina Scheiter; Alexander Eitel (2016). **Signaling Text–Picture Relations in Multimedia Learning: A Comprehensive Meta-analysis.** *Educational Research Review*, 17, p. 19–36. [DOI 10.1016/j.edurev.2015.12.003](https://doi.org/10.1016/j.edurev.2015.12.003).
+
+Chave bibliográfica: `richter2016signaling`.
+
 <a id="ref-ryan2020motivation"></a>
 
 ### Ryan e Deci (2020)
@@ -442,6 +634,30 @@ Chave bibliográfica: `rey2019segmenting`.
 Richard M. Ryan; Edward L. Deci (2020). **Intrinsic and Extrinsic Motivation from a Self-Determination Theory Perspective: Definitions, Theory, Practices, and Future Directions.** *Contemporary Educational Psychology*, 61, p. 101860. [DOI 10.1016/j.cedpsych.2020.101860](https://doi.org/10.1016/j.cedpsych.2020.101860).
 
 Chave bibliográfica: `ryan2020motivation`.
+
+<a id="ref-schneider2018signaling"></a>
+
+### Schneider et al. (2018)
+
+Sascha Schneider; Maik Beege; Steve Nebel; Günter Daniel Rey (2018). **A Meta-analysis of How Signaling Affects Learning with Media.** *Educational Research Review*, 23, p. 1–24. [DOI 10.1016/j.edurev.2017.11.001](https://doi.org/10.1016/j.edurev.2017.11.001).
+
+Chave bibliográfica: `schneider2018signaling`.
+
+<a id="ref-schnotz2003representations"></a>
+
+### Schnotz e Bannert (2003)
+
+Wolfgang Schnotz; Maria Bannert (2003). **Construction and Interference in Learning from Multiple Representation.** *Learning and Instruction*, 13(2), p. 141–156. [DOI 10.1016/S0959-4752(02)00017-8](https://doi.org/10.1016/S0959-4752(02)00017-8).
+
+Chave bibliográfica: `schnotz2003representations`.
+
+<a id="ref-shadish2002experimental"></a>
+
+### Shadish et al. (2002)
+
+William R. Shadish; Thomas D. Cook; Donald T. Campbell (2002). **Experimental and Quasi-Experimental Designs for Generalized Causal Inference.** 2. ed., Houghton Mifflin. [acesso ao documento](https://www.cengage.com/c/experimental-and-quasi-experimental-designs-for-generalized-causal-inference-2e-shadish-cook-campbell/9780395615560/) · ISBN 9780395615560.
+
+Chave bibliográfica: `shadish2002experimental`.
 
 <a id="ref-shute2008feedback"></a>
 
@@ -482,6 +698,14 @@ Chave bibliográfica: `sweller1985workedexamples`.
 John Sweller; Jeroen J. G. van Merriënboer; Fred G. W. C. Paas (1998). **Cognitive Architecture and Instructional Design.** *Educational Psychology Review*, 10, p. 251–296. [DOI 10.1023/A:1022193728205](https://doi.org/10.1023/A:1022193728205).
 
 Chave bibliográfica: `sweller1998architecture`.
+
+<a id="ref-tang2017twitter"></a>
+
+### Tang e Hew (2017)
+
+Ying Tang; Khe Foon Hew (2017). **Using Twitter for Education: Beneficial or Simply a Waste of Time?.** *Computers & Education*, 106, p. 97–118. [DOI 10.1016/j.compedu.2016.12.004](https://doi.org/10.1016/j.compedu.2016.12.004).
+
+Chave bibliográfica: `tang2017twitter`.
 
 <a id="ref-taylor2010interleaved"></a>
 
@@ -594,6 +818,22 @@ Chave bibliográfica: `w3c2023wcag22`.
 Xiaojiao Xie; Fanghao Song; Yan Liu; Shurui Wang; Dong Yu (2021). **Study on the Effects of Display Color Mode and Luminance Contrast on Visual Fatigue.** *IEEE Access*, 9, p. 35915–35923. [DOI 10.1109/ACCESS.2021.3061770](https://doi.org/10.1109/ACCESS.2021.3061770).
 
 Chave bibliográfica: `xie2021colormode`.
+
+<a id="ref-yates1992genres"></a>
+
+### Yates e Orlikowski (1992)
+
+Joanne Yates; Wanda J. Orlikowski (1992). **Genres of Organizational Communication: A Structurational Approach to Studying Communication and Media.** *Academy of Management Review*, 17(2), p. 299–326. [DOI 10.5465/amr.1992.4279545](https://doi.org/10.5465/amr.1992.4279545) · [acesso ao documento](https://journals.aom.org/doi/10.5465/amr.1992.4279545).
+
+Chave bibliográfica: `yates1992genres`.
+
+<a id="ref-zappavigna2011ambient"></a>
+
+### Zappavigna (2011)
+
+Michele Zappavigna (2011). **Ambient Affiliation: A Linguistic Perspective on Twitter.** *New Media & Society*, 13(5), p. 788–806. [DOI 10.1177/1461444810385097](https://doi.org/10.1177/1461444810385097).
+
+Chave bibliográfica: `zappavigna2011ambient`.
 
 <a id="ref-zimmerman2002selfregulated"></a>
 

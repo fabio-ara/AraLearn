@@ -39,7 +39,7 @@ export const terminalSessionPackage = Object.freeze({
     label: "Sessão de terminal",
     purpose: "Representar uma interação textual temporal entre pessoa e sistema, preservando entradas, saídas, erros e mudanças observáveis de estado.",
     slots: Object.freeze(["content", "feedback"]),
-    cognitiveOperations: Object.freeze([
+    taskOperations: Object.freeze([
       "trace-interaction",
       "interpret-output",
       "identify-error",

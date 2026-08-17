@@ -1222,7 +1222,7 @@ async function main() {
       || !authoringDesignConformanceAudit.source.includes('"20260815235900"')) {
     fail("A migration da auditoria de conformidade não avança o manifesto esperado.");
   }
-  if (runtimeManifest.schemaRevision !== "20260815235900" || runtimeManifest.contractVersion !== 1) {
+  if (runtimeManifest.schemaRevision !== "20260817130000" || runtimeManifest.contractVersion !== 1) {
     fail("O manifesto estático não aponta para o runtime autoral corrente.");
   }
   for (const feature of [
@@ -1250,7 +1250,8 @@ async function main() {
     "parameterized-authoring-design-v1",
     "authoring-blueprint-artifact-receipt-v1",
     "authoring-product-state-projection-v1",
-    "authoring-design-conformance-audit-v1"
+    "authoring-design-conformance-audit-v1",
+    "task-operation-terminology-v1"
   ]) {
     if (!runtimeManifest.requiredFeatures.includes(feature)) {
       fail(`O manifesto estático não exige ${feature}.`);

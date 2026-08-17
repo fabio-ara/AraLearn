@@ -15,7 +15,7 @@ O catálogo MCP é a fonte de verdade sobre os packages instalados. Use somente
 `search` procura pela intenção e classifica a cobertura; `inspect` compara até
 oito perfis; `contracts` carrega exatamente uma versão por chamada.
 Compare finalidade, operações, área, objeto, convenções, contraindicações,
-modalidades, slots e compatibilidades com o gesto cognitivo planejado; não
+modalidades, slots e compatibilidades com a operação-alvo planejada; não
 escolha apenas pelo nome. O catálogo pode crescer sem alterar estas instruções.
 
 Depois de compor o envelope, chame `validate_card` e então
@@ -52,7 +52,7 @@ cenário, dado ou representação adicional.
 
 ## Seleção pedagógica
 
-Use o manifest recuperado por MCP para comparar a operação cognitiva com a
+Use o manifest recuperado por MCP para comparar a operação-alvo da tarefa com a
 finalidade do package. Em termos gerais:
 
 - texto explicativo pede `aralearn.resource.paragraph`;

@@ -2851,14 +2851,6 @@
       "caseId": "internal-relational-mechanics"
     },
     {
-      "object": "function:private.authoring_part_learning_references_are_valid(p_plan jsonb, p_outline jsonb, p_specification jsonb)",
-      "caseId": "internal-relational-mechanics"
-    },
-    {
-      "object": "function:private.authoring_plan_learning_references_are_valid(p_plan jsonb, p_parts jsonb)",
-      "caseId": "internal-relational-mechanics"
-    },
-    {
       "object": "function:private.authoring_post_change_path_v1(p_workspace_id uuid, p_changes jsonb, p_entity_type text, p_entity_id text)",
       "caseId": "internal-relational-mechanics"
     },

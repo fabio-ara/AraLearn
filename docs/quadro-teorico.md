@@ -203,7 +203,7 @@ operacionalização, consequências esperadas, explicações rivais e limites.
 - **Problema e contexto:** relações espaciais, formais, tabulares ou
   hierárquicas se perdem em prosa; diagramas inadequados também criam carga.
 - **Alternativas ou requisitos:** texto, recurso geral ou representação
-  especializada; a escolha deve preservar convenção e gesto cognitivo.
+  especializada; a escolha deve preservar convenção e operação-alvo da tarefa.
 - **Decisão:** admitir packages por justificativa semântica, descobrir primeiro
   por intenção e consultar depois o contrato específico. Um conjunto permitido
   restringe disponibilidade; seleção local e uso materializado permanecem
@@ -246,8 +246,8 @@ operacionalização, consequências esperadas, explicações rivais e limites.
   variedade ornamental não muda a operação.
 - **Alternativas ou requisitos:** formato fixo, rotação aleatória ou seleção
   pela evidência de aprendizagem.
-- **Decisão:** escolher entre seleção, lacuna, digitação e ordenação conforme o
-  gesto cognitivo; expressar correspondências simples por lacunas e posicionar
+- **Decisão:** escolher entre seleção, lacuna, digitação e ordenação conforme a
+  operação-alvo; expressar correspondências simples por lacunas e posicionar
   cada resposta dentro do objeto, inclusive os trechos permutados pela
   ordenação.
 - **Fundamentação:** recuperação pode beneficiar aprendizagem, com moderadores e

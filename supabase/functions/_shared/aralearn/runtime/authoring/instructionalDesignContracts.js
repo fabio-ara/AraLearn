@@ -320,7 +320,7 @@ const CONTRACT_DEFINITIONS = {
           required: [
             "id",
             "targetUnitRefs",
-            "operation",
+            "taskOperation",
             "claim",
             "acceptablePerformanceForms",
             "taskFeatures",
@@ -335,7 +335,7 @@ const CONTRACT_DEFINITIONS = {
               items: NON_EMPTY_STRING,
               uniqueItems: true
             },
-            operation: NON_EMPTY_STRING,
+            taskOperation: NON_EMPTY_STRING,
             claim: NON_EMPTY_STRING,
             acceptablePerformanceForms: {
               type: "array",
@@ -418,7 +418,7 @@ const CONTRACT_DEFINITIONS = {
             "id",
             "targetUnitRefs",
             "structures",
-            "cognitiveOperations",
+            "taskOperations",
             "acceptableFits",
             "rationale"
           ],
@@ -431,7 +431,7 @@ const CONTRACT_DEFINITIONS = {
               uniqueItems: true
             },
             structures: STRING_LIST,
-            cognitiveOperations: STRING_LIST,
+            taskOperations: STRING_LIST,
             acceptableFits: {
               type: "array",
               minItems: 1,
@@ -757,7 +757,7 @@ const CONTRACT_DEFINITIONS = {
           "families",
           "disciplines",
           "structures",
-          "cognitiveOperations",
+          "taskOperations",
           "practiceModalities"
         ],
         properties: {
@@ -765,7 +765,7 @@ const CONTRACT_DEFINITIONS = {
           families: STRING_LIST,
           disciplines: STRING_LIST,
           structures: STRING_LIST,
-          cognitiveOperations: STRING_LIST,
+          taskOperations: STRING_LIST,
           practiceModalities: STRING_LIST
         }
       },

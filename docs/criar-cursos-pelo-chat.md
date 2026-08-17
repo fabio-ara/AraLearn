@@ -59,7 +59,7 @@ pressuponha os conceitos técnicos do programa.
 Primeiro proponha a estrutura e explique como os pré-requisitos serão
 introduzidos. Depois da minha aprovação, produza uma parte por vez. A teoria
 deve ser autocontida e progressiva, sem resumir conceitos diferentes no mesmo
-card. As práticas devem ser abundantes e variar conforme a operação cognitiva.
+card. As práticas devem ser abundantes e variar conforme a operação-alvo da tarefa.
 Avise quando houver uma unidade coerente disponível para teste em Trilhas.
 ```
 
@@ -201,7 +201,7 @@ limitação ou bloquear; o assistente nunca escolhe fora do conjunto nem finge
 equivalência.
 
 Práticas não são variadas por ornamentação. Lacuna, digitação, escolha,
-ordenação e outras respostas devem corresponder à operação cognitiva desejada.
+ordenação e outras respostas devem corresponder à operação-alvo desejada para a tarefa.
 Um diagrama só entra quando sua estrutura torna uma relação mais direta do que
 texto ou tabela.
 

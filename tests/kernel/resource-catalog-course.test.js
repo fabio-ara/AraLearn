@@ -23,13 +23,13 @@ test("fixture publicada do catálogo não diverge do gerador determinístico", a
   assert.equal(current, serializeResourceCatalogCourse());
 });
 
-test("curso apresenta operações cognitivas com rótulos pedagógicos, não ids internos", async () => {
+test("curso apresenta operações-alvo da tarefa com rótulos pedagógicos, não ids internos", async () => {
   const course = await buildResourceCatalogCourse();
   const serialized = JSON.stringify(course);
   for (const internalId of [
     "annotate", "inspect-code", "locate-coordinate", "trace-control-flow"
   ]) {
-    assert.doesNotMatch(serialized, new RegExp(`operação cognitiva[^.]*${internalId}`, "iu"));
+    assert.doesNotMatch(serialized, new RegExp(`operação-alvo[^.]*${internalId}`, "iu"));
   }
 });
 

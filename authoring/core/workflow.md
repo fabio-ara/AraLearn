@@ -177,7 +177,7 @@ Materialize exatamente uma microssequência por vez:
 1. leia o objetivo, os guias, os tópicos, as dependências, o contexto e as
    decisões diagnósticas aprovadas para a unidade;
 2. use `consultarBibliotecaDeResources` com `explore`, `search` e `inspect`
-   para escolher os resources pela operação cognitiva e pela estrutura;
+   para escolher os resources pela operação-alvo da tarefa e pela estrutura;
 3. use `contracts` para exatamente uma versão por chamada e componha o card sem
    inventar campos;
 4. produza uma microteoria pequena e base suficiente;

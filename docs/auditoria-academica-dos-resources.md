@@ -34,7 +34,7 @@ Cada package de conteúdo deve declarar:
 
 - objeto preservado e domínio de uso;
 - estrutura semântica do contrato;
-- operações cognitivas compatíveis;
+- operações-alvo das tarefas compatíveis;
 - convenção disciplinar ou normativa;
 - situações indicadas e contraindicadas;
 - limites de complexidade;
@@ -45,7 +45,7 @@ Cada package de conteúdo deve declarar:
 
 Cada package de resposta deve declarar identidade, avaliação, limpeza,
 confirmação, feedback e acessibilidade. A composição entre conteúdo e resposta
-é válida somente quando a modalidade corresponde ao gesto cognitivo planejado.
+é válida somente quando a modalidade corresponde à operação-alvo planejada.
 
 ## 3. Decisão de admissão no catálogo
 
@@ -80,7 +80,7 @@ interface não deve competir desnecessariamente com a tarefa
 ### Operacionalização: porta de admissão
 
 1. Qual relação se perde em `paragraph`, `table` ou outro package instalado?
-2. Qual gesto cognitivo depende dessa relação?
+2. Qual operação-alvo da tarefa depende dessa relação?
 3. Qual convenção acadêmica ou normativa orienta a leitura?
 4. O contrato expressa uma classe de casos ou apenas um exemplo codificado?
 5. O autor declara semântica sem fornecer pixels, cores, posições ou rotas?

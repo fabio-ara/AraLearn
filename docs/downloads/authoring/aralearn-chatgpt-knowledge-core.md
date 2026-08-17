@@ -83,7 +83,7 @@ Enquanto existir mandato, o commit aplica essa fronteira atomicamente: `build_pa
 Materialize exatamente uma microssequência por vez:
 
 1. leia o objetivo, os guias, os tópicos, as dependências, o contexto e as decisões diagnósticas aprovadas para a unidade;
-2. use `consultarBibliotecaDeResources` com `explore`, `search` e `inspect` para escolher os resources pela operação cognitiva e pela estrutura;
+2. use `consultarBibliotecaDeResources` com `explore`, `search` e `inspect` para escolher os resources pela operação-alvo da tarefa e pela estrutura;
 3. use `contracts` para exatamente uma versão por chamada e componha o card sem inventar campos;
 4. produza uma microteoria pequena e base suficiente;
 5. produza práticas autocontidas e deterministicamente verificáveis que consolidem a mesma microteoria; varie somente quando caso, representação, erro ou apoio servirem ao desenho local;
@@ -296,7 +296,7 @@ Identifique também o que ainda não se sabe. Faça uma pergunta apenas quando r
 - Decida fundamento, exemplo, contraste, quantidade de prática, grau de apoio, retomada e representação localmente em cada microssequência. Não transforme nenhuma dessas estratégias em estilo obrigatório do curso inteiro.
 - Uma microssequência que ensina uma operação nova não começa pela cobrança da operação nem termina apenas na explicação.
 - A quantidade de práticas decorre da complexidade de `checks`, dos erros previsíveis e da necessidade de retomada. Quando houver várias práticas, torne visível a variação de caso, representação, estratégia, erro provável ou grau de apoio.
-- O recurso escolhido corresponde à operação cognitiva. Em `consultarBibliotecaDeResources`, percorra `explore`, `search`, `inspect` e `contracts`, estes para exatamente uma versão por chamada. Use `validate_card` e depois `audit_representation`: a auditoria distingue `semantic_fit` no conteúdo, `response_affordance` na resposta e `feedback_legibility` no feedback. Não reduza a autoria a texto e escolha quando outro package preservar melhor o raciocínio.
+- O recurso escolhido corresponde à operação-alvo da tarefa. Em `consultarBibliotecaDeResources`, percorra `explore`, `search`, `inspect` e `contracts`, estes para exatamente uma versão por chamada. Use `validate_card` e depois `audit_representation`: a auditoria distingue `semantic_fit` no conteúdo, `response_affordance` na resposta e `feedback_legibility` no feedback. Não reduza a autoria a texto e escolha quando outro package preservar melhor o raciocínio.
 - A ausência de package com ajuste `canonical` é resolvida pela política e pelo `ResourceSet` efetivos. `versatile` e `substitute` só podem ser usados quando autorizados; preserve a limitação e o `chatDisclosure` exigidos. Se houver bloqueio, registre a indisponibilidade e não use package externo ou equivalência artificial.
 - A escolha fica materializada em uma instância de package de `card.content`, `card.response` ou `card.feedback`. Confira se ela preserva `microsequence.goal`, `covers` e `checks`; não acrescente ao JSON um bloco paralelo de escolhas de representação.
 - A diversidade de recursos decorre do conteúdo. Não estabeleça cota e não troque o formato apenas para variar a aparência.
@@ -316,7 +316,7 @@ Identifique também o que ainda não se sabe. Faça uma pergunta apenas quando r
 - Cada item de `microsequence.checks` precisa chegar a uma prática observável. Quando útil, `card.topics` liga o card aos IDs declarados em `lesson.topics`; não crie campos adicionais para resultados ou funções.
 - A diferença entre práticas próximas deve estar no conteúdo observável: caso, condição, representação, estratégia, erro provável ou grau de apoio.
 - Uma prática cobra uma decisão principal. Ela pode mobilizar pré-requisitos aprovados, mas não pode exigir que a pessoa reconstrua o caso a partir de posição, cor, legenda extensa, card anterior, feedback ou resposta oculta.
-- Um card de prática pode reunir mais dados e elementos visuais que um card de teoria quando o contexto completo for necessário à decisão. Essa densidade precisa servir ao gesto cognitivo principal; não autoriza inventário de assuntos, ornamentação ou relações irrelevantes.
+- Um card de prática pode reunir mais dados e elementos visuais que um card de teoria quando o contexto completo for necessário à decisão. Essa densidade precisa servir à operação-alvo principal da tarefa; não autoriza inventário de assuntos, ornamentação ou relações irrelevantes.
 - Termo técnico, símbolo, sigla, unidade, papel, convenção ou relação nova recebe explicação suficiente antes de ser exigido. Expanda a sigla na primeira ocorrência e explique sua função, não apenas as letras. Para comando, utilitário ou palavra reservada, apresente forma literal, significado, função e ambiente; por exemplo, `pwd` significa `print working directory` e mostra o diretório de trabalho atual. Não use jargão mais avançado como explicação de uma lacuna conceitual.
 - Quando o estudante deve completar uma representação, use um package de resposta compatível com o conteúdo. A lacuna, as alternativas ou os itens ordenáveis pertencem ao contrato específico desse package; não descreva a posição da resposta em prosa.
 - A lacuna mede a operação planejada e não pode ter a resposta exposta em título, enunciado, rótulo, outra opção, feedback antecipado, estrutura visível ou geometria derivada do mesmo card. O feedback explica a condição decisiva e não fornece a base que faltava para responder.
@@ -427,13 +427,13 @@ Quando houver materiais autorizados de avaliação ou prática, fundamente as at
 1. material fornecido pela pessoa autora;
 2. exercícios da mesma banca ou instituição avaliadora;
 3. exercícios da mesma banca para cargo, área ou assunto semelhante;
-4. exercícios de outra banca com operação cognitiva equivalente;
+4. exercícios de outra banca que exijam operação-alvo equivalente;
 5. katas reconhecidos;
 6. exemplos de documentação oficial;
 7. livros, listas e repositórios confiáveis;
 8. construção original fundamentada, quando não houver fonte adequada.
 
-Ancorar não significa copiar. Adapte o contexto, preserve a operação cognitiva, construa distratores plausíveis, mantenha resposta verificável e retire do conteúdo do estudante toda menção a número de questão, nome de arquivo, PDF ou bastidor da adaptação. Registre em `card.sources` somente o identificador já autorizado e conserve no `brief` a proveniência e o recorte usados. Respeite direitos autorais e não reproduza integralmente uma questão protegida.
+Ancorar não significa copiar. Adapte o contexto, preserve a operação-alvo da tarefa, construa distratores plausíveis, mantenha resposta verificável e retire do conteúdo do estudante toda menção a número de questão, nome de arquivo, PDF ou bastidor da adaptação. Registre em `card.sources` somente o identificador já autorizado e conserve no `brief` a proveniência e o recorte usados. Respeite direitos autorais e não reproduza integralmente uma questão protegida.
 
 Em preparação para concurso, prefira a mesma banca e reproduza o tipo de decisão, a extensão útil do enunciado e a qualidade dos distratores sem copiar a formulação. O gabarito isolado não fundamenta a adaptação; confira se a resposta continua inequívoca depois da mudança. Em programação e infraestrutura, prefira katas, documentação oficial, cenários operacionais e erros reais; declare versão ou ambiente quando alterar o resultado, evite comandos destrutivos e mantenha exemplos executáveis ou verificáveis.
 
@@ -740,7 +740,7 @@ Não converta essas classes em score único e não apresente uma operacionaliza�
 
 Use `gerirDesenhoInstrucional` com `run_audit`, `kind: audit`, no estado corrente. Em uma reauditoria, use `kind: reaudit`. O backend verifica, entre outros pontos, IDs e caminhos, camadas e ordem teoria/prática, evidências e contagens declaradas versus artefatos reais, locks, revisão do snapshot, cards derivados ausentes, contratos de resource e resposta, ResourceSet e condição experimental, hashes e rastreabilidade. O resultado abre um audit run versionado e pagina findings sem ultrapassar o limite do protocolo.
 
-Um manifesto registrado com contrato válido ainda pode conter divergência de desenvolvimento, operação cognitiva ou cobertura. Nunca trate a aceitação do manifesto como aprovação pedagógica.
+Um manifesto registrado com contrato válido ainda pode conter divergência de desenvolvimento, operação-alvo da tarefa ou cobertura. Nunca trate a aceitação do manifesto como aprovação pedagógica.
 
 ## Auditoria semântico-instrucional
 
@@ -808,13 +808,13 @@ Um card é um envelope fechado:
 
 `role` aceita `theory` ou `practice`. Teoria tem `response: null` e ao menos uma instância em `content`; prática usa exatamente uma instância de package no slot `response`. Uma prática exclusivamente discriminativa pode ter `content: []`: a pergunta pertence somente a `aralearn.response.choice` e nunca deve ser copiada para um `paragraph`. Quando há cenário, representação ou dados além da pergunta, `content` os materializa sem repetir o enunciado. `feedback` pode combinar packages compatíveis. Cada instância declara id, package, versão semântica e `data` validado pelo contrato daquele package.
 
-Não existe contrato monolítico de resources. Primeiro planeje a operação cognitiva e a estrutura que precisa permanecer visível. Em `consultarBibliotecaDeResources`, use `explore` para conhecer famílias e facetas, `search` para receber candidatos classificados, `inspect` para conferir os perfis e `contracts` para carregar exatamente uma versão escolhida por chamada. Antes de persistir, use `validate_card` e `audit_representation`. `preview_card` apenas descreve a composição: a prévia visual fiel pertence ao renderer do aplicativo. Nunca invente campos ou coordenadas. Toda resposta dessa ferramenta segue `aralearn.resource-library.v1`.
+Não existe contrato monolítico de resources. Primeiro planeje a operação-alvo da tarefa e a estrutura que precisa permanecer visível. Em `consultarBibliotecaDeResources`, use `explore` para conhecer famílias e facetas, `search` para receber candidatos classificados, `inspect` para conferir os perfis e `contracts` para carregar exatamente uma versão escolhida por chamada. Antes de persistir, use `validate_card` e `audit_representation`. `preview_card` apenas descreve a composição: a prévia visual fiel pertence ao renderer do aplicativo. Nunca invente campos ou coordenadas. Toda resposta dessa ferramenta segue `aralearn.resource-library.v1`.
 
 Os valores a seguir são tokens do protocolo, não certificações acadêmicas. `canonical` indica ajuste específico; `versatile`, uma representação transversal que preserva a estrutura; `substitute`, uma aproximação instalada. A policy e o ResourceSet determinam quais ajustes são admitidos. Toda admissão não canônica conserva sua limitação e o `chatDisclosure`; bloqueio interrompe a seleção, sem autorizar package externo ou equivalência artificial.
 
 `validate_card` confere o envelope, schemas, referências e compatibilidades. `audit_representation` acrescenta a análise de `semantic_fit` para conteúdo, `response_affordance` para resposta e `feedback_legibility` para feedback. `preview_card` sempre devolve `rendered: false`: é um descritor estrutural, não screenshot nem substituto para a prévia no renderer do aplicativo.
 
-Antes de escolher um package especializado, aplique uma vez a policy devolvida por `explore`. Depois leia, no perfil do candidato, `conventions`, `useWhen` e `avoidWhen`. A forma só é admitida quando preserva estrutura necessária à operação, torna a relação mais previsível e não acrescenta gramática visual a ser decifrada. Diversidade visual não é motivo de seleção. Na teoria, avance sem condensar assuntos; na prática, mantenha no card o caso completo e somente a complexidade necessária ao gesto cognitivo.
+Antes de escolher um package especializado, aplique uma vez a policy devolvida por `explore`. Depois leia, no perfil do candidato, `conventions`, `useWhen` e `avoidWhen`. A forma só é admitida quando preserva estrutura necessária à operação, torna a relação mais previsível e não acrescenta gramática visual a ser decifrada. Diversidade visual não é motivo de seleção. Na teoria, avance sem condensar assuntos; na prática, mantenha no card o caso completo e somente a complexidade necessária à operação-alvo da tarefa.
 
 Microssequências sem cards continuam no planejamento. Com cards, ficam imediatamente renderizáveis e estudáveis. Não envie status de publicação, conclusão ou prontidão.
 
@@ -891,7 +891,7 @@ Essas regras valem para qualquer package estruturado e para composições com ma
 ## 8. Ancoragem das práticas
 
 - Aplique a prioridade e as regras de adaptação de `core/sources.md`. Material fornecido pela pessoa e exercícios da mesma banca têm precedência quando forem pertinentes; depois vêm tarefas cognitivamente equivalentes, katas, documentação oficial e outras fontes confiáveis.
-- Confirme que a prática preserva a operação cognitiva, oferece distratores plausíveis, possui resposta verificável e registra IDs autorizados em `sources`, sem copiar a questão nem mencionar seu bastidor para o estudante.
+- Confirme que a prática preserva a operação-alvo da tarefa, oferece distratores plausíveis, possui resposta verificável e registra IDs autorizados em `sources`, sem copiar a questão nem mencionar seu bastidor para o estudante.
 - Em concursos, compare tipo de decisão, extensão útil e padrão de distratores. Em programação e infraestrutura, confira ambiente, versão, segurança e verificabilidade do exemplo.
 - Sinalize prática genérica ou decorativa que apenas complete quantidade e não se pareça com uma tarefa real da área.
 
@@ -2231,7 +2231,7 @@ Ter uma fronteira unitária explícita é preferível a inferir que qualquer obj
 Cada package fornece:
 
 - manifest com id, versão, propósito e slots;
-- operações cognitivas e taxonomia acadêmica;
+- operações-alvo das tarefas e taxonomia acadêmica;
 - adequações, contraindicações, limitações e acessibilidade;
 - contrato autoral de alto nível e exemplo;
 - schema de `data`;
@@ -2280,7 +2280,7 @@ O planejamento didático precede o contrato:
 
 ```text
 objetivo e progressão
-→ gesto cognitivo necessário
+→ operação-alvo necessária à tarefa
 → `ResourceSet` efetivo e busca por facetas
 → comparação da lista curta
 → carregamento dos contratos escolhidos

@@ -219,7 +219,7 @@
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
-                            "text": "Critério de revisão para Texto anotado: a representação deve realizar a finalidade declarada — Relacionar trechos precisos de um texto a observações, funções ou explicações. A operação cognitiva em foco é anotar e rotular. Evite este recurso quando a observação não possui alvo textual preciso.",
+                            "text": "Critério de revisão para Texto anotado: a representação deve realizar a finalidade declarada — Relacionar trechos precisos de um texto a observações, funções ou explicações. A operação-alvo da tarefa é anotar e rotular. Evite este recurso quando a observação não possui alvo textual preciso.",
                             "languageTag": "pt-BR",
                             "textDirection": "auto"
                           }
@@ -318,7 +318,7 @@
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
-                            "text": "Critério de revisão para Código: a representação deve realizar a finalidade declarada — Apresentar código cuja sintaxe, indentação e execução mental são relevantes. A operação cognitiva em foco é identificar e localizar. Evite este recurso quando pseudocódigo ou prosa expressam melhor a ideia.",
+                            "text": "Critério de revisão para Código: a representação deve realizar a finalidade declarada — Apresentar código cuja sintaxe, indentação e execução mental são relevantes. A operação-alvo da tarefa é identificar e localizar. Evite este recurso quando pseudocódigo ou prosa expressam melhor a ideia.",
                             "languageTag": "pt-BR",
                             "textDirection": "auto"
                           }
@@ -524,7 +524,7 @@
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
-                            "text": "Critério de revisão para Glosa interlinear: a representação deve realizar a finalidade declarada — Alinhar formas linguísticas segmentadas, glosas morfema a morfema, tradução livre e legenda de abreviações. A operação cognitiva em foco é comparar e contrastar. Evite este recurso quando uma citação ou tradução simples é suficiente.",
+                            "text": "Critério de revisão para Glosa interlinear: a representação deve realizar a finalidade declarada — Alinhar formas linguísticas segmentadas, glosas morfema a morfema, tradução livre e legenda de abreviações. A operação-alvo da tarefa é comparar e contrastar. Evite este recurso quando uma citação ou tradução simples é suficiente.",
                             "languageTag": "pt-BR",
                             "textDirection": "auto"
                           }
@@ -623,7 +623,7 @@
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
-                            "text": "Critério de revisão para Texto explicado: a representação deve realizar a finalidade declarada — Desenvolver uma explicação progressiva em prosa, listas curtas e literais inequívocos. A operação cognitiva em foco é explicar e situar. Evite este recurso quando a estrutura do objeto exige notação própria.",
+                            "text": "Critério de revisão para Texto explicado: a representação deve realizar a finalidade declarada — Desenvolver uma explicação progressiva em prosa, listas curtas e literais inequívocos. A operação-alvo da tarefa é explicar e situar. Evite este recurso quando a estrutura do objeto exige notação própria.",
                             "languageTag": "pt-BR",
                             "textDirection": "auto"
                           }
@@ -1000,7 +1000,7 @@
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
-                            "text": "Critério de revisão para Gráfico estatístico: a representação deve realizar a finalidade declarada — Tornar tendência, comparação quantitativa, escala e incerteza visualmente observáveis. A operação cognitiva em foco é comparar e contrastar. Evite este recurso quando poucos valores são mais claros em texto ou tabela.",
+                            "text": "Critério de revisão para Gráfico estatístico: a representação deve realizar a finalidade declarada — Tornar tendência, comparação quantitativa, escala e incerteza visualmente observáveis. A operação-alvo da tarefa é comparar e contrastar. Evite este recurso quando poucos valores são mais claros em texto ou tabela.",
                             "languageTag": "pt-BR",
                             "textDirection": "auto"
                           }
@@ -1348,7 +1348,7 @@
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
-                            "text": "Critério de revisão para Fórmula: a representação deve realizar a finalidade declarada — Representar expressão matemática ou química estruturada com leitura acessível explícita. A operação cognitiva em foco é identificar e localizar. Evite este recurso quando uma frase é mais clara que a notação.",
+                            "text": "Critério de revisão para Fórmula: a representação deve realizar a finalidade declarada — Representar expressão matemática ou química estruturada com leitura acessível explícita. A operação-alvo da tarefa é identificar e localizar. Evite este recurso quando uma frase é mais clara que a notação.",
                             "languageTag": "pt-BR",
                             "textDirection": "auto"
                           }
@@ -1485,7 +1485,7 @@
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
-                            "text": "Critério de revisão para Matriz: a representação deve realizar a finalidade declarada — Representar um arranjo retangular de escalares ou expressões e operações da álgebra linear. A operação cognitiva em foco é identificar e localizar. Evite este recurso quando linhas são registros e colunas são atributos.",
+                            "text": "Critério de revisão para Matriz: a representação deve realizar a finalidade declarada — Representar um arranjo retangular de escalares ou expressões e operações da álgebra linear. A operação-alvo da tarefa é identificar e localizar. Evite este recurso quando linhas são registros e colunas são atributos.",
                             "languageTag": "pt-BR",
                             "textDirection": "auto"
                           }
@@ -1893,7 +1893,7 @@
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
-                            "text": "Critério de revisão para Plano cartesiano: a representação deve realizar a finalidade declarada — Situar pontos, vetores, trajetórias e regiões em duas dimensões com escala acadêmica explícita. A operação cognitiva em foco é identificar e localizar. Evite este recurso quando a operação é somente algébrica.",
+                            "text": "Critério de revisão para Plano cartesiano: a representação deve realizar a finalidade declarada — Situar pontos, vetores, trajetórias e regiões em duas dimensões com escala acadêmica explícita. A operação-alvo da tarefa é identificar e localizar. Evite este recurso quando a operação é somente algébrica.",
                             "languageTag": "pt-BR",
                             "textDirection": "auto"
                           }
@@ -2044,7 +2044,7 @@
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
-                            "text": "Critério de revisão para Reação: a representação deve realizar a finalidade declarada — Representar reagentes, produtos, proporções, estados e condições de uma reação. A operação cognitiva em foco é calcular e avaliar. Evite este recurso quando a tarefa exige somente descrição macroscópica.",
+                            "text": "Critério de revisão para Reação: a representação deve realizar a finalidade declarada — Representar reagentes, produtos, proporções, estados e condições de uma reação. A operação-alvo da tarefa é calcular e avaliar. Evite este recurso quando a tarefa exige somente descrição macroscópica.",
                             "languageTag": "pt-BR",
                             "textDirection": "auto"
                           }
@@ -2207,7 +2207,7 @@
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
-                            "text": "Critério de revisão para Tabela: a representação deve realizar a finalidade declarada — Comparar atributos repetidos ou consultar valores organizados por linhas e colunas. A operação cognitiva em foco é comparar e contrastar. Evite este recurso quando os valores formam uma matriz algébrica.",
+                            "text": "Critério de revisão para Tabela: a representação deve realizar a finalidade declarada — Comparar atributos repetidos ou consultar valores organizados por linhas e colunas. A operação-alvo da tarefa é comparar e contrastar. Evite este recurso quando os valores formam uma matriz algébrica.",
                             "languageTag": "pt-BR",
                             "textDirection": "auto"
                           }
@@ -2427,7 +2427,7 @@
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
-                            "text": "Critério de revisão para Tabela-verdade: a representação deve realizar a finalidade declarada — Representar valorações e o resultado de uma fórmula proposicional segundo a convenção lógica. A operação cognitiva em foco é calcular e avaliar. Evite este recurso quando a tarefa é apenas definir um conectivo em prosa.",
+                            "text": "Critério de revisão para Tabela-verdade: a representação deve realizar a finalidade declarada — Representar valorações e o resultado de uma fórmula proposicional segundo a convenção lógica. A operação-alvo da tarefa é calcular e avaliar. Evite este recurso quando a tarefa é apenas definir um conectivo em prosa.",
                             "languageTag": "pt-BR",
                             "textDirection": "auto"
                           }
@@ -2758,7 +2758,7 @@
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
-                            "text": "Critério de revisão para Grafo matemático: a representação deve realizar a finalidade declarada — Representar grafos e dígrafos abstratos segundo a notação de teoria dos grafos. A operação cognitiva em foco é identificar e localizar. Evite este recurso quando os nós são componentes de software, equipamentos de rede, estados ou conceitos.",
+                            "text": "Critério de revisão para Grafo matemático: a representação deve realizar a finalidade declarada — Representar grafos e dígrafos abstratos segundo a notação de teoria dos grafos. A operação-alvo da tarefa é identificar e localizar. Evite este recurso quando os nós são componentes de software, equipamentos de rede, estados ou conceitos.",
                             "languageTag": "pt-BR",
                             "textDirection": "auto"
                           }
@@ -2997,7 +2997,7 @@
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
-                            "text": "Critério de revisão para Diagrama de relação: a representação deve realizar a finalidade declarada — Tornar visíveis domínio, contradomínio, imagens, preimagens e cardinalidade de uma relação binária. A operação cognitiva em foco é classificar e associar. Evite este recurso quando pares independentes cabem em tabela.",
+                            "text": "Critério de revisão para Diagrama de relação: a representação deve realizar a finalidade declarada — Tornar visíveis domínio, contradomínio, imagens, preimagens e cardinalidade de uma relação binária. A operação-alvo da tarefa é classificar e associar. Evite este recurso quando pares independentes cabem em tabela.",
                             "languageTag": "pt-BR",
                             "textDirection": "auto"
                           }
@@ -3223,7 +3223,7 @@
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
-                            "text": "Critério de revisão para Diagrama de conjuntos: a representação deve realizar a finalidade declarada — Representar inclusão, exclusão e interseção entre dois ou três conjuntos, preservando as regiões de Venn ou a topologia de Euler. A operação cognitiva em foco é identificar e localizar. Evite este recurso quando a relação é entre elementos de domínio e contradomínio.",
+                            "text": "Critério de revisão para Diagrama de conjuntos: a representação deve realizar a finalidade declarada — Representar inclusão, exclusão e interseção entre dois ou três conjuntos, preservando as regiões de Venn ou a topologia de Euler. A operação-alvo da tarefa é identificar e localizar. Evite este recurso quando a relação é entre elementos de domínio e contradomínio.",
                             "languageTag": "pt-BR",
                             "textDirection": "auto"
                           }
@@ -3404,7 +3404,7 @@
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
-                            "text": "Critério de revisão para Árvore enraizada: a representação deve realizar a finalidade declarada — Representar hierarquia com relação pai-filho, raiz explícita e no máximo um pai por nó. A operação cognitiva em foco é identificar e localizar. Evite este recurso quando há múltiplos pais ou relações cruzadas.",
+                            "text": "Critério de revisão para Árvore enraizada: a representação deve realizar a finalidade declarada — Representar hierarquia com relação pai-filho, raiz explícita e no máximo um pai por nó. A operação-alvo da tarefa é identificar e localizar. Evite este recurso quando há múltiplos pais ou relações cruzadas.",
                             "languageTag": "pt-BR",
                             "textDirection": "auto"
                           }
@@ -3849,7 +3849,7 @@
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
-                            "text": "Critério de revisão para Processo BPMN: a representação deve realizar a finalidade declarada — Representar participantes, raias, eventos, atividades, gateways e fluxos segundo o subconjunto didático de BPMN 2.0. A operação cognitiva em foco é acompanhar e percorrer. Evite este recurso quando o objeto é um algoritmo de programação.",
+                            "text": "Critério de revisão para Processo BPMN: a representação deve realizar a finalidade declarada — Representar participantes, raias, eventos, atividades, gateways e fluxos segundo o subconjunto didático de BPMN 2.0. A operação-alvo da tarefa é acompanhar e percorrer. Evite este recurso quando o objeto é um algoritmo de programação.",
                             "languageTag": "pt-BR",
                             "textDirection": "auto"
                           }
@@ -4038,7 +4038,7 @@
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
-                            "text": "Critério de revisão para Pilha de chamadas: a representação deve realizar a finalidade declarada — Representar quadros de ativação, parâmetros, variáveis locais e continuações durante chamadas de função. A operação cognitiva em foco é acompanhar e percorrer. Evite este recurso quando endereços e segmentos do espaço de memória são o objeto.",
+                            "text": "Critério de revisão para Pilha de chamadas: a representação deve realizar a finalidade declarada — Representar quadros de ativação, parâmetros, variáveis locais e continuações durante chamadas de função. A operação-alvo da tarefa é acompanhar e percorrer. Evite este recurso quando endereços e segmentos do espaço de memória são o objeto.",
                             "languageTag": "pt-BR",
                             "textDirection": "auto"
                           }
@@ -4218,7 +4218,7 @@
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
-                            "text": "Critério de revisão para Fluxograma: a representação deve realizar a finalidade declarada — Representar sequência, decisão, ramificação e repetição com a convenção visual de fluxogramas. A operação cognitiva em foco é acompanhar e percorrer. Evite este recurso quando há apenas ordem linear ou estados persistentes.",
+                            "text": "Critério de revisão para Fluxograma: a representação deve realizar a finalidade declarada — Representar sequência, decisão, ramificação e repetição com a convenção visual de fluxogramas. A operação-alvo da tarefa é acompanhar e percorrer. Evite este recurso quando há apenas ordem linear ou estados persistentes.",
                             "languageTag": "pt-BR",
                             "textDirection": "auto"
                           }
@@ -4475,7 +4475,7 @@
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
-                            "text": "Critério de revisão para Diagrama de estados: a representação deve realizar a finalidade declarada — Representar comportamento dependente de estado com a notação gráfica de autômatos ou máquinas de estados. A operação cognitiva em foco é acompanhar e percorrer. Evite este recurso quando a tarefa exige comparar exaustivamente a função de transição em forma tabular.",
+                            "text": "Critério de revisão para Diagrama de estados: a representação deve realizar a finalidade declarada — Representar comportamento dependente de estado com a notação gráfica de autômatos ou máquinas de estados. A operação-alvo da tarefa é acompanhar e percorrer. Evite este recurso quando a tarefa exige comparar exaustivamente a função de transição em forma tabular.",
                             "languageTag": "pt-BR",
                             "textDirection": "auto"
                           }
@@ -4726,7 +4726,7 @@
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
-                            "text": "Critério de revisão para Tabela de transição: a representação deve realizar a finalidade declarada — Comparar de forma exaustiva a função de transição por estado e evento ou símbolo. A operação cognitiva em foco é comparar e contrastar. Evite este recurso quando o percurso e a estrutura visual dos estados são o objeto.",
+                            "text": "Critério de revisão para Tabela de transição: a representação deve realizar a finalidade declarada — Comparar de forma exaustiva a função de transição por estado e evento ou símbolo. A operação-alvo da tarefa é comparar e contrastar. Evite este recurso quando o percurso e a estrutura visual dos estados são o objeto.",
                             "languageTag": "pt-BR",
                             "textDirection": "auto"
                           }
@@ -4891,7 +4891,7 @@
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
-                            "text": "Critério de revisão para Sessão de terminal: a representação deve realizar a finalidade declarada — Representar uma interação textual temporal entre pessoa e sistema, preservando entradas, saídas, erros e mudanças observáveis de estado. A operação cognitiva em foco é acompanhar e percorrer. Evite este recurso quando apenas a sintaxe de um trecho de código ou configuração importa.",
+                            "text": "Critério de revisão para Sessão de terminal: a representação deve realizar a finalidade declarada — Representar uma interação textual temporal entre pessoa e sistema, preservando entradas, saídas, erros e mudanças observáveis de estado. A operação-alvo da tarefa é acompanhar e percorrer. Evite este recurso quando apenas a sintaxe de um trecho de código ou configuração importa.",
                             "languageTag": "pt-BR",
                             "textDirection": "auto"
                           }
@@ -5306,7 +5306,7 @@
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
-                            "text": "Critério de revisão para Esquema relacional: a representação deve realizar a finalidade declarada — Representar relações, atributos, chaves e dependências referenciais no modelo lógico relacional. A operação cognitiva em foco é identificar e localizar. Evite este recurso quando é necessário representar instâncias de dados.",
+                            "text": "Critério de revisão para Esquema relacional: a representação deve realizar a finalidade declarada — Representar relações, atributos, chaves e dependências referenciais no modelo lógico relacional. A operação-alvo da tarefa é identificar e localizar. Evite este recurso quando é necessário representar instâncias de dados.",
                             "languageTag": "pt-BR",
                             "textDirection": "auto"
                           }
@@ -5579,7 +5579,7 @@
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
-                            "text": "Critério de revisão para Modelo entidade-relacionamento: a representação deve realizar a finalidade declarada — Representar entidades, atributos e cardinalidades no nível conceitual da modelagem de dados. A operação cognitiva em foco é identificar e localizar. Evite este recurso quando o objeto é o esquema relacional com PK e FK já transformadas.",
+                            "text": "Critério de revisão para Modelo entidade-relacionamento: a representação deve realizar a finalidade declarada — Representar entidades, atributos e cardinalidades no nível conceitual da modelagem de dados. A operação-alvo da tarefa é identificar e localizar. Evite este recurso quando o objeto é o esquema relacional com PK e FK já transformadas.",
                             "languageTag": "pt-BR",
                             "textDirection": "auto"
                           }
@@ -5867,7 +5867,7 @@
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
-                            "text": "Critério de revisão para Contêineres de software: a representação deve realizar a finalidade declarada — Representar aplicações e armazenamentos executáveis ou implantáveis dentro de um sistema segundo o nível de contêiner do C4. A operação cognitiva em foco é identificar e localizar. Evite este recurso quando o contexto externo basta.",
+                            "text": "Critério de revisão para Contêineres de software: a representação deve realizar a finalidade declarada — Representar aplicações e armazenamentos executáveis ou implantáveis dentro de um sistema segundo o nível de contêiner do C4. A operação-alvo da tarefa é identificar e localizar. Evite este recurso quando o contexto externo basta.",
                             "languageTag": "pt-BR",
                             "textDirection": "auto"
                           }
@@ -6072,7 +6072,7 @@
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
-                            "text": "Critério de revisão para Contexto de sistema de software: a representação deve realizar a finalidade declarada — Situar um sistema de software entre pessoas e sistemas externos segundo o diagrama de contexto do modelo C4. A operação cognitiva em foco é identificar e localizar. Evite este recurso quando a tarefa exige contêineres internos.",
+                            "text": "Critério de revisão para Contexto de sistema de software: a representação deve realizar a finalidade declarada — Situar um sistema de software entre pessoas e sistemas externos segundo o diagrama de contexto do modelo C4. A operação-alvo da tarefa é identificar e localizar. Evite este recurso quando a tarefa exige contêineres internos.",
                             "languageTag": "pt-BR",
                             "textDirection": "auto"
                           }
@@ -6347,7 +6347,7 @@
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
-                            "text": "Critério de revisão para Diagrama interno de bloco: a representação deve realizar a finalidade declarada — Representar partes, portas, itens e conectores internos de um bloco segundo a gramática de diagrama interno do SysML. A operação cognitiva em foco é identificar e localizar. Evite este recurso quando a tarefa é o contexto externo de software.",
+                            "text": "Critério de revisão para Diagrama interno de bloco: a representação deve realizar a finalidade declarada — Representar partes, portas, itens e conectores internos de um bloco segundo a gramática de diagrama interno do SysML. A operação-alvo da tarefa é identificar e localizar. Evite este recurso quando a tarefa é o contexto externo de software.",
                             "languageTag": "pt-BR",
                             "textDirection": "auto"
                           }
@@ -6610,7 +6610,7 @@
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
-                            "text": "Critério de revisão para Mapa de memória: a representação deve realizar a finalidade declarada — Representar intervalos de endereços, segmentos e ocupação de memória na ordem convencional. A operação cognitiva em foco é identificar e localizar. Evite este recurso quando a tarefa exige somente listar variáveis.",
+                            "text": "Critério de revisão para Mapa de memória: a representação deve realizar a finalidade declarada — Representar intervalos de endereços, segmentos e ocupação de memória na ordem convencional. A operação-alvo da tarefa é identificar e localizar. Evite este recurso quando a tarefa exige somente listar variáveis.",
                             "languageTag": "pt-BR",
                             "textDirection": "auto"
                           }
@@ -6855,7 +6855,7 @@
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
-                            "text": "Critério de revisão para Topologia de rede: a representação deve realizar a finalidade declarada — Representar equipamentos, segmentos e enlaces de uma rede sem confundi-los com vértices abstratos. A operação cognitiva em foco é acompanhar e percorrer. Evite este recurso quando a tarefa é teoria abstrata de grafos.",
+                            "text": "Critério de revisão para Topologia de rede: a representação deve realizar a finalidade declarada — Representar equipamentos, segmentos e enlaces de uma rede sem confundi-los com vértices abstratos. A operação-alvo da tarefa é acompanhar e percorrer. Evite este recurso quando a tarefa é teoria abstrata de grafos.",
                             "languageTag": "pt-BR",
                             "textDirection": "auto"
                           }
@@ -7083,7 +7083,7 @@
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
-                            "text": "Critério de revisão para Layout de pacote: a representação deve realizar a finalidade declarada — Representar cabeçalhos e registros binários em palavras de largura fixa, com posição e extensão de cada campo. A operação cognitiva em foco é identificar e localizar. Evite este recurso quando é preciso comparar registros heterogêneos.",
+                            "text": "Critério de revisão para Layout de pacote: a representação deve realizar a finalidade declarada — Representar cabeçalhos e registros binários em palavras de largura fixa, com posição e extensão de cada campo. A operação-alvo da tarefa é identificar e localizar. Evite este recurso quando é preciso comparar registros heterogêneos.",
                             "languageTag": "pt-BR",
                             "textDirection": "auto"
                           }
@@ -7221,7 +7221,7 @@
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
-                            "text": "Critério de revisão para Escolha: a representação deve realizar a finalidade declarada — Pedir que o estudante discrimine uma ou mais alternativas plausíveis. A operação cognitiva em foco é decidir e discriminar. Evite este recurso quando o estudante deve produzir a resposta sem pistas.",
+                            "text": "Critério de revisão para Escolha: a representação deve realizar a finalidade declarada — Pedir que o estudante discrimine uma ou mais alternativas plausíveis. A operação-alvo da tarefa é decidir e discriminar. Evite este recurso quando o estudante deve produzir a resposta sem pistas.",
                             "languageTag": "pt-BR",
                             "textDirection": "auto"
                           }
@@ -7310,7 +7310,7 @@
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
-                            "text": "Critério de revisão para Lacuna: a representação deve realizar a finalidade declarada — Pedir recuperação ou discriminação exatamente no campo semântico declarado pelo conteúdo. A operação cognitiva em foco é recordar e completar. Evite este recurso quando a resposta exige argumentação extensa.",
+                            "text": "Critério de revisão para Lacuna: a representação deve realizar a finalidade declarada — Pedir recuperação ou discriminação exatamente no campo semântico declarado pelo conteúdo. A operação-alvo da tarefa é recordar e completar. Evite este recurso quando a resposta exige argumentação extensa.",
                             "languageTag": "pt-BR",
                             "textDirection": "auto"
                           }
@@ -7444,7 +7444,7 @@
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
-                            "text": "Critério de revisão para Ordenação: a representação deve realizar a finalidade declarada — Pedir que o estudante reconstrua a ordem de expressões nos próprios campos textuais em que elas são lidas. A operação cognitiva em foco é ordenar e sequenciar. Evite este recurso quando a ordem é arbitrária.",
+                            "text": "Critério de revisão para Ordenação: a representação deve realizar a finalidade declarada — Pedir que o estudante reconstrua a ordem de expressões nos próprios campos textuais em que elas são lidas. A operação-alvo da tarefa é ordenar e sequenciar. Evite este recurso quando a ordem é arbitrária.",
                             "languageTag": "pt-BR",
                             "textDirection": "auto"
                           }

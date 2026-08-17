@@ -120,7 +120,7 @@ export const gapResponsePackage = Object.freeze({
   manifest: Object.freeze({
     id: "aralearn.response.gap", version: "1.0.0", label: "Lacuna",
     purpose: "Pedir recuperação ou discriminação exatamente no campo semântico declarado pelo conteúdo.", slots: Object.freeze(["response"]),
-    cognitiveOperations: Object.freeze(["recall", "complete", "label", "calculate"]), responseCompatibility: Object.freeze([]),
+    taskOperations: Object.freeze(["recall", "complete", "label", "calculate"]), responseCompatibility: Object.freeze([]),
     academic: academicProfile({ domains: ["transversal"], knowledgeObjects: ["lacuna semântica", "resposta curta"], conventions: ["lacuna no lugar exato do conceito", "equivalentes aceitos explícitos"], appropriateWhen: ["recordar ou completar um elemento localizado é a operação desejada"], avoidWhen: ["a resposta exige argumentação extensa"], technologies: ["HTML semântico", "controles nativos"], practiceModes: ["gap", "typing", "selection"], content: false }),
     limitations: Object.freeze(["O package de conteúdo precisa declarar o targetPath como editável por resposta." ]), accessibility: "Cada lacuna tem prompt, rótulo e controle nativo próprios."
   }),

@@ -364,7 +364,7 @@ function facetBasis(profiles) {
     families: unique("familyIds"),
     disciplines: unique("disciplineIds"),
     structures: unique("structureIds"),
-    cognitiveOperations: unique("operationIds"),
+    taskOperations: unique("taskOperationIds"),
     practiceModalities: unique("practiceModeIds")
   };
 }
@@ -2675,7 +2675,7 @@ export class AuthoringWorkspaceClient {
       families: "familyIds",
       disciplines: "disciplineIds",
       structures: "structureIds",
-      cognitiveOperations: "operationIds",
+      taskOperations: "taskOperationIds",
       practiceModalities: "practiceModeIds"
     };
     const profiles = profileList().filter((profile) => {

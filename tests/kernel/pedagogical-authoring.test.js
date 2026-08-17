@@ -29,12 +29,12 @@ function layer(id, plainLanguageReferent, formalTerms, requiresLayerIds = []) {
   return { id, plainLanguageReferent, formalTerms, requiresLayerIds };
 }
 
-function theory(id, layerIds, purpose, cognitiveOperation, packageCandidateIds) {
-  return { id, layerIds, purpose, cognitiveOperation, packageCandidateIds };
+function theory(id, layerIds, purpose, taskOperation, packageCandidateIds) {
+  return { id, layerIds, purpose, taskOperation, packageCandidateIds };
 }
 
-function practice(id, targetLayerIds, decision, cognitiveOperation, packageCandidateIds) {
-  return { id, targetLayerIds, decision, cognitiveOperation, packageCandidateIds, feedback: `Explica por que a decisão de ${decision.toLocaleLowerCase("pt-BR")} está correta e contrasta o erro provável.` };
+function practice(id, targetLayerIds, decision, taskOperation, packageCandidateIds) {
+  return { id, targetLayerIds, decision, taskOperation, packageCandidateIds, feedback: `Explica por que a decisão de ${decision.toLocaleLowerCase("pt-BR")} está correta e contrasta o erro provável.` };
 }
 
 function ledger(layers) {
@@ -53,7 +53,7 @@ function blueprint({ goal, situation, layers, theorySteps, practiceSteps }) {
     contentDemands: [{
       id: "understand-relations",
       description: "Interpretar as relações e decisões próprias deste conteúdo.",
-      cognitiveOperations: ["explain", "discriminate"]
+      taskOperations: ["explain", "discriminate"]
     }],
     anticipatedDifficulties: [{
       id: "missing-referent",
@@ -229,7 +229,7 @@ test("eval rejeita o padrão condensado observado no curso antigo", () => {
     contentDemands: [{
       id: "read-dense-table",
       description: "Interpretar muitas relações simultâneas.",
-      cognitiveOperations: ["explain"]
+      taskOperations: ["explain"]
     }],
     anticipatedDifficulties: [{
       id: "dense-abstraction",

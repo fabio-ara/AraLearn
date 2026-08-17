@@ -402,7 +402,7 @@ test("descoberta progressiva explora, busca e inspeciona antes de obter contrato
       query: "explicação progressiva em prosa",
       slot: "content",
       structureIds: ["structure.prose"],
-      operationIds: ["operation.explain"],
+      taskOperationIds: ["task_operation.explain"],
       limit: 4
     }
   )));
@@ -517,7 +517,7 @@ test("kernel valida e audita composição sem fingir uma prévia visual", async 
     intent: "Alinhar cada morfema à glosa correspondente.",
     disciplineIds: ["discipline.language"],
     structureIds: ["structure.interlinear"],
-    operationIds: ["operation.identify"]
+    taskOperationIds: ["task_operation.identify"]
   });
   assert.equal(mismatchedAudit.overallFit, "substitute");
   assert.ok(

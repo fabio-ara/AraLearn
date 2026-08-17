@@ -8,7 +8,7 @@ export const paragraphPackage = Object.freeze({
     label: "Texto explicado",
     purpose: "Desenvolver uma explicação progressiva em prosa, listas curtas e literais inequívocos.",
     slots: Object.freeze(["content", "feedback"]),
-    cognitiveOperations: Object.freeze(["situate", "explain", "exemplify", "summarize-locally", "give-feedback"]),
+    taskOperations: Object.freeze(["situate", "explain", "exemplify", "summarize-locally", "give-feedback"]),
     academic: academicProfile({ domains: ["transversal"], knowledgeObjects: ["conceito", "explicação", "exemplo narrado"], conventions: ["prosa acadêmica contínua", "termo apresentado antes do uso"], appropriateWhen: ["a relação espacial não acrescenta significado"], avoidWhen: ["a estrutura do objeto exige notação própria"], technologies: ["HTML semântico"], practiceModes: ["exposition", "gap", "typing", "selection", "ordering"] }),
     responseCompatibility: Object.freeze(["aralearn.response.gap", "aralearn.response.ordering"]),
     limitations: Object.freeze([

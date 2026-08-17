@@ -42,7 +42,7 @@ export const stateTransitionTablePackage = Object.freeze({
     label: "Tabela de transição",
     purpose: "Comparar de forma exaustiva a função de transição por estado e evento ou símbolo.",
     slots: Object.freeze(["content", "feedback"]),
-    cognitiveOperations: Object.freeze(["compare-transition-function", "locate-missing-transition", "test-determinism", "evaluate-input"]),
+    taskOperations: Object.freeze(["compare-transition-function", "locate-missing-transition", "test-determinism", "evaluate-input"]),
     academic: academicProfile({
       domains: ["linguagens formais", "sistemas digitais", "protocolos"],
       knowledgeObjects: ["função de transição", "estado", "evento", "destino"],
@@ -57,7 +57,7 @@ export const stateTransitionTablePackage = Object.freeze({
     accessibility: "Cabeçalhos identificam eventos; cada linha declara um estado e seus destinos."
   }),
   authoringContract: Object.freeze({
-    intent: "Declare a função de transição quando a comparação tabular for o gesto cognitivo; use state_machine para percursos.",
+    intent: "Declare a função de transição quando a comparação tabular for a operação-alvo da tarefa; use state_machine para percursos.",
     required: Object.freeze(["states", "events", "transitions"]),
     optional: Object.freeze(["prompt", "stateColumnLabel", "legend"]),
     rules: Object.freeze(["Todo estado e evento referenciado existe.", "Ausência de transição é materializada por travessão.", "Destinos múltiplos permanecem na mesma célula.", "Uma lacuna de destino aponta para transitions[i].to e usa o id estrutural do estado como resposta; o renderer apresenta o label correspondente."]),

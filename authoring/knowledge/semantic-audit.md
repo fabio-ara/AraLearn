@@ -107,7 +107,7 @@ Essas regras valem para qualquer package estruturado e para composições com ma
   fornecido pela pessoa e exercícios da mesma banca têm precedência quando
   forem pertinentes; depois vêm tarefas cognitivamente equivalentes, katas,
   documentação oficial e outras fontes confiáveis.
-- Confirme que a prática preserva a operação cognitiva, oferece distratores
+- Confirme que a prática preserva a operação-alvo da tarefa, oferece distratores
   plausíveis, possui resposta verificável e registra IDs autorizados em
   `sources`, sem copiar a questão nem mencionar seu bastidor para o estudante.
 - Em concursos, compare tipo de decisão, extensão útil e padrão de distratores.

@@ -131,7 +131,7 @@ export function assertPackageDefinition(definition) {
   if (manifest.slots.some((slot) => !PACKAGE_SLOTS.includes(slot))) {
     throw new TypeError(`${manifest.id} declara slot desconhecido.`);
   }
-  assertNonEmptyList(manifest.cognitiveOperations, `${manifest.id}.manifest.cognitiveOperations`);
+  assertNonEmptyList(manifest.taskOperations, `${manifest.id}.manifest.taskOperations`);
   assertAcademicManifest(manifest);
   if (!definition.schema || typeof definition.schema !== "object") {
     throw new TypeError(`${manifest.id} precisa de schema.`);
@@ -169,7 +169,7 @@ function publicManifest(definition) {
     label: manifest.label,
     purpose: manifest.purpose,
     slots: manifest.slots,
-    cognitiveOperations: manifest.cognitiveOperations,
+    taskOperations: manifest.taskOperations,
     responseCompatibility: manifest.responseCompatibility || [],
     limitations: manifest.limitations || [],
     accessibility: manifest.accessibility || "",
@@ -179,7 +179,7 @@ function publicManifest(definition) {
         domains: academic.domains,
         knowledgeObjects: academic.knowledgeObjects,
         conventions: academic.conventions,
-        cognitiveOperations: manifest.cognitiveOperations,
+        taskOperations: manifest.taskOperations,
         practiceModes: academic.practiceModes,
         taxonomy: academic.taxonomy
       })

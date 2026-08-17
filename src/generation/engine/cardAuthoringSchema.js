@@ -94,7 +94,7 @@ export function buildCardRepresentationCatalog() {
     label: manifest.label,
     purpose: manifest.purpose,
     slots: manifest.slots,
-    cognitiveOperations: manifest.cognitiveOperations,
+    taskOperations: manifest.taskOperations,
     responseCompatibility: manifest.responseCompatibility,
     limitations: manifest.limitations,
     accessibility: manifest.accessibility,

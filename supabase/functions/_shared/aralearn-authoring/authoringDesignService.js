@@ -155,8 +155,8 @@ const BLUEPRINT_SCHEMA = Object.freeze({
     },
     contentDemands: {
       type: "array",
-      items: closedListEntry(["id", "description", "cognitiveOperations"], {
-        id: NON_EMPTY_SCHEMA, description: NON_EMPTY_SCHEMA, cognitiveOperations: STRING_LIST_SCHEMA
+      items: closedListEntry(["id", "description", "taskOperations"], {
+        id: NON_EMPTY_SCHEMA, description: NON_EMPTY_SCHEMA, taskOperations: STRING_LIST_SCHEMA
       })
     },
     anticipatedDifficulties: {
@@ -206,25 +206,25 @@ const BLUEPRINT_SCHEMA = Object.freeze({
     theorySteps: {
       type: "array",
       items: closedListEntry([
-        "id", "layerIds", "purpose", "cognitiveOperation", "packageCandidateIds"
+        "id", "layerIds", "purpose", "taskOperation", "packageCandidateIds"
       ], {
         id: NON_EMPTY_SCHEMA,
         layerIds: STRING_LIST_SCHEMA,
         purpose: NON_EMPTY_SCHEMA,
-        cognitiveOperation: NON_EMPTY_SCHEMA,
+        taskOperation: NON_EMPTY_SCHEMA,
         packageCandidateIds: STRING_LIST_SCHEMA
       })
     },
     practiceSteps: {
       type: "array",
       items: closedListEntry([
-        "id", "targetLayerIds", "decision", "cognitiveOperation",
+        "id", "targetLayerIds", "decision", "taskOperation",
         "packageCandidateIds", "feedback"
       ], {
         id: NON_EMPTY_SCHEMA,
         targetLayerIds: STRING_LIST_SCHEMA,
         decision: NON_EMPTY_SCHEMA,
-        cognitiveOperation: NON_EMPTY_SCHEMA,
+        taskOperation: NON_EMPTY_SCHEMA,
         packageCandidateIds: STRING_LIST_SCHEMA,
         feedback: NON_EMPTY_SCHEMA
       })
@@ -309,13 +309,13 @@ const RESOURCE_SET_FACETS_SCHEMA = Object.freeze({
   type: "object",
   additionalProperties: false,
   required: [
-    "families", "disciplines", "structures", "cognitiveOperations", "practiceModalities"
+    "families", "disciplines", "structures", "taskOperations", "practiceModalities"
   ],
   properties: {
     families: STRING_LIST_SCHEMA,
     disciplines: STRING_LIST_SCHEMA,
     structures: STRING_LIST_SCHEMA,
-    cognitiveOperations: STRING_LIST_SCHEMA,
+    taskOperations: STRING_LIST_SCHEMA,
     practiceModalities: STRING_LIST_SCHEMA
   }
 });
@@ -1888,12 +1888,12 @@ function overlaps(left, right) {
   return list(left).some((value) => rightSet.has(text(value)));
 }
 
-function operationFacetIds(values) {
+function taskOperationFacetIds(values) {
   const requested = new Set(list(values).map(text).filter(Boolean));
   const ids = new Set();
   for (const manifest of RESOURCE_PACKAGE_REGISTRY.listCatalog()) {
-    if (list(manifest.cognitiveOperations).some((value) => requested.has(text(value)))) {
-      list(manifest.academic?.taxonomy?.operationIds).forEach((id) => ids.add(id));
+    if (list(manifest.taskOperations).some((value) => requested.has(text(value)))) {
+      list(manifest.academic?.taxonomy?.taskOperationIds).forEach((id) => ids.add(id));
     }
   }
   return [...ids];
@@ -1923,12 +1923,12 @@ function blueprintUseIntent({ analysis, binding, step, stepKind }) {
   const structures = representationRequirements.flatMap((requirement) => (
     list(requirement.structures)
   ));
-  const operations = [
-    text(step?.cognitiveOperation),
+  const taskOperations = [
+    text(step?.taskOperation),
     ...representationRequirements.flatMap((requirement) => (
-      list(requirement.cognitiveOperations)
+      list(requirement.taskOperations)
     )),
-    ...evidenceRequirements.map(({ operation }) => text(operation))
+    ...evidenceRequirements.map(({ taskOperation }) => text(taskOperation))
   ].filter(Boolean);
   const explore = RESOURCE_CATALOG.explore();
   const taskFeatures = evidenceRequirements.flatMap((requirement) => [
@@ -1939,9 +1939,9 @@ function blueprintUseIntent({ analysis, binding, step, stepKind }) {
     cardRole: stepKind === "theory" ? "theory" : "practice",
     ...(stepKind === "theory" ? { slot: "content" } : {}),
     structureIds: knownFacetIds(structures, explore.facets.structures),
-    operationIds: [...new Set([
-      ...knownFacetIds(operations, explore.facets.operations),
-      ...operationFacetIds(operations)
+    taskOperationIds: [...new Set([
+      ...knownFacetIds(taskOperations, explore.facets.taskOperations),
+      ...taskOperationFacetIds(taskOperations)
     ])],
     knowledgeObjects: [...new Set([...structures, ...taskFeatures])],
     mustPreserve: [...new Set(structures)],
@@ -2320,15 +2320,15 @@ export async function deriveAutoResourceSet({
     throw new AuthoringApiError(422, "invalid_resource_set_mode", "mode deve ser auto.");
   }
   requireClosedObject(payload.facets, [
-    "families", "disciplines", "structures", "cognitiveOperations", "practiceModalities"
+    "families", "disciplines", "structures", "taskOperations", "practiceModalities"
   ], "payload.facets");
   const facets = {
     families: stringArray(payload.facets.families, "payload.facets.families"),
     disciplines: stringArray(payload.facets.disciplines, "payload.facets.disciplines"),
     structures: stringArray(payload.facets.structures, "payload.facets.structures"),
-    cognitiveOperations: stringArray(
-      payload.facets.cognitiveOperations,
-      "payload.facets.cognitiveOperations"
+    taskOperations: stringArray(
+      payload.facets.taskOperations,
+      "payload.facets.taskOperations"
     ),
     practiceModalities: stringArray(
       payload.facets.practiceModalities,
@@ -2345,7 +2345,7 @@ export async function deriveAutoResourceSet({
     catalog.search({
       disciplineIds: facets.disciplines,
       structureIds: facets.structures,
-      operationIds: facets.cognitiveOperations,
+      taskOperationIds: facets.taskOperations,
       practiceModeIds: facets.practiceModalities,
       limit: 1
     });
@@ -2360,7 +2360,7 @@ export async function deriveAutoResourceSet({
     return intersects(facets.families, taxonomy.familyIds)
       && intersects(facets.disciplines, taxonomy.disciplineIds)
       && intersects(facets.structures, taxonomy.structureIds)
-      && intersects(facets.cognitiveOperations, taxonomy.operationIds)
+      && intersects(facets.taskOperations, taxonomy.taskOperationIds)
       && intersects(facets.practiceModalities, taxonomy.practiceModeIds);
   }).map((manifest) => ({ packageId: manifest.id, version: manifest.version }));
   if (!packages.length) {
@@ -3551,18 +3551,21 @@ function plannedPackagesForCard(blueprint, cardRole) {
     : list(blueprint?.theorySteps);
   const selected = steps.flatMap((step) => list(step.packageCandidateIds).map((candidateId) => ({
     candidate: candidates.get(candidateId),
-    cognitiveOperation: step.cognitiveOperation
+    taskOperation: step.taskOperation
   }))).filter(({ candidate }) => candidate);
-  const rawOperations = [...new Set(selected
-    .map(({ cognitiveOperation }) => text(cognitiveOperation))
+  const rawTaskOperations = [...new Set(selected
+    .map(({ taskOperation }) => text(taskOperation))
     .filter(Boolean))];
-  const operationIds = [...new Set([
-    ...knownFacetIds(rawOperations, RESOURCE_CATALOG.explore().facets.operations),
-    ...operationFacetIds(rawOperations)
+  const taskOperationIds = [...new Set([
+    ...knownFacetIds(
+      rawTaskOperations,
+      RESOURCE_CATALOG.explore().facets.taskOperations
+    ),
+    ...taskOperationFacetIds(rawTaskOperations)
   ])];
   return {
     keys: new Set(selected.map(({ candidate }) => packageKey(candidate))),
-    operations: operationIds
+    taskOperationIds
   };
 }
 
@@ -3631,7 +3634,7 @@ export async function validateWorkspaceCardDesignAccess({
       card,
       intent: {
         cardRole: card?.role,
-        operationIds: planned.operations,
+        taskOperationIds: planned.taskOperationIds,
         limit: 8
       }
     });

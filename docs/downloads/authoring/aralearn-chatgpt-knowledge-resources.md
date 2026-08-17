@@ -24,7 +24,7 @@ O contexto confiável da consulta contém `workspaceId` e a referência do snaps
 
 Quando Auto precisar de um conjunto ainda inexistente, faça um bootstrap separado: explore e busque por famílias/facetas para propor disponibilidade, congele referências exatas de `package@version` e persista o ResourceSet antes do assignment que o referencia. Essa busca inicial não autoriza seleção nem demonstra conformidade. A autoridade começa depois que a referência entra no snapshot efetivo.
 
-1. Leia os requisitos de estrutura, operação cognitiva, fidelidade e representação da análise e do blueprint em formação.
+1. Leia os requisitos de estrutura, operação-alvo da tarefa, fidelidade e representação da análise e do blueprint em formação.
 2. Use `explore` para famílias e facetas permitidas.
 3. Use `search` para candidatos e preserve a referência exata do ResourceSet autorizador.
 4. Use `inspect` apenas nos candidatos plausíveis.
@@ -49,7 +49,7 @@ O package representa a estrutura sobre a qual o estudante raciocina. Escolha-o p
 
 Uma representação visual não recebe um card auxiliar para ensinar uma gramática inventada pela interface. O contexto disciplinar apresenta os conceitos e convenções necessários em progressão; o package materializa essas relações de forma canônica e mais direta que prosa, tabela ou outra alternativa mais simples. Se isso não ocorrer, a seleção ou o package está errado.
 
-O catálogo MCP é a fonte de verdade sobre os packages instalados. Use somente `consultarBibliotecaDeResources`: `explore` apresenta famílias e facetas; `search` procura pela intenção e classifica a cobertura; `inspect` compara até oito perfis; `contracts` carrega exatamente uma versão por chamada. Compare finalidade, operações, área, objeto, convenções, contraindicações, modalidades, slots e compatibilidades com o gesto cognitivo planejado; não escolha apenas pelo nome. O catálogo pode crescer sem alterar estas instruções.
+O catálogo MCP é a fonte de verdade sobre os packages instalados. Use somente `consultarBibliotecaDeResources`: `explore` apresenta famílias e facetas; `search` procura pela intenção e classifica a cobertura; `inspect` compara até oito perfis; `contracts` carrega exatamente uma versão por chamada. Compare finalidade, operações, área, objeto, convenções, contraindicações, modalidades, slots e compatibilidades com a operação-alvo planejada; não escolha apenas pelo nome. O catálogo pode crescer sem alterar estas instruções.
 
 Depois de compor o envelope, chame `validate_card` e então `audit_representation`. A primeira operação confere estrutura, referências e compatibilidade; a segunda separa a adequação semântica do conteúdo, a possibilidade de resposta e a legibilidade do feedback. `preview_card` apenas descreve a composição e sempre informa `rendered: false`; Graphviz, Vega, viewport e screenshot pertencem ao renderer real do aplicativo.
 
@@ -70,7 +70,7 @@ Em `aralearn.response.choice`, `data.question` é o único enunciado da escolha.
 
 ## Seleção pedagógica
 
-Use o manifest recuperado por MCP para comparar a operação cognitiva com a finalidade do package. Em termos gerais:
+Use o manifest recuperado por MCP para comparar a operação-alvo da tarefa com a finalidade do package. Em termos gerais:
 
 - texto explicativo pede `aralearn.resource.paragraph`;
 - código, tabela, fórmula, reação, gráfico quantitativo, fluxo, árvore, grafo, matriz, plano, diagramas de software, mapa de relações, diagrama de conjuntos, tabela-verdade, cabeçalho de pacote, esquema relacional, máquina de estados, topologia de rede, mapa de memória, glosa interlinear e texto anotado pedem seus packages estruturais específicos;
@@ -248,7 +248,7 @@ Essa separação resolve dois problemas:
 
 ## 1. Quando um package é justificável
 
-Uma caixa visual não se torna um resource apenas por ter estilo próprio. O package é justificável quando texto, tabela genérica ou outro package existente perderia uma relação relevante, uma notação convencional ou uma operação cognitiva.
+Uma caixa visual não se torna um resource apenas por ter estilo próprio. O package é justificável quando texto, tabela genérica ou outro package existente perderia uma relação relevante, uma notação convencional ou uma operação-alvo da tarefa.
 
 ### Critério de decisão
 
@@ -297,7 +297,7 @@ O registro rejeita packages que não implementam essas obrigações. Um package 
 O catálogo não é uma lista solta de nomes. Ele descreve packages com facetas controladas:
 
 - domínios e objetos de conhecimento;
-- operações cognitivas;
+- operações-alvo das tarefas;
 - convenções acadêmicas;
 - modalidades de prática;
 - tecnologias de renderização;

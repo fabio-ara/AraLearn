@@ -86,7 +86,7 @@ function blueprint() {
     contentDemands: [{
       id: "demand:a",
       description: "Comparar relações e justificar a distinção.",
-      cognitiveOperations: ["compare"]
+      taskOperations: ["compare"]
     }],
     anticipatedDifficulties: [],
     designResponses: [],
@@ -101,7 +101,7 @@ function blueprint() {
       id: "theory:a",
       layerIds: ["layer:a"],
       purpose: "Desenvolver a distinção antes da prática.",
-      cognitiveOperation: "compare",
+      taskOperation: "compare",
       packageCandidateIds: ["paragraph"]
     }],
     practiceSteps: [],
@@ -519,7 +519,7 @@ test("ResourceSet efetivo é lido em páginas estáveis sem carregar contracts",
       families: ["exposition", "response"],
       disciplines: ["computing"],
       structures: ["prose", "relation"],
-      cognitiveOperations: ["explain"],
+      taskOperations: ["explain"],
       practiceModalities: ["selected_response"]
     },
     selectionConstraints: {
@@ -844,7 +844,7 @@ test("gate preserva legado explícito, bloqueia workspace novo e rejeita card fo
       }],
       theorySteps: [{
         id: "theory-a",
-        cognitiveOperation: "operation.explain",
+        taskOperation: "task_operation.explain",
         packageCandidateIds: ["paragraph"]
       }],
       practiceSteps: []
@@ -978,7 +978,7 @@ test("contracts action_* descrevem o payloadJson, não repetem o envelope MCP", 
         families: ["family.prose"],
         disciplines: [],
         structures: ["structure.prose"],
-        cognitiveOperations: ["operation.explain"],
+        taskOperations: ["task_operation.explain"],
         practiceModalities: []
       },
       provenanceRefs: ["analysis:current"]
@@ -1238,7 +1238,7 @@ test("bootstrap Auto congela package@version por família, não finge ausência 
         families: ["family.text_language"],
         disciplines: [],
         structures: [],
-        cognitiveOperations: [],
+        taskOperations: [],
         practiceModalities: []
       },
       provenanceRefs: ["analysis:current"]
@@ -1262,7 +1262,7 @@ test("bootstrap Auto congela package@version por família, não finge ausência 
         families: ["family.response"],
         disciplines: [],
         structures: ["structure.prose"],
-        cognitiveOperations: [],
+        taskOperations: [],
         practiceModalities: []
       },
       provenanceRefs: []
@@ -1278,7 +1278,7 @@ test("bootstrap Auto congela package@version por família, não finge ausência 
         familyIds: ["family.auto"],
         disciplineIds: [],
         structureIds: [],
-        operationIds: [],
+        taskOperationIds: [],
         practiceModeIds: []
       }
     }
@@ -1290,7 +1290,7 @@ test("bootstrap Auto congela package@version por família, não finge ausência 
         families: ["family.auto"],
         disciplines: [],
         structures: [],
-        cognitiveOperations: [],
+        taskOperations: [],
         practiceModalities: []
       },
       provenanceRefs: []
@@ -1498,8 +1498,8 @@ test("save_blueprint compacto deriva envelope/binding e nova sessão lê hashes 
     };
   };
   const compactBlueprint = blueprint();
-  compactBlueprint.theorySteps[0].cognitiveOperation = "explain";
-  compactBlueprint.contentDemands[0].cognitiveOperations = ["explain"];
+  compactBlueprint.theorySteps[0].taskOperation = "explain";
+  compactBlueprint.contentDemands[0].taskOperations = ["explain"];
   const compactMappings = mappings();
   compactMappings.conceptualLayers[0].unitRefs = ["tcp"];
   compactMappings.contentDemands[0].unitRefs = ["tcp"];
@@ -2055,7 +2055,7 @@ test("jornada MCP retoma análise, ResourceSet, catálogo, cards e manifesto sem
         families: ["family.text_language"],
         disciplines: [],
         structures: ["structure.prose"],
-        cognitiveOperations: ["operation.explain"],
+        taskOperations: ["task_operation.explain"],
         practiceModalities: []
       },
       selectionConstraints: {
@@ -2131,7 +2131,7 @@ test("jornada MCP retoma análise, ResourceSet, catálogo, cards e manifesto sem
       query: "explicação progressiva em prosa",
       slot: "content",
       structureIds: ["structure.prose"],
-      operationIds: ["operation.explain"],
+      taskOperationIds: ["task_operation.explain"],
       limit: 4
     },
     callId++
@@ -2177,8 +2177,8 @@ test("jornada MCP retoma análise, ResourceSet, catálogo, cards e manifesto sem
   assert.equal(catalogContract.data.result.items.length, 1);
 
   const compactBlueprint = blueprint();
-  compactBlueprint.theorySteps[0].cognitiveOperation = "explain";
-  compactBlueprint.contentDemands[0].cognitiveOperations = ["explain"];
+  compactBlueprint.theorySteps[0].taskOperation = "explain";
+  compactBlueprint.contentDemands[0].taskOperations = ["explain"];
   const compactMappings = mappings();
   compactMappings.conceptualLayers[0].unitRefs = ["tcp"];
   compactMappings.contentDemands[0].unitRefs = ["tcp"];
@@ -2219,7 +2219,7 @@ test("jornada MCP retoma análise, ResourceSet, catálogo, cards e manifesto sem
       snapshotRef,
       cardJson: JSON.stringify(cards[0]),
       intent: "Explicar progressivamente em prosa.",
-      operationIds: ["operation.explain"]
+      taskOperationIds: ["task_operation.explain"]
     },
     callId++
   );

@@ -859,7 +859,7 @@ class ResourceCatalog {
             facets: {
               catalogVersion: RESOURCE_CATALOG.catalogVersion,
               families: [], disciplines: [], structures: [],
-              cognitiveOperations: [], practiceModalities: []
+              taskOperations: [], practiceModalities: []
             },
             constraints: {
               allowedFits: ["canonical"],

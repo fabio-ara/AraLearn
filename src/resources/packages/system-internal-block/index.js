@@ -136,7 +136,7 @@ export const systemInternalBlockPackage = Object.freeze({
     label: "Diagrama interno de bloco",
     purpose: "Representar partes, portas, itens e conectores internos de um bloco segundo a gramática de diagrama interno do SysML.",
     slots: Object.freeze(["content", "feedback"]),
-    cognitiveOperations: Object.freeze(["inspect-part", "trace-item-flow", "identify-port", "compare-interface", "explain-internal-connection"]),
+    taskOperations: Object.freeze(["inspect-part", "trace-item-flow", "identify-port", "compare-interface", "explain-internal-connection"]),
     academic: academicProfile({ domains: ["engenharia de sistemas", "modelagem de sistemas", "sistemas embarcados", "arquitetura de hardware"], knowledgeObjects: ["bloco", "parte", "porta", "tipo de item", "conector", "fluxo"], conventions: ["quadro ibd nomeado", "partes tipadas", "portas ancoradas à parte", "conectores entre portas", "direção de fluxo explícita"], appropriateWhen: ["a tarefa exige compreender a composição interna e as interfaces de um bloco"], avoidWhen: ["a tarefa é o contexto externo de software", "a tarefa trata apenas de contêineres executáveis", "o objeto é um grafo abstrato"], technologies: ["SysML", "Graphviz", "Viz.js WebAssembly", "SVG"], practiceModes: ["exposition", "gap", "typing", "selection"] }),
     responseCompatibility: Object.freeze(["aralearn.response.gap", "aralearn.response.choice"]),
     limitations: Object.freeze(["Não substitui diagramas paramétricos, de requisitos, de sequência ou de estados.", "Lacunas incidem em rótulos de conectores; portas e partes permanecem estruturalmente estáveis durante a prática."]),

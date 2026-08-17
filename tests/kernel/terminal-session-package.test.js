@@ -72,7 +72,7 @@ test("terminal_session declara contrato temporal, metadados acadêmicos e práti
     "diagnose-situation",
     "predict-result",
     "recognize-command"
-  ]) assert.ok(contract.manifest.cognitiveOperations.includes(operation), operation);
+  ]) assert.ok(contract.manifest.taskOperations.includes(operation), operation);
 
   const profile = RESOURCE_CATALOG.getProfile(PACKAGE_ID, VERSION);
   assert.equal(profile.primaryFamilyId, "family.process_state");
@@ -83,15 +83,15 @@ test("terminal_session declara contrato temporal, metadados acadêmicos e práti
   ]);
   assert.equal(profile.specificity, "versatile");
   assert.ok(profile.knowledgeObjects.includes("sessão textual de terminal"));
-  assert.ok(profile.operationIds.includes("operation.identify"));
-  assert.ok(profile.operationIds.includes("operation.trace"));
+  assert.ok(profile.taskOperationIds.includes("task_operation.identify"));
+  assert.ok(profile.taskOperationIds.includes("task_operation.trace"));
   assert.match(profile.limitations.join(" "), /Não executa nem interpreta comandos/u);
   assert.match(profile.accessibility, /lista cronológica/u);
 
   const discovery = RESOURCE_CATALOG.search({
     query: "sessão textual terminal stdout stderr comando resultado",
     structureIds: ["structure.terminal_session"],
-    operationIds: ["operation.trace"],
+    taskOperationIds: ["task_operation.trace"],
     practiceModeIds: ["practice.gap"]
   });
   assert.equal(discovery.coverage.status, "canonical");
@@ -157,12 +157,12 @@ test("fixtures de Linux, Git, SQL e console administrativo validam e preservam a
 
 test("facetas preservam isoladamente interpretação de saída e relação ação-consequência", () => {
   assert.deepEqual(
-    inferAcademicTaxonomy({ cognitiveOperations: ["interpret-output"] }).operationIds,
-    ["operation.identify"]
+    inferAcademicTaxonomy({ taskOperations: ["interpret-output"] }).taskOperationIds,
+    ["task_operation.identify"]
   );
   assert.deepEqual(
-    inferAcademicTaxonomy({ cognitiveOperations: ["relate-action-consequence"] }).operationIds,
-    ["operation.trace"]
+    inferAcademicTaxonomy({ taskOperations: ["relate-action-consequence"] }).taskOperationIds,
+    ["task_operation.trace"]
   );
 });
 

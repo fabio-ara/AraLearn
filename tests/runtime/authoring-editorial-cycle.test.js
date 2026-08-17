@@ -120,7 +120,7 @@ test("cenários 6 a 10: auditoria cobre bastidor, termos, contexto, ancoragem e 
   assert.match(termLedger, /forma expandida e explique sua\s+função/iu);
   assert.match(termLedger, /`pwd` corresponde a `print working directory`/u);
   assert.match(sources, /exercícios da mesma banca/iu);
-  assert.match(sources, /operação cognitiva/iu);
+  assert.match(sources, /operação-alvo da tarefa/iu);
   assert.match(semanticAudit, /carga cognitiva/iu);
   assert.match(semanticAudit, /uma decisão principal/iu);
   assert.match(semanticAudit, /nunca Transmission Control `Protocol \(TCP\)`/u);
